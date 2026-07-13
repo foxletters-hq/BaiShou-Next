@@ -1,11 +1,21 @@
 # GitHub「自动生成 Release 说明」配置（CI 中 generate_release_notes: true）
 # https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+# 会追加「What's Changed」PR 列表与「New Contributors」
 changelog:
   exclude:
     authors:
       - github-actions[bot]
       - dependabot[bot]
   categories:
-    - title: 变更
+    - title: 新功能
+      labels:
+        - feat
+        - enhancement
+        - feature
+    - title: 修复
+      labels:
+        - fix
+        - bug
+    - title: 其他变更
       labels:
         - '*'

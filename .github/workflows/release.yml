@@ -3,7 +3,7 @@ name: Build & Release
 # 分端发版：main 合并后 push tag 触发构建
 #   mobile/v1.2.4  → 仅 Android
 #   desktop/v1.2.1 → 仅 Windows
-# GitHub Release 按版本号统一为 v{semver}，多端产物合并到同一 Release
+# GitHub Release 挂载/展示 tag = max(mobile.version, desktop.version)，如 v1.2.12
 # 手动发版：Actions → Run workflow → 选择 mobile / desktop / both
 on:
   push:
@@ -42,6 +42,7 @@ jobs:
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
       semver: ${{ steps.resolve.outputs.semver }}
+      display_semver: ${{ steps.resolve.outputs.display_semver }}
       scope: ${{ steps.resolve.outputs.scope }}
       ref: ${{ steps.resolve.outputs.ref }}
       should_release: ${{ steps.resolve.outputs.should_release }}
@@ -106,8 +107,14 @@ jobs:
             DESKTOP_TAG="desktop/v${SEMVER}"
           fi
 
+          # GitHub Release 展示/挂载取两端 version.json 的较大者，避免桌面 1.2.7、移动 1.2.12 时出现两条低版本 Release
+          MOBILE_VER=$(node -p "require('./apps/mobile/src/version.json').version")
+          DESKTOP_VER=$(node -p "require('./apps/desktop/src/version.json').version")
+          DISPLAY=$(printf '%s\n' "$MOBILE_VER" "$DESKTOP_VER" | sort -V | tail -1)
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
+          echo "display_semver=$DISPLAY" >> "$GITHUB_OUTPUT"
           echo "scope=$SCOPE" >> "$GITHUB_OUTPUT"
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
           echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
@@ -115,7 +122,7 @@ jobs:
           echo "build_desktop=$BUILD_DESKTOP" >> "$GITHUB_OUTPUT"
           echo "mobile_tag=$MOBILE_TAG" >> "$GITHUB_OUTPUT"
           echo "desktop_tag=$DESKTOP_TAG" >> "$GITHUB_OUTPUT"
-          echo "release_tag=v${SEMVER}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v${DISPLAY}" >> "$GITHUB_OUTPUT"
 
       - name: Verify tag commit is on main
         if: github.event_name == 'push'
@@ -311,6 +318,7 @@ jobs:
         run: |
           set -euo pipefail
           SEMVER="${{ needs.prepare.outputs.semver }}"
+          DISPLAY="${{ needs.prepare.outputs.display_semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
           SCOPE="${{ needs.prepare.outputs.scope }}"
           APPEND=false
@@ -320,19 +328,32 @@ jobs:
             echo "make_latest=false" >> "$GITHUB_OUTPUT"
           else
             echo "append=false" >> "$GITHUB_OUTPUT"
-            HIGHEST=$(gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' | sed 's/^v//' | sort -V | tail -1 || true)
-            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n' "$SEMVER" "$HIGHEST" | sort -V | tail -1)" != "$SEMVER" ]; then
+            HIGHEST=$(gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' | sed -n 's/^v//p' | sort -V | tail -1 || true)
+            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n' "$DISPLAY" "$HIGHEST" | sort -V | tail -1)" != "$DISPLAY" ]; then
               echo "make_latest=false" >> "$GITHUB_OUTPUT"
             else
               echo "make_latest=true" >> "$GITHUB_OUTPUT"
             fi
           fi
-          CURRENT_TAG="${SCOPE}/v${SEMVER}"
-          PREV=$(git tag -l "${SCOPE}/v*" --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -1 || true)
-          echo "previous_platform_tag=${PREV}" >> "$GITHUB_OUTPUT"
+          # 自动生成说明（含 Contributors）对比上一统一 Release tag，而非分端 tag
+          PREV_RELEASE=$(
+            gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' \
+              | sed -n 's/^v//p' | sort -Vu \
+              | awk -v d="$DISPLAY" '
+                  $0 == d { print prev; found=1; exit }
+                  { prev = $0 }
+                  END { if (!found && prev != "") print prev }
+                '
+          )
+          if [ -n "${PREV_RELEASE:-}" ]; then
+            echo "previous_release_tag=v${PREV_RELEASE}" >> "$GITHUB_OUTPUT"
+          else
+            echo "previous_release_tag=" >> "$GITHUB_OUTPUT"
+          fi
           node scripts/compose-release-body.mjs \
             --scope "$SCOPE" \
             --version "$SEMVER" \
+            --display-version "$DISPLAY" \
             --repo "$REPO" \
             --append "$APPEND" \
             --output body.md
@@ -341,11 +362,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.release_tag }}
-          name: 白守 v${{ needs.prepare.outputs.semver }}
+          name: 白守 v${{ needs.prepare.outputs.display_semver }}
           append_body: ${{ steps.notes.outputs.append == 'true' }}
           body_path: body.md
           generate_release_notes: ${{ steps.notes.outputs.append != 'true' }}
-          previous_tag: ${{ steps.notes.outputs.previous_platform_tag }}
+          previous_tag: ${{ steps.notes.outputs.previous_release_tag }}
           files: |
             artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Android.apk
             artifacts/BaiShou-Android.apk
@@ -400,6 +421,7 @@ jobs:
         run: |
           set -euo pipefail
           SEMVER="${{ needs.prepare.outputs.semver }}"
+          DISPLAY="${{ needs.prepare.outputs.display_semver }}"
           TAG="${{ needs.prepare.outputs.release_tag }}"
           SCOPE="${{ needs.prepare.outputs.scope }}"
           APPEND=false
@@ -409,19 +431,31 @@ jobs:
             echo "make_latest=false" >> "$GITHUB_OUTPUT"
           else
             echo "append=false" >> "$GITHUB_OUTPUT"
-            HIGHEST=$(gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' | sed 's/^v//' | sort -V | tail -1 || true)
-            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n' "$SEMVER" "$HIGHEST" | sort -V | tail -1)" != "$SEMVER" ]; then
+            HIGHEST=$(gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' | sed -n 's/^v//p' | sort -V | tail -1 || true)
+            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n' "$DISPLAY" "$HIGHEST" | sort -V | tail -1)" != "$DISPLAY" ]; then
               echo "make_latest=false" >> "$GITHUB_OUTPUT"
             else
               echo "make_latest=true" >> "$GITHUB_OUTPUT"
             fi
           fi
-          CURRENT_TAG="${SCOPE}/v${SEMVER}"
-          PREV=$(git tag -l "${SCOPE}/v*" --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -1 || true)
-          echo "previous_platform_tag=${PREV}" >> "$GITHUB_OUTPUT"
+          PREV_RELEASE=$(
+            gh release list --repo "$REPO" --limit 100 --json tagName -q '.[].tagName' \
+              | sed -n 's/^v//p' | sort -Vu \
+              | awk -v d="$DISPLAY" '
+                  $0 == d { print prev; found=1; exit }
+                  { prev = $0 }
+                  END { if (!found && prev != "") print prev }
+                '
+          )
+          if [ -n "${PREV_RELEASE:-}" ]; then
+            echo "previous_release_tag=v${PREV_RELEASE}" >> "$GITHUB_OUTPUT"
+          else
+            echo "previous_release_tag=" >> "$GITHUB_OUTPUT"
+          fi
           node scripts/compose-release-body.mjs \
             --scope "$SCOPE" \
             --version "$SEMVER" \
+            --display-version "$DISPLAY" \
             --repo "$REPO" \
             --append "$APPEND" \
             --output body.md
@@ -430,11 +464,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare.outputs.release_tag }}
-          name: 白守 v${{ needs.prepare.outputs.semver }}
+          name: 白守 v${{ needs.prepare.outputs.display_semver }}
           append_body: ${{ steps.notes.outputs.append == 'true' }}
           body_path: body.md
           generate_release_notes: ${{ steps.notes.outputs.append != 'true' }}
-          previous_tag: ${{ steps.notes.outputs.previous_platform_tag }}
+          previous_tag: ${{ steps.notes.outputs.previous_release_tag }}
           files: |
             artifacts/BaiShou-v${{ needs.prepare.outputs.semver }}-Windows-Setup.exe
             artifacts/BaiShou-Windows-Setup.exe
@@ -465,9 +499,10 @@ jobs:
       - name: Patch channel.json (Android)
         if: needs.release-mobile.result == 'success'
         run: |
+          MOBILE_VER=$(node -p "require('./apps/mobile/src/version.json').version")
           node scripts/update-release-channel.mjs \
             --platform android \
-            --version "${{ needs.prepare.outputs.semver }}" \
+            --version "$MOBILE_VER" \
             --tag "${{ needs.prepare.outputs.release_tag }}" \
             --version-code "$(node -p "require('./apps/mobile/src/version.json').versionCode")" \
             --repo "${{ github.repository }}"
