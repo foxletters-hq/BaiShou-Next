@@ -4,7 +4,7 @@ import {
   InsertMessageInput,
   InsertPartInput
 } from '@baishou/database'
-import { sessionBelongsToActiveVault } from '@baishou/shared'
+import { resolveSessionFlushTargetVault } from '@baishou/shared'
 import { SessionSyncService } from './session-sync.service'
 import { SessionFileService } from './session-file.service'
 import {
@@ -130,59 +130,329 @@ export class SessionManagerService {
   }
 
   /**
-   * 增量同步扫描前：先 flush dirty，再把「库有、当前 Sessions 目录无 JSON」的会话补写到盘。
-   * 只处理活跃 vault（SessionFileService 读写范围），避免跨 vault 写错目录。
-   * activeVaultName 缺失时仅 flushPending，不做缺文件补写。
+   * 增量同步扫描前：先 flush dirty，再把「库有、各工作区 Sessions 目录无 JSON」的会话补写到盘。
+   * 覆盖全部伙伴会话（不限当前活跃 vault）；按会话 vaultName 写到对应工作区目录。
+   * 无可用目标 vault 时仅 flushPending。
    */
   async ensureSessionsFlushedToDisk(options?: {
     activeVaultName?: string | null
+    /** 磁盘上已有的工作区目录名；用于跨 vault 补写与存在性判断 */
+    diskVaultNames?: string[] | null
+    /**
+     * pending-only：只 flush dirty，不补写「库有盘无」会话。
+     * 规划阶段用，减少计划期磁盘漂移。
+     */
+    mode?: 'full' | 'pending-only'
   }): Promise<{
     flushed: number
     pendingFlushed: boolean
     dbCount: number
     diskCount: number
     skippedMissingScan: boolean
+    dbTotalCount: number
+    skippedOtherVaultCount: number
+    missingIds: string[]
+    failedIds: string[]
+    activeVaultName: string | null
   }> {
     const dirtyBefore = this.persistence.getDirtySessionIds().size
     await this.persistence.flushPending()
     const pendingFlushed = dirtyBefore > 0
 
     const activeVaultName = options?.activeVaultName?.trim() || null
-    if (!activeVaultName) {
+    const diskVaultNames = [
+      ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
+    ]
+    if (activeVaultName && !diskVaultNames.includes(activeVaultName)) {
+      diskVaultNames.push(activeVaultName)
+    }
+
+    if (options?.mode === 'pending-only') {
       return {
         flushed: 0,
         pendingFlushed,
         dbCount: 0,
         diskCount: 0,
-        skippedMissingScan: true
+        skippedMissingScan: true,
+        dbTotalCount: 0,
+        skippedOtherVaultCount: 0,
+        missingIds: [],
+        failedIds: [],
+        activeVaultName
       }
     }
 
+    if (!activeVaultName && diskVaultNames.length === 0) {
+      console.warn('[IncrementalSync][SessionFlush]', {
+        phase: 'skip-missing-scan',
+        reason: 'no-target-vault',
+        pendingFlushed,
+        dirtyBefore
+      })
+      return {
+        flushed: 0,
+        pendingFlushed,
+        dbCount: 0,
+        diskCount: 0,
+        skippedMissingScan: true,
+        dbTotalCount: 0,
+        skippedOtherVaultCount: 0,
+        missingIds: [],
+        failedIds: [],
+        activeVaultName
+      }
+    }
+
+    // 全库会话（按伙伴列表可见的全部），不按活跃 vault 过滤
     const dbSessions = await this.sessionRepo.findAllSessions(-1)
-    const relevant = dbSessions.filter((s) =>
-      sessionBelongsToActiveVault(s.vaultName, activeVaultName)
-    )
-    const diskSessions = await this.fileService.listAllSessions()
+    const diskSessions =
+      diskVaultNames.length > 0
+        ? await this.fileService.listSessionsAcrossVaults(diskVaultNames)
+        : await this.fileService.listAllSessions(activeVaultName)
     const diskIds = new Set(diskSessions.map((s) => s.id))
 
+    const missing = dbSessions.filter((s) => !diskIds.has(s.id))
+    const missingIds = missing.map((s) => s.id)
+    const failedIds: string[] = []
+    const remappedVaultSamples: string[] = []
     let flushed = 0
-    for (const session of relevant) {
-      if (diskIds.has(session.id)) continue
+    let skippedUnresolvedVault = 0
+
+    for (const session of missing) {
+      const targetVault = resolveSessionFlushTargetVault(
+        session.vaultName,
+        activeVaultName,
+        diskVaultNames
+      )
+      if (!targetVault) {
+        skippedUnresolvedVault++
+        console.warn('[IncrementalSync][SessionFlush] skip-unresolved-vault', {
+          sessionId: session.id,
+          assistantId: session.assistantId ?? null,
+          vaultName: session.vaultName ?? null
+        })
+        continue
+      }
+      const remapped =
+        Boolean(session.vaultName?.trim()) &&
+        session.vaultName !== 'default' &&
+        session.vaultName !== targetVault
+      if (remapped) {
+        remappedVaultSamples.push(`${session.id}:${session.vaultName}->${targetVault}`)
+      }
       try {
-        await this.persistence.flushNow(session.id)
+        await this.persistence.flushNow(session.id, { vaultName: targetVault })
         flushed++
+        console.warn('[IncrementalSync][SessionFlush] wrote-missing-json', {
+          sessionId: session.id,
+          assistantId: session.assistantId ?? null,
+          sessionVaultName: session.vaultName ?? null,
+          targetVault,
+          remapped,
+          title: session.title ?? null
+        })
       } catch (e) {
-        console.warn(`[SessionManager] flush missing session ${session.id} failed:`, e)
+        failedIds.push(session.id)
+        console.warn('[IncrementalSync][SessionFlush] write-missing-json-failed', {
+          sessionId: session.id,
+          assistantId: session.assistantId ?? null,
+          sessionVaultName: session.vaultName ?? null,
+          targetVault,
+          error: e instanceof Error ? e.message : String(e)
+        })
       }
     }
+
+    const assistantIdSamples = [
+      ...new Set(missing.map((s) => s.assistantId ?? '(null)'))
+    ].slice(0, 12)
+
+    console.warn('[IncrementalSync][SessionFlush]', {
+      phase: 'summary',
+      activeVaultName,
+      diskVaultNames,
+      dirtyBefore,
+      pendingFlushed,
+      dbTotalCount: dbSessions.length,
+      dbCount: dbSessions.length,
+      diskCount: diskSessions.length,
+      missingCount: missingIds.length,
+      flushed,
+      failedCount: failedIds.length,
+      skippedUnresolvedVault,
+      skippedOtherVaultCount: skippedUnresolvedVault,
+      assistantIdSamples,
+      remappedVaultSamples: remappedVaultSamples.slice(0, 8),
+      missingIdSamples: missingIds.slice(0, 12),
+      failedIdSamples: failedIds.slice(0, 12),
+      diskIdSamples: diskSessions.map((s) => s.id).slice(0, 8)
+    })
 
     return {
       flushed,
       pendingFlushed,
-      dbCount: relevant.length,
+      dbCount: dbSessions.length,
       diskCount: diskSessions.length,
-      skippedMissingScan: false
+      skippedMissingScan: false,
+      dbTotalCount: dbSessions.length,
+      skippedOtherVaultCount: skippedUnresolvedVault,
+      missingIds,
+      failedIds,
+      activeVaultName
     }
+  }
+
+  /**
+   * 把「盘上有、库中无」的会话灌进 SQLite。
+   * 按唯一 sessionId 比较（跨 vault 同 ID 多份 JSON 只算一条），避免 fileCount>dbCount 误判导致每次全量 upsert。
+   */
+  async hydrateSessionsFromDiskIfNeeded(options?: {
+    activeVaultName?: string | null
+    diskVaultNames?: string[] | null
+    maxSessionJsonReadBytes?: number
+    /** @deprecated 不再触发全量 upsert；保留参数以免调用方报错 */
+    force?: boolean
+  }): Promise<{
+    hydrated: boolean
+    reason: string
+    dbCount: number
+    diskCount: number
+    missingCount: number
+  }> {
+    const activeVaultName = options?.activeVaultName?.trim() || undefined
+    const diskVaultNames = [
+      ...new Set((options?.diskVaultNames ?? []).map((n) => n.trim()).filter(Boolean))
+    ]
+    if (activeVaultName && !diskVaultNames.includes(activeVaultName)) {
+      diskVaultNames.push(activeVaultName)
+    }
+
+    if (diskVaultNames.length === 0 && !activeVaultName) {
+      return {
+        hydrated: false,
+        reason: 'no-vault-scope',
+        dbCount: 0,
+        diskCount: 0,
+        missingCount: 0
+      }
+    }
+
+    const dbSessions = await this.sessionRepo.findAllSessions(-1)
+    const diskSessions =
+      diskVaultNames.length > 0
+        ? await this.fileService.listSessionsAcrossVaults(diskVaultNames)
+        : await this.fileService.listAllSessions(activeVaultName)
+    const dbIds = new Set(dbSessions.map((s) => s.id))
+    const dbCount = dbSessions.length
+    const diskCount = diskSessions.length
+
+    // 每个 id 只取一份（优先活跃 vault）
+    const missingById = new Map<string, { id: string; vaultName?: string }>()
+    for (const file of diskSessions) {
+      if (dbIds.has(file.id)) continue
+      const vaultName = 'vaultName' in file ? file.vaultName : undefined
+      const existing = missingById.get(file.id)
+      if (!existing) {
+        missingById.set(file.id, { id: file.id, vaultName })
+        continue
+      }
+      if (activeVaultName && vaultName === activeVaultName && existing.vaultName !== activeVaultName) {
+        missingById.set(file.id, { id: file.id, vaultName })
+      }
+    }
+    const missing = [...missingById.values()]
+    const missingCount = missing.length
+
+    console.warn('[IncrementalSync][SessionHydrate] check', {
+      force: Boolean(options?.force),
+      dbCount,
+      diskCount,
+      uniqueDiskIds: new Set(diskSessions.map((s) => s.id)).size,
+      missingCount,
+      diskVaultCount: diskVaultNames.length,
+      activeVaultName: activeVaultName ?? null
+    })
+
+    if (missingCount === 0) {
+      return { hydrated: false, reason: 'db-caught-up', dbCount, diskCount, missingCount: 0 }
+    }
+
+    const maxBytes = options?.maxSessionJsonReadBytes
+    let upserted = 0
+    let skipped = 0
+    for (const item of missing) {
+      try {
+        if (maxBytes != null) {
+          const byteSize = await this.fileService.getSessionFileByteSize(item.id, item.vaultName)
+          if (byteSize != null && byteSize > maxBytes) {
+            skipped++
+            continue
+          }
+        }
+        const sessionData = await this.fileService.readSession(item.id, item.vaultName)
+        if (sessionData) {
+          await this.sessionRepo.upsertAggregate(sessionData)
+          upserted++
+        } else {
+          skipped++
+        }
+      } catch (e) {
+        skipped++
+        console.warn('[IncrementalSync][SessionHydrate] upsert-failed', {
+          sessionId: item.id,
+          vaultName: item.vaultName ?? null,
+          error: e instanceof Error ? e.message : String(e)
+        })
+      }
+    }
+
+    const afterDb = (await this.sessionRepo.findAllSessions(-1)).length
+    console.warn('[IncrementalSync][SessionHydrate] done', {
+      dbCountBefore: dbCount,
+      diskCount,
+      missingCount,
+      upserted,
+      skipped,
+      dbCountAfter: afterDb
+    })
+    return {
+      hydrated: upserted > 0,
+      reason: 'missing-ids',
+      dbCount: afterDb,
+      diskCount,
+      missingCount
+    }
+  }
+
+  /**
+   * 将指定会话 JSON 灌入 SQLite（用于同步下载后的定点水合，避免全库 fullScan）。
+   */
+  async importSessionsFromDisk(
+    refs: ReadonlyArray<{ sessionId: string; vaultName?: string | null }>,
+    options?: { maxSessionJsonReadBytes?: number }
+  ): Promise<number> {
+    const maxBytes = options?.maxSessionJsonReadBytes
+    let imported = 0
+    for (const ref of refs) {
+      try {
+        if (maxBytes != null) {
+          const byteSize = await this.fileService.getSessionFileByteSize(
+            ref.sessionId,
+            ref.vaultName
+          )
+          if (byteSize != null && byteSize > maxBytes) continue
+        }
+        await this.syncService.syncSessionFile(ref.sessionId, ref.vaultName)
+        imported++
+      } catch (e) {
+        console.warn('[SessionManager] importSessionsFromDisk failed', {
+          sessionId: ref.sessionId,
+          vaultName: ref.vaultName ?? null,
+          error: e instanceof Error ? e.message : String(e)
+        })
+      }
+    }
+    return imported
   }
 
   async fullResyncFromDisks(

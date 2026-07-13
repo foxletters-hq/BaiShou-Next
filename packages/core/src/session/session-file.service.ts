@@ -8,21 +8,41 @@ export class SessionFileService {
     private readonly fileSystem: IFileSystem
   ) {}
 
-  private async getDirectory(): Promise<string> {
+  private async getDirectory(vaultName?: string | null): Promise<string> {
+    if (vaultName?.trim()) {
+      const vaultDir = await this.pathProvider.getVaultDirectory(vaultName.trim())
+      const targetDir = path.join(vaultDir, 'Sessions')
+      await this.fileSystem.mkdir(targetDir, { recursive: true })
+      return targetDir
+    }
     const targetDir = await this.pathProvider.getSessionsBaseDirectory()
     await this.fileSystem.mkdir(targetDir, { recursive: true })
     return targetDir
   }
 
-  async writeSession(sessionId: string, sessionData: any): Promise<string> {
-    const dir = await this.getDirectory()
+  async writeSession(
+    sessionId: string,
+    sessionData: any,
+    vaultName?: string | null
+  ): Promise<string> {
+    const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${sessionId}.json`)
-    await this.fileSystem.writeFile(fullPath, JSON.stringify(sessionData), 'utf8')
+    const next = JSON.stringify(sessionData)
+    try {
+      const prevRaw = await this.fileSystem.readFile(fullPath, 'utf8')
+      // 内容语义相同则跳过写盘，避免 mtime/hash 抖动导致下次又被判定 upload
+      if (JSON.stringify(JSON.parse(prevRaw)) === JSON.stringify(JSON.parse(next))) {
+        return fullPath
+      }
+    } catch {
+      // 文件不存在或损坏时继续写入
+    }
+    await this.fileSystem.writeFile(fullPath, next, 'utf8')
     return fullPath
   }
 
-  async readSession(sessionId: string): Promise<any | null> {
-    const dir = await this.getDirectory()
+  async readSession(sessionId: string, vaultName?: string | null): Promise<any | null> {
+    const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${sessionId}.json`)
     try {
       const content = await this.fileSystem.readFile(fullPath, 'utf8')
@@ -33,8 +53,11 @@ export class SessionFileService {
     }
   }
 
-  async getSessionFileByteSize(sessionId: string): Promise<number | undefined> {
-    const dir = await this.getDirectory()
+  async getSessionFileByteSize(
+    sessionId: string,
+    vaultName?: string | null
+  ): Promise<number | undefined> {
+    const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${sessionId}.json`)
     try {
       const stat = await this.fileSystem.stat(fullPath)
@@ -45,8 +68,8 @@ export class SessionFileService {
     }
   }
 
-  async deleteSession(sessionId: string): Promise<void> {
-    const dir = await this.getDirectory()
+  async deleteSession(sessionId: string, vaultName?: string | null): Promise<void> {
+    const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${sessionId}.json`)
     try {
       await this.fileSystem.unlink(fullPath)
@@ -55,21 +78,42 @@ export class SessionFileService {
     }
   }
 
-  async listAllSessions(): Promise<{ id: string; fullPath: string }[]> {
-    const dir = await this.getDirectory()
+  async listAllSessions(
+    vaultName?: string | null
+  ): Promise<{ id: string; fullPath: string; vaultName?: string }[]> {
+    const dir = await this.getDirectory(vaultName)
     let files: string[] = []
     try {
       files = await this.fileSystem.readdir(dir)
     } catch (e: any) {
-      if (e.code !== 'ENOENT') return []
+      if (e.code === 'ENOENT') return []
       throw e
     }
 
-    const results: { id: string; fullPath: string }[] = []
+    const results: { id: string; fullPath: string; vaultName?: string }[] = []
     for (const f of files) {
       if (!f.endsWith('.json')) continue
       const id = f.slice(0, -5)
-      results.push({ id, fullPath: path.join(dir, f) })
+      results.push({
+        id,
+        fullPath: path.join(dir, f),
+        ...(vaultName?.trim() ? { vaultName: vaultName.trim() } : {})
+      })
+    }
+    return results
+  }
+
+  /** 列出多个工作区 Sessions 目录中的全部会话文件 */
+  async listSessionsAcrossVaults(
+    vaultNames: string[]
+  ): Promise<{ id: string; fullPath: string; vaultName: string }[]> {
+    const unique = [...new Set(vaultNames.map((n) => n.trim()).filter(Boolean))]
+    const results: { id: string; fullPath: string; vaultName: string }[] = []
+    for (const vaultName of unique) {
+      const listed = await this.listAllSessions(vaultName)
+      for (const item of listed) {
+        results.push({ id: item.id, fullPath: item.fullPath, vaultName })
+      }
     }
     return results
   }

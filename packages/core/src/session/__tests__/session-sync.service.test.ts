@@ -65,4 +65,46 @@ describe('SessionSyncService', () => {
 
     expect(mockRepo.deleteSessions).not.toHaveBeenCalled()
   })
+
+  it('fullScanArchives hydrates sessions across all disk vaults', async () => {
+    mockFileService.listSessionsAcrossVaults = vi.fn().mockResolvedValue([
+      { id: 'from-personal', fullPath: '/Personal/Sessions/from-personal.json', vaultName: 'Personal' },
+      { id: 'from-work', fullPath: '/Work/Sessions/from-work.json', vaultName: 'Work' }
+    ])
+    mockFileService.readSession.mockImplementation(async (id: string, vaultName?: string | null) => ({
+      session: { id, vaultName },
+      messages: []
+    }))
+    mockRepo.findAllSessions.mockResolvedValue([{ id: 'from-work', vaultName: 'Work' }] as any)
+
+    await service.fullScanArchives({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Personal', 'Work']
+    })
+
+    expect(mockFileService.listSessionsAcrossVaults).toHaveBeenCalledWith(['Personal', 'Work'])
+    expect(mockFileService.readSession).toHaveBeenCalledWith('from-personal', 'Personal')
+    expect(mockFileService.readSession).toHaveBeenCalledWith('from-work', 'Work')
+    expect(mockRepo.upsertAggregate).toHaveBeenCalledTimes(2)
+    expect(mockRepo.deleteSessions).not.toHaveBeenCalled()
+  })
+
+  it('fullScanArchives deletes ghosts only within scanned vaults', async () => {
+    mockFileService.listSessionsAcrossVaults = vi.fn().mockResolvedValue([
+      { id: 'kept', fullPath: '/Work/Sessions/kept.json', vaultName: 'Work' }
+    ])
+    mockFileService.readSession.mockResolvedValue({ session: { id: 'kept' }, messages: [] } as any)
+    mockRepo.findAllSessions.mockResolvedValue([
+      { id: 'kept', vaultName: 'Work' },
+      { id: 'ghost-work', vaultName: 'Work' },
+      { id: 'other-vault', vaultName: 'Archive' }
+    ] as any)
+
+    await service.fullScanArchives({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Personal', 'Work']
+    })
+
+    expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost-work'])
+  })
 })

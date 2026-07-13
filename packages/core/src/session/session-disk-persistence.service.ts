@@ -89,7 +89,7 @@ export class SessionDiskPersistenceService {
     void this.flushNow(sessionId)
   }
 
-  async flushNow(sessionId: string): Promise<void> {
+  async flushNow(sessionId: string, options?: { vaultName?: string | null }): Promise<void> {
     if (!sessionId) return
     this.cancelScheduledFlush(sessionId)
     this.markDirty(sessionId)
@@ -100,7 +100,7 @@ export class SessionDiskPersistenceService {
       if (!this.dirty.has(sessionId)) return
     }
 
-    const task = this.flushSessionUnlocked(sessionId).finally(() => {
+    const task = this.flushSessionUnlocked(sessionId, options).finally(() => {
       if (this.inFlight.get(sessionId) === task) {
         this.inFlight.delete(sessionId)
       }
@@ -124,7 +124,10 @@ export class SessionDiskPersistenceService {
     }
   }
 
-  private async flushSessionUnlocked(sessionId: string): Promise<void> {
+  private async flushSessionUnlocked(
+    sessionId: string,
+    options?: { vaultName?: string | null }
+  ): Promise<void> {
     if (this.discarded.has(sessionId)) {
       this.discarded.delete(sessionId)
       this.dirty.delete(sessionId)
@@ -155,7 +158,7 @@ export class SessionDiskPersistenceService {
     }
 
     this.hooks?.onBeforeWrite?.(sessionId, sessionId)
-    await this.fileService.writeSession(sessionId, cleaned)
+    await this.fileService.writeSession(sessionId, cleaned, options?.vaultName)
     this.dirty.delete(sessionId)
   }
 }

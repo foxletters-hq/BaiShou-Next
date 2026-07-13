@@ -11,20 +11,9 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
   let manager: SessionManagerService
 
   beforeEach(() => {
-    mockFileService = {
-      writeSession: vi.fn(),
-      readSession: vi.fn(),
-      deleteSession: vi.fn(),
-      listAllSessions: vi.fn()
-    } as any
-
-    mockSyncService = {
-      syncSessionFile: vi.fn(),
-      fullScanArchives: vi.fn()
-    } as any
-
     mockRepo = {
       upsertSession: vi.fn(),
+      upsertAggregate: vi.fn(),
       insertMessageWithParts: vi.fn(),
       updateTokenUsage: vi.fn(),
       togglePin: vi.fn(),
@@ -32,6 +21,20 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
       findAllSessions: vi.fn(),
       getMessagesBySession: vi.fn(),
       getSessionAggregate: vi.fn()
+    } as any
+
+    mockFileService = {
+      writeSession: vi.fn(),
+      readSession: vi.fn(),
+      deleteSession: vi.fn(),
+      listAllSessions: vi.fn(),
+      listSessionsAcrossVaults: vi.fn(),
+      getSessionFileByteSize: vi.fn()
+    } as any
+
+    mockSyncService = {
+      syncSessionFile: vi.fn(),
+      fullScanArchives: vi.fn()
     } as any
 
     manager = new SessionManagerService(mockRepo, mockFileService, mockSyncService)
@@ -51,7 +54,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
 
     expect(mockRepo.upsertSession).toHaveBeenCalledWith(expect.objectContaining({ id: 'chat-1' }))
     expect(mockRepo.getSessionAggregate).toHaveBeenCalledWith('chat-1')
-    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy)
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy, undefined)
   })
 
   it('insertMessageWithParts() should write to SQLite and schedule debounced disk flush', async () => {
@@ -67,7 +70,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     expect(mockFileService.writeSession).not.toHaveBeenCalled()
 
     await vi.runAllTimersAsync()
-    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy)
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('chat-1', aggregateDummy, undefined)
     vi.useRealTimers()
   })
 
@@ -105,36 +108,117 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     expect(arg?.preserveSessionIds?.has('mid-chat')).toBe(true)
   })
 
-  it('ensureSessionsFlushedToDisk() flushes db sessions missing on disk', async () => {
+  it('ensureSessionsFlushedToDisk() flushes missing sessions across vaults for all assistants', async () => {
     mockRepo.findAllSessions.mockResolvedValue([
-      { id: 'a', vaultName: 'Work' },
-      { id: 'b', vaultName: 'Work' },
-      { id: 'other', vaultName: 'Personal' }
+      { id: 'a', vaultName: 'Personal85', assistantId: 'default', title: 'A' },
+      { id: 'b', vaultName: 'Personal85', assistantId: 'default', title: 'B' },
+      { id: 'legacy', vaultName: 'Personal', assistantId: 'legacy_ast_1', title: 'L' }
     ] as any)
-    mockFileService.listAllSessions.mockResolvedValue([{ id: 'a', fullPath: '/a.json' }])
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 'a', fullPath: '/Personal85/Sessions/a.json', vaultName: 'Personal85' }
+    ])
     mockRepo.getSessionAggregate.mockResolvedValue(aggregateDummy)
 
-    const result = await manager.ensureSessionsFlushedToDisk({ activeVaultName: 'Work' })
+    const result = await manager.ensureSessionsFlushedToDisk({
+      activeVaultName: 'Personal85',
+      diskVaultNames: ['Personal', 'Personal85']
+    })
 
-    expect(result.flushed).toBe(1)
+    expect(result.flushed).toBe(2)
     expect(result.pendingFlushed).toBe(false)
     expect(result.skippedMissingScan).toBe(false)
-    expect(result.dbCount).toBe(2)
+    expect(result.dbTotalCount).toBe(3)
     expect(result.diskCount).toBe(1)
-    expect(mockFileService.writeSession).toHaveBeenCalledWith('b', aggregateDummy)
-    expect(mockFileService.writeSession).not.toHaveBeenCalledWith('other', expect.anything())
+    expect(result.missingIds.sort()).toEqual(['b', 'legacy'])
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('b', aggregateDummy, 'Personal85')
+    expect(mockFileService.writeSession).toHaveBeenCalledWith('legacy', aggregateDummy, 'Personal')
   })
 
-  it('ensureSessionsFlushedToDisk() skips missing-file backfill without active vault', async () => {
+  it('ensureSessionsFlushedToDisk({ mode: pending-only }) skips missing-session backfill', async () => {
+    mockRepo.findAllSessions.mockResolvedValue([
+      { id: 'a', vaultName: 'Personal85', assistantId: 'default', title: 'A' }
+    ] as any)
+
+    const result = await manager.ensureSessionsFlushedToDisk({
+      activeVaultName: 'Personal85',
+      diskVaultNames: ['Personal85'],
+      mode: 'pending-only'
+    })
+
+    expect(result.flushed).toBe(0)
+    expect(result.skippedMissingScan).toBe(true)
+    expect(mockRepo.findAllSessions).not.toHaveBeenCalled()
+    expect(mockFileService.writeSession).not.toHaveBeenCalled()
+  })
+
+  it('ensureSessionsFlushedToDisk() skips missing-file backfill without target vault', async () => {
     mockRepo.findAllSessions.mockResolvedValue([{ id: 'a', vaultName: 'Work' }] as any)
     mockFileService.listAllSessions.mockResolvedValue([])
     mockRepo.getSessionAggregate.mockResolvedValue(aggregateDummy)
 
-    const result = await manager.ensureSessionsFlushedToDisk({ activeVaultName: null })
+    const result = await manager.ensureSessionsFlushedToDisk({
+      activeVaultName: null,
+      diskVaultNames: []
+    })
 
     expect(result.skippedMissingScan).toBe(true)
     expect(result.flushed).toBe(0)
     expect(mockRepo.findAllSessions).not.toHaveBeenCalled()
     expect(mockFileService.writeSession).not.toHaveBeenCalled()
+  })
+
+  it('hydrateSessionsFromDiskIfNeeded() upserts only missing unique session ids', async () => {
+    mockRepo.findAllSessions
+      .mockResolvedValueOnce([{ id: 'only-db', vaultName: 'Work' }] as any)
+      .mockResolvedValueOnce([
+        { id: 'only-db', vaultName: 'Work' },
+        { id: 'from-disk', vaultName: 'Personal' }
+      ] as any)
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 'only-db', fullPath: '/Work/Sessions/only-db.json', vaultName: 'Work' },
+      { id: 'from-disk', fullPath: '/Personal/Sessions/from-disk.json', vaultName: 'Personal' },
+      // 跨 vault 同 id 重复文件，不应再 upsert only-db
+      { id: 'only-db', fullPath: '/Personal/Sessions/only-db.json', vaultName: 'Personal' }
+    ])
+    mockFileService.readSession.mockResolvedValue({
+      session: { id: 'from-disk', vaultName: 'Personal' },
+      messages: []
+    })
+
+    const result = await manager.hydrateSessionsFromDiskIfNeeded({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Personal', 'Work']
+    })
+
+    expect(result.hydrated).toBe(true)
+    expect(result.reason).toBe('missing-ids')
+    expect(result.missingCount).toBe(1)
+    expect(mockFileService.readSession).toHaveBeenCalledTimes(1)
+    expect(mockFileService.readSession).toHaveBeenCalledWith('from-disk', 'Personal')
+    expect(mockRepo.upsertAggregate).toHaveBeenCalledTimes(1)
+    expect(mockSyncService.fullScanArchives).not.toHaveBeenCalled()
+  })
+
+  it('hydrateSessionsFromDiskIfNeeded() skips when all unique disk ids already in db', async () => {
+    mockRepo.findAllSessions.mockResolvedValue([
+      { id: 'a', vaultName: 'Work' },
+      { id: 'b', vaultName: 'Personal' }
+    ] as any)
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 'a', fullPath: '/Work/Sessions/a.json', vaultName: 'Work' },
+      { id: 'b', fullPath: '/Personal/Sessions/b.json', vaultName: 'Personal' },
+      { id: 'a', fullPath: '/Personal/Sessions/a.json', vaultName: 'Personal' }
+    ])
+
+    const result = await manager.hydrateSessionsFromDiskIfNeeded({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Personal', 'Work']
+    })
+
+    expect(result.hydrated).toBe(false)
+    expect(result.reason).toBe('db-caught-up')
+    expect(result.missingCount).toBe(0)
+    expect(mockFileService.readSession).not.toHaveBeenCalled()
+    expect(mockSyncService.fullScanArchives).not.toHaveBeenCalled()
   })
 })
