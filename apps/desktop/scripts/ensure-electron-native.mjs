@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/explicit-function-return-type -- 纯 .mjs 构建脚本，无 TS 类型注解 */
 /**
- * 桌面启动前：确认 better-sqlite3（及 sqlite-vec）已按当前 Electron ABI 编译。
- * 若 NODE_MODULE_VERSION 不匹配（常见于 ci:check / `pnpm rebuild` 按系统 Node 重编后），
- * 自动执行 electron-rebuild，避免 dev 启动后再炸。
+ * 确认 better-sqlite3（及 sqlite-vec）已按当前 Electron ABI 编译。
+ * 供 `predev` / `ensure:native` 与本地 `ci:check` 收尾共用：探测通过则跳过；
+ * NODE_MODULE_VERSION 不匹配（常见于单测按系统 Node 重编后）则自动 electron-rebuild。
  *
  * 探测在真实 Electron 主进程中 require（显式关闭 ELECTRON_RUN_AS_NODE）。
  * Windows 下 Electron 常不继承控制台，故结果写入临时文件再回读。
