@@ -19,6 +19,7 @@ import {
   evaluateIncrementalSyncPlanDrift,
   readVaultRegistryFingerprint,
   collectSyncedAgentAvatarBasenames,
+  classifyIncrementalSyncPaths,
   type IncrementalSyncPlanReuseBaseline,
   type IncrementalSyncRunOptions,
   type SyncProgressEvent,
@@ -151,13 +152,8 @@ function incrementalSyncNeedsBootstrap(result: {
   deletedRemote?: string[]
   conflicted?: string[]
 }): boolean {
-  return (
-    result.downloaded.length > 0 ||
-    result.deletedLocal.length > 0 ||
-    (result.uploaded?.length ?? 0) > 0 ||
-    (result.deletedRemote?.length ?? 0) > 0 ||
-    (result.conflicted?.length ?? 0) > 0
-  )
+  // 仅下载/删本地才需要灌索引；纯 upload 不碰本地索引树
+  return result.downloaded.length > 0 || result.deletedLocal.length > 0
 }
 
 /** 同步完成后将磁盘 JSON/设置 水合进 SQLite，并通知渲染进程刷新（对齐移动端 afterSyncComplete） */
@@ -181,14 +177,86 @@ async function afterIncrementalSync(
     await pathService.purgeAgentAvatarBasenames(purgedAvatars)
   }
 
-  if (!options?.force && !incrementalSyncNeedsBootstrap(result)) return
+  const cls = classifyIncrementalSyncPaths([...result.downloaded, ...result.deletedLocal])
+  logger.warn('[IncrementalSync][PostSync] start', {
+    downloaded: result.downloaded.length,
+    deletedLocal: result.deletedLocal.length,
+    uploaded: result.uploaded?.length ?? 0,
+    classify: {
+      journals: cls.journals,
+      sessions: cls.sessions,
+      summaries: cls.summaries,
+      settings: cls.settings,
+      assistants: cls.assistants,
+      sessionRefCount: cls.sessionRefs.length
+    }
+  })
+
+  try {
+    const { getAgentManagers } = await import('./agent-helpers')
+    const { sessionManager } = getAgentManagers()
+    const syncRoot = await pathService.getRootDirectory()
+    const diskVaultNames = await listDiskVaultFolderNames(createNodeFileSystem(), syncRoot)
+    const activeVaultName = vaultService.getActiveVault()?.name ?? null
+
+    if (cls.sessions || cls.sessionRefs.length > 0) {
+      const hydrate = await sessionManager.hydrateSessionsFromDiskIfNeeded({
+        activeVaultName,
+        diskVaultNames
+      })
+      if (cls.sessionRefs.length > 0 && typeof sessionManager.importSessionsFromDisk === 'function') {
+        await sessionManager.importSessionsFromDisk(cls.sessionRefs)
+      }
+      if (hydrate.hydrated || cls.sessionRefs.length > 0) {
+        const { BrowserWindow } = await import('electron')
+        BrowserWindow.getAllWindows().forEach((w) => {
+          w.webContents.send('session:file-changed')
+        })
+      }
+    }
+  } catch (e) {
+    logger.warn('[IncrementalSync] session hydrate after sync failed:', e as Error)
+  }
+
+  if (!options?.force && !incrementalSyncNeedsBootstrap(result)) {
+    logger.warn('[IncrementalSync][PostSync] skip-index', { reason: 'upload-or-noop' })
+    return
+  }
+
+  if (!incrementalSyncNeedsBootstrap(result)) {
+    logger.warn('[IncrementalSync][PostSync] skip-index', { reason: 'upload-or-noop-forced' })
+    return
+  }
+
+  const needsLayerIndex =
+    cls.journals ||
+    cls.summaries ||
+    cls.settings ||
+    cls.assistants ||
+    (cls.sessions && result.deletedLocal.some((p) => /\/Sessions\//i.test(p)))
+
+  if (!needsLayerIndex) {
+    logger.warn('[IncrementalSync][PostSync] done-lite', { reason: 'sessions-hydrated-only' })
+    return
+  }
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
-  await globalBootstrapper.fullyResyncAllEcosystems()
+  await globalBootstrapper.selectiveResyncAfterIncrementalSync({
+    journals: cls.journals || result.deletedLocal.some((p) => /Journals|Diary/i.test(p)),
+    summaries: cls.summaries,
+    assistants: cls.assistants,
+    settings: cls.settings,
+    sessions: cls.sessions && result.deletedLocal.some((p) => /\/Sessions\//i.test(p)),
+    skipEnsures: true
+  })
 
-  const { schedulePostSyncDiaryBatchEmbed } =
-    await import('../services/controlled-diary-batch-embed.service')
-  schedulePostSyncDiaryBatchEmbed()
+  if (cls.journals) {
+    const { schedulePostSyncDiaryBatchEmbed } =
+      await import('../services/controlled-diary-batch-embed.service')
+    schedulePostSyncDiaryBatchEmbed()
+  }
+
+  logger.warn('[IncrementalSync][PostSync] done')
 }
 
 /** 远端 tombstone / removed 中的伙伴头像：清掉本地复活副本后再扫描，避免反复「删本地」 */
@@ -232,17 +300,41 @@ async function ensureVaultsForIncrementalSync(
   return unique
 }
 
-async function flushPendingAgentSessionsBeforeSync(): Promise<void> {
+async function flushPendingAgentSessionsBeforeSync(
+  mode: 'full' | 'pending-only' = 'full'
+): Promise<void> {
   try {
     const { getAgentManagers } = await import('./agent-helpers')
     const { sessionManager } = getAgentManagers()
     const activeVaultName = vaultService.getActiveVault()?.name ?? null
-    const result = await sessionManager.ensureSessionsFlushedToDisk({ activeVaultName })
-    if (result.flushed > 0) {
-      logger.info(
-        `[IncrementalSync] flushed ${result.flushed} session(s) missing on disk before sync (db=${result.dbCount}, disk=${result.diskCount})`
-      )
-    }
+    const syncRoot = await pathService.getRootDirectory()
+    const diskVaultNames = await listDiskVaultFolderNames(createNodeFileSystem(), syncRoot)
+    logger.warn('[IncrementalSync][SessionFlush] desktop-prepare-start', {
+      activeVaultName,
+      diskVaultNames,
+      mode
+    })
+    const result = await sessionManager.ensureSessionsFlushedToDisk({
+      activeVaultName,
+      diskVaultNames,
+      mode
+    })
+    logger.warn('[IncrementalSync][SessionFlush] desktop-prepare-done', {
+      activeVaultName: result.activeVaultName,
+      flushed: result.flushed,
+      pendingFlushed: result.pendingFlushed,
+      skippedMissingScan: result.skippedMissingScan,
+      dbTotalCount: result.dbTotalCount,
+      dbCount: result.dbCount,
+      diskCount: result.diskCount,
+      missingCount: result.missingIds.length,
+      failedCount: result.failedIds.length,
+      skippedOtherVaultCount: result.skippedOtherVaultCount,
+      missingIdSamples: result.missingIds.slice(0, 12),
+      failedIdSamples: result.failedIds.slice(0, 12)
+    })
+
+    // 规划路径不做会话水合（慢且易触发二次确认）；同步结束后再补缺库会话
   } catch (e) {
     logger.warn('[IncrementalSync] session flushPending before sync failed:', e as Error)
   }
@@ -312,7 +404,7 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:sync', async (event, runOptions) => {
-    await flushPendingAgentSessionsBeforeSync()
+    await flushPendingAgentSessionsBeforeSync('full')
     const service = await getSyncService()
     const remoteManifest = await service.getRemoteManifest()
     await reconcileAgentAvatarsBeforeScan(Object.keys(remoteManifest.removed ?? {}))
@@ -321,7 +413,7 @@ export function registerIncrementalSyncIPC() {
     ).sync((progress) => {
       event.sender.send('incrementalSync:progress', progress)
     }, runOptions)
-    await afterIncrementalSync(result, { force: true })
+    await afterIncrementalSync(result)
     return result
   })
 
@@ -342,7 +434,7 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:planSync', async (_, runOptions) => {
-    await flushPendingAgentSessionsBeforeSync()
+    await flushPendingAgentSessionsBeforeSync('pending-only')
     const service = await getSyncService()
     const config = await service.getConfig()
     if (!config.enabled) {
@@ -427,7 +519,7 @@ export function registerIncrementalSyncIPC() {
         total: 1,
         statusText: 'data_sync.progress_registering_vaults'
       })
-      await flushPendingAgentSessionsBeforeSync()
+      await flushPendingAgentSessionsBeforeSync('full')
       const autoRegisteredVaults = await ensureVaultsForIncrementalSync(runOptions)
       ;(await getSyncService()).clearPreparedManifestCache()
       const result = await (
@@ -435,7 +527,7 @@ export function registerIncrementalSyncIPC() {
       ).sync((progress) => {
         publishProgress(progress)
       }, runOptions)
-      await afterIncrementalSync(result, { force: true })
+      await afterIncrementalSync(result)
       return { ...result, autoRegisteredVaults }
     }
   )
