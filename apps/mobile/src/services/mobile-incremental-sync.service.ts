@@ -20,7 +20,6 @@ import type {
   SessionManagerService
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
-import { InteractionManager } from 'react-native'
 import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
 import {
   MobileIncrementalEngine,
@@ -31,6 +30,9 @@ import { hasRemoteManifestDrift } from './mobile-incremental-plan-reuse.util'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
+import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
+import { classifyIncrementalSyncPaths } from './mobile-incremental-sync-path-classify.util'
+import type { MobileIncrementalSyncOutcome } from './mobile-incremental-engine.types'
 
 export type IncrementalSyncProgress = MobileIncrementalProgress
 
@@ -40,6 +42,10 @@ export type IncrementalSyncResult = {
   conflicts: number
   skipped: number
   failed: number
+  uploadedPaths?: string[]
+  downloadedPaths?: string[]
+  deletedLocalPaths?: string[]
+  deletedRemotePaths?: string[]
 }
 
 const DEFAULT_CONFIG: S3SyncConfig = {
@@ -195,7 +201,7 @@ export class MobileIncrementalSyncService {
   private readonly engine: MobileIncrementalEngine
   private onAfterSyncComplete?: () => void
   private postSyncMaintenancePromise: Promise<void> | null = null
-  private postSyncMaintenanceGeneration = 0
+  private postSyncProgressListener: ((progress: IncrementalSyncProgress) => void) | null = null
 
   constructor(
     private readonly settingsManager: SettingsManagerService,
@@ -216,37 +222,176 @@ export class MobileIncrementalSyncService {
     this.onAfterSyncComplete = handler
   }
 
-  private afterSyncComplete(): void {
+  setPostSyncProgressListener(
+    listener: ((progress: IncrementalSyncProgress) => void) | null
+  ): void {
+    this.postSyncProgressListener = listener
+  }
+
+  private reportPostSync(statusText: string, current: number, total: number): void {
+    this.postSyncProgressListener?.({
+      phase: 'finalizing',
+      statusText,
+      current,
+      total
+    })
+  }
+
+  /**
+   * 传输结束后的本地收尾：只处理本次触及的文件类型。
+   * 禁止无条件全量 resync（会写盘改 hash，导致下次又提示上传）。
+   */
+  private afterSyncComplete(outcome: MobileIncrementalSyncOutcome): void {
     emitSyncMutation('complete', 'incremental-sync')
 
-    const generation = ++this.postSyncMaintenanceGeneration
-    this.postSyncMaintenancePromise = new Promise<void>((resolve) => {
-      InteractionManager.runAfterInteractions(() => {
-        void (async () => {
-          try {
-            if (this.bootstrapper) {
-              await this.bootstrapper.resyncFromDisk()
-            }
-            await reconcileUserAvatarProfileAfterStorageChange(
-              this.settingsManager,
-              this.pathService,
-              this.fileSystem
-            )
-            // 不同步后对账重置伙伴头像：文件缺失通常是对端未上传，重置会毁掉可恢复的 avatarPath
-            const { schedulePostSyncDiaryBatchEmbed } =
-              await import('./mobile-post-sync-diary-embed.service')
-            schedulePostSyncDiaryBatchEmbed()
-          } catch (e: unknown) {
-            console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
-          } finally {
-            this.onAfterSyncComplete?.()
-            if (generation === this.postSyncMaintenanceGeneration) {
-              resolve()
-            }
+    this.postSyncMaintenancePromise = (async () => {
+      try {
+        const cls = classifyIncrementalSyncPaths([
+          ...outcome.downloadedPaths,
+          ...outcome.deletedLocalPaths
+        ])
+        console.warn('[IncrementalSync][PostSync] start', {
+          uploaded: outcome.uploaded,
+          downloaded: outcome.downloaded,
+          deletedLocal: outcome.deletedLocal,
+          classify: {
+            journals: cls.journals,
+            sessions: cls.sessions,
+            summaries: cls.summaries,
+            settings: cls.settings,
+            assistants: cls.assistants,
+            sessionRefCount: cls.sessionRefs.length
           }
-        })()
-      })
-    })
+        })
+        const needsLocalIndex =
+          outcome.downloaded > 0 ||
+          outcome.deletedLocal > 0 ||
+          cls.journals ||
+          cls.sessions ||
+          cls.summaries ||
+          cls.settings ||
+          cls.assistants
+
+        let step = 0
+        const needsSessionHydrate = cls.sessions || cls.sessionRefs.length > 0
+        const totalSteps = (needsSessionHydrate ? 1 : 0) + (needsLocalIndex ? 3 : 0) + 1
+        const checkpointRefreshPaths: string[] = []
+
+        if (needsSessionHydrate && this.sessionManager) {
+          this.reportPostSync('data_sync.progress_hydrate_sessions', ++step, totalSteps)
+          try {
+            const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
+            const syncRoot = await this.pathService.getRootDirectory()
+            const diskVaultNames = await listDiskVaultFolderNames(this.fileSystem, syncRoot)
+            let activeVaultName: string | null = null
+            const pathWithContext = this.pathService as IStoragePathService & {
+              getActiveVaultNameForContext?: () => Promise<string>
+            }
+            if (typeof pathWithContext.getActiveVaultNameForContext === 'function') {
+              activeVaultName = await pathWithContext.getActiveVaultNameForContext()
+            }
+            // 缺 id 补齐（廉价）
+            await this.sessionManager.hydrateSessionsFromDiskIfNeeded({
+              activeVaultName,
+              diskVaultNames,
+              maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+            })
+            // 本次下载的会话定点灌库（不 fullScan、不 flushPending 写盘）
+            if (cls.sessionRefs.length > 0) {
+              await this.sessionManager.importSessionsFromDisk(cls.sessionRefs, {
+                maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
+              })
+            }
+          } catch (e: unknown) {
+            console.warn('[IncrementalSync][SessionHydrate] after-sync failed:', e)
+          }
+        }
+
+        if (!needsLocalIndex) {
+          this.reportPostSync('data_sync.progress_finalizing', totalSteps, totalSteps)
+          console.warn('[IncrementalSync][PostSync] skip-index', { reason: 'upload-or-noop' })
+          return
+        }
+
+        const deps = this.bootstrapper?.getRegisteredDeps()
+        if (this.bootstrapper && deps) {
+          this.reportPostSync('data_sync.progress_index_local', ++step, totalSteps)
+          await this.bootstrapper.runSelectiveResync(deps, {
+            journals:
+              cls.journals ||
+              outcome.deletedLocalPaths.some((p) => /Journals|Diary/i.test(p)),
+            summaries: cls.summaries,
+            assistants: cls.assistants,
+            settings: cls.settings,
+            skipEnsures: true,
+            onStep: (key) => this.reportPostSync(key, step, totalSteps)
+          })
+        }
+
+        this.reportPostSync('data_sync.progress_reconcile_avatar', ++step, totalSteps)
+        if (cls.settings || outcome.downloadedPaths.some((p) => /avatar/i.test(p))) {
+          const avatarResult = await reconcileUserAvatarProfileAfterStorageChange(
+            this.settingsManager,
+            this.pathService,
+            this.fileSystem
+          )
+          if (avatarResult.changed) {
+            const profileRel = await this.resolveActiveUserProfileSyncRelPath()
+            if (profileRel) checkpointRefreshPaths.push(profileRel)
+            console.warn('[IncrementalSync][PostSync] avatar-profile-rewritten', {
+              profileRel
+            })
+          }
+        }
+
+        if (cls.journals) {
+          this.reportPostSync('data_sync.progress_schedule_embed', ++step, totalSteps)
+          const { schedulePostSyncDiaryBatchEmbed } =
+            await import('./mobile-post-sync-diary-embed.service')
+          schedulePostSyncDiaryBatchEmbed()
+        }
+
+        if (checkpointRefreshPaths.length > 0) {
+          try {
+            await this.refreshCheckpointForPaths(checkpointRefreshPaths)
+          } catch (e: unknown) {
+            console.warn('[IncrementalSync][PostSync] refreshCheckpoint failed:', e)
+          }
+        }
+
+        this.reportPostSync('data_sync.progress_finalizing', totalSteps, totalSteps)
+        console.warn('[IncrementalSync][PostSync] done', {
+          checkpointRefreshCount: checkpointRefreshPaths.length
+        })
+      } catch (e: unknown) {
+        console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
+      } finally {
+        this.onAfterSyncComplete?.()
+      }
+    })()
+  }
+
+  /** 收尾若写了同步树内文件，重算 hash 并更新 local/ancestor/远端 manifest */
+  async refreshCheckpointForPaths(relPaths: string[]): Promise<void> {
+    const config = await this.getConfig()
+    if (!isConfigReady(config)) return
+    await this.engine.refreshCheckpointForPaths(config, relPaths)
+  }
+
+  private async resolveActiveUserProfileSyncRelPath(): Promise<string | null> {
+    try {
+      const syncRoot = (await this.pathService.getRootDirectory()).replace(/\\/g, '/')
+      const settingsDir = (await this.pathService.getActiveVaultSettingsDirectory()).replace(
+        /\\/g,
+        '/'
+      )
+      const full = `${settingsDir.replace(/\/$/, '')}/settings/user_profile.json`
+      const root = syncRoot.replace(/\/$/, '')
+      if (full === root || !full.startsWith(`${root}/`)) return null
+      return full.slice(root.length + 1)
+    } catch {
+      return null
+    }
   }
 
   /** 等待后台 resync / 头像等对账完成（传输已结束） */
@@ -305,12 +450,25 @@ export class MobileIncrementalSyncService {
     }
   }
 
-  async prepareSessionsForSyncScan(activeVaultName?: string | null): Promise<{
+  async prepareSessionsForSyncScan(
+    activeVaultName?: string | null,
+    diskVaultNames?: string[] | null,
+    options?: { mode?: 'full' | 'pending-only' }
+  ): Promise<{
     flushed: number
     pendingFlushed: boolean
     diskChanged: boolean
   }> {
+    console.warn('[IncrementalSync][SessionFlush] prepare-start', {
+      hasSessionManager: Boolean(this.sessionManager),
+      inputActiveVaultName: activeVaultName ?? null,
+      inputDiskVaultNames: diskVaultNames ?? null,
+      mode: options?.mode ?? 'full'
+    })
     if (!this.sessionManager) {
+      console.warn('[IncrementalSync][SessionFlush] prepare-abort', {
+        reason: 'sessionManager-null'
+      })
       return { flushed: 0, pendingFlushed: false, diskChanged: false }
     }
     try {
@@ -323,27 +481,56 @@ export class MobileIncrementalSyncService {
           vaultName = await pathWithContext.getActiveVaultNameForContext()
         }
       }
-      const result = await this.sessionManager.ensureSessionsFlushedToDisk({
-        activeVaultName: vaultName
+
+      let vaultNames = [...(diskVaultNames ?? [])]
+      if (vaultNames.length === 0) {
+        try {
+          const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
+          const syncRoot = await this.pathService.getRootDirectory()
+          vaultNames = await listDiskVaultFolderNames(this.fileSystem, syncRoot)
+        } catch (e) {
+          console.warn('[IncrementalSync][SessionFlush] list-disk-vaults-failed', {
+            error: e instanceof Error ? e.message : String(e)
+          })
+        }
+      }
+
+      console.warn('[IncrementalSync][SessionFlush] prepare-resolved-vault', {
+        vaultName: vaultName ?? null,
+        diskVaultNames: vaultNames
       })
-      if (result.flushed > 0) {
-        console.info(
-          `[MobileIncrementalSync] flushed ${result.flushed} session(s) missing on disk (db=${result.dbCount}, disk=${result.diskCount})`
-        )
-      }
-      if (result.skippedMissingScan) {
-        console.warn(
-          '[MobileIncrementalSync] skipped missing-session disk backfill: active vault name unavailable'
-        )
-      }
+      const result = await this.sessionManager.ensureSessionsFlushedToDisk({
+        activeVaultName: vaultName,
+        diskVaultNames: vaultNames,
+        mode: options?.mode ?? 'full'
+      })
       const diskChanged = result.flushed > 0 || result.pendingFlushed
+      console.warn('[IncrementalSync][SessionFlush] prepare-done', {
+        vaultName: result.activeVaultName,
+        flushed: result.flushed,
+        pendingFlushed: result.pendingFlushed,
+        diskChanged,
+        skippedMissingScan: result.skippedMissingScan,
+        dbTotalCount: result.dbTotalCount,
+        dbCount: result.dbCount,
+        diskCount: result.diskCount,
+        missingCount: result.missingIds.length,
+        failedCount: result.failedIds.length,
+        skippedOtherVaultCount: result.skippedOtherVaultCount
+      })
+
+      // 规划/确认路径不做会话水合：全量 upsert 很慢，且会改本地状态导致二次确认。
+      // 缺库会话在同步结束后的 afterSyncComplete 再补。
+
       return {
         flushed: result.flushed,
         pendingFlushed: result.pendingFlushed,
         diskChanged
       }
     } catch (e: unknown) {
-      console.warn('[MobileIncrementalSync] prepareSessionsForSyncScan failed:', e)
+      console.warn('[IncrementalSync][SessionFlush] prepare-failed', {
+        error: e instanceof Error ? e.message : String(e)
+      })
       return { flushed: 0, pendingFlushed: false, diskChanged: false }
     }
   }
@@ -366,7 +553,15 @@ export class MobileIncrementalSyncService {
         )
       )
     }
-    await this.prepareSessionsForSyncScan(context.activeVaultName)
+    console.warn('[IncrementalSync][SessionFlush] planSync-before-prepare', {
+      activeVaultName: context.activeVaultName,
+      diskVaultNames: context.diskVaultNames,
+      mode: 'pending-only'
+    })
+    // 规划只读：仅 flush dirty，不补写缺失会话 JSON，减少计划期磁盘漂移
+    await this.prepareSessionsForSyncScan(context.activeVaultName, context.diskVaultNames, {
+      mode: 'pending-only'
+    })
     return this.engine.planSync(config, context, runOptions, (progress) => onProgress?.(progress))
   }
 
@@ -437,12 +632,20 @@ export class MobileIncrementalSyncService {
 
     try {
       const prep = await this.prepareSessionsForSyncScan()
+      console.warn('[IncrementalSync][SessionFlush] sync-after-prepare', {
+        flushed: prep.flushed,
+        pendingFlushed: prep.pendingFlushed,
+        diskChanged: prep.diskChanged
+      })
       // 仅当磁盘相对规划时发生变化时作废本地 pending；保留远端 pending，减少确认/执行不一致
       if (prep.diskChanged) {
         this.engine.discardPendingLocalManifest()
+        console.warn('[IncrementalSync][SessionFlush] discarded-pending-local-manifest')
       }
     } catch (e: unknown) {
-      console.warn('[MobileIncrementalSync] session flushPending before sync failed:', e)
+      console.warn('[IncrementalSync][SessionFlush] sync-prepare-failed', {
+        error: e instanceof Error ? e.message : String(e)
+      })
     }
 
     const result = await this.engine.syncThreeWay(
@@ -454,14 +657,18 @@ export class MobileIncrementalSyncService {
       { signal: abortSignal }
     )
 
-    this.afterSyncComplete()
+    this.afterSyncComplete(result)
 
     return {
       uploaded: result.uploaded,
       downloaded: result.downloaded,
       conflicts: result.conflicts,
       skipped: result.skipped,
-      failed: result.failed
+      failed: result.failed,
+      uploadedPaths: result.uploadedPaths,
+      downloadedPaths: result.downloadedPaths,
+      deletedLocalPaths: result.deletedLocalPaths,
+      deletedRemotePaths: result.deletedRemotePaths
     }
   }
 

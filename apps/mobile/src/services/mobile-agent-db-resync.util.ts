@@ -4,10 +4,15 @@ import { logger } from '@baishou/shared'
 export async function resyncAgentDbCachesFromDisk(options: {
   runtime: AgentDbRuntime
   activeVaultName?: string
+  diskVaultNames?: string[]
   maxSessionJsonReadBytes: number
 }): Promise<void> {
-  const { runtime, activeVaultName, maxSessionJsonReadBytes } = options
-  const resyncOptions = { maxSessionJsonReadBytes, activeVaultName }
+  const { runtime, activeVaultName, diskVaultNames, maxSessionJsonReadBytes } = options
+  const resyncOptions = {
+    maxSessionJsonReadBytes,
+    activeVaultName,
+    ...(diskVaultNames && diskVaultNames.length > 0 ? { diskVaultNames } : {})
+  }
   const resyncErrors: string[] = []
 
   try {

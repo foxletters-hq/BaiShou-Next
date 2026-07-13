@@ -30,20 +30,21 @@ async function userAvatarFileExists(
 
 /**
  * 存储恢复/增量同步后：若 profile 指向的自定义头像文件不存在，回退为默认占位。
+ * @returns 是否改写了 profile（会经 settings 刷盘，调用方需刷新 checkpoint）
  */
 export async function reconcileUserAvatarProfileAfterStorageChange(
   settingsManager: UserProfileSettingsStore,
   pathService: IStoragePathService,
   fileSystem: IFileSystem
-): Promise<boolean> {
+): Promise<{ changed: boolean }> {
   const profile = await getUserProfileFromSettings(settingsManager)
   const avatarPath = profile.avatarPath
   if (!isCustomUserAvatar(avatarPath) || !avatarPath?.startsWith('avatars/')) {
-    return false
+    return { changed: false }
   }
 
   if (await userAvatarFileExists(avatarPath, pathService, fileSystem)) {
-    return false
+    return { changed: false }
   }
 
   const next: typeof profile = {
@@ -51,5 +52,5 @@ export async function reconcileUserAvatarProfileAfterStorageChange(
     avatarPath: USER_DEFAULT_AVATAR_SENTINEL
   }
   await saveUserProfileToSettings(settingsManager, next)
-  return true
+  return { changed: true }
 }

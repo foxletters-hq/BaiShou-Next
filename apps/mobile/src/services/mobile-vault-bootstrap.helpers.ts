@@ -45,7 +45,8 @@ export function buildBootstrapDeps(
     assistantManager: bootstrapDeps.assistantManager,
     settingsManager: bootstrapDeps.settingsManager,
     summarySyncService: bootstrapDeps.summarySyncService,
-    getActiveVaultName: bootstrapDeps.getActiveVaultName
+    getActiveVaultName: bootstrapDeps.getActiveVaultName,
+    getDiskVaultNames: bootstrapDeps.getDiskVaultNames
   }
 }
 async function shouldDeferVaultResync(

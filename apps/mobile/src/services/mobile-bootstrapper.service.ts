@@ -19,6 +19,8 @@ export interface MobileBootstrapperDeps {
   settingsManager: SettingsManagerService
   summarySyncService: SummarySyncService
   getActiveVaultName?: () => Promise<string>
+  /** 磁盘上全部工作区名；会话 fullScan 需跨 vault 水合 */
+  getDiskVaultNames?: () => Promise<string[]>
 }
 
 /**
@@ -54,6 +56,10 @@ export class MobileDataBootstrapper {
     this.registeredDeps = deps
   }
 
+  getRegisteredDeps(): MobileBootstrapperDeps | null {
+    return this.registeredDeps
+  }
+
   async waitUntilIdle(): Promise<void> {
     if (!this.running) return
     await new Promise<void>((resolve) => {
@@ -78,6 +84,86 @@ export class MobileDataBootstrapper {
     await scheduleVaultEcosystemResync(this.registeredDeps, 'resync-from-disk')
   }
 
+  /**
+   * 同步后按需索引：只扫本次下载/删除涉及的层，避免全量 shadow+session 拖慢收尾，
+   * 也避免无谓写盘导致下次又出现 upload。
+   */
+  async runSelectiveResync(
+    deps: MobileBootstrapperDeps,
+    options: {
+      journals?: boolean
+      summaries?: boolean
+      assistants?: boolean
+      settings?: boolean
+      /** 不跑 Latte/默认身份等可能写盘的收尾 */
+      skipEnsures?: boolean
+      onStep?: (statusKey: string) => void
+    }
+  ): Promise<void> {
+    this.registeredDeps = deps
+    const activeVaultName = deps.getActiveVaultName
+      ? await deps.getActiveVaultName().catch(() => undefined)
+      : undefined
+    let diskVaultNames: string[] = []
+    if (deps.getDiskVaultNames) {
+      try {
+        diskVaultNames = await deps.getDiskVaultNames()
+      } catch {
+        diskVaultNames = []
+      }
+    }
+    const resyncOptions = {
+      ...(activeVaultName ? { activeVaultName } : {}),
+      maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
+      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {})
+    }
+
+    const tasks: Promise<unknown>[] = []
+    if (options.journals) {
+      options.onStep?.('data_sync.progress_index_journals')
+      tasks.push(
+        deps.shadowIndexSyncService.fullScanVault(true).catch((e) => {
+          logger.warn('[MobileBootstrapper] selective shadow scan failed:', e as Error)
+        })
+      )
+    }
+    if (options.summaries) {
+      options.onStep?.('data_sync.progress_index_summaries')
+      tasks.push(
+        deps.summarySyncService.fullScanArchives(resyncOptions).catch((e) => {
+          logger.warn('[MobileBootstrapper] selective summary scan failed:', e as Error)
+        })
+      )
+    }
+    if (options.assistants) {
+      options.onStep?.('data_sync.progress_index_assistants')
+      tasks.push(
+        deps.assistantManager.fullResyncFromDisks(resyncOptions).catch((e) => {
+          logger.warn('[MobileBootstrapper] selective assistant scan failed:', e as Error)
+        })
+      )
+    }
+    if (options.settings) {
+      options.onStep?.('data_sync.progress_index_settings')
+      tasks.push(
+        deps.settingsManager.fullResyncFromDisk({ diskAuthoritative: true }).catch((e) => {
+          logger.warn('[MobileBootstrapper] selective settings scan failed:', e as Error)
+        })
+      )
+    }
+    if (tasks.length > 0) {
+      await Promise.all(tasks)
+    }
+
+    if (!options.skipEnsures) {
+      const settings = (await deps.settingsManager.get<{ language?: string }>('settings')) || {}
+      const locale = await resolveMobileBootstrapUiLocale(settings.language)
+      if (locale) {
+        await ensureDefaultLatteAssistant(deps.assistantManager, locale)
+      }
+    }
+  }
+
   async runWhenVaultReady(
     deps: MobileBootstrapperDeps,
     options?: { force?: boolean }
@@ -99,12 +185,30 @@ export class MobileDataBootstrapper {
     const activeVaultName = deps.getActiveVaultName
       ? await deps.getActiveVaultName().catch(() => undefined)
       : undefined
-    const resyncOptions = activeVaultName
-      ? {
-          activeVaultName,
-          maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
-        }
-      : { maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES }
+
+    let diskVaultNames: string[] = []
+    if (deps.getDiskVaultNames) {
+      try {
+        diskVaultNames = await deps.getDiskVaultNames()
+      } catch (e) {
+        logger.warn(
+          '[MobileBootstrapper] getDiskVaultNames failed:',
+          e instanceof Error ? e : new Error(String(e))
+        )
+      }
+    }
+
+    const resyncOptions = {
+      ...(activeVaultName ? { activeVaultName } : {}),
+      maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
+      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {})
+    }
+
+    logger.info('[MobileBootstrapper] session resync options', {
+      activeVaultName: activeVaultName ?? null,
+      diskVaultCount: diskVaultNames.length,
+      mode: diskVaultNames.length > 0 ? 'all-vaults' : 'active-vault-only'
+    })
 
     try {
       const shadowScan = deps.shadowIndexSyncService.fullScanVault(true).catch((e) => {
