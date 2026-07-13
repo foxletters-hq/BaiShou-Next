@@ -116,7 +116,7 @@ export type AgentChatListProps = {
   assistantDisplayName: string
   setShowShortcutSheet: (v: boolean) => void
   setShowRecallSheet: (v: boolean) => void
-  router: { push: (path: string) => void }
+  router: { push: (href: '/settings/agent-tools') => void }
   searchMode: boolean
   toggleSearchMode: () => void
   ttsMode: 'manual' | 'always'
@@ -363,13 +363,7 @@ export function AgentChatList(props: AgentChatListProps) {
             const next = Math.ceil(event.nativeEvent.layout.height)
             if (next > 0 && next !== p.inputDockHeight) p.setInputDockHeight(next)
           }}
-          style={[
-            styles.inputDock,
-            p.inputDockAnimatedStyle,
-            {
-              backgroundColor: p.colors.bgSurface
-            }
-          ]}
+          style={[styles.inputDock, p.inputDockAnimatedStyle]}
           pointerEvents={p.isBubbleEditing ? 'none' : 'auto'}
         >
           <InputBar
@@ -385,6 +379,9 @@ export function AgentChatList(props: AgentChatListProps) {
             composerDraftStorage={mobileComposerDraftStorage}
             composerEnabled={!p.isBubbleEditing}
             onInputFocus={p.handleInputBarFocus}
+            onHeightChange={(height) => {
+              if (height > 0 && height !== p.inputDockHeight) p.setInputDockHeight(height)
+            }}
             shortcuts={p.shortcuts}
             assistantName={p.assistantDisplayName}
             onManageShortcuts={() => p.setShowShortcutSheet(true)}

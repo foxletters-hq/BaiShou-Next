@@ -1,5 +1,5 @@
-import React, { memo, useEffect, useRef } from 'react'
-import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native'
+import React, { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { View, Text, Pressable, FlatList, StyleSheet, Platform } from 'react-native'
 import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import type { PromptShortcut } from '@baishou/shared'
 import {
@@ -14,36 +14,39 @@ const PANEL_MAX_HEIGHT = 220
 const HEADER_BLOCK_HEIGHT = 32
 const LIST_MAX_HEIGHT = PANEL_MAX_HEIGHT - HEADER_BLOCK_HEIGHT
 const ROW_HEIGHT = 56
+const EMPTY_LIST_HEIGHT = 48
+/** 面板与输入区分隔线之间的间距 */
+export const INLINE_SHORTCUT_PANEL_GAP = 8
+export const INLINE_SHORTCUT_ENTER_MS = 180
+export const INLINE_SHORTCUT_EXIT_MS = 150
 
 const shortcutEnter = new Keyframe({
   0: {
-    opacity: 0,
-    transform: [{ translateY: 10 }]
+    opacity: 0
   },
   100: {
     opacity: 1,
-    transform: [{ translateY: 0 }],
     easing: Easing.out(Easing.cubic)
   }
-}).duration(180)
+}).duration(INLINE_SHORTCUT_ENTER_MS)
 
 const shortcutExit = new Keyframe({
   0: {
-    opacity: 1,
-    transform: [{ translateY: 0 }]
+    opacity: 1
   },
   100: {
     opacity: 0,
-    transform: [{ translateY: 8 }],
     easing: Easing.in(Easing.cubic)
   }
-}).duration(150)
+}).duration(INLINE_SHORTCUT_EXIT_MS)
 
 export interface InlinePromptShortcutListProps {
   visible: boolean
   shortcuts: PromptShortcut[]
   selectedIndex: number
   onSelect: (shortcut: PromptShortcut) => void
+  /** 面板实际高度（含间距），供外层预留下方分割线位置不变的触摸区 */
+  onHeightChange?: (height: number) => void
 }
 
 type ShortcutRowProps = {
@@ -89,12 +92,15 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
   visible,
   shortcuts,
   selectedIndex,
-  onSelect
+  onSelect,
+  onHeightChange
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const labels = getDefaultShortcutLabelsFromT(t)
   const snapshotRef = useRef({ shortcuts, selectedIndex })
+  const onHeightChangeRef = useRef(onHeightChange)
+  onHeightChangeRef.current = onHeightChange
 
   if (visible) {
     snapshotRef.current = { shortcuts, selectedIndex }
@@ -102,6 +108,25 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
 
   const { shortcuts: displayShortcuts, selectedIndex: displaySelectedIndex } = snapshotRef.current
   const listRef = useRef<FlatList<PromptShortcut>>(null)
+
+  const listHeight = useMemo(() => {
+    if (displayShortcuts.length === 0) return EMPTY_LIST_HEIGHT
+    return Math.min(displayShortcuts.length * ROW_HEIGHT, LIST_MAX_HEIGHT)
+  }, [displayShortcuts.length])
+
+  const panelBodyHeight = HEADER_BLOCK_HEIGHT + listHeight
+
+  useLayoutEffect(() => {
+    if (visible) {
+      onHeightChangeRef.current?.(panelBodyHeight + INLINE_SHORTCUT_PANEL_GAP)
+      return
+    }
+    // 退场期间先保留占位，避免关闭时输入区上跳；打开时高度在 layout 阶段同步，面板直接锚在输入区上方
+    const timer = setTimeout(() => {
+      onHeightChangeRef.current?.(0)
+    }, INLINE_SHORTCUT_EXIT_MS)
+    return () => clearTimeout(timer)
+  }, [visible, panelBodyHeight])
 
   useEffect(() => {
     if (!visible || displayShortcuts.length === 0 || displaySelectedIndex < 0) return
@@ -121,11 +146,13 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
       style={[
         styles.overlay,
         {
-          backgroundColor: colors.bgSurfaceHigh,
-          borderColor: colors.borderMuted
+          backgroundColor: colors.bgSurface,
+          borderColor: colors.borderMuted,
+          height: panelBodyHeight
         }
       ]}
       pointerEvents="auto"
+      collapsable={false}
     >
       <Text style={[styles.header, { color: colors.textSecondary }]}>
         {t('shortcut.title', '快捷指令')}
@@ -135,11 +162,13 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
         data={displayShortcuts}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
-        style={styles.list}
+        keyboardDismissMode="none"
+        style={{ height: listHeight }}
         contentContainerStyle={styles.listContent}
         nestedScrollEnabled
-        bounces
-        overScrollMode="always"
+        scrollEnabled={displayShortcuts.length * ROW_HEIGHT > LIST_MAX_HEIGHT}
+        bounces={Platform.OS === 'ios'}
+        overScrollMode="never"
         showsVerticalScrollIndicator={displayShortcuts.length > 4}
         getItemLayout={(_, index) => ({
           length: ROW_HEIGHT,
@@ -177,15 +206,14 @@ export const InlinePromptShortcutList: React.FC<InlinePromptShortcutListProps> =
 const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 14,
+    right: 14,
     bottom: '100%',
-    marginBottom: 8,
+    marginBottom: INLINE_SHORTCUT_PANEL_GAP,
     zIndex: 30,
     elevation: 12,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    maxHeight: PANEL_MAX_HEIGHT,
     flexDirection: 'column',
     overflow: 'hidden'
   },
@@ -198,20 +226,15 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 6
   },
-  list: {
-    flexGrow: 0,
-    flexShrink: 1,
-    maxHeight: LIST_MAX_HEIGHT
-  },
   listContent: {
     paddingBottom: 6
   },
   row: {
+    height: ROW_HEIGHT - 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
     borderWidth: 1,
     borderRadius: 10,
     marginHorizontal: 8,

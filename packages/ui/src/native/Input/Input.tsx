@@ -35,6 +35,15 @@ export interface NativeInputProps extends Omit<HeroInputProps, 'children'> {
   leftSlot?: React.ReactNode
   rightSlot?: React.ReactNode
   /**
+   * 左右 slot 垂直对齐。聊天多行输入宜用 `bottom`，避免增高后按钮居中。
+   * @default 'center'
+   */
+  slotAlignment?: 'center' | 'bottom'
+  /**
+   * 去掉默认边框/底色，用于已有外层卡片包裹的场景（如聊天输入栏）。
+   */
+  bare?: boolean
+  /**
    * 使用 HeroUI TextArea（默认 h-32，适合表单长文本）。
    * 为 false 时 multiline 仍走 Input + rounded-2xl（适合聊天栏等）。
    */
@@ -46,6 +55,8 @@ export interface NativeInputProps extends Omit<HeroInputProps, 'children'> {
    * 聊天栏等固定底栏场景可设为 false。
    */
   keyboardAware?: boolean
+  /** 嵌套滚动（如输入栏在 ScrollView/键盘场景内） */
+  nestedScrollEnabled?: boolean
 }
 
 /**
@@ -61,6 +72,8 @@ export const Input = forwardRef<any, NativeInputProps>(
       containerStyle,
       leftSlot,
       rightSlot,
+      slotAlignment = 'center',
+      bare = false,
       isInvalid,
       multiline,
       textarea = false,
@@ -96,10 +109,17 @@ export const Input = forwardRef<any, NativeInputProps>(
       ? splitInputLayoutStyle(sanitizedStyle)
       : { inputStyle: sanitizedStyle, wrapperStyle: undefined }
     const compact = isCompactInputStyle(style)
-    const fieldShell = getHeroInputFieldStyle(colors, {
-      multiline: useTextArea || multiline,
-      compact
-    })
+    const fieldShell = bare
+      ? {
+          backgroundColor: 'transparent' as const,
+          borderWidth: 0,
+          paddingHorizontal: 0,
+          color: colors.textPrimary
+        }
+      : getHeroInputFieldStyle(colors, {
+          multiline: useTextArea || multiline,
+          compact
+        })
     const textFieldLayout = getCompactTextFieldStyle(style)
 
     const inputClassName = cn(!compact && 'w-full', className)
@@ -145,8 +165,9 @@ export const Input = forwardRef<any, NativeInputProps>(
       position: 'absolute' as const,
       top: 0,
       bottom: 0,
-      justifyContent: 'center' as const,
-      alignItems: 'center' as const
+      justifyContent: (slotAlignment === 'bottom' ? 'flex-end' : 'center') as 'flex-end' | 'center',
+      alignItems: 'center' as const,
+      ...(slotAlignment === 'bottom' ? { paddingBottom: 8 } : null)
     }
 
     const inputWithSlots = hasSlots ? (

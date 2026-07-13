@@ -4,7 +4,8 @@ import React, {
   useImperativeHandle,
   forwardRef,
   useRef,
-  useMemo
+  useMemo,
+  useEffect
 } from 'react'
 import {
   View,
@@ -13,12 +14,19 @@ import {
   Text,
   Image,
   ScrollView,
-  LayoutAnimation,
   Platform,
+  useWindowDimensions,
   type NativeSyntheticEvent,
+  type TextInputContentSizeChangeEventData,
   type TextInputKeyPressEventData
 } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import type { LucideProps } from 'lucide-react-native'
 import {
   BookOpen,
@@ -27,7 +35,9 @@ import {
   Globe,
   Image as ImageIcon,
   LayoutGrid,
+  Maximize2,
   Menu,
+  Minimize2,
   Paperclip,
   Send,
   Volume2,
@@ -57,6 +67,35 @@ import { DEFAULT_STROKE_WIDTH, INPUT_BAR_ICON_SIZE } from '../../shared/icons/ic
 import { LucideIcon } from '../icons/LucideIcon'
 
 const TOOLBAR_ANIM_MS = 200
+/** 展开/收起输入框高度动画，与工具栏开合节奏一致 */
+const EXPAND_ANIM_MS = 200
+const INPUT_MIN_HEIGHT = 36
+/** 点击展开后立刻抬高到的高度（不必等内容或键盘） */
+const INPUT_EXPANDED_DEFAULT_HEIGHT = 120
+/** 折叠态输入区最大高度（约 4–5 行） */
+const INPUT_MAX_HEIGHT_COLLAPSED = 112
+/** 展开态相对屏幕高度的比例上限 */
+const INPUT_MAX_HEIGHT_EXPANDED_RATIO = 0.42
+/** 展开态最大高度硬顶 */
+const INPUT_MAX_HEIGHT_EXPANDED_CAP = 320
+/** 卡片内底栏（菜单 + 发送） */
+const INPUT_CARD_BOTTOM_ROW = 36
+
+const EXPAND_HEIGHT_EASING = Easing.out(Easing.cubic)
+
+function clampInputFrameHeight(contentHeight: number, maxHeight: number) {
+  return Math.min(Math.max(Math.ceil(contentHeight), INPUT_MIN_HEIGHT), maxHeight)
+}
+
+function resolveComposerHeight(
+  contentHeight: number,
+  expanded: boolean,
+  maxHeight: number
+): number {
+  const contentBased = clampInputFrameHeight(contentHeight, maxHeight)
+  if (!expanded) return contentBased
+  return Math.min(Math.max(contentBased, INPUT_EXPANDED_DEFAULT_HEIGHT), maxHeight)
+}
 
 export interface InputBarProps {
   isLoading: boolean
@@ -82,6 +121,8 @@ export interface InputBarProps {
   onToggleTtsMode?: () => void
   /** 输入框获得焦点时回调（用于键盘预抬，避免闪动） */
   onInputFocus?: () => void
+  /** 整栏高度变化（展开/工具栏/多行）时回调，供外层列表留白跟高 */
+  onHeightChange?: (height: number) => void
   /** 为 false 时禁用底部主输入框（气泡内联编辑时避免双键盘/抢焦点） */
   composerEnabled?: boolean
 }
@@ -111,6 +152,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       ttsMode = 'manual',
       onToggleTtsMode,
       onInputFocus,
+      onHeightChange,
       composerEnabled = true,
       composerBlocked = false,
       onComposerBlocked,
@@ -123,10 +165,15 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const dialog = useDialog()
     const toast = useNativeToast()
     const { colors, isDark } = useNativeTheme()
+    const { height: windowHeight } = useWindowDimensions()
     const inputRef = useRef<any>(null)
+    const contentHeightRef = useRef(INPUT_MIN_HEIGHT)
     const [text, setText] = useState('')
     const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
     const [isSending, setIsSending] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(false)
+    const [inputHeight, setInputHeight] = useState(INPUT_MIN_HEIGHT)
+    const [inputScrollEnabled, setInputScrollEnabled] = useState(false)
     const { clearDraft } = useComposerDraft({
       draftKey: composerDraftKey,
       draftStorage: composerDraftStorage,
@@ -135,26 +182,69 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       draftSyncSuspended: isSending
     })
     const [showToolbar, setShowToolbar] = useState(true)
+    const [shortcutPanelHeight, setShortcutPanelHeight] = useState(0)
     const toolbarProgress = useSharedValue(1)
+    const inputHeightSv = useSharedValue(INPUT_MIN_HEIGHT)
+    const inputMaxHeight = isExpanded
+      ? Math.min(
+          INPUT_MAX_HEIGHT_EXPANDED_CAP,
+          Math.round(windowHeight * INPUT_MAX_HEIGHT_EXPANDED_RATIO)
+        )
+      : INPUT_MAX_HEIGHT_COLLAPSED
     const localizedShortcuts = useMemo(() => {
       if (!shortcuts?.length) return undefined
       return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
     }, [shortcuts, t, i18n.language])
     const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
 
-    const toggleToolbar = useCallback(() => {
-      LayoutAnimation.configureNext({
-        duration: TOOLBAR_ANIM_MS,
-        update: { type: LayoutAnimation.Types.easeInEaseOut },
-        create: {
-          type: LayoutAnimation.Types.easeInEaseOut,
-          property: LayoutAnimation.Properties.opacity
-        },
-        delete: {
-          type: LayoutAnimation.Types.easeInEaseOut,
-          property: LayoutAnimation.Properties.opacity
+    const animateInputHeight = useCallback(
+      (nextHeight: number, animated: boolean) => {
+        if (animated) {
+          inputHeightSv.value = withTiming(nextHeight, {
+            duration: EXPAND_ANIM_MS,
+            easing: EXPAND_HEIGHT_EASING
+          })
+        } else {
+          cancelAnimation(inputHeightSv)
+          inputHeightSv.value = nextHeight
         }
-      })
+        setInputHeight((prev) => (Math.abs(prev - nextHeight) < 1 ? prev : nextHeight))
+      },
+      [inputHeightSv]
+    )
+
+    const applyContentHeight = useCallback(
+      (contentHeight: number, expanded = isExpanded, animated = false) => {
+        contentHeightRef.current = contentHeight
+        const nextHeight = resolveComposerHeight(contentHeight, expanded, inputMaxHeight)
+        const shouldScroll = contentHeight > inputMaxHeight + 1
+        setInputScrollEnabled((prev) => (prev === shouldScroll ? prev : shouldScroll))
+        animateInputHeight(nextHeight, animated)
+      },
+      [animateInputHeight, inputMaxHeight, isExpanded]
+    )
+
+    const isExpandedRef = useRef(isExpanded)
+    useEffect(() => {
+      const expandedChanged = isExpandedRef.current !== isExpanded
+      isExpandedRef.current = isExpanded
+      // 展开态切换时做高度过渡；仅上限变化（如旋转屏幕）则直接对齐
+      applyContentHeight(contentHeightRef.current, isExpanded, expandedChanged)
+    }, [applyContentHeight, isExpanded])
+
+    const handleContentSizeChange = useCallback(
+      (event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
+        applyContentHeight(event.nativeEvent.contentSize.height, isExpanded, false)
+      },
+      [applyContentHeight, isExpanded]
+    )
+
+    const toggleExpand = useCallback(() => {
+      setIsExpanded((prev) => !prev)
+    }, [])
+
+    const toggleToolbar = useCallback(() => {
+      // 仅用 reanimated 收起工具栏，避免 LayoutAnimation 牵动 TextInput 导致 placeholder 跳动/裁切
       setShowToolbar((prev) => {
         const next = !prev
         toolbarProgress.value = withTiming(next ? 1 : 0, { duration: TOOLBAR_ANIM_MS })
@@ -166,6 +256,11 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       opacity: toolbarProgress.value,
       maxHeight: toolbarProgress.value * 48,
       marginBottom: toolbarProgress.value * 10,
+      overflow: 'hidden' as const
+    }))
+
+    const inputFrameAnimatedStyle = useAnimatedStyle(() => ({
+      height: inputHeightSv.value,
       overflow: 'hidden' as const
     }))
 
@@ -259,6 +354,10 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
 
       setText('')
       setAttachments([])
+      setIsExpanded(false)
+      contentHeightRef.current = INPUT_MIN_HEIGHT
+      setInputScrollEnabled(false)
+      animateInputHeight(INPUT_MIN_HEIGHT, true)
 
       setIsSending(true)
       try {
@@ -275,6 +374,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
         setIsSending(false)
       }
     }, [
+      animateInputHeight,
       attachments,
       clearDraft,
       composerBlocked,
@@ -352,158 +452,232 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
 
     return (
       <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: colors.bgSurface,
-            borderTopColor: colors.borderSubtle
-          }
-        ]}
+        onLayout={(event) => {
+          const next = Math.ceil(event.nativeEvent.layout.height)
+          if (next > 0) onHeightChange?.(next)
+        }}
+        style={styles.container}
       >
-        {attachments.length > 0 && (
-          <ScrollView
-            horizontal
-            style={styles.attachmentList}
-            showsHorizontalScrollIndicator={false}
-          >
-            {attachments.map((att) => (
+        <View
+          style={[
+            styles.composerBlock,
+            shortcutPanelHeight > 0 ? { paddingTop: shortcutPanelHeight } : null
+          ]}
+        >
+          <View style={styles.composerChromeAnchor}>
+            <InlinePromptShortcutList
+              visible={shortcutHandlers.shortcutModeActive}
+              shortcuts={shortcutHandlers.filteredShortcuts}
+              selectedIndex={shortcutHandlers.selectedIndex}
+              onSelect={shortcutHandlers.applyShortcut}
+              onHeightChange={setShortcutPanelHeight}
+            />
+
+            <View
+              style={[
+                styles.composerChrome,
+                {
+                  borderTopColor: colors.borderSubtle,
+                  backgroundColor: colors.bgSurface
+                }
+              ]}
+            >
+              {attachments.length > 0 && (
+                <ScrollView
+                  horizontal
+                  style={styles.attachmentList}
+                  showsHorizontalScrollIndicator={false}
+                >
+                  {attachments.map((att) => (
+                    <View
+                      key={att.id}
+                      style={[
+                        styles.attachmentChip,
+                        {
+                          borderColor: colors.borderMuted,
+                          backgroundColor: colors.bgSurfaceHigh
+                        }
+                      ]}
+                    >
+                      {att.isImage ? (
+                        <Image source={{ uri: att.filePath }} style={styles.attImage} />
+                      ) : (
+                        <View style={styles.attDoc}>
+                          <Text style={styles.attDocIcon}>
+                            {att.isPdf || att.isText ? '📄' : '📁'}
+                          </Text>
+                          <Text
+                            style={[styles.attDocName, { color: colors.textSecondary }]}
+                            numberOfLines={1}
+                          >
+                            {att.fileName}
+                          </Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.attRemoveBtn, { backgroundColor: colors.bgOverlay }]}
+                        onPress={() =>
+                          setAttachments((prev) => prev.filter((p) => p.id !== att.id))
+                        }
+                      >
+                        <Text style={[styles.attRemoveLabel, { color: colors.textOnPrimary }]}>
+                          ×
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
+              <Animated.View
+                style={toolbarAnimatedStyle}
+                pointerEvents={showToolbar ? 'auto' : 'none'}
+              >
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.toolbarContent}
+                >
+                  {renderToolbarChip(
+                    t('input.upload_attachment', '上传附件'),
+                    handleUploadAttachment,
+                    { icon: Paperclip }
+                  )}
+                  {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
+                    icon: Zap
+                  })}
+                  {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+                    icon: BookOpen
+                  })}
+                  {renderToolbarChip(
+                    searchMode
+                      ? t('settings.web_search_mode_tool', '外部工具搜索')
+                      : t('settings.web_search_mode_off', '关闭搜索'),
+                    onToggleSearchMode,
+                    { active: searchMode, icon: Globe }
+                  )}
+                  {renderToolbarChip(
+                    ttsMode === 'always'
+                      ? t('agent.chat.tts_always', '始终朗读')
+                      : t('agent.chat.tts_manual', '手动朗读'),
+                    onToggleTtsMode,
+                    { active: ttsMode === 'always', icon: Volume2 }
+                  )}
+                  {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
+                    icon: LayoutGrid
+                  })}
+                </ScrollView>
+              </Animated.View>
+
               <View
-                key={att.id}
+                pointerEvents={composerEnabled ? 'auto' : 'none'}
                 style={[
-                  styles.attachmentChip,
+                  styles.inputCard,
                   {
-                    borderColor: colors.borderMuted,
-                    backgroundColor: colors.bgSurfaceHigh
+                    backgroundColor: isDark ? colors.bgSurfaceHigh : colors.bgSurface,
+                    borderColor: colors.borderStrong
                   }
                 ]}
               >
-                {att.isImage ? (
-                  <Image source={{ uri: att.filePath }} style={styles.attImage} />
-                ) : (
-                  <View style={styles.attDoc}>
-                    <Text style={styles.attDocIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</Text>
-                    <Text
-                      style={[styles.attDocName, { color: colors.textSecondary }]}
-                      numberOfLines={1}
-                    >
-                      {att.fileName}
-                    </Text>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={[styles.attRemoveBtn, { backgroundColor: colors.bgOverlay }]}
-                  onPress={() => setAttachments((prev) => prev.filter((p) => p.id !== att.id))}
+                <View
+                  style={[
+                    styles.topRow,
+                    inputHeight <= INPUT_MIN_HEIGHT + 1 ? styles.topRowSingleLine : null
+                  ]}
                 >
-                  <Text style={[styles.attRemoveLabel, { color: colors.textOnPrimary }]}>×</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-
-        <View style={styles.composerBlock}>
-          <InlinePromptShortcutList
-            visible={shortcutHandlers.shortcutModeActive}
-            shortcuts={shortcutHandlers.filteredShortcuts}
-            selectedIndex={shortcutHandlers.selectedIndex}
-            onSelect={shortcutHandlers.applyShortcut}
-          />
-
-          <Animated.View style={toolbarAnimatedStyle} pointerEvents={showToolbar ? 'auto' : 'none'}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.toolbarContent}
-            >
-              {renderToolbarChip(t('input.upload_attachment', '上传附件'), handleUploadAttachment, {
-                icon: Paperclip
-              })}
-              {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
-                icon: Zap
-              })}
-              {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
-                icon: BookOpen
-              })}
-              {renderToolbarChip(
-                searchMode
-                  ? t('settings.web_search_mode_tool', '外部工具搜索')
-                  : t('settings.web_search_mode_off', '关闭搜索'),
-                onToggleSearchMode,
-                { active: searchMode, icon: Globe }
-              )}
-              {renderToolbarChip(
-                ttsMode === 'always'
-                  ? t('agent.chat.tts_always', '始终朗读')
-                  : t('agent.chat.tts_manual', '手动朗读'),
-                onToggleTtsMode,
-                { active: ttsMode === 'always', icon: Volume2 }
-              )}
-              {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
-                icon: LayoutGrid
-              })}
-            </ScrollView>
-          </Animated.View>
-
-          <View pointerEvents={composerEnabled ? 'auto' : 'none'}>
-            <Input
-              ref={inputRef}
-              className="min-h-12 max-h-36"
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  backgroundColor: isDark ? colors.bgSurfaceHigh : colors.bgSurface
-                }
-              ]}
-              value={text}
-              onChangeText={handleChangeText}
-              onKeyPress={handleKeyPress}
-              placeholder={t('agent.chat.input_hint', '输入消息...')}
-              multiline
-              textAlignVertical="center"
-              editable={composerEnabled}
-              onFocus={composerEnabled ? onInputFocus : undefined}
-              leftSlot={
-                <TouchableOpacity
-                  style={styles.toolbarToggle}
-                  onPress={toggleToolbar}
-                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                >
-                  <LucideIcon
-                    icon={showToolbar ? LayoutGrid : Menu}
-                    size={20}
-                    color={colors.textTertiary}
-                  />
-                </TouchableOpacity>
-              }
-              rightSlot={
-                isLoading ? (
-                  <TouchableOpacity
-                    style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
-                    onPress={onStop}
-                    accessibilityLabel={t('common.stop', '停止')}
-                  >
-                    <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
-                  </TouchableOpacity>
-                ) : (
+                  <Animated.View style={[styles.inputWrapper, inputFrameAnimatedStyle]}>
+                    <Input
+                      ref={inputRef}
+                      bare
+                      keyboardAware={false}
+                      className="border-0 bg-transparent"
+                      style={[
+                        styles.input,
+                        {
+                          color: colors.textPrimary,
+                          height: '100%'
+                        }
+                      ]}
+                      value={text}
+                      onChangeText={handleChangeText}
+                      onKeyPress={handleKeyPress}
+                      onContentSizeChange={handleContentSizeChange}
+                      placeholder={t('agent.chat.input_hint', '输入消息...')}
+                      multiline
+                      scrollEnabled={inputScrollEnabled}
+                      nestedScrollEnabled
+                      textAlignVertical={
+                        !isExpanded && inputHeight <= INPUT_MIN_HEIGHT + 1 ? 'center' : 'top'
+                      }
+                      editable={composerEnabled}
+                      onFocus={composerEnabled ? onInputFocus : undefined}
+                    />
+                  </Animated.View>
                   <TouchableOpacity
                     style={[
-                      styles.sendBtn,
-                      { backgroundColor: colors.primary },
-                      (isSending || (!text.trim() && attachments.length === 0)) && {
-                        backgroundColor: colors.textTertiary,
-                        opacity: isSending ? 0.72 : 1
-                      }
+                      styles.expandToggle,
+                      inputHeight > INPUT_MIN_HEIGHT + 1 ? styles.expandToggleMultiline : null
                     ]}
-                    onPress={handleSend}
-                    disabled={isSending || (!text.trim() && attachments.length === 0)}
-                    accessibilityLabel={t('common.send', '发送')}
+                    onPress={toggleExpand}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    accessibilityLabel={
+                      isExpanded
+                        ? t('input.collapse', '折叠输入框')
+                        : t('input.expand', '展开输入框')
+                    }
                   >
-                    <LucideIcon icon={Send} size={18} color={colors.textOnPrimary} />
+                    <LucideIcon
+                      icon={isExpanded ? Minimize2 : Maximize2}
+                      size={16}
+                      color={colors.textTertiary}
+                    />
                   </TouchableOpacity>
-                )
-              }
-            />
+                </View>
+
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity
+                    style={styles.toolbarToggle}
+                    onPress={toggleToolbar}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                  >
+                    <LucideIcon
+                      icon={showToolbar ? LayoutGrid : Menu}
+                      size={20}
+                      color={colors.textTertiary}
+                    />
+                  </TouchableOpacity>
+
+                  {isLoading ? (
+                    <TouchableOpacity
+                      style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
+                      onPress={onStop}
+                      accessibilityLabel={t('common.stop', '停止')}
+                    >
+                      <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[
+                        styles.sendBtn,
+                        { backgroundColor: colors.primary },
+                        !text.trim() &&
+                          attachments.length === 0 && {
+                            backgroundColor: colors.textTertiary
+                          },
+                        isSending && {
+                          opacity: 0.72
+                        }
+                      ]}
+                      onPress={handleSend}
+                      disabled={isSending || (!text.trim() && attachments.length === 0)}
+                      accessibilityLabel={t('common.send', '发送')}
+                    >
+                      <LucideIcon icon={Send} size={18} color={colors.textOnPrimary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </View>
           </View>
         </View>
       </View>
@@ -515,15 +689,22 @@ InputBar.displayName = 'InputBar'
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 12,
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    borderTopWidth: StyleSheet.hairlineWidth
+    // 分割线与底栏背景放在 composerChrome，避免快捷面板撑开时整条顶边被抬起
   },
   composerBlock: {
     position: 'relative',
     overflow: 'visible',
     zIndex: 20
+  },
+  composerChromeAnchor: {
+    position: 'relative',
+    zIndex: 1
+  },
+  composerChrome: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 10
   },
   toolbarContent: {
     gap: 8,
@@ -548,26 +729,64 @@ const styles = StyleSheet.create({
     maxWidth: 120
   },
   toolbarToggle: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center'
   },
+  inputCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingTop: 6,
+    paddingHorizontal: 10,
+    paddingBottom: 6
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start'
+  },
+  topRowSingleLine: {
+    alignItems: 'center'
+  },
+  inputWrapper: {
+    flex: 1,
+    minWidth: 0
+  },
+  expandToggle: {
+    width: 28,
+    height: 28,
+    marginLeft: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  expandToggleMultiline: {
+    marginTop: 4
+  },
   input: {
-    minHeight: 48,
-    maxHeight: 140,
+    minHeight: INPUT_MIN_HEIGHT,
     fontSize: 15,
     lineHeight: 20,
-    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+    paddingLeft: 4,
+    paddingRight: 4,
+    paddingTop: Platform.OS === 'ios' ? 8 : 6,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 6,
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null)
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 0,
+    height: INPUT_CARD_BOTTOM_ROW,
+    flexShrink: 0
   },
   sendBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8
+    justifyContent: 'center'
   },
   sendIcon: {
     fontSize: 18,
@@ -578,8 +797,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8
+    justifyContent: 'center'
   },
   stopIcon: {
     width: 12,
