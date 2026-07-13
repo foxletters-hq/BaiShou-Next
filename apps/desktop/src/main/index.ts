@@ -245,11 +245,21 @@ app.whenReady().then(async () => {
     }
   })
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  // 开发态：F12 开关 DevTools；生产态：屏蔽 Ctrl/Cmd+R 防误刷新
+  // 见 https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  // 打包后也允许 F12，便于现场排查
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+    if (is.dev) return
+    window.webContents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown' || input.code !== 'F12') return
+      event.preventDefault()
+      if (window.webContents.isDevToolsOpened()) {
+        window.webContents.closeDevTools()
+      } else {
+        window.webContents.openDevTools({ mode: 'undocked' })
+      }
+    })
   })
 
   // IPC test

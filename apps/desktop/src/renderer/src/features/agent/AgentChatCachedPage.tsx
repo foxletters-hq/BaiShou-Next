@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, type Location } from 'react-router-dom'
 import { AgentLayout } from './AgentLayout'
 import { AgentScreen } from './AgentScreen'
 import { MainPageCacheActiveContext } from '../../layouts/MainPageCache'
+import { useDesktopSettingsOverlay } from '../../layouts/desktop-settings-overlay.context'
 
 function parseFrozenChatLocation(pathWithSearch: string): Pick<Location, 'pathname' | 'search'> {
   const qIndex = pathWithSearch.indexOf('?')
@@ -22,21 +23,26 @@ function parseFrozenChatLocation(pathWithSearch: string): Pick<Location, 'pathna
 export const AgentChatCachedPage: React.FC = () => {
   const location = useLocation()
   const isActive = useContext(MainPageCacheActiveContext)
+  const settingsOverlayOpen = useDesktopSettingsOverlay()
   const frozenPathRef = useRef('/chat')
 
-  if (isActive && location.pathname.startsWith('/chat')) {
+  // 设置 overlay 打开时也冻结，避免底层 location 抖动传到嵌套 Routes
+  const followLiveLocation =
+    isActive && !settingsOverlayOpen && location.pathname.startsWith('/chat')
+
+  if (followLiveLocation) {
     frozenPathRef.current = `${location.pathname}${location.search}`
   }
 
   const routesLocation = useMemo(() => {
-    if (isActive) return location
+    if (followLiveLocation) return location
     const frozen = parseFrozenChatLocation(frozenPathRef.current)
     return {
       ...location,
       pathname: frozen.pathname,
       search: frozen.search
     }
-  }, [isActive, location])
+  }, [followLiveLocation, location])
 
   return (
     <Routes location={routesLocation}>

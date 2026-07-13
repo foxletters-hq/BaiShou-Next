@@ -2,24 +2,6 @@
    SETTINGS PAGE
    ========================================================= */
 
-@keyframes settingsFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes settingsFadeOut {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
 .settings-page-wrapper {
   position: absolute;
   top: 0;
@@ -33,12 +15,9 @@
   opacity: 1;
 }
 
-.settings-page-wrapper.is-entering {
-  animation: settingsFadeIn 0.2s ease-out forwards;
-}
-
-.settings-page-wrapper.settings-closing {
-  animation: settingsFadeOut 0.15s ease-out forwards;
+/* 退出/非活跃时隐藏内容，过渡遮罩由 SettingsOverlayHost 负责 */
+.settings-page-wrapper.is-exited {
+  opacity: 0;
   pointer-events: none;
 }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Archive,
@@ -35,38 +35,31 @@ type SettingsTabItem =
   | { kind: 'divider' }
   | { kind: 'item'; id: number; label: string; icon: React.ReactNode }
 
-const SETTINGS_FADE_IN_MS = 200
-const SETTINGS_FADE_OUT_MS = 150
-
 /** 全屏 overlay 设置（伙伴区等入口）：自带设置侧栏 + 内容区 */
 export const SettingsShell: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [isClosing, setIsClosing] = useState(false)
-  const [isEntering, setIsEntering] = useState(false)
   const settingsRouteActive = useSettingsRouteActive()
-  const prevSettingsRouteActiveRef = useRef(settingsRouteActive)
+  // 必须从 false 起算：首次挂载时路由往往已是 active
+  const prevSettingsRouteActiveRef = useRef(false)
   const activeTab = pathnameToSettingsTabId(location.pathname)
   const contentKey = getSettingsRouteSegment(location.pathname)
 
   useRagRuntimeBridge(settingsRouteActive)
 
-  useEffect(() => {
-    const opened = settingsRouteActive && !prevSettingsRouteActiveRef.current
-    prevSettingsRouteActiveRef.current = settingsRouteActive
-
+  useLayoutEffect(() => {
     if (!settingsRouteActive) {
-      setIsClosing(false)
-      setIsEntering(false)
+      prevSettingsRouteActiveRef.current = false
       return
     }
 
+    const opened = !prevSettingsRouteActiveRef.current
+    prevSettingsRouteActiveRef.current = true
     if (!opened) return
-
-    setIsEntering(true)
-    const timer = window.setTimeout(() => setIsEntering(false), SETTINGS_FADE_IN_MS)
-    return () => window.clearTimeout(timer)
+    // 打开时取消关闭态；进入过渡由 SettingsOverlayHost 遮罩负责
+    setIsClosing(false)
   }, [settingsRouteActive])
 
   const TABS = useMemo<SettingsTabItem[]>(
@@ -197,18 +190,14 @@ export const SettingsShell: React.FC = () => {
   }
 
   const handleBack = () => {
-    const returnTo = resolveSettingsReturnPath()
+    if (isClosing) return
     setIsClosing(true)
-    window.setTimeout(() => {
-      setIsClosing(false)
-      navigate(returnTo, { replace: true })
-    }, SETTINGS_FADE_OUT_MS)
+    // 立即离开路由；「先消失再 fade」由 SettingsOverlayHost 遮罩完成
+    navigate(resolveSettingsReturnPath(), { replace: true })
   }
 
   return (
-    <div
-      className={`settings-page-wrapper ${isEntering ? 'is-entering' : ''} ${isClosing ? 'settings-closing' : ''}`}
-    >
+    <div className={`settings-page-wrapper ${!settingsRouteActive ? 'is-exited' : ''}`}>
       <div className="settings-layout-body">
         <div className="settings-sidebar">
           <div className="settings-header">
