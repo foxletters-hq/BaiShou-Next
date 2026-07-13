@@ -130,7 +130,7 @@ pnpm ci:check
 
 #### 贡献者
 
-感谢所有为白守贡献时间与智慧的朋友。
+感谢所有为白守贡献时间与精力的朋友，是因为有你们一起，白守才会变好。
 
 <a href="https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=foxletters-hq/BaiShou-Next" alt="Contributors" />

@@ -125,7 +125,7 @@ Technical workflow:
 
 #### Contributors
 
-Thanks to everyone who has contributed time and care to BaiShou.
+Thanks to everyone who has contributed time and energy to BaiShou—together, you make it better.
 
 <a href="https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=foxletters-hq/BaiShou-Next" alt="Contributors" />
