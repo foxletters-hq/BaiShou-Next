@@ -1,13 +1,6 @@
 import i18n from 'i18next'
 import {
-  buildS3ListUrl,
-  buildS3ObjectUrl,
-  DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
-  isIncrementalSyncReady,
   migrateLegacyIncrementalSyncConfig,
-  normalizeS3BasePath,
-  s3FetchHeaders,
-  signS3Request,
   type S3SyncConfig,
   type IncrementalSyncRunOptions,
   type IncrementalSyncPlanPreview
@@ -20,7 +13,6 @@ import type {
   SessionManagerService
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
-import { FileSystemUploadType, uploadAsync } from './mobile-http-transfer'
 import {
   MobileIncrementalEngine,
   type MobileIncrementalProgress
@@ -29,10 +21,18 @@ import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
 import { hasRemoteManifestDrift } from './mobile-incremental-plan-reuse.util'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
-import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
-import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
-import { classifyIncrementalSyncPaths } from './mobile-incremental-sync-path-classify.util'
 import type { MobileIncrementalSyncOutcome } from './mobile-incremental-engine.types'
+import {
+  isConfigReady,
+  mergeConfig,
+  normalizeVaultConfig,
+  testS3,
+  testWebDav,
+  uploadS3,
+  uploadWebDav,
+  type VaultSyncConfig
+} from './mobile-incremental-sync-config.util'
+import { runMobileIncrementalAfterSync } from './mobile-incremental-sync-after.util'
 
 export type IncrementalSyncProgress = MobileIncrementalProgress
 
@@ -46,155 +46,6 @@ export type IncrementalSyncResult = {
   downloadedPaths?: string[]
   deletedLocalPaths?: string[]
   deletedRemotePaths?: string[]
-}
-
-const DEFAULT_CONFIG: S3SyncConfig = {
-  enabled: false,
-  endpoint: '',
-  region: 'us-east-1',
-  bucket: '',
-  path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
-  accessKey: '',
-  secretKey: '',
-  target: 's3',
-  fileConcurrency: 5,
-  chunkConcurrency: 5,
-  maxDivergencePercent: 100
-}
-
-type VaultSyncConfig = Partial<S3SyncConfig> & {
-  s3AccessKey?: string
-  s3SecretKey?: string
-  s3Path?: string
-  webdavUsername?: string
-  webdavPassword?: string
-  webdavPath?: string
-}
-
-function normalizeVaultConfig(partial?: VaultSyncConfig | null): S3SyncConfig {
-  const base = mergeConfig(partial)
-  const target = partial?.target === 'webdav' ? 'webdav' : 's3'
-  if (target === 'webdav') {
-    return {
-      ...base,
-      target: 'webdav',
-      accessKey: (partial?.accessKey || partial?.webdavUsername || '').trim(),
-      secretKey: (partial?.secretKey || partial?.webdavPassword || '').trim(),
-      path: partial?.path || partial?.webdavPath || base.path
-    }
-  }
-  return {
-    ...base,
-    target: 's3',
-    accessKey: (partial?.accessKey || partial?.s3AccessKey || '').trim(),
-    secretKey: (partial?.secretKey || partial?.s3SecretKey || '').trim(),
-    path: partial?.path || partial?.s3Path || base.path,
-    fileConcurrency: partial?.fileConcurrency ?? base.fileConcurrency,
-    chunkConcurrency: partial?.chunkConcurrency ?? base.chunkConcurrency
-  }
-}
-
-function mergeConfig(partial?: Partial<S3SyncConfig> | null): S3SyncConfig {
-  return { ...DEFAULT_CONFIG, ...partial }
-}
-
-function isConfigReady(config: S3SyncConfig): boolean {
-  return isIncrementalSyncReady(config)
-}
-
-async function testWebDav(
-  config: S3SyncConfig,
-  fileSystem: IFileSystem,
-  syncRoot: string
-): Promise<void> {
-  const client = new MobileIncrementalCloudClient(config, fileSystem)
-  client.setVaultPath(syncRoot)
-  await client.listFiles()
-}
-
-async function testS3(config: S3SyncConfig): Promise<void> {
-  const prefix = normalizeS3BasePath(config.path)
-  const listUrl = buildS3ListUrl({
-    endpoint: config.endpoint,
-    bucket: config.bucket,
-    prefix,
-    maxKeys: 1
-  })
-
-  const signed = await signS3Request(
-    'GET',
-    listUrl,
-    config.region || 'us-east-1',
-    config.accessKey,
-    config.secretKey,
-    null
-  )
-  const response = await fetch(listUrl, { method: 'GET', headers: s3FetchHeaders(signed) })
-  if (!response.ok) {
-    throw new Error(`S3 list failed: ${response.status} ${response.statusText}`)
-  }
-}
-
-async function uploadWebDav(
-  config: S3SyncConfig,
-  localZipPath: string,
-  remoteName: string
-): Promise<void> {
-  const baseUrl = (config.webdavUrl || '').replace(/\/$/, '')
-  let basePath = config.path?.startsWith('/') ? config.path : `/${config.path || ''}`
-  if (!basePath.endsWith('/')) basePath += '/'
-  const remotePath = `${basePath}${remoteName}`
-  const auth = `Basic ${btoa(`${config.accessKey}:${config.secretKey}`)}`
-
-  const response = await uploadAsync(`${baseUrl}${remotePath}`, localZipPath, {
-    httpMethod: 'PUT',
-    headers: {
-      Authorization: auth,
-      'Content-Type': 'application/zip'
-    },
-    uploadType: FileSystemUploadType.BINARY_CONTENT
-  })
-
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`WebDAV upload failed: ${response.status}`)
-  }
-}
-
-async function uploadS3(
-  config: S3SyncConfig,
-  localZipPath: string,
-  remoteName: string
-): Promise<void> {
-  const objectName = `${normalizeS3BasePath(config.path)}${remoteName}`
-  const url = buildS3ObjectUrl({
-    endpoint: config.endpoint,
-    bucket: config.bucket,
-    objectKey: objectName
-  })
-
-  const contentType = 'application/zip'
-  const signed = await signS3Request(
-    'PUT',
-    url,
-    config.region || 'us-east-1',
-    config.accessKey,
-    config.secretKey,
-    null,
-    { 'Content-Type': contentType }
-  )
-
-  const response = await uploadAsync(url, localZipPath, {
-    httpMethod: 'PUT',
-    headers: {
-      ...s3FetchHeaders(signed),
-      'Content-Type': contentType
-    },
-    uploadType: FileSystemUploadType.BINARY_CONTENT
-  })
-
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`S3 upload failed: ${response.status}`)
-  }
 }
 
 export class MobileIncrementalSyncService {
@@ -244,131 +95,18 @@ export class MobileIncrementalSyncService {
   private afterSyncComplete(outcome: MobileIncrementalSyncOutcome): void {
     emitSyncMutation('complete', 'incremental-sync')
 
-    this.postSyncMaintenancePromise = (async () => {
-      try {
-        const cls = classifyIncrementalSyncPaths([
-          ...outcome.downloadedPaths,
-          ...outcome.deletedLocalPaths
-        ])
-        console.warn('[IncrementalSync][PostSync] start', {
-          uploaded: outcome.uploaded,
-          downloaded: outcome.downloaded,
-          deletedLocal: outcome.deletedLocal,
-          classify: {
-            journals: cls.journals,
-            sessions: cls.sessions,
-            summaries: cls.summaries,
-            settings: cls.settings,
-            assistants: cls.assistants,
-            sessionRefCount: cls.sessionRefs.length
-          }
-        })
-        const needsLocalIndex =
-          outcome.downloaded > 0 ||
-          outcome.deletedLocal > 0 ||
-          cls.journals ||
-          cls.sessions ||
-          cls.summaries ||
-          cls.settings ||
-          cls.assistants
-
-        let step = 0
-        const needsSessionHydrate = cls.sessions || cls.sessionRefs.length > 0
-        const totalSteps = (needsSessionHydrate ? 1 : 0) + (needsLocalIndex ? 3 : 0) + 1
-        const checkpointRefreshPaths: string[] = []
-
-        if (needsSessionHydrate && this.sessionManager) {
-          this.reportPostSync('data_sync.progress_hydrate_sessions', ++step, totalSteps)
-          try {
-            const { listDiskVaultFolderNames } = await import('@baishou/core-mobile')
-            const syncRoot = await this.pathService.getRootDirectory()
-            const diskVaultNames = await listDiskVaultFolderNames(this.fileSystem, syncRoot)
-            let activeVaultName: string | null = null
-            const pathWithContext = this.pathService as IStoragePathService & {
-              getActiveVaultNameForContext?: () => Promise<string>
-            }
-            if (typeof pathWithContext.getActiveVaultNameForContext === 'function') {
-              activeVaultName = await pathWithContext.getActiveVaultNameForContext()
-            }
-            // 缺 id 补齐（廉价）
-            await this.sessionManager.hydrateSessionsFromDiskIfNeeded({
-              activeVaultName,
-              diskVaultNames,
-              maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
-            })
-            // 本次下载的会话定点灌库（不 fullScan、不 flushPending 写盘）
-            if (cls.sessionRefs.length > 0) {
-              await this.sessionManager.importSessionsFromDisk(cls.sessionRefs, {
-                maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES
-              })
-            }
-          } catch (e: unknown) {
-            console.warn('[IncrementalSync][SessionHydrate] after-sync failed:', e)
-          }
-        }
-
-        if (!needsLocalIndex) {
-          this.reportPostSync('data_sync.progress_finalizing', totalSteps, totalSteps)
-          console.warn('[IncrementalSync][PostSync] skip-index', { reason: 'upload-or-noop' })
-          return
-        }
-
-        const deps = this.bootstrapper?.getRegisteredDeps()
-        if (this.bootstrapper && deps) {
-          this.reportPostSync('data_sync.progress_index_local', ++step, totalSteps)
-          await this.bootstrapper.runSelectiveResync(deps, {
-            journals:
-              cls.journals ||
-              outcome.deletedLocalPaths.some((p) => /Journals|Diary/i.test(p)),
-            summaries: cls.summaries,
-            assistants: cls.assistants,
-            settings: cls.settings,
-            skipEnsures: true,
-            onStep: (key) => this.reportPostSync(key, step, totalSteps)
-          })
-        }
-
-        this.reportPostSync('data_sync.progress_reconcile_avatar', ++step, totalSteps)
-        if (cls.settings || outcome.downloadedPaths.some((p) => /avatar/i.test(p))) {
-          const avatarResult = await reconcileUserAvatarProfileAfterStorageChange(
-            this.settingsManager,
-            this.pathService,
-            this.fileSystem
-          )
-          if (avatarResult.changed) {
-            const profileRel = await this.resolveActiveUserProfileSyncRelPath()
-            if (profileRel) checkpointRefreshPaths.push(profileRel)
-            console.warn('[IncrementalSync][PostSync] avatar-profile-rewritten', {
-              profileRel
-            })
-          }
-        }
-
-        if (cls.journals) {
-          this.reportPostSync('data_sync.progress_schedule_embed', ++step, totalSteps)
-          const { schedulePostSyncDiaryBatchEmbed } =
-            await import('./mobile-post-sync-diary-embed.service')
-          schedulePostSyncDiaryBatchEmbed()
-        }
-
-        if (checkpointRefreshPaths.length > 0) {
-          try {
-            await this.refreshCheckpointForPaths(checkpointRefreshPaths)
-          } catch (e: unknown) {
-            console.warn('[IncrementalSync][PostSync] refreshCheckpoint failed:', e)
-          }
-        }
-
-        this.reportPostSync('data_sync.progress_finalizing', totalSteps, totalSteps)
-        console.warn('[IncrementalSync][PostSync] done', {
-          checkpointRefreshCount: checkpointRefreshPaths.length
-        })
-      } catch (e: unknown) {
-        console.warn('[MobileIncrementalSync] afterSyncComplete failed:', e)
-      } finally {
-        this.onAfterSyncComplete?.()
-      }
-    })()
+    this.postSyncMaintenancePromise = runMobileIncrementalAfterSync(outcome, {
+      settingsManager: this.settingsManager,
+      pathService: this.pathService,
+      fileSystem: this.fileSystem,
+      bootstrapper: this.bootstrapper,
+      sessionManager: this.sessionManager,
+      reportPostSync: (statusText, current, total) =>
+        this.reportPostSync(statusText, current, total),
+      refreshCheckpointForPaths: (relPaths) => this.refreshCheckpointForPaths(relPaths),
+      resolveActiveUserProfileSyncRelPath: () => this.resolveActiveUserProfileSyncRelPath(),
+      onAfterSyncComplete: this.onAfterSyncComplete
+    })
   }
 
   /** 收尾若写了同步树内文件，重算 hash 并更新 local/ancestor/远端 manifest */
