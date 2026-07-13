@@ -1,4 +1,5 @@
 import i18n from 'i18next'
+import { isTransientNetworkError } from '../utils/transient-network-error.util'
 /** 用户主动取消增量同步（UI 与 HTTP 一致中止） */
 export class IncrementalSyncAbortedError extends Error {
   constructor(
@@ -57,4 +58,18 @@ export async function raceWithIncrementalSyncAbort<T>(
         else reject(error)
       })
   })
+}
+
+export function isNativeUploadAbortError(error: unknown, signal?: AbortSignal): boolean {
+  if (isIncrementalSyncAbortedError(error) || signal?.aborted) return true
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+  return /canceled|cancelled|HTTP upload canceled/i.test(message)
+}
+
+export function rethrowUnlessTransientNativeUploadError(
+  error: unknown,
+  signal?: AbortSignal
+): void {
+  if (isNativeUploadAbortError(error, signal)) throw new IncrementalSyncAbortedError()
+  if (!isTransientNetworkError(error)) throw error
 }

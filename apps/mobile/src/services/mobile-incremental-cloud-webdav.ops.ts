@@ -18,10 +18,7 @@ import {
   httpUploadSyncFile,
   readSyncFileChunk
 } from './mobile-sync-file-read.util'
-import {
-  isIncrementalSyncAbortedError,
-  IncrementalSyncAbortedError
-} from './mobile-incremental-sync-abort.util'
+import { rethrowUnlessTransientNativeUploadError } from './mobile-incremental-sync-abort.util'
 import { isTransientNetworkError } from '../utils/transient-network-error.util'
 import {
   arrayBufferToBase64,
@@ -30,20 +27,6 @@ import {
   type IncrementalCloudOpsHost,
   type IncrementalSyncRecord
 } from './mobile-incremental-cloud-ops.types'
-
-function isNativeUploadAbortError(error: unknown, signal?: AbortSignal): boolean {
-  if (isIncrementalSyncAbortedError(error)) return true
-  if (signal?.aborted) return true
-  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
-  return /canceled|cancelled|HTTP upload canceled/i.test(message)
-}
-
-function rethrowUnlessTransientNativeUploadError(error: unknown, signal?: AbortSignal): void {
-  if (isNativeUploadAbortError(error, signal)) {
-    throw new IncrementalSyncAbortedError()
-  }
-  if (!isTransientNetworkError(error)) throw error
-}
 
 function webdavBaseUrl(host: IncrementalCloudOpsHost): string {
   let safeUrl = (host.config.webdavUrl || '').trim()
@@ -127,7 +110,8 @@ async function ensureWebDavBasePath(host: IncrementalCloudOpsHost): Promise<void
 async function collectWebDavShallow(
   host: IncrementalCloudOpsHost,
   remoteUrl: string,
-  records: IncrementalSyncRecord[]
+  records: IncrementalSyncRecord[],
+  options: { missingOk?: boolean } = { missingOk: true }
 ): Promise<void> {
   const normalizedCurrent = remoteUrl.replace(/\/$/, '')
   let xml: string
@@ -135,7 +119,22 @@ async function collectWebDavShallow(
     xml = await webdavPropfind(host, remoteUrl, '1')
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    if (message.includes('HTTP 404')) return
+    if (message.includes('HTTP 404')) {
+      if (options.missingOk !== false) return
+      throw new Error(
+        formatWebDavRequestError(
+          i18n.t(
+            'auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.L82',
+            '列举目录'
+          ),
+          404,
+          i18n.t(
+            'auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.prefix_missing',
+            '路径前缀不存在（请先确认 URL/目录配置可写后再同步）'
+          )
+        )
+      )
+    }
     throw e
   }
 
@@ -157,32 +156,23 @@ async function collectWebDavShallow(
 
     records.push({
       filename: relativeName,
-      lastModified: new Date(),
-      sizeInBytes: 0,
+      lastModified: entry.lastModified ?? new Date(0),
+      sizeInBytes: entry.sizeInBytes ?? 0,
       managed: isManagedIncrementalZipPath(relativeName)
     })
   }
 
   await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (dirUrl) => {
-    await collectWebDavShallow(host, dirUrl, records)
+    await collectWebDavShallow(host, dirUrl, records, { missingOk: true })
   })
 }
 
 export async function listWebDav(host: IncrementalCloudOpsHost): Promise<IncrementalSyncRecord[]> {
-  await ensureWebDavBasePath(host)
-
+  // 列举只读：不在此处 MKCOL，避免对只读账号产生写副作用
   const records: IncrementalSyncRecord[] = []
   const baseDir = host.basePath().replace(/\/$/, '')
   const rootUrl = baseDir ? `${webdavBaseUrl(host)}/${baseDir}` : webdavBaseUrl(host)
-
-  try {
-    await collectWebDavShallow(host, rootUrl, records)
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    if (message.includes('HTTP 404')) return []
-    throw e
-  }
-
+  await collectWebDavShallow(host, rootUrl, records, { missingOk: false })
   return records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
 }
 
@@ -422,6 +412,7 @@ export async function uploadWebDav(
   rel: string,
   localFilePath: string
 ): Promise<void> {
+  await ensureWebDavBasePath(host)
   await ensureWebDavDirs(host, rel)
   const stat = await host.fileSystem.stat(localFilePath)
   const fileSize = stat.size ?? 0

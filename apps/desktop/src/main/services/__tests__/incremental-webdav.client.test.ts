@@ -66,16 +66,16 @@ describe('IncrementalWebDavClient.listFiles', () => {
     ])
   })
 
-  it('returns empty array when root is missing', async () => {
+  it('throws when root path prefix is missing', async () => {
     mockClient.getDirectoryContents.mockRejectedValue({ status: 404, message: '404' })
 
     const client = new IncrementalWebDavClient('https://dav.example.com', 'u', 'p', 'memories_sync')
     ;(client as any).client = mockClient
 
-    await expect(client.listFiles()).resolves.toEqual([])
+    await expect(client.listFiles()).rejects.toThrow(/404|路径前缀/)
   })
 
-  it('creates path prefix directory before listing', async () => {
+  it('does not create directories while listing', async () => {
     mockClient.getDirectoryContents.mockResolvedValue([])
 
     const client = new IncrementalWebDavClient('https://dav.example.com', 'u', 'p', 'memories_sync')
@@ -83,11 +83,13 @@ describe('IncrementalWebDavClient.listFiles', () => {
 
     await client.listFiles()
 
-    expect(mockClient.createDirectory).toHaveBeenCalledWith('memories_sync')
+    expect(mockClient.createDirectory).not.toHaveBeenCalled()
   })
 
-  it('creates nested path prefix segments before listing', async () => {
+  it('creates nested path prefix segments on upload, not on list', async () => {
     mockClient.getDirectoryContents.mockResolvedValue([])
+    mockClient.putFileContents.mockResolvedValue(undefined)
+    mockClient.stat.mockResolvedValue({ size: 0 })
 
     const client = new IncrementalWebDavClient(
       'https://dav.example.com',
@@ -96,9 +98,14 @@ describe('IncrementalWebDavClient.listFiles', () => {
       'apps/baishou/sync'
     )
     ;(client as any).client = mockClient
+    client.setVaultPath('/vaults')
 
     await client.listFiles()
+    expect(mockClient.createDirectory).not.toHaveBeenCalled()
 
+    // uploadFile will ensureBasePath — use a tiny empty file via mocked fs would be heavy;
+    // call ensureBasePath indirectly by invoking private through upload after stubbing fs.
+    await (client as any).ensureBasePath()
     expect(mockClient.createDirectory).toHaveBeenCalledWith('apps')
     expect(mockClient.createDirectory).toHaveBeenCalledWith('apps/baishou')
     expect(mockClient.createDirectory).toHaveBeenCalledWith('apps/baishou/sync')

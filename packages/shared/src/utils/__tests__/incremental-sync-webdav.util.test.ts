@@ -16,7 +16,7 @@ describe('incremental-sync-webdav.util', () => {
   </d:response>
   <d:response>
     <d:href>/dav/memories_sync/Personal/Journals/a.md</d:href>
-    <d:propstat><d:prop><d:resourcetype/></d:prop></d:propstat>
+    <d:propstat><d:prop><d:resourcetype/><d:getlastmodified>Mon, 01 Jan 2026 00:00:00 GMT</d:getlastmodified><d:getcontentlength>42</d:getcontentlength></d:prop></d:propstat>
   </d:response>
 </d:multistatus>`
 
@@ -25,6 +25,8 @@ describe('incremental-sync-webdav.util', () => {
     expect(entries[0]?.isCollection).toBe(true)
     expect(entries[1]?.href).toContain('a.md')
     expect(entries[1]?.isCollection).toBe(false)
+    expect(entries[1]?.lastModified?.toISOString()).toBe('2026-01-01T00:00:00.000Z')
+    expect(entries[1]?.sizeInBytes).toBe(42)
   })
 
   it('maps href to relative path under base prefix', () => {

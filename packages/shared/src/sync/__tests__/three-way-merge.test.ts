@@ -278,7 +278,8 @@ describe('threeWayMerge', () => {
       [filePath]: {
         hash: 'old-remote',
         size: 1,
-        removedAt: 5000,
+        // 需明显晚于 local + 时钟偏差缓冲
+        removedAt: 1000 + 2 * 60 * 1000 + 1,
         deviceId: 'peer-device'
       }
     }
@@ -330,6 +331,30 @@ describe('threeWayMerge', () => {
     const decision = decisions.find((d) => d.filePath === filePath)
 
     expect(decision?.type).toBe('delete-remote')
+  })
+
+  it('should download without ancestor when remote file is clearly newer than removed tombstone', () => {
+    const filePath = 'Personal/Sessions/s1.json'
+    const remoteEntry = makeEntry({
+      hash: 'recreated',
+      lastModified: 5000 + 2 * 60 * 1000 + 1
+    })
+    const local = makeManifest({})
+    const remote = makeManifest({ [filePath]: remoteEntry })
+    remote.removed = {
+      [filePath]: {
+        hash: 'old',
+        size: 1,
+        removedAt: 5000,
+        deviceId: 'desktop'
+      }
+    }
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    const decision = decisions.find((d) => d.filePath === filePath)
+
+    expect(decision?.type).toBe('download')
   })
 
   it('should not iterate removed-only paths that are absent from local, remote, and ancestor', () => {

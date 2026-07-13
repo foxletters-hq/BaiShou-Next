@@ -3,7 +3,11 @@ import {
   isIncrementalSyncChatBackgroundPath,
   isSqliteRuntimeSyncPath
 } from '../utils/incremental-sync-scan.util'
-import { getSyncManifestRemovedEntry, isRemoteRemovalRecorded } from './sync-manifest-removed.util'
+import {
+  getSyncManifestRemovedEntry,
+  isRemoteRemovalRecorded,
+  SYNC_TOMBSTONE_CLOCK_SKEW_MS
+} from './sync-manifest-removed.util'
 
 /** 合并决策 */
 export interface MergeDecision {
@@ -124,8 +128,8 @@ function decide(
 
   if (!local && remote && !ancestor) {
     const removed = getSyncManifestRemovedEntry(remoteManifest, filePath)
-    // 陈旧复活：云端文件不新于 tombstone，继续删远端而非 download
-    if (removed && remote.lastModified <= removed.removedAt) {
+    // 陈旧复活：云端文件未明显新于 tombstone（含时钟偏差），继续删远端而非 download
+    if (removed && remote.lastModified <= removed.removedAt + SYNC_TOMBSTONE_CLOCK_SKEW_MS) {
       return mkDecision('delete-remote', filePath, remote, local, remote, ancestor)
     }
     return mkDecision('download', filePath, remote, local, remote, ancestor)

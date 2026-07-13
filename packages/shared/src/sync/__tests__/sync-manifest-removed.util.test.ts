@@ -114,10 +114,10 @@ describe('sync-manifest-removed.util', () => {
     expect(next.removed?.['s.json']).toBeDefined()
   })
 
-  it('reconcile clears tombstone when remote file is newer than removedAt', () => {
+  it('reconcile clears tombstone when remote file is newer than removedAt beyond clock skew', () => {
     const m: SyncManifest = {
       ...manifest({
-        's.json': { hash: 'new', size: 1, lastModified: 9000 }
+        's.json': { hash: 'new', size: 1, lastModified: 5000 + 2 * 60 * 1000 + 1 }
       }),
       removed: {
         's.json': { hash: 'old', size: 1, removedAt: 5000, deviceId: 'd' }

@@ -97,6 +97,7 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   }
 
   async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
+    await this.ensureBasePath()
     const relativePath = remoteRelPath?.replace(/\\/g, '/') ?? this.relativePath(localFilePath)
     const remotePath = this.remotePath(relativePath)
     const dir = path.dirname(remotePath).replace(/\\/g, '/')
@@ -218,12 +219,17 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   async listFiles(): Promise<SyncRecord[]> {
     const records: SyncRecord[] = []
 
-    await this.ensureBasePath()
-
+    // 列举只读：不在此处 createDirectory，避免测试连接对只读账号产生写副作用
     try {
-      await this.collectFilesShallow(this.basePath.replace(/\/$/, '') || '/', records)
+      await this.collectFilesShallow(this.basePath.replace(/\/$/, '') || '/', records, {
+        missingOk: false
+      })
     } catch (e: any) {
-      if (e.status === 404 || e.message?.includes('404')) return []
+      if (e.status === 404 || e.message?.includes('404')) {
+        throw new Error(
+          `WebDAV list failed: 路径前缀不存在（HTTP 404）。请确认 URL/目录配置后再同步。`
+        )
+      }
       throw new Error(`WebDAV list failed: ${e.message || e}`)
     }
 
@@ -233,12 +239,19 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   /**
    * 逐目录 Depth:1 PROPFIND，避免单次 deep PROPFIND 触发 fast-xml-parser 实体展开上限。
    */
-  private async collectFilesShallow(remoteDir: string, records: SyncRecord[]): Promise<void> {
+  private async collectFilesShallow(
+    remoteDir: string,
+    records: SyncRecord[],
+    options: { missingOk?: boolean } = { missingOk: true }
+  ): Promise<void> {
     let items: any[]
     try {
       items = (await this.client.getDirectoryContents(remoteDir, { deep: false })) as any[]
     } catch (e: any) {
-      if (e.status === 404 || e.message?.includes('404')) return
+      if (e.status === 404 || e.message?.includes('404')) {
+        if (options.missingOk !== false) return
+        throw e
+      }
       throw e
     }
 
@@ -258,14 +271,14 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
       const relativeName = this.toRelativeFilename(item)
       records.push({
         filename: relativeName,
-        lastModified: item.lastmod ? new Date(item.lastmod) : new Date(),
+        lastModified: item.lastmod ? new Date(item.lastmod) : new Date(0),
         sizeInBytes: item.size || 0,
         managed: /^BaiShou_.*\.zip$/i.test(relativeName)
       })
     }
 
     await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (dir) => {
-      await this.collectFilesShallow(dir, records)
+      await this.collectFilesShallow(dir, records, { missingOk: true })
     })
   }
 

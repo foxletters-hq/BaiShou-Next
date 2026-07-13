@@ -9,6 +9,9 @@ import type {
 } from '../types/version-control.types'
 import type { MergeDecision } from './three-way-merge'
 
+/** 跨设备时钟偏差容忍（毫秒）：仅当本地明显更旧时才采信远端删除 */
+export const SYNC_TOMBSTONE_CLOCK_SKEW_MS = 2 * 60 * 1000
+
 /** 空清单（含空的已移除记录表） */
 export function createEmptySyncManifest(deviceId: string = ''): SyncManifest {
   return {
@@ -51,8 +54,8 @@ export function isRemoteRemovalRecorded(
   if (!removed || !localEntry) return false
   // 同内容删除：hash 一致则直接采信
   if (localEntry.hash === removed.hash) return true
-  // 会话 JSON 等易变 hash：对端删除时间不早于本地修改时，仍视为显式删除（避免误 upload 复活）
-  return localEntry.lastModified <= removed.removedAt
+  // 会话 JSON 等易变 hash：对端删除时间明显晚于本地修改时，仍视为显式删除（含时钟偏差缓冲）
+  return localEntry.lastModified + SYNC_TOMBSTONE_CLOCK_SKEW_MS <= removed.removedAt
 }
 
 /**
@@ -73,7 +76,7 @@ export function reconcileSyncManifestRemovedWithRemoteFiles(
     if (!remoteEntry || !tombstone) {
       continue
     }
-    if (remoteEntry.lastModified <= tombstone.removedAt) {
+    if (remoteEntry.lastModified <= tombstone.removedAt + SYNC_TOMBSTONE_CLOCK_SKEW_MS) {
       continue
     }
     delete removed[filePath]

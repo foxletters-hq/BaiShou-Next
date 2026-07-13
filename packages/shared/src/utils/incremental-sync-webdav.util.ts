@@ -4,6 +4,8 @@ export const WEBDAV_SHALLOW_LIST_CONCURRENCY = 4
 export type WebDavListEntry = {
   href: string
   isCollection: boolean
+  lastModified?: Date
+  sizeInBytes?: number
 }
 
 /**
@@ -24,7 +26,17 @@ export function parseWebDavPropfindEntries(xml: string): WebDavListEntry[] {
       /<[^:]*:?collection\b/i.test(block) ||
       /<[^:]*:?resourcetype>\s*<[^:]*:?collection/i.test(block)
 
-    entries.push({ href, isCollection })
+    const lastModMatch = /<[^:]*:?getlastmodified>([^<]+)<\/[^:]*:?getlastmodified>/i.exec(block)
+    let lastModified: Date | undefined
+    if (lastModMatch?.[1]) {
+      const parsed = new Date(lastModMatch[1].trim())
+      if (!Number.isNaN(parsed.getTime())) lastModified = parsed
+    }
+
+    const sizeMatch = /<[^:]*:?getcontentlength>(\d+)<\/[^:]*:?getcontentlength>/i.exec(block)
+    const sizeInBytes = sizeMatch?.[1] ? parseInt(sizeMatch[1], 10) : undefined
+
+    entries.push({ href, isCollection, lastModified, sizeInBytes })
   }
 
   return entries
