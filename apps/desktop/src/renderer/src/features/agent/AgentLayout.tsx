@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AgentSidebar } from './components/AgentSidebar'
@@ -20,11 +20,15 @@ import {
   writeAgentNavigationSnapshot
 } from '../../lib/agent-navigation-persistence'
 import type { AgentOutletContext } from './agent-outlet-context'
+import { MainPageCacheActiveContext } from '../../layouts/main-page-cache.context'
+import { getDesktopVaultScopeKey } from '../../cache/desktop-vault-scope'
 
 export const AgentLayout: React.FC = () => {
   const navigate = useNavigate()
   const { sessionId } = useParams()
   const [searchParams] = useSearchParams()
+  /** /chat 保活在后台时也挂载；切 vault remount 后不可对全局路由做 restore */
+  const isAgentPageActive = useContext(MainPageCacheActiveContext)
 
   const { assistants, fetchAssistants, isLoading: isAssistantsLoading } = useAssistantStore()
   const { loadConfig } = useSettingsStore()
@@ -98,9 +102,7 @@ export const AgentLayout: React.FC = () => {
   }, [sessionId])
 
   useEffect(() => {
-    const vaultKey =
-      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
-      'default'
+    const vaultKey = getDesktopVaultScopeKey()
     const saved = readAgentNavigationSnapshot(vaultKey)
     if (!saved?.assistantId || resolvedAssistantIdRef.current) return
     if (sessionId && saved.sessionId === sessionId) {
@@ -112,6 +114,8 @@ export const AgentLayout: React.FC = () => {
 
   useEffect(() => {
     if (restoredNavigationRef.current) return
+    // 后台保活 remount（如切工作区）时禁止改写全局路由，否则会从日记/设置闪回伙伴页
+    if (!isAgentPageActive) return
 
     // 已通过 URL 进入具体会话或伙伴，无需再从快照恢复（否则点「新对话」后会误跳回旧会话）
     if (sessionId || urlAssistantId) {
@@ -119,9 +123,7 @@ export const AgentLayout: React.FC = () => {
       return
     }
 
-    const vaultKey =
-      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
-      'default'
+    const vaultKey = getDesktopVaultScopeKey()
     const saved = readAgentNavigationSnapshot(vaultKey)
     if (!saved?.sessionId && !saved?.assistantId) {
       restoredNavigationRef.current = true
@@ -160,14 +162,13 @@ export const AgentLayout: React.FC = () => {
       if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
       navigate(buildAgentChatNavigationPath(saved), { replace: true })
     })()
-  }, [sessionId, urlAssistantId, navigate])
+  }, [sessionId, urlAssistantId, navigate, isAgentPageActive])
 
   useEffect(() => {
+    if (!isAgentPageActive) return
     if (sessionId && !urlAssistantId && !sessionDocReady) return
 
-    const vaultKey =
-      (typeof window !== 'undefined' && window.localStorage.getItem('baishou_active_vault')) ||
-      'default'
+    const vaultKey = getDesktopVaultScopeKey()
 
     const assistantIdToPersist = resolvedAssistantId ?? null
     const snapshot = {
@@ -179,7 +180,7 @@ export const AgentLayout: React.FC = () => {
     if (assistantIdToPersist) {
       resolvedAssistantIdRef.current = assistantIdToPersist
     }
-  }, [sessionId, resolvedAssistantId, urlAssistantId, sessionDocReady])
+  }, [sessionId, resolvedAssistantId, urlAssistantId, sessionDocReady, isAgentPageActive])
 
   // 初始化：加载助手列表，由 bootstrap 确保 Latte 存在（勿依赖 session/assistant URL，否则进出设置会反复 refetch 闪烁）
   useEffect(() => {

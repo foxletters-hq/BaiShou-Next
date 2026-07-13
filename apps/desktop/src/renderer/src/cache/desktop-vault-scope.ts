@@ -40,11 +40,16 @@ export async function initDesktopVaultScope(): Promise<void> {
 }
 
 export function setDesktopVaultScopeKey(key: string): void {
-  if (scopeKey === key) {
+  const next = key.trim() || 'Personal'
+  // mutation 触发 remount 早于 switchActiveVault 的 persist；先写 localStorage 避免快照读到旧 vault
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(ACTIVE_VAULT_STORAGE_KEY, next)
+  }
+  if (scopeKey === next) {
     scopeReady = true
     return
   }
-  scopeKey = key
+  scopeKey = next
   scopeRevision += 1
   scopeReady = true
   notify()
@@ -52,7 +57,11 @@ export function setDesktopVaultScopeKey(key: string): void {
 
 /** 存储根目录变更后强制刷新 scope（vault 名称可能不变，但仍需失效页面缓存） */
 export async function refreshDesktopVaultScopeAfterStorageRootChange(): Promise<void> {
-  scopeKey = await resolveActiveVaultName()
+  const next = await resolveActiveVaultName()
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(ACTIVE_VAULT_STORAGE_KEY, next)
+  }
+  scopeKey = next
   scopeRevision += 1
   scopeReady = true
   notify()
