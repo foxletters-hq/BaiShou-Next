@@ -184,7 +184,7 @@ export {
   canExecuteIncrementalSyncPlan,
   resolvePlanConfirmEligibleAt
 } from './sync/sync-confirm-countdown.util'
-export { hasIncrementalSyncPlanMaterialChange } from './sync/incremental-sync-plan-compare.util'
+export { hasIncrementalSyncPlanMaterialChange, hasIncrementalSyncPlanReconfirmWorthyChange } from './sync/incremental-sync-plan-compare.util'
 export {
   INCREMENTAL_SYNC_PLAN_REUSE_TTL_MS,
   buildIncrementalSyncPlanReuseBaseline,
@@ -229,8 +229,17 @@ export {
   countUnverifiedAncestorEntries,
   reconcileAncestorWithRemoteTruth
 } from './sync/reconcile-ancestor-with-remote.util'
+export { upsertManifestPathEntries } from './sync/sync-manifest-path-entries.util'
+export {
+  INCREMENTAL_SYNC_CHECKPOINT_COMMIT_STEPS,
+  type IncrementalSyncCheckpointCommitStep
+} from './sync/incremental-sync-checkpoint-commit.util'
+export { classifyIncrementalSyncPaths } from './sync/incremental-sync-path-classify.util'
 export type { RemovedManifestEntry } from './types/version-control.types'
-export { sessionBelongsToActiveVault } from './utils/session-vault.util'
+export {
+  sessionBelongsToActiveVault,
+  resolveSessionFlushTargetVault
+} from './utils/session-vault.util'
 
 export * from './tts'
 export type { TtsSettings } from './types/settings.types'

@@ -139,6 +139,43 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false)).toBe(true)
   })
 
+  it('replan 后仅减少上传条目时不二次确认（本地 mtime 漂移常见）', () => {
+    const stale = preview({
+      changeCount: 5,
+      items: [
+        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal' },
+        { action: 'upload', filePath: 'b.md', vaultScope: 'Personal' },
+        { action: 'upload', filePath: 'c.md', vaultScope: 'Personal' },
+        { action: 'upload', filePath: 'd.md', vaultScope: 'Personal' },
+        { action: 'upload', filePath: 'e.md', vaultScope: 'Personal' }
+      ]
+    })
+    const fresh = preview({
+      changeCount: 4,
+      items: [
+        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal' },
+        { action: 'upload', filePath: 'b.md', vaultScope: 'Personal' },
+        { action: 'upload', filePath: 'c.md', vaultScope: 'Personal' },
+        { action: 'upload', filePath: 'd.md', vaultScope: 'Personal' }
+      ]
+    })
+    expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false)).toBe(false)
+  })
+
+  it('replan 后新增删除项时仍要二次确认', () => {
+    const stale = preview({
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+    })
+    const fresh = preview({
+      changeCount: 2,
+      items: [
+        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal' },
+        { action: 'delete-remote', filePath: 'gone.md', vaultScope: 'Personal' }
+      ]
+    })
+    expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false)).toBe(true)
+  })
+
   it('已确认高差异时忽略 requiresHighDivergenceConfirm 被清除', () => {
     const stale = preview({
       requiresHighDivergenceConfirm: true,

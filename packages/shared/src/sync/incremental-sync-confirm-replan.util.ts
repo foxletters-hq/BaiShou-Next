@@ -1,5 +1,5 @@
 import type { IncrementalSyncPlanPreview } from '../types/incremental-sync-plan.types'
-import { hasIncrementalSyncPlanMaterialChange } from './incremental-sync-plan-compare.util'
+import { hasIncrementalSyncPlanReconfirmWorthyChange } from './incremental-sync-plan-compare.util'
 import {
   evaluateIncrementalSyncPlanDrift,
   shouldReplanIncrementalSyncOnConfirm,
@@ -76,7 +76,7 @@ export function shouldRequireIncrementalSyncReconfirmAfterReplan(
 ): boolean {
   if (!needsReplan) return false
   if (deletePropagationChoiceProvided) return false
-  return hasIncrementalSyncPlanMaterialChange(stalePreview, freshPreview, {
+  return hasIncrementalSyncPlanReconfirmWorthyChange(stalePreview, freshPreview, {
     ignoreHighDivergenceCleared: highDivergenceConfirmed
   })
 }
