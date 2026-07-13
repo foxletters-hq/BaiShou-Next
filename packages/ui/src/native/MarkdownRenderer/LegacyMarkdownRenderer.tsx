@@ -19,8 +19,8 @@ function buildMarkdownStyles(
   const bodyFontSize = isAncillary ? 14 : 15
   const bodyLineHeight = isAncillary ? 20 : 24
   const bodyColor = isAncillary ? colors.textSecondary : colors.textPrimary
-  const paragraphMargin = isAncillary ? 4 : isChat ? 6 : 8
-  const listMargin = isChat ? 6 : 8
+  const paragraphMargin = isAncillary ? 4 : isChat ? 0 : 8
+  const listMargin = isChat ? 4 : 8
   const headingScale = isChat ? 0.85 : 1
 
   return StyleSheet.create({
@@ -240,8 +240,32 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           }
         : {}
 
-    if (!resolveImageUri && !loadImageUri && !onImagePress) {
-      return Object.keys(previewTextRules).length > 0 ? previewTextRules : undefined
+    if (
+      !resolveImageUri &&
+      !loadImageUri &&
+      !onImagePress &&
+      Object.keys(previewTextRules).length === 0
+    ) {
+      // 仍覆盖默认 FitImage，避免 React 对 `{...{ key }}` 展开告警
+      return {
+        image: (
+          node: { key: string; attributes: { src?: string; alt?: string } },
+          _children: unknown,
+          _parent: unknown,
+          _styles: { image?: object }
+        ) => {
+          const rawSrc = parseImageSrcWithoutWidth(node.attributes.src ?? '')
+          return (
+            <NativeMarkdownImage
+              key={node.key}
+              rawSrc={rawSrc}
+              alt={node.attributes.alt}
+              imageStyle={[_styles.image, legacyStyles.image, legacyStyles.imageBlock]}
+              syncUri={rawSrc}
+            />
+          )
+        }
+      }
     }
     return {
       ...previewTextRules,
@@ -252,7 +276,7 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         _styles: { image?: object }
       ) => {
         const rawSrc = parseImageSrcWithoutWidth(node.attributes.src ?? '')
-        const syncUri = resolveImageUri?.(rawSrc) ?? null
+        const syncUri = resolveImageUri?.(rawSrc) ?? rawSrc
         const imageStyle = [_styles.image, legacyStyles.image, legacyStyles.imageBlock]
 
         return (

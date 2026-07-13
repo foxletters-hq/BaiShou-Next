@@ -153,7 +153,9 @@ export const StreamingBubble = React.memo(function StreamingBubble({
                 <View
                   style={
                     chatNeedsRichMarkdown(cleanText)
-                      ? chatBubbleStyles.markdownSlot
+                      ? isTextStreaming
+                        ? chatBubbleStyles.markdownSlotStreaming
+                        : chatBubbleStyles.markdownSlot
                       : chatBubbleStyles.plainTextSlot
                   }
                 >

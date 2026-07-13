@@ -358,7 +358,8 @@ export function useAgentStreamingPresentation(deps: {
     const showEmptyState = !isStreaming && !isStreamBridgeActive && messages.length === 0
 
     if (showEmptyState && listViewportHeight > 0) {
-      return [styles.listContent, styles.listContentEmpty, { minHeight: listViewportHeight }]
+      // 空状态不再用 flex 撑满视口，避免输入栏升降时「开始和伙伴对话」跟着上下跑
+      return styles.listContent
     }
     if (contentAnchorMinHeight != null) {
       return [styles.listContent, { minHeight: contentAnchorMinHeight }]
@@ -381,8 +382,14 @@ export function useAgentStreamingPresentation(deps: {
     [listSpacerAnimatedStyle]
   )
 
+  const emptyOffsetTop = useMemo(() => {
+    if (listViewportHeight <= 0) return 96
+    // 相对可视区域大致居中，并预留默认输入栏；高度固定后不随展开变化
+    return Math.max(48, Math.round((listViewportHeight - 280) / 2) - 56)
+  }, [listViewportHeight])
+
   const renderEmptyState = () => (
-    <View style={styles.empty}>
+    <View style={[styles.empty, { marginTop: emptyOffsetTop }]}>
       <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
         <Sparkles size={38} color={colors.primary} strokeWidth={2} style={{ opacity: 0.7 }} />
       </View>

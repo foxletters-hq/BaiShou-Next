@@ -93,10 +93,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    alignSelf: 'flex-start',
-    maxWidth: '100%'
+    alignSelf: 'stretch',
+    width: '100%'
   },
   statusText: {
+    flex: 1,
     flexShrink: 1,
     fontSize: 14,
     lineHeight: 22,

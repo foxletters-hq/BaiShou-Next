@@ -380,33 +380,37 @@ export function useAgentStreamChat({
         setStreamError(errorMsg)
       }
 
-      try {
-        await invokeAgentStreamChat(
-          sessionId,
-          text,
-          {
-            providerId: currentProviderId || undefined,
-            modelId: currentModelId || undefined,
-            searchMode: effectiveSearchMode,
-            abortSignal: claim.signal,
-            userMessageId: saveResult.userMessageId,
-            skipUserMessageRecording: true,
-            streamClaimGeneration: claim.generation,
-            attachments: saveResult.attachments
-          },
-          failStream
-        )
-        await finishStream(sessionId!, { waitForLatestUsage: true })
-      } catch (e: unknown) {
-        if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
-          userStoppedStreamRef.current = false
-          setStreamError(null)
-        } else {
-          const msg = e instanceof Error ? e.message : String(e)
-          failStream(msg)
+      // 对齐桌面：流式 fire-and-forget，避免 InputBar isSending 绑住整段生成导致发送键无法变色
+      const streamSessionId = sessionId!
+      void (async () => {
+        try {
+          await invokeAgentStreamChat(
+            streamSessionId,
+            text,
+            {
+              providerId: currentProviderId || undefined,
+              modelId: currentModelId || undefined,
+              searchMode: effectiveSearchMode,
+              abortSignal: claim.signal,
+              userMessageId: saveResult.userMessageId,
+              skipUserMessageRecording: true,
+              streamClaimGeneration: claim.generation,
+              attachments: saveResult.attachments
+            },
+            failStream
+          )
+          await finishStream(streamSessionId, { waitForLatestUsage: true })
+        } catch (e: unknown) {
+          if (userStoppedStreamRef.current || isAgentStreamAbortError(e)) {
+            userStoppedStreamRef.current = false
+            setStreamError(null)
+          } else {
+            const msg = e instanceof Error ? e.message : String(e)
+            failStream(msg)
+          }
+          await finishStream(streamSessionId, { waitForLatestUsage: true })
         }
-        await finishStream(sessionId!, { waitForLatestUsage: true })
-      }
+      })()
 
       return true
     },

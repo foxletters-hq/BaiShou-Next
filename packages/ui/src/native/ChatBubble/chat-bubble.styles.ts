@@ -1,13 +1,13 @@
 import { StyleSheet, type DimensionValue } from 'react-native'
 
 /**
- * EnrichedMarkdownText 末行常少报高度；Legacy 渲染器走 RN Text 布局无此问题。
- * 流式 EnrichedMarkdown 仍保留一行缓冲。
+ * EnrichedMarkdownText 流式末行常少报高度；完成态 Legacy / 纯文本走 RN Text，不需要槽位垫高。
+ * 仅流式 markdownSlotStreaming 使用。
  */
-export const CHAT_MARKDOWN_BOTTOM_GUARD = 24
+export const CHAT_MARKDOWN_BOTTOM_GUARD = 12
 
-/** 同行头像列（32 头像 + 8 间距）及对侧留白，避免长气泡顶到对方头像 */
-const CHAT_BUBBLE_MAX_WIDTH = 'calc(100% - 60px)' as DimensionValue
+/** 同行头像列（32 头像 + 8 间距）及对侧留白；RN StyleSheet 不支持 calc() */
+const CHAT_BUBBLE_MAX_WIDTH = '88%' as DimensionValue
 const CHAT_BUBBLE_OPPOSITE_GAP = 36
 
 const chatBubbleLayoutStyles = StyleSheet.create({
@@ -86,6 +86,11 @@ const chatBubbleLayoutStyles = StyleSheet.create({
     width: '100%'
   },
   markdownSlot: {
+    alignSelf: 'stretch',
+    width: '100%'
+  },
+  /** 流式 EnrichedMarkdown 少报高度时的底部缓冲（完成态勿用） */
+  markdownSlotStreaming: {
     alignSelf: 'stretch',
     width: '100%',
     paddingBottom: CHAT_MARKDOWN_BOTTOM_GUARD

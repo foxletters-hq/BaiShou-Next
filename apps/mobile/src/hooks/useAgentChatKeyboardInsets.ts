@@ -135,12 +135,18 @@ export function useAgentChatKeyboardInsets({
     resetListSpacerForComposer
   ])
 
+  // 输入栏高度变化（展开/工具栏开合/多行增高）时，列表底部留白同步跟高；
+  // 键盘弹起时也要计入 inset，否则增高的 dock 会盖住消息。
   useEffect(() => {
     inputDockHeightSv.value = inputDockHeight
-    if (keyboardVisibleSv.value === 0 && isBubbleEditingSv.value === 0) {
-      listSpacerHeight.value = inputDockHeight + COMPOSER_LIST_GAP
-    }
-  }, [inputDockHeight, inputDockHeightSv, keyboardVisibleSv, isBubbleEditingSv, listSpacerHeight])
+    if (isBubbleEditing) return
+
+    cancelAnimation(listSpacerHeight)
+    listSpacerHeight.value = withTiming(inputDockHeight + keyboardInset + COMPOSER_LIST_GAP, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic)
+    })
+  }, [inputDockHeight, keyboardInset, isBubbleEditing, inputDockHeightSv, listSpacerHeight])
 
   useEffect(() => {
     const liftOn = enableComposerKeyboardLift && !isBubbleEditing
@@ -194,16 +200,13 @@ export function useAgentChatKeyboardInsets({
   )
 
   useEffect(() => {
-    if (isBubbleEditing) {
-      listSpacerHeight.value = inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP
-      return
-    }
-    const keyboardVisible = Keyboard.isVisible?.() === true
-    if (keyboardVisible) {
-      return
-    }
-    resetListSpacerForComposer(250)
-  }, [isBubbleEditing, inputDockHeight, listSpacerHeight, resetListSpacerForComposer])
+    if (!isBubbleEditing) return
+    cancelAnimation(listSpacerHeight)
+    listSpacerHeight.value = withTiming(
+      inputDockHeight + BUBBLE_EDIT_KEYBOARD_BUFFER + BUBBLE_EDIT_DOCK_GAP,
+      { duration: 200, easing: Easing.out(Easing.cubic) }
+    )
+  }, [isBubbleEditing, inputDockHeight, listSpacerHeight])
 
   // 键盘显隐时同步编辑态 inset（非逐帧），供气泡编辑滚动使用
   useEffect(() => {

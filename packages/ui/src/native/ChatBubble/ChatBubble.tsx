@@ -107,7 +107,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const showPersistedTools = isAssistant && !showStreamingTools && toolInvocations.length > 0
   const useFullWidthAssistantBubble =
     isAssistant &&
-    (edit.isEditing || showStreamingTools || Boolean(deferAssistantChrome && liveStream))
+    (edit.isEditing ||
+      showStreamingTools ||
+      showPersistedTools ||
+      showThinkSection ||
+      Boolean(deferAssistantChrome && liveStream))
 
   const nameLabelStyle = [
     styles.nameLabel,

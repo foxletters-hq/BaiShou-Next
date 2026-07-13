@@ -21,6 +21,9 @@ function isNearBottom(nativeEvent: NativeScrollEvent, threshold = BOTTOM_THRESHO
 
 /**
  * 聊天列表滚动跟随（对齐 desktop useChatScroll 状态机）
+ *
+ * 用户一旦上滑离开底部（userLockedAway），在点击「回到底部」/发送贴底/切会话前
+ * 绝不自动贴底，避免输出结束 minHeight 回落或 suppressInterrupt 把人拽回去。
  */
 export function useAgentChatScroll({
   sessionId,
@@ -29,7 +32,6 @@ export function useAgentChatScroll({
   isStreamBridgeActive,
   activeTool
 }: UseAgentChatScrollParams) {
-  const streamingActive = isStreaming || isStreamBridgeActive
   const followModeRef = useRef<ScrollFollowMode>('following')
   const [followMode, setFollowMode] = useState<ScrollFollowMode>('following')
   const [showScrollButton, setShowScrollButton] = useState(false)
@@ -43,6 +45,8 @@ export function useAgentChatScroll({
   const isSmoothScrollingRef = useRef(false)
   const isUserDraggingRef = useRef(false)
   const isMomentumScrollingRef = useRef(false)
+  /** 用户主动离开底部后的硬锁，仅显式贴底操作可解除 */
+  const userLockedAwayRef = useRef(false)
   const lastScrollOffsetRef = useRef(0)
   const lastScrollMetricsRef = useRef<NativeScrollEvent | null>(null)
   const contentFollowRafRef = useRef<number | null>(null)
@@ -63,12 +67,8 @@ export function useAgentChatScroll({
   }, [])
 
   const enterFollowing = useCallback(() => {
+    userLockedAwayRef.current = false
     setFollowModeState('following')
-  }, [setFollowModeState])
-
-  const exitFollowing = useCallback(() => {
-    if (followModeRef.current === 'idle') return
-    setFollowModeState('idle')
   }, [setFollowModeState])
 
   const cancelPendingProgrammaticScroll = useCallback(() => {
@@ -83,10 +83,37 @@ export function useAgentChatScroll({
       cancelAnimationFrame(contentFollowRafRef.current)
       contentFollowRafRef.current = null
     }
+    if (streamingFollowRafRef.current != null) {
+      cancelAnimationFrame(streamingFollowRafRef.current)
+      streamingFollowRafRef.current = null
+    }
   }, [])
+
+  const clearContentAnchor = useCallback((reason: string) => {
+    setContentAnchorMinHeight((prev) => {
+      if (prev == null) return prev
+      logAgentScrollEvent(reason, {
+        prevAnchor: Math.round(prev),
+        savedOffset: Math.round(lastScrollOffsetRef.current)
+      })
+      return undefined
+    })
+  }, [])
+
+  const exitFollowing = useCallback(() => {
+    userLockedAwayRef.current = true
+    cancelPendingProgrammaticScroll()
+    if (followModeRef.current !== 'idle') {
+      setFollowModeState('idle')
+    }
+    // 立刻丢掉交接托底，避免结束后内容变矮把 offset 钳回底部
+    clearContentAnchor('content_handoff_abort_on_idle')
+  }, [setFollowModeState, cancelPendingProgrammaticScroll, clearContentAnchor])
 
   const jumpToBottomInstant = useCallback((scrollViewRef: RefObject<ScrollView | null>) => {
     if (!scrollViewRef.current) return
+    if (userLockedAwayRef.current) return
+    if (followModeRef.current !== 'following') return
     suppressInterruptRef.current += 1
     scrollViewRef.current.scrollToEnd({ animated: false })
   }, [])
@@ -101,8 +128,9 @@ export function useAgentChatScroll({
     peakContentHeightRef.current = 0
   }, [])
 
-  /** 布局交接期用 minHeight 托住列表，避免内容变矮时 offset 被钳到顶部；仅由 releaseContentHandoff 显式释放 */
+  /** 布局交接期用 minHeight 托住列表；用户已离开底部时绝不托底 */
   const beginContentHandoff = useCallback(() => {
+    if (userLockedAwayRef.current) return
     if (followModeRef.current !== 'following') return
 
     const anchor = Math.max(peakContentHeightRef.current, lastContentHeightRef.current)
@@ -117,25 +145,21 @@ export function useAgentChatScroll({
     })
   }, [])
 
-  /** 在释放 minHeight 前先校正滚动位置，避免 offset 超出新内容高度被钳到顶部 */
+  /** 只释放托底，不做任何 scroll —— 输出结束绝不能拽人 */
   const finalizeContentHandoff = useCallback(() => {
     releaseContentHandoff()
-    requestAnimationFrame(() => {
-      const ref = scrollViewRefHolder.current
-      if (ref?.current && followModeRef.current === 'following') {
-        ref.current.scrollToEnd({ animated: false })
-      }
-    })
   }, [releaseContentHandoff])
 
   const scheduleFollowBottom = useCallback(
     (scrollViewRef: RefObject<ScrollView | null>) => {
+      if (userLockedAwayRef.current) return
       if (followModeRef.current !== 'following') return
       if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
       if (contentFollowRafRef.current != null) return
 
       contentFollowRafRef.current = requestAnimationFrame(() => {
         contentFollowRafRef.current = null
+        if (userLockedAwayRef.current) return
         if (isUserDraggingRef.current || isMomentumScrollingRef.current) return
         jumpToBottomInstant(scrollViewRef)
       })
@@ -145,6 +169,7 @@ export function useAgentChatScroll({
 
   const followScrollToBottom = useCallback(
     (scrollViewRef: RefObject<ScrollView | null>) => {
+      if (userLockedAwayRef.current) return
       if (followModeRef.current !== 'following') return
       scheduleFollowBottom(scrollViewRef)
     },
@@ -215,27 +240,33 @@ export function useAgentChatScroll({
         })
       }
 
-      if (isSmoothScrollingRef.current) return
-
-      if (isUserDraggingRef.current || isMomentumScrollingRef.current) {
-        if (!isNearBottom(nativeEvent)) {
-          exitFollowing()
+      // 上滑优先退出跟随，不被 programmatic suppress 吞掉
+      if (deltaY < -2 || (isUserDraggingRef.current && !isNearBottom(nativeEvent))) {
+        if (suppressInterruptRef.current > 0) {
+          suppressInterruptRef.current = 0
         }
+        exitFollowing()
         return
       }
+
+      if (isSmoothScrollingRef.current) return
 
       if (suppressInterruptRef.current > 0) {
         suppressInterruptRef.current -= 1
         return
       }
 
-      if (deltaY < -2) {
-        exitFollowing()
-      } else if (deltaY > 2 && isNearBottom(nativeEvent)) {
-        enterFollowing()
-      } else if (!isNearBottom(nativeEvent)) {
-        exitFollowing()
+      // 回到底部附近：解除离开锁并隐藏按钮
+      if (isNearBottom(nativeEvent)) {
+        if (userLockedAwayRef.current || followModeRef.current === 'idle') {
+          enterFollowing()
+        }
+        return
       }
+
+      if (userLockedAwayRef.current) return
+
+      exitFollowing()
     },
     [enterFollowing, exitFollowing]
   )
@@ -246,6 +277,7 @@ export function useAgentChatScroll({
       pendingInstantBottomRef.current = true
       prevNewestIdRef.current = null
       lastScrollOffsetRef.current = 0
+      userLockedAwayRef.current = false
       releaseContentHandoff()
       enterFollowing()
       logAgentScrollEvent('session_change', { sessionId })
@@ -262,7 +294,8 @@ export function useAgentChatScroll({
     const reloadedFromEmpty =
       prevMessagesLengthRef.current === 0 &&
       messages.length > 0 &&
-      followModeRef.current === 'following'
+      followModeRef.current === 'following' &&
+      !userLockedAwayRef.current
 
     if (ref && (pendingInstantBottomRef.current || reloadedFromEmpty)) {
       logAgentScrollEvent('pending_instant_bottom', {
@@ -298,6 +331,10 @@ export function useAgentChatScroll({
 
   useEffect(() => {
     if (pendingInstantBottomRef.current) return
+    if (userLockedAwayRef.current) {
+      prevNewestIdRef.current = newestMessageId
+      return
+    }
 
     const isNewMessageAdded = newestMessageId && newestMessageId !== prevNewestIdRef.current
     const isNewUserMessage = isNewMessageAdded && newestMessageRole === 'user'
@@ -322,7 +359,8 @@ export function useAgentChatScroll({
           offsetY: Math.round(lastScrollOffsetRef.current),
           maxOffset: Math.round(maxOffset),
           streaming: isStreaming || isStreamBridgeActive,
-          anchorMinH: contentAnchorMinHeight ?? 0
+          anchorMinH: contentAnchorMinHeight ?? 0,
+          lockedAway: userLockedAwayRef.current
         })
       }
 
@@ -333,6 +371,7 @@ export function useAgentChatScroll({
           peakContentHeightRef.current = Math.max(peakContentHeightRef.current, contentHeight)
         }
 
+        if (userLockedAwayRef.current) return
         if (!isStreaming && !isStreamBridgeActive) return
         if (followModeRef.current !== 'following') return
         if (!scrollViewRef.current) return
@@ -341,6 +380,7 @@ export function useAgentChatScroll({
 
         streamingFollowRafRef.current = requestAnimationFrame(() => {
           streamingFollowRafRef.current = null
+          if (userLockedAwayRef.current) return
           if (followModeRef.current !== 'following') return
           jumpToBottomInstant(scrollViewRef)
         })
@@ -355,11 +395,21 @@ export function useAgentChatScroll({
     const nowStreaming = isStreaming || isStreamBridgeActive
 
     if (wasStreaming && !nowStreaming) {
+      cancelPendingProgrammaticScroll()
       logAgentScrollEvent('stream_end', {
         shouldFollow: followModeRef.current === 'following',
+        lockedAway: userLockedAwayRef.current,
         savedOffset: Math.round(lastScrollOffsetRef.current),
         peakContentH: Math.round(peakContentHeightRef.current)
       })
+      // 输出结束：只要用户曾离开底部，或当前不在底部，就锁定离开并丢掉托底
+      const metrics = lastScrollMetricsRef.current
+      const away = userLockedAwayRef.current || !metrics || !isNearBottom(metrics)
+      if (away) {
+        userLockedAwayRef.current = true
+        setFollowModeState('idle')
+        clearContentAnchor('content_handoff_abort_on_stream_end')
+      }
     } else if (!wasStreaming && nowStreaming) {
       releaseContentHandoff()
       lastContentHeightRef.current = 0
@@ -367,6 +417,7 @@ export function useAgentChatScroll({
     }
 
     streamingActiveRef.current = nowStreaming
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keep deps size stable for Fast Refresh
   }, [isStreaming, isStreamBridgeActive, releaseContentHandoff])
 
   useEffect(() => {
@@ -389,7 +440,6 @@ export function useAgentChatScroll({
 
   const handleScrollBeginDrag = useCallback(() => {
     isUserDraggingRef.current = true
-    if (isSmoothScrollingRef.current) return
     cancelPendingProgrammaticScroll()
     exitFollowing()
   }, [cancelPendingProgrammaticScroll, exitFollowing])
@@ -401,31 +451,23 @@ export function useAgentChatScroll({
       isUserDraggingRef.current = false
 
       if (isSmoothScrollingRef.current) return
-
-      if (streamingActive) {
-        if (isNearBottom(event.nativeEvent)) {
-          enterFollowing()
-        } else {
-          exitFollowing()
-        }
-        return
-      }
-
-      if (isMomentumScrollingRef.current) return
+      // 已滑回底部：解除离开锁并隐藏回到底部按钮
       if (isNearBottom(event.nativeEvent)) {
         enterFollowing()
-      } else {
-        exitFollowing()
+        return
       }
+      exitFollowing()
     },
-    [enterFollowing, exitFollowing, streamingActive]
+    [enterFollowing, exitFollowing]
   )
 
   const handleMomentumScrollBegin = useCallback(() => {
     isMomentumScrollingRef.current = true
-    if (isSmoothScrollingRef.current) return
     cancelPendingProgrammaticScroll()
-    exitFollowing()
+    const metrics = lastScrollMetricsRef.current
+    if (metrics && !isNearBottom(metrics)) {
+      exitFollowing()
+    }
   }, [cancelPendingProgrammaticScroll, exitFollowing])
 
   const handleMomentumScrollEnd = useCallback(
@@ -435,23 +477,13 @@ export function useAgentChatScroll({
       isMomentumScrollingRef.current = false
 
       if (isSmoothScrollingRef.current) return
-
-      if (streamingActive) {
-        if (isNearBottom(event.nativeEvent)) {
-          enterFollowing()
-        } else {
-          exitFollowing()
-        }
-        return
-      }
-
       if (isNearBottom(event.nativeEvent)) {
         enterFollowing()
-      } else {
-        exitFollowing()
+        return
       }
+      exitFollowing()
     },
-    [enterFollowing, exitFollowing, streamingActive]
+    [enterFollowing, exitFollowing]
   )
 
   return {

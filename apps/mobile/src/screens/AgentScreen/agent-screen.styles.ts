@@ -26,7 +26,6 @@ export const agentScreenStyles = StyleSheet.create({
   list: { flex: 1 },
   /** 有消息时不用 flexGrow，避免流式 Footer 移除后 offset 被钳到 0 */
   listContent: { paddingTop: 24, paddingBottom: 0, paddingHorizontal: 0 },
-  listContentEmpty: { flexGrow: 1 },
   bubble: { marginBottom: 6 },
   toolStatusContainer: {
     paddingHorizontal: 16,
@@ -57,7 +56,8 @@ export const agentScreenStyles = StyleSheet.create({
     fontWeight: '600'
   },
   empty: {
-    flex: 1,
+    height: 280,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24
