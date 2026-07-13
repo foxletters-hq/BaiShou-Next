@@ -1424,6 +1424,7 @@
     "no_missing": "No missing summaries",
     "not_found": "Summary not found",
     "generated_at": "Generated at",
+    "saved_at": "Saved at",
     "open_not_implemented": "Detail page under construction (ID: $id)",
     "stats_week": "Weekly",
     "stats_month": "Monthly",

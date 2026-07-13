@@ -305,7 +305,7 @@ export function registerSummaryIPC() {
         })
       } catch (e) {
         logger.error('[SummaryIPC] buildSharedContext error:', e as Error)
-        return ''
+        throw e
       }
     }
   )

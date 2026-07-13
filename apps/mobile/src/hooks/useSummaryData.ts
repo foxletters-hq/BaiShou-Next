@@ -34,6 +34,7 @@ interface Summary {
   endDate: string
   content: string
   generatedAt?: string
+  updatedAt?: string
 }
 
 interface Stats {
@@ -257,6 +258,12 @@ export function useSummaryData(selectedYear: number) {
             ? s.generatedAt.toISOString()
             : s.generatedAt != null
               ? String(s.generatedAt)
+              : undefined,
+        updatedAt:
+          s.updatedAt instanceof Date
+            ? s.updatedAt.toISOString()
+            : s.updatedAt != null
+              ? String(s.updatedAt)
               : undefined
       }))
       // DB 仍空时保留本地已保存正文，避免刚编辑的预览被清空

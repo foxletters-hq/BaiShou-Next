@@ -222,7 +222,8 @@ export {
   normalizeSyncManifest,
   pruneSyncManifestRemoved,
   reconcileSyncManifestRemovedWithRemoteFiles,
-  recordSyncManifestRemoved
+  recordSyncManifestRemoved,
+  SYNC_TOMBSTONE_CLOCK_SKEW_MS
 } from './sync/sync-manifest-removed.util'
 export type { RemovedManifestEntry } from './types/version-control.types'
 export { sessionBelongsToActiveVault } from './utils/session-vault.util'
@@ -242,6 +243,7 @@ export * from './utils/diary-template.util'
 export * from './utils/diary-edit-policy.util'
 export * from './types/summary-prompt.types'
 export * from './utils/summary-template.util'
+export * from './utils/summary-timestamp.util'
 export * from './constants/weather.constants'
 export * from './constants/mood.constants'
 export * from './constants/github.constants'

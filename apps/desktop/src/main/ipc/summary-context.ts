@@ -212,6 +212,6 @@ export async function handleBuildSharedContext(
     return await buildSharedContextText(summaries, lookbackMonths, locale)
   } catch (e) {
     logger.error('[SummaryIPC] buildSharedContext error:', e as any)
-    return ''
+    throw e
   }
 }

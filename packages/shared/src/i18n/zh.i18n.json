@@ -1468,6 +1468,7 @@
     "no_missing": "暂无待合并生成",
     "not_found": "总结未找到",
     "generated_at": "生成于",
+    "saved_at": "保存于",
     "open_not_implemented": "详情页正在建设中 (ID: $id)",
     "stats_week": "周报",
     "stats_month": "月报",

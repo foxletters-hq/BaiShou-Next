@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   ScrollView
 } from 'react-native'
-import { useFocusEffect } from '@react-navigation/native'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import {
   useNativeTheme,
@@ -18,7 +18,7 @@ import {
   scrollIndicatorStyle,
   MarkdownRenderer
 } from '@baishou/ui/native'
-import { SummaryType } from '@baishou/shared'
+import { SummaryType, resolveSummaryTimeDisplay } from '@baishou/shared'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { useTranslation } from 'react-i18next'
 import * as Clipboard from 'expo-clipboard'
@@ -54,6 +54,7 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
   const { colors, isDark } = useNativeTheme()
   const toast = useNativeToast()
   const dialog = useDialog()
+  const navigation = useNavigation()
   const { services, dbReady } = useBaishou()
   const cachedSummaryRef = useRef(consumePendingSummaryDetail(summaryId))
   const [summary, setSummary] = useState<CachedSummaryDetail | null>(cachedSummaryRef.current)
@@ -61,10 +62,33 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const editBaselineRef = useRef('')
+  const isEditingRef = useRef(false)
+  const isDirtyRef = useRef(false)
 
   const dismissEditorKeyboard = useCallback(() => {
     Keyboard.dismiss()
   }, [])
+
+  const isDirty = isEditing && editContent !== editBaselineRef.current
+  isEditingRef.current = isEditing
+  isDirtyRef.current = isDirty
+
+  const confirmDiscardUnsaved = useCallback(async () => {
+    return dialog.confirm(t('diary.exit_confirmation_hint'), {
+      confirmText: t('diary.exit_without_saving_confirm'),
+      destructive: true
+    })
+  }, [dialog, t])
+
+  const discardAndExitEdit = useCallback(() => {
+    setIsEditing(false)
+    setEditContent('')
+    editBaselineRef.current = ''
+    isDirtyRef.current = false
+    isEditingRef.current = false
+    dismissEditorKeyboard()
+  }, [dismissEditorKeyboard])
 
   useFocusEffect(
     useCallback(() => {
@@ -73,6 +97,27 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
       }
     }, [dismissEditorKeyboard])
   )
+
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', (e) => {
+      dismissEditorKeyboard()
+      if (!isEditingRef.current || !isDirtyRef.current) return
+
+      e.preventDefault()
+      void (async () => {
+        const confirmed = await confirmDiscardUnsaved()
+        if (!confirmed) return
+        isDirtyRef.current = false
+        isEditingRef.current = false
+        setIsEditing(false)
+        setEditContent('')
+        editBaselineRef.current = ''
+        dismissEditorKeyboard()
+        onBack()
+      })()
+    })
+    return unsub
+  }, [navigation, confirmDiscardUnsaved, dismissEditorKeyboard, onBack])
 
   useEffect(() => {
     let cancelled = false
@@ -136,14 +181,17 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
 
   const handleEdit = () => {
     if (!summary) return
+    editBaselineRef.current = summary.content
     setEditContent(summary.content)
     setIsEditing(true)
   }
 
-  const handleCancelEdit = () => {
-    setIsEditing(false)
-    setEditContent('')
-    dismissEditorKeyboard()
+  const handleCancelEdit = async () => {
+    if (isDirty) {
+      const confirmed = await confirmDiscardUnsaved()
+      if (!confirmed) return
+    }
+    discardAndExitEdit()
   }
 
   const handleSave = async (nextContent?: string) => {
@@ -175,8 +223,18 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
             content: contentToSave,
             id: updated?.id ?? summary.id
           }
-      setSummary(nextSummary)
-      patchSummaryDetailCache(nextSummary)
+      const toIso = (value: Date | string | null | undefined) =>
+        value instanceof Date ? value.toISOString() : value != null ? String(value) : undefined
+      const summaryWithTimes: CachedSummaryDetail = {
+        ...nextSummary,
+        generatedAt: toIso(updated?.generatedAt) ?? nextSummary.generatedAt ?? summary.generatedAt,
+        updatedAt: toIso(updated?.updatedAt) ?? new Date().toISOString()
+      }
+      setSummary(summaryWithTimes)
+      patchSummaryDetailCache(summaryWithTimes)
+      isDirtyRef.current = false
+      isEditingRef.current = false
+      editBaselineRef.current = ''
       setIsEditing(false)
       setEditContent('')
       toast.showSuccess(t('common.save_success'))
@@ -236,6 +294,13 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
     }
   }
 
+  const summaryTimeDisplay = summary
+    ? resolveSummaryTimeDisplay({
+        generatedAt: summary.generatedAt,
+        updatedAt: summary.updatedAt
+      })
+    : null
+
   const showBlockingLoad = loading && !summary
 
   if (isEditing && summary) {
@@ -248,7 +313,9 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
         onSave={(content) => {
           void handleSave(content)
         }}
-        onCancel={handleCancelEdit}
+        onCancel={() => {
+          void handleCancelEdit()
+        }}
       />
     )
   }
@@ -337,10 +404,10 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
               </Text>
             </View>
 
-            {summary.generatedAt ? (
+            {summaryTimeDisplay ? (
               <View style={styles.dateContainerLast}>
                 <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  {t('summary.generated_at')} {formatGeneratedAt(summary.generatedAt)}
+                  {t(summaryTimeDisplay.labelKey)} {formatGeneratedAt(summaryTimeDisplay.at)}
                 </Text>
               </View>
             ) : (

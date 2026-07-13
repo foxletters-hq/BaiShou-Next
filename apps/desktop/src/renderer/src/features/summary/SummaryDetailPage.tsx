@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { resolveSummaryTimeDisplay } from '@baishou/shared'
 import { MarkdownRenderer, useToast } from '@baishou/ui'
 import { ArrowLeft, Calendar, Tag, Trash2, Copy, Clock, Edit3, Save, X } from 'lucide-react'
 import './SummaryDetailPage.css'
@@ -13,6 +14,7 @@ interface SummaryDetail {
   content: string
   sourceIds?: string | null
   generatedAt?: string
+  updatedAt?: string
 }
 
 /** 总结类型 → i18n 键映射 */
@@ -107,7 +109,7 @@ export const SummaryDetailPage: React.FC = () => {
     if (!summary || !summary.id) return
     setIsSaving(true)
     try {
-      await window.electron.ipcRenderer.invoke(
+      const updated = await window.electron.ipcRenderer.invoke(
         'summary:update',
         summary.id,
         summary.type,
@@ -115,7 +117,14 @@ export const SummaryDetailPage: React.FC = () => {
         new Date(summary.endDate),
         { content: editContent }
       )
-      setSummary({ ...summary, content: editContent })
+      const toIso = (value: unknown) =>
+        value instanceof Date ? value.toISOString() : value != null ? String(value) : undefined
+      setSummary({
+        ...summary,
+        content: editContent,
+        generatedAt: toIso(updated?.generatedAt) ?? summary.generatedAt,
+        updatedAt: toIso(updated?.updatedAt) ?? new Date().toISOString()
+      })
       setIsEditing(false)
       toast.showSuccess(t('common.save_success', '保存成功'))
     } catch (e) {
@@ -192,6 +201,10 @@ export const SummaryDetailPage: React.FC = () => {
 
   const typeClass = TYPE_CLASS_MAP[summary.type] || ''
   const typeLabel = t(TYPE_I18N_MAP[summary.type] || summary.type, summary.type)
+  const timeDisplay = resolveSummaryTimeDisplay({
+    generatedAt: summary.generatedAt,
+    updatedAt: summary.updatedAt
+  })
 
   return (
     <div className="summary-detail-container">
@@ -258,11 +271,11 @@ export const SummaryDetailPage: React.FC = () => {
             {formatDate(summary.startDate)} — {formatDate(summary.endDate)}
           </span>
         </div>
-        {summary.generatedAt && (
+        {timeDisplay && (
           <div className="summary-detail-generated">
             <Clock size={14} />
             <span>
-              {t('summary.generated_at', '生成于')} {formatGeneratedAt(summary.generatedAt)}
+              {t(timeDisplay.labelKey)} {formatGeneratedAt(timeDisplay.at)}
             </span>
           </div>
         )}

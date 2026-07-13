@@ -1383,6 +1383,7 @@
     "no_missing": "暂无待合并生成",
     "not_found": "サマリーが見つかりません",
     "generated_at": "生成日時",
+    "saved_at": "保存日時",
     "open_not_implemented": "詳細ページは現在準備中です",
     "stats_week": "週間",
     "stats_month": "月間",
