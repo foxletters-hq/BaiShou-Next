@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native'
-import Animated, {
+import {
   cancelAnimation,
   Easing,
-  useAnimatedStyle,
+  runOnJS,
+  useAnimatedReaction,
   useSharedValue,
   withSpring,
   withTiming
@@ -23,7 +24,9 @@ export interface CollapsibleHeightProps {
 }
 
 /**
- * 展开/收起高度动画。内容绝对定位在裁剪容器内，外层只动画高度。
+ * 展开/收起高度动画。内容绝对定位在裁剪容器内，外层动画高度。
+ * 高度同步回 React layout，确保 ScrollView contentSize / 父级 onLayout 能跟上
+ * （否则折叠思考后列表仍按展开高度滚动，底部会多出空白）。
  */
 export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
   expanded,
@@ -32,6 +35,7 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
   durationMs = 300
 }) => {
   const [measuredHeight, setMeasuredHeight] = useState(0)
+  const [layoutHeight, setLayoutHeight] = useState(0)
   const animatedHeight = useSharedValue(0)
   const instantMode = durationMs <= 0
 
@@ -43,6 +47,7 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
     if (instantMode) {
       animatedHeight.value = expanded ? nextHeight : 0
       setMeasuredHeight(nextHeight)
+      setLayoutHeight(expanded ? nextHeight : 0)
       return
     }
 
@@ -51,7 +56,9 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
 
   useEffect(() => {
     if (!instantMode) return
-    animatedHeight.value = expanded ? measuredHeight : 0
+    const next = expanded ? measuredHeight : 0
+    animatedHeight.value = next
+    setLayoutHeight(next)
   }, [animatedHeight, instantMode, expanded, measuredHeight])
 
   useEffect(() => {
@@ -73,18 +80,24 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
     })
   }, [animatedHeight, instantMode, expanded, measuredHeight, animation, durationMs])
 
+  useAnimatedReaction(
+    () => Math.max(0, Math.ceil(animatedHeight.value)),
+    (current, previous) => {
+      if (current !== previous) {
+        runOnJS(setLayoutHeight)(current)
+      }
+    },
+    [animatedHeight]
+  )
+
   useEffect(() => {
     return () => {
       cancelAnimation(animatedHeight)
     }
   }, [animatedHeight])
 
-  const clipStyle = useAnimatedStyle(() => ({
-    height: animatedHeight.value
-  }))
-
   return (
-    <Animated.View style={[styles.clip, clipStyle]} collapsable={false}>
+    <View style={[styles.clip, { height: layoutHeight }]} collapsable={false}>
       <View
         onLayout={onContentLayout}
         pointerEvents={expanded ? 'auto' : 'none'}
@@ -93,7 +106,7 @@ export const CollapsibleHeight: React.FC<CollapsibleHeightProps> = ({
       >
         {children}
       </View>
-    </Animated.View>
+    </View>
   )
 }
 

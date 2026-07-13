@@ -159,6 +159,7 @@ export function useAgentScreenController() {
     scrollToBottomOnFocus,
     beginFollowIfAtBottom,
     handleContentSizeChange,
+    handleIntrinsicContentHeightChange,
     contentAnchorMinHeight,
     beginContentHandoff,
     finalizeContentHandoff,
@@ -304,12 +305,18 @@ export function useAgentScreenController() {
     t: tr
   })
 
-  const { showLoadMoreBanner, handleListContentSizeChange, handleListScroll } =
+  const {
+    showLoadMoreBanner,
+    handleListContentSizeChange,
+    handleListIntrinsicContentHeightChange,
+    handleListScroll
+  } =
     useAgentListScrollHandlers({
       flatListRef,
       scrollOffsetRef,
       layoutReadyRef,
       handleContentSizeChange,
+      handleIntrinsicContentHeightChange,
       handleChatListScroll,
       hasMore,
       currentSessionId
@@ -380,6 +387,7 @@ export function useAgentScreenController() {
     handleMomentumScrollBegin,
     handleMomentumScrollEnd,
     handleListContentSizeChange,
+    handleListIntrinsicContentHeightChange,
     messages,
     hasMore,
     showLoadMoreBanner,

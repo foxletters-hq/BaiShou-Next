@@ -51,6 +51,7 @@ export type AgentChatListProps = {
   handleMomentumScrollBegin: () => void
   handleMomentumScrollEnd: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   handleListContentSizeChange: (width: number, height: number) => void
+  handleListIntrinsicContentHeightChange: (height: number) => void
   listViewportHeight: number
   setListViewportHeight: React.Dispatch<React.SetStateAction<number>>
   layoutReadyRef: React.RefObject<boolean>
@@ -199,6 +200,13 @@ export function AgentChatList(props: AgentChatListProps) {
             onContentSizeChange={p.handleListContentSizeChange}
             scrollEventThrottle={16}
           >
+            <View
+              collapsable={false}
+              onLayout={(event) => {
+                const height = Math.ceil(event.nativeEvent.layout.height)
+                if (height > 0) p.handleListIntrinsicContentHeightChange(height)
+              }}
+            >
             {p.hasMore && p.showLoadMoreBanner ? (
               <TouchableOpacity
                 style={[
@@ -345,6 +353,7 @@ export function AgentChatList(props: AgentChatListProps) {
             })}
 
             {p.listFooter}
+            </View>
           </ScrollView>
         </AgentDrawerSwipeZone>
 

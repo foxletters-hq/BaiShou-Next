@@ -39,6 +39,7 @@ export const AgentScreen = () => {
           handleMomentumScrollBegin={c.handleMomentumScrollBegin}
           handleMomentumScrollEnd={c.handleMomentumScrollEnd}
           handleListContentSizeChange={c.handleListContentSizeChange}
+          handleListIntrinsicContentHeightChange={c.handleListIntrinsicContentHeightChange}
           listViewportHeight={c.listViewportHeight}
           setListViewportHeight={c.setListViewportHeight}
           layoutReadyRef={c.layoutReadyRef}

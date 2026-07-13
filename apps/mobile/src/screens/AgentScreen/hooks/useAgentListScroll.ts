@@ -7,6 +7,7 @@ export function useAgentListScrollHandlers(deps: {
   scrollOffsetRef: RefObject<number>
   layoutReadyRef: RefObject<boolean>
   handleContentSizeChange: (ref: RefObject<ScrollView | null>, height: number) => void
+  handleIntrinsicContentHeightChange: (height: number) => void
   handleChatListScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   hasMore: boolean
   currentSessionId: string | null
@@ -16,6 +17,7 @@ export function useAgentListScrollHandlers(deps: {
     scrollOffsetRef,
     layoutReadyRef,
     handleContentSizeChange,
+    handleIntrinsicContentHeightChange,
     handleChatListScroll,
     hasMore,
     currentSessionId
@@ -28,6 +30,13 @@ export function useAgentListScrollHandlers(deps: {
       handleContentSizeChange(flatListRef, height)
     },
     [handleContentSizeChange, flatListRef]
+  )
+
+  const handleListIntrinsicContentHeightChange = useCallback(
+    (height: number) => {
+      handleIntrinsicContentHeightChange(height)
+    },
+    [handleIntrinsicContentHeightChange]
   )
 
   const handleListScroll = useCallback(
@@ -52,5 +61,10 @@ export function useAgentListScrollHandlers(deps: {
     }
   }, [hasMore])
 
-  return { showLoadMoreBanner, handleListContentSizeChange, handleListScroll }
+  return {
+    showLoadMoreBanner,
+    handleListContentSizeChange,
+    handleListIntrinsicContentHeightChange,
+    handleListScroll
+  }
 }
