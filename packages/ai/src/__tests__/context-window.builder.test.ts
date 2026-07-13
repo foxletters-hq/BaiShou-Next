@@ -197,13 +197,11 @@ describe('ContextWindowBuilder', () => {
     expect(result.map((m) => m.id)).toEqual(['snapshot_10', '1', '2', '3'])
   })
 
-  it('does not fall back to full history when snapshot anchors are lost and summary is empty', async () => {
-    const messages: MessageWithParts[] = [
-      { ...makeMsg('user', 1), id: '1' },
-      { ...makeMsg('assistant', 2), id: '2' },
-      { ...makeMsg('user', 3), id: '3' },
-      { ...makeMsg('assistant', 4), id: '4' }
-    ]
+  it('uses a recent safety window when snapshot anchors are lost and summary is empty', async () => {
+    const messages: MessageWithParts[] = Array.from({ length: 10 }, (_, i) => ({
+      ...makeMsg(i % 2 === 0 ? 'user' : 'assistant', i + 1),
+      id: String(i + 1)
+    }))
 
     const sessionRepo = {
       getMessagesBySession: vi.fn().mockResolvedValue(messages)
@@ -228,7 +226,8 @@ describe('ContextWindowBuilder', () => {
       { recentCount: 0 }
     )
 
-    expect(result).toEqual([])
+    // 拒绝全量历史，但保留一小段近期消息作保底（默认 6 条）
+    expect(result.map((m) => m.id)).toEqual(['5', '6', '7', '8', '9', '10'])
   })
 
   it('keeps requiredMessageId turn when snapshot anchors are lost', async () => {

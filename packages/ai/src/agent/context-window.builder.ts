@@ -99,10 +99,15 @@ export class ContextWindowBuilder {
         }
         effectiveMessages = [summaryMsg, ...retainMessages]
       } else {
-        // 有快照时绝不回退全量历史（与触发估算一致）；锚点丢失且无摘要时仅保留区（可能为空）
+        // 有快照时绝不回退全量历史（与触发估算一致）；锚点丢失且无摘要时保留一小段近期消息作保底
         if (retainMessages.length === 0) {
+          const safetyCount = Math.min(
+            messages.length,
+            Math.max(config.recentCount > 0 ? config.recentCount * 2 : 6, 6)
+          )
+          retainMessages = safetyCount > 0 ? messages.slice(-safetyCount) : []
           logger.warn(
-            `[ContextWindowBuilder] Session(${sessionId}) snapshot present but retain anchors unresolved and summary empty; refusing full-history fallback.`
+            `[ContextWindowBuilder] Session(${sessionId}) snapshot present but retain anchors unresolved and summary empty; using ${retainMessages.length} recent messages as safety window (refusing full-history fallback).`
           )
         }
         effectiveMessages = retainMessages
