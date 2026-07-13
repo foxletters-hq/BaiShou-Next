@@ -1,8 +1,16 @@
+import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import type { IncrementalSyncRunOptions, S3SyncConfig } from '@baishou/shared'
-import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH, SYNC_CONFIG_FILENAME } from '@baishou/shared'
+import {
+  DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
+  SYNC_CONFIG_FILENAME,
+  SYNC_MANIFEST_VERSION,
+  SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_STORAGE_ID_FILENAME,
+  getIncrementalSyncStorageId
+} from '@baishou/shared'
 import type { IStoragePathService } from '../../../vault/storage-path.types'
 import { ThreeWaySyncService } from '../../three-way-sync.service'
 import { GhostDownloadCloudClient } from './ghost-download-cloud-client'
@@ -36,16 +44,17 @@ export class SimulatedSyncDevice {
   readonly vaultDir: string
   readonly cloud: InMemoryIncrementalCloudClient | GhostDownloadCloudClient
   readonly service: ThreeWaySyncService
+  private readonly config: S3SyncConfig
 
   constructor(options: SimulatedSyncDeviceOptions) {
     this.rootDir = fs.mkdtempSync(path.join(os.tmpdir(), `baishou-sync-e2e-${options.deviceId}-`))
     this.vaultDir = path.join(this.rootDir, 'Personal')
     fs.mkdirSync(this.vaultDir, { recursive: true })
 
-    const config: S3SyncConfig = { ...DEFAULT_TEST_CONFIG, ...options.config }
+    this.config = { ...DEFAULT_TEST_CONFIG, ...options.config }
     fs.writeFileSync(
       path.join(this.rootDir, SYNC_CONFIG_FILENAME),
-      JSON.stringify(config, null, 2),
+      JSON.stringify(this.config, null, 2),
       'utf8'
     )
 
@@ -86,6 +95,36 @@ export class SimulatedSyncDevice {
 
   fileExists(relPath: string): boolean {
     return fs.existsSync(path.join(this.rootDir, relPath))
+  }
+
+  /** 写入污染的祖先快照（模拟未上云文件被记进 ancestor） */
+  async plantAncestorSnapshot(
+    files: Record<string, { hash: string; size: number; lastModified: number }>
+  ): Promise<void> {
+    const metaDir = path.join(this.rootDir, '.baishou')
+    await fs.promises.mkdir(metaDir, { recursive: true })
+    const snapshot = {
+      version: SYNC_MANIFEST_VERSION,
+      updatedAt: Date.now(),
+      deviceId: 'polluted',
+      files,
+      removed: {}
+    }
+    await fs.promises.writeFile(
+      path.join(metaDir, SYNC_REMOTE_SNAPSHOT_FILENAME),
+      JSON.stringify(snapshot, null, 2),
+      'utf8'
+    )
+    await fs.promises.writeFile(
+      path.join(metaDir, SYNC_STORAGE_ID_FILENAME),
+      getIncrementalSyncStorageId(this.config),
+      'utf8'
+    )
+  }
+
+  md5Of(relPath: string): string {
+    const buf = fs.readFileSync(path.join(this.rootDir, relPath))
+    return crypto.createHash('md5').update(buf).digest('hex')
   }
 
   sync(runOptions?: IncrementalSyncRunOptions) {
