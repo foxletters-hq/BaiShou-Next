@@ -147,6 +147,7 @@ export class ThreeWaySyncService
         decisions,
         deviceId: this.deviceId
       })
+      // 一致点提交顺序须为 local → remote → ancestor（INCREMENTAL_SYNC_CHECKPOINT_COMMIT_STEPS）
       await this.saveLocalManifest(finalManifest)
       await this.uploadManifest()
       await this.saveRemoteSnapshot(finalManifest)

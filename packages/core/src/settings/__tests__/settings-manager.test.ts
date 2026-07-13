@@ -80,6 +80,27 @@ describe('SettingsManagerService (Global Vault KV SSOT)', () => {
     })
   })
 
+  it('fullResyncFromDisk({ diskAuthoritative }) applies stale disk and does not flush', async () => {
+    const sqliteUpdatedAt = new Date('2026-06-16T12:00:00.000Z')
+    mockFileService.readAllSettingsForResync.mockResolvedValue({
+      settings: { ai_providers: [{ id: 'openai', apiKey: 'from-disk' }] },
+      domainFileMtimeMs: { 'ai_providers.json': sqliteUpdatedAt.getTime() - 5000 }
+    })
+    mockRepo.getAllEntriesMeta.mockResolvedValue({
+      ai_providers: {
+        value: [{ id: 'openai', apiKey: 'sk-live' }],
+        updatedAt: sqliteUpdatedAt
+      }
+    })
+
+    await manager.fullResyncFromDisk({ diskAuthoritative: true })
+
+    expect(mockRepo.set).toHaveBeenCalledWith('ai_providers', [
+      { id: 'openai', apiKey: 'from-disk' }
+    ])
+    expect(mockFileService.writeAllSettings).not.toHaveBeenCalled()
+  })
+
   it('fullResyncFromDisk() skips device-local settings keys', async () => {
     mockFileService.readAllSettingsForResync.mockResolvedValue({
       settings: {

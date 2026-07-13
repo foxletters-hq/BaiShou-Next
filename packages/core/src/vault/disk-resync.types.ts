@@ -1,6 +1,11 @@
 /** 按活跃工作区限定磁盘全量同步时的清理范围，避免误删其他 vault 的 SQLite 记录 */
 export type DiskResyncOptions = {
   activeVaultName?: string
+  /**
+   * 要扫描的工作区 Sessions/ 目录名。传入时跨 vault 水合会话 JSON；
+   * 省略时仅扫当前活跃 vault（兼容旧行为）。
+   */
+  diskVaultNames?: string[]
   /** 跳过超过此大小的 session JSON 读入（字节），防止移动端 OOM */
   maxSessionJsonReadBytes?: number
   /**

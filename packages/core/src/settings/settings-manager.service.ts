@@ -113,9 +113,11 @@ export class SettingsManagerService {
   }
 
   /**
-   * Vault或网口新数据接连时
+   * Vault 或同步下载后从磁盘灌入 SQLite。
+   * `diskAuthoritative: true`：强制磁盘→库，禁止库反写盘（避免同步后改 hash 再次 upload）。
    */
-  async fullResyncFromDisk(): Promise<void> {
+  async fullResyncFromDisk(options?: { diskAuthoritative?: boolean }): Promise<void> {
+    const diskAuthoritative = Boolean(options?.diskAuthoritative)
     const { settings: settingsMap, domainFileMtimeMs } =
       await this.fileService.readAllSettingsForResync()
     const sqliteMeta = await this.repo.getAllEntriesMeta()
@@ -126,7 +128,10 @@ export class SettingsManagerService {
 
       const fileName = getSettingsDomainFileName(key)
       const diskMtime = domainFileMtimeMs[fileName] ?? 0
-      if (!shouldApplyDiskSettingsKey(diskMtime, sqliteMeta[key]?.updatedAt ?? null)) {
+      if (
+        !diskAuthoritative &&
+        !shouldApplyDiskSettingsKey(diskMtime, sqliteMeta[key]?.updatedAt ?? null)
+      ) {
         sqliteNewerThanDisk = true
         continue
       }
@@ -144,7 +149,7 @@ export class SettingsManagerService {
       await this.repo.set(key, value)
     }
     const migrated = await migrateUserProfileSettingsKey(this.repo)
-    if (sqliteNewerThanDisk || migrated) {
+    if (!diskAuthoritative && (sqliteNewerThanDisk || migrated)) {
       await this.flushToDiskUnlocked()
     }
   }
