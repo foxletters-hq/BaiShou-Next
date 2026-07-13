@@ -225,6 +225,10 @@ export {
   recordSyncManifestRemoved,
   SYNC_TOMBSTONE_CLOCK_SKEW_MS
 } from './sync/sync-manifest-removed.util'
+export {
+  countUnverifiedAncestorEntries,
+  reconcileAncestorWithRemoteTruth
+} from './sync/reconcile-ancestor-with-remote.util'
 export type { RemovedManifestEntry } from './types/version-control.types'
 export { sessionBelongsToActiveVault } from './utils/session-vault.util'
 
