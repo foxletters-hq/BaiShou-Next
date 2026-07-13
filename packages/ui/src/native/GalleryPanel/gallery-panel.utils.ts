@@ -5,6 +5,7 @@ export {
   getWeekNumber,
   formatDateRange,
   formatSummarySpan,
+  formatGallerySavedAt,
   getTitle,
   getPreview
 } from '../../shared/gallery-panel/gallery-panel.utils'

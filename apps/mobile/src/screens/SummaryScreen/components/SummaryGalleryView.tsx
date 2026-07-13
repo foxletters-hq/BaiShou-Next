@@ -23,6 +23,7 @@ interface Summary {
   endDate: string
   content: string
   generatedAt?: string
+  updatedAt?: string
 }
 
 interface SummaryGalleryViewProps {
@@ -70,19 +71,23 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
     const summary = displaySummaries.find((s) => String(s.id) === id)
     if (!summary?.id || !services) return
     try {
-      await services.summaryManager.update(
+      const updated = await services.summaryManager.update(
         summary.id as number,
         summary.type as SummaryType,
         parseSummaryBoundaryDate(summary.startDate),
         parseSummaryBoundaryDate(summary.endDate),
         { content }
       )
+      const toIso = (value: Date | string | null | undefined) =>
+        value instanceof Date ? value.toISOString() : value != null ? String(value) : undefined
       patchSummaryDetailCache({
         id: typeof summary.id === 'number' ? summary.id : Number(summary.id),
         type: summary.type,
         startDate: summary.startDate,
         endDate: summary.endDate,
-        content
+        content,
+        generatedAt: toIso(updated.generatedAt) ?? summary.generatedAt,
+        updatedAt: toIso(updated.updatedAt) ?? new Date().toISOString()
       })
       await onRefreshData()
     } catch (e) {
@@ -126,7 +131,8 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
           startDate: s.startDate,
           endDate: s.endDate,
           content: s.content,
-          generatedAt: s.generatedAt
+          generatedAt: s.generatedAt,
+          updatedAt: s.updatedAt
         }))}
         onOpen={seedSummaryNavigation}
         onEdit={seedSummaryNavigation}

@@ -11,6 +11,7 @@ export interface SummaryItem {
   content: string
   title?: string
   generatedAt?: string
+  updatedAt?: string
 }
 
 export interface GalleryPanelProps {

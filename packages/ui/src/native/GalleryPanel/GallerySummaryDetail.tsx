@@ -8,7 +8,8 @@ import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { Input } from '../Input/Input'
 import { MarkdownRenderer } from '../MarkdownRenderer'
 import type { SummaryItem } from './gallery-panel.types'
-import { TYPE_I18N_MAP, formatDateRange } from './gallery-panel.utils'
+import { TYPE_I18N_MAP, formatDateRange, formatGallerySavedAt } from './gallery-panel.utils'
+import { resolveSummaryTimeDisplay } from '@baishou/shared'
 
 interface GallerySummaryDetailProps {
   summary?: SummaryItem
@@ -40,6 +41,12 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const scrollRef = useRef<React.ComponentRef<typeof KeyboardAwareScrollView>>(null)
+  const timeDisplay = summary
+    ? resolveSummaryTimeDisplay({
+        generatedAt: summary.generatedAt,
+        updatedAt: summary.updatedAt
+      })
+    : null
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false })
@@ -77,6 +84,11 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
               {formatDateRange(summary)}
             </Text>
           </View>
+          {timeDisplay ? (
+            <Text style={[styles.savedAtText, { color: colors.textTertiary }]}>
+              {t(timeDisplay.labelKey)} {formatGallerySavedAt(timeDisplay.at)}
+            </Text>
+          ) : null}
         </View>
         <View style={styles.actions}>
           {isEditing ? (
@@ -180,6 +192,9 @@ const styles = StyleSheet.create({
     gap: 4
   },
   dateText: {
+    fontSize: 12
+  },
+  savedAtText: {
     fontSize: 12
   },
   actions: {

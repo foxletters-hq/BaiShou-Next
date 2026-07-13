@@ -5,6 +5,8 @@ import { MarkdownRenderer } from '../MarkdownRenderer'
 import { CodeMirrorEditor } from '../DiaryEditor'
 import type { SummaryItem } from './gallery-panel.types'
 import { TYPE_I18N_MAP, formatDateRange } from './gallery-panel.utils'
+import { formatGallerySavedAt } from '../../shared/gallery-panel/gallery-panel.utils'
+import { resolveSummaryTimeDisplay } from '@baishou/shared'
 
 interface GallerySummaryDetailProps {
   summary?: SummaryItem
@@ -37,6 +39,12 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
 }) => {
   const { t } = useTranslation()
   const detailRef = useRef<HTMLDivElement>(null)
+  const timeDisplay = summary
+    ? resolveSummaryTimeDisplay({
+        generatedAt: summary.generatedAt,
+        updatedAt: summary.updatedAt
+      })
+    : null
 
   useEffect(() => {
     if (detailRef.current) {
@@ -58,6 +66,11 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
                 <Calendar size={12} />
                 {formatDateRange(summary, language, t)}
               </span>
+              {timeDisplay ? (
+                <span className="gallery-detail-date">
+                  {t(timeDisplay.labelKey)} {formatGallerySavedAt(timeDisplay.at)}
+                </span>
+              ) : null}
             </div>
             <div className="gallery-detail-actions">
               {isEditing ? (

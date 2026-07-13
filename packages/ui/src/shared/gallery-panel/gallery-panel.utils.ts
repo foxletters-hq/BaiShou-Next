@@ -95,3 +95,22 @@ export const getPreview = (content: string): string => {
   }
   return ''
 }
+
+/** 画廊/详情「保存于」时间展示 */
+export function formatGallerySavedAt(value: string): string {
+  try {
+    const date = new Date(value)
+    if (isNaN(date.getTime())) return ''
+    const year = date.getFullYear()
+    if (year < 2000 || year > 2100) return ''
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return ''
+  }
+}

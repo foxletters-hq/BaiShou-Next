@@ -16,6 +16,7 @@ export function isSameSummaryDetail(a: CachedSummaryDetail, b: CachedSummaryDeta
   return (
     a.content === b.content &&
     a.generatedAt === b.generatedAt &&
+    a.updatedAt === b.updatedAt &&
     (a.sourceIds ?? null) === (b.sourceIds ?? null)
   )
 }
@@ -33,6 +34,12 @@ export function mapSummaryToDetail(summary: Summary): CachedSummaryDetail {
         ? summary.generatedAt.toISOString()
         : summary.generatedAt != null
           ? String(summary.generatedAt)
+          : undefined,
+    updatedAt:
+      summary.updatedAt instanceof Date
+        ? summary.updatedAt.toISOString()
+        : summary.updatedAt != null
+          ? String(summary.updatedAt)
           : undefined
   }
 }
