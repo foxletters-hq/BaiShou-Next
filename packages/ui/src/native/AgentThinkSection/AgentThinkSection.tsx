@@ -81,7 +81,9 @@ export function AgentThinkSection({
       </Pressable>
 
       {isMarkdownStreaming ? (
-        thinkExpanded ? bodyChrome : null
+        thinkExpanded ? (
+          bodyChrome
+        ) : null
       ) : (
         <CollapsibleHeight
           expanded={thinkExpanded}

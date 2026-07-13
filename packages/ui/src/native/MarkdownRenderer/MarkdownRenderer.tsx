@@ -116,12 +116,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
 
   if (!displayContent) return null
 
-  const useLegacyChatLayout = (variant === 'chat' || variant === 'ancillary') && !isStreaming
-
-  if (useLegacyChatLayout) {
-    return <LegacyMarkdownRenderer {...props} content={displayContent} />
-  }
-
   const streamdownCommonProps = {
     allowTrailingMargin: useTrailingMargin,
     flavor: streamFlavor,
@@ -133,8 +127,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     containerStyle: nativeContainerStyle
   }
 
-  // chat / ancillary 流式：到这里时 isStreaming 必为 true（完成态已走 Legacy）
-  // 不做估高 minHeight，避免泡下垫大片空白
+  // chat / ancillary：流式与落盘共用 EnrichedMarkdown，避免切到 Legacy 后行宽/换行跳变
   if (variant === 'chat' || variant === 'ancillary') {
     return (
       <View style={markdownContainerStyle}>

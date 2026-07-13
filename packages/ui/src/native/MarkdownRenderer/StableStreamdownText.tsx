@@ -29,7 +29,8 @@ export function StableStreamdownText({
 
   return (
     <EnrichedMarkdownText
-      key={streamingAnimation ? 'chat-md-stream' : undefined}
+      // 流式→完成勿换 key，否则整段 remount，气泡宽度/换行会闪一下
+      key="chat-md-stable"
       markdown={processedMarkdown}
       {...(streamingAnimation ? { streamingAnimation: true } : {})}
       selectable={selectable}

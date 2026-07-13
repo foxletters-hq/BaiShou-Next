@@ -103,13 +103,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     liveStream &&
     (streamingCompletedTools.length > 0 || Boolean(streamingActiveToolName))
   const showPersistedTools = isAssistant && !showStreamingTools && toolInvocations.length > 0
-  const useFullWidthAssistantBubble =
-    isAssistant &&
-    (edit.isEditing ||
-      showStreamingTools ||
-      showPersistedTools ||
-      showThinkSection ||
-      Boolean(deferAssistantChrome && liveStream))
+  // 与 StreamingBubble 一致：助手气泡始终占满 maxWidth，避免流式→落盘时宽度跳变
+  const useFullWidthAssistantBubble = isAssistant
 
   const nameLabelStyle = [
     styles.nameLabel,
@@ -172,7 +167,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           collapsable={false}
           style={[
             styles.bubble,
-            edit.isEditing ? styles.bubbleEditing : null,
+            edit.isEditing || isAssistant ? styles.bubbleEditing : null,
             !edit.isEditing && isUser ? styles.bubbleUser : null,
             edit.isEditing
               ? isUser
