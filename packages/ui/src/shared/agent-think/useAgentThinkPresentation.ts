@@ -10,15 +10,27 @@ export function useAgentThinkPresentation(isStreaming: boolean) {
     : t('agent.chat.thought_process', '思考过程')
   const loading = isStreaming
   const prevIsStreamingRef = useRef(isStreaming)
+  const userTouchedRef = useRef(false)
   /** 默认折叠；流式期间也不自动展开 */
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpandedState] = useState(false)
+
+  const setExpanded = (next: boolean | ((prev: boolean) => boolean)) => {
+    userTouchedRef.current = true
+    setExpandedState(next)
+  }
 
   useEffect(() => {
     const wasStreaming = prevIsStreamingRef.current
     if (wasStreaming === isStreaming) return
     prevIsStreamingRef.current = isStreaming
 
-    if (!isStreaming) setExpanded(false)
+    // 仅在用户未手动展开/折叠时，于思考结束收起；避免等待态→真思考或阶段切换打断用户
+    if (wasStreaming && !isStreaming && !userTouchedRef.current) {
+      setExpandedState(false)
+    }
+    if (!isStreaming) {
+      userTouchedRef.current = false
+    }
   }, [isStreaming])
 
   return { title, loading, expanded, setExpanded }

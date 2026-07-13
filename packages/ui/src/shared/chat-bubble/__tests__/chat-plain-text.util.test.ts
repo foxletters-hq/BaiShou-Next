@@ -11,4 +11,9 @@ describe('chatNeedsRichMarkdown', () => {
   it('returns true for fenced code blocks', () => {
     expect(chatNeedsRichMarkdown('hello\n```js\ncode\n```')).toBe(true)
   })
+
+  it('returns true for headings and links', () => {
+    expect(chatNeedsRichMarkdown('## 标题\n正文')).toBe(true)
+    expect(chatNeedsRichMarkdown('见 [文档](https://example.com)')).toBe(true)
+  })
 })

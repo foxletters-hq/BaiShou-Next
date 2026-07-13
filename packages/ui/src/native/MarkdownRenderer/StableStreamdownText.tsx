@@ -8,6 +8,7 @@ const STREAMING_TABLE_PROGRESSIVE = { tableMode: 'progressive' as const }
 
 /**
  * 流式 Markdown：稳定 selectable，不在 remend 周期内反复 setState。
+ * 流式期间使用固定 key，避免每个 token 重挂载导致整泡闪烁。
  */
 export function StableStreamdownText({
   markdown,
@@ -28,7 +29,7 @@ export function StableStreamdownText({
 
   return (
     <EnrichedMarkdownText
-      key={streamingAnimation ? `stream-${processedMarkdown.length}` : processedMarkdown}
+      key={streamingAnimation ? 'chat-md-stream' : undefined}
       markdown={processedMarkdown}
       {...(streamingAnimation ? { streamingAnimation: true } : {})}
       selectable={selectable}

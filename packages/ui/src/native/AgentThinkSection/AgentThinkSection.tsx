@@ -1,10 +1,12 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useAgentThinkPresentation } from '../../shared/agent-think'
 import { useNativeTheme } from '../theme'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { CollapsibleHeight } from '../CollapsibleHeight'
 import { ThinkChevron, ThinkStatusIcon } from './ThinkStatusIcon'
+
+const COLLAPSE_DURATION_MS = 250
 
 export interface AgentThinkSectionProps {
   content: string
@@ -18,7 +20,7 @@ export interface AgentThinkSectionProps {
 
 /**
  * 对齐桌面 @ant-design/x Think：状态行 + 左侧竖线内容区。
- * reasoning 直接渲染，不包 think 标签。
+ * 收起时先播高度动画，动画结束后再卸载正文，避免瞬间变空与卡顿。
  */
 export function AgentThinkSection({
   content,
@@ -31,13 +33,37 @@ export function AgentThinkSection({
   const loading = isLoading ?? isStreaming
   const { title, loading: showSpinner, expanded, setExpanded } = useAgentThinkPresentation(loading)
   const thinkExpanded = expanded
+  const [keepBodyMounted, setKeepBodyMounted] = useState(thinkExpanded)
+
+  useEffect(() => {
+    if (thinkExpanded) {
+      setKeepBodyMounted(true)
+      return
+    }
+    const timer = setTimeout(() => setKeepBodyMounted(false), COLLAPSE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [thinkExpanded])
 
   if (!thinkExpanded && !body && !loading) return null
 
-  const thinkBody = body ? (
+  const showBody = Boolean(body) && (thinkExpanded || keepBodyMounted)
+  const thinkBody = showBody ? (
     <AgentMarkdownRenderer content={body} variant="ancillary" isStreaming={isMarkdownStreaming} />
   ) : null
-  const visibleThinkBody = thinkExpanded ? thinkBody : null
+
+  const bodyChrome = (
+    <View
+      style={[
+        styles.content,
+        {
+          borderLeftColor: colors.borderMuted,
+          paddingTop: showBody ? 8 : 0
+        }
+      ]}
+    >
+      {thinkBody}
+    </View>
+  )
 
   return (
     <View style={styles.root}>
@@ -54,31 +80,15 @@ export function AgentThinkSection({
         <ThinkChevron expanded={thinkExpanded} color={colors.textTertiary} />
       </Pressable>
 
-      {isMarkdownStreaming && thinkExpanded ? (
-        <View
-          style={[
-            styles.content,
-            {
-              borderLeftColor: colors.borderMuted,
-              paddingTop: 8
-            }
-          ]}
-        >
-          {visibleThinkBody}
-        </View>
+      {isMarkdownStreaming ? (
+        thinkExpanded ? bodyChrome : null
       ) : (
-        <CollapsibleHeight expanded={thinkExpanded} animation="ease" durationMs={250}>
-          <View
-            style={[
-              styles.content,
-              {
-                borderLeftColor: colors.borderMuted,
-                paddingTop: 8
-              }
-            ]}
-          >
-            {visibleThinkBody}
-          </View>
+        <CollapsibleHeight
+          expanded={thinkExpanded}
+          animation="ease"
+          durationMs={COLLAPSE_DURATION_MS}
+        >
+          {bodyChrome}
         </CollapsibleHeight>
       )}
     </View>

@@ -5,7 +5,6 @@ import { EnrichedMarkdownText } from 'react-native-enriched-markdown'
 import { useNativeTheme } from '../theme'
 import { LegacyMarkdownRenderer } from './LegacyMarkdownRenderer'
 import { StableStreamdownText } from './StableStreamdownText'
-import { ChatMarkdownHeightGuard } from './ChatMarkdownHeightGuard'
 import { useStableStreamdownMarkdown } from './useStableStreamdownMarkdown'
 import {
   buildStreamdownMarkdownStyle,
@@ -134,18 +133,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     containerStyle: nativeContainerStyle
   }
 
-  // chat / ancillary 流式：EnrichedMarkdownText + 高度兜底
+  // chat / ancillary 流式：到这里时 isStreaming 必为 true（完成态已走 Legacy）
+  // 不做估高 minHeight，避免泡下垫大片空白
   if (variant === 'chat' || variant === 'ancillary') {
     return (
       <View style={markdownContainerStyle}>
-        <ChatMarkdownHeightGuard markdown={displayContent}>
-          <StableStreamdownText
-            {...streamdownCommonProps}
-            hideTablesWhileStreaming={isStreaming}
-            streamingAnimation={isStreaming}
-            remendConfig={{ inlineCode: false }}
-          />
-        </ChatMarkdownHeightGuard>
+        <StableStreamdownText
+          {...streamdownCommonProps}
+          hideTablesWhileStreaming={isStreaming}
+          streamingAnimation={isStreaming}
+          remendConfig={{ inlineCode: false }}
+        />
       </View>
     )
   }

@@ -18,8 +18,6 @@ import {
   NativeChatBubbleEditActions
 } from './NativeChatBubbleActionsRow'
 import { ChatBubbleAvatar } from './ChatBubbleAvatar'
-import { ChatPlainTextBody } from './ChatPlainTextBody'
-import { chatNeedsRichMarkdown } from '../../shared/chat-bubble/chat-plain-text.util'
 import { formatRelativeTime } from '../../shared/chat-bubble/format-relative-time.util'
 import { chatOverBackgroundMetaTextStyle } from '../../shared/chat-over-background-meta.style'
 
@@ -247,21 +245,13 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                 <NativeChatBubbleAttachments attachments={attachments} isUserBubble={isUser} />
               ) : null}
               {isAssistant && cleanContent ? (
-                <View
-                  style={
-                    chatNeedsRichMarkdown(cleanContent) ? styles.markdownSlot : styles.plainTextSlot
-                  }
-                >
-                  {chatNeedsRichMarkdown(cleanContent) ? (
-                    <AgentMarkdownRenderer
-                      content={cleanContent}
-                      variant="chat"
-                      isStreaming={markdownStreaming}
-                      onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
-                    />
-                  ) : (
-                    <ChatPlainTextBody content={cleanContent} color={colors.textPrimary} />
-                  )}
+                <View style={styles.markdownSlot}>
+                  <AgentMarkdownRenderer
+                    content={cleanContent}
+                    variant="chat"
+                    isStreaming={markdownStreaming}
+                    onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
+                  />
                 </View>
               ) : !isAssistant && message.content ? (
                 <Text style={[styles.text, { color: colors.textPrimary }]} selectable>

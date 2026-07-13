@@ -183,26 +183,11 @@ export function useAgentStreamingPresentation(deps: {
   const markdownPresentationActive =
     isStreaming || isStreamBridgeActive || streamPresentationLinger || holdLivePresentation
 
-  /** 思考区左侧转圈：流式进行中且（纯思考阶段或尚无 token） */
+  /** 思考区左侧转圈：仅真实思考内容阶段；连接等待不要冒充「深度思考中」 */
   const streamingThinkLoading = useMemo(() => {
     if (!markdownPresentationActive) return false
-    if (streamingReasoning.trim() && !streamingText.trim()) return true
-    if (
-      !streamingText.trim() &&
-      !streamingReasoning.trim() &&
-      !activeTool &&
-      completedTools.length === 0
-    ) {
-      return true
-    }
-    return false
-  }, [
-    streamingReasoning,
-    streamingText,
-    markdownPresentationActive,
-    activeTool,
-    completedTools.length
-  ])
+    return Boolean(streamingReasoning.trim() && !streamingText.trim())
+  }, [streamingReasoning, streamingText, markdownPresentationActive])
 
   const streamingCompletedTools = useMemo(
     () =>
