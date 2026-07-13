@@ -4,6 +4,8 @@
 
 [贡献指南](#贡献指南) · [语录收藏](./docs/3-Project/quotes-collection/quotes-collection.md) · [优质二创](./docs/3-Project/fan-creations/fan-creations.md) · [技术分享](./docs/4-技术分享/0-README.md)
 
+[![GitHub contributors][github-contributors-shield]][github-contributors-link] [![GitHub release][github-release-shield]][github-release-link]
+
 > 以纯白誓约，守护彼此一生。
 
 **白守**是一款开源的、注重隐私的 **AI 记忆陪伴**软件：在本地记录你的生活与日记，让 AI 伙伴真正「记得」你，并陪你对抗遗忘。
@@ -126,6 +128,14 @@ pnpm ci:check
 3. 编码与目录规范见 [AI 编码规范](./docs/1-AI-Code/1-AI-Code-Rule.md)。
 4. 开 PR 前运行 **`pnpm ci:check`**，并遵循 [提交规范](./docs/2-Submit/1-Submit-Rule.md) 中的 Commit Message 约定。
 
+#### 贡献者
+
+感谢所有为白守贡献时间与智慧的朋友。
+
+<a href="https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=foxletters-hq/BaiShou-Next" alt="Contributors" />
+</a>
+
 ---
 
 #### 设计哲学：为什么不是「只靠 RAG」？
@@ -165,3 +175,8 @@ pnpm ci:check
 - 版权与商业化策略详见 [legal/LICENSE-STRATEGY.md](./legal/LICENSE-STRATEGY.md)。
 
 完整条文见 [LICENSE](./LICENSE)。
+
+[github-contributors-shield]: https://img.shields.io/github/contributors/foxletters-hq/BaiShou-Next?logo=github
+[github-contributors-link]: https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors
+[github-release-shield]: https://img.shields.io/github/v/release/foxletters-hq/BaiShou-Next?logo=github
+[github-release-link]: https://github.com/foxletters-hq/BaiShou-Next/releases/latest

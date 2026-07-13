@@ -4,6 +4,8 @@
 
 [Contributing](#contributing) · [Quote collection](quotes-collection/quotes-collection.en.md) · [Quality fan creations](fan-creations/fan-creations.en.md)
 
+[![GitHub contributors][github-contributors-shield]][github-contributors-link] [![GitHub release][github-release-shield]][github-release-link]
+
 > A pure white oath, guarding each other for a lifetime.
 
 **BaiShou** is an open-source, privacy-first **AI memory companion**: record your life and diaries locally, let AI partners truly _remember_ you, and fight forgetting together.
@@ -121,6 +123,14 @@ Technical workflow:
 3. Coding conventions: [AI coding rules](../1-AI-Code/1-AI-Code-Rule.md) (Chinese).
 4. Before opening a PR, run **`pnpm ci:check`** and follow commit message rules in [submission guidelines](../2-Submit/1-Submit-Rule.md).
 
+#### Contributors
+
+Thanks to everyone who has contributed time and care to BaiShou.
+
+<a href="https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=foxletters-hq/BaiShou-Next" alt="Contributors" />
+</a>
+
 ---
 
 #### Design Philosophy: Why Not "RAG Only"?
@@ -158,3 +168,8 @@ This project is licensed under **AGPLv3** (GNU Affero General Public License v3.
 - If you modify this project and offer it as a network service, your modified version must also be open source under AGPLv3.
 
 Full text: [LICENSE](../../LICENSE).
+
+[github-contributors-shield]: https://img.shields.io/github/contributors/foxletters-hq/BaiShou-Next?logo=github
+[github-contributors-link]: https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors
+[github-release-shield]: https://img.shields.io/github/v/release/foxletters-hq/BaiShou-Next?logo=github
+[github-release-link]: https://github.com/foxletters-hq/BaiShou-Next/releases/latest
