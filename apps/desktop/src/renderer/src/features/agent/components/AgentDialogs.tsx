@@ -40,6 +40,7 @@ interface AgentDialogsProps {
     currentModelId: string
     setCurrentProviderId: (id: string) => void
     setCurrentModelId: (id: string) => void
+    selectDialogueModel: (providerId: string, modelId: string) => Promise<void>
     userManuallySetModelRef: React.MutableRefObject<boolean>
   }
   tokens: {
@@ -249,9 +250,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
           currentProviderId={model.currentProviderId}
           currentModelId={model.currentModelId}
           onSelect={(pid, mid) => {
-            model.setCurrentProviderId(pid)
-            model.setCurrentModelId(mid)
-            model.userManuallySetModelRef.current = true
+            void model.selectDialogueModel(pid, mid)
             setShowModelSwitcher(false)
           }}
         />

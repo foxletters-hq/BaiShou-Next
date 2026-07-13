@@ -36,50 +36,78 @@ export function registerSessionIPC() {
     return await realSessionRepo.getSessionById(sessionId)
   })
 
-  ipcMain.handle('agent:create-session', async (_, { id, assistantId: rawAssistantId, title }) => {
-    const safeAssistantId =
-      typeof rawAssistantId === 'string'
-        ? rawAssistantId
-        : rawAssistantId !== null && rawAssistantId !== undefined
-          ? String(rawAssistantId)
-          : undefined
-
-    const { sessionManager, assistantManager } = getAgentManagers()
-
-    let vaultName = 'Personal'
-    try {
-      const active = vaultService.getActiveVault()
-      if (active?.name) vaultName = active.name
-    } catch (e) {}
-
-    let providerId = 'default'
-    let modelId = 'default'
-    if (safeAssistantId) {
-      const assistant = await assistantManager.findById(safeAssistantId)
-      if (assistant) {
-        providerId = assistant.providerId || 'default'
-        modelId = assistant.modelId || 'default'
+  ipcMain.handle(
+    'agent:create-session',
+    async (
+      _,
+      {
+        id,
+        assistantId: rawAssistantId,
+        title,
+        providerId: requestedProviderId,
+        modelId: requestedModelId
       }
-    }
-    if (providerId === 'default' || modelId === 'default') {
-      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-      if (providerId === 'default') providerId = globalModels?.globalDialogueProviderId || 'default'
-      if (modelId === 'default') modelId = globalModels?.globalDialogueModelId || 'default'
-    }
+    ) => {
+      const safeAssistantId =
+        typeof rawAssistantId === 'string'
+          ? rawAssistantId
+          : rawAssistantId !== null && rawAssistantId !== undefined
+            ? String(rawAssistantId)
+            : undefined
 
-    const newId = id || crypto.randomUUID()
-    logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${safeAssistantId}`)
-    await sessionManager.upsertSession({
-      id: newId,
-      vaultName,
-      providerId,
-      modelId,
-      assistantId: safeAssistantId || undefined,
-      title: title || i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L77', '新对话')
-    } as any)
-    logger.info(`[IPC] agent:create-session - session persisted and flushed.`)
-    return newId
-  })
+      const { sessionManager, assistantManager } = getAgentManagers()
+
+      let vaultName = 'Personal'
+      try {
+        const active = vaultService.getActiveVault()
+        if (active?.name) vaultName = active.name
+      } catch (e) {}
+
+      let providerId =
+        typeof requestedProviderId === 'string' &&
+        requestedProviderId.trim() &&
+        requestedProviderId.trim() !== 'unknown' &&
+        requestedProviderId.trim() !== 'default'
+          ? requestedProviderId.trim()
+          : 'default'
+      let modelId =
+        typeof requestedModelId === 'string' &&
+        requestedModelId.trim() &&
+        requestedModelId.trim() !== 'unknown' &&
+        requestedModelId.trim() !== 'default' &&
+        requestedModelId.trim() !== 'off'
+          ? requestedModelId.trim()
+          : 'default'
+      if (providerId === 'default' || modelId === 'default') {
+        if (safeAssistantId) {
+          const assistant = await assistantManager.findById(safeAssistantId)
+          if (assistant) {
+            if (providerId === 'default') providerId = assistant.providerId || 'default'
+            if (modelId === 'default') modelId = assistant.modelId || 'default'
+          }
+        }
+      }
+      if (providerId === 'default' || modelId === 'default') {
+        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+        if (providerId === 'default')
+          providerId = globalModels?.globalDialogueProviderId || 'default'
+        if (modelId === 'default') modelId = globalModels?.globalDialogueModelId || 'default'
+      }
+
+      const newId = id || crypto.randomUUID()
+      logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${safeAssistantId}`)
+      await sessionManager.upsertSession({
+        id: newId,
+        vaultName,
+        providerId,
+        modelId,
+        assistantId: safeAssistantId || undefined,
+        title: title || i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L77', '新对话')
+      } as any)
+      logger.info(`[IPC] agent:create-session - session persisted and flushed.`)
+      return newId
+    }
+  )
 
   ipcMain.handle('agent:delete-sessions', async (_, ids: string[]) => {
     const { sessionManager } = getAgentManagers()
@@ -96,6 +124,15 @@ export function registerSessionIPC() {
     await sessionManager.updateTitle(sessionId, title)
     return true
   })
+
+  ipcMain.handle(
+    'agent:update-session-dialogue-model',
+    async (_, sessionId: string, providerId: string, modelId: string) => {
+      const { sessionManager } = getAgentManagers()
+      await sessionManager.updateSessionDialogueModel(sessionId, providerId, modelId)
+      return true
+    }
+  )
 
   ipcMain.handle('agent:export-session', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()

@@ -5,6 +5,9 @@ import { useToast } from '@baishou/ui'
 
 export interface UseSessionManagerParams {
   currentAssistantId: string | undefined
+  /** 新建会话时写入的当前对话模型（便于跨端同步） */
+  dialogueProviderId?: string
+  dialogueModelId?: string
   loadSessions?: (reset: boolean) => void
 }
 
@@ -20,7 +23,7 @@ export interface UseSessionManagerResult {
  * 确保 DB 已有完整数据，Effect 1 触发时不会出现空 DB 覆盖乐观 UI 的问题。
  */
 export function useSessionManager(params: UseSessionManagerParams): UseSessionManagerResult {
-  const { currentAssistantId } = params
+  const { currentAssistantId, dialogueProviderId, dialogueModelId } = params
   const [searchParams] = useSearchParams()
   const { t } = useTranslation()
   const toast = useToast()
@@ -38,7 +41,9 @@ export function useSessionManager(params: UseSessionManagerParams): UseSessionMa
         await window.electron.ipcRenderer.invoke('agent:create-session', {
           id: newId, // 把生成的 ID 传给主进程
           assistantId: astId,
-          title: newTitle
+          title: newTitle,
+          providerId: dialogueProviderId,
+          modelId: dialogueModelId
         })
 
         return newId
@@ -51,7 +56,7 @@ export function useSessionManager(params: UseSessionManagerParams): UseSessionMa
         return null
       }
     },
-    [searchParams, currentAssistantId, t, toast]
+    [searchParams, currentAssistantId, dialogueProviderId, dialogueModelId, t, toast]
   )
 
   return { createSession }

@@ -42,11 +42,13 @@ export function useAgentChatFlow() {
   // ── 1. 各底层 Hook 实例化 ──
   const stream = useAgentStream(sessionId)
   const { currentAssistant } = useAssistantResolver({ sessionId, sessions })
+  const model = useModelSelection({ sessionId, currentAssistant })
   const { createSession } = useSessionManager({
     currentAssistantId: currentAssistant?.id ? String(currentAssistant.id) : undefined,
+    dialogueProviderId: model.currentProviderId,
+    dialogueModelId: model.currentModelId,
     loadSessions
   })
-  const model = useModelSelection({ sessionId, currentAssistant })
   const chat = useChatMessages({
     sessionId,
     isStreaming: stream.isStreaming,
