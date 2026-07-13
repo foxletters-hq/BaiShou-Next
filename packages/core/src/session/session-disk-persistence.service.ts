@@ -68,13 +68,17 @@ export class SessionDiskPersistenceService {
   }
 
   /**
-   * 删除会话前作废待落盘：取消防抖、清 dirty，并标记 in-flight flush 写完也不落盘。
+   * 删除会话前作废待落盘：取消防抖、清 dirty；仅当有 in-flight flush 时标记 discarded。
    */
   discard(sessionId: string): void {
     if (!sessionId) return
     this.cancelScheduledFlush(sessionId)
     this.dirty.delete(sessionId)
-    this.discarded.add(sessionId)
+    if (this.inFlight.has(sessionId)) {
+      this.discarded.add(sessionId)
+    } else {
+      this.discarded.delete(sessionId)
+    }
   }
 
   notifySessionMutated(sessionId: string, urgency: SessionDiskFlushUrgency = 'immediate'): void {

@@ -34,6 +34,18 @@ describe('resolveAttachmentAbsolutePath', () => {
   it('decodes local protocol url to filesystem path', () => {
     expect(resolveAttachmentAbsolutePath('local:///D:/vault/photo.png')).toBe('D:/vault/photo.png')
   })
+
+  it('keeps leading slash for Unix file:// URIs', () => {
+    expect(
+      resolveAttachmentAbsolutePath('file:///storage/emulated/0/Baishou-Love/Personal/a.jpeg')
+    ).toBe('/storage/emulated/0/Baishou-Love/Personal/a.jpeg')
+  })
+
+  it('strips extra slash for Windows file:// URIs', () => {
+    expect(resolveAttachmentAbsolutePath('file:///D:/Baishou-Love/Personal/a.jpeg')).toBe(
+      'D:/Baishou-Love/Personal/a.jpeg'
+    )
+  })
 })
 
 describe('mapAttachmentsFromParts', () => {

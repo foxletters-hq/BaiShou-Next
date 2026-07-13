@@ -47,11 +47,13 @@ export function resolveAttachmentAbsolutePath(filePath?: string): string {
   if (filePath.startsWith('local://')) {
     return decodeURIComponent(filePath.slice('local://'.length))
   }
-  if (filePath.startsWith('file:///')) {
-    return decodeURIComponent(filePath.replace(/^file:\/\/\/?/i, ''))
-  }
-  if (filePath.startsWith('file://')) {
-    return decodeURIComponent(filePath.slice('file://'.length))
+  if (filePath.startsWith('file:')) {
+    // file:///storage/... → /storage/...；file:///D:/x → D:/x
+    const rest = decodeURIComponent(filePath.replace(/^file:\/\//i, ''))
+    if (/^\/[a-zA-Z]:/.test(rest)) {
+      return rest.slice(1)
+    }
+    return rest
   }
   return filePath
 }

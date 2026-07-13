@@ -53,7 +53,20 @@ export class AttachmentAvatarOps {
       const globalDir = await extended.getGlobalAgentAvatarsDirectory()
       const dest = path.join(globalDir, fileName)
       if (path.normalize(dest) === path.normalize(absoluteAvatarPath)) return
-      if (!existsSync(dest)) {
+      let shouldCopy = !existsSync(dest)
+      if (!shouldCopy) {
+        try {
+          const [srcStat, destStat] = await Promise.all([
+            fs.stat(absoluteAvatarPath),
+            fs.stat(dest)
+          ])
+          // 源更新更晚时覆盖全局陈旧副本，避免多 vault 解析一直命中旧头像
+          shouldCopy = srcStat.mtimeMs > destStat.mtimeMs
+        } catch {
+          shouldCopy = true
+        }
+      }
+      if (shouldCopy) {
         await fs.copyFile(absoluteAvatarPath, dest)
       }
     } catch (e) {

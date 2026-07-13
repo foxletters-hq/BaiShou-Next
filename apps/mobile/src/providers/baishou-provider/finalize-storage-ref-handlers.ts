@@ -19,6 +19,7 @@ import {
   isExternalStorageRequiredError,
   hasStoragePermission
 } from '../../services/storage-permission.service'
+import { refreshMobileAttachmentPathRemapper } from '../../services/mobile-attachment-path-remapper'
 import type { MobileBaishouInitContext } from './init-context'
 import type { MobileBaishouCoreState } from './bootstrap-mobile-baishou-core'
 
@@ -69,6 +70,10 @@ export async function finalizeStorageRefHandlers(
             watcherDeps
           })
       refs.diaryStackRef.current = stack
+
+      await refreshMobileAttachmentPathRemapper(() => pathService.getRootDirectory()).catch((e) => {
+        logger.warn('[BaishouProvider] Failed to refresh attachment path remapper:', e as Error)
+      })
 
       const ragDeps = attachMobileRagVaultScope(
         {

@@ -62,7 +62,8 @@ describe('resolveAttachmentInputPath', () => {
   it('keeps absolute filesystem paths unchanged', async () => {
     const absolute = path.join(emojisDir, 'cat.png')
     const resolved = await resolveAttachmentInputPath(absolute, pathService)
-    expect(resolved).toBe(path.resolve(absolute))
+    // Linux 上 path.resolve('D:/...') 会错误拼进 cwd；Windows 盘符路径应保持盘符形态
+    expect(resolved.replace(/\\/g, '/')).toBe(absolute.replace(/\\/g, '/'))
   })
 
   it('remaps Android absolute attachment paths onto desktop storage root', async () => {

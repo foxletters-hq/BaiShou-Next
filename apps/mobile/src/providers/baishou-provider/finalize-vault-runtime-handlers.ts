@@ -24,6 +24,7 @@ import { consumeAppUpgradeShadowResync } from '../../services/mobile-app-upgrade
 import { mobileDeveloperService } from '../../services/developer.service'
 import { rebindSummaryPipelineForVault } from '../../services/mobile-agent-db-runtime'
 import { emitVaultSwitchMutation } from '../../cache/mobile-cache-coordinator'
+import { refreshMobileAttachmentPathRemapper } from '../../services/mobile-attachment-path-remapper'
 import type { MobileBaishouInitContext } from './init-context'
 import type { MobileBaishouCoreState } from './bootstrap-mobile-baishou-core'
 
@@ -52,6 +53,10 @@ export async function finalizeVaultRuntimeHandlers(
   const updaterService = s.updaterService
   let storageReady = s.storageReady
   const diaryStack = s.diaryStack
+
+  await refreshMobileAttachmentPathRemapper(() => pathService.getRootDirectory()).catch((e) => {
+    logger.warn('[BaishouProvider] Failed to register attachment path remapper:', e as Error)
+  })
 
   state.runStorageBootstrap = async (options?: {
     forceDeferResync?: boolean
@@ -251,6 +256,9 @@ export async function finalizeVaultRuntimeHandlers(
       }
 
       emitVaultSwitchMutation(vaultName)
+      await refreshMobileAttachmentPathRemapper(() => pathService.getRootDirectory()).catch((e) => {
+        logger.warn('[BaishouProvider] Failed to refresh attachment path remapper:', e as Error)
+      })
     } catch (e) {
       logger.error('[BaishouProvider] switchVault failed:', e as Error)
       throw e

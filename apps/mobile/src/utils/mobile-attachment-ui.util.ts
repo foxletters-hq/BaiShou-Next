@@ -2,7 +2,7 @@ import {
   emojiVaultKeyToAttachmentsRelativePath,
   isEmojiVaultRelativePath,
   mapSavedAttachmentsForUi,
-  resolveAttachmentAbsolutePath,
+  remapAttachmentPathToStorageRoot,
   type MockChatAttachment
 } from '@baishou/shared'
 
@@ -30,7 +30,6 @@ export function resolveMobileAttachmentFilePath(
   }
 
   const root = storageRoot.replace(/\\/g, '/').replace(/\/+$/, '')
-  const abs = resolveAttachmentAbsolutePath(trimmed).replace(/\\/g, '/')
 
   if (isEmojiVaultRelativePath(trimmed)) {
     const attachmentsRel = emojiVaultKeyToAttachmentsRelativePath(trimmed)
@@ -42,32 +41,17 @@ export function resolveMobileAttachmentFilePath(
     return toFileUri(`${root}/${attachmentsRel}`)
   }
 
-  if (abs.startsWith(`${root}/`) || abs === root) {
-    return toFileUri(abs)
+  const remapped = remapAttachmentPathToStorageRoot(trimmed, root)
+  if (!remapped) return ''
+  if (
+    remapped.startsWith('http://') ||
+    remapped.startsWith('https://') ||
+    remapped.startsWith('data:') ||
+    remapped.startsWith('content://')
+  ) {
+    return remapped
   }
-
-  const relMatch = abs.match(/([^/]+)\/Attachments\/(.+)$/i)
-  if (relMatch) {
-    return toFileUri(`${root}/${relMatch[1]}/Attachments/${relMatch[2]}`)
-  }
-
-  if (/^[a-zA-Z]:\//.test(abs) || abs.startsWith('/')) {
-    const marker = '/Attachments/'
-    const markerIdx = abs.indexOf(marker)
-    if (markerIdx > 0) {
-      const vaultStart = abs.lastIndexOf('/', markerIdx - 1)
-      if (vaultStart >= 0) {
-        const rel = abs.slice(vaultStart + 1)
-        return toFileUri(`${root}/${rel}`)
-      }
-    }
-  }
-
-  if (!abs.startsWith('/') && !/^[a-zA-Z]:/.test(abs)) {
-    return toFileUri(`${root}/${abs.replace(/^\/+/, '')}`)
-  }
-
-  return toFileUri(abs)
+  return toFileUri(remapped)
 }
 
 function toMobileAttachmentFilePath(
@@ -86,9 +70,9 @@ function toMobileAttachmentFilePath(
   ) {
     return filePath
   }
-  const abs = resolveAttachmentAbsolutePath(filePath)
-  if (!abs) return filePath
-  return abs.startsWith('/') ? `file://${abs}` : `file:///${abs}`
+  const remapped = remapAttachmentPathToStorageRoot(filePath, '')
+  if (!remapped) return filePath
+  return remapped.startsWith('/') ? `file://${remapped}` : `file:///${remapped}`
 }
 
 export function mapSavedAttachmentsForMobileUi(
