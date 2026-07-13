@@ -1,5 +1,6 @@
 import { AgentChatActionCoreRunner } from '@baishou/ai'
 import type { ActionDeps } from '@baishou/ai'
+import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
 import { ElectronStreamEmitter } from './electron-stream-emitter'
 import {
   getAgentManagers,
@@ -11,7 +12,8 @@ import {
 import { AgentChatService } from './AgentChatService'
 
 function buildActionDeps(event: Electron.IpcMainInvokeEvent, sessionId: string): ActionDeps {
-  const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
+  const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
+    getAgentManagers()
   return {
     emitter: new ElectronStreamEmitter(event),
     sessionId,
@@ -21,7 +23,8 @@ function buildActionDeps(event: Electron.IpcMainInvokeEvent, sessionId: string):
     diarySearcher: createDiarySearcher(),
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
-    sessionManager
+    sessionManager,
+    cleanupAttachments: (sid, parts) => cleanupAttachmentsForParts(attachmentManager, sid, parts)
   }
 }
 

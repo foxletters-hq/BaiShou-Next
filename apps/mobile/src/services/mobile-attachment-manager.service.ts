@@ -1,6 +1,6 @@
 import i18n from 'i18next'
 import * as ImagePicker from 'expo-image-picker'
-import { extractReferencedFileNames } from '@baishou/shared'
+import { extractReferencedFileNames, collectSessionAttachmentFileNames } from '@baishou/shared'
 import type {
   IAttachmentManager,
   AttachmentItem,
@@ -150,15 +150,46 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
 
   async deleteFile(sessionId: string, fileName: string): Promise<void> {
     const attDir = await this.pathService.getAttachmentsBaseDirectory()
-    const fp = joinPath(attDir, sessionId, fileName)
-    await this.fileSystem.unlink(fp)
+    const safeSessionId = sessionId.replace(/[/\\]/g, '')
+    const safeFileName = fileName.replace(/[/\\]/g, '')
+    if (
+      safeSessionId === 'avatars' ||
+      safeSessionId.trim() === '' ||
+      safeFileName.trim() === '' ||
+      safeFileName === '.' ||
+      safeFileName === '..'
+    ) {
+      return
+    }
 
-    const sessionDir = joinPath(attDir, sessionId)
+    const sessionDir = joinPath(attDir, safeSessionId)
+    const fp = joinPath(sessionDir, safeFileName)
+    // 二次确认未逃出会话目录（防御 joinPath 解析异常）
+    if (!fp.startsWith(sessionDir + '/') && fp !== sessionDir) {
+      return
+    }
+
+    try {
+      await this.fileSystem.unlink(fp)
+    } catch {
+      return
+    }
+
     if (await this.fileSystem.exists(sessionDir)) {
       const remaining = await this.fileSystem.readdir(sessionDir)
       if (remaining.length === 0) {
         await this.fileSystem.rm(sessionDir, { recursive: true, force: true }).catch(() => {})
       }
+    }
+  }
+
+  async deleteFilesReferencedByParts(
+    sessionId: string,
+    parts: ReadonlyArray<{ type?: string; data?: unknown }>
+  ): Promise<void> {
+    const fileNames = collectSessionAttachmentFileNames(sessionId, parts)
+    for (const fileName of fileNames) {
+      await this.deleteFile(sessionId, fileName).catch(() => {})
     }
   }
 

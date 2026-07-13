@@ -100,6 +100,7 @@ export function getAgentManagers() {
   return {
     sessionManager,
     assistantManager,
+    attachmentManager,
     realMessageRepo,
     realSessionRepo,
     realSnapshotRepo,

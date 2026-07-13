@@ -4,6 +4,7 @@ import {
   ContextCompressorService,
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
+import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
 import { isAutoInjectCurrentTimeEnabled, resolveWebSearchEnabled } from '@baishou/shared'
 import {
   getAgentManagers,
@@ -126,9 +127,13 @@ export function registerMessageIPC() {
   // API: 删除消息
   // ==========================================
   ipcMain.handle('agent:delete-message', async (_, sessionId: string, messageId: string) => {
-    const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
+    const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
+      getAgentManagers()
+    const ids = await realSessionRepo.listMessageIdsFromMessageAndFollowing(sessionId, messageId)
+    const parts = ids.length > 0 ? await realSessionRepo.getPartsByMessageIds(ids) : []
     await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId)
     await reconcileCompressionStateAfterTruncate(realSessionRepo, realSnapshotRepo, sessionId)
+    await cleanupAttachmentsForParts(attachmentManager, sessionId, parts)
     await sessionManager.flushSessionToDisk(sessionId)
     return true
   })

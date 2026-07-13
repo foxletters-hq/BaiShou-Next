@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeToast, useDialog } from '@baishou/ui/native'
 import { useAgentStore } from '@baishou/store'
 import { reconcileCompressionStateAfterTruncate } from '@baishou/ai'
+import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
 import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
@@ -427,6 +428,11 @@ export function useAgentStreamActions({
       if (!confirmed) return
       bumpReloadEpoch?.()
       try {
+        const ids = await services.sessionRepo.listMessageIdsFromMessageAndFollowing(
+          currentSessionId,
+          messageId
+        )
+        const parts = ids.length > 0 ? await services.sessionRepo.getPartsByMessageIds(ids) : []
         await services.sessionRepo.deleteMessageAndFollowing(currentSessionId, messageId)
         if (services.snapshotRepo) {
           await reconcileCompressionStateAfterTruncate(
@@ -435,6 +441,8 @@ export function useAgentStreamActions({
             currentSessionId
           )
         }
+        await cleanupAttachmentsForParts(services.attachmentManager, currentSessionId, parts)
+        await services.sessionManager.flushSessionToDisk(currentSessionId)
         const synced = await reloadMessagesFromDb(currentSessionId, { preserveWindow: false })
         if (!synced) {
           toast.showError(t('common.delete_failed', '删除失败'))

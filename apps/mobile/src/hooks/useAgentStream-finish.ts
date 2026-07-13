@@ -1,6 +1,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
 import { useAgentStore } from '@baishou/store'
 import { truncateSessionAfterOrderIndex, truncateOptionsWithDiskFlush } from '@baishou/ai'
+import { cleanupAttachmentsForParts } from '@baishou/core-mobile'
 
 import { useBaishou } from '../providers/BaishouProvider'
 import { runMobileAgentDbWrite } from '../services/mobile-agent-db-write.util'
@@ -144,12 +145,18 @@ export function useAgentStreamFinish({
         if (!runtime.snapshotRepo) {
           throw new Error('Snapshot repository unavailable')
         }
+        const attachmentManager = services?.attachmentManager
         await truncateSessionAfterOrderIndex(
           runtime.sessionRepo,
           runtime.snapshotRepo,
           sessionId,
           cutoffOrderIndex,
-          truncateOptionsWithDiskFlush(runtime.sessionManager)
+          truncateOptionsWithDiskFlush(
+            runtime.sessionManager,
+            attachmentManager
+              ? (sid, parts) => cleanupAttachmentsForParts(attachmentManager, sid, parts)
+              : undefined
+          )
         )
       })
       if (epoch !== retryEpochRef.current) return false
