@@ -10,7 +10,10 @@ import { AssistantEditScreen } from './features/agent/AssistantEditScreen'
 
 // Phase 14: Recover Missing Feature Routes
 import { DiaryEditorPage } from './features/diary/DiaryEditorPage'
-import { rememberSettingsReturnPath, locationToReturnPath } from './features/settings/settings-navigation.util'
+import {
+  rememberSettingsReturnPath,
+  locationToReturnPath
+} from './features/settings/settings-navigation.util'
 import { SummaryDetailPage } from './features/summary/SummaryDetailPage'
 import {
   useToast,
@@ -127,9 +130,16 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { DesktopSettingsOverlayContext } from './layouts/desktop-settings-overlay.context'
 import { SettingsOverlayHost } from './layouts/SettingsOverlayHost'
 
+function sameRouteLocation(
+  a: { pathname: string; search?: string },
+  b: { pathname: string; search?: string }
+): boolean {
+  return a.pathname === b.pathname && (a.search || '') === (b.search || '')
+}
+
 const AppRoutes = () => {
   const location = useLocation()
-  const dialog = useDialog()
+  const { closeAll } = useDialog()
   const [backgroundLocation, setBackgroundLocation] = useState(() => {
     if (location.pathname.startsWith('/settings')) {
       return { ...location, pathname: '/diary', state: null, key: 'default' }
@@ -139,11 +149,15 @@ const AppRoutes = () => {
   const isSettings = location.pathname.startsWith('/settings')
   const [settingsLocation, setSettingsLocation] = useState(location)
   const [settingsOverlayEpoch, setSettingsOverlayEpoch] = useState(0)
+  // 打开设置时立即用当前 hash location，避免首帧 settingsLocation 仍是业务页导致空白闪一下
+  const overlaySettingsLocation = isSettings ? location : settingsLocation
   const vaultScopeRevision = useSyncExternalStore(
     subscribeDesktopVaultScope,
     getDesktopVaultScopeRevision
   )
   const prevVaultScopeRevisionRef = useRef(vaultScopeRevision)
+  const backgroundLocationRef = useRef(backgroundLocation)
+  backgroundLocationRef.current = backgroundLocation
 
   useEffect(() => {
     if (prevVaultScopeRevisionRef.current === vaultScopeRevision) return
@@ -160,20 +174,23 @@ const AppRoutes = () => {
     }
   }, [isSettings, location])
 
-  // 路由变化时关闭所有弹窗
+  // 路由变化时关闭所有弹窗（依赖稳定的 closeAll，避免 dialog 对象引用抖动导致死循环）
   useEffect(() => {
-    dialog.closeAll()
-  }, [location.pathname, dialog])
+    closeAll()
+  }, [location.pathname, closeAll])
 
   useEffect(() => {
     if (!location.pathname.startsWith('/settings')) {
-      setBackgroundLocation(location)
-    } else if (!backgroundLocation.pathname.startsWith('/settings')) {
-      rememberSettingsReturnPath(locationToReturnPath(backgroundLocation))
+      // 路径未变时保留冻结 location，避免设置返回后 Routes 换 key 触发 MainLayout 重挂载闪烁
+      setBackgroundLocation((prev) => (sameRouteLocation(prev, location) ? prev : location))
+    } else if (!backgroundLocationRef.current.pathname.startsWith('/settings')) {
+      rememberSettingsReturnPath(locationToReturnPath(backgroundLocationRef.current))
     }
-  }, [location, backgroundLocation.pathname])
+  }, [location])
 
-  const mainRoutesLocation = isSettings ? backgroundLocation : location
+  // 设置 overlay 打开时用冻结底层；关闭后若回到同一路径，继续用冻结对象避免闪一下
+  const mainRoutesLocation =
+    isSettings || sameRouteLocation(backgroundLocation, location) ? backgroundLocation : location
   const mountSettingsHost = !location.pathname.startsWith('/welcome')
 
   return (
@@ -210,7 +227,7 @@ const AppRoutes = () => {
       {mountSettingsHost ? (
         <SettingsOverlayHost
           visible={isSettings}
-          settingsLocation={settingsLocation}
+          settingsLocation={overlaySettingsLocation}
           remountKey={settingsOverlayEpoch}
         />
       ) : null}

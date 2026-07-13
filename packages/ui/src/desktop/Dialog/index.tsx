@@ -4,7 +4,8 @@ import React, {
   useState,
   ReactNode,
   useCallback,
-  useEffect
+  useEffect,
+  useMemo
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
@@ -83,10 +84,11 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const closeAll = useCallback(() => {
     setState((prev) => {
+      if (!prev.isOpen && !prev.resolve) return prev
       if (prev.resolve) {
         prev.resolve(prev.type === 'prompt' || prev.type === 'choose' ? null : false)
       }
-      return { ...prev, isOpen: false }
+      return { ...prev, isOpen: false, resolve: undefined }
     })
   }, [])
 
@@ -161,8 +163,13 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const showTitle = state.type !== 'prompt' && state.type !== 'confirm' ? state.title : undefined
 
+  const dialogApi = useMemo(
+    () => ({ alert, confirm, prompt, choose, closeAll }),
+    [alert, confirm, prompt, choose, closeAll]
+  )
+
   return (
-    <DialogContext.Provider value={{ alert, confirm, prompt, choose, closeAll }}>
+    <DialogContext.Provider value={dialogApi}>
       {children}
       {state.isOpen && (
         <Modal isOpen={state.isOpen} onClose={dismissDialog} title={showTitle} zIndex={1100}>
