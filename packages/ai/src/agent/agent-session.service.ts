@@ -17,6 +17,7 @@ import {
   mergeDisabledToolIds,
   normalizeAssistantKind,
   isAutoInjectCurrentTimeEnabled,
+  isAgentStreamAbortError,
   type AssistantKind
 } from '@baishou/shared'
 import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
@@ -405,6 +406,7 @@ export class AgentSessionService {
       })
 
       let streamError = (await adapter.consumeStream(streamResult)).error
+      const userAborted = Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError)
 
       // 记录性能指标
       const metrics = adapter.getMetrics()
@@ -417,11 +419,16 @@ export class AgentSessionService {
         Boolean(accumulator.reasoning.trim()) ||
         accumulator.toolCalls.length > 0
 
-      if (!streamError && !hasModelOutput) {
+      // 用户主动取消：不要误报「模型未返回任何内容」
+      if (userAborted) {
+        streamError = isAgentStreamAbortError(streamError)
+          ? streamError
+          : new DOMException('The operation was aborted', 'AbortError')
+      } else if (!streamError && !hasModelOutput) {
         streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
       }
 
-      if (streamError) {
+      if (streamError && !userAborted) {
         logger.warn('[AgentSessionService] Stream encountered a fatal error:', streamError)
       }
 
@@ -464,7 +471,7 @@ export class AgentSessionService {
       }
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
-      if (streamError) {
+      if (streamError && !isAgentStreamAbortError(streamError) && !abortSignal?.aborted) {
         callbacks?.onError?.(streamError)
       } else if (callbacks?.onFinish) {
         callbacks.onFinish({
@@ -478,7 +485,7 @@ export class AgentSessionService {
       }
     } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e))
-      const aborted = err.name === 'AbortError'
+      const aborted = isAgentStreamAbortError(err) || abortSignal?.aborted === true
       if (!aborted) {
         logger.error('[AgentSessionService] Error in streamChat:', err.message)
         if (err.stack) {
@@ -508,7 +515,7 @@ export class AgentSessionService {
       if (!aborted) {
         callbacks?.onError?.(err)
       }
-      throw err
+      throw aborted ? new DOMException('The operation was aborted', 'AbortError') : err
     }
   }
 

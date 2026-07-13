@@ -13,7 +13,7 @@
 import type { StreamTextResult } from 'ai'
 import { ChunkType, type StreamChunk, type StreamMetrics } from './stream-chunk.types'
 import { StreamAccumulator } from './stream-accumulator'
-import { logger } from '@baishou/shared'
+import { isAgentStreamAbortError, logger } from '@baishou/shared'
 
 export interface StreamChunkAdapterCallbacks {
   onChunk?: (chunk: StreamChunk) => void
@@ -58,6 +58,11 @@ export class StreamChunkAdapter {
           fatalError = err instanceof Error ? err : new Error(String(err))
         }
 
+        // 用户主动取消：SDK 可能以 abort 事件结束，而非抛 AbortError
+        if ((value as { type?: string }).type === 'abort') {
+          fatalError = new DOMException('The operation was aborted', 'AbortError')
+        }
+
         // 交给累积器保存进度
         this.accumulator.add(value)
 
@@ -80,7 +85,10 @@ export class StreamChunkAdapter {
       // 模型只返回工具调用而没有文本时会触发此错误，不应阻止后续计费和持久化
       const isNoOutputError = e?.[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true
 
-      if (isNoOutputError) {
+      if (isAgentStreamAbortError(e)) {
+        fatalError =
+          e instanceof Error ? e : new DOMException('The operation was aborted', 'AbortError')
+      } else if (isNoOutputError) {
         logger.info(
           '[StreamChunkAdapter] AI_NoOutputGeneratedError detected (normal for tool-call only responses), treating as non-fatal'
         )

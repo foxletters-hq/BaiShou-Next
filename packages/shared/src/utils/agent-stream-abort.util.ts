@@ -16,6 +16,15 @@ export function isAgentStreamAbortError(error: unknown): boolean {
   return (
     lower.includes('the operation was aborted') ||
     lower.includes('operation was aborted') ||
-    lower === 'aborted'
+    lower.includes('this operation was aborted') ||
+    lower.includes('request was aborted') ||
+    lower.includes('response aborted') ||
+    lower.includes('bodystreambuffer was aborted') ||
+    lower.includes('stream aborted') ||
+    lower.includes('aborted by the user') ||
+    lower === 'aborted' ||
+    lower === 'abort' ||
+    message.includes('用户取消') ||
+    message.includes('流已中止')
   )
 }

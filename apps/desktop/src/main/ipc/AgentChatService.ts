@@ -1,4 +1,9 @@
-import { logger, assistantRowToEmojiPrefs, type AssistantEmojiPrefs } from '@baishou/shared'
+import {
+  logger,
+  assistantRowToEmojiPrefs,
+  isAgentStreamAbortError,
+  type AssistantEmojiPrefs
+} from '@baishou/shared'
 import { AgentChatCoreService } from '@baishou/ai'
 import { ElectronStreamEmitter } from './electron-stream-emitter'
 import {
@@ -148,7 +153,7 @@ export class AgentChatService {
       }
       return true
     } catch (error: any) {
-      if (error.name === 'AbortError') {
+      if (isAgentStreamAbortError(error)) {
         try {
           await sessionManager.flushSessionToDisk(args.sessionId)
         } catch (e: any) {

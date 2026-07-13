@@ -1,4 +1,4 @@
-import { logger, normalizePartData } from '@baishou/shared'
+import { isAgentStreamAbortError, logger, normalizePartData } from '@baishou/shared'
 import { AgentChatCoreService } from '../agent-chat-core.service'
 import type { IStreamEmitter } from '../stream-emitter.interface'
 import type { AttachmentInput } from '../agent-session.types'
@@ -134,11 +134,11 @@ export async function runStreamWithPersistence(
     }
     return true
   } catch (e: unknown) {
-    const err = e as { name?: string; message?: string }
-    if (err.name === 'AbortError') {
+    if (isAgentStreamAbortError(e)) {
       deps.emitter.sendFinish(deps.sessionId, { success: true })
       return true
     }
+    const err = e as { message?: string }
     deps.emitter.sendFinish(deps.sessionId, { error: err.message })
     return false
   } finally {

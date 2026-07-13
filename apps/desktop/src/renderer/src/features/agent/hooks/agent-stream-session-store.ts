@@ -42,6 +42,12 @@ const streamTextDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
 const streamReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
 const compressionTextDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
 const compressionReasoningDisplayBuffers: Record<string, StreamingTextDisplayBuffer> = {}
+/** 用户点击停止后，忽略随后迟到的 stream-finish 错误（避免「取消成功」后又弹失败） */
+const userStoppedSessions = new Set<string>()
+
+export function markAgentStreamUserStopped(sessionId: string | undefined): void {
+  if (sessionId) userStoppedSessions.add(sessionId)
+}
 
 function ensureStreamTextDisplayBuffer(sessionId: string): StreamingTextDisplayBuffer {
   if (!streamTextDisplayBuffers[sessionId]) {
@@ -284,10 +290,12 @@ function registerGlobalStreamIpcListeners(): () => void {
     flushStreamDisplayBuffers(sId)
     const fullText = streamTextDisplayBuffers[sId]?.getFullText() ?? ''
     const fullReasoning = streamReasoningDisplayBuffers[sId]?.getFullText() ?? ''
+    const userStopped = userStoppedSessions.has(sId)
+    if (userStopped) userStoppedSessions.delete(sId)
     updateSessionState(sId, (state) => {
       state.isStreaming = false
       state.isBridgeActive = Boolean(fullText.trim() || fullReasoning.trim())
-      if (payload?.error && !isAgentStreamAbortError(payload.error)) {
+      if (!userStopped && payload?.error && !isAgentStreamAbortError(payload.error)) {
         state.error = payload.error
       } else {
         state.error = null

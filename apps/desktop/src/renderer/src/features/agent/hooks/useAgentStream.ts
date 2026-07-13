@@ -11,6 +11,7 @@ import {
   clearCompressionStreamState,
   clearStreamBridgeState,
   getOrCreateSessionState,
+  markAgentStreamUserStopped,
   type ToolExecution,
   type PendingEmoji
 } from './agent-stream-session-store'
@@ -244,6 +245,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
   const stopChat = useCallback(() => {
     const sessionId = currentSessionId
     if (sessionId) {
+      markAgentStreamUserStopped(sessionId)
       flushStreamDisplayBuffers(sessionId)
       flushCompressionDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
