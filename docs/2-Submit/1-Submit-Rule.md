@@ -55,6 +55,7 @@ pnpm ci:check
 | 现象                                   | 处理                                                                                                                                                                     |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `NODE_MODULE_VERSION` / better-sqlite3 | 本地 `pnpm ci:check` 结束会按 Electron ABI 校验/恢复；`pnpm dev:desktop` 启动前也会自动检查，不匹配则重编。勿用根目录 `pnpm rebuild better-sqlite3`（那是系统 Node ABI） |
+| 移动端 sqlite-vec / 真机 ABI           | `pnpm ci:check` 与 `pnpm dev:mobile`（predev）会跑 `ensure:native`：校验 app.json 插件与预置 `vec.so`；有 adb 时用 `getprop` + 拉取 APK 核对设备 ABI。不匹配请 `pnpm dev:mobile:clear`（可设 `BAISHOU_MOBILE_NATIVE_AUTO_REBUILD=1` 自动重装） |
 | 本机 `archive-export-real-db` 被 skip  | 见 `better-sqlite3-available.ts`（Node 与 better-sqlite3 二进制不一致）；GitHub CI（Linux）会跑                                                                          |
 | `format:check` 失败                    | 在仓库根执行 `pnpm format`，仅将格式化相关文件纳入 commit                                                                                                                |
 | 不在 Git 仓库里执行                    | 先 `git clone` 你的 Fork，再在克隆目录内运行 `pnpm ci:check`                                                                                                             |

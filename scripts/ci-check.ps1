@@ -40,6 +40,13 @@ try {
   }
 
   Write-Host ''
+  Write-Host '正在校验移动端原生预置（sqlite-vec / 真机 ABI）…'
+  pnpm --filter @baishou/mobile run ensure:native
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host '警告: 移动端原生检查未通过。无设备时多为配置问题；有设备时请 pnpm dev:mobile:clear 重装开发版。' -ForegroundColor Yellow
+  }
+
+  Write-Host ''
   Write-Host 'CI 本地检查全部通过。' -ForegroundColor Green
 }
 finally {

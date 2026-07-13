@@ -5,7 +5,8 @@
   "scripts": {
     "commands": "node ../../scripts/commands-help.mjs mobile",
     "rebuild:dev-artifacts": "node ./scripts/rebuild-dev-artifacts.mjs",
-    "predev": "pnpm run rebuild:dev-artifacts",
+    "ensure:native": "node ./scripts/ensure-mobile-native.mjs",
+    "predev": "pnpm run rebuild:dev-artifacts && pnpm run ensure:native",
     "dev": "node ./scripts/start-dev.mjs",
     "predev:clear": "pnpm run rebuild:dev-artifacts",
     "dev:clear": "node ./scripts/run-android.mjs",

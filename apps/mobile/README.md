@@ -10,10 +10,11 @@
 
 | 命令                        | 何时用                                                                            |
 | --------------------------- | --------------------------------------------------------------------------------- |
-| **`pnpm dev:mobile`**       | 日常开发：只改 JS/TS，启动 Metro                                                  |
-| **`pnpm dev:mobile:clear`** | 全量重装：sync + 重打 diary-editor bundle，清 Metro / Gradle 缓存，重编并安装 APK |
+| **`pnpm dev:mobile`**       | 日常开发：只改 JS/TS，启动 Metro（predev 会跑 `ensure:native` 校验 sqlite-vec / 真机 ABI） |
+| **`pnpm dev:mobile:clear`** | 全量重装：sync + 重打 diary-editor bundle，清 Metro / Gradle 缓存，重编并安装 APK           |
 
-升级 Expo、新增原生模块、闪退、连不上 bundler 时 → **`pnpm dev:mobile:clear`**，然后 **`pnpm dev:mobile`**。
+升级 Expo、新增原生模块、闪退、连不上 bundler，或 `ensure:native` 报 ABI/vec.so 不匹配时 → **`pnpm dev:mobile:clear`**，然后 **`pnpm dev:mobile`**。  
+（可设 `BAISHOU_MOBILE_NATIVE_AUTO_REBUILD=1` 让 ensure 在不匹配时自动触发全量重装。）
 
 开发调试安装 **白守 Dev**（`com.baishou.baishou.dev`），与正式包并存。已配置 `key.properties` 时 Dev 包也用**正式签名**，以便读取旧 Flutter/正式包沙盒内的日记并同步到 `/storage/emulated/0/BaiShou_Root`。
 

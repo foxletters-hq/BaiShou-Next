@@ -46,4 +46,10 @@ if ! pnpm --filter @baishou/desktop run ensure:native; then
 fi
 
 echo ''
+echo '正在校验移动端原生预置（sqlite-vec / 真机 ABI）…'
+if ! pnpm --filter @baishou/mobile run ensure:native; then
+  echo "警告: 移动端原生检查未通过。无设备时多为配置问题；有设备时请 pnpm dev:mobile:clear 重装开发版。" >&2
+fi
+
+echo ''
 echo 'CI 本地检查全部通过。'
