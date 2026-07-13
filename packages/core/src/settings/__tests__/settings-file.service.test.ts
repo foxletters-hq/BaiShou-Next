@@ -51,7 +51,7 @@ describe('SettingsFileService', () => {
       expect(mockFileSystem.writeFile).toHaveBeenCalledTimes(1)
       expect(mockFileSystem.writeFile).toHaveBeenCalledWith(
         tmpPath(sysDir, 'app_preferences.json'),
-        JSON.stringify(settings, null, 2),
+        JSON.stringify({ language: 'zh', theme: 'dark' }, null, 2),
         'utf8'
       )
 
@@ -60,6 +60,18 @@ describe('SettingsFileService', () => {
         tmpPath(sysDir, 'app_preferences.json'),
         settingsFilePath(sysDir, 'app_preferences.json')
       )
+    })
+
+    it('should skip rewrite when domain file content is unchanged', async () => {
+      const settings = { language: 'zh', theme: 'dark' }
+      vi.mocked(mockFileSystem.readFile).mockResolvedValue(
+        JSON.stringify({ theme: 'dark', language: 'zh' }, null, 2)
+      )
+
+      await service.writeAllSettings(settings)
+
+      expect(mockFileSystem.writeFile).not.toHaveBeenCalled()
+      expect(mockFileSystem.rename).not.toHaveBeenCalled()
     })
 
     it('should serialize concurrent writes via write lock', async () => {
@@ -206,7 +218,7 @@ describe('SettingsFileService', () => {
       expect(result).toEqual(legacy)
       expect(mockFileSystem.writeFile).toHaveBeenCalledWith(
         tmpPath(sysDir, 'app_preferences.json'),
-        JSON.stringify(legacy, null, 2),
+        JSON.stringify({ language: 'zh', theme: 'dark' }, null, 2),
         'utf8'
       )
       expect(mockFileSystem.rename).toHaveBeenCalledWith(

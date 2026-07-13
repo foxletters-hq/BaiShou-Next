@@ -8,6 +8,25 @@ import {
   groupSettingsByDomainFile
 } from './settings-domain.util'
 
+/** 稳定键序序列化，避免 SQLite flush 与磁盘 JSON 仅因键顺序不同而反复改写 */
+function sortKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeysDeep)
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+    return Object.keys(obj)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, key) => {
+        acc[key] = sortKeysDeep(obj[key])
+        return acc
+      }, {})
+  }
+  return value
+}
+
+export function stringifySettingsDomainJson(settingsMap: Record<string, unknown>): string {
+  return JSON.stringify(sortKeysDeep(settingsMap), null, 2)
+}
+
 export class SettingsFileService {
   private writeLock: Promise<void> = Promise.resolve()
 
@@ -25,8 +44,17 @@ export class SettingsFileService {
     fullPath: string,
     settingsMap: Record<string, unknown>
   ): Promise<void> {
+    const next = stringifySettingsDomainJson(settingsMap)
+    try {
+      const prevRaw = await this.fileSystem.readFile(fullPath, 'utf8')
+      const prev = stringifySettingsDomainJson(JSON.parse(prevRaw) as Record<string, unknown>)
+      if (prev === next) return
+    } catch {
+      // 文件不存在或损坏时继续写入
+    }
+
     const tmpPath = fullPath + '.tmp'
-    await this.fileSystem.writeFile(tmpPath, JSON.stringify(settingsMap, null, 2), 'utf8')
+    await this.fileSystem.writeFile(tmpPath, next, 'utf8')
     try {
       await this.fileSystem.rename(tmpPath, fullPath)
     } catch (renameErr: any) {

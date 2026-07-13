@@ -100,12 +100,8 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     if (this.planManifestCache?.local) {
       this.pendingSyncLocalManifest = this.planManifestCache.local
       this.pendingSyncRemoteManifest = this.planManifestCache.remote
-      void this.saveLocalManifest(this.planManifestCache.local).catch((error: unknown) => {
-        console.warn(
-          '[MobileIncremental] save local manifest after plan failed:',
-          error instanceof Error ? error.message : String(error)
-        )
-      })
+      // 规划阶段不落盘 local manifest：过早写盘会让确认前 replan 读到「新 previousLocal」，
+      // 可能翻转 deletePropagationBlocked，误触发「同步计划已更新」二次确认。
     }
     this.planManifestCache = null
   }

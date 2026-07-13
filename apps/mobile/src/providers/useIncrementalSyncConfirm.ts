@@ -129,12 +129,13 @@ export function useIncrementalSyncConfirm(deps: IncrementalSyncConfirmDeps) {
           )
         ) {
           const pendingLocal = services.incrementalSyncService.peekPendingSyncPlanLocalManifest()
-          if (pendingLocal) {
+          if (pendingLocal || stalePreview.planReuseBaseline?.localFilesFingerprint) {
             const syncRoot = await services.pathService.getRootDirectory()
             localTreeDrifted = await detectLocalSyncTreeDrift(
               services.fileSystem,
               syncRoot,
-              pendingLocal
+              pendingLocal ?? { version: 1, updatedAt: 0, deviceId: '', files: {} },
+              stalePreview.planReuseBaseline?.localFilesFingerprint
             )
           }
           if (!localTreeDrifted) {
@@ -195,6 +196,15 @@ export function useIncrementalSyncConfirm(deps: IncrementalSyncConfirmDeps) {
             Boolean(deletePropagationChoice)
           )
         ) {
+          logger.warn('[IncrementalSync] plan changed after replan, require reconfirm', {
+            vaultRegistryChanged,
+            localTreeDrifted,
+            remoteManifestDrifted,
+            staleChangeCount: stalePreview.changeCount,
+            freshChangeCount: preview.changeCount,
+            staleDeleteBlocked: stalePreview.deletePropagationBlocked,
+            freshDeleteBlocked: preview.deletePropagationBlocked
+          })
           setPlanPreview(preview)
           setPlanConfirmEligibleAt(resolvePlanConfirmEligibleAt(preview))
           toast.showWarning(t('data_sync.plan_changed_reconfirm'))
