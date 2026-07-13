@@ -15,9 +15,17 @@ export interface ContextMenuItem {
 interface ContextMenuProps {
   items: ContextMenuItem[]
   children: React.ReactNode
+  /** 默认 diary 编辑器菜单层；图片预览等更高浮层可传入更大值 */
+  backdropZIndex?: number
+  menuZIndex?: number
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({
+  items,
+  children,
+  backdropZIndex = DIARY_EDITOR_OVERLAY_Z.menuBackdrop,
+  menuZIndex = DIARY_EDITOR_OVERLAY_Z.menu
+}) => {
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const menuRef = useRef<HTMLDivElement>(null)
@@ -76,7 +84,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
                 left: 0,
                 right: 0,
                 bottom: 0,
-                zIndex: DIARY_EDITOR_OVERLAY_Z.menuBackdrop,
+                zIndex: backdropZIndex,
                 background: 'transparent'
               }}
               onMouseDown={handleClose}
@@ -86,7 +94,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ items, children }) => 
               className="context-menu"
               style={{
                 position: 'fixed',
-                zIndex: DIARY_EDITOR_OVERLAY_Z.menu,
+                zIndex: menuZIndex,
                 left: position.x,
                 top: position.y
               }}

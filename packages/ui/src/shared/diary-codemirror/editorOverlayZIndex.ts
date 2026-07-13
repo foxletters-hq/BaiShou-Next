@@ -5,5 +5,8 @@ export const DIARY_EDITOR_OVERLAY_Z = {
   tableMenu: 402,
   imagePreview: 450,
   imagePreviewControl: 451,
+  /** 图片预览上的右键菜单（须高于 imagePreview） */
+  imagePreviewMenuBackdrop: 460,
+  imagePreviewMenu: 461,
   tableSheet: 460
 } as const

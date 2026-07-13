@@ -110,17 +110,40 @@ export function registerDiaryAttachmentIPC() {
   ipcMain.handle('diary:copy-attachment', async (_event, filePath: string) => {
     try {
       const { clipboard, nativeImage } = await import('electron')
+
+      if (typeof filePath !== 'string' || !filePath) {
+        return { success: false, error: 'Invalid path' }
+      }
+
+      // data URL：必须写位图，绝不能 writeText（否则粘贴出整段 base64）
+      if (filePath.startsWith('data:')) {
+        if (!filePath.startsWith('data:image/')) {
+          return { success: false, error: 'Unsupported data URL' }
+        }
+        const image = nativeImage.createFromDataURL(filePath)
+        if (image.isEmpty()) {
+          return { success: false, error: 'Invalid image data' }
+        }
+        clipboard.writeImage(image)
+        return { success: true }
+      }
+
       const ext = path.extname(filePath).toLowerCase()
 
       if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'].includes(ext)) {
-        // 图片文件
         const image = nativeImage.createFromPath(filePath)
+        if (image.isEmpty()) {
+          return { success: false, error: 'Invalid image file' }
+        }
         clipboard.writeImage(image)
-      } else {
-        // 其他文件，复制文件路径
-        clipboard.writeText(filePath)
+        return { success: true }
       }
 
+      // 非图片：仅复制短路径文本；拒绝疑似 base64 / 超长串
+      if (filePath.length > 2048 || filePath.includes('base64,')) {
+        return { success: false, error: 'Cannot copy as image' }
+      }
+      clipboard.writeText(filePath)
       return { success: true }
     } catch (err: any) {
       logger.error('Failed to copy attachment:', err)

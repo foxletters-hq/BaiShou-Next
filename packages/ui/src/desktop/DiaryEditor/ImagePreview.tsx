@@ -1,10 +1,99 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { Copy } from 'lucide-react'
+import { resolveAttachmentAbsolutePath } from '@baishou/shared'
+import { ContextMenu, type ContextMenuItem } from '../ContextMenu'
+import { useToast } from '../Toast/useToast'
+import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 import './ImagePreview.css'
+
+type CopyAttachmentResult = { success: boolean; error?: string }
+
+/** 解析为可供复制的本地路径；data URL 不含在此（避免 IPC 写文本） */
+function resolveCopyFilePath(src: string): string | null {
+  const trimmed = src.trim()
+  if (!trimmed || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return null
+  if (trimmed.startsWith('local://') || trimmed.startsWith('file://')) {
+    const abs = resolveAttachmentAbsolutePath(trimmed)
+    return abs || null
+  }
+  if (/^[a-zA-Z]:[\\/]/.test(trimmed) || trimmed.startsWith('/')) {
+    return trimmed
+  }
+  return null
+}
+
+function getDiaryCopyApi(): {
+  copyAttachment?: (p: string) => Promise<CopyAttachmentResult>
+} | null {
+  const w = window as Window & {
+    api?: { diary?: { copyAttachment?: (p: string) => Promise<CopyAttachmentResult> } }
+    electron?: { ipcRenderer?: { invoke: (ch: string, ...args: unknown[]) => Promise<unknown> } }
+  }
+  if (w.api?.diary?.copyAttachment) return w.api.diary
+  if (w.electron?.ipcRenderer?.invoke) {
+    return {
+      copyAttachment: (p: string) =>
+        w.electron!.ipcRenderer!.invoke('diary:copy-attachment', p) as Promise<CopyAttachmentResult>
+    }
+  }
+  return null
+}
+
+/** 渲染进程把 data URL 写成图片剪贴板（不走 IPC，避免把 base64 当文本） */
+async function copyDataUrlAsImage(dataUrl: string): Promise<CopyAttachmentResult> {
+  try {
+    const response = await fetch(dataUrl)
+    const blob = await response.blob()
+    const type = blob.type.startsWith('image/') ? blob.type : 'image/png'
+    await navigator.clipboard.write([new ClipboardItem({ [type]: blob })])
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Copy failed' }
+  }
+}
+
+/**
+ * 优先用本地文件路径走主进程 writeImage；
+ * 仅预览 data URL 时在渲染进程写图片，绝不把 base64 文本写入剪贴板。
+ */
+async function copyPreviewImage(
+  src: string,
+  copySource?: string
+): Promise<CopyAttachmentResult> {
+  const diary = getDiaryCopyApi()
+  const fileCandidates = [copySource, src]
+    .map((s) => (s ? resolveCopyFilePath(s) : null))
+    .filter((p): p is string => !!p)
+
+  for (const filePath of fileCandidates) {
+    if (!diary?.copyAttachment) break
+    const res = await diary.copyAttachment(filePath)
+    if (res?.success) return res
+  }
+
+  const dataUrl =
+    (copySource?.startsWith('data:image/') ? copySource : null) ||
+    (src.startsWith('data:image/') ? src : null)
+
+  if (dataUrl) {
+    const local = await copyDataUrlAsImage(dataUrl)
+    if (local.success) return local
+    // 渲染进程失败时再试主进程 createFromDataURL（仍不会 writeText）
+    if (diary?.copyAttachment) {
+      return diary.copyAttachment(dataUrl)
+    }
+    return local
+  }
+
+  return { success: false, error: 'No image to copy' }
+}
 
 interface ImagePreviewProps {
   src: string
+  /** 复制用本地路径（优先于 src 的 data URL，避免剪贴板变成 base64 文本） */
+  copySource?: string
   alt?: string
   className?: string
   style?: React.CSSProperties
@@ -14,6 +103,7 @@ interface ImagePreviewProps {
 
 export const ImagePreview: React.FC<ImagePreviewProps> = ({
   src,
+  copySource,
   alt = '',
   className = '',
   style,
@@ -21,6 +111,7 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
   onClose: controlledClose
 }) => {
   const { t } = useTranslation()
+  const toast = useToast()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined
   const isPreviewOpen = isControlled ? controlledOpen : internalOpen
@@ -176,6 +267,32 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
     return undefined
   }, [isPreviewOpen, handleClosePreview])
 
+  const handleCopyImage = useCallback(async () => {
+    try {
+      const res = await copyPreviewImage(src, copySource)
+      if (res?.success) {
+        toast.showSuccess(t('markdown.copy_image_success', '图片已复制到剪贴板'))
+      } else {
+        toast.showError(res?.error || t('markdown.copy_image_failed', '复制失败'))
+      }
+    } catch (err: any) {
+      toast.showError(err?.message || t('markdown.copy_image_failed', '复制失败'))
+    }
+  }, [src, copySource, t, toast])
+
+  const previewContextMenuItems = useMemo<ContextMenuItem[]>(
+    () => [
+      {
+        label: t('markdown.copy_image', '复制图片'),
+        icon: <Copy size={14} />,
+        onClick: () => {
+          void handleCopyImage()
+        }
+      }
+    ],
+    [t, handleCopyImage]
+  )
+
   return (
     <>
       {!isControlled && (
@@ -198,20 +315,28 @@ export const ImagePreview: React.FC<ImagePreviewProps> = ({
             onClick={handleOverlayClick}
             onMouseUp={handleMouseUp}
           >
-            <img
-              src={src}
-              alt={alt}
-              className="image-preview-stage-img"
-              style={{
-                transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
-                cursor: isDragging ? 'grabbing' : 'grab',
-                transition: transformTransition ? 'transform 0.12s ease-out' : 'none'
-              }}
-              draggable={false}
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={handleMouseDown}
-              onWheel={handleWheel}
-            />
+            <div className="image-preview-stage" onClick={handleOverlayClick}>
+              <ContextMenu
+                items={previewContextMenuItems}
+                backdropZIndex={DIARY_EDITOR_OVERLAY_Z.imagePreviewMenuBackdrop}
+                menuZIndex={DIARY_EDITOR_OVERLAY_Z.imagePreviewMenu}
+              >
+                <img
+                  src={src}
+                  alt={alt}
+                  className="image-preview-stage-img"
+                  style={{
+                    transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    transition: transformTransition ? 'transform 0.12s ease-out' : 'none'
+                  }}
+                  draggable={false}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={handleMouseDown}
+                  onWheel={handleWheel}
+                />
+              </ContextMenu>
+            </div>
 
             <div className="image-preview-toolbar" onClick={(e) => e.stopPropagation()}>
               <div className="image-preview-controls">

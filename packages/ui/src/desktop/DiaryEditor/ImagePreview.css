@@ -9,12 +9,15 @@
 
 .image-preview-overlay {
   position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 24px 196px;
+  /* 桌面端顶栏固定盖住上方（约 48px），居中只算顶栏以下可视区 */
+  top: var(--titlebar-height, 48px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+  justify-items: center;
   box-sizing: border-box;
   z-index: 450;
   background: rgba(100, 116, 139, 0.28);
@@ -38,9 +41,20 @@
   }
 }
 
+.image-preview-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
 .image-preview-stage-img {
   max-width: min(76vw, 600px);
-  max-height: min(calc(100vh - 260px), 520px);
+  /* 可视高度 = 视口 - 顶栏 - 底栏工具条预留 */
+  max-height: min(100%, calc(100vh - var(--titlebar-height, 48px) - 120px), 72vh);
   width: auto;
   height: auto;
   object-fit: contain;
@@ -51,12 +65,10 @@
 }
 
 .image-preview-toolbar {
-  position: absolute;
-  left: 50%;
-  bottom: 28px;
-  transform: translateX(-50%);
+  position: relative;
   z-index: 451;
   max-width: calc(100vw - 32px);
+  margin: 0 0 28px;
   cursor: default;
 }
 

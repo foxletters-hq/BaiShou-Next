@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { resolveAttachmentAbsolutePath } from '@baishou/shared'
 import { ImagePreview } from '../DiaryEditor/ImagePreview'
 import { resolveChatAttachmentSrc } from './chat-bubble.utils'
 import {
@@ -6,6 +7,22 @@ import {
   getChatAttachmentThumbnail
 } from './chat-attachment-thumbnail.util'
 import styles from './ChatBubble.module.css'
+
+function resolveCopySource(filePath: string): string | undefined {
+  if (!filePath) return undefined
+  if (filePath.startsWith('blob:') || filePath.startsWith('data:')) return undefined
+  if (filePath.startsWith('local://')) {
+    return resolveAttachmentAbsolutePath(filePath) || undefined
+  }
+  if (/^[a-zA-Z]:[\\/]/.test(filePath) || filePath.startsWith('/')) {
+    return filePath
+  }
+  const viaChat = resolveChatAttachmentSrc(filePath)
+  if (viaChat.startsWith('local://')) {
+    return resolveAttachmentAbsolutePath(viaChat) || undefined
+  }
+  return viaChat || undefined
+}
 
 interface ChatAttachmentImageProps {
   filePath: string
@@ -17,6 +34,8 @@ export const ChatAttachmentImage: React.FC<ChatAttachmentImageProps> = ({ filePa
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewSrc, setPreviewSrc] = useState('')
   const [loadingPreview, setLoadingPreview] = useState(false)
+
+  const copySource = useMemo(() => resolveCopySource(filePath), [filePath])
 
   useEffect(() => {
     let cancelled = false
@@ -62,6 +81,7 @@ export const ChatAttachmentImage: React.FC<ChatAttachmentImageProps> = ({ filePa
       {previewOpen && (
         <ImagePreview
           src={previewSrc}
+          copySource={copySource}
           alt={fileName}
           isOpen
           onClose={() => setPreviewOpen(false)}
