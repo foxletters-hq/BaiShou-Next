@@ -234,7 +234,7 @@ export class ShadowIndexQueryOps {
             INNER JOIN journals_index i ON i.id = journals_fts.rowid
             WHERE journals_fts MATCH ${ftsMatchExpr}
               AND i.vault_name = ${this.vaultName}
-            ORDER BY fts_rank ASC
+            ORDER BY i.date DESC
             LIMIT ${needCount}
           `
         )) as any[]
@@ -264,6 +264,7 @@ export class ShadowIndexQueryOps {
           .select()
           .from(shadowJournalIndexTable)
           .where(this.withVault(...likeQueries))
+          .orderBy(sql`${shadowJournalIndexTable.date} DESC`)
           .limit(needCount)) as ShadowJournalRow[]
 
         if (rows) {
@@ -346,6 +347,14 @@ export class ShadowIndexQueryOps {
         indexRow: row
       })
     }
+
+    // 与日记列表一致：按日期倒序（新→旧），避免 FTS+LIKE 合并后乱序
+    mergedResults.sort((a, b) => {
+      const dateA = a.indexRow?.date ?? ''
+      const dateB = b.indexRow?.date ?? ''
+      if (dateA === dateB) return b.rowid - a.rowid
+      return dateB.localeCompare(dateA)
+    })
 
     return mergedResults.slice(offset, offset + limit)
   }

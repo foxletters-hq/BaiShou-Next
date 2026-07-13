@@ -171,6 +171,19 @@ describe('ShadowIndexRepository', () => {
       expect(results[0]!.contentSnippet).toContain('Beta')
     })
 
+    it('searchFTS returns hits ordered by date descending', async () => {
+      await repo.upsert(generateDummyPayload('2026-01-01T00:00:00.000Z', 'shared keyword older'))
+      await repo.upsert(generateDummyPayload('2026-01-03T00:00:00.000Z', 'shared keyword newest'))
+      await repo.upsert(generateDummyPayload('2026-01-02T00:00:00.000Z', 'shared keyword middle'))
+
+      const results = await repo.searchFTS('keyword')
+      expect(results.map((r) => r.indexRow?.date)).toEqual([
+        '2026-01-03T00:00:00.000Z',
+        '2026-01-02T00:00:00.000Z',
+        '2026-01-01T00:00:00.000Z'
+      ])
+    })
+
     it('searchFTS gracefully returns empty arrays for garbage queries', async () => {
       await repo.upsert(generateDummyPayload('2026-01-03T00:00:00.000Z', 'something normal'))
 
