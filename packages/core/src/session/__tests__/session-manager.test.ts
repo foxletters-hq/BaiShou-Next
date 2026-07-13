@@ -99,9 +99,9 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
         preserveSessionIds: expect.any(Set)
       })
     )
-    const arg = mockSyncService.fullScanArchives.mock.calls[0][0] as {
+    const arg = mockSyncService.fullScanArchives.mock.calls[0]?.[0] as {
       preserveSessionIds?: Set<string>
     }
-    expect(arg.preserveSessionIds?.has('mid-chat')).toBe(true)
+    expect(arg?.preserveSessionIds?.has('mid-chat')).toBe(true)
   })
 })

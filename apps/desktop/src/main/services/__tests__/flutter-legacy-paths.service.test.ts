@@ -30,8 +30,6 @@ describe('flutter-legacy-paths.service', () => {
   let tempDir: string
   let sourceDir: string
   let machineSpPath: string
-  let machineSpBackup: Buffer | null
-  let machineSpExisted: boolean
   let originalAppData: string | undefined
 
   async function writeMachineSharedPreferences(data: Record<string, unknown>): Promise<void> {
@@ -42,27 +40,15 @@ describe('flutter-legacy-paths.service', () => {
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flutter-legacy-paths-'))
     sourceDir = path.join(tempDir, 'source')
-    machineSpPath = flutterLegacyPaths.resolveFlutterSharedPreferencesCandidates()[0]!
     originalAppData = process.env.APPDATA
+    // 先切到测试 APPDATA，再解析本机 SP 路径，避免写到真实用户目录而读不到
     process.env.APPDATA = path.join(tempDir, 'AppData', 'Roaming')
-    try {
-      machineSpBackup = await fs.readFile(machineSpPath)
-      machineSpExisted = true
-    } catch {
-      machineSpBackup = null
-      machineSpExisted = false
-    }
+    machineSpPath = flutterLegacyPaths.resolveFlutterSharedPreferencesCandidates()[0]!
     await writeBsV3Fixture(sourceDir)
   })
 
   afterEach(async () => {
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => null)
-    if (machineSpExisted && machineSpBackup) {
-      await fs.mkdir(path.dirname(machineSpPath), { recursive: true })
-      await fs.writeFile(machineSpPath, machineSpBackup)
-    } else {
-      await fs.rm(machineSpPath, { force: true }).catch(() => null)
-    }
     if (originalAppData === undefined) delete process.env.APPDATA
     else process.env.APPDATA = originalAppData
     vi.restoreAllMocks()

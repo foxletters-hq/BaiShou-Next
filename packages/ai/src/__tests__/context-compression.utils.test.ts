@@ -378,9 +378,9 @@ describe('context-compression.utils', () => {
 
     expect(withRecent).toBeLessThan(withoutRecent)
     const midThreshold = Math.floor((withoutRecent + withRecent) / 2)
-    expect(resolveCompressionTrigger(withoutRecent, { threshold: midThreshold, keepTurns: 3 })).toBe(
-      true
-    )
+    expect(
+      resolveCompressionTrigger(withoutRecent, { threshold: midThreshold, keepTurns: 3 })
+    ).toBe(true)
     expect(resolveCompressionTrigger(withRecent, { threshold: midThreshold, keepTurns: 3 })).toBe(
       false
     )
@@ -400,8 +400,8 @@ describe('context-compression.utils', () => {
       summaryText: 'short summary',
       coveredUpToMessageId: 'missing-id',
       tailStartMessageId: 'also-missing',
-      messageCount: null,
-      tokenCount: null,
+      messageCount: undefined,
+      tokenCount: undefined,
       createdAt: new Date()
     }
 

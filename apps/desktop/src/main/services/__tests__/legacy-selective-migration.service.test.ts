@@ -28,7 +28,8 @@ const {
   mockSessionCreate,
   mockInsertMessageWithParts,
   mockResync,
-  mockReadMachineSp
+  mockReadMachineSp,
+  mockResolveLegacyPreferencesForMigration
 } = vi.hoisted(() => ({
   mockDiarySave: vi.fn().mockResolvedValue({ id: 1 }),
   mockVaultExists: vi.fn().mockReturnValue(false),
@@ -44,7 +45,8 @@ const {
   mockResync: vi.fn().mockResolvedValue(undefined),
   mockReadMachineSp: vi.fn().mockResolvedValue({
     user_personas: JSON.stringify({ 本机身份: { name: 'MachineUser' } })
-  })
+  }),
+  mockResolveLegacyPreferencesForMigration: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -108,10 +110,29 @@ vi.mock('../../ipc/agent-helpers', () => ({
 
 vi.mock('../flutter-legacy-paths.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../flutter-legacy-paths.service')>()
+  mockResolveLegacyPreferencesForMigration.mockImplementation(async (sourceDir: string) => {
+    const fromSource = await actual.resolveLegacyPreferencesForSource(sourceDir, {
+      allowMachineSpFallback: false
+    })
+    const machineSp = await mockReadMachineSp()
+    if (!machineSp) {
+      return { ...fromSource, supplementedFromMachine: false }
+    }
+    if (!fromSource.sp) {
+      return {
+        sp: machineSp,
+        config: fromSource.config,
+        source: 'shared_preferences' as const,
+        supplementedFromMachine: true
+      }
+    }
+    return { ...fromSource, supplementedFromMachine: false }
+  })
   return {
     ...actual,
     resolveLegacyRootCandidates: vi.fn().mockResolvedValue([]),
-    readFlutterSharedPreferencesRaw: mockReadMachineSp
+    readFlutterSharedPreferencesRaw: mockReadMachineSp,
+    resolveLegacyPreferencesForMigration: mockResolveLegacyPreferencesForMigration
   }
 })
 
@@ -155,6 +176,10 @@ describe('LegacySelectiveMigrationService', () => {
     mockSessionCreate.mockClear()
     mockInsertMessageWithParts.mockClear()
     mockResync.mockClear()
+    mockReadMachineSp.mockReset()
+    mockReadMachineSp.mockResolvedValue({
+      user_personas: JSON.stringify({ 本机身份: { name: 'MachineUser' } })
+    })
 
     await fs.rm(mockTargetRoot, { recursive: true, force: true }).catch(() => null)
     await fs.mkdir(mockTargetRoot, { recursive: true })
@@ -166,6 +191,8 @@ describe('LegacySelectiveMigrationService', () => {
 
   describe('scan', () => {
     it('bs-v3 explicit dir shows file-only notes and no machine identity cards', async () => {
+      // 显式目录扫描不应把本机 SP 算作身份卡来源
+      mockReadMachineSp.mockResolvedValue(null)
       await writeBsV3Fixture(sourceDir)
       const result = await service.scan(sourceDir)
       expect(result.notes?.some((n) => n.includes('纯文件工作区'))).toBe(true)
