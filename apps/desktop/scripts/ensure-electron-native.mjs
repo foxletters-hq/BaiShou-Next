@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- 纯 .mjs 构建脚本，无 TS 类型注解 */
 /**
  * 桌面启动前：确认 better-sqlite3（及 sqlite-vec）已按当前 Electron ABI 编译。
  * 若 NODE_MODULE_VERSION 不匹配（常见于 ci:check / `pnpm rebuild` 按系统 Node 重编后），
