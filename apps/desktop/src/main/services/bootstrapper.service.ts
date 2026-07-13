@@ -1,5 +1,9 @@
 import { BrowserWindow } from 'electron'
-import { SummarySyncService, SummaryFileService } from '@baishou/core-desktop'
+import {
+  SummarySyncService,
+  SummaryFileService,
+  listDiskVaultFolderNames
+} from '@baishou/core-desktop'
 import { SummaryRepositoryImpl, connectionManager } from '@baishou/database-desktop'
 import { app } from 'electron'
 import * as path from 'path'
@@ -120,9 +124,15 @@ export class GlobalDataBootstrapper {
       // 2–5. 其余层与日记扫描并行，缩短冷启动等待
       const activeVault = vaultService.getActiveVault()
       const summaryResyncOptions = activeVault ? { activeVaultName: activeVault.name } : undefined
+      const syncRoot = await pathService.getRootDirectory()
+      const diskVaultNames = await listDiskVaultFolderNames(fileSystem, syncRoot)
+      const sessionResyncOptions = {
+        ...(activeVault ? { activeVaultName: activeVault.name } : {}),
+        diskVaultNames
+      }
       const summaryScan = summaryScout.fullScanArchives(summaryResyncOptions)
       const assistantScan = assistantManager.fullResyncFromDisks()
-      const sessionScan = sessionManager.fullResyncFromDisks()
+      const sessionScan = sessionManager.fullResyncFromDisks(sessionResyncOptions)
       const settingsScan = settingsManager.fullResyncFromDisk()
 
       await Promise.all([shadowScan, summaryScan, assistantScan, sessionScan, settingsScan])
@@ -148,6 +158,108 @@ export class GlobalDataBootstrapper {
       await this.notifyRenderersAfterResync()
     } catch (e) {
       logger.error('--- ❌ GLOBAL BOOTSTRAPPER FAILED. SEVERE SYNCHRONIZATION ERROR ---', e as any)
+    }
+  }
+
+  /**
+   * 增量同步后按需索引：只扫触及层，settings 以盘为准灌库且不反写。
+   * 禁止无条件 fullyResync（会写盘改 hash，导致下次又提示上传）。
+   */
+  async selectiveResyncAfterIncrementalSync(options: {
+    journals?: boolean
+    summaries?: boolean
+    assistants?: boolean
+    settings?: boolean
+    sessions?: boolean
+    /** 不跑 Latte/头像 mirror 等可能写盘的收尾 */
+    skipEnsures?: boolean
+  }): Promise<void> {
+    const needsAny =
+      options.journals ||
+      options.summaries ||
+      options.assistants ||
+      options.settings ||
+      options.sessions
+    if (!needsAny) {
+      logger.info('[Bootstrapper] selective post-sync: nothing to index')
+      return
+    }
+
+    logger.info('[Bootstrapper] selective post-sync start', options)
+    try {
+      const shadowScout = this.tryGetShadowBootstrapper()
+      const summaryScout = this.tryGetSummaryBootstrapper()
+      const { sessionManager, assistantManager } = getAgentManagers()
+      const activeVault = vaultService.getActiveVault()
+      const syncRoot = await pathService.getRootDirectory()
+      const diskVaultNames = await listDiskVaultFolderNames(fileSystem, syncRoot)
+      const resyncOptions = {
+        ...(activeVault ? { activeVaultName: activeVault.name } : {}),
+        diskVaultNames
+      }
+
+      const tasks: Promise<unknown>[] = []
+      if (options.journals) {
+        tasks.push(
+          shadowScout.fullScanVault(true).catch((e) => {
+            logger.warn('[Bootstrapper] selective shadow scan failed:', e as Error)
+          })
+        )
+      }
+      if (options.summaries) {
+        tasks.push(
+          summaryScout
+            .fullScanArchives(activeVault ? { activeVaultName: activeVault.name } : undefined)
+            .catch((e) => {
+              logger.warn('[Bootstrapper] selective summary scan failed:', e as Error)
+            })
+        )
+      }
+      if (options.assistants) {
+        tasks.push(
+          assistantManager.fullResyncFromDisks(resyncOptions).catch((e) => {
+            logger.warn('[Bootstrapper] selective assistant scan failed:', e as Error)
+          })
+        )
+      }
+      if (options.sessions) {
+        // 会话定点水合已在 IPC 层做；此处仅在需要时 fullScan（例如大量删除）
+        tasks.push(
+          sessionManager.fullResyncFromDisks(resyncOptions).catch((e) => {
+            logger.warn('[Bootstrapper] selective session scan failed:', e as Error)
+          })
+        )
+      }
+      if (options.settings) {
+        tasks.push(
+          settingsManager.fullResyncFromDisk({ diskAuthoritative: true }).catch((e) => {
+            logger.warn('[Bootstrapper] selective settings scan failed:', e as Error)
+          })
+        )
+      }
+      if (tasks.length > 0) await Promise.all(tasks)
+
+      if (!options.skipEnsures) {
+        const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
+        const featureSettings =
+          (await settingsManager.get<{ language?: string }>('feature_settings')) || {}
+        const storedLanguage = appSettings.language || featureSettings.language
+        const locale = resolveBootstrapUiLocale({
+          savedLanguage: storedLanguage,
+          systemLocale: app.getLocale(),
+          hasCompletedOnboarding: !!vaultService.getActiveVault()
+        })
+        if (locale) {
+          await ensureDefaultLatteAssistant(assistantManager, locale)
+        }
+        await pathService.backfillGlobalAgentAvatarsFromVaults()
+        await pathService.mirrorGlobalAgentAvatarsIntoVaults()
+      }
+
+      await this.notifyRenderersAfterResync()
+      logger.info('[Bootstrapper] selective post-sync done')
+    } catch (e) {
+      logger.error('[Bootstrapper] selective post-sync failed:', e as Error)
     }
   }
 }
