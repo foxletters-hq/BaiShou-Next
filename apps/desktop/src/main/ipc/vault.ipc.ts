@@ -65,6 +65,21 @@ export async function switchVaultFast(vaultName: string) {
   summaryWatcher.stop()
   sessionWatcher.stop()
 
+  // 单例 SessionManager 的防抖落盘必须在切换前完成，否则会写到新 vault 目录
+  try {
+    const { getAgentManagers, invalidateAgentManagers } = await import('./agent-helpers')
+    await getAgentManagers().sessionManager.flushPendingDiskWrites()
+    invalidateAgentManagers()
+  } catch (e) {
+    logger.warn('[Vault] flush/invalidate agent managers before switch failed:', e as Error)
+    try {
+      const { invalidateAgentManagers } = await import('./agent-helpers')
+      invalidateAgentManagers()
+    } catch {
+      // ignore
+    }
+  }
+
   await vaultService.switchVault(vaultName)
 
   const { emitVaultSwitchMutation } = await import('../cache/desktop-main-cache-coordinator')

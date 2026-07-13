@@ -41,6 +41,8 @@ export async function reconnectAgentDbForCurrentStorageRoot(): Promise<void> {
   resetAppDb()
   const db = getAppDb(storageRoot)
   connectionManager.setDb(db)
+  const { invalidateAgentManagers } = await import('../ipc/agent-helpers')
+  invalidateAgentManagers()
   await installDatabaseSchema(db)
   logger.info('[StorageDirectory] Agent DB reconnected for storage root:', storageRoot)
 }

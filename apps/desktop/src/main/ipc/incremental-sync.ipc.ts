@@ -235,7 +235,14 @@ async function ensureVaultsForIncrementalSync(
 async function flushPendingAgentSessionsBeforeSync(): Promise<void> {
   try {
     const { getAgentManagers } = await import('./agent-helpers')
-    await getAgentManagers().sessionManager.flushPendingDiskWrites()
+    const { sessionManager } = getAgentManagers()
+    const activeVaultName = vaultService.getActiveVault()?.name ?? null
+    const result = await sessionManager.ensureSessionsFlushedToDisk({ activeVaultName })
+    if (result.flushed > 0) {
+      logger.info(
+        `[IncrementalSync] flushed ${result.flushed} session(s) missing on disk before sync (db=${result.dbCount}, disk=${result.diskCount})`
+      )
+    }
   } catch (e) {
     logger.warn('[IncrementalSync] session flushPending before sync failed:', e as Error)
   }
@@ -335,6 +342,7 @@ export function registerIncrementalSyncIPC() {
   })
 
   ipcMain.handle('incrementalSync:planSync', async (_, runOptions) => {
+    await flushPendingAgentSessionsBeforeSync()
     const service = await getSyncService()
     const config = await service.getConfig()
     if (!config.enabled) {

@@ -71,7 +71,8 @@ vi.mock('../../ipc/settings.ipc', () => ({
 }))
 
 vi.mock('../../ipc/agent-helpers', () => ({
-  invalidateMcpToolContextCache: invalidateMcpToolContextCacheMock
+  invalidateMcpToolContextCache: invalidateMcpToolContextCacheMock,
+  invalidateAgentManagers: vi.fn()
 }))
 
 vi.mock('../vault-resync.service', () => ({

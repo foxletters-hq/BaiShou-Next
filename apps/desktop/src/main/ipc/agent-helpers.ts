@@ -57,9 +57,31 @@ export { createDiarySearcher }
 export const toolRegistry = new ToolRegistry()
 export const agentService = new AgentSessionService()
 
-// 动态工厂：确保每一次响应 IPC 时都锁定在用户当前所切环境的 Database 句柄上
-export function getAgentManagers() {
+type AgentManagers = {
+  sessionManager: SessionManagerService
+  assistantManager: AssistantManagerService
+  attachmentManager: DesktopAttachmentManagerService
+  realMessageRepo: MessageRepository
+  realSessionRepo: SessionRepository
+  realSnapshotRepo: SnapshotRepository
+  realAssistantRepo: AssistantRepository
+}
+
+let cachedAgentManagers: AgentManagers | null = null
+let cachedAgentManagersDb: ReturnType<typeof connectionManager.getDb> | null = null
+
+/** DB 热切换后丢弃缓存（通常 setDb 换引用后会自动重建；显式调用更稳妥） */
+export function invalidateAgentManagers(): void {
+  cachedAgentManagers = null
+  cachedAgentManagersDb = null
+}
+
+// 按当前 DB 句柄缓存：跨 IPC 共享 SessionManager dirty，使同步前 flushPending 生效
+export function getAgentManagers(): AgentManagers {
   const db = connectionManager.getDb()
+  if (cachedAgentManagers && cachedAgentManagersDb === db) {
+    return cachedAgentManagers
+  }
 
   const realSessionRepo = new SessionRepository(db)
   const sessionFileService = new SessionFileService(pathService, fileSystem)
@@ -97,7 +119,8 @@ export function getAgentManagers() {
   const realMessageRepo = new MessageRepository(db)
   const realSnapshotRepo = new SnapshotRepository(db)
 
-  return {
+  cachedAgentManagersDb = db
+  cachedAgentManagers = {
     sessionManager,
     assistantManager,
     attachmentManager,
@@ -106,6 +129,7 @@ export function getAgentManagers() {
     realSnapshotRepo,
     realAssistantRepo
   }
+  return cachedAgentManagers
 }
 
 const WEB_FETCH_USER_AGENT =
