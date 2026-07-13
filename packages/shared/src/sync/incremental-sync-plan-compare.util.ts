@@ -10,10 +10,17 @@ function planItemFingerprint(preview: IncrementalSyncPlanPreview): string {
 /** 确认后重新规划的结果是否与用户已阅读的预览存在实质差异 */
 export function hasIncrementalSyncPlanMaterialChange(
   before: IncrementalSyncPlanPreview,
-  after: IncrementalSyncPlanPreview
+  after: IncrementalSyncPlanPreview,
+  options?: { ignoreHighDivergenceCleared?: boolean }
 ): boolean {
   if (before.changeCount !== after.changeCount) return true
   if (before.deletePropagationBlocked !== after.deletePropagationBlocked) return true
-  if (before.requiresHighDivergenceConfirm !== after.requiresHighDivergenceConfirm) return true
+  if (before.requiresHighDivergenceConfirm !== after.requiresHighDivergenceConfirm) {
+    const clearedOnly =
+      options?.ignoreHighDivergenceCleared &&
+      before.requiresHighDivergenceConfirm &&
+      !after.requiresHighDivergenceConfirm
+    if (!clearedOnly) return true
+  }
   return planItemFingerprint(before) !== planItemFingerprint(after)
 }

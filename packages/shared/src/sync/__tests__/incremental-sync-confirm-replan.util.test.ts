@@ -139,6 +139,20 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false)).toBe(true)
   })
 
+  it('已确认高差异时忽略 requiresHighDivergenceConfirm 被清除', () => {
+    const stale = preview({
+      requiresHighDivergenceConfirm: true,
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+    })
+    const fresh = preview({
+      requiresHighDivergenceConfirm: false,
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+    })
+    expect(
+      shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false, true)
+    ).toBe(false)
+  })
+
   it('已选删除传播时跳过二次确认', () => {
     const stale = preview({
       items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]

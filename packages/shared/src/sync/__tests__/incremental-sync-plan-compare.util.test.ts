@@ -55,6 +55,21 @@ describe('incremental-sync-plan-compare.util', () => {
     })
     expect(hasIncrementalSyncPlanMaterialChange(before, after)).toBe(false)
   })
+
+  it('can ignore high-divergence flag cleared after user confirmation', () => {
+    const before = preview({
+      requiresHighDivergenceConfirm: true,
+      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a' }]
+    })
+    const after = preview({
+      requiresHighDivergenceConfirm: false,
+      items: [{ filePath: 'vault-a/a.md', action: 'upload', vaultScope: 'vault-a' }]
+    })
+    expect(hasIncrementalSyncPlanMaterialChange(before, after)).toBe(true)
+    expect(
+      hasIncrementalSyncPlanMaterialChange(before, after, { ignoreHighDivergenceCleared: true })
+    ).toBe(false)
+  })
 })
 
 describe('assertSyncConfirmAllowed', () => {

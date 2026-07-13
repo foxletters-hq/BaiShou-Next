@@ -71,9 +71,12 @@ export function shouldRequireIncrementalSyncReconfirmAfterReplan(
   needsReplan: boolean,
   stalePreview: IncrementalSyncPlanPreview,
   freshPreview: IncrementalSyncPlanPreview,
-  deletePropagationChoiceProvided: boolean
+  deletePropagationChoiceProvided: boolean,
+  highDivergenceConfirmed = false
 ): boolean {
   if (!needsReplan) return false
   if (deletePropagationChoiceProvided) return false
-  return hasIncrementalSyncPlanMaterialChange(stalePreview, freshPreview)
+  return hasIncrementalSyncPlanMaterialChange(stalePreview, freshPreview, {
+    ignoreHighDivergenceCleared: highDivergenceConfirmed
+  })
 }

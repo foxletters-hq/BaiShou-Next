@@ -193,7 +193,8 @@ export function useIncrementalSyncConfirm(deps: IncrementalSyncConfirmDeps) {
             needsReplan,
             stalePreview,
             preview,
-            Boolean(deletePropagationChoice)
+            Boolean(deletePropagationChoice),
+            Boolean(initialRunOptions?.highDivergenceConfirmed)
           )
         ) {
           logger.warn('[IncrementalSync] plan changed after replan, require reconfirm', {

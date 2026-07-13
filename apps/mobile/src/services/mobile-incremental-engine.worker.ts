@@ -70,6 +70,9 @@ export type IncrementalEngineHost = {
   pendingSyncRemoteManifest: SyncManifest | null
   takePendingSyncLocalManifest(): SyncManifest | null
   takePendingSyncRemoteManifest(): SyncManifest | null
+  /** 规划扫描全量指纹（含 hash 失败文件），用于确认前本地漂移判定 */
+  lastPlanLocalScanFingerprint: string | null
+  setLastPlanLocalScanFingerprint(v: string | null): void
   manifestCommitQueue: IncrementalManifestCommitQueue
   externalSyncMounts: VaultExternalSyncMount[] | null
   setExternalSyncMounts(v: VaultExternalSyncMount[] | null): void

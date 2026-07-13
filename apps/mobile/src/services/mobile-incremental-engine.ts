@@ -43,6 +43,7 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
   planManifestCache: { local: SyncManifest; remote: SyncManifest } | null = null
   pendingSyncLocalManifest: SyncManifest | null = null
   pendingSyncRemoteManifest: SyncManifest | null = null
+  lastPlanLocalScanFingerprint: string | null = null
   manifestCommitQueue = new IncrementalManifestCommitQueue()
   externalSyncMounts: VaultExternalSyncMount[] | null = null
   private worker?: MobileIncrementalEngineWorker
@@ -68,6 +69,10 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     this.planManifestCache = v
   }
 
+  setLastPlanLocalScanFingerprint(v: string | null): void {
+    this.lastPlanLocalScanFingerprint = v
+  }
+
   setExternalSyncMounts(v: VaultExternalSyncMount[] | null): void {
     this.externalSyncMounts = v
   }
@@ -88,6 +93,7 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     this.planManifestCache = null
     this.pendingSyncLocalManifest = null
     this.pendingSyncRemoteManifest = null
+    this.lastPlanLocalScanFingerprint = null
   }
 
   endPlanSession(): void {
@@ -281,7 +287,13 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
         extraWarnings
       }),
       interruptedSyncResume,
-      planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteManifest)
+      planReuseBaseline: {
+        ...buildIncrementalSyncPlanReuseBaseline(localManifest, remoteManifest),
+        // 用全量扫描指纹，避免 hash 失败文件导致确认时误判本地漂移
+        ...(this.lastPlanLocalScanFingerprint
+          ? { localFilesFingerprint: this.lastPlanLocalScanFingerprint }
+          : {})
+      }
     }
   }
 }

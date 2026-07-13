@@ -3,6 +3,7 @@ import type { SyncManifest, MergeDecision, ManifestEntry } from '@baishou/shared
 import {
   applySyncDecisionRemovedSideEffects,
   limitExecute,
+  summarizeScannedSyncFiles,
   SYNC_MANIFEST_VERSION
 } from '@baishou/shared'
 import { md5HexForSyncFile } from './mobile-sync-file-md5.util'
@@ -20,6 +21,7 @@ export type ManifestOpsDelegate = {
     deviceId: string
     pendingSyncLocalManifest: SyncManifest | null
     planManifestCache: { local: SyncManifest; remote: SyncManifest } | null
+    setLastPlanLocalScanFingerprint?(v: string | null): void
   }
   syncRoot(): Promise<string>
   readLocalManifestFile(): Promise<SyncManifest>
@@ -46,6 +48,17 @@ export async function buildLocalManifest(
     (discovered, fileName) => {
       onProgress?.(0, discovered, fileName)
     }
+  )
+
+  // 全量扫描指纹（含后续 hash 失败文件），供确认前漂移判定与扫描结果对齐
+  delegate.host.setLastPlanLocalScanFingerprint?.(
+    summarizeScannedSyncFiles(
+      files.map((file) => ({
+        relPath: file.relPath,
+        size: file.size,
+        mtimeMs: file.mtimeMs
+      }))
+    ).fingerprint
   )
 
   const manifest: SyncManifest = {

@@ -264,7 +264,8 @@ export function useOrchestratedSync() {
             needsReplan,
             stalePreview,
             preview,
-            Boolean(deletePropagationChoice)
+            Boolean(deletePropagationChoice),
+            Boolean(initialRunOptions?.highDivergenceConfirmed)
           )
         ) {
           showPlanConfirmDialog(preview, resolvePlanConfirmEligibleAt(preview))
