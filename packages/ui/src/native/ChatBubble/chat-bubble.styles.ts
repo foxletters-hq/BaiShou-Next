@@ -1,8 +1,8 @@
 import { StyleSheet, type DimensionValue } from 'react-native'
 
 /**
- * EnrichedMarkdownText 流式末行常少报高度；完成态 Legacy / 纯文本走 RN Text，不需要槽位垫高。
- * 仅流式 markdownSlotStreaming 使用。
+ * 聊天气泡正文现已全程 LegacyMarkdown（测高稳定）。
+ * markdownSlotStreaming 仅作历史兼容保留，流式不必再垫底。
  */
 export const CHAT_MARKDOWN_BOTTOM_GUARD = 12
 
