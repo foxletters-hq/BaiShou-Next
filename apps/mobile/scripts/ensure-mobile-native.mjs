@@ -14,10 +14,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  ANDROID_DEV_PACKAGE_ID,
-  hasAdbDevice
-} from './mobile-dev-env.mjs'
+import { ANDROID_DEV_PACKAGE_ID, hasAdbDevice } from './mobile-dev-env.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const mobileRoot = join(__dirname, '..')
@@ -27,8 +24,7 @@ const REQUIRED_ABIS = ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86']
 const VEC_SO_NAME = 'vec.so'
 
 const AUTO_REBUILD =
-  process.env.BAISHOU_MOBILE_NATIVE_AUTO_REBUILD === '1' ||
-  process.argv.includes('--fix')
+  process.env.BAISHOU_MOBILE_NATIVE_AUTO_REBUILD === '1' || process.argv.includes('--fix')
 
 function log(msg) {
   console.log(`[ensure-mobile-native] ${msg}`)
