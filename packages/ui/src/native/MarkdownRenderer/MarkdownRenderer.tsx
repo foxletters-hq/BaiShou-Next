@@ -4,7 +4,6 @@ import { StreamdownText } from 'react-native-streamdown'
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown'
 import { useNativeTheme } from '../theme'
 import { LegacyMarkdownRenderer } from './LegacyMarkdownRenderer'
-import { StableStreamdownText } from './StableStreamdownText'
 import { useStableStreamdownMarkdown } from './useStableStreamdownMarkdown'
 import {
   buildStreamdownMarkdownStyle,
@@ -116,6 +115,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
 
   if (!displayContent) return null
 
+  // chat / ancillary 全程 Legacy：RN 测高稳定，避免
+  // 1) Enriched 少报裁切末行  2) HeightGuard 估高留白  3) 流式→落盘切换渲染器高度闪动
+  if (variant === 'chat' || variant === 'ancillary') {
+    return <LegacyMarkdownRenderer {...props} content={displayContent} />
+  }
+
   const streamdownCommonProps = {
     allowTrailingMargin: useTrailingMargin,
     flavor: streamFlavor,
@@ -125,20 +130,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
     onLinkPress: handleLinkPress,
     selectable,
     containerStyle: nativeContainerStyle
-  }
-
-  // chat / ancillary：流式与落盘共用 EnrichedMarkdown，避免切到 Legacy 后行宽/换行跳变
-  if (variant === 'chat' || variant === 'ancillary') {
-    return (
-      <View style={markdownContainerStyle}>
-        <StableStreamdownText
-          {...streamdownCommonProps}
-          hideTablesWhileStreaming={isStreaming}
-          streamingAnimation={isStreaming}
-          remendConfig={{ inlineCode: false }}
-        />
-      </View>
-    )
   }
 
   return (

@@ -2,7 +2,7 @@
   "expo": {
     "name": "白守",
     "slug": "mobile",
-    "version": "1.2.13",
+    "version": "1.2.14",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.baishou.baishou",
-      "versionCode": 90,
+      "versionCode": 91,
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
