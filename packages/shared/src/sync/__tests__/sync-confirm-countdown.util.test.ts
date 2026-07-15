@@ -14,34 +14,34 @@ import {
 
 describe('sync-confirm-countdown.util', () => {
   it('counts down seconds until delay elapses', () => {
-    expect(computeSyncConfirmSecondsLeft(0)).toBe(5)
-    expect(computeSyncConfirmSecondsLeft(999)).toBe(5)
-    expect(computeSyncConfirmSecondsLeft(1000)).toBe(4)
-    expect(computeSyncConfirmSecondsLeft(3999)).toBe(2)
-    expect(computeSyncConfirmSecondsLeft(4000)).toBe(1)
-    expect(computeSyncConfirmSecondsLeft(4999)).toBe(1)
-    expect(computeSyncConfirmSecondsLeft(5000)).toBe(0)
+    expect(computeSyncConfirmSecondsLeft(0)).toBe(3)
+    expect(computeSyncConfirmSecondsLeft(999)).toBe(3)
+    expect(computeSyncConfirmSecondsLeft(1000)).toBe(2)
+    expect(computeSyncConfirmSecondsLeft(1999)).toBe(2)
+    expect(computeSyncConfirmSecondsLeft(2000)).toBe(1)
+    expect(computeSyncConfirmSecondsLeft(2999)).toBe(1)
+    expect(computeSyncConfirmSecondsLeft(3000)).toBe(0)
     expect(computeSyncConfirmSecondsLeft(8000)).toBe(0)
   })
 
   it('marks confirm ready only after full delay', () => {
     expect(isSyncConfirmReady(0)).toBe(false)
-    expect(isSyncConfirmReady(4999)).toBe(false)
-    expect(isSyncConfirmReady(5000)).toBe(true)
+    expect(isSyncConfirmReady(2999)).toBe(false)
+    expect(isSyncConfirmReady(3000)).toBe(true)
     expect(isSyncConfirmReady(6000)).toBe(true)
   })
 
   it('computes seconds left until eligible timestamp', () => {
-    expect(computeSyncConfirmSecondsLeftUntil(6000, 1000)).toBe(5)
-    expect(computeSyncConfirmSecondsLeftUntil(6000, 5500)).toBe(1)
-    expect(computeSyncConfirmSecondsLeftUntil(6000, 6000)).toBe(0)
-    expect(computeSyncConfirmSecondsLeftUntil(6000, 7000)).toBe(0)
+    expect(computeSyncConfirmSecondsLeftUntil(4000, 1000)).toBe(3)
+    expect(computeSyncConfirmSecondsLeftUntil(4000, 3500)).toBe(1)
+    expect(computeSyncConfirmSecondsLeftUntil(4000, 4000)).toBe(0)
+    expect(computeSyncConfirmSecondsLeftUntil(4000, 5000)).toBe(0)
   })
 
   it('checks eligibility against absolute timestamp', () => {
-    expect(isSyncConfirmEligible(5000, 4000)).toBe(false)
-    expect(isSyncConfirmEligible(5000, 5000)).toBe(true)
-    expect(isSyncConfirmEligible(5000, 6000)).toBe(true)
+    expect(isSyncConfirmEligible(3000, 2000)).toBe(false)
+    expect(isSyncConfirmEligible(3000, 3000)).toBe(true)
+    expect(isSyncConfirmEligible(3000, 4000)).toBe(true)
   })
 
   it('computes eligible timestamp from start time', () => {
@@ -49,9 +49,9 @@ describe('sync-confirm-countdown.util', () => {
   })
 
   it('assertSyncConfirmReady throws before eligible time', () => {
-    expect(() => assertSyncConfirmReady(5000, 4000)).toThrow(SyncConfirmNotReadyError)
-    expect(() => assertSyncConfirmReady(5000, 5000)).not.toThrow()
-    expect(() => assertSyncConfirmReady(5000, 6000)).not.toThrow()
+    expect(() => assertSyncConfirmReady(3000, 2000)).toThrow(SyncConfirmNotReadyError)
+    expect(() => assertSyncConfirmReady(3000, 3000)).not.toThrow()
+    expect(() => assertSyncConfirmReady(3000, 4000)).not.toThrow()
   })
 
   it('resolvePlanConfirmEligibleAt skips delay when sync cannot execute', () => {

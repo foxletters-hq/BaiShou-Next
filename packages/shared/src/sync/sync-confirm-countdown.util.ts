@@ -1,4 +1,4 @@
-export const SYNC_CONFIRM_DELAY_MS = 5000
+export const SYNC_CONFIRM_DELAY_MS = 3000
 
 export const SYNC_CONFIRM_DELAY_SECONDS = Math.ceil(SYNC_CONFIRM_DELAY_MS / 1000)
 
