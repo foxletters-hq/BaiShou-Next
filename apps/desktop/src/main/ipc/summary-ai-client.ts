@@ -8,22 +8,9 @@ import {
   resolveSummaryConfigFromSettings,
   type AIProviderConfig
 } from '@baishou/shared'
-import { pathService } from './vault.ipc'
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-desktop'
 import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core/shared'
 import { AIProviderRegistry } from '@baishou/ai'
-import path from 'path'
-import fs from 'fs'
-
-/** 写调试日志到 Vault 目录，便于用户排查生成问题 */
-async function appendDebugLog(
-  vaultPath: string | null,
-  data: Record<string, unknown>
-): Promise<void> {
-  if (!vaultPath) return
-  const logFile = path.join(vaultPath, 'summary_generation_debug.log')
-  fs.appendFileSync(logFile, JSON.stringify(data) + '\n', 'utf-8')
-}
 
 function resolveProviderById(
   providers: AIProviderConfig[],
@@ -85,20 +72,10 @@ export function buildSummaryAiClient(): SummaryAiClient {
       )
       const model = finalProvider.getLanguageModel(finalModelId)
       const providerUrl = finalProvider.config?.baseUrl || 'default'
-      const activeVaultPath = await pathService.getActiveVaultPath()
 
       logger.info(
         `[SummaryAI] Starting generation request to model: ${finalModelId} (baseUrl: ${providerUrl}), prompt length: ${prompt.length}`
       )
-      await appendDebugLog(activeVaultPath, {
-        timestamp: new Date().toISOString(),
-        event: 'start',
-        providerId: finalProvider.config?.id,
-        modelId: finalModelId,
-        baseUrl: providerUrl,
-        promptLength: prompt.length,
-        hasSystem: !!options?.system
-      })
 
       const startTime = Date.now()
       const abortController = new AbortController()
@@ -148,12 +125,6 @@ export function buildSummaryAiClient(): SummaryAiClient {
         logger.info(
           `[SummaryAI] generateText request succeeded in ${duration}ms. Response text length: ${text.length} characters.`
         )
-        await appendDebugLog(activeVaultPath, {
-          timestamp: new Date().toISOString(),
-          event: 'success',
-          durationMs: duration,
-          responseLength: text.length
-        })
 
         return text
       } catch (err: any) {
@@ -177,13 +148,6 @@ export function buildSummaryAiClient(): SummaryAiClient {
           )
         }
 
-        await appendDebugLog(activeVaultPath, {
-          timestamp: new Date().toISOString(),
-          event: userCancelled ? 'cancelled' : 'error',
-          durationMs: duration,
-          errorMessage: err.message || String(err),
-          errorStack: err.stack || ''
-        })
         throw err
       } finally {
         clearTimeout(timeoutId!)

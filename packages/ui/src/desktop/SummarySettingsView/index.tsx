@@ -88,7 +88,17 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
 
   const lookback =
     config.sharedMemoryLookbackMonths || DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS
+  /** 拖动过程中只用本地值刷新 UI，避免每次 onChange 都走 IPC */
+  const [lookbackDraft, setLookbackDraft] = useState(lookback)
+  const lookbackDraftRef = useRef(lookback)
+  const lookbackDraggingRef = useRef(false)
+  lookbackDraftRef.current = lookbackDraft
   const selectedPartner = assistants.find((a) => a.id === config.generationAssistantId)
+
+  useEffect(() => {
+    if (lookbackDraggingRef.current) return
+    setLookbackDraft(lookback)
+  }, [lookback])
 
   useEffect(() => {
     setDraftTemplates(config.instructionsByLocale)
@@ -287,11 +297,23 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     toast.show(t('summary.reset_template_success', 'Default template restored'))
   }
 
-  const setLookback = (raw: number) => {
-    emitSettings({
-      sharedMemoryLookbackMonths: clampSharedMemoryLookbackMonths(raw)
-    })
+  const previewLookback = (raw: number) => {
+    const next = clampSharedMemoryLookbackMonths(raw)
+    setLookbackDraft(next)
   }
+
+  const commitLookback = useCallback(
+    (raw?: number) => {
+      lookbackDraggingRef.current = false
+      const next = clampSharedMemoryLookbackMonths(
+        raw === undefined ? lookbackDraftRef.current : raw
+      )
+      setLookbackDraft(next)
+      if (next === configRef.current.sharedMemoryLookbackMonths) return
+      emitSettings({ sharedMemoryLookbackMonths: next })
+    },
+    [emitSettings]
+  )
 
   const tabs = useMemo(
     () =>
@@ -308,9 +330,9 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     SUMMARY_PROMPT_LOCALE_OPTIONS.find((l) => l.id === activePromptLocale)?.fallback ??
     activePromptLocale
 
-  const sliderMax = Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookback)
+  const sliderMax = Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookbackDraft)
   const sliderPct =
-    ((lookback - SHARED_MEMORY_LOOKBACK_MIN) * 100) /
+    ((lookbackDraft - SHARED_MEMORY_LOOKBACK_MIN) * 100) /
     Math.max(1, sliderMax - SHARED_MEMORY_LOOKBACK_MIN)
 
   const renderPartnerAvatar = (assistant?: SummarySettingsAssistantOption) => {
@@ -480,20 +502,47 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
                 type="number"
                 min={SHARED_MEMORY_LOOKBACK_MIN}
                 className={styles.lookbackInput}
-                value={lookback}
-                onChange={(e) => setLookback(Number(e.target.value))}
+                value={lookbackDraft}
+                onChange={(e) => previewLookback(Number(e.target.value))}
+                onBlur={() => commitLookback()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur()
+                  }
+                }}
               />
             </div>
-            <input
-              type="range"
-              min={SHARED_MEMORY_LOOKBACK_MIN}
-              max={sliderMax}
-              value={Math.min(lookback, sliderMax)}
-              onChange={(e) => setLookback(Number(e.target.value))}
-              className={styles.lookbackSlider}
-              style={{ backgroundSize: `${sliderPct}% 100%` }}
-              aria-label={t('settings.summary_inject_lookback_label', 'Lookback months')}
-            />
+            <div className={styles.lookbackSliderContainer}>
+              <input
+                type="range"
+                min={SHARED_MEMORY_LOOKBACK_MIN}
+                max={sliderMax}
+                step={1}
+                value={Math.min(lookbackDraft, sliderMax)}
+                onChange={(e) => {
+                  lookbackDraggingRef.current = true
+                  previewLookback(Number(e.target.value))
+                }}
+                onPointerUp={() => commitLookback()}
+                onMouseUp={() => commitLookback()}
+                onTouchEnd={() => commitLookback()}
+                onKeyUp={(e) => {
+                  if (
+                    e.key === 'ArrowLeft' ||
+                    e.key === 'ArrowRight' ||
+                    e.key === 'Home' ||
+                    e.key === 'End' ||
+                    e.key === 'PageUp' ||
+                    e.key === 'PageDown'
+                  ) {
+                    commitLookback()
+                  }
+                }}
+                className={styles.lookbackSlider}
+                style={{ backgroundSize: `${sliderPct}% 100%` }}
+                aria-label={t('settings.summary_inject_lookback_label', 'Lookback months')}
+              />
+            </div>
           </div>
         )}
 

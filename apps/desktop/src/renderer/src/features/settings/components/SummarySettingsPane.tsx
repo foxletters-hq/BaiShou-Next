@@ -82,7 +82,10 @@ export const SummarySettingsPane: React.FC<SummarySettingsPaneProps> = ({ settin
             .then(async () => {
               const store = useSettingsStore.getState()
               const globalModels = store.globalModels
-              if (globalModels) {
+              if (
+                globalModels &&
+                globalModels.monthlySummarySource !== newConfig.monthlySummarySource
+              ) {
                 await store.setGlobalModels({
                   ...globalModels,
                   monthlySummarySource: newConfig.monthlySummarySource

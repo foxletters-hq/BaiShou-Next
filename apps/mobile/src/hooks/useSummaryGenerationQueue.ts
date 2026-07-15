@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from 'react'
 import type { i18n as I18nInstance } from 'i18next'
 import { SummaryType, logger } from '@baishou/shared'
 import { resolveMobileSummaryGenerateOptions } from '../services/mobile-summary-generate-options'
-import { appendVaultDebugLog } from '../services/summary-debug-log.util'
 import type { useBaishou } from '../providers/BaishouProvider'
 
 export interface SummaryMissingItem {
@@ -69,7 +68,6 @@ export function useSummaryGenerationQueue(options: {
   const processTask = useCallback(
     async (task: QueueItem) => {
       const signal = abortControllerRef.current?.signal
-      const taskStartTime = Date.now()
 
       try {
         logger.info(`[SummaryQueue] Starting task: ${task.id}`)
@@ -94,33 +92,18 @@ export function useSummaryGenerationQueue(options: {
           label: task.target.label ?? ''
         }
 
-        const { generateOptions, providerIdForLog, usedDialogueFallback, fellBackToPrompt } =
-          await resolveMobileSummaryGenerateOptions({
-            settingsManager: services.settingsManager,
-            assistantManager: services.assistantManager,
-            buildSharedContext: services.buildSharedContext,
-            periodStart: target.startDate
-          })
+        const { generateOptions, fellBackToPrompt } = await resolveMobileSummaryGenerateOptions({
+          settingsManager: services.settingsManager,
+          assistantManager: services.assistantManager,
+          buildSharedContext: services.buildSharedContext,
+          periodStart: target.startDate
+        })
 
         if (fellBackToPrompt && !assistantFallbackNotifiedRef.current) {
           assistantFallbackNotifiedRef.current = true
           setAssistantFallbackTick((n) => n + 1)
           logger.warn('[SummaryQueue] Fell back to prompt mode for task:', task.id)
         }
-
-        const finalModelId = generateOptions.modelId ?? 'gpt-4'
-
-        await appendVaultDebugLog(services.pathService, services.fileSystem, {
-          timestamp: new Date().toISOString(),
-          event: 'start',
-          taskId: task.id,
-          targetType: task.target.type,
-          modelId: finalModelId,
-          providerId: providerIdForLog,
-          usedDialogueFallback: usedDialogueFallback ?? false,
-          hasSharedMemoryInject: !!generateOptions.sharedContextText,
-          hasSystemPrompt: !!generateOptions.systemPrompt
-        })
 
         const stream = services.summaryGenerator.generate(target, {
           ...generateOptions,
@@ -204,14 +187,6 @@ export function useSummaryGenerationQueue(options: {
           broadcastState()
           logger.info(`[SummaryQueue] Task completed successfully: ${task.id}`)
 
-          await appendVaultDebugLog(services.pathService, services.fileSystem, {
-            timestamp: new Date().toISOString(),
-            event: 'success',
-            taskId: task.id,
-            durationMs: Date.now() - taskStartTime,
-            contentLength: finalContent.length
-          })
-
           await onRefreshData()
         } else {
           throw new Error('Generated content was empty.')
@@ -228,17 +203,6 @@ export function useSummaryGenerationQueue(options: {
         task.status = 'error'
         task.error = err.message || String(e)
         broadcastState()
-
-        if (services) {
-          await appendVaultDebugLog(services.pathService, services.fileSystem, {
-            timestamp: new Date().toISOString(),
-            event: 'error',
-            taskId: task.id,
-            durationMs: Date.now() - taskStartTime,
-            errorMessage: err.message || String(e),
-            errorStack: err.stack || ''
-          })
-        }
       }
     },
     [broadcastState, i18n, onRefreshData, services]
