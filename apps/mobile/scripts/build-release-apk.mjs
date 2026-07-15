@@ -8,6 +8,8 @@
  * - SKIP_SYNC=1：跳过 sync（workflow 已执行时）
  * - BAISHOU_RELEASE_FULL_CLEAN=1：强制全量清缓存 + --no-build-cache（排查陈旧产物时用）
  * - ANDROID_*：CI 在 prebuild 清除 android/ 后，可由 setup-android-signing 从环境变量恢复签名
+ *
+ * ABI：正式包固定 arm64-v8a（真机；不含模拟器用的 x86/x86_64），见 withAndroidReleaseArchitectures。
  */
 import { spawnSync } from 'node:child_process'
 import {
@@ -195,14 +197,16 @@ if (!existsSync(gradlew)) {
 console.log('\n🎨 应用纯色启动屏补丁…')
 applyAndroidPlainSplashPatch(androidDir)
 
-const gradleArgs = [':app:assembleRelease']
+/** 真机 Release 不需要模拟器 ABI；显式传入避免仅依赖 gradle.properties */
+const RELEASE_ABIS = 'arm64-v8a'
+const gradleArgs = [':app:assembleRelease', `-PreactNativeArchitectures=${RELEASE_ABIS}`]
 if (forceFullClean) {
   gradleArgs.push('--no-build-cache')
-  console.log('\n🔨 assembleRelease（强制全量，无构建缓存）…')
+  console.log(`\n🔨 assembleRelease（强制全量，无构建缓存，ABI=${RELEASE_ABIS}）…`)
 } else if (isCi) {
-  console.log('\n🔨 assembleRelease（CI：启用 Gradle 构建缓存）…')
+  console.log(`\n🔨 assembleRelease（CI：启用 Gradle 构建缓存，ABI=${RELEASE_ABIS}）…`)
 } else {
-  console.log('\n🔨 assembleRelease…')
+  console.log(`\n🔨 assembleRelease（ABI=${RELEASE_ABIS}）…`)
 }
 run(gradlew, gradleArgs, androidDir)
 

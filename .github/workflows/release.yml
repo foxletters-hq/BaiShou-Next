@@ -173,6 +173,15 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.ref }}
 
+      - name: Free disk space
+        run: |
+          set -euo pipefail
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk-bundle \
+            /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker system prune -af || true
+          df -h /
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -186,16 +195,16 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Cache Gradle wrappers and project metadata
+      # setup-java 已缓存 ~/.gradle；此处只保留 wrapper + 项目元数据，避免双缓存撑爆磁盘
+      - name: Cache Gradle wrapper and project metadata
         uses: actions/cache@v4
         with:
           path: |
-            ~/.gradle/caches
             ~/.gradle/wrapper
             apps/mobile/android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/package.json', 'apps/mobile/app.json', 'apps/mobile/app.config.js', 'apps/mobile/plugins/**') }}
+          key: ${{ runner.os }}-gradle-meta-${{ hashFiles('pnpm-lock.yaml', 'apps/mobile/package.json', 'apps/mobile/app.json', 'apps/mobile/app.config.js', 'apps/mobile/plugins/**') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-gradle-meta-
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -223,6 +232,8 @@ jobs:
         env:
           BAISHOU_RELEASE_BUILD: '1'
           SKIP_SYNC: '1'
+          # 与 build-release-apk.mjs / withAndroidReleaseArchitectures 一致：真机只打 arm64
+          ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
