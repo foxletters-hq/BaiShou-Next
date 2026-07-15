@@ -42,6 +42,15 @@ function isModelAllowedOnProvider(provider: AIProviderConfig, modelId: string): 
   return enabled.includes(modelId)
 }
 
+/** 供应商 + 模型是否可用于总结生成（启用、有 Key、在 enabledModels 内） */
+export function canUseProviderModel(
+  providers: AIProviderConfig[],
+  providerId: string | null | undefined,
+  modelId: string | null | undefined
+): boolean {
+  return resolveConfiguredPair(providers, providerId, modelId) != null
+}
+
 function resolveConfiguredPair(
   providers: AIProviderConfig[],
   providerId: string | null | undefined,
