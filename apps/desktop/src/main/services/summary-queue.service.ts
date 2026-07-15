@@ -59,7 +59,6 @@ export class SummaryQueueService {
    */
   stop() {
     this.abortController?.abort()
-    this.abortController = null
 
     for (const item of this.queue) {
       if (item.status === 'running' || item.status === 'pending') {
@@ -72,7 +71,7 @@ export class SummaryQueueService {
     }
 
     this.queue = this.queue.filter((q) => q.status !== 'error')
-    this.activeCount = 0
+    // 不强制清零 activeCount：由 processTask.finally 递减，避免与未结束的 LLM 请求竞态成负数
     this.broadcastState()
   }
 
@@ -166,7 +165,10 @@ export class SummaryQueueService {
         })
       }
 
-      const stream = generator.generate(task.target, generateOptions)
+      const stream = generator.generate(task.target, {
+        ...generateOptions,
+        abortSignal: signal
+      })
 
       let finalContent = ''
 
@@ -224,6 +226,16 @@ export class SummaryQueueService {
 
       if (task.status === 'error') return
 
+      if (signal?.aborted) {
+        task.status = 'error'
+        task.error = i18n.t(
+          'auto.apps.desktop.src.main.services.summary.queue.service.L159',
+          '用户取消了生成'
+        )
+        this.broadcastState()
+        return
+      }
+
       if (finalContent.trim().length > 0) {
         // 正在保存总结... 停留一小会儿让用户感知到
         task.progress = 95
@@ -249,12 +261,21 @@ export class SummaryQueueService {
         throw new Error('Generated content was empty.')
       }
     } catch (e: any) {
-      logger.error(`[SummaryQueueService] Task ${task.id} Failed:`, e)
-      task.status = 'error'
-      task.error = e.message || String(e)
-      this.broadcastState()
+      if (signal?.aborted || e?.name === 'AbortError') {
+        task.status = 'error'
+        task.error = i18n.t(
+          'auto.apps.desktop.src.main.services.summary.queue.service.L159',
+          '用户取消了生成'
+        )
+        this.broadcastState()
+      } else {
+        logger.error(`[SummaryQueueService] Task ${task.id} Failed:`, e)
+        task.status = 'error'
+        task.error = e.message || String(e)
+        this.broadcastState()
+      }
     } finally {
-      this.activeCount--
+      this.activeCount = Math.max(0, this.activeCount - 1)
 
       if (!signal?.aborted) {
         this.scheduleNext()

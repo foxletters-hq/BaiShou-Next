@@ -226,20 +226,20 @@ function registerGlobalStreamIpcListeners(): () => void {
   const onStreamChunk = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
-    if (!sId) return
+    if (!sId || userStoppedSessions.has(sId)) return
     ensureStreamTextDisplayBuffer(sId).push(chunk ?? '')
   }
 
   const onReasoningChunk = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
-    if (!sId) return
+    if (!sId || userStoppedSessions.has(sId)) return
     ensureStreamReasoningDisplayBuffer(sId).push(chunk ?? '')
   }
 
   const onToolStart = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
-    if (!sId) return
+    if (!sId || userStoppedSessions.has(sId)) return
     const name = typeof payload === 'object' ? payload?.name : payload?.name
     const args = typeof payload === 'object' ? payload?.args : payload?.args
     // emoji_send 工具：即时将表情包加入 pendingEmojis（在流式文本之前显示）
@@ -272,7 +272,7 @@ function registerGlobalStreamIpcListeners(): () => void {
 
   const onToolResult = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
-    if (!sId) return
+    if (!sId || userStoppedSessions.has(sId)) return
     const name = typeof payload === 'object' ? payload?.name : payload?.name
     // emoji_send 工具不在流式阶段显示工具卡片（表情包已作为 pendingEmojis 即时显示）
     if (name === 'emoji_send') return
@@ -291,10 +291,16 @@ function registerGlobalStreamIpcListeners(): () => void {
     const fullText = streamTextDisplayBuffers[sId]?.getFullText() ?? ''
     const fullReasoning = streamReasoningDisplayBuffers[sId]?.getFullText() ?? ''
     const userStopped = userStoppedSessions.has(sId)
-    if (userStopped) userStoppedSessions.delete(sId)
+    if (userStopped) {
+      userStoppedSessions.delete(sId)
+      resetStreamDisplayBuffers(sId)
+    }
     updateSessionState(sId, (state) => {
       state.isStreaming = false
-      state.isBridgeActive = Boolean(fullText.trim() || fullReasoning.trim())
+      // 用户取消后不要因残留 buffer 重新点亮 bridge
+      state.isBridgeActive = userStopped
+        ? false
+        : Boolean(fullText.trim() || fullReasoning.trim())
       if (!userStopped && payload?.error && !isAgentStreamAbortError(payload.error)) {
         state.error = payload.error
       } else {
@@ -302,6 +308,8 @@ function registerGlobalStreamIpcListeners(): () => void {
       }
       state.activeTool = null
     })
+
+    if (userStopped) return
 
     if (payload?.messageId) {
       window.dispatchEvent(

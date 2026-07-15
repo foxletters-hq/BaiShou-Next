@@ -122,7 +122,10 @@ export function useSummaryGenerationQueue(options: {
           hasSystemPrompt: !!generateOptions.systemPrompt
         })
 
-        const stream = services.summaryGenerator.generate(target, generateOptions)
+        const stream = services.summaryGenerator.generate(target, {
+          ...generateOptions,
+          abortSignal: signal
+        })
 
         let finalContent = ''
 
@@ -173,6 +176,13 @@ export function useSummaryGenerationQueue(options: {
 
         if (task.status === 'error') return
 
+        if (signal?.aborted) {
+          task.status = 'error'
+          task.error = i18n.t('auto.apps.mobile.src.hooks.useSummaryData.L356', '用户取消了生成')
+          broadcastState()
+          return
+        }
+
         if (finalContent.trim().length > 0) {
           task.progress = 95
           broadcastState()
@@ -207,7 +217,13 @@ export function useSummaryGenerationQueue(options: {
           throw new Error('Generated content was empty.')
         }
       } catch (e: unknown) {
-        const err = e as { message?: string; stack?: string }
+        const err = e as { message?: string; stack?: string; name?: string }
+        if (signal?.aborted || err.name === 'AbortError') {
+          task.status = 'error'
+          task.error = i18n.t('auto.apps.mobile.src.hooks.useSummaryData.L356', '用户取消了生成')
+          broadcastState()
+          return
+        }
         logger.error(`[SummaryQueue] Task ${task.id} failed:`, err)
         task.status = 'error'
         task.error = err.message || String(e)
@@ -246,7 +262,7 @@ export function useSummaryGenerationQueue(options: {
         broadcastState()
 
         processTask(next).finally(() => {
-          activeCountRef.current--
+          activeCountRef.current = Math.max(0, activeCountRef.current - 1)
           broadcastState()
 
           if (!abortControllerRef.current?.signal.aborted) {
@@ -315,7 +331,6 @@ export function useSummaryGenerationQueue(options: {
 
   const stopGeneration = useCallback(async () => {
     abortControllerRef.current?.abort()
-    abortControllerRef.current = null
 
     for (const item of queueRef.current) {
       if (item.status === 'running' || item.status === 'pending') {
@@ -325,7 +340,7 @@ export function useSummaryGenerationQueue(options: {
     }
 
     queueRef.current = queueRef.current.filter((q) => q.status !== 'error')
-    activeCountRef.current = 0
+    // 不强制清零 activeCount：由 processTask.finally 递减，避免与未结束的 LLM 请求竞态
     setIsGenerating(false)
     broadcastState()
   }, [broadcastState, i18n])

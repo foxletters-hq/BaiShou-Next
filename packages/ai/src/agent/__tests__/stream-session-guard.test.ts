@@ -3,6 +3,7 @@ import {
   claimAgentStreamSession,
   isAgentStreamSessionClaimActive,
   releaseAgentStreamSession,
+  abortAgentStreamSession,
   resetAgentStreamSessionGuardForTests
 } from '../stream-session-guard'
 
@@ -38,5 +39,27 @@ describe('stream-session-guard', () => {
     releaseAgentStreamSession('s1', claim.generation)
 
     expect(isAgentStreamSessionClaimActive('s1', claim.generation)).toBe(false)
+  })
+
+  it('aborts claim created after stop-before-claim', () => {
+    resetAgentStreamSessionGuardForTests()
+
+    abortAgentStreamSession('s1')
+    const claim = claimAgentStreamSession('s1')
+
+    expect(claim.signal.aborted).toBe(true)
+    expect(isAgentStreamSessionClaimActive('s1', claim.generation)).toBe(true)
+  })
+
+  it('does not poison the next claim after aborting an active stream', () => {
+    resetAgentStreamSessionGuardForTests()
+
+    const first = claimAgentStreamSession('s1')
+    abortAgentStreamSession('s1')
+    expect(first.signal.aborted).toBe(true)
+
+    releaseAgentStreamSession('s1', first.generation)
+    const second = claimAgentStreamSession('s1')
+    expect(second.signal.aborted).toBe(false)
   })
 })

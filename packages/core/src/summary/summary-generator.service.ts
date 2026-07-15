@@ -20,6 +20,8 @@ import {
 export interface SummaryAiGenerateOptions {
   system?: string
   providerId?: string
+  /** 用户取消 / 队列停止时中止 generateText */
+  abortSignal?: AbortSignal
 }
 
 export interface SummaryAiClient {
@@ -41,6 +43,8 @@ export interface SummaryGenerateOptions {
   sharedContextText?: string
   /** 月报上下文：仅周记，或周记 + 本月日记 */
   monthlySummarySource?: 'weeklies' | 'diaries'
+  /** 用户取消时中止底层 LLM 请求 */
+  abortSignal?: AbortSignal
 }
 
 function normalizeGenerateOptions(
@@ -161,19 +165,31 @@ export class SummaryGeneratorService {
         sharedContextText: options.sharedContextText,
         promptLocale
       })
+      if (options.abortSignal?.aborted) {
+        throw new DOMException('The operation was aborted', 'AbortError')
+      }
+
       logger.info(
         `[SummaryGeneratorService] Dispatching prompt to AI client (Model: ${modelId})...`
       )
       const generatedResult = await this.aiClient.generateContent(combinedPrompt, modelId, {
         system: options.systemPrompt,
-        providerId: options.providerId
+        providerId: options.providerId,
+        abortSignal: options.abortSignal
       })
+
+      if (options.abortSignal?.aborted) {
+        throw new DOMException('The operation was aborted', 'AbortError')
+      }
 
       logger.info(
         `[SummaryGeneratorService] AI generation successfully retrieved. Content size: ${generatedResult.length} chars.`
       )
       yield generatedResult
     } catch (e: any) {
+      if (e?.name === 'AbortError' || options.abortSignal?.aborted) {
+        throw e instanceof Error ? e : new DOMException('The operation was aborted', 'AbortError')
+      }
       logger.error(
         `[SummaryGeneratorService] Failed to generate summary for target ${target.type}:`,
         e

@@ -104,7 +104,7 @@ export function useAgentStreamChat({
         streamAttemptErrorRef.current = null
 
         if (attempt > 0) {
-          userStoppedStreamRef.current = false
+          if (userStoppedStreamRef.current) return
           setStreamError(null)
           interruptActiveStream({ keepStreamingFlag: true })
           resetStreamingBuffers()
@@ -123,8 +123,14 @@ export function useAgentStreamChat({
             sessionId,
             userText,
             {
-              onTextDelta: appendStreamingTextDelta,
-              onReasoningDelta: appendStreamingReasoningDelta,
+              onTextDelta: (chunk) => {
+                if (userStoppedStreamRef.current) return
+                appendStreamingTextDelta(chunk)
+              },
+              onReasoningDelta: (chunk) => {
+                if (userStoppedStreamRef.current) return
+                appendStreamingReasoningDelta(chunk)
+              },
               onToolCallStart: handleToolCallStart,
               onToolCallResult: handleToolCallResult,
               onFinish: () => {},
