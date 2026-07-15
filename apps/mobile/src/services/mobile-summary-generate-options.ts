@@ -5,6 +5,7 @@ import {
   withSummaryPromptLocaleFromUi,
   type AIProviderConfig,
   type GlobalModelsConfig,
+  type SummaryAssistantSnapshot,
   type SummaryConfig
 } from '@baishou/shared'
 import type { SummaryGenerateOptions } from '@baishou/core-mobile'
@@ -45,7 +46,7 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
   const monthlySummarySource =
     globalModels.monthlySummarySource === 'diaries' ? 'diaries' : 'weeklies'
 
-  let assistant = null
+  let assistant: SummaryAssistantSnapshot | null = null
   const assistantId = summaryConfigForGen.generationAssistantId?.trim()
   if (summaryConfigForGen.generationMode === 'assistant' && assistantId) {
     try {

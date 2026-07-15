@@ -284,7 +284,9 @@ describe('SummaryGeneratorService', () => {
       'm',
       expect.any(Object)
     )
-    expect(mockAiClient.generateContent.mock.calls[0][0]).not.toContain('本月日记不应被读取')
+    const firstPrompt = (mockAiClient.generateContent.mock.calls as unknown as [string][])[0]?.[0]
+    expect(firstPrompt).toBeDefined()
+    expect(firstPrompt).not.toContain('本月日记不应被读取')
   })
 
   it('monthly diaries source reads weeklies and diaries together', async () => {
@@ -330,7 +332,11 @@ describe('SummaryGeneratorService', () => {
 
     expect(mockDiaryRepo.findByDateRange).toHaveBeenCalled()
     expect(mockSummaryRepo.getSummaries).toHaveBeenCalled()
-    const prompt = mockAiClient.generateContent.mock.calls[0][0] as string
+    const firstCall = (
+      mockAiClient.generateContent.mock.calls as unknown as [string, string, object?][]
+    )[0]
+    expect(firstCall).toBeDefined()
+    const prompt = firstCall?.[0] ?? ''
     expect(prompt).toContain('二月第一周周记内容')
     expect(prompt).toContain('二月十日日记')
     expect(mockAiClient.generateContent).toHaveBeenCalledWith(prompt, 'm', {
@@ -371,9 +377,13 @@ describe('SummaryGeneratorService', () => {
       // drain
     }
 
-    const prompt = mockAiClient.generateContent.mock.calls[0][0] as string
+    const firstCall = (
+      mockAiClient.generateContent.mock.calls as unknown as [string, string, object?][]
+    )[0]
+    expect(firstCall).toBeDefined()
+    const prompt = firstCall?.[0] ?? ''
     expect(prompt).toContain('【自定义周模板】')
-    expect(mockAiClient.generateContent.mock.calls[0][2]).toEqual({
+    expect(firstCall?.[2]).toEqual({
       system: '助手提示词',
       providerId: undefined
     })
