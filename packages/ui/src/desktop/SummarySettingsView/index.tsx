@@ -46,10 +46,7 @@ export type SummarySettingsChangeOptions = {
 export interface SummarySettingsViewProps {
   config: SummaryInstructionsConfig
   assistants?: SummarySettingsAssistantOption[]
-  onChange: (
-    config: SummaryInstructionsConfig,
-    options?: SummarySettingsChangeOptions
-  ) => void
+  onChange: (config: SummaryInstructionsConfig, options?: SummarySettingsChangeOptions) => void
   onResetTemplate?: (type: SummaryTemplateKey, locale: SummaryPromptLocale) => string
 }
 
@@ -86,8 +83,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
   configRef.current = config
   onChangeRef.current = onChange
 
-  const lookback =
-    config.sharedMemoryLookbackMonths || DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS
+  const lookback = config.sharedMemoryLookbackMonths || DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS
   /** 拖动过程中只用本地值刷新 UI，避免每次 onChange 都走 IPC */
   const [lookbackDraft, setLookbackDraft] = useState(lookback)
   const lookbackDraftRef = useRef(lookback)
@@ -120,10 +116,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
   )
 
   const patchSystemPrompt = useCallback(
-    (
-      locale: SummaryPromptLocale,
-      text: string
-    ): Partial<Record<SummaryPromptLocale, string>> => ({
+    (locale: SummaryPromptLocale, text: string): Partial<Record<SummaryPromptLocale, string>> => ({
       ...config.customGenerationSystemPromptByLocale,
       [locale]: text
     }),
@@ -235,11 +228,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
       )
       return
     }
-    const instructionsByLocale = patchLocaleTemplates(
-      activePromptLocale,
-      activeTab,
-      localText
-    )
+    const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, localText)
     setDraftTemplates(instructionsByLocale)
     onChange(
       {
@@ -260,11 +249,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     const defaultText = onResetTemplate(activeTab, activePromptLocale)
     setLocalText(defaultText)
     setResetKey((prev) => prev + 1)
-    const instructionsByLocale = patchLocaleTemplates(
-      activePromptLocale,
-      activeTab,
-      defaultText
-    )
+    const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, defaultText)
     setDraftTemplates(instructionsByLocale)
     onChange(
       {
@@ -287,10 +272,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     onChange(
       {
         ...config,
-        customGenerationSystemPromptByLocale: patchSystemPrompt(
-          activePromptLocale,
-          defaultText
-        )
+        customGenerationSystemPromptByLocale: patchSystemPrompt(activePromptLocale, defaultText)
       },
       { includeTemplates: false }
     )
@@ -397,10 +379,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
         {config.generationMode === 'prompt' && (
           <div className={styles.systemPromptBlock}>
             <div className={styles.subsectionTitle}>
-              {t(
-                'settings.summary_custom_system_prompt_title',
-                'Generation assistant prompt'
-              )}
+              {t('settings.summary_custom_system_prompt_title', 'Generation assistant prompt')}
             </div>
             <p className={styles.cardDesc}>
               {t(
@@ -469,10 +448,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
         <div className={styles.injectRow}>
           <div className={styles.injectText}>
             <div className={styles.subsectionTitle}>
-              {t(
-                'settings.summary_inject_shared_memory',
-                'Inject shared memory before generation'
-              )}
+              {t('settings.summary_inject_shared_memory', 'Inject shared memory before generation')}
             </div>
             <p className={styles.cardDesc}>
               {t(
@@ -549,9 +525,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
         <div className={styles.divider} />
 
         <div className={styles.cardTitleLine}>
-          <span>
-            {t('settings.summary_data_sources_title', 'What each summary reads')}
-          </span>
+          <span>{t('settings.summary_data_sources_title', 'What each summary reads')}</span>
         </div>
         <p className={styles.cardDesc}>
           {t(
@@ -560,12 +534,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
           )}
         </p>
         <ul className={styles.dataSourceList}>
-          <li>
-            {t(
-              'settings.summary_data_source_weekly',
-              'Weekly: diaries within that week'
-            )}
-          </li>
+          <li>{t('settings.summary_data_source_weekly', 'Weekly: diaries within that week')}</li>
           <li>
             {t(
               'settings.summary_data_source_monthly',
@@ -579,10 +548,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
             )}
           </li>
           <li>
-            {t(
-              'settings.summary_data_source_yearly',
-              'Yearly: quarterly summaries in that year'
-            )}
+            {t('settings.summary_data_source_yearly', 'Yearly: quarterly summaries in that year')}
           </li>
         </ul>
 

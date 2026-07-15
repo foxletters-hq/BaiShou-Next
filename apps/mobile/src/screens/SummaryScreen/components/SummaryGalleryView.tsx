@@ -54,7 +54,9 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
 
   const displaySummaries = useMemo(() => {
     void patchVersion
-    return applySummaryContentPatches(summaries).filter((s) => !isSummaryLocallyDeleted(String(s.id)))
+    return applySummaryContentPatches(summaries).filter(
+      (s) => !isSummaryLocallyDeleted(String(s.id))
+    )
   }, [summaries, patchVersion])
 
   const seedSummaryNavigation = (id: string) => {

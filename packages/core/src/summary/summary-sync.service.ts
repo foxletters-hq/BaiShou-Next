@@ -99,9 +99,7 @@ export class SummarySyncService {
     }
 
     const endMismatch =
-      existingDb.endDate instanceof Date
-        ? existingDb.endDate.getTime() !== endDate.getTime()
-        : true
+      existingDb.endDate instanceof Date ? existingDb.endDate.getTime() !== endDate.getTime() : true
     if (existingDb.content !== fileContent || endMismatch) {
       if (endMismatch && existingDb.id != null) {
         // endDate 不一致时 unique(type,start,end) 无法 onConflict 更新，先删再写

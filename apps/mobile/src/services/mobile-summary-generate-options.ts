@@ -72,9 +72,7 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
         runtime.sharedMemoryLookbackMonths,
         promptLocale,
         '',
-        periodStart
-          ? { referenceDate: anchor, untilExclusive: anchor }
-          : undefined
+        periodStart ? { referenceDate: anchor, untilExclusive: anchor } : undefined
       )
       sharedContextText = text.trim() ? text : undefined
     } catch (e) {

@@ -62,9 +62,7 @@ export async function resolveDesktopSummaryGenerateOptions(
 
   const runtime = resolveSummaryGenerationRuntime(summaryConfigForGen, assistant, providers)
   if (runtime.fellBackToPrompt) {
-    logger.warn(
-      '[SummaryQueue] Assistant generation mode unavailable; falling back to prompt mode'
-    )
+    logger.warn('[SummaryQueue] Assistant generation mode unavailable; falling back to prompt mode')
   }
 
   let sharedContextText: string | undefined

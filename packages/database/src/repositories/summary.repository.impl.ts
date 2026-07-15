@@ -1,4 +1,10 @@
-import { Summary, CreateSummaryInput, UpdateSummaryInput, SummaryType, formatLocalDate } from '@baishou/shared'
+import {
+  Summary,
+  CreateSummaryInput,
+  UpdateSummaryInput,
+  SummaryType,
+  formatLocalDate
+} from '@baishou/shared'
 import { SummaryRepository } from './summary.repository'
 import { summariesTable } from '../schema/summaries'
 import { eq, and, gte, sql } from 'drizzle-orm'
@@ -89,10 +95,7 @@ export class SummaryRepositoryImpl implements SummaryRepository {
   async findAllByTypeAndStartDay(type: SummaryType, startDate: Date): Promise<Summary[]> {
     return this.run(async () => {
       const dayKey = formatLocalDate(startDate)
-      const rows = await this.db
-        .select()
-        .from(summariesTable)
-        .where(eq(summariesTable.type, type))
+      const rows = await this.db.select().from(summariesTable).where(eq(summariesTable.type, type))
       return (rows as unknown as Summary[]).filter((row) => {
         const start = row.startDate instanceof Date ? row.startDate : new Date(row.startDate)
         return formatLocalDate(start) === dayKey

@@ -406,12 +406,7 @@ export async function buildSharedContextText(
     )
   }
 
-  const { allItems } = resolveSharedMemoryItems(
-    summaries,
-    diaries,
-    lookbackMonths,
-    memoryWindow
-  )
+  const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths, memoryWindow)
 
   if (allItems.length === 0) return ''
 

@@ -61,11 +61,10 @@ export class MissingSummaryDetector {
     const monthlyFromWeeklies = this.getMissingMonthly(weeklies, monthlies, locale)
     const monthly =
       monthlySummarySource === 'diaries'
-        ? this.mergeMissingMonthlyByMonth(monthlyFromWeeklies, this.getMissingMonthlyFromDiaries(
-            diaries,
-            monthlies,
-            locale
-          ))
+        ? this.mergeMissingMonthlyByMonth(
+            monthlyFromWeeklies,
+            this.getMissingMonthlyFromDiaries(diaries, monthlies, locale)
+          )
         : monthlyFromWeeklies
     const quarterly = this.getMissingQuarterly(
       monthlies,
@@ -251,10 +250,7 @@ export class MissingSummaryDetector {
     return missing
   }
 
-  private mergeMissingMonthlyByMonth(
-    a: MissingSummary[],
-    b: MissingSummary[]
-  ): MissingSummary[] {
+  private mergeMissingMonthlyByMonth(a: MissingSummary[], b: MissingSummary[]): MissingSummary[] {
     const map = new Map<string, MissingSummary>()
     for (const item of [...a, ...b]) {
       const key = `${item.startDate.getFullYear()}-${item.startDate.getMonth()}`

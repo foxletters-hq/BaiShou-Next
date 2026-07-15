@@ -87,8 +87,6 @@ Make every weekly, monthly, quarterly, and yearly summary something the user can
 週記・月報・季報・年報のひとつひとつが、後から見返したくなる信頼できる共有の思い出になること。`
 }
 
-export function getDefaultCustomGenerationSystemPrompt(
-  locale?: string
-): string {
+export function getDefaultCustomGenerationSystemPrompt(locale?: string): string {
   return DEFAULT_SUMMARY_GENERATION_SYSTEM_PROMPTS[resolveSummaryPromptLocale(locale)]
 }

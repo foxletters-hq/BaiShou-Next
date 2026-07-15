@@ -80,7 +80,9 @@
   font-weight: 400;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -289,7 +291,9 @@
   cursor: pointer;
   text-align: left;
   color: inherit;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .partnerCard:hover {

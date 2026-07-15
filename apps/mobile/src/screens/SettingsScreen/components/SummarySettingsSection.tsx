@@ -260,12 +260,10 @@ export const SummarySettingsSection: React.FC = () => {
       if (overrides.monthlySummarySource) {
         await persistMonthlySource(overrides.monthlySummarySource)
       }
-      const latest =
-        (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
+      const latest = (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
       const next: SummaryConfig = {
         ...latest,
-        instructionsByLocale:
-          persistedTemplatesRef.current ?? latest.instructionsByLocale,
+        instructionsByLocale: persistedTemplatesRef.current ?? latest.instructionsByLocale,
         promptLocale: generationLocale,
         customGenerationSystemPromptByLocale: nextSystem,
         generationMode: nextMode,
@@ -293,12 +291,10 @@ export const SummarySettingsSection: React.FC = () => {
     }))
     enqueuePersist(async () => {
       if (!services || !dbReady) return
-      const latest =
-        (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
+      const latest = (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
       const next: SummaryConfig = {
         ...latest,
-        instructionsByLocale:
-          persistedTemplatesRef.current ?? latest.instructionsByLocale,
+        instructionsByLocale: persistedTemplatesRef.current ?? latest.instructionsByLocale,
         promptLocale: generationLocaleRef.current,
         customGenerationSystemPromptByLocale: {
           ...(latest.customGenerationSystemPromptByLocale || {}),
@@ -336,8 +332,7 @@ export const SummarySettingsSection: React.FC = () => {
           (await servicesNow.settingsManager.get<SummaryConfig>('summary_config')) || {}
         await servicesNow.settingsManager.set('summary_config', {
           ...latest,
-          instructionsByLocale:
-            persistedTemplatesRef.current ?? latest.instructionsByLocale,
+          instructionsByLocale: persistedTemplatesRef.current ?? latest.instructionsByLocale,
           promptLocale: generationLocaleRef.current,
           customGenerationSystemPromptByLocale: {
             ...(latest.customGenerationSystemPromptByLocale || {}),
@@ -415,11 +410,7 @@ export const SummarySettingsSection: React.FC = () => {
   const handleReset = async () => {
     const defaultText = getDefaultSummaryTemplate(activeTab, activePromptLocale)
     setLocalText(defaultText)
-    const instructionsByLocale = patchLocaleTemplates(
-      activePromptLocale,
-      activeTab,
-      defaultText
-    )
+    const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, defaultText)
     const next: SummaryConfig = {
       ...summaryConfig,
       instructionsByLocale,
@@ -427,10 +418,7 @@ export const SummarySettingsSection: React.FC = () => {
       generationAssistantId,
       injectSharedMemoryBeforeGenerate: injectSharedMemory,
       sharedMemoryLookbackMonths: lookbackMonths,
-      customGenerationSystemPromptByLocale: patchSystemPrompt(
-        activePromptLocale,
-        localSystemPrompt
-      )
+      customGenerationSystemPromptByLocale: patchSystemPrompt(activePromptLocale, localSystemPrompt)
     }
     await persistConfig(next, { replaceLocalTemplates: true })
     toast.showSuccess(t('summary.reset_template_success'))
@@ -699,9 +687,7 @@ export const SummarySettingsSection: React.FC = () => {
               <TouchableOpacity
                 key={source}
                 style={[styles.sourceBtn, active && { backgroundColor: colors.primary }]}
-                onPress={() =>
-                  persistAutoSettings({ monthlySummarySource: source })
-                }
+                onPress={() => persistAutoSettings({ monthlySummarySource: source })}
               >
                 <Text
                   style={{
@@ -833,7 +819,11 @@ export const SummarySettingsSection: React.FC = () => {
                       <View
                         style={[
                           styles.partnerAvatarSmall,
-                          { backgroundColor: active ? 'rgba(255,255,255,0.25)' : colors.primary + '22' }
+                          {
+                            backgroundColor: active
+                              ? 'rgba(255,255,255,0.25)'
+                              : colors.primary + '22'
+                          }
                         ]}
                       >
                         <Text

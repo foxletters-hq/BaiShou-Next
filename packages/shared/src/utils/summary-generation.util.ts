@@ -162,8 +162,7 @@ const PERIOD_DATA_SECTION_TITLE: Record<SummaryPromptLocale, string> = {
 }
 
 const PERIOD_DATA_SECTION_INTRO: Record<SummaryPromptLocale, string> = {
-  zh:
-    '以下是本期需要总结的原始素材（日记或下级总结）。请据此并严格按上方「生成总结模板」完成本期总结。',
+  zh: '以下是本期需要总结的原始素材（日记或下级总结）。请据此并严格按上方「生成总结模板」完成本期总结。',
   en:
     'Below is the raw material for this period (diaries or lower-level summaries). ' +
     'Generate this period’s summary from it, strictly following the “Summary Output Template” above.',
@@ -217,8 +216,7 @@ export function assembleSummaryGenerationPrompt(params: {
 
   const shared = params.sharedContextText?.trim()
   if (shared) {
-    const title =
-      params.sharedMemorySectionTitle ?? getSummarySharedMemoryInjectTitle(locale)
+    const title = params.sharedMemorySectionTitle ?? getSummarySharedMemoryInjectTitle(locale)
     const intro = params.sharedMemoryIntro ?? getSummarySharedMemoryInjectIntro(locale)
     parts.push(`---\n\n${title}\n\n${intro}\n\n${shared}`)
   }

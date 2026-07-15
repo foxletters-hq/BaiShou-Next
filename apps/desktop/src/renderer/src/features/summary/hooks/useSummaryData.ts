@@ -198,13 +198,7 @@ export function useSummaryData(selectedYear: number) {
     void refreshDashboard()
     void fetchMissingSummaries()
     void fetchSummariesForGallery()
-  }, [
-    cacheVersion,
-    fetchMissingSummaries,
-    fetchSummariesForGallery,
-    refreshDashboard,
-    scopeReady
-  ])
+  }, [cacheVersion, fetchMissingSummaries, fetchSummariesForGallery, refreshDashboard, scopeReady])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {

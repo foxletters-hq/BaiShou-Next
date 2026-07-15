@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  computeLookbackCutoffDate,
-  computeSharedMemoryCopyPreview
-} from '../summary-context'
+import { computeLookbackCutoffDate, computeSharedMemoryCopyPreview } from '../summary-context'
 
 describe('computeLookbackCutoffDate', () => {
   it('anchors lookback to the reference date, not wall-clock now', () => {

@@ -32,9 +32,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   const month = selectedDate.getMonth() + 1
   const day = selectedDate.getDate()
   const weekday = t(weekdayKeys[selectedDate.getDay()])
-  const monthShort = Array.isArray(monthNames)
-    ? monthNames[selectedDate.getMonth()]
-    : String(month)
+  const monthShort = Array.isArray(monthNames) ? monthNames[selectedDate.getMonth()] : String(month)
 
   const formattedDate = t(
     'diary.date_format_editor_title',
