@@ -19,8 +19,6 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   const { colors } = useNativeTheme()
   const [pickerOpen, setPickerOpen] = useState(false)
 
-  const month = selectedDate.getMonth() + 1
-  const day = selectedDate.getDate()
   const weekdayKeys = [
     'diary.weekday_sun',
     'diary.weekday_mon',
@@ -30,9 +28,25 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
     'diary.weekday_fri',
     'diary.weekday_sat'
   ] as const
-  const weekDay = t(weekdayKeys[selectedDate.getDay()])
+  const monthNames = t('common.months', { returnObjects: true }) as string[]
+  const month = selectedDate.getMonth() + 1
+  const day = selectedDate.getDate()
+  const weekday = t(weekdayKeys[selectedDate.getDay()])
+  const monthShort = Array.isArray(monthNames)
+    ? monthNames[selectedDate.getMonth()]
+    : String(month)
 
-  const formattedDate = `${month}${t('diary.month_suffix')}${day}${t('common.day_unit')} ${weekDay}`
+  const formattedDate = t(
+    'diary.date_format_editor_title',
+    '{{year}}年{{month}}月{{day}}日 {{weekday}}',
+    {
+      year: selectedDate.getFullYear(),
+      month,
+      monthShort,
+      day,
+      weekday
+    }
+  )
 
   const openPicker = () => {
     if (isSummaryMode || !onDateChanged) return
@@ -48,7 +62,7 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
         disabled={isSummaryMode || !onDateChanged}
       >
         <View style={styles.titleContent}>
-          <Text style={[styles.titleText, { color: colors.textPrimary }]}>
+          <Text style={[styles.titleText, { color: colors.textPrimary }]} numberOfLines={1}>
             {isSummaryMode ? t('diary.edit_summary') : formattedDate}
           </Text>
           {!isSummaryMode && onDateChanged && (

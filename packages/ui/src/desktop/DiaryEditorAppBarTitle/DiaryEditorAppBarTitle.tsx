@@ -32,10 +32,19 @@ export const DiaryEditorAppBarTitle: React.FC<DiaryEditorAppBarTitleProps> = ({
   const day = selectedDate.getDate()
   const weekday = WEEKDAY_NAMES[selectedDate.getDay()]
   const month = selectedDate.getMonth() + 1
+  const monthShort = Array.isArray(MONTH_NAMES)
+    ? MONTH_NAMES[selectedDate.getMonth()]
+    : String(month)
   const formattedDate = t(
     'diary.date_format_editor_title',
     '{{year}}年{{month}}月{{day}}日 {{weekday}}',
-    { year: selectedDate.getFullYear(), month, day, weekday }
+    {
+      year: selectedDate.getFullYear(),
+      month,
+      monthShort,
+      day,
+      weekday
+    }
   )
 
   // 当日期变化时同步pickerState
