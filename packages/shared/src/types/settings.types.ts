@@ -57,7 +57,7 @@ export interface GlobalModelsConfig {
   globalTtsSettings?: TtsSettings
   /** 各 TTS 供应商的 baseUrl / apiKey，key 为 openai-tts、mimo-tts 等 */
   globalTtsProviderConfigs?: Record<string, TtsProviderConnectionConfig>
-  monthlySummarySource: 'weeklies' | 'diaries' // 月度总结数据源：'weeklies' (仅周记) 或 'diaries' (全量日记)
+  monthlySummarySource: 'weeklies' | 'diaries' // 月报：'weeklies' 仅本月周记；'diaries' 本月周记 + 本月日记
 }
 
 /**
@@ -104,6 +104,9 @@ export interface WebSearchConfig {
 
 import type { SummaryPromptLocale, SummaryTemplatesMap } from './summary-prompt.types'
 
+/** 回忆总结的生成模式：提示词模板 / 指定伙伴 */
+export type SummaryGenerationMode = 'prompt' | 'assistant'
+
 /**
  * 总结模块自定义指令配置
  * - instructionsByLocale: 按界面语言分别保存周/月/季/年模板
@@ -116,6 +119,19 @@ export interface SummaryConfig {
   sharedMemoryLookbackMonths?: number
   /** 复制共同回忆时附加在全文最前方的自定义前缀 */
   sharedMemoryCopyPrefix?: string
+  /**
+   * 生成模式：提示词模板（默认）或指定伙伴（用伙伴模型 + systemPrompt）
+   */
+  generationMode?: SummaryGenerationMode
+  /** 伙伴模式下选用的助手 ID；缺失或已删时回退提示词模式 */
+  generationAssistantId?: string
+  /** 生成总结前是否将共同回忆注入 prompt（与「唤醒回忆」对话注入无关） */
+  injectSharedMemoryBeforeGenerate?: boolean
+  /**
+   * 自定义提示词模式下的「生成回忆助手」system prompt（按语言）
+   * 空或缺省时使用内置默认；复用伙伴模式忽略此字段
+   */
+  customGenerationSystemPromptByLocale?: Partial<Record<SummaryPromptLocale, string>>
   instructionsByLocale?: Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>>
   instructions?: SummaryTemplatesMap
 }

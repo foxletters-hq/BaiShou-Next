@@ -59,10 +59,11 @@ export interface SharedMemoryCopyPreview {
 
 export const DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS = 1
 export const SHARED_MEMORY_LOOKBACK_MIN = 1
-export const SHARED_MEMORY_LOOKBACK_MAX = 120
+/** Soft upper bound for lookback sliders only; values above this are allowed via number input. */
+export const SHARED_MEMORY_LOOKBACK_SLIDER_BASE = 60
 
 export function clampSharedMemoryLookbackMonths(value: unknown): number {
   const n = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(n)) return DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS
-  return Math.min(SHARED_MEMORY_LOOKBACK_MAX, Math.max(SHARED_MEMORY_LOOKBACK_MIN, Math.round(n)))
+  return Math.max(SHARED_MEMORY_LOOKBACK_MIN, Math.round(n))
 }

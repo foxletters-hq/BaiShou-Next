@@ -5,6 +5,7 @@ import type {
   SummaryTemplateKey,
   SummaryTemplatesMap
 } from '../types/summary-prompt.types'
+import { isLegacyDefaultSummaryTemplate } from './summary-config-legacy-templates.util'
 
 const TEMPLATE_KEYS: SummaryTemplateKey[] = ['weekly', 'monthly', 'quarterly', 'yearly']
 
@@ -46,6 +47,8 @@ function getLocaleTemplateOverride(
 ): string | undefined {
   const value = byLocale[locale]?.[type]
   if (value === undefined || value === '') return undefined
+  // Sticky old defaults (role block in template) → treat as unset so new format-only default applies.
+  if (isLegacyDefaultSummaryTemplate(value, locale, type)) return undefined
   return value
 }
 
@@ -66,7 +69,11 @@ export function resolveSummaryTemplatesForGeneration(
     }
     if (promptLocale === 'zh') {
       const legacy = config?.instructions?.[key]
-      if (legacy !== undefined && legacy !== '') {
+      if (
+        legacy !== undefined &&
+        legacy !== '' &&
+        !isLegacyDefaultSummaryTemplate(legacy, 'zh', key)
+      ) {
         resolved[key] = legacy
         continue
       }
