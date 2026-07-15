@@ -13,6 +13,7 @@ import {
   withSummaryPromptLocaleFromUi,
   type AIProviderConfig,
   type GlobalModelsConfig,
+  type SummaryAssistantSnapshot,
   type SummaryConfig
 } from '@baishou/shared'
 import { app } from 'electron'
@@ -48,7 +49,7 @@ export async function resolveDesktopSummaryGenerateOptions(
   )
   const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
-  let assistant = null
+  let assistant: SummaryAssistantSnapshot | null = null
   const assistantId = summaryConfigForGen.generationAssistantId?.trim()
   if (summaryConfigForGen.generationMode === 'assistant' && assistantId) {
     try {

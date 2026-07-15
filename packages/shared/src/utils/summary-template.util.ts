@@ -28,7 +28,7 @@ export function withSummaryPromptLocaleFromUi(
   config: SummaryConfig | null | undefined,
   uiLanguage: string | null | undefined
 ): { config: SummaryConfig; promptLocale: SummaryPromptLocale; changed: boolean } {
-  const promptLocale = resolveSummaryPromptLocale(uiLanguage)
+  const promptLocale = resolveSummaryPromptLocale(uiLanguage ?? undefined)
   const changed = config?.promptLocale !== promptLocale
   return {
     config: { ...(config || {}), promptLocale },
