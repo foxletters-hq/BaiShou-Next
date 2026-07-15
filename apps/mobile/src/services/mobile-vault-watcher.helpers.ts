@@ -65,9 +65,11 @@ export async function restartVaultWatchers(
   )
   bindShadowVaultScanState(diaryStack.shadowIndexSyncService)
 
+  // 先停旧 session/summary watcher，避免 waitUntilIdle 期间仍用旧 DB 句柄狂刷 NPE
+  sessionFileWatcher.stop()
+  summaryFileWatcher.stop()
+
   if (options?.skipSessionSummary) {
-    sessionFileWatcher.stop()
-    summaryFileWatcher.stop()
     return
   }
 
@@ -84,10 +86,12 @@ export async function restartVaultWatchers(
 async function startSummaryFileWatcherWhenStorageQuiet(
   summarySync: SummarySyncService
 ): Promise<void> {
+  const generationAtSchedule = summaryFileWatcher.getGeneration()
   await mobileDataBootstrapper.waitUntilIdle()
   while (getShadowVaultScanning()) {
     await new Promise((resolve) => setTimeout(resolve, 200))
   }
+  if (summaryFileWatcher.getGeneration() !== generationAtSchedule) return
   summaryFileWatcher.start(summarySync)
 }
 
@@ -99,9 +103,11 @@ async function startSessionFileWatcherWhenStorageQuiet(
     fileSystem: IFileSystem
   }
 ): Promise<void> {
+  const generationAtSchedule = sessionFileWatcher.getGeneration()
   await mobileDataBootstrapper.waitUntilIdle()
   while (getShadowVaultScanning()) {
     await new Promise((resolve) => setTimeout(resolve, 200))
   }
+  if (sessionFileWatcher.getGeneration() !== generationAtSchedule) return
   sessionFileWatcher.start(sessionsDir, deps)
 }

@@ -7,6 +7,7 @@ import type {
 import type { IFileSystem } from '@baishou/core-mobile'
 import { joinPath } from '@baishou/core-mobile'
 import {
+  isExpoSqliteNativeUnavailableError,
   isSqliteDatabaseLockedError,
   runWithSqliteBusyRetry,
   waitForExpoAgentDatabaseIdle
@@ -29,6 +30,20 @@ const DEFAULT_SUPPRESS_MS = 8000
 const MAX_SYNCS_PER_TICK = 2
 const INTER_SYNC_IDLE_MS = 40
 
+/** 本地兜底：不依赖 package 解析，避免 Metro 旧包漏掉识别 */
+function looksLikeAgentDatabaseDead(error: unknown): boolean {
+  if (isSqliteDatabaseLockedError(error)) return false
+  if (isExpoSqliteNativeUnavailableError(error)) return true
+  const text = `${String((error as Error)?.message ?? '')}\n${String(error)}`.toLowerCase()
+  return (
+    text.includes('nullpointerexception') ||
+    text.includes('nativedatabase.execasync') ||
+    text.includes('nativedatabase.preparesync') ||
+    text.includes("nativedatabase.execasync' has been rejected") ||
+    text.includes("nativedatabase.preparesync' has been rejected")
+  )
+}
+
 export function createMobileSessionDiskPersistenceHooks(): SessionDiskPersistenceHooks {
   return {
     onBeforeWrite: (sessionId) => {
@@ -49,19 +64,28 @@ export class SessionFileWatcherService {
   private suppressedSessions = new Map<string, number>()
   private deps: WatcherDeps | null = null
   private tickInFlight = false
+  /** 每次 start/stop 递增，用于丢弃陈旧异步 tick / 延迟 start */
+  private generation = 0
+  private pausedForDeadDb = false
+  private unavailableLoggedForGeneration = -1
 
   start(sessionsBaseDir: string, deps: WatcherDeps) {
-    this.stop()
+    this.stopTimerOnly()
+    this.generation += 1
+    this.pausedForDeadDb = false
+    this.unavailableLoggedForGeneration = -1
     this.sessionsDir = sessionsBaseDir
     this.deps = deps
+    this.appStateSub?.remove()
     this.appStateSub = AppState.addEventListener('change', this.onAppState)
     this.timer = setInterval(() => void this.tick(), 8000)
     logger.info('[SessionFileWatcher] started')
   }
 
   stop() {
-    if (this.timer) clearInterval(this.timer)
-    this.timer = null
+    this.generation += 1
+    this.pausedForDeadDb = false
+    this.stopTimerOnly()
     this.appStateSub?.remove()
     this.appStateSub = null
     this.sessionsDir = null
@@ -69,6 +93,32 @@ export class SessionFileWatcherService {
     this.skippedOversized.clear()
     this.suppressedSessions.clear()
     this.deps = null
+  }
+
+  private stopTimerOnly() {
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+  }
+
+  /** DB 句柄失效时停掉轮询，避免每 8s 对全部 json 重试刷屏 */
+  private pauseAfterDeadDatabase(error: unknown, generation: number) {
+    if (this.unavailableLoggedForGeneration !== generation) {
+      this.unavailableLoggedForGeneration = generation
+      logger.warn(
+        '[SessionFileWatcher] agent database unavailable; paused until watcher restarts',
+        error as Error
+      )
+      appendDiagnosticBreadcrumb(
+        '[SessionFileWatcher] paused: agent database unavailable (NativeDatabase NPE)'
+      )
+    }
+    this.pausedForDeadDb = true
+    this.stopTimerOnly()
+  }
+
+  /** 供延迟启动：若期间已 stop/再次 start，则取消本次 start */
+  getGeneration(): number {
+    return this.generation
   }
 
   /** 本端落盘 JSON 时抑制回环同步（对齐桌面 sessionWatcher.suppressPath） */
@@ -94,30 +144,45 @@ export class SessionFileWatcherService {
   }
 
   private onAppState = (state: AppStateStatus) => {
-    if (state === 'active') void this.tick()
+    if (state !== 'active') return
+    // 若因死库暂停，回到前台也不自动狂刷；等 restartVaultWatchers / start()
+    if (this.pausedForDeadDb || !this.deps || !this.sessionsDir) return
+    void this.tick()
   }
 
-  private async syncSessionFileQuiet(sessionId: string): Promise<void> {
+  private async syncSessionFileQuiet(
+    sessionId: string,
+    deps: WatcherDeps,
+    generation: number
+  ): Promise<void> {
     await waitForExpoAgentDatabaseIdle()
-    await runWithSqliteBusyRetry(() => this.deps!.sessionSyncService.syncSessionFile(sessionId))
+    if (generation !== this.generation || this.deps !== deps) return
+    await runWithSqliteBusyRetry(() => deps.sessionSyncService.syncSessionFile(sessionId))
   }
 
   private async tick() {
-    if (!this.deps || !this.sessionsDir || this.tickInFlight) return
+    const generation = this.generation
+    const deps = this.deps
+    const sessionsDir = this.sessionsDir
+    if (!deps || !sessionsDir || this.tickInFlight || this.pausedForDeadDb) return
     if (AppState.currentState !== 'active') return
     this.tickInFlight = true
     try {
       await waitForExpoAgentDatabaseIdle()
-      const files = await this.deps.fileSystem.readdir(this.sessionsDir)
+      if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
+
+      const files = await deps.fileSystem.readdir(sessionsDir)
+      if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
+
       const pending: Array<{ name: string; fp: string; mtime: number; sessionId: string }> = []
 
       for (const name of files) {
         if (!name.endsWith('.json')) continue
-        const fp = joinPath(this.sessionsDir, name)
+        const fp = joinPath(sessionsDir, name)
         let mtime = 0
         let size: number | undefined
         try {
-          const st = await this.deps.fileSystem.stat(fp)
+          const st = await deps.fileSystem.stat(fp)
           mtime = st.mtimeMs ?? Date.now()
           size = st.size
         } catch {
@@ -149,15 +214,18 @@ export class SessionFileWatcherService {
 
       let synced = 0
       for (const item of pending) {
+        if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
         if (synced >= MAX_SYNCS_PER_TICK) break
         try {
-          await this.syncSessionFileQuiet(item.sessionId)
+          await this.syncSessionFileQuiet(item.sessionId, deps, generation)
+          if (generation !== this.generation || this.deps !== deps || this.pausedForDeadDb) return
           this.mtimes.set(item.fp, item.mtime)
           synced += 1
           if (synced < MAX_SYNCS_PER_TICK && synced < pending.length) {
             await new Promise((resolve) => setTimeout(resolve, INTER_SYNC_IDLE_MS))
           }
         } catch (e) {
+          if (generation !== this.generation || this.deps !== deps) return
           if (isOversizedReadFailure(e)) {
             if (!this.skippedOversized.has(item.fp)) {
               this.skippedOversized.add(item.fp)
@@ -174,11 +242,23 @@ export class SessionFileWatcherService {
             )
             continue
           }
+          if (looksLikeAgentDatabaseDead(e)) {
+            this.pauseAfterDeadDatabase(e, generation)
+            return
+          }
+          // 其它错误：记 mtime 避免同一坏文件每轮刷屏；真正内容变更会改 mtime
+          this.mtimes.set(item.fp, item.mtime)
           logger.warn(`[SessionFileWatcher] sync failed for ${item.name}:`, e as Error)
         }
       }
     } catch (e) {
-      logger.warn('[SessionFileWatcher] tick error:', e as Error)
+      if (generation === this.generation) {
+        if (looksLikeAgentDatabaseDead(e)) {
+          this.pauseAfterDeadDatabase(e, generation)
+        } else {
+          logger.warn('[SessionFileWatcher] tick error:', e as Error)
+        }
+      }
     } finally {
       this.tickInFlight = false
     }
