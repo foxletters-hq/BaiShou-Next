@@ -1,11 +1,17 @@
 import i18n from 'i18next'
 import {
+  describeWebDavTarget,
   formatWebDavRequestError,
   INCREMENTAL_SYNC_CHUNK_SIZE,
   isManagedIncrementalZipPath,
+  isStrictWebDavChildUrl,
+  isTransientWebDavHttpStatus,
   limitExecute,
-  normalizeWebDavBaseUrl,
+  normalizeWebDavListingUrl,
   parseWebDavPropfindEntries,
+  resolveWebDavListingUrl,
+  rewriteWebDavUrlOrigin,
+  suggestWebDavHttpFallbackUrl,
   toRelativeWebDavPath,
   WEBDAV_SHALLOW_LIST_CONCURRENCY
 } from '@baishou/shared'
@@ -30,27 +36,116 @@ import {
 } from './mobile-incremental-cloud-ops.types'
 
 function webdavBaseUrl(host: IncrementalCloudOpsHost): string {
-  return normalizeWebDavBaseUrl(host.config.webdavUrl)
+  return host.webdavConfiguredBaseUrl()
 }
 
-function resolveWebDavUrl(host: IncrementalCloudOpsHost, href: string): string {
-  const decoded = decodeURIComponent(href.trim())
-  if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
-    return decoded
-  }
-  if (decoded.startsWith('/')) {
-    const origin = new URL(webdavBaseUrl(host)).origin
-    return `${origin}${decoded}`
-  }
-  return `${webdavBaseUrl(host)}/${decoded.replace(/^\//, '')}`
+/** 同一 host 上已确保存在的目录，避免并发上传重复 MKCOL 触发网盘 503 */
+const ensuredWebDavDirsByHost = new WeakMap<object, Set<string>>()
+const pendingWebDavMkcolByHost = new WeakMap<object, Map<string, Promise<void>>>()
+
+const MKCOL_OK = new Set([200, 201, 204, 405, 409])
+const MKCOL_MAX_ATTEMPTS = 4
+
+async function sleepMs(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-async function webdavPropfind(
+async function mkcolOnce(
   host: IncrementalCloudOpsHost,
-  url: string,
+  dirUrl: string,
+  auth: string
+): Promise<number> {
+  const res = await host.fetchWithAbort(dirUrl, {
+    method: 'MKCOL',
+    headers: { Authorization: auth }
+  })
+  return res.status
+}
+
+/**
+ * 逐级 MKCOL；对 429/5xx 退避重试，并合并同一路径的并发请求。
+ */
+async function ensureWebDavPathSegments(
+  host: IncrementalCloudOpsHost,
+  segments: string[]
+): Promise<void> {
+  if (segments.length === 0) return
+
+  const baseUrl = webdavBaseUrl(host)
+  const auth = host.webdavAuth()
+  let ensured = ensuredWebDavDirsByHost.get(host)
+  if (!ensured) {
+    ensured = new Set()
+    ensuredWebDavDirsByHost.set(host, ensured)
+  }
+  let pending = pendingWebDavMkcolByHost.get(host)
+  if (!pending) {
+    pending = new Map()
+    pendingWebDavMkcolByHost.set(host, pending)
+  }
+
+  let current = ''
+  for (const segment of segments) {
+    current = current ? `${current}/${segment}` : segment
+    if (ensured.has(current)) continue
+
+    const inflight = pending.get(current)
+    if (inflight) {
+      await inflight
+      continue
+    }
+
+    const pathForError = current
+    const run = (async () => {
+      const dirUrl = `${baseUrl}/${pathForError}`
+      let lastStatus = 0
+      for (let attempt = 0; attempt < MKCOL_MAX_ATTEMPTS; attempt++) {
+        lastStatus = await mkcolOnce(host, dirUrl, auth)
+        if (MKCOL_OK.has(lastStatus)) {
+          ensured!.add(pathForError)
+          return
+        }
+        if (!isTransientWebDavHttpStatus(lastStatus) || attempt >= MKCOL_MAX_ATTEMPTS - 1) {
+          break
+        }
+        await sleepMs(400 * 2 ** attempt)
+      }
+      throw new Error(
+        formatWebDavRequestError(
+          i18n.t(
+            'auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.L110',
+            '创建目录 {{path}}',
+            { path: pathForError }
+          ),
+          lastStatus
+        )
+      )
+    })()
+
+    pending.set(current, run)
+    try {
+      await run
+    } finally {
+      pending.delete(current)
+    }
+  }
+}
+
+function resolveWebDavUrl(
+  host: IncrementalCloudOpsHost,
+  href: string,
+  options?: { asCollection?: boolean }
+): string {
+  return resolveWebDavListingUrl(webdavBaseUrl(host), href, options)
+}
+
+async function propfindOnce(
+  host: IncrementalCloudOpsHost,
+  requestUrl: string,
   depth: '0' | '1'
-): Promise<string> {
-  const response = await host.fetchWithAbort(url, {
+): Promise<Response> {
+  // 与 1.2.13 保持一致：不强制尾斜杠、不强制 PROPFIND body（群晖对这两点更敏感）
+  return host.fetchWithAbort(requestUrl, {
     method: 'PROPFIND',
     headers: {
       Authorization: host.webdavAuth(),
@@ -58,6 +153,65 @@ async function webdavPropfind(
       'Content-Type': 'application/xml'
     }
   })
+}
+
+async function webdavPropfind(
+  host: IncrementalCloudOpsHost,
+  url: string,
+  depth: '0' | '1'
+): Promise<string> {
+  // 保留调用方传入的 URL 形态（1.2.13 不对 collection 强行补 `/`）
+  const requestUrl = url.replace(/\/+$/, '') || url
+  console.warn('[IncrementalSync][WebDAV] propfind', {
+    target: describeWebDavTarget(requestUrl),
+    depth
+  })
+
+  let response: Response
+  try {
+    response = await propfindOnce(host, requestUrl, depth)
+  } catch (e) {
+    if (!isTransientNetworkError(e)) throw e
+
+    const fallbackBase = suggestWebDavHttpFallbackUrl(webdavBaseUrl(host))
+    if (!fallbackBase || fallbackBase === webdavBaseUrl(host)) {
+      console.warn('[IncrementalSync][WebDAV] propfind-network-failed', {
+        target: describeWebDavTarget(requestUrl),
+        message: e instanceof Error ? e.message : String(e)
+      })
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.network_failed',
+          'WebDAV 列举失败：无法连接服务器。若使用群晖/NAS，请优先试 http://内网IP:5005；HTTPS 自签证书需在系统中安装并信任，或改用已信任证书。当前目标：{{target}}',
+          { target: describeWebDavTarget(requestUrl) }
+        )
+      )
+    }
+
+    const fallbackUrl = rewriteWebDavUrlOrigin(requestUrl, fallbackBase).replace(/\/+$/, '')
+    console.warn('[IncrementalSync][WebDAV] propfind-http-fallback', {
+      from: describeWebDavTarget(requestUrl),
+      to: describeWebDavTarget(fallbackUrl)
+    })
+    host.adoptWebDavBaseUrl(fallbackBase)
+
+    try {
+      response = await propfindOnce(host, fallbackUrl, depth)
+    } catch (retryError) {
+      console.warn('[IncrementalSync][WebDAV] propfind-fallback-failed', {
+        target: describeWebDavTarget(fallbackUrl),
+        message: retryError instanceof Error ? retryError.message : String(retryError)
+      })
+      throw new Error(
+        i18n.t(
+          'auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.network_failed',
+          'WebDAV 列举失败：无法连接服务器。若使用群晖/NAS，请优先试 http://内网IP:5005；HTTPS 自签证书需在系统中安装并信任，或改用已信任证书。当前目标：{{target}}',
+          { target: describeWebDavTarget(fallbackUrl) }
+        )
+      )
+    }
+  }
+
   if (!response.ok) {
     throw new Error(
       formatWebDavRequestError(
@@ -74,45 +228,30 @@ async function ensureWebDavBasePath(host: IncrementalCloudOpsHost): Promise<void
   const prefix = host.basePath().replace(/\/$/, '')
   if (!prefix) return
   const segments = prefix.split('/').filter(Boolean)
-  if (segments.length === 0) return
-
-  const baseUrl = webdavBaseUrl(host)
-  const auth = host.webdavAuth()
-  let current = ''
-  for (const segment of segments) {
-    current = current ? `${current}/${segment}` : segment
-    const res = await host.fetchWithAbort(`${baseUrl}/${current}`, {
-      method: 'MKCOL',
-      headers: { Authorization: auth }
-    })
-    if (res.ok || res.status === 405 || res.status === 409) continue
-    throw new Error(
-      formatWebDavRequestError(
-        i18n.t(
-          'auto.apps.mobile.src.services.mobile.incremental.cloud.webdav.ops.L110',
-          '创建目录 {{path}}',
-          { path: current }
-        ),
-        res.status,
-        res.statusText
-      )
-    )
-  }
+  await ensureWebDavPathSegments(host, segments)
 }
 
 /**
  * 逐目录 Depth:1 PROPFIND，与桌面端一致；避免 Depth: infinity 在部分网盘/NAS 上 403。
+ * visited：同一轮列举内去重，防止父目录回环 / 尾斜杠变体导致请求风暴。
  */
 async function collectWebDavShallow(
   host: IncrementalCloudOpsHost,
   remoteUrl: string,
   records: IncrementalSyncRecord[],
-  options: { missingOk?: boolean } = { missingOk: true }
+  options: {
+    missingOk?: boolean
+    visited?: Set<string>
+  } = { missingOk: true }
 ): Promise<void> {
-  const normalizedCurrent = remoteUrl.replace(/\/$/, '')
+  const visited = options.visited ?? new Set<string>()
+  const normalizedCurrent = normalizeWebDavListingUrl(remoteUrl)
+  if (!normalizedCurrent || visited.has(normalizedCurrent)) return
+  visited.add(normalizedCurrent)
+
   let xml: string
   try {
-    xml = await webdavPropfind(host, remoteUrl, '1')
+    xml = await webdavPropfind(host, normalizedCurrent, '1')
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     if (message.includes('HTTP 404')) {
@@ -138,10 +277,14 @@ async function collectWebDavShallow(
   const basePrefix = host.basePath().replace(/\/$/, '')
 
   for (const entry of parseWebDavPropfindEntries(xml)) {
-    const entryUrl = resolveWebDavUrl(host, entry.href).replace(/\/$/, '')
+    const entryUrl = normalizeWebDavListingUrl(resolveWebDavUrl(host, entry.href))
 
     if (entry.isCollection) {
-      if (entryUrl !== normalizedCurrent) {
+      // 只递归严格子目录，忽略自身、父目录、兄弟目录
+      if (
+        isStrictWebDavChildUrl(normalizedCurrent, entryUrl) &&
+        !visited.has(entryUrl)
+      ) {
         subdirs.push(entryUrl)
       }
       continue
@@ -159,7 +302,10 @@ async function collectWebDavShallow(
   }
 
   await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (dirUrl) => {
-    await collectWebDavShallow(host, dirUrl, records, { missingOk: true })
+    await collectWebDavShallow(host, dirUrl, records, {
+      missingOk: true,
+      visited
+    })
   })
 }
 
@@ -167,29 +313,21 @@ export async function listWebDav(host: IncrementalCloudOpsHost): Promise<Increme
   // 列举只读：不在此处 MKCOL，避免对只读账号产生写副作用
   const records: IncrementalSyncRecord[] = []
   const baseDir = host.basePath().replace(/\/$/, '')
-  const rootUrl = baseDir ? `${webdavBaseUrl(host)}/${baseDir}` : webdavBaseUrl(host)
-  await collectWebDavShallow(host, rootUrl, records, { missingOk: false })
+  const rootUrl = normalizeWebDavListingUrl(
+    baseDir ? `${webdavBaseUrl(host)}/${baseDir}` : webdavBaseUrl(host)
+  )
+  await collectWebDavShallow(host, rootUrl, records, {
+    missingOk: false,
+    visited: new Set<string>()
+  })
   return records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
 }
 
 async function ensureWebDavDirs(host: IncrementalCloudOpsHost, rel: string): Promise<void> {
-  const baseUrl = webdavBaseUrl(host)
-  const auth = host.webdavAuth()
   const remoteFilePath = (host.basePath() + rel).replace(/^\//, '')
   const parentPath = remoteFilePath.replace(/\/[^/]+$/, '')
   if (!parentPath) return
-
-  const segments = parentPath.split('/').filter(Boolean)
-  let current = ''
-  for (const segment of segments) {
-    current = current ? `${current}/${segment}` : segment
-    const res = await host.fetchWithAbort(`${baseUrl}/${current}`, {
-      method: 'MKCOL',
-      headers: { Authorization: auth }
-    })
-    if (res.ok || res.status === 405 || res.status === 409) continue
-    throw new Error(`WebDAV MKCOL failed for ${current}: ${res.status}`)
-  }
+  await ensureWebDavPathSegments(host, parentPath.split('/').filter(Boolean))
 }
 
 async function getWebDavRemoteSize(host: IncrementalCloudOpsHost, rel: string): Promise<number> {

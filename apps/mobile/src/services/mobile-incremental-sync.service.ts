@@ -24,7 +24,6 @@ import { emitSyncMutation } from '../cache/mobile-cache-coordinator'
 import type { MobileIncrementalSyncOutcome } from './mobile-incremental-engine.types'
 import {
   isConfigReady,
-  mergeConfig,
   normalizeVaultConfig,
   testS3,
   testWebDav,
@@ -168,7 +167,7 @@ export class MobileIncrementalSyncService {
   }
 
   async saveConfig(config: Partial<S3SyncConfig>): Promise<void> {
-    const merged = mergeConfig({ ...(await this.getConfig()), ...config })
+    const merged = normalizeVaultConfig({ ...(await this.getConfig()), ...config })
     const configPath = await this.rootConfigPath()
     await this.fileSystem.writeFile(configPath, JSON.stringify(merged, null, 2))
   }

@@ -3,6 +3,7 @@ import {
   buildS3ObjectUrl,
   buildWebDavFileUrl,
   normalizeS3BasePath,
+  normalizeWebDavBaseUrl,
   s3FetchHeaders,
   signS3Request,
   SYNC_MANIFEST_FILENAME,
@@ -66,6 +67,7 @@ export class MobileIncrementalCloudClient implements IncrementalCloudOpsHost {
   onTransferProgress?: TransferProgressCallback
   onTransferActivity?: TransferActivityCallback
   transferProgressDestPath = ''
+  private webdavBaseUrlOverride: string | null = null
 
   constructor(config: S3SyncConfig, fileSystem: IFileSystem) {
     this.config = config
@@ -186,8 +188,16 @@ export class MobileIncrementalCloudClient implements IncrementalCloudOpsHost {
     return `Basic ${btoa(`${this.config.accessKey}:${this.config.secretKey}`)}`
   }
 
+  webdavConfiguredBaseUrl(): string {
+    return normalizeWebDavBaseUrl(this.webdavBaseUrlOverride ?? this.config.webdavUrl)
+  }
+
+  adoptWebDavBaseUrl(url: string): void {
+    this.webdavBaseUrlOverride = normalizeWebDavBaseUrl(url)
+  }
+
   webdavFileUrl(rel: string): string {
-    return buildWebDavFileUrl(this.config.webdavUrl, this.basePath(), rel)
+    return buildWebDavFileUrl(this.webdavConfiguredBaseUrl(), this.basePath(), rel)
   }
 
   async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
