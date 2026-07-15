@@ -91,12 +91,22 @@ export {
 } from './utils/incremental-sync-external-paths.util'
 export {
   WEBDAV_SHALLOW_LIST_CONCURRENCY,
+  WEBDAV_PROPFIND_BODY,
   normalizeWebDavBaseUrl,
+  inferWebDavDefaultScheme,
   buildWebDavFileUrl,
+  resolveWebDavListingUrl,
+  ensureWebDavCollectionUrl,
+  normalizeWebDavListingUrl,
+  isStrictWebDavChildUrl,
+  suggestWebDavHttpFallbackUrl,
+  rewriteWebDavUrlOrigin,
+  describeWebDavTarget,
   parseWebDavPropfindEntries,
   toRelativeWebDavPath,
   isManagedIncrementalZipPath,
   formatWebDavRequestError,
+  isTransientWebDavHttpStatus,
   type WebDavListEntry
 } from './utils/incremental-sync-webdav.util'
 export { resolveSyncDeviceId } from './utils/sync-device-id.util'
