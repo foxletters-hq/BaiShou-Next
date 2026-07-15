@@ -20,9 +20,9 @@ const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
 
 const START = '<!-- CONTRIBUTORS-WALL:START -->'
 const END = '<!-- CONTRIBUTORS-WALL:END -->'
-/** 展示边长（px）；源图取 2× 以适配高分屏，避免发糊 */
-const AVATAR_SIZE = 72
-const AVATAR_SRC_SIZE = AVATAR_SIZE * 2
+/** 展示边长（px）；源图取 3×，高分屏更清晰 */
+const AVATAR_SIZE = 80
+const AVATAR_SRC_SIZE = AVATAR_SIZE * 3
 const MAX = 48
 
 /** 额外排除的登录名（大小写不敏感）；GitHub type=Bot 与 [bot] 后缀也会过滤 */
