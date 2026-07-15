@@ -22,7 +22,8 @@ import { emitSyncMutation } from '../../cache/mobile-cache-coordinator'
 import { restartVaultWatchers } from '../../services/mobile-vault-watcher.helpers'
 import {
   registerVaultBootstrapDeps,
-  EMPTY_DIARY_REPO_ADAPTER
+  EMPTY_DIARY_REPO_ADAPTER,
+  stopVaultWatchers
 } from '../../services/mobile-vault-runtime.service'
 import { resyncAgentDbCachesFromDisk } from '../../services/mobile-agent-db-resync.util'
 import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from '../../services/mobile-file-read-limits'
@@ -85,6 +86,9 @@ export function assignReloadAgentDatabaseHandler(
     if (mcpWasRunning && priorMcp) {
       await priorMcp.stop()
     }
+
+    // 先停 watcher，再隔离/重开 DB，避免 Session/Summary watcher 对已失效句柄狂刷 NPE
+    await stopVaultWatchers()
 
     await releaseExpoAgentDatabaseInstall()
     await quarantineMobileAgentDatabase(vaultCtx.fileSystem)
