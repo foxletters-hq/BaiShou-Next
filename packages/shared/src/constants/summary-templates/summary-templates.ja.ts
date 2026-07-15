@@ -1,14 +1,7 @@
 import type { SummaryTemplatesMap } from '../../types/summary-prompt.types'
 
 export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
-  weekly: `あなたはプロの個人伝記作家パートナーです。
-**重要な指示**：
-1. 挨拶・前置き・締めの言葉は出力しないでください。
-2. 純粋な Markdown コンテンツを直接出力してください。
-3. 以下の Markdown 形式テンプレートに従ってください。\`\`\`markdown などのコードブロックで囲まないでください。
-
-### 形式テンプレート：
-##### {year}年{month}月 第{week}週サマリー
+  weekly: `##### {year}年{month}月 第{week}週サマリー
 
 ###### 📅 期間
 - **日付範囲**: {start} ～ {end}
@@ -45,14 +38,7 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 ---
 ###### 🍵 月次サマリー用カプセル
 > （一文で要約）`,
-  monthly: `あなたはプロの個人伝記作家パートナーです。
-**重要な指示**：
-1. 挨拶・前置き・締めの言葉は出力しないでください。
-2. 純粋な Markdown コンテンツを直接出力してください。
-3. 以下の Markdown 形式テンプレートに従ってください。\`\`\`markdown などのコードブロックで囲まないでください。
-
-### 形式テンプレート：
-##### {year}年{month}月 月次サマリー
+  monthly: `##### {year}年{month}月 月次サマリー
 
 ###### 📅 日付範囲
 - **範囲**: {start} ～ {end}
@@ -84,15 +70,8 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 
 ---
 ###### 🔮 来月の展望
-- **重点**:`,
-  quarterly: `あなたはプロの個人伝記作家パートナーです。
-**重要な指示**：
-1. 挨拶・前置き・締めの言葉は出力しないでください。
-2. 純粋な Markdown コンテンツを直接出力してください。
-3. 以下の Markdown 形式テンプレートに従ってください。\`\`\`markdown などのコードブロックで囲まないでください。
-
-### 形式テンプレート：
-##### {year}年 第{quarter}四半期サマリー
+- **重点方向**:`,
+  quarterly: `##### {year}年 第{quarter}四半期サマリー
 
 ###### 📅 日付範囲
 - **範囲**: {start} ～ {end}
@@ -103,9 +82,9 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 
 ---
 
-###### 🌊 トレンド振り返り
-- **上昇トレンド**:
-- **下降トレンド**:
+###### 🌊 主要トレンド
+- **上昇傾向**:
+- **下降傾向**:
 
 ---
 
@@ -113,20 +92,13 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 
 ---
 
-###### 💡 四半期の洞察
+###### 💡 四半期の振り返りと洞察
 
 ---
 
-###### 🧭 次四半期の戦略的重点
+###### 🧭 次四半期の重点
 - **コア方向**:`,
-  yearly: `あなたはプロの個人伝記作家パートナーです。
-**重要な指示**：
-1. 挨拶・前置き・締めの言葉は出力しないでください。
-2. 純粋な Markdown コンテンツを直接出力してください。
-3. 以下の Markdown 形式テンプレートに従ってください。\`\`\`markdown などのコードブロックで囲まないでください。
-
-### 形式テンプレート：
-# {year} 年間振り返り：（この年を一言で）
+  yearly: `# {year} 年次レビュー：（この一年を一言で）
 
 ###### 📅 日付範囲
 - **範囲**: {start} ～ {end}
@@ -151,7 +123,7 @@ export const SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 
 ---
 
-###### 🪴 成長と気づき
+###### 🪴 認知の目覚め
 
 ---
 

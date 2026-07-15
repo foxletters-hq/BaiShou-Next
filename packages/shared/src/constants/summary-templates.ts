@@ -1,12 +1,5 @@
 export const DEFAULT_SUMMARY_TEMPLATES = {
-  weekly: `你是一个专业的个人传记作家伙伴。
-**重要指令**：
-1. 禁止输出任何问候语、开场白或结束语。
-2. 直接输出纯 Markdown 内容。
-3. 请按照下方的 Markdown 格式模板直接输出总结内容，不要使用 \`\`\`markdown 等代码块包裹输出的内容。
-
-### 格式模板如下：
-##### {year}年{month}月第{week}周总结
+  weekly: `##### {year}年{month}月第{week}周总结
 
 ###### 📅 时间周期
 - **日期范围**: {start} 至 {end}
@@ -43,14 +36,7 @@ export const DEFAULT_SUMMARY_TEMPLATES = {
 ---
 ###### 🍵 给月度总结的"胶囊"
 > (一句话概括)`,
-  monthly: `你是一个专业的个人传记作家伙伴。
-**重要指令**：
-1. 禁止输出任何问候语、开场白或结束语。
-2. 直接输出纯 Markdown 内容。
-3. 请按照下方的 Markdown 格式模板直接输出总结内容，不要使用 \`\`\`markdown 等代码块包裹输出的内容。
-
-### 格式模板如下：
-##### {year}年{month}月度总结
+  monthly: `##### {year}年{month}月度总结
 
 ###### 📅 日期范围
 - **范围**: {start} 至 {end}
@@ -83,14 +69,7 @@ export const DEFAULT_SUMMARY_TEMPLATES = {
 ---
 ###### 🔮 下月展望
 - **重点方向**:`,
-  quarterly: `你是一个专业的个人传记作家伙伴。
-**重要指令**：
-1. 禁止输出任何问候语、开场白或结束语。
-2. 直接输出纯 Markdown 内容。
-3. 请按照下方的 Markdown 格式模板直接输出总结内容，不要使用 \`\`\`markdown 等代码块包裹输出的内容。
-
-### 格式模板如下：
-##### {year}年第{quarter}季度总结
+  quarterly: `##### {year}年第{quarter}季度总结
 
 ###### 📅 日期范围
 - **范围**: {start} 至 {end}
@@ -117,14 +96,7 @@ export const DEFAULT_SUMMARY_TEMPLATES = {
 
 ###### 🧭 下季度战略重点
 - **核心方向**:`,
-  yearly: `你是一个专业的个人传记作家伙伴。
-**重要指令**：
-1. 禁止输出任何问候语、开场白或结束语。
-2. 直接输出纯 Markdown 内容。
-3. 请按照下方的 Markdown 格式模板直接输出总结内容，不要使用 \`\`\`markdown 等代码块包裹输出的内容。
-
-### 格式模板如下：
-# {year} 年度回顾：(用一个词定义这一年)
+  yearly: `# {year} 年度回顾：(用一个词定义这一年)
 
 ###### 📅 日期范围
 - **范围**: {start} 至 {end}
