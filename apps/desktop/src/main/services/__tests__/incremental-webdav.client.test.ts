@@ -82,8 +82,58 @@ describe('IncrementalWebDavClient.listFiles', () => {
     ;(client as any).client = mockClient
 
     await client.listFiles()
-
     expect(mockClient.createDirectory).not.toHaveBeenCalled()
+  })
+
+  it('ignores parent directory entries to avoid listing storms', async () => {
+    let personalCalls = 0
+    mockClient.getDirectoryContents.mockImplementation(async (dir: string) => {
+      if (dir === 'memories_sync' || dir === 'memories_sync/') {
+        return [
+          { type: 'directory', filename: 'memories_sync' },
+          { type: 'directory', filename: 'memories_sync/' },
+          { type: 'directory', filename: 'memories_sync/Personal' },
+          { type: 'directory', filename: 'memories_sync/Personal81' }
+        ]
+      }
+      if (dir === 'memories_sync/Personal') {
+        personalCalls += 1
+        return [
+          // 恶意/异常响应：把父目录也塞进来
+          { type: 'directory', filename: 'memories_sync' },
+          { type: 'directory', filename: 'memories_sync/Personal/' },
+          {
+            type: 'file',
+            filename: 'memories_sync/Personal/a.md',
+            basename: 'a.md',
+            size: 1
+          }
+        ]
+      }
+      if (dir === 'memories_sync/Personal81') {
+        return []
+      }
+      return []
+    })
+
+    const client = new IncrementalWebDavClient('https://dav.example.com', 'u', 'p', 'memories_sync')
+    ;(client as any).client = mockClient
+
+    const records = await client.listFiles()
+    expect(personalCalls).toBe(1)
+    expect(mockClient.getDirectoryContents).toHaveBeenCalledWith('memories_sync', { deep: false })
+    expect(mockClient.getDirectoryContents).toHaveBeenCalledWith('memories_sync/Personal', {
+      deep: false
+    })
+    expect(mockClient.getDirectoryContents).toHaveBeenCalledWith('memories_sync/Personal81', {
+      deep: false
+    })
+    // 不应因父目录回环而反复列举 root
+    const rootCalls = mockClient.getDirectoryContents.mock.calls.filter(
+      (call) => call[0] === 'memories_sync' || call[0] === 'memories_sync/'
+    )
+    expect(rootCalls).toHaveLength(1)
+    expect(records.map((r) => r.filename)).toEqual(['Personal/a.md'])
   })
 
   it('creates nested path prefix segments on upload, not on list', async () => {
