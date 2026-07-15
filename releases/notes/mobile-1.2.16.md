@@ -1,0 +1,3 @@
+- 修复群晖等 NAS WebDAV 增量同步规划阶段「Network request failed」（跟随内网地址导致连不上）
+- 移动端 S3 / WebDAV 配置互相隔离，切换目标不再串改账号密码与路径
+- WebDAV 建目录遇 503/限流时自动重试，失败提示更清晰
