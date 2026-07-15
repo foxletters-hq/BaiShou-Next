@@ -91,12 +91,21 @@ export class SummaryFileWatcherService {
   private async tick() {
     const generation = this.generation
     const summarySync = this.summarySync
-    if (!summarySync || AppState.currentState !== 'active' || this.tickInFlight || this.pausedForDeadDb)
+    if (
+      !summarySync ||
+      AppState.currentState !== 'active' ||
+      this.tickInFlight ||
+      this.pausedForDeadDb
+    )
       return
     this.tickInFlight = true
     try {
       await waitForExpoAgentDatabaseIdle()
-      if (generation !== this.generation || this.summarySync !== summarySync || this.pausedForDeadDb)
+      if (
+        generation !== this.generation ||
+        this.summarySync !== summarySync ||
+        this.pausedForDeadDb
+      )
         return
       await summarySync.fullScanArchives()
     } catch (e) {

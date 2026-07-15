@@ -220,12 +220,8 @@ describe('MissingSummaryDetector', () => {
     const missingWeeklies = (detector as any).detectMissing([fakeDiary], [], 'zh', 'weeklies')
     const missingDiaries = (detector as any).detectMissing([fakeDiary], [], 'zh', 'diaries')
 
-    expect(
-      missingWeeklies.filter((m: any) => m.type === SummaryType.monthly)
-    ).toHaveLength(0)
-    expect(
-      missingDiaries.filter((m: any) => m.type === SummaryType.monthly)
-    ).toHaveLength(1)
+    expect(missingWeeklies.filter((m: any) => m.type === SummaryType.monthly)).toHaveLength(0)
+    expect(missingDiaries.filter((m: any) => m.type === SummaryType.monthly)).toHaveLength(1)
 
     vi.useRealTimers()
   })

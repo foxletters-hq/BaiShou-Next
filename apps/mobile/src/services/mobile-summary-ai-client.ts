@@ -25,8 +25,7 @@ export function buildMobileSummaryAiClient(
       let finalModelId: string
 
       if (options?.providerId) {
-        const providers =
-          (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+        const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
         const override = providers.find((p) => p.id === options.providerId)
         if (
           !override ||

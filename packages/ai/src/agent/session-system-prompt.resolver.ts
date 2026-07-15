@@ -115,7 +115,9 @@ export async function buildSystemPromptForSession(
       : undefined
 
   const localeFromMerged =
-    typeof mergedUserConfig['locale'] === 'string' ? (mergedUserConfig['locale'] as string) : undefined
+    typeof mergedUserConfig['locale'] === 'string'
+      ? (mergedUserConfig['locale'] as string)
+      : undefined
   const localeFromParams =
     typeof params.userConfig?.locale === 'string' ? params.userConfig.locale : undefined
 

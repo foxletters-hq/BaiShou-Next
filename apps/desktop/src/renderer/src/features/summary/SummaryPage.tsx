@@ -119,23 +119,14 @@ export const SummaryPage: React.FC = () => {
   }, [generationStates, t, toast])
 
   useEffect(() => {
-    const handler = (
-      _event: unknown,
-      payload?: { type?: string }
-    ) => {
+    const handler = (_event: unknown, payload?: { type?: string }) => {
       if (payload?.type === 'assistant_fallback') {
         toast.showWarning(
-          t(
-            'settings.summary_generation_assistant_missing',
-            '所选伙伴不可用，已回退为提示词模式'
-          )
+          t('settings.summary_generation_assistant_missing', '所选伙伴不可用，已回退为提示词模式')
         )
       }
     }
-    const removeListener = window.electron.ipcRenderer.on(
-      'summary:generation-notice',
-      handler
-    )
+    const removeListener = window.electron.ipcRenderer.on('summary:generation-notice', handler)
     return () => removeListener()
   }, [t, toast])
 

@@ -163,7 +163,6 @@ const LEGACY_SUMMARY_TEMPLATES_ZH = {
 > `
 }
 
-
 const LEGACY_SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
   weekly: `You are a professional personal biographer partner.
 **Important instructions**:
@@ -322,7 +321,6 @@ const LEGACY_SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 ###### 💌 Letter to your future self
 > `
 }
-
 
 const LEGACY_SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
   weekly: `あなたはプロの個人伝記作家パートナーです。
@@ -483,7 +481,6 @@ const LEGACY_SUMMARY_TEMPLATES_JA: SummaryTemplatesMap = {
 > `
 }
 
-
 const LEGACY_SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
   weekly: `你是一位專業的個人傳記作家夥伴。
 **重要指令**：
@@ -642,7 +639,6 @@ const LEGACY_SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 ###### 💌 給未來的一封信
 > `
 }
-
 
 export const LEGACY_DEFAULT_SUMMARY_TEMPLATES_BY_LOCALE: Record<
   SummaryPromptLocale,

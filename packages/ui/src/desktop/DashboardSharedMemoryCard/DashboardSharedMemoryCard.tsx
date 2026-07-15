@@ -217,9 +217,7 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             min={SHARED_MEMORY_LOOKBACK_MIN}
             value={lookbackDraft}
             onChange={(e) =>
-              setLookbackDraft(
-                clampSharedMemoryLookbackMonths(parseInt(e.target.value, 10) || 1)
-              )
+              setLookbackDraft(clampSharedMemoryLookbackMonths(parseInt(e.target.value, 10) || 1))
             }
             onBlur={() => commitLookback()}
             onKeyDown={(e) => {

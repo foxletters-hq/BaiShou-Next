@@ -70,8 +70,7 @@ export async function syncOnboardingUiLanguageToVault(
   await ensureDefaultLatteAssistant(deps.assistantManager, lang)
   await syncDefaultLatteAssistantLocale(deps.assistantManager, lang)
 
-  const summaryConfig =
-    (await deps.settingsManager.get<SummaryConfig>('summary_config')) || {}
+  const summaryConfig = (await deps.settingsManager.get<SummaryConfig>('summary_config')) || {}
   const { config: nextSummary, changed } = withSummaryPromptLocaleFromUi(summaryConfig, lang)
   if (changed) {
     await deps.settingsManager.set('summary_config', nextSummary)

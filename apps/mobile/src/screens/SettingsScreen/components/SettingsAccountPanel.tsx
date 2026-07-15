@@ -369,10 +369,11 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       try {
         const summaryConfig =
           (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
-        const { config: nextSummary, promptLocale, changed } = withSummaryPromptLocaleFromUi(
-          summaryConfig,
-          resolvedLang
-        )
+        const {
+          config: nextSummary,
+          promptLocale,
+          changed
+        } = withSummaryPromptLocaleFromUi(summaryConfig, resolvedLang)
         if (changed) {
           await services.settingsManager.set('summary_config', nextSummary)
           console.log('[AppearanceLang] summary promptLocale synced', { promptLocale })

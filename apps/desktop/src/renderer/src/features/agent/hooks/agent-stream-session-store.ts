@@ -298,9 +298,7 @@ function registerGlobalStreamIpcListeners(): () => void {
     updateSessionState(sId, (state) => {
       state.isStreaming = false
       // 用户取消后不要因残留 buffer 重新点亮 bridge
-      state.isBridgeActive = userStopped
-        ? false
-        : Boolean(fullText.trim() || fullReasoning.trim())
+      state.isBridgeActive = userStopped ? false : Boolean(fullText.trim() || fullReasoning.trim())
       if (!userStopped && payload?.error && !isAgentStreamAbortError(payload.error)) {
         state.error = payload.error
       } else {

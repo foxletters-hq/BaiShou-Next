@@ -38,9 +38,7 @@ export const AboutSettingsScreen: React.FC = () => {
     } catch (error) {
       const code = error instanceof Error ? error.message : ''
       if (code === 'SHARE_UNAVAILABLE') {
-        toast.showError(
-          t('about.copy_diagnostic_log_share_unavailable', '当前设备不支持分享文件')
-        )
+        toast.showError(t('about.copy_diagnostic_log_share_unavailable', '当前设备不支持分享文件'))
         return
       }
       toast.showError(t('about.copy_diagnostic_log_failed', '导出或分享失败，请稍后重试'))

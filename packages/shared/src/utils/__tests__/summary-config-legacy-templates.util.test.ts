@@ -16,9 +16,9 @@ describe('summary-config-legacy-templates', () => {
         'weekly'
       )
     ).toBe(true)
-    expect(isLegacyDefaultSummaryTemplate(getDefaultSummaryTemplate('weekly', 'zh'), 'zh', 'weekly')).toBe(
-      false
-    )
+    expect(
+      isLegacyDefaultSummaryTemplate(getDefaultSummaryTemplate('weekly', 'zh'), 'zh', 'weekly')
+    ).toBe(false)
     expect(isLegacyDefaultSummaryTemplate('我自定义的周结模板', 'zh', 'weekly')).toBe(false)
   })
 

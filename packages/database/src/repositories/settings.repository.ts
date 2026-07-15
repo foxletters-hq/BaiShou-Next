@@ -1,5 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { SHORTCUT_TRACE_CHAIN, traceCall, normalizeToolManagementConfig, stripLegacyDefaultSummaryTemplates } from '@baishou/shared'
+import {
+  SHORTCUT_TRACE_CHAIN,
+  traceCall,
+  normalizeToolManagementConfig,
+  stripLegacyDefaultSummaryTemplates
+} from '@baishou/shared'
 import { systemSettingsTable } from '../schema/system-settings'
 
 const TRACED_SETTINGS_KEYS = new Set(['prompt_shortcuts_v2', 'prompt_shortcuts'])
