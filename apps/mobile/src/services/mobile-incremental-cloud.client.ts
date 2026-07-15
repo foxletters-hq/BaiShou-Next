@@ -1,6 +1,7 @@
 import type { IFileSystem } from '@baishou/core-mobile'
 import {
   buildS3ObjectUrl,
+  buildWebDavFileUrl,
   normalizeS3BasePath,
   s3FetchHeaders,
   signS3Request,
@@ -186,9 +187,7 @@ export class MobileIncrementalCloudClient implements IncrementalCloudOpsHost {
   }
 
   webdavFileUrl(rel: string): string {
-    const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
-    const remotePath = this.basePath() + rel
-    return `${baseUrl}/${remotePath.replace(/^\//, '')}`
+    return buildWebDavFileUrl(this.config.webdavUrl, this.basePath(), rel)
   }
 
   async uploadFile(localFilePath: string, remoteRelPath?: string): Promise<void> {
@@ -250,10 +249,8 @@ export class MobileIncrementalCloudClient implements IncrementalCloudOpsHost {
 
   async deleteFile(remoteFilename: string): Promise<void> {
     if (this.config.target === 'webdav') {
-      const baseUrl = (this.config.webdavUrl || '').replace(/\/$/, '')
-      const remotePath = this.basePath() + remoteFilename
       const auth = this.webdavAuth()
-      const res = await this.fetchWithAbort(`${baseUrl}/${remotePath.replace(/^\//, '')}`, {
+      const res = await this.fetchWithAbort(this.webdavFileUrl(remoteFilename), {
         method: 'DELETE',
         headers: { Authorization: auth }
       })

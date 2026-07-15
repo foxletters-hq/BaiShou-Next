@@ -4,6 +4,7 @@ import {
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
   isIncrementalSyncReady,
   normalizeS3BasePath,
+  normalizeWebDavBaseUrl,
   s3FetchHeaders,
   signS3Request,
   type S3SyncConfig
@@ -104,7 +105,7 @@ export async function uploadWebDav(
   localZipPath: string,
   remoteName: string
 ): Promise<void> {
-  const baseUrl = (config.webdavUrl || '').replace(/\/$/, '')
+  const baseUrl = normalizeWebDavBaseUrl(config.webdavUrl)
   let basePath = config.path?.startsWith('/') ? config.path : `/${config.path || ''}`
   if (!basePath.endsWith('/')) basePath += '/'
   const remotePath = `${basePath}${remoteName}`
