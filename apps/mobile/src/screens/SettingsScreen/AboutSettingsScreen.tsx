@@ -10,7 +10,7 @@ import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { AboutSettingsAboutContent, useAboutSettingsEasterEggs } from '@baishou/ui/native'
 import { APP_VERSION_NUMBER } from '../../app-version'
-import { copyDiagnosticLogToClipboard } from '../../services/mobile-diagnostic-log.service'
+import { shareDiagnosticLogAsTxt } from '../../services/mobile-diagnostic-log.service'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const HERO_IMAGE = require('@baishou/shared/assets/images/Next-1.0.0-banner.jpg')
@@ -21,30 +21,33 @@ export const AboutSettingsScreen: React.FC = () => {
   const toast = useNativeToast()
   const chrome = getStackScreenChrome(colors)
   const router = useRouter()
-  const [copyingLog, setCopyingLog] = useState(false)
+  const [sharingLog, setSharingLog] = useState(false)
   const easterEggs = useAboutSettingsEasterEggs({
     onDevModeUnlock: () => router.push('/settings/developer')
   })
 
   const version = Constants.expoConfig?.version ?? APP_VERSION_NUMBER
 
-  const handleCopyDiagnosticLog = useCallback(async () => {
-    if (copyingLog) return
-    setCopyingLog(true)
+  const handleShareDiagnosticLog = useCallback(async () => {
+    if (sharingLog) return
+    setSharingLog(true)
     try {
-      const length = await copyDiagnosticLogToClipboard()
-      toast.showSuccess(
-        t('about.copy_diagnostic_log_success', {
-          count: String(length),
-          defaultValue: '诊断日志已复制到剪贴板（{{count}} 字符）'
-        })
-      )
-    } catch {
-      toast.showError(t('about.copy_diagnostic_log_failed', '复制失败，请稍后重试'))
+      await shareDiagnosticLogAsTxt({
+        dialogTitle: t('about.copy_diagnostic_log', '分享诊断日志')
+      })
+    } catch (error) {
+      const code = error instanceof Error ? error.message : ''
+      if (code === 'SHARE_UNAVAILABLE') {
+        toast.showError(
+          t('about.copy_diagnostic_log_share_unavailable', '当前设备不支持分享文件')
+        )
+        return
+      }
+      toast.showError(t('about.copy_diagnostic_log_failed', '导出或分享失败，请稍后重试'))
     } finally {
-      setCopyingLog(false)
+      setSharingLog(false)
     }
-  }, [copyingLog, t, toast])
+  }, [sharingLog, t, toast])
 
   return (
     <StackScreenLayout
@@ -75,23 +78,23 @@ export const AboutSettingsScreen: React.FC = () => {
           ]}
         >
           <Text style={[styles.diagnosticTitle, { color: colors.textPrimary }]}>
-            {t('about.copy_diagnostic_log', '复制诊断日志')}
+            {t('about.copy_diagnostic_log', '分享诊断日志')}
           </Text>
           <Text style={[styles.diagnosticDesc, { color: colors.textSecondary }]}>
             {t(
               'about.copy_diagnostic_log_desc',
-              '复制最近的应用日志，便于反馈闪退等问题。若刚发生闪退，请先重新打开 App 再复制。'
+              '将最近的应用日志导出为 TXT 文件并分享，便于反馈闪退等问题。若刚发生闪退，请先重新打开 App 再导出。'
             )}
           </Text>
           <Button
             variant="secondary"
             className="w-full"
-            onPress={() => void handleCopyDiagnosticLog()}
-            isDisabled={copyingLog}
+            onPress={() => void handleShareDiagnosticLog()}
+            isDisabled={sharingLog}
           >
-            {copyingLog
+            {sharingLog
               ? t('common.processing', '处理中…')
-              : t('about.copy_diagnostic_log_action', '复制到剪贴板')}
+              : t('about.copy_diagnostic_log_action', '导出并分享')}
           </Button>
         </View>
       </ScrollView>
