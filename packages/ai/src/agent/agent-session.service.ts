@@ -338,7 +338,13 @@ export class AgentSessionService {
         customGuidelines:
           typeof userConfig?.['agentGuidelines'] === 'string'
             ? userConfig['agentGuidelines'].trim() || undefined
-            : undefined
+            : undefined,
+        locale:
+          typeof mergedUserConfig?.['locale'] === 'string'
+            ? (mergedUserConfig['locale'] as string)
+            : typeof userConfig?.['locale'] === 'string'
+              ? (userConfig['locale'] as string)
+              : undefined
       })
 
       // 4. 调用 Vercel streamText

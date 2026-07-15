@@ -1,8 +1,27 @@
 import { MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from './constants'
 
 /**
- * English rules for how historical message metadata appears in context.
- * Kept next to formatter constants so tag names stay in sync with inject/sanitize.
+ * How historical message metadata appears in model context (read-only).
+ * Only inject when the host actually wraps per-message timestamps.
+ */
+export function buildContextEncodingSystemPromptLines(): string[] {
+  return [
+    '[Historical messages]',
+    'The host may wrap stored messages for context only (not author wording):',
+    `- <${MESSAGE_TIME_TAG}>YYYY-MM-DD HH:mm</${MESSAGE_TIME_TAG}> — when THAT message was sent.`,
+    `- <${MESSAGE_CONTENT_TAG}>…</${MESSAGE_CONTENT_TAG}> — that message's stored body.`,
+    'User, assistant, system, and tool messages may use this wrapper when replayed.',
+    '',
+    '[Rules]',
+    `Use each message's <${MESSAGE_TIME_TAG}> only to interpret when that past message was sent.`,
+    'Do not copy this encoding into your reply.',
+    'Do not add new timestamp tags.'
+  ]
+}
+
+/**
+ * @deprecated Prefer buildContextEncodingSystemPromptLines + buildOutputProtocolSystemPromptLines.
+ * Kept for callers that still expect a combined metadata + output block.
  */
 export function buildMessageMetadataSystemPromptLines(options?: {
   injectCurrentTime?: boolean
@@ -13,32 +32,9 @@ export function buildMessageMetadataSystemPromptLines(options?: {
     return [
       '[Time references]',
       'Use the **current_time** tool when you need the current date/time for "now".',
-      'Historical messages are replayed as plain text without per-message timestamps.',
-      '',
-      '[Output format]',
-      'Reply with plain natural language only.',
-      `Never output <${MESSAGE_TIME_TAG}>, <${MESSAGE_CONTENT_TAG}>, </time>, <thinking>, </thinking>, <think>, or similar markup.`,
-      'If the model exposes a separate reasoning channel, keep reasoning there; put the user-visible answer in normal text without wrappers.'
+      'Historical messages are replayed as plain text without per-message timestamps.'
     ]
   }
 
-  return [
-    '[Historical message format]',
-    "The host injects metadata around stored text in context (this is not part of the author's original wording):",
-    `- <${MESSAGE_TIME_TAG}>YYYY-MM-DD HH:mm</${MESSAGE_TIME_TAG}> — when THAT message was sent.`,
-    `- <${MESSAGE_CONTENT_TAG}>…</${MESSAGE_CONTENT_TAG}> — that message's stored body.`,
-    'User, assistant, system, and tool messages may use this wrapper when replayed.',
-    '',
-    '[Time references]',
-    ...(injectCurrentTime
-      ? ['Use [System Current Date / Time] below for "now".']
-      : ['Use the **current_time** tool when you need the current date/time for "now".']),
-    `Use each message's <${MESSAGE_TIME_TAG}> only to interpret when that past message was sent.`,
-    'Do not add new timestamp tags or blocks to your reply.',
-    '',
-    '[Output format]',
-    'Reply with plain natural language only.',
-    `Never output <${MESSAGE_TIME_TAG}>, <${MESSAGE_CONTENT_TAG}>, </time>, <thinking>, </thinking>, <think>, or similar markup.`,
-    'If the model exposes a separate reasoning channel, keep reasoning there; put the user-visible answer in normal text without wrappers.'
-  ]
+  return buildContextEncodingSystemPromptLines()
 }

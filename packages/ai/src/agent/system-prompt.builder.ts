@@ -1,4 +1,10 @@
-import { buildMessageMetadataSystemPromptLines, type AssistantKind } from '@baishou/shared'
+import {
+  buildContextEncodingSystemPromptLines,
+  buildOutputProtocolSystemPromptLines,
+  getAssistantKindLabelKey,
+  translateMain,
+  type AssistantKind
+} from '@baishou/shared'
 import { buildToolUsageGuidelines } from './tool-usage-guidelines.util'
 
 export interface SystemPromptBuilderOptions {
@@ -13,12 +19,44 @@ export interface SystemPromptBuilderOptions {
   assistantKind?: AssistantKind
   /** 是否在 system prompt 中注入当前时间，默认 true（兼容旧配置） */
   injectCurrentTime?: boolean
+  /** App UI 语言，用于用户可见固定话术（如联网未开提示） */
+  locale?: string
 }
 
+function pushSection(buffer: string[], tag: string, lines: string[]): void {
+  if (lines.length === 0) return
+  buffer.push(`<${tag}>`)
+  buffer.push(...lines)
+  buffer.push(`</${tag}>`)
+  buffer.push('')
+}
+
+function formatSystemCurrentTime(now = new Date()): string {
+  const tzOffset = -now.getTimezoneOffset() / 60
+  const tzSign = tzOffset >= 0 ? '+' : ''
+  const dateStr =
+    `${now.getFullYear()}-` +
+    `${String(now.getMonth() + 1).padStart(2, '0')}-` +
+    `${String(now.getDate()).padStart(2, '0')} ` +
+    `${String(now.getHours()).padStart(2, '0')}:` +
+    `${String(now.getMinutes()).padStart(2, '0')}`
+  return `[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`
+}
+
+function resolveLocale(locale?: string): string | undefined {
+  if (!locale || locale.trim() === '' || locale === 'system') return undefined
+  return locale
+}
+
+/**
+ * 构建带有当前环境、输出协议、生效工具以及自定义教条的最终提示词。
+ *
+ * 固定分区顺序：
+ * persona → output_protocol → runtime_context → context_encoding(条件) →
+ * user_identity → assistant_capabilities → available_tools →
+ * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines
+ */
 export class SystemPromptBuilder {
-  /**
-   * 构建带有当前环境、所在时间、生效工具以及自定义教条的最终提示词
-   */
   public static build(options: SystemPromptBuilderOptions): string {
     const {
       vaultName,
@@ -28,83 +66,85 @@ export class SystemPromptBuilder {
       userProfileBlock,
       diaryAiWritingPrompt,
       assistantKind = 'companion',
-      injectCurrentTime = true
+      injectCurrentTime = true,
+      locale
     } = options
 
     const buffer: string[] = []
-
-    // 人设设定（如果用户或者系统传入了特殊要求）
-    if (customPersona && customPersona.trim().length > 0) {
-      buffer.push('<assistant_persona>')
-      buffer.push(customPersona.trim())
-      buffer.push('</assistant_persona>')
-      buffer.push('')
-    }
-
-    // 用户的偏好属性或者个人小卡片
-    if (userProfileBlock && userProfileBlock.trim().length > 0) {
-      buffer.push('<user_identity>')
-      buffer.push(
-        '[Important: The following identity card describes the USER (human), NOT you (the AI assistant). Use this information to personalize your responses, but NEVER claim these facts as your own identity.]'
-      )
-      buffer.push(userProfileBlock.trim())
-      buffer.push('</user_identity>')
-      buffer.push('')
-    }
-
-    buffer.push('<system_context>')
-    if (injectCurrentTime) {
-      const now = new Date()
-      const tzOffset = -now.getTimezoneOffset() / 60
-      const tzSign = tzOffset >= 0 ? '+' : ''
-
-      // YYYY-MM-DD HH:mm
-      const dateStr =
-        `${now.getFullYear()}-` +
-        `${String(now.getMonth() + 1).padStart(2, '0')}-` +
-        `${String(now.getDate()).padStart(2, '0')} ` +
-        `${String(now.getHours()).padStart(2, '0')}:` +
-        `${String(now.getMinutes()).padStart(2, '0')}`
-
-      buffer.push(`[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`)
-    }
-    buffer.push(...buildMessageMetadataSystemPromptLines({ injectCurrentTime }))
-    buffer.push(`[Current Vault / Workspace]: ${vaultName}`)
-    buffer.push('</system_context>')
-    buffer.push('')
-
-    if (assistantKind === 'work') {
-      buffer.push('<assistant_capabilities>')
-      buffer.push('Partner type: Work Partner (工作伙伴).')
-      buffer.push(
-        'Scope: knowledge lookup, web search, and work assistance only. ' +
-          'Diary read/write, structured summaries, vector/memory search, and cross-session message search are NOT available—do not claim to access them.'
-      )
-      buffer.push('</assistant_capabilities>')
-      buffer.push('')
-    }
-
-    // 工具可用性宣告
     const availableToolIds = Object.keys(tools)
     const toolUsageGuidelines = buildToolUsageGuidelines(availableToolIds)
+    const promptLocale = resolveLocale(locale)
+    const kindLabel = translateMain(
+      promptLocale,
+      getAssistantKindLabelKey(assistantKind),
+      assistantKind === 'work' ? 'Work' : 'Companion'
+    )
 
-    if (availableToolIds.length > 0) {
-      buffer.push('<available_tools>')
-      buffer.push('Available Tools:')
-      buffer.push(
-        'Use a tool when it improves accuracy or when the tool usage guidelines below mark it as required. ' +
-          'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.'
+    // 1. persona
+    if (customPersona && customPersona.trim().length > 0) {
+      pushSection(buffer, 'assistant_persona', [customPersona.trim()])
+    }
+
+    // 2. output_protocol（始终存在）
+    pushSection(buffer, 'output_protocol', buildOutputProtocolSystemPromptLines())
+
+    // 3. runtime_context
+    const runtimeLines: string[] = []
+    if (injectCurrentTime) {
+      runtimeLines.push(formatSystemCurrentTime())
+    } else {
+      runtimeLines.push(
+        'Note: System current time is not injected. Use the **current_time** tool when you need "now".'
       )
-      buffer.push('')
+    }
+    runtimeLines.push(`[Current Vault / Workspace]: ${vaultName}`)
+    runtimeLines.push(`[Partner type]: ${assistantKind === 'work' ? 'work' : 'companion'}`)
+    pushSection(buffer, 'runtime_context', runtimeLines)
+
+    // 4. context_encoding（仅在会给历史加壳时）
+    if (injectCurrentTime) {
+      pushSection(buffer, 'context_encoding', buildContextEncodingSystemPromptLines())
+    }
+
+    // 5. user_identity
+    if (userProfileBlock && userProfileBlock.trim().length > 0) {
+      pushSection(buffer, 'user_identity', [
+        '[Important: The following identity card describes the USER (human), NOT you (the AI assistant). Use this information to personalize your responses, but NEVER claim these facts as your own identity.]',
+        userProfileBlock.trim()
+      ])
+    }
+
+    // 6. assistant_capabilities（稳定枚举 + 本地化展示名，无硬编码中文）
+    if (assistantKind === 'work') {
+      pushSection(buffer, 'assistant_capabilities', [
+        `Partner type: work (${kindLabel}).`,
+        'Scope: knowledge lookup, web search, and work assistance only. ' +
+          'Diary read/write, structured summaries, vector/memory search, and cross-session message search are NOT available—do not claim to access them.'
+      ])
+    } else {
+      pushSection(buffer, 'assistant_capabilities', [
+        `Partner type: companion (${kindLabel}).`,
+        toolUsageGuidelines
+          ? 'Diary and memory tools may be available—follow the tool usage guidelines strictly.'
+          : 'Diary and memory tools may be available when enabled by the user.'
+      ])
+    }
+
+    // 7. available_tools
+    if (availableToolIds.length > 0) {
+      const toolLines: string[] = [
+        'Available Tools:',
+        'Use a tool when it improves accuracy or when the tool usage guidelines below mark it as required. ' +
+          'If the current conversation (including any rolling compression summary) already contains sufficient facts, you may answer without tools.',
+        ''
+      ]
       for (const id of availableToolIds) {
-        // 在 Vercel 中 getDescription 比较直接
         const toolObj = tools[id]
         const hint = toolObj?.description || 'No description provided.'
-        buffer.push(`- **${id}**: ${hint}`)
+        toolLines.push(`- **${id}**: ${hint}`)
       }
-      buffer.push('')
+      toolLines.push('')
 
-      // 高级逻辑防降级：如果用户今天关了 RAG 或是关了 VectorSearch，必须给 AI 打预防针，防止它乱报错
       const hasDiaryOrSummaryTools = availableToolIds.some(
         (id) => id.startsWith('diary_') || id === 'summary_read'
       )
@@ -112,67 +152,50 @@ export class SystemPromptBuilder {
         hasDiaryOrSummaryTools &&
         (!availableToolIds.includes('memory_store') || !availableToolIds.includes('vector_search'))
       ) {
-        buffer.push(
+        toolLines.push(
           'Note: Memory/RAG tools are currently disabled by the user. ' +
             'For storing and retrieving information, use the diary/summary tools instead. ' +
             'Do NOT attempt to call memory_store or vector_search.'
         )
-        buffer.push('')
+        toolLines.push('')
       }
 
-      // 网络搜索工具未启用时，告知模型
       if (!availableToolIds.includes('web_search')) {
-        buffer.push(
+        const webSearchNotEnabled = translateMain(
+          promptLocale,
+          'agent.tools.web_search_not_enabled',
+          'Web search not enabled. Please enable it in the toolbar.'
+        )
+        toolLines.push(
           'Note: Web search tool is not enabled yet. ' +
             'If the user asks about recent events or current information that requires web search, ' +
-            'reply in Chinese with exactly: "您还未启用网络搜索，请在工具栏开启后重试。" ' +
-            'Do not use the English word "disabled" or the Chinese word "禁用".'
+            `reply with exactly: "${webSearchNotEnabled}"`
         )
-        buffer.push('')
+        toolLines.push('')
       }
 
-      buffer.push('</available_tools>')
-      buffer.push('')
+      pushSection(buffer, 'available_tools', toolLines)
     } else {
-      buffer.push('<available_tools>')
-      buffer.push('No tools are currently available.')
-      buffer.push('</available_tools>')
-      buffer.push('')
+      pushSection(buffer, 'available_tools', ['No tools are currently available.'])
     }
 
+    // 8. tool_usage_guidelines
     if (toolUsageGuidelines) {
-      buffer.push('<tool_usage_guidelines>')
-      buffer.push(toolUsageGuidelines)
-      buffer.push('</tool_usage_guidelines>')
-      buffer.push('')
+      pushSection(buffer, 'tool_usage_guidelines', [toolUsageGuidelines])
     }
 
-    if (assistantKind === 'companion' && toolUsageGuidelines) {
-      buffer.push('<assistant_capabilities>')
-      buffer.push('Partner type: Companion (亲密伙伴).')
-      buffer.push(
-        'Diary and memory tools may be available—follow the tool usage guidelines strictly.'
-      )
-      buffer.push('</assistant_capabilities>')
-      buffer.push('')
-    }
-
+    // 9. diary_writing_guidelines
     const hasDiaryWriteTools =
       availableToolIds.includes('diary_write') || availableToolIds.includes('diary_edit')
     if (hasDiaryWriteTools && diaryAiWritingPrompt?.trim()) {
-      buffer.push('<diary_writing_guidelines>')
-      buffer.push(diaryAiWritingPrompt.trim())
-      buffer.push('</diary_writing_guidelines>')
-      buffer.push('')
+      pushSection(buffer, 'diary_writing_guidelines', [diaryAiWritingPrompt.trim()])
     }
 
-    // 额外的行为准则补丁
+    // 10. behavior_guidelines
     if (customGuidelines && customGuidelines.trim().length > 0) {
-      buffer.push('<behavior_guidelines>')
-      buffer.push(customGuidelines.trim())
-      buffer.push('</behavior_guidelines>')
+      pushSection(buffer, 'behavior_guidelines', [customGuidelines.trim()])
     }
 
-    return buffer.join('\n')
+    return buffer.join('\n').trimEnd() + '\n'
   }
 }
