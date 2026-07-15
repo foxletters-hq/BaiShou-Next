@@ -49,6 +49,11 @@ export class AgentChatCoreService {
     const claim = claimAgentStreamSession(params.sessionId)
 
     try {
+      if (claim.signal.aborted) {
+        params.emitter.sendFinish(params.sessionId, { success: true })
+        return
+      }
+
       await agentService.streamChat(
         {
           sessionId: params.sessionId,

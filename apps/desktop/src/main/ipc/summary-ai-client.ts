@@ -102,6 +102,16 @@ export function buildSummaryAiClient(): SummaryAiClient {
 
       const startTime = Date.now()
       const abortController = new AbortController()
+      const userSignal = options?.abortSignal
+
+      const onUserAbort = () => abortController.abort()
+      if (userSignal) {
+        if (userSignal.aborted) {
+          const err = new DOMException('The operation was aborted', 'AbortError')
+          throw err
+        }
+        userSignal.addEventListener('abort', onUserAbort, { once: true })
+      }
 
       const timeoutSeconds = SUMMARY_AI_GENERATION_TIMEOUT_MS / 1000
       let timeoutId: ReturnType<typeof setTimeout>
@@ -148,8 +158,11 @@ export function buildSummaryAiClient(): SummaryAiClient {
         return text
       } catch (err: any) {
         const duration = Date.now() - startTime
+        const userCancelled = Boolean(userSignal?.aborted)
 
-        if (
+        if (userCancelled) {
+          logger.info(`[SummaryAI] Generation aborted by user after ${duration}ms.`)
+        } else if (
           err.name === 'AbortError' ||
           err.message?.includes('aborted') ||
           err.message?.includes('timeout')
@@ -166,7 +179,7 @@ export function buildSummaryAiClient(): SummaryAiClient {
 
         await appendDebugLog(activeVaultPath, {
           timestamp: new Date().toISOString(),
-          event: 'error',
+          event: userCancelled ? 'cancelled' : 'error',
           durationMs: duration,
           errorMessage: err.message || String(err),
           errorStack: err.stack || ''
@@ -174,6 +187,7 @@ export function buildSummaryAiClient(): SummaryAiClient {
         throw err
       } finally {
         clearTimeout(timeoutId!)
+        userSignal?.removeEventListener('abort', onUserAbort)
       }
     }
   }

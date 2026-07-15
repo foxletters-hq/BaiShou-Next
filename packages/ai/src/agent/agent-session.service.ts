@@ -449,6 +449,20 @@ export class AgentSessionService {
         return
       }
 
+      // 用户主动取消：不落盘 partial assistant，避免 UI 取消后内容又刷回来
+      if (userAborted) {
+        logger.info(`[AgentSessionService] Skip persist for session ${sessionId}: user aborted`)
+        callbacks?.onFinish?.({
+          messageId: undefined,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheWriteInputTokens: 0,
+          costMicros: 0
+        })
+        return
+      }
+
       const usageResult = await persistResult({
         sessionId,
         rawUserText: userText,

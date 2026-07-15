@@ -248,6 +248,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       markAgentStreamUserStopped(sessionId)
       flushStreamDisplayBuffers(sessionId)
       flushCompressionDisplayBuffers(sessionId)
+      resetStreamDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = false
         state.isBridgeActive = false

@@ -64,6 +64,14 @@ export function buildMobileSummaryAiClient(
       const model = provider.getLanguageModel(finalModelId)
 
       const abortController = new AbortController()
+      const userSignal = options?.abortSignal
+      const onUserAbort = () => abortController.abort()
+      if (userSignal) {
+        if (userSignal.aborted) {
+          throw new DOMException('The operation was aborted', 'AbortError')
+        }
+        userSignal.addEventListener('abort', onUserAbort, { once: true })
+      }
       const timeoutId = setTimeout(() => abortController.abort(), SUMMARY_AI_GENERATION_TIMEOUT_MS)
 
       try {
@@ -76,10 +84,15 @@ export function buildMobileSummaryAiClient(
         } as any)
         return text
       } catch (e) {
-        logger.error('[MobileSummaryAI] generateText failed:', e as Error)
+        if (userSignal?.aborted) {
+          logger.info('[MobileSummaryAI] Generation aborted by user')
+        } else {
+          logger.error('[MobileSummaryAI] generateText failed:', e as Error)
+        }
         throw e
       } finally {
         clearTimeout(timeoutId)
+        userSignal?.removeEventListener('abort', onUserAbort)
       }
     }
   }

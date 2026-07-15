@@ -9,6 +9,7 @@ import {
   isConfiguredProviderId,
   isAgentStreamAbortError
 } from '@baishou/shared'
+import { abortAgentStreamSession } from '@baishou/ai'
 
 import { useBaishou } from '../providers/BaishouProvider'
 import type { AgentStreamRefs } from './useAgentStream-types'
@@ -161,6 +162,9 @@ export function useAgentStreamActions({
     flushStreamingDisplayBuffers()
     stopStreamingUiImmediately()
     resetStreamingBuffers()
+    if (sessionId) {
+      abortAgentStreamSession(sessionId)
+    }
     toast.showSuccess(t('agent.stream_cancelled', '取消成功'))
 
     if (retryActionInFlightRef.current) {
