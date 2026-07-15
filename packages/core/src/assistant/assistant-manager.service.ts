@@ -4,7 +4,9 @@ import {
   normalizeAssistantAvatarPath,
   normalizeAssistantKind,
   isBuiltinAssistantAvatarPath,
-  isDefaultAssistantAvatarPath
+  isDefaultAssistantAvatarPath,
+  isAssistantCustomAvatar,
+  extractAvatarsRelativeKey
 } from '@baishou/shared'
 import { AssistantFileService } from './assistant-file.service'
 import { emitDomainMutation } from '../events'
@@ -43,6 +45,48 @@ export class AssistantManagerService {
     }
 
     input.avatarPath = await this.attachmentManager.importAvatar(raw, 'agent')
+  }
+
+  /** 将任意形态头像路径规范为可比较的持久化键 */
+  private toComparableAvatarKey(avatarPath: string | null | undefined): string | null {
+    if (!avatarPath) return null
+    const normalized = normalizePersistedAvatarPath(avatarPath)
+    if (!normalized) return null
+    if (isBuiltinAssistantAvatarPath(normalized) || isDefaultAssistantAvatarPath(normalized)) {
+      return normalizeAssistantAvatarPath(normalized)
+    }
+    if (normalized.startsWith('avatars/')) return normalized
+    return extractAvatarsRelativeKey(normalized)
+  }
+
+  /**
+   * 旧自定义头像无人再引用时删除磁盘文件（含桌面全局镜像）。
+   * 内置头像跳过；仍被其他伙伴引用时跳过。
+   */
+  private async cleanupOrphanedCustomAvatar(
+    oldAvatarPath: string | null | undefined,
+    nextAvatarPath: string | null | undefined,
+    options?: { excludeAssistantId?: string }
+  ): Promise<void> {
+    if (!isAssistantCustomAvatar(oldAvatarPath)) return
+    const oldKey = this.toComparableAvatarKey(oldAvatarPath)
+    if (!oldKey?.startsWith('avatars/')) return
+
+    const nextKey = this.toComparableAvatarKey(nextAvatarPath)
+    if (nextKey && nextKey === oldKey) return
+
+    const others = await this.repo.findAll()
+    const stillReferenced = others.some((item) => {
+      if (options?.excludeAssistantId && item.id === options.excludeAssistantId) return false
+      return this.toComparableAvatarKey(item.avatarPath) === oldKey
+    })
+    if (stillReferenced) return
+
+    try {
+      await this.attachmentManager.deleteAvatar(oldKey)
+    } catch (e) {
+      console.warn('[AssistantManager] Failed to delete replaced custom avatar:', oldKey, e)
+    }
   }
 
   private async mapAvatarOutput<T extends { avatarPath: string | null }>(item: T): Promise<T> {
@@ -85,9 +129,20 @@ export class AssistantManagerService {
   }
 
   async update(id: string, input: UpdateAssistantInput): Promise<void> {
+    const previous = await this.repo.findById(id)
+    const previousAvatar = previous?.avatarPath ?? null
+    const avatarChanging = input.avatarPath !== undefined
+
     await this.processAvatarInput(input)
     await this.repo.update(id, input)
     await this.persistAssistantSnapshot(id)
+
+    if (avatarChanging) {
+      await this.cleanupOrphanedCustomAvatar(previousAvatar, input.avatarPath ?? null, {
+        excludeAssistantId: id
+      })
+    }
+
     emitDomainMutation({
       domain: 'settings',
       action: 'update',
@@ -97,8 +152,11 @@ export class AssistantManagerService {
   }
 
   async delete(id: string): Promise<void> {
+    const previous = await this.repo.findById(id)
+    const previousAvatar = previous?.avatarPath ?? null
     await this.repo.delete(id)
     await this.fileService.deleteAssistant(id)
+    await this.cleanupOrphanedCustomAvatar(previousAvatar, null, { excludeAssistantId: id })
     emitDomainMutation({
       domain: 'settings',
       action: 'update',

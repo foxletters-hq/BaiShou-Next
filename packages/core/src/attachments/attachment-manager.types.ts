@@ -68,6 +68,13 @@ export interface IAttachmentManager {
   resolveAvatarPath(relativePath: string): Promise<string>
 
   /**
+   * 删除自定义头像文件（vault 内，桌面端含全局镜像）。
+   * 仅处理 `avatars/` 相对路径；内置头像 / 不存在文件时安全忽略。
+   * @returns 是否至少删除了一个文件
+   */
+  deleteAvatar(relativePath: string): Promise<boolean>
+
+  /**
    * Scans the Vault Attachments directory and checks for folder names against active session criteria.
    * @param activeSessionIds A Set of active valid UUIDs tracking valid Agent Sessions natively
    * @returns A list of calculated attachment folders
