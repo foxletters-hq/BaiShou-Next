@@ -1,11 +1,12 @@
-import i18n from 'i18next'
+import { createInstance, type i18n as I18nInstance } from 'i18next'
 
 import en from '../i18n/en.i18n.json'
 import ja from '../i18n/ja.i18n.json'
 import zh from '../i18n/zh.i18n.json'
 import zh_TW from '../i18n/zh_TW.i18n.json'
 
-let initialized = false
+/** 独立实例：绝不能碰全局 i18next 单例，否则会把 App UI 语言改成 init 的 lng */
+let mainI18n: I18nInstance | null = null
 
 /** Map UI / store locale to i18next language code. */
 export function resolveAppLanguage(locale?: string): string {
@@ -22,21 +23,24 @@ export function resolveAppLanguage(locale?: string): string {
   return 'en'
 }
 
-function ensureMainI18n(): void {
-  if (initialized) return
-  i18n.init({
+function ensureMainI18n(): I18nInstance {
+  if (mainI18n) return mainI18n
+
+  const instance = createInstance()
+  instance.init({
     resources: {
       en: { translation: en },
       ja: { translation: ja },
       zh: { translation: zh },
       'zh-TW': { translation: zh_TW }
     },
-    lng: 'en',
+    lng: 'zh',
     fallbackLng: 'en',
     interpolation: { escapeValue: false },
     initImmediate: false
   } as any)
-  initialized = true
+  mainI18n = instance
+  return instance
 }
 
 /** Translate a key in the main process using the user's app language. */
@@ -45,8 +49,8 @@ export function translateMain(
   key: string,
   defaultValue?: string
 ): string {
-  ensureMainI18n()
+  const instance = ensureMainI18n()
   const lng = resolveAppLanguage(locale)
-  const value = i18n.t(key, { lng, defaultValue })
+  const value = instance.t(key, { lng, defaultValue })
   return typeof value === 'string' ? value : (defaultValue ?? key)
 }
