@@ -103,7 +103,8 @@ export interface BaishouContextValue {
     buildSharedContext: (
       lookbackMonths: number,
       locale?: string,
-      userCopyPrefix?: string
+      userCopyPrefix?: string,
+      window?: { referenceDate?: Date; untilExclusive?: Date }
     ) => Promise<string>
     buildSharedContextPreview: (
       lookbackMonths: number,

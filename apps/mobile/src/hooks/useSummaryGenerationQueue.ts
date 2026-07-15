@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { i18n as I18nInstance } from 'i18next'
 import { SummaryType, logger } from '@baishou/shared'
-import { resolveSummaryConfig } from '../services/mobile-summary-config.util'
+import { resolveMobileSummaryGenerateOptions } from '../services/mobile-summary-generate-options'
 import { appendVaultDebugLog } from '../services/summary-debug-log.util'
 import type { useBaishou } from '../providers/BaishouProvider'
 
@@ -49,6 +49,9 @@ export function useSummaryGenerationQueue(options: {
   const abortControllerRef = useRef<AbortController | null>(null)
   const concurrencyLimitRef = useRef(1)
   const isSchedulingRef = useRef(false)
+  /** 本轮队列仅提示一次伙伴回退，避免批量任务刷屏 */
+  const assistantFallbackNotifiedRef = useRef(false)
+  const [assistantFallbackTick, setAssistantFallbackTick] = useState(0)
 
   const broadcastState = useCallback(() => {
     const states: Record<string, SummaryGenerationState> = {}
@@ -84,19 +87,28 @@ export function useSummaryGenerationQueue(options: {
 
         if (!services) throw new Error('Services not ready')
 
-        const resolution = await resolveSummaryConfig(services.settingsManager)
-        if (!resolution.ok) {
-          if (resolution.reason === 'no_api_key') {
-            throw new Error(
-              `No active provider with API key for summary generation (provider: ${
-                resolution.providerName ?? 'unknown'
-              })`
-            )
-          }
-          throw new Error('No summary model configured')
+        const target = {
+          type: task.target.type as SummaryType,
+          startDate: new Date(task.target.startDate),
+          endDate: new Date(task.target.endDate),
+          label: task.target.label ?? ''
         }
 
-        const finalModelId = resolution.modelId
+        const { generateOptions, providerIdForLog, usedDialogueFallback, fellBackToPrompt } =
+          await resolveMobileSummaryGenerateOptions({
+            settingsManager: services.settingsManager,
+            assistantManager: services.assistantManager,
+            buildSharedContext: services.buildSharedContext,
+            periodStart: target.startDate
+          })
+
+        if (fellBackToPrompt && !assistantFallbackNotifiedRef.current) {
+          assistantFallbackNotifiedRef.current = true
+          setAssistantFallbackTick((n) => n + 1)
+          logger.warn('[SummaryQueue] Fell back to prompt mode for task:', task.id)
+        }
+
+        const finalModelId = generateOptions.modelId ?? 'gpt-4'
 
         await appendVaultDebugLog(services.pathService, services.fileSystem, {
           timestamp: new Date().toISOString(),
@@ -104,17 +116,13 @@ export function useSummaryGenerationQueue(options: {
           taskId: task.id,
           targetType: task.target.type,
           modelId: finalModelId,
-          providerId: resolution.providerConfig.id,
-          usedDialogueFallback: resolution.isFallback
+          providerId: providerIdForLog,
+          usedDialogueFallback: usedDialogueFallback ?? false,
+          hasSharedMemoryInject: !!generateOptions.sharedContextText,
+          hasSystemPrompt: !!generateOptions.systemPrompt
         })
 
-        const target = {
-          type: task.target.type as SummaryType,
-          startDate: new Date(task.target.startDate),
-          endDate: new Date(task.target.endDate),
-          label: task.target.label ?? ''
-        }
-        const stream = services.summaryGenerator.generate(target, finalModelId)
+        const stream = services.summaryGenerator.generate(target, generateOptions)
 
         let finalContent = ''
 
@@ -293,6 +301,7 @@ export function useSummaryGenerationQueue(options: {
       }
 
       if (added > 0) {
+        assistantFallbackNotifiedRef.current = false
         if (!abortControllerRef.current) {
           abortControllerRef.current = new AbortController()
         }
@@ -336,6 +345,7 @@ export function useSummaryGenerationQueue(options: {
   return {
     generationStates,
     isGenerating,
+    assistantFallbackTick,
     queueGeneration,
     stopGeneration,
     generateSummary,

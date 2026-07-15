@@ -17,21 +17,25 @@ export function createSharedContextBuilders(deps: {
   const buildSharedContext = async (
     lookbackMonths: number,
     locale?: string,
-    userCopyPrefix?: string
+    userCopyPrefix?: string,
+    window?: { referenceDate?: Date; untilExclusive?: Date }
   ) => {
     const stack = diaryStackRef.current
     if (!stack) return ''
-    const cutoff = computeLookbackCutoffDate(lookbackMonths)
+    const referenceDate = window?.referenceDate ?? new Date()
+    const cutoff = computeLookbackCutoffDate(lookbackMonths, referenceDate)
     const allSummaries = await summaryManager.listForGallery({ endAfter: cutoff })
     const diaries = await stack.shadowRepo.listContentSinceDate(
-      formatLookbackCutoffIso(lookbackMonths)
+      formatLookbackCutoffIso(lookbackMonths, referenceDate)
     )
     const prefix =
       userCopyPrefix ??
       (await settingsManager.get<SummaryConfig>('summary_config'))?.sharedMemoryCopyPrefix
     return buildSharedContextText(allSummaries, lookbackMonths, locale, {
       diaries,
-      userCopyPrefix: prefix
+      userCopyPrefix: prefix,
+      referenceDate: window?.referenceDate,
+      untilExclusive: window?.untilExclusive
     })
   }
 

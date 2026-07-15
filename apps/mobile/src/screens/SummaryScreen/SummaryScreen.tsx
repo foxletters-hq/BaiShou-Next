@@ -66,6 +66,7 @@ export const SummaryScreen: React.FC = () => {
     availableYears,
     missingSummaries,
     generationStates,
+    assistantFallbackTick,
     queueGeneration,
     stopGeneration,
     setConcurrency,
@@ -78,6 +79,7 @@ export const SummaryScreen: React.FC = () => {
   } = useSummaryData(selectedYear)
 
   const prevStatesRef = useRef<typeof generationStates>({})
+  const prevAssistantFallbackTickRef = useRef(0)
   const prevTabRef = useRef(activeTab)
   const lastFocusRefreshRef = useRef(0)
   const isWide = width >= 860
@@ -156,6 +158,13 @@ export const SummaryScreen: React.FC = () => {
     })
     prevStatesRef.current = generationStates
   }, [generationStates, t, toast])
+
+  useEffect(() => {
+    if (assistantFallbackTick <= 0) return
+    if (assistantFallbackTick === prevAssistantFallbackTickRef.current) return
+    prevAssistantFallbackTickRef.current = assistantFallbackTick
+    toast.showWarning(t('settings.summary_generation_assistant_missing'))
+  }, [assistantFallbackTick, t, toast])
 
   const handleCopyContext = async () => {
     try {
