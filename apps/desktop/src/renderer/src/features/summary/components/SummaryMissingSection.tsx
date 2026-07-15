@@ -2,6 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Sparkles, RefreshCw, XCircle, Clock, CheckCircle2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getSummaryWeekNumber } from '@baishou/shared'
 import { ConcurrencyDropdown } from './ConcurrencyDropdown'
 
 /** 获取任务状态描述文本 */
@@ -73,6 +74,33 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
 }) => {
   const { t, i18n } = useTranslation()
   const { language } = i18n
+
+  const buildMissingTitle = (mp: MissingPeriod): string => {
+    if (!mp.startDate) return mp.label || mp.dateRangeStr || ''
+    const start = new Date(mp.startDate)
+    if (mp.type === 'weekly') {
+      return t('summary.missing_label_weekly', 'Week $week, $year')
+        .replace('$year', String(start.getFullYear()))
+        .replace('$week', String(getSummaryWeekNumber(start)))
+    }
+    if (mp.type === 'monthly') {
+      return t('summary.title_monthly', 'Monthly Report ($year-$month)')
+        .replace('$year', String(start.getFullYear()))
+        .replace('$month', String(start.getMonth() + 1))
+    }
+    if (mp.type === 'quarterly') {
+      return t('summary.missing_label_quarterly', '$year Q$q')
+        .replace('$year', String(start.getFullYear()))
+        .replace('$q', String(Math.ceil((start.getMonth() + 1) / 3)))
+    }
+    if (mp.type === 'yearly') {
+      return t('summary.missing_label_yearly', 'Year $year').replace(
+        '$year',
+        String(start.getFullYear())
+      )
+    }
+    return mp.label || mp.dateRangeStr || ''
+  }
 
   const genStatesArr = Object.values(generationStates)
   const genTotal = genStatesArr.length
@@ -237,7 +265,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                   </div>
 
                   <div className="sp-missing-card-body">
-                    <div className="sp-missing-card-title">{mp.label || mp.dateRangeStr}</div>
+                    <div className="sp-missing-card-title">{buildMissingTitle(mp)}</div>
                     <div className="sp-missing-card-meta">
                       <span className="sp-missing-card-date">
                         {mp.startDate &&

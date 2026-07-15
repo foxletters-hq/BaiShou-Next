@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Sparkles, RefreshCw, XCircle, Clock, CheckCircle2 } from 'lucide-react-native'
 import { useNativeTheme } from '@baishou/ui/native'
 import { ConcurrencyDropdown } from './ConcurrencyDropdown'
+import { buildSummaryTitle } from '../utils/buildSummaryTitle'
 
 export interface MissingPeriod {
   type: string
@@ -250,7 +251,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                    {mp.label || mp.dateRangeStr}
+                    {buildSummaryTitle({ type: mp.type, startDate: mp.startDate }, t)}
                   </Text>
                   <View style={styles.cardMeta}>
                     <Text style={{ color: colors.textSecondary, fontSize: 12 }}>

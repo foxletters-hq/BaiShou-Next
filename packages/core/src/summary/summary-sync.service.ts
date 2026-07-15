@@ -65,28 +65,63 @@ export class SummarySyncService {
 
   /**
    * 针对单一文件执行与缓存表 DB 之间的对比与同步（脏检查/孤立清理）。
+   * 查找记录时不能只依赖 endDate 毫秒级相等：UI 常把周日 23:59:59 收成午夜，
+   * 精确 getByDateRange 会失败，导致删文件后幽灵行残留、缺失检测仍认为「已有」。
    */
   async syncSummaryFile(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {
     const fileContent = await this.fileService.readSummary(type, startDate)
-    const existingDb = await this.summaryRepo.getByDateRange(type, startDate, endDate)
+    let existingDb = await this.summaryRepo.getByDateRange(type, startDate, endDate)
+    if (!existingDb) {
+      const sameDay = await this.summaryRepo.findAllByTypeAndStartDay(type, startDate)
+      existingDb = sameDay[0] ?? null
+    }
 
     if (fileContent == null) {
-      // 物理文件已不再，说明它变成了孤立索引（Ghost Index）
-      if (existingDb && existingDb.id != null) {
-        await this.summaryRepo.delete(existingDb.id)
+      // 物理文件已不在：清掉同 type + 起始日的全部缓存行（含 endDate 不一致的幽灵）
+      const ghosts = await this.summaryRepo.findAllByTypeAndStartDay(type, startDate)
+      for (const ghost of ghosts) {
+        if (ghost.id != null) {
+          await this.summaryRepo.delete(ghost.id)
+        }
       }
       return
     }
 
     // 存在物理文件，比对数据库是否有记录或记录是否陈旧
-    // 如果无记录，或者完全由于外部更改导致 content 不一致，我们执行覆盖 Upsert
-    if (!existingDb || existingDb.content !== fileContent) {
+    if (!existingDb) {
       await this.summaryRepo.upsert({
         type,
         startDate,
         endDate,
         content: fileContent
       })
+      return
+    }
+
+    const endMismatch =
+      existingDb.endDate instanceof Date
+        ? existingDb.endDate.getTime() !== endDate.getTime()
+        : true
+    if (existingDb.content !== fileContent || endMismatch) {
+      if (endMismatch && existingDb.id != null) {
+        // endDate 不一致时 unique(type,start,end) 无法 onConflict 更新，先删再写
+        await this.summaryRepo.delete(existingDb.id)
+        await this.summaryRepo.upsert({
+          type,
+          startDate,
+          endDate,
+          content: fileContent
+        })
+      } else if (existingDb.id != null) {
+        await this.summaryRepo.update(existingDb.id, { content: fileContent })
+      } else {
+        await this.summaryRepo.upsert({
+          type,
+          startDate,
+          endDate,
+          content: fileContent
+        })
+      }
     }
   }
 

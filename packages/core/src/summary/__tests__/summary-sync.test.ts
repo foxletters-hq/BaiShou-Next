@@ -21,9 +21,11 @@ describe('SummarySyncService (Ghost indexing)', () => {
 
     mockRepo = {
       getByDateRange: vi.fn(),
+      findAllByTypeAndStartDay: vi.fn().mockResolvedValue([]),
       getSummaries: vi.fn(),
       upsert: vi.fn(),
-      delete: vi.fn()
+      delete: vi.fn(),
+      update: vi.fn()
     } as any
 
     mockDetector = {
@@ -48,6 +50,7 @@ describe('SummarySyncService (Ghost indexing)', () => {
       id: 88,
       content: 'old'
     } as any)
+    mockRepo.findAllByTypeAndStartDay.mockResolvedValue([{ id: 88, content: 'old' } as any])
 
     await service.syncSummaryFile(type, start, end)
 
@@ -55,8 +58,33 @@ describe('SummarySyncService (Ghost indexing)', () => {
     expect(mockRepo.upsert).not.toHaveBeenCalled()
   })
 
+  it('syncSummaryFile() should delete ghost when endDate only mismatches (UI midnight vs 23:59:59)', async () => {
+    const weekStart = new Date(2026, 2, 23) // local midnight Monday
+    const weekEndUi = new Date(2026, 2, 29) // UI: Sunday midnight
+    const weekEndDb = new Date(2026, 2, 29, 23, 59, 59) // file/DB: Sunday end of day
+
+    mockFileService.readSummary.mockResolvedValue(null)
+    mockRepo.getByDateRange.mockResolvedValue(null) // exact endDate miss
+    mockRepo.findAllByTypeAndStartDay.mockResolvedValue([
+      {
+        id: 13,
+        type: SummaryType.weekly,
+        startDate: weekStart,
+        endDate: weekEndDb,
+        content: 'week 13'
+      } as any
+    ])
+
+    await service.syncSummaryFile(SummaryType.weekly, weekStart, weekEndUi)
+
+    expect(mockRepo.findAllByTypeAndStartDay).toHaveBeenCalledWith(SummaryType.weekly, weekStart)
+    expect(mockRepo.delete).toHaveBeenCalledWith(13)
+    expect(mockRepo.upsert).not.toHaveBeenCalled()
+  })
+
   it('syncSummaryFile() should upsert if DB is empty or outdated', async () => {
     mockFileService.readSummary.mockResolvedValue('Fresh New File')
+    mockRepo.findAllByTypeAndStartDay.mockResolvedValue([])
 
     // 情景 1：DB 为空
     mockRepo.getByDateRange.mockResolvedValueOnce(null)
@@ -68,10 +96,11 @@ describe('SummarySyncService (Ghost indexing)', () => {
     // 情景 2：DB 不为空但内容过期
     mockRepo.getByDateRange.mockResolvedValueOnce({
       id: 1,
-      content: 'Stale DB'
+      content: 'Stale DB',
+      endDate: end
     } as any)
     await service.syncSummaryFile(type, start, end)
-    expect(mockRepo.upsert).toHaveBeenCalledTimes(2) // this one and previous one
+    expect(mockRepo.update).toHaveBeenCalledWith(1, { content: 'Fresh New File' })
   })
 
   it('fullScanArchives() should prune DB ghosts and upsert existing files during active vault resync', async () => {

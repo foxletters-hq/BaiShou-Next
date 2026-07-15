@@ -212,6 +212,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
           {DAYS.map((day, i) => (
             <Text
               key={day}
+              numberOfLines={1}
               style={[
                 styles.dayLabel,
                 { color: colors.textTertiary, opacity: i % 2 === 0 ? 1 : 0 }
@@ -340,11 +341,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 20,
     marginRight: 4,
+    width: 28,
     height: 7 * (CELL_SIZE + CELL_GAP)
   },
   dayLabel: {
     fontSize: 10,
-    width: 14,
+    width: 28,
     textAlign: 'center'
   },
   horizontalScroll: {

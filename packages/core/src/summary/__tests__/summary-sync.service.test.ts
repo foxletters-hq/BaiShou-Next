@@ -30,7 +30,9 @@ describe('SummarySyncService', () => {
 
     const mockSummaryRepo = {
       getByDateRange: vi.fn().mockResolvedValue(null),
-      upsert: vi.fn().mockResolvedValue({})
+      findAllByTypeAndStartDay: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn().mockResolvedValue({}),
+      update: vi.fn()
     }
 
     const mockFileService = {
