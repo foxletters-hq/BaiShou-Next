@@ -256,12 +256,24 @@
   padding: 12px;
   border-radius: 8px;
   border: 1px solid var(--color-outline-variant);
-  background: var(--bg-app);
+  /* 与下方模板 CodeMirror 容器一致：透出卡片 --bg-surface，不用 --bg-app */
+  background: transparent;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1.5;
   resize: vertical;
   font-family: inherit;
+  transition: border-color 0.2s;
+  min-height: 160px;
+}
+
+.systemPromptArea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.systemPromptArea::placeholder {
+  color: var(--text-tertiary, var(--text-secondary));
 }
 
 .partnerCard {
