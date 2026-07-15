@@ -66,13 +66,27 @@ function killProjectElectronProcesses() {
   return true
 }
 
-const killed = killByImageName('BaiShou.exe', 'BaiShou.exe') || killProjectElectronProcesses()
+const killedBaiShou = killByImageName('BaiShou.exe', 'BaiShou.exe')
+const killedElectron = killProjectElectronProcesses()
+const killed = killedBaiShou || killedElectron
 
 if (killed) {
-  spawnSync('powershell', ['-NoProfile', '-Command', 'Start-Sleep -Milliseconds 500'], {
+  spawnSync('powershell', ['-NoProfile', '-Command', 'Start-Sleep -Milliseconds 800'], {
     windowsHide: true,
     timeout: 5_000
   })
+}
+
+// 打包时若仍占用 better_sqlite3.node，给出明确指引（安装器侧另有交互式提示）
+const stillListed = spawnSync('tasklist', ['/FI', 'IMAGENAME eq BaiShou.exe', '/NH'], spawnOpts)
+const stillOutput = `${stillListed.stdout ?? ''}${stillListed.stderr ?? ''}`
+if (/BaiShou\.exe/i.test(stillOutput)) {
+  console.warn(
+    '[ensure-not-running] BaiShou.exe 仍在运行。请手动退出白守（含托盘）后再打包，否则可能 EPERM 占用原生模块。'
+  )
+  if (process.env.BAISHOU_REQUIRE_QUIT === '1' || process.env.BAISHOU_REQUIRE_QUIT === 'true') {
+    process.exit(1)
+  }
 }
 
 process.exit(0)
