@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { S3SyncConfig } from '@baishou/shared'
-import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
 import {
   scrollIndicatorStyle,
   KeyboardAwareScrollView,
@@ -18,20 +17,10 @@ import { StackScreenLayout } from '../components/StackScreenLayout'
 import { getStackScreenChrome } from '../components/stackScreenChrome'
 import { IncrementalSyncConfigSheet } from './IncrementalSyncConfigSheet'
 import { useIncrementalSyncNavigationGuard } from '../hooks/useIncrementalSyncNavigationGuard'
-
-const DEFAULT_CONFIG: S3SyncConfig = {
-  enabled: false,
-  endpoint: '',
-  region: 'us-east-1',
-  bucket: '',
-  path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
-  accessKey: '',
-  secretKey: '',
-  target: 's3',
-  fileConcurrency: 5,
-  chunkConcurrency: 5,
-  maxDivergencePercent: 100
-}
+import {
+  DEFAULT_CONFIG,
+  projectIncrementalSyncRuntime
+} from '../services/mobile-incremental-sync-config.util'
 
 const IncrementalSyncScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -74,7 +63,7 @@ const IncrementalSyncScreen: React.FC = () => {
     async (next: S3SyncConfig) => {
       if (!services?.incrementalSyncService) return
       try {
-        await services.incrementalSyncService.saveConfig(next)
+        await services.incrementalSyncService.saveConfig(projectIncrementalSyncRuntime(next))
         await refreshConfigured()
       } catch (e: unknown) {
         toast.showError(e instanceof Error ? e.message : t('data_sync.save_failed'))
@@ -85,12 +74,13 @@ const IncrementalSyncScreen: React.FC = () => {
 
   const applyConfigChange = useCallback(
     (next: S3SyncConfig, immediate = false) => {
-      setConfig(next)
+      const projected = projectIncrementalSyncRuntime(next)
+      setConfig(projected)
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       if (immediate) {
-        void persistConfig(next)
+        void persistConfig(projected)
       } else {
-        saveTimerRef.current = setTimeout(() => void persistConfig(next), 500)
+        saveTimerRef.current = setTimeout(() => void persistConfig(projected), 500)
       }
     },
     [persistConfig]
@@ -123,7 +113,7 @@ const IncrementalSyncScreen: React.FC = () => {
     if (!services?.incrementalSyncService) return
     setTesting(true)
     try {
-      await services.incrementalSyncService.testConnection(config)
+      await services.incrementalSyncService.testConnection(projectIncrementalSyncRuntime(config))
       toast.showSuccess(t('data_sync.connection_success', '连接成功'))
     } catch (e: unknown) {
       toast.showError(e instanceof Error ? e.message : t('data_sync.connection_failed'))

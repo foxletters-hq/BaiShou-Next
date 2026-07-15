@@ -22,40 +22,97 @@ export const DEFAULT_CONFIG: S3SyncConfig = {
   accessKey: '',
   secretKey: '',
   target: 's3',
+  s3AccessKey: '',
+  s3SecretKey: '',
+  s3Path: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
+  webdavUsername: '',
+  webdavPassword: '',
+  webdavPath: DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
+  webdavUrl: '',
   fileConcurrency: 5,
   chunkConcurrency: 5,
   maxDivergencePercent: 100
 }
 
-export type VaultSyncConfig = Partial<S3SyncConfig> & {
-  s3AccessKey?: string
-  s3SecretKey?: string
-  s3Path?: string
-  webdavUsername?: string
-  webdavPassword?: string
-  webdavPath?: string
+export type VaultSyncConfig = Partial<S3SyncConfig>
+
+function pickSideText(
+  sideValue: string | undefined,
+  sharedFallback: string | undefined,
+  useSharedFallback: boolean
+): string {
+  if (sideValue !== undefined) return sideValue.trim()
+  if (useSharedFallback) return (sharedFallback || '').trim()
+  return ''
 }
 
+function pickSidePath(
+  sideValue: string | undefined,
+  sharedFallback: string | undefined,
+  useSharedFallback: boolean
+): string {
+  if (sideValue !== undefined && sideValue !== '') return sideValue
+  if (useSharedFallback && sharedFallback) return sharedFallback
+  return DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
+}
+
+/**
+ * 加载/合并配置：保留 S3 / WebDAV 分端字段，并把当前 target 投影到运行时 accessKey/secretKey/path。
+ * 兼容仅有共享字段的旧配置（只回填到当时的 target）。
+ */
 export function normalizeVaultConfig(partial?: VaultSyncConfig | null): S3SyncConfig {
   const base = mergeConfig(partial)
   const target = partial?.target === 'webdav' ? 'webdav' : 's3'
+
+  const s3AccessKey = pickSideText(partial?.s3AccessKey, partial?.accessKey, target === 's3')
+  const s3SecretKey = pickSideText(partial?.s3SecretKey, partial?.secretKey, target === 's3')
+  const s3Path = pickSidePath(partial?.s3Path, partial?.path, target === 's3')
+
+  const webdavUsername = pickSideText(
+    partial?.webdavUsername,
+    partial?.accessKey,
+    target === 'webdav'
+  )
+  const webdavPassword = pickSideText(
+    partial?.webdavPassword,
+    partial?.secretKey,
+    target === 'webdav'
+  )
+  const webdavPath = pickSidePath(partial?.webdavPath, partial?.path, target === 'webdav')
+
+  return projectIncrementalSyncRuntime({
+    ...base,
+    target,
+    s3AccessKey,
+    s3SecretKey,
+    s3Path,
+    webdavUsername,
+    webdavPassword,
+    webdavPath,
+    webdavUrl: partial?.webdavUrl ?? base.webdavUrl ?? '',
+    fileConcurrency: partial?.fileConcurrency ?? base.fileConcurrency,
+    chunkConcurrency: partial?.chunkConcurrency ?? base.chunkConcurrency
+  })
+}
+
+/** 用分端字段刷新运行时 accessKey / secretKey / path */
+export function projectIncrementalSyncRuntime(config: S3SyncConfig): S3SyncConfig {
+  const target = config.target === 'webdav' ? 'webdav' : 's3'
   if (target === 'webdav') {
     return {
-      ...base,
+      ...config,
       target: 'webdav',
-      accessKey: (partial?.accessKey || partial?.webdavUsername || '').trim(),
-      secretKey: (partial?.secretKey || partial?.webdavPassword || '').trim(),
-      path: partial?.path || partial?.webdavPath || base.path
+      accessKey: (config.webdavUsername ?? '').trim(),
+      secretKey: (config.webdavPassword ?? '').trim(),
+      path: config.webdavPath || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
     }
   }
   return {
-    ...base,
+    ...config,
     target: 's3',
-    accessKey: (partial?.accessKey || partial?.s3AccessKey || '').trim(),
-    secretKey: (partial?.secretKey || partial?.s3SecretKey || '').trim(),
-    path: partial?.path || partial?.s3Path || base.path,
-    fileConcurrency: partial?.fileConcurrency ?? base.fileConcurrency,
-    chunkConcurrency: partial?.chunkConcurrency ?? base.chunkConcurrency
+    accessKey: (config.s3AccessKey ?? '').trim(),
+    secretKey: (config.s3SecretKey ?? '').trim(),
+    path: config.s3Path || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
   }
 }
 
@@ -64,7 +121,7 @@ export function mergeConfig(partial?: Partial<S3SyncConfig> | null): S3SyncConfi
 }
 
 export function isConfigReady(config: S3SyncConfig): boolean {
-  return isIncrementalSyncReady(config)
+  return isIncrementalSyncReady(projectIncrementalSyncRuntime(config))
 }
 
 export async function testWebDav(
@@ -72,16 +129,17 @@ export async function testWebDav(
   fileSystem: IFileSystem,
   syncRoot: string
 ): Promise<void> {
-  const client = new MobileIncrementalCloudClient(config, fileSystem)
+  const client = new MobileIncrementalCloudClient(projectIncrementalSyncRuntime(config), fileSystem)
   client.setVaultPath(syncRoot)
   await client.listFiles()
 }
 
 export async function testS3(config: S3SyncConfig): Promise<void> {
-  const prefix = normalizeS3BasePath(config.path)
+  const runtime = projectIncrementalSyncRuntime(config)
+  const prefix = normalizeS3BasePath(runtime.path)
   const listUrl = buildS3ListUrl({
-    endpoint: config.endpoint,
-    bucket: config.bucket,
+    endpoint: runtime.endpoint,
+    bucket: runtime.bucket,
     prefix,
     maxKeys: 1
   })
@@ -89,9 +147,9 @@ export async function testS3(config: S3SyncConfig): Promise<void> {
   const signed = await signS3Request(
     'GET',
     listUrl,
-    config.region || 'us-east-1',
-    config.accessKey,
-    config.secretKey,
+    runtime.region || 'us-east-1',
+    runtime.accessKey,
+    runtime.secretKey,
     null
   )
   const response = await fetch(listUrl, { method: 'GET', headers: s3FetchHeaders(signed) })
@@ -105,11 +163,12 @@ export async function uploadWebDav(
   localZipPath: string,
   remoteName: string
 ): Promise<void> {
-  const baseUrl = normalizeWebDavBaseUrl(config.webdavUrl)
-  let basePath = config.path?.startsWith('/') ? config.path : `/${config.path || ''}`
+  const runtime = projectIncrementalSyncRuntime(config)
+  const baseUrl = normalizeWebDavBaseUrl(runtime.webdavUrl)
+  let basePath = runtime.path?.startsWith('/') ? runtime.path : `/${runtime.path || ''}`
   if (!basePath.endsWith('/')) basePath += '/'
   const remotePath = `${basePath}${remoteName}`
-  const auth = `Basic ${btoa(`${config.accessKey}:${config.secretKey}`)}`
+  const auth = `Basic ${btoa(`${runtime.accessKey}:${runtime.secretKey}`)}`
 
   const response = await uploadAsync(`${baseUrl}${remotePath}`, localZipPath, {
     httpMethod: 'PUT',
@@ -130,10 +189,11 @@ export async function uploadS3(
   localZipPath: string,
   remoteName: string
 ): Promise<void> {
-  const objectName = `${normalizeS3BasePath(config.path)}${remoteName}`
+  const runtime = projectIncrementalSyncRuntime(config)
+  const objectName = `${normalizeS3BasePath(runtime.path)}${remoteName}`
   const url = buildS3ObjectUrl({
-    endpoint: config.endpoint,
-    bucket: config.bucket,
+    endpoint: runtime.endpoint,
+    bucket: runtime.bucket,
     objectKey: objectName
   })
 
@@ -141,9 +201,9 @@ export async function uploadS3(
   const signed = await signS3Request(
     'PUT',
     url,
-    config.region || 'us-east-1',
-    config.accessKey,
-    config.secretKey,
+    runtime.region || 'us-east-1',
+    runtime.accessKey,
+    runtime.secretKey,
     null,
     { 'Content-Type': contentType }
   )

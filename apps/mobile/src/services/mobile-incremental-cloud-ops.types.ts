@@ -38,6 +38,10 @@ export type IncrementalCloudOpsHost = {
   }
   isSyncManifestRel(rel: string): boolean
   webdavAuth(): string
+  /** 当前生效的 WebDAV 根 URL（可能已从 HTTPS 回退到 HTTP） */
+  webdavConfiguredBaseUrl(): string
+  /** 本轮同步内改用其他 WebDAV 根（例如群晖 5006→5005） */
+  adoptWebDavBaseUrl(url: string): void
   webdavFileUrl(rel: string): string
   needsHttpStaging(localPath: string): boolean
   httpStagingPath(localPath: string, prefix: 'dl' | 'ul'): string

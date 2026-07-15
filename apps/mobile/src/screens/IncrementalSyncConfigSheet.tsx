@@ -152,23 +152,23 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
             {t('data_sync.path_prefix')}
           </Text>
           <Input
-            value={config.path || ''}
-            onChangeText={(path) => onChange({ ...config, path })}
+            value={config.webdavPath || ''}
+            onChangeText={(webdavPath) => onChange({ ...config, webdavPath })}
             autoCapitalize="none"
           />
           <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
             {t('data_sync.webdav_user')}
           </Text>
           <Input
-            value={config.accessKey || ''}
-            onChangeText={(accessKey) => onChange({ ...config, accessKey })}
+            value={config.webdavUsername || ''}
+            onChangeText={(webdavUsername) => onChange({ ...config, webdavUsername })}
             autoCapitalize="none"
             autoCorrect={false}
           />
           {renderSecretField(
             t('data_sync.webdav_password'),
-            config.secretKey || '',
-            (secretKey) => onChange({ ...config, secretKey }),
+            config.webdavPassword || '',
+            (webdavPassword) => onChange({ ...config, webdavPassword }),
             showSecretKey,
             onToggleSecretKey
           )}
@@ -205,21 +205,21 @@ export const IncrementalSyncConfigSheet: React.FC<IncrementalSyncConfigSheetProp
             {t('data_sync.path_prefix')}
           </Text>
           <Input
-            value={config.path || ''}
-            onChangeText={(path) => onChange({ ...config, path })}
+            value={config.s3Path || ''}
+            onChangeText={(s3Path) => onChange({ ...config, s3Path })}
             autoCapitalize="none"
           />
           {renderSecretField(
             t('data_sync.s3_access_key'),
-            config.accessKey || '',
-            (accessKey) => onChange({ ...config, accessKey }),
+            config.s3AccessKey || '',
+            (s3AccessKey) => onChange({ ...config, s3AccessKey }),
             showAccessKey,
             onToggleAccessKey
           )}
           {renderSecretField(
             t('data_sync.s3_secret_key'),
-            config.secretKey || '',
-            (secretKey) => onChange({ ...config, secretKey }),
+            config.s3SecretKey || '',
+            (s3SecretKey) => onChange({ ...config, s3SecretKey }),
             showSecretKey,
             onToggleSecretKey
           )}
