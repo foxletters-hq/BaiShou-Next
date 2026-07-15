@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type -- Expo config plugin（CommonJS） */
-const { withAndroidManifest, AndroidConfig } = require('@expo/config-plugins')
+const fs = require('fs')
+const path = require('path')
+const { withAndroidManifest, withDangerousMod, AndroidConfig } = require('@expo/config-plugins')
 const {
   ensureToolsAvailable,
   getMainApplicationOrThrow
@@ -13,13 +15,37 @@ const LAN_PERMISSIONS = [
   'android.permission.NEARBY_WIFI_DEVICES'
 ]
 
+const NETWORK_SECURITY_CONFIG_XML = `<?xml version="1.0" encoding="utf-8"?>
+<!-- 信任系统与用户安装的 CA，并允许明文 HTTP（群晖 WebDAV 5005 / 局域网 NAS） -->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true">
+    <trust-anchors>
+      <certificates src="system" />
+      <certificates src="user" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>
+`
+
 /**
- * 局域网 mDNS 发现依赖组播锁，必须在 AndroidManifest 中声明 CHANGE_WIFI_MULTICAST_STATE。
- * app.json 的 permissions 在已有 android/ 目录时不会自动回写，故用插件强制注入。
+ * 局域网权限 + 明文 HTTP + 信任用户 CA（群晖自签证书安装到系统后可用）。
  * @param {import('@expo/config-plugins').ExpoConfig} config
  * @returns {import('@expo/config-plugins').ExpoConfig}
  */
 function withAndroidLanPermissions(config) {
+  config = withDangerousMod(config, [
+    'android',
+    async (config) => {
+      const xmlDir = path.join(
+        config.modRequest.platformProjectRoot,
+        'app/src/main/res/xml'
+      )
+      fs.mkdirSync(xmlDir, { recursive: true })
+      fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), NETWORK_SECURITY_CONFIG_XML)
+      return config
+    }
+  ])
+
   return withAndroidManifest(config, (config) => {
     let manifest = ensureToolsAvailable(config.modResults)
     AndroidConfig.Permissions.ensurePermissions(manifest, LAN_PERMISSIONS)
@@ -39,6 +65,7 @@ function withAndroidLanPermissions(config) {
 
     const application = getMainApplicationOrThrow(manifest)
     application.$['android:usesCleartextTraffic'] = 'true'
+    application.$['android:networkSecurityConfig'] = '@xml/network_security_config'
 
     config.modResults = manifest
     return config
