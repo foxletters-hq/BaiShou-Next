@@ -139,6 +139,9 @@ temp/
 scratch_*
 code-review-worktree/
 
+# 本地草稿目录（仅本机，不入库；勿加入 .prettierignore）
+草稿纸/
+
 # ─── Secret / Key ─────────────────────────────────────────
 *.pem
 *.key
