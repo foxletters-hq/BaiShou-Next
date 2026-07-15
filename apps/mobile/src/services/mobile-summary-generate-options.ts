@@ -2,6 +2,7 @@ import {
   logger,
   resolveSummaryGenerationRuntime,
   resolveSummaryTemplatesForGeneration,
+  withSummaryPromptLocaleFromUi,
   type AIProviderConfig,
   type GlobalModelsConfig,
   type SummaryConfig
@@ -9,6 +10,7 @@ import {
 import type { SummaryGenerateOptions } from '@baishou/core-mobile'
 import type { SettingsManagerService, AssistantManagerService } from '@baishou/core-mobile'
 import { resolveSummaryConfig } from './mobile-summary-config.util'
+import { resolveAppUiLanguage } from '../lib/device-locale'
 
 export async function resolveMobileSummaryGenerateOptions(deps: {
   settingsManager: SettingsManagerService
@@ -30,6 +32,13 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
   const { settingsManager, assistantManager, buildSharedContext, periodStart } = deps
   const summaryConfig =
     (await settingsManager.get<SummaryConfig>('summary_config')) || ({} as SummaryConfig)
+  const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
+  const uiLang = resolveAppUiLanguage(appSettings.language, 'zh')
+  // 生成以当前 UI 语言为准，避免外观已切语言但 promptLocale 仍停在旧值
+  const { config: summaryConfigForGen, promptLocale } = withSummaryPromptLocaleFromUi(
+    summaryConfig,
+    uiLang
+  )
   const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
   const globalModels =
     (await settingsManager.get<GlobalModelsConfig>('global_models')) || ({} as GlobalModelsConfig)
@@ -37,8 +46,8 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
     globalModels.monthlySummarySource === 'diaries' ? 'diaries' : 'weeklies'
 
   let assistant = null
-  const assistantId = summaryConfig.generationAssistantId?.trim()
-  if (summaryConfig.generationMode === 'assistant' && assistantId) {
+  const assistantId = summaryConfigForGen.generationAssistantId?.trim()
+  if (summaryConfigForGen.generationMode === 'assistant' && assistantId) {
     try {
       assistant = (await assistantManager.findById(assistantId)) ?? null
     } catch (e) {
@@ -46,7 +55,7 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
     }
   }
 
-  const runtime = resolveSummaryGenerationRuntime(summaryConfig, assistant, providers)
+  const runtime = resolveSummaryGenerationRuntime(summaryConfigForGen, assistant, providers)
   if (runtime.fellBackToPrompt) {
     logger.warn(
       '[MobileSummaryQueue] Assistant generation mode unavailable; falling back to prompt mode'
@@ -60,7 +69,7 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
       // 显式传空串，避免 builder 回落到 settings 里的复制前缀
       const text = await buildSharedContext(
         runtime.sharedMemoryLookbackMonths,
-        summaryConfig.promptLocale,
+        promptLocale,
         '',
         periodStart
           ? { referenceDate: anchor, untilExclusive: anchor }
@@ -73,28 +82,12 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
     }
   }
 
-  const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<
-    string,
-    string
-  >
-  const promptLocale = (summaryConfig.promptLocale ?? 'zh') as SummaryGenerateOptions['promptLocale']
+  const customTemplates = resolveSummaryTemplatesForGeneration(
+    summaryConfigForGen,
+    promptLocale
+  ) as Record<string, string>
 
-  if (runtime.mode === 'assistant' && runtime.modelId && runtime.providerId) {
-    return {
-      generateOptions: {
-        modelId: runtime.modelId,
-        providerId: runtime.providerId,
-        systemPrompt: runtime.systemPrompt,
-        customTemplates,
-        promptLocale,
-        sharedContextText,
-        monthlySummarySource
-      },
-      providerIdForLog: runtime.providerId,
-      fellBackToPrompt: false
-    }
-  }
-
+  // 无论提示词模式还是伙伴模式，总结模型一律用全局默认；伙伴模式只换 systemPrompt
   const resolution = await resolveSummaryConfig(settingsManager)
   if (!resolution.ok) {
     if (resolution.reason === 'no_api_key') {
@@ -110,6 +103,7 @@ export async function resolveMobileSummaryGenerateOptions(deps: {
   return {
     generateOptions: {
       modelId: resolution.modelId,
+      providerId: resolution.providerConfig.id,
       systemPrompt: runtime.systemPrompt,
       customTemplates,
       promptLocale,

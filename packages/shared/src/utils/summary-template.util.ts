@@ -20,6 +20,23 @@ export function resolveSummaryPromptLocale(locale?: string): SummaryPromptLocale
   return 'en'
 }
 
+/**
+ * 将 UI 语言落到 summary_config.promptLocale。
+ * 外观/设置切语言时应写入，生成回忆时也可用 UI 语言覆盖，保证模板与提示词语言一致。
+ */
+export function withSummaryPromptLocaleFromUi(
+  config: SummaryConfig | null | undefined,
+  uiLanguage: string | null | undefined
+): { config: SummaryConfig; promptLocale: SummaryPromptLocale; changed: boolean } {
+  const promptLocale = resolveSummaryPromptLocale(uiLanguage)
+  const changed = config?.promptLocale !== promptLocale
+  return {
+    config: { ...(config || {}), promptLocale },
+    promptLocale,
+    changed
+  }
+}
+
 export function getDefaultSummaryTemplate(
   type: SummaryTemplateKey,
   locale: SummaryPromptLocale = 'zh'
@@ -56,8 +73,12 @@ export function resolveSummaryTemplatesForGeneration(
   config: SummaryConfig | null | undefined,
   locale?: string
 ): SummaryTemplatesMap {
-  const promptLocale = (config?.promptLocale ??
-    resolveSummaryPromptLocale(locale)) as SummaryPromptLocale
+  // 显式传入 locale 时优先（生成侧用当前 UI 语言覆盖）；否则用 config.promptLocale
+  const promptLocale = (
+    locale !== undefined && locale !== ''
+      ? resolveSummaryPromptLocale(locale)
+      : (config?.promptLocale ?? resolveSummaryPromptLocale(locale))
+  ) as SummaryPromptLocale
   const byLocale = normalizeSummaryInstructionsByLocale(config)
 
   const resolved: SummaryTemplatesMap = {}

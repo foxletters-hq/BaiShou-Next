@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Palette } from 'lucide-react-native'
 import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
@@ -22,9 +22,19 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   embedded = false,
   isLast = false
 }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { colors } = useNativeTheme()
   const [showColorModal, setShowColorModal] = useState(false)
+  /** 点击后立刻切选中态，避免等父组件异步回写期间框停在旧项 */
+  const [selectedLanguage, setSelectedLanguage] = useState(language)
+
+  useEffect(() => {
+    console.log('[AppearanceLang] card:prop', {
+      language,
+      i18n: i18n.language
+    })
+    setSelectedLanguage(language)
+  }, [language])
 
   const languageOptions = useMemo(
     () => [
@@ -73,7 +83,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               styles.segmentBtn,
               { borderRightColor: colors.borderMuted },
               themeMode === mode && {
-                backgroundColor: 'transparent'
+                backgroundColor: colors.primaryLight
               },
               index === 2 && { borderRightWidth: 0 }
             ]}
@@ -133,32 +143,43 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
         {t('settings.language', '显示语言')}
       </Text>
       <View style={styles.langWrap}>
-        {languageOptions.map((lang) => (
-          <TouchableOpacity
-            key={lang.val}
-            activeOpacity={0.6}
-            style={[
-              styles.langChip,
-              { borderColor: colors.borderMuted },
-              language === lang.val && {
-                backgroundColor: 'transparent',
-                borderWidth: 1.5,
-                borderColor: colors.borderStrong
-              }
-            ]}
-            onPress={() => onLanguageChange(lang.val)}
-          >
-            <Text
+        {languageOptions.map((lang) => {
+          const active = selectedLanguage === lang.val
+          return (
+            <TouchableOpacity
+              key={lang.val}
+              activeOpacity={0.6}
               style={[
-                styles.langText,
-                { color: colors.textPrimary },
-                language === lang.val && { fontWeight: 'bold' }
+                styles.langChip,
+                { borderColor: colors.borderMuted },
+                active && {
+                  backgroundColor: colors.primaryLight,
+                  borderColor: colors.primary
+                }
               ]}
+              onPress={() => {
+                console.log('[AppearanceLang] card:press', {
+                  from: selectedLanguage,
+                  to: lang.val,
+                  prop: language,
+                  i18n: i18n.language
+                })
+                setSelectedLanguage(lang.val)
+                onLanguageChange(lang.val)
+              }}
             >
-              {lang.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.langText,
+                  { color: colors.textPrimary },
+                  active && { fontWeight: 'bold', color: colors.primary }
+                ]}
+              >
+                {lang.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
       </View>
 
       <AppearanceSettingsColorModal
@@ -185,7 +206,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
         />
       }
       title={t('settings.appearance', '外观与多语言')}
-      subtitle={embedded ? undefined : `${themeMode} · ${language}`}
+      subtitle={embedded ? undefined : `${themeMode} · ${selectedLanguage}`}
     >
       {content}
     </SettingsExpansionTile>

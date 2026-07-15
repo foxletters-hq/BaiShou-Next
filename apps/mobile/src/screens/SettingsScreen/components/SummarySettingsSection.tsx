@@ -116,6 +116,12 @@ export const SummarySettingsSection: React.FC = () => {
         saved.customGenerationSystemPromptByLocale?.[autoLocale]?.trim() ||
           getDefaultCustomGenerationSystemPrompt(autoLocale)
       )
+      if (saved.promptLocale !== autoLocale) {
+        await services.settingsManager.set('summary_config', {
+          ...saved,
+          promptLocale: autoLocale
+        })
+      }
 
       try {
         const list = await listAssistantsForUi(
@@ -157,6 +163,12 @@ export const SummarySettingsSection: React.FC = () => {
         saved.customGenerationSystemPromptByLocale?.[autoLocale]?.trim() ||
           getDefaultCustomGenerationSystemPrompt(autoLocale)
       )
+      if (saved.promptLocale !== autoLocale) {
+        await services.settingsManager.set('summary_config', {
+          ...saved,
+          promptLocale: autoLocale
+        })
+      }
     })()
   }, [dbReady, i18n.language, services])
 

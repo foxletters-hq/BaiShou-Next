@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, StyleSheet, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useThrottledFocusRefresh } from '../../../hooks/useThrottledFocusRefresh'
@@ -23,6 +23,8 @@ import {
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
   saveUserProfileToSettings,
+  withSummaryPromptLocaleFromUi,
+  type SummaryConfig,
   type UserProfile
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -61,6 +63,8 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const router = useRouter()
   const { services, dbReady, vaultRevision } = useBaishou()
   const toast = useNativeToast()
+  /** 作废过期的 load，避免切换语言后旧请求把选中态盖回 */
+  const accountLoadGenRef = useRef(0)
 
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
   const [seedColor, setSeedColor] = useState('#5BA8F5')
@@ -146,13 +150,33 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
 
   const loadAccountSettings = useCallback(async () => {
     if (!dbReady || !services) return
+    const loadGen = ++accountLoadGenRef.current
+    console.log('[AppearanceLang] load:start', { loadGen })
     try {
       const settings = (await services.settingsManager.get<any>('settings')) || {}
-      if (settings.themeMode) setThemeMode(settings.themeMode)
-      if (settings.seedColor) setSeedColor(settings.seedColor)
-      if (settings.language) setLanguage(settings.language)
+      if (loadGen !== accountLoadGenRef.current) {
+        console.log('[AppearanceLang] load:stale-after-settings', {
+          loadGen,
+          current: accountLoadGenRef.current,
+          diskLanguage: settings.language
+        })
+        return
+      }
+
+      // 外观字段延后到 load 结束再写入，避免中途被保存流程 bump gen 后仍已 setLanguage(旧值)
+      const nextThemeMode = settings.themeMode as 'system' | 'light' | 'dark' | undefined
+      const nextSeedColor = typeof settings.seedColor === 'string' ? settings.seedColor : undefined
+      const nextLanguage = typeof settings.language === 'string' ? settings.language : undefined
 
       const userProfile = await getUserProfileFromSettings(services.settingsManager)
+      if (loadGen !== accountLoadGenRef.current) {
+        console.log('[AppearanceLang] load:stale-after-profile', {
+          loadGen,
+          current: accountLoadGenRef.current
+        })
+        return
+      }
+
       if (userProfile.avatarPath) {
         await resolveUserAvatarForMobileUi(
           userProfile.avatarPath,
@@ -160,6 +184,25 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
           services.fileSystem
         )
       }
+      if (loadGen !== accountLoadGenRef.current) {
+        console.log('[AppearanceLang] load:stale-after-avatar', {
+          loadGen,
+          current: accountLoadGenRef.current,
+          skippedLanguage: nextLanguage
+        })
+        return
+      }
+
+      if (nextThemeMode) setThemeMode(nextThemeMode)
+      if (nextSeedColor) setSeedColor(nextSeedColor)
+      if (nextLanguage) {
+        console.log('[AppearanceLang] load:apply-language', {
+          loadGen,
+          diskLanguage: nextLanguage
+        })
+        setLanguage(nextLanguage)
+      }
+
       setProfile({
         nickname: userProfile.nickname || '',
         avatarPath: userProfile.avatarPath
@@ -176,20 +219,25 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
         personas: userProfile.personas,
         recentPersonaIds: userProfile.recentPersonaIds
       })
+      console.log('[AppearanceLang] load:done', { loadGen, language: nextLanguage })
     } catch (e) {
-      console.warn('Load account settings failed', e)
+      console.warn('[AppearanceLang] load:failed', e)
     }
   }, [dbReady, services])
+
+  const refreshAccountOnFocus = useCallback(() => {
+    void loadAccountSettings()
+    void loadVaults()
+  }, [loadAccountSettings, loadVaults])
 
   useEffect(() => {
     void loadAccountSettings()
     void loadVaults()
   }, [loadAccountSettings, loadVaults, vaultRevision])
 
-  useThrottledFocusRefresh(() => {
-    void loadAccountSettings()
-    void loadVaults()
-  })
+  // 必须稳定 callback：每次 render 新函数会让 useFocusEffect 重跑，
+  // 在 setLanguage 后立刻 load，读到未落盘的旧 language 盖回选中态
+  useThrottledFocusRefresh(refreshAccountOnFocus)
 
   const handleSaveProfile = async (newProfile: SettingsProfileSavePayload) => {
     if (!services || !dbReady) return
@@ -257,10 +305,13 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const handleSaveTheme = async (mode: 'system' | 'light' | 'dark') => {
     if (!services || !dbReady) return
     try {
+      accountLoadGenRef.current += 1
       setThemeMode(mode)
       const settings = (await services.settingsManager.get<any>('settings')) || {}
       settings.themeMode = mode
       await services.settingsManager.set('settings', settings)
+      // 落盘后再 bump：丢弃保存期间读到旧值的 load
+      accountLoadGenRef.current += 1
       notifyThemeRefresh()
     } catch (e) {
       console.error('Save theme failed', e)
@@ -270,10 +321,12 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const handleSeedColorChange = async (color: string) => {
     if (!services || !dbReady) return
     try {
+      accountLoadGenRef.current += 1
       setSeedColor(color)
       const settings = (await services.settingsManager.get<any>('settings')) || {}
       settings.seedColor = color
       await services.settingsManager.set('settings', settings)
+      accountLoadGenRef.current += 1
       notifyThemeRefresh()
     } catch (e) {
       console.error('Save seed color failed', e)
@@ -282,17 +335,54 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
 
   const handleSaveLanguage = async (lang: string) => {
     if (!services || !dbReady) return
+    const prev = language
     try {
+      // 保存期间任何 load 都可能读到旧 language；先 bump，落盘后再 bump 一次
+      accountLoadGenRef.current += 1
       setLanguage(lang)
+      console.log('[AppearanceLang] save:start', {
+        from: prev,
+        to: lang,
+        i18n: i18n.language,
+        loadGen: accountLoadGenRef.current
+      })
       const settings = (await services.settingsManager.get<any>('settings')) || {}
       settings.language = lang
       await services.settingsManager.set('settings', settings)
+      accountLoadGenRef.current += 1
+      // 落盘后再次确认选中态，防止保存期间的 stale load 曾写入旧值
+      setLanguage(lang)
       const resolvedLang = resolveAppUiLanguage(lang, i18n.language)
+      console.log('[AppearanceLang] save:persisted', {
+        preference: lang,
+        resolvedLang,
+        loadGen: accountLoadGenRef.current
+      })
       await i18n.changeLanguage(resolvedLang)
+      console.log('[AppearanceLang] save:i18n-changed', {
+        preference: lang,
+        i18n: i18n.language
+      })
       await ensureDefaultLatteAssistant(services.assistantManager, resolvedLang)
       await syncDefaultLatteAssistantLocale(services.assistantManager, resolvedLang)
+      // 与 UI 语言对齐：总结模板 / 自定义生成提示词选型跟外观语言一起切
+      try {
+        const summaryConfig =
+          (await services.settingsManager.get<SummaryConfig>('summary_config')) || {}
+        const { config: nextSummary, promptLocale, changed } = withSummaryPromptLocaleFromUi(
+          summaryConfig,
+          resolvedLang
+        )
+        if (changed) {
+          await services.settingsManager.set('summary_config', nextSummary)
+          console.log('[AppearanceLang] summary promptLocale synced', { promptLocale })
+        }
+      } catch (syncErr) {
+        console.warn('[AppearanceLang] summary promptLocale sync failed', syncErr)
+      }
+      console.log('[AppearanceLang] save:done', { preference: lang, i18n: i18n.language })
     } catch (e) {
-      console.error('Save language failed', e)
+      console.error('[AppearanceLang] save:failed', e)
     }
   }
 

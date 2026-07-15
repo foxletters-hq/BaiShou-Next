@@ -3,7 +3,9 @@ import i18n from 'i18next'
 import {
   APP_UI_LANGUAGE_ORDER,
   resolveBootstrapUiLocale,
-  type ResolvedAppUiLanguage
+  withSummaryPromptLocaleFromUi,
+  type ResolvedAppUiLanguage,
+  type SummaryConfig
 } from '@baishou/shared'
 import {
   ensureDefaultLatteAssistant,
@@ -67,6 +69,13 @@ export async function syncOnboardingUiLanguageToVault(
 
   await ensureDefaultLatteAssistant(deps.assistantManager, lang)
   await syncDefaultLatteAssistantLocale(deps.assistantManager, lang)
+
+  const summaryConfig =
+    (await deps.settingsManager.get<SummaryConfig>('summary_config')) || {}
+  const { config: nextSummary, changed } = withSummaryPromptLocaleFromUi(summaryConfig, lang)
+  if (changed) {
+    await deps.settingsManager.set('summary_config', nextSummary)
+  }
 }
 
 export async function readOnboardingUiLanguage(): Promise<OnboardingUiLanguage | null> {

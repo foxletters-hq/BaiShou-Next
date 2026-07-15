@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import { persist, devtools } from 'zustand/middleware'
 import {
   i18n,
-  resolveSummaryPromptLocale,
   resolveAppUiLanguageFromSystemLocale,
+  withSummaryPromptLocaleFromUi,
   type AIProviderConfig,
   type GlobalModelsConfig,
   type AgentBehaviorConfig,
@@ -312,9 +312,12 @@ export const useSettingsStore = create<SettingsStore>()(
           i18n.changeLanguage(resolvedUi)
           const summaryConfig = get().summaryConfig
           if (summaryConfig) {
-            const promptLocale = resolveSummaryPromptLocale(resolvedUi)
-            if (summaryConfig.promptLocale !== promptLocale) {
-              void get().setSummaryConfig({ ...summaryConfig, promptLocale })
+            const { config: nextSummary, changed } = withSummaryPromptLocaleFromUi(
+              summaryConfig,
+              resolvedUi
+            )
+            if (changed) {
+              void get().setSummaryConfig(nextSummary)
             }
           }
 
