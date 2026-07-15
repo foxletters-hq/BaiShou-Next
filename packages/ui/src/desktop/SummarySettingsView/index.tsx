@@ -1,31 +1,61 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './SummarySettingsView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
 import { CodeMirrorEditor } from '../DiaryEditor/CodeMirrorEditor'
+import { Switch } from '../Switch/Switch'
+import { Modal } from '../Modal/Modal'
+import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import '../DiaryEditor/DiaryEditor.css'
 import {
+  clampSharedMemoryLookbackMonths,
+  DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS,
+  getDefaultCustomGenerationSystemPrompt,
   getSummaryTemplateForEdit,
+  SHARED_MEMORY_LOOKBACK_SLIDER_BASE,
+  SHARED_MEMORY_LOOKBACK_MIN,
   SUMMARY_PROMPT_LOCALE_OPTIONS,
+  type SummaryGenerationMode,
   type SummaryPromptLocale,
   type SummaryTemplateKey,
   type SummaryTemplatesMap
 } from '@baishou/shared'
 
+export interface SummarySettingsAssistantOption {
+  id: string
+  name: string
+  avatarPath?: string
+}
+
 export interface SummaryInstructionsConfig {
   monthlySummarySource: 'weeklies' | 'diaries'
   promptLocale: SummaryPromptLocale
   instructionsByLocale: Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>>
+  customGenerationSystemPromptByLocale: Partial<Record<SummaryPromptLocale, string>>
+  generationMode: SummaryGenerationMode
+  generationAssistantId?: string
+  injectSharedMemoryBeforeGenerate: boolean
+  sharedMemoryLookbackMonths: number
+}
+
+export type SummarySettingsChangeOptions = {
+  /** Only Save / Restore default should persist generation templates. */
+  includeTemplates?: boolean
 }
 
 export interface SummarySettingsViewProps {
   config: SummaryInstructionsConfig
-  onChange: (config: SummaryInstructionsConfig) => void
+  assistants?: SummarySettingsAssistantOption[]
+  onChange: (
+    config: SummaryInstructionsConfig,
+    options?: SummarySettingsChangeOptions
+  ) => void
   onResetTemplate?: (type: SummaryTemplateKey, locale: SummaryPromptLocale) => string
 }
 
 export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
   config,
+  assistants = [],
   onChange,
   onResetTemplate
 }) => {
@@ -35,16 +65,34 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
   const [activePromptLocale, setActivePromptLocale] = useState<SummaryPromptLocale>(
     config.promptLocale
   )
+  const [draftTemplates, setDraftTemplates] = useState(config.instructionsByLocale)
   const [localText, setLocalText] = useState(() =>
     getSummaryTemplateForEdit(config.instructionsByLocale, config.promptLocale, activeTab)
   )
-  const [resetKey, setResetKey] = useState(0)
-
-  const readTemplate = useCallback(
-    (locale: SummaryPromptLocale, type: SummaryTemplateKey) =>
-      getSummaryTemplateForEdit(config.instructionsByLocale, locale, type),
-    [config.instructionsByLocale]
+  const [localSystemPrompt, setLocalSystemPrompt] = useState(
+    () =>
+      config.customGenerationSystemPromptByLocale?.[config.promptLocale]?.trim() ||
+      getDefaultCustomGenerationSystemPrompt(config.promptLocale)
   )
+  const [resetKey, setResetKey] = useState(0)
+  const [partnerPickerOpen, setPartnerPickerOpen] = useState(false)
+  const systemPromptDirtyRef = useRef(false)
+  const localSystemPromptRef = useRef(localSystemPrompt)
+  const activePromptLocaleRef = useRef(activePromptLocale)
+  const configRef = useRef(config)
+  const onChangeRef = useRef(onChange)
+  localSystemPromptRef.current = localSystemPrompt
+  activePromptLocaleRef.current = activePromptLocale
+  configRef.current = config
+  onChangeRef.current = onChange
+
+  const lookback =
+    config.sharedMemoryLookbackMonths || DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS
+  const selectedPartner = assistants.find((a) => a.id === config.generationAssistantId)
+
+  useEffect(() => {
+    setDraftTemplates(config.instructionsByLocale)
+  }, [config.instructionsByLocale])
 
   const patchLocaleTemplates = useCallback(
     (
@@ -52,41 +100,104 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
       type: SummaryTemplateKey,
       text: string
     ): Partial<Record<SummaryPromptLocale, SummaryTemplatesMap>> => ({
-      ...config.instructionsByLocale,
+      ...draftTemplates,
       [locale]: {
-        ...config.instructionsByLocale[locale],
+        ...draftTemplates[locale],
         [type]: text
       }
     }),
-    [config.instructionsByLocale]
+    [draftTemplates]
   )
 
-  const flushLocalToConfig = useCallback(
-    (locale: SummaryPromptLocale, type: SummaryTemplateKey, text: string) => {
-      onChange({
-        ...config,
-        instructionsByLocale: patchLocaleTemplates(locale, type, text)
-      })
-    },
-    [config, onChange, patchLocaleTemplates]
+  const patchSystemPrompt = useCallback(
+    (
+      locale: SummaryPromptLocale,
+      text: string
+    ): Partial<Record<SummaryPromptLocale, string>> => ({
+      ...config.customGenerationSystemPromptByLocale,
+      [locale]: text
+    }),
+    [config.customGenerationSystemPromptByLocale]
   )
+
+  /** Persist non-template settings; always flush current system-prompt draft via refs. */
+  const emitSettings = useCallback((patch: Partial<SummaryInstructionsConfig> = {}) => {
+    const locale = activePromptLocaleRef.current
+    const text = localSystemPromptRef.current
+    const cfg = configRef.current
+    systemPromptDirtyRef.current = false
+    onChangeRef.current(
+      {
+        ...cfg,
+        customGenerationSystemPromptByLocale: {
+          ...cfg.customGenerationSystemPromptByLocale,
+          [locale]: text
+        },
+        ...patch
+      },
+      { includeTemplates: false }
+    )
+  }, [])
+
+  /** Typing / leave-page: don't rely only on blur (nav often skips it). */
+  useEffect(() => {
+    if (!systemPromptDirtyRef.current) return
+    const timer = window.setTimeout(() => {
+      emitSettings()
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [localSystemPrompt, emitSettings])
+
+  useEffect(() => {
+    return () => {
+      if (!systemPromptDirtyRef.current) return
+      const locale = activePromptLocaleRef.current
+      const text = localSystemPromptRef.current
+      const cfg = configRef.current
+      systemPromptDirtyRef.current = false
+      onChangeRef.current(
+        {
+          ...cfg,
+          customGenerationSystemPromptByLocale: {
+            ...cfg.customGenerationSystemPromptByLocale,
+            [locale]: text
+          }
+        },
+        { includeTemplates: false }
+      )
+    }
+  }, [])
 
   const handleTabChange = (tab: SummaryTemplateKey) => {
-    flushLocalToConfig(activePromptLocale, activeTab, localText)
+    const nextDraft = patchLocaleTemplates(activePromptLocale, activeTab, localText)
+    setDraftTemplates(nextDraft)
     setActiveTab(tab)
-    setLocalText(readTemplate(activePromptLocale, tab))
+    setLocalText(getSummaryTemplateForEdit(nextDraft, activePromptLocale, tab))
     setResetKey((prev) => prev + 1)
   }
 
   const handlePromptLocaleChange = (locale: SummaryPromptLocale) => {
-    const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, localText)
+    const nextDraft = patchLocaleTemplates(activePromptLocale, activeTab, localText)
+    const customGenerationSystemPromptByLocale = patchSystemPrompt(
+      activePromptLocale,
+      localSystemPrompt
+    )
+    setDraftTemplates(nextDraft)
     setActivePromptLocale(locale)
-    setLocalText(getSummaryTemplateForEdit(instructionsByLocale, locale, activeTab))
+    setLocalText(getSummaryTemplateForEdit(nextDraft, locale, activeTab))
+    systemPromptDirtyRef.current = false
+    setLocalSystemPrompt(
+      customGenerationSystemPromptByLocale[locale]?.trim() ||
+        getDefaultCustomGenerationSystemPrompt(locale)
+    )
     setResetKey((prev) => prev + 1)
-    onChange({
-      ...config,
-      instructionsByLocale
-    })
+    onChange(
+      {
+        ...config,
+        customGenerationSystemPromptByLocale
+      },
+      { includeTemplates: false }
+    )
   }
 
   /** Follow general-settings language → auto-select matching prompt locale. */
@@ -95,15 +206,42 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     setLocalText(
       getSummaryTemplateForEdit(config.instructionsByLocale, config.promptLocale, activeTab)
     )
+    setLocalSystemPrompt(
+      config.customGenerationSystemPromptByLocale?.[config.promptLocale]?.trim() ||
+        getDefaultCustomGenerationSystemPrompt(config.promptLocale)
+    )
     setResetKey((prev) => prev + 1)
+    // Only react to generation-locale changes from general settings.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: activeTab kept as-is
   }, [config.promptLocale])
 
   const handleSave = () => {
-    const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, localText)
-    onChange({
-      ...config,
-      instructionsByLocale
-    })
+    if (config.generationMode === 'assistant' && !config.generationAssistantId) {
+      toast.showError(
+        t(
+          'settings.summary_generation_assistant_required',
+          'Select a partner, or switch back to custom prompt mode'
+        )
+      )
+      return
+    }
+    const instructionsByLocale = patchLocaleTemplates(
+      activePromptLocale,
+      activeTab,
+      localText
+    )
+    setDraftTemplates(instructionsByLocale)
+    onChange(
+      {
+        ...config,
+        instructionsByLocale,
+        customGenerationSystemPromptByLocale: patchSystemPrompt(
+          activePromptLocale,
+          localSystemPrompt
+        )
+      },
+      { includeTemplates: true }
+    )
     toast.showSuccess(t('settings.saved', 'Saved'))
   }
 
@@ -112,11 +250,47 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     const defaultText = onResetTemplate(activeTab, activePromptLocale)
     setLocalText(defaultText)
     setResetKey((prev) => prev + 1)
-    onChange({
-      ...config,
-      instructionsByLocale: patchLocaleTemplates(activePromptLocale, activeTab, defaultText)
-    })
+    const instructionsByLocale = patchLocaleTemplates(
+      activePromptLocale,
+      activeTab,
+      defaultText
+    )
+    setDraftTemplates(instructionsByLocale)
+    onChange(
+      {
+        ...config,
+        instructionsByLocale,
+        customGenerationSystemPromptByLocale: patchSystemPrompt(
+          activePromptLocale,
+          localSystemPrompt
+        )
+      },
+      { includeTemplates: true }
+    )
     toast.show(t('summary.reset_template_success', 'Default template restored'))
+  }
+
+  const handleResetSystemPrompt = () => {
+    const defaultText = getDefaultCustomGenerationSystemPrompt(activePromptLocale)
+    systemPromptDirtyRef.current = false
+    setLocalSystemPrompt(defaultText)
+    onChange(
+      {
+        ...config,
+        customGenerationSystemPromptByLocale: patchSystemPrompt(
+          activePromptLocale,
+          defaultText
+        )
+      },
+      { includeTemplates: false }
+    )
+    toast.show(t('summary.reset_template_success', 'Default template restored'))
+  }
+
+  const setLookback = (raw: number) => {
+    emitSettings({
+      sharedMemoryLookbackMonths: clampSharedMemoryLookbackMonths(raw)
+    })
   }
 
   const tabs = useMemo(
@@ -134,45 +308,273 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     SUMMARY_PROMPT_LOCALE_OPTIONS.find((l) => l.id === activePromptLocale)?.fallback ??
     activePromptLocale
 
+  const sliderMax = Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookback)
+  const sliderPct =
+    ((lookback - SHARED_MEMORY_LOOKBACK_MIN) * 100) /
+    Math.max(1, sliderMax - SHARED_MEMORY_LOOKBACK_MIN)
+
+  const renderPartnerAvatar = (assistant?: SummarySettingsAssistantOption) => {
+    const src = resolveDesktopAssistantAvatarSrc(assistant?.avatarPath)
+    return (
+      <span
+        className={styles.partnerAvatar}
+        aria-hidden
+        style={{ backgroundImage: `url("${src}")` }}
+      />
+    )
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.cardSection}>
         <div className={styles.cardTitleLine}>
-          <span>📥 {t('settings.monthly_summary_data_source', 'Monthly summary data source')}</span>
+          <span>{t('settings.summary_generation_mode_title', 'Generation mode')}</span>
+        </div>
+        <p className={styles.cardDesc}>
+          {t(
+            'settings.summary_generation_mode_desc',
+            'Use a custom generation prompt with the global summary model, or reuse a partner’s persona and model.'
+          )}
+        </p>
+        <div className={styles.btnGroup}>
+          <button
+            type="button"
+            className={`${styles.segBtn} ${config.generationMode === 'prompt' ? styles.active : ''}`}
+            onClick={() => emitSettings({ generationMode: 'prompt' })}
+          >
+            {t('settings.summary_generation_mode_prompt', 'Custom prompt')}
+          </button>
+          <button
+            type="button"
+            className={`${styles.segBtn} ${config.generationMode === 'assistant' ? styles.active : ''}`}
+            onClick={() => {
+              if (assistants.length === 0) {
+                toast.showError(
+                  t(
+                    'settings.summary_generation_assistant_required',
+                    'Select a partner, or switch back to custom prompt mode'
+                  )
+                )
+                return
+              }
+              const nextId =
+                config.generationAssistantId &&
+                assistants.some((a) => a.id === config.generationAssistantId)
+                  ? config.generationAssistantId
+                  : assistants[0]!.id
+              emitSettings({
+                generationMode: 'assistant',
+                generationAssistantId: nextId
+              })
+            }}
+          >
+            {t('settings.summary_generation_mode_assistant', 'Reuse partner')}
+          </button>
+        </div>
+
+        {config.generationMode === 'prompt' && (
+          <div className={styles.systemPromptBlock}>
+            <div className={styles.subsectionTitle}>
+              {t(
+                'settings.summary_custom_system_prompt_title',
+                'Generation assistant prompt'
+              )}
+            </div>
+            <p className={styles.cardDesc}>
+              {t(
+                'settings.summary_custom_system_prompt_desc',
+                'System prompt for the summary-writing assistant in custom prompt mode. Empty falls back to the built-in default.'
+              )}
+            </p>
+            <div className={styles.langBar}>
+              {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
+                <button
+                  key={lang.id}
+                  type="button"
+                  className={`${styles.langChip} ${activePromptLocale === lang.id ? styles.langChipActive : ''} ${config.promptLocale === lang.id ? styles.langChipGeneration : ''}`}
+                  onClick={() => handlePromptLocaleChange(lang.id)}
+                >
+                  {t(lang.labelKey, lang.fallback)}
+                </button>
+              ))}
+            </div>
+            <textarea
+              className={styles.systemPromptArea}
+              value={localSystemPrompt}
+              onChange={(e) => {
+                systemPromptDirtyRef.current = true
+                setLocalSystemPrompt(e.target.value)
+              }}
+              onBlur={() => emitSettings()}
+              rows={8}
+              placeholder={t(
+                'settings.summary_custom_system_prompt_hint',
+                'e.g. You are a warm memory companion who writes concise, faithful summaries…'
+              )}
+            />
+            <div className={styles.actionsRow}>
+              <button type="button" className={styles.resetBtn} onClick={handleResetSystemPrompt}>
+                {t('settings.restore_default', 'Restore default')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {config.generationMode === 'assistant' && (
+          <div className={styles.assistantPickRow}>
+            <div className={styles.subsectionTitle}>
+              {t('settings.summary_generation_assistant_label', 'Summary generation partner')}
+            </div>
+            <button
+              type="button"
+              className={styles.partnerCard}
+              onClick={() => setPartnerPickerOpen(true)}
+            >
+              {renderPartnerAvatar(selectedPartner)}
+              <span className={styles.partnerMeta}>
+                <span className={styles.partnerName}>
+                  {selectedPartner?.name ||
+                    t('settings.summary_generation_assistant_placeholder', 'Choose a partner')}
+                </span>
+                <span className={styles.partnerHint}>
+                  {t('settings.summary_generation_partner_change', 'Tap to change')}
+                </span>
+              </span>
+            </button>
+          </div>
+        )}
+
+        <div className={styles.injectRow}>
+          <div className={styles.injectText}>
+            <div className={styles.subsectionTitle}>
+              {t(
+                'settings.summary_inject_shared_memory',
+                'Inject shared memory before generation'
+              )}
+            </div>
+            <p className={styles.cardDesc}>
+              {t(
+                'settings.summary_inject_shared_memory_desc',
+                'When on, shared memory from the months before this period is inserted between the template and this period’s raw data for continuity.'
+              )}
+            </p>
+          </div>
+          <Switch
+            checked={config.injectSharedMemoryBeforeGenerate}
+            onChange={(e) =>
+              emitSettings({
+                injectSharedMemoryBeforeGenerate: e.target.checked
+              })
+            }
+          />
+        </div>
+
+        {config.injectSharedMemoryBeforeGenerate && (
+          <div className={styles.lookbackSliderBlock}>
+            <div className={styles.lookbackLabelRow}>
+              <label className={styles.fieldLabel} htmlFor="summary-inject-lookback">
+                {t('settings.summary_inject_lookback_label', 'Lookback months')}
+              </label>
+              <input
+                id="summary-inject-lookback"
+                type="number"
+                min={SHARED_MEMORY_LOOKBACK_MIN}
+                className={styles.lookbackInput}
+                value={lookback}
+                onChange={(e) => setLookback(Number(e.target.value))}
+              />
+            </div>
+            <input
+              type="range"
+              min={SHARED_MEMORY_LOOKBACK_MIN}
+              max={sliderMax}
+              value={Math.min(lookback, sliderMax)}
+              onChange={(e) => setLookback(Number(e.target.value))}
+              className={styles.lookbackSlider}
+              style={{ backgroundSize: `${sliderPct}% 100%` }}
+              aria-label={t('settings.summary_inject_lookback_label', 'Lookback months')}
+            />
+          </div>
+        )}
+
+        <div className={styles.divider} />
+
+        <div className={styles.cardTitleLine}>
+          <span>
+            {t('settings.summary_data_sources_title', 'What each summary reads')}
+          </span>
+        </div>
+        <p className={styles.cardDesc}>
+          {t(
+            'settings.summary_data_sources_desc',
+            'When generating each type of summary, BaiShou reads the following sources for that period.'
+          )}
+        </p>
+        <ul className={styles.dataSourceList}>
+          <li>
+            {t(
+              'settings.summary_data_source_weekly',
+              'Weekly: diaries within that week'
+            )}
+          </li>
+          <li>
+            {t(
+              'settings.summary_data_source_monthly',
+              'Monthly: always reads this month’s weeklies; the switch below adds this month’s diaries'
+            )}
+          </li>
+          <li>
+            {t(
+              'settings.summary_data_source_quarterly',
+              'Quarterly: monthly summaries in that quarter'
+            )}
+          </li>
+          <li>
+            {t(
+              'settings.summary_data_source_yearly',
+              'Yearly: quarterly summaries in that year'
+            )}
+          </li>
+        </ul>
+
+        <div className={styles.cardTitleLine}>
+          <span>{t('settings.monthly_summary_data_source', 'Monthly summary data source')}</span>
         </div>
         <p className={styles.cardDesc}>
           {t(
             'settings.monthly_summary_data_source_desc',
-            'Choose how underlying facts are gathered for long-cycle AI summaries.'
+            'Both options read this month’s weeklies; optionally also include this month’s diaries for more detail'
           )}
         </p>
 
         <div className={styles.btnGroup}>
           <button
+            type="button"
             className={`${styles.segBtn} ${config.monthlySummarySource === 'weeklies' ? styles.active : ''}`}
-            onClick={() => onChange({ ...config, monthlySummarySource: 'weeklies' })}
+            onClick={() => emitSettings({ monthlySummarySource: 'weeklies' })}
           >
-            <span>📅</span>{' '}
-            {t('settings.read_only_weeklies', 'Aggregate weekly summaries only (faster)')}
+            {t('settings.read_only_weeklies', 'Weeklies only')}
           </button>
           <button
+            type="button"
             className={`${styles.segBtn} ${config.monthlySummarySource === 'diaries' ? styles.active : ''}`}
-            onClick={() => onChange({ ...config, monthlySummarySource: 'diaries' })}
+            onClick={() => emitSettings({ monthlySummarySource: 'diaries' })}
           >
-            <span>📄</span>{' '}
-            {t('settings.read_all_diaries', 'Read all diary entries (higher fidelity)')}
+            {t('settings.read_all_diaries', 'Weeklies + diaries')}
           </button>
         </div>
 
         <div className={styles.divider} />
 
         <div className={styles.cardTitleLine}>
-          <span>📝 {t('settings.summary_ai_prompt_title', 'AI summary prompt templates')}</span>
+          <span>
+            {t('settings.summary_generation_templates_title', 'Summary generation templates')}
+          </span>
         </div>
         <p className={styles.cardDesc}>
           {t(
-            'settings.summary_ai_prompt_desc',
-            'System prompts used when BaiShou runs automated weekly, monthly, quarterly and yearly summaries. Customize per language below.'
+            'settings.summary_generation_templates_desc',
+            'User-side templates for weekly, monthly, quarterly and yearly summaries. Customize per language below.'
           )}
         </p>
 
@@ -212,6 +614,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              type="button"
               className={`${styles.tabBtn} ${activeTab === tab.id ? styles.active : ''}`}
               onClick={() => handleTabChange(tab.id)}
             >
@@ -242,6 +645,45 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={partnerPickerOpen}
+        onClose={() => setPartnerPickerOpen(false)}
+        title={t('settings.summary_generation_assistant_placeholder', 'Choose a partner')}
+        closeOnOverlayClick
+      >
+        <div className={styles.partnerPickerList}>
+          {assistants.length === 0 ? (
+            <p className={styles.cardDesc}>
+              {t(
+                'settings.summary_generation_assistant_required',
+                'Create a partner first, then come back.'
+              )}
+            </p>
+          ) : (
+            assistants.map((a) => {
+              const active = a.id === config.generationAssistantId
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`${styles.partnerPickerItem} ${active ? styles.partnerPickerItemActive : ''}`}
+                  onClick={() => {
+                    emitSettings({
+                      generationMode: 'assistant',
+                      generationAssistantId: a.id
+                    })
+                    setPartnerPickerOpen(false)
+                  }}
+                >
+                  {renderPartnerAvatar(a)}
+                  <span className={styles.partnerName}>{a.name}</span>
+                </button>
+              )
+            })
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

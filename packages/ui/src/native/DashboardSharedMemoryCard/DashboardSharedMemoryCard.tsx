@@ -13,16 +13,17 @@ import {
   Platform
 } from 'react-native'
 import { Copy, Quote, TextQuote } from 'lucide-react-native'
-import type { SharedMemoryCopyPreview } from '@baishou/shared'
+import {
+  SHARED_MEMORY_LOOKBACK_MIN,
+  SHARED_MEMORY_LOOKBACK_SLIDER_BASE,
+  type SharedMemoryCopyPreview
+} from '@baishou/shared'
 import { DesktopStyleSlider } from './DesktopStyleSlider'
 import { useNativeTheme } from '../../native/theme'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { Input } from '../Input/Input'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { formatCompactTokenCount } from '../../shared/token-usage-display'
-
-const SLIDER_MIN = 1
-const SLIDER_BASE_MAX = 60
 
 interface DashboardSharedMemoryCardProps {
   lookbackMonths: number
@@ -222,7 +223,7 @@ function LookbackMonthsField({
 
   const commitMonths = useCallback(
     (raw: number) => {
-      const clamped = Math.max(SLIDER_MIN, Math.round(raw))
+      const clamped = Math.max(SHARED_MEMORY_LOOKBACK_MIN, Math.round(raw))
       setDisplayMonths(clamped)
       syncNumberDisplay(clamped)
       if (clamped !== lookbackMonths) {
@@ -240,7 +241,7 @@ function LookbackMonthsField({
     [syncNumberDisplay]
   )
 
-  const sliderMax = Math.max(SLIDER_BASE_MAX, lookbackMonths)
+  const sliderMax = Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookbackMonths)
 
   return (
     <View style={fieldStyles.controls}>
@@ -268,7 +269,7 @@ function LookbackMonthsField({
             if (digits.length === 0) return
             const n = parseInt(digits, 10)
             if (!Number.isNaN(n)) {
-              setDisplayMonths(Math.max(SLIDER_MIN, n))
+              setDisplayMonths(Math.max(SHARED_MEMORY_LOOKBACK_MIN, n))
             }
           }}
           onEndEditing={() => {
@@ -284,7 +285,7 @@ function LookbackMonthsField({
       <View style={fieldStyles.sliderWrap}>
         <DesktopStyleSlider
           value={lookbackMonths}
-          minimumValue={SLIDER_MIN}
+          minimumValue={SHARED_MEMORY_LOOKBACK_MIN}
           maximumValue={sliderMax}
           step={1}
           onPreviewChange={handleSliderPreview}
