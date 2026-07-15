@@ -1,10 +1,15 @@
 import { Platform } from 'react-native'
 import Constants from 'expo-constants'
-import * as Clipboard from 'expo-clipboard'
+import * as Sharing from 'expo-sharing'
 import { APP_VERSION_NUMBER } from '../app-version'
 import { getAppCacheDirectory } from './mobile-app-paths'
 import { stripFileScheme, toFileUri } from './android-external-fs'
-import { getInfoAsync, readAsStringAsync, writeAsStringAsync } from './mobile-sandbox-fs'
+import {
+  deleteAsync,
+  getInfoAsync,
+  readAsStringAsync,
+  writeAsStringAsync
+} from './mobile-sandbox-fs'
 import {
   DiagnosticLogBuffer,
   trimDiagnosticText,
@@ -24,6 +29,7 @@ export {
 const MAX_MEMORY_ENTRIES = 400
 const MAX_PERSISTED_BYTES = 256 * 1024
 const LOG_FILENAME = 'baishou_diagnostic.log'
+const EXPORT_TXT_PREFIX = 'baishou_diagnostic'
 const LOG_VERSION_MARKER = '# BaiShouDiagnosticLogVersion: '
 const FLUSH_DEBOUNCE_MS = 250
 
@@ -37,6 +43,14 @@ let capturingConsole = false
 function getLogFilePath(): string {
   const base = stripFileScheme(getAppCacheDirectory())
   const joined = base.endsWith('/') ? `${base}${LOG_FILENAME}` : `${base}/${LOG_FILENAME}`
+  return toFileUri(joined)
+}
+
+function getExportTxtFilePath(): string {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const fileName = `${EXPORT_TXT_PREFIX}_${stamp}.txt`
+  const base = stripFileScheme(getAppCacheDirectory())
+  const joined = base.endsWith('/') ? `${base}${fileName}` : `${base}/${fileName}`
   return toFileUri(joined)
 }
 
@@ -211,10 +225,33 @@ export async function buildDiagnosticLogExportText(): Promise<string> {
   return `${buildDiagnosticLogHeader()}${body || '(empty)'}`
 }
 
-export async function copyDiagnosticLogToClipboard(): Promise<number> {
+/**
+ * 将诊断日志写成 TXT，并调起系统分享面板供用户发送。
+ * 分享不可用时抛出 `SHARE_UNAVAILABLE`。
+ */
+export async function shareDiagnosticLogAsTxt(options?: {
+  dialogTitle?: string
+}): Promise<{ charCount: number; fileName: string }> {
   const text = await buildDiagnosticLogExportText()
-  await Clipboard.setStringAsync(text)
-  return text.length
+  const fileUri = getExportTxtFilePath()
+  const fileName = stripFileScheme(fileUri).split('/').pop() ?? `${EXPORT_TXT_PREFIX}.txt`
+
+  await writeAsStringAsync(fileUri, text)
+
+  try {
+    if (!(await Sharing.isAvailableAsync())) {
+      throw new Error('SHARE_UNAVAILABLE')
+    }
+    await Sharing.shareAsync(fileUri, {
+      mimeType: 'text/plain',
+      dialogTitle: options?.dialogTitle,
+      UTI: 'public.plain-text'
+    })
+  } finally {
+    await deleteAsync(fileUri, { idempotent: true }).catch(() => {})
+  }
+
+  return { charCount: text.length, fileName }
 }
 
 export async function bootstrapDiagnosticLogFromDisk(): Promise<void> {
