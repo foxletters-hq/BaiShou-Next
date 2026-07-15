@@ -1,8 +1,9 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Copy, HelpCircle, Loader2, TextQuote } from 'lucide-react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import {
+  clampSharedMemoryLookbackMonths,
   SHARED_MEMORY_LOOKBACK_MIN,
   SHARED_MEMORY_LOOKBACK_SLIDER_BASE
 } from '@baishou/shared'
@@ -116,6 +117,29 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
   const { t } = useTranslation()
   const dialog = useDialog()
   const [copying, setCopying] = useState(false)
+  const [lookbackDraft, setLookbackDraft] = useState(lookbackMonths)
+  const lookbackDraftRef = useRef(lookbackMonths)
+  const draggingRef = useRef(false)
+  lookbackDraftRef.current = lookbackDraft
+
+  useEffect(() => {
+    if (draggingRef.current) return
+    setLookbackDraft(lookbackMonths)
+  }, [lookbackMonths])
+
+  const commitLookback = useCallback(
+    (raw?: number) => {
+      draggingRef.current = false
+      const next = clampSharedMemoryLookbackMonths(
+        raw === undefined ? lookbackDraftRef.current : raw
+      )
+      setLookbackDraft(next)
+      if (next !== lookbackMonths) {
+        onMonthsChanged(next)
+      }
+    },
+    [lookbackMonths, onMonthsChanged]
+  )
 
   const handleCopyPress = useCallback(async () => {
     if (copying) return
@@ -139,6 +163,11 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       onCopyPrefixChange(next)
     }
   }, [copyPrefix, dialog, onCopyPrefixChange, t])
+
+  const sliderMax = Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookbackDraft)
+  const sliderPct =
+    ((lookbackDraft - SHARED_MEMORY_LOOKBACK_MIN) * 100) /
+    Math.max(1, sliderMax - SHARED_MEMORY_LOOKBACK_MIN)
 
   return (
     <div className="dashboard-shared-memory-card">
@@ -186,12 +215,16 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
           <input
             type="number"
             min={SHARED_MEMORY_LOOKBACK_MIN}
-            value={lookbackMonths}
+            value={lookbackDraft}
             onChange={(e) =>
-              onMonthsChanged(
-                Math.max(SHARED_MEMORY_LOOKBACK_MIN, parseInt(e.target.value) || 1)
+              setLookbackDraft(
+                clampSharedMemoryLookbackMonths(parseInt(e.target.value, 10) || 1)
               )
             }
+            onBlur={() => commitLookback()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur()
+            }}
             className="sm-number-input"
           />
         </div>
@@ -199,13 +232,30 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
           <input
             type="range"
             min={SHARED_MEMORY_LOOKBACK_MIN}
-            max={Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookbackMonths)}
-            value={lookbackMonths}
-            onChange={(e) => onMonthsChanged(Number(e.target.value))}
-            className="sm-slider"
-            style={{
-              backgroundSize: `${((lookbackMonths - SHARED_MEMORY_LOOKBACK_MIN) * 100) / Math.max(1, Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookbackMonths) - SHARED_MEMORY_LOOKBACK_MIN)}% 100%`
+            max={sliderMax}
+            step={1}
+            value={Math.min(lookbackDraft, sliderMax)}
+            onChange={(e) => {
+              draggingRef.current = true
+              setLookbackDraft(clampSharedMemoryLookbackMonths(Number(e.target.value)))
             }}
+            onPointerUp={() => commitLookback()}
+            onMouseUp={() => commitLookback()}
+            onTouchEnd={() => commitLookback()}
+            onKeyUp={(e) => {
+              if (
+                e.key === 'ArrowLeft' ||
+                e.key === 'ArrowRight' ||
+                e.key === 'Home' ||
+                e.key === 'End' ||
+                e.key === 'PageUp' ||
+                e.key === 'PageDown'
+              ) {
+                commitLookback()
+              }
+            }}
+            className="sm-slider"
+            style={{ backgroundSize: `${sliderPct}% 100%` }}
           />
         </div>
       </div>
