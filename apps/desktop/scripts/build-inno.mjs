@@ -101,6 +101,22 @@ if (!iscc) {
   )
 }
 
+/** @param {string[]} args */
+function runSignWindows(args) {
+  const signScript = join(desktopRoot, 'scripts', 'sign-windows.mjs')
+  const result = spawnSync(process.execPath, [signScript, ...args], {
+    cwd: desktopRoot,
+    stdio: 'inherit',
+    env: process.env
+  })
+  if (result.status !== 0) {
+    fail(`Windows 签名步骤失败（退出码 ${result.status ?? 'unknown'}）`)
+  }
+}
+
+// 先签 win-unpacked 主程序，再打进安装包；最后再签 Setup.exe
+runSignWindows(['--unpacked'])
+
 console.log(`[build-inno] 版本: ${version}`)
 console.log(`[build-inno] 编译器: ${iscc}`)
 console.log(`[build-inno] 输出: dist/${outputBase}.exe`)
@@ -124,5 +140,7 @@ const installerPath = join(desktopRoot, 'dist', `${outputBase}.exe`)
 if (!existsSync(installerPath)) {
   fail(`编译完成但未找到安装包: ${installerPath}`)
 }
+
+runSignWindows([installerPath])
 
 console.log(`[build-inno] 完成: ${installerPath}`)

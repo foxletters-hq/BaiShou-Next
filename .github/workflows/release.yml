@@ -264,6 +264,13 @@ jobs:
 
       - name: Build Windows installer
         run: pnpm --filter @baishou/desktop build:win
+        env:
+          # 配置后会对 BaiShou.exe 与 Setup.exe 做 Authenticode 签名；未配置则跳过（会有 SmartScreen 警告）
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          WINDOWS_CERT_TIMESTAMP_URL: ${{ secrets.WINDOWS_CERT_TIMESTAMP_URL }}
+          # 正式发版建议在仓库 secrets 配好证书后改为 '1'，强制未签名即失败
+          WINDOWS_SIGN_REQUIRED: ${{ vars.WINDOWS_SIGN_REQUIRED }}
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
