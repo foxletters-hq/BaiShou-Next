@@ -1,6 +1,6 @@
 {
   "name": "@baishou/desktop",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "packageManager": "pnpm@10.0.0",
   "description": "白守 (BaiShou) — 记录你珍贵的回忆",
   "main": "./out/main/index.js",
