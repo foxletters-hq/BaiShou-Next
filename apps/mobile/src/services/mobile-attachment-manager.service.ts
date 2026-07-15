@@ -87,6 +87,26 @@ export class MobileAttachmentManagerService implements IAttachmentManager {
     throw new Error(`AVATAR_FILE_NOT_FOUND: ${relativePath}`)
   }
 
+  async deleteAvatar(relativePath: string): Promise<boolean> {
+    const persisted = normalizePersistedAvatarPath(relativePath)
+    if (!persisted?.startsWith('avatars/')) return false
+    const filename = basename(persisted)
+    if (!filename || filename.includes('..')) return false
+
+    let removed = false
+    for (const dir of await this.listAvatarCandidateDirs(persisted)) {
+      const absPath = joinPath(dir, filename)
+      try {
+        if (!(await this.fileSystem.exists(absPath))) continue
+        await this.fileSystem.unlink(absPath)
+        removed = true
+      } catch (e) {
+        console.warn(`[MobileAttachmentManager] Failed to delete avatar: ${absPath}`, e)
+      }
+    }
+    return removed
+  }
+
   async listOrphans(activeSessionIds: Set<string>): Promise<AttachmentItem[]> {
     const groups = await this.listSessionGroups(activeSessionIds)
     return groups

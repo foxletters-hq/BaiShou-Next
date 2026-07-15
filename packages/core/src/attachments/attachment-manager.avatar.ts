@@ -187,4 +187,54 @@ export class AttachmentAvatarOps {
     console.warn(`[AttachmentManager] Avatar file not found: ${relativePath}`)
     throw new Error('AVATAR_FILE_NOT_FOUND')
   }
+
+  /**
+   * 删除自定义头像：vault Attachments/avatars 下的文件，以及桌面全局 AgentAvatars 镜像。
+   */
+  async deleteAvatar(relativePath: string): Promise<boolean> {
+    const key = normalizePersistedAvatarKey(relativePath)
+    if (!key?.startsWith('avatars/')) return false
+
+    const filename = key.split(/[/\\]/).pop() || ''
+    if (!filename || filename.includes('..')) return false
+
+    const dirs = await this.getAvatarsDirectoriesForResolve(key)
+    // 再补全局目录（伙伴镜像）；listAgentAvatarSearchDirectories 通常已包含，这里兜底
+    const extended = this.extendedProvider()
+    if (extended.getGlobalAgentAvatarsDirectory && isPartnerAvatarFileName(filename)) {
+      try {
+        dirs.push(await extended.getGlobalAgentAvatarsDirectory())
+      } catch {
+        // ignore
+      }
+    }
+
+    const uniqueDirs = [...new Set(dirs.map((d) => path.normalize(d)))]
+    let removed = false
+    for (const dir of uniqueDirs) {
+      const absPath = path.join(dir, filename)
+      try {
+        if (!existsSync(absPath)) continue
+        await fs.unlink(absPath)
+        removed = true
+      } catch (e) {
+        console.warn(`[AttachmentManager] Failed to delete avatar: ${absPath}`, e)
+      }
+    }
+    return removed
+  }
+}
+
+function isPartnerAvatarFileName(filename: string): boolean {
+  return filename.startsWith('agent_')
+}
+
+/** 规范为 avatars/… 相对键；非头像路径返回 null */
+function normalizePersistedAvatarKey(relativePath: string): string | null {
+  const trimmed = (relativePath || '').trim().replace(/\\/g, '/')
+  if (!trimmed) return null
+  if (trimmed.startsWith('avatars/')) return trimmed
+  const idx = trimmed.toLowerCase().lastIndexOf('avatars/')
+  if (idx < 0) return null
+  return trimmed.slice(idx)
 }

@@ -29,6 +29,10 @@ export class AttachmentManagerService implements IAttachmentManager {
     return this.avatarOps.resolveAvatarPath(...args)
   }
 
+  deleteAvatar(...args: Parameters<AttachmentAvatarOps['deleteAvatar']>) {
+    return this.avatarOps.deleteAvatar(...args)
+  }
+
   listOrphans(...args: Parameters<AttachmentSessionOps['listOrphans']>) {
     return this.sessionOps.listOrphans(...args)
   }
