@@ -115,9 +115,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
 
   if (!displayContent) return null
 
-  // chat / ancillary 全程 Legacy：RN 测高稳定，避免
-  // 1) Enriched 少报裁切末行  2) HeightGuard 估高留白  3) 流式→落盘切换渲染器高度闪动
-  if (variant === 'chat' || variant === 'ancillary') {
+  // default / chat / ancillary 全程 Legacy：RN 测高稳定，避免
+  // 1) Enriched 少报裁切末行（总结详情白卡片底部半行裁切）
+  // 2) HeightGuard 估高留白  3) 流式→落盘切换渲染器高度闪动
+  // preview 仍走 Enriched（卡片固定高度 + overflow hidden）
+  if (variant === 'default' || variant === 'chat' || variant === 'ancillary') {
     return <LegacyMarkdownRenderer {...props} content={displayContent} />
   }
 
@@ -144,8 +146,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
 }
 
 const styles = StyleSheet.create({
+  /** ScrollView 内勿用 flex:1，否则测高/测宽异常导致正文被裁切 */
   containerDefault: {
-    flex: 1
+    alignSelf: 'stretch',
+    width: '100%',
+    minWidth: 0
   },
   containerCompact: {
     alignSelf: 'stretch',
