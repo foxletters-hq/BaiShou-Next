@@ -198,13 +198,13 @@
 }
 
 .lang-chip.active {
-  background: transparent;
-  border-width: 1.5px;
-  border-color: rgba(0, 0, 0, 0.24);
+  background: var(--color-primary-light, rgba(91, 168, 245, 0.18));
+  border-color: var(--color-primary, #5ba8f5);
   color: var(--text-primary, #1a1a1a);
   font-weight: 600;
 }
 
 [data-theme='dark'] .lang-chip.active {
-  border-color: rgba(255, 255, 255, 0.32);
+  background: var(--color-primary-light, rgba(91, 168, 245, 0.22));
+  border-color: var(--color-primary, #5ba8f5);
 }
