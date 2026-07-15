@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { SHORTCUT_TRACE_CHAIN, traceCall, normalizeToolManagementConfig } from '@baishou/shared'
+import { SHORTCUT_TRACE_CHAIN, traceCall, normalizeToolManagementConfig, stripLegacyDefaultSummaryTemplates } from '@baishou/shared'
 import { systemSettingsTable } from '../schema/system-settings'
 
 const TRACED_SETTINGS_KEYS = new Set(['prompt_shortcuts_v2', 'prompt_shortcuts'])
@@ -202,7 +202,8 @@ export class SettingsRepository {
   }
 
   async getSummaryConfig(): Promise<SummaryConfig> {
-    return (await this.get<SummaryConfig>('summary_config')) ?? DEFAULT_SUMMARY_CONFIG
+    const raw = (await this.get<SummaryConfig>('summary_config')) ?? DEFAULT_SUMMARY_CONFIG
+    return stripLegacyDefaultSummaryTemplates(raw).config
   }
   async setSummaryConfig(config: SummaryConfig): Promise<void> {
     await this.set('summary_config', config)

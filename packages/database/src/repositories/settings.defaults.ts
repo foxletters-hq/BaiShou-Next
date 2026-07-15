@@ -258,7 +258,10 @@ export const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
 }
 
 export const DEFAULT_SUMMARY_CONFIG: SummaryConfig = {
-  instructions: {}
+  instructions: {},
+  generationMode: 'prompt',
+  injectSharedMemoryBeforeGenerate: false
+  // customGenerationSystemPromptByLocale intentionally omitted — empty falls back to built-in defaults
 }
 
 export const DEFAULT_DIARY_TEMPLATE_CONFIG: DiaryTemplateConfig = {}

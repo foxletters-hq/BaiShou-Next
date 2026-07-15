@@ -26,16 +26,24 @@ export class MissingSummaryDetector {
     private readonly summaryRepo: SummaryRepository
   ) {}
 
-  async getAllMissing(locale: string = 'zh'): Promise<MissingSummary[]> {
+  async getAllMissing(
+    locale: string = 'zh',
+    monthlySummarySource: 'weeklies' | 'diaries' = 'weeklies'
+  ): Promise<MissingSummary[]> {
     const allDiaries = await this.diaryRepo.list() // assuming list() returns all when no options passed
     const allSummaries = await this.summaryRepo.getSummaries()
 
     if (allDiaries.length === 0) return []
 
-    return this.detectMissing(allDiaries, allSummaries, locale)
+    return this.detectMissing(allDiaries, allSummaries, locale, monthlySummarySource)
   }
 
-  private detectMissing(diaries: Diary[], summaries: Summary[], locale: string): MissingSummary[] {
+  private detectMissing(
+    diaries: Diary[],
+    summaries: Summary[],
+    locale: string,
+    monthlySummarySource: 'weeklies' | 'diaries' = 'weeklies'
+  ): MissingSummary[] {
     const summaryMap: Record<string, Summary[]> = {
       [SummaryType.weekly]: [],
       [SummaryType.monthly]: [],
@@ -48,13 +56,19 @@ export class MissingSummaryDetector {
     }
 
     const weekly = this.getMissingWeekly(diaries, summaryMap[SummaryType.weekly] ?? [], locale)
-    const monthly = this.getMissingMonthly(
-      summaryMap[SummaryType.weekly] ?? [],
-      summaryMap[SummaryType.monthly] ?? [],
-      locale
-    )
+    const monthlies = summaryMap[SummaryType.monthly] ?? []
+    const weeklies = summaryMap[SummaryType.weekly] ?? []
+    const monthlyFromWeeklies = this.getMissingMonthly(weeklies, monthlies, locale)
+    const monthly =
+      monthlySummarySource === 'diaries'
+        ? this.mergeMissingMonthlyByMonth(monthlyFromWeeklies, this.getMissingMonthlyFromDiaries(
+            diaries,
+            monthlies,
+            locale
+          ))
+        : monthlyFromWeeklies
     const quarterly = this.getMissingQuarterly(
-      summaryMap[SummaryType.monthly] ?? [],
+      monthlies,
       summaryMap[SummaryType.quarterly] ?? [],
       locale
     )
@@ -189,6 +203,64 @@ export class MissingSummaryDetector {
       }
     }
     return missing
+  }
+
+  /** 月报数据源含日记时：该月有日记且尚无月报即可判缺失（与周记路径合并去重） */
+  private getMissingMonthlyFromDiaries(
+    diaries: Diary[],
+    monthlies: Summary[],
+    locale: string
+  ): MissingSummary[] {
+    if (diaries.length === 0) return []
+    const missing: MissingSummary[] = []
+    const now = new Date()
+
+    const monthsSet = new Set<string>()
+    for (const d of diaries) {
+      const year = d.date.getFullYear()
+      const month = d.date.getMonth()
+      monthsSet.add(`${year}-${month}`)
+    }
+
+    for (const key of monthsSet) {
+      const [yearStr, monthStr] = key.split('-')
+      const year = parseInt(yearStr!, 10)
+      const month = parseInt(monthStr!, 10)
+      const { start: mStart, end: mEnd } = monthBounds(year, month)
+
+      if (mEnd.getTime() > now.getTime()) continue
+
+      const hasDiaryInMonth = diaries.some(
+        (d) => d.date.getTime() >= mStart.getTime() && d.date.getTime() <= mEnd.getTime()
+      )
+      if (!hasDiaryInMonth) continue
+
+      const hasMonthly = monthlies.some(
+        (s) => s.startDate.getFullYear() === year && s.startDate.getMonth() === month
+      )
+
+      if (!hasMonthly) {
+        missing.push({
+          type: SummaryType.monthly,
+          startDate: mStart,
+          endDate: mEnd,
+          label: this.formatLabel(SummaryType.monthly, mStart, locale)
+        })
+      }
+    }
+    return missing
+  }
+
+  private mergeMissingMonthlyByMonth(
+    a: MissingSummary[],
+    b: MissingSummary[]
+  ): MissingSummary[] {
+    const map = new Map<string, MissingSummary>()
+    for (const item of [...a, ...b]) {
+      const key = `${item.startDate.getFullYear()}-${item.startDate.getMonth()}`
+      if (!map.has(key)) map.set(key, item)
+    }
+    return [...map.values()]
   }
 
   private getMissingQuarterly(

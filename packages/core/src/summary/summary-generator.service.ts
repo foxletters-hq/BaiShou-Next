@@ -6,6 +6,7 @@ import {
   getSummaryRawDataPrefix,
   getSummaryWeekNumber,
   formatLocalDate,
+  assembleSummaryGenerationPrompt,
   type SummaryPromptLocale
 } from '@baishou/shared'
 import { DiaryRepository, SummaryRepository } from '@baishou/database'
@@ -16,8 +17,42 @@ import {
   buildYearlyPrompt
 } from './summary-prompt-templates'
 
+export interface SummaryAiGenerateOptions {
+  system?: string
+  providerId?: string
+}
+
 export interface SummaryAiClient {
-  generateContent(prompt: string, modelId: string): Promise<string>
+  generateContent(
+    prompt: string,
+    modelId: string,
+    options?: SummaryAiGenerateOptions
+  ): Promise<string>
+}
+
+export interface SummaryGenerateOptions {
+  modelId?: string
+  providerId?: string
+  systemPrompt?: string
+  /** 覆盖构造时的模板（便于移动端每次任务热读配置） */
+  customTemplates?: Record<string, string>
+  promptLocale?: SummaryPromptLocale
+  /** 已组装的共同回忆正文；空字符串或缺省则不注入 */
+  sharedContextText?: string
+  /** 月报上下文：仅周记，或周记 + 本月日记 */
+  monthlySummarySource?: 'weeklies' | 'diaries'
+}
+
+function normalizeGenerateOptions(
+  modelIdOrOptions: string | SummaryGenerateOptions | undefined
+): Required<Pick<SummaryGenerateOptions, 'modelId'>> & SummaryGenerateOptions {
+  if (typeof modelIdOrOptions === 'string' || modelIdOrOptions === undefined) {
+    return { modelId: modelIdOrOptions ?? 'gpt-4' }
+  }
+  return {
+    ...modelIdOrOptions,
+    modelId: modelIdOrOptions.modelId ?? 'gpt-4'
+  }
 }
 
 export class SummaryGeneratorService {
@@ -29,8 +64,16 @@ export class SummaryGeneratorService {
     private readonly promptLocale: SummaryPromptLocale = 'zh'
   ) {}
 
-  async *generate(target: MissingSummary, modelId: string = 'gpt-4'): AsyncGenerator<string> {
+  async *generate(
+    target: MissingSummary,
+    modelIdOrOptions: string | SummaryGenerateOptions = 'gpt-4'
+  ): AsyncGenerator<string> {
     yield 'STATUS:reading_data'
+
+    const options = normalizeGenerateOptions(modelIdOrOptions)
+    const modelId = options.modelId
+    const templates = options.customTemplates ?? this.customTemplates
+    const promptLocale = options.promptLocale ?? this.promptLocale
 
     let contextData = ''
     let promptTemplate = ''
@@ -54,19 +97,23 @@ export class SummaryGeneratorService {
             week: weekNum,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.weekly,
-            locale: this.promptLocale
+            customTemplate: templates?.weekly,
+            locale: promptLocale
           })
           break
         case SummaryType.monthly:
-          contextData = await this.buildMonthlyContext(startDate, endDate)
+          contextData = await this.buildMonthlyContext(
+            startDate,
+            endDate,
+            options.monthlySummarySource
+          )
           promptTemplate = buildMonthlyPrompt({
             year,
             month,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.monthly,
-            locale: this.promptLocale
+            customTemplate: templates?.monthly,
+            locale: promptLocale
           })
           break
         case SummaryType.quarterly:
@@ -77,8 +124,8 @@ export class SummaryGeneratorService {
             quarter,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.quarterly,
-            locale: this.promptLocale
+            customTemplate: templates?.quarterly,
+            locale: promptLocale
           })
           break
         case SummaryType.yearly:
@@ -87,8 +134,8 @@ export class SummaryGeneratorService {
             year,
             start: startStr,
             end: endStr,
-            customTemplate: this.customTemplates?.yearly,
-            locale: this.promptLocale
+            customTemplate: templates?.yearly,
+            locale: promptLocale
           })
           break
       }
@@ -106,12 +153,21 @@ export class SummaryGeneratorService {
       )
       yield `STATUS:thinking_via_${modelId}`
 
-      const dataPrefix = getSummaryRawDataPrefix(this.promptLocale)
-      const combinedPrompt = `${promptTemplate}\n\n---\n\n${dataPrefix}\n\n${contextData}`
+      const dataPrefix = getSummaryRawDataPrefix(promptLocale)
+      const combinedPrompt = assembleSummaryGenerationPrompt({
+        promptTemplate,
+        dataPrefix,
+        contextData,
+        sharedContextText: options.sharedContextText,
+        promptLocale
+      })
       logger.info(
         `[SummaryGeneratorService] Dispatching prompt to AI client (Model: ${modelId})...`
       )
-      const generatedResult = await this.aiClient.generateContent(combinedPrompt, modelId)
+      const generatedResult = await this.aiClient.generateContent(combinedPrompt, modelId, {
+        system: options.systemPrompt,
+        providerId: options.providerId
+      })
 
       logger.info(
         `[SummaryGeneratorService] AI generation successfully retrieved. Content size: ${generatedResult.length} chars.`
@@ -145,7 +201,21 @@ export class SummaryGeneratorService {
       .join('\n\n')
   }
 
-  private async buildMonthlyContext(start: Date, end: Date): Promise<string> {
+  private async buildMonthlyContext(
+    start: Date,
+    end: Date,
+    source: 'weeklies' | 'diaries' = 'weeklies'
+  ): Promise<string> {
+    const weekliesText = await this.buildMonthlyWeekliesContext(start, end)
+    if (source !== 'diaries') {
+      return weekliesText
+    }
+
+    const diariesText = await this.buildWeeklyContext(start, end)
+    return [weekliesText, diariesText].filter((part) => part.trim().length > 0).join('\n\n')
+  }
+
+  private async buildMonthlyWeekliesContext(start: Date, end: Date): Promise<string> {
     const summaries = await this.summaryRepo.getSummaries({
       start: new Date(start.getTime() - 1)
     })

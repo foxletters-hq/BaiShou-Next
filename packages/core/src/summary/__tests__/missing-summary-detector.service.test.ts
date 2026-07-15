@@ -194,4 +194,39 @@ describe('MissingSummaryDetector', () => {
 
     vi.useRealTimers()
   })
+
+  it('should detect missing monthly from diaries without requiring weeklies', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-15T12:00:00Z'))
+
+    const fakeDiary = makeDiary('2026-02-10T12:00:00Z')
+    const detector = new MissingSummaryDetector({} as any, {} as any)
+    const missing = (detector as any).detectMissing([fakeDiary], [], 'zh', 'diaries')
+
+    const monthlies = missing.filter((m: any) => m.type === SummaryType.monthly)
+    expect(monthlies).toHaveLength(1)
+    expect(monthlies[0].startDate.getMonth()).toBe(1)
+    expect(monthlies[0].startDate.getFullYear()).toBe(2026)
+
+    vi.useRealTimers()
+  })
+
+  it('should not require weeklies for monthly when diaries source is selected', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-15T12:00:00Z'))
+
+    const fakeDiary = makeDiary('2026-02-10T12:00:00Z')
+    const detector = new MissingSummaryDetector({} as any, {} as any)
+    const missingWeeklies = (detector as any).detectMissing([fakeDiary], [], 'zh', 'weeklies')
+    const missingDiaries = (detector as any).detectMissing([fakeDiary], [], 'zh', 'diaries')
+
+    expect(
+      missingWeeklies.filter((m: any) => m.type === SummaryType.monthly)
+    ).toHaveLength(0)
+    expect(
+      missingDiaries.filter((m: any) => m.type === SummaryType.monthly)
+    ).toHaveLength(1)
+
+    vi.useRealTimers()
+  })
 })

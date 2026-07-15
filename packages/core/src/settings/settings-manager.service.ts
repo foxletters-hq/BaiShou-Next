@@ -3,9 +3,12 @@ import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
   migrateUserProfileSettingsKey,
+  migrateSummaryConfigLegacyTemplates,
+  stripLegacyDefaultSummaryTemplates,
   USER_PROFILE_SETTINGS_KEY,
   normalizePersistedAvatarPath,
-  type UserProfile
+  type UserProfile,
+  type SummaryConfig
 } from '@baishou/shared'
 import { SettingsFileService } from './settings-file.service'
 import {
@@ -35,10 +38,17 @@ export class SettingsManagerService {
   ) {}
 
   async get<T>(key: string): Promise<T | null> {
-    if (!shouldTraceSettingsKey(key)) {
-      return this.repo.get<T>(key)
+    const read = async (): Promise<T | null> => {
+      const value = await this.repo.get<T>(key)
+      if (key === 'summary_config' && value && typeof value === 'object') {
+        return stripLegacyDefaultSummaryTemplates(value as SummaryConfig).config as T
+      }
+      return value
     }
-    return traceCall(SHORTCUT_TRACE_CHAIN, 'SettingsManager.get', () => this.repo.get<T>(key), {
+    if (!shouldTraceSettingsKey(key)) {
+      return read()
+    }
+    return traceCall(SHORTCUT_TRACE_CHAIN, 'SettingsManager.get', () => read(), {
       key,
       payload: key
     })
@@ -148,8 +158,9 @@ export class SettingsManagerService {
       }
       await this.repo.set(key, value)
     }
-    const migrated = await migrateUserProfileSettingsKey(this.repo)
-    if (!diskAuthoritative && (sqliteNewerThanDisk || migrated)) {
+    const migratedProfile = await migrateUserProfileSettingsKey(this.repo)
+    const migratedSummary = await migrateSummaryConfigLegacyTemplates(this.repo)
+    if (!diskAuthoritative && (sqliteNewerThanDisk || migratedProfile || migratedSummary)) {
       await this.flushToDiskUnlocked()
     }
   }
