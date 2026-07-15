@@ -52,11 +52,11 @@ describe('summary settings → generation options mapping', () => {
     )
     expect(runtime).toMatchObject({
       mode: 'assistant',
-      providerId: 'deepseek',
-      modelId: 'deepseek-chat',
       systemPrompt: '伙伴人设正文',
       fellBackToPrompt: false
     })
+    expect(runtime.modelId).toBeUndefined()
+    expect(runtime.providerId).toBeUndefined()
     expect(runtime.systemPrompt).not.toContain('自定义不应出现')
   })
 

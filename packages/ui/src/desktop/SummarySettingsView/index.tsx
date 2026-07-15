@@ -333,7 +333,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
         <p className={styles.cardDesc}>
           {t(
             'settings.summary_generation_mode_desc',
-            'Use a custom generation prompt with the global summary model, or reuse a partner’s persona and model.'
+            'Write a custom generation-assistant prompt, or reuse a partner’s persona. Both modes use the global summary model.'
           )}
         </p>
         <div className={styles.btnGroup}>
