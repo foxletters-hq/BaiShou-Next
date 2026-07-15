@@ -1,0 +1,46 @@
+# 按贡献量自动刷新 README 贡献者墙（过滤 Bot / CI）
+name: Sync Contributors Wall
+
+on:
+  schedule:
+    # 每天 UTC 03:00（北京时间 11:00）
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/sync-contributors-wall.mjs'
+      - '.github/workflows/sync-contributors-wall.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 允许 action 推送回 main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate contributor wall
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/sync-contributors-wall.mjs
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- README.md docs/3-Project/README_EN.md; then
+            echo '贡献者墙无变更'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md docs/3-Project/README_EN.md
+          git commit -m "chore(docs): 按贡献量刷新 README 贡献者墙"
+          git push
