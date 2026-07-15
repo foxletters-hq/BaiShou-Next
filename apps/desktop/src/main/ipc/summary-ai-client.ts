@@ -2,14 +2,15 @@ import { generateText } from 'ai'
 import { settingsManager } from './settings.ipc'
 import {
   GlobalModelsConfig,
+  canUseProviderModel,
   logger,
   prepareProviderConfigForRuntime,
-  resolveSummaryConfigFromSettings
+  resolveSummaryConfigFromSettings,
+  type AIProviderConfig
 } from '@baishou/shared'
 import { pathService } from './vault.ipc'
-import type { SummaryAiClient } from '@baishou/core-desktop'
+import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-desktop'
 import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core/shared'
-import { AIProviderConfig } from '@baishou/shared'
 import { AIProviderRegistry } from '@baishou/ai'
 import path from 'path'
 import fs from 'fs'
@@ -24,32 +25,60 @@ async function appendDebugLog(
   fs.appendFileSync(logFile, JSON.stringify(data) + '\n', 'utf-8')
 }
 
+function resolveProviderById(
+  providers: AIProviderConfig[],
+  providerId: string,
+  modelId: string
+): AIProviderConfig | undefined {
+  if (!canUseProviderModel(providers, providerId, modelId)) return undefined
+  return providers.find((p) => p.id === providerId)
+}
+
 /**
  * 构建摘要 AI 生成客户端。
- * 支持自定义摘要模型覆盖全局默认 Provider。
+ * 支持自定义摘要模型覆盖全局默认 Provider；伙伴模式可传入 providerId + system。
  */
 export function buildSummaryAiClient(): SummaryAiClient {
   return {
-    async generateContent(prompt: string, modelId: string): Promise<string> {
+    async generateContent(
+      prompt: string,
+      modelId: string,
+      options?: SummaryAiGenerateOptions
+    ): Promise<string> {
       const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
       const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-      const resolution = resolveSummaryConfigFromSettings(providers, globalModels, modelId)
 
-      if (!resolution.ok) {
-        if (resolution.reason === 'no_api_key') {
+      let providerConfig: AIProviderConfig
+      let finalModelId: string
+
+      if (options?.providerId) {
+        const override = resolveProviderById(providers, options.providerId, modelId)
+        if (!override) {
           throw new Error(
-            `No active provider with API key for summary generation (provider: ${
-              resolution.providerName ?? 'unknown'
-            })`
+            `No active provider with API key for summary generation (provider: ${options.providerId})`
           )
         }
-        if (resolution.reason === 'no_model') {
-          throw new Error('No summary model configured')
+        providerConfig = override
+        finalModelId = modelId
+      } else {
+        const resolution = resolveSummaryConfigFromSettings(providers, globalModels, modelId)
+        if (!resolution.ok) {
+          if (resolution.reason === 'no_api_key') {
+            throw new Error(
+              `No active provider with API key for summary generation (provider: ${
+                resolution.providerName ?? 'unknown'
+              })`
+            )
+          }
+          if (resolution.reason === 'no_model') {
+            throw new Error('No summary model configured')
+          }
+          throw new Error('No active AI provider configured for summary generation')
         }
-        throw new Error('No active AI provider configured for summary generation')
+        providerConfig = resolution.providerConfig
+        finalModelId = resolution.modelId
       }
 
-      const { providerConfig, modelId: finalModelId } = resolution
       const registry = AIProviderRegistry.getInstance()
       const finalProvider = registry.getOrUpdateProvider(
         prepareProviderConfigForRuntime(providerConfig)
@@ -67,7 +96,8 @@ export function buildSummaryAiClient(): SummaryAiClient {
         providerId: finalProvider.config?.id,
         modelId: finalModelId,
         baseUrl: providerUrl,
-        promptLength: prompt.length
+        promptLength: prompt.length,
+        hasSystem: !!options?.system
       })
 
       const startTime = Date.now()
@@ -94,6 +124,7 @@ export function buildSummaryAiClient(): SummaryAiClient {
         const generatePromise = (async () => {
           const { text } = await generateText({
             model,
+            ...(options?.system ? { system: options.system } : {}),
             prompt,
             maxSteps: 1,
             abortSignal: abortController.signal

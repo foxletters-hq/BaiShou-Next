@@ -1,8 +1,8 @@
 import i18n from 'i18next'
 import { BrowserWindow } from 'electron'
-import { MissingSummary, logger, GlobalModelsConfig } from '@baishou/shared'
+import { MissingSummary, logger } from '@baishou/shared'
 import { SummaryGeneratorService, SummaryManagerService } from '@baishou/core-desktop'
-import { settingsManager } from '../ipc/settings.ipc'
+import { resolveDesktopSummaryGenerateOptions } from './summary-generate-options'
 
 export interface QueueItem {
   id: string // Type_Time format e.g. "weekly_16200000"
@@ -19,6 +19,8 @@ export class SummaryQueueService {
   private activeCount = 0
   private concurrencyLimit = 1
   private abortController: AbortController | null = null
+  /** 本轮队列仅提示一次伙伴回退，避免批量任务刷屏 */
+  private assistantFallbackNotified = false
 
   // Dependencies injected later after everything boot up
   private summaryManager!: SummaryManagerService
@@ -99,6 +101,7 @@ export class SummaryQueueService {
     }
 
     if (added > 0) {
+      this.assistantFallbackNotified = false
       if (!this.abortController) {
         this.abortController = new AbortController()
       }
@@ -150,12 +153,20 @@ export class SummaryQueueService {
 
       logger.info(`[SummaryQueueService] Loading generator factory for task: ${task.id}`)
       const generator = await this.generatorFactory()
+      const { generateOptions, fellBackToPrompt } = await resolveDesktopSummaryGenerateOptions(
+        this.summaryManager,
+        task.target.startDate instanceof Date
+          ? task.target.startDate
+          : new Date(task.target.startDate)
+      )
+      if (fellBackToPrompt && !this.assistantFallbackNotified) {
+        this.assistantFallbackNotified = true
+        BrowserWindow.getAllWindows().forEach((win) => {
+          win.webContents.send('summary:generation-notice', { type: 'assistant_fallback' })
+        })
+      }
 
-      // 获取当前设置的 AI 总结模型 ID，并传递给生成器以准确显示正在思考的模型
-      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-      const finalModelId = globalModels?.globalSummaryModelId || 'deepseek-chat'
-
-      const stream = generator.generate(task.target, finalModelId)
+      const stream = generator.generate(task.target, generateOptions)
 
       let finalContent = ''
 

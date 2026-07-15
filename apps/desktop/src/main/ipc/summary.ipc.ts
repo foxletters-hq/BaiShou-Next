@@ -257,7 +257,12 @@ export function registerSummaryIPC() {
       } as any
 
       const detector = new MissingSummaryDetector(diaryRepoAdapter, summaryRepo)
-      return await detector.getAllMissing(locale)
+      const globalModels = await settingsManager.get<{ monthlySummarySource?: string }>(
+        'global_models'
+      )
+      const monthlySummarySource =
+        globalModels?.monthlySummarySource === 'diaries' ? 'diaries' : 'weeklies'
+      return await detector.getAllMissing(locale, monthlySummarySource)
     } catch (err: any) {
       logger.error('[SummaryIPC] detect-missing error:', err)
       return []
