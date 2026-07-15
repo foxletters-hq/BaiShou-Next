@@ -193,4 +193,189 @@ describe('SummaryGeneratorService', () => {
 
     expect(outputs.some((s) => s.includes('claude-4'))).toBe(true)
   })
+
+  it('should inject shared memory and pass system prompt to ai client', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service')
+
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        { date: new Date('2026-03-24'), content: '日记内容', tags: '' }
+      ])
+    }
+    const mockSummaryRepo = { getSummaries: vi.fn(async () => []) }
+    const mockAiClient = { generateContent: vi.fn(async () => '伙伴总结') }
+
+    const service = new SummaryGeneratorService(
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any
+    )
+
+    const target = {
+      type: SummaryType.weekly,
+      startDate: new Date('2026-03-23'),
+      endDate: new Date('2026-03-29'),
+      label: 'Week 4'
+    }
+
+    for await (const _ of service.generate(target, {
+      modelId: 'partner-model',
+      providerId: 'partner-provider',
+      systemPrompt: '你是温暖的伙伴',
+      sharedContextText: '共同回忆片段ABC'
+    })) {
+      // drain
+    }
+
+    expect(mockAiClient.generateContent).toHaveBeenCalledWith(
+      expect.stringMatching(/共同回忆片段ABC[\s\S]*日记内容|日记内容[\s\S]*共同回忆片段ABC/),
+      'partner-model',
+      {
+        system: '你是温暖的伙伴',
+        providerId: 'partner-provider'
+      }
+    )
+  })
+
+  it('monthly weeklies source reads weeklies from summary repo, not diaries', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service')
+
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        { date: new Date('2026-02-10'), content: '本月日记不应被读取', tags: '' }
+      ])
+    }
+    const mockSummaryRepo = {
+      getSummaries: vi.fn(async () => [
+        {
+          type: SummaryType.weekly,
+          startDate: new Date('2026-02-02'),
+          endDate: new Date('2026-02-08'),
+          content: '二月第一周周记内容'
+        }
+      ])
+    }
+    const mockAiClient = { generateContent: vi.fn(async () => '月报') }
+
+    const service = new SummaryGeneratorService(
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any
+    )
+
+    const target = {
+      type: SummaryType.monthly,
+      startDate: new Date('2026-02-01'),
+      endDate: new Date('2026-02-28T23:59:59'),
+      label: '2026-02'
+    }
+
+    for await (const _ of service.generate(target, {
+      modelId: 'm',
+      monthlySummarySource: 'weeklies'
+    })) {
+      // drain
+    }
+
+    expect(mockSummaryRepo.getSummaries).toHaveBeenCalled()
+    expect(mockDiaryRepo.findByDateRange).not.toHaveBeenCalled()
+    expect(mockAiClient.generateContent).toHaveBeenCalledWith(
+      expect.stringContaining('二月第一周周记内容'),
+      'm',
+      expect.any(Object)
+    )
+    expect(mockAiClient.generateContent.mock.calls[0][0]).not.toContain('本月日记不应被读取')
+  })
+
+  it('monthly diaries source reads weeklies and diaries together', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service')
+
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        { date: new Date('2026-02-10'), content: '二月十日日记', tags: 'life' }
+      ])
+    }
+    const mockSummaryRepo = {
+      getSummaries: vi.fn(async () => [
+        {
+          type: SummaryType.weekly,
+          startDate: new Date('2026-02-02'),
+          endDate: new Date('2026-02-08'),
+          content: '二月第一周周记内容'
+        }
+      ])
+    }
+    const mockAiClient = { generateContent: vi.fn(async () => '月报') }
+
+    const service = new SummaryGeneratorService(
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any
+    )
+
+    const target = {
+      type: SummaryType.monthly,
+      startDate: new Date('2026-02-01'),
+      endDate: new Date('2026-02-28T23:59:59'),
+      label: '2026-02'
+    }
+
+    for await (const _ of service.generate(target, {
+      modelId: 'm',
+      monthlySummarySource: 'diaries',
+      systemPrompt: '默认回忆助手'
+    })) {
+      // drain
+    }
+
+    expect(mockDiaryRepo.findByDateRange).toHaveBeenCalled()
+    expect(mockSummaryRepo.getSummaries).toHaveBeenCalled()
+    const prompt = mockAiClient.generateContent.mock.calls[0][0] as string
+    expect(prompt).toContain('二月第一周周记内容')
+    expect(prompt).toContain('二月十日日记')
+    expect(mockAiClient.generateContent).toHaveBeenCalledWith(prompt, 'm', {
+      system: '默认回忆助手',
+      providerId: undefined
+    })
+  })
+
+  it('uses custom generation template from options in the user prompt', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service')
+
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        { date: new Date('2026-03-24'), content: '日记', tags: '' }
+      ])
+    }
+    const mockSummaryRepo = { getSummaries: vi.fn(async () => []) }
+    const mockAiClient = { generateContent: vi.fn(async () => 'ok') }
+
+    const service = new SummaryGeneratorService(
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any
+    )
+
+    const target = {
+      type: SummaryType.weekly,
+      startDate: new Date('2026-03-23'),
+      endDate: new Date('2026-03-29'),
+      label: 'Week 4'
+    }
+
+    for await (const _ of service.generate(target, {
+      modelId: 'm',
+      customTemplates: { weekly: '【自定义周模板】{year}-{week}' },
+      systemPrompt: '助手提示词'
+    })) {
+      // drain
+    }
+
+    const prompt = mockAiClient.generateContent.mock.calls[0][0] as string
+    expect(prompt).toContain('【自定义周模板】')
+    expect(mockAiClient.generateContent.mock.calls[0][2]).toEqual({
+      system: '助手提示词',
+      providerId: undefined
+    })
+  })
 })

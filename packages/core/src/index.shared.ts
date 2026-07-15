@@ -71,7 +71,8 @@ export {
   handleBuildSharedContext,
   handleBuildSharedContextPreview,
   type SharedContextDiaryRow,
-  type SharedMemoryBuildOptions
+  type SharedMemoryBuildOptions,
+  type SharedMemoryWindowOptions
 } from './summary/summary-context'
 
 export * from './archive/archive.interface'

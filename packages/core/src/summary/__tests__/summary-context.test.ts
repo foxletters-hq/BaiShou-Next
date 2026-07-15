@@ -1,7 +1,53 @@
 import { describe, expect, it } from 'vitest'
-import { computeSharedMemoryCopyPreview } from '../summary-context'
+import {
+  computeLookbackCutoffDate,
+  computeSharedMemoryCopyPreview
+} from '../summary-context'
+
+describe('computeLookbackCutoffDate', () => {
+  it('anchors lookback to the reference date, not wall-clock now', () => {
+    const periodStart = new Date(2025, 2, 3) // 2025-03-03
+    const cutoff = computeLookbackCutoffDate(3, periodStart)
+    expect(cutoff.getFullYear()).toBe(2024)
+    expect(cutoff.getMonth()).toBe(11) // December
+    expect(cutoff.getDate()).toBe(1)
+  })
+})
 
 describe('computeSharedMemoryCopyPreview', () => {
+  it('excludes memories on/after untilExclusive (generation inject window)', () => {
+    const periodStart = new Date(2025, 2, 3) // week starting 2025-03-03
+    const preview = computeSharedMemoryCopyPreview(
+      [
+        {
+          type: 'weekly',
+          startDate: new Date(2025, 1, 24),
+          endDate: new Date(2025, 2, 2),
+          content: 'before'
+        },
+        {
+          type: 'weekly',
+          startDate: periodStart,
+          endDate: new Date(2025, 2, 9),
+          content: 'same-period'
+        },
+        {
+          type: 'monthly',
+          startDate: new Date(2026, 5, 1),
+          endDate: new Date(2026, 5, 30),
+          content: 'future-leak'
+        }
+      ],
+      [],
+      6,
+      { referenceDate: periodStart, untilExclusive: periodStart }
+    )
+
+    expect(preview.weekly).toBe(1)
+    expect(preview.monthly).toBe(0)
+    expect(preview.total).toBe(1)
+  })
+
   it('keeps monthly summaries visible when only the latest quarterly summary exists', () => {
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)

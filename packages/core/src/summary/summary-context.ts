@@ -88,17 +88,23 @@ const formatDate = (d: Date): string => {
   return `${year}-${month}-${day}`
 }
 
-/** 共同回忆回溯窗口起点（当月 1 日 00:00） */
-export function computeLookbackCutoffDate(lookbackMonths: number): Date {
-  const cutoffDate = new Date()
+/** 共同回忆回溯窗口起点（参考日所在月往前 N 个月的 1 日 00:00） */
+export function computeLookbackCutoffDate(
+  lookbackMonths: number,
+  referenceDate: Date = new Date()
+): Date {
+  const cutoffDate = new Date(referenceDate.getTime())
   cutoffDate.setMonth(cutoffDate.getMonth() - lookbackMonths)
   cutoffDate.setDate(1)
   cutoffDate.setHours(0, 0, 0, 0)
   return cutoffDate
 }
 
-export function formatLookbackCutoffIso(lookbackMonths: number): string {
-  return formatDate(computeLookbackCutoffDate(lookbackMonths))
+export function formatLookbackCutoffIso(
+  lookbackMonths: number,
+  referenceDate: Date = new Date()
+): string {
+  return formatDate(computeLookbackCutoffDate(lookbackMonths, referenceDate))
 }
 
 /** 将总结覆盖的月份打入覆盖集合（用于级联过滤） */
@@ -138,18 +144,40 @@ type ResolvedSharedMemoryItems = {
   allItems: { date: Date; data: any; kind: SharedMemoryItemKind }[]
 }
 
+export type SharedMemoryWindowOptions = {
+  /**
+   * Lookback anchor (default: now).
+   * Generation inject should pass the target period's startDate.
+   */
+  referenceDate?: Date
+  /**
+   * Exclusive upper bound: keep items that end strictly before this date.
+   * Generation inject should pass the same period startDate so only prior memory is included.
+   */
+  untilExclusive?: Date
+}
+
 function resolveSharedMemoryItems(
   summaries: SharedContextSummaryRow[],
   diaries: SharedContextDiaryRow[],
-  lookbackMonths: number
+  lookbackMonths: number,
+  window?: SharedMemoryWindowOptions
 ): ResolvedSharedMemoryItems {
-  const now = new Date()
-  const cutoffDate = computeLookbackCutoffDate(lookbackMonths)
+  const referenceDate = window?.referenceDate ?? new Date()
+  const untilExclusive = window?.untilExclusive
+  const cutoffDate = computeLookbackCutoffDate(lookbackMonths, referenceDate)
 
-  const relevantSummaries = (summaries || []).filter((s) => new Date(s.endDate) > cutoffDate)
+  const relevantSummaries = (summaries || []).filter((s) => {
+    const end = new Date(s.endDate)
+    if (!(end > cutoffDate)) return false
+    if (untilExclusive && !(end < untilExclusive)) return false
+    return true
+  })
   const relevantDiaries = diaries.filter((d) => {
     const dDate = parseDateStr(d.date)
-    return dDate >= cutoffDate && dDate <= now
+    if (dDate < cutoffDate) return false
+    if (untilExclusive) return dDate < untilExclusive
+    return dDate <= referenceDate
   })
 
   const yList = relevantSummaries.filter((s) => s.type === 'yearly')
@@ -202,7 +230,7 @@ function resolveSharedMemoryItems(
   return { yList, qList, visibleMonths, visibleWeeks, visibleDiaries, allItems }
 }
 
-export type SharedMemoryBuildOptions = {
+export type SharedMemoryBuildOptions = SharedMemoryWindowOptions & {
   locale?: string
   userCopyPrefix?: string
 }
@@ -308,8 +336,12 @@ export function computeSharedMemoryCopyPreview(
   lookbackMonths: number,
   options?: SharedMemoryBuildOptions
 ): SharedMemoryCopyPreview {
+  const memoryWindow: SharedMemoryWindowOptions = {
+    referenceDate: options?.referenceDate,
+    untilExclusive: options?.untilExclusive
+  }
   const { yList, qList, visibleMonths, visibleWeeks, visibleDiaries, allItems } =
-    resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
+    resolveSharedMemoryItems(summaries, diaries, lookbackMonths, memoryWindow)
 
   const yearly = yList.length
   const quarterly = qList.length
@@ -346,8 +378,20 @@ export async function buildSharedContextText(
   summaries: any[],
   lookbackMonths: number,
   locale?: string,
-  options?: { diaries?: SharedContextDiaryRow[]; vaultName?: string; userCopyPrefix?: string }
+  options?: {
+    diaries?: SharedContextDiaryRow[]
+    vaultName?: string
+    userCopyPrefix?: string
+    referenceDate?: Date
+    untilExclusive?: Date
+  }
 ): Promise<string> {
+  const memoryWindow: SharedMemoryWindowOptions = {
+    referenceDate: options?.referenceDate,
+    untilExclusive: options?.untilExclusive
+  }
+  const referenceDate = memoryWindow.referenceDate ?? new Date()
+
   let diaries: SharedContextDiaryRow[]
   if (options?.diaries) {
     diaries = options.diaries
@@ -357,10 +401,17 @@ export async function buildSharedContextText(
 
     const shadowRepo = new ShadowIndexRepository(shadowDb as any, options.vaultName)
     // 与预览路径一致：只拉回溯窗口内日记，避免全量 FTS 扫描
-    diaries = await shadowRepo.listContentSinceDate(formatLookbackCutoffIso(lookbackMonths))
+    diaries = await shadowRepo.listContentSinceDate(
+      formatLookbackCutoffIso(lookbackMonths, referenceDate)
+    )
   }
 
-  const { allItems } = resolveSharedMemoryItems(summaries, diaries, lookbackMonths)
+  const { allItems } = resolveSharedMemoryItems(
+    summaries,
+    diaries,
+    lookbackMonths,
+    memoryWindow
+  )
 
   if (allItems.length === 0) return ''
 
@@ -399,7 +450,8 @@ export async function handleBuildSharedContextPreview(
     }
 
     const shadowRepo = new ShadowIndexRepository(shadowDb as any, vaultName)
-    const cutoffIso = formatLookbackCutoffIso(lookbackMonths)
+    const referenceDate = options?.referenceDate ?? new Date()
+    const cutoffIso = formatLookbackCutoffIso(lookbackMonths, referenceDate)
     const diaries = await shadowRepo.listContentSinceDate(cutoffIso)
     return computeSharedMemoryCopyPreview(summaries, diaries, lookbackMonths, options)
   } catch (e) {
