@@ -114,6 +114,11 @@ export async function buildSystemPromptForSession(
       ? params.userConfig.agentGuidelines.trim() || undefined
       : undefined
 
+  const localeFromMerged =
+    typeof mergedUserConfig['locale'] === 'string' ? (mergedUserConfig['locale'] as string) : undefined
+  const localeFromParams =
+    typeof params.userConfig?.locale === 'string' ? params.userConfig.locale : undefined
+
   return SystemPromptBuilder.build({
     vaultName: sessionObj?.vaultName || 'default',
     tools: enabledTools as any,
@@ -130,6 +135,7 @@ export async function buildSystemPromptForSession(
         ? (mergedUserConfig['disabledToolIds'] as string[])
         : undefined
     ),
-    customGuidelines
+    customGuidelines,
+    locale: localeFromMerged ?? localeFromParams
   })
 }

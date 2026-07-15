@@ -1,4 +1,4 @@
-import { net } from 'electron'
+import { net, app } from 'electron'
 import {
   SessionRepository,
   AssistantRepository,
@@ -30,6 +30,7 @@ import {
   normalizeToolManagementConfig,
   normalizeEmojiToolConfig,
   resolveAssistantEmojiConfig,
+  resolveAppUiLanguageFromSystemLocale,
   type AssistantEmojiPrefs,
   DEFAULT_TOOL_MANAGEMENT_CONFIG,
   resolveWebSearchEnabled
@@ -278,6 +279,14 @@ export async function buildAgentUserConfigFromSettings(options?: {
   }
 
   const storedSearchMode = await settingsManager.get<boolean>('search_mode_enabled')
+  const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
+  const featureSettings =
+    (await settingsManager.get<{ language?: string }>('feature_settings')) || {}
+  const rawLanguage = featureSettings.language || appSettings.language
+  const locale =
+    !rawLanguage || rawLanguage === 'system'
+      ? resolveAppUiLanguageFromSystemLocale(app.getLocale())
+      : rawLanguage
 
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
@@ -301,7 +310,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
     emojiConfig: resolveAssistantEmojiConfig(
       normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
       options?.assistantEmojiPrefs ?? { emojiGroupId: options?.emojiGroupId }
-    )
+    ),
+    locale
   }
 }
 

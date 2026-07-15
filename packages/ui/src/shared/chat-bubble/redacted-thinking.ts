@@ -1,5 +1,13 @@
 import { sanitizeAssistantGeneratedText } from '@baishou/shared'
 
+/**
+ * Phase-2 parser contract (aligned with output_protocol in system prompt):
+ * - Closed think/thinking/redacted_thinking blocks in text → extract into reasoning.
+ * - Unclosed open tags must NOT swallow the remainder of the body into reasoning.
+ * - Invented wrappers (<response>, <reply>, …) are sanitizer noise, not thinking markers.
+ * - Close-tag leaks in the reasoning channel may move following text back to content.
+ */
+
 const OPEN_REDacted = '<' + 'redacted_thinking>'
 const CLOSE_REDacted = '<' + '/redacted_thinking>'
 const OPEN_THINKING = '<' + 'thinking>'

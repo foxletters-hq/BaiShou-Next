@@ -26,6 +26,7 @@ import {
   type SnapshotRepository
 } from '@baishou/database'
 import type { AssistantManagerService, SettingsManagerService } from '@baishou/core-mobile'
+import { resolveAppUiLanguage } from '../lib/device-locale'
 export interface MappedCallChainFlatEntry {
   kind: 'system-prompt' | 'compression-summary' | 'round-header' | 'message'
   roundIndex?: number
@@ -124,6 +125,14 @@ export async function buildMobileStreamUserConfig(
     embeddingModelId !== 'off' &&
     providers.some((p) => p.id === embeddingProviderId)
 
+  const appSettings = (await settingsManager.get<{ language?: string }>('settings')) || {}
+  const featureSettings =
+    (await settingsManager.get<{ language?: string }>('feature_settings')) || {}
+  const locale = resolveAppUiLanguage(
+    featureSettings.language || appSettings.language,
+    i18n.language
+  )
+
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
@@ -149,7 +158,8 @@ export async function buildMobileStreamUserConfig(
     emojiConfig: resolveAssistantEmojiConfig(
       normalizeEmojiToolConfig(toolManagementConfig.emojiConfig),
       assistantEmojiPrefs
-    )
+    ),
+    locale
   }
 }
 
