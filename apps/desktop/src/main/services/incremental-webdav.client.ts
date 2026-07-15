@@ -4,7 +4,9 @@ import { createClient, WebDAVClient } from 'webdav'
 import {
   INCREMENTAL_SYNC_CHUNK_SIZE,
   WEBDAV_SHALLOW_LIST_CONCURRENCY,
-  limitExecute
+  isStrictWebDavChildUrl,
+  limitExecute,
+  normalizeWebDavListingUrl
 } from '@baishou/shared'
 import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
@@ -222,7 +224,8 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
     // 列举只读：不在此处 createDirectory，避免测试连接对只读账号产生写副作用
     try {
       await this.collectFilesShallow(this.basePath.replace(/\/$/, '') || '/', records, {
-        missingOk: false
+        missingOk: false,
+        visited: new Set<string>()
       })
     } catch (e: any) {
       if (e.status === 404 || e.message?.includes('404')) {
@@ -238,12 +241,21 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
 
   /**
    * 逐目录 Depth:1 PROPFIND，避免单次 deep PROPFIND 触发 fast-xml-parser 实体展开上限。
+   * visited + 严格子路径：防止父目录/尾斜杠变体回环造成列举风暴。
    */
   private async collectFilesShallow(
     remoteDir: string,
     records: SyncRecord[],
-    options: { missingOk?: boolean } = { missingOk: true }
+    options: {
+      missingOk?: boolean
+      visited?: Set<string>
+    } = { missingOk: true }
   ): Promise<void> {
+    const visited = options.visited ?? new Set<string>()
+    const normalizedRequestDir = normalizeWebDavListingUrl(remoteDir) || '/'
+    if (visited.has(normalizedRequestDir)) return
+    visited.add(normalizedRequestDir)
+
     let items: any[]
     try {
       items = (await this.client.getDirectoryContents(remoteDir, { deep: false })) as any[]
@@ -256,14 +268,16 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
     }
 
     const subdirs: string[] = []
-    const normalizedRequestDir = remoteDir.replace(/\/$/, '')
 
     for (const item of items) {
       if (!item?.filename) continue
-      const itemPath = String(item.filename).replace(/\/$/, '')
+      const itemPath = normalizeWebDavListingUrl(String(item.filename))
       if (item.type === 'directory') {
-        if (itemPath !== normalizedRequestDir) {
-          subdirs.push(item.filename)
+        if (
+          isStrictWebDavChildUrl(normalizedRequestDir, itemPath) &&
+          !visited.has(itemPath)
+        ) {
+          subdirs.push(itemPath)
         }
         continue
       }
@@ -278,7 +292,7 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
     }
 
     await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (dir) => {
-      await this.collectFilesShallow(dir, records, { missingOk: true })
+      await this.collectFilesShallow(dir, records, { missingOk: true, visited })
     })
   }
 
