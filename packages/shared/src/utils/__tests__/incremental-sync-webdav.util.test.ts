@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildWebDavFileUrl,
   formatWebDavRequestError,
   isManagedIncrementalZipPath,
+  normalizeWebDavBaseUrl,
   parseWebDavPropfindEntries,
   toRelativeWebDavPath
 } from '../incremental-sync-webdav.util'
@@ -45,5 +47,24 @@ describe('incremental-sync-webdav.util', () => {
     expect(formatWebDavRequestError('列举目录', 403, 'Forbidden')).toContain('403')
     expect(formatWebDavRequestError('列举目录', 403, 'Forbidden')).toContain('应用专用密码')
     expect(formatWebDavRequestError('列举目录', 401)).toContain('用户名或密码错误')
+  })
+
+  it('normalizes WebDAV base URL with missing scheme', () => {
+    expect(normalizeWebDavBaseUrl('dav.example.com/remote.php/dav')).toBe(
+      'https://dav.example.com/remote.php/dav'
+    )
+    expect(normalizeWebDavBaseUrl('http://nas.local/dav/')).toBe('http://nas.local/dav')
+    expect(normalizeWebDavBaseUrl('https://dav.example.com/')).toBe('https://dav.example.com')
+    expect(normalizeWebDavBaseUrl('nas.local', { defaultScheme: 'http' })).toBe('http://nas.local')
+    expect(normalizeWebDavBaseUrl('')).toBe('http://localhost')
+  })
+
+  it('builds file URL with the same base normalization as listing', () => {
+    expect(buildWebDavFileUrl('dav.example.com/remote.php/dav', 'memories_sync/', 'a.md')).toBe(
+      'https://dav.example.com/remote.php/dav/memories_sync/a.md'
+    )
+    expect(buildWebDavFileUrl('https://dav.example.com/dav/', 'sync/', 'dir/b.md')).toBe(
+      'https://dav.example.com/dav/sync/dir/b.md'
+    )
   })
 })

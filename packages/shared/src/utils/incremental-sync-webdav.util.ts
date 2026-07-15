@@ -1,6 +1,36 @@
 /** WebDAV PROPFIND 浅层列举时，单目录内并发子目录扫描上限 */
 export const WEBDAV_SHALLOW_LIST_CONCURRENCY = 4
 
+/**
+ * 规范化 WebDAV 根 URL：补全协议、去掉末尾 `/`。
+ * 移动端列举与上传/删除必须共用同一套规则，否则缺 scheme 时列举成功、传输会 Network request failed。
+ */
+export function normalizeWebDavBaseUrl(
+  url: string | undefined | null,
+  options?: { defaultScheme?: 'http' | 'https'; emptyFallback?: string }
+): string {
+  const defaultScheme = options?.defaultScheme ?? 'https'
+  const emptyFallback = options?.emptyFallback ?? 'http://localhost'
+  let safeUrl = (url || '').trim()
+  if (!safeUrl) safeUrl = emptyFallback
+  if (!safeUrl.startsWith('http://') && !safeUrl.startsWith('https://')) {
+    safeUrl = `${defaultScheme}://${safeUrl}`
+  }
+  return safeUrl.replace(/\/$/, '')
+}
+
+/** 拼接 WebDAV 文件绝对 URL（basePath + 相对路径） */
+export function buildWebDavFileUrl(
+  webdavUrl: string | undefined | null,
+  basePath: string,
+  rel: string,
+  options?: { defaultScheme?: 'http' | 'https'; emptyFallback?: string }
+): string {
+  const baseUrl = normalizeWebDavBaseUrl(webdavUrl, options)
+  const remotePath = `${basePath}${rel}`.replace(/^\//, '')
+  return `${baseUrl}/${remotePath}`
+}
+
 export type WebDavListEntry = {
   href: string
   isCollection: boolean

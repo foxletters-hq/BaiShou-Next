@@ -91,6 +91,8 @@ export {
 } from './utils/incremental-sync-external-paths.util'
 export {
   WEBDAV_SHALLOW_LIST_CONCURRENCY,
+  normalizeWebDavBaseUrl,
+  buildWebDavFileUrl,
   parseWebDavPropfindEntries,
   toRelativeWebDavPath,
   isManagedIncrementalZipPath,

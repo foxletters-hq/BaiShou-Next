@@ -13,6 +13,7 @@ import {
   buildS3ObjectUrl,
   fetchAllS3ListPages,
   isRemoteCloudSyncConfigured,
+  normalizeWebDavBaseUrl,
   s3FetchHeaders,
   signS3Request
 } from '@baishou/shared'
@@ -27,7 +28,7 @@ class MobileWebDavClient implements ICloudSyncClient {
   private basePath: string
 
   constructor(url: string, username: string, password: string, basePath: string) {
-    this.baseUrl = url.endsWith('/') ? url.slice(0, -1) : url
+    this.baseUrl = normalizeWebDavBaseUrl(url)
     this.auth = `Basic ${btoa(`${username}:${password}`)}`
     this.basePath = basePath.startsWith('/') ? basePath : `/${basePath}`
     if (!this.basePath.endsWith('/')) this.basePath += '/'

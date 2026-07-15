@@ -4,6 +4,7 @@ import {
   INCREMENTAL_SYNC_CHUNK_SIZE,
   isManagedIncrementalZipPath,
   limitExecute,
+  normalizeWebDavBaseUrl,
   parseWebDavPropfindEntries,
   toRelativeWebDavPath,
   WEBDAV_SHALLOW_LIST_CONCURRENCY
@@ -29,12 +30,7 @@ import {
 } from './mobile-incremental-cloud-ops.types'
 
 function webdavBaseUrl(host: IncrementalCloudOpsHost): string {
-  let safeUrl = (host.config.webdavUrl || '').trim()
-  if (!safeUrl) safeUrl = 'http://localhost'
-  if (!safeUrl.startsWith('http://') && !safeUrl.startsWith('https://')) {
-    safeUrl = `https://${safeUrl}`
-  }
-  return safeUrl.replace(/\/$/, '')
+  return normalizeWebDavBaseUrl(host.config.webdavUrl)
 }
 
 function resolveWebDavUrl(host: IncrementalCloudOpsHost, href: string): string {
@@ -177,7 +173,7 @@ export async function listWebDav(host: IncrementalCloudOpsHost): Promise<Increme
 }
 
 async function ensureWebDavDirs(host: IncrementalCloudOpsHost, rel: string): Promise<void> {
-  const baseUrl = (host.config.webdavUrl || '').replace(/\/$/, '')
+  const baseUrl = webdavBaseUrl(host)
   const auth = host.webdavAuth()
   const remoteFilePath = (host.basePath() + rel).replace(/^\//, '')
   const parentPath = remoteFilePath.replace(/\/[^/]+$/, '')
