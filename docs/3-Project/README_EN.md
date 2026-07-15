@@ -125,11 +125,17 @@ Technical workflow:
 
 #### Contributors
 
-Thanks to everyone who has contributed time and energy to BaiShou—together, you make it better.
+Thanks to everyone who has contributed time and energy to BaiShou—together, you make it better. Ranked by contributions, bots/CI filtered; refreshed automatically every day.
 
-<a href="https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=foxletters-hq/BaiShou-Next" alt="Contributors" />
-</a>
+<!-- CONTRIBUTORS-WALL:START -->
+<!-- 按 GitHub 贡献量自动排序；已过滤 Bot / CI。勿手改；运行: pnpm sync:contributors -->
+<a href="https://github.com/Anson-Trio" title="Anson-Trio"><img src="https://avatars.githubusercontent.com/u/107763915?v=4&s=64" width="64" height="64" alt="Anson-Trio"/></a>
+<a href="https://github.com/Ratman463" title="Ratman463"><img src="https://avatars.githubusercontent.com/u/187963490?v=4&s=64" width="64" height="64" alt="Ratman463"/></a>
+<a href="https://github.com/ctnilpp" title="ctnilpp"><img src="https://avatars.githubusercontent.com/u/49940531?v=4&s=64" width="64" height="64" alt="ctnilpp"/></a>
+<a href="https://github.com/david082321" title="david082321"><img src="https://avatars.githubusercontent.com/u/7046617?v=4&s=64" width="64" height="64" alt="david082321"/></a>
+<!-- CONTRIBUTORS-WALL:END -->
+
+[View full contributors list](https://github.com/foxletters-hq/BaiShou-Next/graphs/contributors)
 
 ---
 
