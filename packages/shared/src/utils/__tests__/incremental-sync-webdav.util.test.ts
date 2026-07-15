@@ -1,10 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildWebDavFileUrl,
+  describeWebDavTarget,
+  ensureWebDavCollectionUrl,
   formatWebDavRequestError,
+  inferWebDavDefaultScheme,
   isManagedIncrementalZipPath,
+  isStrictWebDavChildUrl,
+  isTransientWebDavHttpStatus,
   normalizeWebDavBaseUrl,
+  normalizeWebDavListingUrl,
   parseWebDavPropfindEntries,
+  resolveWebDavListingUrl,
+  suggestWebDavHttpFallbackUrl,
   toRelativeWebDavPath
 } from '../incremental-sync-webdav.util'
 
@@ -47,6 +55,15 @@ describe('incremental-sync-webdav.util', () => {
     expect(formatWebDavRequestError('列举目录', 403, 'Forbidden')).toContain('403')
     expect(formatWebDavRequestError('列举目录', 403, 'Forbidden')).toContain('应用专用密码')
     expect(formatWebDavRequestError('列举目录', 401)).toContain('用户名或密码错误')
+    expect(formatWebDavRequestError('创建目录', 503)).toContain('服务暂时不可用')
+    expect(formatWebDavRequestError('创建目录', 429)).toContain('过于频繁')
+  })
+
+  it('recognizes transient WebDAV HTTP statuses for retry', () => {
+    expect(isTransientWebDavHttpStatus(503)).toBe(true)
+    expect(isTransientWebDavHttpStatus(429)).toBe(true)
+    expect(isTransientWebDavHttpStatus(404)).toBe(false)
+    expect(isTransientWebDavHttpStatus(403)).toBe(false)
   })
 
   it('normalizes WebDAV base URL with missing scheme', () => {
@@ -56,7 +73,10 @@ describe('incremental-sync-webdav.util', () => {
     expect(normalizeWebDavBaseUrl('http://nas.local/dav/')).toBe('http://nas.local/dav')
     expect(normalizeWebDavBaseUrl('https://dav.example.com/')).toBe('https://dav.example.com')
     expect(normalizeWebDavBaseUrl('nas.local', { defaultScheme: 'http' })).toBe('http://nas.local')
+    expect(normalizeWebDavBaseUrl('192.168.1.10:5005')).toBe('http://192.168.1.10:5005')
     expect(normalizeWebDavBaseUrl('')).toBe('http://localhost')
+    expect(inferWebDavDefaultScheme('192.168.1.10:5005')).toBe('http')
+    expect(inferWebDavDefaultScheme('dav.example.com')).toBe('https')
   })
 
   it('builds file URL with the same base normalization as listing', () => {
@@ -66,5 +86,48 @@ describe('incremental-sync-webdav.util', () => {
     expect(buildWebDavFileUrl('https://dav.example.com/dav/', 'sync/', 'dir/b.md')).toBe(
       'https://dav.example.com/dav/sync/dir/b.md'
     )
+  })
+
+  it('rewrites Synology absolute hrefs onto the configured origin', () => {
+    const configured = 'https://alice.synology.me:5006'
+    expect(
+      resolveWebDavListingUrl(configured, 'http://192.168.1.20:5005/baishou_backup/Personal/', {
+        asCollection: true
+      })
+    ).toBe('https://alice.synology.me:5006/baishou_backup/Personal/')
+
+    expect(
+      resolveWebDavListingUrl(configured, '/baishou_backup/Personal/Journals/', {
+        asCollection: true
+      })
+    ).toBe('https://alice.synology.me:5006/baishou_backup/Personal/Journals/')
+
+    expect(ensureWebDavCollectionUrl('https://nas.local:5005/webdav')).toBe(
+      'https://nas.local:5005/webdav/'
+    )
+  })
+
+  it('suggests Synology HTTP fallback from HTTPS 5006', () => {
+    expect(suggestWebDavHttpFallbackUrl('https://192.168.1.20:5006')).toBe(
+      'http://192.168.1.20:5005'
+    )
+    expect(suggestWebDavHttpFallbackUrl('https://192.168.1.20:5006/webdav')).toBe(
+      'http://192.168.1.20:5005/webdav'
+    )
+    expect(suggestWebDavHttpFallbackUrl('http://192.168.1.20:5005')).toBeNull()
+    expect(describeWebDavTarget('https://192.168.1.20:5006/baishou_backup/')).toContain(
+      '192.168.1.20:5006'
+    )
+  })
+
+  it('only treats strict child paths as WebDAV subdirs', () => {
+    const parent = 'https://sion.yeqiyu.cn:54614/baishou'
+    expect(isStrictWebDavChildUrl(parent, `${parent}/Personal`)).toBe(true)
+    expect(isStrictWebDavChildUrl(parent, `${parent}/Personal/`)).toBe(true)
+    expect(isStrictWebDavChildUrl(parent, parent)).toBe(false)
+    expect(isStrictWebDavChildUrl(parent, `${parent}/`)).toBe(false)
+    expect(isStrictWebDavChildUrl(`${parent}/Personal`, parent)).toBe(false)
+    expect(isStrictWebDavChildUrl(`${parent}/Personal`, `${parent}/Personal81`)).toBe(false)
+    expect(normalizeWebDavListingUrl(`${parent}/`)).toBe(parent)
   })
 })

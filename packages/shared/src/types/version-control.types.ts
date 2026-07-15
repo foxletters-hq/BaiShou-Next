@@ -87,14 +87,26 @@ export interface S3SyncConfig {
   region: string
   /** S3 桶名 */
   bucket: string
-  /** 桶内路径前缀 */
+  /** 当前 target 的运行时路径前缀（由分端字段投影） */
   path: string
-  /** 访问密钥 ID / WebDAV 用户名 */
+  /** 当前 target 的运行时访问密钥 / WebDAV 用户名（由分端字段投影） */
   accessKey: string
-  /** 秘密访问密钥 / WebDAV 密码 */
+  /** 当前 target 的运行时秘密密钥 / WebDAV 密码（由分端字段投影） */
   secretKey: string
   /** WebDAV URL（仅 target=webdav 时使用） */
   webdavUrl?: string
+  /** 分端持久化：S3 Access Key（与 WebDAV 隔离） */
+  s3AccessKey?: string
+  /** 分端持久化：S3 Secret Key */
+  s3SecretKey?: string
+  /** 分端持久化：S3 路径前缀 */
+  s3Path?: string
+  /** 分端持久化：WebDAV 用户名 */
+  webdavUsername?: string
+  /** 分端持久化：WebDAV 密码 */
+  webdavPassword?: string
+  /** 分端持久化：WebDAV 路径前缀 */
+  webdavPath?: string
   /** 大文件切片分块上传的并发度，默认 5 */
   chunkConcurrency?: number
   /** 文件级别并发上传下载度，默认 5 */
