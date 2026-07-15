@@ -163,7 +163,19 @@ export function useSummaryData(selectedYear: number) {
 
     setIsDetectingMissing(true)
     try {
-      const detected = await missingSummaryDetector.getAllMissing(i18n.language)
+      let monthlySummarySource: 'weeklies' | 'diaries' = 'weeklies'
+      if (services?.settingsManager) {
+        const globalModels = await services.settingsManager.get<{
+          monthlySummarySource?: string
+        }>('global_models')
+        if (globalModels?.monthlySummarySource === 'diaries') {
+          monthlySummarySource = 'diaries'
+        }
+      }
+      const detected = await missingSummaryDetector.getAllMissing(
+        i18n.language,
+        monthlySummarySource
+      )
       setMissingSummaries(mapDetectedMissing(detected))
     } catch (e) {
       console.warn('Detect missing summaries failed:', e)
@@ -177,7 +189,8 @@ export function useSummaryData(selectedYear: number) {
     i18n.language,
     mapDetectedMissing,
     vaultSwitching,
-    storageIndexing
+    storageIndexing,
+    services
   ])
 
   const refreshDashboard = useCallback(
@@ -331,6 +344,7 @@ export function useSummaryData(selectedYear: number) {
   const {
     generationStates,
     isGenerating,
+    assistantFallbackTick,
     queueGeneration,
     stopGeneration,
     generateSummary,
@@ -354,6 +368,7 @@ export function useSummaryData(selectedYear: number) {
     stopGeneration,
     setConcurrency,
     generationStates,
+    assistantFallbackTick,
     isDetectingMissing,
     isDashboardRefreshing,
     refreshDashboard,
