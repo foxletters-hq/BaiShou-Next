@@ -25,6 +25,8 @@ import * as Clipboard from 'expo-clipboard'
 import { buildSummaryTitle } from './utils/buildSummaryTitle'
 import {
   consumePendingSummaryDetail,
+  clearLocallyDeletedSummary,
+  markSummaryDeletedLocally,
   patchSummaryDetailCache,
   type CachedSummaryDetail
 } from './utils/summaryDetailCache'
@@ -257,10 +259,12 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
     try {
       const startDate = parseSummaryBoundaryDate(summary.startDate)
       const endDate = parseSummaryBoundaryDate(summary.endDate)
+      markSummaryDeletedLocally(summaryId)
       await services.summaryManager.delete(summary.type as SummaryType, startDate, endDate)
       toast.showSuccess(t('common.delete_success'))
       onBack()
     } catch (e) {
+      clearLocallyDeletedSummary(summaryId)
       console.error('[SummaryDetail] delete error:', e)
       toast.showError(t('common.delete_failed'))
     }

@@ -12,6 +12,8 @@ export interface CachedSummaryDetail {
 let pendingSummary: CachedSummaryDetail | null = null
 
 const contentPatches = new Map<string, CachedSummaryDetail>()
+/** 删除后立刻从画廊隐藏，等磁盘/DB 刷新对齐后再清 */
+const locallyDeletedIds = new Set<string>()
 let patchVersion = 0
 const patchListeners = new Set<() => void>()
 
@@ -125,9 +127,50 @@ export function peekSummaryDetailPatch(summaryId: string): CachedSummaryDetail |
   return contentPatches.get(summaryId) ?? null
 }
 
+/** 删除后立刻清掉本地 patch，避免画廊短暂残留正文 */
+export function removeSummaryDetailPatch(summaryId: string): void {
+  if (!contentPatches.has(String(summaryId))) return
+  contentPatches.delete(String(summaryId))
+  if (pendingSummary && String(pendingSummary.id) === String(summaryId)) {
+    pendingSummary = null
+  }
+  emitPatchChange()
+}
+
+/** 详情/画廊删除时立刻标记，列表侧立即隐藏 */
+export function markSummaryDeletedLocally(summaryId: string): void {
+  locallyDeletedIds.add(String(summaryId))
+  removeSummaryDetailPatch(summaryId)
+  emitPatchChange()
+}
+
+export function clearLocallyDeletedSummary(summaryId: string): void {
+  if (!locallyDeletedIds.delete(String(summaryId))) return
+  emitPatchChange()
+}
+
+export function isSummaryLocallyDeleted(summaryId: string): boolean {
+  return locallyDeletedIds.has(String(summaryId))
+}
+
+/** 列表刷新后：服务端已无的 id 清掉本地删除标记；仍存在的保留（删除失败回滚前） */
+export function reconcileLocallyDeletedSummaries(liveIds: Iterable<string>): void {
+  if (locallyDeletedIds.size === 0) return
+  const live = new Set([...liveIds].map(String))
+  let changed = false
+  for (const id of [...locallyDeletedIds]) {
+    if (!live.has(id)) {
+      locallyDeletedIds.delete(id)
+      changed = true
+    }
+  }
+  if (changed) emitPatchChange()
+}
+
 export function clearAllSummaryDetailPatches() {
-  if (contentPatches.size === 0) return
+  if (contentPatches.size === 0 && locallyDeletedIds.size === 0) return
   contentPatches.clear()
+  locallyDeletedIds.clear()
   emitPatchChange()
 }
 

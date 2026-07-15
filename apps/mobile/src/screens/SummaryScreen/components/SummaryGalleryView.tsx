@@ -9,11 +9,14 @@ import { buildSummaryTitle } from '../utils/buildSummaryTitle'
 import { parseSummaryBoundaryDate } from '../utils/summary-detail.helpers'
 import {
   applySummaryContentPatches,
+  clearLocallyDeletedSummary,
   getSummaryDetailPatchVersion,
+  markSummaryDeletedLocally,
   patchSummaryDetailCache,
   resolveSummaryForNavigation,
   setPendingSummaryDetail,
-  subscribeSummaryDetailPatches
+  subscribeSummaryDetailPatches,
+  isSummaryLocallyDeleted
 } from '../utils/summaryDetailCache'
 
 interface Summary {
@@ -30,12 +33,14 @@ interface SummaryGalleryViewProps {
   summaries: Summary[]
   loading?: boolean
   onRefreshData: () => Promise<void>
+  onSummaryDeleted?: (id: string) => void
 }
 
 export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
   summaries,
   loading = false,
-  onRefreshData
+  onRefreshData,
+  onSummaryDeleted
 }) => {
   const { t } = useTranslation()
   const toast = useNativeToast()
@@ -49,7 +54,7 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
 
   const displaySummaries = useMemo(() => {
     void patchVersion
-    return applySummaryContentPatches(summaries)
+    return applySummaryContentPatches(summaries).filter((s) => !isSummaryLocallyDeleted(String(s.id)))
   }, [summaries, patchVersion])
 
   const seedSummaryNavigation = (id: string) => {
@@ -98,7 +103,7 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
   }
 
   const handleDelete = async (id: string) => {
-    const summary = summaries.find((s) => String(s.id) === id)
+    const summary = displaySummaries.find((s) => String(s.id) === id)
     if (!summary || !services) return
 
     const title = buildSummaryTitle(summary, t)
@@ -108,6 +113,9 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
     })
     if (!confirmed) return
     try {
+      // 先从列表拿掉，避免等 dashboard/磁盘扫描才消失
+      markSummaryDeletedLocally(id)
+      onSummaryDeleted?.(id)
       await services.summaryManager.delete(
         summary.type as SummaryType,
         parseSummaryBoundaryDate(summary.startDate),
@@ -117,7 +125,10 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
       toast.showSuccess(t('common.delete_success'))
     } catch (e) {
       console.error('[SummaryGalleryView] delete error:', e)
+      clearLocallyDeletedSummary(id)
       toast.showError(t('common.delete_failed'))
+      // 失败时拉回真实列表
+      await onRefreshData()
     }
   }
 
