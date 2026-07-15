@@ -309,11 +309,15 @@ export const LegacyMarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 }
 
 const legacyStyles = StyleSheet.create({
+  /** ScrollView 内勿用 flex:1，否则测高/测宽异常导致正文被裁切 */
   containerDefault: {
-    flex: 1
+    alignSelf: 'stretch',
+    width: '100%',
+    minWidth: 0
   },
   containerCompact: {
-    alignSelf: 'stretch'
+    alignSelf: 'stretch',
+    width: '100%'
   },
   image: {
     width: '100%',

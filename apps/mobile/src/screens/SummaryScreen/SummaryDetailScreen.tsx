@@ -424,7 +424,6 @@ export const SummaryDetailScreen: React.FC<SummaryDetailScreenProps> = ({ summar
             <MarkdownRenderer
               content={summary.content}
               style={styles.contentText}
-              preferSyncRemend
               selectable={false}
             />
           </View>
