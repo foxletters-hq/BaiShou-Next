@@ -2,6 +2,10 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Copy, HelpCircle, Loader2, TextQuote } from 'lucide-react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
+import {
+  SHARED_MEMORY_LOOKBACK_MIN,
+  SHARED_MEMORY_LOOKBACK_SLIDER_BASE
+} from '@baishou/shared'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { useDialog } from '../Dialog'
 import { formatCompactTokenCount } from '../../shared/token-usage-display'
@@ -181,23 +185,26 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
           <span className="sm-label">{t('summary.lookback_label', 'Lookback (months)')}</span>
           <input
             type="number"
-            min="1"
-            max="120"
+            min={SHARED_MEMORY_LOOKBACK_MIN}
             value={lookbackMonths}
-            onChange={(e) => onMonthsChanged(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={(e) =>
+              onMonthsChanged(
+                Math.max(SHARED_MEMORY_LOOKBACK_MIN, parseInt(e.target.value) || 1)
+              )
+            }
             className="sm-number-input"
           />
         </div>
         <div className="sm-slider-container">
           <input
             type="range"
-            min="1"
-            max="60"
+            min={SHARED_MEMORY_LOOKBACK_MIN}
+            max={Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookbackMonths)}
             value={lookbackMonths}
             onChange={(e) => onMonthsChanged(Number(e.target.value))}
             className="sm-slider"
             style={{
-              backgroundSize: `${((lookbackMonths - 1) * 100) / 59}% 100%`
+              backgroundSize: `${((lookbackMonths - SHARED_MEMORY_LOOKBACK_MIN) * 100) / Math.max(1, Math.max(SHARED_MEMORY_LOOKBACK_SLIDER_BASE, lookbackMonths) - SHARED_MEMORY_LOOKBACK_MIN)}% 100%`
             }}
           />
         </div>
