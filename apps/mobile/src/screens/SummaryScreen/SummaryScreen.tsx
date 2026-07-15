@@ -75,6 +75,7 @@ export const SummaryScreen: React.FC = () => {
     refreshSummaries,
     refreshData,
     refreshMissing,
+    removeSummaryLocally,
     loading: galleryLoading
   } = useSummaryData(selectedYear)
 
@@ -96,8 +97,9 @@ export const SummaryScreen: React.FC = () => {
       const cacheStale = peekSummaryDashboardCache(String(vaultRevision))?.stale ?? true
       if (!cacheStale && now - lastFocusRefreshRef.current < 4000) return
       lastFocusRefreshRef.current = now
-      void refreshDashboard()
-    }, [refreshDashboard, vaultRevision])
+      // 从详情页返回时一并刷画廊/补全，避免只刷新 dashboard 留下旧列表
+      void refreshData()
+    }, [refreshData, vaultRevision])
   )
 
   useEffect(() => {
@@ -312,6 +314,7 @@ export const SummaryScreen: React.FC = () => {
                   summaries={summaries}
                   loading={galleryLoading}
                   onRefreshData={refreshData}
+                  onSummaryDeleted={removeSummaryLocally}
                 />
               </View>
             </Animated.View>

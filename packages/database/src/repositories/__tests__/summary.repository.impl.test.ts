@@ -83,6 +83,29 @@ describe('SummaryRepositoryImpl', () => {
     expect(notExist).toBeNull()
   })
 
+  it('should find summaries by type and local start day ignoring time-of-day', async () => {
+    const weekStartMidnight = new Date(2026, 2, 23, 0, 0, 0, 0)
+    const weekStartNoon = new Date(2026, 2, 23, 12, 0, 0, 0)
+    const weekEnd = new Date(2026, 2, 29, 23, 59, 59, 0)
+
+    await repo.save({
+      type: 'weekly' as SummaryType,
+      startDate: weekStartMidnight,
+      endDate: weekEnd,
+      content: 'Week body'
+    })
+
+    const found = await repo.findAllByTypeAndStartDay('weekly' as SummaryType, weekStartNoon)
+    expect(found).toHaveLength(1)
+    expect(found[0]!.content).toBe('Week body')
+
+    const otherDay = await repo.findAllByTypeAndStartDay(
+      'weekly' as SummaryType,
+      new Date(2026, 2, 24, 0, 0, 0, 0)
+    )
+    expect(otherDay).toHaveLength(0)
+  })
+
   it('should get combined list of summaries starting at optionally date', async () => {
     const futureStart = new Date('2026-04-01T00:00:00.000Z')
 

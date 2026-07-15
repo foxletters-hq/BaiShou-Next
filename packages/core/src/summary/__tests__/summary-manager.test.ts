@@ -32,6 +32,7 @@ describe('SummaryManagerService (SSOT refactor)', () => {
       upsert: vi.fn(),
       update: vi.fn(),
       getByDateRange: vi.fn(),
+      findAllByTypeAndStartDay: vi.fn().mockResolvedValue([]),
       getSummaries: vi.fn(),
       countByType: vi.fn(),
       delete: vi.fn(),
