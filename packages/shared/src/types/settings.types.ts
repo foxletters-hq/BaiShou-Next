@@ -120,7 +120,7 @@ export interface SummaryConfig {
   /** 复制共同回忆时附加在全文最前方的自定义前缀 */
   sharedMemoryCopyPrefix?: string
   /**
-   * 生成模式：提示词模板（默认）或指定伙伴（用伙伴模型 + systemPrompt）
+   * 生成模式：提示词模板（默认）或指定伙伴（只复用伙伴 systemPrompt；模型仍用全局总结模型）
    */
   generationMode?: SummaryGenerationMode
   /** 伙伴模式下选用的助手 ID；缺失或已删时回退提示词模式 */
