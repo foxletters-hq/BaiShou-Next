@@ -20,7 +20,9 @@ const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
 
 const START = '<!-- CONTRIBUTORS-WALL:START -->'
 const END = '<!-- CONTRIBUTORS-WALL:END -->'
-const AVATAR_SIZE = 64
+/** 展示边长（px）；源图取 2× 以适配高分屏，避免发糊 */
+const AVATAR_SIZE = 72
+const AVATAR_SRC_SIZE = AVATAR_SIZE * 2
 const MAX = 48
 
 /** 额外排除的登录名（大小写不敏感）；GitHub type=Bot 与 [bot] 后缀也会过滤 */
@@ -83,13 +85,15 @@ function renderWall(contributors) {
     const login = c.login
     const avatar =
       c.avatar_url || `https://avatars.githubusercontent.com/u/${c.id}?v=4`
-    const src = `${avatar}${avatar.includes('?') ? '&' : '?'}s=${AVATAR_SIZE}`
-    return `<a href="https://github.com/${login}" title="${login}"><img src="${src}" width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" alt="${login}"/></a>`
+    const sep = avatar.includes('?') ? '&' : '?'
+    const src = `${avatar}${sep}s=${AVATAR_SRC_SIZE}`
+    // 2× 源图 + 圆形裁切，高分屏更清晰
+    return `<a href="https://github.com/${login}" title="${login}"><img src="${src}" width="${AVATAR_SIZE}" height="${AVATAR_SIZE}" alt="${login}" style="border-radius:50%;"/></a>`
   })
 
   return [
     START,
-    `<!-- 按 GitHub 贡献量自动排序；已过滤 Bot / CI。勿手改；运行: pnpm sync:contributors -->`,
+    `<!-- 按 GitHub 贡献量自动排序；已过滤 Bot / CI。展示 ${AVATAR_SIZE}px / 源图 ${AVATAR_SRC_SIZE}px。勿手改；运行: pnpm sync:contributors -->`,
     links.join('\n'),
     END
   ].join('\n')
