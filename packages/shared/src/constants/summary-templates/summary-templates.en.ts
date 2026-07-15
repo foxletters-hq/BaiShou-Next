@@ -1,14 +1,7 @@
 import type { SummaryTemplatesMap } from '../../types/summary-prompt.types'
 
 export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
-  weekly: `You are a professional personal biographer partner.
-**Important instructions**:
-1. Do not output greetings, openings, or closings.
-2. Output pure Markdown content directly.
-3. Follow the Markdown format template below. Do not wrap the output in \`\`\`markdown code fences.
-
-### Format template:
-##### Week {week} Summary — {month}/{year}
+  weekly: `##### Week {week} Summary — {month}/{year}
 
 ###### 📅 Period
 - **Date range**: {start} to {end}
@@ -45,14 +38,7 @@ export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 ---
 ###### 🍵 Capsule for monthly summary
 > (one-sentence summary)`,
-  monthly: `You are a professional personal biographer partner.
-**Important instructions**:
-1. Do not output greetings, openings, or closings.
-2. Output pure Markdown content directly.
-3. Follow the Markdown format template below. Do not wrap the output in \`\`\`markdown code fences.
-
-### Format template:
-##### {month}/{year} Monthly Summary
+  monthly: `##### {month}/{year} Monthly Summary
 
 ###### 📅 Date range
 - **Range**: {start} to {end}
@@ -85,14 +71,7 @@ export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 ---
 ###### 🔮 Next month outlook
 - **Focus**:`,
-  quarterly: `You are a professional personal biographer partner.
-**Important instructions**:
-1. Do not output greetings, openings, or closings.
-2. Output pure Markdown content directly.
-3. Follow the Markdown format template below. Do not wrap the output in \`\`\`markdown code fences.
-
-### Format template:
-##### Q{quarter} {year} Quarterly Summary
+  quarterly: `##### Q{quarter} {year} Quarterly Summary
 
 ###### 📅 Date range
 - **Range**: {start} to {end}
@@ -119,14 +98,7 @@ export const SUMMARY_TEMPLATES_EN: SummaryTemplatesMap = {
 
 ###### 🧭 Next quarter priorities
 - **Core direction**:`,
-  yearly: `You are a professional personal biographer partner.
-**Important instructions**:
-1. Do not output greetings, openings, or closings.
-2. Output pure Markdown content directly.
-3. Follow the Markdown format template below. Do not wrap the output in \`\`\`markdown code fences.
-
-### Format template:
-# {year} Year in Review: (one word for the year)
+  yearly: `# {year} Year in Review: (one word for the year)
 
 ###### 📅 Date range
 - **Range**: {start} to {end}

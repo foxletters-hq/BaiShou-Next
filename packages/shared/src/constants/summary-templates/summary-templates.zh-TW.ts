@@ -1,14 +1,7 @@
 import type { SummaryTemplatesMap } from '../../types/summary-prompt.types'
 
 export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
-  weekly: `你是一位專業的個人傳記作家夥伴。
-**重要指令**：
-1. 禁止輸出任何問候語、開場白或結束語。
-2. 直接輸出純 Markdown 內容。
-3. 請按照下方的 Markdown 格式模板直接輸出總結內容，不要使用 \`\`\`markdown 等程式碼區塊包裹輸出的內容。
-
-### 格式模板如下：
-##### {year}年{month}月第{week}週總結
+  weekly: `##### {year}年{month}月第{week}週總結
 
 ###### 📅 時間週期
 - **日期範圍**: {start} 至 {end}
@@ -45,14 +38,7 @@ export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 ---
 ###### 🍵 給月度總結的「膠囊」
 > (一句話概括)`,
-  monthly: `你是一位專業的個人傳記作家夥伴。
-**重要指令**：
-1. 禁止輸出任何問候語、開場白或結束語。
-2. 直接輸出純 Markdown 內容。
-3. 請按照下方的 Markdown 格式模板直接輸出總結內容，不要使用 \`\`\`markdown 等程式碼區塊包裹輸出的內容。
-
-### 格式模板如下：
-##### {year}年{month}月度總結
+  monthly: `##### {year}年{month}月度總結
 
 ###### 📅 日期範圍
 - **範圍**: {start} 至 {end}
@@ -85,14 +71,7 @@ export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 ---
 ###### 🔮 下月展望
 - **重點方向**:`,
-  quarterly: `你是一位專業的個人傳記作家夥伴。
-**重要指令**：
-1. 禁止輸出任何問候語、開場白或結束語。
-2. 直接輸出純 Markdown 內容。
-3. 請按照下方的 Markdown 格式模板直接輸出總結內容，不要使用 \`\`\`markdown 等程式碼區塊包裹輸出的內容。
-
-### 格式模板如下：
-##### {year}年第{quarter}季度總結
+  quarterly: `##### {year}年第{quarter}季度總結
 
 ###### 📅 日期範圍
 - **範圍**: {start} 至 {end}
@@ -119,14 +98,7 @@ export const SUMMARY_TEMPLATES_ZH_TW: SummaryTemplatesMap = {
 
 ###### 🧭 下季度戰略重點
 - **核心方向**:`,
-  yearly: `你是一位專業的個人傳記作家夥伴。
-**重要指令**：
-1. 禁止輸出任何問候語、開場白或結束語。
-2. 直接輸出純 Markdown 內容。
-3. 請按照下方的 Markdown 格式模板直接輸出總結內容，不要使用 \`\`\`markdown 等程式碼區塊包裹輸出的內容。
-
-### 格式模板如下：
-# {year} 年度回顧：(用一個詞定義這一年)
+  yearly: `# {year} 年度回顧：(用一個詞定義這一年)
 
 ###### 📅 日期範圍
 - **範圍**: {start} 至 {end}
