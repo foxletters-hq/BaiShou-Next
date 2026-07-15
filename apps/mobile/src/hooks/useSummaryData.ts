@@ -15,7 +15,9 @@ import {
 } from '../lib/summary-dashboard-cache'
 import {
   clearAllSummaryDetailPatches,
-  reconcileSummaryContentPatches
+  reconcileSummaryContentPatches,
+  reconcileLocallyDeletedSummaries,
+  isSummaryLocallyDeleted
 } from '../screens/SummaryScreen/utils/summaryDetailCache'
 import {
   parseSummaryBoundaryDate,
@@ -279,8 +281,10 @@ export function useSummaryData(selectedYear: number) {
               ? String(s.updatedAt)
               : undefined
       }))
+      reconcileLocallyDeletedSummaries(mapped.map((s) => s.id))
+      const visible = mapped.filter((s) => !isSummaryLocallyDeleted(s.id))
       // DB 仍空时保留本地已保存正文，避免刚编辑的预览被清空
-      setSummaries(reconcileSummaryContentPatches(mapped))
+      setSummaries(reconcileSummaryContentPatches(visible))
       hasGalleryDataRef.current = summaryList.length > 0
     } catch (e) {
       console.warn('Failed to fetch summary gallery data', e)
@@ -322,12 +326,20 @@ export function useSummaryData(selectedYear: number) {
     storageIndexing
   ])
 
+  // 切 UI 语言后按新 locale 重检缺失项（detector label 与语言相关）
+  useEffect(() => {
+    void fetchMissingSummariesRef.current()
+  }, [i18n.language])
+
   useEffect(() => {
     if (!cacheInvalidationHandledRef.current) {
       cacheInvalidationHandledRef.current = true
       return
     }
+    // summary.delete 等会失效 dashboard；同步刷画廊与缺失检测，避免详情页删除后列表/补全卡住
     void refreshDashboardRef.current()
+    void fetchSummariesForGalleryRef.current()
+    void fetchMissingSummariesRef.current()
   }, [cacheVersion])
 
   const activityData = useMemo(
@@ -335,10 +347,17 @@ export function useSummaryData(selectedYear: number) {
     [activityByDate, selectedYear]
   )
 
+  const removeSummaryLocally = useCallback((id: string) => {
+    setSummaries((prev) => prev.filter((s) => String(s.id) !== String(id)))
+  }, [])
+
   const fetchData = useCallback(async () => {
-    await refreshDashboard({ force: true })
-    void fetchMissingSummaries()
-    await fetchSummariesForGallery()
+    // 并行刷新：勿等 dashboard 才刷画廊，否则删除后列表要卡好几秒
+    await Promise.all([
+      refreshDashboard({ force: true }),
+      fetchMissingSummaries(),
+      fetchSummariesForGallery()
+    ])
   }, [fetchMissingSummaries, fetchSummariesForGallery, refreshDashboard])
 
   const {
@@ -375,6 +394,7 @@ export function useSummaryData(selectedYear: number) {
     refreshSummaries: fetchSummariesForGallery,
     refreshData: fetchData,
     refreshMissing: fetchMissingSummaries,
+    removeSummaryLocally,
     loading,
     isGenerating
   }

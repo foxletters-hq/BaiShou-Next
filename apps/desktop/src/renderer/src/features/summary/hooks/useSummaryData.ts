@@ -165,9 +165,11 @@ export function useSummaryData(selectedYear: number) {
   }, [])
 
   const fetchData = useCallback(async () => {
-    await refreshDashboard({ force: true })
-    void fetchMissingSummaries()
-    await fetchSummariesForGallery()
+    await Promise.all([
+      refreshDashboard({ force: true }),
+      fetchMissingSummaries(),
+      fetchSummariesForGallery()
+    ])
   }, [fetchMissingSummaries, fetchSummariesForGallery, refreshDashboard])
 
   useEffect(() => {
@@ -194,7 +196,15 @@ export function useSummaryData(selectedYear: number) {
       return
     }
     void refreshDashboard()
-  }, [cacheVersion, refreshDashboard, scopeReady])
+    void fetchMissingSummaries()
+    void fetchSummariesForGallery()
+  }, [
+    cacheVersion,
+    fetchMissingSummaries,
+    fetchSummariesForGallery,
+    refreshDashboard,
+    scopeReady
+  ])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.electron) {
