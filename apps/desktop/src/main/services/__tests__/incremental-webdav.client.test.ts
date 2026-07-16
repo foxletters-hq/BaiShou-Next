@@ -85,6 +85,101 @@ describe('IncrementalWebDavClient.listFiles', () => {
     expect(mockClient.createDirectory).not.toHaveBeenCalled()
   })
 
+  it('recurses into subdirs when server returns absolute paths', async () => {
+    mockClient.getDirectoryContents.mockImplementation(async (dir: string) => {
+      if (dir === 'memories_sync') {
+        return [
+          { type: 'directory', filename: '/dav/memories_sync/Personal' },
+          {
+            type: 'file',
+            filename: '/dav/memories_sync/vault_registry.json',
+            basename: 'vault_registry.json',
+            size: 10
+          }
+        ]
+      }
+      if (dir === 'memories_sync/Personal') {
+        return [
+          {
+            type: 'file',
+            filename: '/dav/memories_sync/Personal/Journals/a.md',
+            basename: 'a.md',
+            size: 5,
+            lastmod: '2026-01-01T00:00:00Z'
+          }
+        ]
+      }
+      return []
+    })
+
+    const client = new IncrementalWebDavClient('https://dav.example.com', 'u', 'p', 'memories_sync')
+    ;(client as any).client = mockClient
+
+    const records = await client.listFiles()
+
+    expect(mockClient.getDirectoryContents).toHaveBeenCalledWith('memories_sync/Personal', {
+      deep: false
+    })
+    expect(records.map((r) => r.filename).sort()).toEqual([
+      'Personal/Journals/a.md',
+      'vault_registry.json'
+    ])
+  })
+
+  it('recurses when server returns full URLs in PROPFIND', async () => {
+    mockClient.getDirectoryContents.mockImplementation(async (dir: string) => {
+      if (dir === 'memories_sync') {
+        return [
+          {
+            type: 'directory',
+            filename: 'https://dav.example.com/dav/memories_sync/Personal'
+          }
+        ]
+      }
+      if (dir === 'memories_sync/Personal') {
+        return [
+          {
+            type: 'file',
+            filename: 'https://dav.example.com/dav/memories_sync/Personal/a.md',
+            size: 1
+          }
+        ]
+      }
+      return []
+    })
+
+    const client = new IncrementalWebDavClient('https://dav.example.com', 'u', 'p', 'memories_sync')
+    ;(client as any).client = mockClient
+
+    const records = await client.listFiles()
+
+    expect(mockClient.getDirectoryContents).toHaveBeenCalledWith('memories_sync/Personal', {
+      deep: false
+    })
+    expect(records.map((r) => r.filename)).toEqual(['Personal/a.md'])
+  })
+
+  it('decodes percent-encoded filenames from PROPFIND', async () => {
+    mockClient.getDirectoryContents.mockImplementation(async (dir: string) => {
+      if (dir === 'memories_sync') {
+        return [
+          {
+            type: 'file',
+            filename: '/dav/memories_sync/Personal/%E6%97%A5%E8%AE%B0.md',
+            size: 3
+          }
+        ]
+      }
+      return []
+    })
+
+    const client = new IncrementalWebDavClient('https://dav.example.com', 'u', 'p', 'memories_sync')
+    ;(client as any).client = mockClient
+
+    const records = await client.listFiles()
+    expect(records.map((r) => r.filename)).toEqual(['Personal/日记.md'])
+  })
+
   it('ignores parent directory entries to avoid listing storms', async () => {
     let personalCalls = 0
     mockClient.getDirectoryContents.mockImplementation(async (dir: string) => {
