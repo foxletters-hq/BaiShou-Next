@@ -23,6 +23,11 @@ import { threeWayMerge } from './three-way-merge'
 import { S3NotConfiguredError, S3SyncError } from './sync.errors'
 import { ThreeWaySyncManifestMixin } from './three-way-sync.manifest'
 import { limitExecute } from './three-way-sync.utils'
+import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
+import { JsonlRecordMergeService } from '../raw-data/jsonl-record-merge.service'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 
 export { limitExecute } from './three-way-sync.utils'
 
@@ -101,6 +106,13 @@ export class ThreeWaySyncService
               break
             case 'conflict-resolved': {
               result.conflicted.push(d.filePath)
+              if (isMonthlyJsonlRawPath(d.filePath)) {
+                const mergedOk = await this.mergeMonthlyJsonlConflict(d.filePath)
+                if (mergedOk) {
+                  result.uploaded.push(d.filePath)
+                  break
+                }
+              }
               if (d.direction === 'upload') {
                 if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
                 await this.uploadFile(d.filePath)
@@ -228,6 +240,51 @@ export class ThreeWaySyncService
         blockedDeleteDirection: deleteBlock?.direction
       }),
       planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteManifest)
+    }
+  }
+
+  /**
+   * Line-level LWW for Memory / Graph monthly JSONL conflicts.
+   * Merges local + remote, writes local, uploads merged result.
+   */
+  protected async mergeMonthlyJsonlConflict(relPath: string): Promise<boolean> {
+    try {
+      const fullPath = await this.resolveSyncFullPath(relPath)
+      const localText = fs.existsSync(fullPath)
+        ? await fs.promises.readFile(fullPath, 'utf8')
+        : ''
+
+      const tmp = path.join(
+        os.tmpdir(),
+        `baishou-jsonl-merge-${Date.now()}-${Math.random().toString(16).slice(2)}.jsonl`
+      )
+      try {
+        await this.cloudClient.downloadFile(relPath.replace(/\\/g, '/'), tmp)
+      } catch {
+        // Remote missing → keep local and upload
+        if (localText) {
+          await this.uploadFile(relPath)
+          return true
+        }
+        return false
+      }
+
+      const remoteText = await fs.promises.readFile(tmp, 'utf8')
+      await fs.promises.unlink(tmp).catch(() => undefined)
+
+      const merger = new JsonlRecordMergeService()
+      const merged = merger.mergeTexts(localText, remoteText)
+
+      if (fs.existsSync(fullPath)) {
+        await this.backupFile(relPath, '')
+      }
+      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
+      await fs.promises.writeFile(fullPath, merged, 'utf8')
+      await this.uploadFile(relPath)
+      return true
+    } catch (e) {
+      console.warn(`[ThreeWaySync] JSONL LWW merge failed for ${relPath}:`, e)
+      return false
     }
   }
 }
