@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 账户设置聚合面板，后续再拆分 */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, StyleSheet, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
