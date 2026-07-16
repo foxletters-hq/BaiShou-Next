@@ -196,24 +196,36 @@ export function registerGraphIPC(): void {
       }
     ) => {
       const vaultName = requireVaultName()
+      const repo = requireGraphRepo()
       const now = Date.now()
       const nodeType = GRAPH_NODE_TYPES.includes(input.nodeType as never)
         ? input.nodeType
         : 'topic'
+      const existing = input.id ? await repo.getNodeById(input.id) : null
+      const name = input.name.trim()
+      const aliases = Array.isArray(input.aliases)
+        ? input.aliases
+        : (existing?.aliases ?? [])
       const record: GraphNodeRawRecord = {
-        id: input.id || newId('n'),
+        id: existing?.id || input.id || newId('n'),
         schemaVersion: 1,
         vaultName,
-        nodeType,
-        name: input.name.trim(),
-        aliases: input.aliases ?? [],
-        summary: input.summary ?? '',
-        props: {},
-        mentionCount: 1,
-        firstSeenAt: now,
+        nodeType: existing?.nodeType || nodeType,
+        name,
+        aliases,
+        summary: input.summary ?? existing?.summary ?? '',
+        props: (() => {
+          try {
+            return existing ? (JSON.parse(existing.propsJson || '{}') as Record<string, unknown>) : {}
+          } catch {
+            return {}
+          }
+        })(),
+        mentionCount: existing?.mentionCount ?? 1,
+        firstSeenAt: existing?.firstSeenAt ?? now,
         lastSeenAt: now,
-        origin: 'user',
-        createdAt: now,
+        origin: (existing?.origin as 'ai' | 'user') || 'user',
+        createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         deletedAt: null,
         reviewStatus: 'approved'
