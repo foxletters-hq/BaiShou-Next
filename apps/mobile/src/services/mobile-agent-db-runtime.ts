@@ -33,6 +33,7 @@ import {
   RecoveryAwareSummarySyncService
 } from './recovery-aware-sync.services'
 import { createMobileSessionDiskPersistenceHooks } from './session-file-watcher.service'
+import { ensureMobileRawDataRuntime } from './mobile-raw-data-source.runtime'
 import {
   mobileAgentDbRecovery,
   type MobileAgentDbRecoveryCoordinator
@@ -98,7 +99,8 @@ export async function createSummaryPipelineServices(options: {
   >
   const promptLocale = ((summaryConfig?.promptLocale as string | undefined) ?? 'zh') as 'zh' | 'en'
   const summaryAiClient = buildMobileSummaryAiClient(settingsManager)
-  const summaryFileService = new SummaryFileService(pathService, fileSystem)
+  const rawManager = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
+  const summaryFileService = new SummaryFileService(pathService, fileSystem, rawManager)
   const missingSummaryDetector = new MissingSummaryDetector(
     diaryRepoAdapter as never,
     summaryRepo as never
@@ -171,7 +173,8 @@ export async function createAgentDbRuntime(
   const profileRepo = new UserProfileRepository(drizzleDb)
   const snapshotRepo = new SnapshotRepository(drizzleDb)
 
-  const sessionFileService = new SessionFileService(pathService, fileSystem)
+  const sessionRaw = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
+  const sessionFileService = new SessionFileService(pathService, fileSystem, sessionRaw)
   const sessionSyncService = new RecoveryAwareSessionSyncService(
     sessionRepo,
     sessionFileService,

@@ -143,7 +143,10 @@ export function createStartAgentChat(deps: {
           attachments: overrides?.attachments as any,
           flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id),
           agentGate: getAgentGate?.(),
-          persistBaishouAgentGateConfig
+          persistBaishouAgentGateConfig,
+          rawDataSourceManager: (
+            await import('../../services/mobile-raw-data-source.runtime')
+          ).getMobileRawDataSourceManager() ?? undefined
         },
         callbacks
       )
