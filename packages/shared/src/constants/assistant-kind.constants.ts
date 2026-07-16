@@ -15,7 +15,9 @@ export const WORK_ASSISTANT_DISABLED_TOOL_IDS = [
   'memory_store',
   'memory_delete',
   'vector_search',
-  'message_search'
+  'message_search',
+  'recall_relations',
+  'graph_upsert'
 ] as const
 
 export function getAssistantDisabledToolIds(kind?: AssistantKind | string | null): string[] {

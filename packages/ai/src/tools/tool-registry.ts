@@ -24,6 +24,7 @@ import { hasEmbeddingCapability } from './tool-context.util'
 import { EmojiSendTool } from './emoji-send.tool'
 import { CompanionAskTool } from './companion-ask.tool'
 import { GraphUpsertTool } from './graph-upsert.tool'
+import { RecallRelationsTool } from './recall-relations.tool'
 import { WORKSPACE_TOOL_IDS, createWorkspaceTools } from '../agent-workspace/workspace.tools'
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
@@ -122,6 +123,7 @@ export class ToolRegistry {
       new ContextCompressDownstreamTool(),
       new CompanionAskTool(),
       new GraphUpsertTool(),
+      new RecallRelationsTool(),
       ...createWorkspaceTools()
     ])
   }
