@@ -34,6 +34,21 @@ export class VersionManagerImpl implements IVersionManager {
     }
   }
 
+  /** Preserve original extension (session .json, journal .md, …). */
+  private backupBlobName(versionId: number, filePath: string): string {
+    const ext = path.extname(filePath) || '.md'
+    return `${versionId}${ext}`
+  }
+
+  private resolveBackupPath(versionsDir: string, versionId: number, filePath: string): string {
+    const preferred = path.join(versionsDir, this.backupBlobName(versionId, filePath))
+    if (fs.existsSync(preferred)) return preferred
+    // Legacy backups were always `.md`
+    const legacy = path.join(versionsDir, `${versionId}.md`)
+    if (fs.existsSync(legacy)) return legacy
+    return preferred
+  }
+
   // ── 公开 API ───────────────────────────────────────────────
 
   async backup(filePath: string): Promise<string> {
@@ -49,7 +64,7 @@ export class VersionManagerImpl implements IVersionManager {
       await this.ensureDir(versionsDir)
 
       const versionId = Date.now()
-      const backupPath = path.join(versionsDir, `${versionId}.md`)
+      const backupPath = path.join(versionsDir, this.backupBlobName(versionId, filePath))
 
       await fs.promises.copyFile(fullPath, backupPath)
 
@@ -115,7 +130,7 @@ export class VersionManagerImpl implements IVersionManager {
 
   async restore(filePath: string, versionId: number): Promise<void> {
     const versionsDir = await this.getFileVersionsDir(filePath)
-    const backupPath = path.join(versionsDir, `${versionId}.md`)
+    const backupPath = this.resolveBackupPath(versionsDir, versionId, filePath)
     const metaPath = path.join(versionsDir, `${versionId}.json`)
 
     if (!fs.existsSync(backupPath) || !fs.existsSync(metaPath)) {
@@ -147,7 +162,7 @@ export class VersionManagerImpl implements IVersionManager {
     const toDelete = versions.slice(keepCount)
 
     for (const version of toDelete) {
-      const backupPath = path.join(versionsDir, `${version.id}.md`)
+      const backupPath = this.resolveBackupPath(versionsDir, version.id, filePath)
       const metaPath = path.join(versionsDir, `${version.id}.json`)
 
       try {

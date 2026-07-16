@@ -5,7 +5,8 @@ import { IStoragePathService } from '../vault/storage-path.types'
 export class SessionFileService {
   constructor(
     private readonly pathProvider: IStoragePathService,
-    private readonly fileSystem: IFileSystem
+    private readonly fileSystem: IFileSystem,
+    private readonly rawDataSourceManager?: import('../raw-data/raw-data-source.manager').RawDataSourceManager
   ) {}
 
   private async getDirectory(vaultName?: string | null): Promise<string> {
@@ -36,6 +37,10 @@ export class SessionFileService {
       }
     } catch {
       // 文件不存在或损坏时继续写入
+    }
+    if (this.rawDataSourceManager) {
+      await this.rawDataSourceManager.writeFile('session', `${sessionId}.json`, next)
+      return fullPath
     }
     await this.fileSystem.writeFile(fullPath, next, 'utf8')
     return fullPath

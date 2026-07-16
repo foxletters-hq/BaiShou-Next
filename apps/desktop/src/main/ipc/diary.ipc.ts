@@ -11,6 +11,7 @@ import * as fs from 'fs/promises'
 import { fileSystem, pathService, getActiveVaultShadowRepo } from './vault.ipc'
 import { CreateDiaryInput, UpdateDiaryInput, DiaryListFilter } from '@baishou/shared'
 import { getSharedShadowSync } from '../services/shadow-sync.registry'
+import { getRawDataSourceManager } from '../services/raw-data-source.runtime'
 
 /**
  * 日记管理服务工厂
@@ -22,7 +23,7 @@ import { getSharedShadowSync } from '../services/shadow-sync.registry'
  */
 export function getDiaryManager() {
   const shadowRepo = getActiveVaultShadowRepo()
-  const fileSync = new FileSyncServiceImpl(pathService, fileSystem)
+  const fileSync = new FileSyncServiceImpl(pathService, fileSystem, getRawDataSourceManager())
   const shadowSync = getSharedShadowSync()
   const vaultIndex = new VaultIndexServiceImpl()
 

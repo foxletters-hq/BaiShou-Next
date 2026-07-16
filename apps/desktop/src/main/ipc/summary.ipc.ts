@@ -28,6 +28,7 @@ import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { buildSummaryAiClient } from './summary-ai-client'
 import { getDiaryManager } from './diary.ipc'
+import { getRawDataSourceManager } from '../services/raw-data-source.runtime'
 
 async function fetchDashboardSnapshotPayload(): Promise<{
   totalDiaryCount: number
@@ -56,7 +57,7 @@ async function fetchDashboardSnapshotPayload(): Promise<{
 export function getSummaryManager() {
   const db = connectionManager.getDb()
   const summaryRepo = new SummaryRepositoryImpl(db)
-  const fileSync = new SummaryFileService(pathService, fileSystem)
+  const fileSync = new SummaryFileService(pathService, fileSystem, getRawDataSourceManager())
   const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync)
   return new SummaryManagerService(summaryRepo, fileSync, summarySync)
 }
@@ -89,7 +90,7 @@ export async function rebindSummaryCacheForActiveVault(): Promise<void> {
 
   const db = connectionManager.getDb()
   const summaryRepo = new SummaryRepositoryImpl(db)
-  const fileSync = new SummaryFileService(pathService, fileSystem)
+  const fileSync = new SummaryFileService(pathService, fileSystem, getRawDataSourceManager())
   const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync)
 
   try {

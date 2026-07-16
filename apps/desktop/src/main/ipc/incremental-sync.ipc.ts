@@ -133,7 +133,8 @@ async function createSyncService(config: S3SyncConfig): Promise<IIncrementalSync
 
   client.setVaultPath(syncRoot)
 
-  syncService = new ThreeWaySyncService(pathService, client, deviceId)
+  const { getVersionManager } = await import('../services/raw-data-source.runtime')
+  syncService = new ThreeWaySyncService(pathService, client, deviceId, getVersionManager())
 
   const logDir = path.join(syncMetaDir, 'sync-log')
   const logService = new OperationLogService(logDir)
