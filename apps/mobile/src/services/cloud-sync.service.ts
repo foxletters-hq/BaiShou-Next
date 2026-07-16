@@ -12,15 +12,33 @@ import {
   buildS3ListUrl,
   buildS3ObjectUrl,
   fetchAllS3ListPages,
+  formatWebDavRequestError,
   isRemoteCloudSyncConfigured,
+  isTransientWebDavHttpStatus,
   normalizeWebDavBaseUrl,
   s3FetchHeaders,
-  signS3Request
+  signS3Request,
+  suggestWebDavHttpFallbackUrl
 } from '@baishou/shared'
 import type { ArchiveImportProgressCallback } from './archive-guards.util'
 
+const CLOUD_BACKUP_MKCOL_OK = new Set([200, 201, 204, 405, 409])
+const CLOUD_BACKUP_MKCOL_MAX_ATTEMPTS = 4
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isLikelyCloudBackupNetworkError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error)
+  return /network request failed|failed to fetch|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|certificate|SSL|TLS/i.test(
+    msg
+  )
+}
+
 /**
  * 基于 fetch API 的 WebDAV 客户端（React Native 兼容）
+ * 仅用于 ZIP 全量云端备份；与增量同步 WebDAV ops 互为独立实现。
  */
 class MobileWebDavClient implements ICloudSyncClient {
   private baseUrl: string
@@ -36,6 +54,19 @@ class MobileWebDavClient implements ICloudSyncClient {
 
   private getRemotePath(filename: string): string {
     return `${this.basePath}${filename}`
+  }
+
+  /** HTTPS 连不上时尝试群晖常见 HTTP 回退（如 5006→5005） */
+  private async withHttpFallback<T>(op: () => Promise<T>): Promise<T> {
+    try {
+      return await op()
+    } catch (error) {
+      if (!isLikelyCloudBackupNetworkError(error)) throw error
+      const fallback = suggestWebDavHttpFallbackUrl(this.baseUrl)
+      if (!fallback || fallback === this.baseUrl) throw error
+      this.baseUrl = fallback
+      return await op()
+    }
   }
 
   private async request(
@@ -57,117 +88,140 @@ class MobileWebDavClient implements ICloudSyncClient {
   }
 
   async uploadFile(localFilePath: string): Promise<void> {
-    const filename = localFilePath.split('/').pop() || 'backup.zip'
-    const remotePath = this.getRemotePath(filename)
+    await this.withHttpFallback(async () => {
+      const filename = localFilePath.split('/').pop() || 'backup.zip'
+      const remotePath = this.getRemotePath(filename)
 
-    // 确保目录存在
-    await this.ensureDirExists(this.basePath)
+      await this.ensureDirExists(this.basePath)
 
-    // 使用 expo-file-system 的 uploadAsync 方法
-    const response = await uploadAsync(`${this.baseUrl}${remotePath}`, localFilePath, {
-      httpMethod: 'PUT',
-      headers: {
-        Authorization: this.auth,
-        'Content-Type': 'application/zip'
-      },
-      uploadType: FileSystemUploadType.BINARY_CONTENT
+      const response = await uploadAsync(`${this.baseUrl}${remotePath}`, localFilePath, {
+        httpMethod: 'PUT',
+        headers: {
+          Authorization: this.auth,
+          'Content-Type': 'application/zip'
+        },
+        uploadType: FileSystemUploadType.BINARY_CONTENT
+      })
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(
+          formatWebDavRequestError('上传', response.status, String(response.status))
+        )
+      }
     })
-
-    if (response.status < 200 || response.status >= 300) {
-      throw new Error(`WebDAV upload failed: ${response.status}`)
-    }
   }
 
   async downloadFile(remoteFilename: string, localDestPath: string): Promise<void> {
-    const remotePath = this.getRemotePath(remoteFilename)
-    const url = `${this.baseUrl}${remotePath}`
+    await this.withHttpFallback(async () => {
+      const remotePath = this.getRemotePath(remoteFilename)
+      const url = `${this.baseUrl}${remotePath}`
 
-    const response = await downloadAsync(url, localDestPath, {
-      headers: {
-        Authorization: this.auth
+      const response = await downloadAsync(url, localDestPath, {
+        headers: {
+          Authorization: this.auth
+        }
+      })
+
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(
+          formatWebDavRequestError('下载', response.status, String(response.status))
+        )
       }
     })
-
-    if (response.status < 200 || response.status >= 300) {
-      throw new Error(`WebDAV download failed: ${response.status}`)
-    }
   }
 
   async listFiles(): Promise<SyncRecord[]> {
-    const response = await this.request('PROPFIND', this.basePath, undefined, {
-      Depth: '1',
-      'Content-Type': 'application/xml'
+    return this.withHttpFallback(async () => {
+      // 先不带尾斜杠（群晖更稳），404 再试带尾斜杠（部分 Nextcloud 路径需要）
+      const barePath = this.basePath.replace(/\/+$/, '') || '/'
+      const pathsToTry = barePath.endsWith('/') ? [barePath] : [barePath, `${barePath}/`]
+      let response: Response | null = null
+      for (const listPath of pathsToTry) {
+        response = await this.request('PROPFIND', listPath, undefined, {
+          Depth: '1',
+          'Content-Type': 'application/xml'
+        })
+        if (response.ok || response.status !== 404) break
+      }
+
+      if (!response || !response.ok) {
+        if (response?.status === 404) return []
+        throw new Error(
+          formatWebDavRequestError(
+            '列举目录',
+            response?.status ?? 0,
+            response?.statusText
+          )
+        )
+      }
+
+      const text = await response.text()
+      const records: SyncRecord[] = []
+
+      const fileRegex = /<d:href>([^<]+)<\/d:href>/g
+      const modRegex = /<d:getlastmodified>([^<]+)<\/d:getlastmodified>/g
+      const sizeRegex = /<d:getcontentlength>([^<]+)<\/d:getcontentlength>/g
+
+      const files: string[] = []
+      const mods: string[] = []
+      const sizes: string[] = []
+
+      let match
+      while ((match = fileRegex.exec(text)) !== null) {
+        files.push(match[1])
+      }
+      while ((match = modRegex.exec(text)) !== null) {
+        mods.push(match[1])
+      }
+      while ((match = sizeRegex.exec(text)) !== null) {
+        sizes.push(match[1])
+      }
+
+      for (let i = 0; i < files.length; i++) {
+        const path = decodeURIComponent(files[i])
+        const filename = path.split('/').filter(Boolean).pop()
+        if (!filename || path.endsWith('/')) continue
+        if (!/\.zip$/i.test(filename)) continue
+        const isManaged = /^BaiShou_.*\.zip$/i.test(filename)
+
+        records.push({
+          filename,
+          lastModified: mods[i] ? new Date(mods[i]) : new Date(),
+          sizeInBytes: sizes[i] ? parseInt(sizes[i], 10) : 0,
+          managed: isManaged
+        })
+      }
+
+      records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
+      return records
     })
-
-    if (!response.ok) {
-      if (response.status === 404) return []
-      throw new Error(`WebDAV list failed: ${response.status} ${response.statusText}`)
-    }
-
-    const text = await response.text()
-    const records: SyncRecord[] = []
-
-    // 简单的 XML 解析
-    const fileRegex = /<d:href>([^<]+)<\/d:href>/g
-    const modRegex = /<d:getlastmodified>([^<]+)<\/d:getlastmodified>/g
-    const sizeRegex = /<d:getcontentlength>([^<]+)<\/d:getcontentlength>/g
-
-    const files: string[] = []
-    const mods: string[] = []
-    const sizes: string[] = []
-
-    let match
-    while ((match = fileRegex.exec(text)) !== null) {
-      files.push(match[1])
-    }
-    while ((match = modRegex.exec(text)) !== null) {
-      mods.push(match[1])
-    }
-    while ((match = sizeRegex.exec(text)) !== null) {
-      sizes.push(match[1])
-    }
-
-    for (let i = 0; i < files.length; i++) {
-      const path = decodeURIComponent(files[i])
-      const filename = path.split('/').filter(Boolean).pop()
-      if (!filename || path.endsWith('/')) continue
-      // 仅列出 .zip 文件
-      if (!/\.zip$/i.test(filename)) continue
-      const isManaged = /^BaiShou_.*\.zip$/i.test(filename)
-
-      records.push({
-        filename,
-        lastModified: mods[i] ? new Date(mods[i]) : new Date(),
-        sizeInBytes: sizes[i] ? parseInt(sizes[i], 10) : 0,
-        managed: isManaged
-      })
-    }
-
-    records.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
-    return records
   }
 
   async deleteFile(remoteFilename: string): Promise<void> {
-    const remotePath = this.getRemotePath(remoteFilename)
-    const response = await this.request('DELETE', remotePath)
+    await this.withHttpFallback(async () => {
+      const remotePath = this.getRemotePath(remoteFilename)
+      const response = await this.request('DELETE', remotePath)
 
-    if (!response.ok && response.status !== 404) {
-      throw new Error(`WebDAV delete failed: ${response.status} ${response.statusText}`)
-    }
+      if (!response.ok && response.status !== 404) {
+        throw new Error(formatWebDavRequestError('删除', response.status, response.statusText))
+      }
+    })
   }
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
-    const oldPath = this.getRemotePath(oldFilename)
-    const newPath = this.getRemotePath(newFilename)
+    await this.withHttpFallback(async () => {
+      const oldPath = this.getRemotePath(oldFilename)
+      const newPath = this.getRemotePath(newFilename)
 
-    const response = await this.request('MOVE', oldPath, undefined, {
-      Destination: `${this.baseUrl}${newPath}`,
-      Overwrite: 'T'
+      const response = await this.request('MOVE', oldPath, undefined, {
+        Destination: `${this.baseUrl}${newPath}`,
+        Overwrite: 'T'
+      })
+
+      if (!response.ok) {
+        throw new Error(formatWebDavRequestError('重命名', response.status, response.statusText))
+      }
     })
-
-    if (!response.ok) {
-      throw new Error(`WebDAV rename failed: ${response.status} ${response.statusText}`)
-    }
   }
 
   private async ensureDirExists(dirPath: string): Promise<void> {
@@ -175,11 +229,25 @@ class MobileWebDavClient implements ICloudSyncClient {
     let currentPath = ''
     for (const part of parts) {
       currentPath += '/' + part
-      try {
-        await this.request('MKCOL', currentPath)
-      } catch (e) {
-        // 目录可能已存在，忽略错误
+      let lastStatus = 0
+      for (let attempt = 0; attempt < CLOUD_BACKUP_MKCOL_MAX_ATTEMPTS; attempt++) {
+        try {
+          const response = await this.request('MKCOL', currentPath)
+          lastStatus = response.status
+          if (CLOUD_BACKUP_MKCOL_OK.has(lastStatus)) break
+          if (
+            !isTransientWebDavHttpStatus(lastStatus) ||
+            attempt >= CLOUD_BACKUP_MKCOL_MAX_ATTEMPTS - 1
+          ) {
+            break
+          }
+          await sleepMs(400 * 2 ** attempt)
+        } catch {
+          // 网络抖动时交给外层 withHttpFallback；目录级继续尝试后续 PUT
+          break
+        }
       }
+      void lastStatus
     }
   }
 }
