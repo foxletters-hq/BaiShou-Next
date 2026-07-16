@@ -218,10 +218,8 @@
 }
 
 .about-flat-inner-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 16px;
+  /* 内容直接落在外层卡片内，不再套一层边框 */
+  padding: 0;
 }
 
 .about-contributors-section {
@@ -246,7 +244,7 @@
   gap: 8px;
   width: 100%;
   padding: 12px 24px;
-  border: 1px solid var(--border-subtle);
+  border: 2px solid var(--border-card, rgba(15, 23, 42, 0.14));
   border-radius: 10px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -260,7 +258,7 @@
 
 .about-contributors-btn:hover {
   background: var(--bg-surface-normal, rgba(0, 0, 0, 0.02));
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.45);
 }
 
 .about-flat-developer {
@@ -438,7 +436,7 @@
   justify-content: center;
   width: 100%;
   padding: 11px 16px;
-  border: 1px solid var(--border-subtle);
+  border: 2px solid var(--border-card, rgba(15, 23, 42, 0.14));
   border-radius: 10px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -453,7 +451,7 @@
 
 .about-diagnostic-btn:hover:not(:disabled) {
   background: var(--bg-surface-normal, rgba(0, 0, 0, 0.02));
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.45);
 }
 
 .about-diagnostic-btn:disabled {
@@ -463,12 +461,12 @@
 
 .about-diagnostic-btn-primary {
   background: var(--color-primary, #5ba8f5);
-  border-color: transparent;
+  border-color: var(--color-primary, #5ba8f5);
   color: #fff;
 }
 
 .about-diagnostic-btn-primary:hover:not(:disabled) {
   opacity: 0.92;
   background: var(--color-primary, #5ba8f5);
-  border-color: transparent;
+  border-color: var(--color-primary, #5ba8f5);
 }

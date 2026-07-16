@@ -178,47 +178,43 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-inner-card">
-              <div className="about-flat-label about-flat-label-inner">
-                {t('about.core_developer_label', '核心开发者')}
-              </div>
-              <div className="about-flat-developer">
-                <div
-                  className="about-flat-developer-tap"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDevTap()
-                  }}
-                />
-                <span className="about-license-title">
-                  Anson & Kasumiame Sakura & Tenkou Akatsuki
-                </span>
-                <span className="about-license-subtitle">The Trio</span>
-              </div>
+            <div className="about-flat-label about-flat-label-inner">
+              {t('about.core_developer_label', '核心开发者')}
+            </div>
+            <div className="about-flat-developer">
+              <div
+                className="about-flat-developer-tap"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDevTap()
+                }}
+              />
+              <span className="about-license-title">
+                Anson & Kasumiame Sakura & Tenkou Akatsuki
+              </span>
+              <span className="about-license-subtitle">The Trio</span>
             </div>
           </div>
         </section>
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-inner-card">
-              <div className="about-flat-label about-flat-label-inner">
-                {t('about.oss_license_label', '开源协议')}
-              </div>
-              <button
-                type="button"
-                className="about-flat-link-row"
-                onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
-              >
-                <div className="about-license-content">
-                  <span className="about-license-title">AGPL v3.0</span>
-                  <span className="about-license-subtitle">
-                    Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
-                  </span>
-                </div>
-                <ExternalLink size={18} className="about-flat-link-trailing" />
-              </button>
+            <div className="about-flat-label about-flat-label-inner">
+              {t('about.oss_license_label', '开源协议')}
             </div>
+            <button
+              type="button"
+              className="about-flat-link-row"
+              onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
+            >
+              <div className="about-license-content">
+                <span className="about-license-title">AGPL v3.0</span>
+                <span className="about-license-subtitle">
+                  Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
+                </span>
+              </div>
+              <ExternalLink size={18} className="about-flat-link-trailing" />
+            </button>
           </div>
         </section>
 
@@ -250,7 +246,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
         {(onExportDiagnosticLog || onCopyDiagnosticLog) && (
           <section className="about-surface-card">
             <div className="about-flat-section about-flat-section-only">
-              <div className="about-flat-inner-card about-diagnostic-card">
+              <div className="about-diagnostic-card">
                 <div className="about-flat-label about-flat-label-inner">
                   {t('about.copy_diagnostic_log', '分享诊断日志')}
                 </div>
