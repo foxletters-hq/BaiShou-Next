@@ -3,6 +3,8 @@ export * from './types/summary.types'
 export * from './types/agent.types'
 export * from './baishou-agent-gate'
 export * from './agent-workspace'
+export * from './raw-data/memory-raw.types'
+export * from './raw-data/graph-raw.types'
 export * from './types/settings.types'
 export {
   ProviderType,

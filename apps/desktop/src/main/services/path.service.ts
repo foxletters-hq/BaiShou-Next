@@ -259,6 +259,20 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
+  public async getMemoryBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory()
+    const dir = path.join(activeDir, 'Memory')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
+  public async getGraphBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory()
+    const dir = path.join(activeDir, 'Graph')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
   public async getAssistantsBaseDirectory(): Promise<string> {
     const activeDir = await this.getActiveVaultDirectory()
     const dir = path.join(activeDir, 'Assistants')

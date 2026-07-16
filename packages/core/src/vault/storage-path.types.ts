@@ -63,6 +63,16 @@ export interface IStoragePathService {
   getSessionsBaseDirectory(): Promise<string>
 
   /**
+   * 伙伴记忆原始数据源：Memory/ 月分片 JSONL
+   */
+  getMemoryBaseDirectory(): Promise<string>
+
+  /**
+   * 记忆图谱原始数据源：Graph/（nodes/edges/extract-state）
+   */
+  getGraphBaseDirectory(): Promise<string>
+
+  /**
    * 返回当前活动 Vault 下用于存放用户设置的 AI 模型助手角色位置
    */
   getAssistantsBaseDirectory(): Promise<string>

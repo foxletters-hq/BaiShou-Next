@@ -385,6 +385,20 @@ export class MobileStoragePathService implements IStoragePathService {
     return dir
   }
 
+  public async getMemoryBaseDirectory(): Promise<string> {
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultDirectory(name)}/Memory`
+    await this.ensureDir(dir)
+    return dir
+  }
+
+  public async getGraphBaseDirectory(): Promise<string> {
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultDirectory(name)}/Graph`
+    await this.ensureDir(dir)
+    return dir
+  }
+
   public async getAssistantsBaseDirectory(): Promise<string> {
     const name = await this.getActiveVaultName()
     const dir = `${await this.getVaultDirectory(name)}/Assistants`
