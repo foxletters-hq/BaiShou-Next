@@ -89,6 +89,53 @@ export class HybridSearchEmbeddingStore {
     })
   }
 
+  /** Distinct source_id values for a source_type (for pending-index / backfill). */
+  async listSourceIdsByType(sourceType: string): Promise<string[]> {
+    const result = await this.db.execute({
+      sql: `SELECT DISTINCT source_id AS source_id FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ?`,
+      args: [sourceType]
+    })
+    return result.rows
+      .map((row) => String((row as { source_id?: unknown }).source_id ?? ''))
+      .filter((id) => id.length > 0)
+  }
+
+  /** Chunk rows for a source_type (backfill Memory JSONL from legacy chat/mem_*). */
+  async listEmbeddingChunksByType(sourceType: string): Promise<
+    Array<{
+      sourceId: string
+      chunkText: string
+      groupId: string
+      chunkIndex: number
+      sourceCreatedAt: number | null
+    }>
+  > {
+    const result = await this.db.execute({
+      sql: `
+        SELECT source_id, chunk_text, group_id, chunk_index, source_created_at
+        FROM ${HYBRID_SEARCH_TABLE}
+        WHERE source_type = ?
+        ORDER BY source_id, chunk_index
+      `,
+      args: [sourceType]
+    })
+    return result.rows.map((row) => {
+      const r = row as Record<string, unknown>
+      const srcAt = r.source_created_at
+      let sourceCreatedAt: number | null = null
+      if (typeof srcAt === 'number') {
+        sourceCreatedAt = srcAt > 1e12 ? srcAt : srcAt * 1000
+      }
+      return {
+        sourceId: String(r.source_id ?? ''),
+        chunkText: String(r.chunk_text ?? ''),
+        groupId: String(r.group_id ?? ''),
+        chunkIndex: Number(r.chunk_index ?? 0),
+        sourceCreatedAt
+      }
+    })
+  }
+
   async clearEmbeddings(): Promise<void> {
     await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
   }
