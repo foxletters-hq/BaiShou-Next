@@ -68,6 +68,10 @@ export class ShadowIndexSyncService {
   /** 同步事件监听者回调池 */
   private _listeners: Array<(event: JournalSyncEvent) => void> = []
   private _progressListeners: Array<(progress: ShadowScanProgress) => void> = []
+  /** Journal content changed → mark pending-reextract (no auto LLM extract). */
+  private _pendingReextractHook:
+    | ((filePath: string, contentHash: string) => void | Promise<void>)
+    | null = null
 
   constructor(
     private readonly shadowRepo: ShadowIndexRepository,
@@ -76,6 +80,15 @@ export class ShadowIndexSyncService {
     private readonly fileSystem: IFileSystem,
     private readonly embeddingCallback?: IEmbeddingCallback
   ) {}
+
+  /**
+   * Hook diary isChanged → pending-reextract. Does not trigger LLM extraction.
+   */
+  setPendingReextractHook(
+    hook: ((filePath: string, contentHash: string) => void | Promise<void>) | null
+  ): void {
+    this._pendingReextractHook = hook
+  }
 
   // ── 公开 API ────────────────────────────
 
@@ -299,6 +312,17 @@ export class ShadowIndexSyncService {
           const res = { meta, isChanged: true }
           results.push(res)
           events.push({ filePath: p.filePath, result: res })
+
+          if (this._pendingReextractHook) {
+            try {
+              await this._pendingReextractHook(p.filePath, p.contentHash)
+            } catch (e: any) {
+              logger.warn(
+                `[ShadowSync] pending-reextract hook failed for ${p.filePath}:`,
+                e
+              )
+            }
+          }
         }
       }
 

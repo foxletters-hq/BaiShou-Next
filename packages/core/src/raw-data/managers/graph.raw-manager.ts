@@ -218,4 +218,60 @@ export class GraphRawManager implements RecordCollectionKindManager {
       (await store.readRecords(shardMonth)) as GraphEdgeRawRecord[]
     )
   }
+
+  async readAllCollapsedExtractStates(): Promise<GraphExtractStateRawRecord[]> {
+    const store = await this.getStore('extract-state')
+    const shards = await store.listShards()
+    const all: GraphExtractStateRawRecord[] = []
+    for (const shard of shards) {
+      const rows = collapseJsonlById(
+        (await store.readRecords(shard.shardMonth)) as GraphExtractStateRawRecord[]
+      )
+      for (const row of rows) {
+        if (row && row.deletedAt == null) all.push(row as GraphExtractStateRawRecord)
+      }
+    }
+    return all
+  }
+
+  async readAllCollapsedEdges(): Promise<GraphEdgeRawRecord[]> {
+    const store = await this.getStore('edges')
+    const shards = await store.listShards()
+    const all: GraphEdgeRawRecord[] = []
+    for (const shard of shards) {
+      const rows = collapseJsonlById(
+        (await store.readRecords(shard.shardMonth)) as GraphEdgeRawRecord[]
+      )
+      for (const row of rows) {
+        if (row && row.deletedAt == null) all.push(row as GraphEdgeRawRecord)
+      }
+    }
+    return all
+  }
+
+  /**
+   * File-side replace: mark prior AI edges for this diary sourceRef as not current.
+   * Keeps user-origin edges.
+   */
+  async supersedeAiEdgesBySourceRef(sourceRef: string): Promise<number> {
+    const now = Date.now()
+    const edges = await this.readAllCollapsedEdges()
+    let count = 0
+    for (const edge of edges) {
+      if (edge.sourceRef !== sourceRef) continue
+      if (!edge.isCurrent) continue
+      if (edge.origin === 'user') continue
+      await this.writeRecord(
+        {
+          ...edge,
+          isCurrent: false,
+          validTo: now,
+          updatedAt: now
+        },
+        { collection: 'edges' }
+      )
+      count += 1
+    }
+    return count
+  }
 }
