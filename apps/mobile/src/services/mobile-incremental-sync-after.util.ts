@@ -45,6 +45,8 @@ export async function runMobileIncrementalAfterSync(
         summaries: cls.summaries,
         settings: cls.settings,
         assistants: cls.assistants,
+        memory: cls.memory,
+        graph: cls.graph,
         sessionRefCount: cls.sessionRefs.length
       }
     })
@@ -55,7 +57,9 @@ export async function runMobileIncrementalAfterSync(
       cls.sessions ||
       cls.summaries ||
       cls.settings ||
-      cls.assistants
+      cls.assistants ||
+      cls.memory ||
+      cls.graph
 
     let step = 0
     const needsSessionHydrate = cls.sessions || cls.sessionRefs.length > 0
@@ -132,6 +136,36 @@ export async function runMobileIncrementalAfterSync(
       const { schedulePostSyncDiaryBatchEmbed } =
         await import('./mobile-post-sync-diary-embed.service')
       schedulePostSyncDiaryBatchEmbed()
+    }
+
+    if (cls.memory || cls.graph) {
+      try {
+        const {
+          runMobileDerivedIndexHydration,
+          resolveMobileEmbeddingForHydration
+        } = await import('./mobile-raw-data-source.runtime')
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const runtime = agentDbRuntimeRef.current
+        const activeVaultName =
+          typeof (deps.pathService as { getActiveVaultNameForContext?: () => Promise<string> })
+            .getActiveVaultNameForContext === 'function'
+            ? await (
+                deps.pathService as { getActiveVaultNameForContext: () => Promise<string> }
+              ).getActiveVaultNameForContext()
+            : null
+        if (runtime?.drizzleDb && activeVaultName) {
+          const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+          await runMobileDerivedIndexHydration({
+            drizzleDb: runtime.drizzleDb,
+            vaultName: activeVaultName,
+            embeddingProvider: emb.embeddingProvider,
+            embeddingModelId: emb.embeddingModelId,
+            reason: 'incremental-sync'
+          })
+        }
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync][PostSync] derived hydration failed:', e)
+      }
     }
 
     if (checkpointRefreshPaths.length > 0) {

@@ -189,6 +189,8 @@ async function afterIncrementalSync(
       summaries: cls.summaries,
       settings: cls.settings,
       assistants: cls.assistants,
+      memory: cls.memory,
+      graph: cls.graph,
       sessionRefCount: cls.sessionRefs.length
     }
   })
@@ -239,20 +241,24 @@ async function afterIncrementalSync(
     cls.assistants ||
     (cls.sessions && result.deletedLocal.some((p) => /\/Sessions\//i.test(p)))
 
-  if (!needsLayerIndex) {
+  if (needsLayerIndex) {
+    const { globalBootstrapper } = await import('../services/bootstrapper.service')
+    await globalBootstrapper.selectiveResyncAfterIncrementalSync({
+      journals: cls.journals || result.deletedLocal.some((p) => /Journals|Diary/i.test(p)),
+      summaries: cls.summaries,
+      assistants: cls.assistants,
+      settings: cls.settings,
+      sessions: cls.sessions && result.deletedLocal.some((p) => /\/Sessions\//i.test(p)),
+      skipEnsures: true
+    })
+  } else if (cls.memory || cls.graph) {
+    // Memory/Graph-only downloads skip selective resync but still need derived-index hydration
+    const { runDerivedIndexHydration } = await import('../services/raw-data-source.runtime')
+    await runDerivedIndexHydration('incremental-sync-memory-graph')
+  } else {
     logger.warn('[IncrementalSync][PostSync] done-lite', { reason: 'sessions-hydrated-only' })
     return
   }
-
-  const { globalBootstrapper } = await import('../services/bootstrapper.service')
-  await globalBootstrapper.selectiveResyncAfterIncrementalSync({
-    journals: cls.journals || result.deletedLocal.some((p) => /Journals|Diary/i.test(p)),
-    summaries: cls.summaries,
-    assistants: cls.assistants,
-    settings: cls.settings,
-    sessions: cls.sessions && result.deletedLocal.some((p) => /\/Sessions\//i.test(p)),
-    skipEnsures: true
-  })
 
   if (cls.journals) {
     const { schedulePostSyncDiaryBatchEmbed } =
