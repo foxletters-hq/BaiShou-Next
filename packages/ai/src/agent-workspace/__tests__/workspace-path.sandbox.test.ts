@@ -38,4 +38,10 @@ describe('workspace-path.sandbox', () => {
   it('rejects null bytes in paths', () => {
     expect(() => normalizeWorkspaceRelativePath('bad\0path')).toThrow(WorkspacePathError)
   })
+
+  it('rejects absolute paths on another drive (Windows cross-drive)', () => {
+    expect(() => toWorkspaceRelativePath('D:/proj', 'C:/Outside/a.txt')).toThrow(
+      WorkspacePathError
+    )
+  })
 })
