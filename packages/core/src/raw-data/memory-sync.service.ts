@@ -33,7 +33,6 @@ export class MemorySyncService {
       const rows = collapseJsonlById(
         (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
       )
-      const liveIds = new Set<string>()
 
       for (const row of rows) {
         if (!row?.id) continue
@@ -42,7 +41,6 @@ export class MemorySyncService {
           deleted += 1
           continue
         }
-        liveIds.add(row.id)
         await this.sink.embedText({
           text: row.content,
           sourceType: MEMORY_SOURCE_TYPE,
@@ -52,11 +50,27 @@ export class MemorySyncService {
         upserted += 1
       }
 
-      // Optional: remove embeddings for ids that disappeared from this shard's collapsed set
-      // (only when sink can list — avoid wiping other shards' ids)
-      void liveIds
-
       await this.memoryManager.commitIndexed(shard.relativePath, shard.contentHash)
+    }
+
+    // After dirty shards: drop memory embeddings whose ids no longer exist in any JSONL shard
+    if (pending.length > 0 && this.sink.listSourceIdsByType && this.sink.deleteBySource) {
+      const liveIds = new Set<string>()
+      for (const shard of await this.memoryManager.listShards()) {
+        const rows = collapseJsonlById(
+          (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
+        )
+        for (const row of rows) {
+          if (row?.id && row.deletedAt == null) liveIds.add(row.id)
+        }
+      }
+      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE)
+      for (const id of dbIds) {
+        if (!liveIds.has(id)) {
+          await this.sink.deleteBySource(MEMORY_SOURCE_TYPE, id)
+          deleted += 1
+        }
+      }
     }
 
     return { shards: pending.length, upserted, deleted }
