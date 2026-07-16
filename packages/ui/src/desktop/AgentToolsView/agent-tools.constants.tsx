@@ -18,7 +18,8 @@ import {
   MessageSquare,
   Database,
   DatabaseZap,
-  Clock
+  Clock,
+  Share2
 } from 'lucide-react'
 import {
   AGENT_TOOL_CATEGORY_ORDER,
@@ -39,6 +40,8 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   vector_search: <ScanSearch size={20} />,
   memory_store: <Database size={20} />,
   memory_delete: <DatabaseZap size={20} />,
+  recall_relations: <Share2 size={20} />,
+  graph_upsert: <Share2 size={20} />,
   web_search: <Globe size={20} />,
   url_read: <Link2 size={20} />,
   auto_inject_time: <Clock size={20} />,
@@ -128,6 +131,14 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.memory_delete': i18n.t(
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L82',
     '记忆删除'
+  ),
+  'agent.tools.recall_relations': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.recall_relations',
+    '回忆关系图谱'
+  ),
+  'agent.tools.graph_upsert': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.graph_upsert',
+    '写入记忆图谱'
   ),
   'agent.tools.web_search': i18n.t(
     'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L83',

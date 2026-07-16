@@ -17,6 +17,7 @@ import {
   Puzzle,
   ScanSearch,
   Search,
+  Share2,
   Timer,
   Trash2
 } from 'lucide-react-native'
@@ -44,6 +45,8 @@ const TOOL_ICONS: Record<AgentToolIconId, React.ComponentType<LucideProps>> = {
   vector_search: ScanSearch,
   memory_store: Database,
   memory_delete: DatabaseZap,
+  recall_relations: Share2,
+  graph_upsert: Share2,
   web_search: Globe,
   url_read: Link2,
   auto_inject_time: Clock,

@@ -61,6 +61,8 @@ export interface StreamChatOptions {
   rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
   /** Host hook: Graph JSONL → SQLite pending-index sync */
   syncGraphPendingIndex?: () => Promise<void>
+  /** Read-only GraphRAG for recall_relations */
+  graphReader?: import('@baishou/shared').ToolGraphReader
   /** Workspace session context for folder-bound agent tools */
   workspace?: {
     folderRoot: string

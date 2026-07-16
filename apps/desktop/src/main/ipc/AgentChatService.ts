@@ -18,6 +18,7 @@ import {
   resolveStreamDialogueSelection
 } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
+import { vaultService } from './vault.ipc'
 import { searchService } from '../services/search.service'
 import {
   cancelAllAgentGateSessions,
@@ -103,6 +104,53 @@ export class AgentChatService {
       '../services/raw-data-source.runtime'
     )
     const rawDataSourceManager = getRawDataSourceManager()
+    const { GraphReaderAdapter } = await import('@baishou/ai')
+    const { GraphRagService } = await import('@baishou/core-desktop')
+    const { connectionManager, GraphRepository } = await import('@baishou/database-desktop')
+    const graphReader =
+      connectionManager.isConnected()
+        ? new GraphReaderAdapter(async (opts) => {
+            const rag = new GraphRagService(new GraphRepository(connectionManager.getDb()))
+            const vaultName = vaultService.getActiveVault()?.name || 'Personal'
+            const result = await rag.recallRelations({
+              vaultName,
+              entity: opts.entity,
+              mode: opts.mode
+            })
+            return {
+              anchors: result.anchors.map((a) => ({
+                id: a.id,
+                name: a.name,
+                nodeType: a.nodeType,
+                summary: a.summary
+              })),
+              subgraph: result.subgraph.map((e) => ({
+                id: e.id,
+                fromId: e.fromId,
+                toId: e.toId,
+                edgeType: e.edgeType,
+                sourceRef: e.sourceRef,
+                sourceExcerpt: e.sourceExcerpt,
+                validFrom: e.validFrom
+              })),
+              timeline: result.timeline?.map((e) => ({
+                id: e.id,
+                fromId: e.fromId,
+                toId: e.toId,
+                edgeType: e.edgeType,
+                sourceRef: e.sourceRef,
+                sourceExcerpt: e.sourceExcerpt,
+                validFrom: e.validFrom
+              })),
+              nodes: result.nodes.map((n) => ({
+                id: n.id,
+                name: n.name,
+                nodeType: n.nodeType,
+                summary: n.summary
+              }))
+            }
+          })
+        : undefined
 
     const { DesktopStoragePathService } = await import('../services/path.service')
     const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')
@@ -126,6 +174,7 @@ export class AgentChatService {
       },
       rawDataSourceManager,
       syncGraphPendingIndex,
+      graphReader,
       realSessionRepo,
       realSnapshotRepo,
       toolRegistry,

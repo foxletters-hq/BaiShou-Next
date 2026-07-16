@@ -13,6 +13,8 @@ export const AGENT_TOOL_ICON_IDS = {
   vector_search: 'ScanSearch',
   memory_store: 'Database',
   memory_delete: 'DatabaseZap',
+  recall_relations: 'Share2',
+  graph_upsert: 'Share2',
   web_search: 'Globe',
   url_read: 'Link2',
   auto_inject_time: 'Clock',
