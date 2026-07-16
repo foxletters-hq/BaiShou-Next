@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { AgentGateEffect, AgentGateProfileId } from '@baishou/shared'
 import { ToolRegistry } from '../tools/tool-registry'
 import { AgentTool, ToolContext } from '../tools/agent.tool'
+import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 import { z } from 'zod'
 
 class ToolA extends AgentTool<z.ZodObject<{ msg: z.ZodString }>> {
@@ -41,5 +43,36 @@ describe('ToolRegistry', () => {
   it('should return undefined for non-existent tool', () => {
     const registry = new ToolRegistry()
     expect(registry.get('nonexistent')).toBeUndefined()
+  })
+
+  it('registers graph_upsert placeholder tool', () => {
+    const registry = new ToolRegistry()
+    expect(registry.get('graph_upsert')?.name).toBe('graph_upsert')
+  })
+
+  it('hides tools denied by gate profile when hideDeniedTools is on', () => {
+    const registry = new ToolRegistry()
+    const probeEffect = vi.fn((input: { action: string }) =>
+      input.action.startsWith('workspace_') ? AgentGateEffect.Deny : AgentGateEffect.Ask
+    )
+    const gate = { probeEffect } as unknown as IBaishouAgentGate
+
+    const ctx: ToolContext = {
+      sessionId: 's1',
+      vaultName: 'Personal',
+      agentGate: gate,
+      gateProfile: AgentGateProfileId.Companion,
+      userConfig: {
+        baishou_agent_gate_config: { hideDeniedTools: true }
+      },
+      workspace: {
+        folderRoot: 'D:/proj',
+        sessionKind: 'companion'
+      }
+    }
+
+    // companion session with folderRoot still must not expose workspace tools if gate denies
+    expect(registry.isToolEnabled('workspace_write', ctx)).toBe(false)
+    expect(probeEffect).toHaveBeenCalled()
   })
 })
