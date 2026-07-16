@@ -30,6 +30,10 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     return true // 只要它被挂载并传入，就意味着模型算力在线
   }
 
+  get embeddingModelId(): string {
+    return this.modelId
+  }
+
   async embedQuery(text: string): Promise<number[] | null> {
     try {
       const { embedding } = await withPromiseTimeout(

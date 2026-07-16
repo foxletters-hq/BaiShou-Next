@@ -99,6 +99,8 @@ export class AgentChatService {
     const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     const emitter = new ElectronStreamEmitter(params.event)
     const agentGate = await getAgentGate()
+    const { getRawDataSourceManager } = await import('../services/raw-data-source.runtime')
+    const rawDataSourceManager = getRawDataSourceManager()
 
     const { DesktopStoragePathService } = await import('../services/path.service')
     const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')
@@ -120,6 +122,7 @@ export class AgentChatService {
       persistBaishouAgentGateConfig: async (config: BaishouAgentGateConfig) => {
         await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
       },
+      rawDataSourceManager,
       realSessionRepo,
       realSnapshotRepo,
       toolRegistry,

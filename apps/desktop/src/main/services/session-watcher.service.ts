@@ -7,6 +7,7 @@ import { SessionSyncService, SessionFileService } from '@baishou/core-desktop'
 import { SessionRepository, connectionManager } from '@baishou/database-desktop'
 import { pathService } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
+import { getRawDataSourceManager } from './raw-data-source.runtime'
 
 /**
  * 会话文件变动监听服务
@@ -41,7 +42,11 @@ export class SessionWatcherService {
     // 初始化依赖
     const db = connectionManager.getDb()
     const sessionRepo = new SessionRepository(db)
-    const sessionFileService = new SessionFileService(pathService, fileSystem)
+    const sessionFileService = new SessionFileService(
+      pathService,
+      fileSystem,
+      getRawDataSourceManager()
+    )
     this.sessionSync = new SessionSyncService(sessionRepo, sessionFileService)
 
     // 初始化 Chokidar 监听

@@ -82,6 +82,9 @@ export async function switchVaultFast(vaultName: string) {
 
   await vaultService.switchVault(vaultName)
 
+  const { resetRawDataRuntime } = await import('../services/raw-data-source.runtime')
+  resetRawDataRuntime()
+
   const { emitVaultSwitchMutation } = await import('../cache/desktop-main-cache-coordinator')
   emitVaultSwitchMutation(vaultName, 'vault-switch')
 
