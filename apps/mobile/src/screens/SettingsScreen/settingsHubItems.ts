@@ -8,6 +8,7 @@ export type SettingsStackPathname =
   | '/settings/version-migration'
   | '/incremental-sync'
   | '/settings/tts'
+  | '/graph'
 
 export type SettingsHubRoute =
   | { type: 'section'; section: string }
@@ -101,6 +102,12 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'settings.summary_settings_title',
         icon: 'summary-settings',
         route: { type: 'section', section: 'summary' }
+      },
+      {
+        id: 'graph',
+        titleKey: 'nav.graph',
+        icon: 'rag',
+        route: { type: 'stack', pathname: '/graph' }
       }
     ]
   },
