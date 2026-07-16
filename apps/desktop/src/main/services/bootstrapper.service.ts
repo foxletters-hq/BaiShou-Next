@@ -19,6 +19,10 @@ import { diaryWatcher } from './diary-watcher.service'
 import { summaryWatcher } from './summary-watcher.service'
 import { sessionWatcher } from './session-watcher.service'
 import { getSharedShadowSync } from './shadow-sync.registry'
+import {
+  getRawDataSourceManager,
+  runDerivedIndexHydration
+} from './raw-data-source.runtime'
 
 /**
  * 全局数据同步收割机 (Global Bootstrapper)
@@ -35,7 +39,11 @@ export class GlobalDataBootstrapper {
   private tryGetSummaryBootstrapper() {
     const db = connectionManager.getDb()
     const summaryRepo = new SummaryRepositoryImpl(db)
-    const summaryFileService = new SummaryFileService(pathService, fileSystem)
+    const summaryFileService = new SummaryFileService(
+      pathService,
+      fileSystem,
+      getRawDataSourceManager()
+    )
     return new SummarySyncService(null, null, summaryRepo, summaryFileService)
   }
 
@@ -154,6 +162,8 @@ export class GlobalDataBootstrapper {
       await pathService.backfillGlobalAgentAvatarsFromVaults()
       await pathService.mirrorGlobalAgentAvatarsIntoVaults()
 
+      await runDerivedIndexHydration('fully-resync')
+
       logger.info('--- ✅ GLOBAL BOOTSTRAPPER FINISHED. SYSTEM IS RATIONALIZED AND READY ---')
       await this.notifyRenderersAfterResync()
     } catch (e) {
@@ -255,6 +265,8 @@ export class GlobalDataBootstrapper {
         await pathService.backfillGlobalAgentAvatarsFromVaults()
         await pathService.mirrorGlobalAgentAvatarsIntoVaults()
       }
+
+      await runDerivedIndexHydration('selective-post-sync')
 
       await this.notifyRenderersAfterResync()
       logger.info('[Bootstrapper] selective post-sync done')

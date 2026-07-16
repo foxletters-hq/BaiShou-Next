@@ -26,7 +26,8 @@ export interface FileSyncService {
 export class FileSyncServiceImpl implements FileSyncService {
   constructor(
     private readonly pathService: IStoragePathService,
-    private readonly fileSystem: IFileSystem
+    private readonly fileSystem: IFileSystem,
+    private readonly rawDataSourceManager?: import('../raw-data/raw-data-source.manager').RawDataSourceManager
   ) {}
 
   private async ensureDir(dirPath: string): Promise<void> {
@@ -98,7 +99,13 @@ export class FileSyncServiceImpl implements FileSyncService {
 
     lines.push('---', '', diary.content)
 
-    await this.fileSystem.writeFile(filePath, lines.join('\n'), 'utf8')
+    const content = lines.join('\n')
+    if (this.rawDataSourceManager) {
+      const relativePath = path.relative(rootPath, filePath)
+      await this.rawDataSourceManager.writeFile('journal', relativePath, content)
+      return
+    }
+    await this.fileSystem.writeFile(filePath, content, 'utf8')
   }
 
   async readJournal(date: Date, shadowFilePath?: string): Promise<Diary | null> {

@@ -12,7 +12,8 @@ import {
 export class SummaryFileService {
   constructor(
     private readonly pathProvider: IStoragePathService,
-    private readonly fileSystem: IFileSystem
+    private readonly fileSystem: IFileSystem,
+    private readonly rawDataSourceManager?: import('../raw-data/raw-data-source.manager').RawDataSourceManager
   ) {}
 
   private async getCategoryDir(type: SummaryType): Promise<string> {
@@ -82,7 +83,15 @@ export class SummaryFileService {
       await this.fileSystem.mkdir(parentDir, { recursive: true })
     }
 
-    await this.fileSystem.writeFile(fullPath, content.trim(), 'utf8')
+    const text = content.trim()
+    if (this.rawDataSourceManager) {
+      const summariesBase = await this.pathProvider.getSummariesBaseDirectory()
+      const relativePath = path.relative(summariesBase, fullPath)
+      await this.rawDataSourceManager.writeFile('summary', relativePath, text)
+      return fullPath
+    }
+
+    await this.fileSystem.writeFile(fullPath, text, 'utf8')
     return fullPath
   }
 

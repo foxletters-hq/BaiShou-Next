@@ -86,7 +86,8 @@ export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryS
   }
 
   const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
-  const fileSync = new FileSyncServiceImpl(scopedPath, fileSystem)
+  const { getRawDataSourceManager } = await import('./raw-data-source.runtime')
+  const fileSync = new FileSyncServiceImpl(scopedPath, fileSystem, getRawDataSourceManager())
   const shadowSync = new ShadowIndexSyncService(
     shadowRepo,
     scopedPath,
