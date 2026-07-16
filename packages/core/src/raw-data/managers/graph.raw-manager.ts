@@ -1,0 +1,221 @@
+import type { IFileSystem } from '../../fs/file-system.types'
+import type { IStoragePathService } from '../../vault/storage-path.types'
+import * as path from '../../fs/path.util'
+import { shardMonthFromInstant } from '../raw-data-month.util'
+import {
+  MonthlyJsonlStore,
+  collapseJsonlById
+} from '../stores/monthly-jsonl.store'
+import type { DerivedFreshnessService } from '../derived-freshness.service'
+import type {
+  GraphCollection,
+  GraphEdgeRawRecord,
+  GraphExtractStateRawRecord,
+  GraphNodeRawRecord,
+  RecordCollectionKindManager,
+  ShardInfo,
+  WriteOpts
+} from '../raw-data-source.types'
+
+const COLLECTIONS: GraphCollection[] = ['nodes', 'edges', 'extract-state']
+
+function shardMonthForNode(row: GraphNodeRawRecord): string {
+  return shardMonthFromInstant(row.firstSeenAt || row.createdAt)
+}
+
+function shardMonthForEdge(row: GraphEdgeRawRecord): string {
+  if (row.shardMonth) return row.shardMonth
+  if (row.sourceKind === 'diary' && row.sourceRef) {
+    const m = row.sourceRef.match(/(\d{4})[-/](\d{2})[-/]\d{2}/)
+    if (m) return `${m[1]}-${m[2]}`
+  }
+  if (row.validFrom != null) return shardMonthFromInstant(row.validFrom)
+  return shardMonthFromInstant(row.createdAt)
+}
+
+/**
+ * Graph JSONL: Graph/{nodes|edges|extract-state}/YYYY-MM.jsonl
+ * Each collection has its own shards.manifest.json under the subdir.
+ */
+export class GraphRawManager implements RecordCollectionKindManager {
+  readonly kind = 'graph' as const
+  readonly shape = 'record-collection' as const
+
+  private stores: Partial<Record<GraphCollection, MonthlyJsonlStore>> = {}
+  private rootDir: string | null = null
+
+  constructor(
+    private readonly pathService: IStoragePathService,
+    private readonly fs: IFileSystem,
+    private readonly freshness: DerivedFreshnessService
+  ) {}
+
+  resetCache(): void {
+    this.stores = {}
+    this.rootDir = null
+  }
+
+  private async getRoot(): Promise<string> {
+    if (this.rootDir) return this.rootDir
+    this.rootDir = await this.pathService.getGraphBaseDirectory()
+    return this.rootDir
+  }
+
+  private async getStore(collection: GraphCollection): Promise<MonthlyJsonlStore> {
+    const cached = this.stores[collection]
+    if (cached) return cached
+    const root = await this.getRoot()
+    const store = new MonthlyJsonlStore({
+      fs: this.fs,
+      rootDir: path.join(root, collection)
+    })
+    this.stores[collection] = store
+    this.freshness.registerStore(`graph:${collection}`, store)
+    return store
+  }
+
+  private resolveCollection(opts?: { collection?: GraphCollection }): GraphCollection {
+    return opts?.collection ?? 'nodes'
+  }
+
+  async writeRecord(
+    record: unknown,
+    opts?: { collection?: GraphCollection } & WriteOpts
+  ): Promise<{ shardPath: string; relativePath: string; contentHash: string }> {
+    const collection = this.resolveCollection(opts)
+    const store = await this.getStore(collection)
+    let shardMonth: string
+    if (collection === 'nodes') {
+      const row = record as GraphNodeRawRecord
+      if (!row?.id || !row.name) {
+        throw new Error('GraphRawManager.writeRecord(nodes): invalid node record')
+      }
+      shardMonth = shardMonthForNode(row)
+    } else if (collection === 'edges') {
+      const row = record as GraphEdgeRawRecord
+      if (!row?.id || !row.fromId || !row.toId) {
+        throw new Error('GraphRawManager.writeRecord(edges): invalid edge record')
+      }
+      shardMonth = shardMonthForEdge(row)
+      if (!row.shardMonth) (record as GraphEdgeRawRecord).shardMonth = shardMonth
+    } else {
+      const row = record as GraphExtractStateRawRecord
+      if (!row?.id || !row.filePath) {
+        throw new Error('GraphRawManager.writeRecord(extract-state): invalid record')
+      }
+      shardMonth = shardMonthFromInstant(row.extractedAt || row.updatedAt)
+    }
+    const written = await store.appendRecord(shardMonth, record)
+    return {
+      ...written,
+      relativePath: `${collection}/${written.relativePath}`
+    }
+  }
+
+  async tombstone(
+    id: string,
+    opts: WriteOpts & { collection?: GraphCollection; shardMonth?: string }
+  ): Promise<void> {
+    const collection = this.resolveCollection(opts)
+    const store = await this.getStore(collection)
+    const now = Date.now()
+    let shardMonth = opts.shardMonth
+    if (!shardMonth) {
+      const shards = await store.listShards()
+      for (const shard of [...shards].reverse()) {
+        const rows = collapseJsonlById(
+          (await store.readRecords(shard.shardMonth)) as Array<{
+            id: string
+            updatedAt: number
+          }>
+        )
+        const hit = rows.find((r) => r.id === id) as Record<string, unknown> | undefined
+        if (hit) {
+          await store.appendRecord(shard.shardMonth, {
+            ...hit,
+            updatedAt: now,
+            deletedAt: now
+          })
+          return
+        }
+      }
+      throw new Error(`Graph tombstone: id not found: ${id}`)
+    }
+    const rows = collapseJsonlById(
+      (await store.readRecords(shardMonth)) as Array<{ id: string; updatedAt: number }>
+    )
+    const hit = rows.find((r) => r.id === id) as Record<string, unknown> | undefined
+    if (!hit) throw new Error(`Graph tombstone: id not found in ${collection}/${shardMonth}`)
+    await store.appendRecord(shardMonth, {
+      ...hit,
+      updatedAt: now,
+      deletedAt: now
+    })
+  }
+
+  async listShards(): Promise<ShardInfo[]> {
+    const all: ShardInfo[] = []
+    for (const collection of COLLECTIONS) {
+      const store = await this.getStore(collection)
+      const shards = await store.listShards()
+      for (const s of shards) {
+        all.push({
+          ...s,
+          relativePath: `${collection}/${s.relativePath}`
+        })
+      }
+    }
+    return all
+  }
+
+  async readShardRecords(relativePath: string): Promise<unknown[]> {
+    const [collection, file] = relativePath.split(/[/\\]/)
+    if (!collection || !file || !COLLECTIONS.includes(collection as GraphCollection)) {
+      return []
+    }
+    const store = await this.getStore(collection as GraphCollection)
+    return store.readRecordsByRelativePath(file)
+  }
+
+  async listPendingIndex(collection?: GraphCollection): Promise<ShardInfo[]> {
+    if (collection) {
+      const store = await this.getStore(collection)
+      const shards = await store.listPendingIndex()
+      return shards.map((s) => ({
+        ...s,
+        relativePath: `${collection}/${s.relativePath}`
+      }))
+    }
+    const all: ShardInfo[] = []
+    for (const c of COLLECTIONS) {
+      all.push(...(await this.listPendingIndex(c)))
+    }
+    return all
+  }
+
+  async commitIndexed(
+    collection: string,
+    relativePath: string,
+    contentHash: string
+  ): Promise<void> {
+    const file = relativePath.includes('/')
+      ? relativePath.split(/[/\\]/).pop()!
+      : relativePath
+    const store = await this.getStore(collection as GraphCollection)
+    await store.markIndexed(file, contentHash)
+  }
+
+  async readCollapsedNodes(shardMonth: string): Promise<GraphNodeRawRecord[]> {
+    const store = await this.getStore('nodes')
+    return collapseJsonlById(
+      (await store.readRecords(shardMonth)) as GraphNodeRawRecord[]
+    )
+  }
+
+  async readCollapsedEdges(shardMonth: string): Promise<GraphEdgeRawRecord[]> {
+    const store = await this.getStore('edges')
+    return collapseJsonlById(
+      (await store.readRecords(shardMonth)) as GraphEdgeRawRecord[]
+    )
+  }
+}
