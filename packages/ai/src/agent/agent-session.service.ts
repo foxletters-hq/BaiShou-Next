@@ -92,6 +92,7 @@ export class AgentSessionService {
       persistBaishouAgentGateConfig,
       rawDataSourceManager,
       syncGraphPendingIndex,
+      graphReader,
       diarySearcher,
       workspace: workspaceInput
     } = options
@@ -413,6 +414,7 @@ export class AgentSessionService {
         gateProfile,
         rawDataSourceManager,
         syncGraphPendingIndex,
+        graphReader,
         workspace: workspaceOptions
       } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0])
 

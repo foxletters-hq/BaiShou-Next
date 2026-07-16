@@ -7,9 +7,12 @@ import {
 } from '@baishou/shared'
 import {
   AgentSessionService,
+  GraphReaderAdapter,
   type IBaishouAgentGate,
   type StreamChatCallbacks
 } from '@baishou/ai'
+import { GraphRagService } from '@baishou/core-mobile'
+import { GraphRepository } from '@baishou/database'
 import type { BaishouAgentGateConfig } from '@baishou/shared'
 import {
   buildMobileStreamUserConfig,
@@ -156,7 +159,49 @@ export function createStartAgentChat(deps: {
               embeddingProvider: embeddingProvider ?? null,
               embeddingModelId: embeddingModelId ?? null
             })
-          }
+          },
+          graphReader: new GraphReaderAdapter(async (opts) => {
+            const session = await runtime.sessionRepo.getSessionById(sessionId)
+            const vaultName = session?.vaultName || 'Personal'
+            const rag = new GraphRagService(new GraphRepository(runtime.drizzleDb))
+            const result = await rag.recallRelations({
+              vaultName,
+              entity: opts.entity,
+              mode: opts.mode
+            })
+            return {
+              anchors: result.anchors.map((a) => ({
+                id: a.id,
+                name: a.name,
+                nodeType: a.nodeType,
+                summary: a.summary
+              })),
+              subgraph: result.subgraph.map((e) => ({
+                id: e.id,
+                fromId: e.fromId,
+                toId: e.toId,
+                edgeType: e.edgeType,
+                sourceRef: e.sourceRef,
+                sourceExcerpt: e.sourceExcerpt,
+                validFrom: e.validFrom
+              })),
+              timeline: result.timeline?.map((e) => ({
+                id: e.id,
+                fromId: e.fromId,
+                toId: e.toId,
+                edgeType: e.edgeType,
+                sourceRef: e.sourceRef,
+                sourceExcerpt: e.sourceExcerpt,
+                validFrom: e.validFrom
+              })),
+              nodes: result.nodes.map((n) => ({
+                id: n.id,
+                name: n.name,
+                nodeType: n.nodeType,
+                summary: n.summary
+              }))
+            }
+          })
         },
         callbacks
       )

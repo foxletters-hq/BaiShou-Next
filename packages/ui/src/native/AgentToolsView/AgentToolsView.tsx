@@ -81,6 +81,8 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.vector_search': '语义搜索',
   'agent.tools.memory_store': '记忆存储',
   'agent.tools.memory_delete': '记忆删除',
+  'agent.tools.recall_relations': '回忆关系图谱',
+  'agent.tools.graph_upsert': '写入记忆图谱',
   'agent.tools.web_search': '网络搜索',
   'agent.tools.url_read': '网页读取',
   'agent.tools.auto_inject_time': '当前时间',
