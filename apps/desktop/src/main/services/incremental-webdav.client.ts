@@ -271,11 +271,7 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
       if (!item?.filename) continue
       if (item.type === 'directory') {
         const childRel = this.toRelativeRemotePath(String(item.filename))
-        if (
-          childRel &&
-          this.isStrictRelativeChild(parentRel, childRel) &&
-          !visited.has(childRel)
-        ) {
+        if (childRel && this.isStrictRelativeChild(parentRel, childRel) && !visited.has(childRel)) {
           subdirs.push(childRel)
         }
         continue
