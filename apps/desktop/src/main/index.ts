@@ -30,6 +30,7 @@ import { registerDeveloperIPC } from './ipc/developer.ipc'
 import { registerEmojiIPC } from './ipc/emoji.ipc'
 import { registerCompressionEventBridge } from './services/compression-event.service'
 import { registerSearchIPC } from './ipc/search.ipc'
+import { registerGraphIPC } from './ipc/graph.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
 import { registerShortcutIPC } from './ipc/shortcut.ipc'
@@ -335,6 +336,7 @@ app.whenReady().then(async () => {
   registerDeveloperIPC()
   registerEmojiIPC()
   registerSearchIPC()
+  registerGraphIPC()
   registerUpdaterIPC()
   registerShellIPC()
   registerShortcutIPC()

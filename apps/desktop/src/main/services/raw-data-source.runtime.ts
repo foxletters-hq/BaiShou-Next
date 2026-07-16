@@ -4,10 +4,12 @@ import {
   MemorySyncService,
   GraphSyncService,
   FsVersionManager,
+  bindPendingReextractCollaborators,
   type IVersionManager,
   type RawDataSourceManager,
   type MemoryRawManager,
-  type GraphRawManager
+  type GraphRawManager,
+  type DerivedFreshnessService
 } from '@baishou/core-desktop'
 import {
   connectionManager,
@@ -17,12 +19,13 @@ import {
 } from '@baishou/database-desktop'
 import { EmbeddingAdapter } from '@baishou/ai'
 import { logger } from '@baishou/shared'
-import { fileSystem, pathService, vaultService } from '../ipc/vault.ipc'
+import { fileSystem, getActiveVaultShadowRepo, pathService, vaultService } from '../ipc/vault.ipc'
 
 let runtime: {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  freshness: DerivedFreshnessService
   versionManager: IVersionManager
 } | null = null
 
@@ -46,6 +49,7 @@ export function ensureRawDataRuntime(): {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  freshness: DerivedFreshnessService
   versionManager: IVersionManager
 } {
   if (!runtime) {
@@ -59,10 +63,42 @@ export function ensureRawDataRuntime(): {
       manager: created.manager,
       memoryManager: created.memoryManager,
       graphManager: created.graphManager,
+      freshness: created.freshness,
       versionManager
+    }
+    try {
+      const shadowRepo = getActiveVaultShadowRepo()
+      bindPendingReextractCollaborators({
+        freshness: created.freshness,
+        graphManager: created.graphManager,
+        shadowRepo,
+        getVaultName: () => vaultService.getActiveVault()?.name || 'Personal'
+      })
+    } catch (e) {
+      logger.warn('[RawData] bind pending-reextract skipped:', e as Error)
     }
   }
   return runtime
+}
+
+export function getDerivedFreshness(): DerivedFreshnessService {
+  return ensureRawDataRuntime().freshness
+}
+
+/** Re-bind extract collaborators after vault switch (shadow repo changes). */
+export function rebindPendingReextractCollaborators(): void {
+  const { freshness, graphManager } = ensureRawDataRuntime()
+  try {
+    const shadowRepo = getActiveVaultShadowRepo()
+    bindPendingReextractCollaborators({
+      freshness,
+      graphManager,
+      shadowRepo,
+      getVaultName: () => vaultService.getActiveVault()?.name || 'Personal'
+    })
+  } catch (e) {
+    logger.warn('[RawData] rebind pending-reextract failed:', e as Error)
+  }
 }
 
 /** Call after vault switch so Memory/Graph roots re-resolve. */
