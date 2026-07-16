@@ -3,6 +3,7 @@ import * as path from '../../fs/path.util'
 import type { IFileSystem } from '../../fs/file-system.types'
 import type { ShardInfo, ShardsManifest } from '../raw-data-source.types'
 import { isValidShardMonth } from '../raw-data-month.util'
+import { pickWinner, type JsonlMergeableRecord } from '../jsonl-record-merge.service'
 
 const MANIFEST_NAME = 'shards.manifest.json'
 
@@ -148,10 +149,12 @@ export class MonthlyJsonlStore {
     const result: ShardInfo[] = []
     for (const month of months) {
       const rel = this.shardRelativePath(month)
-      let contentHash = manifest.shards[rel]?.contentHash
-      if (!contentHash) {
-        contentHash = await this.computeShardHash(month)
-        manifest.shards[rel] = { contentHash, indexedHash: manifest.shards[rel]?.indexedHash }
+      // Always recompute from disk so external writes (sync LWW / download) invalidate pending-index
+      const contentHash = await this.computeShardHash(month)
+      const prev = manifest.shards[rel]
+      manifest.shards[rel] = {
+        contentHash,
+        indexedHash: prev?.indexedHash
       }
       result.push({
         path: this.shardAbsolutePath(month),
@@ -162,6 +165,26 @@ export class MonthlyJsonlStore {
     }
     await this.writeManifest(manifest)
     return result.sort((a, b) => a.shardMonth.localeCompare(b.shardMonth))
+  }
+
+  /**
+   * After an out-of-band rewrite of a shard file, refresh contentHash and keep indexedHash
+   * so listPendingIndex reports dirty until re-hydrated.
+   */
+  async refreshShardHashAfterExternalWrite(shardMonth: string): Promise<string> {
+    if (!isValidShardMonth(shardMonth)) {
+      throw new Error(`Invalid shard month: ${shardMonth}`)
+    }
+    const contentHash = await this.computeShardHash(shardMonth)
+    const manifest = await this.readManifest()
+    const rel = this.shardRelativePath(shardMonth)
+    const prev = manifest.shards[rel]
+    manifest.shards[rel] = {
+      contentHash,
+      indexedHash: prev?.indexedHash
+    }
+    await this.writeManifest(manifest)
+    return contentHash
   }
 
   async markIndexed(relativePath: string, contentHash: string): Promise<void> {
@@ -187,19 +210,24 @@ export class MonthlyJsonlStore {
 }
 
 /**
- * Collapse append-only JSONL rows by id using max updatedAt (LWW).
- * Soft-deleted rows (deletedAt != null) are kept if newest.
+ * Collapse append-only JSONL rows by id using the same LWW rules as sync merge
+ * (higher updatedAt; same stamp → tombstone wins).
  */
-export function collapseJsonlById<T extends { id: string; updatedAt: number }>(
-  rows: T[]
-): T[] {
+export function collapseJsonlById<
+  T extends { id: string; updatedAt: number; deletedAt?: number | null }
+>(rows: T[]): T[] {
   const map = new Map<string, T>()
   for (const row of rows) {
     if (!row?.id) continue
     const prev = map.get(row.id)
-    if (!prev || row.updatedAt >= prev.updatedAt) {
+    if (!prev) {
       map.set(row.id, row)
+      continue
     }
+    map.set(
+      row.id,
+      pickWinner(prev as JsonlMergeableRecord, row as JsonlMergeableRecord) as T
+    )
   }
   return [...map.values()]
 }
