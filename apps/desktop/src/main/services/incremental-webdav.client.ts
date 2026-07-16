@@ -4,9 +4,7 @@ import { createClient, WebDAVClient } from 'webdav'
 import {
   INCREMENTAL_SYNC_CHUNK_SIZE,
   WEBDAV_SHALLOW_LIST_CONCURRENCY,
-  isStrictWebDavChildUrl,
-  limitExecute,
-  normalizeWebDavListingUrl
+  limitExecute
 } from '@baishou/shared'
 import type { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
@@ -252,9 +250,9 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
     } = { missingOk: true }
   ): Promise<void> {
     const visited = options.visited ?? new Set<string>()
-    const normalizedRequestDir = normalizeWebDavListingUrl(remoteDir) || '/'
-    if (visited.has(normalizedRequestDir)) return
-    visited.add(normalizedRequestDir)
+    const parentRel = this.toRelativeRemotePath(remoteDir) ?? ''
+    if (visited.has(parentRel)) return
+    visited.add(parentRel)
 
     let items: any[]
     try {
@@ -271,13 +269,14 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
 
     for (const item of items) {
       if (!item?.filename) continue
-      const itemPath = normalizeWebDavListingUrl(String(item.filename))
       if (item.type === 'directory') {
+        const childRel = this.toRelativeRemotePath(String(item.filename))
         if (
-          isStrictWebDavChildUrl(normalizedRequestDir, itemPath) &&
-          !visited.has(itemPath)
+          childRel &&
+          this.isStrictRelativeChild(parentRel, childRel) &&
+          !visited.has(childRel)
         ) {
-          subdirs.push(itemPath)
+          subdirs.push(childRel)
         }
         continue
       }
@@ -291,30 +290,74 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
       })
     }
 
-    await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (dir) => {
-      await this.collectFilesShallow(dir, records, { missingOk: true, visited })
+    await limitExecute(subdirs, WEBDAV_SHALLOW_LIST_CONCURRENCY, async (childRel) => {
+      await this.collectFilesShallow(this.relativeDirToRequestPath(childRel), records, {
+        missingOk: true,
+        visited
+      })
     })
   }
 
-  private toRelativeFilename(item: { filename?: string; basename?: string }): string {
-    let relativeName = item.filename || item.basename || ''
-    const idx = relativeName.indexOf(this.basePath)
+  private safeDecodePath(value: string): string {
+    try {
+      return decodeURIComponent(value)
+    } catch {
+      return value
+    }
+  }
+
+  private toRelativeRemotePath(rawPath: string): string | null {
+    const decoded = this.safeDecodePath(rawPath).replace(/\\/g, '/')
+    let relativeName = decoded
+    const cleanBasePath = this.basePath.replace(/^\/+|\/+$/g, '')
+
+    const baseWithSlash = this.basePath
+    const idx = relativeName.indexOf(baseWithSlash)
     if (idx !== -1) {
-      relativeName = relativeName.substring(idx + this.basePath.length)
+      relativeName = relativeName.substring(idx + baseWithSlash.length)
     } else {
-      const cleanBasePath = this.basePath.replace(/^\/+|\/+$/g, '')
       const cleanIdx = relativeName.indexOf(cleanBasePath)
       if (cleanIdx !== -1) {
         relativeName = relativeName.substring(cleanIdx + cleanBasePath.length)
-      } else {
-        relativeName = item.basename || relativeName
+      } else if (relativeName.startsWith('http://') || relativeName.startsWith('https://')) {
+        try {
+          const pathname = new URL(relativeName).pathname.replace(/^\/+/, '')
+          const baseIdx = pathname.indexOf(cleanBasePath)
+          if (baseIdx === -1) return null
+          relativeName = pathname.substring(baseIdx + cleanBasePath.length)
+        } catch {
+          return null
+        }
+      } else if (relativeName.startsWith('/')) {
+        const pathname = relativeName.replace(/^\/+/, '')
+        const baseIdx = pathname.indexOf(cleanBasePath)
+        if (baseIdx === -1) return null
+        relativeName = pathname.substring(baseIdx + cleanBasePath.length)
       }
     }
 
-    if (relativeName.startsWith('/')) {
-      relativeName = relativeName.substring(1)
-    }
+    relativeName = relativeName.replace(/^\/+/, '').replace(/\/+$/, '')
+    if (relativeName.includes('..')) return null
     return relativeName
+  }
+
+  private isStrictRelativeChild(parentRel: string, childRel: string): boolean {
+    const parent = parentRel.replace(/^\/+|\/+$/g, '')
+    const child = childRel.replace(/^\/+|\/+$/g, '')
+    if (!child || child === parent) return false
+    if (!parent) return true
+    return child.startsWith(`${parent}/`)
+  }
+
+  private relativeDirToRequestPath(relativeDir: string): string {
+    const baseDir = this.basePath.replace(/\/$/, '')
+    if (!relativeDir) return baseDir || '/'
+    return `${baseDir}/${relativeDir}`
+  }
+
+  private toRelativeFilename(item: { filename?: string; basename?: string }): string {
+    const raw = item.filename || item.basename || ''
+    return this.toRelativeRemotePath(raw) ?? (item.basename || raw).replace(/^\/+/, '')
   }
 
   async deleteFile(remoteFilename: string): Promise<void> {
