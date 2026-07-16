@@ -21,6 +21,7 @@ import { mergeDiaryTags } from '@baishou/ai'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
 import { getMobileDiaryEmbeddingCallback } from './mobile-diary-embedding.service'
 import { ensureMobileRawDataRuntime } from './mobile-raw-data-source.runtime'
+import { wireMobilePendingReextractHook } from './mobile-graph.service'
 import type { VaultBoundDiaryStack, VaultDiarySearcher } from './mobile-vault-runtime.types'
 
 function diaryPreviewFromRaw(raw: string | null | undefined): string {
@@ -62,6 +63,25 @@ export function createVaultBoundDiaryStack(deps: {
     deps.fileSystem,
     getMobileDiaryEmbeddingCallback()
   )
+  wireMobilePendingReextractHook({
+    vaultName: activeVault.name,
+    shadowRepo,
+    pathService: deps.pathService,
+    fileSystem: deps.fileSystem,
+    shadowSync: shadowIndexSyncService
+  })
+  try {
+    const { wireMobilePendingReextractHook } = require('./mobile-graph.service') as typeof import('./mobile-graph.service')
+    wireMobilePendingReextractHook({
+      vaultName: activeVault.name,
+      shadowRepo,
+      pathService: deps.pathService,
+      fileSystem: deps.fileSystem,
+      shadowSync: shadowIndexSyncService
+    })
+  } catch {
+    // optional until graph screen is used
+  }
   const diaryService = new DiaryService(
     shadowRepo,
     fileSyncService,

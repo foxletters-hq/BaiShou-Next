@@ -7,6 +7,7 @@ import {
   type RawDataSourceManager,
   type MemoryRawManager,
   type GraphRawManager,
+  type DerivedFreshnessService,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -49,6 +50,7 @@ let runtime: {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  freshness: DerivedFreshnessService
   pathService: IStoragePathService
 } | null = null
 
@@ -59,6 +61,7 @@ export function ensureMobileRawDataRuntime(options: {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  freshness: DerivedFreshnessService
 } {
   if (runtime && runtime.pathService === options.pathService) {
     return runtime
@@ -73,9 +76,18 @@ export function ensureMobileRawDataRuntime(options: {
     manager: created.manager,
     memoryManager: created.memoryManager,
     graphManager: created.graphManager,
+    freshness: created.freshness,
     pathService: options.pathService
   }
   return runtime
+}
+
+export function getMobileDerivedFreshness(): DerivedFreshnessService | null {
+  return runtime?.freshness ?? null
+}
+
+export function getMobileGraphRawManager(): GraphRawManager | null {
+  return runtime?.graphManager ?? null
 }
 
 export function getMobileRawDataSourceManager(): RawDataSourceManager | null {
