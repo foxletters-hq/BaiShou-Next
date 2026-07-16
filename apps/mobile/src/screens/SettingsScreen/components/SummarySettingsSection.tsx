@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 总结设置面板字段多，后续再拆分 */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Image } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -307,6 +308,8 @@ export const SummarySettingsSection: React.FC = () => {
       }
       await persistConfig(next)
     })
+    // persistConfig 随渲染重建；此处刻意不纳入依赖，避免无意义重订阅
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- persistConfig 非稳定引用
   }, [dbReady, services])
 
   useEffect(() => {

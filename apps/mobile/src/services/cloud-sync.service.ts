@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 全量云备份 WebDAV/S3 客户端集中于此 */
 import i18n from 'i18next'
 import { FileSystemUploadType, downloadAsync, uploadAsync } from './mobile-http-transfer'
 import { getAppCacheDirectory } from './mobile-app-paths'
@@ -105,7 +106,11 @@ class MobileWebDavClient implements ICloudSyncClient {
 
       if (response.status < 200 || response.status >= 300) {
         throw new Error(
-          formatWebDavRequestError('上传', response.status, String(response.status))
+          formatWebDavRequestError(
+            i18n.t('auto.apps.mobile.src.services.cloud.sync.service.upload', '上传'),
+            response.status,
+            String(response.status)
+          )
         )
       }
     })
@@ -124,7 +129,11 @@ class MobileWebDavClient implements ICloudSyncClient {
 
       if (response.status < 200 || response.status >= 300) {
         throw new Error(
-          formatWebDavRequestError('下载', response.status, String(response.status))
+          formatWebDavRequestError(
+            i18n.t('auto.apps.mobile.src.services.cloud.sync.service.download', '下载'),
+            response.status,
+            String(response.status)
+          )
         )
       }
     })
@@ -148,7 +157,7 @@ class MobileWebDavClient implements ICloudSyncClient {
         if (response?.status === 404) return []
         throw new Error(
           formatWebDavRequestError(
-            '列举目录',
+            i18n.t('auto.apps.mobile.src.services.cloud.sync.service.list', '列举目录'),
             response?.status ?? 0,
             response?.statusText
           )
@@ -203,7 +212,13 @@ class MobileWebDavClient implements ICloudSyncClient {
       const response = await this.request('DELETE', remotePath)
 
       if (!response.ok && response.status !== 404) {
-        throw new Error(formatWebDavRequestError('删除', response.status, response.statusText))
+        throw new Error(
+          formatWebDavRequestError(
+            i18n.t('auto.apps.mobile.src.services.cloud.sync.service.delete', '删除'),
+            response.status,
+            response.statusText
+          )
+        )
       }
     })
   }
@@ -219,7 +234,13 @@ class MobileWebDavClient implements ICloudSyncClient {
       })
 
       if (!response.ok) {
-        throw new Error(formatWebDavRequestError('重命名', response.status, response.statusText))
+        throw new Error(
+          formatWebDavRequestError(
+            i18n.t('auto.apps.mobile.src.services.cloud.sync.service.rename', '重命名'),
+            response.status,
+            response.statusText
+          )
+        )
       }
     })
   }
