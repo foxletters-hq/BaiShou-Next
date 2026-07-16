@@ -17,6 +17,7 @@ import {
   Puzzle,
   RefreshCw,
   Settings,
+  Share2,
   SlidersHorizontal,
   Sparkles,
   Volume2,
@@ -34,6 +35,7 @@ export const DEFAULT_VISIBLE_NAV_IDS = [
   'diary',
   'workbench',
   'summary',
+  'graph',
   'incremental-sync',
   'git'
 ] as const
@@ -43,6 +45,7 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'diary',
   'workbench',
   'summary',
+  'graph',
   'diary-template',
   'general',
   'mcp',
@@ -99,7 +102,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L89',
       '日记与回忆'
     ),
-    itemIds: ['diary', 'workbench', 'summary', 'diary-template', 'summary-settings']
+    itemIds: ['diary', 'workbench', 'summary', 'graph', 'diary-template', 'summary-settings']
   },
   {
     key: 'settings-general',
@@ -143,6 +146,7 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   diary: '/diary',
   workbench: '/agent-workspace',
   summary: '/summary',
+  graph: '/graph',
   'diary-template': `${SETTINGS_HUB_PREFIX}/diary-template`,
   general: `${SETTINGS_HUB_PREFIX}/general`,
   mcp: `${SETTINGS_HUB_PREFIX}/mcp`,
@@ -180,6 +184,11 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       icon: icon(<Library />),
       label: t('summary.dashboard_title', '回忆'),
       path: '/summary'
+    },
+    graph: {
+      icon: icon(<Share2 />),
+      label: t('nav.graph', '关系图谱'),
+      path: '/graph'
     },
     'diary-template': {
       icon: icon(<NotebookPen />),

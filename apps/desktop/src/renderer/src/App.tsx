@@ -206,6 +206,7 @@ const AppRoutes = () => {
           <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
           <Route path="/summary" element={<CachedRoutePlaceholder />} />
           <Route path="/summary/:id" element={<SummaryDetailPage />} />
+          <Route path="/graph" element={<CachedRoutePlaceholder />} />
 
           {/* Tools Routing */}
           <Route path="/lan-transfer" element={<Navigate to="/hub/lan-transfer" replace />} />

@@ -383,6 +383,53 @@ interface StorageAPI {
   [key: string]: (...args: unknown[]) => Promise<unknown>
 }
 
+interface GraphAPI {
+  listPendingReextract(): Promise<
+    Array<{
+      filePath: string
+      contentHash: string
+      lastExtractedHash: string | null
+      date?: string
+    }>
+  >
+  listPendingIndex(): Promise<unknown[]>
+  extract(opts?: { filePaths?: string[] }): Promise<{
+    done: number
+    failed: number
+    errors: Array<{ filePath: string; message: string }>
+  }>
+  getGlobalGraph(opts?: {
+    maxNodes?: number
+    minMentionCount?: number
+    nodeTypes?: string[]
+  }): Promise<{ nodes: any[]; edges: any[] }>
+  getView(opts: { centerNodeId: string; depth?: 1 | 2 }): Promise<{ nodes: any[]; edges: any[] }>
+  search(opts: { query: string; nodeTypes?: string[]; limit?: number }): Promise<any[]>
+  listPendingEdges(): Promise<any[]>
+  setEdgeReview(opts: {
+    edgeId: string
+    reviewStatus: 'approved' | 'rejected'
+  }): Promise<{ ok: boolean }>
+  upsertNode(input: {
+    id?: string
+    name: string
+    nodeType: string
+    aliases?: string[]
+    summary?: string
+  }): Promise<{ id: string }>
+  upsertEdge(input: {
+    id?: string
+    fromId: string
+    toId: string
+    edgeType: string
+    sourceRef?: string
+    sourceExcerpt?: string
+  }): Promise<{ id: string }>
+  softDelete(opts: { kind: 'node' | 'edge'; id: string }): Promise<{ ok: boolean }>
+  getNode(id: string): Promise<any>
+  meta(): Promise<{ nodeTypes: string[]; edgeTypes: string[] }>
+}
+
 interface AppAPI {
   onboarding: OnboardingAPI
   window: WindowAPI
@@ -403,6 +450,7 @@ interface AppAPI {
   syncDefaultLatteLocale(locale?: string): Promise<void>
   agentGate: AgentGateAPI
   agentWorkspace: AgentWorkspaceAPI
+  graph: GraphAPI
   getMessages(sessionId: string): Promise<unknown>
   [key: string]: unknown
 }
