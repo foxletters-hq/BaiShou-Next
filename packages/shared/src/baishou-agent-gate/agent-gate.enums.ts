@@ -38,3 +38,9 @@ export enum AgentGateRiskLevel {
   Mutating = 'mutating',
   Destructive = 'destructive'
 }
+
+/** 场景默认规则矩阵（日记伙伴 vs 工作区） */
+export enum AgentGateProfileId {
+  Companion = 'companion',
+  Workspace = 'workspace'
+}

@@ -282,7 +282,10 @@ export const DEFAULT_TOOL_MANAGEMENT_CONFIG: ToolManagementConfig = {
 export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
   trustMode: SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.trustMode,
   exclusionList: [...SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList],
-  allowlist: []
+  allowlist: [],
+  forceAskExternalPath: SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.forceAskExternalPath,
+  repeatAssertAskThreshold: SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.repeatAssertAskThreshold,
+  hideDeniedTools: SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG.hideDeniedTools
 }
 
 export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
