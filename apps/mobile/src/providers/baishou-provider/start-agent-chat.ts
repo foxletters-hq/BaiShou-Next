@@ -146,7 +146,17 @@ export function createStartAgentChat(deps: {
           persistBaishouAgentGateConfig,
           rawDataSourceManager: (
             await import('../../services/mobile-raw-data-source.runtime')
-          ).getMobileRawDataSourceManager() ?? undefined
+          ).getMobileRawDataSourceManager() ?? undefined,
+          syncGraphPendingIndex: async () => {
+            const { syncMobileGraphPendingIndex } = await import(
+              '../../services/mobile-raw-data-source.runtime'
+            )
+            await syncMobileGraphPendingIndex({
+              drizzleDb: runtime.drizzleDb,
+              embeddingProvider: embeddingProvider ?? null,
+              embeddingModelId: embeddingModelId ?? null
+            })
+          }
         },
         callbacks
       )

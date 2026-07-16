@@ -48,6 +48,7 @@ export class AgentChatCoreService {
     agentGate?: unknown
     persistBaishouAgentGateConfig?: (config: import('@baishou/shared').BaishouAgentGateConfig) => Promise<void>
     rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
+    syncGraphPendingIndex?: () => Promise<void>
     workspace?: import('./agent-session.types').StreamChatOptions['workspace']
   }) {
     const claim = claimAgentStreamSession(params.sessionId)
@@ -79,6 +80,7 @@ export class AgentChatCoreService {
           agentGate: params.agentGate,
           persistBaishouAgentGateConfig: params.persistBaishouAgentGateConfig,
           rawDataSourceManager: params.rawDataSourceManager,
+          syncGraphPendingIndex: params.syncGraphPendingIndex,
           workspace: params.workspace,
           abortSignal: claim.signal,
           streamClaimGeneration: claim.generation,
