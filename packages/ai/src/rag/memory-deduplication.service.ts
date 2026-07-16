@@ -155,14 +155,8 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
             }
           }
 
-          // 存储合并后的内容
+          // Embed + JSONL persist is owned by memory_store / MemoryRawManager callers.
           const mergedText = decision.merged_content || newMemoryContent
-          await this.embeddingService.embedText({
-            text: mergedText,
-            sourceType: 'memory',
-            sourceId: options.sourceId ?? `mem_${Date.now()}`,
-            groupId: options.sessionId
-          })
 
           return {
             action: 'merged',

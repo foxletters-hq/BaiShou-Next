@@ -8,6 +8,7 @@ import { SummaryFileService } from '@baishou/core-desktop'
 import { SummaryRepositoryImpl, connectionManager } from '@baishou/database-desktop'
 import { pathService } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
+import { getRawDataSourceManager } from './raw-data-source.runtime'
 
 /**
  * 总结文件变动监听服务
@@ -58,7 +59,11 @@ export class SummaryWatcherService {
     // 初始化依赖
     const db = connectionManager.getDb()
     const summaryRepo = new SummaryRepositoryImpl(db)
-    this.summaryFileService = new SummaryFileService(pathService, fileSystem)
+    this.summaryFileService = new SummaryFileService(
+      pathService,
+      fileSystem,
+      getRawDataSourceManager()
+    )
     this.summarySync = new SummarySyncService(null, null, summaryRepo, this.summaryFileService)
 
     // 收集需要监听的目录（Summaries + 可选的 Archives）

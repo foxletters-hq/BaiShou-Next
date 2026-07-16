@@ -61,6 +61,7 @@ import {
   type ToolContext
 } from '@baishou/ai'
 import { createDiarySearcher } from './agent-diary-searcher'
+import { getRawDataSourceManager } from '../services/raw-data-source.runtime'
 export { createDiarySearcher }
 
 export const toolRegistry = new ToolRegistry()
@@ -93,7 +94,7 @@ export function getAgentManagers(): AgentManagers {
   }
 
   const realSessionRepo = new SessionRepository(db)
-  const sessionFileService = new SessionFileService(pathService, fileSystem)
+  const sessionFileService = new SessionFileService(pathService, fileSystem, getRawDataSourceManager())
   const sessionSyncService = new SessionSyncService(realSessionRepo, sessionFileService)
   const sessionManager = new SessionManagerService(
     realSessionRepo,
@@ -226,7 +227,7 @@ export async function getActiveProvider(requestedProviderId?: string) {
 
 type ResolvedProvider = Awaited<ReturnType<typeof getActiveProvider>>
 
-async function resolveEmbeddingSystemModels(globalModels?: GlobalModelsConfig | null): Promise<{
+export async function resolveEmbeddingSystemModels(globalModels?: GlobalModelsConfig | null): Promise<{
   hasEmbeddingModel: boolean
   embeddingProvider?: ResolvedProvider
   embeddingModelId?: string
@@ -503,7 +504,8 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     deduplicationService: dedupService,
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
-    agentGate: await getAgentGate()
+    agentGate: await getAgentGate(),
+    rawDataSourceManager: (await import('../services/raw-data-source.runtime')).getRawDataSourceManager()
   })
 
   const activeWorkspace = resolveActiveWorkspaceToolContext()
