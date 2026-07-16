@@ -186,6 +186,8 @@ export interface ToolContext {
   gateProfile?: AgentGateProfileId
   /** Raw data source facade (Memory/Graph JSONL writes) */
   rawDataSourceManager?: ToolRawDataSourceManager
+  /** After Graph JSONL write: pending-index → SQLite (optional host hook) */
+  syncGraphPendingIndex?: () => Promise<void>
   /** Agent workspace session context (folder sandbox + round checkpoints) */
   workspace?: {
     folderRoot: string

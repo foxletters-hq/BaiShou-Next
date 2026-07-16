@@ -59,6 +59,8 @@ export interface StreamChatOptions {
   persistBaishouAgentGateConfig?: (config: BaishouAgentGateConfig) => Promise<void>
   /** Memory/Graph JSONL write facade */
   rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
+  /** Host hook: Graph JSONL → SQLite pending-index sync */
+  syncGraphPendingIndex?: () => Promise<void>
   /** Workspace session context for folder-bound agent tools */
   workspace?: {
     folderRoot: string

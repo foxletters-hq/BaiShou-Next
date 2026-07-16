@@ -197,11 +197,21 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         edgesWritten += 1
       }
 
+      if (context.syncGraphPendingIndex) {
+        try {
+          await context.syncGraphPendingIndex()
+        } catch {
+          // File write succeeded; index can catch up on next hydration
+        }
+      }
+
       return [
         `已写入图谱提案（待确认）：节点 ${nodesWritten}，边 ${edgesWritten}。`,
         `提案摘要: ${summary}`,
         sourceRef ? `来源: ${sourceRef}` : null,
-        '记录已落盘到 Graph/ JSONL（reviewStatus=pending）；派生索引将在同步后灌入。'
+        context.syncGraphPendingIndex
+          ? '记录已落盘到 Graph/ JSONL（reviewStatus=pending），并已尝试灌入本地索引。'
+          : '记录已落盘到 Graph/ JSONL（reviewStatus=pending）；派生索引将在同步后灌入。'
       ]
         .filter(Boolean)
         .join('\n')

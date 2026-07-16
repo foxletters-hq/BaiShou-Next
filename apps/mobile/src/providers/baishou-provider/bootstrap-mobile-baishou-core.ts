@@ -362,9 +362,15 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
         const { runMobileDerivedIndexHydration } = await import(
           '../../services/mobile-raw-data-source.runtime'
         )
+        const { resolveMobileEmbeddingForHydration } = await import(
+          '../../services/mobile-raw-data-source.runtime'
+        )
+        const emb = await resolveMobileEmbeddingForHydration(settingsManager)
         await runMobileDerivedIndexHydration({
           drizzleDb,
           vaultName: activeVault.name,
+          embeddingProvider: emb.embeddingProvider,
+          embeddingModelId: emb.embeddingModelId,
           reason: 'cold-start'
         })
       }

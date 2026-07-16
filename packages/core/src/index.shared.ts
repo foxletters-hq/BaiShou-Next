@@ -88,3 +88,10 @@ export * from './shadow-index/shadow-index-sync.service'
 export * from './sync/incremental-sync-external-mounts'
 export * from './events'
 export * from './raw-data'
+export * from './sync/version-manager.interface'
+export * from './sync/version-manager.fs.service'
+export {
+  VersionBackupError,
+  VersionRestoreError,
+  VersionNotFoundError
+} from './sync/sync.errors'

@@ -3,7 +3,8 @@ import {
   MemoryJsonlBackfillService,
   MemorySyncService,
   GraphSyncService,
-  VersionManagerImpl,
+  FsVersionManager,
+  type IVersionManager,
   type RawDataSourceManager,
   type MemoryRawManager,
   type GraphRawManager
@@ -22,10 +23,10 @@ let runtime: {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
-  versionManager: VersionManagerImpl
+  versionManager: IVersionManager
 } | null = null
 
-export function getVersionManager(): VersionManagerImpl {
+export function getVersionManager(): IVersionManager {
   return ensureRawDataRuntime().versionManager
 }
 
@@ -45,10 +46,10 @@ export function ensureRawDataRuntime(): {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
-  versionManager: VersionManagerImpl
+  versionManager: IVersionManager
 } {
   if (!runtime) {
-    const versionManager = new VersionManagerImpl(pathService)
+    const versionManager = new FsVersionManager(pathService, fileSystem)
     const created = createRawDataSourceManager({
       pathService,
       fs: fileSystem,
@@ -105,7 +106,7 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
   }
 }
 
-export async function syncGraphPendingIndex(options: {
+export async function syncGraphPendingIndexWithDeps(options: {
   graphRepo: GraphRepository
   embeddingAdapter?: EmbeddingAdapter | null
 }): Promise<{
@@ -122,6 +123,26 @@ export async function syncGraphPendingIndex(options: {
     modelId: options.embeddingAdapter?.embeddingModelId
   })
   return sync.syncPendingIndex()
+}
+
+/** Tool-context hook: hydrate graph pending-index using current agent DB + embedding. */
+export async function syncGraphPendingIndex(): Promise<void> {
+  if (!connectionManager.isConnected()) return
+  const drizzleDb = connectionManager.getDb()
+  const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
+  const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
+  const graphRepo = new GraphRepository(drizzleDb)
+  let embeddingAdapter: EmbeddingAdapter | null = null
+  try {
+    const { resolveEmbeddingSystemModels } = await import('../ipc/agent-helpers')
+    const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
+    if (embeddingProvider && embeddingModelId) {
+      embeddingAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
+    }
+  } catch {
+    // optional
+  }
+  await syncGraphPendingIndexWithDeps({ graphRepo, embeddingAdapter })
 }
 
 /**
@@ -160,7 +181,7 @@ export async function runDerivedIndexHydration(reason: string): Promise<void> {
       vaultName: activeVault.name
     })
     const memory = await syncMemoryPendingIndex({ hsRepo, embeddingAdapter })
-    const graph = await syncGraphPendingIndex({ graphRepo, embeddingAdapter })
+    const graph = await syncGraphPendingIndexWithDeps({ graphRepo, embeddingAdapter })
 
     logger.info(
       `[RawData] derived hydration done (${reason}): backfill=${backfill.written}/${backfill.skipped} memoryShards=${memory.shards} graphShards=${graph.shards}`
