@@ -104,9 +104,27 @@ export class AgentChatService {
       '../services/raw-data-source.runtime'
     )
     const rawDataSourceManager = getRawDataSourceManager()
-    const { GraphReaderAdapter } = await import('@baishou/ai')
+    const { GraphReaderAdapter, EmbeddingAdapter } = await import('@baishou/ai')
     const { GraphRagService } = await import('@baishou/core-desktop')
     const { connectionManager, GraphRepository } = await import('@baishou/database-desktop')
+    const systemModels = params.systemModels as {
+      embeddingProvider?: { getLanguageModel?: unknown } & object
+      embeddingModelId?: string
+    } | null
+    let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
+    if (systemModels?.embeddingProvider && systemModels.embeddingModelId) {
+      try {
+        const adapter = new EmbeddingAdapter(
+          systemModels.embeddingProvider as never,
+          systemModels.embeddingModelId
+        )
+        if (adapter.isConfigured) {
+          embedQuery = (text) => adapter.embedQuery(text)
+        }
+      } catch {
+        embedQuery = undefined
+      }
+    }
     const graphReader =
       connectionManager.isConnected()
         ? new GraphReaderAdapter(async (opts) => {
@@ -115,7 +133,8 @@ export class AgentChatService {
             const result = await rag.recallRelations({
               vaultName,
               entity: opts.entity,
-              mode: opts.mode
+              mode: opts.mode,
+              embedQuery
             })
             return {
               anchors: result.anchors.map((a) => ({

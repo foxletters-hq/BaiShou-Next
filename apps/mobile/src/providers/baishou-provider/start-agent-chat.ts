@@ -7,6 +7,7 @@ import {
 } from '@baishou/shared'
 import {
   AgentSessionService,
+  EmbeddingAdapter,
   GraphReaderAdapter,
   type IBaishouAgentGate,
   type StreamChatCallbacks
@@ -164,10 +165,22 @@ export function createStartAgentChat(deps: {
             const session = await runtime.sessionRepo.getSessionById(sessionId)
             const vaultName = session?.vaultName || 'Personal'
             const rag = new GraphRagService(new GraphRepository(runtime.drizzleDb))
+            let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
+            if (embeddingProvider && embeddingModelId) {
+              try {
+                const adapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId)
+                if (adapter.isConfigured) {
+                  embedQuery = (text) => adapter.embedQuery(text)
+                }
+              } catch {
+                embedQuery = undefined
+              }
+            }
             const result = await rag.recallRelations({
               vaultName,
               entity: opts.entity,
-              mode: opts.mode
+              mode: opts.mode,
+              embedQuery
             })
             return {
               anchors: result.anchors.map((a) => ({

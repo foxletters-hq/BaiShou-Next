@@ -18,6 +18,18 @@ function wireScanProgressBroadcast(shadowScout: ShadowIndexSyncService): void {
   })
 }
 
+function wirePendingReextractHook(shadowScout: ShadowIndexSyncService): void {
+  // Sync require avoids a lost-mark window; lazy load breaks static import cycles with vault.ipc.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const runtime = require('./raw-data-source.runtime') as typeof import('./raw-data-source.runtime')
+  runtime.ensureRawDataRuntime()
+  runtime.rebindPendingReextractCollaborators()
+  shadowScout.setPendingReextractHook((filePath, contentHash) => {
+    runtime.ensureRawDataRuntime()
+    runtime.getDerivedFreshness().markPendingReextract(filePath, contentHash)
+  })
+}
+
 /** 全局单例，保证扫描状态与 watcher 共用同一实例 */
 export function getSharedShadowSync(): ShadowIndexSyncService {
   const activeVault = vaultService.getActiveVault()
@@ -33,17 +45,7 @@ export function getSharedShadowSync(): ShadowIndexSyncService {
     )
     wireScanProgressBroadcast(cachedShadowSync)
     cachedVaultName = vaultName
-    // Diary isChanged → pending-reextract only (no auto LLM extract)
-    void import('./raw-data-source.runtime').then(
-      ({ ensureRawDataRuntime, rebindPendingReextractCollaborators, getDerivedFreshness }) => {
-        ensureRawDataRuntime()
-        rebindPendingReextractCollaborators()
-        const freshness = getDerivedFreshness()
-        cachedShadowSync?.setPendingReextractHook((filePath, contentHash) => {
-          freshness.markPendingReextract(filePath, contentHash)
-        })
-      }
-    )
+    wirePendingReextractHook(cachedShadowSync)
   }
   return cachedShadowSync
 }
