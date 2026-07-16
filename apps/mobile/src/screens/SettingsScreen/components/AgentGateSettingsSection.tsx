@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   AgentGateTrustMode,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
+  DEFAULT_AGENT_GATE_EXCLUSION_LIST,
   type BaishouAgentGateConfig,
   type AgentGateAllowlistEntry
 } from '@baishou/shared'
@@ -68,6 +69,10 @@ export const AgentGateSettingsSection: React.FC = () => {
   }
 
   const isFullTrust = config.trustMode === AgentGateTrustMode.FullTrust
+  const exclusionList =
+    config.exclusionList.length > 0
+      ? config.exclusionList
+      : [...DEFAULT_AGENT_GATE_EXCLUSION_LIST]
 
   return (
     <View style={styles.section}>
@@ -127,6 +132,26 @@ export const AgentGateSettingsSection: React.FC = () => {
           ))
         )}
       </SettingsGroupCard>
+
+      <SettingsGroupCard>
+        <Text style={[styles.groupTitle, { color: colors.textPrimary }]}>
+          {t('agent.gate.exclusion_title', '每次都需确认（不能始终允许）')}
+        </Text>
+        <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 8 }]}>
+          {t(
+            'agent.gate.exclusion_hint',
+            '下列高危操作即使开启完全信任，仍会征求你的确认，且无法加入始终允许。'
+          )}
+        </Text>
+        {exclusionList.map((action) => (
+          <Text
+            key={action}
+            style={[styles.exclusionItem, { color: colors.textSecondary }]}
+          >
+            {action}
+          </Text>
+        ))}
+      </SettingsGroupCard>
     </View>
   )
 }
@@ -181,5 +206,10 @@ const styles = StyleSheet.create({
   },
   allowlistMeta: {
     fontSize: 11
+  },
+  exclusionItem: {
+    fontSize: 13,
+    fontWeight: '500',
+    paddingVertical: 4
   }
 })

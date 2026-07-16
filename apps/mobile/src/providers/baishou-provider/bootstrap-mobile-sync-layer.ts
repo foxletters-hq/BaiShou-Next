@@ -238,7 +238,8 @@ export async function bootstrapMobileSyncLayer(
   const getContextAtMessage = createGetContextAtMessage({
     toolRegistry,
     agentDbRuntimeRef,
-    getDiarySearcher
+    getDiarySearcher,
+    getAgentGate: agentGateRuntime.getAgentGate
   })
   return {
     ...state,

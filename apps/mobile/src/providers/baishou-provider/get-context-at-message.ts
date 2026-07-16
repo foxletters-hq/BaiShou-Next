@@ -1,14 +1,15 @@
 import { loadContextAtMessage } from '../../services/mobile-context-at-message.service'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
-import type { ToolRegistry, ToolDiarySearcher } from '@baishou/ai'
+import type { IBaishouAgentGate, ToolRegistry, ToolDiarySearcher } from '@baishou/ai'
 
 export function createGetContextAtMessage(deps: {
   toolRegistry: ToolRegistry
   agentDbRuntimeRef: typeof agentDbRuntimeRef
   getDiarySearcher: () => ToolDiarySearcher | undefined
+  getAgentGate?: () => IBaishouAgentGate | undefined
 }) {
-  const { toolRegistry, getDiarySearcher } = deps
+  const { toolRegistry, getDiarySearcher, getAgentGate } = deps
   return (sessionId: string, messageId: string, searchMode = false) => {
     const runtime = agentDbRuntimeRef.current
     if (!runtime) {
@@ -23,7 +24,8 @@ export function createGetContextAtMessage(deps: {
         toolRegistry,
         diarySearcher: getDiarySearcher(),
         webSearchResultFetcher: webFetchContent,
-        fetchSearchPage: fetchSearchPageHtml
+        fetchSearchPage: fetchSearchPageHtml,
+        getAgentGate
       },
       sessionId,
       messageId,
