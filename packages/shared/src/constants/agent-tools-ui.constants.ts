@@ -105,6 +105,18 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
     tooltipKey: 'agent.tools.memory_delete_tooltip'
   },
   {
+    id: 'recall_relations',
+    category: 'memory',
+    nameKey: 'agent.tools.recall_relations',
+    tooltipKey: 'agent.tools.recall_relations_tooltip'
+  },
+  {
+    id: 'graph_upsert',
+    category: 'memory',
+    nameKey: 'agent.tools.graph_upsert',
+    tooltipKey: 'agent.tools.graph_upsert_tooltip'
+  },
+  {
     id: 'web_search',
     category: 'search',
     nameKey: 'agent.tools.web_search',

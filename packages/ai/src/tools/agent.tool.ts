@@ -188,6 +188,8 @@ export interface ToolContext {
   rawDataSourceManager?: ToolRawDataSourceManager
   /** After Graph JSONL write: pending-index → SQLite (optional host hook) */
   syncGraphPendingIndex?: () => Promise<void>
+  /** Read-only GraphRAG for recall_relations */
+  graphReader?: import('@baishou/shared').ToolGraphReader
   /** Agent workspace session context (folder sandbox + round checkpoints) */
   workspace?: {
     folderRoot: string

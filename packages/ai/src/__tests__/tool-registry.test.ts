@@ -45,9 +45,10 @@ describe('ToolRegistry', () => {
     expect(registry.get('nonexistent')).toBeUndefined()
   })
 
-  it('registers graph_upsert placeholder tool', () => {
+  it('registers graph_upsert and recall_relations tools', () => {
     const registry = new ToolRegistry()
     expect(registry.get('graph_upsert')?.name).toBe('graph_upsert')
+    expect(registry.get('recall_relations')?.name).toBe('recall_relations')
   })
 
   it('hides tools denied by gate profile when hideDeniedTools is on', () => {
