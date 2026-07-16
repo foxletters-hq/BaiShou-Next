@@ -20,6 +20,7 @@ import { formatDiaryPreviewText, type DiaryTemplateConfig } from '@baishou/share
 import { mergeDiaryTags } from '@baishou/ai'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
 import { getMobileDiaryEmbeddingCallback } from './mobile-diary-embedding.service'
+import { ensureMobileRawDataRuntime } from './mobile-raw-data-source.runtime'
 import type { VaultBoundDiaryStack, VaultDiarySearcher } from './mobile-vault-runtime.types'
 
 function diaryPreviewFromRaw(raw: string | null | undefined): string {
@@ -48,7 +49,11 @@ export function createVaultBoundDiaryStack(deps: {
     )
   }
   const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
-  const fileSyncService = new FileSyncServiceImpl(deps.pathService, deps.fileSystem)
+  const rawManager = ensureMobileRawDataRuntime({
+    pathService: deps.pathService,
+    fileSystem: deps.fileSystem
+  }).manager
+  const fileSyncService = new FileSyncServiceImpl(deps.pathService, deps.fileSystem, rawManager)
   const vaultIndexService = new VaultIndexServiceImpl()
   const shadowIndexSyncService = new ShadowIndexSyncService(
     shadowRepo,

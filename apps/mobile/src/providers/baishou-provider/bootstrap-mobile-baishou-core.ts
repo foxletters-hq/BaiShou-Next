@@ -186,7 +186,11 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const snapshotRepo = new SnapshotRepository(drizzleDb)
 
     // 4. 构建 Core Services并进行依赖注入
-    const sessionFileService = new SessionFileService(pathService, fileSystem)
+    const { ensureMobileRawDataRuntime } = await import(
+      '../../services/mobile-raw-data-source.runtime'
+    )
+    const rawDataManager = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
+    const sessionFileService = new SessionFileService(pathService, fileSystem, rawDataManager)
     const sessionSyncService = new RecoveryAwareSessionSyncService(
       sessionRepo,
       sessionFileService,
@@ -249,7 +253,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const diaryServiceProxy = createVaultDiaryServiceProxy(refs.diaryStackRef)
     const diarySearcher = diaryStack?.diarySearcher ?? EMPTY_DIARY_SEARCHER
 
-    const summaryFileService = new SummaryFileService(pathService, fileSystem)
+    const summaryFileService = new SummaryFileService(pathService, fileSystem, rawDataManager)
     const diaryRepoAdapter = diaryStack?.diaryRepoAdapter ?? EMPTY_DIARY_REPO_ADAPTER
     const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig)
     const promptLocale = (summaryConfig?.promptLocale ?? 'zh') as SummaryPromptLocale
@@ -352,6 +356,21 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const nextState = await bootstrapMobileSyncLayer(ctx, state)
     await finalizeVaultRuntimeHandlers(ctx, nextState)
     await finalizeStorageRefHandlers(ctx, nextState)
+    try {
+      const activeVault = vaultService.getActiveVault()
+      if (activeVault) {
+        const { runMobileDerivedIndexHydration } = await import(
+          '../../services/mobile-raw-data-source.runtime'
+        )
+        await runMobileDerivedIndexHydration({
+          drizzleDb,
+          vaultName: activeVault.name,
+          reason: 'cold-start'
+        })
+      }
+    } catch (e) {
+      logger.warn('[BaishouProvider] derived index hydration skipped:', e as Error)
+    }
     await commitMobileBaishouReadyState(ctx, nextState)
   } catch (e) {
     if (isExternalStorageRequiredError(e)) {

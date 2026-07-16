@@ -126,7 +126,10 @@ export async function buildMobileMcpToolContext(
       deduplicationService: dedupService,
       webSearchResultFetcher: deps.webSearchResultFetcher,
       fetchSearchPage: deps.fetchSearchPage,
-      agentGate: deps.getAgentGate?.()
+      agentGate: deps.getAgentGate?.(),
+      rawDataSourceManager:
+        (await import('./mobile-raw-data-source.runtime')).getMobileRawDataSourceManager() ??
+        undefined
     })
 
     mobileMcpToolContextCache = {

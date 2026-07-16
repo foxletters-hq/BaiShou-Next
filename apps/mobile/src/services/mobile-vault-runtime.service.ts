@@ -461,6 +461,15 @@ export async function switchVaultRuntime(
 
     await deps.vaultService.switchVault(vaultName)
 
+    const { resetMobileRawDataRuntime, ensureMobileRawDataRuntime } = await import(
+      './mobile-raw-data-source.runtime'
+    )
+    resetMobileRawDataRuntime()
+    ensureMobileRawDataRuntime({
+      pathService: deps.pathService,
+      fileSystem: deps.fileSystem
+    })
+
     deps.callbacks?.onStackInvalidated?.()
 
     const diaryStack = createVaultBoundDiaryStack({
