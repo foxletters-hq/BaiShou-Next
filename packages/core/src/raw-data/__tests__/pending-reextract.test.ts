@@ -9,7 +9,8 @@ import { bindPendingReextractCollaborators } from '../bind-pending-reextract'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 import {
   clampGraphExtractEnumsForTest,
-  entryNodeIdForFilePath
+  entryNodeIdForFilePath,
+  extractFirstJsonObject
 } from '../../graph/graph-llm-extraction.service'
 
 function makePathService(root: string): IStoragePathService {
@@ -102,6 +103,13 @@ describe('graph extract helpers', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-a[0-9a-f]{3}-[0-9a-f]{12}$/
     )
   })
+
+  it('extractFirstJsonObject handles fences and trailing braces', () => {
+    const raw = '```json\n{"entities":[],"edges":[]}\n```\n{extra}'
+    const json = extractFirstJsonObject(raw)
+    expect(json).toBe('{"entities":[],"edges":[]}')
+    expect(JSON.parse(json!)).toEqual({ entities: [], edges: [] })
+  })
 })
 
 describe('supersede AI edges by sourceRef (file side)', () => {
@@ -170,5 +178,70 @@ describe('supersede AI edges by sourceRef (file side)', () => {
     const user = edges.find((e) => e.id === 'e-user')!
     expect(ai.isCurrent).toBe(false)
     expect(user.isCurrent).toBe(true)
+  })
+
+  it('supersede skips exceptIds (new edges stay current)', async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'supersede-ex-'))
+    const freshness = new DerivedFreshnessService()
+    const manager = new GraphRawManager(makePathService(tmp), new NodeFileSystem(), freshness)
+    const now = Date.now()
+    await manager.writeRecord(
+      {
+        id: 'e-old',
+        schemaVersion: 1,
+        vaultName: 'Personal',
+        fromId: 'n1',
+        toId: 'n2',
+        edgeType: 'mentions',
+        props: {},
+        validFrom: now,
+        validTo: null,
+        isCurrent: true,
+        sourceKind: 'diary',
+        sourceRef: '2026-07-01',
+        sourceExcerpt: '',
+        sourceContentHash: 'h1',
+        confidence: 80,
+        origin: 'ai',
+        reviewStatus: 'approved',
+        shardMonth: '2026-07',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null
+      },
+      { collection: 'edges' }
+    )
+    await manager.writeRecord(
+      {
+        id: 'e-new',
+        schemaVersion: 1,
+        vaultName: 'Personal',
+        fromId: 'n1',
+        toId: 'n3',
+        edgeType: 'mentions',
+        props: {},
+        validFrom: now,
+        validTo: null,
+        isCurrent: true,
+        sourceKind: 'diary',
+        sourceRef: '2026-07-01',
+        sourceExcerpt: '',
+        sourceContentHash: 'h2',
+        confidence: 80,
+        origin: 'ai',
+        reviewStatus: 'approved',
+        shardMonth: '2026-07',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null
+      },
+      { collection: 'edges' }
+    )
+    await manager.supersedeAiEdgesBySourceRef('2026-07-01', {
+      exceptIds: new Set(['e-new'])
+    })
+    const edges = await manager.readAllCollapsedEdges()
+    expect(edges.find((e) => e.id === 'e-old')?.isCurrent).toBe(false)
+    expect(edges.find((e) => e.id === 'e-new')?.isCurrent).toBe(true)
   })
 })

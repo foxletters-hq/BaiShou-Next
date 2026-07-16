@@ -91,11 +91,47 @@ function clampEdgeType(raw: string): string {
   return EDGE_TYPE_SET.has(t) ? t : 'relates_to'
 }
 
+/** Extract the first balanced JSON object from LLM text (handles markdown fences). */
+export function extractFirstJsonObject(text: string): string | null {
+  const stripped = text
+    .replace(/```(?:json)?\s*/gi, '')
+    .replace(/```/g, '')
+    .trim()
+  const start = stripped.indexOf('{')
+  if (start < 0) return null
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i]!
+    if (inString) {
+      if (escape) {
+        escape = false
+      } else if (ch === '\\') {
+        escape = true
+      } else if (ch === '"') {
+        inString = false
+      }
+      continue
+    }
+    if (ch === '"') {
+      inString = true
+      continue
+    }
+    if (ch === '{') depth += 1
+    else if (ch === '}') {
+      depth -= 1
+      if (depth === 0) return stripped.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
 function parseExtractJson(text: string): LlmExtractPayload | null {
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) return null
+  const json = extractFirstJsonObject(text)
+  if (!json) return null
   try {
-    const parsed = JSON.parse(match[0]) as Partial<LlmExtractPayload>
+    const parsed = JSON.parse(json) as Partial<LlmExtractPayload>
     return {
       entities: Array.isArray(parsed.entities) ? (parsed.entities as LlmEntity[]) : [],
       edges: Array.isArray(parsed.edges) ? (parsed.edges as LlmEdge[]) : []
@@ -103,6 +139,28 @@ function parseExtractJson(text: string): LlmExtractPayload | null {
   } catch {
     return null
   }
+}
+
+function mergeAliases(existing: string[], incoming: string[]): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const a of [...existing, ...incoming]) {
+    const t = a.trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+function isPathInsideVault(vaultRoot: string, absolutePath: string): boolean {
+  const root = path.resolve(vaultRoot).replace(/\\/g, '/').replace(/\/+$/, '')
+  const abs = path.resolve(absolutePath).replace(/\\/g, '/')
+  const rootLower = root.toLowerCase()
+  const absLower = abs.toLowerCase()
+  return absLower === rootLower || absLower.startsWith(`${rootLower}/`)
 }
 
 function dateFromFilePath(filePath: string): string | null {
@@ -223,14 +281,44 @@ export class GraphLlmExtractionService {
 
   private async resolveAbsolutePath(filePath: string): Promise<string> {
     const rel = normalizeFilePath(filePath)
-    const vault = await this.pathService.getActiveVaultPath()
-    if (vault) {
-      const abs = path.join(vault, rel)
-      if (await this.fs.exists(abs)) return abs
+    if (!rel || rel.includes('\0') || rel.startsWith('/') || /^[A-Za-z]:/.test(rel)) {
+      throw new Error(`Invalid diary path (must be vault-relative): ${filePath}`)
     }
-    // Fallback: filePath may already be absolute
-    if (await this.fs.exists(filePath)) return filePath
-    throw new Error(`Diary file not found: ${rel}`)
+    if (rel.split('/').some((seg) => seg === '..')) {
+      throw new Error(`Invalid diary path (path traversal): ${filePath}`)
+    }
+    const vault = await this.pathService.getActiveVaultPath()
+    if (!vault) throw new Error('No active vault')
+    const abs = path.resolve(vault, rel)
+    if (!isPathInsideVault(vault, abs)) {
+      throw new Error(`Diary path escapes vault: ${filePath}`)
+    }
+    if (!(await this.fs.exists(abs))) {
+      throw new Error(`Diary file not found: ${rel}`)
+    }
+    return abs
+  }
+
+  private async resolveEndpointId(
+    vaultName: string,
+    rawName: string,
+    nameToId: Map<string, string>
+  ): Promise<string | null> {
+    const trimmed = rawName.trim()
+    const key = trimmed.toLowerCase()
+    if (!key) return null
+    const mapped = nameToId.get(key)
+    if (mapped) return mapped
+    const hits = await this.repo.searchNodesByName(vaultName, trimmed, { limit: 8 })
+    const exact = hits.find((h) => {
+      if (h.name.trim().toLowerCase() === key) return true
+      return h.aliases.some((a) => a.trim().toLowerCase() === key)
+    })
+    if (exact) {
+      nameToId.set(key, exact.id)
+      return exact.id
+    }
+    return null
   }
 
   private async extractOne(
@@ -257,29 +345,31 @@ export class GraphLlmExtractionService {
     const sourceRef = dateStr || normalizeFilePath(filePath)
     const shardMonth = shardMonthFromDate(dateStr, now)
     const nameToId = new Map<string, string>()
+    const nodeRecords: GraphNodeRawRecord[] = []
+    const edgeRecords: GraphEdgeRawRecord[] = []
 
-    // Structural entry anchor
+    // Structural entry anchor — preserve historical counters when re-extracting
     const entryId = entryNodeIdForFilePath(filePath)
     const entryName = dateStr || '日记'
-    const entryRecord: GraphNodeRawRecord = {
+    const existingEntry = await this.repo.getNodeById(entryId)
+    nodeRecords.push({
       id: entryId,
       schemaVersion: 1,
       vaultName,
       nodeType: 'entry',
       name: entryName,
-      aliases: dateStr ? [dateStr] : [],
-      summary: '',
+      aliases: mergeAliases(existingEntry?.aliases ?? [], dateStr ? [dateStr] : []),
+      summary: existingEntry?.summary ?? '',
       props: { filePath: normalizeFilePath(filePath) },
-      mentionCount: 1,
-      firstSeenAt: now,
+      mentionCount: (existingEntry?.mentionCount ?? 0) + 1,
+      firstSeenAt: existingEntry?.firstSeenAt ?? now,
       lastSeenAt: now,
       origin: 'ai',
-      createdAt: now,
+      createdAt: existingEntry?.createdAt ?? now,
       updatedAt: now,
       deletedAt: null,
       reviewStatus: 'approved'
-    }
-    await this.graphManager.writeRecord(entryRecord, { collection: 'nodes' })
+    })
     nameToId.set(entryName.toLowerCase(), entryId)
     if (dateStr) nameToId.set(dateStr.toLowerCase(), entryId)
     nameToId.set('entry', entryId)
@@ -295,25 +385,22 @@ export class GraphLlmExtractionService {
           : 80
       const reviewStatus = confidence < LOW_CONFIDENCE ? 'pending' : 'approved'
 
-      let id: string | null = null
       const existing = await this.repo.findNodeByNameOrAlias(vaultName, name, nodeType)
-      if (existing) {
-        id = existing.id
-      } else {
-        id = newId('n')
-      }
-
-      const aliases = Array.isArray(ent.aliases)
+      const id = existing?.id ?? newId('n')
+      const incomingAliases = Array.isArray(ent.aliases)
         ? ent.aliases.filter((a): a is string => typeof a === 'string')
         : []
-      const record: GraphNodeRawRecord = {
+      nodeRecords.push({
         id,
         schemaVersion: 1,
         vaultName,
         nodeType,
         name,
-        aliases,
-        summary: typeof ent.summary === 'string' ? ent.summary : '',
+        aliases: mergeAliases(existing?.aliases ?? [], [name, ...incomingAliases]),
+        summary:
+          typeof ent.summary === 'string' && ent.summary
+            ? ent.summary
+            : (existing?.summary ?? ''),
         props: {},
         mentionCount: existing ? existing.mentionCount + 1 : 1,
         firstSeenAt: existing?.firstSeenAt ?? now,
@@ -323,26 +410,23 @@ export class GraphLlmExtractionService {
         updatedAt: now,
         deletedAt: null,
         reviewStatus
-      }
-      await this.graphManager.writeRecord(record, { collection: 'nodes' })
+      })
       nameToId.set(name.toLowerCase(), id)
     }
-
-    await this.graphManager.supersedeAiEdgesBySourceRef(sourceRef)
 
     for (const edge of payload.edges) {
       const fromRaw = String(edge.from || '').trim()
       const toRaw = String(edge.to || '').trim()
       if (!fromRaw || !toRaw) continue
-      const fromId = nameToId.get(fromRaw.toLowerCase())
-      const toId = nameToId.get(toRaw.toLowerCase())
+      const fromId = await this.resolveEndpointId(vaultName, fromRaw, nameToId)
+      const toId = await this.resolveEndpointId(vaultName, toRaw, nameToId)
       if (!fromId || !toId) continue
       const confidence =
         typeof edge.confidence === 'number'
           ? Math.max(0, Math.min(100, Math.round(edge.confidence)))
           : 75
       const reviewStatus = confidence < LOW_CONFIDENCE ? 'pending' : 'approved'
-      const record: GraphEdgeRawRecord = {
+      edgeRecords.push({
         id: newId('e'),
         schemaVersion: 1,
         vaultName,
@@ -364,13 +448,23 @@ export class GraphLlmExtractionService {
         createdAt: now,
         updatedAt: now,
         deletedAt: null
-      }
+      })
+    }
+
+    // Write nodes + new edges first; supersede old AI edges afterward (except new ids)
+    // so a mid-flight failure does not leave the diary without current AI edges.
+    for (const record of nodeRecords) {
+      await this.graphManager.writeRecord(record, { collection: 'nodes' })
+    }
+    const newEdgeIds = new Set<string>()
+    for (const record of edgeRecords) {
+      newEdgeIds.add(record.id)
       await this.graphManager.writeRecord(record, { collection: 'edges' })
     }
+    await this.graphManager.supersedeAiEdgesBySourceRef(sourceRef, { exceptIds: newEdgeIds })
 
     await this.graphSync.syncPendingIndex()
     await this.freshness.commitReextract(normalizeFilePath(filePath), hash)
-    // extract-state write marks pending-index; hydrate cursor shard
     await this.graphSync.syncPendingIndex()
   }
 }

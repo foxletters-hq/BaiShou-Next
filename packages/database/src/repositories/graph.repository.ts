@@ -479,8 +479,10 @@ export class GraphRepository {
   async traverse(
     vaultName: string,
     centerId: string,
-    depth: 1 | 2
+    depth: 1 | 2,
+    opts?: { approvedOnly?: boolean }
   ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
+    const approvedOnly = opts?.approvedOnly === true
     const nodeIds = new Set<string>([centerId])
     const edgeRows: GraphEdgeRow[] = []
     let frontier = [centerId]
@@ -499,6 +501,8 @@ export class GraphRepository {
         )
       const next: string[] = []
       for (const e of edges) {
+        if (approvedOnly && e.reviewStatus === 'pending') continue
+        if (approvedOnly && e.reviewStatus === 'rejected') continue
         edgeRows.push(mapEdge(e))
         for (const id of [e.fromId, e.toId]) {
           if (!nodeIds.has(id)) {
@@ -511,11 +515,64 @@ export class GraphRepository {
     }
     const ids = [...nodeIds]
     if (ids.length === 0) return { nodes: [], edges: edgeRows }
-    const nodes = await this.database
+    let nodes = (
+      await this.database
+        .select()
+        .from(graphNodesTable)
+        .where(and(inArray(graphNodesTable.id, ids), isNull(graphNodesTable.deletedAt)))
+    ).map(mapNode)
+    if (approvedOnly) {
+      nodes = nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
+    }
+    return { nodes, edges: edgeRows }
+  }
+
+  /**
+   * Relation timeline for an entity: includes superseded (isCurrent=false) edges,
+   * ordered by validFrom. Used by GraphRAG timeline mode.
+   */
+  async listEntityTimeline(
+    vaultName: string,
+    nodeId: string,
+    opts?: { approvedOnly?: boolean; limit?: number }
+  ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
+    const approvedOnly = opts?.approvedOnly !== false
+    const limit = opts?.limit ?? 80
+    const rows = await this.database
       .select()
-      .from(graphNodesTable)
-      .where(and(inArray(graphNodesTable.id, ids), isNull(graphNodesTable.deletedAt)))
-    return { nodes: nodes.map(mapNode), edges: edgeRows }
+      .from(graphEdgesTable)
+      .where(
+        and(
+          eq(graphEdgesTable.vaultName, vaultName),
+          isNull(graphEdgesTable.deletedAt),
+          or(eq(graphEdgesTable.fromId, nodeId), eq(graphEdgesTable.toId, nodeId))
+        )
+      )
+    let edges = rows.map(mapEdge)
+    if (approvedOnly) {
+      edges = edges.filter((e) => e.reviewStatus !== 'pending' && e.reviewStatus !== 'rejected')
+    }
+    edges.sort((a, b) => {
+      const av = a.validFrom ?? a.createdAt
+      const bv = b.validFrom ?? b.createdAt
+      return av - bv
+    })
+    edges = edges.slice(0, limit)
+    const idSet = new Set<string>([nodeId])
+    for (const e of edges) {
+      idSet.add(e.fromId)
+      idSet.add(e.toId)
+    }
+    let nodes = (
+      await this.database
+        .select()
+        .from(graphNodesTable)
+        .where(and(inArray(graphNodesTable.id, [...idSet]), isNull(graphNodesTable.deletedAt)))
+    ).map(mapNode)
+    if (approvedOnly) {
+      nodes = nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
+    }
+    return { nodes, edges }
   }
 
   async getGlobalGraph(opts: {
