@@ -8,13 +8,18 @@ import {
   AgentGateEffect,
   AgentGateReply,
   AgentGateRequestStatus,
+  DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+  buildAgentGateAssertFingerprint,
   canPermanentlyAllowAgentGateAction,
   createAgentGateRequestId,
-  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   type AgentGateAssertInput,
+  type AgentGateEvaluateInput,
+  type AgentGateProfileId,
   type AgentGateReplyInput,
   type AgentGateRequest,
   type AgentGateResolution,
+  type AgentGateResourceRef,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
 import { BaishouAgentGateEventBus } from './baishou-agent-gate-event-bus'
@@ -26,6 +31,7 @@ import {
   BaishouAgentGateAllowlistStore,
   type IAgentGateAllowlistStore
 } from './baishou-agent-gate-allowlist.store'
+import { AgentGateRepeatTracker } from './baishou-agent-gate-repeat.tracker'
 
 export interface IBaishouAgentGate {
   assert(input: AgentGateAssertInput): Promise<void>
@@ -35,34 +41,69 @@ export interface IBaishouAgentGate {
   get(requestId: string): AgentGateRequest | undefined
   listPending(sessionId?: string): AgentGateRequest[]
   cancelSession(sessionId: string, reason?: string): void
+  /** Non-blocking policy probe (e.g. hideDeniedTools). */
+  probeEffect(input: AgentGateEvaluateInput): AgentGateEffect
 }
 
 interface PendingEntry {
   request: AgentGateRequest
+  fingerprint: string
+  resources?: AgentGateResourceRef[]
+  profileId?: AgentGateProfileId
   resolve: (resolution: AgentGateResolution) => void
   reject: (error: Error) => void
 }
 
 export class BaishouAgentGateService implements IBaishouAgentGate {
   private readonly pending = new Map<string, PendingEntry>()
+  private readonly repeatTracker: AgentGateRepeatTracker
 
   constructor(
     private readonly policy: IAgentGatePolicy,
     private readonly allowlistStore: IAgentGateAllowlistStore,
-    private readonly eventBus: BaishouAgentGateEventBus
-  ) {}
+    private readonly eventBus: BaishouAgentGateEventBus,
+    repeatTracker?: AgentGateRepeatTracker
+  ) {
+    this.repeatTracker = repeatTracker ?? new AgentGateRepeatTracker()
+  }
+
+  probeEffect(input: AgentGateEvaluateInput): AgentGateEffect {
+    return this.policy.evaluate(input)
+  }
 
   async assert(input: AgentGateAssertInput): Promise<void> {
     await this.assertWithResolution(input)
   }
 
   async assertWithResolution(input: AgentGateAssertInput): Promise<AgentGateResolution> {
-    const effect = this.policy.evaluate({
+    const fingerprint = buildAgentGateAssertFingerprint(input)
+    const threshold =
+      this.policy.getConfig().repeatAssertAskThreshold ??
+      DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
+    const forceRepeatAsk = this.repeatTracker.shouldForceAsk(
+      input.sessionId,
+      fingerprint,
+      threshold
+    )
+
+    let effect = this.policy.evaluate({
       action: input.action,
       toolDisabled: false,
       resources: input.resources,
-      metadata: input.metadata
+      metadata: input.metadata,
+      profileId: input.profileId
     })
+
+    if (forceRepeatAsk && effect === AgentGateEffect.Allow) {
+      effect = AgentGateEffect.Ask
+    }
+
+    if (effect === AgentGateEffect.Deny) {
+      throw new AgentGateDeniedError(input.action)
+    }
+
+    // Count only non-deny asserts (Allow / Ask) toward repeat protection.
+    this.repeatTracker.record(input.sessionId, fingerprint)
 
     if (effect === AgentGateEffect.Allow) {
       return {
@@ -72,12 +113,8 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
-    if (effect === AgentGateEffect.Deny) {
-      throw new AgentGateDeniedError(input.action)
-    }
-
     const request = this.createRequest(input)
-    return this.waitForResolution(request)
+    return this.waitForResolution(request, fingerprint, input.resources, input.profileId)
   }
 
   async ask(input: AgentGateAssertInput): Promise<AgentGateRequest> {
@@ -85,7 +122,8 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       action: input.action,
       toolDisabled: false,
       resources: input.resources,
-      metadata: input.metadata
+      metadata: input.metadata,
+      profileId: input.profileId
     })
     const request = this.createRequest(input)
     if (effect === AgentGateEffect.Ask) {
@@ -135,6 +173,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     })
 
     if (input.reply === AgentGateReply.Reject) {
+      this.repeatTracker.clearSession(request.sessionId)
       this.rejectEntry(entry, resolution)
       this.cascadeRejectSession(request.sessionId, request.id, resolution)
       return
@@ -146,13 +185,25 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         sourceSessionId: request.sessionId,
         sourceRequestId: request.id
       })
-      await this.allowlistStore.persist()
-      this.eventBus.publish({
-        type: 'agent_gate.allowlist_changed',
-        allowlist: this.allowlistStore.list()
-      })
+      // Resolve first so tool asserts never hang if persist fails.
+      this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
+      this.resolveEntry(entry, resolution)
+      this.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
+      try {
+        await this.allowlistStore.persist()
+        this.eventBus.publish({
+          type: 'agent_gate.allowlist_changed',
+          allowlist: this.allowlistStore.list()
+        })
+      } catch (error) {
+        // In-memory allowlist already updated for this process; surface persist error to caller.
+        throw error
+      }
+      return
     }
 
+    // Once
+    this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
     this.resolveEntry(entry, resolution)
   }
 
@@ -167,6 +218,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   }
 
   cancelSession(sessionId: string, reason?: string): void {
+    this.repeatTracker.clearSession(sessionId)
     for (const [id, entry] of this.pending.entries()) {
       if (entry.request.sessionId !== sessionId) continue
       entry.request.status = AgentGateRequestStatus.Cancelled
@@ -194,9 +246,21 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
   }
 
-  private waitForResolution(request: AgentGateRequest): Promise<AgentGateResolution> {
+  private waitForResolution(
+    request: AgentGateRequest,
+    fingerprint: string,
+    resources?: AgentGateResourceRef[],
+    profileId?: AgentGateProfileId
+  ): Promise<AgentGateResolution> {
     return new Promise<AgentGateResolution>((resolve, reject) => {
-      this.pending.set(request.id, { request, resolve, reject })
+      this.pending.set(request.id, {
+        request,
+        fingerprint,
+        resources,
+        profileId,
+        resolve,
+        reject
+      })
       this.eventBus.publish({ type: 'agent_gate.asked', request })
     })
   }
@@ -235,7 +299,56 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         message: resolution.message,
         selectedOptionIds: resolution.selectedOptionIds
       })
-      item.reject(new AgentGateRejectedError())
+      if (resolution.message?.trim()) {
+        item.reject(new AgentGateCorrectedError(resolution.message.trim()))
+      } else {
+        item.reject(new AgentGateRejectedError())
+      }
+    }
+  }
+
+  /**
+   * After Always: auto-resolve same-session pending with the same action,
+   * only when re-evaluation yields Allow (external_path / Deny must not cascade).
+   */
+  private cascadeAllowSession(
+    sessionId: string,
+    skipRequestId: string,
+    action: string,
+    resolution: AgentGateResolution
+  ): void {
+    for (const [id, item] of this.pending.entries()) {
+      if (item.request.sessionId !== sessionId || id === skipRequestId) continue
+      if (item.request.action !== action) continue
+
+      const effect = this.policy.evaluate({
+        action: item.request.action,
+        resources: item.resources,
+        metadata: item.request.metadata,
+        profileId: item.profileId
+      })
+      if (effect !== AgentGateEffect.Allow) {
+        continue
+      }
+
+      item.request.status = AgentGateRequestStatus.Resolved
+      item.request.resolvedAt = resolution.resolvedAt
+      this.pending.delete(id)
+      this.repeatTracker.clearFingerprint(sessionId, item.fingerprint)
+
+      const cascaded: AgentGateResolution = {
+        requestId: item.request.id,
+        reply: AgentGateReply.Once,
+        resolvedAt: resolution.resolvedAt
+      }
+
+      this.eventBus.publish({
+        type: 'agent_gate.replied',
+        sessionId: item.request.sessionId,
+        requestId: item.request.id,
+        reply: AgentGateReply.Once
+      })
+      item.resolve(cascaded)
     }
   }
 }
@@ -244,6 +357,7 @@ export interface CreateBaishouAgentGateOptions {
   config: BaishouAgentGateConfig
   persistConfig?: () => Promise<void>
   eventBus?: BaishouAgentGateEventBus
+  repeatTracker?: AgentGateRepeatTracker
 }
 
 function cloneDefaultConfig(): BaishouAgentGateConfig {
@@ -263,18 +377,23 @@ export function createBaishouAgentGate(
   policy: BaishouAgentGatePolicyService
   allowlistStore: BaishouAgentGateAllowlistStore
   getConfig: () => BaishouAgentGateConfig
+  repeatTracker: AgentGateRepeatTracker
 } {
   const config =
     options && 'trustMode' in options ? options : (options?.config ?? cloneDefaultConfig())
 
   const persistConfig = options && 'trustMode' in options ? undefined : options?.persistConfig
-  const eventBus = (options && 'trustMode' in options ? undefined : options?.eventBus) ??
+  const eventBus =
+    (options && 'trustMode' in options ? undefined : options?.eventBus) ??
     new BaishouAgentGateEventBus()
+  const repeatTracker =
+    (options && 'trustMode' in options ? undefined : options?.repeatTracker) ??
+    new AgentGateRepeatTracker()
 
   const getConfig = () => config
   const allowlistStore = new BaishouAgentGateAllowlistStore(getConfig, persistConfig)
   const policy = new BaishouAgentGatePolicyService(getConfig, allowlistStore)
-  const gate = new BaishouAgentGateService(policy, allowlistStore, eventBus)
+  const gate = new BaishouAgentGateService(policy, allowlistStore, eventBus, repeatTracker)
 
-  return { gate, eventBus, policy, allowlistStore, getConfig }
+  return { gate, eventBus, policy, allowlistStore, getConfig, repeatTracker }
 }

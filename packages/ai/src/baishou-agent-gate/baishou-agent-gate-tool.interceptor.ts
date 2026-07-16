@@ -1,11 +1,13 @@
 import {
   AgentGateKind,
+  AgentGateProfileId,
   AgentGateCancelledError,
   AgentGateCorrectedError,
   AgentGateDeniedError,
   AgentGateRejectedError,
   extractAgentGateResourcesFromMetadata,
   mergeAgentGateResources,
+  resolveAgentGateProfileId,
   type AgentGateToolMetadata
 } from '@baishou/shared'
 import type { ToolContext } from '../tools/agent.tool'
@@ -21,6 +23,16 @@ function isAgentGateControlError(error: unknown): error is Error {
 
 function defaultGateTitle(toolName: string): string {
   return `执行工具 ${toolName}`
+}
+
+function resolveProfileFromContext(context: ToolContext): AgentGateProfileId {
+  if (context.gateProfile) {
+    return resolveAgentGateProfileId(context.gateProfile)
+  }
+  if (context.workspace?.sessionKind === 'workspace') {
+    return AgentGateProfileId.Workspace
+  }
+  return AgentGateProfileId.Companion
 }
 
 /**
@@ -60,6 +72,8 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
         kind: AgentGateKind.Tool,
         action,
         title,
+        allowCustomInput: true,
+        profileId: resolveProfileFromContext(context),
         metadata: gateMetadata,
         resources: resources.length > 0 ? resources : undefined
       })
