@@ -49,4 +49,14 @@ describe('isVisionModel', () => {
   it('falls back to regex for unmapped providers', () => {
     expect(isVisionModel('qwen-vl-max', 'doubao')).toBe(true)
   })
+
+  it('treats all kimi series as vision by default', () => {
+    expect(isVisionModel('kimi-k3', 'kimi')).toBe(true)
+    expect(isVisionModel('kimi-k3.0', 'kimi')).toBe(true)
+    expect(isVisionModel('moonshotai/Kimi-K3', 'siliconflow')).toBe(true)
+    expect(isVisionModel('kimi-latest', 'kimi')).toBe(true)
+    expect(isVisionModel('kimi-thinking-preview', 'kimi')).toBe(true)
+    expect(isVisionModel('k3p1', 'kimi')).toBe(true)
+    expect(isVisionModel('k2p5', 'kimi')).toBe(true)
+  })
 })
