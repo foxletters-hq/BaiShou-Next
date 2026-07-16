@@ -16,6 +16,9 @@ window.addEventListener('unhandledrejection', (event) => {
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { installRendererDiagnosticLogCapture } from './lib/install-renderer-diagnostic-log'
+
+installRendererDiagnosticLogCapture()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

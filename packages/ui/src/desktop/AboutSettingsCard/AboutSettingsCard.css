@@ -412,3 +412,63 @@
 .about-surface-card > .privacy-section {
   padding: 20px 24px 24px;
 }
+
+.about-diagnostic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.about-diagnostic-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.about-diagnostic-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.about-diagnostic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 11px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+.about-diagnostic-btn:hover:not(:disabled) {
+  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.02));
+  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
+}
+
+.about-diagnostic-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.about-diagnostic-btn-primary {
+  background: var(--color-primary, #5ba8f5);
+  border-color: transparent;
+  color: #fff;
+}
+
+.about-diagnostic-btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+  background: var(--color-primary, #5ba8f5);
+  border-color: transparent;
+}

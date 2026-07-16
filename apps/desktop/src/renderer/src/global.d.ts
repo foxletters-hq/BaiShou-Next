@@ -50,6 +50,12 @@ interface ShellAPI {
   openExternal(url: string): Promise<boolean>
 }
 
+interface DiagnosticLogAPI {
+  exportToDesktop(): Promise<{ filePath: string; fileName: string; charCount: number }>
+  copyToClipboard(): Promise<{ charCount: number }>
+  append(level: 'debug' | 'info' | 'warn' | 'error', message: string): Promise<{ success: boolean }>
+}
+
 interface DiaryAPI {
   create(input: unknown): Promise<unknown>
   update(id: number, input: unknown): Promise<unknown>
@@ -166,6 +172,7 @@ interface AppAPI {
   onboarding: OnboardingAPI
   window: WindowAPI
   shell: ShellAPI
+  diagnosticLog: DiagnosticLogAPI
   diary: DiaryAPI
   summary: SummaryAPI
   zoom: ZoomAPI
