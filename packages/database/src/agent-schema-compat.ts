@@ -47,6 +47,65 @@ export const SYSTEM_SETTINGS_CREATE_SQL = `
   )
 `
 
+/** Graph nodes / edges（P1）；旧库无迁移记录时靠兜底建表 */
+export const GRAPH_NODES_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS graph_nodes (
+    id TEXT PRIMARY KEY NOT NULL,
+    vault_name TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    name TEXT NOT NULL,
+    aliases TEXT DEFAULT '[]' NOT NULL,
+    summary TEXT DEFAULT '' NOT NULL,
+    props_json TEXT DEFAULT '{}' NOT NULL,
+    embedding BLOB,
+    dimension INTEGER,
+    model_id TEXT DEFAULT '' NOT NULL,
+    mention_count INTEGER DEFAULT 0 NOT NULL,
+    first_seen_at INTEGER,
+    last_seen_at INTEGER,
+    origin TEXT DEFAULT 'ai' NOT NULL,
+    shard_month TEXT DEFAULT '' NOT NULL,
+    review_status TEXT DEFAULT 'approved' NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  )
+`
+
+export const GRAPH_EDGES_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS graph_edges (
+    id TEXT PRIMARY KEY NOT NULL,
+    vault_name TEXT NOT NULL,
+    from_id TEXT NOT NULL,
+    to_id TEXT NOT NULL,
+    edge_type TEXT NOT NULL,
+    props_json TEXT DEFAULT '{}' NOT NULL,
+    valid_from INTEGER,
+    valid_to INTEGER,
+    is_current INTEGER DEFAULT 1 NOT NULL,
+    source_kind TEXT DEFAULT 'diary' NOT NULL,
+    source_ref TEXT,
+    source_excerpt TEXT DEFAULT '' NOT NULL,
+    source_content_hash TEXT,
+    confidence INTEGER DEFAULT 100 NOT NULL,
+    origin TEXT DEFAULT 'ai' NOT NULL,
+    review_status TEXT DEFAULT 'approved' NOT NULL,
+    shard_month TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  )
+`
+
+export const GRAPH_INDEXES_SQL = [
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_type ON graph_nodes(vault_name, node_type)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_from ON graph_edges(from_id)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_to ON graph_edges(to_id)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_type_current ON graph_edges(vault_name, edge_type, is_current)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_source_ref ON graph_edges(vault_name, source_ref)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_shard_month ON graph_edges(vault_name, shard_month)`
+] as const
+
 /**
  * 按表聚合的缺列补丁（顺序无关，逐条检测后执行）。
  */

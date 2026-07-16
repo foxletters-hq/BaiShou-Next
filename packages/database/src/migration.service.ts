@@ -8,6 +8,9 @@ import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
 import { isAgentMigrationArchiveImport } from './migration-context'
 import {
   AGENT_DB_COLUMN_PATCHES,
+  GRAPH_EDGES_CREATE_SQL,
+  GRAPH_INDEXES_SQL,
+  GRAPH_NODES_CREATE_SQL,
   MEMORY_EMBEDDINGS_CREATE_SQL,
   MEMORY_EMBEDDINGS_INDEX_SQL,
   SYSTEM_SETTINGS_CREATE_SQL
@@ -101,6 +104,7 @@ export class MigrationService {
               // 旧版 agent.sqlite 仅有部分 0000 表，回填迁移记录后仍需补齐 Next 新增表
               await this._ensureSystemSettingsTable()
               await this._ensureMemoryEmbeddingsTable()
+              await this._ensureGraphTables()
             }
           }
         } catch (e: any) {
@@ -113,6 +117,7 @@ export class MigrationService {
         logger.info('[MigrationService] 迁移日志为空，无需执行。')
         await this._ensureSystemSettingsTable()
         await this._ensureMemoryEmbeddingsTable()
+        await this._ensureGraphTables()
         await this._ensureAgentSchemaColumns()
         await this._backfillAgentMessagesOrderIndex()
         return
@@ -182,6 +187,7 @@ export class MigrationService {
 
       await this._ensureSystemSettingsTable()
       await this._ensureMemoryEmbeddingsTable()
+      await this._ensureGraphTables()
       await this._ensureAgentSchemaColumns()
       await this._backfillAgentMessagesOrderIndex()
 
@@ -262,6 +268,32 @@ export class MigrationService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.warn('[MigrationService] memory_embeddings 表检查失败（非阻塞）:', message)
+    }
+  }
+
+  /** 确保 graph_nodes / graph_edges 存在（P1 图谱派生索引）。 */
+  private async _ensureGraphTables(): Promise<void> {
+    try {
+      const nodes = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='graph_nodes'`
+      )
+      if (nodes.rows.length === 0) {
+        logger.info('[MigrationService] 创建缺失的 graph_nodes 表...')
+        await this._executeSql(GRAPH_NODES_CREATE_SQL)
+      }
+      const edges = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='graph_edges'`
+      )
+      if (edges.rows.length === 0) {
+        logger.info('[MigrationService] 创建缺失的 graph_edges 表...')
+        await this._executeSql(GRAPH_EDGES_CREATE_SQL)
+      }
+      for (const ddl of GRAPH_INDEXES_SQL) {
+        await this._executeSql(ddl)
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] graph 表检查失败（非阻塞）:', message)
     }
   }
 

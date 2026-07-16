@@ -1,3 +1,9 @@
+import {
+  AgentGateEffect,
+  AgentGateProfileId,
+  resolveAgentGateProfileId,
+  type BaishouAgentGateConfig
+} from '@baishou/shared'
 import { AgentTool, ToolContext } from './agent.tool'
 import { WebSearchTool } from './web-search.tool'
 import { UrlReadTool } from './url-read.tool'
@@ -17,11 +23,40 @@ import { ContextCompressUpstreamTool, ContextCompressDownstreamTool } from './co
 import { hasEmbeddingCapability } from './tool-context.util'
 import { EmojiSendTool } from './emoji-send.tool'
 import { CompanionAskTool } from './companion-ask.tool'
+import { GraphUpsertTool } from './graph-upsert.tool'
 import { WORKSPACE_TOOL_IDS, createWorkspaceTools } from '../agent-workspace/workspace.tools'
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
 const WORKSPACE_ONLY_TOOL_IDS = new Set<string>(WORKSPACE_TOOL_IDS)
 const WORKSPACE_SESSION_UTILITY_TOOL_IDS = new Set(['companion_ask', 'current_time'])
+
+function resolveGateProfile(context: ToolContext): AgentGateProfileId {
+  if (context.gateProfile) {
+    return resolveAgentGateProfileId(context.gateProfile)
+  }
+  if (context.workspace?.sessionKind === 'workspace') {
+    return AgentGateProfileId.Workspace
+  }
+  return AgentGateProfileId.Companion
+}
+
+function shouldHideDeniedTool(name: string, context: ToolContext): boolean {
+  const gate = context.agentGate
+  if (!gate?.probeEffect) return false
+
+  const rawConfig = context.userConfig?.['baishou_agent_gate_config'] as
+    | BaishouAgentGateConfig
+    | undefined
+  const hideDenied = rawConfig?.hideDeniedTools !== false
+  if (!hideDenied) return false
+
+  return (
+    gate.probeEffect({
+      action: name,
+      profileId: resolveGateProfile(context)
+    }) === AgentGateEffect.Deny
+  )
+}
 
 function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolContext): boolean {
   const isWorkspaceSession = context.workspace?.sessionKind === 'workspace'
@@ -59,6 +94,7 @@ function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolCon
   }
   if (name === 'web_search' && !webSearchEnabled) return false
   if (WORKSPACE_ONLY_TOOL_IDS.has(name) && !context.workspace?.folderRoot) return false
+  if (shouldHideDeniedTool(name, context)) return false
   return true
 }
 
@@ -85,6 +121,7 @@ export class ToolRegistry {
       new ContextCompressUpstreamTool(),
       new ContextCompressDownstreamTool(),
       new CompanionAskTool(),
+      new GraphUpsertTool(),
       ...createWorkspaceTools()
     ])
   }
