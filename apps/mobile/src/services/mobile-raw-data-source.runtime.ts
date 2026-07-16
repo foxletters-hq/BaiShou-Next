@@ -3,6 +3,7 @@ import {
   MemoryJsonlBackfillService,
   MemorySyncService,
   GraphSyncService,
+  FsVersionManager,
   type RawDataSourceManager,
   type MemoryRawManager,
   type GraphRawManager,
@@ -15,8 +16,34 @@ import {
   SqliteHybridSearchRepository,
   type AppDatabase
 } from '@baishou/database'
-import { EmbeddingAdapter, type IAIProvider } from '@baishou/ai'
+import { AIProviderRegistry, EmbeddingAdapter, type IAIProvider } from '@baishou/ai'
 import { logger } from '@baishou/shared'
+import type { SettingsManagerService } from '@baishou/core-mobile'
+
+export async function resolveMobileEmbeddingForHydration(
+  settingsManager: SettingsManagerService
+): Promise<{ embeddingProvider: IAIProvider | null; embeddingModelId: string | null }> {
+  try {
+    const globalModels = await settingsManager.get<{
+      globalEmbeddingProviderId?: string
+      globalEmbeddingModelId?: string
+    }>('global_models')
+    const providers = (await settingsManager.get<Array<{ id: string }>>('ai_providers')) || []
+    const embeddingProviderId = globalModels?.globalEmbeddingProviderId
+    const embeddingModelId = globalModels?.globalEmbeddingModelId
+    if (!embeddingProviderId || !embeddingModelId || embeddingModelId === 'off') {
+      return { embeddingProvider: null, embeddingModelId: null }
+    }
+    const embConfig = providers.find((p) => p.id === embeddingProviderId)
+    if (!embConfig) return { embeddingProvider: null, embeddingModelId: null }
+    const embeddingProvider = AIProviderRegistry.getInstance().getOrUpdateProvider(
+      embConfig as never
+    )
+    return { embeddingProvider, embeddingModelId }
+  } catch {
+    return { embeddingProvider: null, embeddingModelId: null }
+  }
+}
 
 let runtime: {
   manager: RawDataSourceManager
@@ -36,9 +63,11 @@ export function ensureMobileRawDataRuntime(options: {
   if (runtime && runtime.pathService === options.pathService) {
     return runtime
   }
+  const versionManager = new FsVersionManager(options.pathService, options.fileSystem)
   const created = createRawDataSourceManager({
     pathService: options.pathService,
-    fs: options.fileSystem
+    fs: options.fileSystem,
+    versionManager
   })
   runtime = {
     manager: created.manager,
@@ -57,6 +86,30 @@ export function resetMobileRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
   runtime = null
+}
+
+/** Tool hook: only graph pending-index → SQLite. */
+export async function syncMobileGraphPendingIndex(options: {
+  drizzleDb: AppDatabase
+  embeddingProvider?: IAIProvider | null
+  embeddingModelId?: string | null
+}): Promise<void> {
+  if (!runtime) return
+  const graphRepo = new GraphRepository(options.drizzleDb)
+  let embeddingAdapter: EmbeddingAdapter | null = null
+  if (options.embeddingProvider && options.embeddingModelId) {
+    embeddingAdapter = new EmbeddingAdapter(
+      options.embeddingProvider,
+      options.embeddingModelId
+    )
+  }
+  const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
+    embedQuery: embeddingAdapter?.isConfigured
+      ? (text) => embeddingAdapter!.embedQuery(text)
+      : undefined,
+    modelId: embeddingAdapter?.embeddingModelId
+  })
+  await graphSync.syncPendingIndex()
 }
 
 export async function runMobileDerivedIndexHydration(options: {

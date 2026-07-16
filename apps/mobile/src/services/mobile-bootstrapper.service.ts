@@ -249,6 +249,26 @@ export class MobileDataBootstrapper {
         logger.info('[MobileBootstrapper] Created default identity card')
       }
 
+      try {
+        const { runMobileDerivedIndexHydration, resolveMobileEmbeddingForHydration } =
+          await import('./mobile-raw-data-source.runtime')
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const runtime = agentDbRuntimeRef.current
+        const vaultName = activeVaultName ?? (await deps.getActiveVaultName?.().catch(() => null))
+        if (runtime?.drizzleDb && vaultName) {
+          const emb = await resolveMobileEmbeddingForHydration(deps.settingsManager)
+          await runMobileDerivedIndexHydration({
+            drizzleDb: runtime.drizzleDb,
+            vaultName,
+            embeddingProvider: emb.embeddingProvider,
+            embeddingModelId: emb.embeddingModelId,
+            reason: 'vault-ecosystem-resync'
+          })
+        }
+      } catch (e) {
+        logger.warn('[MobileBootstrapper] derived index hydration failed:', e as Error)
+      }
+
       logger.info('[MobileBootstrapper] Ecosystem resync complete')
     } catch (e) {
       logger.error('[MobileBootstrapper] Resync failed:', e as Error)
