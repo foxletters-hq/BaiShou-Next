@@ -1,3 +1,5 @@
+import { AGENT_GATE_CORRECTED_FEEDBACK_PREFIX } from './agent-gate.defaults'
+
 export class AgentGateDeniedError extends Error {
   readonly code = 'agent_gate.denied' as const
 
@@ -23,7 +25,7 @@ export class AgentGateCorrectedError extends Error {
   readonly code = 'agent_gate.corrected' as const
 
   constructor(readonly feedback: string) {
-    super(`用户拒绝了本次操作，并说明：${feedback}`)
+    super(`${AGENT_GATE_CORRECTED_FEEDBACK_PREFIX} ${feedback}`)
     this.name = 'AgentGateCorrectedError'
   }
 }

@@ -1,6 +1,7 @@
 import type {
   AgentGateEffect,
   AgentGateKind,
+  AgentGateProfileId,
   AgentGateReply,
   AgentGateRequestStatus,
   AgentGateRiskLevel,
@@ -46,6 +47,21 @@ export interface BaishouAgentGateConfig {
   actionRules?: Partial<Record<string, AgentGateEffect>>
   /** Explicit wildcard rules; actionRules are derived into rules at evaluation time */
   permissionRules?: AgentGatePermissionRule[]
+  /**
+   * When true (default), resources with kind `external_path` force Ask
+   * after permission rules, overriding FullTrust and action allowlist.
+   */
+  forceAskExternalPath?: boolean
+  /**
+   * Consecutive same-fingerprint asserts in one session that force Ask.
+   * Default 3; set 0 to disable.
+   */
+  repeatAssertAskThreshold?: number
+  /**
+   * When true (default), tools whose action evaluates to Deny (with no resources)
+   * are omitted from the model tool list.
+   */
+  hideDeniedTools?: boolean
 }
 
 export interface AgentGateRequest {
@@ -88,6 +104,8 @@ export interface AgentGateEvaluateInput {
   resources?: AgentGateResourceRef[]
   /** Gate request metadata (forceExclusion, legacy path fields, etc.) */
   metadata?: Record<string, unknown>
+  /** Scene profile for default rule matrix */
+  profileId?: AgentGateProfileId
 }
 
 export interface AgentGateAssertInput {
@@ -102,6 +120,8 @@ export interface AgentGateAssertInput {
   metadata?: Record<string, unknown>
   /** Structured resource targets; derived from metadata when omitted */
   resources?: AgentGateResourceRef[]
+  /** Scene profile for default rule matrix */
+  profileId?: AgentGateProfileId
   messageId?: string
   toolCallId?: string
 }
