@@ -251,9 +251,12 @@ export class GraphRawManager implements RecordCollectionKindManager {
 
   /**
    * File-side replace: mark prior AI edges for this diary sourceRef as not current.
-   * Keeps user-origin edges.
+   * Keeps user-origin edges. Optionally skip newly written edge ids.
    */
-  async supersedeAiEdgesBySourceRef(sourceRef: string): Promise<number> {
+  async supersedeAiEdgesBySourceRef(
+    sourceRef: string,
+    opts?: { exceptIds?: ReadonlySet<string> }
+  ): Promise<number> {
     const now = Date.now()
     const edges = await this.readAllCollapsedEdges()
     let count = 0
@@ -261,6 +264,7 @@ export class GraphRawManager implements RecordCollectionKindManager {
       if (edge.sourceRef !== sourceRef) continue
       if (!edge.isCurrent) continue
       if (edge.origin === 'user') continue
+      if (opts?.exceptIds?.has(edge.id)) continue
       await this.writeRecord(
         {
           ...edge,

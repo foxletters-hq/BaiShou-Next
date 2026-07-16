@@ -17,6 +17,7 @@ export interface RecallRelationsOptions {
 
 /**
  * GraphRAG: name/vector anchor → traverse 1–2 hops or timeline by validFrom.
+ * Defaults to approved-only edges/nodes so pending review never reaches the Agent.
  */
 export class GraphRagService {
   constructor(private readonly repo: GraphRepository) {}
@@ -34,16 +35,13 @@ export class GraphRagService {
 
     if (opts.mode === 'timeline') {
       const center = anchors[0]!
-      const view = await this.repo.traverse(opts.vaultName, center.id, opts.depth ?? 2)
-      const timeline = [...view.edges].sort((a, b) => {
-        const av = a.validFrom ?? a.createdAt
-        const bv = b.validFrom ?? b.createdAt
-        return av - bv
+      const view = await this.repo.listEntityTimeline(opts.vaultName, center.id, {
+        approvedOnly: true
       })
       return {
-        anchors,
-        subgraph: view.edges,
-        timeline,
+        anchors: this.filterApprovedNodes(anchors),
+        subgraph: view.edges.filter((e) => e.isCurrent),
+        timeline: view.edges,
         nodes: view.nodes
       }
     }
@@ -51,16 +49,22 @@ export class GraphRagService {
     const nodeMap = new Map<string, GraphNodeRow>()
     const edgeMap = new Map<string, GraphEdgeRow>()
     for (const anchor of anchors.slice(0, 5)) {
-      const view = await this.repo.traverse(opts.vaultName, anchor.id, opts.depth ?? 2)
+      const view = await this.repo.traverse(opts.vaultName, anchor.id, opts.depth ?? 2, {
+        approvedOnly: true
+      })
       for (const n of view.nodes) nodeMap.set(n.id, n)
       for (const e of view.edges) edgeMap.set(e.id, e)
     }
 
     return {
-      anchors,
+      anchors: this.filterApprovedNodes(anchors),
       subgraph: [...edgeMap.values()],
       nodes: [...nodeMap.values()]
     }
+  }
+
+  private filterApprovedNodes(nodes: GraphNodeRow[]): GraphNodeRow[] {
+    return nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
   }
 
   private async resolveAnchors(
@@ -68,7 +72,9 @@ export class GraphRagService {
     entity: string,
     embedQuery?: (text: string) => Promise<number[] | null>
   ): Promise<GraphNodeRow[]> {
-    const byName = await this.repo.searchNodesByName(vaultName, entity, { limit: 8 })
+    const byName = (await this.repo.searchNodesByName(vaultName, entity, { limit: 8 })).filter(
+      (n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected'
+    )
     if (byName.length > 0) return byName
 
     if (embedQuery) {
@@ -76,7 +82,9 @@ export class GraphRagService {
         const vector = await embedQuery(entity)
         if (vector?.length) {
           const hits = await this.repo.searchNodesByVector(vaultName, vector, 5)
-          return hits.map(({ distance: _d, ...row }) => row)
+          return hits
+            .map(({ distance: _d, ...row }) => row)
+            .filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
         }
       } catch {
         // optional
