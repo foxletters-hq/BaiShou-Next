@@ -33,6 +33,17 @@ export function getSharedShadowSync(): ShadowIndexSyncService {
     )
     wireScanProgressBroadcast(cachedShadowSync)
     cachedVaultName = vaultName
+    // Diary isChanged → pending-reextract only (no auto LLM extract)
+    void import('./raw-data-source.runtime').then(
+      ({ ensureRawDataRuntime, rebindPendingReextractCollaborators, getDerivedFreshness }) => {
+        ensureRawDataRuntime()
+        rebindPendingReextractCollaborators()
+        const freshness = getDerivedFreshness()
+        cachedShadowSync?.setPendingReextractHook((filePath, contentHash) => {
+          freshness.markPendingReextract(filePath, contentHash)
+        })
+      }
+    )
   }
   return cachedShadowSync
 }

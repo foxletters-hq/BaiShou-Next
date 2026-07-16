@@ -559,6 +559,24 @@ export class GraphRepository {
     return { nodes, edges }
   }
 
+  async getNodeById(id: string): Promise<GraphNodeRow | null> {
+    const rows = await this.database
+      .select()
+      .from(graphNodesTable)
+      .where(and(eq(graphNodesTable.id, id), isNull(graphNodesTable.deletedAt)))
+      .limit(1)
+    return rows[0] ? mapNode(rows[0]) : null
+  }
+
+  async getEdgeById(id: string): Promise<GraphEdgeRow | null> {
+    const rows = await this.database
+      .select()
+      .from(graphEdgesTable)
+      .where(and(eq(graphEdgesTable.id, id), isNull(graphEdgesTable.deletedAt)))
+      .limit(1)
+    return rows[0] ? mapEdge(rows[0]) : null
+  }
+
   async softDeleteNode(id: string): Promise<void> {
     const now = new Date()
     await this.database
