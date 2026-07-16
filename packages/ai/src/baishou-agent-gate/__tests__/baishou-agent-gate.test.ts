@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   AgentGateEffect,
   AgentGateKind,
+  AgentGateProfileId,
   AgentGateReply,
   AgentGateTrustMode,
   AgentGateDeniedError,
@@ -188,6 +189,67 @@ describe('BaishouAgentGatePolicyService', () => {
       })
     ).toBe(AgentGateEffect.Ask)
   })
+
+  it('外路径在 full_trust 与 allowlist 下仍 ask', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.FullTrust,
+      exclusionList: [],
+      allowlist: [{ id: 'bagal_1', action: 'workspace_write', createdAt: 1 }],
+      forceAskExternalPath: true
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        resources: [{ kind: 'external_path', value: 'C:/Outside/secret.txt' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+  })
+
+  it('外路径可被显式 Allow 规则放行', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.Manual,
+      exclusionList: [],
+      allowlist: [],
+      forceAskExternalPath: true,
+      permissionRules: [
+        {
+          action: 'workspace_write',
+          pattern: 'C:/Allowed/**',
+          effect: AgentGateEffect.Allow
+        }
+      ]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        resources: [{ kind: 'external_path', value: 'C:/Allowed/notes.md' }]
+      })
+    ).toBe(AgentGateEffect.Allow)
+  })
+
+  it('forceAskExternalPath=false 时外路径可走 full_trust', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.FullTrust,
+      exclusionList: [],
+      allowlist: [],
+      forceAskExternalPath: false
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        resources: [{ kind: 'external_path', value: '/tmp/x' }]
+      })
+    ).toBe(AgentGateEffect.Allow)
+  })
 })
 
 describe('BaishouAgentGateService', () => {
@@ -326,6 +388,8 @@ describe('BaishouAgentGateService', () => {
     const error = await pending
     expect(error).toBeInstanceOf(AgentGateCorrectedError)
     expect((error as AgentGateCorrectedError).feedback).toBe('请先说明要改哪一段')
+    expect((error as AgentGateCorrectedError).message).toContain('[用户纠正]')
+    expect((error as AgentGateCorrectedError).message).toContain('请先说明要改哪一段')
   })
 
   it('deny 时不挂起直接失败', async () => {
@@ -419,6 +483,212 @@ describe('BaishouAgentGateService', () => {
     expect(firstError).toBeInstanceOf(AgentGateRejectedError)
     expect(secondError).toBeInstanceOf(AgentGateRejectedError)
     expect(gate.listPending('sess_1')).toHaveLength(0)
+  })
+
+  it('always 级联放行同 session 同 action 的挂起请求', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert(baseAssertInput)
+    const second = gate.assert({ ...baseAssertInput, title: '编辑日记 2' })
+    const other = gate.assert({
+      ...baseAssertInput,
+      action: 'diary_write',
+      title: '写日记'
+    })
+
+    const pending = gate.listPending('sess_1')
+    expect(pending).toHaveLength(3)
+
+    const diaryEditIds = pending.filter((r) => r.action === 'diary_edit').map((r) => r.id)
+    await gate.reply({ requestId: diaryEditIds[0]!, reply: AgentGateReply.Always })
+
+    await first
+    await second
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+    expect(gate.listPending('sess_1')[0]?.action).toBe('diary_write')
+
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await other
+  })
+
+  it('always 不级联放行同 action 的外路径 pending', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: [],
+        allowlist: [],
+        forceAskExternalPath: true
+      }
+    })
+
+    const internal = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写内部',
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }]
+    })
+    const external = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写外部',
+      resources: [{ kind: 'external_path', value: 'C:/Outside/x.txt' }]
+    })
+
+    const pending = gate.listPending('sess_1')
+    const internalReq = pending.find((r) => r.title === '写内部')
+    expect(internalReq).toBeTruthy()
+    await gate.reply({ requestId: internalReq!.id, reply: AgentGateReply.Always })
+    await internal
+
+    const stillPending = gate.listPending('sess_1')
+    expect(stillPending).toHaveLength(1)
+    expect(stillPending[0]?.title).toBe('写外部')
+
+    await gate.reply({ requestId: stillPending[0]!.id, reply: AgentGateReply.Once })
+    await external
+  })
+
+  it('always persist 失败时 assert 仍能 settle', async () => {
+    const persist = vi.fn().mockRejectedValue(new Error('disk full'))
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: [],
+        allowlist: []
+      },
+      persistConfig: persist
+    })
+
+    const pendingAssert = gate.assert(baseAssertInput)
+    const [request] = gate.listPending('sess_1')
+    await expect(
+      gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
+    ).rejects.toThrow('disk full')
+    await expect(pendingAssert).resolves.toBeUndefined()
+  })
+
+  it('同指纹连续第 3 次即使 full_trust 也强制 ask', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.FullTrust,
+        exclusionList: [],
+        allowlist: [],
+        repeatAssertAskThreshold: 3
+      }
+    })
+
+    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
+    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
+
+    let settled = false
+    const third = gate.assert(baseAssertInput).then(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await third
+    expect(settled).toBe(true)
+  })
+
+  it('repeatAssertAskThreshold=0 关闭连打强制 ask', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.FullTrust,
+        exclusionList: [],
+        allowlist: [],
+        repeatAssertAskThreshold: 0
+      }
+    })
+
+    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
+    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
+    await expect(gate.assert(baseAssertInput)).resolves.toBeUndefined()
+    expect(gate.listPending()).toHaveLength(0)
+  })
+
+  it('reject 级联时同 session 其它请求也带 CorrectedError', async () => {
+    const { gate } = createBaishouAgentGate()
+
+    const first = gate.assert(baseAssertInput).catch((e) => e)
+    const second = gate
+      .assert({ ...baseAssertInput, action: 'diary_write', title: '写日记' })
+      .catch((e) => e)
+
+    const pending = gate.listPending('sess_1')
+    await gate.reply({
+      requestId: pending[0]!.id,
+      reply: AgentGateReply.Reject,
+      message: '先别改'
+    })
+
+    const firstError = await first
+    const secondError = await second
+    expect(firstError).toBeInstanceOf(AgentGateCorrectedError)
+    expect(secondError).toBeInstanceOf(AgentGateCorrectedError)
+    expect((secondError as AgentGateCorrectedError).feedback).toBe('先别改')
+  })
+})
+
+describe('Agent Gate profile + probeEffect', () => {
+  it('companion profile denies workspace actions', () => {
+    const { policy } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.FullTrust,
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        profileId: AgentGateProfileId.Companion
+      })
+    ).toBe(AgentGateEffect.Deny)
+  })
+
+  it('workspace profile denies diary and graph_upsert', () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.FullTrust,
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    expect(
+      gate.probeEffect({
+        action: 'diary_edit',
+        profileId: AgentGateProfileId.Workspace
+      })
+    ).toBe(AgentGateEffect.Deny)
+    expect(
+      gate.probeEffect({
+        action: 'graph_upsert',
+        profileId: AgentGateProfileId.Workspace
+      })
+    ).toBe(AgentGateEffect.Deny)
+    expect(
+      gate.probeEffect({
+        action: 'workspace_write',
+        profileId: AgentGateProfileId.Workspace
+      })
+    ).toBe(AgentGateEffect.Allow)
   })
 })
 

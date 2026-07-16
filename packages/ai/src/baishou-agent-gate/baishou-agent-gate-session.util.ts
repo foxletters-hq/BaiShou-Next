@@ -19,7 +19,10 @@ export function cloneBaishouAgentGateConfig(
     exclusionList: [...(source.exclusionList ?? base.exclusionList)],
     allowlist: (source.allowlist ?? []).map((entry) => ({ ...entry })),
     actionRules: source.actionRules ? { ...source.actionRules } : undefined,
-    permissionRules: source.permissionRules?.map((rule) => ({ ...rule }))
+    permissionRules: source.permissionRules?.map((rule) => ({ ...rule })),
+    forceAskExternalPath: source.forceAskExternalPath ?? base.forceAskExternalPath,
+    repeatAssertAskThreshold: source.repeatAssertAskThreshold ?? base.repeatAssertAskThreshold,
+    hideDeniedTools: source.hideDeniedTools ?? base.hideDeniedTools
   }
 }
 

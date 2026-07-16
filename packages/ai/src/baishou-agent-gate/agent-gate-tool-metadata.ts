@@ -3,6 +3,7 @@ import {
   type AgentGateResourceRef,
   type AgentGateToolMetadata
 } from '@baishou/shared'
+import { classifyWorkspacePathForGate } from './agent-gate-workspace-path.util'
 
 type GateArgs = Record<string, unknown>
 
@@ -11,21 +12,28 @@ function diaryDateTitle(prefix: string, args: unknown): string {
   return typeof date === 'string' && date ? `${prefix} ${date}` : prefix
 }
 
-function workspacePathResources(args: unknown): AgentGateResourceRef[] {
-  const path = (args as GateArgs).path
-  if (typeof path !== 'string' || !path) return []
-  return [{ kind: 'workspace_path', value: path }]
+function workspaceFolderRoot(ctx: unknown): string | undefined {
+  const folderRoot = (ctx as { workspace?: { folderRoot?: string } } | undefined)?.workspace
+    ?.folderRoot
+  return typeof folderRoot === 'string' && folderRoot ? folderRoot : undefined
 }
 
-function workspaceRenameResources(args: unknown): AgentGateResourceRef[] {
+function workspacePathResources(args: unknown, ctx: unknown): AgentGateResourceRef[] {
+  const path = (args as GateArgs).path
+  if (typeof path !== 'string' || !path) return []
+  return [classifyWorkspacePathForGate(path, workspaceFolderRoot(ctx))]
+}
+
+function workspaceRenameResources(args: unknown, ctx: unknown): AgentGateResourceRef[] {
   const path = (args as GateArgs).path
   const newPath = (args as GateArgs).new_path
+  const folderRoot = workspaceFolderRoot(ctx)
   const resources: AgentGateResourceRef[] = []
   if (typeof path === 'string' && path) {
-    resources.push({ kind: 'workspace_path', value: path })
+    resources.push(classifyWorkspacePathForGate(path, folderRoot))
   }
   if (typeof newPath === 'string' && newPath) {
-    resources.push({ kind: 'workspace_path', value: newPath })
+    resources.push(classifyWorkspacePathForGate(newPath, folderRoot))
   }
   return resources
 }
@@ -132,6 +140,22 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       workspacePath: (args as GateArgs).path
     }),
     buildResources: workspaceRenameResources
+  },
+  graph_upsert: {
+    action: 'graph_upsert',
+    riskLevel: AgentGateRiskLevel.Mutating,
+    buildTitle: () => '写入记忆图谱',
+    buildMetadata: (args) => {
+      const summary = (args as GateArgs).summary
+      const sourceRef = (args as GateArgs).source_ref
+      return {
+        preview: typeof summary === 'string' ? summary.slice(0, 160) : undefined,
+        summary: typeof summary === 'string' ? summary : undefined,
+        source_ref: typeof sourceRef === 'string' ? sourceRef : undefined,
+        entities: (args as GateArgs).entities,
+        edges: (args as GateArgs).edges
+      }
+    }
   }
 }
 

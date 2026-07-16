@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   AgentGateKind,
+  AgentGateProfileId,
   AgentGateRejectedError,
   AgentGateRiskLevel,
   type AgentGateToolMetadata
@@ -52,7 +53,9 @@ describe('wrapVercelToolExecuteWithAgentGate', () => {
         vaultName: 'Personal',
         kind: AgentGateKind.Tool,
         action: 'diary_write',
-        title: '创建日记'
+        title: '创建日记',
+        allowCustomInput: true,
+        profileId: AgentGateProfileId.Companion
       })
     )
     expect(execute).toHaveBeenCalledOnce()
