@@ -8,6 +8,7 @@ import {
   buildStreamConfig
 } from './agent-helpers'
 import { AgentChatService } from './AgentChatService'
+import { getAgentGate } from '../services/agent-gate.service'
 import { resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
@@ -45,6 +46,7 @@ export async function buildAgentSystemPrompt(
     toolRegistry,
     diarySearcher: createDiarySearcher(),
     webSearchResultFetcher: createWebSearchResultFetcher(),
-    fetchSearchPage: createFetchSearchPage()
+    fetchSearchPage: createFetchSearchPage(),
+    agentGate: await getAgentGate()
   })
 }

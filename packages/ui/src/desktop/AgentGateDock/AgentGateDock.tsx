@@ -118,8 +118,10 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder={t(
-                'agent_gate.custom_answer_placeholder',
-                '输入你的回答或说明…'
+                proactiveOptions
+                  ? 'agent_gate.custom_answer_placeholder'
+                  : 'agent_gate.reject_feedback_placeholder',
+                proactiveOptions ? '输入你的回答或说明…' : '告诉伙伴为什么拒绝（可选）…'
               )}
               autoFocus
             />

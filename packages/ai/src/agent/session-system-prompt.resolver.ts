@@ -1,4 +1,8 @@
-import { isAutoInjectCurrentTimeEnabled } from '@baishou/shared'
+import {
+  AgentGateProfileId,
+  isAutoInjectCurrentTimeEnabled,
+  type AgentSessionKind
+} from '@baishou/shared'
 import {
   MessageRepository,
   SqliteHybridSearchRepository,
@@ -7,6 +11,7 @@ import {
 import type { IAIProvider } from '../providers/provider.interface'
 import type { ToolContext } from '../tools/agent.tool'
 import type { ToolRegistry } from '../tools/tool-registry'
+import type { IBaishouAgentGate } from '../baishou-agent-gate/baishou-agent-gate.service'
 import { DatabaseAdapter } from '../tools/adapters/database.adapter'
 import { EmbeddingAdapter } from '../tools/adapters/embedding.adapter'
 import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.service'
@@ -36,6 +41,13 @@ export interface AgentToolsContextParams {
   diarySearcher?: unknown
   webSearchResultFetcher?: unknown
   fetchSearchPage?: unknown
+  /** Optional Gate instance so hideDeniedTools / profile match streamChat filtering */
+  agentGate?: IBaishouAgentGate
+  gateProfile?: AgentGateProfileId
+  workspace?: {
+    folderRoot?: string
+    sessionKind?: AgentSessionKind
+  }
 }
 
 async function buildToolExecutionContext(
@@ -78,6 +90,12 @@ async function buildToolExecutionContext(
     )
   }
 
+  const gateProfile =
+    params.gateProfile ??
+    (params.workspace?.sessionKind === 'workspace'
+      ? AgentGateProfileId.Workspace
+      : AgentGateProfileId.Companion)
+
   return {
     userConfig: mergedUserConfig,
     sessionId: params.sessionId,
@@ -89,7 +107,15 @@ async function buildToolExecutionContext(
     deduplicationService: dedupService,
     diarySearcher: params.diarySearcher as any,
     webSearchResultFetcher: params.webSearchResultFetcher as any,
-    fetchSearchPage: params.fetchSearchPage as any
+    fetchSearchPage: params.fetchSearchPage as any,
+    agentGate: params.agentGate,
+    gateProfile,
+    workspace: params.workspace?.folderRoot
+      ? {
+          folderRoot: params.workspace.folderRoot,
+          sessionKind: params.workspace.sessionKind
+        }
+      : undefined
   }
 }
 

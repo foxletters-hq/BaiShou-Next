@@ -118,7 +118,12 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 value={feedback}
                 onChangeText={setFeedback}
                 multiline
-                placeholder={t('agent_gate.custom_answer_placeholder', '输入你的回答或说明…')}
+                placeholder={t(
+                  proactiveOptions
+                    ? 'agent_gate.custom_answer_placeholder'
+                    : 'agent_gate.reject_feedback_placeholder',
+                  proactiveOptions ? '输入你的回答或说明…' : '告诉伙伴为什么拒绝（可选）…'
+                )}
                 placeholderTextColor={colors.textTertiary}
                 style={[
                   styles.feedbackInput,
