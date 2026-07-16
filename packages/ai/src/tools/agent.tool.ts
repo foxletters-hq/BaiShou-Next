@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import { tool } from 'ai'
-import type { AgentGateToolMetadata, AgentSessionKind, FileChangePartData } from '@baishou/shared'
+import type {
+  AgentGateProfileId,
+  AgentGateToolMetadata,
+  AgentSessionKind,
+  FileChangePartData,
+  ToolRawDataSourceManager
+} from '@baishou/shared'
 import type { AgentRoundCheckpointService } from '../agent-workspace/agent-round-checkpoint.service'
 import type { WorkspaceFsAdapter } from '../agent-workspace/workspace-fs'
 import { resolveAgentGateToolMetadata } from '../baishou-agent-gate/agent-gate-tool-metadata'
@@ -176,6 +182,10 @@ export interface ToolContext {
   }
   /** Per-session BaishouAgentGate instance for mutating tool confirmation */
   agentGate?: IBaishouAgentGate
+  /** Scene profile for Gate default rules (defaults from workspace.sessionKind) */
+  gateProfile?: AgentGateProfileId
+  /** Raw data source facade (Memory/Graph JSONL writes) */
+  rawDataSourceManager?: ToolRawDataSourceManager
   /** Agent workspace session context (folder sandbox + round checkpoints) */
   workspace?: {
     folderRoot: string

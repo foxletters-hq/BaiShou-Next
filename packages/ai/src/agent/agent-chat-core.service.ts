@@ -47,6 +47,7 @@ export class AgentChatCoreService {
     flushSessionToDisk?: (sessionId: string) => Promise<void>
     agentGate?: unknown
     persistBaishouAgentGateConfig?: (config: import('@baishou/shared').BaishouAgentGateConfig) => Promise<void>
+    rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
     workspace?: import('./agent-session.types').StreamChatOptions['workspace']
   }) {
     const claim = claimAgentStreamSession(params.sessionId)
@@ -77,6 +78,7 @@ export class AgentChatCoreService {
           fetchSearchPage: params.fetchSearchPage,
           agentGate: params.agentGate,
           persistBaishouAgentGateConfig: params.persistBaishouAgentGateConfig,
+          rawDataSourceManager: params.rawDataSourceManager,
           workspace: params.workspace,
           abortSignal: claim.signal,
           streamClaimGeneration: claim.generation,

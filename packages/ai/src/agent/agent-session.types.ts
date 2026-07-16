@@ -57,6 +57,8 @@ export interface StreamChatOptions {
   agentGate?: IBaishouAgentGate
   /** Persist allowlist / config mutations after gate "always" replies */
   persistBaishouAgentGateConfig?: (config: BaishouAgentGateConfig) => Promise<void>
+  /** Memory/Graph JSONL write facade */
+  rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
   /** Workspace session context for folder-bound agent tools */
   workspace?: {
     folderRoot: string

@@ -90,6 +90,7 @@ export class AgentSessionService {
       flushSessionToDisk,
       agentGate: injectedAgentGate,
       persistBaishouAgentGateConfig,
+      rawDataSourceManager,
       diarySearcher,
       workspace: workspaceInput
     } = options
@@ -391,6 +392,9 @@ export class AgentSessionService {
         }
       }
 
+      const gateProfile =
+        workspaceOptions?.sessionKind === 'workspace' ? 'workspace' : 'companion'
+
       const enabledTools = toolRegistry.getEnabledToolsAsVercel({
         userConfig: mergedUserConfig,
         sessionId,
@@ -405,6 +409,8 @@ export class AgentSessionService {
         fetchSearchPage: options.fetchSearchPage,
         contextCompressionRunner,
         agentGate: sessionAgentGate,
+        gateProfile,
+        rawDataSourceManager,
         workspace: workspaceOptions
       } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0])
 
