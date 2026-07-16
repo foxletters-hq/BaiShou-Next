@@ -19,6 +19,7 @@ import {
 
 export {
   clearStreamBridgeForSession,
+  finishStreamingSession,
   __resetAgentStreamIpcForTests
 } from './agent-stream-session-store'
 export type { ToolExecution, PendingEmoji } from './agent-stream-session-store'
@@ -250,6 +251,61 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       )
     },
     []
+  )
+
+  const beginStreaming = useCallback((sessionId: string): void => {
+    resetStreamDisplayBuffers(sessionId)
+    updateSessionState(sessionId, (state) => {
+      state.isStreaming = true
+      state.isBridgeActive = false
+      state.isCompressing = false
+      state.error = null
+      state.activeTool = null
+      state.completedTools = []
+      state.pendingEmojis = []
+      state.text = ''
+      state.reasoning = ''
+      state.activeToolStartTime = undefined
+      state.pendingAgentGate = null
+      state.isAgentGateReplying = false
+      clearCompressionStreamState(state)
+    })
+  }, [])
+
+  const replyAgentGate = useCallback(
+    async (input: {
+      requestId: string
+      reply: AgentGateReply
+      message?: string
+      selectedOptionIds?: string[]
+    }): Promise<void> => {
+      const sessionId = currentSessionId ?? sessionIdRef.current
+      if (sessionId) {
+        updateSessionState(sessionId, (state) => {
+          state.isAgentGateReplying = true
+        })
+      }
+
+      try {
+        await window.api.agentGate.reply(input)
+        if (sessionId) {
+          updateSessionState(sessionId, (state) => {
+            if (state.pendingAgentGate?.id === input.requestId) {
+              state.pendingAgentGate = null
+            }
+            state.isAgentGateReplying = false
+          })
+        }
+      } catch (error) {
+        if (sessionId) {
+          updateSessionState(sessionId, (state) => {
+            state.isAgentGateReplying = false
+          })
+        }
+        throw error
+      }
+    },
+    [currentSessionId]
   )
 
   const stopChat = useCallback(() => {
