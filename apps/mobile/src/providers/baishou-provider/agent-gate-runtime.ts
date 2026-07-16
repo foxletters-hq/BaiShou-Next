@@ -28,7 +28,11 @@ export function createMobileAgentGateRuntime(settingsManager: GateSettingsManage
       trustMode: config.trustMode,
       exclusionList: [...(config.exclusionList ?? [])],
       allowlist: [...(config.allowlist ?? [])],
-      actionRules: config.actionRules ? { ...config.actionRules } : undefined
+      actionRules: config.actionRules ? { ...config.actionRules } : undefined,
+      permissionRules: config.permissionRules?.map((rule) => ({ ...rule })),
+      forceAskExternalPath: config.forceAskExternalPath,
+      repeatAssertAskThreshold: config.repeatAssertAskThreshold,
+      hideDeniedTools: config.hideDeniedTools
     })
     await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, agentGateConfig)
   }

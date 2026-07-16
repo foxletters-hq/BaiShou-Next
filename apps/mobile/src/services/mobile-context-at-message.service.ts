@@ -52,6 +52,7 @@ export interface MobileContextAtMessageDeps {
   diarySearcher?: unknown
   webSearchResultFetcher?: (url: string) => Promise<string>
   fetchSearchPage?: (url: string) => Promise<string>
+  getAgentGate?: () => import('@baishou/ai').IBaishouAgentGate | undefined
 }
 
 export interface MobileContextAtMessagePayload {
@@ -266,7 +267,8 @@ export async function loadContextAtMessage(
         toolRegistry: deps.toolRegistry,
         diarySearcher: deps.diarySearcher,
         webSearchResultFetcher: deps.webSearchResultFetcher,
-        fetchSearchPage: deps.fetchSearchPage
+        fetchSearchPage: deps.fetchSearchPage,
+        agentGate: deps.getAgentGate?.()
       })
     : ''
 
