@@ -134,9 +134,7 @@ function isPrivateOrLocalWebDavHost(hostname: string): boolean {
  * HTTPS 连接失败时的明文回退候选（群晖 5006→5005；局域网自签 HTTPS→同主机 HTTP）。
  * 返回已去掉末尾 `/` 的 base URL；无法回退时返回 null。
  */
-export function suggestWebDavHttpFallbackUrl(
-  url: string | undefined | null
-): string | null {
+export function suggestWebDavHttpFallbackUrl(url: string | undefined | null): string | null {
   try {
     const normalized = normalizeWebDavBaseUrl(url)
     const parsed = new URL(normalized)
@@ -294,5 +292,12 @@ export function formatWebDavRequestError(
 
 /** MKCOL/上传等可退避重试的 HTTP 状态 */
 export function isTransientWebDavHttpStatus(status: number): boolean {
-  return status === 408 || status === 425 || status === 429 || status === 502 || status === 503 || status === 504
+  return (
+    status === 408 ||
+    status === 425 ||
+    status === 429 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  )
 }
