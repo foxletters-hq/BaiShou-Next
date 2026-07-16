@@ -23,8 +23,13 @@ import { threeWayMerge } from './three-way-merge'
 import { S3NotConfiguredError, S3SyncError } from './sync.errors'
 import { ThreeWaySyncManifestMixin } from './three-way-sync.manifest'
 import { limitExecute } from './three-way-sync.utils'
-import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
+import {
+  classifyMonthlyJsonlPath,
+  isMonthlyJsonlRawPath
+} from '../raw-data/monthly-jsonl-path.util'
 import { JsonlRecordMergeService } from '../raw-data/jsonl-record-merge.service'
+import { MonthlyJsonlStore } from '../raw-data/stores/monthly-jsonl.store'
+import { createNodeFileSystem } from '../fs/create-node-file-system'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
@@ -280,11 +285,26 @@ export class ThreeWaySyncService
       }
       await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
       await fs.promises.writeFile(fullPath, merged, 'utf8')
+      await this.markMonthlyJsonlPendingAfterExternalWrite(relPath, fullPath)
       await this.uploadFile(relPath)
       return true
     } catch (e) {
       console.warn(`[ThreeWaySync] JSONL LWW merge failed for ${relPath}:`, e)
       return false
     }
+  }
+
+  /** Invalidate pending-index for a rewritten Memory/Graph monthly shard. */
+  protected async markMonthlyJsonlPendingAfterExternalWrite(
+    relPath: string,
+    absoluteShardPath: string
+  ): Promise<void> {
+    const classified = classifyMonthlyJsonlPath(relPath)
+    if (!classified) return
+    const store = new MonthlyJsonlStore({
+      fs: createNodeFileSystem(),
+      rootDir: path.dirname(absoluteShardPath)
+    })
+    await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
   }
 }

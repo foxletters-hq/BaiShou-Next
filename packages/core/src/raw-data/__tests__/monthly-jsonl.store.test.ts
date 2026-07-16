@@ -51,4 +51,30 @@ describe('MonthlyJsonlStore', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]?.content).toBe('new')
   })
+
+  it('collapseJsonlById prefers tombstone on equal updatedAt', () => {
+    const rows = collapseJsonlById([
+      { id: 'x', updatedAt: 5, deletedAt: null, content: 'live' },
+      { id: 'x', updatedAt: 5, deletedAt: 5, content: 'dead' }
+    ])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.deletedAt).toBe(5)
+  })
+
+  it('external rewrite makes shard pending-index again', async () => {
+    const written = await store.appendRecord('2026-07', {
+      id: 'a',
+      updatedAt: 1,
+      content: 'hello'
+    })
+    await store.markIndexed(written.relativePath, written.contentHash)
+    expect(await store.listPendingIndex()).toHaveLength(0)
+
+    const abs = store.shardAbsolutePath('2026-07')
+    await fs.appendFile(abs, `${JSON.stringify({ id: 'b', updatedAt: 2 })}\n`, 'utf8')
+
+    const pending = await store.listPendingIndex()
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.contentHash).not.toBe(written.contentHash)
+  })
 })

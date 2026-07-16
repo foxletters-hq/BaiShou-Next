@@ -15,27 +15,38 @@ export function isMonthlyJsonlRawPath(filePath: string): boolean {
   ) {
     return true
   }
-  // Relative vault paths without leading slash variants
-  if (/^Memory\/.+\.jsonl$/i.test(p)) return !p.includes('shards.manifest')
-  if (/^Graph\/(nodes|edges|extract-state)\/.+\.jsonl$/i.test(p)) return true
   return false
 }
 
 export function classifyMonthlyJsonlPath(
   filePath: string
 ):
-  | { kind: 'memory'; shardFile: string }
-  | { kind: 'graph'; collection: 'nodes' | 'edges' | 'extract-state'; shardFile: string }
+  | { kind: 'memory'; shardFile: string; shardMonth: string }
+  | {
+      kind: 'graph'
+      collection: 'nodes' | 'edges' | 'extract-state'
+      shardFile: string
+      shardMonth: string
+    }
   | null {
   const p = filePath.replace(/\\/g, '/')
   const mem = p.match(/(?:^|\/)Memory\/([^/]+\.jsonl)$/i)
-  if (mem) return { kind: 'memory', shardFile: mem[1]! }
+  if (mem) {
+    const shardFile = mem[1]!
+    return {
+      kind: 'memory',
+      shardFile,
+      shardMonth: shardFile.replace(/\.jsonl$/i, '')
+    }
+  }
   const graph = p.match(/(?:^|\/)Graph\/(nodes|edges|extract-state)\/([^/]+\.jsonl)$/i)
   if (graph) {
+    const shardFile = graph[2]!
     return {
       kind: 'graph',
       collection: graph[1]!.toLowerCase() as 'nodes' | 'edges' | 'extract-state',
-      shardFile: graph[2]!
+      shardFile,
+      shardMonth: shardFile.replace(/\.jsonl$/i, '')
     }
   }
   return null

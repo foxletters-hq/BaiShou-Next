@@ -51,9 +51,12 @@ describe('isMonthlyJsonlRawPath', () => {
     expect(isMonthlyJsonlRawPath('Graph/extract-state/2026-07.jsonl')).toBe(true)
   })
 
-  it('rejects manifest and other paths', () => {
+  it('rejects manifest, nested Memory paths, and other paths', () => {
     expect(isMonthlyJsonlRawPath('Memory/shards.manifest.json')).toBe(false)
     expect(isMonthlyJsonlRawPath('Graph/nodes/shards.manifest.json')).toBe(false)
     expect(isMonthlyJsonlRawPath('Journals/2026-07-01.md')).toBe(false)
+    expect(isMonthlyJsonlRawPath('Memory/foo/bar.jsonl')).toBe(false)
+    expect(isMonthlyJsonlRawPath('Personal/Memory/foo/bar.jsonl')).toBe(false)
+    expect(isMonthlyJsonlRawPath('Personal/Memory/2026-07.jsonl')).toBe(true)
   })
 })
