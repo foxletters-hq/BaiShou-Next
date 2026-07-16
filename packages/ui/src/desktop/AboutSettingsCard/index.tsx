@@ -24,6 +24,8 @@ export interface AboutSettingsCardProps {
   onOpenCompressionTestSession?: (sessionId: string) => void
   onOpenOnboarding?: () => void
   onDemoVaultCreated?: (vaultName: string) => Promise<void>
+  onExportDiagnosticLog?: () => Promise<{ fileName: string }>
+  onCopyDiagnosticLog?: () => Promise<void>
 }
 
 export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
@@ -33,12 +35,16 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
   onOpenFeedback,
   onOpenCompressionTestSession,
   onOpenOnboarding,
-  onDemoVaultCreated
+  onDemoVaultCreated,
+  onExportDiagnosticLog,
+  onCopyDiagnosticLog
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
   const [subPage, setSubPage] = useState<'none' | 'about' | 'privacy' | 'developer'>('none')
   const [isClosing, setIsClosing] = useState(false)
+  const [exportingLog, setExportingLog] = useState(false)
+  const [copyingLog, setCopyingLog] = useState(false)
 
   // 性能优化：在主页加载时立刻在后台执行异步解码，防止巨大突破 10MB 的原图在打开时突然占用主线程发生掉帧卡顿
   useEffect(() => {
@@ -96,6 +102,36 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
   const handleOpenPage = (page: 'about' | 'privacy' | 'developer') => {
     setIsClosing(false)
     setSubPage(page)
+  }
+
+  const handleExportDiagnosticLog = async () => {
+    if (!onExportDiagnosticLog || exportingLog) return
+    setExportingLog(true)
+    try {
+      const result = await onExportDiagnosticLog()
+      toast.showSuccess(
+        t('about.copy_diagnostic_log_export_desktop_success', '已导出到桌面：{{fileName}}', {
+          fileName: result.fileName
+        })
+      )
+    } catch {
+      toast.showError(t('about.copy_diagnostic_log_failed', '导出或分享失败，请稍后重试'))
+    } finally {
+      setExportingLog(false)
+    }
+  }
+
+  const handleCopyDiagnosticLog = async () => {
+    if (!onCopyDiagnosticLog || copyingLog) return
+    setCopyingLog(true)
+    try {
+      await onCopyDiagnosticLog()
+      toast.showSuccess(t('about.copy_diagnostic_log_copy_success', '诊断日志已复制到剪贴板'))
+    } catch {
+      toast.showError(t('about.copy_diagnostic_log_failed', '导出或分享失败，请稍后重试'))
+    } finally {
+      setCopyingLog(false)
+    }
   }
 
   const handleClosePage = () => {
@@ -210,6 +246,50 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
             <VersionManager embedded version={version} onOpenGithubRepo={onOpenGithubRepo} />
           </div>
         </section>
+
+        {(onExportDiagnosticLog || onCopyDiagnosticLog) && (
+          <section className="about-surface-card">
+            <div className="about-flat-section about-flat-section-only">
+              <div className="about-flat-inner-card about-diagnostic-card">
+                <div className="about-flat-label about-flat-label-inner">
+                  {t('about.copy_diagnostic_log', '分享诊断日志')}
+                </div>
+                <p className="about-diagnostic-desc">
+                  {t(
+                    'about.copy_diagnostic_log_desc_desktop',
+                    '将最近的应用主进程与界面日志导出为 TXT，便于反馈同步失败、闪退等问题。也可一键复制到剪贴板。'
+                  )}
+                </p>
+                <div className="about-diagnostic-actions">
+                  {onExportDiagnosticLog ? (
+                    <button
+                      type="button"
+                      className="about-diagnostic-btn about-diagnostic-btn-primary"
+                      disabled={exportingLog}
+                      onClick={() => void handleExportDiagnosticLog()}
+                    >
+                      {exportingLog
+                        ? t('common.processing', '处理中…')
+                        : t('about.copy_diagnostic_log_export_desktop', '导出到桌面')}
+                    </button>
+                  ) : null}
+                  {onCopyDiagnosticLog ? (
+                    <button
+                      type="button"
+                      className="about-diagnostic-btn"
+                      disabled={copyingLog}
+                      onClick={() => void handleCopyDiagnosticLog()}
+                    >
+                      {copyingLog
+                        ? t('common.processing', '处理中…')
+                        : t('about.copy_diagnostic_log_copy', '复制到剪贴板')}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   )
