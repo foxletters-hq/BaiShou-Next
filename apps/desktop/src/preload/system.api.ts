@@ -57,6 +57,13 @@ export const systemApi = {
     openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url)
   },
 
+  diagnosticLog: {
+    exportToDesktop: () => ipcRenderer.invoke('diagnosticLog:exportToDesktop'),
+    copyToClipboard: () => ipcRenderer.invoke('diagnosticLog:copyToClipboard'),
+    append: (level: 'debug' | 'info' | 'warn' | 'error', message: string) =>
+      ipcRenderer.invoke('diagnosticLog:append', level, message)
+  },
+
   // Updater
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),
