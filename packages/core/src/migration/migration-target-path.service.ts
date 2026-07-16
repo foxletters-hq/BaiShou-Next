@@ -66,6 +66,14 @@ export class MigrationTargetStoragePathService implements IStoragePathService {
     return path.join(await this.vaultDir(), 'Sessions')
   }
 
+  async getMemoryBaseDirectory(): Promise<string> {
+    return path.join(await this.vaultDir(), 'Memory')
+  }
+
+  async getGraphBaseDirectory(): Promise<string> {
+    return path.join(await this.vaultDir(), 'Graph')
+  }
+
   async getAssistantsBaseDirectory(): Promise<string> {
     return path.join(await this.vaultDir(), 'Assistants')
   }
