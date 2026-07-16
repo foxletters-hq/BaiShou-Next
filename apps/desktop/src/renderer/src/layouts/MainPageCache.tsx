@@ -8,6 +8,7 @@ import { GitManagementPage } from '../features/settings/GitManagementPage'
 import { SettingsHubPage } from '../features/settings/SettingsHubPage'
 import { AgentChatCachedPage } from '../features/agent/AgentChatCachedPage'
 import { AgentWorkspaceCachedPage } from '../features/agent-workspace/AgentWorkspaceCachedPage'
+import { GraphPage } from '../features/graph/GraphPage'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
 import styles from './MainLayout.module.css'
 import { MainPageCacheActiveContext } from './main-page-cache.context'
@@ -22,6 +23,7 @@ const PERSISTENT_MAIN_PAGE_KEYS = new Set(['/diary', '/chat'])
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/diary': DiaryPage,
   '/summary': SummaryPage,
+  '/graph': GraphPage,
   '/data-sync': CloudSyncPage,
   '/incremental-sync': IncrementalSyncPage,
   '/git': GitManagementPage,
