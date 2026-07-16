@@ -163,6 +163,24 @@ export function clearStreamBridgeForSession(sessionId: string): void {
   })
 }
 
+/**
+ * Workspace chat invoke 结束后的本地收尾（与 agent:stream-finish 幂等）。
+ * 不清 bridge 文本，留给消息刷新后的 clearStreamBridge*。
+ */
+export function finishStreamingSession(sessionId: string): void {
+  flushStreamDisplayBuffers(sessionId)
+  flushCompressionDisplayBuffers(sessionId)
+  updateSessionState(sessionId, (state) => {
+    state.isStreaming = false
+    state.isCompressing = false
+    state.activeTool = null
+    const hasContent = Boolean(state.text.trim() || state.reasoning.trim())
+    if (!state.isBridgeActive) {
+      state.isBridgeActive = hasContent
+    }
+  })
+}
+
 export function getOrCreateSessionState(sessionId: string): SessionStreamState {
   if (!sessionStates[sessionId]) {
     sessionStates[sessionId] = {
