@@ -84,6 +84,30 @@ export function registerSettingsAppIPC() {
     const next = rt.getConfig()
     if (config?.trustMode !== undefined) next.trustMode = config.trustMode
     if (Array.isArray(config?.allowlist)) next.allowlist = [...config.allowlist]
+    if (Array.isArray(config?.exclusionList)) {
+      next.exclusionList = config.exclusionList
+        .filter((item: unknown): item is string => typeof item === 'string')
+        .map((item: string) => item.trim())
+        .filter(Boolean)
+    }
+    if (Array.isArray(config?.permissionRules)) {
+      next.permissionRules = config.permissionRules
+        .filter(
+          (rule: unknown): rule is { action: string; effect: string; pattern?: string } =>
+            !!rule &&
+            typeof rule === 'object' &&
+            typeof (rule as { action?: unknown }).action === 'string' &&
+            typeof (rule as { effect?: unknown }).effect === 'string'
+        )
+        .map((rule: { action: string; effect: string; pattern?: string }) => ({
+          action: rule.action.trim(),
+          effect: rule.effect,
+          ...(typeof rule.pattern === 'string' && rule.pattern.trim()
+            ? { pattern: rule.pattern.trim() }
+            : {})
+        }))
+        .filter((rule: { action: string }) => rule.action.length > 0)
+    }
     if (typeof config?.hideDeniedTools === 'boolean') {
       next.hideDeniedTools = config.hideDeniedTools
     }
