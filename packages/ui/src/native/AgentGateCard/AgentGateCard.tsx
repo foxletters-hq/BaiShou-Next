@@ -1,10 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Modal, View, Text, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native'
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  SafeAreaView
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import {
+  resolveAlwaysAllowPrefixHint,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -46,8 +56,10 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
+  const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const showActionMeta = request.kind === AgentGateKind.Tool
+  const showWorkspaceRunAlwaysHint = request.action === 'workspace_run'
 
   return (
     <Modal
@@ -56,7 +68,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
       animationType="fade"
       onRequestClose={() => void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })}
     >
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { backgroundColor: colors.bgOverlay }]}>
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={() => void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })}
@@ -64,10 +76,15 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           accessibilityLabel={t('agent_gate.reject', '拒绝')}
         />
 
+        <SafeAreaView style={styles.safeBottom} pointerEvents="box-none">
         <View
           style={[
             styles.card,
-            { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+            {
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderSubtle,
+              shadowColor: colors.textPrimary
+            }
           ]}
           pointerEvents="box-none"
         >
@@ -99,6 +116,15 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 })}
               </Text>
             ) : null}
+            {showWorkspaceRunAlwaysHint && !proactiveOptions ? (
+              <Text style={[styles.actionMeta, { color: colors.textSecondary }]}>
+                {alwaysPrefixHint
+                  ? t('agent_gate.always_prefix_hint', '始终允许将写入前缀：{{pattern}}', {
+                      pattern: alwaysPrefixHint
+                    })
+                  : t('agent_gate.always_not_available', '此命令不可始终允许')}
+              </Text>
+            ) : null}
 
             {proactiveOptions && !showFeedback
               ? request.options.map((option) => {
@@ -111,7 +137,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                         styles.option,
                         {
                           borderColor: selected ? colors.primary : colors.borderSubtle,
-                          backgroundColor: selected ? 'rgba(91, 168, 245, 0.12)' : 'transparent'
+                          backgroundColor: selected ? colors.primaryLight : 'transparent'
                         }
                       ]}
                     >
@@ -255,6 +281,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             )}
           </View>
         </View>
+        </SafeAreaView>
       </View>
     </Modal>
   )
@@ -263,17 +290,22 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
     justifyContent: 'flex-end',
-    paddingHorizontal: 16,
-    paddingBottom: 24
+    paddingHorizontal: 16
+  },
+  safeBottom: {
+    width: '100%'
   },
   card: {
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
     zIndex: 2,
-    maxHeight: '78%'
+    maxHeight: '78%',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8
   },
   scroll: {
     maxHeight: 360

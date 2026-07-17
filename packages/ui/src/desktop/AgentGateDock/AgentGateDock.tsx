@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import {
+  resolveAlwaysAllowPrefixHint,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -35,8 +36,10 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
+  const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const showActionMeta = request.kind === AgentGateKind.Tool
+  const showWorkspaceRunAlwaysHint = request.action === 'workspace_run'
 
   const handleReject = () => {
     if (allowCustomInput) {
@@ -100,6 +103,16 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
               fp: request.fingerprint.slice(0, 10),
               count: request.repeatCount ?? 1
             })}
+          </p>
+        ) : null}
+
+        {showWorkspaceRunAlwaysHint && !proactiveOptions ? (
+          <p className={styles.meta}>
+            {alwaysPrefixHint
+              ? t('agent_gate.always_prefix_hint', '始终允许将写入前缀：{{pattern}}', {
+                  pattern: alwaysPrefixHint
+                })
+              : t('agent_gate.always_not_available', '此命令不可始终允许')}
           </p>
         ) : null}
 
