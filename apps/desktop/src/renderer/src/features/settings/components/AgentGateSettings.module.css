@@ -1,0 +1,113 @@
+.cardDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.paddedBody {
+  padding: 0 0 12px;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 0;
+  margin: 4px 16px 8px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg-surface-high, var(--bg-surface));
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+}
+
+.segmentBtn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.segmentBtnActive {
+  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 16%, transparent);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary, #5ba8f5);
+}
+
+.segmentBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 12px;
+  flex-wrap: wrap;
+}
+
+.textInput {
+  flex: 1;
+  min-width: 140px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-card, var(--border-subtle));
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.textInput:focus {
+  outline: none;
+  border-color: var(--color-primary, #5ba8f5);
+}
+
+.selectInput {
+  width: 140px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-card, var(--border-subtle));
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.profileBlock {
+  padding: 8px 16px 4px;
+}
+
+.profileTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.profileList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.sectionLabel {
+  padding: 8px 16px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emptyHint {
+  margin: 0;
+  padding: 8px 16px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
