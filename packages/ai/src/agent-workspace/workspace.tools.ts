@@ -7,6 +7,7 @@ import {
   WorkspacePathError
 } from './workspace-path.sandbox'
 import { createNodeWorkspaceFs, type WorkspaceFsAdapter } from './workspace-fs'
+import { WorkspaceRunTool } from './workspace-run.tool'
 import type { FileChangePartData } from '@baishou/shared'
 
 const WORKSPACE_TOOL_CATEGORY = 'workspace'
@@ -418,11 +419,15 @@ export const WORKSPACE_TOOL_IDS = [
   'workspace_write',
   'workspace_patch',
   'workspace_delete',
-  'workspace_rename'
+  'workspace_rename',
+  'workspace_run'
 ] as const
 
-export function createWorkspaceTools(): AgentTool[] {
-  return [
+/** Tools that must stay desktop-only (no mobile host process execution). */
+export const DESKTOP_ONLY_WORKSPACE_TOOL_IDS = ['workspace_run'] as const
+
+export function createWorkspaceTools(options?: { includeRun?: boolean }): AgentTool[] {
+  const tools: AgentTool[] = [
     new WorkspaceListTool(),
     new WorkspaceReadTool(),
     new WorkspaceWriteTool(),
@@ -430,4 +435,10 @@ export function createWorkspaceTools(): AgentTool[] {
     new WorkspaceDeleteTool(),
     new WorkspaceRenameTool()
   ]
+
+  if (options?.includeRun !== false) {
+    tools.push(new WorkspaceRunTool())
+  }
+
+  return tools
 }

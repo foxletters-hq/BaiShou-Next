@@ -4,6 +4,7 @@ import {
   type AgentGateToolMetadata
 } from '@baishou/shared'
 import { classifyWorkspacePathForGate } from './agent-gate-workspace-path.util'
+import { scanWorkspaceRunCommand } from '../agent-workspace/workspace-command-scan'
 
 type GateArgs = Record<string, unknown>
 
@@ -36,6 +37,27 @@ function workspaceRenameResources(args: unknown, ctx: unknown): AgentGateResourc
     resources.push(classifyWorkspacePathForGate(newPath, folderRoot))
   }
   return resources
+}
+
+function truncateCommandTitle(command: string, maxLen = 80): string {
+  const oneLine = command.replace(/\s+/g, ' ').trim()
+  if (oneLine.length <= maxLen) return oneLine
+  return `${oneLine.slice(0, maxLen - 1)}…`
+}
+
+function workspaceRunResources(args: unknown, ctx: unknown): AgentGateResourceRef[] {
+  const command = (args as GateArgs).command
+  if (typeof command !== 'string' || !command.trim()) return []
+  const folderRoot = workspaceFolderRoot(ctx)
+  if (!folderRoot) {
+    return [{ kind: 'shell_command', value: command }]
+  }
+  const workdir = (args as GateArgs).workdir
+  return scanWorkspaceRunCommand({
+    command,
+    workdir: typeof workdir === 'string' ? workdir : undefined,
+    folderRoot
+  }).resources
 }
 
 /** Default gate metadata for mutating diary / memory tools */
@@ -140,6 +162,37 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       workspacePath: (args as GateArgs).path
     }),
     buildResources: workspaceRenameResources
+  },
+  workspace_run: {
+    action: 'workspace_run',
+    riskLevel: AgentGateRiskLevel.Mutating,
+    buildTitle: (args) => {
+      const command = (args as GateArgs).command
+      if (typeof command === 'string' && command.trim()) {
+        return `运行命令 ${truncateCommandTitle(command)}`
+      }
+      return '运行工作区命令'
+    },
+    buildMetadata: (args, ctx) => {
+      const command = (args as GateArgs).command
+      const workdir = (args as GateArgs).workdir
+      const folderRoot = workspaceFolderRoot(ctx)
+      const scan =
+        typeof command === 'string' && folderRoot
+          ? scanWorkspaceRunCommand({
+              command,
+              workdir: typeof workdir === 'string' ? workdir : undefined,
+              folderRoot
+            })
+          : null
+      return {
+        shellCommand: typeof command === 'string' ? command : undefined,
+        workdir: typeof workdir === 'string' ? workdir : undefined,
+        prefixPattern: scan?.prefixPattern ?? undefined,
+        ...(scan?.dangerous ? { forceExclusion: true } : {})
+      }
+    },
+    buildResources: workspaceRunResources
   },
   graph_upsert: {
     action: 'graph_upsert',
