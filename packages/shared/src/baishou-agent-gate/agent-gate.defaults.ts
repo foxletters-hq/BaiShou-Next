@@ -33,7 +33,10 @@ export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
   [AgentGateProfileId.Workspace]: [
     { action: 'diary_*', effect: AgentGateEffect.Deny },
     { action: 'memory_*', effect: AgentGateEffect.Deny },
-    { action: 'graph_upsert', effect: AgentGateEffect.Deny }
+    { action: 'graph_upsert', effect: AgentGateEffect.Deny },
+    // G3.2: in-workspace read-only tools default Allow (external_path still Ask later)
+    { action: 'workspace_list', effect: AgentGateEffect.Allow },
+    { action: 'workspace_read', effect: AgentGateEffect.Allow }
   ]
 }
 

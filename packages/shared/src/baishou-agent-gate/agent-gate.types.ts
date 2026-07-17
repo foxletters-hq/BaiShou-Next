@@ -14,20 +14,24 @@ export interface AgentGateOption {
   description?: string
 }
 
-export interface AgentGateAllowlistEntry {
-  id: string
-  action: string
-  createdAt: number
-  sourceSessionId?: string
-  sourceRequestId?: string
-}
-
 /** Resource kinds that permission patterns can target */
 export type AgentGateResourceKind =
   | 'file_path'
   | 'workspace_path'
   | 'external_path'
   | 'shell_command'
+
+export interface AgentGateAllowlistEntry {
+  id: string
+  action: string
+  createdAt: number
+  /** Optional resource pattern (e.g. shell prefix `git status *` or path glob). */
+  pattern?: string
+  /** Resource kind the pattern applies to; defaults to shell_command when pattern looks like a command. */
+  resourceKind?: AgentGateResourceKind
+  sourceSessionId?: string
+  sourceRequestId?: string
+}
 
 export interface AgentGateResourceRef {
   kind: AgentGateResourceKind
@@ -76,6 +80,10 @@ export interface AgentGateRequest {
   options: AgentGateOption[]
   allowCustomInput: boolean
   metadata: Record<string, unknown>
+  /** Assert fingerprint used for repeat Ask protection (UI may show truncated). */
+  fingerprint?: string
+  /** Consecutive same-fingerprint asserts in this session when Ask was raised. */
+  repeatCount?: number
   messageId?: string
   toolCallId?: string
   createdAt: number
