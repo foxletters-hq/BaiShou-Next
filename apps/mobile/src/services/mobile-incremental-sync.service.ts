@@ -10,7 +10,8 @@ import type {
   IArchiveService,
   SettingsManagerService,
   AssistantManagerService,
-  SessionManagerService
+  SessionManagerService,
+  RawDataSourceManager
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import {
@@ -62,9 +63,15 @@ export class MobileIncrementalSyncService {
     deviceId: string = `mobile-${Date.now()}`,
     onAfterSyncComplete?: () => void,
     private readonly assistantManager?: AssistantManagerService,
-    private readonly sessionManager?: SessionManagerService
+    private readonly sessionManager?: SessionManagerService,
+    getRawDataSourceManager?: () => RawDataSourceManager | null
   ) {
-    this.engine = new MobileIncrementalEngine(pathService, fileSystem, deviceId)
+    this.engine = new MobileIncrementalEngine(
+      pathService,
+      fileSystem,
+      deviceId,
+      getRawDataSourceManager
+    )
     this.onAfterSyncComplete = onAfterSyncComplete
   }
 

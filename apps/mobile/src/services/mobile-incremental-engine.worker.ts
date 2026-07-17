@@ -1,4 +1,4 @@
-import type { IFileSystem } from '@baishou/core-mobile'
+import type { IFileSystem, RawDataSourceManager } from '@baishou/core-mobile'
 import type {
   SyncManifest,
   S3SyncConfig,
@@ -81,6 +81,8 @@ export type IncrementalEngineHost = {
   lastConflicts: string[]
   setLastConflicts(v: string[]): void
   invalidateExternalSyncMounts(): void
+  /** Prefer Manager for monthly JSONL LWW merge when runtime is ready. */
+  getRawDataSourceManager?: () => RawDataSourceManager | null
 }
 
 type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void

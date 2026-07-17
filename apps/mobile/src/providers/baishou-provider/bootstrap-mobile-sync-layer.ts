@@ -6,6 +6,7 @@ import { MobileArchiveService } from '../../services/archive.service'
 import { MobileLanSyncService } from '../../services/lan-sync.service'
 import { MobileCloudSyncService } from '../../services/cloud-sync.service'
 import { MobileIncrementalSyncService } from '../../services/mobile-incremental-sync.service'
+import { getMobileRawDataSourceManager } from '../../services/mobile-raw-data-source.runtime'
 import { MobileMcpService } from '../../services/mobile-mcp.service'
 import {
   buildMobileMcpToolContext,
@@ -114,7 +115,8 @@ export async function bootstrapMobileSyncLayer(
       }))
     },
     assistantManager,
-    sessionManager
+    sessionManager,
+    () => getMobileRawDataSourceManager()
   )
 
   const updaterService = new MobileUpdaterService(settingsManager)
