@@ -77,4 +77,24 @@ describe('MonthlyJsonlStore', () => {
     expect(pending).toHaveLength(1)
     expect(pending[0]?.contentHash).not.toBe(written.contentHash)
   })
+
+  it('replaceShardContent rewrites file and keeps pending-index dirty', async () => {
+    const written = await store.appendRecord('2026-07', {
+      id: 'a',
+      updatedAt: 1,
+      content: 'hello'
+    })
+    await store.markIndexed(written.relativePath, written.contentHash)
+    expect(await store.listPendingIndex()).toHaveLength(0)
+
+    const replaced = await store.replaceShardContent(
+      '2026-07',
+      `${JSON.stringify({ id: 'a', updatedAt: 2, content: 'merged' })}\n`
+    )
+    expect(replaced.contentHash).not.toBe(written.contentHash)
+    expect(await store.listPendingIndex()).toHaveLength(1)
+
+    const rows = await store.readRecords('2026-07')
+    expect(rows).toEqual([{ id: 'a', updatedAt: 2, content: 'merged' }])
+  })
 })

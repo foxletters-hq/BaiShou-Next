@@ -283,9 +283,13 @@ export class ThreeWaySyncService
       if (fs.existsSync(fullPath)) {
         await this.backupFile(relPath, '')
       }
-      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
-      await fs.promises.writeFile(fullPath, merged, 'utf8')
-      await this.markMonthlyJsonlPendingAfterExternalWrite(relPath, fullPath)
+      const classified = classifyMonthlyJsonlPath(relPath)
+      if (!classified) return false
+      const store = new MonthlyJsonlStore({
+        fs: createNodeFileSystem(),
+        rootDir: path.dirname(fullPath)
+      })
+      await store.replaceShardContent(classified.shardMonth, merged)
       await this.uploadFile(relPath)
       return true
     } catch (e) {

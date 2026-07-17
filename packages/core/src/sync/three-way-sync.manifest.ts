@@ -22,6 +22,7 @@ import {
   isIncrementalSyncRemoteFileNotFoundError
 } from '@baishou/shared'
 import { isIncrementalSyncConflictBackupPath, isSqliteRuntimeSyncPath } from '@baishou/shared'
+import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
 export type ManifestFileProgressCallback = (
@@ -371,6 +372,9 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true })
     try {
       await this.cloudClient.downloadFile(relPath, fullPath)
+      if (isMonthlyJsonlRawPath(relPath)) {
+        await this.markMonthlyJsonlPendingAfterExternalWrite(relPath, fullPath)
+      }
       return true
     } catch (err: unknown) {
       if (isIncrementalSyncRemoteFileNotFoundError(err)) {
@@ -382,6 +386,15 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       throw err
     }
   }
+
+  /**
+   * Invalidate pending-index after an out-of-band Memory/Graph monthly shard write.
+   * Implemented on ThreeWaySyncService (needs MonthlyJsonlStore).
+   */
+  protected abstract markMonthlyJsonlPendingAfterExternalWrite(
+    relPath: string,
+    absoluteShardPath: string
+  ): Promise<void>
 
   protected async deleteRemoteFile(relPath: string): Promise<void> {
     await this.cloudClient.deleteFile(relPath)

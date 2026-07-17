@@ -168,6 +168,33 @@ export class MonthlyJsonlStore {
   }
 
   /**
+   * Atomically rewrite a whole monthly shard (e.g. sync LWW merge).
+   * Updates contentHash and keeps indexedHash so pending-index stays dirty until re-hydrated.
+   */
+  async replaceShardContent(
+    shardMonth: string,
+    content: string
+  ): Promise<{ shardPath: string; relativePath: string; contentHash: string }> {
+    if (!isValidShardMonth(shardMonth)) {
+      throw new Error(`Invalid shard month: ${shardMonth}`)
+    }
+    await this.ensureRoot()
+    const abs = this.shardAbsolutePath(shardMonth)
+    const text = content.endsWith('\n') || content.length === 0 ? content : `${content}\n`
+    await this.fs.writeFile(abs, text, 'utf8')
+    const contentHash = await this.computeShardHash(shardMonth)
+    const manifest = await this.readManifest()
+    const rel = this.shardRelativePath(shardMonth)
+    const prev = manifest.shards[rel]
+    manifest.shards[rel] = {
+      contentHash,
+      indexedHash: prev?.indexedHash
+    }
+    await this.writeManifest(manifest)
+    return { shardPath: abs, relativePath: rel, contentHash }
+  }
+
+  /**
    * After an out-of-band rewrite of a shard file, refresh contentHash and keep indexedHash
    * so listPendingIndex reports dirty until re-hydrated.
    */
