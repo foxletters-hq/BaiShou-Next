@@ -103,7 +103,7 @@ interface SettingsAPI {
   getBaishouAgentGateConfig(): Promise<import('@baishou/shared').BaishouAgentGateConfig>
   setBaishouAgentGateConfig(
     config: import('@baishou/shared').BaishouAgentGateConfig
-  ): Promise<void>
+  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
   testTts(
     config: unknown,
     text: string

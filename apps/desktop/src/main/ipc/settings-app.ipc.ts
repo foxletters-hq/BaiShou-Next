@@ -84,6 +84,19 @@ export function registerSettingsAppIPC() {
     const next = rt.getConfig()
     if (config?.trustMode !== undefined) next.trustMode = config.trustMode
     if (Array.isArray(config?.allowlist)) next.allowlist = [...config.allowlist]
+    if (typeof config?.hideDeniedTools === 'boolean') {
+      next.hideDeniedTools = config.hideDeniedTools
+    }
+    if (typeof config?.forceAskExternalPath === 'boolean') {
+      next.forceAskExternalPath = config.forceAskExternalPath
+    }
+    if (
+      typeof config?.repeatAssertAskThreshold === 'number' &&
+      Number.isFinite(config.repeatAssertAskThreshold) &&
+      config.repeatAssertAskThreshold >= 0
+    ) {
+      next.repeatAssertAskThreshold = Math.floor(config.repeatAssertAskThreshold)
+    }
     await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, next)
     return next
   })

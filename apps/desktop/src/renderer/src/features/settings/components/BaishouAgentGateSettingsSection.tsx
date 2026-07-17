@@ -66,6 +66,29 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
     }
   }
 
+  const patchConfig = async (
+    patch: Partial<
+      Pick<
+        BaishouAgentGateConfig,
+        'hideDeniedTools' | 'forceAskExternalPath' | 'repeatAssertAskThreshold'
+      >
+    >
+  ) => {
+    if (!config) return
+    setSaving(true)
+    try {
+      const next = await window.api.settings.setBaishouAgentGateConfig({
+        ...config,
+        ...patch
+      })
+      setConfig(next)
+    } catch (error) {
+      console.error('[BaishouAgentGateSettings] patch config failed:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading && !config) {
     return (
       <section className={styles.cardSection}>
@@ -141,6 +164,80 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
               {t('settings.agent_gate_full_trust', '完全信任')}
             </button>
           </div>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              marginTop: 16,
+              cursor: saving ? 'default' : 'pointer'
+            }}
+          >
+            <input
+              type="checkbox"
+              disabled={saving}
+              checked={config.hideDeniedTools !== false}
+              onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>
+                {t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
+              </span>
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: 2,
+                  fontSize: 12,
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5
+                }}
+              >
+                {t(
+                  'settings.agent_gate_hide_denied_hint',
+                  '开启后，当前场景下被默认拒绝的工具不会出现在伙伴可选列表中。'
+                )}
+              </span>
+            </span>
+          </label>
+
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              marginTop: 12,
+              cursor: saving ? 'default' : 'pointer'
+            }}
+          >
+            <input
+              type="checkbox"
+              disabled={saving}
+              checked={config.forceAskExternalPath !== false}
+              onChange={(e) => void patchConfig({ forceAskExternalPath: e.target.checked })}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>
+                {t('settings.agent_gate_force_ask_external', '工作区外路径强制确认')}
+              </span>
+              <span
+                style={{
+                  display: 'block',
+                  marginTop: 2,
+                  fontSize: 12,
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.5
+                }}
+              >
+                {t(
+                  'settings.agent_gate_force_ask_external_hint',
+                  '触及工作区外路径时始终征求确认，即使开启完全信任或已加入始终允许。'
+                )}
+              </span>
+            </span>
+          </label>
         </div>
       </section>
 
