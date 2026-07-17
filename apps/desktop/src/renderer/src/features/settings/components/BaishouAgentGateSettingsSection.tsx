@@ -11,7 +11,9 @@ import {
   type AgentGatePermissionRule,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
-import styles from './GeneralSettingsPane.module.css'
+import '@baishou/ui/desktop/shared/SettingsListTile.css'
+import pane from './GeneralSettingsPane.module.css'
+import styles from './AgentGateSettings.module.css'
 
 export const BaishouAgentGateSettingsSection: React.FC = () => {
   const { t } = useTranslation()
@@ -93,13 +95,15 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
 
   if (loading && !config) {
     return (
-      <section className={styles.cardSection}>
-        <div className={styles.cardHeader}>
-          <h3 className={styles.cardTitle}>
+      <section className={pane.cardSection}>
+        <div className={pane.cardHeader}>
+          <h3 className={pane.cardTitle}>
             {t('settings.agent_gate_title', '伙伴操作门控')}
           </h3>
         </div>
-        <div className={styles.cardBody}>{t('common.loading', '加载中...')}</div>
+        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+          <p className={styles.emptyHint}>{t('common.loading', '加载中...')}</p>
+        </div>
       </section>
     )
   }
@@ -151,91 +155,104 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
 
   return (
     <>
-      <section className={styles.cardSection}>
-        <div className={styles.cardHeader}>
-          <h3 className={styles.cardTitle}>
+      <section className={pane.cardSection}>
+        <div className={pane.cardHeader}>
+          <h3 className={pane.cardTitle}>
             {t('settings.agent_gate_title', '伙伴操作门控')}
           </h3>
-        </div>
-        <div className={styles.cardBody}>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+          <p className={styles.cardDesc}>
             {t(
               'settings.agent_gate_desc',
               '控制伙伴执行写入、修改等敏感操作前是否需要你确认。'
             )}
           </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+        </div>
+        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+          <div className={styles.segmented} role="group">
             <button
               type="button"
               disabled={saving}
+              className={`${styles.segmentBtn} ${
+                config.trustMode === AgentGateTrustMode.Manual ? styles.segmentBtnActive : ''
+              }`}
               onClick={() => void updateTrustMode(AgentGateTrustMode.Manual)}
-              style={chipStyle(config.trustMode === AgentGateTrustMode.Manual)}
             >
               {t('settings.agent_gate_manual', '逐项确认')}
             </button>
             <button
               type="button"
               disabled={saving}
+              className={`${styles.segmentBtn} ${
+                config.trustMode === AgentGateTrustMode.FullTrust ? styles.segmentBtnActive : ''
+              }`}
               onClick={() => void updateTrustMode(AgentGateTrustMode.FullTrust)}
-              style={chipStyle(config.trustMode === AgentGateTrustMode.FullTrust)}
             >
               {t('settings.agent_gate_full_trust', '完全信任')}
             </button>
           </div>
 
-          <label style={checkLabelStyle(saving)}>
-            <input
-              type="checkbox"
-              disabled={saving}
-              checked={config.hideDeniedTools !== false}
-              onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
-              style={{ marginTop: 3 }}
-            />
-            <span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>
+          <div className="settings-list-tile settings-list-tile-noclick">
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">
                 {t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
               </span>
-              <span style={hintStyle}>
+              <span className="settings-list-tile-subtitle">
                 {t(
                   'settings.agent_gate_hide_denied_hint',
                   '开启后，当前场景下被默认拒绝的工具不会出现在伙伴可选列表中。'
                 )}
               </span>
-            </span>
-          </label>
+            </div>
+            <label className="settings-switch-label">
+              <input
+                type="checkbox"
+                disabled={saving}
+                checked={config.hideDeniedTools !== false}
+                onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
+              />
+              <span className="settings-switch-slider" />
+            </label>
+          </div>
+          <div className={pane.divider} />
 
-          <label style={checkLabelStyle(saving)}>
-            <input
-              type="checkbox"
-              disabled={saving}
-              checked={config.forceAskExternalPath !== false}
-              onChange={(e) => void patchConfig({ forceAskExternalPath: e.target.checked })}
-              style={{ marginTop: 3 }}
-            />
-            <span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>
+          <div className="settings-list-tile settings-list-tile-noclick">
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">
                 {t('settings.agent_gate_force_ask_external', '工作区外路径强制确认')}
               </span>
-              <span style={hintStyle}>
+              <span className="settings-list-tile-subtitle">
                 {t(
                   'settings.agent_gate_force_ask_external_hint',
                   '触及工作区外路径时始终征求确认，即使开启完全信任或已加入始终允许。'
                 )}
               </span>
-            </span>
-          </label>
+            </div>
+            <label className="settings-switch-label">
+              <input
+                type="checkbox"
+                disabled={saving}
+                checked={config.forceAskExternalPath !== false}
+                onChange={(e) => void patchConfig({ forceAskExternalPath: e.target.checked })}
+              />
+              <span className="settings-switch-slider" />
+            </label>
+          </div>
+          <div className={pane.divider} />
 
-          <label style={{ display: 'block', marginTop: 14 }}>
-            <span style={{ fontWeight: 600, fontSize: 13 }}>
-              {t('settings.agent_gate_repeat_threshold', '同参连打再确认阈值')}
-            </span>
-            <span style={hintStyle}>
-              {t(
-                'settings.agent_gate_repeat_threshold_hint',
-                '相同指纹连续请求达到该次数时再次弹出确认；0 表示关闭。确认卡片会显示短指纹。'
-              )}
-            </span>
+          <div className="settings-list-tile settings-list-tile-noclick">
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">
+                {t('settings.agent_gate_repeat_threshold', '同参连打再确认阈值')}
+              </span>
+              <span className="settings-list-tile-subtitle">
+                {t(
+                  'settings.agent_gate_repeat_threshold_hint',
+                  '相同指纹连续请求达到该次数时再次弹出确认；0 表示关闭。确认卡片会显示短指纹。'
+                )}
+              </span>
+            </div>
             <input
+              className="settings-number-input"
               type="number"
               min={0}
               max={20}
@@ -248,74 +265,75 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
                   repeatAssertAskThreshold: Math.max(0, Math.min(20, Math.floor(n)))
                 })
               }}
-              style={{
-                marginTop: 8,
-                width: 96,
-                padding: '6px 8px',
-                borderRadius: 8,
-                border: '1px solid var(--border-subtle, rgba(0,0,0,0.12))'
-              }}
             />
-          </label>
+          </div>
         </div>
       </section>
 
-      <section className={styles.cardSection}>
-        <div className={styles.cardHeader}>
-          <h3 className={styles.cardTitle}>
+      <section className={pane.cardSection}>
+        <div className={pane.cardHeader}>
+          <h3 className={pane.cardTitle}>
             {t('settings.agent_gate_exclusion_title', '始终需确认的操作')}
           </h3>
-        </div>
-        <div className={styles.cardBody}>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-secondary)' }}>
+          <p className={styles.cardDesc}>
             {t(
               'settings.agent_gate_exclusion_edit_hint',
               '下列操作无法「始终允许」；可增删自定义 action 名。'
             )}
           </p>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
-            {exclusionList.map((action) => (
-              <li key={action} style={rowStyle}>
-                <code>{action}</code>
+        </div>
+        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+          {exclusionList.map((action, index) => (
+            <React.Fragment key={action}>
+              {index > 0 ? <div className={pane.divider} /> : null}
+              <div className="settings-list-tile settings-list-tile-noclick">
+                <div className="settings-list-tile-content">
+                  <span className="settings-list-tile-title settings-monospace">{action}</span>
+                </div>
                 <button
                   type="button"
+                  className="settings-text-btn"
                   disabled={saving}
                   onClick={() => removeExclusion(action)}
-                  style={smallBtnStyle}
                 >
                   {t('common.remove', '移除')}
                 </button>
-              </li>
-            ))}
-          </ul>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              </div>
+            </React.Fragment>
+          ))}
+          <div className={styles.formRow}>
             <input
+              className={styles.textInput}
               value={exclusionDraft}
               onChange={(e) => setExclusionDraft(e.target.value)}
               placeholder="e.g. workspace_run"
               disabled={saving}
-              style={inputStyle}
             />
-            <button type="button" disabled={saving} onClick={addExclusion} style={smallBtnStyle}>
+            <button
+              type="button"
+              className="settings-text-btn"
+              disabled={saving}
+              onClick={addExclusion}
+            >
               {t('common.add', '添加')}
             </button>
           </div>
         </div>
       </section>
 
-      <section className={styles.cardSection}>
-        <div className={styles.cardHeader}>
-          <h3 className={styles.cardTitle}>
+      <section className={pane.cardSection}>
+        <div className={pane.cardHeader}>
+          <h3 className={pane.cardTitle}>
             {t('settings.agent_gate_profile_title', '场景默认松紧')}
           </h3>
-        </div>
-        <div className={styles.cardBody}>
-          <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-secondary)' }}>
+          <p className={styles.cardDesc}>
             {t(
               'settings.agent_gate_profile_hint',
               '伙伴会话与工作区会话使用不同默认规则；下方可叠加你的自定义规则。'
             )}
           </p>
+        </div>
+        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
           <ProfileRulesReadonly
             title={t('settings.agent_gate_profile_companion', '伙伴会话')}
             rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[AgentGateProfileId.Companion]]}
@@ -324,91 +342,95 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
             title={t('settings.agent_gate_profile_workspace', '工作区会话')}
             rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[AgentGateProfileId.Workspace]]}
           />
-          <div style={{ marginTop: 12, fontWeight: 600, fontSize: 13 }}>
+          <div className={styles.sectionLabel}>
             {t('settings.agent_gate_user_rules', '我的额外规则')}
           </div>
           {permissionRules.length === 0 ? (
-            <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+            <p className={styles.emptyHint}>
               {t('settings.agent_gate_user_rules_empty', '暂无')}
             </p>
           ) : (
-            <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
-              {permissionRules.map((rule, index) => (
-                <li key={`${rule.action}-${index}`} style={rowStyle}>
-                  <span style={{ fontSize: 13 }}>
-                    <code>{rule.action}</code>
-                    {rule.pattern ? (
-                      <span style={{ color: 'var(--text-secondary)' }}> · {rule.pattern}</span>
-                    ) : null}
-                    <span style={{ color: 'var(--text-secondary)' }}> → {rule.effect}</span>
-                  </span>
+            permissionRules.map((rule, index) => (
+              <React.Fragment key={`${rule.action}-${index}`}>
+                {index > 0 ? <div className={pane.divider} /> : null}
+                <div className="settings-list-tile settings-list-tile-noclick">
+                  <div className="settings-list-tile-content">
+                    <span className="settings-list-tile-title">
+                      <code>{rule.action}</code>
+                      {rule.pattern ? ` · ${rule.pattern}` : ''} → {rule.effect}
+                    </span>
+                  </div>
                   <button
                     type="button"
+                    className="settings-text-btn"
                     disabled={saving}
                     onClick={() => removePermissionRule(index)}
-                    style={smallBtnStyle}
                   >
                     {t('common.remove', '移除')}
                   </button>
-                </li>
-              ))}
-            </ul>
+                </div>
+              </React.Fragment>
+            ))
           )}
-          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+          <div className={styles.formRow}>
             <input
+              className={styles.textInput}
               value={ruleAction}
               onChange={(e) => setRuleAction(e.target.value)}
               placeholder="action（支持 workspace_*）"
               disabled={saving}
-              style={inputStyle}
             />
             <input
+              className={styles.textInput}
               value={rulePattern}
               onChange={(e) => setRulePattern(e.target.value)}
-              placeholder="可选 pattern（路径或命令前缀）"
+              placeholder="可选 pattern"
               disabled={saving}
-              style={inputStyle}
             />
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select
-                value={ruleEffect}
-                disabled={saving}
-                onChange={(e) => setRuleEffect(e.target.value as AgentGateEffect)}
-                style={{ ...inputStyle, width: 140 }}
-              >
-                <option value={AgentGateEffect.Allow}>Allow</option>
-                <option value={AgentGateEffect.Ask}>Ask</option>
-                <option value={AgentGateEffect.Deny}>Deny</option>
-              </select>
-              <button type="button" disabled={saving} onClick={addPermissionRule} style={smallBtnStyle}>
-                {t('common.add', '添加')}
-              </button>
-            </div>
+            <select
+              className={styles.selectInput}
+              value={ruleEffect}
+              disabled={saving}
+              onChange={(e) => setRuleEffect(e.target.value as AgentGateEffect)}
+            >
+              <option value={AgentGateEffect.Allow}>Allow</option>
+              <option value={AgentGateEffect.Ask}>Ask</option>
+              <option value={AgentGateEffect.Deny}>Deny</option>
+            </select>
+            <button
+              type="button"
+              className="settings-text-btn"
+              disabled={saving}
+              onClick={addPermissionRule}
+            >
+              {t('common.add', '添加')}
+            </button>
           </div>
         </div>
       </section>
 
-      <section className={styles.cardSection}>
-        <div className={styles.cardHeader}>
-          <h3 className={styles.cardTitle}>
+      <section className={pane.cardSection}>
+        <div className={pane.cardHeader}>
+          <h3 className={pane.cardTitle}>
             {t('settings.agent_gate_allowlist_title', '始终允许列表')}
           </h3>
         </div>
-        <div className={styles.cardBody}>
+        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
           {config.allowlist.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+            <p className={styles.emptyHint}>
               {t(
                 'settings.agent_gate_allowlist_empty',
                 '暂无条目；在聊天中点「始终允许」后会出现在这里。'
               )}
             </p>
           ) : (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
-              {config.allowlist.map((entry) => (
-                <li key={entry.id} style={rowStyle}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{entry.action}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            config.allowlist.map((entry, index) => (
+              <React.Fragment key={entry.id}>
+                {index > 0 ? <div className={pane.divider} /> : null}
+                <div className="settings-list-tile settings-list-tile-noclick">
+                  <div className="settings-list-tile-content">
+                    <span className="settings-list-tile-title">{entry.action}</span>
+                    <span className="settings-list-tile-subtitle">
                       {entry.pattern
                         ? t('settings.agent_gate_allowlist_pattern', '模式：{{pattern}}', {
                             pattern: entry.pattern
@@ -416,19 +438,19 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
                         : t('settings.agent_gate_allowlist_whole_action', '整工具放行')}
                       {' · '}
                       {new Date(entry.createdAt).toLocaleString()}
-                    </div>
+                    </span>
                   </div>
                   <button
                     type="button"
+                    className="settings-text-btn"
                     disabled={saving}
                     onClick={() => void removeAllowlistEntry(entry)}
-                    style={smallBtnStyle}
                   >
                     {t('common.remove', '移除')}
                   </button>
-                </li>
-              ))}
-            </ul>
+                </div>
+              </React.Fragment>
+            ))
           )}
         </div>
       </section>
@@ -444,9 +466,9 @@ function ProfileRulesReadonly({
   rules: AgentGatePermissionRule[]
 }) {
   return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{title}</div>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary)' }}>
+    <div className={styles.profileBlock}>
+      <div className={styles.profileTitle}>{title}</div>
+      <ul className={styles.profileList}>
         {rules.map((rule) => (
           <li key={`${rule.action}-${rule.effect}-${rule.pattern ?? ''}`}>
             <code>{rule.action}</code>
@@ -456,62 +478,4 @@ function ProfileRulesReadonly({
       </ul>
     </div>
   )
-}
-
-function chipStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '8px 14px',
-    borderRadius: 10,
-    border: active
-      ? '1px solid var(--color-primary, #5ba8f5)'
-      : '1px solid var(--border-subtle, rgba(0,0,0,0.1))',
-    background: active
-      ? 'color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent)'
-      : 'transparent',
-    cursor: 'pointer'
-  }
-}
-
-const hintStyle: React.CSSProperties = {
-  display: 'block',
-  marginTop: 2,
-  fontSize: 12,
-  color: 'var(--text-secondary)',
-  lineHeight: 1.5
-}
-
-function checkLabelStyle(saving: boolean): React.CSSProperties {
-  return {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginTop: 12,
-    cursor: saving ? 'default' : 'pointer'
-  }
-}
-
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 12,
-  padding: '8px 10px',
-  borderRadius: 10,
-  border: '1px solid var(--border-subtle, rgba(0,0,0,0.08))'
-}
-
-const smallBtnStyle: React.CSSProperties = {
-  padding: '6px 12px',
-  borderRadius: 8,
-  border: '1px solid var(--border-subtle, rgba(0,0,0,0.1))',
-  background: 'transparent',
-  cursor: 'pointer',
-  flexShrink: 0
-}
-
-const inputStyle: React.CSSProperties = {
-  flex: 1,
-  padding: '6px 8px',
-  borderRadius: 8,
-  border: '1px solid var(--border-subtle, rgba(0,0,0,0.12))'
 }
