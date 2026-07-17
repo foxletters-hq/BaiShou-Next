@@ -1,16 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   FlatList,
   StyleSheet,
   ActivityIndicator
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNativeTheme } from '@baishou/ui/native'
+import { Input, useNativeTheme } from '@baishou/ui/native'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
@@ -22,14 +22,18 @@ import {
   mobileSearchGraphNodes,
   mobileSetEdgeReview
 } from '@/src/services/mobile-graph.service'
+import { StackScreenLayout } from '../../components/StackScreenLayout'
+import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { GraphForceWebView } from './GraphForceWebView'
 
 type Tab = 'graph' | 'search' | 'reextract' | 'pending'
 
 export function GraphScreen() {
+  const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const chrome = getStackScreenChrome(colors)
   const { services, dbReady } = useBaishou()
   const [tab, setTab] = useState<Tab>('graph')
   const [query, setQuery] = useState('')
@@ -47,6 +51,20 @@ export function GraphScreen() {
   const [status, setStatus] = useState('')
 
   const vaultName = services?.vaultService.getActiveVault()?.name || 'Personal'
+
+  const tabItems = useMemo(
+    () =>
+      [
+        ['graph', t('graph.tab_graph', '图谱')],
+        ['reextract', t('graph.tab_reextract', '待重抽({{count}})', { count: pending.length })],
+        [
+          'pending',
+          t('graph.tab_pending', '待确认({{count}})', { count: pendingEdges.length })
+        ],
+        ['search', t('graph.tab_search', '搜索')]
+      ] as const,
+    [t, pending.length, pendingEdges.length]
+  )
 
   const refresh = useCallback(async () => {
     if (!services || !dbReady) return
@@ -85,7 +103,7 @@ export function GraphScreen() {
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
     setBusy(true)
-    setStatus('抽取中…')
+    setStatus(t('graph.extracting', '抽取中…'))
     try {
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
       const result = await mobileExtractDiaries({
@@ -97,7 +115,12 @@ export function GraphScreen() {
         settingsManager: services.settingsManager,
         filePaths
       })
-      setStatus(`完成 ${result.done}，失败 ${result.failed}`)
+      setStatus(
+        t('graph.extract_done', '完成 {{done}}，失败 {{failed}}', {
+          done: result.done,
+          failed: result.failed
+        })
+      )
       await refresh()
     } catch (e: any) {
       setStatus(e?.message || String(e))
@@ -120,139 +143,186 @@ export function GraphScreen() {
     await refresh()
   }
 
-  return (
-    <View style={[styles.root, { backgroundColor: colors.bgApp, paddingTop: insets.top }]}>
-      <View style={[styles.header, { borderBottomColor: colors.borderMuted }]}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={{ color: colors.primary, fontSize: 16 }}>返回</Text>
-        </Pressable>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>关系图谱</Text>
-        <Pressable disabled={busy} onPress={() => void runExtract()}>
-          <Text style={{ color: busy ? colors.textSecondary : colors.primary, fontSize: 14 }}>
-            梳理
-          </Text>
-        </Pressable>
-      </View>
+  const listPad = {
+    padding: 16,
+    paddingBottom: 16 + insets.bottom
+  }
 
-      <View style={styles.tabs}>
-        {([
-          ['graph', '图谱'],
-          ['reextract', `待重抽(${pending.length})`],
-          ['pending', `待确认(${pendingEdges.length})`],
-          ['search', '搜索']
-        ] as const).map(([id, label]) => (
-          <Pressable
-            key={id}
-            style={[
-              styles.tab,
-              tab === id && { backgroundColor: colors.bgSurface }
-            ]}
-            onPress={() => setTab(id)}
-          >
-            <Text style={{ color: colors.textPrimary, fontSize: 13 }}>{label}</Text>
-          </Pressable>
-        ))}
+  return (
+    <StackScreenLayout
+      title={t('graph.title', '关系图谱')}
+      {...chrome}
+      headerRight={{
+        label: t('graph.extract', '梳理'),
+        onPress: () => void runExtract(),
+        disabled: busy
+      }}
+      contentStyle={styles.layoutContent}
+    >
+      <View style={[styles.tabTrack, { backgroundColor: colors.bgSurfaceNormal }]}>
+        {tabItems.map(([id, label]) => {
+          const active = tab === id
+          return (
+            <Pressable
+              key={id}
+              style={[
+                styles.tab,
+                active && {
+                  backgroundColor: colors.bgSurface,
+                  borderColor: colors.borderMuted
+                }
+              ]}
+              onPress={() => setTab(id)}
+            >
+              <Text
+                style={{
+                  color: active ? colors.primary : colors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: active ? '600' : '500'
+                }}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          )
+        })}
       </View>
 
       {status ? (
-        <Text style={{ color: colors.textSecondary, paddingHorizontal: 16, marginBottom: 8 }}>
-          {status}
-        </Text>
+        <Text style={[styles.status, { color: colors.textSecondary }]}>{status}</Text>
       ) : null}
       {busy ? <ActivityIndicator color={colors.primary} style={{ marginBottom: 8 }} /> : null}
 
       {tab === 'graph' && (
-        <View style={{ flex: 1 }}>
+        <View style={[styles.graphBody, { paddingBottom: insets.bottom }]}>
           {selectedNode ? (
-            <View style={[styles.card, { backgroundColor: colors.bgSurface, margin: 12 }]}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
+            <View
+              style={[
+                styles.detailBar,
+                {
+                  backgroundColor: colors.bgSurface,
+                  borderBottomColor: colors.borderSubtle
+                }
+              ]}
+            >
+              <Text style={[styles.detailTitle, { color: colors.textPrimary }]}>
                 {selectedNode.name}
               </Text>
-              <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
+              <Text style={[styles.detailMeta, { color: colors.textSecondary }]}>
                 {selectedNode.nodeType}
               </Text>
             </View>
           ) : null}
           {graphNodes.length === 0 ? (
-            <Text style={{ color: colors.textSecondary, padding: 16 }}>
-              暂无图谱节点；可先梳理日记或在桌面写入关系。
+            <Text style={[styles.empty, { color: colors.textSecondary }]}>
+              {t(
+                'graph.empty_nodes',
+                '暂无图谱节点；可先梳理日记或在桌面写入关系。'
+              )}
             </Text>
           ) : (
-            <GraphForceWebView
-              nodes={graphNodes.map((n) => ({
-                id: n.id,
-                name: n.name,
-                nodeType: n.nodeType,
-                mentionCount: n.mentionCount
-              }))}
-              edges={graphEdges.map((e) => ({
-                id: e.id,
-                fromId: e.fromId,
-                toId: e.toId,
-                edgeType: e.edgeType
-              }))}
-              onSelectNode={setSelectedNode}
-            />
-          )}
-        </View>
-      )}
-
-      {tab === 'search' && (
-        <View style={styles.searchRow}>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="搜索实体"
-            placeholderTextColor={colors.textSecondary}
-            style={[
-              styles.input,
-              { color: colors.textPrimary, borderColor: colors.borderMuted, backgroundColor: colors.bgSurface }
-            ]}
-            onSubmitEditing={() => void onSearch()}
-          />
-          <Pressable onPress={() => void onSearch()}>
-            <Text style={{ color: colors.primary }}>搜索</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {tab === 'search' && (
-        <FlatList
-          data={hits}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16 }}
-          ListEmptyComponent={
-            <Text style={{ color: colors.textSecondary }}>输入关键词搜索图谱实体</Text>
-          }
-          renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: colors.bgSurface }]}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>{item.name}</Text>
-              <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
-                {item.nodeType}
-                {item.summary ? ` · ${item.summary}` : ''}
-              </Text>
+            <View style={[styles.webWrap, { backgroundColor: colors.bgApp }]}>
+              <GraphForceWebView
+                nodes={graphNodes.map((n) => ({
+                  id: n.id,
+                  name: n.name,
+                  nodeType: n.nodeType,
+                  mentionCount: n.mentionCount
+                }))}
+                edges={graphEdges.map((e) => ({
+                  id: e.id,
+                  fromId: e.fromId,
+                  toId: e.toId,
+                  edgeType: e.edgeType
+                }))}
+                onSelectNode={setSelectedNode}
+              />
             </View>
           )}
-        />
+        </View>
+      )}
+
+      {tab === 'search' && (
+        <>
+          <View style={styles.searchRow}>
+            <Input
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t('graph.search_placeholder', '搜索实体')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={() => void onSearch()}
+              containerStyle={{ flex: 1 }}
+            />
+            <Pressable onPress={() => void onSearch()} hitSlop={8}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                {t('common.search', '搜索')}
+              </Text>
+            </Pressable>
+          </View>
+          <FlatList
+            data={hits}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={listPad}
+            ListEmptyComponent={
+              <Text style={{ color: colors.textSecondary }}>
+                {t('graph.search_empty', '输入关键词搜索图谱实体')}
+              </Text>
+            }
+            renderItem={({ item }) => (
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderSubtle
+                  }
+                ]}
+              >
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{item.name}</Text>
+                <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
+                  {item.nodeType}
+                  {item.summary ? ` · ${item.summary}` : ''}
+                </Text>
+              </View>
+            )}
+          />
+        </>
       )}
 
       {tab === 'reextract' && (
         <FlatList
           data={pending}
           keyExtractor={(item) => item.filePath}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={listPad}
           ListEmptyComponent={
-            <Text style={{ color: colors.textSecondary }}>暂无待重抽日记</Text>
+            <Text style={{ color: colors.textSecondary }}>
+              {t('graph.reextract_empty', '暂无待重抽日记')}
+            </Text>
           }
           renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: colors.bgSurface }]}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.bgSurface,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
+            >
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                 {item.date || item.filePath}
               </Text>
-              <Text style={{ color: colors.textSecondary, marginTop: 4 }}>{item.filePath}</Text>
+              <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
+                {item.filePath}
+              </Text>
               <View style={styles.row}>
                 <Pressable disabled={busy} onPress={() => void runExtract([item.filePath])}>
-                  <Text style={{ color: colors.primary }}>抽取</Text>
+                  <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                    {t('graph.extract_one', '抽取')}
+                  </Text>
                 </Pressable>
                 {item.date ? (
                   <Pressable
@@ -260,7 +330,9 @@ export function GraphScreen() {
                       router.push({ pathname: '/diary-editor', params: { dateStr: item.date } })
                     }
                   >
-                    <Text style={{ color: colors.primary }}>原文</Text>
+                    <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                      {t('graph.open_source', '原文')}
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -273,24 +345,38 @@ export function GraphScreen() {
         <FlatList
           data={pendingEdges}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={listPad}
           ListEmptyComponent={
-            <Text style={{ color: colors.textSecondary }}>没有待确认的边</Text>
+            <Text style={{ color: colors.textSecondary }}>
+              {t('graph.pending_empty', '没有待确认的边')}
+            </Text>
           }
           renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: colors.bgSurface }]}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.bgSurface,
+                  borderColor: colors.borderSubtle
+                }
+              ]}
+            >
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                 {item.edgeType} · {item.confidence}
               </Text>
-              <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
+              <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
                 {item.sourceExcerpt || item.sourceRef || item.id}
               </Text>
               <View style={styles.row}>
                 <Pressable onPress={() => void review(item.id, 'approved')}>
-                  <Text style={{ color: colors.primary }}>通过</Text>
+                  <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                    {t('graph.approve', '通过')}
+                  </Text>
                 </Pressable>
                 <Pressable onPress={() => void review(item.id, 'rejected')}>
-                  <Text style={{ color: colors.textSecondary }}>拒绝</Text>
+                  <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
+                    {t('graph.reject', '拒绝')}
+                  </Text>
                 </Pressable>
                 {item.sourceRef ? (
                   <Pressable
@@ -301,7 +387,9 @@ export function GraphScreen() {
                       }
                     }}
                   >
-                    <Text style={{ color: colors.primary }}>原文</Text>
+                    <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                      {t('graph.open_source', '原文')}
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -309,37 +397,88 @@ export function GraphScreen() {
           )}
         />
       )}
-    </View>
+    </StackScreenLayout>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth
+  layoutContent: {
+    flex: 1
   },
-  title: { fontSize: 17, fontWeight: '650' },
-  tabs: { flexDirection: 'row', gap: 8, padding: 12 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
+  tabTrack: {
+    flexDirection: 'row',
+    gap: 6,
+    marginHorizontal: 12,
+    marginTop: 10,
+    marginBottom: 8,
+    padding: 4,
+    borderRadius: 12
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent'
+  },
+  status: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    fontSize: 13
+  },
+  graphBody: {
+    flex: 1
+  },
+  webWrap: {
+    flex: 1
+  },
+  detailBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 2
+  },
+  detailTitle: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  detailMeta: {
+    fontSize: 12
+  },
+  empty: {
+    padding: 16,
+    fontSize: 13,
+    lineHeight: 20
+  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     paddingHorizontal: 16,
     marginBottom: 8
   },
-  input: {
-    flex: 1,
-    height: 40,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    paddingHorizontal: 10
+  card: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: StyleSheet.hairlineWidth
   },
-  card: { padding: 12, borderRadius: 10, marginBottom: 10 },
-  row: { flexDirection: 'row', gap: 16, marginTop: 10 }
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  cardMeta: {
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 18
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 10
+  }
 })
