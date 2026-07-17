@@ -15,6 +15,7 @@ import {
   createAgentGateRequestId,
   extractAgentGateResourcesFromMetadata,
   mergeAgentGateResources,
+  canPermanentlyAllowShellCommand,
   resolveCommandPrefixPatternFromCommand,
   type AgentGateAssertInput,
   type AgentGateEvaluateInput,
@@ -148,11 +149,17 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
 
     const { request } = entry
 
+    const replyResources = mergeAgentGateResources(
+      entry.resources,
+      extractAgentGateResourcesFromMetadata(request.metadata)
+    )
+
     if (
       input.reply === AgentGateReply.Always &&
       !canPermanentlyAllowAgentGateAction(request.action, {
         exclusionList: this.policy.getConfig().exclusionList,
-        metadata: request.metadata
+        metadata: request.metadata,
+        resources: replyResources
       })
     ) {
       throw new AgentGateAlwaysNotAllowedError(request.action)
@@ -186,14 +193,16 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
 
     if (input.reply === AgentGateReply.Always) {
-      const resources = mergeAgentGateResources(
-        entry.resources,
-        extractAgentGateResourcesFromMetadata(request.metadata)
-      )
-      const shellResource = resources.find((r) => r.kind === 'shell_command')
+      const shellResource = replyResources.find((r) => r.kind === 'shell_command')
+      if (shellResource && !canPermanentlyAllowShellCommand(shellResource.value)) {
+        throw new AgentGateAlwaysNotAllowedError(request.action)
+      }
       const shellPattern = shellResource
         ? resolveCommandPrefixPatternFromCommand(shellResource.value)
         : null
+      if (request.action === 'workspace_run' && !shellPattern) {
+        throw new AgentGateAlwaysNotAllowedError(request.action)
+      }
       this.allowlistStore.add({
         action: request.action,
         sourceSessionId: request.sessionId,

@@ -89,7 +89,8 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       return AgentGateEffect.Ask
     }
 
-    if (config.trustMode === AgentGateTrustMode.FullTrust) {
+    // Host command execution never rides FullTrust; needs allowlist pattern or Ask.
+    if (config.trustMode === AgentGateTrustMode.FullTrust && input.action !== 'workspace_run') {
       return AgentGateEffect.Allow
     }
 
