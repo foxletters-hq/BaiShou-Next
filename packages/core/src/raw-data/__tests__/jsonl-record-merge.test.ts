@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   mergeJsonlRecordSides,
   pickWinner,
-  JsonlRecordMergeService
+  JsonlRecordMergeService,
+  parseJsonlText,
+  sanitizeRecordTimestamps,
+  JSONL_FUTURE_SKEW_MS
 } from '../jsonl-record-merge.service'
 import { isMonthlyJsonlRawPath } from '../monthly-jsonl-path.util'
 
@@ -38,8 +41,39 @@ describe('jsonl-record-merge', () => {
       '{"id":"a","updatedAt":1}\n',
       '{"id":"b","updatedAt":2}\n'
     )
-    expect(out).toContain('"id":"a"')
-    expect(out).toContain('"id":"b"')
+    expect(out.text).toContain('"id":"a"')
+    expect(out.text).toContain('"id":"b"')
+    expect(out.skippedIllegal).toBe(0)
+    expect(out.clampedFuture).toBe(0)
+  })
+
+  it('sanitizeRecordTimestamps clamps far-future and drops negative', () => {
+    const now = 1_700_000_000_000
+    const clamped = sanitizeRecordTimestamps(
+      { id: 'a', updatedAt: now + JSONL_FUTURE_SKEW_MS + 1 },
+      now
+    )
+    expect(clamped).toEqual({
+      row: { id: 'a', updatedAt: now },
+      clampedFuture: true
+    })
+    expect(sanitizeRecordTimestamps({ id: 'b', updatedAt: -1 }, now)).toBeNull()
+  })
+
+  it('parseJsonlText counts skippedIllegal and clampedFuture', () => {
+    const now = 1_700_000_000_000
+    const text = [
+      '{"id":"ok","updatedAt":1}',
+      '{"id":"future","updatedAt":' + (now + JSONL_FUTURE_SKEW_MS + 5) + '}',
+      '{"id":"neg","updatedAt":-9}',
+      'not-json',
+      '{"noId":true,"updatedAt":1}'
+    ].join('\n')
+    const parsed = parseJsonlText(text, now)
+    expect(parsed.rows).toHaveLength(2)
+    expect(parsed.rows.find((r) => r.id === 'future')?.updatedAt).toBe(now)
+    expect(parsed.skippedIllegal).toBe(3)
+    expect(parsed.clampedFuture).toBe(1)
   })
 })
 

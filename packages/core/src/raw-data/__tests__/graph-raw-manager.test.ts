@@ -93,4 +93,41 @@ describe('GraphRawManager', () => {
     const rows = await manager.readShardRecords(written.relativePath)
     expect(rows).toHaveLength(1)
   })
+
+  it('maintains nodes.idmap.json and uses it for tombstone lookup', async () => {
+    const now = Date.now()
+    await manager.writeRecord(
+      {
+        id: 'n-map',
+        schemaVersion: 1,
+        vaultName: 'Personal',
+        nodeType: 'person',
+        name: 'Mapped',
+        aliases: [],
+        summary: '',
+        props: {},
+        mentionCount: 1,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        origin: 'ai',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        reviewStatus: 'pending'
+      },
+      { collection: 'nodes' }
+    )
+
+    const shardMonth = await manager.lookupNodeShardMonth('n-map')
+    expect(shardMonth).toMatch(/^\d{4}-\d{2}$/)
+    const idmapPath = path.join(tmp, 'Graph', 'nodes.idmap.json')
+    expect(fs.existsSync(idmapPath)).toBe(true)
+
+    await manager.tombstone('n-map', { collection: 'nodes' })
+    const rows = await manager.readCollapsedNodes(shardMonth!)
+    const hit = rows.find((r) => r.id === 'n-map')
+    expect(hit?.deletedAt).not.toBeNull()
+    // Mapping retained after tombstone
+    expect(await manager.lookupNodeShardMonth('n-map')).toBe(shardMonth)
+  })
 })

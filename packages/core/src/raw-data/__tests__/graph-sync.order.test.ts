@@ -76,4 +76,49 @@ describe('GraphSyncService write→index order', () => {
     expect(result.deleted).toBe(1)
     expect(await graphManager.listPendingIndex('nodes')).toHaveLength(0)
   })
+
+  it('orphan-scans even when pending-index is empty', async () => {
+    const now = Date.now()
+    const written = await graphManager.writeRecord(
+      {
+        id: 'n1',
+        schemaVersion: 1,
+        vaultName: 'Personal',
+        nodeType: 'person',
+        name: 'Anson',
+        aliases: [],
+        summary: '',
+        props: {},
+        mentionCount: 1,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        origin: 'ai',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        reviewStatus: 'pending'
+      },
+      { collection: 'nodes' }
+    )
+    await graphManager.commitIndexed('nodes', written.relativePath, written.contentHash)
+
+    const softDeleteNode = vi.fn().mockResolvedValue(undefined)
+    const softDeleteEdge = vi.fn().mockResolvedValue(undefined)
+    const repo = {
+      applyRawNode: vi.fn(),
+      softDeleteNode,
+      applyRawEdge: vi.fn(),
+      softDeleteEdge,
+      listAllLiveNodeIds: vi.fn().mockResolvedValue(['n1', 'ghost']),
+      listAllLiveEdgeIds: vi.fn().mockResolvedValue(['e-orphan'])
+    } as unknown as GraphRepository
+
+    const sync = new GraphSyncService(graphManager, repo, null)
+    const result = await sync.syncPendingIndex()
+
+    expect(result.shards).toBe(0)
+    expect(softDeleteNode).toHaveBeenCalledWith('ghost')
+    expect(softDeleteEdge).toHaveBeenCalledWith('e-orphan')
+    expect(result.deleted).toBe(2)
+  })
 })

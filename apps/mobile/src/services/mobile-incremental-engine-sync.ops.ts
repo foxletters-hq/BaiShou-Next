@@ -10,6 +10,13 @@ import {
   resolveSyncMergeDecisions,
   threeWayMerge
 } from '@baishou/shared'
+import {
+  JsonlRecordMergeService,
+  MonthlyJsonlStore,
+  classifyMonthlyJsonlPath,
+  isMonthlyJsonlRawPath
+} from '@baishou/core-mobile'
+import { getAppCacheDirectory } from './mobile-app-paths'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
 import { throwIfIncrementalSyncAborted } from './mobile-incremental-sync-abort.util'
 import { sortSyncDecisionsBySizeAsc } from './mobile-incremental-sync-order.util'
@@ -25,6 +32,70 @@ import { SYNC_ACTIVITY_STATUS } from './mobile-incremental-engine-transfer.helpe
 import type { MobileIncrementalEngineWorker } from './mobile-incremental-engine.worker'
 
 type IncrementalProgressCallback = (progress: MobileIncrementalProgress) => void
+
+async function markMobileMonthlyJsonlPending(
+  worker: MobileIncrementalEngineWorker,
+  relPath: string,
+  absoluteShardPath: string
+): Promise<void> {
+  const classified = classifyMonthlyJsonlPath(relPath)
+  if (!classified) return
+  const dir = absoluteShardPath.replace(/[/\\][^/\\]+$/, '')
+  const store = new MonthlyJsonlStore({
+    fs: worker.host.fileSystem,
+    rootDir: dir
+  })
+  await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
+}
+
+async function mergeMobileMonthlyJsonlConflict(
+  worker: MobileIncrementalEngineWorker,
+  client: MobileIncrementalCloudClient,
+  syncRoot: string,
+  relPath: string,
+  fullPath: string
+): Promise<boolean> {
+  try {
+    const localText = (await worker.host.fileSystem.exists(fullPath))
+      ? await worker.host.fileSystem.readFile(fullPath)
+      : ''
+    const tmp = `${getAppCacheDirectory()}baishou-jsonl-merge-${Date.now()}.jsonl`
+    try {
+      await client.downloadFile(relPath.replace(/\\/g, '/'), tmp)
+    } catch {
+      if (localText) {
+        await client.uploadFile(fullPath, relPath)
+        return true
+      }
+      return false
+    }
+    const remoteText = await worker.host.fileSystem.readFile(tmp)
+    await worker.host.fileSystem.unlink(tmp).catch(() => undefined)
+
+    const merger = new JsonlRecordMergeService()
+    const merged = merger.mergeTexts(localText, remoteText)
+    await worker.backupLocalFile(syncRoot, relPath)
+
+    const manager = worker.host.getRawDataSourceManager?.() ?? null
+    if (manager) {
+      const ok = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
+      if (!ok) return false
+    } else {
+      const classified = classifyMonthlyJsonlPath(relPath)
+      if (!classified) return false
+      const store = new MonthlyJsonlStore({
+        fs: worker.host.fileSystem,
+        rootDir: fullPath.replace(/[/\\][^/\\]+$/, '')
+      })
+      await store.replaceShardContent(classified.shardMonth, merged.text)
+    }
+    await client.uploadFile(fullPath, relPath)
+    return true
+  } catch (e) {
+    console.warn(`[MobileIncremental] JSONL LWW merge failed for ${relPath}:`, e)
+    return false
+  }
+}
 
 function mapDecisionProgress(
   completed: number,
@@ -205,12 +276,30 @@ export async function runSyncThreeWay(
           break
         case 'delete-local':
           await worker.host.fileSystem.unlink(fullPath)
+          if (isMonthlyJsonlRawPath(d.filePath)) {
+            await markMobileMonthlyJsonlPending(worker, d.filePath, fullPath)
+          }
           deletedLocal++
           deletedLocalPaths.push(d.filePath)
           mutated = true
           break
         case 'conflict-resolved':
           conflicted.push(d.filePath)
+          if (isMonthlyJsonlRawPath(d.filePath)) {
+            const mergedOk = await mergeMobileMonthlyJsonlConflict(
+              worker,
+              client,
+              syncRoot,
+              d.filePath,
+              fullPath
+            )
+            if (mergedOk) {
+              uploaded++
+              uploadedPaths.push(d.filePath)
+              mutated = true
+              break
+            }
+          }
           if (d.direction === 'upload') {
             await worker.backupLocalFile(syncRoot, d.filePath)
             await client.uploadFile(fullPath, d.filePath)

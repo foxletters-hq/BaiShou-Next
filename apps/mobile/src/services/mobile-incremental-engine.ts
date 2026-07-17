@@ -1,4 +1,4 @@
-import type { IFileSystem } from '@baishou/core-mobile'
+import type { IFileSystem, RawDataSourceManager } from '@baishou/core-mobile'
 import type { SyncManifest, S3SyncConfig, IncrementalSyncRunOptions } from '@baishou/shared'
 import {
   assertBidirectionalSyncDivergenceAllowed,
@@ -48,13 +48,17 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
   lastPlanLocalScanFingerprint: string | null = null
   manifestCommitQueue = new IncrementalManifestCommitQueue()
   externalSyncMounts: VaultExternalSyncMount[] | null = null
+  getRawDataSourceManager?: () => RawDataSourceManager | null
   private worker?: MobileIncrementalEngineWorker
 
   constructor(
     public readonly pathService: IStoragePathService,
     public readonly fileSystem: IFileSystem,
-    public readonly deviceId: string
-  ) {}
+    public readonly deviceId: string,
+    getRawDataSourceManager?: () => RawDataSourceManager | null
+  ) {
+    this.getRawDataSourceManager = getRawDataSourceManager
+  }
 
   private initWorker(): MobileIncrementalEngineWorker {
     if (!this.worker) {
