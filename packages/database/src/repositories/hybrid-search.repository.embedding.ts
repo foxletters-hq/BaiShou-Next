@@ -89,12 +89,17 @@ export class HybridSearchEmbeddingStore {
     })
   }
 
-  /** Distinct source_id values for a source_type (for pending-index / backfill). */
-  async listSourceIdsByType(sourceType: string): Promise<string[]> {
-    const result = await this.db.execute({
-      sql: `SELECT DISTINCT source_id AS source_id FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ?`,
-      args: [sourceType]
-    })
+  /** Distinct source_id values for a source_type (optionally scoped by group_id / vault). */
+  async listSourceIdsByType(sourceType: string, groupId?: string): Promise<string[]> {
+    const result = groupId
+      ? await this.db.execute({
+          sql: `SELECT DISTINCT source_id AS source_id FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND group_id = ?`,
+          args: [sourceType, groupId]
+        })
+      : await this.db.execute({
+          sql: `SELECT DISTINCT source_id AS source_id FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ?`,
+          args: [sourceType]
+        })
     return result.rows
       .map((row) => String((row as { source_id?: unknown }).source_id ?? ''))
       .filter((id) => id.length > 0)

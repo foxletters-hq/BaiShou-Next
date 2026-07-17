@@ -46,6 +46,13 @@ async function markMobileMonthlyJsonlPending(
     rootDir: dir
   })
   await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
+  if (classified.kind === 'graph' && classified.collection === 'nodes') {
+    try {
+      await worker.host.getRawDataSourceManager?.()?.getGraphManager()?.rebuildIdmap()
+    } catch (e) {
+      console.warn(`[MobileIncremental] rebuildIdmap after external write failed:`, e)
+    }
+  }
 }
 
 async function mergeMobileMonthlyJsonlConflict(
@@ -76,18 +83,22 @@ async function mergeMobileMonthlyJsonlConflict(
     const merged = merger.mergeTexts(localText, remoteText)
     await worker.backupLocalFile(syncRoot, relPath)
 
+    const classified = classifyMonthlyJsonlPath(relPath)
+    if (!classified) return false
     const manager = worker.host.getRawDataSourceManager?.() ?? null
+    let wrote = false
     if (manager) {
-      const ok = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
-      if (!ok) return false
-    } else {
-      const classified = classifyMonthlyJsonlPath(relPath)
-      if (!classified) return false
+      wrote = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
+    }
+    if (!wrote) {
       const store = new MonthlyJsonlStore({
         fs: worker.host.fileSystem,
         rootDir: fullPath.replace(/[/\\][^/\\]+$/, '')
       })
       await store.replaceShardContent(classified.shardMonth, merged.text)
+      if (classified.kind === 'graph' && classified.collection === 'nodes') {
+        await manager?.getGraphManager()?.rebuildIdmap()
+      }
     }
     await client.uploadFile(fullPath, relPath)
     return true

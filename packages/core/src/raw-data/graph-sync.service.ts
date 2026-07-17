@@ -18,7 +18,7 @@ export class GraphSyncService {
     private readonly embedder?: GraphSyncEmbedder | null
   ) {}
 
-  async syncPendingIndex(): Promise<{
+  async syncPendingIndex(options?: { vaultName?: string }): Promise<{
     shards: number
     nodesUpserted: number
     edgesUpserted: number
@@ -28,6 +28,7 @@ export class GraphSyncService {
     let nodesUpserted = 0
     let edgesUpserted = 0
     let deleted = 0
+    let inferredVault = options?.vaultName
 
     for (const shard of pending) {
       const [collection] = shard.relativePath.split(/[/\\]/)
@@ -43,6 +44,7 @@ export class GraphSyncService {
       const rows = collapseJsonlById(
         (await this.graphManager.readShardRecords(shard.relativePath)) as Array<{
           id: string
+          vaultName?: string
           updatedAt: number
         }>
       )
@@ -50,6 +52,7 @@ export class GraphSyncService {
       if (collection === 'nodes') {
         for (const raw of rows as GraphNodeRawRecord[]) {
           if (!raw?.id) continue
+          if (!inferredVault && raw.vaultName) inferredVault = raw.vaultName
           if (raw.deletedAt != null) {
             await this.repo.softDeleteNode(raw.id)
             deleted += 1
@@ -77,6 +80,7 @@ export class GraphSyncService {
       } else if (collection === 'edges') {
         for (const raw of rows as GraphEdgeRawRecord[]) {
           if (!raw?.id) continue
+          if (!inferredVault && raw.vaultName) inferredVault = raw.vaultName
           if (raw.deletedAt != null) {
             await this.repo.softDeleteEdge(raw.id)
             deleted += 1
@@ -98,9 +102,9 @@ export class GraphSyncService {
       await this.graphManager.commitIndexed(collection!, shard.relativePath, shard.contentHash)
     }
 
-    // Always: soft-delete graph rows whose ids no longer exist in any JSONL shard
-    const liveNodeIds = new Set<string>()
-    const liveEdgeIds = new Set<string>()
+    // Orphan sweep scoped to vault(s) present in this manager's JSONL only.
+    const liveNodeIdsByVault = new Map<string, Set<string>>()
+    const liveEdgeIdsByVault = new Map<string, Set<string>>()
 
     for (const shard of await this.graphManager.listShards()) {
       const [collection] = shard.relativePath.split(/[/\\]/)
@@ -108,27 +112,46 @@ export class GraphSyncService {
       const rows = collapseJsonlById(
         (await this.graphManager.readShardRecords(shard.relativePath)) as Array<{
           id: string
+          vaultName?: string
           updatedAt: number
           deletedAt?: number | null
         }>
       )
       for (const row of rows) {
         if (!row?.id || row.deletedAt != null) continue
-        if (collection === 'nodes') liveNodeIds.add(row.id)
-        else liveEdgeIds.add(row.id)
+        const vault = row.vaultName || inferredVault
+        if (!vault) continue
+        if (!inferredVault) inferredVault = vault
+        const bucket = collection === 'nodes' ? liveNodeIdsByVault : liveEdgeIdsByVault
+        let set = bucket.get(vault)
+        if (!set) {
+          set = new Set()
+          bucket.set(vault, set)
+        }
+        set.add(row.id)
       }
     }
 
-    for (const id of await this.repo.listAllLiveNodeIds()) {
-      if (!liveNodeIds.has(id)) {
-        await this.repo.softDeleteNode(id)
-        deleted += 1
+    const vaults = new Set<string>([
+      ...liveNodeIdsByVault.keys(),
+      ...liveEdgeIdsByVault.keys(),
+      ...(inferredVault ? [inferredVault] : [])
+    ])
+
+    for (const vault of vaults) {
+      const liveNodes = liveNodeIdsByVault.get(vault) ?? new Set<string>()
+      for (const id of await this.repo.listNodeIds(vault)) {
+        if (!liveNodes.has(id)) {
+          await this.repo.softDeleteNode(id)
+          deleted += 1
+        }
       }
-    }
-    for (const id of await this.repo.listAllLiveEdgeIds()) {
-      if (!liveEdgeIds.has(id)) {
-        await this.repo.softDeleteEdge(id)
-        deleted += 1
+      const liveEdges = liveEdgeIdsByVault.get(vault) ?? new Set<string>()
+      for (const id of await this.repo.listEdgeIds(vault)) {
+        if (!liveEdges.has(id)) {
+          await this.repo.softDeleteEdge(id)
+          deleted += 1
+        }
       }
     }
 

@@ -287,15 +287,19 @@ export class ThreeWaySyncService
       if (!classified) return false
 
       const manager = this.getRawDataSourceManager?.() ?? null
+      let wrote = false
       if (manager) {
-        const ok = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
-        if (!ok) return false
-      } else {
+        wrote = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
+      }
+      if (!wrote) {
         const store = new MonthlyJsonlStore({
           fs: createNodeFileSystem(),
           rootDir: path.dirname(fullPath)
         })
         await store.replaceShardContent(classified.shardMonth, merged.text)
+        if (classified.kind === 'graph' && classified.collection === 'nodes') {
+          await manager?.getGraphManager()?.rebuildIdmap()
+        }
       }
       await this.uploadFile(relPath)
       return true
@@ -317,5 +321,12 @@ export class ThreeWaySyncService
       rootDir: path.dirname(absoluteShardPath)
     })
     await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
+    if (classified.kind === 'graph' && classified.collection === 'nodes') {
+      try {
+        await this.getRawDataSourceManager?.()?.getGraphManager()?.rebuildIdmap()
+      } catch (e) {
+        console.warn(`[ThreeWaySync] rebuildIdmap after external write failed for ${relPath}:`, e)
+      }
+    }
   }
 }

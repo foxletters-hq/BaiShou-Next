@@ -67,6 +67,7 @@ describe('MemorySyncService', () => {
     )
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'b')
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
+    expect(listSourceIdsByType).toHaveBeenCalledWith('memory', 'memory:Personal')
     expect(await memoryManager.listPendingIndex()).toHaveLength(0)
   })
 
@@ -95,6 +96,7 @@ describe('MemorySyncService', () => {
     const result = await sync.syncPendingIndex()
 
     expect(result.shards).toBe(0)
+    expect(listSourceIdsByType).toHaveBeenCalledWith('memory', 'memory:Personal')
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
     expect(deleteBySource).not.toHaveBeenCalledWith('memory', 'live')
   })
