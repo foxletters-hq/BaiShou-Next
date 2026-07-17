@@ -26,6 +26,13 @@ export class AgentGateRepeatTracker {
     current.count += 1
   }
 
+  /** Current consecutive count for this fingerprint (0 if none). */
+  getCount(sessionId: string, fingerprint: string): number {
+    const current = this.state.get(sessionId)
+    if (!current || current.fingerprint !== fingerprint) return 0
+    return current.count
+  }
+
   clearFingerprint(sessionId: string, fingerprint: string): void {
     const current = this.state.get(sessionId)
     if (current?.fingerprint === fingerprint) {

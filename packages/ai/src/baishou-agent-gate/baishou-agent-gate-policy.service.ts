@@ -93,7 +93,7 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       return AgentGateEffect.Allow
     }
 
-    if (this.allowlistStore.has(input.action)) {
+    if (this.allowlistStore.has(input.action, resources)) {
       return AgentGateEffect.Allow
     }
 

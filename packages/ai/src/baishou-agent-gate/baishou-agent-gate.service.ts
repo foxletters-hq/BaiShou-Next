@@ -13,6 +13,9 @@ import {
   buildAgentGateAssertFingerprint,
   canPermanentlyAllowAgentGateAction,
   createAgentGateRequestId,
+  extractAgentGateResourcesFromMetadata,
+  mergeAgentGateResources,
+  resolveCommandPrefixPatternFromCommand,
   type AgentGateAssertInput,
   type AgentGateEvaluateInput,
   type AgentGateProfileId,
@@ -113,11 +116,13 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
-    const request = this.createRequest(input)
+    const request = this.createRequest(input, fingerprint)
+    request.repeatCount = this.repeatTracker.getCount(input.sessionId, fingerprint)
     return this.waitForResolution(request, fingerprint, input.resources, input.profileId)
   }
 
   async ask(input: AgentGateAssertInput): Promise<AgentGateRequest> {
+    const fingerprint = buildAgentGateAssertFingerprint(input)
     const effect = this.policy.evaluate({
       action: input.action,
       toolDisabled: false,
@@ -125,7 +130,8 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       metadata: input.metadata,
       profileId: input.profileId
     })
-    const request = this.createRequest(input)
+    const request = this.createRequest(input, fingerprint)
+    request.repeatCount = this.repeatTracker.getCount(input.sessionId, fingerprint)
     if (effect === AgentGateEffect.Ask) {
       request.description =
         request.description ??
@@ -180,10 +186,21 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
 
     if (input.reply === AgentGateReply.Always) {
+      const resources = mergeAgentGateResources(
+        entry.resources,
+        extractAgentGateResourcesFromMetadata(request.metadata)
+      )
+      const shellResource = resources.find((r) => r.kind === 'shell_command')
+      const shellPattern = shellResource
+        ? resolveCommandPrefixPatternFromCommand(shellResource.value)
+        : null
       this.allowlistStore.add({
         action: request.action,
         sourceSessionId: request.sessionId,
-        sourceRequestId: request.id
+        sourceRequestId: request.id,
+        ...(shellPattern
+          ? { pattern: shellPattern, resourceKind: 'shell_command' as const }
+          : {})
       })
       // Resolve first so tool asserts never hang if persist fails.
       this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
@@ -227,7 +244,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
   }
 
-  private createRequest(input: AgentGateAssertInput): AgentGateRequest {
+  private createRequest(input: AgentGateAssertInput, fingerprint?: string): AgentGateRequest {
     return {
       id: createAgentGateRequestId(),
       sessionId: input.sessionId,
@@ -240,6 +257,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       options: input.options ?? [],
       allowCustomInput: input.allowCustomInput ?? false,
       metadata: input.metadata ?? {},
+      fingerprint,
       messageId: input.messageId,
       toolCallId: input.toolCallId,
       createdAt: Date.now()

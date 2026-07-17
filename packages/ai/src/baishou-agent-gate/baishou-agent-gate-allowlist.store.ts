@@ -1,12 +1,13 @@
 import type {
   AgentGateAllowlistEntry,
+  AgentGateResourceRef,
   BaishouAgentGateConfig
 } from '@baishou/shared'
-import { createAgentGateAllowlistEntryId } from '@baishou/shared'
+import { allowlistEntryMatches, createAgentGateAllowlistEntryId } from '@baishou/shared'
 
 export interface IAgentGateAllowlistStore {
   list(): AgentGateAllowlistEntry[]
-  has(action: string): boolean
+  has(action: string, resources?: readonly AgentGateResourceRef[]): boolean
   add(
     entry: Omit<AgentGateAllowlistEntry, 'id' | 'createdAt'>
   ): AgentGateAllowlistEntry
@@ -24,12 +25,19 @@ export class BaishouAgentGateAllowlistStore implements IAgentGateAllowlistStore 
     return [...this.getConfig().allowlist]
   }
 
-  has(action: string): boolean {
-    return this.getConfig().allowlist.some((entry) => entry.action === action)
+  has(action: string, resources?: readonly AgentGateResourceRef[]): boolean {
+    return this.getConfig().allowlist.some((entry) =>
+      allowlistEntryMatches(entry, { action, resources })
+    )
   }
 
   add(entry: Omit<AgentGateAllowlistEntry, 'id' | 'createdAt'>): AgentGateAllowlistEntry {
-    const existing = this.getConfig().allowlist.find((item) => item.action === entry.action)
+    const existing = this.getConfig().allowlist.find((item) => {
+      if (item.action !== entry.action) return false
+      if ((item.pattern ?? '') !== (entry.pattern ?? '')) return false
+      if ((item.resourceKind ?? '') !== (entry.resourceKind ?? '')) return false
+      return true
+    })
     if (existing) return existing
 
     const created: AgentGateAllowlistEntry = {

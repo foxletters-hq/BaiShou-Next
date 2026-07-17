@@ -91,6 +91,14 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 {t('agent_gate.dock_action', '操作：{{action}}', { action: request.action })}
               </Text>
             ) : null}
+            {request.fingerprint ? (
+              <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
+                {t('agent_gate.fingerprint_meta', '指纹 {{fp}} · 连打 {{count}}', {
+                  fp: request.fingerprint.slice(0, 10),
+                  count: request.repeatCount ?? 1
+                })}
+              </Text>
+            ) : null}
 
             {proactiveOptions && !showFeedback
               ? request.options.map((option) => {

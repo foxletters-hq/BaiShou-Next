@@ -94,6 +94,15 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
           </p>
         ) : null}
 
+        {request.fingerprint ? (
+          <p className={styles.meta}>
+            {t('agent_gate.fingerprint_meta', '指纹 {{fp}} · 连打 {{count}}', {
+              fp: request.fingerprint.slice(0, 10),
+              count: request.repeatCount ?? 1
+            })}
+          </p>
+        ) : null}
+
         {proactiveOptions && !showFeedback ? (
           <div className={styles.options} role="radiogroup" aria-label={request.title}>
             {request.options.map((option) => (
