@@ -1,10 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  LayoutAnimation,
+  TextInput
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   AgentGateTrustMode,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   DEFAULT_AGENT_GATE_EXCLUSION_LIST,
+  DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   type BaishouAgentGateConfig,
   type AgentGateAllowlistEntry
 } from '@baishou/shared'
@@ -19,6 +27,7 @@ export const AgentGateSettingsSection: React.FC = () => {
   const toast = useNativeToast()
   const { services, dbReady, reloadAgentGateConfig } = useBaishou()
   const [config, setConfig] = useState<BaishouAgentGateConfig>(DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+  const [exclusionDraft, setExclusionDraft] = useState('')
 
   const loadConfig = useCallback(async () => {
     if (!services || !dbReady) return
@@ -84,6 +93,27 @@ export const AgentGateSettingsSection: React.FC = () => {
     config.exclusionList.length > 0
       ? config.exclusionList
       : [...DEFAULT_AGENT_GATE_EXCLUSION_LIST]
+  const threshold =
+    config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
+
+  const addExclusion = () => {
+    const action = exclusionDraft.trim()
+    if (!action) return
+    if (exclusionList.includes(action)) {
+      setExclusionDraft('')
+      return
+    }
+    void persist({ ...config, exclusionList: [...exclusionList, action] }).then(() =>
+      setExclusionDraft('')
+    )
+  }
+
+  const removeExclusion = (action: string) => {
+    void persist({
+      ...config,
+      exclusionList: exclusionList.filter((item) => item !== action)
+    })
+  }
 
   return (
     <View style={styles.section}>
@@ -139,6 +169,35 @@ export const AgentGateSettingsSection: React.FC = () => {
             onValueChange={(v) => handleBoolToggle('forceAskExternalPath', v)}
           />
         </View>
+        <View style={[styles.row, styles.rowDivider, { borderTopColor: colors.borderSubtle }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('agent.gate.repeat_threshold', '同参连打再确认阈值')}
+            </Text>
+            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+              {t(
+                'agent.gate.repeat_threshold_hint',
+                '相同指纹连续请求达到该次数时再次弹出；0 关闭。确认卡会显示短指纹。'
+              )}
+            </Text>
+            <TextInput
+              value={String(threshold)}
+              keyboardType="number-pad"
+              onChangeText={(text) => {
+                const n = Number(text)
+                if (!Number.isFinite(n)) return
+                void persist({
+                  ...config,
+                  repeatAssertAskThreshold: Math.max(0, Math.min(20, Math.floor(n)))
+                })
+              }}
+              style={[
+                styles.input,
+                { color: colors.textPrimary, borderColor: colors.borderSubtle }
+              ]}
+            />
+          </View>
+        </View>
       </SettingsGroupCard>
 
       <SettingsGroupCard>
@@ -160,6 +219,12 @@ export const AgentGateSettingsSection: React.FC = () => {
                   {entry.action}
                 </Text>
                 <Text style={[styles.allowlistMeta, { color: colors.textTertiary }]}>
+                  {entry.pattern
+                    ? t('agent.gate.allowlist_pattern', '模式：{{pattern}}', {
+                        pattern: entry.pattern
+                      })
+                    : t('agent.gate.allowlist_whole', '整工具')}
+                  {' · '}
                   {new Date(entry.createdAt).toLocaleString()}
                 </Text>
               </View>
@@ -185,17 +250,38 @@ export const AgentGateSettingsSection: React.FC = () => {
         <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 8 }]}>
           {t(
             'agent.gate.exclusion_hint',
-            '下列高危操作即使开启完全信任，仍会征求你的确认，且无法加入始终允许。'
+            '下列高危操作即使开启完全信任，仍会征求你的确认，且无法加入始终允许。可增删。'
           )}
         </Text>
         {exclusionList.map((action) => (
-          <Text
-            key={action}
-            style={[styles.exclusionItem, { color: colors.textSecondary }]}
-          >
-            {action}
-          </Text>
+          <View key={action} style={styles.exclusionRow}>
+            <Text style={[styles.exclusionItem, { color: colors.textSecondary, flex: 1 }]}>
+              {action}
+            </Text>
+            <TouchableOpacity onPress={() => removeExclusion(action)} hitSlop={8}>
+              <Text style={{ color: colors.error, fontSize: 13, fontWeight: '600' }}>
+                {t('common.remove', '移除')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ))}
+        <View style={styles.addRow}>
+          <TextInput
+            value={exclusionDraft}
+            onChangeText={setExclusionDraft}
+            placeholder="action"
+            placeholderTextColor={colors.textTertiary}
+            style={[
+              styles.input,
+              { flex: 1, color: colors.textPrimary, borderColor: colors.borderSubtle }
+            ]}
+          />
+          <TouchableOpacity onPress={addExclusion} hitSlop={8}>
+            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
+              {t('common.add', '添加')}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SettingsGroupCard>
     </View>
   )
@@ -261,5 +347,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     paddingVertical: 4
+  },
+  exclusionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8
+  },
+  input: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    marginTop: 8
   }
 })
