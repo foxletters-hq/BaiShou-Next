@@ -69,4 +69,33 @@ describe('MemorySyncService', () => {
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
     expect(await memoryManager.listPendingIndex()).toHaveLength(0)
   })
+
+  it('cleans orphan db ids even when no pending shards', async () => {
+    const now = Date.now()
+    const written = await memoryManager.writeRecord({
+      id: 'live',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'x',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+    await memoryManager.commitIndexed(written.relativePath, written.contentHash)
+
+    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const listSourceIdsByType = vi.fn().mockResolvedValue(['live', 'orphan'])
+    const sync = new MemorySyncService(memoryManager, {
+      embedText: vi.fn(),
+      deleteBySource,
+      listSourceIdsByType
+    })
+    const result = await sync.syncPendingIndex()
+
+    expect(result.shards).toBe(0)
+    expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
+    expect(deleteBySource).not.toHaveBeenCalledWith('memory', 'live')
+  })
 })

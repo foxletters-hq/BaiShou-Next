@@ -1,4 +1,5 @@
 import type { DerivedFreshnessService } from './derived-freshness.service'
+import { classifyMonthlyJsonlPath } from './monthly-jsonl-path.util'
 import type {
   GraphCollection,
   RawSourceKind,
@@ -7,6 +8,8 @@ import type {
   WholeFileKindManager,
   WriteOpts
 } from './raw-data-source.types'
+import type { MemoryRawManager } from './managers/memory.raw-manager'
+import type { GraphRawManager } from './managers/graph.raw-manager'
 
 const RECORD_KINDS = new Set(['memory', 'graph'])
 const FILE_KINDS = new Set(['journal', 'summary', 'session', 'notebook'])
@@ -75,15 +78,31 @@ export class RawDataSourceManager {
     return this.recordManagers.get(kind)
   }
 
-  getMemoryManager(): import('./managers/memory.raw-manager').MemoryRawManager | undefined {
-    return this.recordManagers.get('memory') as
-      | import('./managers/memory.raw-manager').MemoryRawManager
-      | undefined
+  getMemoryManager(): MemoryRawManager | undefined {
+    return this.recordManagers.get('memory') as MemoryRawManager | undefined
   }
 
-  getGraphManager(): import('./managers/graph.raw-manager').GraphRawManager | undefined {
-    return this.recordManagers.get('graph') as
-      | import('./managers/graph.raw-manager').GraphRawManager
-      | undefined
+  getGraphManager(): GraphRawManager | undefined {
+    return this.recordManagers.get('graph') as GraphRawManager | undefined
+  }
+
+  /**
+   * Atomically rewrite a Memory/Graph monthly JSONL shard via the owning manager.
+   * Used by three-way sync LWW merge. Returns false when path is not a monthly JSONL shard
+   * or the manager is not registered.
+   */
+  async replaceMonthlyJsonlShard(relPath: string, content: string): Promise<boolean> {
+    const classified = classifyMonthlyJsonlPath(relPath)
+    if (!classified) return false
+    if (classified.kind === 'memory') {
+      const mgr = this.getMemoryManager()
+      if (!mgr) return false
+      await mgr.replaceShardContent(classified.shardMonth, content)
+      return true
+    }
+    const mgr = this.getGraphManager()
+    if (!mgr) return false
+    await mgr.replaceShardContent(classified.collection, classified.shardMonth, content)
+    return true
   }
 }

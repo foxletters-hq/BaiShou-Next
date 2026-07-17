@@ -421,6 +421,10 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
       }
       fs.unlinkSync(fullPath)
     }
+    // File gone: refresh sets contentHash to md5('') while keeping indexedHash → orphan scan clears DB
+    if (isMonthlyJsonlRawPath(relPath)) {
+      await this.markMonthlyJsonlPendingAfterExternalWrite(relPath, fullPath)
+    }
   }
 
   protected async backupFile(relPath: string, _hash: string): Promise<void> {

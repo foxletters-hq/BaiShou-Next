@@ -11,6 +11,21 @@ export interface JsonlMergeableRecord {
   [key: string]: unknown
 }
 
+export interface ParseJsonlTextResult<T extends JsonlMergeableRecord = JsonlMergeableRecord> {
+  rows: T[]
+  skippedIllegal: number
+  clampedFuture: number
+}
+
+export interface MergeTextsResult {
+  text: string
+  skippedIllegal: number
+  clampedFuture: number
+}
+
+/** Future timestamps beyond this skew are clamped to now (P5c clock safety). */
+export const JSONL_FUTURE_SKEW_MS = 24 * 60 * 60 * 1000
+
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
     return JSON.stringify(value)
@@ -21,6 +36,24 @@ function stableStringify(value: unknown): string {
   const obj = value as Record<string, unknown>
   const keys = Object.keys(obj).sort()
   return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`
+}
+
+/**
+ * Clamp absurd future updatedAt; drop negative updatedAt.
+ * Returns null when the row must be discarded.
+ */
+export function sanitizeRecordTimestamps<T extends JsonlMergeableRecord>(
+  row: T,
+  now: number = Date.now()
+): { row: T; clampedFuture: boolean } | null {
+  const updatedAt = row.updatedAt
+  if (typeof updatedAt !== 'number' || !Number.isFinite(updatedAt) || updatedAt < 0) {
+    return null
+  }
+  if (updatedAt > now + JSONL_FUTURE_SKEW_MS) {
+    return { row: { ...row, updatedAt: now }, clampedFuture: true }
+  }
+  return { row, clampedFuture: false }
 }
 
 export function foldJsonlRecordsById<T extends JsonlMergeableRecord>(rows: T[]): T[] {
@@ -67,19 +100,34 @@ export function mergeJsonlRecordSides<T extends JsonlMergeableRecord>(
   return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id))
 }
 
-export function parseJsonlText<T extends JsonlMergeableRecord>(text: string): T[] {
+export function parseJsonlText<T extends JsonlMergeableRecord>(
+  text: string,
+  now: number = Date.now()
+): ParseJsonlTextResult<T> {
   const rows: T[] = []
+  let skippedIllegal = 0
+  let clampedFuture = 0
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim()
     if (!trimmed) continue
     try {
       const obj = JSON.parse(trimmed) as T
-      if (obj && typeof obj.id === 'string') rows.push(obj)
+      if (!obj || typeof obj.id !== 'string') {
+        skippedIllegal += 1
+        continue
+      }
+      const sanitized = sanitizeRecordTimestamps(obj, now)
+      if (!sanitized) {
+        skippedIllegal += 1
+        continue
+      }
+      if (sanitized.clampedFuture) clampedFuture += 1
+      rows.push(sanitized.row)
     } catch {
-      // skip bad lines
+      skippedIllegal += 1
     }
   }
-  return rows
+  return { rows, skippedIllegal, clampedFuture }
 }
 
 export function serializeJsonlRecords(rows: JsonlMergeableRecord[]): string {
@@ -88,11 +136,14 @@ export function serializeJsonlRecords(rows: JsonlMergeableRecord[]): string {
 }
 
 export class JsonlRecordMergeService {
-  mergeTexts(localText: string, remoteText: string): string {
-    const merged = mergeJsonlRecordSides(
-      parseJsonlText(localText),
-      parseJsonlText(remoteText)
-    )
-    return serializeJsonlRecords(merged)
+  mergeTexts(localText: string, remoteText: string, now: number = Date.now()): MergeTextsResult {
+    const local = parseJsonlText(localText, now)
+    const remote = parseJsonlText(remoteText, now)
+    const merged = mergeJsonlRecordSides(local.rows, remote.rows)
+    return {
+      text: serializeJsonlRecords(merged),
+      skippedIllegal: local.skippedIllegal + remote.skippedIllegal,
+      clampedFuture: local.clampedFuture + remote.clampedFuture
+    }
   }
 }

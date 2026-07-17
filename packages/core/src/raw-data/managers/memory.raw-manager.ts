@@ -103,6 +103,14 @@ export class MemoryRawManager implements RecordCollectionKindManager {
     await (await this.getStore()).markIndexed(relativePath, contentHash)
   }
 
+  /** Atomically rewrite a monthly shard (e.g. sync LWW merge). Keeps pending-index dirty. */
+  async replaceShardContent(
+    shardMonth: string,
+    content: string
+  ): Promise<{ shardPath: string; relativePath: string; contentHash: string }> {
+    return (await this.getStore()).replaceShardContent(shardMonth, content)
+  }
+
   async readCollapsedShard(shardMonth: string): Promise<MemoryRawRecord[]> {
     const rows = (await (await this.getStore()).readRecords(shardMonth)) as MemoryRawRecord[]
     return collapseJsonlById(rows)

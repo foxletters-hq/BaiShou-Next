@@ -53,8 +53,8 @@ export class MemorySyncService {
       await this.memoryManager.commitIndexed(shard.relativePath, shard.contentHash)
     }
 
-    // After dirty shards: drop memory embeddings whose ids no longer exist in any JSONL shard
-    if (pending.length > 0 && this.sink.listSourceIdsByType && this.sink.deleteBySource) {
+    // Always: drop memory embeddings whose ids no longer exist in any JSONL shard
+    if (this.sink.listSourceIdsByType && this.sink.deleteBySource) {
       const liveIds = new Set<string>()
       for (const shard of await this.memoryManager.listShards()) {
         const rows = collapseJsonlById(
