@@ -18,22 +18,31 @@ import {
   mobileExtractDiaries,
   mobileListPendingEdges,
   mobileListPendingReextract,
+  mobileLoadGlobalGraph,
   mobileSearchGraphNodes,
   mobileSetEdgeReview
 } from '@/src/services/mobile-graph.service'
+import { GraphForceWebView } from './GraphForceWebView'
 
-type Tab = 'search' | 'reextract' | 'pending'
+type Tab = 'graph' | 'search' | 'reextract' | 'pending'
 
 export function GraphScreen() {
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const { services, dbReady } = useBaishou()
-  const [tab, setTab] = useState<Tab>('reextract')
+  const [tab, setTab] = useState<Tab>('graph')
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<any[]>([])
   const [pending, setPending] = useState<any[]>([])
   const [pendingEdges, setPendingEdges] = useState<any[]>([])
+  const [graphNodes, setGraphNodes] = useState<any[]>([])
+  const [graphEdges, setGraphEdges] = useState<any[]>([])
+  const [selectedNode, setSelectedNode] = useState<{
+    id: string
+    name: string
+    nodeType: string
+  } | null>(null)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
 
@@ -53,6 +62,9 @@ export function GraphScreen() {
       })
     )
     setPendingEdges(await mobileListPendingEdges(runtime.drizzleDb, vaultName))
+    const graph = await mobileLoadGlobalGraph(runtime.drizzleDb, vaultName, 120)
+    setGraphNodes(graph.nodes)
+    setGraphEdges(graph.edges)
   }, [services, dbReady, vaultName])
 
   useEffect(() => {
@@ -124,6 +136,7 @@ export function GraphScreen() {
 
       <View style={styles.tabs}>
         {([
+          ['graph', '图谱'],
           ['reextract', `待重抽(${pending.length})`],
           ['pending', `待确认(${pendingEdges.length})`],
           ['search', '搜索']
@@ -147,6 +160,42 @@ export function GraphScreen() {
         </Text>
       ) : null}
       {busy ? <ActivityIndicator color={colors.primary} style={{ marginBottom: 8 }} /> : null}
+
+      {tab === 'graph' && (
+        <View style={{ flex: 1 }}>
+          {selectedNode ? (
+            <View style={[styles.card, { backgroundColor: colors.bgSurface, margin: 12 }]}>
+              <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
+                {selectedNode.name}
+              </Text>
+              <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
+                {selectedNode.nodeType}
+              </Text>
+            </View>
+          ) : null}
+          {graphNodes.length === 0 ? (
+            <Text style={{ color: colors.textSecondary, padding: 16 }}>
+              暂无图谱节点；可先梳理日记或在桌面写入关系。
+            </Text>
+          ) : (
+            <GraphForceWebView
+              nodes={graphNodes.map((n) => ({
+                id: n.id,
+                name: n.name,
+                nodeType: n.nodeType,
+                mentionCount: n.mentionCount
+              }))}
+              edges={graphEdges.map((e) => ({
+                id: e.id,
+                fromId: e.fromId,
+                toId: e.toId,
+                edgeType: e.edgeType
+              }))}
+              onSelectNode={setSelectedNode}
+            />
+          )}
+        </View>
+      )}
 
       {tab === 'search' && (
         <View style={styles.searchRow}>

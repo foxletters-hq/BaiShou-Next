@@ -129,6 +129,14 @@ export async function mobileSearchGraphNodes(
   return new GraphRepository(drizzleDb).searchNodesByName(vaultName, query, { limit: 30 })
 }
 
+export async function mobileLoadGlobalGraph(
+  drizzleDb: AppDatabase,
+  vaultName: string,
+  maxNodes = 120
+) {
+  return new GraphRepository(drizzleDb).getGlobalGraph({ vaultName, maxNodes })
+}
+
 export async function mobileListPendingEdges(drizzleDb: AppDatabase, vaultName: string) {
   return new GraphRepository(drizzleDb).listPendingEdges(vaultName)
 }
