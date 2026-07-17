@@ -18,6 +18,13 @@ import type {
 } from '../raw-data-source.types'
 
 const COLLECTIONS: GraphCollection[] = ['nodes', 'edges', 'extract-state']
+const NODES_IDMAP_FILE = 'nodes.idmap.json'
+
+export interface NodesIdMapFile {
+  schemaVersion: 1
+  updatedAt: number
+  map: Record<string, string>
+}
 
 function shardMonthForNode(row: GraphNodeRawRecord): string {
   return shardMonthFromInstant(row.firstSeenAt || row.createdAt)
@@ -36,6 +43,7 @@ function shardMonthForEdge(row: GraphEdgeRawRecord): string {
 /**
  * Graph JSONL: Graph/{nodes|edges|extract-state}/YYYY-MM.jsonl
  * Each collection has its own shards.manifest.json under the subdir.
+ * Optional Graph/nodes.idmap.json: nodeId → shardMonth.
  */
 export class GraphRawManager implements RecordCollectionKindManager {
   readonly kind = 'graph' as const
@@ -78,6 +86,75 @@ export class GraphRawManager implements RecordCollectionKindManager {
     return opts?.collection ?? 'nodes'
   }
 
+  private async idmapPath(): Promise<string> {
+    return path.join(await this.getRoot(), NODES_IDMAP_FILE)
+  }
+
+  private async readIdmap(): Promise<NodesIdMapFile> {
+    const file = await this.idmapPath()
+    if (!(await this.fs.exists(file))) {
+      return { schemaVersion: 1, updatedAt: Date.now(), map: {} }
+    }
+    try {
+      const raw = await this.fs.readFile(file, 'utf8')
+      const parsed = JSON.parse(raw) as NodesIdMapFile
+      if (!parsed || typeof parsed !== 'object' || typeof parsed.map !== 'object' || !parsed.map) {
+        return { schemaVersion: 1, updatedAt: Date.now(), map: {} }
+      }
+      return {
+        schemaVersion: 1,
+        updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
+        map: parsed.map
+      }
+    } catch {
+      return { schemaVersion: 1, updatedAt: Date.now(), map: {} }
+    }
+  }
+
+  private async writeIdmap(idmap: NodesIdMapFile): Promise<void> {
+    const root = await this.getRoot()
+    await this.fs.mkdir(root, { recursive: true })
+    await this.fs.writeFile(
+      await this.idmapPath(),
+      JSON.stringify(
+        { schemaVersion: 1 as const, updatedAt: Date.now(), map: idmap.map },
+        null,
+        2
+      ),
+      'utf8'
+    )
+  }
+
+  private async upsertNodeIdmapEntry(id: string, shardMonth: string): Promise<void> {
+    const idmap = await this.readIdmap()
+    if (idmap.map[id] === shardMonth) return
+    idmap.map[id] = shardMonth
+    await this.writeIdmap(idmap)
+  }
+
+  /** Lookup nodeId → shardMonth from nodes.idmap.json (null if missing). */
+  async lookupNodeShardMonth(id: string): Promise<string | null> {
+    const idmap = await this.readIdmap()
+    return idmap.map[id] ?? null
+  }
+
+  /** Rebuild Graph/nodes.idmap.json by scanning all node shards. */
+  async rebuildIdmap(): Promise<number> {
+    const store = await this.getStore('nodes')
+    const shards = await store.listShards()
+    const map: Record<string, string> = {}
+    for (const shard of shards) {
+      const rows = collapseJsonlById(
+        (await store.readRecords(shard.shardMonth)) as GraphNodeRawRecord[]
+      )
+      for (const row of rows) {
+        if (row?.id) map[row.id] = shard.shardMonth
+      }
+    }
+    await this.writeIdmap({ schemaVersion: 1, updatedAt: Date.now(), map })
+    return Object.keys(map).length
+  }
+
   async writeRecord(
     record: unknown,
     opts?: { collection?: GraphCollection } & WriteOpts
@@ -106,6 +183,10 @@ export class GraphRawManager implements RecordCollectionKindManager {
       shardMonth = shardMonthFromInstant(row.extractedAt || row.updatedAt)
     }
     const written = await store.appendRecord(shardMonth, record)
+    if (collection === 'nodes') {
+      const row = record as GraphNodeRawRecord
+      await this.upsertNodeIdmapEntry(row.id, shardMonth)
+    }
     return {
       ...written,
       relativePath: `${collection}/${written.relativePath}`
@@ -120,6 +201,9 @@ export class GraphRawManager implements RecordCollectionKindManager {
     const store = await this.getStore(collection)
     const now = Date.now()
     let shardMonth = opts.shardMonth
+    if (!shardMonth && collection === 'nodes') {
+      shardMonth = (await this.lookupNodeShardMonth(id)) ?? undefined
+    }
     if (!shardMonth) {
       const shards = await store.listShards()
       for (const shard of [...shards].reverse()) {
@@ -136,6 +220,7 @@ export class GraphRawManager implements RecordCollectionKindManager {
             updatedAt: now,
             deletedAt: now
           })
+          // Keep idmap entry so future lookups still find the shard
           return
         }
       }
@@ -151,6 +236,24 @@ export class GraphRawManager implements RecordCollectionKindManager {
       updatedAt: now,
       deletedAt: now
     })
+  }
+
+  /** Atomically rewrite a collection monthly shard (e.g. sync LWW merge). */
+  async replaceShardContent(
+    collection: GraphCollection,
+    shardMonth: string,
+    content: string
+  ): Promise<{ shardPath: string; relativePath: string; contentHash: string }> {
+    const store = await this.getStore(collection)
+    const written = await store.replaceShardContent(shardMonth, content)
+    if (collection === 'nodes') {
+      // Refresh idmap entries for ids present in this shard (full rebuild is safer after LWW)
+      await this.rebuildIdmap()
+    }
+    return {
+      ...written,
+      relativePath: `${collection}/${written.relativePath}`
+    }
   }
 
   async listShards(): Promise<ShardInfo[]> {

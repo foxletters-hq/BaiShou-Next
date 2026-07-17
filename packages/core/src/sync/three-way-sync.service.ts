@@ -285,11 +285,18 @@ export class ThreeWaySyncService
       }
       const classified = classifyMonthlyJsonlPath(relPath)
       if (!classified) return false
-      const store = new MonthlyJsonlStore({
-        fs: createNodeFileSystem(),
-        rootDir: path.dirname(fullPath)
-      })
-      await store.replaceShardContent(classified.shardMonth, merged)
+
+      const manager = this.getRawDataSourceManager?.() ?? null
+      if (manager) {
+        const ok = await manager.replaceMonthlyJsonlShard(relPath, merged.text)
+        if (!ok) return false
+      } else {
+        const store = new MonthlyJsonlStore({
+          fs: createNodeFileSystem(),
+          rootDir: path.dirname(fullPath)
+        })
+        await store.replaceShardContent(classified.shardMonth, merged.text)
+      }
       await this.uploadFile(relPath)
       return true
     } catch (e) {

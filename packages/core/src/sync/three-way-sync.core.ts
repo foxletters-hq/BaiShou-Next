@@ -13,6 +13,7 @@ import {
 import type { ICloudSyncClient } from '../network/cloud-sync.interface'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { IVersionManager } from './version-manager.interface'
+import type { RawDataSourceManager } from '../raw-data/raw-data-source.manager'
 import { DEFAULT_S3_SYNC_CONFIG, S3_CONFIG_FILE } from './three-way-sync.constants'
 import { createNodeFileSystem } from '../fs/create-node-file-system'
 import {
@@ -31,7 +32,9 @@ export abstract class ThreeWaySyncCore {
     protected readonly pathService: IStoragePathService,
     protected readonly cloudClient: ICloudSyncClient,
     protected readonly deviceId: string,
-    protected readonly versionManager?: IVersionManager
+    protected readonly versionManager?: IVersionManager,
+    /** Prefer Manager for LWW shard writes when available (desktop/mobile runtime). */
+    protected readonly getRawDataSourceManager?: () => RawDataSourceManager | null
   ) {}
 
   /** 增量同步根：全部工作区所在的存储根目录 */
