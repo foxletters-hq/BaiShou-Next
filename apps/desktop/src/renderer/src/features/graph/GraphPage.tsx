@@ -143,7 +143,7 @@ export const GraphPage: React.FC = () => {
         <button type="button" className={styles.btn} disabled={busy} onClick={() => void refresh()}>
           刷新
         </button>
-        {status ? <span style={{ fontSize: 12, color: '#64748b' }}>{status}</span> : null}
+        {status ? <span className={styles.itemMeta}>{status}</span> : null}
       </div>
 
       <div className={styles.canvasWrap}>
