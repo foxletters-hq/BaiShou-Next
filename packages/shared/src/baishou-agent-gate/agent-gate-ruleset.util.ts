@@ -4,6 +4,7 @@ import type {
   AgentGateResourceRef,
   BaishouAgentGateConfig
 } from './agent-gate.types'
+import { matchShellCommandPattern } from './agent-gate-shell-match.util'
 
 const EFFECT_PRECEDENCE: Record<AgentGateEffect, number> = {
   [AgentGateEffect.Deny]: 3,
@@ -55,6 +56,22 @@ export function agentGateResourcePatternMatch(
   resources: readonly AgentGateResourceRef[]
 ): boolean {
   if (resources.length === 0) return false
+  // Shell commands must use structured prefix match, never bare glob `*`.
+  const shellResources = resources.filter((r) => r.kind === 'shell_command')
+  if (shellResources.length > 0) {
+    const trimmed = pattern.trim()
+    if (trimmed === '*' || trimmed === '**' || trimmed === '**/*' || trimmed === '* *') {
+      return false
+    }
+    return shellResources.some((resource) =>
+      matchShellCommandPattern(resource.value, pattern)
+    )
+  }
+  // Path resources: reject only bare catch-all stars (keep `**/*`, `src/**`, etc.)
+  const trimmed = pattern.trim()
+  if (trimmed === '*' || trimmed === '**') {
+    return false
+  }
   return resources.some((resource) => agentGateGlobMatch(pattern, resource.value))
 }
 
@@ -64,7 +81,13 @@ export function agentGatePermissionRuleMatches(
   resources: readonly AgentGateResourceRef[]
 ): boolean {
   if (!agentGateActionPatternMatch(rule.action, action)) return false
-  if (!rule.pattern) return true
+  if (!rule.pattern) {
+    // Action-only Allow on workspace_run would silently allow every command.
+    if (action === 'workspace_run' && rule.effect === AgentGateEffect.Allow) {
+      return false
+    }
+    return true
+  }
   return agentGateResourcePatternMatch(rule.pattern, resources)
 }
 

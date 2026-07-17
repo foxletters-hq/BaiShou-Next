@@ -1,4 +1,5 @@
 import { DEFAULT_AGENT_GATE_EXCLUSION_LIST } from './agent-gate.defaults'
+import { canPermanentlyAllowShellCommand } from './agent-gate-shell-match.util'
 import type { AgentGateResourceKind, AgentGateResourceRef } from './agent-gate.types'
 
 /** Actions that must never be permanently allowlisted, even via custom IPC/UI. */
@@ -24,11 +25,19 @@ export function canPermanentlyAllowAgentGateAction(
   options?: {
     exclusionList?: readonly string[]
     metadata?: Record<string, unknown>
+    resources?: readonly AgentGateResourceRef[]
   }
 ): boolean {
   const exclusionList = options?.exclusionList ?? DEFAULT_AGENT_GATE_EXCLUSION_LIST
   if (isAgentGateActionInExclusionList(action, exclusionList)) return false
   if (isAgentGateActionForceExcluded(action, options?.metadata)) return false
+  const shellCommands = (options?.resources ?? [])
+    .filter((r) => r.kind === 'shell_command')
+    .map((r) => r.value)
+  if (action === 'workspace_run' || shellCommands.length > 0) {
+    if (shellCommands.length === 0) return false
+    return shellCommands.every((cmd) => canPermanentlyAllowShellCommand(cmd))
+  }
   return true
 }
 

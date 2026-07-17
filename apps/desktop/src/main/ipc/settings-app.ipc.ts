@@ -80,16 +80,82 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-baishou-agent-gate-config', async (_, config: any) => {
     const { ensureAgentGateRuntime } = await import('../services/agent-gate.service')
+    const { AgentGateEffect } = await import('@baishou/shared')
     const rt = await ensureAgentGateRuntime()
     const next = rt.getConfig()
     if (config?.trustMode !== undefined) next.trustMode = config.trustMode
-    if (Array.isArray(config?.allowlist)) next.allowlist = [...config.allowlist]
+    if (Array.isArray(config?.allowlist)) {
+      next.allowlist = config.allowlist
+        .filter(
+          (entry: unknown): entry is {
+            id: string
+            action: string
+            createdAt: number
+            pattern?: string
+            resourceKind?: string
+          } =>
+            !!entry &&
+            typeof entry === 'object' &&
+            typeof (entry as { id?: unknown }).id === 'string' &&
+            typeof (entry as { action?: unknown }).action === 'string' &&
+            typeof (entry as { createdAt?: unknown }).createdAt === 'number'
+        )
+        .map((entry: {
+          id: string
+          action: string
+          createdAt: number
+          pattern?: string
+          resourceKind?: string
+          sourceSessionId?: string
+          sourceRequestId?: string
+        }) => {
+          const action = entry.action.trim()
+          const pattern =
+            typeof entry.pattern === 'string' && entry.pattern.trim()
+              ? entry.pattern.trim()
+              : undefined
+          // workspace_run must never be whole-action allowlisted
+          if (action === 'workspace_run' && !pattern) return null
+          if (pattern === '*' || pattern === '* *' || pattern === '**') return null
+          return {
+            id: entry.id,
+            action,
+            createdAt: entry.createdAt,
+            ...(pattern
+              ? {
+                  pattern,
+                  resourceKind:
+                    entry.resourceKind === 'shell_command' ||
+                    entry.resourceKind === 'workspace_path' ||
+                    entry.resourceKind === 'file_path' ||
+                    entry.resourceKind === 'external_path'
+                      ? entry.resourceKind
+                      : action === 'workspace_run'
+                        ? ('shell_command' as const)
+                        : undefined
+                }
+              : {}),
+            ...(typeof entry.sourceSessionId === 'string'
+              ? { sourceSessionId: entry.sourceSessionId }
+              : {}),
+            ...(typeof entry.sourceRequestId === 'string'
+              ? { sourceRequestId: entry.sourceRequestId }
+              : {})
+          }
+        })
+        .filter(Boolean)
+    }
     if (Array.isArray(config?.exclusionList)) {
       next.exclusionList = config.exclusionList
         .filter((item: unknown): item is string => typeof item === 'string')
         .map((item: string) => item.trim())
         .filter(Boolean)
     }
+    const allowedEffects = new Set([
+      AgentGateEffect.Allow,
+      AgentGateEffect.Ask,
+      AgentGateEffect.Deny
+    ])
     if (Array.isArray(config?.permissionRules)) {
       next.permissionRules = config.permissionRules
         .filter(
@@ -97,16 +163,31 @@ export function registerSettingsAppIPC() {
             !!rule &&
             typeof rule === 'object' &&
             typeof (rule as { action?: unknown }).action === 'string' &&
-            typeof (rule as { effect?: unknown }).effect === 'string'
+            typeof (rule as { effect?: unknown }).effect === 'string' &&
+            allowedEffects.has((rule as { effect: string }).effect as never)
         )
         .map((rule: { action: string; effect: string; pattern?: string }) => ({
           action: rule.action.trim(),
-          effect: rule.effect,
+          effect: rule.effect as (typeof AgentGateEffect)[keyof typeof AgentGateEffect],
           ...(typeof rule.pattern === 'string' && rule.pattern.trim()
             ? { pattern: rule.pattern.trim() }
             : {})
         }))
-        .filter((rule: { action: string }) => rule.action.length > 0)
+        .filter((rule: { action: string; effect: string; pattern?: string }) => {
+          if (!rule.action) return false
+          // Reject silent whole-action Allow for host commands
+          if (
+            rule.action === 'workspace_run' &&
+            rule.effect === AgentGateEffect.Allow &&
+            !rule.pattern
+          ) {
+            return false
+          }
+          if (rule.pattern === '*' || rule.pattern === '**' || rule.pattern === '**/*') {
+            return false
+          }
+          return true
+        })
     }
     if (typeof config?.hideDeniedTools === 'boolean') {
       next.hideDeniedTools = config.hideDeniedTools
