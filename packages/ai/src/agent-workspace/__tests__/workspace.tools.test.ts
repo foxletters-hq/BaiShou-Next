@@ -225,6 +225,16 @@ describe('workspace gate metadata', () => {
     expect(resolveAgentGateToolMetadata('workspace_rename')?.riskLevel).toBe(
       AgentGateRiskLevel.Mutating
     )
+    expect(resolveAgentGateToolMetadata('workspace_run')?.riskLevel).toBe(
+      AgentGateRiskLevel.Mutating
+    )
+    const runMeta = resolveAgentGateToolMetadata('workspace_run')
+    expect(
+      runMeta?.buildMetadata?.(
+        { command: 'rm -rf /' },
+        { workspace: { folderRoot: ROOT } }
+      )?.forceExclusion
+    ).toBe(true)
     expect(resolveAgentGateToolMetadata('workspace_read')).toBeUndefined()
     expect(resolveAgentGateToolMetadata('workspace_list')).toBeUndefined()
   })
