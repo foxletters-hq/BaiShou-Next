@@ -55,6 +55,17 @@ export const AgentGateSettingsSection: React.FC = () => {
     })
   }
 
+  const handleBoolToggle = (
+    key: 'hideDeniedTools' | 'forceAskExternalPath',
+    value: boolean
+  ) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    void persist({
+      ...config,
+      [key]: value
+    })
+  }
+
   const handleRemoveAllowlist = async (entry: AgentGateAllowlistEntry) => {
     const next = {
       ...config,
@@ -93,6 +104,40 @@ export const AgentGateSettingsSection: React.FC = () => {
             </Text>
           </View>
           <Switch value={isFullTrust} onValueChange={handleTrustToggle} />
+        </View>
+        <View style={[styles.row, styles.rowDivider, { borderTopColor: colors.borderSubtle }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('agent.gate.hide_denied', '隐藏被拒绝的工具')}
+            </Text>
+            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+              {t(
+                'agent.gate.hide_denied_hint',
+                '开启后，当前场景下被默认拒绝的工具不会出现在可选列表中'
+              )}
+            </Text>
+          </View>
+          <Switch
+            value={config.hideDeniedTools !== false}
+            onValueChange={(v) => handleBoolToggle('hideDeniedTools', v)}
+          />
+        </View>
+        <View style={[styles.row, styles.rowDivider, { borderTopColor: colors.borderSubtle }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('agent.gate.force_ask_external', '工作区外路径强制确认')}
+            </Text>
+            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+              {t(
+                'agent.gate.force_ask_external_hint',
+                '触及工作区外路径时始终确认，即使完全信任或已始终允许'
+              )}
+            </Text>
+          </View>
+          <Switch
+            value={config.forceAskExternalPath !== false}
+            onValueChange={(v) => handleBoolToggle('forceAskExternalPath', v)}
+          />
         </View>
       </SettingsGroupCard>
 
@@ -170,6 +215,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingVertical: 4
+  },
+  rowDivider: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth
   },
   rowText: {
     flex: 1,
