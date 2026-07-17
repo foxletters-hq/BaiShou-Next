@@ -54,15 +54,15 @@ describe('GraphSyncService write→index order', () => {
     const softDeleteNode = vi.fn()
     const applyRawEdge = vi.fn()
     const softDeleteEdge = vi.fn()
-    const listAllLiveNodeIds = vi.fn().mockResolvedValue(['n1', 'orphan'])
-    const listAllLiveEdgeIds = vi.fn().mockResolvedValue([])
+    const listNodeIds = vi.fn().mockResolvedValue(['n1', 'orphan'])
+    const listEdgeIds = vi.fn().mockResolvedValue([])
     const repo = {
       applyRawNode,
       softDeleteNode,
       applyRawEdge,
       softDeleteEdge,
-      listAllLiveNodeIds,
-      listAllLiveEdgeIds
+      listNodeIds,
+      listEdgeIds
     } as unknown as GraphRepository
 
     const sync = new GraphSyncService(graphManager, repo, null)
@@ -72,6 +72,7 @@ describe('GraphSyncService write→index order', () => {
     expect(applyRawNode).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'n1', name: 'Anson' })
     )
+    expect(listNodeIds).toHaveBeenCalledWith('Personal')
     expect(softDeleteNode).toHaveBeenCalledWith('orphan')
     expect(result.deleted).toBe(1)
     expect(await graphManager.listPendingIndex('nodes')).toHaveLength(0)
@@ -104,19 +105,23 @@ describe('GraphSyncService write→index order', () => {
 
     const softDeleteNode = vi.fn().mockResolvedValue(undefined)
     const softDeleteEdge = vi.fn().mockResolvedValue(undefined)
+    const listNodeIds = vi.fn().mockResolvedValue(['n1', 'ghost'])
+    const listEdgeIds = vi.fn().mockResolvedValue(['e-orphan'])
     const repo = {
       applyRawNode: vi.fn(),
       softDeleteNode,
       applyRawEdge: vi.fn(),
       softDeleteEdge,
-      listAllLiveNodeIds: vi.fn().mockResolvedValue(['n1', 'ghost']),
-      listAllLiveEdgeIds: vi.fn().mockResolvedValue(['e-orphan'])
+      listNodeIds,
+      listEdgeIds
     } as unknown as GraphRepository
 
     const sync = new GraphSyncService(graphManager, repo, null)
     const result = await sync.syncPendingIndex()
 
     expect(result.shards).toBe(0)
+    expect(listNodeIds).toHaveBeenCalledWith('Personal')
+    expect(listEdgeIds).toHaveBeenCalledWith('Personal')
     expect(softDeleteNode).toHaveBeenCalledWith('ghost')
     expect(softDeleteEdge).toHaveBeenCalledWith('e-orphan')
     expect(result.deleted).toBe(2)

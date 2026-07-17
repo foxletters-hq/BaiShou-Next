@@ -17,7 +17,8 @@ export interface GraphForceEdge {
 }
 
 function buildHtml(nodes: GraphForceNode[], edges: GraphForceEdge[]): string {
-  const payload = JSON.stringify({ nodes, edges })
+  // Escape `<` so a node name cannot break out of the surrounding <script> tag.
+  const payload = JSON.stringify({ nodes, edges }).replace(/</g, '\\u003c')
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -184,8 +185,20 @@ export const GraphForceWebView: React.FC<{
         name?: string
         nodeType?: string
       }
-      if (data.type === 'select' && data.id && data.name && data.nodeType) {
-        onSelectNode?.({ id: data.id, name: data.name, nodeType: data.nodeType })
+      if (
+        data.type === 'select' &&
+        typeof data.id === 'string' &&
+        typeof data.name === 'string' &&
+        typeof data.nodeType === 'string' &&
+        data.id.length > 0 &&
+        data.id.length < 128 &&
+        nodes.some((n) => n.id === data.id)
+      ) {
+        onSelectNode?.({
+          id: data.id,
+          name: data.name.slice(0, 200),
+          nodeType: data.nodeType.slice(0, 64)
+        })
       }
     } catch {
       // ignore
@@ -196,7 +209,7 @@ export const GraphForceWebView: React.FC<{
     <View style={styles.wrap}>
       <WebView
         ref={webRef}
-        originWhitelist={['*']}
+        originWhitelist={['about:blank']}
         source={{ html }}
         onMessage={onMessage}
         style={styles.web}

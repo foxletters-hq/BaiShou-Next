@@ -175,6 +175,9 @@ export function assignReloadAgentDatabaseHandler(
       })
     }
 
+    const { getMobileRawDataSourceManager } = await import(
+      '../../services/mobile-raw-data-source.runtime'
+    )
     const nextIncrementalSyncService = new MobileIncrementalSyncService(
       newRuntime.settingsManager,
       archiveService,
@@ -190,7 +193,8 @@ export function assignReloadAgentDatabaseHandler(
         }))
       },
       newRuntime.assistantManager,
-      newRuntime.sessionManager
+      newRuntime.sessionManager,
+      () => getMobileRawDataSourceManager()
     )
 
     if (isMounted()) {

@@ -12,7 +12,7 @@ export interface MemoryEmbedSink {
     groupId: string
   }): Promise<void>
   deleteBySource?(sourceType: string, sourceId: string): Promise<void>
-  listSourceIdsByType?(sourceType: string): Promise<string[]>
+  listSourceIdsByType?(sourceType: string, groupId?: string): Promise<string[]>
 }
 
 /**
@@ -24,10 +24,13 @@ export class MemorySyncService {
     private readonly sink: MemoryEmbedSink
   ) {}
 
-  async syncPendingIndex(): Promise<{ shards: number; upserted: number; deleted: number }> {
+  async syncPendingIndex(options?: {
+    vaultName?: string
+  }): Promise<{ shards: number; upserted: number; deleted: number }> {
     const pending = await this.memoryManager.listPendingIndex()
     let upserted = 0
     let deleted = 0
+    let inferredVault = options?.vaultName
 
     for (const shard of pending) {
       const rows = collapseJsonlById(
@@ -36,6 +39,7 @@ export class MemorySyncService {
 
       for (const row of rows) {
         if (!row?.id) continue
+        if (!inferredVault && row.vaultName) inferredVault = row.vaultName
         if (row.deletedAt != null) {
           await this.sink.deleteBySource?.(MEMORY_SOURCE_TYPE, row.id)
           deleted += 1
@@ -53,22 +57,40 @@ export class MemorySyncService {
       await this.memoryManager.commitIndexed(shard.relativePath, shard.contentHash)
     }
 
-    // Always: drop memory embeddings whose ids no longer exist in any JSONL shard
+    // Orphan sweep scoped to vault(s) present in this manager's JSONL only.
     if (this.sink.listSourceIdsByType && this.sink.deleteBySource) {
-      const liveIds = new Set<string>()
+      const liveIdsByVault = new Map<string, Set<string>>()
       for (const shard of await this.memoryManager.listShards()) {
         const rows = collapseJsonlById(
           (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
         )
         for (const row of rows) {
-          if (row?.id && row.deletedAt == null) liveIds.add(row.id)
+          if (row?.id && row.deletedAt == null && row.vaultName) {
+            if (!inferredVault) inferredVault = row.vaultName
+            let set = liveIdsByVault.get(row.vaultName)
+            if (!set) {
+              set = new Set()
+              liveIdsByVault.set(row.vaultName, set)
+            }
+            set.add(row.id)
+          }
         }
       }
-      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE)
-      for (const id of dbIds) {
-        if (!liveIds.has(id)) {
-          await this.sink.deleteBySource(MEMORY_SOURCE_TYPE, id)
-          deleted += 1
+
+      const vaults = new Set<string>([
+        ...liveIdsByVault.keys(),
+        ...(inferredVault ? [inferredVault] : [])
+      ])
+
+      for (const vault of vaults) {
+        const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
+        const groupId = `memory:${vault}`
+        const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, groupId)
+        for (const id of dbIds) {
+          if (!liveIds.has(id)) {
+            await this.sink.deleteBySource(MEMORY_SOURCE_TYPE, id)
+            deleted += 1
+          }
         }
       }
     }
