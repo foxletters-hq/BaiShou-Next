@@ -78,4 +78,38 @@ describe('ThreeWaySyncManifestMixin.downloadFile', () => {
     const result = await (service as any).downloadFile('Personal/exists.md')
     expect(result).toBe(true)
   })
+
+  it('下载 Memory 月分片后立刻标 pending-index', async () => {
+    const memoryDir = path.join(vaultPath, 'Personal', 'Memory')
+    fs.mkdirSync(memoryDir, { recursive: true })
+    const shardPath = path.join(memoryDir, '2026-07.jsonl')
+    fs.writeFileSync(
+      shardPath,
+      `${JSON.stringify({ id: 'a', updatedAt: 1, content: 'old' })}\n`,
+      'utf8'
+    )
+    // Pretend already indexed with current hash
+    const { MonthlyJsonlStore } = await import('../../raw-data/stores/monthly-jsonl.store')
+    const { createNodeFileSystem } = await import('../../fs/create-node-file-system')
+    const store = new MonthlyJsonlStore({
+      fs: createNodeFileSystem(),
+      rootDir: memoryDir
+    })
+    const hash = await store.computeShardHash('2026-07')
+    await store.markIndexed('2026-07.jsonl', hash)
+    expect(await store.listPendingIndex()).toHaveLength(0)
+
+    downloadFile.mockImplementation(async (_remote: string, localDest: string) => {
+      await fs.promises.mkdir(path.dirname(localDest), { recursive: true })
+      await fs.promises.writeFile(
+        localDest,
+        `${JSON.stringify({ id: 'a', updatedAt: 2, content: 'from-remote' })}\n`,
+        'utf8'
+      )
+    })
+
+    const result = await (service as any).downloadFile('Personal/Memory/2026-07.jsonl')
+    expect(result).toBe(true)
+    expect(await store.listPendingIndex()).toHaveLength(1)
+  })
 })

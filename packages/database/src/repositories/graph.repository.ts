@@ -666,6 +666,24 @@ export class GraphRepository {
     return rows.map((r) => r.id)
   }
 
+  /** All live node ids across vaults (for orphan sweep after pending-index). */
+  async listAllLiveNodeIds(): Promise<string[]> {
+    const rows = await this.database
+      .select({ id: graphNodesTable.id })
+      .from(graphNodesTable)
+      .where(isNull(graphNodesTable.deletedAt))
+    return rows.map((r) => r.id)
+  }
+
+  /** All live edge ids across vaults (for orphan sweep after pending-index). */
+  async listAllLiveEdgeIds(): Promise<string[]> {
+    const rows = await this.database
+      .select({ id: graphEdgesTable.id })
+      .from(graphEdgesTable)
+      .where(isNull(graphEdgesTable.deletedAt))
+    return rows.map((r) => r.id)
+  }
+
   async listPendingEdges(vaultName: string): Promise<GraphEdgeRow[]> {
     const rows = await this.database
       .select()

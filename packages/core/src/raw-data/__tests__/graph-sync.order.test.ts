@@ -54,11 +54,15 @@ describe('GraphSyncService write→index order', () => {
     const softDeleteNode = vi.fn()
     const applyRawEdge = vi.fn()
     const softDeleteEdge = vi.fn()
+    const listAllLiveNodeIds = vi.fn().mockResolvedValue(['n1', 'orphan'])
+    const listAllLiveEdgeIds = vi.fn().mockResolvedValue([])
     const repo = {
       applyRawNode,
       softDeleteNode,
       applyRawEdge,
-      softDeleteEdge
+      softDeleteEdge,
+      listAllLiveNodeIds,
+      listAllLiveEdgeIds
     } as unknown as GraphRepository
 
     const sync = new GraphSyncService(graphManager, repo, null)
@@ -68,6 +72,8 @@ describe('GraphSyncService write→index order', () => {
     expect(applyRawNode).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'n1', name: 'Anson' })
     )
+    expect(softDeleteNode).toHaveBeenCalledWith('orphan')
+    expect(result.deleted).toBe(1)
     expect(await graphManager.listPendingIndex('nodes')).toHaveLength(0)
   })
 })

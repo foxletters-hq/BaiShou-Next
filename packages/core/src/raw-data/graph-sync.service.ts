@@ -98,6 +98,42 @@ export class GraphSyncService {
       await this.graphManager.commitIndexed(collection!, shard.relativePath, shard.contentHash)
     }
 
+    // After dirty shards: soft-delete graph rows whose ids no longer exist in any JSONL shard
+    if (pending.length > 0) {
+      const liveNodeIds = new Set<string>()
+      const liveEdgeIds = new Set<string>()
+
+      for (const shard of await this.graphManager.listShards()) {
+        const [collection] = shard.relativePath.split(/[/\\]/)
+        if (collection !== 'nodes' && collection !== 'edges') continue
+        const rows = collapseJsonlById(
+          (await this.graphManager.readShardRecords(shard.relativePath)) as Array<{
+            id: string
+            updatedAt: number
+            deletedAt?: number | null
+          }>
+        )
+        for (const row of rows) {
+          if (!row?.id || row.deletedAt != null) continue
+          if (collection === 'nodes') liveNodeIds.add(row.id)
+          else liveEdgeIds.add(row.id)
+        }
+      }
+
+      for (const id of await this.repo.listAllLiveNodeIds()) {
+        if (!liveNodeIds.has(id)) {
+          await this.repo.softDeleteNode(id)
+          deleted += 1
+        }
+      }
+      for (const id of await this.repo.listAllLiveEdgeIds()) {
+        if (!liveEdgeIds.has(id)) {
+          await this.repo.softDeleteEdge(id)
+          deleted += 1
+        }
+      }
+    }
+
     return {
       shards: pending.length,
       nodesUpserted,
