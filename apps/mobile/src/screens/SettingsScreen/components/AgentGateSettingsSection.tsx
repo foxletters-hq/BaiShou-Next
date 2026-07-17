@@ -4,20 +4,23 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  LayoutAnimation,
-  TextInput
+  LayoutAnimation
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
+  AGENT_GATE_PROFILE_DEFAULT_RULES,
+  AgentGateEffect,
+  AgentGateProfileId,
   AgentGateTrustMode,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   DEFAULT_AGENT_GATE_EXCLUSION_LIST,
   DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   type BaishouAgentGateConfig,
-  type AgentGateAllowlistEntry
+  type AgentGateAllowlistEntry,
+  type AgentGatePermissionRule
 } from '@baishou/shared'
 import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/database'
-import { Switch, useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { Switch, useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { SettingsGroupCard } from './SettingsGroupCard'
 
@@ -28,6 +31,9 @@ export const AgentGateSettingsSection: React.FC = () => {
   const { services, dbReady, reloadAgentGateConfig } = useBaishou()
   const [config, setConfig] = useState<BaishouAgentGateConfig>(DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
   const [exclusionDraft, setExclusionDraft] = useState('')
+  const [ruleAction, setRuleAction] = useState('')
+  const [rulePattern, setRulePattern] = useState('')
+  const [ruleEffect, setRuleEffect] = useState<AgentGateEffect>(AgentGateEffect.Ask)
 
   const loadConfig = useCallback(async () => {
     if (!services || !dbReady) return
@@ -38,7 +44,8 @@ export const AgentGateSettingsSection: React.FC = () => {
       ...DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
       ...saved,
       exclusionList: [...(saved.exclusionList ?? DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList)],
-      allowlist: [...(saved.allowlist ?? [])]
+      allowlist: [...(saved.allowlist ?? [])],
+      permissionRules: [...(saved.permissionRules ?? [])]
     })
   }, [services, dbReady])
 
@@ -95,6 +102,7 @@ export const AgentGateSettingsSection: React.FC = () => {
       : [...DEFAULT_AGENT_GATE_EXCLUSION_LIST]
   const threshold =
     config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
+  const permissionRules = config.permissionRules ?? []
 
   const addExclusion = () => {
     const action = exclusionDraft.trim()
@@ -115,18 +123,58 @@ export const AgentGateSettingsSection: React.FC = () => {
     })
   }
 
+  const addPermissionRule = () => {
+    const action = ruleAction.trim()
+    if (!action) return
+    const next: AgentGatePermissionRule = {
+      action,
+      effect: ruleEffect,
+      ...(rulePattern.trim() ? { pattern: rulePattern.trim() } : {})
+    }
+    void persist({
+      ...config,
+      permissionRules: [...permissionRules, next]
+    }).then(() => {
+      setRuleAction('')
+      setRulePattern('')
+      setRuleEffect(AgentGateEffect.Ask)
+    })
+  }
+
+  const removePermissionRule = (index: number) => {
+    void persist({
+      ...config,
+      permissionRules: permissionRules.filter((_, i) => i !== index)
+    })
+  }
+
+  const removeBtn = (onPress: () => void) => (
+    <TouchableOpacity onPress={onPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <Text style={[styles.removeText, { color: colors.error }]}>
+        {t('common.remove', '移除')}
+      </Text>
+    </TouchableOpacity>
+  )
+
   return (
-    <View style={styles.section}>
+    <>
       <SettingsGroupCard>
-        <Text style={[styles.groupTitle, { color: colors.textPrimary }]}>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('agent.gate.settings_title', 'Agent 操作确认')}
         </Text>
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>
+          {t(
+            'agent.gate.settings_desc',
+            '控制伙伴执行写入、修改等敏感操作前是否需要你确认。'
+          )}
+        </Text>
+
         <View style={styles.row}>
           <View style={styles.rowText}>
             <Text style={[styles.label, { color: colors.textPrimary }]}>
               {t('agent.gate.full_trust', '完全信任模式')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+            <Text style={[styles.hint, { color: colors.textSecondary }]}>
               {t(
                 'agent.gate.full_trust_hint',
                 '开启后除高危操作外自动放行；关闭时每次敏感操作需确认'
@@ -135,12 +183,14 @@ export const AgentGateSettingsSection: React.FC = () => {
           </View>
           <Switch value={isFullTrust} onValueChange={handleTrustToggle} />
         </View>
-        <View style={[styles.row, styles.rowDivider, { borderTopColor: colors.borderSubtle }]}>
+
+        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+        <View style={styles.row}>
           <View style={styles.rowText}>
             <Text style={[styles.label, { color: colors.textPrimary }]}>
               {t('agent.gate.hide_denied', '隐藏被拒绝的工具')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+            <Text style={[styles.hint, { color: colors.textSecondary }]}>
               {t(
                 'agent.gate.hide_denied_hint',
                 '开启后，当前场景下被默认拒绝的工具不会出现在可选列表中'
@@ -152,12 +202,14 @@ export const AgentGateSettingsSection: React.FC = () => {
             onValueChange={(v) => handleBoolToggle('hideDeniedTools', v)}
           />
         </View>
-        <View style={[styles.row, styles.rowDivider, { borderTopColor: colors.borderSubtle }]}>
+
+        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+        <View style={styles.row}>
           <View style={styles.rowText}>
             <Text style={[styles.label, { color: colors.textPrimary }]}>
               {t('agent.gate.force_ask_external', '工作区外路径强制确认')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary }]}>
+            <Text style={[styles.hint, { color: colors.textSecondary }]}>
               {t(
                 'agent.gate.force_ask_external_hint',
                 '触及工作区外路径时始终确认，即使完全信任或已始终允许'
@@ -169,56 +221,150 @@ export const AgentGateSettingsSection: React.FC = () => {
             onValueChange={(v) => handleBoolToggle('forceAskExternalPath', v)}
           />
         </View>
-        <View style={[styles.row, styles.rowDivider, { borderTopColor: colors.borderSubtle }]}>
-          <View style={styles.rowText}>
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t('agent.gate.repeat_threshold', '同参连打再确认阈值')}
+
+        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+        <Text style={[styles.label, { color: colors.textPrimary }]}>
+          {t('agent.gate.repeat_threshold', '同参连打再确认阈值')}
+        </Text>
+        <Text style={[styles.hint, { color: colors.textSecondary, marginBottom: 6 }]}>
+          {t(
+            'agent.gate.repeat_threshold_hint',
+            '相同指纹连续请求达到该次数时再次弹出；0 关闭。确认卡会显示短指纹。'
+          )}
+        </Text>
+        <Input
+          value={String(threshold)}
+          keyboardType="number-pad"
+          onChangeText={(text) => {
+            const n = Number(text)
+            if (!Number.isFinite(n)) return
+            void persist({
+              ...config,
+              repeatAssertAskThreshold: Math.max(0, Math.min(20, Math.floor(n)))
+            })
+          }}
+          containerStyle={{ marginTop: 4 }}
+        />
+      </SettingsGroupCard>
+
+      <SettingsGroupCard>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+          {t('agent.gate.profile_title', '场景默认松紧')}
+        </Text>
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>
+          {t(
+            'agent.gate.profile_hint',
+            '伙伴会话与工作区会话使用不同默认规则；下方可叠加你的自定义规则。'
+          )}
+        </Text>
+        <ProfileRulesReadonly
+          title={t('agent.gate.profile_companion', '伙伴会话')}
+          rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[AgentGateProfileId.Companion]]}
+          colors={colors}
+        />
+        <ProfileRulesReadonly
+          title={t('agent.gate.profile_workspace', '工作区会话')}
+          rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[AgentGateProfileId.Workspace]]}
+          colors={colors}
+        />
+
+        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+        <Text style={[styles.label, { color: colors.textPrimary, marginBottom: 8 }]}>
+          {t('agent.gate.user_rules', '我的额外规则')}
+        </Text>
+        {permissionRules.length === 0 ? (
+          <Text style={[styles.empty, { color: colors.textSecondary }]}>
+            {t('agent.gate.user_rules_empty', '暂无')}
+          </Text>
+        ) : (
+          permissionRules.map((rule, index) => (
+            <View
+              key={`${rule.action}-${index}`}
+              style={[styles.listRow, { borderBottomColor: colors.borderSubtle }]}
+            >
+              <Text style={[styles.listPrimary, { color: colors.textPrimary, flex: 1 }]}>
+                {rule.action}
+                {rule.pattern ? ` · ${rule.pattern}` : ''} → {rule.effect}
+              </Text>
+              {removeBtn(() => removePermissionRule(index))}
+            </View>
+          ))
+        )}
+        <Input
+          value={ruleAction}
+          onChangeText={setRuleAction}
+          placeholder="action"
+          autoCapitalize="none"
+          autoCorrect={false}
+          containerStyle={{ marginTop: 8 }}
+        />
+        <Input
+          value={rulePattern}
+          onChangeText={setRulePattern}
+          placeholder={t('agent.gate.rule_pattern_optional', '可选 pattern')}
+          autoCapitalize="none"
+          autoCorrect={false}
+          containerStyle={{ marginTop: 8 }}
+        />
+        <View style={styles.effectRow}>
+          {([AgentGateEffect.Allow, AgentGateEffect.Ask, AgentGateEffect.Deny] as const).map(
+            (effect) => {
+              const active = ruleEffect === effect
+              return (
+                <TouchableOpacity
+                  key={effect}
+                  style={[
+                    styles.effectChip,
+                    {
+                      borderColor: active ? colors.primary : colors.borderMuted,
+                      backgroundColor: active ? colors.primaryLight : 'transparent'
+                    }
+                  ]}
+                  onPress={() => setRuleEffect(effect)}
+                >
+                  <Text
+                    style={{
+                      color: active ? colors.primary : colors.textSecondary,
+                      fontWeight: active ? '600' : '400',
+                      fontSize: 13
+                    }}
+                  >
+                    {effect}
+                  </Text>
+                </TouchableOpacity>
+              )
+            }
+          )}
+          <TouchableOpacity
+            onPress={addPermissionRule}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={[styles.addText, { color: colors.primary }]}>
+              {t('common.add', '添加')}
             </Text>
-            <Text style={[styles.hint, { color: colors.textTertiary }]}>
-              {t(
-                'agent.gate.repeat_threshold_hint',
-                '相同指纹连续请求达到该次数时再次弹出；0 关闭。确认卡会显示短指纹。'
-              )}
-            </Text>
-            <TextInput
-              value={String(threshold)}
-              keyboardType="number-pad"
-              onChangeText={(text) => {
-                const n = Number(text)
-                if (!Number.isFinite(n)) return
-                void persist({
-                  ...config,
-                  repeatAssertAskThreshold: Math.max(0, Math.min(20, Math.floor(n)))
-                })
-              }}
-              style={[
-                styles.input,
-                { color: colors.textPrimary, borderColor: colors.borderSubtle }
-              ]}
-            />
-          </View>
+          </TouchableOpacity>
         </View>
       </SettingsGroupCard>
 
       <SettingsGroupCard>
-        <Text style={[styles.groupTitle, { color: colors.textPrimary }]}>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('agent.gate.allowlist_title', '始终允许的操作')}
         </Text>
         {config.allowlist.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.textTertiary }]}>
+          <Text style={[styles.empty, { color: colors.textSecondary }]}>
             {t('agent.gate.allowlist_empty', '暂无；在对话中点「始终允许」后会出现在这里')}
           </Text>
         ) : (
           config.allowlist.map((entry) => (
             <View
               key={entry.id}
-              style={[styles.allowlistRow, { borderBottomColor: colors.borderSubtle }]}
+              style={[styles.listRow, { borderBottomColor: colors.borderSubtle }]}
             >
-              <View style={styles.allowlistText}>
-                <Text style={[styles.allowlistAction, { color: colors.textPrimary }]}>
+              <View style={styles.listText}>
+                <Text style={[styles.listPrimary, { color: colors.textPrimary }]}>
                   {entry.action}
                 </Text>
-                <Text style={[styles.allowlistMeta, { color: colors.textTertiary }]}>
+                <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
                   {entry.pattern
                     ? t('agent.gate.allowlist_pattern', '模式：{{pattern}}', {
                         pattern: entry.pattern
@@ -228,91 +374,107 @@ export const AgentGateSettingsSection: React.FC = () => {
                   {new Date(entry.createdAt).toLocaleString()}
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => void handleRemoveAllowlist(entry)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={t('common.delete', '删除')}
-              >
-                <Text style={{ color: colors.error, fontSize: 13, fontWeight: '600' }}>
-                  {t('common.remove', '移除')}
-                </Text>
-              </TouchableOpacity>
+              {removeBtn(() => void handleRemoveAllowlist(entry))}
             </View>
           ))
         )}
       </SettingsGroupCard>
 
       <SettingsGroupCard>
-        <Text style={[styles.groupTitle, { color: colors.textPrimary }]}>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('agent.gate.exclusion_title', '每次都需确认（不能始终允许）')}
         </Text>
-        <Text style={[styles.hint, { color: colors.textTertiary, marginBottom: 8 }]}>
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>
           {t(
             'agent.gate.exclusion_hint',
             '下列高危操作即使开启完全信任，仍会征求你的确认，且无法加入始终允许。可增删。'
           )}
         </Text>
         {exclusionList.map((action) => (
-          <View key={action} style={styles.exclusionRow}>
-            <Text style={[styles.exclusionItem, { color: colors.textSecondary, flex: 1 }]}>
+          <View
+            key={action}
+            style={[styles.listRow, { borderBottomColor: colors.borderSubtle }]}
+          >
+            <Text style={[styles.listPrimary, { color: colors.textPrimary, flex: 1 }]}>
               {action}
             </Text>
-            <TouchableOpacity onPress={() => removeExclusion(action)} hitSlop={8}>
-              <Text style={{ color: colors.error, fontSize: 13, fontWeight: '600' }}>
-                {t('common.remove', '移除')}
-              </Text>
-            </TouchableOpacity>
+            {removeBtn(() => removeExclusion(action))}
           </View>
         ))}
         <View style={styles.addRow}>
-          <TextInput
+          <Input
             value={exclusionDraft}
             onChangeText={setExclusionDraft}
             placeholder="action"
-            placeholderTextColor={colors.textTertiary}
-            style={[
-              styles.input,
-              { flex: 1, color: colors.textPrimary, borderColor: colors.borderSubtle }
-            ]}
+            autoCapitalize="none"
+            autoCorrect={false}
+            containerStyle={{ flex: 1 }}
           />
-          <TouchableOpacity onPress={addExclusion} hitSlop={8}>
-            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
+          <TouchableOpacity
+            onPress={addExclusion}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={[styles.addText, { color: colors.primary }]}>
               {t('common.add', '添加')}
             </Text>
           </TouchableOpacity>
         </View>
       </SettingsGroupCard>
+    </>
+  )
+}
+
+function ProfileRulesReadonly({
+  title,
+  rules,
+  colors
+}: {
+  title: string
+  rules: AgentGatePermissionRule[]
+  colors: { textPrimary: string; textSecondary: string }
+}) {
+  return (
+    <View style={styles.profileBlock}>
+      <Text style={[styles.profileTitle, { color: colors.textPrimary }]}>{title}</Text>
+      {rules.map((rule) => (
+        <Text
+          key={`${rule.action}-${rule.effect}-${rule.pattern ?? ''}`}
+          style={[styles.profileRule, { color: colors.textSecondary }]}
+        >
+          {rule.action}
+          {rule.pattern ? ` (${rule.pattern})` : ''} → {rule.effect}
+        </Text>
+      ))}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: 12
-  },
-  groupTitle: {
-    fontSize: 16,
+  cardTitle: {
+    fontSize: 15,
     fontWeight: '700',
+    marginBottom: 8
+  },
+  desc: {
+    fontSize: 13,
+    lineHeight: 20,
     marginBottom: 12
+  },
+  divider: {
+    height: 1,
+    marginVertical: 14
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4
-  },
-  rowDivider: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth
+    gap: 12
   },
   rowText: {
     flex: 1,
     gap: 4
   },
   label: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600'
   },
   hint: {
@@ -324,35 +486,32 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingVertical: 4
   },
-  allowlistRow: {
+  listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
-  allowlistText: {
+  listText: {
     flex: 1,
     gap: 2,
     paddingRight: 12
   },
-  allowlistAction: {
+  listPrimary: {
     fontSize: 14,
     fontWeight: '600'
   },
-  allowlistMeta: {
+  listMeta: {
     fontSize: 11
   },
-  exclusionItem: {
+  removeText: {
     fontSize: 13,
-    fontWeight: '500',
-    paddingVertical: 4
+    fontWeight: '600'
   },
-  exclusionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4
+  addText: {
+    fontSize: 13,
+    fontWeight: '700'
   },
   addRow: {
     flexDirection: 'row',
@@ -360,12 +519,30 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8
   },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    paddingHorizontal: 10,
+  effectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10
+  },
+  effectChip: {
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    fontSize: 14,
-    marginTop: 8
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth
+  },
+  profileBlock: {
+    marginBottom: 12,
+    gap: 4
+  },
+  profileTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2
+  },
+  profileRule: {
+    fontSize: 12,
+    lineHeight: 18
   }
 })
