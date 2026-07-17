@@ -4,7 +4,7 @@
 > 日期：2026-07-17  
 > 一句话：把门禁补可靠，再去做「聊天写入关系图」。  
 > 相关：[记忆图谱与知识库设计方案.md](./记忆图谱与知识库设计方案.md)  
-> **实现进度：** G0–G2.5 已落地；G3（Shell 结构化匹配）暂无 shell 工具，跳过待上线后再做。图谱 P0+P1 已接上，`graph_upsert` Ask 通过后真写 Graph JSONL。
+> **实现进度：** G0–G3 已落地（含 allowlist pattern、exclusion/规则/阈值设置 UI、指纹展示、`workspace_run` + 命令前缀匹配；移动端不注册 `workspace_run`）。图谱 P0+P1 已接上，`graph_upsert` Ask 通过后真写 Graph JSONL。
 
 ---
 
@@ -403,7 +403,7 @@ interface AgentGateSessionState {
 | **G1** | §4.1 外路径强制 Ask；§4.2 重复调用；§4.3 Always 级联放行；单元测试 | 测例外路径 / 三连同参 / Always 后 pending 清空 | **本阶段完成前不开图谱 P1** |
 | **G2** | §5 反馈文案统一、hideDeniedTools、companion/workspace profile；可选 allowlist pattern | 伙伴与工作区默认松紧可区分 | G2 完成后允许开图谱 P1 |
 | **G2.5** | §7 `graph_upsert` metadata + 占位工具 + Ask 卡片 | 聊天可弹出「拟写入关系」确认，点允许后得到「尚未启用」或 P1 真写 | 可紧贴 P1 前夕 |
-| **G3** | §6 Shell 结构化匹配、只读默认 | shell 工具上线前必达 | **当前无 shell 工具，已跳过**；不阻塞图谱 |
+| **G3** | §6 Shell 结构化匹配、只读默认 | shell 工具上线前必达 | **已落地**：`workspace_run` + `shell_command` 前缀匹配；workspace 只读默认 Allow |
 
 推荐节奏：
 
