@@ -5,6 +5,7 @@ import {
   type ContextAtMessageResult,
   AIProviderRegistry,
   ToolRegistry,
+  DESKTOP_ONLY_WORKSPACE_TOOL_IDS,
   webSearchConfigToUserConfig
 } from '@baishou/ai'
 import {
@@ -148,7 +149,10 @@ export async function buildMobileStreamUserConfig(
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
-    disabledToolIds: toolManagementConfig.disabledToolIds,
+    disabledToolIds: [
+      ...toolManagementConfig.disabledToolIds,
+      ...DESKTOP_ONLY_WORKSPACE_TOOL_IDS
+    ],
     recentCount:
       assistantContextWindow !== undefined
         ? assistantContextWindow < 0
