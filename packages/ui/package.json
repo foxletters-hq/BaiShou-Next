@@ -88,6 +88,7 @@
     "react-native-gesture-handler": ">=2",
     "react-native-markdown-display": "^7.0.0-alpha.2",
     "react-native-reanimated": ">=4",
+    "react-native-safe-area-context": ">=5",
     "react-native-streamdown": "0.2.0",
     "react-native-svg": ">=15",
     "react-native-webview": ">=13",

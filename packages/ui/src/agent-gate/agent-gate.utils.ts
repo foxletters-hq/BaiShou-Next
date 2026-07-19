@@ -4,7 +4,8 @@ import {
   extractAgentGateResourcesFromMetadata,
   resolveCommandPrefixPatternFromCommand,
   type AgentGateReply,
-  type AgentGateRequest
+  type AgentGateRequest,
+  type AgentGateResourceRef
 } from '@baishou/shared'
 
 export interface AgentGateReplyPayload {
@@ -14,9 +15,13 @@ export interface AgentGateReplyPayload {
   selectedOptionIds?: string[]
 }
 
+export function resolveRequestGateResources(request: AgentGateRequest): AgentGateResourceRef[] {
+  return extractAgentGateResourcesFromMetadata(request.metadata)
+}
+
 export function canAlwaysAllowForRequest(request: AgentGateRequest): boolean {
   if (request.kind !== AgentGateKind.Tool) return false
-  const resources = extractAgentGateResourcesFromMetadata(request.metadata)
+  const resources = resolveRequestGateResources(request)
   return canPermanentlyAllowAgentGateAction(request.action, {
     metadata: request.metadata,
     resources
@@ -41,8 +46,7 @@ export function shouldShowCustomRejectInput(request: AgentGateRequest): boolean 
  */
 export function resolveAlwaysAllowPrefixHint(request: AgentGateRequest): string | null {
   if (request.action !== 'workspace_run') return null
-  const resources = extractAgentGateResourcesFromMetadata(request.metadata)
-  const shell = resources.find((r) => r.kind === 'shell_command')
+  const shell = resolveRequestGateResources(request).find((r) => r.kind === 'shell_command')
   if (!shell) return null
   return resolveCommandPrefixPatternFromCommand(shell.value)
 }

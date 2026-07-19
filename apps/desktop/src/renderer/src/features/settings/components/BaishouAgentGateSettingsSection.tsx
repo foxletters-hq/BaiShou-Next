@@ -110,8 +110,7 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
 
   if (!config) return null
 
-  const exclusionList =
-    config.exclusionList.length > 0 ? config.exclusionList : [...DEFAULT_AGENT_GATE_EXCLUSION_LIST]
+  const exclusionList = config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST]
   const threshold =
     config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
   const permissionRules = config.permissionRules ?? []

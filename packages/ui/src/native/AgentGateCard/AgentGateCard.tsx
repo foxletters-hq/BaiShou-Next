@@ -1,14 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ScrollView,
-  SafeAreaView
-} from 'react-native'
+import { Modal, View, Text, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import { Button } from '../Button'
@@ -34,6 +26,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const insets = useSafeAreaInsets()
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
@@ -68,7 +61,15 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
       animationType="fade"
       onRequestClose={() => void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })}
     >
-      <View style={[styles.overlay, { backgroundColor: colors.bgOverlay }]}>
+      <View
+        style={[
+          styles.overlay,
+          {
+            backgroundColor: colors.bgOverlay,
+            paddingBottom: 16 + insets.bottom
+          }
+        ]}
+      >
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={() => void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })}
@@ -76,7 +77,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           accessibilityLabel={t('agent_gate.reject', '拒绝')}
         />
 
-        <SafeAreaView style={styles.safeBottom} pointerEvents="box-none">
         <View
           style={[
             styles.card,
@@ -281,7 +281,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             )}
           </View>
         </View>
-        </SafeAreaView>
       </View>
     </Modal>
   )
@@ -292,9 +291,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     paddingHorizontal: 16
-  },
-  safeBottom: {
-    width: '100%'
   },
   card: {
     borderRadius: 16,
