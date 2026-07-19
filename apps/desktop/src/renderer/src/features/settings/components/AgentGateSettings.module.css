@@ -6,13 +6,20 @@
 }
 
 .paddedBody {
-  padding: 0 0 12px;
+  padding: 0 16px 12px;
+}
+
+/* ListTile 自带 16px 水平 padding；外层已有 cardBody 边距时回拉到卡片全宽 */
+.paddedBody :global(.settings-list-tile) {
+  margin-left: -16px;
+  margin-right: -16px;
+  width: calc(100% + 32px);
 }
 
 .segmented {
   display: inline-flex;
   gap: 0;
-  margin: 4px 16px 8px;
+  margin: 4px 0 8px;
   padding: 3px;
   border-radius: 10px;
   background: var(--bg-surface-high, var(--bg-surface));
@@ -46,7 +53,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px 12px;
+  padding: 8px 0 12px;
   flex-wrap: wrap;
 }
 
@@ -80,7 +87,7 @@
 }
 
 .profileBlock {
-  padding: 8px 16px 4px;
+  padding: 8px 0 4px;
 }
 
 .profileTitle {
@@ -99,7 +106,7 @@
 }
 
 .sectionLabel {
-  padding: 8px 16px 0;
+  padding: 8px 0 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -107,7 +114,7 @@
 
 .emptyHint {
   margin: 0;
-  padding: 8px 16px 12px;
+  padding: 8px 0 12px;
   font-size: 13px;
   color: var(--text-secondary);
 }

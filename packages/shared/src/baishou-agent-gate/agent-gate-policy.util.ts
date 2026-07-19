@@ -57,25 +57,43 @@ const METADATA_RESOURCE_FIELDS: ReadonlyArray<{
   { field: 'shell_command', kind: 'shell_command' }
 ]
 
+const AGENT_GATE_RESOURCE_KINDS = new Set<AgentGateResourceKind>([
+  'file_path',
+  'workspace_path',
+  'external_path',
+  'shell_command'
+])
+
+function isAgentGateResourceRef(value: unknown): value is AgentGateResourceRef {
+  if (!value || typeof value !== 'object') return false
+  const kind = (value as { kind?: unknown }).kind
+  const resourceValue = (value as { value?: unknown }).value
+  return (
+    typeof kind === 'string' &&
+    AGENT_GATE_RESOURCE_KINDS.has(kind as AgentGateResourceKind) &&
+    typeof resourceValue === 'string' &&
+    resourceValue.trim().length > 0
+  )
+}
+
 /** Derive structured resources from gate metadata for pattern evaluation / UI display */
 export function extractAgentGateResourcesFromMetadata(
   metadata?: Record<string, unknown>
 ): AgentGateResourceRef[] {
   if (!metadata) return []
 
-  const resources: AgentGateResourceRef[] = []
-  const seen = new Set<string>()
-
+  const fromFields: AgentGateResourceRef[] = []
   for (const { field, kind } of METADATA_RESOURCE_FIELDS) {
     const value = metadata[field]
     if (typeof value !== 'string' || !value.trim()) continue
-    const key = `${kind}:${value}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    resources.push({ kind, value })
+    fromFields.push({ kind, value })
   }
 
-  return resources
+  const nested = Array.isArray(metadata.resources)
+    ? metadata.resources.filter(isAgentGateResourceRef)
+    : undefined
+
+  return mergeAgentGateResources(fromFields, nested)
 }
 
 export function mergeAgentGateResources(

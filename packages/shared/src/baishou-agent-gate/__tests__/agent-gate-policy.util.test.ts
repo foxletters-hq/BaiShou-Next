@@ -40,6 +40,23 @@ describe('agent-gate-policy.util', () => {
     ])
   })
 
+  it('extracts nested metadata.resources and dedupes with field paths', () => {
+    expect(
+      extractAgentGateResourcesFromMetadata({
+        shellCommand: 'git status',
+        resources: [
+          { kind: 'shell_command', value: 'git status' },
+          { kind: 'shell_command', value: 'npm test' },
+          { kind: 'nope', value: 'x' },
+          'bad'
+        ]
+      })
+    ).toEqual([
+      { kind: 'shell_command', value: 'git status' },
+      { kind: 'shell_command', value: 'npm test' }
+    ])
+  })
+
   it('deduplicates merged resources', () => {
     expect(
       mergeAgentGateResources(
