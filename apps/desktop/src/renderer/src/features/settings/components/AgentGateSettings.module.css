@@ -62,7 +62,7 @@
   min-width: 140px;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid var(--border-card, var(--border-subtle));
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 14px;
@@ -79,7 +79,7 @@
   flex: 0 0 auto;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid var(--border-card, var(--border-subtle));
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 14px;

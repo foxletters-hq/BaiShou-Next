@@ -153,7 +153,7 @@
 
 .gmp-btn {
   padding: 8px 16px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface-normal);
   color: var(--text-primary);
@@ -174,7 +174,7 @@
 
 .gmp-btn-small {
   padding: 4px 10px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 6px;
   background: var(--bg-surface-normal);
   color: var(--text-primary);
@@ -189,7 +189,7 @@
 
 .gmp-btn-tiny {
   padding: 2px 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 4px;
   background: var(--bg-surface-normal);
   color: var(--text-secondary);

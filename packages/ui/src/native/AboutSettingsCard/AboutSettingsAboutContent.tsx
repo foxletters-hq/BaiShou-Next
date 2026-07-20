@@ -27,8 +27,8 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
   const innerCardStyle = {
     backgroundColor: colors.bgSurface,
     borderRadius: tokens.radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderWidth: 1.5,
+    borderColor: colors.borderControl,
     padding: tokens.spacing.md,
     gap: tokens.spacing.xs
   } as const

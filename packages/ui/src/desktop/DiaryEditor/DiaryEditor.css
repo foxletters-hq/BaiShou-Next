@@ -122,7 +122,7 @@
 .de-meta-fav-btn {
   margin-left: auto;
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   width: 36px;
   height: 36px;
@@ -152,7 +152,7 @@
 
 .de-meta-tts-btn {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   width: 36px;
   height: 36px;

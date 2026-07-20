@@ -559,7 +559,7 @@
 .editorBtnCancel {
   background: transparent;
   color: var(--text-secondary);
-  border: 1px solid var(--color-outline-variant);
+  border: 1.5px solid var(--border-control);
 }
 
 .editorBtnCancel:hover {
@@ -569,7 +569,7 @@
 .editorBtnSave {
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1px solid var(--color-outline-variant);
+  border: 1.5px solid var(--border-control);
 }
 
 .editorBtnSave:hover {

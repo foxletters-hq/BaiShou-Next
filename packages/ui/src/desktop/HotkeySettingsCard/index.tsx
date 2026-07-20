@@ -177,7 +177,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
   return (
     <div>
       <div
-        className="settings-list-tile"
+        className={`settings-list-tile settings-list-tile-no-row-hover ${config.hotkeyEnabled ? 'settings-list-tile-expandable' : ''}`}
         onClick={() => {
           if (config.hotkeyEnabled) {
             setCollapsed(!collapsed)
@@ -217,16 +217,13 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
         </label>
 
         {config.hotkeyEnabled && (
-          <ChevronDown
-            size={24}
-            style={{
-              color: 'var(--color-on-surface-variant)',
-              transition: 'transform 0.25s',
-              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-              marginLeft: 12,
-              flexShrink: 0
-            }}
-          />
+          <span
+            className={`settings-expansion-toggle ${collapsed ? '' : 'is-open'}`}
+            style={{ marginLeft: 12 }}
+            aria-hidden="true"
+          >
+            <ChevronDown className="settings-expansion-arrow" size={16} />
+          </span>
         )}
       </div>
 

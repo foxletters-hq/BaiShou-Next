@@ -80,7 +80,7 @@
 .settings-retry-btn {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
@@ -336,7 +336,7 @@
   padding: 6px 14px;
   font-size: 13px;
   border-radius: 6px;
-  border: 1px solid var(--color-outline-variant);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--color-on-surface);
   cursor: pointer;

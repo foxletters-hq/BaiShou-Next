@@ -315,7 +315,7 @@
 .btnGreyOutlined {
   background: var(--bg-surface-high);
   color: var(--text-secondary);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
 }
 .btnGreyOutlined:hover:not(:disabled) {
   background: var(--bg-surface-normal);
@@ -718,7 +718,7 @@ input:checked + .slider:before {
 
 .pageSizeSelect {
   padding: 6px 12px;
-  border: 1.5px solid var(--border-subtle, #e2e8f0);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface, #fff);
   color: var(--text-primary, #0f172a);
@@ -731,7 +731,7 @@ input:checked + .slider:before {
 }
 
 .pageSizeSelect:hover {
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--border-control);
   box-shadow: 0 2px 8px rgba(91, 168, 245, 0.15);
 }
 
@@ -746,7 +746,7 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid var(--border-subtle, #e2e8f0);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface, #fff);
   color: var(--text-primary, #0f172a);
