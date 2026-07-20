@@ -125,6 +125,22 @@ function appendMissingInlineTags(body: string, missing: string[]): string {
 }
 
 /**
+ * 确保元数据 tags 以正文内联 `#标签` 形式存在（缺什么补什么）。
+ * Agent/MCP 写日记时应调用此函数，避免标签只落在 frontmatter 而无法在编辑器中改。
+ */
+export function ensureDiaryInlineTags(body: string, tags: unknown): string {
+  const cleanBody = stripLegacyTopTagLine(body)
+  const normalizedTags = normalizeDiaryTags(tags)
+  if (!normalizedTags.length) return cleanBody
+
+  const inlineTagSet = new Set(extractDiaryTagsFromContent(cleanBody))
+  const missing = normalizedTags.filter((tag) => !inlineTagSet.has(tag))
+  if (!missing.length) return cleanBody
+
+  return appendMissingInlineTags(cleanBody, missing)
+}
+
+/**
  * 将正文合成为编辑器展示内容。
  * 正文已有内联 #标签 时不再从元数据 tags 重复注入；仅对无内联标签的旧数据做一次补全。
  */
@@ -135,10 +151,7 @@ export function composeDiaryEditorContent(body: string, tags: unknown): string {
     return cleanBody
   }
 
-  const normalizedTags = normalizeDiaryTags(tags)
-  if (!normalizedTags.length) return cleanBody
-
-  return appendMissingInlineTags(cleanBody, normalizedTags)
+  return ensureDiaryInlineTags(cleanBody, tags)
 }
 
 /** 保存前剥离旧版首行纯标签行（内联标签保留在正文中） */

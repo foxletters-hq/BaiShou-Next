@@ -17,7 +17,7 @@ export class DiaryWriteTool extends AgentTool<typeof diaryWriteParams> {
 
   readonly description =
     'Create a new diary entry for a given date. ' +
-    'Use the tags parameter for diary labels (comma-separated); do not put tags only in the markdown body. ' +
+    'Prefer the tags parameter for diary labels (comma-separated); the system writes them into the body as #tags so they remain editable. ' +
     'If a diary entry already exists for that date, use diary_edit instead.'
 
   readonly parameters = diaryWriteParams
