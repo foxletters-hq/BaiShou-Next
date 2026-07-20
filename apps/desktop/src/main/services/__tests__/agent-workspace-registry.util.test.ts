@@ -6,7 +6,9 @@ import {
   resolveValidLastActiveWorkspaceId
 } from '../agent-workspace-registry.util'
 
-function entry(partial: Partial<AgentWorkspaceEntry> & Pick<AgentWorkspaceEntry, 'id' | 'folderRoot'>): AgentWorkspaceEntry {
+function entry(
+  partial: Partial<AgentWorkspaceEntry> & Pick<AgentWorkspaceEntry, 'id' | 'folderRoot'>
+): AgentWorkspaceEntry {
   return {
     displayName: partial.displayName ?? 'workspace',
     avatarPath: partial.avatarPath ?? null,

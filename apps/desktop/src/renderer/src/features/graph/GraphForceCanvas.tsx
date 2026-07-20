@@ -103,7 +103,13 @@ export const GraphForceCanvas: React.FC<{
           .strength(0.4)
       )
       .force('charge', forceManyBody().strength(-180))
-      .force('center', forceCenter((canvas.width || 800) / (2 * (window.devicePixelRatio || 1)), (canvas.height || 600) / (2 * (window.devicePixelRatio || 1))))
+      .force(
+        'center',
+        forceCenter(
+          (canvas.width || 800) / (2 * (window.devicePixelRatio || 1)),
+          (canvas.height || 600) / (2 * (window.devicePixelRatio || 1))
+        )
+      )
       .force(
         'collide',
         forceCollide<SimNode>().radius((d) => 10 + Math.min(12, (d.mentionCount ?? 1) * 1.5))
@@ -244,5 +250,10 @@ export const GraphForceCanvas: React.FC<{
     }
   }, [onSelectNode])
 
-  return <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }} />
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width: '100%', height: '100%', display: 'block', cursor: 'grab' }}
+    />
+  )
 }

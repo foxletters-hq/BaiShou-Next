@@ -317,10 +317,7 @@ export class ShadowIndexSyncService {
             try {
               await this._pendingReextractHook(p.filePath, p.contentHash)
             } catch (e: any) {
-              logger.warn(
-                `[ShadowSync] pending-reextract hook failed for ${p.filePath}:`,
-                e
-              )
+              logger.warn(`[ShadowSync] pending-reextract hook failed for ${p.filePath}:`, e)
             }
           }
         }

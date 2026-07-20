@@ -61,7 +61,10 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
   useEffect(() => {
     if (!sessionId || typeof window === 'undefined' || !window.electron?.ipcRenderer?.on) return
 
-    const onToolError = (_: unknown, payload: { sessionId?: string; name?: string; error?: string }) => {
+    const onToolError = (
+      _: unknown,
+      payload: { sessionId?: string; name?: string; error?: string }
+    ) => {
       if (!payload?.sessionId || payload.sessionId !== sessionId || !payload.name) return
       setFailedTools((prev) => [
         ...prev,

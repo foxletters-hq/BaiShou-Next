@@ -120,27 +120,27 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     [folderRoot, tabs]
   )
 
-  const openDiff = useCallback((change: WorkspaceChangeEntry) => {
-    const existing = tabs.find((tab) => tab.kind === 'diff' && tab.change?.id === change.id)
-    if (existing) {
-      setActiveTabId(existing.id)
-      return
-    }
+  const openDiff = useCallback(
+    (change: WorkspaceChangeEntry) => {
+      const existing = tabs.find((tab) => tab.kind === 'diff' && tab.change?.id === change.id)
+      if (existing) {
+        setActiveTabId(existing.id)
+        return
+      }
 
-    const id = nextTabId()
-    const title = `Δ ${basenameFromPath(change.path)}`
-    setTabs((prev) => [
-      ...prev.filter((tab) => tab.kind !== 'welcome'),
-      { id, kind: 'diff', title, change, relativePath: change.path }
-    ])
-    setActiveTabId(id)
-  }, [tabs])
+      const id = nextTabId()
+      const title = `Δ ${basenameFromPath(change.path)}`
+      setTabs((prev) => [
+        ...prev.filter((tab) => tab.kind !== 'welcome'),
+        { id, kind: 'diff', title, change, relativePath: change.path }
+      ])
+      setActiveTabId(id)
+    },
+    [tabs]
+  )
 
   const openGitDiff = useCallback(
-    async (
-      filePath: string,
-      options?: { staged?: boolean; commitHash?: string }
-    ) => {
+    async (filePath: string, options?: { staged?: boolean; commitHash?: string }) => {
       if (!folderRoot) return
       const staged = options?.staged ?? false
       const commitHash = options?.commitHash
@@ -266,9 +266,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
   )
 
   const updateTabContent = useCallback((tabId: string, content: string) => {
-    setTabs((prev) =>
-      prev.map((tab) => (tab.id === tabId ? { ...tab, content } : tab))
-    )
+    setTabs((prev) => prev.map((tab) => (tab.id === tabId ? { ...tab, content } : tab)))
   }, [])
 
   const resetTabs = useCallback(() => {

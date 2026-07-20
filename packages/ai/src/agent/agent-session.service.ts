@@ -394,8 +394,7 @@ export class AgentSessionService {
         }
       }
 
-      const gateProfile =
-        workspaceOptions?.sessionKind === 'workspace' ? 'workspace' : 'companion'
+      const gateProfile = workspaceOptions?.sessionKind === 'workspace' ? 'workspace' : 'companion'
 
       const enabledTools = toolRegistry.getEnabledToolsAsVercel({
         userConfig: mergedUserConfig,

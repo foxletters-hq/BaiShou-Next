@@ -63,8 +63,12 @@ function pathInScope(filePath: string, scopePrefix: string): boolean {
 function filterStatus(status: GitStatus, scopePrefix: string): GitStatus {
   const filterFiles = (files: GitStatusFile[]) =>
     files.filter((file) => pathInScope(file.path, scopePrefix))
-  const untracked = status.untracked.filter((filePath: string) => pathInScope(filePath, scopePrefix))
-  const conflicted = status.conflicted.filter((filePath: string) => pathInScope(filePath, scopePrefix))
+  const untracked = status.untracked.filter((filePath: string) =>
+    pathInScope(filePath, scopePrefix)
+  )
+  const conflicted = status.conflicted.filter((filePath: string) =>
+    pathInScope(filePath, scopePrefix)
+  )
   const staged = filterFiles(status.staged)
   const unstaged = filterFiles(status.unstaged)
   return {
@@ -72,7 +76,8 @@ function filterStatus(status: GitStatus, scopePrefix: string): GitStatus {
     unstaged,
     untracked,
     conflicted,
-    hasChanges: staged.length > 0 || unstaged.length > 0 || untracked.length > 0 || conflicted.length > 0
+    hasChanges:
+      staged.length > 0 || unstaged.length > 0 || untracked.length > 0 || conflicted.length > 0
   }
 }
 
@@ -218,8 +223,10 @@ export class WorkspaceFolderGitService {
 
   private async ensureAuthor(git: SimpleGit): Promise<void> {
     const config = await this.getConfig()
-    const name = config.userName || (await git.getConfig('user.name').catch(() => ({ value: '' }))).value
-    const email = config.userEmail || (await git.getConfig('user.email').catch(() => ({ value: '' }))).value
+    const name =
+      config.userName || (await git.getConfig('user.name').catch(() => ({ value: '' }))).value
+    const email =
+      config.userEmail || (await git.getConfig('user.email').catch(() => ({ value: '' }))).value
     if (!name) await git.addConfig('user.name', 'BaiShou User', false, 'local')
     else await git.addConfig('user.name', name, false, 'local')
     if (!email) await git.addConfig('user.email', 'user@local.baishou', false, 'local')
@@ -463,7 +470,10 @@ export class WorkspaceFolderGitService {
     return status.conflicted
   }
 
-  async resolveConflict(filePath: string, resolution: 'ours' | 'theirs'): Promise<{ success: boolean }> {
+  async resolveConflict(
+    filePath: string,
+    resolution: 'ours' | 'theirs'
+  ): Promise<{ success: boolean }> {
     const { git } = await this.ensureGit()
     try {
       await git.checkout([`--${resolution}`, '--', filePath])
@@ -576,8 +586,12 @@ export class WorkspaceFolderGitService {
       }
 
       try {
-        const upstream = (await git.revparse(['--abbrev-ref', '--symbolic-full-name', '@{u}'])).trim()
-        const counts = (await git.raw(['rev-list', '--left-right', '--count', `${upstream}...HEAD`])).trim()
+        const upstream = (
+          await git.revparse(['--abbrev-ref', '--symbolic-full-name', '@{u}'])
+        ).trim()
+        const counts = (
+          await git.raw(['rev-list', '--left-right', '--count', `${upstream}...HEAD`])
+        ).trim()
         const [behindCount, aheadCount] = counts.split(/\s+/)
         behind = Number.parseInt(behindCount ?? '0', 10) || 0
         ahead = Number.parseInt(aheadCount ?? '0', 10) || 0
@@ -629,7 +643,10 @@ export class WorkspaceFolderGitService {
     }
   }
 
-  async deleteBranch(branch: string, force = false): Promise<{ success: boolean; message?: string }> {
+  async deleteBranch(
+    branch: string,
+    force = false
+  ): Promise<{ success: boolean; message?: string }> {
     const info = await this.getBranchInfo()
     if (info.current === branch) {
       return { success: false, message: 'Cannot delete the current branch' }

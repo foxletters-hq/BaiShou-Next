@@ -69,9 +69,7 @@ describe('GraphSyncService write→index order', () => {
     const result = await sync.syncPendingIndex()
 
     expect(result.nodesUpserted).toBe(1)
-    expect(applyRawNode).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'n1', name: 'Anson' })
-    )
+    expect(applyRawNode).toHaveBeenCalledWith(expect.objectContaining({ id: 'n1', name: 'Anson' }))
     expect(listNodeIds).toHaveBeenCalledWith('Personal')
     expect(softDeleteNode).toHaveBeenCalledWith('orphan')
     expect(result.deleted).toBe(1)

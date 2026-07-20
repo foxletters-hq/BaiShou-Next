@@ -87,7 +87,9 @@ export function registerSettingsAppIPC() {
     if (Array.isArray(config?.allowlist)) {
       next.allowlist = config.allowlist
         .filter(
-          (entry: unknown): entry is {
+          (
+            entry: unknown
+          ): entry is {
             id: string
             action: string
             createdAt: number
@@ -100,49 +102,51 @@ export function registerSettingsAppIPC() {
             typeof (entry as { action?: unknown }).action === 'string' &&
             typeof (entry as { createdAt?: unknown }).createdAt === 'number'
         )
-        .map((entry: {
-          id: string
-          action: string
-          createdAt: number
-          pattern?: string
-          resourceKind?: string
-          sourceSessionId?: string
-          sourceRequestId?: string
-        }) => {
-          const action = entry.action.trim()
-          const pattern =
-            typeof entry.pattern === 'string' && entry.pattern.trim()
-              ? entry.pattern.trim()
-              : undefined
-          // workspace_run must never be whole-action allowlisted
-          if (action === 'workspace_run' && !pattern) return null
-          if (pattern === '*' || pattern === '* *' || pattern === '**') return null
-          return {
-            id: entry.id,
-            action,
-            createdAt: entry.createdAt,
-            ...(pattern
-              ? {
-                  pattern,
-                  resourceKind:
-                    entry.resourceKind === 'shell_command' ||
-                    entry.resourceKind === 'workspace_path' ||
-                    entry.resourceKind === 'file_path' ||
-                    entry.resourceKind === 'external_path'
-                      ? entry.resourceKind
-                      : action === 'workspace_run'
-                        ? ('shell_command' as const)
-                        : undefined
-                }
-              : {}),
-            ...(typeof entry.sourceSessionId === 'string'
-              ? { sourceSessionId: entry.sourceSessionId }
-              : {}),
-            ...(typeof entry.sourceRequestId === 'string'
-              ? { sourceRequestId: entry.sourceRequestId }
-              : {})
+        .map(
+          (entry: {
+            id: string
+            action: string
+            createdAt: number
+            pattern?: string
+            resourceKind?: string
+            sourceSessionId?: string
+            sourceRequestId?: string
+          }) => {
+            const action = entry.action.trim()
+            const pattern =
+              typeof entry.pattern === 'string' && entry.pattern.trim()
+                ? entry.pattern.trim()
+                : undefined
+            // workspace_run must never be whole-action allowlisted
+            if (action === 'workspace_run' && !pattern) return null
+            if (pattern === '*' || pattern === '* *' || pattern === '**') return null
+            return {
+              id: entry.id,
+              action,
+              createdAt: entry.createdAt,
+              ...(pattern
+                ? {
+                    pattern,
+                    resourceKind:
+                      entry.resourceKind === 'shell_command' ||
+                      entry.resourceKind === 'workspace_path' ||
+                      entry.resourceKind === 'file_path' ||
+                      entry.resourceKind === 'external_path'
+                        ? entry.resourceKind
+                        : action === 'workspace_run'
+                          ? ('shell_command' as const)
+                          : undefined
+                  }
+                : {}),
+              ...(typeof entry.sourceSessionId === 'string'
+                ? { sourceSessionId: entry.sourceSessionId }
+                : {}),
+              ...(typeof entry.sourceRequestId === 'string'
+                ? { sourceRequestId: entry.sourceRequestId }
+                : {})
+            }
           }
-        })
+        )
         .filter(Boolean)
     }
     if (Array.isArray(config?.exclusionList)) {

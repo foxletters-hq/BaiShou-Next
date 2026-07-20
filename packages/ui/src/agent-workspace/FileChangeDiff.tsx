@@ -38,9 +38,5 @@ export const FileChangeDiff: React.FC<FileChangeDiffProps> = ({ data, className 
 
   const lines = data.diff.split('\n')
 
-  return (
-    <div className={`${styles.diff} ${className ?? ''}`}>
-      {lines.map(renderDiffLine)}
-    </div>
-  )
+  return <div className={`${styles.diff} ${className ?? ''}`}>{lines.map(renderDiffLine)}</div>
 }

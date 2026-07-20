@@ -21,8 +21,7 @@ const SKIP_DIR_NAMES = new Set([
   'coverage'
 ])
 
-const DEFAULT_EXCLUDE =
-  'node_modules, .git, dist, out, build, .next, coverage, **/*.code-search'
+const DEFAULT_EXCLUDE = 'node_modules, .git, dist, out, build, .next, coverage, **/*.code-search'
 
 const MAX_FILE_BYTES = 512 * 1024
 const DEFAULT_MAX_MATCHES = 2000
@@ -248,7 +247,11 @@ function findMatchesInContent(content: string, regex: RegExp): WorkspaceSearchMa
   return matches
 }
 
-function replaceInContent(content: string, regex: RegExp, replacement: string): {
+function replaceInContent(
+  content: string,
+  regex: RegExp,
+  replacement: string
+): {
   next: string
   count: number
 } {

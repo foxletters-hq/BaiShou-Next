@@ -49,11 +49,7 @@ export function resolvePreviewCursorPos(view: EditorView, desiredPos: number): n
 }
 
 /** 跳转到指定行/列，并确保 Live Preview 装饰与光标位置一致 */
-export function placePreviewCursorAt(
-  view: EditorView,
-  lineNumber: number,
-  column = 0
-): void {
+export function placePreviewCursorAt(view: EditorView, lineNumber: number, column = 0): void {
   const doc = view.state.doc
   if (doc.length === 0) return
 

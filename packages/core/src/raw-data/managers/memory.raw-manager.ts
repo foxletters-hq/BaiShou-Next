@@ -1,16 +1,9 @@
 import type { IFileSystem } from '../../fs/file-system.types'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 import { shardMonthFromInstant } from '../raw-data-month.util'
-import {
-  MonthlyJsonlStore,
-  collapseJsonlById
-} from '../stores/monthly-jsonl.store'
+import { MonthlyJsonlStore, collapseJsonlById } from '../stores/monthly-jsonl.store'
 import type { MemoryRawRecord } from '@baishou/shared'
-import type {
-  RecordCollectionKindManager,
-  ShardInfo,
-  WriteOpts
-} from '../raw-data-source.types'
+import type { RecordCollectionKindManager, ShardInfo, WriteOpts } from '../raw-data-source.types'
 import type { DerivedFreshnessService } from '../derived-freshness.service'
 
 export class MemoryRawManager implements RecordCollectionKindManager {
@@ -75,9 +68,7 @@ export class MemoryRawManager implements RecordCollectionKindManager {
       }
       throw new Error(`Memory tombstone: id not found: ${id}`)
     }
-    const rows = collapseJsonlById(
-      (await store.readRecords(shardMonth)) as MemoryRawRecord[]
-    )
+    const rows = collapseJsonlById((await store.readRecords(shardMonth)) as MemoryRawRecord[])
     const hit = rows.find((r) => r.id === id)
     if (!hit) throw new Error(`Memory tombstone: id not found in ${shardMonth}: ${id}`)
     await store.appendRecord(shardMonth, {

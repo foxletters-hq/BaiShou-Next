@@ -228,9 +228,7 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
                 matches: summary?.matches ?? 0,
                 files: summary?.files ?? 0
               })}
-              {summary?.truncated
-                ? ` · ${t('workbench.search_truncated', '结果已截断')}`
-                : ''}
+              {summary?.truncated ? ` · ${t('workbench.search_truncated', '结果已截断')}` : ''}
             </p>
             <ul className={styles.fileList}>
               {result.files.map((file) => {

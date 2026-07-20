@@ -63,9 +63,7 @@ export function agentGateResourcePatternMatch(
     if (trimmed === '*' || trimmed === '**' || trimmed === '**/*' || trimmed === '* *') {
       return false
     }
-    return shellResources.some((resource) =>
-      matchShellCommandPattern(resource.value, pattern)
-    )
+    return shellResources.some((resource) => matchShellCommandPattern(resource.value, pattern))
   }
   // Path resources: reject only bare catch-all stars (keep `**/*`, `src/**`, etc.)
   const trimmed = pattern.trim()

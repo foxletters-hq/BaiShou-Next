@@ -140,10 +140,8 @@ export async function runMobileIncrementalAfterSync(
 
     if (cls.memory || cls.graph) {
       try {
-        const {
-          runMobileDerivedIndexHydration,
-          resolveMobileEmbeddingForHydration
-        } = await import('./mobile-raw-data-source.runtime')
+        const { runMobileDerivedIndexHydration, resolveMobileEmbeddingForHydration } =
+          await import('./mobile-raw-data-source.runtime')
         const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
         const runtime = agentDbRuntimeRef.current
         const pathServiceWithVault = deps.pathService as unknown as {

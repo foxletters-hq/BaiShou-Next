@@ -110,10 +110,7 @@ export async function syncMobileGraphPendingIndex(options: {
   const graphRepo = new GraphRepository(options.drizzleDb)
   let embeddingAdapter: EmbeddingAdapter | null = null
   if (options.embeddingProvider && options.embeddingModelId) {
-    embeddingAdapter = new EmbeddingAdapter(
-      options.embeddingProvider,
-      options.embeddingModelId
-    )
+    embeddingAdapter = new EmbeddingAdapter(options.embeddingProvider, options.embeddingModelId)
   }
   const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
     embedQuery: embeddingAdapter?.isConfigured

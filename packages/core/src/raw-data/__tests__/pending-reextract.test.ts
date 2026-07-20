@@ -99,9 +99,7 @@ describe('graph extract helpers', () => {
     const a = entryNodeIdForFilePath('Journals/2026-07-01.md')
     const b = entryNodeIdForFilePath('Journals\\2026-07-01.md')
     expect(a).toBe(b)
-    expect(a).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-a[0-9a-f]{3}-[0-9a-f]{12}$/
-    )
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-a[0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 
   it('extractFirstJsonObject handles fences and trailing braces', () => {

@@ -65,9 +65,7 @@ export const WorkspaceSessionPanel: React.FC<WorkspaceSessionPanelProps> = ({
         {loadingSessions && workspaceSessions.length === 0 ? (
           <p className={styles.placeholder}>{t('common.loading', '加载中…')}</p>
         ) : workspaceSessions.length === 0 ? (
-          <p className={styles.placeholder}>
-            {t('agent_workspace.no_sessions', '暂无工作区会话')}
-          </p>
+          <p className={styles.placeholder}>{t('agent_workspace.no_sessions', '暂无工作区会话')}</p>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
             {workspaceSessions.map((session) => {

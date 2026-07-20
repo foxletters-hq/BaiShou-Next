@@ -45,9 +45,9 @@ describe('agent-gate-ruleset.util', () => {
         ])
       ).toBe(AgentGateEffect.Deny)
 
-      expect(
-        combineAgentGateRuleEffects([AgentGateEffect.Allow, AgentGateEffect.Ask])
-      ).toBe(AgentGateEffect.Ask)
+      expect(combineAgentGateRuleEffects([AgentGateEffect.Allow, AgentGateEffect.Ask])).toBe(
+        AgentGateEffect.Ask
+      )
     })
   })
 
@@ -79,9 +79,7 @@ describe('agent-gate-ruleset.util', () => {
         evaluateAgentGatePermissionRules({
           action: 'workspace_write',
           resources,
-          rules: [
-            { action: 'workspace_write', pattern: 'src/**', effect: AgentGateEffect.Allow }
-          ]
+          rules: [{ action: 'workspace_write', pattern: 'src/**', effect: AgentGateEffect.Allow }]
         })
       ).toBe(AgentGateEffect.Allow)
 
@@ -89,9 +87,7 @@ describe('agent-gate-ruleset.util', () => {
         evaluateAgentGatePermissionRules({
           action: 'workspace_write',
           resources: [{ kind: 'workspace_path', value: 'docs/readme.md' }],
-          rules: [
-            { action: 'workspace_write', pattern: 'src/**', effect: AgentGateEffect.Allow }
-          ]
+          rules: [{ action: 'workspace_write', pattern: 'src/**', effect: AgentGateEffect.Allow }]
         })
       ).toBeUndefined()
     })
@@ -115,9 +111,7 @@ describe('agent-gate-ruleset.util', () => {
         evaluateAgentGatePermissionRules({
           action: 'workspace_delete',
           resources: [{ kind: 'workspace_path', value: 'src/foo.ts' }],
-          rules: [
-            { action: 'workspace_delete', pattern: '**/*', effect: AgentGateEffect.Allow }
-          ],
+          rules: [{ action: 'workspace_delete', pattern: '**/*', effect: AgentGateEffect.Allow }],
           forceExcluded: true
         })
       ).toBe(AgentGateEffect.Ask)

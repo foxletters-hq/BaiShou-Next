@@ -119,8 +119,7 @@ export async function syncMemoryPendingIndex(options: {
   }
   const sync = new MemorySyncService(memoryManager, {
     embedText: (opts) => embeddingAdapter.embedText(opts),
-    deleteBySource: (sourceType, sourceId) =>
-      hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
+    deleteBySource: (sourceType, sourceId) => hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
     listSourceIdsByType: (sourceType) => hsRepo.listSourceIdsByType(sourceType)
   })
   return sync.syncPendingIndex()

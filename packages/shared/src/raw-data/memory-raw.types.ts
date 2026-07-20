@@ -33,11 +33,7 @@ export interface ToolRawDataSourceManager {
     | undefined
   getGraphManager?: () =>
     | {
-        commitIndexed(
-          collection: string,
-          relativePath: string,
-          contentHash: string
-        ): Promise<void>
+        commitIndexed(collection: string, relativePath: string, contentHash: string): Promise<void>
       }
     | undefined
 }

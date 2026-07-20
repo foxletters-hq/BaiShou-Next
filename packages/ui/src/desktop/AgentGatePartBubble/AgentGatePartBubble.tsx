@@ -1,20 +1,13 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  AgentGateReply,
-  type AgentGatePartData,
-  type AgentGateRequest
-} from '@baishou/shared'
+import { AgentGateReply, type AgentGatePartData, type AgentGateRequest } from '@baishou/shared'
 import styles from './AgentGatePartBubble.module.css'
 
 export interface AgentGatePartBubbleProps {
   data: AgentGatePartData
 }
 
-function replyLabel(
-  t: (key: string, fallback: string) => string,
-  reply?: AgentGateReply
-): string {
+function replyLabel(t: (key: string, fallback: string) => string, reply?: AgentGateReply): string {
   switch (reply) {
     case AgentGateReply.Once:
       return t('agent_gate.once', '本次允许')
@@ -27,7 +20,10 @@ function replyLabel(
   }
 }
 
-function selectedOptionLabel(request: AgentGateRequest, selectedOptionIds?: string[]): string | null {
+function selectedOptionLabel(
+  request: AgentGateRequest,
+  selectedOptionIds?: string[]
+): string | null {
   const selectedId = selectedOptionIds?.[0]
   if (!selectedId) return null
   return request.options.find((option) => option.id === selectedId)?.label ?? null

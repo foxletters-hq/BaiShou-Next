@@ -42,7 +42,11 @@
 
 .searchInput:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 50%, var(--wb-chrome-border, #d8dee4));
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary, #5ba8f5) 50%,
+    var(--wb-chrome-border, #d8dee4)
+  );
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #5ba8f5) 14%, transparent);
 }
 
@@ -51,7 +55,8 @@
   margin: 0 12px 8px;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--color-primary, #5ba8f5) 30%, var(--wb-chrome-border, #d8dee4));
+  border: 1px solid
+    color-mix(in srgb, var(--color-primary, #5ba8f5) 30%, var(--wb-chrome-border, #d8dee4));
   background: color-mix(in srgb, var(--color-primary, #5ba8f5) 8%, var(--wb-editor-bg, #ffffff));
 }
 
@@ -218,5 +223,9 @@
 
 .editInput:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 50%, var(--wb-chrome-border, #d8dee4));
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary, #5ba8f5) 50%,
+    var(--wb-chrome-border, #d8dee4)
+  );
 }

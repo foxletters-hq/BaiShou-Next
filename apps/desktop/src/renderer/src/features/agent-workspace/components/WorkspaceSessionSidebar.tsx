@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdAdd, MdChevronLeft, MdChevronRight, MdExpandMore, MdFolder, MdMenu } from 'react-icons/md'
+import {
+  MdAdd,
+  MdChevronLeft,
+  MdChevronRight,
+  MdExpandMore,
+  MdFolder,
+  MdMenu
+} from 'react-icons/md'
 import type { AgentWorkspaceSessionListItem } from '@baishou/shared'
 import styles from './WorkspaceSessionSidebar.module.css'
 
@@ -187,7 +194,9 @@ export const WorkspaceSessionSidebar: React.FC<WorkspaceSessionSidebarProps> = (
         {loadingSessions && folderGroups.length === 0 ? (
           <p className={styles.placeholder}>{t('common.loading', '加载中…')}</p>
         ) : folderGroups.length === 0 ? (
-          <p className={styles.placeholder}>{t('agent_workspace.no_folder', '暂无文件夹，点击上方打开')}</p>
+          <p className={styles.placeholder}>
+            {t('agent_workspace.no_folder', '暂无文件夹，点击上方打开')}
+          </p>
         ) : (
           <ul className={styles.folderTree}>
             {folderGroups.map((group) => {
@@ -201,7 +210,10 @@ export const WorkspaceSessionSidebar: React.FC<WorkspaceSessionSidebarProps> = (
                     onClick={() => toggleFolder(group.folderRoot)}
                     title={group.folderRoot}
                   >
-                    <span className={styles.folderChevron} data-expanded={isExpanded ? 'true' : 'false'}>
+                    <span
+                      className={styles.folderChevron}
+                      data-expanded={isExpanded ? 'true' : 'false'}
+                    >
                       {isExpanded ? <MdExpandMore size={18} /> : <MdChevronRight size={18} />}
                     </span>
                     <span className={styles.folderIcon} aria-hidden>

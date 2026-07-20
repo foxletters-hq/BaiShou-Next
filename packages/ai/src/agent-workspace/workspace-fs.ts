@@ -1,15 +1,7 @@
 // @ts-ignore - Node built-in, available at runtime
 import { createHash } from 'node:crypto'
 // @ts-ignore - Node built-in, available at runtime
-import {
-  access,
-  mkdir,
-  readFile,
-  readdir,
-  rename,
-  unlink,
-  writeFile
-} from 'node:fs/promises'
+import { access, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 // @ts-ignore - Node built-in, available at runtime
 import { dirname } from 'node:path'
 

@@ -142,8 +142,10 @@ export const agentApi = {
     onAllowlistChanged: (
       callback: (allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]) => void
     ) => {
-      const handler = (_: unknown, allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]) =>
-        callback(allowlist)
+      const handler = (
+        _: unknown,
+        allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]
+      ) => callback(allowlist)
       ipcRenderer.on('agent-gate:allowlist-changed', handler)
       return () => ipcRenderer.removeListener('agent-gate:allowlist-changed', handler)
     }

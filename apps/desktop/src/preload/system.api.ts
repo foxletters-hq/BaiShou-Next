@@ -55,7 +55,8 @@ export const systemApi = {
 
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
-    showItemInFolder: (filePath: string) => ipcRenderer.invoke('shell:show-item-in-folder', filePath)
+    showItemInFolder: (filePath: string) =>
+      ipcRenderer.invoke('shell:show-item-in-folder', filePath)
   },
 
   // Updater

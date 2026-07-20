@@ -8,11 +8,7 @@ import {
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
-import {
-  GraphRepository,
-  type AppDatabase,
-  type ShadowIndexRepository
-} from '@baishou/database'
+import { GraphRepository, type AppDatabase, type ShadowIndexRepository } from '@baishou/database'
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'

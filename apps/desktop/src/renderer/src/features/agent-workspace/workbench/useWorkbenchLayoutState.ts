@@ -33,7 +33,11 @@ function loadLayout(scopeKey: string): WorkbenchLayoutState {
     if (!raw) return { ...DEFAULT_LAYOUT }
     const parsed = JSON.parse(raw) as Partial<WorkbenchLayoutState>
     return {
-      sidePaneWidth: clamp(parsed.sidePaneWidth ?? DEFAULT_LAYOUT.sidePaneWidth, MIN_SIDE_WIDTH, MAX_SIDE_WIDTH),
+      sidePaneWidth: clamp(
+        parsed.sidePaneWidth ?? DEFAULT_LAYOUT.sidePaneWidth,
+        MIN_SIDE_WIDTH,
+        MAX_SIDE_WIDTH
+      ),
       agentPanelWidth: clamp(
         parsed.agentPanelWidth ?? DEFAULT_LAYOUT.agentPanelWidth,
         MIN_AGENT_WIDTH,
@@ -41,7 +45,7 @@ function loadLayout(scopeKey: string): WorkbenchLayoutState {
       ),
       agentPanelCollapsed: parsed.agentPanelCollapsed ?? DEFAULT_LAYOUT.agentPanelCollapsed,
       sidePaneVisible: parsed.sidePaneVisible ?? DEFAULT_LAYOUT.sidePaneVisible,
-      activeSideView: normalizeSideView(parsed.activeSideView),
+      activeSideView: normalizeSideView(parsed.activeSideView)
     }
   } catch {
     return { ...DEFAULT_LAYOUT }
@@ -119,6 +123,14 @@ export function useWorkbenchLayoutState(scopeKey: string | null) {
       setAgentPanelWidth,
       updateLayout: update
     }),
-    [layout, setActiveSideView, setAgentPanelWidth, setSidePaneWidth, toggleAgentPanel, toggleSidePane, update]
+    [
+      layout,
+      setActiveSideView,
+      setAgentPanelWidth,
+      setSidePaneWidth,
+      toggleAgentPanel,
+      toggleSidePane,
+      update
+    ]
   )
 }

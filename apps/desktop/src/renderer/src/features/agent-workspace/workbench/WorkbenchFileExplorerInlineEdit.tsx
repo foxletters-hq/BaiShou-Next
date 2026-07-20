@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { File, Folder } from 'lucide-react'
-import {
-  selectNameRange,
-  validateTreeEntryName
-} from './workbench-inline-name.util'
+import { selectNameRange, validateTreeEntryName } from './workbench-inline-name.util'
 import styles from './WorkbenchFileExplorer.module.css'
 
 export type InlineTreeEditState =

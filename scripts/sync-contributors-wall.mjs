@@ -34,10 +34,7 @@ const EXCLUDE_LOGINS = new Set([
   'imgbot[bot]'
 ])
 
-const TARGETS = [
-  path.join(root, 'README.md'),
-  path.join(root, 'docs/3-Project/README_EN.md')
-]
+const TARGETS = [path.join(root, 'README.md'), path.join(root, 'docs/3-Project/README_EN.md')]
 
 function isBot(contributor) {
   const login = (contributor.login || '').toLowerCase()
@@ -83,8 +80,7 @@ function renderWall(contributors) {
 
   const links = contributors.map((c) => {
     const login = c.login
-    const avatar =
-      c.avatar_url || `https://avatars.githubusercontent.com/u/${c.id}?v=4`
+    const avatar = c.avatar_url || `https://avatars.githubusercontent.com/u/${c.id}?v=4`
     const sep = avatar.includes('?') ? '&' : '?'
     const src = `${avatar}${sep}s=${AVATAR_SRC_SIZE}`
     // 2× 源图 + 圆形裁切，高分屏更清晰
@@ -104,10 +100,7 @@ function updateFile(filePath, wall) {
   if (!original.includes(START) || !original.includes(END)) {
     throw new Error(`${path.relative(root, filePath)} 缺少 ${START} / ${END} 标记`)
   }
-  const next = original.replace(
-    new RegExp(`${START}[\\s\\S]*?${END}`),
-    () => wall
-  )
+  const next = original.replace(new RegExp(`${START}[\\s\\S]*?${END}`), () => wall)
   if (next === original) return false
   if (check) {
     console.error(`[sync-contributors-wall] 过期: ${path.relative(root, filePath)}`)
@@ -131,7 +124,9 @@ for (const file of TARGETS) {
 }
 
 if (check && changed) {
-  console.error('[sync-contributors-wall] README 贡献者墙与 API 不一致，请运行 pnpm sync:contributors')
+  console.error(
+    '[sync-contributors-wall] README 贡献者墙与 API 不一致，请运行 pnpm sync:contributors'
+  )
   process.exit(1)
 }
 

@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AgentGateEffect, AgentGateProfileId } from '../agent-gate.enums'
-import {
-  getAgentGateProfileRules,
-  resolveAgentGateProfileId
-} from '../agent-gate-profile.util'
+import { getAgentGateProfileRules, resolveAgentGateProfileId } from '../agent-gate-profile.util'
 
 describe('agent-gate-profile.util', () => {
   it('resolves profile ids', () => {

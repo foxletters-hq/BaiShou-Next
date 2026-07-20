@@ -50,8 +50,15 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
   ) {
     const { t } = useTranslation()
     const tabsState = useWorkbenchTabs(folderRoot)
-    const { tabs, activeTab, activeTabId, setActiveTabId, closeTab, updateTabContent, clearTabScrollTarget } =
-      tabsState
+    const {
+      tabs,
+      activeTab,
+      activeTabId,
+      setActiveTabId,
+      closeTab,
+      updateTabContent,
+      clearTabScrollTarget
+    } = tabsState
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const handleContentChange = useCallback(
@@ -163,7 +170,9 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
             <p className={styles.error}>{t('workbench.load_file_failed', '无法加载文件')}</p>
           ) : activeTab.kind === 'git-diff' && activeTab.loading ? (
             <p className={styles.status}>{t('workbench.loading_diff', '正在加载 diff…')}</p>
-          ) : activeTab.kind === 'git-diff' && activeTab.gitDiffEditable && activeTab.relativePath ? (
+          ) : activeTab.kind === 'git-diff' &&
+            activeTab.gitDiffEditable &&
+            activeTab.relativePath ? (
             <div className={styles.diffWrap}>
               <div className={styles.diffHeader}>
                 {activeTab.relativePath}
@@ -237,8 +246,12 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
             >
               <span className={styles.statusBranchIcon}>⎇</span>
               <span>{gitStatusBar.branch ?? '—'}</span>
-              {gitStatusBar.behind ? <span className={styles.statusSync}>↓{gitStatusBar.behind}</span> : null}
-              {gitStatusBar.ahead ? <span className={styles.statusSync}>↑{gitStatusBar.ahead}</span> : null}
+              {gitStatusBar.behind ? (
+                <span className={styles.statusSync}>↓{gitStatusBar.behind}</span>
+              ) : null}
+              {gitStatusBar.ahead ? (
+                <span className={styles.statusSync}>↑{gitStatusBar.ahead}</span>
+              ) : null}
             </button>
             <span className={styles.statusSpacer} />
             {(gitStatusBar.changesCount ?? 0) > 0 ? (

@@ -14,9 +14,7 @@ export interface PendingReextractCollaborators {
   /** filePath → latest sourceContentHash from extract-state (live rows only) */
   loadExtractHashes: () => Promise<Map<string, string>>
   /** Current journal rows from shadow index (or equivalent) */
-  listJournals: () => Promise<
-    Array<{ filePath: string; contentHash: string; date?: string }>
-  >
+  listJournals: () => Promise<Array<{ filePath: string; contentHash: string; date?: string }>>
   /** Persist extract-state cursor after successful LLM extract */
   writeExtractState: (filePath: string, contentHash: string) => Promise<void>
 }
@@ -42,10 +40,7 @@ export class DerivedFreshnessService {
     return collection ? `${kind}:${collection}` : kind
   }
 
-  async listPendingIndex(
-    kind: FreshnessKind,
-    collection?: string
-  ): Promise<ShardInfo[]> {
+  async listPendingIndex(kind: FreshnessKind, collection?: string): Promise<ShardInfo[]> {
     const store = this.stores.get(this.storeKey(kind, collection))
     if (!store) return []
     return store.listPendingIndex()

@@ -11,9 +11,7 @@ import type {
   HotkeyConfig,
   BaishouAgentGateConfig
 } from '@baishou/shared'
-import {
-  DEFAULT_BAISHOU_AGENT_GATE_CONFIG as SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG
-} from '@baishou/shared'
+import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG as SHARED_DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/shared'
 
 export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
   {

@@ -281,10 +281,7 @@ async function collectWebDavShallow(
 
     if (entry.isCollection) {
       // 只递归严格子目录，忽略自身、父目录、兄弟目录
-      if (
-        isStrictWebDavChildUrl(normalizedCurrent, entryUrl) &&
-        !visited.has(entryUrl)
-      ) {
+      if (isStrictWebDavChildUrl(normalizedCurrent, entryUrl) && !visited.has(entryUrl)) {
         subdirs.push(entryUrl)
       }
       continue

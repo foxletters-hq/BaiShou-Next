@@ -27,9 +27,7 @@ export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
   AgentGateProfileId,
   readonly AgentGatePermissionRule[]
 > = {
-  [AgentGateProfileId.Companion]: [
-    { action: 'workspace_*', effect: AgentGateEffect.Deny }
-  ],
+  [AgentGateProfileId.Companion]: [{ action: 'workspace_*', effect: AgentGateEffect.Deny }],
   [AgentGateProfileId.Workspace]: [
     { action: 'diary_*', effect: AgentGateEffect.Deny },
     { action: 'memory_*', effect: AgentGateEffect.Deny },

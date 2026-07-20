@@ -19,7 +19,12 @@ describe('session-runtime-event bridge', () => {
     const state = createSessionRuntimeBridgeState()
     const sessionId = 'sess-1'
     const chunks: StreamChunk[] = [
-      { type: ChunkType.TOOL_CALL, toolCallId: 'tc1', toolName: 'read_file', input: { path: 'a.ts' } },
+      {
+        type: ChunkType.TOOL_CALL,
+        toolCallId: 'tc1',
+        toolName: 'read_file',
+        input: { path: 'a.ts' }
+      },
       { type: ChunkType.TOOL_RESULT, toolCallId: 'tc1', toolName: 'read_file', output: 'ok' },
       {
         type: ChunkType.STEP_FINISH,
@@ -27,10 +32,16 @@ describe('session-runtime-event bridge', () => {
         usage: { inputTokens: 10, outputTokens: 5 }
       },
       { type: ChunkType.TEXT_DELTA, text: 'done' },
-      { type: ChunkType.STEP_FINISH, finishReason: 'stop', usage: { inputTokens: 12, outputTokens: 8 } }
+      {
+        type: ChunkType.STEP_FINISH,
+        finishReason: 'stop',
+        usage: { inputTokens: 12, outputTokens: 8 }
+      }
     ]
 
-    const events = chunks.flatMap((chunk) => bridgeStreamChunkToRuntimeEvents(sessionId, chunk, state))
+    const events = chunks.flatMap((chunk) =>
+      bridgeStreamChunkToRuntimeEvents(sessionId, chunk, state)
+    )
     const types = events.map((event) => event.type)
 
     expect(types).toEqual([

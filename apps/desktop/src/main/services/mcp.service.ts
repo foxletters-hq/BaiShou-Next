@@ -233,8 +233,7 @@ export class McpService {
         this.httpServer = this.app.listen(port, '0.0.0.0', () => {
           this.isRunning = true
           const bound = this.httpServer?.address()
-          const actualPort =
-            typeof bound === 'object' && bound ? bound.port : port
+          const actualPort = typeof bound === 'object' && bound ? bound.port : port
           logger.info(`[McpService] Server started on http://0.0.0.0:${actualPort}/mcp`)
           resolve()
         })

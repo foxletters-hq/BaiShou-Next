@@ -90,7 +90,9 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     const rows = await this.db
       .select()
       .from(summariesTable)
-      .where(and(eq(summariesTable.type as any, type as any), eq(summariesTable.startDate, targetDate)))
+      .where(
+        and(eq(summariesTable.type as any, type as any), eq(summariesTable.startDate, targetDate))
+      )
       .limit(1)
 
     if (rows.length === 0) return null

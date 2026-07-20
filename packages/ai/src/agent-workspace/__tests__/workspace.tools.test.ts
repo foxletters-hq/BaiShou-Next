@@ -111,7 +111,10 @@ describe('workspace tools', () => {
     expect(full).toContain('one')
     expect(full).toContain('three')
 
-    const slice = await tool.execute({ path: 'notes.md', offset: 1, limit: 1 }, workspaceContext(fs))
+    const slice = await tool.execute(
+      { path: 'notes.md', offset: 1, limit: 1 },
+      workspaceContext(fs)
+    )
     expect(slice).toContain('two')
     expect(slice).not.toContain('one')
   })
@@ -230,10 +233,8 @@ describe('workspace gate metadata', () => {
     )
     const runMeta = resolveAgentGateToolMetadata('workspace_run')
     expect(
-      runMeta?.buildMetadata?.(
-        { command: 'rm -rf /' },
-        { workspace: { folderRoot: ROOT } }
-      )?.forceExclusion
+      runMeta?.buildMetadata?.({ command: 'rm -rf /' }, { workspace: { folderRoot: ROOT } })
+        ?.forceExclusion
     ).toBe(true)
     expect(resolveAgentGateToolMetadata('workspace_read')).toBeUndefined()
     expect(resolveAgentGateToolMetadata('workspace_list')).toBeUndefined()

@@ -67,12 +67,7 @@ describe('isDangerousShellCommand / canPermanentlyAllowShellCommand', () => {
 
 describe('allowlistEntryMatches', () => {
   it('legacy action-only entry matches non-shell tools', () => {
-    expect(
-      allowlistEntryMatches(
-        { action: 'diary_edit' },
-        { action: 'diary_edit' }
-      )
-    ).toBe(true)
+    expect(allowlistEntryMatches({ action: 'diary_edit' }, { action: 'diary_edit' })).toBe(true)
   })
 
   it('rejects patternless workspace_run', () => {

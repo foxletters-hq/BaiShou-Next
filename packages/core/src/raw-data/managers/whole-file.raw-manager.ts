@@ -3,11 +3,7 @@ import * as path from '../../fs/path.util'
 import type { IFileSystem } from '../../fs/file-system.types'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 import type { IVersionManager } from '../../sync/version-manager.interface'
-import type {
-  RawSourceKind,
-  WholeFileKindManager,
-  WriteOpts
-} from '../raw-data-source.types'
+import type { RawSourceKind, WholeFileKindManager, WriteOpts } from '../raw-data-source.types'
 
 type WholeFileKind = Extract<RawSourceKind, 'journal' | 'summary' | 'session'>
 

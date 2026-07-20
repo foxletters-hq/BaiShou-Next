@@ -62,9 +62,7 @@ describe('diary-content-tags.util', () => {
   })
 
   it('ensureDiaryInlineTags 会补齐正文缺失的标签', () => {
-    expect(ensureDiaryInlineTags('今天很开心', ['日记', '生活'])).toBe(
-      '#日记 #生活\n\n今天很开心'
-    )
+    expect(ensureDiaryInlineTags('今天很开心', ['日记', '生活'])).toBe('#日记 #生活\n\n今天很开心')
     expect(ensureDiaryInlineTags('今天 #日记 很开心', ['日记', '生活'])).toBe(
       '今天 #日记 很开心 #生活'
     )

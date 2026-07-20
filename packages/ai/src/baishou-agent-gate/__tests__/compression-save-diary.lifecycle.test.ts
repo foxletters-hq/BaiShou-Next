@@ -105,7 +105,9 @@ describe('runCompressionSaveDiaryLifecycle', () => {
       readByDates,
       editEntry
     }
-    const agentGate = { assert: vi.fn().mockResolvedValue(undefined) } as unknown as IBaishouAgentGate
+    const agentGate = {
+      assert: vi.fn().mockResolvedValue(undefined)
+    } as unknown as IBaishouAgentGate
 
     const result = await runCompressionSaveDiaryLifecycle({
       agentGate,

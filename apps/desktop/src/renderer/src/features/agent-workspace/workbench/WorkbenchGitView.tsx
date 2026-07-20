@@ -12,9 +12,13 @@ interface WorkbenchGitPanelBodyProps {
   onGitMetaChange?: (meta: { branch?: string; ahead: number; behind: number }) => void
 }
 
-const WorkbenchGitPanelBody: React.FC<
-  WorkbenchGitPanelBodyProps & { repositoryName: string }
-> = ({ panelProps, repositoryName, onChangesCountChange, onOpenGitDiff, onGitMetaChange }) => {
+const WorkbenchGitPanelBody: React.FC<WorkbenchGitPanelBodyProps & { repositoryName: string }> = ({
+  panelProps,
+  repositoryName,
+  onChangesCountChange,
+  onOpenGitDiff,
+  onGitMetaChange
+}) => {
   const vm = useGitManagementPage({
     ...panelProps,
     onOpenDiffInEditor: onOpenGitDiff
@@ -36,7 +40,10 @@ const WorkbenchGitPanelBody: React.FC<
     }
     void panelProps.onGetStatus().then((status) => {
       const count =
-        status.staged.length + status.unstaged.length + status.untracked.length + status.conflicted.length
+        status.staged.length +
+        status.unstaged.length +
+        status.untracked.length +
+        status.conflicted.length
       onChangesCountChange?.(count)
     })
   }, [onChangesCountChange, panelProps, vm.gitStatus])
@@ -73,7 +80,9 @@ export const WorkbenchGitView: React.FC<WorkbenchGitViewProps> = ({
   if (!folderRoot) {
     return (
       <div className={styles.root}>
-        <p className={styles.placeholder}>{t('agent_workspace.pick_workspace_hint', '请先选择或添加工作区')}</p>
+        <p className={styles.placeholder}>
+          {t('agent_workspace.pick_workspace_hint', '请先选择或添加工作区')}
+        </p>
       </div>
     )
   }

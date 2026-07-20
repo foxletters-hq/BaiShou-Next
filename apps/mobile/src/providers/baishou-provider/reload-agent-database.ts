@@ -175,9 +175,8 @@ export function assignReloadAgentDatabaseHandler(
       })
     }
 
-    const { getMobileRawDataSourceManager } = await import(
-      '../../services/mobile-raw-data-source.runtime'
-    )
+    const { getMobileRawDataSourceManager } =
+      await import('../../services/mobile-raw-data-source.runtime')
     const nextIncrementalSyncService = new MobileIncrementalSyncService(
       newRuntime.settingsManager,
       archiveService,

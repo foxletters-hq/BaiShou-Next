@@ -461,9 +461,8 @@ export async function switchVaultRuntime(
 
     await deps.vaultService.switchVault(vaultName)
 
-    const { resetMobileRawDataRuntime, ensureMobileRawDataRuntime } = await import(
-      './mobile-raw-data-source.runtime'
-    )
+    const { resetMobileRawDataRuntime, ensureMobileRawDataRuntime } =
+      await import('./mobile-raw-data-source.runtime')
     resetMobileRawDataRuntime()
     ensureMobileRawDataRuntime({
       pathService: deps.pathService,

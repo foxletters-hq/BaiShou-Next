@@ -7,7 +7,9 @@ import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 
 const params = z.object({
-  entity: z.string().describe('Person, place, topic, or other entity name to recall relations for.'),
+  entity: z
+    .string()
+    .describe('Person, place, topic, or other entity name to recall relations for.'),
   mode: z
     .enum(['network', 'timeline'])
     .optional()

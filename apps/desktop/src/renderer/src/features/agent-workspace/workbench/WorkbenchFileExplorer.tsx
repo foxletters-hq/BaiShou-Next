@@ -20,10 +20,7 @@ import {
   useCloseOnScroll,
   type FileExplorerContextMenuState
 } from './WorkbenchFileExplorerContextMenu'
-import {
-  InlineTreeNameRow,
-  type InlineTreeEditState
-} from './WorkbenchFileExplorerInlineEdit'
+import { InlineTreeNameRow, type InlineTreeEditState } from './WorkbenchFileExplorerInlineEdit'
 import styles from './WorkbenchFileExplorer.module.css'
 
 export interface WorkbenchFileExplorerProps {
@@ -80,10 +77,8 @@ function TreeNode({
   const expanded = node.isDirectory && isExpanded(node.relativePath)
   const children = expanded ? getChildren(node.relativePath) : []
   const isSelected = selectedPath === node.relativePath
-  const isRenaming =
-    inlineEdit?.mode === 'rename' && inlineEdit.relativePath === node.relativePath
-  const pendingCreate =
-    inlineEdit?.mode === 'create' && inlineEdit.parentDir === node.relativePath
+  const isRenaming = inlineEdit?.mode === 'rename' && inlineEdit.relativePath === node.relativePath
+  const pendingCreate = inlineEdit?.mode === 'create' && inlineEdit.parentDir === node.relativePath
 
   return (
     <>
@@ -99,7 +94,11 @@ function TreeNode({
             onClick={() => onToggle(node.relativePath)}
             aria-expanded={expanded}
           >
-            {expanded ? <ChevronDown size={16} strokeWidth={1.75} /> : <ChevronRight size={16} strokeWidth={1.75} />}
+            {expanded ? (
+              <ChevronDown size={16} strokeWidth={1.75} />
+            ) : (
+              <ChevronRight size={16} strokeWidth={1.75} />
+            )}
           </button>
         ) : (
           <span className={styles.chevronSpacer} />
@@ -109,7 +108,9 @@ function TreeNode({
             depth={depth}
             isDirectory={node.isDirectory}
             initialName={inlineEdit.initialName}
-            existingNames={getChildren(parentRelativePath(node.relativePath)).map((child) => child.name)}
+            existingNames={getChildren(parentRelativePath(node.relativePath)).map(
+              (child) => child.name
+            )}
             ignoreName={node.name}
             onCommit={onCommitInline}
             onCancel={onCancelInline}
@@ -127,7 +128,9 @@ function TreeNode({
               }
             }}
           >
-            {!node.isDirectory ? <File size={14} strokeWidth={1.75} className={styles.fileIcon} /> : null}
+            {!node.isDirectory ? (
+              <File size={14} strokeWidth={1.75} className={styles.fileIcon} />
+            ) : null}
             <span className={styles.name}>{node.name}</span>
           </button>
         )}
@@ -193,9 +196,7 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
   const getParentDir = useCallback(() => {
     const selected = resolveSelectedNode()
     if (!selected) return ''
-    return selected.isDirectory
-      ? selected.relativePath
-      : parentRelativePath(selected.relativePath)
+    return selected.isDirectory ? selected.relativePath : parentRelativePath(selected.relativePath)
   }, [resolveSelectedNode])
 
   const handleSelect = useCallback(
@@ -260,7 +261,10 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
             tree.selectPath(created.relativePath)
             onOpenFile(created.relativePath)
           } else {
-            const created = await window.api.agentWorkspace.createDirectory(folderRoot, relativePath)
+            const created = await window.api.agentWorkspace.createDirectory(
+              folderRoot,
+              relativePath
+            )
             if (snapshot.parentDir) tree.ensureExpanded(snapshot.parentDir)
             tree.ensureExpanded(created.relativePath)
             await tree.refreshPath(snapshot.parentDir)
@@ -423,14 +427,11 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
 
   if (!folderRoot) {
     return (
-      <div className={styles.placeholder}>
-        {t('agent_workspace.no_folder', '未选择文件夹')}
-      </div>
+      <div className={styles.placeholder}>{t('agent_workspace.no_folder', '未选择文件夹')}</div>
     )
   }
 
-  const rootPendingCreate =
-    inlineEdit?.mode === 'create' && inlineEdit.parentDir === ''
+  const rootPendingCreate = inlineEdit?.mode === 'create' && inlineEdit.parentDir === ''
 
   return (
     <div className={styles.explorer}>

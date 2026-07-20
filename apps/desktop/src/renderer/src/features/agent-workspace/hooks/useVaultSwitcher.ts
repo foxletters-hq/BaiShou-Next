@@ -50,14 +50,13 @@ export function useVaultSwitcher() {
     const unsubRegistry = (window as any).api?.vault?.onRegistryUpdated?.(() => {
       void fetchVaults()
     })
-    const unsubMutation = (window as any).api?.cache?.onDomainMutation?.((event: {
-      domain?: string
-      action?: string
-    }) => {
-      if (event.domain === 'vault' && event.action === 'switch') {
-        void fetchVaults()
+    const unsubMutation = (window as any).api?.cache?.onDomainMutation?.(
+      (event: { domain?: string; action?: string }) => {
+        if (event.domain === 'vault' && event.action === 'switch') {
+          void fetchVaults()
+        }
       }
-    })
+    )
     return () => {
       unsubRegistry?.()
       unsubMutation?.()

@@ -46,15 +46,12 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
   const { sessionId, currentAssistant } = params
   const settings = useSettingsStore()
 
-  const assistantId =
-    currentAssistant?.id != null ? String(currentAssistant.id) : undefined
+  const assistantId = currentAssistant?.id != null ? String(currentAssistant.id) : undefined
 
   const [currentProviderId, setCurrentProviderId] = useState<string>(
     UNCONFIGURED_DIALOGUE_MODEL_SENTINEL
   )
-  const [currentModelId, setCurrentModelId] = useState<string>(
-    UNCONFIGURED_DIALOGUE_MODEL_SENTINEL
-  )
+  const [currentModelId, setCurrentModelId] = useState<string>(UNCONFIGURED_DIALOGUE_MODEL_SENTINEL)
   const [modelSelectionSource, setModelSelectionSource] =
     useState<DialogueModelSelectionSource>('none')
   const [selectionState, setSelectionState] = useState<AgentDialogueSelectionState>(() =>

@@ -255,9 +255,7 @@ export class ThreeWaySyncService
   protected async mergeMonthlyJsonlConflict(relPath: string): Promise<boolean> {
     try {
       const fullPath = await this.resolveSyncFullPath(relPath)
-      const localText = fs.existsSync(fullPath)
-        ? await fs.promises.readFile(fullPath, 'utf8')
-        : ''
+      const localText = fs.existsSync(fullPath) ? await fs.promises.readFile(fullPath, 'utf8') : ''
 
       const tmp = path.join(
         os.tmpdir(),

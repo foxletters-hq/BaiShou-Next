@@ -15,7 +15,10 @@ export interface GitDiffViewerProps {
   className?: string
 }
 
-const UnifiedDiffBody: React.FC<{ diff: FileDiff; fillHeight?: boolean }> = ({ diff, fillHeight }) => {
+const UnifiedDiffBody: React.FC<{ diff: FileDiff; fillHeight?: boolean }> = ({
+  diff,
+  fillHeight
+}) => {
   const { t } = useTranslation()
 
   if (diff.hunks.length === 0) {
@@ -85,7 +88,11 @@ const SplitDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
             <div
               key={`l-${index}`}
               className={`${styles.splitRow} ${
-                row.kind === 'remove' ? styles.rowRemove : row.leftText === undefined ? styles.rowEmpty : ''
+                row.kind === 'remove'
+                  ? styles.rowRemove
+                  : row.leftText === undefined
+                    ? styles.rowEmpty
+                    : ''
               }`}
             >
               <span className={styles.lineNum}>{row.leftNum ?? ''}</span>
@@ -102,7 +109,11 @@ const SplitDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
             <div
               key={`r-${index}`}
               className={`${styles.splitRow} ${
-                row.kind === 'add' ? styles.rowAdd : row.rightText === undefined ? styles.rowEmpty : ''
+                row.kind === 'add'
+                  ? styles.rowAdd
+                  : row.rightText === undefined
+                    ? styles.rowEmpty
+                    : ''
               }`}
             >
               <span className={styles.lineNum}>{row.rightNum ?? ''}</span>
@@ -125,11 +136,7 @@ export const GitDiffViewer: React.FC<GitDiffViewerProps> = ({
   const { t } = useTranslation()
   const [mode, setMode] = useState<GitDiffViewMode>(defaultMode)
 
-  const rootClass = [
-    styles.root,
-    fillHeight ? styles.fill : '',
-    className ?? ''
-  ]
+  const rootClass = [styles.root, fillHeight ? styles.fill : '', className ?? '']
     .filter(Boolean)
     .join(' ')
 

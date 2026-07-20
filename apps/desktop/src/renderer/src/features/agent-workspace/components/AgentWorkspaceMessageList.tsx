@@ -2,7 +2,10 @@ import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileChangeCard, StreamingBubble, ToolResultGroup } from '@baishou/ui'
 import type { FileChangePartData } from '@baishou/shared'
-import type { WorkspaceChatMessage, PendingWorkspaceAssistantMsg } from '../hooks/useWorkspaceChatMessages'
+import type {
+  WorkspaceChatMessage,
+  PendingWorkspaceAssistantMsg
+} from '../hooks/useWorkspaceChatMessages'
 import type { WorkspaceToolError } from '../hooks/useWorkspaceAgentStream'
 import {
   getWorkspaceAssistantReasoning,
@@ -71,7 +74,9 @@ export const AgentWorkspaceMessageList: React.FC<AgentWorkspaceMessageListProps>
     return null
   }
 
-  const activeToolDisplayName = activeToolName ? formatWorkspaceToolDisplayName(activeToolName) : null
+  const activeToolDisplayName = activeToolName
+    ? formatWorkspaceToolDisplayName(activeToolName)
+    : null
 
   const streamingCompletedTools = [
     ...completedTools.map((tool) => ({
@@ -94,9 +99,7 @@ export const AgentWorkspaceMessageList: React.FC<AgentWorkspaceMessageListProps>
           return (
             <div key={msg.id} className={styles.userRow}>
               <div className={styles.userHeader}>
-                <div className={styles.userBubble}>
-                  {userText ? <p>{userText}</p> : null}
-                </div>
+                <div className={styles.userBubble}>{userText ? <p>{userText}</p> : null}</div>
                 {onRollbackRound ? (
                   <button
                     type="button"
@@ -124,10 +127,10 @@ export const AgentWorkspaceMessageList: React.FC<AgentWorkspaceMessageListProps>
               {assistantReasoning ? (
                 <div className={styles.assistantReasoning}>{assistantReasoning}</div>
               ) : null}
-              {assistantText ? (
-                <div className={styles.assistantBubble}>{assistantText}</div>
+              {assistantText ? <div className={styles.assistantBubble}>{assistantText}</div> : null}
+              {toolInvocations.length > 0 ? (
+                <ToolResultGroup invocations={toolInvocations} />
               ) : null}
-              {toolInvocations.length > 0 ? <ToolResultGroup invocations={toolInvocations} /> : null}
               {fileChangeParts.map((part, index) => {
                 const data = part.data as FileChangePartData
                 if (isFileChangePartFailed(data)) {
@@ -137,9 +140,7 @@ export const AgentWorkspaceMessageList: React.FC<AgentWorkspaceMessageListProps>
                     </div>
                   )
                 }
-                return (
-                  <FileChangeCard key={`${msg.id}-fc-${index}`} data={data} />
-                )
+                return <FileChangeCard key={`${msg.id}-fc-${index}`} data={data} />
               })}
             </div>
           </div>

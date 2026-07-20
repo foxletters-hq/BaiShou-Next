@@ -19,10 +19,7 @@ import { diaryWatcher } from './diary-watcher.service'
 import { summaryWatcher } from './summary-watcher.service'
 import { sessionWatcher } from './session-watcher.service'
 import { getSharedShadowSync } from './shadow-sync.registry'
-import {
-  getRawDataSourceManager,
-  runDerivedIndexHydration
-} from './raw-data-source.runtime'
+import { getRawDataSourceManager, runDerivedIndexHydration } from './raw-data-source.runtime'
 
 /**
  * 全局数据同步收割机 (Global Bootstrapper)

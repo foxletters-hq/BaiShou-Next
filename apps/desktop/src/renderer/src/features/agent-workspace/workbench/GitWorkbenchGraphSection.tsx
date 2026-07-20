@@ -60,14 +60,19 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
               {history.map((entry, index) => {
                 const isExpanded = expandedCommit === entry.commit.hash
                 const isHead = entry.isCurrent
-                const laneColor = isHead ? 'var(--color-primary, #5ba8f5)' : 'var(--wb-chrome-border, #d8dee4)'
+                const laneColor = isHead
+                  ? 'var(--color-primary, #5ba8f5)'
+                  : 'var(--wb-chrome-border, #d8dee4)'
 
                 return (
                   <div key={entry.commit.hash} className={styles.graphRow}>
                     <div className={styles.graphLane} aria-hidden>
                       <div
                         className={`${styles.graphNode} ${isHead ? styles.graphNodeHead : ''}`}
-                        style={{ borderColor: laneColor, background: isHead ? laneColor : 'transparent' }}
+                        style={{
+                          borderColor: laneColor,
+                          background: isHead ? laneColor : 'transparent'
+                        }}
                       />
                       {index < history.length - 1 ? (
                         <div className={styles.graphLine} style={{ background: laneColor }} />
@@ -84,15 +89,11 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
                           {entry.commit.message || t('workbench.git_empty_commit', '(empty)')}
                         </span>
                         <span className={styles.graphMeta}>
-                          {isHead ? (
-                            <span className={styles.graphHeadBadge}>HEAD</span>
-                          ) : null}
+                          {isHead ? <span className={styles.graphHeadBadge}>HEAD</span> : null}
                           <span className={styles.graphTime}>
                             {formatGraphTime(entry.commit.date)}
                           </span>
-                          <span className={styles.graphHash}>
-                            {entry.commit.hash.slice(0, 7)}
-                          </span>
+                          <span className={styles.graphHash}>{entry.commit.hash.slice(0, 7)}</span>
                           {!isHead ? (
                             <button
                               type="button"
@@ -129,10 +130,14 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
                               <div
                                 key={change.path}
                                 className={`${styles.treeRow} ${canDiff ? styles.treeRowClickable : ''}`}
-                                onClick={canDiff ? () => void handleViewDiff(change.path) : undefined}
+                                onClick={
+                                  canDiff ? () => void handleViewDiff(change.path) : undefined
+                                }
                                 role={canDiff ? 'button' : undefined}
                               >
-                                <span className={`${styles.treeBadge} ${statusClass}`}>{status}</span>
+                                <span className={`${styles.treeBadge} ${statusClass}`}>
+                                  {status}
+                                </span>
                                 <span className={styles.treePath} title={change.path}>
                                   {change.path}
                                 </span>

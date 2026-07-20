@@ -2,7 +2,11 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import type { AgentWorkspaceDirEntry, AgentWorkspaceReadFileResult, AgentWorkspaceSessionListItem } from '@baishou/shared'
+import type {
+  AgentWorkspaceDirEntry,
+  AgentWorkspaceReadFileResult,
+  AgentWorkspaceSessionListItem
+} from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import {
   createWorkspaceAgentSession,
@@ -61,7 +65,9 @@ async function listDirectoryEntries(
     const fullPath = path.join(dirPath, name)
     try {
       const entryStat = await fs.stat(fullPath)
-      const entryRelative = relativePath ? path.posix.join(relativePath.replace(/\\/g, '/'), name) : name
+      const entryRelative = relativePath
+        ? path.posix.join(relativePath.replace(/\\/g, '/'), name)
+        : name
       entries.push({
         name,
         relativePath: entryRelative,
@@ -118,10 +124,13 @@ export function registerAgentWorkspaceIPC(): void {
     return getLastActiveWorkspaceId()
   })
 
-  ipcMain.handle('agent-workspace:set-last-active-workspace-id', async (_, workspaceId: string | null) => {
-    await setLastActiveWorkspaceId(workspaceId)
-    return true
-  })
+  ipcMain.handle(
+    'agent-workspace:set-last-active-workspace-id',
+    async (_, workspaceId: string | null) => {
+      await setLastActiveWorkspaceId(workspaceId)
+      return true
+    }
+  )
 
   ipcMain.handle('agent-workspace:pick-avatar', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
@@ -252,7 +261,11 @@ export function registerAgentWorkspaceIPC(): void {
 
   ipcMain.handle(
     'agent-workspace:replace-in-files',
-    async (_event, rootPath: string, options: import('@baishou/shared').WorkspaceReplaceOptions) => {
+    async (
+      _event,
+      rootPath: string,
+      options: import('@baishou/shared').WorkspaceReplaceOptions
+    ) => {
       if (!rootPath?.trim()) {
         return { filesChanged: 0, replacements: 0, errors: ['No workspace folder'] }
       }
@@ -280,36 +293,38 @@ export function registerAgentWorkspaceIPC(): void {
     return getWorkspaceSessionBinding(sessionId)
   })
 
-  ipcMain.handle('agent-workspace:list-sessions', async (): Promise<AgentWorkspaceSessionListItem[]> => {
-    const bindings = await listWorkspaceSessions()
-    const { realSessionRepo } = getAgentManagers()
-    const items: AgentWorkspaceSessionListItem[] = []
+  ipcMain.handle(
+    'agent-workspace:list-sessions',
+    async (): Promise<AgentWorkspaceSessionListItem[]> => {
+      const bindings = await listWorkspaceSessions()
+      const { realSessionRepo } = getAgentManagers()
+      const items: AgentWorkspaceSessionListItem[] = []
 
-    for (const binding of bindings) {
-      let title = binding.folderDisplayName || path.basename(binding.folderRoot)
-      try {
-        const session = await realSessionRepo.getSessionById?.(binding.sessionId)
-        if (session && typeof (session as { title?: string }).title === 'string') {
-          const sessionTitle = (session as { title?: string }).title?.trim()
-          if (sessionTitle) title = sessionTitle
+      for (const binding of bindings) {
+        let title = binding.folderDisplayName || path.basename(binding.folderRoot)
+        try {
+          const session = await realSessionRepo.getSessionById?.(binding.sessionId)
+          if (session && typeof (session as { title?: string }).title === 'string') {
+            const sessionTitle = (session as { title?: string }).title?.trim()
+            if (sessionTitle) title = sessionTitle
+          }
+        } catch {
+          /* ignore missing session metadata */
         }
-      } catch {
-        /* ignore missing session metadata */
+
+        items.push({
+          sessionId: binding.sessionId,
+          title,
+          folderRoot: binding.folderRoot,
+          folderDisplayName:
+            binding.folderDisplayName || path.basename(binding.folderRoot.replace(/\\/g, '/')),
+          updatedAt: binding.updatedAt
+        })
       }
 
-      items.push({
-        sessionId: binding.sessionId,
-        title,
-        folderRoot: binding.folderRoot,
-        folderDisplayName:
-          binding.folderDisplayName ||
-          path.basename(binding.folderRoot.replace(/\\/g, '/')),
-        updatedAt: binding.updatedAt
-      })
+      return items
     }
-
-    return items
-  })
+  )
 
   ipcMain.handle('agent-workspace:delete-session', async (_, sessionId: string) => {
     if (!sessionId?.trim()) {
@@ -369,7 +384,10 @@ export function registerAgentWorkspaceIPC(): void {
     }
   )
 
-  const withGit = <T>(folderRoot: string, fn: (svc: ReturnType<typeof getWorkspaceFolderGitService>) => Promise<T>) => {
+  const withGit = <T>(
+    folderRoot: string,
+    fn: (svc: ReturnType<typeof getWorkspaceFolderGitService>) => Promise<T>
+  ) => {
     if (!folderRoot?.trim()) throw new Error('Workspace folder is required')
     return fn(getWorkspaceFolderGitService(folderRoot))
   }
@@ -391,14 +409,17 @@ export function registerAgentWorkspaceIPC(): void {
     withGit(folderRoot, (svc) => svc.getStatus())
   )
 
-  ipcMain.handle('agent-workspace:git-stage-file', async (_, folderRoot: string, filePath: string) => {
-    try {
-      await withGit(folderRoot, (svc) => svc.stageFile(filePath))
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
+  ipcMain.handle(
+    'agent-workspace:git-stage-file',
+    async (_, folderRoot: string, filePath: string) => {
+      try {
+        await withGit(folderRoot, (svc) => svc.stageFile(filePath))
+        return { success: true }
+      } catch (error) {
+        return { success: false, message: error instanceof Error ? error.message : String(error) }
+      }
     }
-  })
+  )
 
   ipcMain.handle('agent-workspace:git-stage-all', async (_, folderRoot: string) => {
     try {
@@ -409,28 +430,36 @@ export function registerAgentWorkspaceIPC(): void {
     }
   })
 
-  ipcMain.handle('agent-workspace:git-unstage-file', async (_, folderRoot: string, filePath: string) => {
-    await withGit(folderRoot, (svc) => svc.unstageFile(filePath))
-    return { success: true }
-  })
+  ipcMain.handle(
+    'agent-workspace:git-unstage-file',
+    async (_, folderRoot: string, filePath: string) => {
+      await withGit(folderRoot, (svc) => svc.unstageFile(filePath))
+      return { success: true }
+    }
+  )
 
   ipcMain.handle('agent-workspace:git-unstage-all', async (_, folderRoot: string) => {
     await withGit(folderRoot, (svc) => svc.unstageAll())
     return { success: true }
   })
 
-  ipcMain.handle('agent-workspace:git-discard-file', async (_, folderRoot: string, filePath: string) => {
-    await withGit(folderRoot, (svc) => svc.discardFile(filePath))
-    return { success: true }
-  })
+  ipcMain.handle(
+    'agent-workspace:git-discard-file',
+    async (_, folderRoot: string, filePath: string) => {
+      await withGit(folderRoot, (svc) => svc.discardFile(filePath))
+      return { success: true }
+    }
+  )
 
   ipcMain.handle('agent-workspace:git-discard-all', async (_, folderRoot: string) => {
     await withGit(folderRoot, (svc) => svc.discardAllChanges())
     return { success: true }
   })
 
-  ipcMain.handle('agent-workspace:git-commit-staged', async (_, folderRoot: string, message: string) =>
-    withGit(folderRoot, (svc) => svc.commitStaged(message))
+  ipcMain.handle(
+    'agent-workspace:git-commit-staged',
+    async (_, folderRoot: string, message: string) =>
+      withGit(folderRoot, (svc) => svc.commitStaged(message))
   )
 
   ipcMain.handle('agent-workspace:git-commit-all', async (_, folderRoot: string, message: string) =>
@@ -443,12 +472,16 @@ export function registerAgentWorkspaceIPC(): void {
       withGit(folderRoot, (svc) => svc.getHistory(filePath, limit))
   )
 
-  ipcMain.handle('agent-workspace:git-get-recent-pulls', async (_, folderRoot: string, limit?: number) =>
-    withGit(folderRoot, (svc) => svc.getRecentPulls(limit))
+  ipcMain.handle(
+    'agent-workspace:git-get-recent-pulls',
+    async (_, folderRoot: string, limit?: number) =>
+      withGit(folderRoot, (svc) => svc.getRecentPulls(limit))
   )
 
-  ipcMain.handle('agent-workspace:git-get-commit-changes', async (_, folderRoot: string, commitHash: string) =>
-    withGit(folderRoot, (svc) => svc.getCommitChanges(commitHash))
+  ipcMain.handle(
+    'agent-workspace:git-get-commit-changes',
+    async (_, folderRoot: string, commitHash: string) =>
+      withGit(folderRoot, (svc) => svc.getCommitChanges(commitHash))
   )
 
   ipcMain.handle(
@@ -489,8 +522,10 @@ export function registerAgentWorkspaceIPC(): void {
       withGit(folderRoot, (svc) => svc.rollbackFile(filePath, commitHash))
   )
 
-  ipcMain.handle('agent-workspace:git-rollback-all', async (_, folderRoot: string, commitHash: string) =>
-    withGit(folderRoot, (svc) => svc.rollbackAll(commitHash))
+  ipcMain.handle(
+    'agent-workspace:git-rollback-all',
+    async (_, folderRoot: string, commitHash: string) =>
+      withGit(folderRoot, (svc) => svc.rollbackAll(commitHash))
   )
 
   ipcMain.handle(
@@ -511,52 +546,68 @@ export function registerAgentWorkspaceIPC(): void {
     withGit(folderRoot, (svc) => svc.getBranchInfo())
   )
 
-  ipcMain.handle('agent-workspace:git-checkout-branch', async (_, folderRoot: string, branch: string) => {
-    try {
-      await withGit(folderRoot, (svc) => svc.checkoutBranch(branch))
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
+  ipcMain.handle(
+    'agent-workspace:git-checkout-branch',
+    async (_, folderRoot: string, branch: string) => {
+      try {
+        await withGit(folderRoot, (svc) => svc.checkoutBranch(branch))
+        return { success: true }
+      } catch (error) {
+        return { success: false, message: error instanceof Error ? error.message : String(error) }
+      }
     }
-  })
+  )
 
-  ipcMain.handle('agent-workspace:git-create-branch', async (_, folderRoot: string, branch: string) => {
-    try {
-      await withGit(folderRoot, (svc) => svc.createBranch(branch))
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
+  ipcMain.handle(
+    'agent-workspace:git-create-branch',
+    async (_, folderRoot: string, branch: string) => {
+      try {
+        await withGit(folderRoot, (svc) => svc.createBranch(branch))
+        return { success: true }
+      } catch (error) {
+        return { success: false, message: error instanceof Error ? error.message : String(error) }
+      }
     }
-  })
+  )
 
-  ipcMain.handle('agent-workspace:git-set-remote-url', async (_, folderRoot: string, url: string) => {
-    try {
-      await withGit(folderRoot, (svc) => svc.setRemoteUrl(url))
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
+  ipcMain.handle(
+    'agent-workspace:git-set-remote-url',
+    async (_, folderRoot: string, url: string) => {
+      try {
+        await withGit(folderRoot, (svc) => svc.setRemoteUrl(url))
+        return { success: true }
+      } catch (error) {
+        return { success: false, message: error instanceof Error ? error.message : String(error) }
+      }
     }
-  })
+  )
 
   ipcMain.handle('agent-workspace:git-get-config', async (_, folderRoot: string) =>
     withGit(folderRoot, (svc) => svc.getConfig())
   )
 
-  ipcMain.handle('agent-workspace:git-save-config', async (_, folderRoot: string, partial: unknown) => {
-    try {
-      await withGit(folderRoot, (svc) => svc.saveConfig(partial as Partial<import('@baishou/shared').GitSyncConfig>))
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
+  ipcMain.handle(
+    'agent-workspace:git-save-config',
+    async (_, folderRoot: string, partial: unknown) => {
+      try {
+        await withGit(folderRoot, (svc) =>
+          svc.saveConfig(partial as Partial<import('@baishou/shared').GitSyncConfig>)
+        )
+        return { success: true }
+      } catch (error) {
+        return { success: false, message: error instanceof Error ? error.message : String(error) }
+      }
     }
-  })
+  )
 
   ipcMain.handle('agent-workspace:git-test-remote', async (_, folderRoot: string) =>
     withGit(folderRoot, (svc) => svc.testRemote())
   )
 
-  ipcMain.handle('agent-workspace:git-merge-branch', async (_, folderRoot: string, branch: string) =>
-    withGit(folderRoot, (svc) => svc.mergeBranch(branch))
+  ipcMain.handle(
+    'agent-workspace:git-merge-branch',
+    async (_, folderRoot: string, branch: string) =>
+      withGit(folderRoot, (svc) => svc.mergeBranch(branch))
   )
 
   ipcMain.handle(
@@ -565,16 +616,20 @@ export function registerAgentWorkspaceIPC(): void {
       withGit(folderRoot, (svc) => svc.deleteBranch(branch, force))
   )
 
-  ipcMain.handle('agent-workspace:git-publish-branch', async (_, folderRoot: string, branch?: string) =>
-    withGit(folderRoot, (svc) => svc.publishBranch(branch))
+  ipcMain.handle(
+    'agent-workspace:git-publish-branch',
+    async (_, folderRoot: string, branch?: string) =>
+      withGit(folderRoot, (svc) => svc.publishBranch(branch))
   )
 
   ipcMain.handle('agent-workspace:git-list-stash', async (_, folderRoot: string) =>
     withGit(folderRoot, (svc) => svc.listStash())
   )
 
-  ipcMain.handle('agent-workspace:git-stash-push', async (_, folderRoot: string, message?: string) =>
-    withGit(folderRoot, (svc) => svc.stashPush(message))
+  ipcMain.handle(
+    'agent-workspace:git-stash-push',
+    async (_, folderRoot: string, message?: string) =>
+      withGit(folderRoot, (svc) => svc.stashPush(message))
   )
 
   ipcMain.handle('agent-workspace:git-stash-apply', async (_, folderRoot: string, index: number) =>

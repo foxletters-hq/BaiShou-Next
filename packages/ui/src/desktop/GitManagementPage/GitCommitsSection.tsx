@@ -33,9 +33,7 @@ export const GitCommitsSection: React.FC<GitCommitsSectionProps> = ({ vm, compac
     <div className="gmp-collapsible-section">
       <div className="gmp-collapsible-header" onClick={() => toggleSection('commits')}>
         <span className="gmp-collapsible-arrow">{expandedSections.commits ? '▾' : '▸'}</span>
-        <span className="gmp-collapsible-title">
-          {t('workbench.git_history', '提交历史')}
-        </span>
+        <span className="gmp-collapsible-title">{t('workbench.git_history', '提交历史')}</span>
         {totalCount > 0 ? (
           <span className="gmp-collapsible-badge">{totalCount}</span>
         ) : history.length > 0 ? (

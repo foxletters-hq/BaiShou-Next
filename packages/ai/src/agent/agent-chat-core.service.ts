@@ -46,7 +46,9 @@ export class AgentChatCoreService {
     fetchSearchPage: unknown
     flushSessionToDisk?: (sessionId: string) => Promise<void>
     agentGate?: unknown
-    persistBaishouAgentGateConfig?: (config: import('@baishou/shared').BaishouAgentGateConfig) => Promise<void>
+    persistBaishouAgentGateConfig?: (
+      config: import('@baishou/shared').BaishouAgentGateConfig
+    ) => Promise<void>
     rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
     syncGraphPendingIndex?: () => Promise<void>
     graphReader?: import('@baishou/shared').ToolGraphReader

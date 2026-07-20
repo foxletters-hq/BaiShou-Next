@@ -1,21 +1,14 @@
 import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import {
-  AgentGateReply,
-  type AgentGatePartData,
-  type AgentGateRequest
-} from '@baishou/shared'
+import { AgentGateReply, type AgentGatePartData, type AgentGateRequest } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 
 export interface AgentGatePartCardProps {
   data: AgentGatePartData
 }
 
-function replyLabel(
-  t: (key: string, fallback: string) => string,
-  reply?: AgentGateReply
-): string {
+function replyLabel(t: (key: string, fallback: string) => string, reply?: AgentGateReply): string {
   switch (reply) {
     case AgentGateReply.Once:
       return t('agent_gate.once', '本次允许')
@@ -28,7 +21,10 @@ function replyLabel(
   }
 }
 
-function selectedOptionLabel(request: AgentGateRequest, selectedOptionIds?: string[]): string | null {
+function selectedOptionLabel(
+  request: AgentGateRequest,
+  selectedOptionIds?: string[]
+): string | null {
   const selectedId = selectedOptionIds?.[0]
   if (!selectedId) return null
   return request.options.find((option) => option.id === selectedId)?.label ?? null
@@ -58,7 +54,9 @@ export const AgentGatePartCard: React.FC<AgentGatePartCardProps> = ({ data }) =>
       </Text>
       <Text style={[styles.title, { color: colors.textPrimary }]}>{request.title}</Text>
       {request.description ? (
-        <Text style={[styles.description, { color: colors.textSecondary }]}>{request.description}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
+          {request.description}
+        </Text>
       ) : null}
       {resolved ? (
         <Text style={[styles.meta, { color: colors.textTertiary }]}>
