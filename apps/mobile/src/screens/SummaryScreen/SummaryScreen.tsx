@@ -71,7 +71,6 @@ export const SummaryScreen: React.FC = () => {
     stopGeneration,
     setConcurrency,
     isDetectingMissing,
-    refreshDashboard,
     refreshSummaries,
     refreshData,
     refreshMissing,

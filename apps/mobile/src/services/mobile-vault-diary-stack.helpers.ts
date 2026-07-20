@@ -71,19 +71,6 @@ export function createVaultBoundDiaryStack(deps: {
     fileSystem: deps.fileSystem,
     shadowSync: shadowIndexSyncService
   })
-  try {
-    const { wireMobilePendingReextractHook } =
-      require('./mobile-graph.service') as typeof import('./mobile-graph.service')
-    wireMobilePendingReextractHook({
-      vaultName: activeVault.name,
-      shadowRepo,
-      pathService: deps.pathService,
-      fileSystem: deps.fileSystem,
-      shadowSync: shadowIndexSyncService
-    })
-  } catch {
-    // optional until graph screen is used
-  }
   const diaryService = new DiaryService(
     shadowRepo,
     fileSyncService,
