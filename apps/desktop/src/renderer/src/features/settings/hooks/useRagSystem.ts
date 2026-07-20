@@ -94,10 +94,12 @@ export function useRagSystem(
 
   const checkMigrationStatus = async () => {
     try {
-      const pending = await (window as any).api?.rag?.hasPendingMigration?.()
-      const mismatch = await (window as any).api?.rag?.hasModelMismatch?.()
+      const [pending, mismatch] = await Promise.all([
+        (window as any).api?.rag?.hasPendingMigration?.(),
+        (window as any).api?.rag?.hasModelMismatch?.(),
+        refreshMigrationState()
+      ])
       setHasMismatchModel(!!pending || !!mismatch)
-      await refreshMigrationState()
     } catch {}
   }
 

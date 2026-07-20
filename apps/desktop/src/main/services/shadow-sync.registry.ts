@@ -2,6 +2,11 @@ import { BrowserWindow } from 'electron'
 import { ShadowIndexSyncService } from '@baishou/core-desktop'
 import { fileSystem, getActiveVaultShadowRepo, pathService, vaultService } from '../ipc/vault.ipc'
 import { embeddingCallback } from '../ipc/diary-embedding.callback'
+import {
+  ensureRawDataRuntime,
+  getDerivedFreshness,
+  rebindPendingReextractCollaborators
+} from './raw-data-source.runtime'
 
 let cachedShadowSync: ShadowIndexSyncService | null = null
 let cachedVaultName: string | null = null
@@ -19,14 +24,11 @@ function wireScanProgressBroadcast(shadowScout: ShadowIndexSyncService): void {
 }
 
 function wirePendingReextractHook(shadowScout: ShadowIndexSyncService): void {
-  // Sync require avoids a lost-mark window; lazy load breaks static import cycles with vault.ipc.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const runtime = require('./raw-data-source.runtime') as typeof import('./raw-data-source.runtime')
-  runtime.ensureRawDataRuntime()
-  runtime.rebindPendingReextractCollaborators()
+  ensureRawDataRuntime()
+  rebindPendingReextractCollaborators()
   shadowScout.setPendingReextractHook((filePath, contentHash) => {
-    runtime.ensureRawDataRuntime()
-    runtime.getDerivedFreshness().markPendingReextract(filePath, contentHash)
+    ensureRawDataRuntime()
+    getDerivedFreshness().markPendingReextract(filePath, contentHash)
   })
 }
 
