@@ -15,13 +15,15 @@ interface SidebarManageModalProps {
   hiddenItems: string[]
   onClose: () => void
   onToggle: (id: SidebarNavId) => void
+  onRestoreDefaults: () => void
 }
 
 export const SidebarManageModal: React.FC<SidebarManageModalProps> = ({
   isOpen,
   hiddenItems,
   onClose,
-  onToggle
+  onToggle,
+  onRestoreDefaults
 }) => {
   const { t } = useTranslation()
   const allItems = buildSidebarNavItems(t)
@@ -78,6 +80,9 @@ export const SidebarManageModal: React.FC<SidebarManageModalProps> = ({
           </div>
         </div>
         <div className={styles.footer}>
+          <button type="button" className={styles.resetBtn} onClick={onRestoreDefaults}>
+            {t('sidebar.restore_defaults', '恢复默认')}
+          </button>
           <button type="button" className={styles.doneBtn} onClick={onClose}>
             {t('common.done', '完成')}
           </button>

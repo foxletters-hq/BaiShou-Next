@@ -2,35 +2,38 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './TitleBar.module.css'
 import { useTranslation } from 'react-i18next'
-import { isIncrementalSyncReady, buildAgentChatNavigationPath } from '@baishou/shared'
+import { isIncrementalSyncReady } from '@baishou/shared'
 import { IncrementalSyncPanel, WorkspaceScopeHelpTooltip } from '@baishou/ui'
 
 import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
-import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
-import { BookOpen, ChevronDown, FolderSync, Minus, Sparkles, Square, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FolderSync, LayoutPanelLeft, Minus, Square, X } from 'lucide-react'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
 
   const location = useLocation()
   const navigate = useNavigate()
+  const isOnboarding = location.pathname.startsWith('/welcome')
 
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [showVaultMenu, setShowVaultMenu] = useState(false)
   const [isSwitchingVault, setIsSwitchingVault] = useState(false)
   const vaultMenuRef = useRef<HTMLDivElement>(null)
+  const wasOnboardingRef = useRef(isOnboarding)
   const preloadedVaultsRef = useRef<Set<string>>(new Set())
   const [s3Configured, setS3Configured] = useState(false)
   const { isSyncing, isPlanning, progress, startSync } = useOrchestratedSync()
 
   const fetchVaults = useCallback(async (): Promise<boolean> => {
     try {
-      const vList = await (window as any).api?.vault?.list()
-      const active = await (window as any).api?.vault?.getActive()
+      const [vList, active] = await Promise.all([
+        (window as any).api?.vault?.list(),
+        (window as any).api?.vault?.getActive()
+      ])
       if (Array.isArray(vList)) setVaults(vList)
       if (active?.name) {
         setActiveVault(active)
@@ -65,9 +68,12 @@ export const TitleBar: React.FC = () => {
   }, [fetchVaults])
 
   useEffect(() => {
-    if (location.pathname.startsWith('/welcome')) return
-    void fetchVaults()
-  }, [location.pathname, fetchVaults])
+    const wasOnboarding = wasOnboardingRef.current
+    wasOnboardingRef.current = isOnboarding
+    if (wasOnboarding && !isOnboarding) {
+      void fetchVaults()
+    }
+  }, [isOnboarding, fetchVaults])
 
   useEffect(() => {
     const unsubRegistry = (window as any).api?.vault?.onRegistryUpdated?.(() => {
@@ -131,7 +137,7 @@ export const TitleBar: React.FC = () => {
       if (retryTimer) clearTimeout(retryTimer)
       window.removeEventListener(INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT, fetchSyncConfig)
     }
-  }, [location.pathname])
+  }, [isOnboarding])
 
   const preloadVault = (vaultName: string) => {
     if (!vaultName || vaultName === activeVault?.name) return
@@ -167,12 +173,10 @@ export const TitleBar: React.FC = () => {
     })
   }
 
-  // Tabs logic corresponding to Flutter tab controller
-  const isCompanionChat = location.pathname.startsWith('/chat')
+  // 顶栏双主场：日记 | 工作台（伙伴已迁入日记侧栏）
   const isAgentWorkspace = location.pathname.startsWith('/agent-workspace')
   const isSettings = location.pathname.startsWith('/settings')
-  const isOnboarding = location.pathname.startsWith('/welcome')
-  const isDiaryTab = !isCompanionChat && !isAgentWorkspace && !isSettings
+  const isDiaryTab = !isAgentWorkspace && !isSettings
 
   return (
     <div className={`${styles.titleBar} ${isOnboarding ? styles.titleBarOnboarding : ''}`}>
@@ -187,14 +191,11 @@ export const TitleBar: React.FC = () => {
               <span>{t('nav.diary', '日记')}</span>
             </div>
             <div
-              className={`${styles.tab} ${isCompanionChat && !isSettings ? styles.activeTab : ''}`}
-              onClick={() => {
-                const saved = readActiveVaultNavigationSnapshot()
-                navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
-              }}
+              className={`${styles.tab} ${isAgentWorkspace ? styles.activeTab : ''}`}
+              onClick={() => navigate('/agent-workspace')}
             >
-              <Sparkles className={styles.tabIcon} />
-              <span>{t('nav.agent', '伙伴')}</span>
+              <LayoutPanelLeft className={styles.tabIcon} />
+              <span>{t('nav.workbench', '工作台')}</span>
             </div>
           </div>
         )}
@@ -215,56 +216,56 @@ export const TitleBar: React.FC = () => {
             )}
 
             {!isAgentWorkspace ? (
-            <div
-              className={styles.vaultSwitcherWrapper}
-              ref={vaultMenuRef}
-              style={{ position: 'relative' }}
-            >
-              <WorkspaceScopeHelpTooltip size={15} className={styles.vaultHelpIcon} />
-              <button
-                type="button"
-                className={styles.vaultSwitcher}
-                onClick={toggleVaultMenu}
-                onMouseDown={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                disabled={isSwitchingVault}
-                aria-expanded={showVaultMenu}
-                aria-haspopup="menu"
-                style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
+              <div
+                className={styles.vaultSwitcherWrapper}
+                ref={vaultMenuRef}
+                style={{ position: 'relative' }}
               >
-                <FolderSync className={styles.actionIconSm} />
-                <span className={styles.vaultName}>
-                  {isSwitchingVault
-                    ? t('workspace.switching', 'Switching…')
-                    : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
-                </span>
-                <ChevronDown className={styles.actionIconSm} />
-              </button>
-              {showVaultMenu && (
-                <div className={styles.vaultMenu} role="menu">
-                  {vaults.length > 0 ? (
-                    vaults.map((v) => (
-                      <button
-                        key={v.name}
-                        type="button"
-                        role="menuitem"
-                        className={`${styles.vaultMenuItem} ${
-                          v.name === activeVault?.name ? styles.vaultMenuItemActive : ''
-                        }`}
-                        onMouseEnter={() => preloadVault(v.name)}
-                        onClick={() => void handleSwitchVault(v.name)}
-                      >
-                        {v.name}
-                      </button>
-                    ))
-                  ) : (
-                    <div className={styles.vaultMenuPlaceholder} role="presentation">
-                      {t('common.loading', '加载中…')}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                <WorkspaceScopeHelpTooltip size={15} className={styles.vaultHelpIcon} />
+                <button
+                  type="button"
+                  className={styles.vaultSwitcher}
+                  onClick={toggleVaultMenu}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  disabled={isSwitchingVault}
+                  aria-expanded={showVaultMenu}
+                  aria-haspopup="menu"
+                  style={{ opacity: isSwitchingVault ? 0.65 : 1 }}
+                >
+                  <FolderSync className={styles.actionIconSm} />
+                  <span className={styles.vaultName}>
+                    {isSwitchingVault
+                      ? t('workspace.switching', 'Switching…')
+                      : activeVault?.name || t('workspace.no_active', '未选择工作空间')}
+                  </span>
+                  <ChevronDown className={styles.actionIconSm} />
+                </button>
+                {showVaultMenu && (
+                  <div className={styles.vaultMenu} role="menu">
+                    {vaults.length > 0 ? (
+                      vaults.map((v) => (
+                        <button
+                          key={v.name}
+                          type="button"
+                          role="menuitem"
+                          className={`${styles.vaultMenuItem} ${
+                            v.name === activeVault?.name ? styles.vaultMenuItemActive : ''
+                          }`}
+                          onMouseEnter={() => preloadVault(v.name)}
+                          onClick={() => void handleSwitchVault(v.name)}
+                        >
+                          {v.name}
+                        </button>
+                      ))
+                    ) : (
+                      <div className={styles.vaultMenuPlaceholder} role="presentation">
+                        {t('common.loading', '加载中…')}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : null}
 
             <div className={styles.divider}></div>

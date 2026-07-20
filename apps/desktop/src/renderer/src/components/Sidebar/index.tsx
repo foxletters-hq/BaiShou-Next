@@ -7,14 +7,15 @@ import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
 import { useUserProfileStore } from '@baishou/store'
 import { useToast } from '@baishou/ui'
+import { buildAgentChatNavigationPath, isCustomUserAvatar } from '@baishou/shared'
 import appIcon from '@baishou/shared/assets/images/icon.png'
-import { isCustomUserAvatar } from '@baishou/shared'
 import {
   isSidebarVisibilityConfigured,
   loadHiddenNavItems,
   loadSidebarNavOrder,
   markSidebarVisibilityConfigured,
-  persistHiddenNavItems
+  persistHiddenNavItems,
+  resetSidebarNavToDefaults
 } from './sidebar-preferences'
 import {
   ALL_SIDEBAR_NAV_IDS,
@@ -29,6 +30,7 @@ import {
 } from '../../features/settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../lib/prefetch-settings-entry'
 import { isSettingsOverlayPath } from '../../features/settings/settings-route.util'
+import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-persistence'
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation()
@@ -79,6 +81,12 @@ export const Sidebar: React.FC = () => {
     })
   }
 
+  const restoreSidebarDefaults = useCallback(() => {
+    const { hiddenItems: nextHidden, navOrder: nextOrder } = resetSidebarNavToDefaults()
+    setHiddenItems(nextHidden)
+    setNavOrder(nextOrder)
+  }, [])
+
   useEffect(() => {
     localStorage.setItem('desktop_sidebar_nav_order', JSON.stringify(navOrder))
   }, [navOrder])
@@ -126,13 +134,23 @@ export const Sidebar: React.FC = () => {
     setNavOrder(newOrder)
   }
 
-  const isAgentMode =
-    location.pathname.startsWith('/chat') || location.pathname.startsWith('/agent')
+  const navigateToNavId = (id: SidebarNavId, path: string) => {
+    if (id === 'companion') {
+      const saved = readActiveVaultNavigationSnapshot()
+      navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
+      return
+    }
+    navigate(path)
+  }
+
+  // 工作台主场隐藏日记侧栏；伙伴页保留侧栏
   const isWorkbenchMode = location.pathname.startsWith('/agent-workspace')
+  const isLegacyAgentMode =
+    location.pathname.startsWith('/agent') && !location.pathname.startsWith('/agent-workspace')
 
   const isInSettings = isSettingsOverlayPath(location.pathname)
 
-  if (isAgentMode || isWorkbenchMode) return null
+  if (isWorkbenchMode || isLegacyAgentMode) return null
 
   return (
     <>
@@ -183,7 +201,7 @@ export const Sidebar: React.FC = () => {
                                   if (!isSidebarNavSelected(location.pathname, item.path)) {
                                     sessionStorage.setItem('desktop_last_nav', location.pathname)
                                   }
-                                  navigate(item.path)
+                                  navigateToNavId(id as SidebarNavId, item.path)
                                 }}
                               >
                                 <div {...provided.dragHandleProps} className={styles.dragHandle}>
@@ -274,6 +292,7 @@ export const Sidebar: React.FC = () => {
         hiddenItems={hiddenItems}
         onClose={() => setManageModalOpen(false)}
         onToggle={toggleItemVisibility}
+        onRestoreDefaults={restoreSidebarDefaults}
       />
     </>
   )

@@ -164,7 +164,9 @@ const AppRoutes = () => {
     prevVaultScopeRevisionRef.current = vaultScopeRevision
     if (vaultScopeRevision === 0) return
 
-    useSettingsStore.getState().resetSettingsConfigCache()
+    const settingsStore = useSettingsStore.getState()
+    settingsStore.resetSettingsConfigCache()
+    settingsStore.scheduleDeferredConfigWarmup()
     setSettingsOverlayEpoch((epoch) => epoch + 1)
   }, [vaultScopeRevision])
 
@@ -262,20 +264,13 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    const warmSettings = () => {
-      void import('./features/settings/SettingsPage')
-    }
-    if (typeof requestIdleCallback === 'function') {
-      const idleId = requestIdleCallback(warmSettings, { timeout: 4000 })
-      return () => cancelIdleCallback(idleId)
-    }
-    const timer = window.setTimeout(warmSettings, 1500)
-    return () => window.clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
     initDesktopRendererCacheCoordinator()
-    void initDesktopVaultScope()
+    let cancelled = false
+    void initDesktopVaultScope().then(() => {
+      if (!cancelled) {
+        useSettingsStore.getState().scheduleDeferredConfigWarmup()
+      }
+    })
     const unsub = (window as any).api?.cache?.onDomainMutation?.((event: DomainMutationEvent) => {
       handleRendererDomainMutation(event)
       if (event.domain === 'vault' && event.action === 'switch') {
@@ -286,7 +281,11 @@ export function App() {
         }
       }
     })
-    return unsub
+    return () => {
+      cancelled = true
+      unsub?.()
+      useSettingsStore.getState().cancelDeferredConfigWarmup()
+    }
   }, [])
 
   useEffect(() => {
