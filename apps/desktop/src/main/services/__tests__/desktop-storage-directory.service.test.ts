@@ -134,21 +134,17 @@ describe('desktop-storage-directory.service', () => {
     pathServiceMock.getRootDirectory.mockResolvedValue('D:/new-workspace')
   })
 
-  it(
-    'reconnects Agent DB for the current storage root',
-    async () => {
-      const { reconnectAgentDbForCurrentStorageRoot } =
-        await import('../desktop-storage-directory.service')
+  it('reconnects Agent DB for the current storage root', async () => {
+    const { reconnectAgentDbForCurrentStorageRoot } =
+      await import('../desktop-storage-directory.service')
 
-      await reconnectAgentDbForCurrentStorageRoot()
+    await reconnectAgentDbForCurrentStorageRoot()
 
-      expect(dbMock.resetAppDb).toHaveBeenCalledTimes(1)
-      expect(dbMock.getAppDb).toHaveBeenCalledWith('D:/new-workspace')
-      expect(databaseMock.connectionManager.setDb).toHaveBeenCalledWith(dbInstanceMock)
-      expect(databaseMock.installDatabaseSchema).toHaveBeenCalledWith(dbInstanceMock)
-    },
-    60_000
-  )
+    expect(dbMock.resetAppDb).toHaveBeenCalledTimes(1)
+    expect(dbMock.getAppDb).toHaveBeenCalledWith('D:/new-workspace')
+    expect(databaseMock.connectionManager.setDb).toHaveBeenCalledWith(dbInstanceMock)
+    expect(databaseMock.installDatabaseSchema).toHaveBeenCalledWith(dbInstanceMock)
+  }, 60_000)
 
   it('resyncs settings from disk before restarting MCP after storage resume', async () => {
     const mcpRuntime = await import('../mcp-runtime')
