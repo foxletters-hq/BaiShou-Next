@@ -19,6 +19,7 @@ import styles from './WorkbenchSearchView.module.css'
 
 export interface WorkbenchSearchOpenOptions {
   line?: number
+  column?: number
 }
 
 export interface WorkbenchSearchViewProps {
