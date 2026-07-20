@@ -25,7 +25,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     const registry = new ToolRegistry()
     const allTools = registry.getAllRaw()
 
-    expect(allTools).toHaveLength(24)
+    expect(allTools).toHaveLength(27)
 
     const toolNames = allTools.map((t) => t.name)
     expect(toolNames).toContain('current_time')
@@ -47,6 +47,8 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(toolNames).toContain('web_search')
     expect(toolNames).toContain('url_read')
     expect(toolNames).toContain('emoji_send')
+    expect(toolNames).toContain('graph_upsert')
+    expect(toolNames).toContain('recall_relations')
     expect(toolNames).toContain('compress_context_upstream')
     expect(toolNames).toContain('compress_context_downstream')
   })
@@ -59,14 +61,16 @@ describe('ToolRegistry — Full Tool Suite', () => {
       vaultName: '/tmp'
     })
 
-    // 23 个工具，其中 3 个因缺少条件隐式跳过（web_search/vector_search/memory_store），
-    // 6 个 workspace 工具需 folderRoot，2 个内部压缩工具不暴露给模型主动调用。
-    expect(Object.keys(vercelTools)).toHaveLength(12)
+    // 无 folderRoot 时跳过 workspace_*；web_search/vector_search/memory_store 缺依赖跳过；
+    // 内部压缩工具不暴露。graph_upsert / recall_relations 仍会进入可调用集。
+    expect(Object.keys(vercelTools)).toHaveLength(14)
     expect(vercelTools['current_time']).toBeDefined()
     expect(vercelTools['companion_ask']).toBeDefined()
     expect(vercelTools['diary_read']).toBeDefined()
     expect(vercelTools['diary_write']).toBeDefined()
     expect(vercelTools['summary_read']).toBeDefined()
+    expect(vercelTools['graph_upsert']).toBeDefined()
+    expect(vercelTools['recall_relations']).toBeDefined()
     expect(vercelTools['compress_context_upstream']).toBeUndefined()
     expect(vercelTools['compress_context_downstream']).toBeUndefined()
   })
@@ -85,7 +89,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     expect(vercelTools['web_search']).toBeUndefined()
     expect(vercelTools['url_read']).toBeUndefined()
     expect(vercelTools['current_time']).toBeDefined()
-    expect(Object.keys(vercelTools)).toHaveLength(11)
+    expect(Object.keys(vercelTools)).toHaveLength(13)
   })
 
   it('keeps current_time enabled even when listed in disabledToolIds', () => {
