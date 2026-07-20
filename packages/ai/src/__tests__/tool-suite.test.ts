@@ -98,6 +98,10 @@ describe('ToolRegistry — Full Tool Suite', () => {
       }
     })
 
+    expect(vercelTools['current_time']).toBeDefined()
+    expect(vercelTools['web_search']).toBeUndefined()
+  })
+
   it('should disable RAG tools when ragEnabled is false', () => {
     const registry = new ToolRegistry()
 
