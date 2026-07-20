@@ -21,7 +21,12 @@ import {
   resolveAssistantEmojiPrefs
 } from '../../services/mobile-context-at-message.service'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
-import type { ToolRegistry, ToolDiarySearcher, AIProviderRegistry } from '@baishou/ai'
+import type {
+  ToolRegistry,
+  ToolDiarySearcher,
+  AIProviderRegistry,
+  IAIProvider
+} from '@baishou/ai'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 
 export function createStartAgentChat(deps: {
@@ -90,7 +95,7 @@ export function createStartAgentChat(deps: {
 
       const embeddingProviderId = globalModels?.globalEmbeddingProviderId
       const embeddingModelId = globalModels?.globalEmbeddingModelId
-      let embeddingProvider
+      let embeddingProvider: IAIProvider | undefined
       if (embeddingProviderId && embeddingModelId && embeddingModelId !== 'off') {
         const embConfig = providers.find((p: any) => p.id === embeddingProviderId)
         if (embConfig) {

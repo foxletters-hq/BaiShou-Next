@@ -146,12 +146,12 @@ export async function runMobileIncrementalAfterSync(
         } = await import('./mobile-raw-data-source.runtime')
         const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
         const runtime = agentDbRuntimeRef.current
+        const pathServiceWithVault = deps.pathService as unknown as {
+          getActiveVaultNameForContext?: () => Promise<string>
+        }
         const activeVaultName =
-          typeof (deps.pathService as { getActiveVaultNameForContext?: () => Promise<string> })
-            .getActiveVaultNameForContext === 'function'
-            ? await (
-                deps.pathService as { getActiveVaultNameForContext: () => Promise<string> }
-              ).getActiveVaultNameForContext()
+          typeof pathServiceWithVault.getActiveVaultNameForContext === 'function'
+            ? await pathServiceWithVault.getActiveVaultNameForContext()
             : null
         if (runtime?.drizzleDb && activeVaultName) {
           const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)

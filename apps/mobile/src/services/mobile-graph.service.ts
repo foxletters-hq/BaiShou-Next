@@ -15,7 +15,7 @@ import {
 } from '@baishou/database'
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
-import { resolveGlobalGraphModelIds } from '@baishou/shared'
+import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
 import {
   ensureMobileRawDataRuntime,
   syncMobileGraphPendingIndex
@@ -59,7 +59,7 @@ async function resolveChatLlm(
   settingsManager: SettingsManagerService
 ): Promise<{ provider: IAIProvider; modelId: string } | null> {
   try {
-    const globalModels = await settingsManager.get('global_models')
+    const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
     const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
     if (!providerId) return null
     const providers = (await settingsManager.get<Array<{ id: string }>>('ai_providers')) || []
