@@ -1,0 +1,125 @@
+.modal {
+  width: min(640px, calc(100vw - 48px)) !important;
+  max-height: 88vh !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding-bottom: 16px !important;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  gap: 10px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 32px 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-app, var(--bg-surface));
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+}
+
+.searchClear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary, #94a3b8);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px;
+}
+
+.multiSelectBtn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.listWrap {
+  flex: 1;
+  min-height: 360px;
+  max-height: min(68vh, 640px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-app, var(--bg-surface));
+}
+
+.listWrap > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.batchBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.selectAllBtn,
+.batchDeleteBtn {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
+.selectAllBtn {
+  color: var(--text-secondary);
+}
+
+.batchDeleteBtn {
+  color: var(--color-error, #ef4444);
+}
+
+.batchDeleteBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.spacer {
+  flex: 1;
+}

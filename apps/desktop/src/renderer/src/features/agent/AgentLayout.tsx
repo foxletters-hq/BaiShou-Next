@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AgentSidebar } from './components/AgentSidebar'
+import { AgentSessionsModal } from './components/AgentSessionsModal'
 import { AgentSessionRenameModal } from './components/AgentSessionRenameModal'
 import type { AgentAssistant } from './components/AgentSidebar'
 import {
@@ -35,7 +35,7 @@ export const AgentLayout: React.FC = () => {
   const { loadProfile } = useUserProfileStore()
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSessionsOpen, setIsSessionsOpen] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
   const [standaloneSessionDoc, setStandaloneSessionDoc] = useState<any>(null)
@@ -275,16 +275,6 @@ export const AgentLayout: React.FC = () => {
   }, [mappedAssistant?.id])
 
   const pinnedIds = assistants.filter((a: any) => a.isPinned).map((a) => String(a.id))
-  const pinnedAssistants: AgentAssistant[] = pinnedIds
-    .map((id) => assistants.find((a) => String(a.id) === id))
-    .filter(Boolean)
-    .map((a) => ({
-      id: String(a!.id),
-      name: a!.name,
-      emoji: a!.emoji,
-      avatarPath: (a as any).avatarPath,
-      assistantKind: (a as any).assistantKind
-    }))
 
   const handleNewChat = async (targetAssistantId?: string) => {
     const urlAstId = sanitizeAssistantId(searchParams.get('assistantId'))
@@ -379,25 +369,40 @@ export const AgentLayout: React.FC = () => {
 
   return (
     <div className={styles.layoutContainer}>
-      <AgentSidebar
-        currentAssistant={mappedAssistant}
+      <div className={styles.chatArea}>
+        <Outlet
+          context={
+            {
+              sessions,
+              loadSessions,
+              onAssistantSwitched: handleAssistantSwitched,
+              currentAssistant: mappedAssistant,
+              onShowAssistantPicker: () => setIsPickerOpen(true),
+              onNewSession: () => void handleNewChat(),
+              onOpenSessions: () => setIsSessionsOpen(true)
+            } satisfies AgentOutletContext
+          }
+        />
+      </div>
+
+      <AgentSessionsModal
+        isOpen={isSessionsOpen}
+        assistantName={mappedAssistant?.name}
         sessions={sessions}
+        selectedSessionId={sessionId}
+        searchQuery={searchQuery}
         hasMore={hasMoreSessions}
         isLoadingMore={isLoadingMoreSessions}
         scrollKey={sidebarScrollKey}
-        onLoadMore={() => void loadSessions(false)}
-        selectedSessionId={sessionId}
-        searchQuery={searchQuery}
-        pinnedAssistants={pinnedAssistants}
+        onClose={() => setIsSessionsOpen(false)}
         onSearchQueryChanged={setSearchQuery}
+        onLoadMore={() => void loadSessions(false)}
         onSessionSelected={(id) => {
           bumpNavigationIntent()
           navigate(
             currentAssistant?.id ? `/chat/${id}?assistantId=${currentAssistant.id}` : `/chat/${id}`
           )
         }}
-        onNewSession={handleNewChat}
-        onAssistantSwitched={handleAssistantSwitched}
         onPinSession={async (id) => {
           const s = sessions.find((s) => s.id === id)
           if (s && window.electron) {
@@ -408,23 +413,7 @@ export const AgentLayout: React.FC = () => {
         onDeleteSession={handleDelete}
         onRenameSession={(id) => handleRenameSession(id, sessions)}
         onBatchDelete={handleBatchDelete}
-        isCollapsed={isSidebarCollapsed}
-        onShowPicker={() => setIsPickerOpen(true)}
       />
-
-      <div className={styles.chatArea}>
-        <Outlet
-          context={
-            {
-              sessions,
-              loadSessions,
-              onAssistantSwitched: handleAssistantSwitched,
-              isSidebarCollapsed,
-              onToggleSidebar: () => setIsSidebarCollapsed((prev) => !prev)
-            } satisfies AgentOutletContext
-          }
-        />
-      </div>
 
       {renameTarget ? (
         <AgentSessionRenameModal

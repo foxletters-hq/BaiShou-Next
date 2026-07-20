@@ -18,11 +18,13 @@ import {
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentGateDock } from '@baishou/ui'
 import { AgentMessageList } from './components/AgentMessageList'
+import { AgentChatChrome } from './components/AgentChatChrome'
+import chromeStyles from './components/AgentChatChrome.module.css'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
-import styles from './AgentScreen.module.css'
-import { Cloud, PanelLeftClose, PanelLeftOpen, Sparkles } from 'lucide-react'
 import type { AgentOutletContext } from './agent-outlet-context'
+import styles from './AgentScreen.module.css'
+import { Cloud, Sparkles } from 'lucide-react'
 
 /**
  * Agent 大模型聊天屏幕主页面组件。
@@ -31,7 +33,13 @@ import type { AgentOutletContext } from './agent-outlet-context'
 export const AgentScreen: React.FC = () => {
   const flow = useAgentChatFlow()
   const { isDark } = useTheme()
-  const { isSidebarCollapsed, onToggleSidebar } = useOutletContext<AgentOutletContext>()
+  const {
+    currentAssistant,
+    onShowAssistantPicker,
+    onAssistantSwitched,
+    onNewSession,
+    onOpenSessions
+  } = useOutletContext<AgentOutletContext>()
 
   const providerIconUrl = useMemo(() => {
     const providerId = flow.model.currentProviderId
@@ -83,54 +91,41 @@ export const AgentScreen: React.FC = () => {
           ) : null}
         </>
       ) : null}
-      {/* 顶部状态与控制栏 */}
-      <div className={styles.appBar}>
-        <div className={styles.appBarLeft}>
-          <button
-            type="button"
-            className={`${styles.sidebarToggleBtn} ${styles.appBarChip}`}
-            onClick={onToggleSidebar}
-            title={
-              isSidebarCollapsed
-                ? flow.t('agent.sidebar.expand', '展开侧边栏')
-                : flow.t('agent.sidebar.collapse', '折叠侧边栏')
-            }
-            aria-label={
-              isSidebarCollapsed
-                ? flow.t('agent.sidebar.expand', '展开侧边栏')
-                : flow.t('agent.sidebar.collapse', '折叠侧边栏')
-            }
-          >
-            {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
-        </div>
-        <div className={styles.appBarRight}>
-          <button
-            type="button"
-            className={`${styles.modelSwitcherTrigger} ${styles.appBarChip}`}
-            onClick={() => flow.setShowModelSwitcher(true)}
-          >
-            <span className={styles.modelProviderIcon} aria-hidden>
-              {providerIconUrl ? (
-                <img src={providerIconUrl} alt="" />
-              ) : noModelSelected ? (
-                <Sparkles size={18} />
-              ) : (
-                <Cloud size={18} />
-              )}
-            </span>
-            <span className={styles.modelName}>{displayModelName}</span>
-            <span className={styles.chevron}>▼</span>
-          </button>
-          <TokenBadge
-            className={styles.appBarChip}
-            inputTokens={flow.tokens.totalInputTokens}
-            outputTokens={flow.tokens.totalOutputTokens}
-            costMicros={flow.tokens.estimatedCost * 1000000}
-            onClick={() => flow.setShowCostDialog(true)}
-          />
-        </div>
-      </div>
+      <AgentChatChrome
+        currentAssistant={currentAssistant}
+        onShowPicker={onShowAssistantPicker}
+        onAssistantSwitched={(assistant) => void onAssistantSwitched?.(assistant)}
+        onNewSession={() => onNewSession?.()}
+        onOpenSessions={() => onOpenSessions?.()}
+        trailingControls={
+          <div className={chromeStyles.trailing}>
+            <button
+              type="button"
+              className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.chip}`}
+              onClick={() => flow.setShowModelSwitcher(true)}
+            >
+              <span className={chromeStyles.modelProviderIcon} aria-hidden>
+                {providerIconUrl ? (
+                  <img src={providerIconUrl} alt="" />
+                ) : noModelSelected ? (
+                  <Sparkles size={18} />
+                ) : (
+                  <Cloud size={18} />
+                )}
+              </span>
+              <span className={chromeStyles.modelName}>{displayModelName}</span>
+              <span className={chromeStyles.chevron}>▼</span>
+            </button>
+            <TokenBadge
+              className={chromeStyles.chip}
+              inputTokens={flow.tokens.totalInputTokens}
+              outputTokens={flow.tokens.totalOutputTokens}
+              costMicros={flow.tokens.estimatedCost * 1000000}
+              onClick={() => flow.setShowCostDialog(true)}
+            />
+          </div>
+        }
+      />
       <AgentMessageList
         t={flow.t}
         sessionId={flow.sessionId}

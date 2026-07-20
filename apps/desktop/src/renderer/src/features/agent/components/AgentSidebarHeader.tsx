@@ -52,18 +52,22 @@ export interface CurrentAssistantSlotProps {
   onShowPicker?: () => void
   onAssistantSwitched: (assistant: AgentAssistant) => void
   wrapperClassName?: string
+  /** 顶栏等窄位：不展示描述，卡片更紧凑 */
+  compact?: boolean
 }
 
-/** 侧边栏顶部的当前伙伴选择槽位 */
+/** 当前伙伴选择槽位（侧栏 / 聊天顶栏复用） */
 export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
   currentAssistant,
   onShowPicker,
   onAssistantSwitched,
-  wrapperClassName
+  wrapperClassName,
+  compact = false
 }) => (
   <div className={`${styles.currentAssistantWrapper} ${wrapperClassName ?? ''}`.trim()}>
     <div
       className={styles.currentAssistantCard}
+      style={compact ? { height: 44, padding: '6px 10px' } : undefined}
       onClick={() => {
         if (onShowPicker) onShowPicker()
         else if (currentAssistant) onAssistantSwitched(currentAssistant)
@@ -71,15 +75,15 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
     >
       {currentAssistant ? (
         <>
-          <AssistantAvatar assistant={currentAssistant} size={36} />
+          <AssistantAvatar assistant={currentAssistant} size={compact ? 32 : 36} />
           <div className={styles.assistantInfo}>
             <div className={styles.assistantNameRow}>
               <div className={styles.assistantName}>{currentAssistant.name}</div>
               <AssistantKindBadge kind={currentAssistant.assistantKind} compact />
             </div>
-            {currentAssistant.description && (
+            {!compact && currentAssistant.description ? (
               <div className={styles.assistantDesc}>{currentAssistant.description}</div>
-            )}
+            ) : null}
           </div>
           <ChevronsUpDown className={styles.unfoldIcon} />
         </>
@@ -88,7 +92,9 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
           <div className={styles.avatarSkeleton} />
           <div className={styles.assistantInfo}>
             <div className={styles.skeletonLine} style={{ width: 80 }} />
-            <div className={styles.skeletonLine} style={{ width: 60, marginTop: 4 }} />
+            {!compact ? (
+              <div className={styles.skeletonLine} style={{ width: 60, marginTop: 4 }} />
+            ) : null}
           </div>
           <ChevronsUpDown className={styles.unfoldIcon} style={{ opacity: 0.3 }} />
         </>
