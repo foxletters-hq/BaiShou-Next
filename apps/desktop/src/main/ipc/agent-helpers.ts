@@ -39,7 +39,6 @@ import {
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   type BaishouAgentGateConfig,
-  coalesceConfiguredId,
   requireResolvedDialogueModel,
   type ResolvedDialogueModel
 } from '@baishou/shared'
@@ -508,7 +507,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     rawDataSourceManager: (await import('../services/raw-data-source.runtime')).getRawDataSourceManager()
   })
 
-  const activeWorkspace = resolveActiveWorkspaceToolContext()
+  const activeWorkspace = await resolveActiveWorkspaceToolContext()
   if (activeWorkspace) {
     context.workspace = activeWorkspace
   }
