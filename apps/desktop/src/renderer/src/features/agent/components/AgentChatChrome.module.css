@@ -1,0 +1,134 @@
+.chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: #ffffff;
+  z-index: 20;
+  --chrome-chip-height: 32px;
+}
+
+:global(body[data-theme='dark']) .chrome {
+  background: var(--bg-surface, #ffffff);
+}
+
+.left {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.assistantSlot {
+  padding: 0 !important;
+  max-width: min(320px, 100%);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+}
+
+.iconBtn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--border-control);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.iconBtn:hover {
+  background: var(--bg-surface-high, rgba(var(--text-primary-rgb), 0.04));
+  border-color: var(--border-control);
+  color: var(--text-primary);
+}
+
+.iconBtnPrimary {
+  color: var(--color-primary);
+  border-color: rgba(var(--color-primary-rgb), 0.28);
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.iconBtnPrimary:hover {
+  background: rgba(var(--color-primary-rgb), 0.14);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  color: var(--color-primary);
+}
+
+/* 与 AgentScreen 原 appBar chip 对齐，便于模型/用量塞进同一顶栏 */
+.chip {
+  height: var(--chrome-chip-height);
+  box-sizing: border-box;
+  padding: 0 12px;
+}
+
+.modelSwitcherTrigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  background-color: #ffffff;
+  border: 1.5px solid var(--border-control);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+  color: var(--text-primary);
+}
+
+.modelSwitcherTrigger:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-control);
+}
+
+.modelProviderIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.modelProviderIcon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.modelName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
