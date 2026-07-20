@@ -12,7 +12,7 @@ import {
   GRAPH_EDGE_TYPES,
   GRAPH_NODE_TYPES
 } from '@baishou/database-desktop'
-import { logger } from '@baishou/shared'
+import { logger, resolveGlobalGraphModelIds } from '@baishou/shared'
 import { fileSystem, pathService, vaultService } from './vault.ipc'
 import {
   ensureRawDataRuntime,
@@ -35,18 +35,8 @@ function requireGraphRepo(): GraphRepository {
 
 async function resolveExtractLlm() {
   const { settingsManager } = await import('./settings.ipc')
-  const globalModels = await settingsManager.get<{
-    globalDialogueProviderId?: string
-    globalDialogueModelId?: string
-    globalSummaryProviderId?: string
-    globalSummaryModelId?: string
-  }>('global_models')
-  const providerId =
-    globalModels?.globalSummaryProviderId || globalModels?.globalDialogueProviderId
-  const modelId =
-    globalModels?.globalSummaryModelId ||
-    globalModels?.globalDialogueModelId ||
-    'deepseek-chat'
+  const globalModels = await settingsManager.get('global_models')
+  const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
   const provider = await getActiveProvider(providerId)
   return createDefaultGraphExtractLlm({ provider, modelId })
 }

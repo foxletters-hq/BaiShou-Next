@@ -298,6 +298,7 @@
   "settings": {
     "tooltip_summary_model": "This model is used to generate weekly, monthly, quarterly summaries and annuals. Choosing a higher-performing model is recommended for better output quality.",
     "tooltip_chat_model": "This model is used for daily chat interactions.",
+    "tooltip_graph_model": "Used for offline extraction of diary graph relations (people, events, and links). Defaults to the dialogue model and can be changed separately.",
     "tooltip_naming_model": "Assign a lightweight model to automatically generate titles for your conversations, saving main model compute resources.",
     "tooltip_embedding_model": "This model is utilized when storing vectors into RAG memory. When a diary changes, AI uses this model to generate vector indices, enabling semantic search index logic.",
     "tooltip_rag_management": "A local RAG (Retrieval-Augmented Generation) knowledge base that enables AI to retrieve past diary contexts, auto-updating with diary changes for semantic memory recall.",
@@ -1537,6 +1538,8 @@
     "summary_model_desc": "Optimized for long text summarization and memory extraction.",
     "dialogue_model_title": "Default Dialogue Model",
     "dialogue_model_desc": "Main model for intelligent analysis and interaction.",
+    "graph_model_title": "Graph Relation Extraction Model",
+    "graph_model_desc": "Used for offline diary graph relation extraction. Defaults to the dialogue model.",
     "naming_model_title": "Default Naming Model",
     "naming_model_desc": "Model for simple tasks like title naming and short extraction.",
     "embedding_model_title": "Embedding Model",

@@ -301,6 +301,7 @@
   "settings": {
     "tooltip_summary_model": "這個模型是用來產生週記、月報、季報、年鑑的模型，推薦使用者選擇最好的模型，這樣產生出來的品質也會更好。",
     "tooltip_chat_model": "這是用來聊天的模型。",
+    "tooltip_graph_model": "用於離線梳理日記中的人物、事件與關係（圖關係抽取）。預設與對話模型一致，可單獨更換。",
     "tooltip_naming_model": "分配一個小體積輕量級模型，專門負責為你的每次對話寫個標題以節約主力模型資源。",
     "tooltip_embedding_model": "它會在 AI 執行記憶儲存（儲存到 RAG 記憶中）的時候使用的模型。一旦日記發生變動，AI 也會用這個模型幫我們儲存向量記憶。向量記憶相比於直接搜尋的優點就是，它可以根據語義來進行近似搜尋。",
     "tooltip_rag_management": "這是用以支援 AI 搜尋過去日記等上下文的本機 RAG（檢索增強生成）知識庫。它可以根據您的輸入或日記變更自動更新，以實現長短期記憶的近似語義召回。",
@@ -1573,6 +1574,8 @@
     "summary_model_desc": "最佳化用於長文字摘要和記憶提取的系統模型，處理大段上下文時使用。",
     "dialogue_model_title": "預設對話模型",
     "dialogue_model_desc": "這是主要的智慧分析和系統互動模型。當沒有專門指定模型時，系統將預設使用它。",
+    "graph_model_title": "圖關係抽取模型",
+    "graph_model_desc": "用於離線梳理日記圖關係（人物、事件與關係）。預設與對話模型一致。",
     "naming_model_title": "預設命名模型",
     "naming_model_desc": "執行標題命名、短句提取等簡單任務時使用的模型。建議使用響應快、成本低的輕量級模型。",
     "embedding_model_title": "嵌入模型 (Embedding)",
