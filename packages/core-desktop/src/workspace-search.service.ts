@@ -104,7 +104,7 @@ function globToRegExp(pattern: string): RegExp {
   const normalized = pattern.replace(/\\/g, '/').trim()
   let regex = '^'
   for (let i = 0; i < normalized.length; i += 1) {
-    const ch = normalized[i]
+    const ch = normalized[i]!
     if (ch === '*') {
       if (normalized[i + 1] === '*') {
         regex += '.*'
@@ -229,7 +229,7 @@ function findMatchesInContent(content: string, regex: RegExp): WorkspaceSearchMa
   const lines = content.split(/\r?\n/)
 
   for (let index = 0; index < lines.length; index += 1) {
-    const lineText = lines[index]
+    const lineText = lines[index] ?? ''
     const lineRegex = new RegExp(regex.source, regex.flags)
     let match: RegExpExecArray | null
     while ((match = lineRegex.exec(lineText)) !== null) {

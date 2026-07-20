@@ -82,7 +82,7 @@ export class DerivedFreshnessService {
       (await this.collaborators?.loadExtractHashes()) ?? new Map<string, string>()
     const byPath = new Map<string, PendingReextractRef>()
 
-    const journals =
+    const journals: Array<{ filePath: string; contentHash: string; date?: string }> =
       (await this.collaborators?.listJournals()) ??
       [...this.reextractMarks.entries()].map(([filePath, contentHash]) => ({
         filePath,
