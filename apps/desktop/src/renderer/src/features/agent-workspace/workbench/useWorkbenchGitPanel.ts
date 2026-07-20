@@ -86,6 +86,11 @@ export function useWorkbenchGitPanel(folderRoot: string | null): GitManagementPa
       },
       onGetStatus: () => git.getStatus(root),
       onGetHistory: (filePath, limit) => git.getHistory(root, filePath, limit),
+      onGetHistoryCount: async (filePath?) => {
+        // 工作区 Git 暂无独立 count IPC：用较大 limit 近似总数
+        const entries = await git.getHistory(root, filePath, 10_000)
+        return entries.length
+      },
       onGetRecentPulls: (limit) => git.getRecentPulls(root, limit),
       onGetCommitChanges: (hash) => git.getCommitChanges(root, hash),
       onGetFileDiff: (filePath, hash) => git.getFileDiff(root, filePath, hash),

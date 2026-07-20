@@ -84,7 +84,7 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
     suppressEchoRef.current = false
   }, [content])
 
-  const syncScroll = useCallback((source: HTMLDivElement, target: HTMLDivElement | null) => {
+  const syncScroll = useCallback((source: HTMLElement, target: HTMLElement | null) => {
     if (!target || syncing.current) return
     syncing.current = true
     target.scrollTop = source.scrollTop

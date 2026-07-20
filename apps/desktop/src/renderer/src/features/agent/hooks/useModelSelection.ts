@@ -23,6 +23,7 @@ export interface UseModelSelectionResult {
   lastSelectionSwitch: AgentDialogueSelectionSwitchEvent | null
   setCurrentProviderId: (id: string) => void
   setCurrentModelId: (id: string) => void
+  selectDialogueModel: (providerId: string, modelId: string) => Promise<void>
   userManuallySetModelRef: React.MutableRefObject<boolean>
 }
 
@@ -134,6 +135,12 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
     setCurrentModelId(id)
   }, [])
 
+  const selectDialogueModel = useCallback(async (providerId: string, modelId: string) => {
+    userManuallySetModelRef.current = true
+    setCurrentProviderId(providerId)
+    setCurrentModelId(modelId)
+  }, [])
+
   return {
     currentProviderId,
     currentModelId,
@@ -142,6 +149,7 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
     lastSelectionSwitch,
     setCurrentProviderId: setRequestedProviderId,
     setCurrentModelId: setRequestedModelId,
+    selectDialogueModel,
     userManuallySetModelRef
   }
 }

@@ -7,7 +7,9 @@ import styles from './GitWorkbenchPanel.module.css'
 
 function formatGraphTime(date: Date | string): string {
   const value = date instanceof Date ? date : new Date(date)
-  if (Number.isNaN(value.getTime())) return date
+  if (Number.isNaN(value.getTime())) {
+    return typeof date === 'string' ? date : String(date)
+  }
   const now = Date.now()
   const diffMs = now - value.getTime()
   const minutes = Math.floor(diffMs / 60_000)

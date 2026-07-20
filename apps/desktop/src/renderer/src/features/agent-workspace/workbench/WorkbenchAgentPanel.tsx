@@ -53,7 +53,7 @@ export interface WorkbenchAgentPanelProps {
     stopChat: () => void
   }
   assistantProfile?: { name: string; avatarPath?: string | null; emoji?: string | null }
-  onSend: (text: string) => void
+  onSend: (text: string) => void | Promise<void>
   onRollbackRound: (userMessageId: string) => void
   onChangesUpdate: (changes: WorkspaceChangeEntry[]) => void
   onAssistantTap: () => void
@@ -203,8 +203,11 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
               ) : null}
               <InputBar
                 isLoading={stream.isStreaming}
-                sendDisabled={!hasConfiguredModel}
-                onSend={onSend}
+                composerBlocked={!hasConfiguredModel}
+                onSend={async (text) => {
+                  await onSend(text)
+                  return true
+                }}
                 onStop={stream.stopChat}
                 assistantName={assistantName}
                 onAssistantTap={onAssistantTap}
