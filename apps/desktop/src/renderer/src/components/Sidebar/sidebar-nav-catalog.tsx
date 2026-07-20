@@ -12,6 +12,7 @@ import {
   GraduationCap,
   History,
   Library,
+  MessageCircle,
   NotebookPen,
   Paperclip,
   Puzzle,
@@ -31,18 +32,19 @@ export function sidebarNavIcon(icon: React.ReactElement<{ size?: number }>): Rea
   return React.cloneElement(icon, { size: SIDEBAR_NAV_ICON_SIZE })
 }
 
+/** 双主场后：工作台改由顶栏进入；伙伴进侧栏默认可见。版本控制不默认露出（增量同步流程里会提醒开启） */
 export const DEFAULT_VISIBLE_NAV_IDS = [
   'diary',
-  'workbench',
+  'companion',
   'summary',
   'graph',
-  'incremental-sync',
-  'git'
+  'incremental-sync'
 ] as const
 
-/** 与系统设置侧边栏条目一一对应（另含日记区核心页 diary / summary） */
+/** 与系统设置分类对应（另含日记区核心页 diary / companion / summary） */
 export const ALL_SIDEBAR_NAV_IDS = [
   'diary',
+  'companion',
   'workbench',
   'summary',
   'graph',
@@ -102,7 +104,15 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L89',
       '日记与回忆'
     ),
-    itemIds: ['diary', 'workbench', 'summary', 'graph', 'diary-template', 'summary-settings']
+    itemIds: [
+      'diary',
+      'companion',
+      'workbench',
+      'summary',
+      'graph',
+      'diary-template',
+      'summary-settings'
+    ]
   },
   {
     key: 'settings-general',
@@ -144,6 +154,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
 
 export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   diary: '/diary',
+  companion: '/chat',
   workbench: '/agent-workspace',
   summary: '/summary',
   graph: '/graph',
@@ -175,6 +186,11 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
   const icon = sidebarNavIcon
   return {
     diary: { icon: icon(<BookOpen />), label: t('diary.title', '日记'), path: '/diary' },
+    companion: {
+      icon: icon(<MessageCircle />),
+      label: t('nav.agent', '伙伴'),
+      path: '/chat'
+    },
     workbench: {
       icon: icon(<Boxes />),
       label: t('nav.workbench', '工作台'),

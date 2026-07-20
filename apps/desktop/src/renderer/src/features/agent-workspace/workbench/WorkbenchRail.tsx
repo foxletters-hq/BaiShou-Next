@@ -1,8 +1,7 @@
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, LayoutPanelLeft, Settings } from 'lucide-react'
-import { resolveDiaryHomePath } from '../../../components/Sidebar/sidebar-preferences'
+import { Settings } from 'lucide-react'
 import { SETTINGS_HUB_PREFIX } from '../../settings/settings-route.util'
 import type { AgentWorkspaceEntry } from '@baishou/shared'
 import { FolderIconSwitcher } from './FolderIconSwitcher'
@@ -30,33 +29,12 @@ export const WorkbenchRail: React.FC<WorkbenchRailProps> = ({
   const navigate = useNavigate()
   const location = useLocation()
 
-  const isWorkbench = location.pathname.startsWith('/agent-workspace')
-  const isDiary =
-    !location.pathname.startsWith('/chat') &&
-    !location.pathname.startsWith('/agent') &&
-    !location.pathname.startsWith('/agent-workspace') &&
-    !location.pathname.startsWith('/settings')
-  const isSettings = location.pathname.startsWith('/settings')
+  const isSettings =
+    location.pathname.startsWith('/settings') || location.pathname.startsWith(SETTINGS_HUB_PREFIX)
 
   return (
     <nav className={styles.rail} aria-label={t('nav.workbench', '工作台')}>
       <div className={styles.top}>
-        <button
-          type="button"
-          className={`${styles.railBtn} ${isDiary ? styles.railBtnActive : ''}`}
-          title={t('workbench.diary', '日记')}
-          onClick={() => navigate(resolveDiaryHomePath())}
-        >
-          <BookOpen size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.railBtn} ${isWorkbench ? styles.railBtnActive : ''}`}
-          title={t('nav.workbench', '工作台')}
-          onClick={() => navigate('/agent-workspace')}
-        >
-          <LayoutPanelLeft size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-        </button>
         <button
           type="button"
           className={`${styles.railBtn} ${isSettings ? styles.railBtnActive : ''}`}
