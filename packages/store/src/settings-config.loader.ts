@@ -79,6 +79,8 @@ export function getDefaultGlobalModels(): GlobalModelsConfig {
   return {
     globalDialogueProviderId: '',
     globalDialogueModelId: '',
+    globalGraphProviderId: '',
+    globalGraphModelId: '',
     globalNamingProviderId: '',
     globalNamingModelId: '',
     globalSummaryProviderId: '',
@@ -93,6 +95,21 @@ export function getDefaultGlobalModels(): GlobalModelsConfig {
       responseFormat: 'mp3'
     },
     monthlySummarySource: 'weeklies'
+  }
+}
+
+/** 图关系槽位未配置时，回填为对话模型，保持默认一致 */
+export function ensureGlobalGraphModelsAligned(
+  models: GlobalModelsConfig
+): GlobalModelsConfig {
+  const graphProvider = models.globalGraphProviderId?.trim() ?? ''
+  const graphModel = models.globalGraphModelId?.trim() ?? ''
+  const graphUnset = !graphProvider || !graphModel || graphModel === 'off'
+  if (!graphUnset) return models
+  return {
+    ...models,
+    globalGraphProviderId: models.globalDialogueProviderId || '',
+    globalGraphModelId: models.globalDialogueModelId || ''
   }
 }
 
@@ -223,7 +240,12 @@ export function normalizeSettingsConfigKey(
     case 'providers':
       return { providers: (raw as AIProviderConfig[] | null) || [] }
     case 'globalModels':
-      return { globalModels: (raw as GlobalModelsConfig | null) || getDefaultGlobalModels() }
+      return {
+        globalModels: ensureGlobalGraphModelsAligned({
+          ...getDefaultGlobalModels(),
+          ...((raw as GlobalModelsConfig | null) || {})
+        })
+      }
     case 'agentBehavior':
       return { agentBehavior: (raw as AgentBehaviorConfig | null) || getDefaultAgentBehavior() }
     case 'ragConfig':
