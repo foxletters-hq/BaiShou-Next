@@ -56,7 +56,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   activeWorkspaceId,
   sessions,
   loadingSessions,
-  activeSessionId,
+  activeSessionId: _activeSessionId,
   changes,
   onOpenFolder,
   onSelectWorkspace,

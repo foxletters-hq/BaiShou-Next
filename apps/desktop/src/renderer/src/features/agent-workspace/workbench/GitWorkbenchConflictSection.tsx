@@ -1,5 +1,4 @@
 import React from 'react'
-import { useTranslation } from 'react-i18next'
 import type { GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
 
