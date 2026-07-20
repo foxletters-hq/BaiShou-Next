@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import type { LucideIcon } from 'lucide-react-native'
-import { Database, MessageCircle, Pencil, ScrollText } from 'lucide-react-native'
+import { Database, MessageCircle, Pencil, ScrollText, Waypoints } from 'lucide-react-native'
 import {
   useNativeTheme,
   useNativeToast,
@@ -16,12 +16,19 @@ import {
   AIProviderConfig,
   GlobalModelsConfig,
   filterProvidersForModelSwitcher,
+  shouldSyncGraphModelsWithDialogue,
   type ModelSwitcherProvider
 } from '@baishou/shared'
+import { ensureGlobalGraphModelsAligned, getDefaultGlobalModels } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 
-type ModelSelectorKey = 'globalDialogue' | 'globalNaming' | 'globalSummary' | 'globalEmbedding'
+type ModelSelectorKey =
+  | 'globalDialogue'
+  | 'globalGraph'
+  | 'globalNaming'
+  | 'globalSummary'
+  | 'globalEmbedding'
 
 const MODEL_FIELD_META: Array<{
   key: ModelSelectorKey
@@ -42,6 +49,13 @@ const MODEL_FIELD_META: Array<{
     labelKey: 'ai_config.dialogue_model_title',
     tooltipKey: 'settings.tooltip_chat_model',
     icon: MessageCircle,
+    forEmbedding: false
+  },
+  {
+    key: 'globalGraph',
+    labelKey: 'ai_config.graph_model_title',
+    tooltipKey: 'settings.tooltip_graph_model',
+    icon: Waypoints,
     forEmbedding: false
   },
   {
@@ -89,7 +103,12 @@ export const AIModelsSection: React.FC = () => {
         const globalModelsConfig =
           (await services.settingsManager.get<GlobalModelsConfig>('global_models')) ||
           ({} as GlobalModelsConfig)
-        setGlobalModels(globalModelsConfig)
+        setGlobalModels(
+          ensureGlobalGraphModelsAligned({
+            ...getDefaultGlobalModels(),
+            ...globalModelsConfig
+          })
+        )
       } catch (e) {
         console.warn('Load models config failed', e)
       }
@@ -151,6 +170,13 @@ export const AIModelsSection: React.FC = () => {
       ...globalModels,
       [providerKey]: providerId,
       [modelKey]: modelId
+    }
+    if (
+      activeSelector === 'globalDialogue' &&
+      shouldSyncGraphModelsWithDialogue(globalModels)
+    ) {
+      newConfig.globalGraphProviderId = providerId
+      newConfig.globalGraphModelId = modelId
     }
     await handleSaveGlobalModels(newConfig)
     setActiveSelector(null)

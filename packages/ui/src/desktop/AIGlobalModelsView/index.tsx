@@ -3,9 +3,13 @@ import styles from './AIGlobalModelsView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
-import { GlobalModelsConfig, GlobalModelsConfig as SharedGlobalModelsConfig } from '@baishou/shared'
-import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
-import { Database, Cloud, MessageCircle, Pencil, ScrollText } from 'lucide-react'
+import {
+  GlobalModelsConfig as SharedGlobalModelsConfig,
+  isEmbeddingModel,
+  isTtsModel,
+  shouldSyncGraphModelsWithDialogue
+} from '@baishou/shared'
+import { Database, Cloud, MessageCircle, Pencil, ScrollText, Waypoints } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
 import { useTheme } from '../../hooks/useTheme'
 import { getProviderIcon } from '../../utils/provider-icons'
@@ -35,6 +39,8 @@ export interface AIGlobalModelsViewProps {
   onManageProviders?: () => void
 }
 
+type ModelSelectorKey = 'dialogue' | 'graph' | 'naming' | 'summary' | 'embedding'
+
 export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   config,
   availableProviders,
@@ -46,17 +52,12 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   const dialog = useDialog()
   const { isDark } = useTheme()
 
-  // State to manage which model selector is currently open
-  const [activeSelector, setActiveSelector] = useState<
-    'dialogue' | 'naming' | 'summary' | 'embedding' | null
-  >(null)
+  const [activeSelector, setActiveSelector] = useState<ModelSelectorKey | null>(null)
 
-  // Filter provider arrays for the popup
   const getProvidersArray = (forEmbedding: boolean, forTts: boolean = false) => {
     return Object.values(availableProviders)
       .filter((p) => p.enabled && p.enabledModels && p.enabledModels.length > 0)
       .map((p) => {
-        // Filter the models inside depending on whether they are embedding models, tts models, or other
         const validModels = (p.enabledModels || []).filter((m) => {
           const isEmbed = isEmbeddingModel(m)
           const isTts = isTtsModel(m)
@@ -128,8 +129,16 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
       setActiveSelector(null)
       return
     } else if (activeSelector === 'dialogue') {
+      const syncGraph = shouldSyncGraphModelsWithDialogue(config)
       newConfig.globalDialogueProviderId = providerId
       newConfig.globalDialogueModelId = modelId
+      if (syncGraph) {
+        newConfig.globalGraphProviderId = providerId
+        newConfig.globalGraphModelId = modelId
+      }
+    } else if (activeSelector === 'graph') {
+      newConfig.globalGraphProviderId = providerId
+      newConfig.globalGraphModelId = modelId
     } else if (activeSelector === 'naming') {
       newConfig.globalNamingProviderId = providerId
       newConfig.globalNamingModelId = modelId
@@ -143,7 +152,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   }
 
   const renderSection = (
-    key: 'dialogue' | 'naming' | 'summary' | 'embedding',
+    key: ModelSelectorKey,
     title: string,
     icon: React.ReactNode,
     currentProvider: string,
@@ -165,6 +174,11 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           )
         case 'dialogue':
           return t('settings.tooltip_chat_model', '这是用来聊天的模型。')
+        case 'graph':
+          return t(
+            'settings.tooltip_graph_model',
+            '用于离线梳理日记中的人物、事件与关系（图关系抽取）。默认与对话模型一致，可单独更换。'
+          )
         case 'naming':
           return t(
             'settings.tooltip_naming_model',
@@ -212,6 +226,40 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     )
   }
 
+  const currentProviderForSelector = (): string => {
+    switch (activeSelector) {
+      case 'dialogue':
+        return config.globalDialogueProviderId
+      case 'graph':
+        return config.globalGraphProviderId
+      case 'naming':
+        return config.globalNamingProviderId
+      case 'summary':
+        return config.globalSummaryProviderId
+      case 'embedding':
+        return config.globalEmbeddingProviderId
+      default:
+        return ''
+    }
+  }
+
+  const currentModelForSelector = (): string => {
+    switch (activeSelector) {
+      case 'dialogue':
+        return config.globalDialogueModelId
+      case 'graph':
+        return config.globalGraphModelId
+      case 'naming':
+        return config.globalNamingModelId
+      case 'summary':
+        return config.globalSummaryModelId
+      case 'embedding':
+        return config.globalEmbeddingModelId
+      default:
+        return ''
+    }
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.headerRow}>
@@ -230,10 +278,18 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
 
           {renderSection(
             'dialogue',
-            t('ai_config.dialogue_model_title', '默认闲聊接管'),
+            t('ai_config.dialogue_model_title', '默认对话模型'),
             <MessageCircle size={22} />,
             config.globalDialogueProviderId,
             config.globalDialogueModelId
+          )}
+
+          {renderSection(
+            'graph',
+            t('ai_config.graph_model_title', '图关系抽取模型'),
+            <Waypoints size={22} />,
+            config.globalGraphProviderId,
+            config.globalGraphModelId
           )}
 
           {renderSection(
@@ -258,24 +314,8 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
       {activeSelector && (
         <ModelSwitcherPopup
           providers={activeSelector === 'embedding' ? embeddingProviders : nonEmbeddingProviders}
-          currentProviderId={
-            activeSelector === 'dialogue'
-              ? config.globalDialogueProviderId
-              : activeSelector === 'naming'
-                ? config.globalNamingProviderId
-                : activeSelector === 'summary'
-                  ? config.globalSummaryProviderId
-                  : config.globalEmbeddingProviderId
-          }
-          currentModelId={
-            activeSelector === 'dialogue'
-              ? config.globalDialogueModelId
-              : activeSelector === 'naming'
-                ? config.globalNamingModelId
-                : activeSelector === 'summary'
-                  ? config.globalSummaryModelId
-                  : config.globalEmbeddingModelId
-          }
+          currentProviderId={currentProviderForSelector()}
+          currentModelId={currentModelForSelector()}
           onSelect={handleSelectModel}
           onClose={() => setActiveSelector(null)}
           onManageProviders={onManageProviders}

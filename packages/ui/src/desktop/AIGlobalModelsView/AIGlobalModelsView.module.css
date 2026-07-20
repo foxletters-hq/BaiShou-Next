@@ -128,7 +128,7 @@
   width: 100%;
   padding: 14px 16px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-muted);
+  border: 1.5px solid var(--border-control);
   border-radius: 12px;
   cursor: pointer;
   margin-bottom: 16px;
@@ -136,7 +136,7 @@
 }
 
 .selectorBtn:hover {
-  border-color: var(--border-strong);
+  border-color: var(--border-control);
 }
 
 .placeholderText {

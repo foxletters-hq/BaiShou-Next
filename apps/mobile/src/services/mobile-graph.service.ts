@@ -15,6 +15,7 @@ import {
 } from '@baishou/database'
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
+import { resolveGlobalGraphModelIds } from '@baishou/shared'
 import {
   ensureMobileRawDataRuntime,
   syncMobileGraphPendingIndex
@@ -58,18 +59,8 @@ async function resolveChatLlm(
   settingsManager: SettingsManagerService
 ): Promise<{ provider: IAIProvider; modelId: string } | null> {
   try {
-    const globalModels = await settingsManager.get<{
-      globalDialogueProviderId?: string
-      globalDialogueModelId?: string
-      globalSummaryProviderId?: string
-      globalSummaryModelId?: string
-    }>('global_models')
-    const providerId =
-      globalModels?.globalSummaryProviderId || globalModels?.globalDialogueProviderId
-    const modelId =
-      globalModels?.globalSummaryModelId ||
-      globalModels?.globalDialogueModelId ||
-      'deepseek-chat'
+    const globalModels = await settingsManager.get('global_models')
+    const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
     if (!providerId) return null
     const providers = (await settingsManager.get<Array<{ id: string }>>('ai_providers')) || []
     const cfg = providers.find((p) => p.id === providerId)
