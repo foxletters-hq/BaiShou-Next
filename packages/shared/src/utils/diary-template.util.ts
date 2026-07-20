@@ -138,7 +138,7 @@ export function buildDiaryFormatRulesFromTemplates(
     '- content 必须是**完整正文**：包含 diary_read 中所有要保留的段落 + 修改后的段落。',
     '- **禁止**只传修改后的片段或删减后的节选——未写入 content 的段落会被永久删除。',
     '',
-    '通用：标签请通过工具的 tags 参数传递，不要只写在正文中。'
+    '通用：标签请优先通过工具的 tags 参数传递；系统会写入正文 `#标签`，便于用户在编辑器中修改。'
   ].join('\n')
 }
 

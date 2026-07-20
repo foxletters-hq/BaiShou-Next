@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   composeDiaryEditorContent,
+  ensureDiaryInlineTags,
   extractDiaryTagsFromContent,
   extractTagsFromTagLine,
   isDiaryTagLine,
@@ -57,6 +58,18 @@ describe('diary-content-tags.util', () => {
   it('无内联标签时仍从元数据补全（旧数据迁移）', () => {
     expect(composeDiaryEditorContent('今天很开心', ['日记', '生活'])).toBe(
       '#日记 #生活\n\n今天很开心'
+    )
+  })
+
+  it('ensureDiaryInlineTags 会补齐正文缺失的标签', () => {
+    expect(ensureDiaryInlineTags('今天很开心', ['日记', '生活'])).toBe(
+      '#日记 #生活\n\n今天很开心'
+    )
+    expect(ensureDiaryInlineTags('今天 #日记 很开心', ['日记', '生活'])).toBe(
+      '今天 #日记 很开心 #生活'
+    )
+    expect(ensureDiaryInlineTags('##### 12:30:45\n\n今天很开心', '日记,旅行')).toBe(
+      '##### 12:30:45\n\n#日记 #旅行\n\n今天很开心'
     )
   })
 

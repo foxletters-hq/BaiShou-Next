@@ -1,4 +1,5 @@
 import {
+  ensureDiaryInlineTags,
   formatDiaryPreviewText,
   prepareDiaryAppendContent,
   prepareDiaryWriteContent,
@@ -67,10 +68,12 @@ export function createDiarySearcher() {
             .map((s) => s.trim())
             .filter(Boolean)
             .join(',')
+          const prepared = prepareDiaryWriteContent(content, templateConfig, new Date())
+          // 标签只写正文 #标签，不写 frontmatter（由正文解析进索引）
+          const finalContent = tagsStr ? ensureDiaryInlineTags(prepared, tagsStr) : prepared
           await diaryService.create({
             date: parseDateStr(date),
-            content: prepareDiaryWriteContent(content, templateConfig, new Date()),
-            ...(tagsStr ? { tags: tagsStr } : {})
+            content: finalContent
           })
           return { ok: true as const }
         } catch (e) {
@@ -109,9 +112,15 @@ export function createDiarySearcher() {
             )
           }
 
+          const mergedTags = tags ? mergeDiaryTags(existing.tags, tags) : existing.tags
+          // 标签只写正文 #标签；清空 metadata tags，避免再落 frontmatter
+          if (mergedTags) {
+            finalContent = ensureDiaryInlineTags(finalContent, mergedTags)
+          }
+
           await diaryService.update(existing.id, {
             content: finalContent,
-            ...(tags ? { tags: mergeDiaryTags(existing.tags, tags) } : {})
+            tags: ''
           })
           return { ok: true as const }
         } catch (e) {
