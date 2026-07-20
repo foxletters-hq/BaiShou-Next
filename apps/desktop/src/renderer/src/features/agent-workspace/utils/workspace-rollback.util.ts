@@ -35,10 +35,8 @@ export function formatWorkspaceRollbackSummary(
   const detailLines: string[] = []
 
   detailLines.push(
-    ...formatPathSection(
-      t('round_rollback.restored_label', '已恢复：'),
-      result.restored,
-      (count) => t('round_rollback.more_files', '另有 {{count}} 个文件…', { count })
+    ...formatPathSection(t('round_rollback.restored_label', '已恢复：'), result.restored, (count) =>
+      t('round_rollback.more_files', '另有 {{count}} 个文件…', { count })
     )
   )
   detailLines.push(
@@ -49,20 +47,22 @@ export function formatWorkspaceRollbackSummary(
     )
   )
   detailLines.push(
-    ...formatPathSection(
-      t('round_rollback.skipped_label', '已跳过：'),
-      result.skipped,
-      (count) => t('round_rollback.more_files', '另有 {{count}} 个文件…', { count })
+    ...formatPathSection(t('round_rollback.skipped_label', '已跳过：'), result.skipped, (count) =>
+      t('round_rollback.more_files', '另有 {{count}} 个文件…', { count })
     )
   )
 
   const touchedCount = result.restored.length + result.deleted.length
   const headline =
     touchedCount > 0
-      ? t('round_rollback.success_with_counts', '已回滚本轮变更（{{restored}} 恢复，{{deleted}} 删除）', {
-          restored: result.restored.length,
-          deleted: result.deleted.length
-        })
+      ? t(
+          'round_rollback.success_with_counts',
+          '已回滚本轮变更（{{restored}} 恢复，{{deleted}} 删除）',
+          {
+            restored: result.restored.length,
+            deleted: result.deleted.length
+          }
+        )
       : result.skipped.length > 0
         ? t('round_rollback.success_skipped_only', '已回滚本轮变更（{{count}} 个文件已跳过）', {
             count: result.skipped.length

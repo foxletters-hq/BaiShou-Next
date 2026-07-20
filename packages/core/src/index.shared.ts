@@ -91,8 +91,4 @@ export * from './raw-data'
 export * from './graph'
 export * from './sync/version-manager.interface'
 export * from './sync/version-manager.fs.service'
-export {
-  VersionBackupError,
-  VersionRestoreError,
-  VersionNotFoundError
-} from './sync/sync.errors'
+export { VersionBackupError, VersionRestoreError, VersionNotFoundError } from './sync/sync.errors'

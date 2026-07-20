@@ -17,7 +17,9 @@ function withAndroidReleaseArchitectures(config) {
 
   return withGradleProperties(config, (config) => {
     const props = config.modResults
-    const idx = props.findIndex((item) => item.type === 'property' && item.key === 'reactNativeArchitectures')
+    const idx = props.findIndex(
+      (item) => item.type === 'property' && item.key === 'reactNativeArchitectures'
+    )
     const entry = {
       type: 'property',
       key: 'reactNativeArchitectures',

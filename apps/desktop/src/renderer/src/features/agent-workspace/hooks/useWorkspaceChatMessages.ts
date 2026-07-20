@@ -40,15 +40,18 @@ export function useWorkspaceChatMessages(params: {
   const streamSessionIdRef = useRef<string | null>(null)
   const prevStreamingRef = useRef(isStreaming)
 
-  const refresh = useCallback(async (overrideSessionId?: string) => {
-    const sid = overrideSessionId ?? sessionId
-    if (!sid || sid === 'new-session') {
-      setMessages([])
-      return
-    }
-    const rows = await fetchWorkspaceMessages(sid)
-    setMessages(rows)
-  }, [sessionId])
+  const refresh = useCallback(
+    async (overrideSessionId?: string) => {
+      const sid = overrideSessionId ?? sessionId
+      if (!sid || sid === 'new-session') {
+        setMessages([])
+        return
+      }
+      const rows = await fetchWorkspaceMessages(sid)
+      setMessages(rows)
+    },
+    [sessionId]
+  )
 
   const setStreamSessionId = useCallback((sid: string | null) => {
     streamSessionIdRef.current = sid
@@ -74,10 +77,7 @@ export function useWorkspaceChatMessages(params: {
 
   useEffect(() => {
     if (prevStreamingRef.current && !isStreaming && sessionId) {
-      if (
-        streamSessionIdRef.current === sessionId &&
-        (streamingText || streamingReasoning)
-      ) {
+      if (streamSessionIdRef.current === sessionId && (streamingText || streamingReasoning)) {
         setPendingAssistantMsg({
           id: `pending-${Date.now()}`,
           content: streamingText,

@@ -222,9 +222,7 @@ export function formatDialogueModelLabel(modelId: string | null | undefined): st
 }
 
 /** 按顺序取第一个已配置的 ID（模型/供应商均适用，跳过 unknown/off/default 等占位值） */
-export function coalesceConfiguredId(
-  ...candidates: (string | null | undefined)[]
-): string | null {
+export function coalesceConfiguredId(...candidates: (string | null | undefined)[]): string | null {
   for (const candidate of candidates) {
     if (isConfiguredDialogueModelId(candidate)) return candidate!.trim()
   }
@@ -261,9 +259,7 @@ export function requireResolvedDialogueModel(
 }
 
 /** @deprecated 优先使用 requireResolvedDialogueModel；仅模型 ID 粗合并 */
-export function requireStreamDialogueModelId(
-  ...candidates: (string | null | undefined)[]
-): string {
+export function requireStreamDialogueModelId(...candidates: (string | null | undefined)[]): string {
   const modelId = resolveStreamDialogueModelId(...candidates)
   if (!modelId) {
     throw new Error(DIALOGUE_MODEL_NOT_CONFIGURED_ERROR)

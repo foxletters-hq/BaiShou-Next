@@ -273,10 +273,7 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
       if (!item?.filename) continue
       const itemPath = normalizeWebDavListingUrl(String(item.filename))
       if (item.type === 'directory') {
-        if (
-          isStrictWebDavChildUrl(normalizedRequestDir, itemPath) &&
-          !visited.has(itemPath)
-        ) {
+        if (isStrictWebDavChildUrl(normalizedRequestDir, itemPath) && !visited.has(itemPath)) {
           subdirs.push(itemPath)
         }
         continue

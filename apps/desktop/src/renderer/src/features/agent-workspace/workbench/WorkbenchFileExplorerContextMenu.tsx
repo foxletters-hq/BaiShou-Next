@@ -15,9 +15,7 @@ import type { ContextMenuItem } from '@baishou/ui'
 import '@baishou/ui/desktop/ContextMenu/ContextMenu.css'
 import type { FileTreeNode } from './useWorkbenchFileTree'
 
-export type FileExplorerMenuTarget =
-  | { kind: 'root' }
-  | { kind: 'node'; node: FileTreeNode }
+export type FileExplorerMenuTarget = { kind: 'root' } | { kind: 'node'; node: FileTreeNode }
 
 export interface FileExplorerContextMenuState {
   x: number

@@ -69,7 +69,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
   const resolvedActiveWorkspace =
     activeWorkspace ??
     (folderRoot
-      ? workspaces.find((entry) => workspaceEntryMatchesFolder(entry, folderRoot)) ?? null
+      ? (workspaces.find((entry) => workspaceEntryMatchesFolder(entry, folderRoot)) ?? null)
       : null)
   const activeFolderRoot = resolvedActiveWorkspace?.folderRoot ?? folderRoot
   const hasWorkspace = Boolean(activeFolderRoot)
@@ -194,7 +194,10 @@ export const AgentWorkspaceScreen: React.FC = () => {
   const handleDeleteSession = useCallback(
     async (targetSessionId: string) => {
       const confirmed = await dialog.confirm(
-        t('agent_workspace.delete_session_confirm', '确定删除此工作区会话？相关对话记录也会被移除。'),
+        t(
+          'agent_workspace.delete_session_confirm',
+          '确定删除此工作区会话？相关对话记录也会被移除。'
+        ),
         t('agent_workspace.delete_session', '删除会话')
       )
       if (!confirmed) return
@@ -230,10 +233,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
         notifyWorkspaceSessionsChanged()
       } catch (error) {
         console.error('[AgentWorkspaceScreen] rename session failed:', error)
-        await dialog.alert(
-          t('common.error', '操作失败'),
-          t('workbench.rename_session', '重命名')
-        )
+        await dialog.alert(t('common.error', '操作失败'), t('workbench.rename_session', '重命名'))
       }
     },
     [dialog, t]
@@ -273,15 +273,10 @@ export const AgentWorkspaceScreen: React.FC = () => {
         void chat.refresh(prepared.sessionId)
         chat.setStreamSessionId(prepared.sessionId)
 
-        await stream.runWorkspaceChatStream(
-          prepared.sessionId,
-          trimmed,
-          prepared.userMessageId,
-          {
-            providerId: chrome.model.currentProviderId,
-            modelId: chrome.model.currentModelId
-          }
-        )
+        await stream.runWorkspaceChatStream(prepared.sessionId, trimmed, prepared.userMessageId, {
+          providerId: chrome.model.currentProviderId,
+          modelId: chrome.model.currentModelId
+        })
         notifyWorkspaceSessionsChanged()
       } catch (error) {
         console.error('[AgentWorkspaceScreen] send failed:', error)
@@ -309,7 +304,9 @@ export const AgentWorkspaceScreen: React.FC = () => {
 
       const confirmed = await dialog.confirm(
         <div>
-          <p>{t('round_rollback.confirm_desc', '将恢复本轮对话开始前的文件状态，此操作不可撤销。')}</p>
+          <p>
+            {t('round_rollback.confirm_desc', '将恢复本轮对话开始前的文件状态，此操作不可撤销。')}
+          </p>
         </div>,
         t('round_rollback.confirm_title', '回滚本轮变更？')
       )

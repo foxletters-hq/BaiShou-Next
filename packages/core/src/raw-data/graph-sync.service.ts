@@ -33,11 +33,7 @@ export class GraphSyncService {
     for (const shard of pending) {
       const [collection] = shard.relativePath.split(/[/\\]/)
       if (collection === 'extract-state') {
-        await this.graphManager.commitIndexed(
-          collection,
-          shard.relativePath,
-          shard.contentHash
-        )
+        await this.graphManager.commitIndexed(collection, shard.relativePath, shard.contentHash)
         continue
       }
 
@@ -61,9 +57,7 @@ export class GraphSyncService {
           let embedding: number[] | null = null
           if (this.embedder?.embedQuery) {
             try {
-              embedding = await this.embedder.embedQuery(
-                `${raw.name}\n${raw.summary || ''}`.trim()
-              )
+              embedding = await this.embedder.embedQuery(`${raw.name}\n${raw.summary || ''}`.trim())
             } catch {
               embedding = null
             }

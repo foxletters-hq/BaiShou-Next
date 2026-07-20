@@ -97,9 +97,7 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
     return (
       <section className={pane.cardSection}>
         <div className={pane.cardHeader}>
-          <h3 className={pane.cardTitle}>
-            {t('settings.agent_gate_title', '伙伴操作门控')}
-          </h3>
+          <h3 className={pane.cardTitle}>{t('settings.agent_gate_title', '伙伴操作门控')}</h3>
         </div>
         <div className={`${pane.cardBody} ${styles.paddedBody}`}>
           <p className={styles.emptyHint}>{t('common.loading', '加载中...')}</p>
@@ -156,14 +154,9 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
     <>
       <section className={pane.cardSection}>
         <div className={pane.cardHeader}>
-          <h3 className={pane.cardTitle}>
-            {t('settings.agent_gate_title', '伙伴操作门控')}
-          </h3>
+          <h3 className={pane.cardTitle}>{t('settings.agent_gate_title', '伙伴操作门控')}</h3>
           <p className={styles.cardDesc}>
-            {t(
-              'settings.agent_gate_desc',
-              '控制伙伴执行写入、修改等敏感操作前是否需要你确认。'
-            )}
+            {t('settings.agent_gate_desc', '控制伙伴执行写入、修改等敏感操作前是否需要你确认。')}
           </p>
         </div>
         <div className={`${pane.cardBody} ${styles.paddedBody}`}>
@@ -345,9 +338,7 @@ export const BaishouAgentGateSettingsSection: React.FC = () => {
             {t('settings.agent_gate_user_rules', '我的额外规则')}
           </div>
           {permissionRules.length === 0 ? (
-            <p className={styles.emptyHint}>
-              {t('settings.agent_gate_user_rules_empty', '暂无')}
-            </p>
+            <p className={styles.emptyHint}>{t('settings.agent_gate_user_rules_empty', '暂无')}</p>
           ) : (
             permissionRules.map((rule, index) => (
               <React.Fragment key={`${rule.action}-${index}`}>

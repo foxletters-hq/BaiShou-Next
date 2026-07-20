@@ -34,9 +34,7 @@ async function persistGateConfig(): Promise<void> {
   await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, runtime.getConfig())
 }
 
-export async function ensureAgentGateRuntime(): Promise<
-  ReturnType<typeof createBaishouAgentGate>
-> {
+export async function ensureAgentGateRuntime(): Promise<ReturnType<typeof createBaishouAgentGate>> {
   if (!runtime) {
     const config = await loadGateConfig()
     runtime = createBaishouAgentGate({

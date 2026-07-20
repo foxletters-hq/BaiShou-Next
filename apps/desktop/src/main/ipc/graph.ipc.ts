@@ -12,11 +12,7 @@ import {
   GRAPH_EDGE_TYPES,
   GRAPH_NODE_TYPES
 } from '@baishou/database-desktop'
-import {
-  logger,
-  resolveGlobalGraphModelIds,
-  type GlobalModelsConfig
-} from '@baishou/shared'
+import { logger, resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
 import { fileSystem, pathService, vaultService } from './vault.ipc'
 import {
   ensureRawDataRuntime,
@@ -79,17 +75,14 @@ export function registerGraphIPC(): void {
     return graphManager.listPendingIndex()
   })
 
-  ipcMain.handle(
-    'graph:extract',
-    async (_e, opts?: { filePaths?: string[] }) => {
-      const vaultName = requireVaultName()
-      const service = await buildExtractionService()
-      return service.extractDiaries({
-        vaultName,
-        filePaths: opts?.filePaths
-      })
-    }
-  )
+  ipcMain.handle('graph:extract', async (_e, opts?: { filePaths?: string[] }) => {
+    const vaultName = requireVaultName()
+    const service = await buildExtractionService()
+    return service.extractDiaries({
+      vaultName,
+      filePaths: opts?.filePaths
+    })
+  })
 
   ipcMain.handle(
     'graph:get-global-graph',
@@ -111,13 +104,10 @@ export function registerGraphIPC(): void {
     }
   )
 
-  ipcMain.handle(
-    'graph:get-view',
-    async (_e, opts: { centerNodeId: string; depth?: 1 | 2 }) => {
-      const repo = requireGraphRepo()
-      return repo.traverse(requireVaultName(), opts.centerNodeId, opts.depth ?? 2)
-    }
-  )
+  ipcMain.handle('graph:get-view', async (_e, opts: { centerNodeId: string; depth?: 1 | 2 }) => {
+    const repo = requireGraphRepo()
+    return repo.traverse(requireVaultName(), opts.centerNodeId, opts.depth ?? 2)
+  })
 
   ipcMain.handle(
     'graph:search',
@@ -192,14 +182,10 @@ export function registerGraphIPC(): void {
       const vaultName = requireVaultName()
       const repo = requireGraphRepo()
       const now = Date.now()
-      const nodeType = GRAPH_NODE_TYPES.includes(input.nodeType as never)
-        ? input.nodeType
-        : 'topic'
+      const nodeType = GRAPH_NODE_TYPES.includes(input.nodeType as never) ? input.nodeType : 'topic'
       const existing = input.id ? await repo.getNodeById(input.id) : null
       const name = input.name.trim()
-      const aliases = Array.isArray(input.aliases)
-        ? input.aliases
-        : (existing?.aliases ?? [])
+      const aliases = Array.isArray(input.aliases) ? input.aliases : (existing?.aliases ?? [])
       const record: GraphNodeRawRecord = {
         id: existing?.id || input.id || newId('n'),
         schemaVersion: 1,
@@ -210,7 +196,9 @@ export function registerGraphIPC(): void {
         summary: input.summary ?? existing?.summary ?? '',
         props: (() => {
           try {
-            return existing ? (JSON.parse(existing.propsJson || '{}') as Record<string, unknown>) : {}
+            return existing
+              ? (JSON.parse(existing.propsJson || '{}') as Record<string, unknown>)
+              : {}
           } catch {
             return {}
           }
@@ -279,17 +267,14 @@ export function registerGraphIPC(): void {
     }
   )
 
-  ipcMain.handle(
-    'graph:soft-delete',
-    async (_e, opts: { kind: 'node' | 'edge'; id: string }) => {
-      const manager = getGraphRawManager()
-      await manager.tombstone(opts.id, {
-        collection: opts.kind === 'node' ? 'nodes' : 'edges'
-      })
-      await syncGraphPendingIndex()
-      return { ok: true }
-    }
-  )
+  ipcMain.handle('graph:soft-delete', async (_e, opts: { kind: 'node' | 'edge'; id: string }) => {
+    const manager = getGraphRawManager()
+    await manager.tombstone(opts.id, {
+      collection: opts.kind === 'node' ? 'nodes' : 'edges'
+    })
+    await syncGraphPendingIndex()
+    return { ok: true }
+  })
 
   ipcMain.handle('graph:get-node', async (_e, id: string) => {
     return requireGraphRepo().getNodeById(id)

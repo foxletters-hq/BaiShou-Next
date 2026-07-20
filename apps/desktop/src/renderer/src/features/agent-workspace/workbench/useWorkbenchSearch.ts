@@ -45,8 +45,17 @@ function loadState(folderRoot: string | null): WorkbenchSearchState {
 }
 
 function persistState(folderRoot: string, state: WorkbenchSearchState): void {
-  const { pattern, replace, matchCase, matchWholeWord, useRegex, includePattern, excludePattern, showReplace, showFilters } =
-    state
+  const {
+    pattern,
+    replace,
+    matchCase,
+    matchWholeWord,
+    useRegex,
+    includePattern,
+    excludePattern,
+    showReplace,
+    showFilters
+  } = state
   localStorage.setItem(
     storageKey(folderRoot),
     JSON.stringify({

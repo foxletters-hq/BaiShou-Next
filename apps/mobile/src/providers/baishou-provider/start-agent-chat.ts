@@ -21,12 +21,7 @@ import {
   resolveAssistantEmojiPrefs
 } from '../../services/mobile-context-at-message.service'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
-import type {
-  ToolRegistry,
-  ToolDiarySearcher,
-  AIProviderRegistry,
-  IAIProvider
-} from '@baishou/ai'
+import type { ToolRegistry, ToolDiarySearcher, AIProviderRegistry, IAIProvider } from '@baishou/ai'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 
 export function createStartAgentChat(deps: {
@@ -153,13 +148,13 @@ export function createStartAgentChat(deps: {
           flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id),
           agentGate: getAgentGate?.(),
           persistBaishouAgentGateConfig,
-          rawDataSourceManager: (
-            await import('../../services/mobile-raw-data-source.runtime')
-          ).getMobileRawDataSourceManager() ?? undefined,
+          rawDataSourceManager:
+            (
+              await import('../../services/mobile-raw-data-source.runtime')
+            ).getMobileRawDataSourceManager() ?? undefined,
           syncGraphPendingIndex: async () => {
-            const { syncMobileGraphPendingIndex } = await import(
-              '../../services/mobile-raw-data-source.runtime'
-            )
+            const { syncMobileGraphPendingIndex } =
+              await import('../../services/mobile-raw-data-source.runtime')
             await syncMobileGraphPendingIndex({
               drizzleDb: runtime.drizzleDb,
               embeddingProvider: embeddingProvider ?? null,

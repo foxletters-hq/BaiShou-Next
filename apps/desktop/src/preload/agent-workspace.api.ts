@@ -35,10 +35,7 @@ export const agentWorkspaceApi = {
     content?: string
   ): Promise<{ relativePath: string }> =>
     ipcRenderer.invoke('agent-workspace:create-file', rootPath, relativePath, content),
-  createDirectory: (
-    rootPath: string,
-    relativePath: string
-  ): Promise<{ relativePath: string }> =>
+  createDirectory: (rootPath: string, relativePath: string): Promise<{ relativePath: string }> =>
     ipcRenderer.invoke('agent-workspace:create-directory', rootPath, relativePath),
   deleteEntry: (rootPath: string, relativePath: string): Promise<boolean> =>
     ipcRenderer.invoke('agent-workspace:delete-entry', rootPath, relativePath),
@@ -64,9 +61,7 @@ export const agentWorkspaceApi = {
     assistantId?: string
     title?: string
   }): Promise<string> => ipcRenderer.invoke('agent-workspace:create-session', params),
-  getBinding: (
-    sessionId: string
-  ): Promise<{ sessionId: string; folderRoot: string } | null> =>
+  getBinding: (sessionId: string): Promise<{ sessionId: string; folderRoot: string } | null> =>
     ipcRenderer.invoke('agent-workspace:get-binding', sessionId),
   listSessions: (): Promise<AgentWorkspaceSessionListItem[]> =>
     ipcRenderer.invoke('agent-workspace:list-sessions'),
@@ -89,13 +84,16 @@ export const agentWorkspaceApi = {
       ipcRenderer.invoke('agent-workspace:git-is-initialized', folderRoot),
     init: (folderRoot: string): Promise<{ success: boolean; message?: string }> =>
       ipcRenderer.invoke('agent-workspace:git-init', folderRoot),
-    getStatus: (folderRoot: string) => ipcRenderer.invoke('agent-workspace:git-get-status', folderRoot),
+    getStatus: (folderRoot: string) =>
+      ipcRenderer.invoke('agent-workspace:git-get-status', folderRoot),
     stageFile: (folderRoot: string, filePath: string) =>
       ipcRenderer.invoke('agent-workspace:git-stage-file', folderRoot, filePath),
-    stageAll: (folderRoot: string) => ipcRenderer.invoke('agent-workspace:git-stage-all', folderRoot),
+    stageAll: (folderRoot: string) =>
+      ipcRenderer.invoke('agent-workspace:git-stage-all', folderRoot),
     unstageFile: (folderRoot: string, filePath: string) =>
       ipcRenderer.invoke('agent-workspace:git-unstage-file', folderRoot, filePath),
-    unstageAll: (folderRoot: string) => ipcRenderer.invoke('agent-workspace:git-unstage-all', folderRoot),
+    unstageAll: (folderRoot: string) =>
+      ipcRenderer.invoke('agent-workspace:git-unstage-all', folderRoot),
     discardFile: (folderRoot: string, filePath: string) =>
       ipcRenderer.invoke('agent-workspace:git-discard-file', folderRoot, filePath),
     discardAllChanges: (folderRoot: string) =>
@@ -138,17 +136,20 @@ export const agentWorkspaceApi = {
       ipcRenderer.invoke('agent-workspace:git-create-branch', folderRoot, branch),
     setRemoteUrl: (folderRoot: string, url: string) =>
       ipcRenderer.invoke('agent-workspace:git-set-remote-url', folderRoot, url),
-    getConfig: (folderRoot: string) => ipcRenderer.invoke('agent-workspace:git-get-config', folderRoot),
+    getConfig: (folderRoot: string) =>
+      ipcRenderer.invoke('agent-workspace:git-get-config', folderRoot),
     saveConfig: (folderRoot: string, partial: unknown) =>
       ipcRenderer.invoke('agent-workspace:git-save-config', folderRoot, partial),
-    testRemote: (folderRoot: string) => ipcRenderer.invoke('agent-workspace:git-test-remote', folderRoot),
+    testRemote: (folderRoot: string) =>
+      ipcRenderer.invoke('agent-workspace:git-test-remote', folderRoot),
     mergeBranch: (folderRoot: string, branch: string) =>
       ipcRenderer.invoke('agent-workspace:git-merge-branch', folderRoot, branch),
     deleteBranch: (folderRoot: string, branch: string, force?: boolean) =>
       ipcRenderer.invoke('agent-workspace:git-delete-branch', folderRoot, branch, force),
     publishBranch: (folderRoot: string, branch?: string) =>
       ipcRenderer.invoke('agent-workspace:git-publish-branch', folderRoot, branch),
-    listStash: (folderRoot: string) => ipcRenderer.invoke('agent-workspace:git-list-stash', folderRoot),
+    listStash: (folderRoot: string) =>
+      ipcRenderer.invoke('agent-workspace:git-list-stash', folderRoot),
     stashPush: (folderRoot: string, message?: string) =>
       ipcRenderer.invoke('agent-workspace:git-stash-push', folderRoot, message),
     stashApply: (folderRoot: string, index: number) =>

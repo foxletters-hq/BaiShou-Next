@@ -171,10 +171,7 @@ export const AIModelsSection: React.FC = () => {
       [providerKey]: providerId,
       [modelKey]: modelId
     }
-    if (
-      activeSelector === 'globalDialogue' &&
-      shouldSyncGraphModelsWithDialogue(globalModels)
-    ) {
+    if (activeSelector === 'globalDialogue' && shouldSyncGraphModelsWithDialogue(globalModels)) {
       newConfig.globalGraphProviderId = providerId
       newConfig.globalGraphModelId = modelId
     }

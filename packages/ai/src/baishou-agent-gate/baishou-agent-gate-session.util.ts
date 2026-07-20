@@ -1,7 +1,4 @@
-import {
-  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
-  type BaishouAgentGateConfig
-} from '@baishou/shared'
+import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG, type BaishouAgentGateConfig } from '@baishou/shared'
 import { createBaishouAgentGate, type IBaishouAgentGate } from './baishou-agent-gate.service'
 
 export function cloneBaishouAgentGateConfig(
@@ -32,9 +29,10 @@ export interface ResolveSessionAgentGateOptions {
   persistBaishouAgentGateConfig?: (config: BaishouAgentGateConfig) => Promise<void>
 }
 
-export function resolveSessionAgentGate(
-  options: ResolveSessionAgentGateOptions
-): { gate?: IBaishouAgentGate; mutableConfig?: BaishouAgentGateConfig } {
+export function resolveSessionAgentGate(options: ResolveSessionAgentGateOptions): {
+  gate?: IBaishouAgentGate
+  mutableConfig?: BaishouAgentGateConfig
+} {
   if (options.agentGate) {
     return { gate: options.agentGate }
   }

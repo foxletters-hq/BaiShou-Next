@@ -1,7 +1,4 @@
-import {
-  BAISHOU_AGENT_GATE_CONFIG_KEY,
-  type BaishouAgentGateConfig
-} from '@baishou/shared'
+import { BAISHOU_AGENT_GATE_CONFIG_KEY, type BaishouAgentGateConfig } from '@baishou/shared'
 import {
   bridgeAgentGateEventBus,
   cloneBaishouAgentGateConfig,

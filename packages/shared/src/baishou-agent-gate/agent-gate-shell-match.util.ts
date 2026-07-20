@@ -205,7 +205,10 @@ export function matchShellCommandPattern(command: string, pattern: string): bool
 export function isDangerousShellCommand(command: string): boolean {
   const normalized = command.replace(/\s+/g, ' ').trim()
   if (!normalized) return false
-  if (commandHasShellOperators(normalized) && /\|/.test(normalized.replace(/"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/g, ' '))) {
+  if (
+    commandHasShellOperators(normalized) &&
+    /\|/.test(normalized.replace(/"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/g, ' '))
+  ) {
     // Piped to shell interpreters is covered by DANGEROUS patterns; chaining alone is not
     // "dangerous" for forceExclusion but blocks Always/allowlist match separately.
   }
@@ -235,14 +238,11 @@ export function allowlistEntryMatches(
   if (!entry.pattern) return true
 
   const kind =
-    entry.resourceKind ??
-    (input.action === 'workspace_run' ? 'shell_command' : undefined)
+    entry.resourceKind ?? (input.action === 'workspace_run' ? 'shell_command' : undefined)
   const resources = input.resources ?? []
 
   if (kind === 'shell_command' || input.action === 'workspace_run') {
-    const candidates = resources
-      .filter((r) => r.kind === 'shell_command')
-      .map((r) => r.value)
+    const candidates = resources.filter((r) => r.kind === 'shell_command').map((r) => r.value)
     if (candidates.length === 0) return false
     return candidates.some((cmd) => matchShellCommandPattern(cmd, entry.pattern!))
   }

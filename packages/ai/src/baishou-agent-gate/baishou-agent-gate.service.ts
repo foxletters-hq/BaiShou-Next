@@ -135,8 +135,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     request.repeatCount = this.repeatTracker.getCount(input.sessionId, fingerprint)
     if (effect === AgentGateEffect.Ask) {
       request.description =
-        request.description ??
-        '该操作需要用户确认；调用 assert() 后将阻塞直至用户回复。'
+        request.description ?? '该操作需要用户确认；调用 assert() 后将阻塞直至用户回复。'
     }
     return request
   }
@@ -207,9 +206,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         action: request.action,
         sourceSessionId: request.sessionId,
         sourceRequestId: request.id,
-        ...(shellPattern
-          ? { pattern: shellPattern, resourceKind: 'shell_command' as const }
-          : {})
+        ...(shellPattern ? { pattern: shellPattern, resourceKind: 'shell_command' as const } : {})
       })
       // Resolve first so tool asserts never hang if persist fails.
       this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)

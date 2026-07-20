@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  formatDefaultGitCommitMessage,
-  resolveGitCommitMessage
-} from '../git-commit-message.util'
+import { formatDefaultGitCommitMessage, resolveGitCommitMessage } from '../git-commit-message.util'
 
 describe('git-commit-message.util', () => {
   const fixedDate = new Date(2026, 6, 3, 14, 5, 9)

@@ -10,7 +10,11 @@ export interface GitWorkbenchRemoteSheetProps {
   onClose: () => void
 }
 
-export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = ({ vm, open, onClose }) => {
+export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = ({
+  vm,
+  open,
+  onClose
+}) => {
   const { t } = useTranslation()
   const [userName, setUserName] = useState(vm.userName)
   const [userEmail, setUserEmail] = useState(vm.userEmail)
@@ -28,7 +32,15 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
     setRemoteBranch(vm.remoteBranch)
     setRemoteUsername(vm.remoteUsername)
     setRemoteToken(vm.remoteToken)
-  }, [open, vm.userName, vm.userEmail, vm.remoteUrl, vm.remoteBranch, vm.remoteUsername, vm.remoteToken])
+  }, [
+    open,
+    vm.userName,
+    vm.userEmail,
+    vm.remoteUrl,
+    vm.remoteBranch,
+    vm.remoteUsername,
+    vm.remoteToken
+  ])
 
   if (!open) return null
 
@@ -70,7 +82,9 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
 
           <div className={styles.sheetDivider} />
 
-          <label className={styles.sheetLabel}>{t('version_control.remote_url', '远程仓库 URL')}</label>
+          <label className={styles.sheetLabel}>
+            {t('version_control.remote_url', '远程仓库 URL')}
+          </label>
           <input
             className={styles.menuInput}
             value={remoteUrl}
@@ -89,7 +103,9 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
               vm.setRemoteBranch(event.target.value)
             }}
           />
-          <label className={styles.sheetLabel}>{t('version_control.remote_username', '用户名')}</label>
+          <label className={styles.sheetLabel}>
+            {t('version_control.remote_username', '用户名')}
+          </label>
           <input
             className={styles.menuInput}
             value={remoteUsername}
@@ -98,7 +114,9 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
               vm.setRemoteUsername(event.target.value)
             }}
           />
-          <label className={styles.sheetLabel}>{t('version_control.remote_token', 'Token / 密码')}</label>
+          <label className={styles.sheetLabel}>
+            {t('version_control.remote_token', 'Token / 密码')}
+          </label>
           <div className={styles.tokenRow}>
             <input
               className={styles.menuInput}
@@ -120,7 +138,11 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
         </div>
 
         <div className={styles.sheetFooter}>
-          <button type="button" className={styles.sheetBtn} onClick={() => void vm.handleTestRemote()}>
+          <button
+            type="button"
+            className={styles.sheetBtn}
+            onClick={() => void vm.handleTestRemote()}
+          >
             {t('version_control.test_connection', '测试连接')}
           </button>
           <button type="button" className={styles.sheetBtnPrimary} onClick={() => void saveAll()}>

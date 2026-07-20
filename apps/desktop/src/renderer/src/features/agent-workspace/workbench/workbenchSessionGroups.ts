@@ -11,9 +11,7 @@ function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-export function groupSessionsByTime(
-  sessions: AgentWorkspaceSessionListItem[]
-): SessionTimeGroup[] {
+export function groupSessionsByTime(sessions: AgentWorkspaceSessionListItem[]): SessionTimeGroup[] {
   const now = new Date()
   const todayStart = startOfDay(now).getTime()
   const yesterdayStart = todayStart - 86_400_000

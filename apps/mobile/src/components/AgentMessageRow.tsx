@@ -1,6 +1,11 @@
 import React from 'react'
 import { View, StyleSheet } from 'react-native'
-import { ChatBubble, CompressionActivityBar, CompressionDivider, AgentGatePartCard } from '@baishou/ui/native'
+import {
+  ChatBubble,
+  CompressionActivityBar,
+  CompressionDivider,
+  AgentGatePartCard
+} from '@baishou/ui/native'
 import type { AgentGatePartData } from '@baishou/shared'
 import type { CompactionMarkerData } from '@baishou/ai'
 import type { MockChatAttachment } from '@baishou/shared'

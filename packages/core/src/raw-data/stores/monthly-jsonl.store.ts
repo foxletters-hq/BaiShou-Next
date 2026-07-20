@@ -85,7 +85,10 @@ export class MonthlyJsonlStore {
     return md5Hex(content)
   }
 
-  async appendRecord(shardMonth: string, record: unknown): Promise<{
+  async appendRecord(
+    shardMonth: string,
+    record: unknown
+  ): Promise<{
     shardPath: string
     relativePath: string
     contentHash: string
@@ -128,7 +131,11 @@ export class MonthlyJsonlStore {
   }
 
   async readRecordsByRelativePath(relativePath: string): Promise<unknown[]> {
-    const month = relativePath.replace(/\.jsonl$/i, '').split(/[/\\]/).pop() ?? ''
+    const month =
+      relativePath
+        .replace(/\.jsonl$/i, '')
+        .split(/[/\\]/)
+        .pop() ?? ''
     if (!isValidShardMonth(month)) return []
     return this.readRecords(month)
   }
@@ -251,10 +258,7 @@ export function collapseJsonlById<
       map.set(row.id, row)
       continue
     }
-    map.set(
-      row.id,
-      pickWinner(prev as JsonlMergeableRecord, row as JsonlMergeableRecord) as T
-    )
+    map.set(row.id, pickWinner(prev as JsonlMergeableRecord, row as JsonlMergeableRecord) as T)
   }
   return [...map.values()]
 }

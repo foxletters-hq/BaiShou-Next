@@ -8,9 +8,7 @@ import { allowlistEntryMatches, createAgentGateAllowlistEntryId } from '@baishou
 export interface IAgentGateAllowlistStore {
   list(): AgentGateAllowlistEntry[]
   has(action: string, resources?: readonly AgentGateResourceRef[]): boolean
-  add(
-    entry: Omit<AgentGateAllowlistEntry, 'id' | 'createdAt'>
-  ): AgentGateAllowlistEntry
+  add(entry: Omit<AgentGateAllowlistEntry, 'id' | 'createdAt'>): AgentGateAllowlistEntry
   remove(id: string): boolean
   persist(): Promise<void>
 }

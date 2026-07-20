@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare, Plus } from 'lucide-react'
-import type { AgentWorkspaceEntry, AgentWorkspaceSessionListItem, WorkspaceChangeEntry } from '@baishou/shared'
+import type {
+  AgentWorkspaceEntry,
+  AgentWorkspaceSessionListItem,
+  WorkspaceChangeEntry
+} from '@baishou/shared'
 import { InputBar } from '@baishou/ui'
 import { AgentWorkspaceChatBar } from '../components/AgentWorkspaceChatBar'
 import { AgentWorkspaceMessageList } from '../components/AgentWorkspaceMessageList'
@@ -30,7 +34,13 @@ export interface WorkbenchAgentPanelProps {
     currentAssistant?: { id: string; name: string; avatarPath?: string | null }
     currentProviderId: string
     currentModelId: string
-    providers: Array<{ id: string; name?: string; type?: string; models?: string[]; enabledModels?: string[] }>
+    providers: Array<{
+      id: string
+      name?: string
+      type?: string
+      models?: string[]
+      enabledModels?: string[]
+    }>
     totalInputTokens: number
     totalOutputTokens: number
     estimatedCost: number
@@ -168,7 +178,9 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
 
           <div className={styles.chatBody}>
             {!hasWorkspace ? (
-              <p className={styles.hint}>{t('agent_workspace.pick_workspace_hint', '请先选择或添加工作区')}</p>
+              <p className={styles.hint}>
+                {t('agent_workspace.pick_workspace_hint', '请先选择或添加工作区')}
+              </p>
             ) : !sessionId || sessionId === 'new-session' ? (
               <p className={styles.hint}>
                 {t('agent_workspace.select_session_hint', '在下方输入开始新对话。')}
@@ -198,7 +210,10 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
             <div className={styles.inputArea}>
               {!hasConfiguredModel ? (
                 <p className={styles.noModelHint} role="status">
-                  {t('agent_workspace.no_model_send_hint', '请先在顶部选择一个对话模型，然后才能发送消息。')}
+                  {t(
+                    'agent_workspace.no_model_send_hint',
+                    '请先在顶部选择一个对话模型，然后才能发送消息。'
+                  )}
                 </p>
               ) : null}
               <InputBar

@@ -25,9 +25,7 @@ describe('runHostProcess', () => {
 
   it('marks timedOut when the command exceeds timeout', async () => {
     const hang =
-      process.platform === 'win32'
-        ? 'powershell -Command "Start-Sleep -Seconds 30"'
-        : 'sleep 30'
+      process.platform === 'win32' ? 'powershell -Command "Start-Sleep -Seconds 30"' : 'sleep 30'
 
     const result = await runHostProcess({
       command: hang,

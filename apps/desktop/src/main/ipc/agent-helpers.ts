@@ -93,7 +93,11 @@ export function getAgentManagers(): AgentManagers {
   }
 
   const realSessionRepo = new SessionRepository(db)
-  const sessionFileService = new SessionFileService(pathService, fileSystem, getRawDataSourceManager())
+  const sessionFileService = new SessionFileService(
+    pathService,
+    fileSystem,
+    getRawDataSourceManager()
+  )
   const sessionSyncService = new SessionSyncService(realSessionRepo, sessionFileService)
   const sessionManager = new SessionManagerService(
     realSessionRepo,
@@ -226,7 +230,9 @@ export async function getActiveProvider(requestedProviderId?: string) {
 
 type ResolvedProvider = Awaited<ReturnType<typeof getActiveProvider>>
 
-export async function resolveEmbeddingSystemModels(globalModels?: GlobalModelsConfig | null): Promise<{
+export async function resolveEmbeddingSystemModels(
+  globalModels?: GlobalModelsConfig | null
+): Promise<{
   hasEmbeddingModel: boolean
   embeddingProvider?: ResolvedProvider
   embeddingModelId?: string
@@ -504,7 +510,9 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
     agentGate: await getAgentGate(),
-    rawDataSourceManager: (await import('../services/raw-data-source.runtime')).getRawDataSourceManager()
+    rawDataSourceManager: (
+      await import('../services/raw-data-source.runtime')
+    ).getRawDataSourceManager()
   })
 
   const activeWorkspace = await resolveActiveWorkspaceToolContext()

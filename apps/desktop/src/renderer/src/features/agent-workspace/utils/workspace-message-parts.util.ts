@@ -1,4 +1,9 @@
-import type { AgentPart, FileChangePartData, MockToolInvocation, WorkspaceChangeEntry } from '@baishou/shared'
+import type {
+  AgentPart,
+  FileChangePartData,
+  MockToolInvocation,
+  WorkspaceChangeEntry
+} from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 
 export interface WorkspaceToolPartData {
@@ -40,7 +45,9 @@ export function extractToolInvocations(parts: AgentPart[] | undefined): MockTool
   return invocations
 }
 
-export function collectWorkspaceFileChanges(messages: WorkspaceChatMessage[]): WorkspaceChangeEntry[] {
+export function collectWorkspaceFileChanges(
+  messages: WorkspaceChatMessage[]
+): WorkspaceChangeEntry[] {
   const changes: WorkspaceChangeEntry[] = []
   for (const msg of messages) {
     for (const part of msg.parts ?? []) {

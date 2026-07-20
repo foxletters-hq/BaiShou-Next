@@ -150,36 +150,36 @@ export async function runWorkspaceStreamChat(params: {
     const agentGate = await getAgentGate()
 
     await AgentChatCoreService.runStreamChat({
-    emitter,
-    sessionId: params.sessionId,
-    userText: params.userText,
-    userMessageId: params.userMessageId,
-    provider,
-    modelId: resolved.modelId,
-    systemModels,
-    userConfig: {
-      ...userConfig,
-      workspaceSystemHint: `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。`
-    },
-    skipUserMessageRecording: params.skipUserMessageRecording,
-    realSessionRepo,
-    realSnapshotRepo,
-    toolRegistry,
-    diarySearcher: createDiarySearcher(),
-    webSearchResultFetcher: createWebSearchResultFetcher(),
-    fetchSearchPage: createFetchSearchPage(),
-    agentGate,
-    persistBaishouAgentGateConfig: async (config: BaishouAgentGateConfig) => {
-      await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
-    },
-    workspace: {
-      folderRoot,
-      sessionKind: 'workspace',
-      fs: createNodeWorkspaceFs(),
-      roundCheckpointService: checkpointService,
-      roundCheckpointId
-    }
-  })
+      emitter,
+      sessionId: params.sessionId,
+      userText: params.userText,
+      userMessageId: params.userMessageId,
+      provider,
+      modelId: resolved.modelId,
+      systemModels,
+      userConfig: {
+        ...userConfig,
+        workspaceSystemHint: `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。`
+      },
+      skipUserMessageRecording: params.skipUserMessageRecording,
+      realSessionRepo,
+      realSnapshotRepo,
+      toolRegistry,
+      diarySearcher: createDiarySearcher(),
+      webSearchResultFetcher: createWebSearchResultFetcher(),
+      fetchSearchPage: createFetchSearchPage(),
+      agentGate,
+      persistBaishouAgentGateConfig: async (config: BaishouAgentGateConfig) => {
+        await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
+      },
+      workspace: {
+        folderRoot,
+        sessionKind: 'workspace',
+        fs: createNodeWorkspaceFs(),
+        roundCheckpointService: checkpointService,
+        roundCheckpointId
+      }
+    })
     await touchWorkspaceSession(params.sessionId)
     const session = await realSessionRepo.getSessionById(params.sessionId)
     await updateWorkspaceSessionSelection(
@@ -210,10 +210,7 @@ export async function rollbackWorkspaceRound(params: {
   )
   if (!checkpoint) {
     await loadSessionCheckpointsIntoService(params.sessionId, checkpointService)
-    checkpoint = await getWorkspaceCheckpointForUserMessage(
-      params.sessionId,
-      params.userMessageId
-    )
+    checkpoint = await getWorkspaceCheckpointForUserMessage(params.sessionId, params.userMessageId)
   }
   if (!checkpoint) {
     throw new Error('Round checkpoint not found')

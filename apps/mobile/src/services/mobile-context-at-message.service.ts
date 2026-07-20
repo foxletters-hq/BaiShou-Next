@@ -149,10 +149,7 @@ export async function buildMobileStreamUserConfig(
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
-    disabledToolIds: [
-      ...toolManagementConfig.disabledToolIds,
-      ...DESKTOP_ONLY_WORKSPACE_TOOL_IDS
-    ],
+    disabledToolIds: [...toolManagementConfig.disabledToolIds, ...DESKTOP_ONLY_WORKSPACE_TOOL_IDS],
     recentCount:
       assistantContextWindow !== undefined
         ? assistantContextWindow < 0

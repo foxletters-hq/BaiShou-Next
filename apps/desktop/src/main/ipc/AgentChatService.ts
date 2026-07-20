@@ -100,9 +100,8 @@ export class AgentChatService {
     const { realSessionRepo, realSnapshotRepo, sessionManager } = getAgentManagers()
     const emitter = new ElectronStreamEmitter(params.event)
     const agentGate = await getAgentGate()
-    const { getRawDataSourceManager, syncGraphPendingIndex } = await import(
-      '../services/raw-data-source.runtime'
-    )
+    const { getRawDataSourceManager, syncGraphPendingIndex } =
+      await import('../services/raw-data-source.runtime')
     const rawDataSourceManager = getRawDataSourceManager()
     const { GraphReaderAdapter, EmbeddingAdapter } = await import('@baishou/ai')
     const { GraphRagService } = await import('@baishou/core-desktop')
@@ -125,51 +124,50 @@ export class AgentChatService {
         embedQuery = undefined
       }
     }
-    const graphReader =
-      connectionManager.isConnected()
-        ? new GraphReaderAdapter(async (opts) => {
-            const rag = new GraphRagService(new GraphRepository(connectionManager.getDb()))
-            const vaultName = vaultService.getActiveVault()?.name || 'Personal'
-            const result = await rag.recallRelations({
-              vaultName,
-              entity: opts.entity,
-              mode: opts.mode,
-              embedQuery
-            })
-            return {
-              anchors: result.anchors.map((a) => ({
-                id: a.id,
-                name: a.name,
-                nodeType: a.nodeType,
-                summary: a.summary
-              })),
-              subgraph: result.subgraph.map((e) => ({
-                id: e.id,
-                fromId: e.fromId,
-                toId: e.toId,
-                edgeType: e.edgeType,
-                sourceRef: e.sourceRef,
-                sourceExcerpt: e.sourceExcerpt,
-                validFrom: e.validFrom
-              })),
-              timeline: result.timeline?.map((e) => ({
-                id: e.id,
-                fromId: e.fromId,
-                toId: e.toId,
-                edgeType: e.edgeType,
-                sourceRef: e.sourceRef,
-                sourceExcerpt: e.sourceExcerpt,
-                validFrom: e.validFrom
-              })),
-              nodes: result.nodes.map((n) => ({
-                id: n.id,
-                name: n.name,
-                nodeType: n.nodeType,
-                summary: n.summary
-              }))
-            }
+    const graphReader = connectionManager.isConnected()
+      ? new GraphReaderAdapter(async (opts) => {
+          const rag = new GraphRagService(new GraphRepository(connectionManager.getDb()))
+          const vaultName = vaultService.getActiveVault()?.name || 'Personal'
+          const result = await rag.recallRelations({
+            vaultName,
+            entity: opts.entity,
+            mode: opts.mode,
+            embedQuery
           })
-        : undefined
+          return {
+            anchors: result.anchors.map((a) => ({
+              id: a.id,
+              name: a.name,
+              nodeType: a.nodeType,
+              summary: a.summary
+            })),
+            subgraph: result.subgraph.map((e) => ({
+              id: e.id,
+              fromId: e.fromId,
+              toId: e.toId,
+              edgeType: e.edgeType,
+              sourceRef: e.sourceRef,
+              sourceExcerpt: e.sourceExcerpt,
+              validFrom: e.validFrom
+            })),
+            timeline: result.timeline?.map((e) => ({
+              id: e.id,
+              fromId: e.fromId,
+              toId: e.toId,
+              edgeType: e.edgeType,
+              sourceRef: e.sourceRef,
+              sourceExcerpt: e.sourceExcerpt,
+              validFrom: e.validFrom
+            })),
+            nodes: result.nodes.map((n) => ({
+              id: n.id,
+              name: n.name,
+              nodeType: n.nodeType,
+              summary: n.summary
+            }))
+          }
+        })
+      : undefined
 
     const { DesktopStoragePathService } = await import('../services/path.service')
     const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')

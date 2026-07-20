@@ -139,7 +139,13 @@ export function useGitManagementWorkspace(params: UseGitManagementWorkspaceParam
       const diff = await onGetWorkingDiff(filePath, staged)
       setWorkingFileDiff(diff)
     },
-    [onGetWorkingDiff, expandedWorkingFile, setExpandedWorkingFile, setWorkingFileDiff, onOpenDiffInEditor]
+    [
+      onGetWorkingDiff,
+      expandedWorkingFile,
+      setExpandedWorkingFile,
+      setWorkingFileDiff,
+      onOpenDiffInEditor
+    ]
   )
 
   const handleStageFile = useCallback(

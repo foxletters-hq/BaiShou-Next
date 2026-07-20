@@ -183,9 +183,7 @@ interface AgentWorkspaceAPI {
     assistantId?: string
     title?: string
   }): Promise<string>
-  getBinding(
-    sessionId: string
-  ): Promise<{ sessionId: string; folderRoot: string } | null>
+  getBinding(sessionId: string): Promise<{ sessionId: string; folderRoot: string } | null>
   listSessions(): Promise<import('@baishou/shared').AgentWorkspaceSessionListItem[]>
   deleteSession(sessionId: string): Promise<{ success: boolean }>
   chat(params: {
@@ -206,10 +204,7 @@ interface AgentWorkspaceGitAPI {
   isInitialized(folderRoot: string): Promise<boolean>
   init(folderRoot: string): Promise<{ success: boolean; message?: string }>
   getStatus(folderRoot: string): Promise<import('@baishou/shared').GitStatus>
-  stageFile(
-    folderRoot: string,
-    filePath: string
-  ): Promise<{ success: boolean; message?: string }>
+  stageFile(folderRoot: string, filePath: string): Promise<{ success: boolean; message?: string }>
   stageAll(folderRoot: string): Promise<{ success: boolean; message?: string }>
   unstageFile(folderRoot: string, filePath: string): Promise<{ success: boolean }>
   unstageAll(folderRoot: string): Promise<{ success: boolean }>
@@ -282,24 +277,15 @@ interface AgentWorkspaceGitAPI {
     folderRoot: string,
     branch: string
   ): Promise<{ success: boolean; message?: string }>
-  createBranch(
-    folderRoot: string,
-    branch: string
-  ): Promise<{ success: boolean; message?: string }>
-  setRemoteUrl(
-    folderRoot: string,
-    url: string
-  ): Promise<{ success: boolean; message?: string }>
+  createBranch(folderRoot: string, branch: string): Promise<{ success: boolean; message?: string }>
+  setRemoteUrl(folderRoot: string, url: string): Promise<{ success: boolean; message?: string }>
   getConfig(folderRoot: string): Promise<import('@baishou/shared').GitSyncConfig>
   saveConfig(
     folderRoot: string,
     partial: Partial<import('@baishou/shared').GitSyncConfig>
   ): Promise<{ success: boolean; message?: string }>
   testRemote(folderRoot: string): Promise<boolean>
-  mergeBranch(
-    folderRoot: string,
-    branch: string
-  ): Promise<{ success: boolean; message?: string }>
+  mergeBranch(folderRoot: string, branch: string): Promise<{ success: boolean; message?: string }>
   deleteBranch(
     folderRoot: string,
     branch: string,
@@ -310,22 +296,10 @@ interface AgentWorkspaceGitAPI {
     branch?: string
   ): Promise<{ success: boolean; message?: string }>
   listStash(folderRoot: string): Promise<import('@baishou/shared').GitStashEntry[]>
-  stashPush(
-    folderRoot: string,
-    message?: string
-  ): Promise<{ success: boolean; message?: string }>
-  stashApply(
-    folderRoot: string,
-    index: number
-  ): Promise<{ success: boolean; message?: string }>
-  stashPop(
-    folderRoot: string,
-    index: number
-  ): Promise<{ success: boolean; message?: string }>
-  stashDrop(
-    folderRoot: string,
-    index: number
-  ): Promise<{ success: boolean; message?: string }>
+  stashPush(folderRoot: string, message?: string): Promise<{ success: boolean; message?: string }>
+  stashApply(folderRoot: string, index: number): Promise<{ success: boolean; message?: string }>
+  stashPop(folderRoot: string, index: number): Promise<{ success: boolean; message?: string }>
+  stashDrop(folderRoot: string, index: number): Promise<{ success: boolean; message?: string }>
 }
 
 interface PickFilesOptions {

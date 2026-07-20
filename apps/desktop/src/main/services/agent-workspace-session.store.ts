@@ -1,7 +1,11 @@
 import { app } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import type { AgentRoundCheckpoint, AgentDialogueSelectionState, AgentDialogueSelectionSwitchEvent } from '@baishou/shared'
+import type {
+  AgentRoundCheckpoint,
+  AgentDialogueSelectionState,
+  AgentDialogueSelectionSwitchEvent
+} from '@baishou/shared'
 import { detectDialogueSelectionSwitches, logger } from '@baishou/shared'
 
 interface WorkspaceSessionBinding {
@@ -44,10 +48,7 @@ async function saveStore(): Promise<void> {
   await fs.writeFile(storePath(), JSON.stringify(cache, null, 2), 'utf-8')
 }
 
-export async function bindWorkspaceSession(
-  sessionId: string,
-  folderRoot: string
-): Promise<void> {
+export async function bindWorkspaceSession(sessionId: string, folderRoot: string): Promise<void> {
   const store = await loadStore()
   const now = new Date().toISOString()
   const folderDisplayName =

@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  View,
-  Text,
-  Pressable,
-  FlatList,
-  StyleSheet,
-  ActivityIndicator
-} from 'react-native'
+import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -57,10 +50,7 @@ export function GraphScreen() {
       [
         ['graph', t('graph.tab_graph', '图谱')],
         ['reextract', t('graph.tab_reextract', '待重抽({{count}})', { count: pending.length })],
-        [
-          'pending',
-          t('graph.tab_pending', '待确认({{count}})', { count: pendingEdges.length })
-        ],
+        ['pending', t('graph.tab_pending', '待确认({{count}})', { count: pendingEdges.length })],
         ['search', t('graph.tab_search', '搜索')]
       ] as const,
     [t, pending.length, pendingEdges.length]
@@ -216,10 +206,7 @@ export function GraphScreen() {
           ) : null}
           {graphNodes.length === 0 ? (
             <Text style={[styles.empty, { color: colors.textSecondary }]}>
-              {t(
-                'graph.empty_nodes',
-                '暂无图谱节点；可先梳理日记或在桌面写入关系。'
-              )}
+              {t('graph.empty_nodes', '暂无图谱节点；可先梳理日记或在桌面写入关系。')}
             </Text>
           ) : (
             <View style={[styles.webWrap, { backgroundColor: colors.bgApp }]}>

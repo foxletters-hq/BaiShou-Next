@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  AgentGateKind,
-  AgentGateRequestStatus,
-  type AgentGateRequest
-} from '@baishou/shared'
+import { AgentGateKind, AgentGateRequestStatus, type AgentGateRequest } from '@baishou/shared'
 import {
   canAlwaysAllowForRequest,
   resolveAlwaysAllowPrefixHint,

@@ -30,11 +30,7 @@ export const FileChangeCard: React.FC<FileChangeCardProps> = ({
 
   return (
     <div className={`${styles.card} ${className ?? ''}`}>
-      <FileChangeSummary
-        data={data}
-        expanded={level !== 'collapsed'}
-        onToggle={handleToggle}
-      />
+      <FileChangeSummary data={data} expanded={level !== 'collapsed'} onToggle={handleToggle} />
       {level === 'preview' ? <FileChangePreview data={data} /> : null}
       {level === 'diff' ? <FileChangeDiff data={data} /> : null}
     </div>

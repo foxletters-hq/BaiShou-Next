@@ -5,7 +5,11 @@ import {
   resolveWorkspacePath,
   toWorkspaceRelativePath
 } from './workspace-path.sandbox'
-import { createNodeWorkspaceFs, hashWorkspaceContent, type WorkspaceFsAdapter } from './workspace-fs'
+import {
+  createNodeWorkspaceFs,
+  hashWorkspaceContent,
+  type WorkspaceFsAdapter
+} from './workspace-fs'
 
 export interface CaptureCheckpointInput {
   sessionId: string
@@ -30,7 +34,9 @@ export class AgentRoundCheckpointService {
   }
 
   async capturePaths(input: CaptureCheckpointInput): Promise<AgentRoundCheckpoint> {
-    const uniquePaths = [...new Set(input.paths.map((path) => normalizeWorkspaceRelativePath(path)))]
+    const uniquePaths = [
+      ...new Set(input.paths.map((path) => normalizeWorkspaceRelativePath(path)))
+    ]
     const files: AgentRoundCheckpointFileEntry[] = []
 
     for (const relPath of uniquePaths) {

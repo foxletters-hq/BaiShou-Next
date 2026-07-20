@@ -2,10 +2,7 @@ import type { IFileSystem } from '../../fs/file-system.types'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 import * as path from '../../fs/path.util'
 import { shardMonthFromInstant } from '../raw-data-month.util'
-import {
-  MonthlyJsonlStore,
-  collapseJsonlById
-} from '../stores/monthly-jsonl.store'
+import { MonthlyJsonlStore, collapseJsonlById } from '../stores/monthly-jsonl.store'
 import type { DerivedFreshnessService } from '../derived-freshness.service'
 import type {
   GraphCollection,
@@ -116,11 +113,7 @@ export class GraphRawManager implements RecordCollectionKindManager {
     await this.fs.mkdir(root, { recursive: true })
     await this.fs.writeFile(
       await this.idmapPath(),
-      JSON.stringify(
-        { schemaVersion: 1 as const, updatedAt: Date.now(), map: idmap.map },
-        null,
-        2
-      ),
+      JSON.stringify({ schemaVersion: 1 as const, updatedAt: Date.now(), map: idmap.map }, null, 2),
       'utf8'
     )
   }
@@ -301,25 +294,19 @@ export class GraphRawManager implements RecordCollectionKindManager {
     relativePath: string,
     contentHash: string
   ): Promise<void> {
-    const file = relativePath.includes('/')
-      ? relativePath.split(/[/\\]/).pop()!
-      : relativePath
+    const file = relativePath.includes('/') ? relativePath.split(/[/\\]/).pop()! : relativePath
     const store = await this.getStore(collection as GraphCollection)
     await store.markIndexed(file, contentHash)
   }
 
   async readCollapsedNodes(shardMonth: string): Promise<GraphNodeRawRecord[]> {
     const store = await this.getStore('nodes')
-    return collapseJsonlById(
-      (await store.readRecords(shardMonth)) as GraphNodeRawRecord[]
-    )
+    return collapseJsonlById((await store.readRecords(shardMonth)) as GraphNodeRawRecord[])
   }
 
   async readCollapsedEdges(shardMonth: string): Promise<GraphEdgeRawRecord[]> {
     const store = await this.getStore('edges')
-    return collapseJsonlById(
-      (await store.readRecords(shardMonth)) as GraphEdgeRawRecord[]
-    )
+    return collapseJsonlById((await store.readRecords(shardMonth)) as GraphEdgeRawRecord[])
   }
 
   async readAllCollapsedExtractStates(): Promise<GraphExtractStateRawRecord[]> {

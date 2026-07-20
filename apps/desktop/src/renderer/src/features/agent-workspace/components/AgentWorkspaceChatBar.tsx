@@ -1,7 +1,12 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdAutoAwesome, MdDifference } from 'react-icons/md'
-import { TokenBadge, resolveDesktopAssistantAvatarSrc, useTheme, getProviderIcon } from '@baishou/ui'
+import {
+  TokenBadge,
+  resolveDesktopAssistantAvatarSrc,
+  useTheme,
+  getProviderIcon
+} from '@baishou/ui'
 import { formatDialogueModelLabel, isConfiguredProviderId } from '@baishou/shared'
 
 import styles from './AgentWorkspaceChatBar.module.css'
@@ -54,8 +59,7 @@ export const AgentWorkspaceChatBar: React.FC<AgentWorkspaceChatBarProps> = ({
   }, [currentProviderId, providers, isDark])
 
   const displayModelName =
-    formatDialogueModelLabel(currentModelId) ??
-    t('agent.no_model_selected', '暂未选择模型')
+    formatDialogueModelLabel(currentModelId) ?? t('agent.no_model_selected', '暂未选择模型')
 
   const assistantName = currentAssistant?.name || t('agent.partner_label', '伙伴')
   const assistantAvatar = resolveDesktopAssistantAvatarSrc(currentAssistant?.avatarPath)

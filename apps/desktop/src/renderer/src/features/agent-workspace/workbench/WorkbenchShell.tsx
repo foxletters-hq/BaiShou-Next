@@ -1,5 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import type { AgentWorkspaceEntry, AgentWorkspaceSessionListItem, WorkspaceChangeEntry } from '@baishou/shared'
+import type {
+  AgentWorkspaceEntry,
+  AgentWorkspaceSessionListItem,
+  WorkspaceChangeEntry
+} from '@baishou/shared'
 import { WorkbenchRail } from './WorkbenchRail'
 import { WorkbenchSidePane } from './WorkbenchSidePane'
 import { WorkbenchMainPane, type WorkbenchMainPaneHandle } from './WorkbenchMainPane'
@@ -205,10 +209,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               changesCount={gitChangesCount}
               onGitChangesCountChange={setGitChangesCount}
             />
-            <WorkbenchResizeSash
-              ariaLabel="调整左侧边栏宽度"
-              onMouseDown={leftSash.onMouseDown}
-            />
+            <WorkbenchResizeSash ariaLabel="调整左侧边栏宽度" onMouseDown={leftSash.onMouseDown} />
           </>
         ) : null}
 

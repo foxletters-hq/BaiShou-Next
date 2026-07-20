@@ -1,9 +1,5 @@
 import { generateText } from 'ai'
-import {
-  GRAPH_EDGE_TYPES,
-  GRAPH_NODE_TYPES,
-  type GraphRepository
-} from '@baishou/database'
+import { GRAPH_EDGE_TYPES, GRAPH_NODE_TYPES, type GraphRepository } from '@baishou/database'
 import type { IAIProvider } from '@baishou/ai'
 import { wrapLanguageModelWithMiddlewares } from '@baishou/ai'
 import { logger } from '@baishou/shared'
@@ -25,10 +21,7 @@ export interface GraphExtractLlmDeps {
   modelId: string
 }
 
-export type GraphExtractLlmFn = (prompt: {
-  system: string
-  user: string
-}) => Promise<string | null>
+export type GraphExtractLlmFn = (prompt: { system: string; user: string }) => Promise<string | null>
 
 export interface ExtractDiariesOptions {
   vaultName: string
@@ -177,15 +170,17 @@ function shardMonthFromDate(dateStr: string | null, now: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function buildExtractPrompt(diaryText: string, dateStr: string | null): {
+function buildExtractPrompt(
+  diaryText: string,
+  dateStr: string | null
+): {
   system: string
   user: string
 } {
   const nodeTypes = GRAPH_NODE_TYPES.join(', ')
   const edgeTypes = GRAPH_EDGE_TYPES.join(', ')
   return {
-    system:
-      '你是日记关系图谱抽取器。只输出严格 JSON，不要 markdown 代码块，不要额外解释。',
+    system: '你是日记关系图谱抽取器。只输出严格 JSON，不要 markdown 代码块，不要额外解释。',
     user: `从以下日记中抽取实体与关系。
 
 ## 约束
@@ -248,9 +243,7 @@ export class GraphLlmExtractionService {
 
   async extractDiaries(opts: ExtractDiariesOptions): Promise<ExtractDiariesResult> {
     const pending = await this.freshness.listPendingReextract()
-    const wanted = new Set(
-      (opts.filePaths ?? []).map(normalizeFilePath).filter(Boolean)
-    )
+    const wanted = new Set((opts.filePaths ?? []).map(normalizeFilePath).filter(Boolean))
     const targets =
       wanted.size === 0 ? pending : pending.filter((p) => wanted.has(normalizeFilePath(p.filePath)))
 
@@ -398,9 +391,7 @@ export class GraphLlmExtractionService {
         name,
         aliases: mergeAliases(existing?.aliases ?? [], [name, ...incomingAliases]),
         summary:
-          typeof ent.summary === 'string' && ent.summary
-            ? ent.summary
-            : (existing?.summary ?? ''),
+          typeof ent.summary === 'string' && ent.summary ? ent.summary : (existing?.summary ?? ''),
         props: {},
         mentionCount: existing ? existing.mentionCount + 1 : 1,
         firstSeenAt: existing?.firstSeenAt ?? now,
@@ -470,10 +461,10 @@ export class GraphLlmExtractionService {
 }
 
 /** Test helper: clamp enums without LLM */
-export function clampGraphExtractEnumsForTest(input: {
+export function clampGraphExtractEnumsForTest(input: { nodeType: string; edgeType: string }): {
   nodeType: string
   edgeType: string
-}): { nodeType: string; edgeType: string } {
+} {
   return {
     nodeType: clampNodeType(input.nodeType),
     edgeType: clampEdgeType(input.edgeType)

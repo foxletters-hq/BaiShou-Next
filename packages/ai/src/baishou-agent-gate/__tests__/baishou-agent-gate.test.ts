@@ -93,9 +93,7 @@ describe('BaishouAgentGatePolicyService', () => {
     const allowlist = new BaishouAgentGateAllowlistStore(() => config)
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
 
-    expect(policy.evaluate({ action: 'diary_edit', toolDisabled: true })).toBe(
-      AgentGateEffect.Deny
-    )
+    expect(policy.evaluate({ action: 'diary_edit', toolDisabled: true })).toBe(AgentGateEffect.Deny)
   })
 
   it('legacy actionRules 仍生效', () => {

@@ -4,7 +4,11 @@ import styles from './WorkbenchSearchView.module.css'
 
 const PREVIEW_PADDING = 30
 
-export function truncatePreview(text: string, matchStart: number, matchEnd: number): {
+export function truncatePreview(
+  text: string,
+  matchStart: number,
+  matchEnd: number
+): {
   text: string
   matchStart: number
   matchEnd: number

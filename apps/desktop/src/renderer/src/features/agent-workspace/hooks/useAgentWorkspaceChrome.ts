@@ -39,8 +39,7 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
   const pricingBootWarnShownRef = useRef(false)
 
-  const defaultAssistant =
-    assistants.find((a) => a.isDefault) ?? assistants[0] ?? undefined
+  const defaultAssistant = assistants.find((a) => a.isDefault) ?? assistants[0] ?? undefined
 
   const currentAssistant = useMemo(() => {
     const id = selectedAssistantId ?? defaultAssistant?.id
@@ -90,9 +89,7 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
         status?.loadFailed || status?.hasPrices === false || !status?.lastUpdated
       if (pricingUnavailable && !pricingBootWarnShownRef.current) {
         pricingBootWarnShownRef.current = true
-        toast.showWarning(
-          t('agent.pricing_unavailable', '计费数据暂不可用，费用显示可能不准确。')
-        )
+        toast.showWarning(t('agent.pricing_unavailable', '计费数据暂不可用，费用显示可能不准确。'))
       }
     } catch {
       /* ignore */
@@ -130,7 +127,9 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
     [model.userManuallySetModelRef]
   )
 
-  const pinnedIds = assistants.filter((a: { isPinned?: boolean }) => a.isPinned).map((a) => String(a.id))
+  const pinnedIds = assistants
+    .filter((a: { isPinned?: boolean }) => a.isPinned)
+    .map((a) => String(a.id))
 
   return {
     t,

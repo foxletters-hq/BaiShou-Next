@@ -28,11 +28,7 @@ export const WorkbenchAgentChangesSummary: React.FC<WorkbenchAgentChangesSummary
   )
 
   if (changes.length === 0) {
-    return (
-      <div className={styles.empty}>
-        {t('file_change.no_changes', '暂无文件变更')}
-      </div>
-    )
+    return <div className={styles.empty}>{t('file_change.no_changes', '暂无文件变更')}</div>
   }
 
   return (

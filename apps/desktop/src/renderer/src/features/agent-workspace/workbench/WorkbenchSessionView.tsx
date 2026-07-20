@@ -41,10 +41,7 @@ function formatSessionTime(updatedAt: string): string {
   })
 }
 
-function sessionDisplayTitle(
-  session: AgentWorkspaceSessionListItem,
-  fallback: string
-): string {
+function sessionDisplayTitle(session: AgentWorkspaceSessionListItem, fallback: string): string {
   return session.title?.trim() || fallback
 }
 

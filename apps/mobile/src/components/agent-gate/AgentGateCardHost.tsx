@@ -4,7 +4,11 @@ import { AgentGateCard, type AgentGateReplyPayload } from '@baishou/ui/native'
 
 export interface AgentGateCardHostProps {
   request: AgentGateRequest | null
-  onReply: (requestId: string, reply: AgentGateReply, extras?: Omit<AgentGateReplyPayload, 'requestId' | 'reply'>) => Promise<void>
+  onReply: (
+    requestId: string,
+    reply: AgentGateReply,
+    extras?: Omit<AgentGateReplyPayload, 'requestId' | 'reply'>
+  ) => Promise<void>
 }
 
 export const AgentGateCardHost: React.FC<AgentGateCardHostProps> = ({ request, onReply }) => {

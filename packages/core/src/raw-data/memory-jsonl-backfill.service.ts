@@ -74,10 +74,7 @@ export class MemoryJsonlBackfillService {
       }
       const writtenShard = await this.memoryManager.writeRecord(record)
       // Vectors already exist — mark this shard indexed so sync won't re-embed.
-      await this.memoryManager.commitIndexed(
-        writtenShard.relativePath,
-        writtenShard.contentHash
-      )
+      await this.memoryManager.commitIndexed(writtenShard.relativePath, writtenShard.contentHash)
       written += 1
       existingIds.add(sourceId)
     }

@@ -68,8 +68,7 @@ export function validateTreeEntryName(
   const ignore = options?.ignoreName?.toLowerCase()
   const duplicate = existingNames.some(
     (existing) =>
-      existing.toLowerCase() === trimmed.toLowerCase() &&
-      existing.toLowerCase() !== ignore
+      existing.toLowerCase() === trimmed.toLowerCase() && existing.toLowerCase() !== ignore
   )
   if (duplicate) {
     return `「${trimmed}」已存在，请使用其他名称`

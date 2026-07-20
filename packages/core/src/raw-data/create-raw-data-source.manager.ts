@@ -14,9 +14,7 @@ export interface CreateRawDataSourceManagerOptions {
   maxVersionsPerFile?: number
 }
 
-export function createRawDataSourceManager(
-  options: CreateRawDataSourceManagerOptions
-): {
+export function createRawDataSourceManager(options: CreateRawDataSourceManagerOptions): {
   manager: RawDataSourceManager
   freshness: DerivedFreshnessService
   memoryManager: MemoryRawManager

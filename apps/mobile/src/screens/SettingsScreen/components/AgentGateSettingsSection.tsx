@@ -1,11 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  LayoutAnimation
-} from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   AGENT_GATE_PROFILE_DEFAULT_RULES,
@@ -71,10 +65,7 @@ export const AgentGateSettingsSection: React.FC = () => {
     })
   }
 
-  const handleBoolToggle = (
-    key: 'hideDeniedTools' | 'forceAskExternalPath',
-    value: boolean
-  ) => {
+  const handleBoolToggle = (key: 'hideDeniedTools' | 'forceAskExternalPath', value: boolean) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     void persist({
       ...config,
@@ -147,9 +138,7 @@ export const AgentGateSettingsSection: React.FC = () => {
 
   const removeBtn = (onPress: () => void) => (
     <TouchableOpacity onPress={onPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-      <Text style={[styles.removeText, { color: colors.error }]}>
-        {t('common.remove', '移除')}
-      </Text>
+      <Text style={[styles.removeText, { color: colors.error }]}>{t('common.remove', '移除')}</Text>
     </TouchableOpacity>
   )
 
@@ -160,10 +149,7 @@ export const AgentGateSettingsSection: React.FC = () => {
           {t('agent.gate.settings_title', 'Agent 操作确认')}
         </Text>
         <Text style={[styles.desc, { color: colors.textSecondary }]}>
-          {t(
-            'agent.gate.settings_desc',
-            '控制伙伴执行写入、修改等敏感操作前是否需要你确认。'
-          )}
+          {t('agent.gate.settings_desc', '控制伙伴执行写入、修改等敏感操作前是否需要你确认。')}
         </Text>
 
         <View style={styles.row}>
@@ -388,10 +374,7 @@ export const AgentGateSettingsSection: React.FC = () => {
           )}
         </Text>
         {exclusionList.map((action) => (
-          <View
-            key={action}
-            style={[styles.listRow, { borderBottomColor: colors.borderSubtle }]}
-          >
+          <View key={action} style={[styles.listRow, { borderBottomColor: colors.borderSubtle }]}>
             <Text style={[styles.listPrimary, { color: colors.textPrimary, flex: 1 }]}>
               {action}
             </Text>

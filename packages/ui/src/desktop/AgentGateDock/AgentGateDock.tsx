@@ -215,7 +215,9 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
                 type="button"
                 className={`${styles.btn} ${styles.btnAlways}`}
                 disabled={isReplying}
-                onClick={() => void onReply({ requestId: request.id, reply: AgentGateReply.Always })}
+                onClick={() =>
+                  void onReply({ requestId: request.id, reply: AgentGateReply.Always })
+                }
               >
                 {t('agent_gate.always', '始终允许')}
               </button>

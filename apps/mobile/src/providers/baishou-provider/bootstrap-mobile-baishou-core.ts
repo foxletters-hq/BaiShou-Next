@@ -186,9 +186,8 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const snapshotRepo = new SnapshotRepository(drizzleDb)
 
     // 4. 构建 Core Services并进行依赖注入
-    const { ensureMobileRawDataRuntime } = await import(
-      '../../services/mobile-raw-data-source.runtime'
-    )
+    const { ensureMobileRawDataRuntime } =
+      await import('../../services/mobile-raw-data-source.runtime')
     const rawDataManager = ensureMobileRawDataRuntime({ pathService, fileSystem }).manager
     const sessionFileService = new SessionFileService(pathService, fileSystem, rawDataManager)
     const sessionSyncService = new RecoveryAwareSessionSyncService(
@@ -359,12 +358,10 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     try {
       const activeVault = vaultService.getActiveVault()
       if (activeVault) {
-        const { runMobileDerivedIndexHydration } = await import(
-          '../../services/mobile-raw-data-source.runtime'
-        )
-        const { resolveMobileEmbeddingForHydration } = await import(
-          '../../services/mobile-raw-data-source.runtime'
-        )
+        const { runMobileDerivedIndexHydration } =
+          await import('../../services/mobile-raw-data-source.runtime')
+        const { resolveMobileEmbeddingForHydration } =
+          await import('../../services/mobile-raw-data-source.runtime')
         const emb = await resolveMobileEmbeddingForHydration(settingsManager)
         await runMobileDerivedIndexHydration({
           drizzleDb,

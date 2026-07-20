@@ -59,7 +59,9 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
       visible
       transparent
       animationType="fade"
-      onRequestClose={() => void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })}
+      onRequestClose={() =>
+        void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
+      }
     >
       <View
         style={[

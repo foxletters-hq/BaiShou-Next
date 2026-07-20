@@ -83,9 +83,7 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
       await loadPath('')
       const expanded = loadExpandedPaths(folderRoot)
       setExpandedPaths(expanded)
-      await Promise.all(
-        [...expanded].filter((path) => path !== '').map((path) => loadPath(path))
-      )
+      await Promise.all([...expanded].filter((path) => path !== '').map((path) => loadPath(path)))
     } catch (error) {
       setRootError(error instanceof Error ? error.message : 'Failed to load directory')
       setChildrenByPath({})

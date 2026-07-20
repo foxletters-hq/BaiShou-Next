@@ -247,7 +247,11 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   })
 
   const notifyGitResult = useCallback(
-    (result: { success: boolean; message?: string }, successKey: string, successFallback: string) => {
+    (
+      result: { success: boolean; message?: string },
+      successKey: string,
+      successFallback: string
+    ) => {
       onToast(
         result.success
           ? t(successKey, successFallback)

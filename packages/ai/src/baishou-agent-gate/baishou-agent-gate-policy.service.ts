@@ -45,9 +45,7 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
 
   isExcluded(action: string): boolean {
     const config = this.configProvider()
-    return (
-      config.exclusionList.includes(action) || isAgentGateActionForceExcluded(action)
-    )
+    return config.exclusionList.includes(action) || isAgentGateActionForceExcluded(action)
   }
 
   evaluate(input: AgentGateEvaluateInput): AgentGateEffect {

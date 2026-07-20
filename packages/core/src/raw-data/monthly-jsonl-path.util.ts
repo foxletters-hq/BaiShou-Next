@@ -18,9 +18,7 @@ export function isMonthlyJsonlRawPath(filePath: string): boolean {
   return false
 }
 
-export function classifyMonthlyJsonlPath(
-  filePath: string
-):
+export function classifyMonthlyJsonlPath(filePath: string):
   | { kind: 'memory'; shardFile: string; shardMonth: string }
   | {
       kind: 'graph'

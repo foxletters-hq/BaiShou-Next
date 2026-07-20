@@ -28,7 +28,10 @@ function requireWorkspace(context: ToolContext): {
   }
 }
 
-function resolveRelativePath(context: ToolContext, path: string): {
+function resolveRelativePath(
+  context: ToolContext,
+  path: string
+): {
   relativePath: string
   absolutePath: string
   folderRoot: string
@@ -135,8 +138,7 @@ const workspaceReadParams = z.object({
 export class WorkspaceReadTool extends AgentTool<typeof workspaceReadParams> {
   readonly name = 'workspace_read'
   readonly description =
-    'Read a text file from the workspace. ' +
-    'Use offset and limit for large files.'
+    'Read a text file from the workspace. ' + 'Use offset and limit for large files.'
   readonly parameters = workspaceReadParams
 
   get category(): string {
@@ -318,7 +320,10 @@ export class WorkspaceDeleteTool extends AgentTool<typeof workspaceDeleteParams>
     return 'file-x'
   }
 
-  async execute(args: z.infer<typeof workspaceDeleteParams>, context: ToolContext): Promise<string> {
+  async execute(
+    args: z.infer<typeof workspaceDeleteParams>,
+    context: ToolContext
+  ): Promise<string> {
     try {
       const { relativePath, absolutePath, folderRoot, fs, roundCheckpointId } = resolveRelativePath(
         context,
@@ -370,7 +375,10 @@ export class WorkspaceRenameTool extends AgentTool<typeof workspaceRenameParams>
     return 'file-symlink'
   }
 
-  async execute(args: z.infer<typeof workspaceRenameParams>, context: ToolContext): Promise<string> {
+  async execute(
+    args: z.infer<typeof workspaceRenameParams>,
+    context: ToolContext
+  ): Promise<string> {
     try {
       const from = resolveRelativePath(context, args.path)
       const toRel = normalizeWorkspaceRelativePath(args.new_path)

@@ -37,10 +37,7 @@ describe('jsonl-record-merge', () => {
 
   it('mergeTexts produces JSONL', () => {
     const svc = new JsonlRecordMergeService()
-    const out = svc.mergeTexts(
-      '{"id":"a","updatedAt":1}\n',
-      '{"id":"b","updatedAt":2}\n'
-    )
+    const out = svc.mergeTexts('{"id":"a","updatedAt":1}\n', '{"id":"b","updatedAt":2}\n')
     expect(out.text).toContain('"id":"a"')
     expect(out.text).toContain('"id":"b"')
     expect(out.skippedIllegal).toBe(0)
