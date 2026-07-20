@@ -77,6 +77,8 @@ describe('tts-defaults', () => {
       {
         globalDialogueProviderId: '',
         globalDialogueModelId: '',
+        globalGraphProviderId: '',
+        globalGraphModelId: '',
         globalNamingProviderId: '',
         globalNamingModelId: '',
         globalSummaryProviderId: '',

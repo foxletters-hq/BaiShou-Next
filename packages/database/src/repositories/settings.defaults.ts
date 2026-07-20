@@ -217,6 +217,9 @@ export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
 export const DEFAULT_GLOBAL_MODELS: GlobalModelsConfig = {
   globalDialogueProviderId: 'gemini',
   globalDialogueModelId: 'off',
+  // 图关系抽取默认与对话模型一致
+  globalGraphProviderId: 'gemini',
+  globalGraphModelId: 'off',
   globalNamingProviderId: 'gemini',
   globalNamingModelId: 'off',
   globalSummaryProviderId: 'gemini',

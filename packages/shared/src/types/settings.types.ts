@@ -45,6 +45,9 @@ export interface TtsProviderConnectionConfig {
 export interface GlobalModelsConfig {
   globalDialogueProviderId: string
   globalDialogueModelId: string
+  /** 日记图关系抽取；默认与对话模型一致 */
+  globalGraphProviderId: string
+  globalGraphModelId: string
   globalNamingProviderId: string
   globalNamingModelId: string
   globalSummaryProviderId: string
