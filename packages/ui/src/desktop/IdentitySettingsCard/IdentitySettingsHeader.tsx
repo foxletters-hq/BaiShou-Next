@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import '../shared/SettingsListTile.css'
 import styles from './IdentitySettingsCard.module.css'
 import { ChevronDown, IdCard } from 'lucide-react'
 
@@ -17,7 +18,7 @@ export const IdentitySettingsHeader: React.FC<IdentitySettingsHeaderProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={`${styles.headerRow} ${styles.headerRowHover}`} onClick={onToggle}>
+    <div className={styles.headerRow} onClick={onToggle}>
       <div className={styles.headerTitleGroup} style={{ flex: 1 }}>
         <div
           style={{
@@ -34,17 +35,12 @@ export const IdentitySettingsHeader: React.FC<IdentitySettingsHeaderProps> = ({
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <ChevronDown
-            size={24}
-            style={{
-              color: 'var(--color-on-surface-variant)',
-              transition: 'transform 0.25s',
-              transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-              flexShrink: 0
-            }}
-          />
-        </div>
+        <span
+          className={`settings-expansion-toggle ${collapsed ? '' : 'is-open'}`}
+          aria-hidden="true"
+        >
+          <ChevronDown className="settings-expansion-arrow" size={16} />
+        </span>
       </div>
     </div>
   )

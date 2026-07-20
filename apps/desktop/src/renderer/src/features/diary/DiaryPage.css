@@ -618,7 +618,8 @@
 }
 
 .diary-empty-icon {
-  font-size: 80px;
+  /* lucide 全局按 1em 缩放，用 font-size 控制实际尺寸 */
+  font-size: 46px;
   opacity: 0.5;
   color: var(--color-primary);
 }

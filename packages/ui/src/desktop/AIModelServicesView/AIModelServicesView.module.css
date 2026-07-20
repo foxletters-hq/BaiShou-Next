@@ -274,22 +274,6 @@
   color: var(--text-primary);
 }
 
-.apiIconBox {
-  padding: 8px;
-  background: var(--color-primary-light);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.apiIcon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  color: var(--color-primary);
-}
-
 .resetBtnInline {
   display: flex;
   align-items: center;

@@ -92,35 +92,67 @@
 }
 
 .settings-expansion-summary:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: transparent;
 }
 
 .settings-expansion-tile-embedded:not(.settings-open) .settings-expansion-summary:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: transparent;
 }
 
 [data-theme='dark'] .settings-expansion-summary:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: transparent;
 }
 
 [data-theme='dark']
   .settings-expansion-tile-embedded:not(.settings-open)
   .settings-expansion-summary:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: transparent;
+}
+
+/* 展开按钮：圆形描边；悬停仅按钮变灰，不整行变灰 */
+.settings-expansion-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-control);
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.settings-expansion-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  border-color: var(--border-control);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .settings-expansion-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-control);
+  color: var(--text-primary);
 }
 
 /* 展开箭头 */
 .settings-expansion-arrow {
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
-  color: var(--color-on-surface-variant);
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  color: currentColor;
   transition: transform 0.25s;
   flex-shrink: 0;
+  display: block;
 }
 
 .settings-expansion-tile[open] .settings-expansion-arrow,
-.settings-expansion-tile.settings-open .settings-expansion-arrow {
+.settings-expansion-tile.settings-open .settings-expansion-arrow,
+.settings-expansion-toggle.is-open .settings-expansion-arrow {
   transform: rotate(180deg);
 }
 
@@ -174,6 +206,17 @@
 
 [data-theme='dark'] .settings-list-tile:hover {
   background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* 带展开按钮 / 禁整行灰底的列表行（需高于 .settings-list-tile:hover 优先级） */
+.settings-list-tile.settings-list-tile-expandable:hover,
+.settings-list-tile.settings-list-tile-no-row-hover:hover {
+  background-color: transparent;
+}
+
+[data-theme='dark'] .settings-list-tile.settings-list-tile-expandable:hover,
+[data-theme='dark'] .settings-list-tile.settings-list-tile-no-row-hover:hover {
+  background-color: transparent;
 }
 
 /* 非交互 ListTile（无 cursor pointer） */

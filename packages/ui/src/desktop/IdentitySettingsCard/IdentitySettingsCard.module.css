@@ -8,19 +8,7 @@
   display: flex;
   align-items: center;
   padding: 16px; /* Moved top/side padding to here */
-}
-
-.headerRowHover {
   cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.headerRowHover:hover {
-  background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
-}
-
-[data-theme='dark'] .headerRowHover:hover {
-  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .headerTitleGroup {
@@ -171,7 +159,7 @@
   align-items: center;
   gap: 4px;
   padding: 0 12px;
-  border: 1px solid rgba(208, 208, 208, 0.5);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   background-color: transparent;
   color: var(--color-on-surface);
@@ -183,12 +171,13 @@
 
 .inputChip:hover {
   background-color: rgba(0, 0, 0, 0.04);
+  border-color: var(--border-control);
 }
 
 .inputChipActive {
   background-color: transparent;
   border-width: 1.5px;
-  border-color: rgba(0, 0, 0, 0.24);
+  border-color: var(--border-control);
   color: var(--color-on-surface);
   font-weight: 600;
 }
@@ -275,7 +264,7 @@
   align-items: center;
   gap: 4px;
   background: transparent;
-  border: 1px solid var(--color-outline-variant);
+  border: 1.5px solid var(--border-control);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 12px;
@@ -287,7 +276,7 @@
 
 .addFactButton:hover {
   background-color: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
-  border-color: var(--color-outline);
+  border-color: var(--border-control);
 }
 
 [data-theme='dark'] .factsHeaderTitle {
@@ -296,12 +285,12 @@
 
 [data-theme='dark'] .addFactButton {
   color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--border-control);
 }
 
 [data-theme='dark'] .addFactButton:hover {
   background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--border-control);
 }
 
 .factsList {

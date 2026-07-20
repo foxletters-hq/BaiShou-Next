@@ -125,7 +125,7 @@
   max-width: 360px;
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid var(--color-outline-variant);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-app);
   color: var(--text-primary);
   font-size: 0.9rem;
@@ -395,7 +395,7 @@
 }
 
 .langChip {
-  border: 1px solid var(--color-outline-variant);
+  border: 1.5px solid var(--border-control);
   background: transparent;
   color: var(--text-secondary);
   font-size: 0.8rem;

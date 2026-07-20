@@ -27,8 +27,8 @@ export function getHeroButtonRootStyle(colors: ThemeColors, variant: ButtonVaria
       return {
         ...base,
         backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: colors.borderStrong
+        borderWidth: 1.5,
+        borderColor: colors.borderControl
       }
     case 'ghost':
       return { ...base, backgroundColor: 'transparent' }

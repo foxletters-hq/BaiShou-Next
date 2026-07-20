@@ -252,7 +252,7 @@
   padding: 8px 10px;
   border-radius: 8px;
   cursor: pointer;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   transition:
     background-color 0.12s ease,

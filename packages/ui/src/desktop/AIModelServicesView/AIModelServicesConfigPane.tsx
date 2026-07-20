@@ -5,7 +5,6 @@ import { HelpTooltip } from '../HelpTooltip'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import {
-  Braces,
   Eye,
   EyeOff,
   Key,
@@ -95,9 +94,6 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
           <div className={styles.formCard}>
             <div className={styles.formHeaderRow}>
               <div className={styles.formHeaderTitle}>
-                <div className={styles.apiIconBox}>
-                  <Braces className={styles.apiIcon} />
-                </div>
                 <span>{t('settings.api_config', 'API 配置')}</span>
                 <HelpTooltip
                   content={t(

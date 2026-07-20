@@ -96,7 +96,7 @@
 .btn {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   background: transparent;
   color: var(--text-secondary);
   font-size: 14px;

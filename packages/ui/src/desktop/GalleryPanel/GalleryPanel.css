@@ -213,7 +213,7 @@
 
 .gallery-action-btn {
   background: transparent;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   width: 36px;
   height: 36px;
@@ -227,7 +227,7 @@
 
 .gallery-action-btn:hover {
   background: var(--bg-surface-lowest);
-  border-color: var(--color-primary);
+  border-color: var(--border-control);
   color: var(--color-primary);
 }
 
@@ -519,7 +519,7 @@
   width: 100%;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface-lowest, #f8fafc);
   color: var(--text-secondary);
   font-size: 14px;
@@ -563,7 +563,7 @@
 .gallery-year-modal-grid-item {
   padding: 10px 0;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface-lowest, #f8fafc);
   color: var(--text-secondary);
   font-size: 13px;

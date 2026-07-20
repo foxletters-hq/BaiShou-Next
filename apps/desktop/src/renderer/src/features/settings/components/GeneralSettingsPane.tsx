@@ -63,8 +63,10 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
 
   const loadVaults = useCallback(async () => {
     try {
-      const vList = await (window as any).api?.vault?.list()
-      const active = await (window as any).api?.vault?.getActive()
+      const [vList, active] = await Promise.all([
+        (window as any).api?.vault?.list(),
+        (window as any).api?.vault?.getActive()
+      ])
       if (vList) setVaults(vList)
       if (active?.name) {
         setActiveVault(active)

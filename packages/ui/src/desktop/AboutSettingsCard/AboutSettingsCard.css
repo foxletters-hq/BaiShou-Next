@@ -219,7 +219,7 @@
 
 .about-flat-inner-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 10px;
   padding: 16px;
 }
@@ -246,7 +246,7 @@
   gap: 8px;
   width: 100%;
   padding: 12px 24px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 10px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -260,7 +260,7 @@
 
 .about-contributors-btn:hover {
   background: var(--bg-surface-normal, rgba(0, 0, 0, 0.02));
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
+  border-color: var(--border-control);
 }
 
 .about-flat-developer {

@@ -14,7 +14,7 @@
   padding: 0 6px;
   border-radius: 8px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
@@ -100,7 +100,7 @@
 /* 深色模式适配 */
 [data-theme='dark'] .pageBtn {
   background: var(--bg-surface);
-  border-color: var(--border-subtle);
+  border-color: var(--border-control);
   color: var(--text-primary);
 }
 

@@ -244,7 +244,7 @@
   position: relative; /* Ensure absolute positioning context is preserved */
   background-color: var(--bg-surface);
   border-radius: 22px; /* 胶囊圆角 */
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
@@ -270,16 +270,14 @@
 }
 
 .inputCard:focus-within {
-  border-color: var(--color-primary);
+  border-color: var(--border-control);
   background-color: var(--bg-surface);
-  box-shadow:
-    0 2px 12px rgba(var(--color-primary-rgb), 0.12),
-    0 0 0 1px var(--color-primary);
+  box-shadow: none;
 }
 
 .inputCard:focus-within:active,
 .inputCard:active:focus-within {
-  border-color: var(--color-primary);
+  border-color: var(--border-control);
   background-color: var(--bg-surface);
 }
 

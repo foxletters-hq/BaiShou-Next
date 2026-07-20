@@ -163,7 +163,7 @@
 
 .vhs-btn {
   padding: 6px 14px;
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-control);
   border-radius: 6px;
   background: var(--bg-surface-normal);
   color: var(--text-primary);

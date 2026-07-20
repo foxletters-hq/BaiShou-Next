@@ -11,7 +11,7 @@
   padding: 6px 12px;
   border-radius: 10px;
   background: var(--color-surface, #ffffff);
-  border: 1px solid rgba(208, 208, 208, 0.4);
+  border: 1.5px solid var(--border-control);
   color: var(--color-on-surface, #1a1a1a);
   font-size: 14px;
   font-weight: 500;
@@ -22,7 +22,7 @@
 
 .triggerBtn:hover {
   background: rgba(91, 168, 245, 0.05);
-  border-color: rgba(91, 168, 245, 0.3);
+  border-color: var(--border-control);
 }
 
 .placeholderText {
@@ -209,7 +209,7 @@
 /* Dark mode adjustments */
 [data-theme='dark'] .triggerBtn {
   background: var(--color-surface-dark, #121212);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-control);
   color: rgba(255, 255, 255, 0.9);
 }
 [data-theme='dark'] .triggerBtn:hover {

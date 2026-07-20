@@ -20,10 +20,6 @@
   display: none;
 }
 
-.settings-expansion-summary:hover {
-  background-color: rgba(var(--text-primary-rgb, 0, 0, 0), 0.02);
-}
-
 .settings-leading-icon {
   margin-right: 16px;
   color: var(--text-secondary, #475569);

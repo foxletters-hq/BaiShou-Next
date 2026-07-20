@@ -110,7 +110,7 @@ export const DiaryGrid: React.FC<DiaryGridProps> = ({
   if (totalCount === 0) {
     return (
       <div className="diary-empty-state">
-        <Edit3 size={56} className="diary-empty-icon" />
+        <Edit3 size={46} className="diary-empty-icon" />
         <div className="diary-empty-text">
           {selectedMonth
             ? t('diary.no_diaries_month', '本月暂无日记')
