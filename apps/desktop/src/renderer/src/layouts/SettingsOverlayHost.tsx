@@ -1,10 +1,7 @@
-import React, { lazy, Suspense, useLayoutEffect, useRef, useState } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { Routes, Route, type Location } from 'react-router-dom'
 import { motion } from 'framer-motion'
-
-const SettingsPage = lazy(() =>
-  import('../features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
-)
+import { SettingsPage } from '../features/settings/SettingsPage'
 
 /** 与 MainLayout 日记↔伙伴切换遮罩同时长 */
 const SETTINGS_VEIL_DURATION_S = 0.35
@@ -75,14 +72,7 @@ export const SettingsOverlayHost: React.FC<SettingsOverlayHostProps> = ({
       }}
     >
       <Routes location={settingsLocation}>
-        <Route
-          path="/settings/*"
-          element={
-            <Suspense fallback={null}>
-              <SettingsPage />
-            </Suspense>
-          }
-        />
+        <Route path="/settings/*" element={<SettingsPage />} />
         {/* 预挂载时 location 仍是业务页路径，避免刷 No routes matched */}
         <Route path="*" element={null} />
       </Routes>
