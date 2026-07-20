@@ -77,7 +77,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       {
         id: 'agent-gate',
         titleKey: 'agent.gate.settings_title',
-        icon: 'verified-user',
+        icon: 'agent-gate',
         route: { type: 'section', section: 'agent-gate' }
       },
       {

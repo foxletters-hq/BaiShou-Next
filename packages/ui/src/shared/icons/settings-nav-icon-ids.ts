@@ -7,6 +7,7 @@ export const SETTINGS_NAV_ICON_IDS = [
   'web-search',
   'mcp',
   'agent-tools',
+  'agent-gate',
   'tts',
   'diary-template',
   'summary-settings',
