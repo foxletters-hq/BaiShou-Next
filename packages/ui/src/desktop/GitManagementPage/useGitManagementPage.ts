@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GitStatus, VersionHistoryEntry, FileChange, FileDiff } from '@baishou/shared'
-import type { GitManagementPageProps } from './git-management.types'
+import type {
+  GitStatus,
+  VersionHistoryEntry,
+  FileChange,
+  FileDiff,
+  GitStashEntry
+} from '@baishou/shared'
+import type { GitBranchInfo, GitManagementPageProps } from './git-management.types'
 import { useGitManagementCommit } from './useGitManagementCommit'
 import { useGitManagementWorkspace } from './useGitManagementWorkspace'
 
@@ -12,6 +18,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onInit,
     isInitialized,
     onTestRemote,
+    onCommit,
     onCommitAll,
     onToast,
     onGetStatus,
@@ -32,7 +39,18 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onResolveConflict,
     onRollbackFile,
     onRollbackAll,
-    onGetRollbackAllContext
+    onGetRollbackAllContext,
+    onGetBranchInfo,
+    onCheckoutBranch,
+    onCreateBranch,
+    onMergeBranch,
+    onDeleteBranch,
+    onPublishBranch,
+    onListStash,
+    onStashPush,
+    onStashApply,
+    onStashPop,
+    onStashDrop
   } = props
   const { t } = useTranslation()
 
@@ -47,6 +65,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
 
   // 工作区状态
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null)
+  const [branchInfo, setBranchInfo] = useState<GitBranchInfo | null>(null)
+  const [stashList, setStashList] = useState<GitStashEntry[]>([])
 
   // 可折叠区域
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -96,7 +116,21 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     } catch {
       // 静默失败
     }
-  }, [onGetStatus])
+    if (onGetBranchInfo) {
+      try {
+        setBranchInfo(await onGetBranchInfo())
+      } catch {
+        setBranchInfo(null)
+      }
+    }
+    if (onListStash) {
+      try {
+        setStashList(await onListStash())
+      } catch {
+        setStashList([])
+      }
+    }
+  }, [onGetStatus, onGetBranchInfo, onListStash])
 
   const handleLoadHistory = useCallback(async () => {
     const requestId = ++historyRequestRef.current
@@ -194,12 +228,15 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   const stagedCount = gitStatus?.staged.length ?? 0
   const unstagedCount = (gitStatus?.unstaged.length ?? 0) + (gitStatus?.untracked.length ?? 0)
   const canCommit = stagedCount > 0 || unstagedCount > 0
+  const canCommitStaged = stagedCount > 0
 
-  const { handleManualCommit, handleCommitAndPush } = useGitManagementCommit({
+  const { handleManualCommit, handleCommitAll, handleCommitAndPush } = useGitManagementCommit({
     t,
     commitMessage,
     setCommitMessage,
+    onCommit,
     onCommitAll,
+    stagedCount,
     onPush,
     onToast,
     handleRefreshStatus,
@@ -208,6 +245,124 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     setCommitChanges,
     setSelectedFileDiff
   })
+
+  const notifyGitResult = useCallback(
+    (result: { success: boolean; message?: string }, successKey: string, successFallback: string) => {
+      onToast(
+        result.success
+          ? t(successKey, successFallback)
+          : result.message || t('common.error', '操作失败'),
+        result.success ? 'success' : 'error'
+      )
+      return result.success
+    },
+    [onToast, t]
+  )
+
+  const handleCheckoutBranch = useCallback(
+    async (branch: string) => {
+      if (!onCheckoutBranch) return
+      const result = await onCheckoutBranch(branch)
+      if (notifyGitResult(result, 'workbench.git_checkout_success', '已切换分支')) {
+        await handleRefreshStatus()
+        await handleLoadHistory()
+      }
+    },
+    [onCheckoutBranch, notifyGitResult, handleRefreshStatus, handleLoadHistory]
+  )
+
+  const handleCreateBranch = useCallback(
+    async (branch: string) => {
+      if (!onCreateBranch) return
+      const name = branch.trim()
+      if (!name) return
+      const result = await onCreateBranch(name)
+      if (notifyGitResult(result, 'workbench.git_create_branch_success', '已创建分支')) {
+        await handleRefreshStatus()
+      }
+    },
+    [onCreateBranch, notifyGitResult, handleRefreshStatus]
+  )
+
+  const handleMergeBranch = useCallback(
+    async (branch: string) => {
+      if (!onMergeBranch) return
+      const name = branch.trim()
+      if (!name) return
+      const result = await onMergeBranch(name)
+      if (notifyGitResult(result, 'workbench.git_merge_success', '合并完成')) {
+        await handleRefreshStatus()
+        await handleLoadHistory()
+      }
+    },
+    [onMergeBranch, notifyGitResult, handleRefreshStatus, handleLoadHistory]
+  )
+
+  const handleDeleteBranch = useCallback(
+    async (branch: string) => {
+      if (!onDeleteBranch) return
+      const result = await onDeleteBranch(branch)
+      if (notifyGitResult(result, 'workbench.git_delete_branch_success', '已删除分支')) {
+        await handleRefreshStatus()
+      }
+    },
+    [onDeleteBranch, notifyGitResult, handleRefreshStatus]
+  )
+
+  const handlePublishBranch = useCallback(
+    async (branch?: string) => {
+      if (!onPublishBranch) return
+      const result = await onPublishBranch(branch)
+      if (notifyGitResult(result, 'workbench.git_publish_success', '已发布分支')) {
+        await handleRefreshStatus()
+      }
+    },
+    [onPublishBranch, notifyGitResult, handleRefreshStatus]
+  )
+
+  const handleStashPush = useCallback(
+    async (message?: string) => {
+      if (!onStashPush) return
+      const result = await onStashPush(message)
+      if (notifyGitResult(result, 'workbench.git_stash_push_success', '已贮藏变更')) {
+        await handleRefreshStatus()
+      }
+    },
+    [onStashPush, notifyGitResult, handleRefreshStatus]
+  )
+
+  const handleStashApply = useCallback(
+    async (index: number) => {
+      if (!onStashApply) return
+      const result = await onStashApply(index)
+      if (notifyGitResult(result, 'workbench.git_stash_apply_success', '已应用贮藏')) {
+        await handleRefreshStatus()
+      }
+    },
+    [onStashApply, notifyGitResult, handleRefreshStatus]
+  )
+
+  const handleStashPop = useCallback(
+    async (index: number) => {
+      if (!onStashPop) return
+      const result = await onStashPop(index)
+      if (notifyGitResult(result, 'workbench.git_stash_pop_success', '已弹出贮藏')) {
+        await handleRefreshStatus()
+      }
+    },
+    [onStashPop, notifyGitResult, handleRefreshStatus]
+  )
+
+  const handleStashDrop = useCallback(
+    async (index: number) => {
+      if (!onStashDrop) return
+      const result = await onStashDrop(index)
+      if (notifyGitResult(result, 'workbench.git_stash_drop_success', '已删除贮藏')) {
+        await handleRefreshStatus()
+      }
+    },
+    [onStashDrop, notifyGitResult, handleRefreshStatus]
+  )
 
   const handlePull = useCallback(async () => {
     const result = await onPull()
@@ -290,6 +445,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     showPassword,
     setShowPassword,
     gitStatus,
+    branchInfo,
+    stashList,
     expandedSections,
     history,
     recentPulls,
@@ -311,6 +468,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     stagedCount,
     unstagedCount,
     canCommit,
+    canCommitStaged,
     toggleSection,
     handleRefreshStatus,
     handleLoadHistory,
@@ -322,7 +480,17 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handlePush,
     handlePull,
     handleManualCommit,
+    handleCommitAll,
     handleCommitAndPush,
+    handleCheckoutBranch,
+    handleCreateBranch,
+    handleMergeBranch,
+    handleDeleteBranch,
+    handlePublishBranch,
+    handleStashPush,
+    handleStashApply,
+    handleStashPop,
+    handleStashDrop,
     handleSelectCommit,
     handleViewDiff,
     handleViewWorkingDiff,

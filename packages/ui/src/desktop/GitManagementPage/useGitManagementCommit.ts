@@ -8,7 +8,9 @@ export interface UseGitManagementCommitParams {
   t: TFunction
   commitMessage: string
   setCommitMessage: (value: string) => void
+  onCommit: GitManagementPageProps['onCommit']
   onCommitAll: GitManagementPageProps['onCommitAll']
+  stagedCount: number
   onPush: GitManagementPageProps['onPush']
   onToast: GitManagementPageProps['onToast']
   handleRefreshStatus: () => Promise<void>
@@ -23,7 +25,9 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     t,
     commitMessage,
     setCommitMessage,
+    onCommit,
     onCommitAll,
+    stagedCount,
     onPush,
     onToast,
     handleRefreshStatus,
@@ -33,7 +37,12 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     setSelectedFileDiff
   } = params
 
-  const performCommit = useCallback(async (msg: string) => onCommitAll(msg), [onCommitAll])
+  /** 有暂存时仅提交暂存；否则 stage 全部后提交 */
+  const performCommit = useCallback(
+    async (msg: string) => (stagedCount > 0 ? onCommit(msg) : onCommitAll(msg)),
+    [stagedCount, onCommit, onCommitAll]
+  )
+  const performCommitAll = useCallback(async (msg: string) => onCommitAll(msg), [onCommitAll])
 
   const formatGitErrorMessage = useCallback(
     (error: unknown) => {
@@ -103,45 +112,58 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     [onToast, t]
   )
 
-  const handleManualCommit = useCallback(async () => {
-    const now = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
-    const msg = commitMessage.trim() || timestamp
-    try {
-      const result = await performCommit(msg)
-      const fileCount = result?.files?.length ?? 0
-      notifyCommitOutcome(fileCount, 'local')
-      if (fileCount === 0) return
+  const runLocalCommit = useCallback(
+    async (commitFn: (msg: string) => Promise<{ files?: unknown[] } | null>) => {
+      const now = new Date()
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+      const msg = commitMessage.trim() || timestamp
+      try {
+        const result = await commitFn(msg)
+        const fileCount = result?.files?.length ?? 0
+        notifyCommitOutcome(fileCount, 'local')
+        if (fileCount === 0) return
 
-      setCommitMessage('')
-      handleRefreshStatus()
-      handleLoadHistory()
-    } catch (e: any) {
-      const errorMsg = e?.message || ''
-      if (errorMsg.includes('No changes')) {
-        notifyCommitOutcome(0, 'local')
-      } else if (isAuthorNotConfiguredError(e)) {
-        notifyAuthorNotConfigured()
-      } else {
-        onToast(
-          formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'),
-          'error'
-        )
+        setCommitMessage('')
+        handleRefreshStatus()
+        handleLoadHistory()
+      } catch (e: any) {
+        const errorMsg = e?.message || ''
+        if (errorMsg.includes('No changes')) {
+          notifyCommitOutcome(0, 'local')
+        } else if (isAuthorNotConfiguredError(e)) {
+          notifyAuthorNotConfigured()
+        } else {
+          onToast(
+            formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'),
+            'error'
+          )
+        }
       }
-    }
-  }, [
-    commitMessage,
-    performCommit,
-    notifyCommitOutcome,
-    isAuthorNotConfiguredError,
-    notifyAuthorNotConfigured,
-    formatGitErrorMessage,
-    onToast,
-    t,
-    handleRefreshStatus,
-    handleLoadHistory
-  ])
+    },
+    [
+      commitMessage,
+      notifyCommitOutcome,
+      isAuthorNotConfiguredError,
+      notifyAuthorNotConfigured,
+      formatGitErrorMessage,
+      onToast,
+      t,
+      handleRefreshStatus,
+      handleLoadHistory,
+      setCommitMessage
+    ]
+  )
+
+  const handleManualCommit = useCallback(
+    async () => runLocalCommit(performCommit),
+    [runLocalCommit, performCommit]
+  )
+
+  const handleCommitAll = useCallback(
+    async () => runLocalCommit(performCommitAll),
+    [runLocalCommit, performCommitAll]
+  )
 
   const handleCommitAndPush = useCallback(async () => {
     const now = new Date()
@@ -199,8 +221,12 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     onToast,
     t,
     handleRefreshStatus,
-    handleLoadHistory
+    handleLoadHistory,
+    setCommitMessage,
+    setSelectedCommit,
+    setCommitChanges,
+    setSelectedFileDiff
   ])
 
-  return { handleManualCommit, handleCommitAndPush }
+  return { handleManualCommit, handleCommitAll, handleCommitAndPush }
 }
