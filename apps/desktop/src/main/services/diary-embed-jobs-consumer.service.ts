@@ -2,6 +2,7 @@ import {
   isAutoResumeEmbedOnOnline,
   isRagMemoryEnabled,
   logger,
+  normalizeDiaryTags,
   type RagConfig
 } from '@baishou/shared'
 import {
@@ -82,7 +83,7 @@ export async function consumeDiaryEmbedJobs(options?: {
         const ok = await embeddingCallback.reEmbedDiary({
           diaryId: Number(diary.id),
           content: diary.content,
-          tags: diary.tags ?? [],
+          tags: normalizeDiaryTags(diary.tags),
           date: dateStr,
           updatedAt: diary.updatedAt instanceof Date ? diary.updatedAt : new Date(diary.updatedAt),
           vaultName: job.vaultName

@@ -9,7 +9,8 @@ import {
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
-  hasRagDiaryEmbedFailure
+  hasRagDiaryEmbedFailure,
+  buildDiaryEmbeddingTagPrefix
 } from '@baishou/shared'
 
 import { vaultService } from './vault.ipc'
@@ -70,7 +71,7 @@ export const embeddingCallback: IEmbeddingCallback = {
 
       const d = new Date(params.date)
       const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const tagPrefix = params.tags.length > 0 ? `[标签: ${params.tags.join(', ')}] ` : ''
+      const tagPrefix = buildDiaryEmbeddingTagPrefix(params.tags)
 
       const sourceId = buildDiaryEmbeddingSourceId(vaultName, params.diaryId)
 

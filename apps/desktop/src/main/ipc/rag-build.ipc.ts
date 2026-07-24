@@ -12,9 +12,12 @@ import { getEmbeddingMigrationStateService } from '../services/embedding-migrati
 import { runControlledDiaryBatchEmbed } from '../services/controlled-diary-batch-embed.service'
 import {
   buildMigrationStreamResult,
+  clearRagDiaryEmbedFailure,
+  hasRagDiaryEmbedFailure,
   logger,
   RAG_MIGRATION_STATUS,
   toSerializableAiError,
+  type RagConfig,
   type RagMigrationStatusKey,
   type RagMigrationStreamResult
 } from '@baishou/shared'
@@ -55,9 +58,25 @@ async function runMigrationStream(
       lastStatusParams = state.statusParams
     }
     if (state.aborted) aborted = true
+    const terminal =
+      state.aborted ||
+      state.statusKey === RAG_MIGRATION_STATUS.complete ||
+      state.statusKey === RAG_MIGRATION_STATUS.finished ||
+      state.statusKey === RAG_MIGRATION_STATUS.noData ||
+      state.statusKey === RAG_MIGRATION_STATUS.verifyPartial ||
+      state.statusKey === RAG_MIGRATION_STATUS.verifyStale ||
+      state.statusKey === RAG_MIGRATION_STATUS.verifyBoth ||
+      state.statusKey === RAG_MIGRATION_STATUS.backupLost ||
+      state.statusKey === RAG_MIGRATION_STATUS.alreadyRunning ||
+      state.statusKey === RAG_MIGRATION_STATUS.modelNotConfigured ||
+      state.statusKey === RAG_MIGRATION_STATUS.providerNotFound ||
+      state.statusKey === RAG_MIGRATION_STATUS.apiKeyMissing ||
+      state.statusKey === RAG_MIGRATION_STATUS.dimensionCheckFailed ||
+      state.statusKey === RAG_MIGRATION_STATUS.cancelled ||
+      state.statusKey === RAG_MIGRATION_STATUS.abortedConsecutiveFailures
     event.sender.send('agent:rag-progress', {
-      isRunning: !state.aborted,
-      type: state.aborted ? 'idle' : 'migration',
+      isRunning: !terminal,
+      type: terminal ? 'idle' : 'migration',
       progress: state.completed,
       total: state.total,
       statusKey: state.statusKey,
@@ -172,7 +191,23 @@ export function registerRagBuildIPC() {
       })
       // 手动全量扫描后也清一轮欠账（强制，不受自动恢复开关限制）
       const { consumeDiaryEmbedJobs } = await import('../services/diary-embed-jobs-consumer.service')
-      await consumeDiaryEmbedJobs({ reason: 'after-manual-batch-embed', force: true, limit: 50 })
+      const consumeResult = await consumeDiaryEmbedJobs({
+        reason: 'after-manual-batch-embed',
+        force: true,
+        limit: 50
+      })
+
+      // 欠账消费无失败时，确保失败条清除（避免 UI 仍显示旧错误）
+      if ((consumeResult.failed ?? 0) === 0) {
+        const ragConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+        if (hasRagDiaryEmbedFailure(ragConfig)) {
+          await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfig))
+          for (const win of BrowserWindow.getAllWindows()) {
+            win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
+          }
+        }
+      }
+
       event.sender.send('agent:rag-progress', {
         isRunning: false,
         progress: 0,

@@ -255,17 +255,41 @@ export async function* continueMigration(
         }
         return
       }
+      const [, noStale] = await deps.db.verifyMigrationComplete(modelId)
       await deps.db.dropRollbackSnapshot()
+      if (!noStale) {
+        await deps.lifecycle?.markInterrupted()
+        yield {
+          total: 0,
+          completed: 0,
+          statusKey: RAG_MIGRATION_STATUS.verifyStale
+        }
+        return
+      }
       await deps.lifecycle?.markCompleted()
       yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.finished }
       return
     }
 
     if (remaining === 0) {
+      const [allMigrated, noStale] = await deps.db.verifyMigrationComplete(modelId)
       await deps.db.dropMigrationBackup()
-      await deps.db.dropRollbackSnapshot()
-      await deps.lifecycle?.markCompleted()
-      yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.finished }
+      if (allMigrated && noStale) {
+        await deps.db.dropRollbackSnapshot()
+        await deps.lifecycle?.markCompleted()
+        yield { total: 0, completed: 0, statusKey: RAG_MIGRATION_STATUS.finished }
+        return
+      }
+      await deps.lifecycle?.markInterrupted()
+      yield {
+        total: 0,
+        completed: 0,
+        statusKey: !allMigrated
+          ? !noStale
+            ? RAG_MIGRATION_STATUS.verifyBoth
+            : RAG_MIGRATION_STATUS.verifyPartial
+          : RAG_MIGRATION_STATUS.verifyStale
+      }
       return
     }
 

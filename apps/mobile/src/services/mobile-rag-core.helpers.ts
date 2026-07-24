@@ -8,6 +8,7 @@ import {
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
+  buildDiaryEmbeddingTagPrefix,
   type RagConfig
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
@@ -268,7 +269,7 @@ export async function embedDiaryEntry(
 
   const d = params.date instanceof Date ? params.date : new Date(params.date)
   const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const tagPrefix = params.tags.length > 0 ? `[标签: ${params.tags.join(', ')}] ` : ''
+  const tagPrefix = buildDiaryEmbeddingTagPrefix(params.tags)
   const prefixedText = `${tagPrefix}[${label} 日记:]\n${params.content}`
   const metadataJson = JSON.stringify({ updated_at: params.updatedAt.getTime() })
   const embedArgs = {

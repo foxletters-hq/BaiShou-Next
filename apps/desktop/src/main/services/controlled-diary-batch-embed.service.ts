@@ -11,6 +11,7 @@ import {
   isRagMemoryEnabled,
   limitExecute,
   logger,
+  buildDiaryEmbeddingTagPrefix,
   resolveBatchEmbedConcurrency,
   sortDiariesByDateAsc,
   type RagConfig
@@ -319,7 +320,7 @@ async function embedVaultDiaries(
 
     const d = diary.date
     const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const tagPrefix = meta.tags.length > 0 ? `[标签: ${meta.tags.join(', ')}] ` : ''
+    const tagPrefix = buildDiaryEmbeddingTagPrefix(diary.tags ?? meta.tags)
     const sourceCreatedAt = diaryDateToSourceCreatedSeconds(d) * 1000
     const sourceId = buildDiaryEmbeddingSourceId(vaultName, diary.id)
 
