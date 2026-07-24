@@ -34,7 +34,8 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
 
     mockSyncService = {
       syncSessionFile: vi.fn(),
-      fullScanArchives: vi.fn()
+      fullScanArchives: vi.fn(),
+      reconcileFromDisks: vi.fn()
     } as any
 
     manager = new SessionManagerService(mockRepo, mockFileService, mockSyncService)
@@ -86,6 +87,13 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     await manager.fullResyncFromDisks({ activeVaultName: 'Work' })
     expect(mockSyncService.fullScanArchives).toHaveBeenCalledWith(
       expect.objectContaining({ activeVaultName: 'Work' })
+    )
+  })
+
+  it('reconcileFromDisks() flushes pending then calls sync reconcileFromDisks', async () => {
+    await manager.reconcileFromDisks({ activeVaultName: 'Work', diskVaultNames: ['Work'] })
+    expect(mockSyncService.reconcileFromDisks).toHaveBeenCalledWith(
+      expect.objectContaining({ activeVaultName: 'Work', diskVaultNames: ['Work'] })
     )
   })
 

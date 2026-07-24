@@ -22,6 +22,10 @@ export const shadowJournalIndexTable = sqliteTable(
     updatedAt: text('updated_at').notNull(),
     /** MD5 内容指纹（用于脏检测，避免无意义解析） */
     contentHash: text('content_hash').notNull(),
+    /** 物理文件 mtime（毫秒，Obsidian 风格快路径指纹） */
+    fileMtimeMs: integer('file_mtime_ms'),
+    /** 物理文件字节大小（与 mtime 组成快路径指纹） */
+    fileSize: integer('file_size'),
     // ── 可选扩展 Frontmatter 元数据 ──
     weather: text('weather'),
     mood: text('mood'),

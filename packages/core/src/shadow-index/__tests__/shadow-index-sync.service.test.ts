@@ -52,14 +52,30 @@ class MockShadowIndexRepository {
   }
 
   async getHashesByDates(dateIsos: string[]) {
-    const map = new Map<string, string>()
+    const map = new Map<
+      string,
+      { contentHash: string; fileMtimeMs: number | null; fileSize: number | null }
+    >()
     for (const dateIso of dateIsos) {
       const rec = this.records.find((r) => r.date === dateIso || r.date.startsWith(dateIso))
       if (rec?.contentHash) {
-        map.set(dateIso, rec.contentHash)
+        map.set(dateIso, {
+          contentHash: rec.contentHash,
+          fileMtimeMs: rec.fileMtimeMs ?? null,
+          fileSize: rec.fileSize ?? null
+        })
       }
     }
     return map
+  }
+
+  async updateFileStat(dateStr: string, fileMtimeMs: number, fileSize: number) {
+    for (const rec of this.records) {
+      if (rec.date === dateStr || String(rec.date).startsWith(dateStr)) {
+        rec.fileMtimeMs = fileMtimeMs
+        rec.fileSize = fileSize
+      }
+    }
   }
 
   async getAllRecords() {
@@ -68,6 +84,10 @@ class MockShadowIndexRepository {
       date: r.date,
       filePath: r.filePath
     }))
+  }
+
+  _getRecord(dateStr: string) {
+    return this.records.find((r) => r.date === dateStr || String(r.date).startsWith(dateStr))
   }
 
   async searchFTS() {
@@ -173,7 +193,7 @@ describe('ShadowIndexSyncService', () => {
     expect(mockRepo._getRecordCount()).toBe(1)
   })
 
-  // ── 2. Hash 脏检测：内容不变时跳过 ──
+  // ── 2. Hash / mtime 脏检测：内容不变时跳过 ──
   it('连续两次同步同一文件时第二次应无变化', async () => {
     await writeJournal('2026-03-30', '内容不变')
 
@@ -182,6 +202,50 @@ describe('ShadowIndexSyncService', () => {
 
     const r2 = await service.syncJournal('2026-03-30')
     expect(r2.isChanged).toBe(false)
+  })
+
+  it('mtime/size 与索引一致时应跳过读盘与哈希', async () => {
+    await writeJournal('2026-03-25', '快路径内容')
+    await service.syncJournal('2026-03-25')
+
+    const rec = mockRepo._getRecord('2026-03-25')
+    expect(rec?.fileMtimeMs).toEqual(expect.any(Number))
+    expect(rec?.fileSize).toEqual(expect.any(Number))
+
+    const fs = createNodeFileSystem()
+    const readSpy = vi.spyOn(fs, 'readFile')
+    const serviceWithSpy = new ShadowIndexSyncService(
+      mockRepo as any,
+      mockPathService,
+      mockVaultService,
+      fs,
+      mockEmbeddingCb
+    )
+
+    const r2 = await serviceWithSpy.syncJournal('2026-03-25')
+    expect(r2.isChanged).toBe(false)
+    expect(readSpy).not.toHaveBeenCalled()
+    readSpy.mockRestore()
+  })
+
+  it('mtime 漂移但内容未变时应回写指纹且不标记变更', async () => {
+    await writeJournal('2026-03-24', '指纹漂移')
+    await service.syncJournal('2026-03-24')
+
+    const rec = mockRepo._getRecord('2026-03-24')
+    expect(rec).toBeTruthy()
+    // 人为制造 mtime 漂移（内容不变）
+    rec!.fileMtimeMs = (rec!.fileMtimeMs ?? 0) - 10_000
+
+    const updateSpy = vi.spyOn(mockRepo, 'updateFileStat')
+    const r2 = await service.syncJournal('2026-03-24')
+    expect(r2.isChanged).toBe(false)
+    expect(updateSpy).toHaveBeenCalledWith(
+      '2026-03-24',
+      expect.any(Number),
+      expect.any(Number)
+    )
+    updateSpy.mockRestore()
   })
 
   // ── 3. Hash 脏检测：内容变更时触发更新 ──

@@ -4,6 +4,7 @@ import { ShadowIndexUpsertOps } from './shadow-index.repository.upsert'
 
 export type {
   ShadowJournalRecord,
+  ShadowSyncFingerprint,
   UpsertShadowIndexPayload,
   ShadowFTSResult,
   DiaryListFilterOptions
@@ -70,6 +71,10 @@ export class ShadowIndexRepository {
 
   async getHashesByDates(...args: Parameters<ShadowIndexQueryOps['getHashesByDates']>) {
     return this.queryOps.getHashesByDates(...args)
+  }
+
+  async updateFileStat(...args: Parameters<ShadowIndexUpsertOps['updateFileStat']>) {
+    return this.upsertOps.updateFileStat(...args)
   }
 
   async getAllRecords(...args: Parameters<ShadowIndexQueryOps['getAllRecords']>) {

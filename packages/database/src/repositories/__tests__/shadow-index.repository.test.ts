@@ -157,6 +157,42 @@ describe('ShadowIndexRepository', () => {
 
       expect(await repo.count()).toBe(1)
     })
+
+    it('getHashesByDates 返回 contentHash 与 mtime/size 指纹', async () => {
+      const day = '2026-07-01'
+      await repo.upsert({
+        ...generateDummyPayload(day, 'fingerprint diary'),
+        contentHash: 'abc123',
+        fileMtimeMs: 1_700_000_000_000,
+        fileSize: 42
+      })
+
+      const map = await repo.getHashesByDates([day])
+      expect(map.get(day)).toEqual({
+        contentHash: 'abc123',
+        fileMtimeMs: 1_700_000_000_000,
+        fileSize: 42
+      })
+    })
+
+    it('updateFileStat 仅更新 mtime/size 而不改 contentHash', async () => {
+      const day = '2026-07-02'
+      await repo.upsert({
+        ...generateDummyPayload(day, 'stat update'),
+        contentHash: 'keep-hash',
+        fileMtimeMs: 100,
+        fileSize: 10
+      })
+
+      await repo.updateFileStat(day, 999, 20)
+
+      const map = await repo.getHashesByDates([day])
+      expect(map.get(day)).toEqual({
+        contentHash: 'keep-hash',
+        fileMtimeMs: 999,
+        fileSize: 20
+      })
+    })
   })
 
   describe('Full Text Search (FTS5)', () => {

@@ -34,6 +34,7 @@ export class ShadowIndexConnectionManager {
    */
   async connect(globalShadowDbDir: string): Promise<void> {
     const dbPath = path.join(globalShadowDbDir, SHADOW_INDEX_DB_FILENAME)
+    const started = performance.now()
 
     if (this._currentDbPath === dbPath && this._client && this._db) {
       logger.info(`[ShadowDB] 复用已有连接: ${dbPath}`)
@@ -61,7 +62,9 @@ export class ShadowIndexConnectionManager {
       }
     }
 
-    logger.info(`[ShadowDB] 影子索引库连接成功: ${dbPath}`)
+    logger.info(
+      `[ShadowDB] 影子索引库连接成功: ${dbPath} (${Math.round(performance.now() - started)}ms)`
+    )
   }
 
   getDb(): AppDatabase {
@@ -89,7 +92,17 @@ export class ShadowIndexConnectionManager {
   private async _ensureHealthyFile(dbPath: string): Promise<void> {
     if (!fs.existsSync(dbPath)) return
 
+    const started = performance.now()
+    let fileSizeMb = 0
+    try {
+      fileSizeMb = Math.round((fs.statSync(dbPath).size / (1024 * 1024)) * 10) / 10
+    } catch {
+      fileSizeMb = 0
+    }
+
     let isCorrupt = false
+    let copyMs = 0
+    let quickCheckMs = 0
 
     try {
       const header = fs.readFileSync(dbPath)
@@ -103,12 +116,16 @@ export class ShadowIndexConnectionManager {
     if (!isCorrupt) {
       const probePath = dbPath + '.probe'
       try {
+        const copyStarted = performance.now()
         fs.copyFileSync(dbPath, probePath)
+        copyMs = Math.round(performance.now() - copyStarted)
 
         let probe: Client | null = null
         try {
           probe = createClient({ url: `file:${probePath}` })
+          const checkStarted = performance.now()
           const res = await probe.execute('PRAGMA quick_check;')
+          quickCheckMs = Math.round(performance.now() - checkStarted)
           const firstRow = res.rows[0]
           isCorrupt = !firstRow || firstRow['quick_check'] !== 'ok'
         } catch {
@@ -128,6 +145,11 @@ export class ShadowIndexConnectionManager {
         }
       }
     }
+
+    logger.info(
+      `[ShadowDB] health-check ${Math.round(performance.now() - started)}ms ` +
+        `(file=${fileSizeMb}MB copy=${copyMs}ms quick_check=${quickCheckMs}ms corrupt=${isCorrupt})`
+    )
 
     if (!isCorrupt) return
 

@@ -1,4 +1,4 @@
-import { eq, sql, and } from 'drizzle-orm'
+import { eq, sql, and, like } from 'drizzle-orm'
 import { shadowJournalIndexTable } from '../schema/shadow-index'
 import type { AppDatabase } from '../types'
 import type { UpsertShadowIndexPayload } from './shadow-index.repository.types'
@@ -73,6 +73,8 @@ function buildUpsertSet(
     createdAt: indexData.createdAt,
     updatedAt: indexData.updatedAt,
     contentHash: indexData.contentHash,
+    fileMtimeMs: indexData.fileMtimeMs ?? null,
+    fileSize: indexData.fileSize ?? null,
     weather: indexData.weather ?? null,
     mood: indexData.mood ?? null,
     location: indexData.location ?? null,
@@ -385,6 +387,24 @@ export class ShadowIndexUpsertOps {
       }
 
       return rowIds
+    })
+  }
+
+  /**
+   * 仅更新物理文件 mtime/size 指纹（内容未变、元数据漂移时的轻量写路径）。
+   */
+  async updateFileStat(dateStr: string, fileMtimeMs: number, fileSize: number): Promise<void> {
+    if (!dateStr) return
+    return this.withWriteLock(async () => {
+      await this.database
+        .update(shadowJournalIndexTable)
+        .set({ fileMtimeMs, fileSize })
+        .where(
+          and(
+            eq(shadowJournalIndexTable.vaultName, this.vaultName),
+            like(shadowJournalIndexTable.date, `${dateStr}%`)
+          )
+        )
     })
   }
 

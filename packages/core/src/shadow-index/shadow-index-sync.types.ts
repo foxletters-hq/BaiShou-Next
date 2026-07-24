@@ -26,15 +26,31 @@ export interface JournalSyncEvent {
  * 这解决了 `@baishou/core` 与 `@baishou/ai` 的循环依赖问题。
  */
 export interface IEmbeddingCallback {
+  /**
+   * @returns `true` 嵌入成功；`false` 已跳过或失败（失败时宿主应已入账）
+   */
   reEmbedDiary(params: {
     diaryId: number
     content: string
     tags: string[]
     date: string
     updatedAt: Date
-  }): Promise<void>
+    /** 缺省则使用当前活跃 Vault */
+    vaultName?: string
+  }): Promise<boolean | void>
 
   deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void>
+
+  /**
+   * 冷启动 skipRag / 即时嵌入失败时写入欠账，供联网后消费。
+   * 可选：宿主未实现则忽略。
+   */
+  enqueueDiaryEmbed?(params: {
+    diaryId: number
+    contentHash: string
+    date: string
+    vaultName?: string
+  }): void | Promise<void>
 }
 
 /**

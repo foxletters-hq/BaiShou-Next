@@ -11,6 +11,36 @@ export interface SummarySyncCallbacks {
   onError?: (error: any) => void
 }
 
+export type SyncSummaryFileOptions = {
+  /** 冷启动 reconcile：盘 mtime 未新于 DB 时跳过读文件 */
+  skipUnchangedByMtime?: boolean
+  /** listAllSummaries 已解析的路径，避免重复搜盘 */
+  diskPath?: string
+}
+
+function toEpochMs(value: unknown): number | undefined {
+  if (value instanceof Date) {
+    const ms = value.getTime()
+    return Number.isFinite(ms) ? ms : undefined
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 1e12 ? value * 1000 : value
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const ms = Date.parse(value)
+    return Number.isFinite(ms) ? ms : undefined
+  }
+  return undefined
+}
+
+function dbRecordTimeMs(record: {
+  updatedAt?: unknown
+  generatedAt?: unknown
+  endDate?: unknown
+}): number | undefined {
+  return toEpochMs(record.updatedAt) ?? toEpochMs(record.generatedAt) ?? toEpochMs(record.endDate)
+}
+
 export class SummarySyncService {
   private isSyncing = false
 
@@ -68,13 +98,31 @@ export class SummarySyncService {
    * 查找记录时不能只依赖 endDate 毫秒级相等：UI 常把周日 23:59:59 收成午夜，
    * 精确 getByDateRange 会失败，导致删文件后幽灵行残留、缺失检测仍认为「已有」。
    */
-  async syncSummaryFile(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {
-    const fileContent = await this.fileService.readSummary(type, startDate)
+  async syncSummaryFile(
+    type: SummaryType,
+    startDate: Date,
+    endDate: Date,
+    options?: SyncSummaryFileOptions
+  ): Promise<void> {
     let existingDb = await this.summaryRepo.getByDateRange(type, startDate, endDate)
     if (!existingDb) {
       const sameDay = await this.summaryRepo.findAllByTypeAndStartDay(type, startDate)
       existingDb = sameDay[0] ?? null
     }
+
+    if (options?.skipUnchangedByMtime && existingDb) {
+      const diskMtimeMs = await this.fileService.getSummaryFileMtimeMs(
+        type,
+        startDate,
+        options.diskPath
+      )
+      const dbMs = dbRecordTimeMs(existingDb)
+      if (diskMtimeMs != null && dbMs != null && diskMtimeMs <= dbMs) {
+        return
+      }
+    }
+
+    const fileContent = await this.fileService.readSummary(type, startDate)
 
     if (fileContent == null) {
       // 物理文件已不在：清掉同 type + 起始日的全部缓存行（含 endDate 不一致的幽灵）
@@ -128,9 +176,15 @@ export class SummarySyncService {
    */
   async fullScanArchives(options?: DiskResyncOptions): Promise<void> {
     const allFiles = await this.fileService.listAllSummaries()
+    const syncOpts: SyncSummaryFileOptions | undefined = options?.skipUnchangedByMtime
+      ? { skipUnchangedByMtime: true }
+      : undefined
 
     for (const f of allFiles) {
-      await this.syncSummaryFile(f.type, f.startDate, f.endDate)
+      await this.syncSummaryFile(f.type, f.startDate, f.endDate, {
+        ...syncOpts,
+        diskPath: f.fullPath
+      })
     }
 
     // 普通冷启动路径未就绪时不做跨库 ghost 清理；明确 active vault resync 时，

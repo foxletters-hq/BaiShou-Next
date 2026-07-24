@@ -9,12 +9,23 @@ export interface ShadowJournalRecord {
   createdAt: string
   updatedAt: string
   contentHash: string
+  /** 物理文件 mtime（毫秒）；旧库 / 未回填时可能缺失或为 null */
+  fileMtimeMs?: number | null
+  /** 物理文件字节大小；旧库 / 未回填时可能缺失或为 null */
+  fileSize?: number | null
   weather: string | null
   mood: string | null
   location: string | null
   locationDetail: string | null
   isFavorite: boolean
   hasMedia: boolean
+}
+
+/** 全量扫描脏检测用的轻量指纹（hash + mtime/size） */
+export interface ShadowSyncFingerprint {
+  contentHash: string
+  fileMtimeMs: number | null
+  fileSize: number | null
 }
 
 /**
@@ -29,6 +40,10 @@ export interface UpsertShadowIndexPayload {
   createdAt: string
   updatedAt: string
   contentHash: string
+  /** 物理文件 mtime（毫秒），写入后供下次扫描快路径跳过 */
+  fileMtimeMs?: number | null
+  /** 物理文件字节大小 */
+  fileSize?: number | null
   weather?: string | null
   mood?: string | null
   location?: string | null
