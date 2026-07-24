@@ -1,4 +1,5 @@
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
+import type { EditorContextMenuOpenPayload } from '../../shared/editor-menus'
 
 export interface CodeMirrorEditorHandle {
   insertAtCursor: (text: string) => void
@@ -18,8 +19,4 @@ export interface CodeMirrorEditorProps {
   onDropFiles?: (files: File[]) => Promise<string[]>
 }
 
-export interface TextContextMenuState {
-  x: number
-  y: number
-  hasSelection: boolean
-}
+export type TextContextMenuState = EditorContextMenuOpenPayload

@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react'
 import { ImagePreview } from './ImagePreview'
-import { CodeMirrorEditorContextMenu } from './CodeMirrorEditorContextMenu'
+import { EditorContextMenuHost } from '../ContextMenu/EditorContextMenuHost'
 import { useCodeMirrorEditor } from './useCodeMirrorEditor'
 import type { CodeMirrorEditorHandle, CodeMirrorEditorProps } from './codeMirrorEditor.types'
 
@@ -11,7 +11,6 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
   function CodeMirrorEditor(props, ref) {
     const {
       containerRef,
-      viewRef,
       previewSrc,
       setPreviewSrc,
       textContextMenu,
@@ -37,10 +36,9 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
             onClose={() => setPreviewSrc(null)}
           />
         )}
-        <CodeMirrorEditorContextMenu
+        <EditorContextMenuHost
           menu={textContextMenu}
           onClose={() => setTextContextMenu(null)}
-          viewRef={viewRef}
         />
       </div>
     )
