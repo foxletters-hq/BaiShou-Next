@@ -106,9 +106,7 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
       const snapshot = options?.snapshotIdsAtFetchStart
       pruneTombstones()
       set((state: AgentGateInboxState) => {
-        const racedLive = snapshot
-          ? state.pending.filter((item) => !snapshot.has(item.id))
-          : []
+        const racedLive = snapshot ? state.pending.filter((item) => !snapshot.has(item.id)) : []
         const byId = new Map<string, AgentGateRequest>()
         for (const item of incoming) {
           if (isRepliedTombstone(item.id)) continue

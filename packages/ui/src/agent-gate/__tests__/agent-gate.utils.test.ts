@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  AgentGateKind,
-  AgentGateRequestStatus,
-  type AgentGateRequest
-} from '@baishou/shared'
+import { AgentGateKind, AgentGateRequestStatus, type AgentGateRequest } from '@baishou/shared'
 import { resolveAlwaysDisabledReason, shouldShowAlwaysAllow } from '../agent-gate.utils'
 
 function baseRequest(partial: Partial<AgentGateRequest> = {}): AgentGateRequest {

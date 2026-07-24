@@ -11,12 +11,14 @@ export const DEFAULT_AGENT_GATE_NOTIFICATION_PREFS: AgentGateNotificationPrefs =
   soundEnabled: true
 }
 
-export function normalizeAgentGateNotificationPrefs(
-  value: unknown
-): AgentGateNotificationPrefs {
-  const input = value && typeof value === 'object' ? (value as Partial<AgentGateNotificationPrefs>) : {}
+export function normalizeAgentGateNotificationPrefs(value: unknown): AgentGateNotificationPrefs {
+  const input =
+    value && typeof value === 'object' ? (value as Partial<AgentGateNotificationPrefs>) : {}
   return {
-    enabled: typeof input.enabled === 'boolean' ? input.enabled : DEFAULT_AGENT_GATE_NOTIFICATION_PREFS.enabled,
+    enabled:
+      typeof input.enabled === 'boolean'
+        ? input.enabled
+        : DEFAULT_AGENT_GATE_NOTIFICATION_PREFS.enabled,
     soundEnabled:
       typeof input.soundEnabled === 'boolean'
         ? input.soundEnabled

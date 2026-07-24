@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { limitDiaryPreviewTags, normalizeDiaryTags, buildDiaryEmbeddingTagPrefix } from '../diary-tags.util'
+import {
+  limitDiaryPreviewTags,
+  normalizeDiaryTags,
+  buildDiaryEmbeddingTagPrefix
+} from '../diary-tags.util'
 
 describe('limitDiaryPreviewTags', () => {
   it('returns all tags when within limit', () => {
