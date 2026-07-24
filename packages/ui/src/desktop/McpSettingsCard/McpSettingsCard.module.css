@@ -194,14 +194,15 @@
 }
 
 .confirmTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
   margin-bottom: 10px;
 }
 
 .confirmMessage {
-  font-size: 14px;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   line-height: 1.5;
   color: var(--text-secondary);
   margin-bottom: 18px;
@@ -215,12 +216,15 @@
 
 .confirmCancelBtn,
 .confirmDangerBtn {
-  padding: 8px 16px;
+  padding: 0 12px;
+  height: 32px;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
+  font-family: inherit;
   cursor: pointer;
   border: none;
+  box-sizing: border-box;
 }
 
 .confirmCancelBtn {

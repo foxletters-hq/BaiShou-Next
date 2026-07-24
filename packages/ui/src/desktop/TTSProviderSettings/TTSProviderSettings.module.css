@@ -54,8 +54,8 @@
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
   line-height: 28px;
   color: var(--text-primary);
   margin: 0;
@@ -151,7 +151,7 @@
 .modelInputRow {
   display: flex;
   gap: 8px;
-  align-items: flex-end;
+  align-items: center;
   width: 100%;
 }
 
@@ -201,8 +201,10 @@
 
 .fetchModelsBtn {
   flex-shrink: 0;
-  height: 38px;
+  height: 42px;
   min-width: 110px;
+  padding: 0 16px;
+  box-sizing: border-box;
 }
 
 .comboboxContainer {
@@ -224,13 +226,19 @@
   min-width: 0;
 }
 
+.comboboxWrapper:has(.comboboxDropdown) {
+  z-index: 20;
+}
+
 .comboboxInput {
   background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
   border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: var(--radius-md, 12px);
-  padding: 10px 36px 10px 14px;
+  height: 42px;
+  padding: 0 36px 0 14px;
   font-size: 14px;
+  line-height: 1.2;
   font-family: var(--font-family);
   width: 100%;
   box-sizing: border-box;
@@ -431,7 +439,8 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   border-radius: 12px;
-  overflow: hidden;
+  /* 勿 hidden：卡内绝对定位下拉会被裁切 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
