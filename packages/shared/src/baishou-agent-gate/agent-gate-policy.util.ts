@@ -31,9 +31,11 @@ export function canPermanentlyAllowAgentGateAction(
   const exclusionList = options?.exclusionList ?? DEFAULT_AGENT_GATE_EXCLUSION_LIST
   if (isAgentGateActionInExclusionList(action, exclusionList)) return false
   if (isAgentGateActionForceExcluded(action, options?.metadata)) return false
-  const shellCommands = (options?.resources ?? [])
-    .filter((r) => r.kind === 'shell_command')
-    .map((r) => r.value)
+  const resources = options?.resources ?? []
+  // 区外路径仍走强制询问/可信目录；会话 Always 不记外路径整项放行
+  if (resources.some((r) => r.kind === 'external_path')) return false
+
+  const shellCommands = resources.filter((r) => r.kind === 'shell_command').map((r) => r.value)
   if (action === 'workspace_run' || shellCommands.length > 0) {
     if (shellCommands.length === 0) return false
     return shellCommands.every((cmd) => canPermanentlyAllowShellCommand(cmd))

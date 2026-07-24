@@ -1,103 +1,41 @@
 import { describe, expect, it } from 'vitest'
-import { AgentGateKind, AgentGateRequestStatus, type AgentGateRequest } from '@baishou/shared'
 import {
-  canAlwaysAllowForRequest,
-  resolveAlwaysAllowPrefixHint,
-  resolveRequestGateResources,
-  shouldShowAlwaysAllow
-} from '../agent-gate.utils'
+  AgentGateKind,
+  AgentGateRequestStatus,
+  type AgentGateRequest
+} from '@baishou/shared'
+import { resolveAlwaysDisabledReason, shouldShowAlwaysAllow } from '../agent-gate.utils'
 
-function toolRequest(
-  patch: Partial<AgentGateRequest> & Pick<AgentGateRequest, 'action' | 'metadata'>
-): AgentGateRequest {
+function baseRequest(partial: Partial<AgentGateRequest> = {}): AgentGateRequest {
   return {
-    id: 'bag_test',
+    id: 'r1',
     sessionId: 's1',
     vaultName: 'Personal',
     status: AgentGateRequestStatus.Pending,
     kind: AgentGateKind.Tool,
-    title: 'test',
+    action: 'workspace_write',
+    title: '写入',
     options: [],
     allowCustomInput: true,
-    createdAt: Date.now(),
-    ...patch
+    metadata: {},
+    createdAt: 1,
+    ...partial
   }
 }
 
-describe('agent-gate.utils', () => {
-  it('resolves shell resources from shellCommand field', () => {
-    const request = toolRequest({
-      action: 'workspace_run',
-      metadata: { shellCommand: 'git status -sb' }
-    })
-    expect(resolveRequestGateResources(request)).toEqual([
-      { kind: 'shell_command', value: 'git status -sb' }
-    ])
-  })
-
-  it('resolves shell resources from nested metadata.resources only', () => {
-    const request = toolRequest({
-      action: 'workspace_run',
-      metadata: {
-        resources: [{ kind: 'shell_command', value: 'npm run build' }]
+describe('agent-gate.utils always disable', () => {
+  it('hides Always when file preview is truncated', () => {
+    const request = baseRequest({
+      preview: {
+        type: 'file_change',
+        path: 'a.ts',
+        kind: 'modify',
+        additions: 1,
+        deletions: 1,
+        truncated: true
       }
     })
-    expect(resolveRequestGateResources(request)).toEqual([
-      { kind: 'shell_command', value: 'npm run build' }
-    ])
-    expect(canAlwaysAllowForRequest(request)).toBe(true)
-    expect(shouldShowAlwaysAllow(request)).toBe(true)
-    expect(resolveAlwaysAllowPrefixHint(request)).toBe('npm run *')
-  })
-
-  it('deduplicates shellCommand and nested resources', () => {
-    const request = toolRequest({
-      action: 'workspace_run',
-      metadata: {
-        shellCommand: 'git status',
-        resources: [{ kind: 'shell_command', value: 'git status' }]
-      }
-    })
-    expect(resolveRequestGateResources(request)).toEqual([
-      { kind: 'shell_command', value: 'git status' }
-    ])
-  })
-
-  it('shows always prefix hint for prefixable workspace_run', () => {
-    const request = toolRequest({
-      action: 'workspace_run',
-      metadata: { shellCommand: 'git status -sb' }
-    })
-    expect(resolveAlwaysAllowPrefixHint(request)).toBe('git status *')
-    expect(shouldShowAlwaysAllow(request)).toBe(true)
-  })
-
-  it('hides always for dangerous shell commands', () => {
-    const request = toolRequest({
-      action: 'workspace_run',
-      metadata: { shellCommand: 'rm -rf dist' }
-    })
-    expect(canAlwaysAllowForRequest(request)).toBe(false)
     expect(shouldShowAlwaysAllow(request)).toBe(false)
-    expect(resolveAlwaysAllowPrefixHint(request)).toBeNull()
-  })
-
-  it('allows always for normal mutating tools without shell', () => {
-    const request = toolRequest({
-      action: 'diary_edit',
-      metadata: {}
-    })
-    expect(canAlwaysAllowForRequest(request)).toBe(true)
-    expect(resolveAlwaysAllowPrefixHint(request)).toBeNull()
-  })
-
-  it('does not show always for non-tool requests', () => {
-    const request = toolRequest({
-      action: 'workspace_run',
-      kind: AgentGateKind.Proactive,
-      metadata: { shellCommand: 'git status' }
-    })
-    expect(canAlwaysAllowForRequest(request)).toBe(false)
-    expect(shouldShowAlwaysAllow(request)).toBe(false)
+    expect(resolveAlwaysDisabledReason(request)).toContain('截断')
   })
 })

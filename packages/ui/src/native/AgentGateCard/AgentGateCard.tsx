@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Modal, View, Text, StyleSheet, Pressable, TextInput, ScrollView } from 'react-native'
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  useWindowDimensions
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
@@ -7,34 +16,54 @@ import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import {
   resolveAlwaysAllowPrefixHint,
+  resolveAlwaysDisabledReason,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
   type AgentGateReplyPayload
 } from '../../agent-gate'
+import {
+  formatFileChangeKindLabel,
+  formatGateQueueLabel,
+  humanizeRepeatHint,
+  resolveScopeLabel
+} from '../../agent-gate/agent-gate-preview-copy'
 
 export interface AgentGateCardProps {
   request: AgentGateRequest | null
   isReplying?: boolean
   onReply: (input: AgentGateReplyPayload) => void | Promise<void>
+  queueIndex?: number
+  queueTotal?: number
+  sameActionCount?: number
 }
 
 export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   request,
   isReplying = false,
-  onReply
+  onReply,
+  queueIndex = 0,
+  queueTotal = 0,
+  sameActionCount = 0
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
+  const { height } = useWindowDimensions()
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
+  const [diffExpanded, setDiffExpanded] = useState(false)
+  const [alwaysConfirm, setAlwaysConfirm] = useState(false)
+  const [techOpen, setTechOpen] = useState(false)
 
   useEffect(() => {
     setShowFeedback(false)
     setFeedback('')
     setSelectedOptionId(null)
+    setDiffExpanded(false)
+    setAlwaysConfirm(false)
+    setTechOpen(false)
   }, [request?.id])
 
   const handleReply = useCallback(
@@ -49,19 +78,40 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
+  const alwaysDisabledReason = resolveAlwaysDisabledReason(request)
   const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const showActionMeta = request.kind === AgentGateKind.Tool
-  const showWorkspaceRunAlwaysHint = request.action === 'workspace_run'
+  const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
+  const repeatHint = humanizeRepeatHint(request)
+  const scopeLabel = resolveScopeLabel(request)
+  const preview = request.preview
+  const cascadeHint =
+    sameActionCount > 1
+      ? t(
+          'agent_gate.cascade_hint',
+          '此决定将影响本会话中另外 {{count}} 个相同操作',
+          { count: sameActionCount - 1 }
+        )
+      : null
+  const scrollMaxHeight = Math.min(height * 0.62, diffExpanded ? 520 : 360)
 
   return (
     <Modal
       visible
       transparent
       animationType="fade"
-      onRequestClose={() =>
-        void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })
-      }
+      onRequestClose={() => {
+        if (alwaysConfirm) {
+          setAlwaysConfirm(false)
+          return
+        }
+        if (showFeedback) {
+          setShowFeedback(false)
+          return
+        }
+        // Android 返回键：仅退出子步骤，不隐式 Reject
+      }}
     >
       <View
         style={[
@@ -72,12 +122,8 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           }
         ]}
       >
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={() => void handleReply({ requestId: request.id, reply: AgentGateReply.Reject })}
-          accessibilityRole="button"
-          accessibilityLabel={t('agent_gate.reject', '拒绝')}
-        />
+        {/* 遮罩不可决议，仅视觉层 */}
+        <Pressable style={StyleSheet.absoluteFill} accessibilityElementsHidden />
 
         <View
           style={[
@@ -89,43 +135,163 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             }
           ]}
           pointerEvents="box-none"
+          accessibilityRole="summary"
         >
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.header}>
+          <ScrollView
+            style={{ maxHeight: scrollMaxHeight }}
+            contentContainerStyle={styles.header}
+          >
+            <View style={styles.headerRow}>
+              <Text
+                accessibilityRole="header"
+                style={[
+                  styles.badge,
+                  { color: colors.warning, backgroundColor: 'rgba(245, 158, 11, 0.12)' }
+                ]}
+              >
+                {t('agent_gate.pending_badge', '待确认')}
+              </Text>
+              {queueLabel ? (
+                <Text style={[styles.queueLabel, { color: colors.textTertiary }]}>{queueLabel}</Text>
+              ) : null}
+            </View>
             <Text
-              style={[
-                styles.badge,
-                { color: colors.warning, backgroundColor: 'rgba(245, 158, 11, 0.12)' }
-              ]}
+              accessibilityRole="header"
+              style={[styles.title, { color: colors.textPrimary }]}
             >
-              {t('agent_gate.pending_badge', '待确认')}
+              {request.title}
             </Text>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{request.title}</Text>
             {request.description ? (
               <Text style={[styles.description, { color: colors.textSecondary }]}>
                 {request.description}
               </Text>
             ) : null}
-            {showActionMeta ? (
-              <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
-                {t('agent_gate.dock_action', '操作：{{action}}', { action: request.action })}
-              </Text>
+            {repeatHint ? (
+              <Text style={[styles.hint, { color: colors.textSecondary }]}>{repeatHint}</Text>
             ) : null}
-            {request.fingerprint ? (
-              <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
-                {t('agent_gate.fingerprint_meta', '指纹 {{fp}} · 连打 {{count}}', {
-                  fp: request.fingerprint.slice(0, 10),
-                  count: request.repeatCount ?? 1
-                })}
-              </Text>
+            {cascadeHint ? (
+              <Text style={[styles.hint, { color: colors.textSecondary }]}>{cascadeHint}</Text>
             ) : null}
-            {showWorkspaceRunAlwaysHint && !proactiveOptions ? (
-              <Text style={[styles.actionMeta, { color: colors.textSecondary }]}>
-                {alwaysPrefixHint
-                  ? t('agent_gate.always_prefix_hint', '始终允许将写入前缀：{{pattern}}', {
-                      pattern: alwaysPrefixHint
-                    })
-                  : t('agent_gate.always_not_available', '此命令不可始终允许')}
+
+            {preview?.type === 'file_change' ? (
+              <View
+                style={[
+                  styles.previewBlock,
+                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgApp }
+                ]}
+              >
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  {formatFileChangeKindLabel(preview.kind)} · {preview.path}
+                  {preview.previousPath ? ` ← ${preview.previousPath}` : ''}
+                </Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  <Text style={{ color: '#15803d', fontWeight: '600' }}>+{preview.additions}</Text>
+                  {'  '}
+                  <Text style={{ color: '#b91c1c', fontWeight: '600' }}>-{preview.deletions}</Text>
+                  {preview.truncated ? `  ${t('agent_gate.diff_truncated', '预览已截断')}` : ''}
+                </Text>
+                {preview.diff ? (
+                  <>
+                    <Pressable onPress={() => setDiffExpanded((v) => !v)}>
+                      <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                        {diffExpanded
+                          ? t('agent_gate.collapse_diff', '收起 Diff')
+                          : t('agent_gate.expand_diff', '展开 Diff')}
+                      </Text>
+                    </Pressable>
+                    {diffExpanded ? (
+                      <ScrollView style={styles.diffScroll} nestedScrollEnabled>
+                        <Text style={[styles.diffText, { color: colors.textPrimary }]}>
+                          {preview.diff}
+                        </Text>
+                      </ScrollView>
+                    ) : null}
+                  </>
+                ) : null}
+              </View>
+            ) : null}
+
+            {preview?.type === 'command' ? (
+              <View
+                style={[
+                  styles.previewBlock,
+                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgApp }
+                ]}
+              >
+                <Text style={[styles.commandText, { color: colors.textPrimary }]}>
+                  {preview.command}
+                </Text>
+                {preview.dangerReason ? (
+                  <Text style={[styles.hint, { color: colors.warning }]}>{preview.dangerReason}</Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {preview?.type === 'content' ? (
+              <View
+                style={[
+                  styles.previewBlock,
+                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgApp }
+                ]}
+              >
+                <Text style={{ color: colors.textPrimary }}>{preview.subject}</Text>
+                {preview.summary ? (
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                    {preview.summary}
+                  </Text>
+                ) : null}
+                {preview.detailLines?.map((line) => (
+                  <Text key={line} style={{ color: colors.textTertiary, fontSize: 12 }}>
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+
+            <Pressable onPress={() => setTechOpen((v) => !v)}>
+              <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
+                {techOpen
+                  ? t('agent_gate.hide_tech_details', '收起技术详情')
+                  : t('agent_gate.tech_details', '技术详情')}
               </Text>
+            </Pressable>
+            {techOpen ? (
+              <>
+                {showActionMeta ? (
+                  <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
+                    {t('agent_gate.dock_action', '操作：{{action}}', { action: request.action })}
+                  </Text>
+                ) : null}
+                {request.fingerprint ? (
+                  <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
+                    {t('agent_gate.fingerprint_meta', '指纹 {{fp}} · 连打 {{count}}', {
+                      fp: request.fingerprint.slice(0, 10),
+                      count: request.repeatCount ?? 1
+                    })}
+                  </Text>
+                ) : null}
+                <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>{scopeLabel}</Text>
+              </>
+            ) : null}
+
+            {alwaysConfirm ? (
+              <View
+                style={[
+                  styles.previewBlock,
+                  { borderColor: colors.primary, backgroundColor: colors.primaryLight }
+                ]}
+              >
+                <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 20 }}>
+                  {t(
+                    'agent_gate.always_confirm_body',
+                    '始终允许将持久保存到本机（可在设置中撤销），范围：{{scope}}。匹配：{{pattern}}。',
+                    {
+                      scope: scopeLabel,
+                      pattern: alwaysPrefixHint ?? request.action
+                    }
+                  )}
+                </Text>
+              </View>
             ) : null}
 
             {proactiveOptions && !showFeedback
@@ -134,6 +300,8 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   return (
                     <Pressable
                       key={option.id}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
                       onPress={() => setSelectedOptionId(option.id)}
                       style={[
                         styles.option,
@@ -174,7 +342,30 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           </ScrollView>
 
           <View style={[styles.actions, { borderTopColor: colors.borderSubtle }]}>
-            {showFeedback ? (
+            {alwaysConfirm ? (
+              <>
+                <Button
+                  variant="outline"
+                  onPress={() => setAlwaysConfirm(false)}
+                  disabled={isReplying}
+                  style={styles.actionButton}
+                  accessibilityLabel={t('common.cancel', '取消')}
+                >
+                  {t('common.cancel', '取消')}
+                </Button>
+                <Button
+                  variant="primary"
+                  onPress={() =>
+                    void handleReply({ requestId: request.id, reply: AgentGateReply.Always })
+                  }
+                  disabled={isReplying}
+                  style={styles.actionButton}
+                  accessibilityLabel={t('agent_gate.always_confirm', '确认始终允许')}
+                >
+                  {t('agent_gate.always_confirm', '确认始终允许')}
+                </Button>
+              </>
+            ) : showFeedback ? (
               <>
                 <Button
                   variant="outline"
@@ -224,6 +415,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   }
                   disabled={isReplying}
                   style={styles.actionButton}
+                  accessibilityLabel={t('agent_gate.reject', '拒绝')}
                 >
                   {t('agent_gate.reject', '拒绝')}
                 </Button>
@@ -254,20 +446,24 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   }
                   disabled={isReplying}
                   style={styles.actionButton}
+                  accessibilityLabel={t('agent_gate.reject', '拒绝')}
                 >
                   {t('agent_gate.reject', '拒绝')}
                 </Button>
                 {showAlways ? (
                   <Button
                     variant="outline"
-                    onPress={() =>
-                      void handleReply({ requestId: request.id, reply: AgentGateReply.Always })
-                    }
+                    onPress={() => setAlwaysConfirm(true)}
                     disabled={isReplying}
                     style={styles.actionButton}
+                    accessibilityLabel={t('agent_gate.always', '始终允许')}
                   >
                     {t('agent_gate.always', '始终允许')}
                   </Button>
+                ) : alwaysDisabledReason ? (
+                  <Text style={[styles.actionMeta, { color: colors.textSecondary }]}>
+                    {alwaysDisabledReason}
+                  </Text>
                 ) : null}
                 <Button
                   variant="primary"
@@ -276,6 +472,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   }
                   disabled={isReplying}
                   style={styles.actionButton}
+                  accessibilityLabel={t('agent_gate.once', '本次允许')}
                 >
                   {t('agent_gate.once', '本次允许')}
                 </Button>
@@ -299,14 +496,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
     zIndex: 2,
-    maxHeight: '78%',
+    maxHeight: '86%',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 8
-  },
-  scroll: {
-    maxHeight: 360
   },
   header: {
     paddingHorizontal: 18,
@@ -314,26 +508,59 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     gap: 8
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
   badge: {
     alignSelf: 'flex-start',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     overflow: 'hidden'
   },
+  queueLabel: {
+    fontSize: 12
+  },
   title: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 24
   },
   description: {
     fontSize: 14,
     lineHeight: 21
   },
+  hint: {
+    fontSize: 12,
+    lineHeight: 18
+  },
   actionMeta: {
     fontSize: 12
+  },
+  previewBlock: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 6
+  },
+  diffScroll: {
+    maxHeight: 220
+  },
+  diffText: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    lineHeight: 16
+  },
+  commandText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    lineHeight: 18
   },
   option: {
     borderWidth: StyleSheet.hairlineWidth,

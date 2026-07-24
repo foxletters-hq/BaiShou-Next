@@ -6,7 +6,7 @@ import {
   type IBaishouAgentGate
 } from '@baishou/ai'
 import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/database'
-import { ensureMobileAgentGateBridge } from '../../services/mobile-agent-gate.service'
+import { ensureMobileAgentGateInboxBridge } from '../../services/mobile-agent-gate.service'
 
 type GateSettingsManager = {
   get: <T>(key: string) => Promise<T | null | undefined>
@@ -45,9 +45,14 @@ export function createMobileAgentGateRuntime(settingsManager: GateSettingsManage
     persistConfig: () => persistBaishouAgentGateConfig(agentGateConfig)
   })
   bridgeAgentGateEventBus(eventBus)
-  ensureMobileAgentGateBridge()
+  ensureMobileAgentGateInboxBridge(() => gate)
 
-  void reloadAgentGateConfig()
+  void reloadAgentGateConfig().then(() => {
+    // 配置重载后补拉一次，覆盖冷启动竞态
+    void import('../../services/mobile-agent-gate.service').then((m) =>
+      m.hydrateMobileAgentGateInbox()
+    )
+  })
 
   return {
     getAgentGate: () => gate,

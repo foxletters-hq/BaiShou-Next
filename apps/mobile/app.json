@@ -29,8 +29,13 @@
         "android.permission.ACCESS_WIFI_STATE",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CHANGE_WIFI_MULTICAST_STATE",
-        "android.permission.NEARBY_WIFI_DEVICES"
+        "android.permission.NEARBY_WIFI_DEVICES",
+        "android.permission.POST_NOTIFICATIONS"
       ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "requestLegacyExternalStorage": true
     },
     "web": {
@@ -63,6 +68,15 @@
       "expo-audio",
       "expo-web-browser",
       "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "agent-gate",
+          "sounds": []
+        }
+      ],
       [
         "expo-sqlite",
         {

@@ -1,27 +1,7 @@
-import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG, type BaishouAgentGateConfig } from '@baishou/shared'
+import { cloneBaishouAgentGateConfig, type BaishouAgentGateConfig } from '@baishou/shared'
 import { createBaishouAgentGate, type IBaishouAgentGate } from './baishou-agent-gate.service'
 
-export function cloneBaishouAgentGateConfig(
-  source?: BaishouAgentGateConfig | null
-): BaishouAgentGateConfig {
-  const base = {
-    ...DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
-    exclusionList: [...DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList],
-    allowlist: []
-  }
-  if (!source) return base
-
-  return {
-    trustMode: source.trustMode ?? base.trustMode,
-    exclusionList: [...(source.exclusionList ?? base.exclusionList)],
-    allowlist: (source.allowlist ?? []).map((entry) => ({ ...entry })),
-    actionRules: source.actionRules ? { ...source.actionRules } : undefined,
-    permissionRules: source.permissionRules?.map((rule) => ({ ...rule })),
-    forceAskExternalPath: source.forceAskExternalPath ?? base.forceAskExternalPath,
-    repeatAssertAskThreshold: source.repeatAssertAskThreshold ?? base.repeatAssertAskThreshold,
-    hideDeniedTools: source.hideDeniedTools ?? base.hideDeniedTools
-  }
-}
+export { cloneBaishouAgentGateConfig }
 
 export interface ResolveSessionAgentGateOptions {
   agentGate?: IBaishouAgentGate

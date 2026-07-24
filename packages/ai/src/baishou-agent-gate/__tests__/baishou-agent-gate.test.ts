@@ -9,7 +9,10 @@ import {
   AgentGateAlwaysNotAllowedError,
   AgentGateCancelledError,
   AgentGateCorrectedError,
-  AgentGateRejectedError
+  AgentGateRejectedError,
+  applyCapabilityStateToConfig,
+  cloneBaishouAgentGateConfig,
+  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
 } from '@baishou/shared'
 import { BaishouAgentGatePolicyService } from '../baishou-agent-gate-policy.service'
 import { BaishouAgentGateAllowlistStore } from '../baishou-agent-gate-allowlist.store'
@@ -248,6 +251,69 @@ describe('BaishouAgentGatePolicyService', () => {
       })
     ).toBe(AgentGateEffect.Allow)
   })
+
+  it('externalPathEffect=deny 时外路径拒绝', () => {
+    const config = {
+      trustMode: AgentGateTrustMode.Manual,
+      exclusionList: [],
+      allowlist: [],
+      externalPathEffect: 'deny' as const,
+      forceAskExternalPath: true
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_read',
+        resources: [{ kind: 'external_path', value: 'C:/Outside/a.txt' }]
+      })
+    ).toBe(AgentGateEffect.Deny)
+  })
+
+  it('能力矩阵可信区外目录放行匹配路径，未匹配仍询问；编辑仍询问', () => {
+    const compiled = applyCapabilityStateToConfig(
+      cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+      'workspace',
+      {
+        effects: {
+          browse: AgentGateEffect.Allow,
+          edit: AgentGateEffect.Ask,
+          delete: AgentGateEffect.Ask,
+          command: AgentGateEffect.Ask,
+          external: AgentGateEffect.Allow,
+          diary_write: AgentGateEffect.Ask,
+          diary_delete: AgentGateEffect.Ask,
+          memory_store: AgentGateEffect.Ask,
+          memory_delete: AgentGateEffect.Ask
+        },
+        trustedExternalDirs: ['D:/Notes']
+      }
+    )
+    const allowlist = new BaishouAgentGateAllowlistStore(() => compiled)
+    const policy = new BaishouAgentGatePolicyService(() => compiled, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_read',
+        resources: [{ kind: 'external_path', value: 'D:/Notes/a.md' }]
+      })
+    ).toBe(AgentGateEffect.Allow)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_write',
+        resources: [{ kind: 'external_path', value: 'D:/Notes/a.md' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_read',
+        resources: [{ kind: 'external_path', value: 'C:/Outside/a.md' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+  })
 })
 
 describe('BaishouAgentGateService', () => {
@@ -360,6 +426,64 @@ describe('BaishouAgentGateService', () => {
       ...baseAssertInput,
       action: 'workspace_delete',
       title: '删除工作区文件'
+    })
+    const [request] = gate.listPending()
+
+    await expect(
+      gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
+    ).rejects.toBeInstanceOf(AgentGateAlwaysNotAllowedError)
+
+    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Once })
+    await pending
+  })
+
+  it('截断预览即使命中 allowlist 也强制 Ask，且拒绝 Always', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: [],
+        allowlist: [{ id: 'bagal_write', action: 'workspace_write', createdAt: 1 }]
+      }
+    })
+
+    const pending = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入工作区文件',
+      preview: {
+        type: 'file_change',
+        path: 'a.txt',
+        kind: 'modify',
+        diff: '...',
+        additions: 1,
+        deletions: 0,
+        truncated: true
+      }
+    })
+    const [request] = gate.listPending()
+    expect(request).toBeTruthy()
+
+    await expect(
+      gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
+    ).rejects.toBeInstanceOf(AgentGateAlwaysNotAllowedError)
+
+    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Once })
+    await pending
+  })
+
+  it('危险命令预览拒绝 Always', async () => {
+    const { gate } = createBaishouAgentGate()
+
+    const pending = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_run',
+      title: '运行命令',
+      preview: {
+        type: 'command',
+        command: 'rm -rf /',
+        workdir: '.',
+        dangerous: true
+      }
     })
     const [request] = gate.listPending()
 
@@ -516,6 +640,59 @@ describe('BaishouAgentGateService', () => {
       reply: AgentGateReply.Once
     })
     await other
+  })
+
+  it('always 不级联放行同 action 的截断预览 pending', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const normal = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写完整',
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+      preview: {
+        type: 'file_change',
+        path: 'src/a.ts',
+        kind: 'modify',
+        additions: 1,
+        deletions: 0,
+        contentDigest: 'full'
+      }
+    })
+    const truncated = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写截断',
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+      preview: {
+        type: 'file_change',
+        path: 'src/a.ts',
+        kind: 'modify',
+        additions: 1,
+        deletions: 0,
+        truncated: true,
+        contentDigest: 'cut'
+      }
+    })
+
+    const pending = gate.listPending('sess_1')
+    const normalReq = pending.find((r) => r.title === '写完整')
+    expect(normalReq).toBeTruthy()
+    await gate.reply({ requestId: normalReq!.id, reply: AgentGateReply.Always })
+    await normal
+
+    const stillPending = gate.listPending('sess_1')
+    expect(stillPending).toHaveLength(1)
+    expect(stillPending[0]?.title).toBe('写截断')
+
+    await gate.reply({ requestId: stillPending[0]!.id, reply: AgentGateReply.Once })
+    await truncated
   })
 
   it('always 不级联放行同 action 的外路径 pending', async () => {
@@ -687,6 +864,81 @@ describe('Agent Gate profile + probeEffect', () => {
         profileId: AgentGateProfileId.Workspace
       })
     ).toBe(AgentGateEffect.Allow)
+  })
+})
+
+describe('scoped gate config isolation', () => {
+  it('companion FullTrust allowlist does not affect a separate workspace gate instance', async () => {
+    const companion = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.FullTrust,
+        exclusionList: [],
+        allowlist: [{ id: 'c1', action: 'diary_write', createdAt: 1 }],
+        forceAskExternalPath: true
+      },
+      configScope: { kind: 'companion' }
+    })
+    const workspace = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: ['workspace_delete'],
+        allowlist: [],
+        forceAskExternalPath: true
+      },
+      configScope: { kind: 'workspace', workspaceId: 'ws-a' }
+    })
+
+    expect(
+      companion.policy.evaluate({
+        action: 'diary_write',
+        profileId: AgentGateProfileId.Companion
+      })
+    ).toBe(AgentGateEffect.Allow)
+
+    expect(
+      workspace.policy.evaluate({
+        action: 'workspace_write',
+        profileId: AgentGateProfileId.Workspace
+      })
+    ).toBe(AgentGateEffect.Ask)
+
+    expect(workspace.getConfig().allowlist).toEqual([])
+    expect(companion.getConfig().allowlist).toHaveLength(1)
+  })
+
+  it('publishes allowlist_changed with configScope', async () => {
+    const events: Array<{ type: string; scope?: unknown }> = []
+    const { gate, eventBus } = createBaishouAgentGate({
+      config: {
+        trustMode: AgentGateTrustMode.Manual,
+        exclusionList: [],
+        allowlist: []
+      },
+      configScope: { kind: 'workspace', workspaceId: 'ws-b' }
+    })
+    eventBus.subscribe((event) => {
+      if (event.type === 'agent_gate.allowlist_changed') {
+        events.push(event)
+      }
+    })
+
+    const assertPromise = gate.assert({
+      sessionId: 's1',
+      vaultName: 'Personal',
+      kind: AgentGateKind.Tool,
+      action: 'workspace_write',
+      title: 'write',
+      profileId: AgentGateProfileId.Workspace
+    })
+    await Promise.resolve()
+    const pending = gate.listPending('s1')[0]
+    expect(pending).toBeTruthy()
+    await gate.reply({ requestId: pending!.id, reply: AgentGateReply.Always })
+    await assertPromise
+
+    expect(events.some((e) => (e as { scope?: { kind: string } }).scope?.kind === 'workspace')).toBe(
+      true
+    )
   })
 })
 

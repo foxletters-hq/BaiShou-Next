@@ -28,6 +28,15 @@ describe('agent-gate-policy.util', () => {
     expect(canPermanentlyAllowAgentGateAction('diary_edit')).toBe(true)
   })
 
+  it('blocks always allow for external_path resources', () => {
+    expect(
+      canPermanentlyAllowAgentGateAction('workspace_write', {
+        exclusionList: [],
+        resources: [{ kind: 'external_path', value: 'C:/Outside/x.txt' }]
+      })
+    ).toBe(false)
+  })
+
   it('extracts workspace paths from metadata', () => {
     expect(
       extractAgentGateResourcesFromMetadata({

@@ -8,6 +8,7 @@ export const SETTINGS_NAV_ICON_IDS = [
   'mcp',
   'agent-tools',
   'agent-gate',
+  'workspace-gate',
   'tts',
   'diary-template',
   'summary-settings',
