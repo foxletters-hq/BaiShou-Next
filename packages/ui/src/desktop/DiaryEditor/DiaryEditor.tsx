@@ -29,6 +29,8 @@ interface DiaryEditorProps {
   isFavorite?: boolean
   mediaPaths?: string[]
   isSaving?: boolean
+  /** 保存按钮阶段：idle / saving / leaving */
+  savePhase?: 'idle' | 'saving' | 'leaving'
   onContentChange: (content: string) => void
   onDateChange: (date: Date) => void
   onWeatherChange?: (weather: string) => void
@@ -61,6 +63,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   isFavorite = false,
   mediaPaths = [],
   isSaving = false,
+  savePhase = 'idle',
   onContentChange,
   onDateChange,
   onWeatherChange,
@@ -293,9 +296,9 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           <button
             className="de-save-btn"
             onClick={() => onSave?.(content, selectedDate)}
-            disabled={isSaving}
+            disabled={isSaving || savePhase !== 'idle'}
           >
-            {isSaving ? (
+            {savePhase === 'saving' || savePhase === 'leaving' ? (
               <span className="de-save-loading">
                 <span className="de-spinner" />
                 {t('common.saving', '保存中...')}

@@ -26,7 +26,7 @@ const SHEET_CSS = `
   flex: 0 0 auto;
   width: 100%;
   border-radius: 20px 20px 0 0;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
   overflow: hidden;
@@ -34,7 +34,7 @@ const SHEET_CSS = `
   flex-direction: column;
   max-height: 72vh;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--text-primary, #111);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   pointer-events: auto;
   transform: translateY(100%);
@@ -60,7 +60,7 @@ const SHEET_CSS = `
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary);
   padding: 6px 20px 12px;
   flex-shrink: 0;
 }
@@ -75,7 +75,7 @@ const SHEET_CSS = `
 .cm-table-sheet-group {
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.04));
+  background: var(--bg-surface-normal);
   box-shadow: inset 0 0 0 1px var(--border-subtle, rgba(0, 0, 0, 0.06));
 }
 .cm-table-sheet-group--destructive {
@@ -90,7 +90,7 @@ const SHEET_CSS = `
   border: none;
   border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
   background: transparent;
-  color: var(--text-primary, #111);
+  color: var(--text-primary);
   font-size: 16px;
   font-weight: 400;
   line-height: 1.3;
@@ -104,7 +104,7 @@ const SHEET_CSS = `
   box-sizing: border-box;
 }
 .cm-table-sheet-item:active:not(:disabled) {
-  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.06));
+  background: var(--bg-surface-normal);
 }
 .cm-table-sheet-item:last-child {
   border-bottom: none;
@@ -113,7 +113,7 @@ const SHEET_CSS = `
   opacity: 0.45;
 }
 .cm-table-sheet-item--destructive {
-  color: var(--color-danger, #e5484d);
+  color: var(--color-error);
 }
 `
 
@@ -137,10 +137,10 @@ const CONTEXT_MENU_CSS = `
   padding: 4px;
   border-radius: 8px;
   border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--text-primary, #111);
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 .cm-table-context-menu-item {
@@ -149,7 +149,7 @@ const CONTEXT_MENU_CSS = `
   text-align: left;
   border: none;
   background: transparent;
-  color: var(--text-primary, #111);
+  color: var(--text-primary);
   font-size: 13px;
   padding: 8px 10px;
   border-radius: 6px;
@@ -163,10 +163,10 @@ const CONTEXT_MENU_CSS = `
   cursor: default;
 }
 .cm-table-context-menu-item:not(:disabled):hover {
-  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.05));
+  background: var(--bg-surface-normal);
 }
 .cm-table-context-menu-item--destructive {
-  color: var(--color-danger, #e5484d);
+  color: var(--color-error);
 }
 `
 

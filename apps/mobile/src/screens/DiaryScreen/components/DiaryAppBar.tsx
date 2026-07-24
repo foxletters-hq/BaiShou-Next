@@ -80,8 +80,8 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
               styles.searchSectionWrap,
               styles.searchInputBox,
               {
-                backgroundColor: colors.bgGlassSurface,
-                borderColor: colors.borderMuted
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderControl
               }
             ]}
           >

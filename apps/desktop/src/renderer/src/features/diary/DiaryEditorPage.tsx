@@ -7,6 +7,30 @@ import { motion } from 'framer-motion'
 
 const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
+function DiaryEditorLoadingSkeleton() {
+  return (
+    <div className="diary-editor-skeleton" aria-busy="true" aria-label="Loading">
+      <div className="diary-editor-skeleton-appbar">
+        <div className="diary-editor-skeleton-circle" />
+        <div className="diary-editor-skeleton-pill diary-editor-skeleton-pill--title" />
+        <div className="diary-editor-skeleton-pill diary-editor-skeleton-pill--action" />
+      </div>
+      <div className="diary-editor-skeleton-meta">
+        <div className="diary-editor-skeleton-pill" />
+        <div className="diary-editor-skeleton-pill" />
+        <div className="diary-editor-skeleton-circle diary-editor-skeleton-circle--sm" />
+      </div>
+      <div className="diary-editor-skeleton-card">
+        <div className="diary-editor-skeleton-line" style={{ width: '28%' }} />
+        <div className="diary-editor-skeleton-line" style={{ width: '62%' }} />
+        <div className="diary-editor-skeleton-line" style={{ width: '88%' }} />
+        <div className="diary-editor-skeleton-line" style={{ width: '74%' }} />
+        <div className="diary-editor-skeleton-line" style={{ width: '46%' }} />
+      </div>
+    </div>
+  )
+}
+
 export const DiaryEditorPage: React.FC = () => {
   const editor = useDiaryEditorPage()
   const tts = useTts(editor.t)
@@ -22,26 +46,26 @@ export const DiaryEditorPage: React.FC = () => {
   }, [editor.content, tts])
 
   if (editor.isLoading) {
-    return (
-      <div
-        style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-      >
-        Loading...
-      </div>
-    )
+    return <DiaryEditorLoadingSkeleton />
   }
+
+  const isLeaving = editor.savePhase === 'leaving'
 
   return (
     <motion.div
       className="diary-editor-page-container"
       style={{
-        pointerEvents: editor.isSaving ? 'none' : 'auto'
+        pointerEvents: editor.savePhase === 'idle' ? 'auto' : 'none'
       }}
-      initial={{ opacity: 0, scale: 0.98, y: 8 }}
-      animate={editor.isSaving ? { opacity: 0, scale: 0.98 } : { opacity: 1, scale: 1, y: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={
+        isLeaving
+          ? { opacity: 0, y: 10, scale: 0.992 }
+          : { opacity: 1, y: 0, scale: 1 }
+      }
       transition={{
-        duration: editor.isSaving ? 0.15 : 0.2,
-        ease: editor.isSaving ? 'easeInOut' : 'easeOut'
+        duration: isLeaving ? 0.32 : 0.28,
+        ease: [0.22, 1, 0.36, 1]
       }}
     >
       <DiaryEditor
@@ -52,7 +76,8 @@ export const DiaryEditorPage: React.FC = () => {
         mood={editor.mood}
         isFavorite={editor.isFavorite}
         mediaPaths={editor.mediaPaths}
-        isSaving={editor.isSaving}
+        isSaving={editor.savePhase !== 'idle'}
+        savePhase={editor.savePhase}
         onContentChange={editor.handleContentChange}
         onDateChange={editor.setSelectedDate}
         onWeatherChange={editor.setWeather}

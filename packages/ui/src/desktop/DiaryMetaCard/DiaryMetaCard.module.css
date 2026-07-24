@@ -8,13 +8,13 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
-  font-family: var(--font-family-main, 'Manrope', sans-serif);
+  font-family: var(--font-family);
 }
 
 .card:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
-  border-color: rgba(91, 168, 245, 0.3);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
 }
 
 .header {
@@ -33,7 +33,7 @@
 .day {
   font-size: 32px;
   font-weight: 800;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   line-height: 1;
 }
 
@@ -52,7 +52,7 @@
 .weekday {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
 }
 
@@ -63,7 +63,7 @@
   border: 0.5px solid var(--color-primary);
   border-radius: 4px;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 600;
   color: var(--color-primary);
   letter-spacing: 0.5px;
 }
@@ -177,7 +177,7 @@
 }
 
 .tagOrange {
-  background-color: #fff7ed;
+  background-color: color-mix(in srgb, var(--color-warning) 12%, var(--bg-surface));
   color: #c2410c;
 }
 
@@ -188,7 +188,7 @@
 
 .tagOverflow {
   background-color: rgba(148, 163, 184, 0.18);
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .deleteBtn {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { View, StyleSheet, ActivityIndicator, Keyboard } from 'react-native'
+import { View, StyleSheet, Keyboard, Animated } from 'react-native'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
@@ -74,6 +74,8 @@ export const DiaryEditorScreen: React.FC = () => {
   const [existingId, setExistingId] = useState<number | null>(null)
   const [, setOriginalContent] = useState('')
   const [loading, setLoading] = useState(false)
+  const [savePhase, setSavePhase] = useState<'idle' | 'saving' | 'leaving'>('idle')
+  const leaveOpacity = useRef(new Animated.Value(1)).current
   const [isDirty, setIsDirty] = useState(false)
   const isDirtyRef = useRef(false)
   const metadataDirtyRef = useRef(false)
@@ -231,13 +233,14 @@ export const DiaryEditorScreen: React.FC = () => {
   ])
 
   const handleSave = async () => {
-    if (!services) return
+    if (!services || savePhase !== 'idle') return
 
     if (isLikelyEditorBundleLeak(content)) {
       toast.showError(t('diary.content_corrupted_hint', '日记正文异常，已阻止保存损坏内容'))
       return
     }
 
+    setSavePhase('saving')
     try {
       await assertExternalStorageReady()
       const targetDate = normalizeDiaryCalendarDate(selectedDateRef.current)
@@ -273,8 +276,19 @@ export const DiaryEditorScreen: React.FC = () => {
       setIsDirty(false)
       isDirtyRef.current = false
       dismissEditorKeyboard()
+      toast.showSuccess(t('common.saved', '已保存'))
+      setSavePhase('leaving')
+      await new Promise<void>((resolve) => {
+        Animated.timing(leaveOpacity, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true
+        }).start(() => resolve())
+      })
       router.back()
     } catch (e) {
+      setSavePhase('idle')
+      leaveOpacity.setValue(1)
       const msg = e instanceof Error ? e.message : String(e)
       if (
         isExternalStorageRequiredError(e) ||
@@ -367,36 +381,58 @@ export const DiaryEditorScreen: React.FC = () => {
     <ScreenSafeArea preset="screen" style={{ backgroundColor: colors.bgSurface }}>
       <FullFileAccessGate granted={storageGranted} onRequest={() => void requestStorage()}>
         {loading ? (
-          <View style={styles.loadingCenter}>
-            <ActivityIndicator size="large" color={colors.accentGreen} />
+          <View style={styles.skeletonRoot} accessibilityLabel="Loading">
+            <View style={styles.skeletonAppBar}>
+              <View style={[styles.skeletonCircle, { backgroundColor: colors.bgSurfaceHighest }]} />
+              <View
+                style={[styles.skeletonPill, styles.skeletonTitle, { backgroundColor: colors.bgSurfaceHighest }]}
+              />
+              <View
+                style={[styles.skeletonPill, styles.skeletonAction, { backgroundColor: colors.bgSurfaceHighest }]}
+              />
+            </View>
+            <View style={styles.skeletonMeta}>
+              <View style={[styles.skeletonPill, { backgroundColor: colors.bgSurfaceHighest }]} />
+              <View style={[styles.skeletonPill, { backgroundColor: colors.bgSurfaceHighest }]} />
+            </View>
+            <View style={styles.skeletonBody}>
+              <View style={[styles.skeletonLine, { width: '30%', backgroundColor: colors.bgSurfaceHighest }]} />
+              <View style={[styles.skeletonLine, { width: '70%', backgroundColor: colors.bgSurfaceHighest }]} />
+              <View style={[styles.skeletonLine, { width: '92%', backgroundColor: colors.bgSurfaceHighest }]} />
+              <View style={[styles.skeletonLine, { width: '78%', backgroundColor: colors.bgSurfaceHighest }]} />
+              <View style={[styles.skeletonLine, { width: '54%', backgroundColor: colors.bgSurfaceHighest }]} />
+            </View>
           </View>
         ) : (
-          <DiaryEditor
-            content={content}
-            tags={tags}
-            selectedDate={selectedDate}
-            weather={weather || ''}
-            mood={mood || ''}
-            isFavorite={isFavorite}
-            editorWebViewSource={editorWebViewSource}
-            webViewActive
-            onContentChange={handleContentChange}
-            onTagsChange={handleTagsChange}
-            tagColorRegistry={tagColorRegistry}
-            onDateChange={handleDateChange}
-            onWeatherChange={handleWeatherChange}
-            onMoodChange={handleMoodChange}
-            onFavoriteChange={handleFavoriteChange}
-            onPickImages={handlePickImages}
-            pickingImages={pickingImages}
-            resolveAttachmentUrl={resolveAttachmentUrl}
-            markdownToolbarOrder={toolOrder}
-            onMarkdownToolbarOrderChange={saveToolOrder}
-            onReadAloud={handleReadAloud}
-            isTtsPlaying={ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
-            onSave={handleSave}
-            onCancel={handleBack}
-          />
+          <Animated.View style={{ flex: 1, opacity: leaveOpacity }}>
+            <DiaryEditor
+              content={content}
+              tags={tags}
+              selectedDate={selectedDate}
+              weather={weather || ''}
+              mood={mood || ''}
+              isFavorite={isFavorite}
+              editorWebViewSource={editorWebViewSource}
+              webViewActive
+              onContentChange={handleContentChange}
+              onTagsChange={handleTagsChange}
+              tagColorRegistry={tagColorRegistry}
+              onDateChange={handleDateChange}
+              onWeatherChange={handleWeatherChange}
+              onMoodChange={handleMoodChange}
+              onFavoriteChange={handleFavoriteChange}
+              onPickImages={handlePickImages}
+              pickingImages={pickingImages}
+              resolveAttachmentUrl={resolveAttachmentUrl}
+              markdownToolbarOrder={toolOrder}
+              onMarkdownToolbarOrderChange={saveToolOrder}
+              onReadAloud={handleReadAloud}
+              isTtsPlaying={ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
+              savePhase={savePhase}
+              onSave={handleSave}
+              onCancel={handleBack}
+            />
+          </Animated.View>
         )}
       </FullFileAccessGate>
     </ScreenSafeArea>
@@ -404,5 +440,31 @@ export const DiaryEditorScreen: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+  skeletonRoot: { flex: 1, paddingTop: 8 },
+  skeletonAppBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 12
+  },
+  skeletonMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 14
+  },
+  skeletonBody: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    gap: 14
+  },
+  skeletonCircle: { width: 36, height: 36, borderRadius: 18 },
+  skeletonPill: { height: 28, width: 88, borderRadius: 14 },
+  skeletonTitle: { flex: 1, maxWidth: 160 },
+  skeletonAction: { width: 72 },
+  skeletonLine: { height: 14, borderRadius: 8 }
 })

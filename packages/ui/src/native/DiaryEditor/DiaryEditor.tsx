@@ -54,6 +54,8 @@ interface DiaryEditorProps {
   onFavoriteChange?: (isFavorite: boolean) => void
   onSave?: (content: string, tags: string[], date: Date) => void
   onCancel?: () => void
+  /** 保存按钮阶段：idle / saving / leaving */
+  savePhase?: 'idle' | 'saving' | 'leaving'
   /** 从相册选取并上传图片，返回要插入的 Markdown 片段 */
   onPickImages?: () => Promise<string[]>
   pickingImages?: boolean
@@ -93,6 +95,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   onFavoriteChange,
   onSave,
   onCancel,
+  savePhase = 'idle',
   onPickImages,
   pickingImages = false,
   editorWebViewSource,
@@ -362,15 +365,26 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
         </View>
 
         <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+          style={[
+            styles.saveBtn,
+            {
+              backgroundColor: colors.primary,
+              opacity: savePhase === 'idle' ? 1 : 0.85
+            }
+          ]}
+          disabled={savePhase !== 'idle'}
           onPress={() => {
             snapKeyboardChromeAway()
             onSave?.(content, tags, selectedDate)
           }}
         >
-          <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>
-            {t('common.save')}
-          </Text>
+          {savePhase === 'saving' || savePhase === 'leaving' ? (
+            <ActivityIndicator size="small" color={colors.textOnPrimary} />
+          ) : (
+            <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>
+              {t('common.save')}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 

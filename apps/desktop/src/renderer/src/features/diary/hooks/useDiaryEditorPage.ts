@@ -329,7 +329,8 @@ export function useDiaryEditorPage() {
   }
 
   const [showExitConfirm, setShowExitConfirm] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  /** idle → saving → leaving（退场动画）→ 导航 */
+  const [savePhase, setSavePhase] = useState<'idle' | 'saving' | 'leaving'>('idle')
 
   const goBackToSidebar = useCallback(() => {
     const lastNav = sessionStorage.getItem('desktop_last_nav')
@@ -341,6 +342,7 @@ export function useDiaryEditorPage() {
   }, [navigate])
 
   const handleBack = () => {
+    if (savePhase !== 'idle') return
     if (checkIsReallyDirty()) {
       setShowExitConfirm(true)
     } else {
@@ -349,16 +351,18 @@ export function useDiaryEditorPage() {
   }
 
   const handleSave = async () => {
-    if (isSaving) return
-    setIsSaving(true)
+    if (savePhase !== 'idle') return
+    setSavePhase('saving')
     try {
       await autoSave(content)
-      await new Promise((resolve) => setTimeout(resolve, 180))
+      toast.showSuccess(t('common.saved', '已保存'))
+      setSavePhase('leaving')
+      await new Promise((resolve) => setTimeout(resolve, 320))
       goBackToSidebar()
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : undefined
       toast.showError(message || t('diary.save_failed', '保存失败，可能由于日期重复或系统错误'))
-      setIsSaving(false)
+      setSavePhase('idle')
     }
   }
 
@@ -373,7 +377,8 @@ export function useDiaryEditorPage() {
     isFavorite,
     mediaPaths,
     isDirty,
-    isSaving,
+    isSaving: savePhase !== 'idle',
+    savePhase,
     showExitConfirm,
     setShowExitConfirm,
     handleContentChange,

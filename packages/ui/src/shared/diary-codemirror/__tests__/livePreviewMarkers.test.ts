@@ -84,6 +84,25 @@ describe('live preview marker hiding', () => {
     expect(parent.querySelector('.cm-rendered-blockquote')).not.toBeNull()
   })
 
+  it('renders --- as a visual horizontal rule when cursor is elsewhere', () => {
+    const content = 'before\n---\nafter\n'
+    const v = mount(content, content.length)
+    focusEditor(v)
+    expect(parent.querySelector('.cm-wb-hr')).not.toBeNull()
+    expect(parent.querySelector('.cm-wb-hr-widget')).not.toBeNull()
+    expect(parent.textContent).not.toContain('---')
+  })
+
+  it('shows raw --- when cursor is on the horizontal rule line', () => {
+    const content = 'before\n---\nafter\n'
+    const hrPos = content.indexOf('-')
+    const v = mount(content, hrPos)
+    focusEditor(v)
+    expect(parent.querySelector('.cm-wb-hr')).not.toBeNull()
+    expect(parent.querySelector('.cm-wb-hr-widget')).toBeNull()
+    expect(v.state.doc.toString()).toContain('---')
+  })
+
   it('does not extend blockquote styling to lines without > prefix', () => {
     mount('> quoted line\nplain line\n')
     expect(parent.querySelectorAll('.cm-rendered-blockquote').length).toBe(1)

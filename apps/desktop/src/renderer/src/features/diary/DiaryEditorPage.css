@@ -5,11 +5,122 @@
 .diary-editor-page-container {
   height: 100%;
   position: relative;
-  background-color: var(--bg-surface-lowest, #f8fafc);
+  background-color: var(--bg-surface-lowest);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   padding-bottom: 0;
+}
+
+/* 打开编辑器时的骨架屏，避免突兀的 Loading 文案 */
+.diary-editor-skeleton {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface-lowest);
+  box-sizing: border-box;
+  padding: 0 0 16px;
+  animation: diary-editor-skeleton-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes diary-editor-skeleton-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.diary-editor-skeleton-appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px 14px;
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-card {
+  flex: 1;
+  margin: 0 24px;
+  padding: 28px 24px;
+  border-radius: 16px;
+  background: var(--bg-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.diary-editor-skeleton-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.22);
+  animation: diary-editor-skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.diary-editor-skeleton-circle--sm {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+}
+
+.diary-editor-skeleton-pill {
+  height: 28px;
+  width: 88px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  animation: diary-editor-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.diary-editor-skeleton-pill--title {
+  width: 140px;
+}
+
+.diary-editor-skeleton-pill--action {
+  width: 72px;
+}
+
+.diary-editor-skeleton-line {
+  height: 14px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.18);
+  animation: diary-editor-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.diary-editor-skeleton-line:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.diary-editor-skeleton-line:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.diary-editor-skeleton-line:nth-child(4) {
+  animation-delay: 0.24s;
+}
+.diary-editor-skeleton-line:nth-child(5) {
+  animation-delay: 0.32s;
+}
+
+@keyframes diary-editor-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .diary-editor-page-container .diary-editor-scaffold {
@@ -32,13 +143,13 @@
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) inset;
+    0 0 0 1px rgba(var(--color-primary-rgb), 0.1) inset;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary, #1e293b);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .toast-icon {
@@ -49,11 +160,11 @@
 
 .toast-spin {
   animation: spin 1s linear infinite;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .toast-success {
-  color: var(--color-secondary, #10b981);
+  color: var(--color-success);
 }
 
 @keyframes spin {
@@ -66,6 +177,6 @@
 }
 
 .dd-btn-confirm-danger {
-  background: var(--color-error, #ef4444);
-  color: var(--text-on-error, #ffffff);
+  background: var(--color-error);
+  color: var(--text-on-primary);
 }

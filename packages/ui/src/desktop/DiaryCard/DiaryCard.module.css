@@ -56,7 +56,7 @@
 .weekday {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
 }
 
@@ -66,7 +66,7 @@
   border: 0.5px solid var(--color-primary);
   border-radius: 4px;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 600;
   color: var(--color-primary);
   letter-spacing: 0.5px;
 }
@@ -115,7 +115,7 @@
 /* 4 distinct tag color sets based on modulo hashing */
 .tagColor0 {
   background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  color: var(--color-primary);
 }
 .tagColor1 {
   background: rgba(16, 185, 129, 0.15);
@@ -132,7 +132,7 @@
 
 .tagOverflow {
   background: rgba(148, 163, 184, 0.18);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 [data-theme='dark'] .tagColor0 {
@@ -193,8 +193,8 @@
   background: transparent;
   border: none;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+  font-weight: 500;
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 6px;
@@ -208,9 +208,9 @@
 }
 
 .deleteBtn {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .deleteBtn:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(var(--color-error-rgb), 0.1);
 }

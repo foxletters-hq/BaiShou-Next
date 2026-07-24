@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 17,
-    fontWeight: 'bold'
+    fontWeight: '600'
   },
   titleIcon: {
     fontSize: 10

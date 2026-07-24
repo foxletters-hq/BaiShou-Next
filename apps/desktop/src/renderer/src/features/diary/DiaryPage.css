@@ -15,8 +15,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 32px;
-  background-color: var(--bg-app);
-  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
   box-shadow: none;
   min-height: 56px;
   flex-shrink: 0;
@@ -44,7 +44,7 @@
 
 .diary-month-text {
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-left: 4px;
 }
@@ -66,15 +66,18 @@
   align-items: center;
   width: 200px;
   height: 36px;
-  background-color: var(--bg-surface-normal);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
   border-radius: 18px;
   padding: 0 12px;
+  box-sizing: border-box;
   transition: all 0.2s;
 }
 
 .diary-search-wrapper:focus-within {
-  background-color: var(--bg-surface-high);
-  box-shadow: 0 0 0 2px var(--color-primary-light);
+  background-color: var(--bg-surface);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .diary-search-icon {
@@ -90,7 +93,9 @@
   border: none;
   background: transparent;
   outline: none;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
   color: var(--text-primary);
   width: 100%;
   font-family: var(--font-family);
@@ -119,20 +124,23 @@
   background-color: var(--bg-surface-high);
 }
 
-/* 写日记按钮 */
+/* 写日记按钮 — 纯描边，无底色 */
 .diary-add-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 20px;
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
-  border: none;
+  padding: 7px 16px;
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
   border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   font-family: var(--font-family);
 }
 
@@ -143,8 +151,9 @@
 }
 
 .diary-add-btn:hover {
-  background-color: var(--color-primary-dark);
-  box-shadow: var(--shadow-glow);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
+  box-shadow: none;
 }
 
 .diary-today-btn {
@@ -231,17 +240,18 @@
   }
 }
 
-/* ── 日记卡片 ── 液态玻璃效果 */
+/* ── 日记卡片 ── 克制表面，无蓝色悬停洗色 */
 .diary-card {
   position: relative;
   overflow: hidden;
   background: var(--bg-surface);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-card);
   transition:
     background var(--duration-fast) var(--ease-in-out),
-    border-color var(--duration-fast) var(--ease-in-out);
-  box-shadow: inset 0 1px 0 rgba(var(--bg-surface-lowest-rgb), 0.1);
+    border-color var(--duration-fast) var(--ease-in-out),
+    box-shadow var(--duration-fast) var(--ease-in-out);
+  box-shadow: none;
   padding: 24px;
   padding-bottom: 56px;
   cursor: pointer;
@@ -250,27 +260,10 @@
   height: 320px;
 }
 
-/* 玻璃高光反射效果 */
-.diary-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(var(--color-outline-variant-rgb), 0.3);
-  pointer-events: none;
-}
-
 .diary-card:hover {
-  background:
-    linear-gradient(
-      rgba(var(--color-primary-rgb, 91, 168, 245), 0.05),
-      rgba(var(--color-primary-rgb, 91, 168, 245), 0.05)
-    ),
-    var(--bg-surface);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
-  box-shadow: inset 0 2px 20px rgba(var(--color-primary-rgb, 91, 168, 245), 0.08);
+  background: var(--bg-surface);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 /* 卡片头部：日期行 */
@@ -288,8 +281,8 @@
 }
 
 .diary-card-day {
-  font-size: 32px;
-  font-weight: 800;
+  font-size: 28px;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1;
 }
@@ -320,7 +313,7 @@
   border: 0.5px solid var(--color-primary);
   border-radius: var(--radius-xs);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 600;
   color: var(--color-primary);
   letter-spacing: 0.5px;
 }
@@ -579,8 +572,9 @@
   border: none;
   background: transparent;
   border-radius: var(--radius-xs);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
   transition: background-color 0.15s;
   font-family: var(--font-family);
@@ -659,6 +653,7 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.25;
   font-family: var(--font-family);
 }
 
@@ -690,7 +685,7 @@
 
 .dd-modal-title {
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 12px;
 }
@@ -838,7 +833,8 @@
 
 .diary-filter-title {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.25;
   color: var(--text-primary);
 }
 
@@ -848,7 +844,9 @@
   gap: 4px;
   background: transparent;
   border: none;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
   color: var(--text-tertiary);
   cursor: pointer;
   padding: 4px 8px;
@@ -887,7 +885,9 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
   transition: all 0.2s;
 }
 
@@ -956,7 +956,9 @@
 }
 
 .diary-pagination-info {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
   color: var(--text-tertiary);
 }
 
@@ -977,6 +979,8 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -996,6 +1000,7 @@
   min-width: 32px;
   text-align: center;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.25;
   color: var(--color-primary);
 }

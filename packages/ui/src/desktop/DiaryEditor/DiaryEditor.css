@@ -202,7 +202,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   overflow: hidden;
-  --tag-0-fg: #3b82f6;
+  --tag-0-fg: var(--color-primary);
   --tag-1-fg: #10b981;
   --tag-2-fg: #f59e0b;
   --tag-3-fg: #8b5cf6;

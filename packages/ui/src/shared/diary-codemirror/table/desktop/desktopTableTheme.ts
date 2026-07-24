@@ -3,17 +3,17 @@ import { EditorView } from '@codemirror/view'
 /** ckant 对齐的桌面表格主题（仅 .cm-table-block--desktop） */
 export const desktopTableTheme = EditorView.baseTheme({
   '.cm-table-block--desktop': {
-    '--tbl-theme-row-background': 'var(--bg-editor, #ffffff)',
-    '--tbl-theme-header-row-background': 'var(--bg-surface-normal, rgba(0, 0, 0, 0.04))',
+    '--tbl-theme-row-background': 'var(--bg-surface)',
+    '--tbl-theme-header-row-background': 'var(--bg-surface-normal)',
     '--tbl-theme-even-row-background': 'var(--tbl-theme-row-background)',
     '--tbl-theme-odd-row-background':
-      'color-mix(in srgb, var(--tbl-theme-row-background), var(--text-primary, #000) 3%)',
-    '--tbl-theme-border-color': 'var(--border-subtle, #dcdcdc)',
+      'color-mix(in srgb, var(--tbl-theme-row-background), var(--text-primary) 3%)',
+    '--tbl-theme-border-color': 'var(--border-subtle)',
     '--tbl-theme-border-hover-color':
-      'color-mix(in srgb, var(--tbl-theme-border-color), var(--text-primary, #000) 12%)',
+      'color-mix(in srgb, var(--tbl-theme-border-color), var(--text-primary) 12%)',
     '--tbl-theme-border-active-color':
-      'color-mix(in srgb, var(--tbl-theme-border-color), var(--color-primary, #2483e2) 45%)',
-    '--tbl-theme-outline-color': 'var(--color-primary, #2483e2)',
+      'color-mix(in srgb, var(--tbl-theme-border-color), var(--color-primary) 45%)',
+    '--tbl-theme-outline-color': 'var(--color-primary)',
     '--tbl-theme-text-color': 'var(--text-primary, inherit)',
     '--tbl-overlay': 'transparent',
     padding: '2px 0 6px',
@@ -393,13 +393,13 @@ export const desktopTableTheme = EditorView.baseTheme({
     position: 'absolute',
     inset: '0',
     zIndex: '340',
-    background: 'color-mix(in srgb, var(--color-primary, #2483e2) 10%, transparent)',
+    background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
     pointerEvents: 'none',
     transition: 'background 120ms ease'
   },
 
   '.cm-table-block--desktop.cm-table-block--has-active-cell .cm-tbl-select-all-overlay': {
-    background: 'color-mix(in srgb, var(--color-primary, #2483e2) 16%, transparent)'
+    background: 'color-mix(in srgb, var(--color-primary) 16%, transparent)'
   },
 
   '.cm-table-block--desktop .cm-tbl-table-handle': {

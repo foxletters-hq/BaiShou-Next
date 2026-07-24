@@ -3,34 +3,28 @@ import { EditorView } from '@codemirror/view'
 /** 工作台编辑区：全宽正文，与三栏布局对齐 */
 export const workbenchEditorTheme = EditorView.baseTheme({
   '&.workbench-cm-editor': {
-    height: '100%',
-    '--bg-editor': 'var(--wb-editor-bg, #ffffff)',
-    '--text-primary': 'var(--wb-editor-fg, #24292f)',
-    '--text-secondary': 'var(--wb-editor-fg-muted, #57606a)',
-    '--text-tertiary': 'var(--wb-editor-fg-faint, #8c959f)',
-    '--border-subtle': 'var(--wb-editor-border, #d0d7de)',
-    '--bg-surface-normal': 'var(--wb-editor-code-bg, #f6f8fa)'
+    height: '100%'
   },
   '&.workbench-cm-editor .cm-editor': {
     height: '100%',
     backgroundColor: 'transparent',
-    fontSize: 'var(--wb-editor-body-size, 16px)',
-    lineHeight: 'var(--wb-editor-body-leading, 1.7)'
+    fontSize: '16px',
+    lineHeight: '1.7'
   },
   '&.workbench-cm-editor .cm-scroller': {
     overflow: 'auto',
     fontFamily:
       "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif",
-    background: 'var(--wb-editor-bg, #ffffff)'
+    background: 'var(--bg-surface)'
   },
   '&.workbench-cm-editor .cm-content': {
     maxWidth: 'none',
     marginInline: '0',
     padding: '32px 40px 20vh',
     minHeight: '100%',
-    color: 'var(--wb-editor-fg, #24292f)',
-    caretColor: 'var(--wb-editor-fg, #24292f)',
-    background: 'var(--wb-editor-bg, #ffffff)'
+    color: 'var(--text-primary)',
+    caretColor: 'var(--text-primary)',
+    background: 'var(--bg-surface)'
   },
   '&.workbench-cm-editor .cm-line': {
     padding: '0'
@@ -80,16 +74,18 @@ export const workbenchEditorTheme = EditorView.baseTheme({
       fontWeight: '600'
     },
   '&.workbench-cm-editor .cm-line.cm-wb-hr': {
-    position: 'relative'
+    position: 'relative',
+    minHeight: '1.5em'
   },
-  '&.workbench-cm-editor .cm-line.cm-wb-hr::after': {
-    content: '""',
-    position: 'absolute',
-    left: '0',
-    right: '0',
-    top: '50%',
-    borderTop: '1px solid var(--wb-editor-border, #d0d7de)',
-    pointerEvents: 'none'
+  '&.workbench-cm-editor .cm-wb-hr-widget': {
+    display: 'inline-block',
+    width: '100%',
+    height: '0',
+    margin: '14px 0',
+    borderTop: '1px solid var(--border-control, #d6d6d6)',
+    verticalAlign: 'middle',
+    pointerEvents: 'none',
+    boxSizing: 'border-box'
   },
   '&.workbench-cm-editor .cm-rendered-link': {
     color: 'var(--color-primary, #5ba8f5)',
@@ -98,22 +94,22 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     cursor: 'pointer'
   },
   '&.workbench-cm-editor .cm-blockquote': {
-    borderLeft: '3px solid var(--wb-editor-border, #d0d7de)',
+    borderLeft: '3px solid var(--border-control)',
     paddingLeft: '1em',
-    color: 'var(--wb-editor-fg-muted, #57606a)'
+    color: 'var(--text-secondary)'
   },
   '&.workbench-cm-editor .cm-code': {
     fontFamily: "ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, monospace",
-    backgroundColor: 'var(--wb-editor-code-bg, #f6f8fa)',
+    backgroundColor: 'var(--bg-surface-low)',
     padding: '0.1em 0.35em',
     borderRadius: '4px',
     fontSize: '0.9em'
   },
   '&.workbench-cm-editor .cm-code-line': {
-    backgroundColor: 'var(--wb-editor-code-bg, #f6f8fa) !important'
+    backgroundColor: 'var(--bg-surface-low) !important'
   },
   '&.workbench-cm-editor .cm-placeholder': {
-    color: 'var(--wb-editor-fg-faint, #8c959f)',
+    color: 'var(--text-tertiary)',
     opacity: '0.75'
   }
 })
