@@ -2,15 +2,19 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   createStreamingTextDisplayBuffer,
   AgentGateReply,
-  type AgentGateRequest,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
+import {
+  selectActivePendingForSession,
+  useAgentGateInboxStore
+} from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 
 import { useBaishou } from '../providers/BaishouProvider'
 import { subscribeMobileCompressionEvents } from '../services/mobile-compression-event.service'
-import { subscribeMobileAgentGateEvents } from '../services/mobile-agent-gate.service'
+import { hydrateMobileAgentGateInbox } from '../services/mobile-agent-gate.service'
+import { setMobileAgentGateFocusedSessionId } from '../services/mobile-agent-gate-notifications'
 import { useAgentStreamBridge } from './useAgentStream-bridge'
 import { useAgentStreamFinish } from './useAgentStream-finish'
 import { useAgentStreamChat } from './useAgentStream-chat'
@@ -58,7 +62,10 @@ export function useAgentStream(
   const [compressionTriggerMessageId, setCompressionTriggerMessageId] = useState<string | null>(
     null
   )
-  const [pendingAgentGate, setPendingAgentGate] = useState<AgentGateRequest | null>(null)
+  const pendingAgentGate = useAgentGateInboxStore((state) =>
+    selectActivePendingForSession(state, currentSessionId)
+  )
+  const [isAgentGateReplying, setIsAgentGateReplying] = useState(false)
 
   const searchModeRef = useRef(searchMode)
   searchModeRef.current = searchMode
@@ -67,8 +74,6 @@ export function useAgentStream(
   const activeToolRef = useRef<ToolCallInfo | null>(null)
   const currentSessionIdRef = useRef(currentSessionId)
   currentSessionIdRef.current = currentSessionId
-  const pendingAgentGateIdRef = useRef<string | null>(null)
-  pendingAgentGateIdRef.current = pendingAgentGate?.id ?? null
   const streamingTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const streamingReasoningDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
   const compressionTextDisplayRef = useRef<StreamingTextDisplayBuffer | null>(null)
@@ -300,21 +305,14 @@ export function useAgentStream(
   }, [bridge, finish, services])
 
   useEffect(() => {
-    return subscribeMobileAgentGateEvents((event) => {
-      if (event.type === 'agent_gate.allowlist_changed') return
-      if (event.type === 'agent_gate.asked') {
-        if (event.request.sessionId !== currentSessionIdRef.current) return
-        setPendingAgentGate(event.request)
-        return
+    setMobileAgentGateFocusedSessionId(currentSessionId)
+    void hydrateMobileAgentGateInbox()
+    return () => {
+      if (currentSessionIdRef.current === currentSessionId) {
+        setMobileAgentGateFocusedSessionId(null)
       }
-      if (event.type === 'agent_gate.replied') {
-        if (event.sessionId !== currentSessionIdRef.current) return
-        if (pendingAgentGateIdRef.current === event.requestId) {
-          setPendingAgentGate(null)
-        }
-      }
-    })
-  }, [])
+    }
+  }, [currentSessionId])
 
   const replyAgentGate = useCallback(
     async (
@@ -326,15 +324,16 @@ export function useAgentStream(
         toast.showError(t('agent_gate.unavailable', '操作确认服务未就绪'))
         return
       }
+      setIsAgentGateReplying(true)
       try {
         await agentGate.reply({ requestId, reply, ...extras })
-        if (pendingAgentGateIdRef.current === requestId) {
-          setPendingAgentGate(null)
-        }
+        useAgentGateInboxStore.getState().removeReplied(requestId)
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         toast.showError(msg || t('agent_gate.reply_failed', '确认操作失败'))
         throw e
+      } finally {
+        setIsAgentGateReplying(false)
       }
     },
     [agentGate, toast, t]
@@ -368,6 +367,7 @@ export function useAgentStream(
     completedTools,
     pendingEmojis,
     pendingAgentGate,
+    isAgentGateReplying,
     replyAgentGate,
     handleSend: chat.handleSend,
     handleStop: actions.handleStop,
