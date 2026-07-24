@@ -21,7 +21,9 @@
     "src/hooks/**/*",
     "src/theme/**/*",
     "src/utils/**/*",
-    "src/assets/**/*"
+    "src/assets/**/*",
+    "src/shared/editor-menus/**/*",
+    "src/shared/diary-codemirror/**/*"
   ],
   "exclude": ["src/native/**/*"]
 }

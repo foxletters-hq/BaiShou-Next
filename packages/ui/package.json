@@ -9,6 +9,7 @@
     "./chat-attachment-thumbnail": "./src/chat-attachment-thumbnail.ts",
     "./shared/diary-codemirror": "./src/shared/diary-codemirror/index.ts",
     "./shared/diary-codemirror/*": "./src/shared/diary-codemirror/*",
+    "./shared/editor-menus": "./src/shared/editor-menus/index.ts",
     "./shared/composer-draft": "./src/shared/composer-draft/index.ts",
     "./desktop/*": "./src/desktop/*",
     "./native/*": "./src/native/*",
