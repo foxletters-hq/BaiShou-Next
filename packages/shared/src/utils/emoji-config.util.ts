@@ -88,9 +88,6 @@ export function upsertEmojiGroup(config: EmojiToolConfig, group: EmojiGroup): Em
 
 export function removeEmojiGroup(config: EmojiToolConfig, groupId: string): EmojiToolConfig {
   const normalized = normalizeEmojiToolConfig(config)
-  if (normalized.groups.length <= 1) {
-    return normalized
-  }
   return {
     ...normalized,
     groups: normalized.groups.filter((group) => group.id !== groupId)
