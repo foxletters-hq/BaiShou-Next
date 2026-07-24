@@ -40,11 +40,17 @@ export const MissingSummaryCard: React.FC<MissingSummaryCardProps> = ({
         </View>
       </View>
       <TouchableOpacity
-        style={[styles.btn, { backgroundColor: colors.accentPurple + '20' }]}
+        style={[
+          styles.btn,
+          {
+            backgroundColor: 'transparent',
+            borderColor: colors.borderControl
+          }
+        ]}
         onPress={onGenerate}
         activeOpacity={0.8}
       >
-        <Text style={[styles.btnIcon, { color: colors.accentPurple }]}>✨</Text>
+        <Text style={[styles.btnIcon, { color: colors.textPrimary }]}>✨</Text>
       </TouchableOpacity>
     </View>
   )
@@ -100,6 +106,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 12

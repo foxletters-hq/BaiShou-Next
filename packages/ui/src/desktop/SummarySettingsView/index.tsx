@@ -3,12 +3,12 @@ import styles from './SummarySettingsView.module.css'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
 import { SettingsPageChrome } from '../shared/SettingsPageChrome'
-import { CodeMirrorEditor } from '../DiaryEditor/CodeMirrorEditor'
+import stack from '../shared/SettingsStack.module.css'
+import { HelpTooltip } from '../HelpTooltip'
 import { Switch } from '../Switch/Switch'
 import { Modal } from '../Modal/Modal'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
-import '../DiaryEditor/DiaryEditor.css'
-import seg from '../shared/SegmentedControl.module.css'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import {
   clampSharedMemoryLookbackMonths,
   DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS,
@@ -17,11 +17,15 @@ import {
   SHARED_MEMORY_LOOKBACK_SLIDER_BASE,
   SHARED_MEMORY_LOOKBACK_MIN,
   SUMMARY_PROMPT_LOCALE_OPTIONS,
+  type SharedMemoryCopyPreview,
   type SummaryGenerationMode,
   type SummaryPromptLocale,
   type SummaryTemplateKey,
   type SummaryTemplatesMap
 } from '@baishou/shared'
+import { Loader2 } from 'lucide-react'
+import { formatCompactTokenCount } from '../../shared/token-usage-display'
+import '../DashboardSharedMemoryCard/DashboardSharedMemoryCard.css'
 
 export interface SummarySettingsAssistantOption {
   id: string
@@ -73,7 +77,6 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
       config.customGenerationSystemPromptByLocale?.[config.promptLocale]?.trim() ||
       getDefaultCustomGenerationSystemPrompt(config.promptLocale)
   )
-  const [resetKey, setResetKey] = useState(0)
   const [partnerPickerOpen, setPartnerPickerOpen] = useState(false)
   const systemPromptDirtyRef = useRef(false)
   const localSystemPromptRef = useRef(localSystemPrompt)
@@ -92,11 +95,59 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
   const lookbackDraggingRef = useRef(false)
   lookbackDraftRef.current = lookbackDraft
   const selectedPartner = assistants.find((a) => a.id === config.generationAssistantId)
+  const injectEnabled = config.injectSharedMemoryBeforeGenerate
+  const [injectPreview, setInjectPreview] = useState<SharedMemoryCopyPreview | null>(null)
+  const [injectPreviewLoading, setInjectPreviewLoading] = useState(false)
 
   useEffect(() => {
     if (lookbackDraggingRef.current) return
     setLookbackDraft(lookback)
   }, [lookback])
+
+  useEffect(() => {
+    if (!injectEnabled) {
+      setInjectPreview(null)
+      setInjectPreviewLoading(false)
+      return undefined
+    }
+
+    let cancelled = false
+    setInjectPreviewLoading(true)
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const api = (window as Window & {
+            api?: {
+              summary?: {
+                buildSharedContextPreview?: (
+                  months: number
+                ) => Promise<SharedMemoryCopyPreview | null>
+              }
+              rag?: {
+                buildSharedContextPreview?: (
+                  months: number
+                ) => Promise<SharedMemoryCopyPreview | null>
+              }
+            }
+          }).api
+          const preview =
+            (await api?.summary?.buildSharedContextPreview?.(lookbackDraft)) ??
+            (await api?.rag?.buildSharedContextPreview?.(lookbackDraft)) ??
+            null
+          if (!cancelled) setInjectPreview(preview)
+        } catch {
+          if (!cancelled) setInjectPreview(null)
+        } finally {
+          if (!cancelled) setInjectPreviewLoading(false)
+        }
+      })()
+    }, 280)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [injectEnabled, lookbackDraft])
 
   useEffect(() => {
     setDraftTemplates(config.instructionsByLocale)
@@ -178,7 +229,6 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     setDraftTemplates(nextDraft)
     setActiveTab(tab)
     setLocalText(getSummaryTemplateForEdit(nextDraft, activePromptLocale, tab))
-    setResetKey((prev) => prev + 1)
   }
 
   const handlePromptLocaleChange = (locale: SummaryPromptLocale) => {
@@ -195,7 +245,6 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
       customGenerationSystemPromptByLocale[locale]?.trim() ||
         getDefaultCustomGenerationSystemPrompt(locale)
     )
-    setResetKey((prev) => prev + 1)
     onChange(
       {
         ...config,
@@ -215,7 +264,6 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
       config.customGenerationSystemPromptByLocale?.[config.promptLocale]?.trim() ||
         getDefaultCustomGenerationSystemPrompt(config.promptLocale)
     )
-    setResetKey((prev) => prev + 1)
     // Only react to generation-locale changes from general settings.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: activeTab kept as-is
   }, [config.promptLocale])
@@ -250,7 +298,6 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     if (!onResetTemplate) return
     const defaultText = onResetTemplate(activeTab, activePromptLocale)
     setLocalText(defaultText)
-    setResetKey((prev) => prev + 1)
     const instructionsByLocale = patchLocaleTemplates(activePromptLocale, activeTab, defaultText)
     setDraftTemplates(instructionsByLocale)
     onChange(
@@ -332,30 +379,39 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
 
   return (
     <SettingsPageChrome title={t('settings.summary_settings_title', '回忆生成设置')}>
-      <div className={styles.container}>
-        <div className={styles.pageCard}>
-          <div className={styles.section}>
-            <div className={styles.cardTitleLine}>
-              <span>{t('settings.summary_generation_mode_title', 'Generation mode')}</span>
-            </div>
-            <p className={styles.cardDesc}>
-              {t(
+      <div className={stack.stack}>
+        <div className={stack.stackGroup}>
+          <div className={stack.sectionLabelRow}>
+            <h3 className={stack.sectionLabel}>
+              {t('settings.summary_generation_mode_title', 'Generation mode')}
+            </h3>
+            <HelpTooltip
+              size={14}
+              content={t(
                 'settings.summary_generation_mode_desc',
                 'Write a custom generation-assistant prompt, or reuse a partner’s persona. Both modes use the global summary model.'
               )}
-            </p>
-            <div className={seg.group}>
-              <button
-                type="button"
-                className={`${seg.btn} ${config.generationMode === 'prompt' ? seg.btnActive : ''}`}
-                onClick={() => emitSettings({ generationMode: 'prompt' })}
-              >
-                {t('settings.summary_generation_mode_prompt', 'Custom prompt')}
-              </button>
-              <button
-                type="button"
-                className={`${seg.btn} ${config.generationMode === 'assistant' ? seg.btnActive : ''}`}
-                onClick={() => {
+            />
+          </div>
+          <section className={stack.cardSection}>
+            <div className={styles.sectionBody}>
+              <SegmentedControl
+                value={config.generationMode}
+                options={[
+                  {
+                    value: 'prompt',
+                    label: t('settings.summary_generation_mode_prompt', 'Custom prompt')
+                  },
+                  {
+                    value: 'assistant',
+                    label: t('settings.summary_generation_mode_assistant', 'Reuse partner')
+                  }
+                ]}
+                onChange={(generationMode) => {
+                  if (generationMode === 'prompt') {
+                    emitSettings({ generationMode: 'prompt' })
+                    return
+                  }
                   if (assistants.length === 0) {
                     toast.showError(
                       t(
@@ -375,307 +431,426 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
                     generationAssistantId: nextId
                   })
                 }}
-              >
-                {t('settings.summary_generation_mode_assistant', 'Reuse partner')}
-              </button>
-            </div>
+              />
 
-            {config.generationMode === 'prompt' && (
-              <div className={styles.systemPromptBlock}>
-                <div className={styles.subsectionTitle}>
-                  {t('settings.summary_custom_system_prompt_title', 'Generation assistant prompt')}
-                </div>
-                <p className={styles.cardDesc}>
-                  {t(
-                    'settings.summary_custom_system_prompt_desc',
-                    'System prompt for the summary-writing assistant in custom prompt mode. Empty falls back to the built-in default.'
-                  )}
-                </p>
-                <div className={styles.langBar}>
-                  {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
+              {config.generationMode === 'prompt' && (
+                <div className={styles.systemPromptBlock}>
+                  <div className={styles.subsectionTitleRow}>
+                    <div className={styles.subsectionTitle}>
+                      {t(
+                        'settings.summary_custom_system_prompt_title',
+                        'Generation assistant prompt'
+                      )}
+                    </div>
+                    <HelpTooltip
+                      size={14}
+                      content={t(
+                        'settings.summary_custom_system_prompt_desc',
+                        'System prompt for the summary-writing assistant in custom prompt mode. Empty falls back to the built-in default.'
+                      )}
+                    />
+                  </div>
+                  <div className={styles.langBar}>
+                    {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
+                      <button
+                        key={lang.id}
+                        type="button"
+                        className={`${styles.langChip} ${activePromptLocale === lang.id ? styles.langChipActive : ''} ${config.promptLocale === lang.id ? styles.langChipGeneration : ''}`}
+                        onClick={() => handlePromptLocaleChange(lang.id)}
+                      >
+                        {t(lang.labelKey, lang.fallback)}
+                      </button>
+                    ))}
+                  </div>
+                  <p className={styles.localeHint}>
+                    {t('settings.summary_prompt_locale_hint', '正在编辑提示词语言')}:{' '}
+                    <strong>{activeLocaleLabel}</strong>
+                  </p>
+                  <textarea
+                    className={styles.systemPromptArea}
+                    value={localSystemPrompt}
+                    onChange={(e) => {
+                      systemPromptDirtyRef.current = true
+                      setLocalSystemPrompt(e.target.value)
+                    }}
+                    onBlur={() => emitSettings()}
+                    rows={8}
+                    placeholder={t(
+                      'settings.summary_custom_system_prompt_hint',
+                      'e.g. You are a warm memory companion who writes concise, faithful summaries…'
+                    )}
+                  />
+                  <div className={styles.actionsRow}>
                     <button
-                      key={lang.id}
                       type="button"
-                      className={`${styles.langChip} ${activePromptLocale === lang.id ? styles.langChipActive : ''} ${config.promptLocale === lang.id ? styles.langChipGeneration : ''}`}
-                      onClick={() => handlePromptLocaleChange(lang.id)}
+                      className={styles.resetBtn}
+                      onClick={handleResetSystemPrompt}
                     >
-                      {t(lang.labelKey, lang.fallback)}
+                      {t('settings.restore_default', 'Restore default')}
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      className={styles.saveBtn}
+                      onClick={() => {
+                        emitSettings()
+                        toast.showSuccess(t('settings.saved', 'Saved'))
+                      }}
+                    >
+                      {t('common.save', 'Save')}
+                    </button>
+                  </div>
                 </div>
-                <textarea
-                  className={styles.systemPromptArea}
-                  value={localSystemPrompt}
-                  onChange={(e) => {
-                    systemPromptDirtyRef.current = true
-                    setLocalSystemPrompt(e.target.value)
-                  }}
-                  onBlur={() => emitSettings()}
-                  rows={8}
-                  placeholder={t(
-                    'settings.summary_custom_system_prompt_hint',
-                    'e.g. You are a warm memory companion who writes concise, faithful summaries…'
-                  )}
-                />
-                <div className={styles.actionsRow}>
+              )}
+
+              {config.generationMode === 'assistant' && (
+                <div className={styles.assistantPickRow}>
+                  <div className={styles.subsectionTitle}>
+                    {t(
+                      'settings.summary_generation_assistant_label',
+                      'Summary generation partner'
+                    )}
+                  </div>
                   <button
                     type="button"
-                    className={styles.resetBtn}
-                    onClick={handleResetSystemPrompt}
+                    className={styles.partnerCard}
+                    onClick={() => setPartnerPickerOpen(true)}
                   >
-                    {t('settings.restore_default', 'Restore default')}
+                    {renderPartnerAvatar(selectedPartner)}
+                    <span className={styles.partnerMeta}>
+                      <span className={styles.partnerName}>
+                        {selectedPartner?.name ||
+                          t(
+                            'settings.summary_generation_assistant_placeholder',
+                            'Choose a partner'
+                          )}
+                      </span>
+                      <span className={styles.partnerHint}>
+                        {t('settings.summary_generation_partner_change', 'Tap to change')}
+                      </span>
+                    </span>
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          </section>
+        </div>
 
-            {config.generationMode === 'assistant' && (
-              <div className={styles.assistantPickRow}>
-                <div className={styles.subsectionTitle}>
-                  {t('settings.summary_generation_assistant_label', 'Summary generation partner')}
-                </div>
-                <button
-                  type="button"
-                  className={styles.partnerCard}
-                  onClick={() => setPartnerPickerOpen(true)}
-                >
-                  {renderPartnerAvatar(selectedPartner)}
-                  <span className={styles.partnerMeta}>
-                    <span className={styles.partnerName}>
-                      {selectedPartner?.name ||
-                        t('settings.summary_generation_assistant_placeholder', 'Choose a partner')}
-                    </span>
-                    <span className={styles.partnerHint}>
-                      {t('settings.summary_generation_partner_change', 'Tap to change')}
-                    </span>
-                  </span>
-                </button>
-              </div>
-            )}
+        <div className={stack.stackGroup}>
+          <div className={stack.sectionLabelRow}>
+            <h3 className={stack.sectionLabel}>
+              {t('settings.summary_inject_shared_memory', 'Inject shared memory before generation')}
+            </h3>
+            <HelpTooltip
+              size={14}
+              content={t(
+                'settings.summary_inject_shared_memory_desc',
+                'When on, shared memory from the months before this period is inserted between the template and this period’s raw data for continuity.'
+              )}
+            />
           </div>
-
-          <div className={styles.section}>
-            <div className={styles.injectRow}>
-              <div className={styles.injectText}>
-                <div className={styles.subsectionTitle}>
-                  {t(
-                    'settings.summary_inject_shared_memory',
-                    'Inject shared memory before generation'
-                  )}
-                </div>
-                <p className={styles.cardDesc}>
-                  {t(
-                    'settings.summary_inject_shared_memory_desc',
-                    'When on, shared memory from the months before this period is inserted between the template and this period’s raw data for continuity.'
-                  )}
-                </p>
-              </div>
+          <section className={stack.cardSection}>
+            <div className={styles.injectToggleRow}>
+              <span className={styles.injectToggleLabel}>
+                {t('settings.summary_inject_enabled', '开启注入')}
+              </span>
               <Switch
-                checked={config.injectSharedMemoryBeforeGenerate}
+                size="sm"
+                checked={injectEnabled}
                 onChange={(e) =>
                   emitSettings({
                     injectSharedMemoryBeforeGenerate: e.target.checked
                   })
                 }
+                aria-label={t('settings.summary_inject_enabled', '开启注入')}
               />
             </div>
 
-            {config.injectSharedMemoryBeforeGenerate && (
-              <div className={styles.lookbackSliderBlock}>
-                <div className={styles.lookbackLabelRow}>
-                  <label className={styles.fieldLabel} htmlFor="summary-inject-lookback">
-                    {t('settings.summary_inject_lookback_label', 'Lookback months')}
-                  </label>
-                  <input
-                    id="summary-inject-lookback"
-                    type="number"
-                    min={SHARED_MEMORY_LOOKBACK_MIN}
-                    className={styles.lookbackInput}
-                    value={lookbackDraft}
-                    onChange={(e) => previewLookback(Number(e.target.value))}
-                    onBlur={() => commitLookback()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.currentTarget.blur()
-                      }
-                    }}
-                  />
-                </div>
-                <div className={styles.lookbackSliderContainer}>
-                  <input
-                    type="range"
-                    min={SHARED_MEMORY_LOOKBACK_MIN}
-                    max={sliderMax}
-                    step={1}
-                    value={Math.min(lookbackDraft, sliderMax)}
-                    onChange={(e) => {
-                      lookbackDraggingRef.current = true
-                      previewLookback(Number(e.target.value))
-                    }}
-                    onPointerUp={() => commitLookback()}
-                    onMouseUp={() => commitLookback()}
-                    onTouchEnd={() => commitLookback()}
-                    onKeyUp={(e) => {
-                      if (
-                        e.key === 'ArrowLeft' ||
-                        e.key === 'ArrowRight' ||
-                        e.key === 'Home' ||
-                        e.key === 'End' ||
-                        e.key === 'PageUp' ||
-                        e.key === 'PageDown'
-                      ) {
-                        commitLookback()
-                      }
-                    }}
-                    className={styles.lookbackSlider}
-                    style={{ backgroundSize: `${sliderPct}% 100%` }}
-                    aria-label={t('settings.summary_inject_lookback_label', 'Lookback months')}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+            {injectEnabled && (
+              <>
+                <div className={styles.injectDivider} />
+                <div className={styles.injectBody}>
+                  <div className="sm-controls" style={{ marginBottom: 0 }}>
+                    <div className="sm-label-row">
+                      <label className={styles.injectLookbackLabel} htmlFor="summary-inject-lookback">
+                        {t('settings.summary_inject_lookback_label', '回溯月数')}
+                      </label>
+                      <input
+                        id="summary-inject-lookback"
+                        type="number"
+                        min={SHARED_MEMORY_LOOKBACK_MIN}
+                        className="sm-number-input"
+                        value={lookbackDraft}
+                        onChange={(e) => previewLookback(Number(e.target.value))}
+                        onBlur={() => commitLookback()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur()
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="sm-slider-container">
+                      <input
+                        type="range"
+                        min={SHARED_MEMORY_LOOKBACK_MIN}
+                        max={sliderMax}
+                        step={1}
+                        value={Math.min(lookbackDraft, sliderMax)}
+                        onChange={(e) => {
+                          lookbackDraggingRef.current = true
+                          previewLookback(Number(e.target.value))
+                        }}
+                        onPointerUp={() => commitLookback()}
+                        onMouseUp={() => commitLookback()}
+                        onTouchEnd={() => commitLookback()}
+                        onKeyUp={(e) => {
+                          if (
+                            e.key === 'ArrowLeft' ||
+                            e.key === 'ArrowRight' ||
+                            e.key === 'Home' ||
+                            e.key === 'End' ||
+                            e.key === 'PageUp' ||
+                            e.key === 'PageDown'
+                          ) {
+                            commitLookback()
+                          }
+                        }}
+                        className="sm-slider"
+                        style={{ backgroundSize: `${sliderPct}% 100%` }}
+                        aria-label={t('settings.summary_inject_lookback_label', '回溯月数')}
+                      />
+                    </div>
+                  </div>
 
-          <div className={styles.section}>
-            <div className={styles.cardTitleLine}>
-              <span>{t('settings.summary_data_sources_title', 'What each summary reads')}</span>
-            </div>
-            <p className={styles.cardDesc}>
-              {t(
+                  {injectPreviewLoading && !injectPreview ? (
+                    <div className="sm-preview sm-previewLoading">
+                      <Loader2 size={14} className="sm-previewSpinner" />
+                      <span>
+                        {t('settings.summary_inject_preview_loading', '正在统计预计发送内容…')}
+                      </span>
+                    </div>
+                  ) : injectPreview ? (
+                    <div className="sm-preview" style={{ marginBottom: 0 }}>
+                      <div className="sm-previewTitle">
+                        {t('settings.summary_inject_preview_title', '预计发送内容')}
+                        {injectPreviewLoading ? (
+                          <Loader2 size={12} className="sm-previewSpinnerInline" />
+                        ) : null}
+                      </div>
+                      {injectPreview.total === 0 ? (
+                        <p className="sm-previewEmpty">
+                          {t(
+                            'summary.copy_preview_empty',
+                            '当前回溯范围内暂无可复制内容'
+                          )}
+                        </p>
+                      ) : (
+                        <>
+                          <div className="sm-previewChips">
+                            {(
+                              [
+                                {
+                                  key: 'diary',
+                                  label: t('summary.copy_preview_diary', '日记'),
+                                  count: injectPreview.diary
+                                },
+                                {
+                                  key: 'yearly',
+                                  label: t('summary.copy_preview_yearly', '年总结'),
+                                  count: injectPreview.yearly
+                                },
+                                {
+                                  key: 'quarterly',
+                                  label: t('summary.copy_preview_quarterly', '季度总结'),
+                                  count: injectPreview.quarterly
+                                },
+                                {
+                                  key: 'monthly',
+                                  label: t('summary.copy_preview_monthly', '月总结'),
+                                  count: injectPreview.monthly
+                                },
+                                {
+                                  key: 'weekly',
+                                  label: t('summary.copy_preview_weekly', '周总结'),
+                                  count: injectPreview.weekly
+                                }
+                              ] as const
+                            )
+                              .filter((item) => item.count > 0)
+                              .map((item) => (
+                                <span key={item.key} className="sm-previewChip">
+                                  {item.label} {item.count}
+                                  {t('summary.copy_preview_unit', '篇')}
+                                </span>
+                              ))}
+                          </div>
+                          <p className="sm-previewTotal">
+                            {t('summary.copy_preview_total', '共 {{count}} 项', {
+                              count: injectPreview.total
+                            })}
+                          </p>
+                          <p className="sm-previewSize">
+                            {t(
+                              'summary.copy_preview_estimated_size',
+                              '约 {{chars}} 字 · 约 {{tokens}} tokens',
+                              {
+                                chars: injectPreview.estimatedChars.toLocaleString(),
+                                tokens: formatCompactTokenCount(injectPreview.estimatedTokens)
+                              }
+                            )}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+
+        <div className={stack.stackGroup}>
+          <div className={stack.sectionLabelRow}>
+            <h3 className={stack.sectionLabel}>
+              {t('settings.summary_data_sources_title', 'What each summary reads')}
+            </h3>
+            <HelpTooltip
+              size={14}
+              content={t(
                 'settings.summary_data_sources_desc',
                 'When generating each type of summary, BaiShou reads the following sources for that period.'
               )}
-            </p>
-            <ul className={styles.dataSourceList}>
-              <li>{t('settings.summary_data_source_weekly', 'Weekly: diaries within that week')}</li>
-              <li>
-                {t(
-                  'settings.summary_data_source_monthly',
-                  'Monthly: always reads this month’s weeklies; the switch below adds this month’s diaries'
-                )}
-              </li>
-              <li>
-                {t(
-                  'settings.summary_data_source_quarterly',
-                  'Quarterly: monthly summaries in that quarter'
-                )}
-              </li>
-              <li>
-                {t(
-                  'settings.summary_data_source_yearly',
-                  'Yearly: quarterly summaries in that year'
-                )}
-              </li>
-            </ul>
-
-            <div className={styles.cardTitleLine}>
-              <span>{t('settings.monthly_summary_data_source', 'Monthly summary data source')}</span>
-            </div>
-            <p className={styles.cardDesc}>
-              {t(
-                'settings.monthly_summary_data_source_desc',
-                'Both options read this month’s weeklies; optionally also include this month’s diaries for more detail'
-              )}
-            </p>
-
-            <div className={seg.group}>
-              <button
-                type="button"
-                className={`${seg.btn} ${config.monthlySummarySource === 'weeklies' ? seg.btnActive : ''}`}
-                onClick={() => emitSettings({ monthlySummarySource: 'weeklies' })}
-              >
-                {t('settings.read_only_weeklies', 'Weeklies only')}
-              </button>
-              <button
-                type="button"
-                className={`${seg.btn} ${config.monthlySummarySource === 'diaries' ? seg.btnActive : ''}`}
-                onClick={() => emitSettings({ monthlySummarySource: 'diaries' })}
-              >
-                {t('settings.read_all_diaries', 'Weeklies + diaries')}
-              </button>
-            </div>
+            />
           </div>
-
-          <div className={styles.section}>
-            <div className={styles.cardTitleLine}>
-              <span>
-                {t('settings.summary_generation_templates_title', 'Summary generation templates')}
-              </span>
+          <section className={stack.cardSection}>
+            <div className={styles.sectionBody}>
+              <ul className={styles.dataSourceList}>
+                <li>
+                  {t('settings.summary_data_source_weekly', 'Weekly: diaries within that week')}
+                </li>
+                <li>
+                  {t(
+                    'settings.summary_data_source_monthly',
+                    'Monthly: always reads this month’s weeklies; the switch below adds this month’s diaries'
+                  )}
+                </li>
+                <li>
+                  {t(
+                    'settings.summary_data_source_quarterly',
+                    'Quarterly: monthly summaries in that quarter'
+                  )}
+                </li>
+                <li>
+                  {t(
+                    'settings.summary_data_source_yearly',
+                    'Yearly: quarterly summaries in that year'
+                  )}
+                </li>
+              </ul>
             </div>
-            <p className={styles.cardDesc}>
-              {t(
+            <div className={stack.divider} />
+            <div className={styles.sectionBody}>
+              <div className={styles.subsectionTitleRow}>
+                <div className={styles.subsectionTitle}>
+                  {t('settings.monthly_summary_data_source', 'Monthly summary data source')}
+                </div>
+                <HelpTooltip
+                  size={14}
+                  content={t(
+                    'settings.monthly_summary_data_source_desc',
+                    'Both options read this month’s weeklies; optionally also include this month’s diaries for more detail'
+                  )}
+                />
+              </div>
+              <SegmentedControl
+                value={config.monthlySummarySource}
+                options={[
+                  {
+                    value: 'weeklies',
+                    label: t('settings.read_only_weeklies', 'Weeklies only')
+                  },
+                  {
+                    value: 'diaries',
+                    label: t('settings.read_all_diaries', 'Weeklies + diaries')
+                  }
+                ]}
+                onChange={(monthlySummarySource) => emitSettings({ monthlySummarySource })}
+              />
+            </div>
+          </section>
+        </div>
+
+        <div className={stack.stackGroup}>
+          <div className={stack.sectionLabelRow}>
+            <h3 className={stack.sectionLabel}>
+              {t('settings.summary_generation_templates_title', 'Summary generation templates')}
+            </h3>
+            <HelpTooltip
+              size={14}
+              content={t(
                 'settings.summary_generation_templates_desc',
                 'User-side templates for weekly, monthly, quarterly and yearly summaries. Customize per language below.'
               )}
-            </p>
+            />
+          </div>
+          <section className={stack.cardSection}>
+            <div className={styles.sectionBody}>
+              <div className={styles.langBar}>
+                {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
+                  <button
+                    key={lang.id}
+                    type="button"
+                    className={`${styles.langChip} ${activePromptLocale === lang.id ? styles.langChipActive : ''} ${config.promptLocale === lang.id ? styles.langChipGeneration : ''}`}
+                    onClick={() => handlePromptLocaleChange(lang.id)}
+                  >
+                    {t(lang.labelKey, lang.fallback)}
+                  </button>
+                ))}
+              </div>
+              <p className={styles.localeHint}>
+                {t('settings.summary_prompt_editing_locale', '正在编辑模板语言')}:{' '}
+                <strong>{activeLocaleLabel}</strong>
+              </p>
+              <p className={styles.localeHintMeta}>
+                {t(
+                  'settings.summary_prompt_generation_locale',
+                  '自动生成总结时使用「常规设置」所选语言的模板。'
+                )}
+              </p>
 
-            <p className={styles.localeHint}>
-              {t('settings.summary_prompt_locale_hint', 'Prompt language for generation')}:{' '}
-              <strong>
-                {SUMMARY_PROMPT_LOCALE_OPTIONS.find((l) => l.id === config.promptLocale)?.fallback ??
-                  config.promptLocale}
-              </strong>
-              {activePromptLocale !== config.promptLocale && (
-                <>
-                  {' · '}
-                  {t('settings.summary_prompt_editing_locale', 'Editing')}: {activeLocaleLabel}
-                </>
-              )}
-              {' · '}
-              {t(
-                'settings.summary_prompt_generation_locale',
-                'Summaries use templates under “Generation language” unless you change it when saving.'
-              )}
-            </p>
+              <SegmentedControl
+                stretch
+                spaced
+                value={activeTab}
+                options={tabs.map((tab) => ({
+                  value: tab.id,
+                  label: tab.label
+                }))}
+                onChange={handleTabChange}
+              />
 
-            <div className={styles.langBar}>
-              {SUMMARY_PROMPT_LOCALE_OPTIONS.map((lang) => (
-                <button
-                  key={lang.id}
-                  type="button"
-                  className={`${styles.langChip} ${activePromptLocale === lang.id ? styles.langChipActive : ''} ${config.promptLocale === lang.id ? styles.langChipGeneration : ''}`}
-                  onClick={() => handlePromptLocaleChange(lang.id)}
-                >
-                  {t(lang.labelKey, lang.fallback)}
-                </button>
-              ))}
-            </div>
-
-            <div className={`${seg.group} ${seg.groupStretch} ${seg.groupSpaced}`}>
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`${seg.btn} ${activeTab === tab.id ? seg.btnActive : ''}`}
-                  onClick={() => handleTabChange(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className={styles.textAreaWrapper}>
-              <div className={styles.milkdownContainer}>
-                <CodeMirrorEditor
-                  key={`${activePromptLocale}-${activeTab}-${resetKey}`}
-                  content={localText}
-                  onChange={(val) => setLocalText(val || '')}
+              <div className={styles.textAreaWrapper}>
+                <textarea
+                  className={styles.systemPromptArea}
+                  value={localText}
+                  onChange={(e) => setLocalText(e.target.value)}
+                  rows={8}
                   placeholder={t(
                     'settings.summary_ai_prompt_hint',
                     'Write guidelines for AI when extracting and generating summaries...'
                   )}
                 />
-              </div>
-              <div className={styles.actionsRow}>
-                <button type="button" className={styles.resetBtn} onClick={handleReset}>
-                  {t('settings.restore_default', 'Restore default')}
-                </button>
-                <button type="button" className={styles.saveBtn} onClick={handleSave}>
-                  {t('common.save', 'Save')}
-                </button>
+                <div className={styles.actionsRow}>
+                  <button type="button" className={styles.resetBtn} onClick={handleReset}>
+                    {t('settings.restore_default', 'Restore default')}
+                  </button>
+                  <button type="button" className={styles.saveBtn} onClick={handleSave}>
+                    {t('common.save', 'Save')}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </section>
         </div>
 
         <Modal
@@ -686,7 +861,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
         >
           <div className={styles.partnerPickerList}>
             {assistants.length === 0 ? (
-              <p className={styles.cardDesc}>
+              <p className={styles.emptyHint}>
                 {t(
                   'settings.summary_generation_assistant_required',
                   'Create a partner first, then come back.'
