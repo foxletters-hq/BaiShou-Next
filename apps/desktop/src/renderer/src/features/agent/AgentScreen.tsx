@@ -6,7 +6,8 @@ import {
   ContextChainPanel,
   useTheme,
   getProviderIcon,
-  toast
+  toast,
+  AgentGateDock
 } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
 import {
@@ -15,8 +16,12 @@ import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId
 } from '@baishou/shared'
+import {
+  selectQueuePosition,
+  selectSameActionCountInSession,
+  useAgentGateInboxStore
+} from '@baishou/store'
 import { AgentDialogs } from './components/AgentDialogs'
-import { AgentGateDock } from '@baishou/ui'
 import { AgentMessageList } from './components/AgentMessageList'
 import { AgentChatChrome } from './components/AgentChatChrome'
 import chromeStyles from './components/AgentChatChrome.module.css'
@@ -59,7 +64,19 @@ export const AgentScreen: React.FC = () => {
 
   const composerDraftStorage = useMemo(() => createWebComposerDraftStorage(), [])
   const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
+  const pendingGate = flow.stream.pendingAgentGate
+  const hasPendingGate = Boolean(pendingGate)
+  const gateQueueIndex = useAgentGateInboxStore(
+    (state) => selectQueuePosition(state, flow.sessionId, pendingGate?.id).index
+  )
+  const gateQueueTotal = useAgentGateInboxStore(
+    (state) => selectQueuePosition(state, flow.sessionId, pendingGate?.id).total
+  )
+  const sameActionCount = useAgentGateInboxStore((state) =>
+    selectSameActionCountInSession(state, flow.sessionId, pendingGate?.action)
+  )
   const composerBlocked =
+    hasPendingGate ||
     !isConfiguredProviderId(flow.model.currentProviderId) ||
     !isConfiguredDialogueModelId(flow.model.currentModelId)
 
@@ -177,12 +194,6 @@ export const AgentScreen: React.FC = () => {
         inputBarRef={flow.inputBarRef}
       />
 
-      <AgentGateDock
-        request={flow.stream.pendingAgentGate}
-        isReplying={flow.stream.isAgentGateReplying}
-        onReply={flow.stream.replyAgentGate}
-      />
-
       {flow.contextDialogState.flatEntries && (
         <ContextChainPanel
           key={flow.contextDialogState.message?.id ?? 'context-chain'}
@@ -270,6 +281,15 @@ export const AgentScreen: React.FC = () => {
               </svg>
             </button>
           )}
+          <AgentGateDock
+            request={pendingGate}
+            isReplying={flow.stream.isAgentGateReplying}
+            onReply={flow.stream.replyAgentGate}
+            queueIndex={gateQueueIndex}
+            queueTotal={gateQueueTotal}
+            sameActionCount={sameActionCount}
+            placement="inline"
+          />
           <InputBar
             ref={flow.inputBarRef}
             isLoading={flow.stream.isStreaming || flow.stream.isCompressing}
@@ -277,7 +297,11 @@ export const AgentScreen: React.FC = () => {
             onStop={flow.handleStop}
             composerBlocked={composerBlocked}
             onComposerBlocked={() =>
-              toast.showInfo(flow.t('agent.error.no_model', '请先在顶部选择一个模型'))
+              toast.showInfo(
+                hasPendingGate
+                  ? flow.t('agent_gate.composer_blocked', '请先处理待确认操作')
+                  : flow.t('agent.error.no_model', '请先在顶部选择一个模型')
+              )
             }
             composerDraftKey={composerDraftKey}
             composerDraftStorage={composerDraftStorage}

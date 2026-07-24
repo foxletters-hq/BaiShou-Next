@@ -17,6 +17,11 @@ import {
   formatDialogueModelLabel,
   type WorkspaceChangeEntry
 } from '@baishou/shared'
+import {
+  selectQueuePosition,
+  selectSameActionCountInSession,
+  useAgentGateInboxStore
+} from '@baishou/store'
 import { useWorkspaceAgentStream } from './hooks/useWorkspaceAgentStream'
 import { useWorkspaceChatMessages } from './hooks/useWorkspaceChatMessages'
 import { useWorkspaceRuntimeRefresh } from './hooks/useWorkspaceRuntimeRefresh'
@@ -65,6 +70,16 @@ export const AgentWorkspaceScreen: React.FC = () => {
     streamingText: stream.text,
     streamingReasoning: stream.reasoning
   })
+  const pendingGate = stream.pendingAgentGate
+  const gateQueueIndex = useAgentGateInboxStore(
+    (state) => selectQueuePosition(state, sessionId, pendingGate?.id).index
+  )
+  const gateQueueTotal = useAgentGateInboxStore(
+    (state) => selectQueuePosition(state, sessionId, pendingGate?.id).total
+  )
+  const sameActionCount = useAgentGateInboxStore((state) =>
+    selectSameActionCountInSession(state, sessionId, pendingGate?.action)
+  )
   useStreamError(stream.error, stream.isStreaming)
   const resolvedActiveWorkspace =
     activeWorkspace ??
@@ -400,14 +415,20 @@ export const AgentWorkspaceScreen: React.FC = () => {
           onRollbackRound: (id) => void handleRollback(id),
           onChangesUpdate: handleChangesUpdate,
           onAssistantTap: () => chrome.setShowAssistantPicker(true),
-          assistantName: chrome.currentAssistant?.name || t('agent.partner_label', '伙伴')
+          assistantName: chrome.currentAssistant?.name || t('agent.partner_label', '伙伴'),
+          gateBlocksComposer: Boolean(pendingGate),
+          gateSlot: (
+            <AgentGateDock
+              request={pendingGate}
+              isReplying={stream.isAgentGateReplying}
+              onReply={(payload) => void stream.replyAgentGate(payload)}
+              queueIndex={gateQueueIndex}
+              queueTotal={gateQueueTotal}
+              sameActionCount={sameActionCount}
+              placement="inline"
+            />
+          )
         }}
-      />
-
-      <AgentGateDock
-        request={stream.pendingAgentGate}
-        isReplying={stream.isAgentGateReplying}
-        onReply={(payload) => void stream.replyAgentGate(payload)}
       />
 
       <ChatCostDialog
