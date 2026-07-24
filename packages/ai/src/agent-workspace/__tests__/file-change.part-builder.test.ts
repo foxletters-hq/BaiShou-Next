@@ -12,11 +12,16 @@ describe('file-change.part-builder', () => {
     expect(stats.additions).toBe(1)
   })
 
-  it('builds unified diff text', () => {
-    const diff = buildUnifiedDiff('README.md', 'old\n', 'new\n')
+  it('builds unified diff text with context hunks', () => {
+    const before = 'keep-a\nold\nkeep-b\n'
+    const after = 'keep-a\nnew\nkeep-b\n'
+    const diff = buildUnifiedDiff('README.md', before, after)
     expect(diff).toContain('--- a/README.md')
     expect(diff).toContain('+new')
     expect(diff).toContain('-old')
+    expect(diff).toContain(' keep-a')
+    expect(diff).toContain(' keep-b')
+    expect(diff).toMatch(/@@ -\d+,\d+ \+\d+,\d+ @@/)
   })
 
   it('builds create change parts with line counts', () => {

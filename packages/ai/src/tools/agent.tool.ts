@@ -194,6 +194,8 @@ export interface ToolContext {
   workspace?: {
     folderRoot: string
     sessionKind?: AgentSessionKind
+    /** 工作区策略作用域 ID（可选；用于 Gate scope） */
+    workspaceId?: string
     fs?: WorkspaceFsAdapter
     roundCheckpointService?: AgentRoundCheckpointService
     roundCheckpointId?: string

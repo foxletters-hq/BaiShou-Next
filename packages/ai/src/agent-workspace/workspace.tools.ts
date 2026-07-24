@@ -383,7 +383,6 @@ export class WorkspaceRenameTool extends AgentTool<typeof workspaceRenameParams>
       const from = resolveRelativePath(context, args.path)
       const toRel = normalizeWorkspaceRelativePath(args.new_path)
       const toAbs = resolveWorkspacePath(from.folderRoot, toRel)
-
       if (from.relativePath === toRel) {
         return `Error: Source and destination are the same: ${toRel}`
       }
