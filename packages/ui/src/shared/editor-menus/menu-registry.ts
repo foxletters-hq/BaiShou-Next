@@ -24,9 +24,7 @@ export type ResolvedMenuItem =
 
 const menuItems: MenuItemContribution[] = []
 
-export function appendMenuItem<TContext = unknown>(
-  item: MenuItemContribution<TContext>
-): void {
+export function appendMenuItem<TContext = unknown>(item: MenuItemContribution<TContext>): void {
   menuItems.push(item as MenuItemContribution)
 }
 

@@ -71,8 +71,7 @@
   --color-error-rgb: 239, 68, 68;
 
   /* Typography — UI 统一 Noto Sans；按 html[lang] 切换 CJK 区域字形 */
-  --font-family:
-    'Noto Sans SC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family: 'Noto Sans SC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace;
 
   /* Settings page chrome — 页面标题顶栏统一高度；内容区与顶栏间距 */
@@ -218,13 +217,11 @@
 /* 语言字形：与 i18n 写入的 html[lang] 对齐 */
 html[lang='zh-TW'],
 html[lang='zh-HK'] {
-  --font-family:
-    'Noto Sans TC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family: 'Noto Sans TC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 html[lang='ja'] {
-  --font-family:
-    'Noto Sans JP', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family: 'Noto Sans JP', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 html[lang='en'] {

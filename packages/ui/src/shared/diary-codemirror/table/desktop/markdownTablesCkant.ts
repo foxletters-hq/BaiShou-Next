@@ -28,7 +28,8 @@ function createDiaryMarkdownTablesTheme() {
     '--tbl-theme-menu-hover-background': 'var(--color-primary, #5ba8f5)',
     '--tbl-theme-menu-text-color': 'var(--text-primary, #1a1c23)',
     '--tbl-theme-menu-hover-text-color': 'var(--text-on-primary, #ffffff)',
-    '--tbl-theme-select-all-focus-overlay': 'var(--color-primary-light, rgba(var(--color-primary-rgb), 0.25))',
+    '--tbl-theme-select-all-focus-overlay':
+      'var(--color-primary-light, rgba(var(--color-primary-rgb), 0.25))',
     '--tbl-theme-select-all-blur-overlay': 'rgba(2, 2, 2, 0.15)'
   })
 }
