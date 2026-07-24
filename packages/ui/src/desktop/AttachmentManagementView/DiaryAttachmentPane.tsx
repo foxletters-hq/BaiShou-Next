@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Folder, Tag, ChevronDown, FolderMinus, Trash2, CheckSquare } from 'lucide-react'
+import { Calendar, Folder, Tag, ChevronDown, Trash2, CheckSquare } from 'lucide-react'
 import styles from './AttachmentManagementView.module.css'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { DiaryAttachmentGrid } from './DiaryAttachmentGrid'
@@ -19,16 +19,14 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
     availableYears,
     diaryYear,
     setDiaryYear,
-    isYearPickerOpen,
-    setIsYearPickerOpen,
-    isMonthPickerOpen,
-    setIsMonthPickerOpen,
+    openFilterPicker,
+    toggleFilterPicker,
+    setOpenFilterPicker,
+    yearRef,
     monthRef,
+    orphanRef,
     diaryMonth,
     setDiaryMonth,
-    isOrphanPickerOpen,
-    setIsOrphanPickerOpen,
-    orphanRef,
     diaryOrphanOnly,
     setDiaryOrphanOnly,
     pagedDiaryAttachments,
@@ -37,6 +35,11 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
     handleDeleteDiarySelected,
     toggleSelectAllDiary
   } = vm
+
+  const monthOptions = React.useMemo(
+    () => Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')),
+    []
+  )
 
   return (
     <motion.div
@@ -80,15 +83,14 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
         </div>
       </div>
 
-      {/* 联合筛选工具栏 */}
       <div className={styles.toolbarWrapper}>
         <div className={styles.filtersGroup}>
-          {/* 年份选择 (对标回忆画廊 Portal Modal) */}
           {availableYears.length > 0 ? (
-            <div className={styles.filterFieldYear}>
+            <div className={styles.filterFieldDropdown} ref={yearRef}>
               <button
-                className={`${styles.yearSelectTrigger} ${isYearPickerOpen ? styles.open : ''}`}
-                onClick={() => setIsYearPickerOpen(true)}
+                type="button"
+                className={`${styles.dropdownTrigger} ${openFilterPicker === 'year' ? styles.open : ''}`}
+                onClick={() => toggleFilterPicker('year')}
               >
                 <Calendar size={14} className={styles.filterIcon} />
                 <span>
@@ -96,8 +98,46 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
                     ? t('gallery.filter_all_years', '全部年份')
                     : `${diaryYear}${t('common.year_suffix', '年')}`}
                 </span>
-                <ChevronDown size={14} className={styles.yearSelectChevron} />
+                <ChevronDown size={14} className={styles.dropdownChevron} />
               </button>
+              <AnimatePresence>
+                {openFilterPicker === 'year' && (
+                  <motion.div
+                    className={`${styles.dropdownMenu} ${styles.dropdownMenuYear}`}
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <div className={styles.dropdownList}>
+                      <button
+                        type="button"
+                        className={`${styles.dropdownItem} ${diaryYear === 'all' ? styles.active : ''}`}
+                        onClick={() => {
+                          setDiaryYear('all')
+                          setOpenFilterPicker(null)
+                        }}
+                      >
+                        {t('gallery.filter_all_years', '全部年份')}
+                      </button>
+                      {availableYears.map((year) => (
+                        <button
+                          type="button"
+                          key={year}
+                          className={`${styles.dropdownItem} ${diaryYear === year ? styles.active : ''}`}
+                          onClick={() => {
+                            setDiaryYear(year)
+                            setOpenFilterPicker(null)
+                          }}
+                        >
+                          {year}
+                          {t('common.year_suffix', '年')}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <div className={styles.filterField}>
@@ -108,11 +148,11 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
             </div>
           )}
 
-          {/* 月份选择 (自定义 Portal/Dropdown picker 美化，去除 Windows 系统原生下拉框) */}
           <div className={styles.filterFieldDropdown} ref={monthRef}>
             <button
-              className={`${styles.dropdownTrigger} ${isMonthPickerOpen ? styles.open : ''}`}
-              onClick={() => setIsMonthPickerOpen(!isMonthPickerOpen)}
+              type="button"
+              className={`${styles.dropdownTrigger} ${openFilterPicker === 'month' ? styles.open : ''}`}
+              onClick={() => toggleFilterPicker('month')}
             >
               <Folder size={14} className={styles.filterIcon} />
               <span>
@@ -123,7 +163,7 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
               <ChevronDown size={14} className={styles.dropdownChevron} />
             </button>
             <AnimatePresence>
-              {isMonthPickerOpen && (
+              {openFilterPicker === 'month' && (
                 <motion.div
                   className={styles.dropdownMenu}
                   initial={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -133,40 +173,40 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
                 >
                   <div className={styles.dropdownList}>
                     <button
+                      type="button"
                       className={`${styles.dropdownItem} ${diaryMonth === 'all' ? styles.active : ''}`}
                       onClick={() => {
                         setDiaryMonth('all')
-                        setIsMonthPickerOpen(false)
+                        setOpenFilterPicker(null)
                       }}
                     >
                       {t('settings.all_months', '全部月份')}
                     </button>
-                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(
-                      (m) => (
-                        <button
-                          key={m}
-                          className={`${styles.dropdownItem} ${diaryMonth === m ? styles.active : ''}`}
-                          onClick={() => {
-                            setDiaryMonth(m)
-                            setIsMonthPickerOpen(false)
-                          }}
-                        >
-                          {m}
-                          {t('common.month_suffix', '月')}
-                        </button>
-                      )
-                    )}
+                    {monthOptions.map((m) => (
+                      <button
+                        type="button"
+                        key={m}
+                        className={`${styles.dropdownItem} ${diaryMonth === m ? styles.active : ''}`}
+                        onClick={() => {
+                          setDiaryMonth(m)
+                          setOpenFilterPicker(null)
+                        }}
+                      >
+                        {m}
+                        {t('common.month_suffix', '月')}
+                      </button>
+                    ))}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* 筛选过滤（全部筛选 / 孤立附件） */}
           <div className={styles.filterFieldDropdown} ref={orphanRef}>
             <button
-              className={`${styles.dropdownTrigger} ${isOrphanPickerOpen ? styles.open : ''}`}
-              onClick={() => setIsOrphanPickerOpen(!isOrphanPickerOpen)}
+              type="button"
+              className={`${styles.dropdownTrigger} ${openFilterPicker === 'orphan' ? styles.open : ''}`}
+              onClick={() => toggleFilterPicker('orphan')}
             >
               <Tag size={14} className={styles.filterIcon} />
               <span>
@@ -177,7 +217,7 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
               <ChevronDown size={14} className={styles.dropdownChevron} />
             </button>
             <AnimatePresence>
-              {isOrphanPickerOpen && (
+              {openFilterPicker === 'orphan' && (
                 <motion.div
                   className={styles.dropdownMenu}
                   initial={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -187,19 +227,21 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
                 >
                   <div className={styles.dropdownList}>
                     <button
+                      type="button"
                       className={`${styles.dropdownItem} ${!diaryOrphanOnly ? styles.active : ''}`}
                       onClick={() => {
                         setDiaryOrphanOnly(false)
-                        setIsOrphanPickerOpen(false)
+                        setOpenFilterPicker(null)
                       }}
                     >
                       {t('settings.all_filters', '全部筛选')}
                     </button>
                     <button
+                      type="button"
                       className={`${styles.dropdownItem} ${diaryOrphanOnly ? styles.active : ''}`}
                       onClick={() => {
                         setDiaryOrphanOnly(true)
-                        setIsOrphanPickerOpen(false)
+                        setOpenFilterPicker(null)
                       }}
                     >
                       {t('settings.tag_orphan', '孤立附件')}
@@ -214,6 +256,7 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
         <div className={styles.tabsRow}>
           {pagedDiaryAttachments.length > 0 && selectedDiaryPaths.size > 0 && (
             <button
+              type="button"
               className={`${styles.actionBtn} ${styles.btnDangerFilled}`}
               onClick={handleDeleteDiarySelected}
               disabled={isDeleting}
@@ -228,13 +271,14 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
 
           {pagedDiaryAttachments.length > 0 && (
             <button
+              type="button"
               className={`${styles.actionBtn} ${styles.btnOutlined}`}
               onClick={toggleSelectAllDiary}
             >
               <CheckSquare size={16} />
               {selectedDiaryPaths.size === pagedDiaryAttachments.length
                 ? t('settings.attachment_deselect_all', '取消全选')
-                : t('settings.attachment_select_all', '全选本页')}
+                : t('settings.attachment_select_all_page', '全选本页')}
             </button>
           )}
         </div>

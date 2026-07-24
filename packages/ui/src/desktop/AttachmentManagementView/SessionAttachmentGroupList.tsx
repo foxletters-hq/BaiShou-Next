@@ -4,7 +4,6 @@ import {
   FolderMinus,
   Folder,
   Trash2,
-  CheckSquare,
   ChevronDown,
   ChevronUp,
   FolderSearch
@@ -17,6 +16,9 @@ type Vm = Pick<
   | 't'
   | 'formatSize'
   | 'getFileIcon'
+  | 'isImageFile'
+  | 'thumbnailCache'
+  | 'handleOpenImagePreview'
   | 'activeTab'
   | 'displayList'
   | 'pagedSessionList'
@@ -35,6 +37,9 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
     t,
     formatSize,
     getFileIcon,
+    isImageFile,
+    thumbnailCache,
+    handleOpenImagePreview,
     activeTab,
     displayList,
     pagedSessionList,
@@ -51,11 +56,13 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
   if (displayList.length === 0) {
     return (
       <div className={styles.emptyState}>
-        {activeTab === 'orphans' ? (
-          <CheckCircle className={styles.emptyIcon} />
-        ) : (
-          <FolderMinus className={styles.emptyIcon} />
-        )}
+        <div className={styles.emptyIconWrap} aria-hidden>
+          {activeTab === 'orphans' ? (
+            <CheckCircle className={styles.emptyIcon} size={36} strokeWidth={1.5} />
+          ) : (
+            <FolderMinus className={styles.emptyIcon} size={36} strokeWidth={1.5} />
+          )}
+        </div>
         <span className={styles.emptyText}>
           {activeTab === 'orphans'
             ? t('settings.attachment_no_orphans', '没有发现已删除会话的残留附件')
@@ -70,6 +77,11 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
       {pagedSessionList.map((group) => {
         const isChecked = selectedIds.has(group.sessionId)
         const isExpanded = expandedIds.has(group.sessionId)
+        const coverImage = Array.isArray(group.files)
+          ? group.files.find((file) => isImageFile(file.name))
+          : undefined
+        const coverThumb = coverImage ? thumbnailCache.get(coverImage.path) : undefined
+
         return (
           <div key={group.sessionId}>
             <div
@@ -85,9 +97,20 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                 />
               </div>
               <div
-                className={`${styles.folderIconBox} ${group.isOrphan ? styles.folderIconBoxOrphan : ''}`}
+                className={`${styles.folderIconBox} ${group.isOrphan && !coverThumb ? styles.folderIconBoxOrphan : ''}`}
               >
-                {group.isOrphan ? <FolderMinus size={20} /> : <Folder size={20} />}
+                {coverThumb ? (
+                  <img
+                    src={coverThumb}
+                    alt=""
+                    className={styles.folderIconThumb}
+                    loading="lazy"
+                  />
+                ) : group.isOrphan ? (
+                  <FolderMinus size={20} />
+                ) : (
+                  <Folder size={20} />
+                )}
               </div>
               <div className={styles.folderInfo}>
                 <div className={styles.folderTitleRow}>
@@ -142,38 +165,57 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
             <div className={`${styles.fileListContainer} ${isExpanded ? styles.expanded : ''}`}>
               <div className={styles.fileListContent}>
                 {Array.isArray(group.files) &&
-                  group.files.map((file) => (
-                    <div key={file.path} className={styles.fileItem}>
-                      <div className={styles.fileIcon}>{getFileIcon(file.name)}</div>
-                      <span className={styles.fileName} title={file.path}>
-                        {file.name}
-                      </span>
-                      <div className={styles.fileMeta}>
-                        <span className={styles.fileSize}>{formatSize(file.sizeMB)}</span>
-                        <div className={styles.fileActions}>
-                          {onOpenFileLocation && (
+                  group.files.map((file) => {
+                    const isImage = isImageFile(file.name)
+                    const thumb = thumbnailCache.get(file.path)
+                    return (
+                      <div key={file.path} className={styles.fileItem}>
+                        <div className={styles.fileIcon}>
+                          {isImage && thumb ? (
+                            <img
+                              src={thumb}
+                              alt={file.name}
+                              className={styles.fileThumb}
+                              loading="lazy"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void handleOpenImagePreview(file.path, file.name)
+                              }}
+                            />
+                          ) : (
+                            getFileIcon(file.name)
+                          )}
+                        </div>
+                        <span className={styles.fileName} title={file.path}>
+                          {file.name}
+                        </span>
+                        <div className={styles.fileMeta}>
+                          <span className={styles.fileSize}>{formatSize(file.sizeMB)}</span>
+                          <div className={styles.fileActions}>
+                            {onOpenFileLocation && (
+                              <button
+                                type="button"
+                                className={styles.fileActionBtn}
+                                onClick={() => onOpenFileLocation(file.path)}
+                                title={t('settings.open_file_location', '在文件夹中显示')}
+                              >
+                                <FolderSearch size={14} />
+                              </button>
+                            )}
                             <button
                               type="button"
-                              className={styles.fileActionBtn}
-                              onClick={() => onOpenFileLocation(file.path)}
-                              title={t('settings.open_file_location', '在文件夹中显示')}
+                              className={`${styles.fileActionBtn} ${styles.fileActionBtnDanger}`}
+                              onClick={() => handleDeleteSingleFile(group.sessionId, file.name)}
+                              title={t('common.delete', '删除')}
+                              disabled={isDeleting}
                             >
-                              <FolderSearch size={14} />
+                              <Trash2 size={14} />
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            className={`${styles.fileActionBtn} ${styles.fileActionBtnDanger}`}
-                            onClick={() => handleDeleteSingleFile(group.sessionId, file.name)}
-                            title={t('common.delete', '删除')}
-                            disabled={isDeleting}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
               </div>
             </div>
           </div>

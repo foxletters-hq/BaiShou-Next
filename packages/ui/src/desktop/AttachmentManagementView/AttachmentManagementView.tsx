@@ -1,14 +1,13 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence } from 'framer-motion'
-import seg from '../shared/SegmentedControl.module.css'
 import styles from './AttachmentManagementView.module.css'
 import { ImagePreview } from '../DiaryEditor/ImagePreview'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
 import { useAttachmentManagementView } from './useAttachmentManagementView'
 import { DiaryAttachmentPane } from './DiaryAttachmentPane'
 import { SessionAttachmentPane } from './SessionAttachmentPane'
-import { AttachmentYearPickerPortal } from './AttachmentYearPickerPortal'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import { SettingsPageChrome } from '../shared/SettingsPageChrome'
 
 export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> = (props) => {
@@ -21,22 +20,20 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
     >
       <div className={styles.container}>
         <div className={styles.mainTabNav}>
-          <div className={seg.group}>
-            <button
-              type="button"
-              className={`${seg.btn} ${vm.activePane === 'diary' ? seg.btnActive : ''}`}
-              onClick={() => vm.setActivePane('diary')}
-            >
-              {vm.t('settings.attachment_pane_diary', '日记附件')}
-            </button>
-            <button
-              type="button"
-              className={`${seg.btn} ${vm.activePane === 'session' ? seg.btnActive : ''}`}
-              onClick={() => vm.setActivePane('session')}
-            >
-              {vm.t('settings.attachment_pane_session', 'AI 会话附件')}
-            </button>
-          </div>
+          <SegmentedControl
+            value={vm.activePane}
+            options={[
+              {
+                value: 'diary',
+                label: vm.t('settings.attachment_pane_diary', '日记附件')
+              },
+              {
+                value: 'session',
+                label: vm.t('settings.attachment_pane_session', 'AI 会话附件')
+              }
+            ]}
+            onChange={vm.setActivePane}
+          />
         </div>
 
         <div className={styles.content}>
@@ -48,8 +45,6 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
             )}
           </AnimatePresence>
         </div>
-
-        <AttachmentYearPickerPortal vm={vm} />
 
         {vm.mounted &&
           vm.imagePreview &&
