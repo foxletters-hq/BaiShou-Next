@@ -78,7 +78,9 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
 
       <View style={[settingsCardStyles.row, { marginTop: 8 }]}>
         <View style={settingsCardStyles.rowText}>
-          <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+          <Text
+            style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}
+          >
             {t('settings.rag_auto_resume_embed_on_online', '联网后自动恢复嵌入')}
           </Text>
           <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 6 }]}>

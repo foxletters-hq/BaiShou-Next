@@ -538,153 +538,154 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                   }
                 ]}
               >
-              <Animated.View
-                style={[
-                  toolbarAnimatedStyle,
-                  showToolbar
-                    ? [styles.toolbarAttached, { borderBottomColor: colors.borderMuted }]
-                    : null
-                ]}
-                pointerEvents={showToolbar ? 'auto' : 'none'}
-              >
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.toolbarContent}
-                >
-                  {renderToolbarChip(
-                    t('input.upload_attachment', '上传附件'),
-                    handleUploadAttachment,
-                    { icon: Paperclip }
-                  )}
-                  {renderToolbarChip(t('input.shortcut_command', '快捷指令'), handleShortcutPress, {
-                    icon: Zap
-                  })}
-                  {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
-                    icon: BookOpen
-                  })}
-                  {renderToolbarChip(
-                    searchMode
-                      ? t('settings.web_search_mode_tool', '外部工具搜索')
-                      : t('settings.web_search_mode_off', '关闭搜索'),
-                    onToggleSearchMode,
-                    { active: searchMode, icon: Globe }
-                  )}
-                  {renderToolbarChip(
-                    ttsMode === 'always'
-                      ? t('agent.chat.tts_always', '始终朗读')
-                      : t('agent.chat.tts_manual', '手动朗读'),
-                    onToggleTtsMode,
-                    { active: ttsMode === 'always', icon: Volume2 }
-                  )}
-                  {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
-                    icon: LayoutGrid
-                  })}
-                </ScrollView>
-              </Animated.View>
-
-              <View
-                pointerEvents={composerEnabled ? 'auto' : 'none'}
-                style={styles.inputCard}
-              >
-                <View
+                <Animated.View
                   style={[
-                    styles.topRow,
-                    inputHeight <= INPUT_MIN_HEIGHT + 1 ? styles.topRowSingleLine : null
+                    toolbarAnimatedStyle,
+                    showToolbar
+                      ? [styles.toolbarAttached, { borderBottomColor: colors.borderMuted }]
+                      : null
                   ]}
+                  pointerEvents={showToolbar ? 'auto' : 'none'}
                 >
-                  <Animated.View style={[styles.inputWrapper, inputFrameAnimatedStyle]}>
-                    <Input
-                      ref={inputRef}
-                      bare
-                      keyboardAware={false}
-                      className="border-0 bg-transparent"
-                      style={[
-                        styles.input,
-                        {
-                          color: colors.textPrimary,
-                          height: '100%'
-                        }
-                      ]}
-                      value={text}
-                      onChangeText={handleChangeText}
-                      onKeyPress={handleKeyPress}
-                      onContentSizeChange={handleContentSizeChange}
-                      placeholder={t('agent.chat.input_hint', '输入消息...')}
-                      multiline
-                      scrollEnabled={inputScrollEnabled}
-                      nestedScrollEnabled
-                      textAlignVertical={
-                        !isExpanded && inputHeight <= INPUT_MIN_HEIGHT + 1 ? 'center' : 'top'
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.toolbarContent}
+                  >
+                    {renderToolbarChip(
+                      t('input.upload_attachment', '上传附件'),
+                      handleUploadAttachment,
+                      { icon: Paperclip }
+                    )}
+                    {renderToolbarChip(
+                      t('input.shortcut_command', '快捷指令'),
+                      handleShortcutPress,
+                      {
+                        icon: Zap
                       }
-                      editable={composerEnabled}
-                      onFocus={composerEnabled ? onInputFocus : undefined}
-                    />
-                  </Animated.View>
-                  <TouchableOpacity
+                    )}
+                    {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
+                      icon: BookOpen
+                    })}
+                    {renderToolbarChip(
+                      searchMode
+                        ? t('settings.web_search_mode_tool', '外部工具搜索')
+                        : t('settings.web_search_mode_off', '关闭搜索'),
+                      onToggleSearchMode,
+                      { active: searchMode, icon: Globe }
+                    )}
+                    {renderToolbarChip(
+                      ttsMode === 'always'
+                        ? t('agent.chat.tts_always', '始终朗读')
+                        : t('agent.chat.tts_manual', '手动朗读'),
+                      onToggleTtsMode,
+                      { active: ttsMode === 'always', icon: Volume2 }
+                    )}
+                    {renderToolbarChip(t('settings.agent_tools_title', '工具管理'), onOpenTools, {
+                      icon: LayoutGrid
+                    })}
+                  </ScrollView>
+                </Animated.View>
+
+                <View pointerEvents={composerEnabled ? 'auto' : 'none'} style={styles.inputCard}>
+                  <View
                     style={[
-                      styles.expandToggle,
-                      inputHeight > INPUT_MIN_HEIGHT + 1 ? styles.expandToggleMultiline : null
+                      styles.topRow,
+                      inputHeight <= INPUT_MIN_HEIGHT + 1 ? styles.topRowSingleLine : null
                     ]}
-                    onPress={toggleExpand}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    accessibilityLabel={
-                      isExpanded
-                        ? t('input.collapse', '折叠输入框')
-                        : t('input.expand', '展开输入框')
-                    }
                   >
-                    <LucideIcon
-                      icon={isExpanded ? Minimize2 : Maximize2}
-                      size={16}
-                      color={colors.textTertiary}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.bottomRow}>
-                  <TouchableOpacity
-                    style={styles.toolbarToggle}
-                    onPress={toggleToolbar}
-                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                  >
-                    <LucideIcon
-                      icon={showToolbar ? LayoutGrid : Menu}
-                      size={20}
-                      color={colors.textTertiary}
-                    />
-                  </TouchableOpacity>
-
-                  {isLoading ? (
-                    <TouchableOpacity
-                      style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
-                      onPress={onStop}
-                      accessibilityLabel={t('common.stop', '停止')}
-                    >
-                      <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
-                    </TouchableOpacity>
-                  ) : (
+                    <Animated.View style={[styles.inputWrapper, inputFrameAnimatedStyle]}>
+                      <Input
+                        ref={inputRef}
+                        bare
+                        keyboardAware={false}
+                        className="border-0 bg-transparent"
+                        style={[
+                          styles.input,
+                          {
+                            color: colors.textPrimary,
+                            height: '100%'
+                          }
+                        ]}
+                        value={text}
+                        onChangeText={handleChangeText}
+                        onKeyPress={handleKeyPress}
+                        onContentSizeChange={handleContentSizeChange}
+                        placeholder={t('agent.chat.input_hint', '输入消息...')}
+                        multiline
+                        scrollEnabled={inputScrollEnabled}
+                        nestedScrollEnabled
+                        textAlignVertical={
+                          !isExpanded && inputHeight <= INPUT_MIN_HEIGHT + 1 ? 'center' : 'top'
+                        }
+                        editable={composerEnabled}
+                        onFocus={composerEnabled ? onInputFocus : undefined}
+                      />
+                    </Animated.View>
                     <TouchableOpacity
                       style={[
-                        styles.sendBtn,
-                        { backgroundColor: colors.primary },
-                        !text.trim() &&
-                          attachments.length === 0 && {
-                            backgroundColor: colors.textTertiary
-                          },
-                        isSending && {
-                          opacity: 0.72
-                        }
+                        styles.expandToggle,
+                        inputHeight > INPUT_MIN_HEIGHT + 1 ? styles.expandToggleMultiline : null
                       ]}
-                      onPress={handleSend}
-                      disabled={isSending || (!text.trim() && attachments.length === 0)}
-                      accessibilityLabel={t('common.send', '发送')}
+                      onPress={toggleExpand}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      accessibilityLabel={
+                        isExpanded
+                          ? t('input.collapse', '折叠输入框')
+                          : t('input.expand', '展开输入框')
+                      }
                     >
-                      <LucideIcon icon={Send} size={18} color={colors.textOnPrimary} />
+                      <LucideIcon
+                        icon={isExpanded ? Minimize2 : Maximize2}
+                        size={16}
+                        color={colors.textTertiary}
+                      />
                     </TouchableOpacity>
-                  )}
+                  </View>
+
+                  <View style={styles.bottomRow}>
+                    <TouchableOpacity
+                      style={styles.toolbarToggle}
+                      onPress={toggleToolbar}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                    >
+                      <LucideIcon
+                        icon={showToolbar ? LayoutGrid : Menu}
+                        size={20}
+                        color={colors.textTertiary}
+                      />
+                    </TouchableOpacity>
+
+                    {isLoading ? (
+                      <TouchableOpacity
+                        style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
+                        onPress={onStop}
+                        accessibilityLabel={t('common.stop', '停止')}
+                      >
+                        <View style={[styles.stopIcon, { backgroundColor: colors.bgSurface }]} />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[
+                          styles.sendBtn,
+                          { backgroundColor: colors.primary },
+                          !text.trim() &&
+                            attachments.length === 0 && {
+                              backgroundColor: colors.textTertiary
+                            },
+                          isSending && {
+                            opacity: 0.72
+                          }
+                        ]}
+                        onPress={handleSend}
+                        disabled={isSending || (!text.trim() && attachments.length === 0)}
+                        accessibilityLabel={t('common.send', '发送')}
+                      >
+                        <LucideIcon icon={Send} size={18} color={colors.textOnPrimary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
-              </View>
               </View>
             </View>
           </View>

@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { registerCommand, resetCommandRegistryForTests } from '../command-registry'
-import {
-  appendMenuItem,
-  resetMenuRegistryForTests,
-  resolveMenuItems
-} from '../menu-registry'
+import { appendMenuItem, resetMenuRegistryForTests, resolveMenuItems } from '../menu-registry'
 import { MenuId } from '../menu-id'
 
 describe('menu-registry', () => {

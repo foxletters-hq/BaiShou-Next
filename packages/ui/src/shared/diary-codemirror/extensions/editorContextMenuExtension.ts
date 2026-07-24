@@ -25,9 +25,7 @@ function resolveEventTarget(event: MouseEvent): Element | null {
  * CodeMirror 正文右键桥接：拦截 contextmenu，交给 Host 按 MenuId.EditorContext 解析。
  * 表格/图片等自带菜单区域放行。
  */
-export function editorContextMenuExtension(
-  options: EditorContextMenuExtensionOptions
-): Extension {
+export function editorContextMenuExtension(options: EditorContextMenuExtensionOptions): Extension {
   return EditorView.domEventHandlers({
     contextmenu: (event, view) => {
       const target = resolveEventTarget(event)

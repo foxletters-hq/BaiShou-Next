@@ -14,9 +14,7 @@ export interface CommandDescriptor<TContext = unknown> {
 
 const commands = new Map<string, CommandDescriptor>()
 
-export function registerCommand<TContext = unknown>(
-  descriptor: CommandDescriptor<TContext>
-): void {
+export function registerCommand<TContext = unknown>(descriptor: CommandDescriptor<TContext>): void {
   commands.set(descriptor.id, descriptor as CommandDescriptor)
 }
 
@@ -24,10 +22,7 @@ export function getCommand(id: string): CommandDescriptor | undefined {
   return commands.get(id)
 }
 
-export async function executeCommand<TContext = unknown>(
-  id: string,
-  ctx: TContext
-): Promise<void> {
+export async function executeCommand<TContext = unknown>(id: string, ctx: TContext): Promise<void> {
   const command = commands.get(id)
   if (!command) {
     throw new Error(`Unknown editor command: ${id}`)
