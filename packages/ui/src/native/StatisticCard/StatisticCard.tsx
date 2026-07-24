@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 6
   },
   footer: {

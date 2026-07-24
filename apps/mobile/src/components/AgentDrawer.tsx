@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   },
   currentName: {
     fontSize: 15,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   currentDesc: {
     fontSize: 12,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   },
   newChatText: {
     fontSize: 15,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   settingsRow: {
     flexDirection: 'row',
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
   },
   historyTitle: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.3,
     textTransform: 'uppercase'
   },

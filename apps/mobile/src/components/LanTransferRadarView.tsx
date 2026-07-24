@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     right: 24,
     alignItems: 'center'
   },
-  scanTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  scanTitle: { fontSize: 20, fontWeight: '600', marginBottom: 8 },
   scanSubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   bubbleWrap: {
     position: 'absolute',
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   bubbleName: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     maxWidth: 120
   },
   bubbleIp: {

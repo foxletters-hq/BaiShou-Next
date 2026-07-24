@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Languages, Check } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
+import { useNativeTheme } from '@baishou/ui/native'
 import {
   ONBOARDING_LANGUAGE_OPTIONS,
   type OnboardingUiLanguage
@@ -18,14 +19,19 @@ export const OnboardingLanguageSlide: React.FC<OnboardingLanguageSlideProps> = (
   onSelectLanguage
 }) => {
   const { t } = useTranslation()
+  const { colors } = useNativeTheme()
 
   return (
     <View style={styles.slideInner}>
       <View style={styles.iconWrap}>
         <Languages size={56} color={BRAND_BLUE_DARK} strokeWidth={2} />
       </View>
-      <Text style={styles.title}>{t('onboarding.language_title')}</Text>
-      <Text style={styles.body}>{t('onboarding.language_desc')}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>
+        {t('onboarding.language_title')}
+      </Text>
+      <Text style={[styles.body, { color: colors.textSecondary }]}>
+        {t('onboarding.language_desc')}
+      </Text>
       <View style={styles.langList}>
         {ONBOARDING_LANGUAGE_OPTIONS.map((option) => {
           const active = selectedLanguage === option.id
@@ -33,10 +39,26 @@ export const OnboardingLanguageSlide: React.FC<OnboardingLanguageSlideProps> = (
             <TouchableOpacity
               key={option.id}
               activeOpacity={0.85}
-              style={[styles.langChip, active && styles.langChipActive]}
+              style={[
+                styles.langChip,
+                {
+                  borderColor: colors.borderMuted,
+                  backgroundColor: colors.bgGlassSurface
+                },
+                active && {
+                  borderColor: BRAND_BLUE_DARK,
+                  backgroundColor: 'rgba(154, 212, 234, 0.14)'
+                }
+              ]}
               onPress={() => onSelectLanguage(option.id)}
             >
-              <Text style={[styles.langChipText, active && styles.langChipTextActive]}>
+              <Text
+                style={[
+                  styles.langChipText,
+                  { color: colors.textPrimary },
+                  active && styles.langChipTextActive
+                ]}
+              >
                 {option.label}
               </Text>
               {active ? <Check size={18} color={BRAND_BLUE_DARK} strokeWidth={2} /> : null}
@@ -64,16 +86,14 @@ const styles = StyleSheet.create({
   title: {
     marginTop: 28,
     fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-    color: '#111827'
+    fontWeight: '600',
+    textAlign: 'center'
   },
   body: {
     marginTop: 12,
     fontSize: 16,
     lineHeight: 26,
-    textAlign: 'center',
-    color: '#6B7280'
+    textAlign: 'center'
   },
   langList: {
     marginTop: 28,
@@ -84,23 +104,16 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.72)'
-  },
-  langChipActive: {
-    borderColor: BRAND_BLUE_DARK,
-    backgroundColor: 'rgba(154, 212, 234, 0.14)'
+    justifyContent: 'space-between'
   },
   langChipText: {
-    fontSize: 16,
-    color: '#374151'
+    fontSize: 16
   },
   langChipTextActive: {
     color: BRAND_BLUE_DARK,
-    fontWeight: '700'
+    fontWeight: '600'
   }
 })

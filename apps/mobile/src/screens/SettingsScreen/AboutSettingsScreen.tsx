@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   diagnosticTitle: {
     fontSize: 15,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   diagnosticDesc: {
     fontSize: 13,

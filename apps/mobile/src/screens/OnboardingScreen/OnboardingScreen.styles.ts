@@ -32,24 +32,21 @@ export const styles = StyleSheet.create({
   },
   slideTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
     letterSpacing: -0.3,
-    lineHeight: 30,
-    color: '#111827'
+    lineHeight: 30
   },
   slideBody: {
     fontSize: 16,
     lineHeight: 27,
-    textAlign: 'center',
-    color: '#6B7280'
+    textAlign: 'center'
   },
   welcomeIconWrap: {
     width: 140,
     height: 140,
     borderRadius: 32,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
     shadowColor: '#9AD4EA',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.25,
@@ -64,7 +61,7 @@ export const styles = StyleSheet.create({
   welcomeTitle: {
     marginTop: 36,
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.5,
     textAlign: 'center',
     color: BRAND_BLUE_DARK
@@ -88,7 +85,6 @@ export const styles = StyleSheet.create({
   },
   slogan: {
     fontSize: 15,
-    color: '#6B7280',
     letterSpacing: 2,
     textAlign: 'center'
   },
@@ -124,7 +120,6 @@ export const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 13,
-    color: '#6B7280',
     marginLeft: 2
   },
   nextButton: {
@@ -136,7 +131,6 @@ export const styles = StyleSheet.create({
     borderRadius: 12
   },
   nextButtonText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600'
   }

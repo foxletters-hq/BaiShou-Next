@@ -88,7 +88,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
             ]}
           >
             <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
-              <View style={[styles.tabs, { backgroundColor: colors.bgSurfaceNormal }]}>
+              <View style={[styles.tabs, { backgroundColor: colors.bgApp }]}>
                 {(['diary', 'memory'] as const).map((tab) => {
                   const active = dialog.activeTab === tab
                   return (
@@ -98,20 +98,21 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                       style={[
                         styles.tab,
                         active && {
-                          backgroundColor: colors.bgSurface,
-                          shadowColor: '#000',
+                          backgroundColor: colors.primary,
+                          shadowColor: '#0ea5e9',
                           shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.05,
+                          shadowOpacity: 0.25,
                           shadowRadius: 8,
-                          elevation: 1
+                          elevation: 2
                         }
                       ]}
                     >
                       <Text
                         style={{
-                          fontSize: 13,
-                          fontWeight: '700',
-                          color: active ? colors.primary : colors.textSecondary
+                          fontSize: 13.6,
+                          lineHeight: 18.4,
+                          fontWeight: active ? '600' : '400',
+                          color: active ? colors.textOnPrimary : colors.textSecondary
                         }}
                       >
                         {t(
@@ -140,7 +141,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                     styles.searchBox,
                     {
                       backgroundColor: colors.bgSurface,
-                      borderColor: colors.borderMuted
+                      borderColor: colors.borderControl
                     }
                   ]}
                 >
@@ -180,7 +181,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                 </View>
 
                 {onToggleSearchMode && (
-                  <View style={[styles.segmented, { backgroundColor: colors.bgSurfaceNormal }]}>
+                  <View style={[styles.segmented, { backgroundColor: colors.bgApp }]}>
                     {(['semantic', 'text'] as const).map((mode) => {
                       const active = searchMode === mode
                       return (
@@ -189,7 +190,14 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                           activeOpacity={0.7}
                           style={[
                             styles.segmentBtn,
-                            active && { backgroundColor: colors.bgSurface }
+                            active && {
+                              backgroundColor: colors.primary,
+                              shadowColor: '#0ea5e9',
+                              shadowOpacity: 0.25,
+                              shadowRadius: 8,
+                              shadowOffset: { width: 0, height: 2 },
+                              elevation: 2
+                            }
                           ]}
                           onPress={() => {
                             if (searchMode !== mode) onToggleSearchMode()
@@ -198,8 +206,10 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
                           <Text
                             style={[
                               styles.segmentText,
-                              { color: active ? colors.primary : colors.textSecondary },
-                              active && styles.segmentTextActive
+                              {
+                                color: active ? colors.textOnPrimary : colors.textSecondary,
+                                fontWeight: active ? '600' : '400'
+                              }
                             ]}
                             numberOfLines={1}
                           >
@@ -300,7 +310,7 @@ export const RecallDialog: React.FC<NativeRecallDialogProps> = ({
               >
                 <Text style={[styles.selectionCount, { color: colors.textPrimary }]}>
                   {t('recall.selected', '已选择')}{' '}
-                  <Text style={{ fontWeight: '700', color: colors.primary }}>
+                  <Text style={{ fontWeight: '600', color: colors.primary }}>
                     {dialog.selectedIds.size}
                   </Text>
                 </Text>
@@ -371,12 +381,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     padding: 4,
-    borderRadius: 12
+    borderRadius: 8
   },
   tab: {
+    height: Math.round(12 + 13.6 * 1.35),
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   closeBtn: {
     width: 36,
@@ -434,23 +446,21 @@ const styles = StyleSheet.create({
   segmented: {
     flexDirection: 'row',
     width: '100%',
-    padding: 3,
-    borderRadius: 10,
-    gap: 4
+    padding: 4,
+    borderRadius: 8,
+    gap: 8
   },
   segmentBtn: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
     alignItems: 'center'
   },
   segmentText: {
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  segmentTextActive: {
-    fontWeight: '700'
+    fontSize: 14,
+    lineHeight: 18.9,
+    fontWeight: '400'
   },
   listArea: {
     flex: 1
@@ -485,7 +495,7 @@ const styles = StyleSheet.create({
   },
   selectionCount: {
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   paginationArea: {
     paddingHorizontal: 16,

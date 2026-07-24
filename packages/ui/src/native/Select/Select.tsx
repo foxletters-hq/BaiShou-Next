@@ -322,7 +322,7 @@ export const Select: React.FC<NativeSelectProps> = ({
                     color: colors.primary,
                     fontSize: 16,
                     textAlign: 'center',
-                    fontWeight: 'bold'
+                    fontWeight: '600'
                   }}
                 >
                   {t('common.cancel', '取消')}

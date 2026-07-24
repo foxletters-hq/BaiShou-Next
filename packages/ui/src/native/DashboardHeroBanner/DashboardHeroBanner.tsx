@@ -10,7 +10,7 @@ export const DashboardHeroBanner: React.FC = () => {
 
   return (
     <View style={[styles.banner, { backgroundColor: colors.primary }]}>
-      <Text style={styles.title}>
+      <Text style={[styles.title, { color: colors.textOnPrimary }]}>
         {t('common.app_title')} · {t('summary.collective_memories_title')}
       </Text>
       <Text style={styles.subtitle}>{t('summary.algorithm_desc')}</Text>
@@ -31,8 +31,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontWeight: '600',
     zIndex: 1,
     letterSpacing: -0.5
   },

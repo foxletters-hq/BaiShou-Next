@@ -202,7 +202,7 @@ export function createArchiveDbBridge(deps: {
         pathService,
         vaultService
       )
-      setMobileDiaryEmbeddingDeps(nextRagDeps)
+      setMobileDiaryEmbeddingDeps(nextRagDeps, { agentDb: runtime.drizzleDb })
       ctx.ragServiceRef.current = createMobileRagService(nextRagDeps)
       if (isMounted()) {
         setValue((prev) => ({

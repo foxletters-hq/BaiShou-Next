@@ -223,7 +223,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
                     </Text>
                   </Pressable>
                   <Pressable onPress={() => void handleDelete(vault.name)}>
-                    <Text style={[styles.action, { color: '#ef4444' }]}>
+                    <Text style={[styles.action, { color: colors.error }]}>
                       {t('workspace.delete', '删除')}
                     </Text>
                   </Pressable>

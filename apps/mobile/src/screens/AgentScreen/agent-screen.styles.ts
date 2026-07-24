@@ -41,11 +41,11 @@ export const agentScreenStyles = StyleSheet.create({
   },
   toolCheckmark: {
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   toolSpinner: {
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   toolName: {
     fontSize: 13,
@@ -72,7 +72,7 @@ export const agentScreenStyles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 10,
     textAlign: 'center'
   },

@@ -138,7 +138,7 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
                   {
                     color: colors.textPrimary,
                     backgroundColor: colors.bgSurface,
-                    borderColor: colors.borderSubtle
+                    borderColor: colors.borderControl
                   }
                 ]}
               />

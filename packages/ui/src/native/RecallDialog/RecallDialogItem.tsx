@@ -71,7 +71,7 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
             <Text
               style={{
                 fontSize: 15,
-                fontWeight: '700',
+                fontWeight: '600',
                 color: colors.textPrimary,
                 flexShrink: 1
               }}
@@ -90,7 +90,7 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
                   borderColor: sc.border
                 }}
               >
-                <Text style={{ fontSize: 10, fontWeight: '700', color: sc.fg }}>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: sc.fg }}>
                   {t('recall.match_score', '匹配度 {{score}}%', {
                     score: (score * 100).toFixed(1)
                   })}

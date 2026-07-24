@@ -4,6 +4,7 @@ import { Platform, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNativeTheme, AppTabIcon } from '@baishou/ui/native'
+import { selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
 import { HapticTab } from '../../components/haptic-tab'
 import { fadeTabAnimation } from '@/src/navigation/fadeStackAnimation'
 
@@ -14,6 +15,7 @@ export default function TabLayout() {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const insets = useSafeAreaInsets()
+  const pendingGateCount = useAgentGateInboxStore(selectPendingCount)
 
   const tabBarBottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 8) : insets.bottom
 
@@ -86,6 +88,7 @@ export default function TabLayout() {
         options={{
           title: t('nav.agent'),
           tabBarHideOnKeyboard: false,
+          tabBarBadge: pendingGateCount > 0 ? (pendingGateCount > 99 ? '99+' : pendingGateCount) : undefined,
           tabBarIcon: ({ color }) => <AppTabIcon id="agent" color={color} />
         }}
       />

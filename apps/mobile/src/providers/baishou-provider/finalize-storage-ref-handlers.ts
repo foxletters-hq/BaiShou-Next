@@ -88,7 +88,9 @@ export async function finalizeStorageRefHandlers(
         vaultService
       )
       ragServiceRef.current = createMobileRagService(ragDeps)
-      setMobileDiaryEmbeddingDeps(ragDeps)
+      setMobileDiaryEmbeddingDeps(ragDeps, {
+        agentDb: agentDbRuntimeRef.current?.drizzleDb ?? null
+      })
       if (isMounted()) {
         ctx.setValue((prev) => ({
           ...prev,
@@ -183,7 +185,7 @@ export async function finalizeStorageRefHandlers(
               vaultCtx.pathService,
               vaultCtx.vaultService
             )
-            setMobileDiaryEmbeddingDeps(resumedRagDeps)
+            setMobileDiaryEmbeddingDeps(resumedRagDeps, { agentDb: runtime.drizzleDb })
             vaultCtx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
           }
         } else {
@@ -211,7 +213,7 @@ export async function finalizeStorageRefHandlers(
                 vaultCtx.pathService,
                 vaultCtx.vaultService
               )
-              setMobileDiaryEmbeddingDeps(resumedRagDeps)
+              setMobileDiaryEmbeddingDeps(resumedRagDeps, { agentDb: runtime.drizzleDb })
               vaultCtx.ragServiceRef.current = createMobileRagService(resumedRagDeps)
             } catch (caughtResumeError) {
               logger.error(

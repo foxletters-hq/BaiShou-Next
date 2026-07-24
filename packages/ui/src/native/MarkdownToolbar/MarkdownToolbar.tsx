@@ -403,17 +403,17 @@ const styles = StyleSheet.create({
   },
   hashText: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 24
   },
   labelText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.3
   },
   markText: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 22
   },
   italicText: {

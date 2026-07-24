@@ -164,7 +164,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
               ]}
               onPress={onConfirm}
             >
-              <Text style={{ color: colors.textOnPrimary, fontWeight: '700' }}>
+              <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
                 {t('common.confirm')}
               </Text>
             </TouchableOpacity>
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   desc: {
     fontSize: 13,

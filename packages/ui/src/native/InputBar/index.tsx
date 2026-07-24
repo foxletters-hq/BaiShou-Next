@@ -255,7 +255,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const toolbarAnimatedStyle = useAnimatedStyle(() => ({
       opacity: toolbarProgress.value,
       maxHeight: toolbarProgress.value * 48,
-      marginBottom: toolbarProgress.value * 10,
+      marginBottom: 0,
       overflow: 'hidden' as const
     }))
 
@@ -529,8 +529,22 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                 </ScrollView>
               )}
 
+              <View
+                style={[
+                  styles.composerShell,
+                  {
+                    backgroundColor: isDark ? colors.bgSurfaceHigh : colors.bgSurface,
+                    borderColor: colors.borderStrong
+                  }
+                ]}
+              >
               <Animated.View
-                style={toolbarAnimatedStyle}
+                style={[
+                  toolbarAnimatedStyle,
+                  showToolbar
+                    ? [styles.toolbarAttached, { borderBottomColor: colors.borderMuted }]
+                    : null
+                ]}
                 pointerEvents={showToolbar ? 'auto' : 'none'}
               >
                 <ScrollView
@@ -571,13 +585,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
 
               <View
                 pointerEvents={composerEnabled ? 'auto' : 'none'}
-                style={[
-                  styles.inputCard,
-                  {
-                    backgroundColor: isDark ? colors.bgSurfaceHigh : colors.bgSurface,
-                    borderColor: colors.borderStrong
-                  }
-                ]}
+                style={styles.inputCard}
               >
                 <View
                   style={[
@@ -677,6 +685,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                   )}
                 </View>
               </View>
+              </View>
             </View>
           </View>
         </View>
@@ -706,6 +715,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 10
   },
+  composerShell: {
+    borderWidth: 1,
+    borderRadius: 18,
+    overflow: 'hidden'
+  },
+  toolbarAttached: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingTop: 6,
+    paddingBottom: 4
+  },
   toolbarContent: {
     gap: 8,
     paddingHorizontal: 4,
@@ -725,7 +744,7 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
     maxWidth: 120
   },
   toolbarToggle: {
@@ -735,8 +754,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   inputCard: {
-    borderWidth: 1,
-    borderRadius: 18,
+    borderWidth: 0,
+    borderRadius: 0,
     paddingTop: 6,
     paddingHorizontal: 10,
     paddingBottom: 6
@@ -790,7 +809,7 @@ const styles = StyleSheet.create({
   },
   sendIcon: {
     fontSize: 18,
-    fontWeight: 'bold'
+    fontWeight: '600'
   },
   stopBtn: {
     width: 32,
@@ -849,6 +868,6 @@ const styles = StyleSheet.create({
   },
   attRemoveLabel: {
     fontSize: 10,
-    fontWeight: 'bold'
+    fontWeight: '600'
   }
 })

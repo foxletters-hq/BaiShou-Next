@@ -35,6 +35,13 @@ export class RecoveryAwareSessionSyncService extends SessionSyncService {
       'SessionSync.fullScanArchives'
     )
   }
+
+  override reconcileFromDisks(options?: SessionResyncOptions): Promise<void> {
+    return this.recovery.runWithRecovery(
+      () => super.reconcileFromDisks(options),
+      'SessionSync.reconcileFromDisks'
+    )
+  }
 }
 
 export class RecoveryAwareSummarySyncService extends SummarySyncService {
@@ -48,9 +55,14 @@ export class RecoveryAwareSummarySyncService extends SummarySyncService {
     super(detector, generator, summaryRepo, fileService)
   }
 
-  override syncSummaryFile(type: SummaryType, startDate: Date, endDate: Date): Promise<void> {
+  override syncSummaryFile(
+    type: SummaryType,
+    startDate: Date,
+    endDate: Date,
+    options?: Parameters<SummarySyncService['syncSummaryFile']>[3]
+  ): Promise<void> {
     return this.recovery.runWithRecovery(
-      () => super.syncSummaryFile(type, startDate, endDate),
+      () => super.syncSummaryFile(type, startDate, endDate, options),
       `SummarySync.syncSummaryFile(${type})`
     )
   }

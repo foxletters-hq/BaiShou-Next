@@ -155,15 +155,13 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
                       strokeWidth={DEFAULT_STROKE_WIDTH}
                     />
                   </TouchableOpacity>
-                  {normalized.groups.length > 1 ? (
-                    <TouchableOpacity
-                      style={styles.deleteGroupBtn}
-                      onPress={() => void handleDeleteGroup(group.id, group.name)}
-                      accessibilityLabel={t('common.delete')}
-                    >
-                      <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                    </TouchableOpacity>
-                  ) : null}
+                  <TouchableOpacity
+                    style={styles.deleteGroupBtn}
+                    onPress={() => void handleDeleteGroup(group.id, group.name)}
+                    accessibilityLabel={t('common.delete')}
+                  >
+                    <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                  </TouchableOpacity>
                 </View>
               ))
             )}

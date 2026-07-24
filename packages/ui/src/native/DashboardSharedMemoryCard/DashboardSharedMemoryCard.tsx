@@ -371,16 +371,18 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
         disabled={copying}
       >
         {copying ? (
-          <ActivityIndicator size="small" color="#ffffff" style={styles.btnIcon} />
+          <ActivityIndicator size="small" color={colors.textOnPrimary} style={styles.btnIcon} />
         ) : (
           <Copy
             size={16}
-            color="#ffffff"
+            color={colors.textOnPrimary}
             strokeWidth={DEFAULT_STROKE_WIDTH}
             style={styles.btnIcon}
           />
         )}
-        <Text style={styles.btnText}>{t('summary.copy_memories')}</Text>
+        <Text style={[styles.btnText, { color: colors.textOnPrimary }]}>
+          {t('summary.copy_memories')}
+        </Text>
       </TouchableOpacity>
 
       {onCopyPrefixChange ? (
@@ -411,7 +413,7 @@ const prefixModalStyles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 8
   },
   message: {
@@ -486,7 +488,7 @@ const styles = StyleSheet.create({
     marginRight: 8
   },
   headerTitle: {
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: 16
   },
   helpWrap: {
@@ -513,8 +515,7 @@ const styles = StyleSheet.create({
   },
   btnText: {
     fontWeight: '600',
-    fontSize: 14,
-    color: '#ffffff'
+    fontSize: 14
   }
 })
 
@@ -539,7 +540,7 @@ const previewStyles = StyleSheet.create({
   },
   title: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   loadingText: {
     fontSize: 12

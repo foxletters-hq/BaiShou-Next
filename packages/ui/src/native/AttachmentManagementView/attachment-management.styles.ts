@@ -9,22 +9,23 @@ export const attachmentManagementStyles = StyleSheet.create({
   },
   mainTabs: {
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: 8,
     padding: 4,
-    gap: 4
+    gap: 8
   },
   mainTabItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 6
   },
   mainTabText: {
     fontSize: 14,
-    fontWeight: '600'
+    lineHeight: 18.9,
+    fontWeight: '400'
   },
   overviewCard: {
     flexDirection: 'row',
@@ -49,7 +50,7 @@ export const attachmentManagementStyles = StyleSheet.create({
   },
   statValue: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center'
   },
   toolbar: {
@@ -134,7 +135,7 @@ export const attachmentManagementStyles = StyleSheet.create({
   },
   orphanBadgeText: {
     fontSize: 10,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   folderSubtitle: {
     fontSize: 12,
@@ -165,7 +166,7 @@ export const attachmentManagementStyles = StyleSheet.create({
   },
   checkmark: {
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   sessionFileListCard: {
     marginBottom: 8,

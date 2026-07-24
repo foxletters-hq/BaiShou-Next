@@ -144,7 +144,7 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
           ) : (
             <CloudUpload size={14} color={colors.textOnPrimary} strokeWidth={2} />
           )}
-          <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '700' }}>
+          <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontWeight: '600' }}>
             {' '}
             {isSyncing
               ? t('data_sync.syncing_status', '备份中...')

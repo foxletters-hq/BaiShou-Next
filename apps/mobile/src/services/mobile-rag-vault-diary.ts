@@ -33,6 +33,7 @@ export type VaultDiaryEmbedRow = {
   content: string
   date: Date
   updatedAt?: Date
+  tags?: string[]
 }
 
 export async function listVaultDiaryMetas(
@@ -59,11 +60,13 @@ export async function loadVaultDiariesForEmbedding(
     const content = shadow.rawContent?.trim()
     if (!content) continue
     const dateStr = String(shadow.date).split('T')[0]!
+    const tags = resolveDiaryTagsFromSources(shadow.tags ?? '', content)
     result.set(shadow.id, {
       id: shadow.id,
       content,
       date: parseDateStr(dateStr),
-      updatedAt: shadow.updatedAt ? new Date(shadow.updatedAt) : undefined
+      updatedAt: shadow.updatedAt ? new Date(shadow.updatedAt) : undefined,
+      tags
     })
   }
   return result

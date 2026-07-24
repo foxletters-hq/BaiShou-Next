@@ -135,7 +135,7 @@ function SectionCard({
             }
           ]}
         >
-          <Text style={styles.importBtnText}>
+          <Text style={[styles.importBtnText, { color: colors.textOnPrimary }]}>
             {t('version_migration.import_action', { defaultValue: '导入' })}
           </Text>
         </Pressable>
@@ -512,7 +512,6 @@ const styles = StyleSheet.create({
     borderRadius: 8
   },
   importBtnText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600'
   }

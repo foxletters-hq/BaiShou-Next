@@ -208,7 +208,9 @@ export async function finalizeVaultRuntimeHandlers(
               pathService,
               vaultService
             )
-            setMobileDiaryEmbeddingDeps(nextRagDeps)
+            setMobileDiaryEmbeddingDeps(nextRagDeps, {
+              agentDb: agentDbRuntimeRef.current?.drizzleDb ?? null
+            })
             ragServiceRef.current = createMobileRagService(nextRagDeps)
           },
           onResyncComplete: () => {

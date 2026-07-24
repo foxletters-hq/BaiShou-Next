@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   tagRemoveText: {
     fontSize: 16,
     lineHeight: 18,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   input: {
     fontSize: 15,

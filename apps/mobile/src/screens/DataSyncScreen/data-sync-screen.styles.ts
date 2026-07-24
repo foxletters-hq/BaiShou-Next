@@ -32,7 +32,7 @@ export const dataSyncScreenStyles = StyleSheet.create({
   backupTab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
   headerTitleRow: { marginBottom: 10 },
   headerTitleBlock: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  headerTitleLabel: { fontSize: 16, fontWeight: '700' },
+  headerTitleLabel: { fontSize: 16, fontWeight: '600' },
   targetBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -96,7 +96,7 @@ export const dataSyncScreenStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  checkmark: { fontSize: 14, fontWeight: '700' },
+  checkmark: { fontSize: 14, fontWeight: '600' },
   recordInfo: { flex: 1 },
   recordName: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   recordMeta: { fontSize: 11 },

@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ScreenSafeArea } from '@/src/components/ScreenSafeArea'
 import { ONBOARDING_STORAGE_KEY } from '../../constants/storage'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
-import { useNativeToast } from '@baishou/ui/native'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import {
   NUM_ONBOARDING_PAGES,
   ONBOARDING_PAGE,
@@ -40,6 +40,7 @@ export const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation()
   const { t } = useTranslation()
   const toast = useNativeToast()
+  const { colors } = useNativeTheme()
   const storagePermission = useStoragePermission()
   const { services, dbReady, storageReady } = useBaishou()
   const [currentPage, setCurrentPage] = useState(0)
@@ -283,9 +284,13 @@ export const OnboardingScreen: React.FC = () => {
     outputRange: [1, 1.04]
   })
 
-  const renderSlideTitle = (text: string) => <Text style={styles.slideTitle}>{text}</Text>
+  const renderSlideTitle = (text: string) => (
+    <Text style={[styles.slideTitle, { color: colors.textPrimary }]}>{text}</Text>
+  )
 
-  const renderSlideBody = (text: string) => <Text style={styles.slideBody}>{text}</Text>
+  const renderSlideBody = (text: string) => (
+    <Text style={[styles.slideBody, { color: colors.textSecondary }]}>{text}</Text>
+  )
 
   const renderLanguageSlide = () => (
     <OnboardingLanguageSlide
@@ -301,7 +306,12 @@ export const OnboardingScreen: React.FC = () => {
 
   const renderWelcomeSlide = () => (
     <View style={styles.slideInner}>
-      <Animated.View style={[styles.welcomeIconWrap, { transform: [{ scale: welcomeScale }] }]}>
+      <Animated.View
+        style={[
+          styles.welcomeIconWrap,
+          { backgroundColor: colors.bgSurface, transform: [{ scale: welcomeScale }] }
+        ]}
+      >
         <Image source={APP_ICON} style={styles.welcomeIcon} resizeMode="cover" />
       </Animated.View>
       <Text style={styles.welcomeTitle}>{t('onboarding.welcome_title')}</Text>
@@ -368,7 +378,9 @@ export const OnboardingScreen: React.FC = () => {
       <View style={styles.slideSpacerMedium} />
       {renderSlideBody(t('onboarding.privacy_desc'))}
       <View style={styles.sloganSpacer} />
-      <Text style={styles.slogan}>{t('onboarding.slogan')}</Text>
+      <Text style={[styles.slogan, { color: colors.textSecondary }]}>
+        {t('onboarding.slogan')}
+      </Text>
     </View>
   )
 
@@ -421,7 +433,7 @@ export const OnboardingScreen: React.FC = () => {
                     styles.indicator,
                     {
                       width: active ? 20 : 7,
-                      backgroundColor: active ? theme.iconColor : '#D1D5DB'
+                      backgroundColor: active ? theme.iconColor : colors.borderMuted
                     }
                   ]}
                 />
@@ -432,8 +444,10 @@ export const OnboardingScreen: React.FC = () => {
           <View style={styles.navActions}>
             {currentPage > ONBOARDING_PAGE.LANGUAGE && (
               <TouchableOpacity onPress={handlePrevious} style={styles.backButton}>
-                <ChevronLeft size={12} color="#9CA3AF" strokeWidth={2} />
-                <Text style={styles.backText}>{t('common.back')}</Text>
+                <ChevronLeft size={12} color={colors.textTertiary} strokeWidth={2} />
+                <Text style={[styles.backText, { color: colors.textSecondary }]}>
+                  {t('common.back')}
+                </Text>
               </TouchableOpacity>
             )}
 
@@ -454,7 +468,7 @@ export const OnboardingScreen: React.FC = () => {
               activeOpacity={nextBlockedOnLanguage || isMountingStorage ? 1 : 0.9}
               disabled={isMountingStorage}
             >
-              <Text style={styles.nextButtonText}>
+              <Text style={[styles.nextButtonText, { color: colors.textOnPrimary }]}>
                 {isMountingStorage
                   ? t('storage.mounting')
                   : isLast
@@ -462,7 +476,7 @@ export const OnboardingScreen: React.FC = () => {
                     : t('common.next')}
               </Text>
               {!isLast && !isMountingStorage && (
-                <ChevronRight size={14} color="#FFFFFF" strokeWidth={2} />
+                <ChevronRight size={14} color={colors.textOnPrimary} strokeWidth={2} />
               )}
             </TouchableOpacity>
           </View>

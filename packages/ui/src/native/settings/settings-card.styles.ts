@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native'
 
 export const settingsCardStyles = StyleSheet.create({
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
   cardDesc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '600' },
   hint: { fontSize: 12, marginTop: 2, lineHeight: 17 },

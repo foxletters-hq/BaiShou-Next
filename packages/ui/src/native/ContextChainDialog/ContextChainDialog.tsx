@@ -102,7 +102,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
         )}
       </Text>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('agent.chat.compression_help_trigger_title', '何时触发')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
@@ -113,7 +113,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
         </Text>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('agent.chat.compression_help_chain_title', '调用链展示顺序')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
@@ -127,7 +127,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
         </Text>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('agent.chat.compression_help_footer_title', '底部指标含义')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
@@ -144,7 +144,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
         </Text>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('agent.chat.compression_help_keep_title', '保留轮数')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
@@ -155,7 +155,7 @@ export const ContextChainDialog: React.FC<NativeContextChainDialogProps> = ({
         </Text>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('agent.chat.compression_help_branch_title', '分支与回到更早位置')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>

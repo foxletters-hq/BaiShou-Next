@@ -9,8 +9,7 @@ import Animated, {
 import { useNativeTheme } from '../theme'
 import { toReanimatedColor } from '../../shared/colors/reanimated-color.util'
 
-const TRACK_OFF_LIGHT = '#E2E8F0'
-const TRACK_OFF_DARK = '#2D3748'
+const TRACK_OFF_FALLBACK = '#E2E8F0'
 const TRACK_ON_FALLBACK = '#5BA8F5'
 
 export interface NativeSwitchProps {
@@ -27,7 +26,7 @@ export const Switch: React.FC<NativeSwitchProps> = ({
   onValueChange,
   disabled = false
 }) => {
-  const { colors, isDark } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const progress = useSharedValue(value ? 1 : 0)
 
   useEffect(() => {
@@ -38,7 +37,7 @@ export const Switch: React.FC<NativeSwitchProps> = ({
     })
   }, [value, progress])
 
-  const trackColorOff = isDark ? TRACK_OFF_DARK : TRACK_OFF_LIGHT
+  const trackColorOff = toReanimatedColor(colors.bgSurfaceHighest, TRACK_OFF_FALLBACK)
   const trackColorOn = toReanimatedColor(colors.primary, TRACK_ON_FALLBACK)
 
   const rTrackStyle = useAnimatedStyle(() => {
@@ -73,8 +72,8 @@ export const Switch: React.FC<NativeSwitchProps> = ({
             styles.thumb,
             rThumbStyle,
             {
-              backgroundColor: '#FFFFFF',
-              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)'
+              backgroundColor: colors.textOnPrimary,
+              borderColor: colors.borderSubtle
             }
           ]}
         />

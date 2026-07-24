@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   },
   hot: {
     color: '#b91c1c',
-    fontWeight: '700',
+    fontWeight: '600',
     backgroundColor: 'rgba(254,226,226,0.96)'
   }
 })

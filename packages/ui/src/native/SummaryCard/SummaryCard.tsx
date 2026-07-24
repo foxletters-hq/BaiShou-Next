@@ -80,9 +80,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8
   },
-  badgeText: { fontSize: 12, fontWeight: 'bold' },
+  badgeText: { fontSize: 12, fontWeight: '600' },
   date: { fontSize: 12, opacity: 0.6 },
-  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+  title: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
   contentContainer: { height: 150, overflow: 'hidden' },
   snippet: { fontSize: 14, lineHeight: 21, opacity: 0.8 },
   actionsBox: {

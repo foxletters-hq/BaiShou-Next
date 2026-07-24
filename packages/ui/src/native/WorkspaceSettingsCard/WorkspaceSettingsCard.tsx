@@ -77,7 +77,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
         )}
       </Text>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('workspace.help_per_vault_title', '切换工作空间后会变：')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>
@@ -88,7 +88,7 @@ export const WorkspaceSettingsCard: React.FC<NativeWorkspaceSettingsCardProps> =
         </Text>
       </View>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('workspace.help_global_title', '切换工作空间后不变：')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>

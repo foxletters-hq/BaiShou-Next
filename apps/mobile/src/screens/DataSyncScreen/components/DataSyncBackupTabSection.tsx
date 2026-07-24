@@ -72,7 +72,7 @@ export function DataSyncBackupTabSection({
           </TouchableOpacity>
           {backupTab === 'cloud' && (
             <View style={[styles.targetBadge, { borderColor: colors.primary }]}>
-              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
+              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600' }}>
                 {syncConfig.target.toUpperCase()}
               </Text>
             </View>

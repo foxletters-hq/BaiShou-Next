@@ -129,9 +129,9 @@ function buildMarkdownStyles(
       marginBottom: listMargin
     },
     hr: {
-      backgroundColor: colors.borderSubtle,
+      backgroundColor: isPreview ? colors.borderSubtle : colors.borderMuted,
       height: 1,
-      marginVertical: isChat ? 10 : 16
+      marginVertical: isPreview ? 8 : isChat ? 10 : 16
     },
     table: {
       borderWidth: 1,

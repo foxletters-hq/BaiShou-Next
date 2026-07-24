@@ -87,7 +87,7 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
 
                 {item.isOrphan && (
                   <View style={[styles.diaryOrphanBadge, { backgroundColor: colors.error + 'cc' }]}>
-                    <Text style={{ color: colors.textOnPrimary, fontSize: 10, fontWeight: '700' }}>
+                    <Text style={{ color: colors.textOnPrimary, fontSize: 10, fontWeight: '600' }}>
                       {t('settings.attachment_orphan_label', '孤立')}
                     </Text>
                   </View>

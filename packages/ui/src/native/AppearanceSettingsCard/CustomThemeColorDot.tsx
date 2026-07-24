@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   plus: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#ffffff',
     zIndex: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.25)',
