@@ -204,9 +204,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
           >
             <ListChecks
               size={16}
-              color={
-                isMultiSelect ? 'var(--color-error)' : 'var(--text-secondary)'
-              }
+              color={isMultiSelect ? 'var(--color-error)' : 'var(--text-secondary)'}
             />
           </button>
         )}

@@ -61,7 +61,11 @@
   width: 88px;
   height: 88px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.4), rgba(var(--color-primary-rgb), 0.15));
+  background: linear-gradient(
+    135deg,
+    rgba(224, 242, 254, 0.4),
+    rgba(var(--color-primary-rgb), 0.15)
+  );
   box-shadow: none;
   display: flex;
   align-items: center;

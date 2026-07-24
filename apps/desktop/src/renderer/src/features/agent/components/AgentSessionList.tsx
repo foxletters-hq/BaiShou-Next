@@ -33,7 +33,10 @@ function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
 }
 
-function groupSessions(sessions: SessionData[], t: (key: string, fallback: string) => string): SessionGroup[] {
+function groupSessions(
+  sessions: SessionData[],
+  t: (key: string, fallback: string) => string
+): SessionGroup[] {
   const pinned: SessionData[] = []
   const today: SessionData[] = []
   const yesterday: SessionData[] = []

@@ -58,11 +58,7 @@ export const DiaryEditorPage: React.FC = () => {
         pointerEvents: editor.savePhase === 'idle' ? 'auto' : 'none'
       }}
       initial={{ opacity: 0, y: 10 }}
-      animate={
-        isLeaving
-          ? { opacity: 0, y: 10, scale: 0.992 }
-          : { opacity: 1, y: 0, scale: 1 }
-      }
+      animate={isLeaving ? { opacity: 0, y: 10, scale: 0.992 } : { opacity: 1, y: 0, scale: 1 }}
       transition={{
         duration: isLeaving ? 0.32 : 0.28,
         ease: [0.22, 1, 0.36, 1]

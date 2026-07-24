@@ -41,9 +41,7 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
   const onChangeRef = useRef(onChange)
   const suppressEchoRef = useRef(false)
   const pendingScrollRef = useRef<{ line: number; column?: number } | null>(null)
-  const [textContextMenu, setTextContextMenu] = useState<EditorContextMenuOpenPayload | null>(
-    null
-  )
+  const [textContextMenu, setTextContextMenu] = useState<EditorContextMenuOpenPayload | null>(null)
 
   useEffect(() => {
     if (scrollToLine) {
