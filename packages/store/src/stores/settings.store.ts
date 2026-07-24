@@ -245,6 +245,8 @@ export interface SettingsActions {
 
   // AI 设定异步操作
   loadConfig: (options?: { force?: boolean }) => Promise<void>
+  /** 强制从主进程重新拉取指定配置键（忽略已加载缓存） */
+  reloadConfigKeys: (keys: SettingsConfigKey[]) => Promise<void>
   ensureConfigForSegment: (segment: string) => Promise<void>
   retryConfigForSegment: (segment: string) => Promise<void>
   ensureConfigKeys: (
@@ -351,12 +353,27 @@ export const useSettingsStore = create<SettingsStore>()(
             return
           }
 
-          const missing = options?.force
-            ? [...ALL_SETTINGS_CONFIG_KEYS]
-            : ALL_SETTINGS_CONFIG_KEYS.filter((key) => !loadedConfigKeys.includes(key))
+          if (options?.force) {
+            await get().reloadConfigKeys([...ALL_SETTINGS_CONFIG_KEYS])
+            return
+          }
+
+          const missing = ALL_SETTINGS_CONFIG_KEYS.filter((key) => !loadedConfigKeys.includes(key))
           if (missing.length === 0) return
 
           await get().ensureConfigKeys(missing, { trackGlobalLoading: true })
+        },
+
+        reloadConfigKeys: async (keys: SettingsConfigKey[]) => {
+          const uniqueKeys = [...new Set(keys)]
+          if (uniqueKeys.length === 0) return
+
+          set({
+            failedConfigKeys: get().failedConfigKeys.filter((key) => !uniqueKeys.includes(key)),
+            loadedConfigKeys: get().loadedConfigKeys.filter((key) => !uniqueKeys.includes(key))
+          })
+
+          await hydrateConfigSnapshot(uniqueKeys, get, set)
         },
 
         ensureConfigForSegment: async (segment: string) => {
