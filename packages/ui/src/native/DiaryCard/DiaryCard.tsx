@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   dateGroup: { flexDirection: 'row', alignItems: 'center' },
   day: { fontSize: 32, fontWeight: '800', lineHeight: 32 },
   dateMeta: { marginLeft: 12, justifyContent: 'center' },
-  weekday: { fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
+  weekday: { fontSize: 13, fontWeight: '500', letterSpacing: 0.5 },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 0.5
   },
-  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  badgeText: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
   iconOutlineBadge: {
     paddingHorizontal: 4,
     paddingVertical: 2,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   },
   similarityText: {
     fontSize: 10,
-    fontWeight: '800'
+    fontWeight: '600'
   },
   headerSpacer: { width: 22 },
   contentContainer: { maxHeight: 120, overflow: 'hidden' },

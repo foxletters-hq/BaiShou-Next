@@ -114,7 +114,7 @@
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: var(--text-primary, #334155);
+  color: var(--text-primary);
   cursor: pointer;
   transition:
     background 0.18s ease,
@@ -124,8 +124,8 @@
 }
 
 .image-preview-controls button:hover {
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.12);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.12);
+  color: var(--color-primary);
 }
 
 .image-preview-controls button:active {
@@ -133,6 +133,6 @@
 }
 
 .image-preview-controls button.image-preview-close-btn:hover {
-  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.12);
-  color: var(--color-error, #ef4444);
+  background: rgba(var(--color-error-rgb), 0.12);
+  color: var(--color-error);
 }

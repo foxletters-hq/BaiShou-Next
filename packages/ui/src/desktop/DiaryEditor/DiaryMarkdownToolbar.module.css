@@ -84,7 +84,7 @@
   background: var(--bg-surface-low, var(--bg-surface));
   color: var(--text-secondary);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
   flex-shrink: 0;
   transition:

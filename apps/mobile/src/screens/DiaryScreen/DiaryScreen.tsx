@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   deleteTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 12
   },
   deleteContent: {

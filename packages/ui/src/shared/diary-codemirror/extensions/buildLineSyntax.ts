@@ -1,10 +1,17 @@
 import type { EditorState } from '@codemirror/state'
-import { blockquoteLineStyle, hideSyntaxReplaceSpec } from './styles'
+import {
+  blockquoteLineStyle,
+  hideSyntaxReplaceSpec,
+  hrLineStyle,
+  hrWidgetReplaceSpec
+} from './styles'
 import { pushLineDecoration, pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 import type { DiaryCmPlatform } from '../types'
 
 const ATX_HEADING_PREFIX_RE = /^(#{1,6})\s?/
 const BLOCKQUOTE_PREFIX_RE = /^(\s*>\s?)/
+/** CommonMark 风格 thematic break：至少 3 个相同 `-` / `*` / `_`，允许中间空格 */
+const HR_LINE_RE = /^\s*([-*_])(?:\s*\1){2,}\s*$/
 const STRONG_WRAPPER_RE = /\*\*(.+?)\*\*/g
 const EMPHASIS_WRAPPER_RE = /(?<!\*)\*([^*]+)\*(?!\*)/g
 const INLINE_CODE_WRAPPER_RE = /`([^`]+)`/g
@@ -81,6 +88,15 @@ export function collectLineSyntaxDecorations(
     if (heading) {
       if (!isActiveLine) {
         pushReplaceDecoration(marks, doc, line.from, line.from + heading[0].length, hideSpec)
+      }
+      continue
+    }
+
+    // 表格分隔行含 `|`，不当作分割线
+    if (!text.includes('|') && HR_LINE_RE.test(text)) {
+      pushLineDecoration(marks, hrLineStyle, line.from)
+      if (!isActiveLine && line.from < line.to) {
+        pushReplaceDecoration(marks, doc, line.from, line.to, hrWidgetReplaceSpec)
       }
       continue
     }

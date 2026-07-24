@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   },
   storageTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center'
   },
   storageHintText: {

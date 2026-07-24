@@ -1,5 +1,5 @@
 .attachment-uploader {
-  border: 1px dashed var(--border-color, #e0e0e0);
+  border: 1px dashed var(--border-control);
   border-radius: 8px;
   padding: 8px;
   margin-top: 8px;
@@ -7,8 +7,8 @@
 }
 
 .attachment-uploader.dragging {
-  border-color: var(--primary-color, #4f46e5);
-  background-color: var(--primary-color-light, rgba(79, 70, 229, 0.05));
+  border-color: var(--color-primary);
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .attachment-toolbar {
@@ -23,18 +23,18 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid var(--border-color, #e0e0e0);
+  border: 1px solid var(--border-control);
   border-radius: 6px;
-  background: var(--bg-secondary, #f5f5f5);
-  color: var(--text-primary, #333);
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s ease;
 }
 
 .attachment-btn:hover {
-  background: var(--bg-hover, #e8e8e8);
-  border-color: var(--primary-color, #4f46e5);
+  background: var(--bg-surface-highest);
+  border-color: var(--color-primary);
 }
 
 .attachment-btn:disabled {
@@ -44,7 +44,7 @@
 
 .attachment-status {
   font-size: 12px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .attachment-list {
@@ -58,9 +58,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: var(--bg-secondary, #f5f5f5);
+  background: var(--bg-surface-high);
   border-radius: 6px;
-  border: 1px solid var(--border-color, #e0e0e0);
+  border: 1px solid var(--border-control);
 }
 
 .attachment-info {
@@ -78,7 +78,7 @@
 
 .attachment-name {
   font-size: 13px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -100,17 +100,17 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .attachment-action-btn:hover {
-  background: var(--bg-hover, #e8e8e8);
-  color: var(--text-primary, #333);
+  background: var(--bg-surface-highest);
+  color: var(--text-primary);
 }
 
 .attachment-action-btn.delete:hover {
   background: var(--error-color-light, rgba(239, 68, 68, 0.1));
-  color: var(--error-color, #ef4444);
+  color: var(--color-error);
 }

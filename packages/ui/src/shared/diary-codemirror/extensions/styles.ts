@@ -98,6 +98,33 @@ export const linkMark = Decoration.mark({ class: 'cm-rendered-link' })
 
 export const tableSeparatorLineStyle = Decoration.line({ class: 'cm-table-separator-line' })
 
+class HorizontalRuleWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const el = document.createElement('span')
+    el.className = 'cm-wb-hr-widget'
+    el.setAttribute('aria-hidden', 'true')
+    return el
+  }
+
+  eq(): boolean {
+    return true
+  }
+
+  ignoreEvent(): boolean {
+    return true
+  }
+}
+
+const horizontalRuleWidget = new HorizontalRuleWidget()
+
+/** 将 `---` / `***` / `___` 行替换为视觉分割线（触摸端必须用 widget） */
+export const hrWidgetReplaceSpec = {
+  widget: horizontalRuleWidget,
+  inclusive: false as const
+}
+
+export const hrLineStyle = Decoration.line({ class: 'cm-wb-hr' })
+
 export const codeLineStyle = Decoration.line({ class: 'cm-code-line' })
 export const codeLineStyleTop = Decoration.line({
   class: 'cm-code-line cm-code-line-top'

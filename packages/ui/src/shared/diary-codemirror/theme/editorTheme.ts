@@ -7,7 +7,7 @@ export const editorTheme = EditorView.baseTheme({
     height: '100%',
     fontSize: '16px',
     lineHeight: '24px',
-    backgroundColor: 'var(--bg-surface, #ffffff)'
+    backgroundColor: 'var(--bg-surface)'
   },
   '.cm-editor.cm-focused': {
     outline: 'none !important'
@@ -192,7 +192,7 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-table-header-line': {
     fontWeight: '600',
-    backgroundColor: 'var(--cm-table-header-bg, var(--bg-surface-normal, rgba(0, 0, 0, 0.04)))'
+    backgroundColor: 'var(--cm-table-header-bg, var(--bg-surface-normal))'
   },
   '.cm-table-row-line': {
     backgroundColor: 'var(--bg-editor, transparent)'
@@ -463,7 +463,7 @@ export const editorTheme = EditorView.baseTheme({
       cursor: 'cell'
     },
   '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th': {
-    backgroundColor: 'var(--cm-table-header-bg, var(--bg-surface-normal, rgba(0, 0, 0, 0.04)))',
+    backgroundColor: 'var(--cm-table-header-bg, var(--bg-surface-normal))',
     fontWeight: '600'
   },
   '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview tr:last-child td': {
@@ -528,8 +528,8 @@ export const editorTheme = EditorView.baseTheme({
     cursor: 'grabbing'
   },
   '.cm-table-handle--drop-target': {
-    borderColor: 'var(--color-primary, #5ba8f5)',
-    background: 'color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent)'
+    borderColor: 'var(--color-primary)',
+    background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)'
   },
   '.cm-table-col-handle': {
     flex: '0 0 auto',
@@ -605,7 +605,7 @@ export const editorTheme = EditorView.baseTheme({
     padding: '4px',
     borderRadius: '8px',
     border: '1px solid var(--border-subtle)',
-    background: 'var(--bg-surface, #fff)',
+    background: 'var(--bg-surface)',
     boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)'
   },
   '.cm-table-context-menu-item': {
@@ -625,10 +625,10 @@ export const editorTheme = EditorView.baseTheme({
     cursor: 'default'
   },
   '.cm-table-context-menu-item:not(:disabled):hover': {
-    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.05))'
+    background: 'var(--bg-surface-normal)'
   },
   '.cm-table-context-menu-item--destructive': {
-    color: 'var(--color-danger, #e5484d)'
+    color: 'var(--color-error)'
   },
   '.cm-table-sheet-layer': {
     position: 'fixed',
@@ -653,7 +653,7 @@ export const editorTheme = EditorView.baseTheme({
     left: '0',
     right: '0',
     borderRadius: '20px 20px 0 0',
-    background: 'var(--bg-surface, #fff)',
+    background: 'var(--bg-surface)',
     borderTop: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.08))',
     boxShadow: '0 -16px 48px rgba(0, 0, 0, 0.2)',
     overflow: 'hidden',
@@ -690,7 +690,7 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-table-sheet-group': {
     borderRadius: '12px',
     overflow: 'hidden',
-    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.04))',
+    background: 'var(--bg-surface-normal)',
     border: 'none',
     boxShadow: 'inset 0 0 0 1px var(--border-subtle, rgba(0, 0, 0, 0.06))'
   },
@@ -716,7 +716,7 @@ export const editorTheme = EditorView.baseTheme({
     WebkitTapHighlightColor: 'transparent'
   },
   '.cm-table-sheet-item:active:not(:disabled)': {
-    background: 'var(--bg-surface-normal, rgba(0, 0, 0, 0.06))'
+    background: 'var(--bg-surface-normal)'
   },
   '.cm-table-sheet-item:last-child': {
     borderBottom: 'none'
@@ -725,7 +725,7 @@ export const editorTheme = EditorView.baseTheme({
     opacity: '0.45'
   },
   '.cm-table-sheet-item--destructive': {
-    color: 'var(--color-danger, #e5484d)'
+    color: 'var(--color-error)'
   },
   '.cm-table-grid-cell--col-selected': {
     background: 'transparent',
@@ -736,15 +736,15 @@ export const editorTheme = EditorView.baseTheme({
     position: 'absolute',
     inset: '0',
     pointerEvents: 'none',
-    borderLeft: '2px solid var(--color-primary, #5b9bd5)',
-    borderRight: '2px solid var(--color-primary, #5b9bd5)',
+    borderLeft: '2px solid var(--color-primary)',
+    borderRight: '2px solid var(--color-primary)',
     boxSizing: 'border-box'
   },
   '.cm-table-preview thead .cm-table-grid-cell--col-selected::after': {
-    borderTop: '2px solid var(--color-primary, #5b9bd5)'
+    borderTop: '2px solid var(--color-primary)'
   },
   '.cm-table-preview tbody tr:last-child .cm-table-grid-cell--col-selected::after': {
-    borderBottom: '2px solid var(--color-primary, #5b9bd5)'
+    borderBottom: '2px solid var(--color-primary)'
   },
   '.cm-table-grid-cell--row-selected': {
     background: 'transparent',
@@ -755,18 +755,18 @@ export const editorTheme = EditorView.baseTheme({
     position: 'absolute',
     inset: '0',
     pointerEvents: 'none',
-    borderTop: '2px solid var(--color-primary, #5b9bd5)',
-    borderBottom: '2px solid var(--color-primary, #5b9bd5)',
+    borderTop: '2px solid var(--color-primary)',
+    borderBottom: '2px solid var(--color-primary)',
     boxSizing: 'border-box'
   },
   '.cm-table-preview .cm-table-grid-cell--row-selected:first-child::after': {
-    borderLeft: '2px solid var(--color-primary, #5b9bd5)'
+    borderLeft: '2px solid var(--color-primary)'
   },
   '.cm-table-preview .cm-table-grid-cell--row-selected:last-child::after': {
-    borderRight: '2px solid var(--color-primary, #5b9bd5)'
+    borderRight: '2px solid var(--color-primary)'
   },
   '.cm-table-grid-cell--range-selected': {
-    background: 'color-mix(in srgb, var(--color-primary, #5b9bd5) 14%, transparent)'
+    background: 'color-mix(in srgb, var(--color-primary) 14%, transparent)'
   },
   '.cm-table-block--range-dragging': {
     userSelect: 'none',
@@ -781,7 +781,7 @@ export const editorTheme = EditorView.baseTheme({
     outline: 'none'
   },
   '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active': {
-    background: 'var(--color-primary, #5b9bd5)',
+    background: 'var(--color-primary)',
     borderRadius: '4px'
   },
   '.cm-table-block--col-selected .cm-table-col-handle.cm-table-handle--active .cm-table-grip-icon':
@@ -829,16 +829,18 @@ export const editorTheme = EditorView.baseTheme({
     backgroundColor: 'var(--bg-code-block, #eceef2) !important'
   },
   '.cm-line.cm-wb-hr': {
-    position: 'relative'
+    position: 'relative',
+    minHeight: '1.5em'
   },
-  '.cm-line.cm-wb-hr::after': {
-    content: '""',
-    position: 'absolute',
-    left: '0',
-    right: '0',
-    top: '50%',
-    borderTop: '1px solid var(--border-subtle)',
-    pointerEvents: 'none'
+  '.cm-wb-hr-widget': {
+    display: 'inline-block',
+    width: '100%',
+    height: '0',
+    margin: '14px 0',
+    borderTop: '1px solid var(--border-control, #d6d6d6)',
+    verticalAlign: 'middle',
+    pointerEvents: 'none',
+    boxSizing: 'border-box'
   },
   '.cm-code-line-top': {
     paddingTop: '12px !important',
@@ -913,20 +915,19 @@ export const editorTheme = EditorView.baseTheme({
     lineHeight: '1.7'
   },
   '.cm-diary-tag-token': {
-    display: 'inline',
+    display: 'inline-block',
     borderRadius: '10px',
-    padding: '1px 6px',
-    margin: '0 4px 0 0',
-    fontSize: 'inherit',
+    padding: '1px 8px',
+    margin: '0 6px 0 0',
+    fontSize: '16px',
     fontWeight: '500',
-    lineHeight: 'inherit',
+    lineHeight: '24px',
     verticalAlign: 'baseline',
-    boxDecorationBreak: 'clone',
-    WebkitBoxDecorationBreak: 'clone'
+    boxSizing: 'border-box'
   },
   '.cm-diary-tag-c0': {
-    color: 'var(--tag-0-fg, #3b82f6)',
-    backgroundColor: 'color-mix(in srgb, var(--tag-0-fg, #3b82f6) 15%, transparent)'
+    color: 'var(--tag-0-fg, #1a1c23)',
+    backgroundColor: 'color-mix(in srgb, var(--tag-0-fg, #1a1c23) 15%, transparent)'
   },
   '.cm-diary-tag-c1': {
     color: 'var(--tag-1-fg, #10b981)',
@@ -954,7 +955,7 @@ export const editorTheme = EditorView.baseTheme({
     overflow: 'visible'
   },
   '.cm-tooltip.tbl-menu-tooltip .tbl-menu': {
-    backgroundColor: 'var(--bg-surface-raised, #ffffff)',
+    backgroundColor: 'var(--bg-surface-raised)',
     border: '1px solid var(--border-muted, rgba(0, 0, 0, 0.08))',
     boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.12))',
     borderRadius: 'var(--radius-sm, 8px)',
