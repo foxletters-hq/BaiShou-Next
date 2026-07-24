@@ -1,8 +1,14 @@
 import React from 'react'
 import { AgentToolCard } from './AgentToolCard'
 import { AgentToolsCommunityTab } from './AgentToolsCommunityTab'
-import type { AgentToolDef, AgentToolsConfig, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
+import type {
+  AgentToolDef,
+  AgentToolsConfig,
+  ToolConfigParam,
+  ToolManagementConfig
+} from './agent-tools.types'
 import styles from './AgentToolsView.module.css'
+import stack from '../shared/SettingsStack.module.css'
 
 interface AgentToolsBuiltInListProps {
   config: AgentToolsConfig
@@ -30,19 +36,19 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
   showEmojiTools = true
 }) => {
   return (
-    <div className={styles.contentArea}>
-      <div className={styles.pageCard}>
-        {categoryOrder.map((catKey) => {
-          const list = groupedTools[catKey]
-          if (!list || list.length === 0) return null
-          const meta = categoryMeta[catKey]
-          return (
-            <div key={catKey} className={styles.categoryGroup}>
-              <div className={styles.categoryHeader}>
-                <span className={styles.categoryIcon}>{meta.icon}</span>
-                <span className={styles.categoryLabel}>{meta.label}</span>
-              </div>
-              <div className={styles.categoryList}>
+    <div className={`${styles.contentArea} ${stack.stack}`}>
+      {categoryOrder.map((catKey) => {
+        const list = groupedTools[catKey]
+        if (!list || list.length === 0) return null
+        const meta = categoryMeta[catKey]
+        return (
+          <div key={catKey} className={stack.stackGroup}>
+            <div className={stack.sectionLabelRow}>
+              <span className={styles.categoryIcon}>{meta.icon}</span>
+              <h3 className={stack.sectionLabel}>{meta.label}</h3>
+            </div>
+            <section className={stack.cardSection}>
+              <div className={styles.categoryListPadded}>
                 {list.map((tool) => (
                   <AgentToolCard
                     key={tool.id}
@@ -54,18 +60,18 @@ export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
                   />
                 ))}
               </div>
-            </div>
-          )
-        })}
+            </section>
+          </div>
+        )
+      })}
 
-        {showEmojiTools ? (
-          <AgentToolsCommunityTab
-            config={config as ToolManagementConfig}
-            onConfigChange={onConfigChange as (config: ToolManagementConfig) => void}
-            onOpenEmojiSettings={onOpenEmojiSettings}
-          />
-        ) : null}
-      </div>
+      {showEmojiTools ? (
+        <AgentToolsCommunityTab
+          config={config as ToolManagementConfig}
+          onConfigChange={onConfigChange as (config: ToolManagementConfig) => void}
+          onOpenEmojiSettings={onOpenEmojiSettings}
+        />
+      ) : null}
     </div>
   )
 }

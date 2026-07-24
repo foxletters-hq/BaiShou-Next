@@ -142,47 +142,39 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-inner-card">
-              <div className="about-flat-label about-flat-label-inner">
-                {t('about.core_developer_label', '核心开发者')}
-              </div>
-              <div className="about-flat-developer">
-                <div
-                  className="about-flat-developer-tap"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDevTap()
-                  }}
-                />
-                <span className="about-license-title">
-                  Anson & Kasumiame Sakura & Tenkou Akatsuki
-                </span>
-                <span className="about-license-subtitle">The Trio</span>
-              </div>
+            <div className="about-flat-label">{t('about.core_developer_label', '核心开发者')}</div>
+            <div className="about-flat-developer">
+              <div
+                className="about-flat-developer-tap"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDevTap()
+                }}
+              />
+              <span className="about-license-title">
+                Anson & Kasumiame Sakura & Tenkou Akatsuki
+              </span>
+              <span className="about-license-subtitle">The Trio</span>
             </div>
           </div>
         </section>
 
         <section className="about-surface-card">
           <div className="about-flat-section about-flat-section-only">
-            <div className="about-flat-inner-card">
-              <div className="about-flat-label about-flat-label-inner">
-                {t('about.oss_license_label', '开源协议')}
+            <div className="about-flat-label">{t('about.oss_license_label', '开源协议')}</div>
+            <button
+              type="button"
+              className="about-flat-link-row"
+              onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
+            >
+              <div className="about-license-content">
+                <span className="about-license-title">AGPL v3.0</span>
+                <span className="about-license-subtitle">
+                  Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
+                </span>
               </div>
-              <button
-                type="button"
-                className="about-flat-link-row"
-                onClick={() => window.open('https://www.gnu.org/licenses/agpl-3.0.html', '_blank')}
-              >
-                <div className="about-license-content">
-                  <span className="about-license-title">AGPL v3.0</span>
-                  <span className="about-license-subtitle">
-                    Copyright (C) 2026 Anson, Kasumiame Sakura & Tenkou Akatsuki
-                  </span>
-                </div>
-                <ExternalLink size={18} className="about-flat-link-trailing" />
-              </button>
-            </div>
+              <ExternalLink size={18} className="about-flat-link-trailing" />
+            </button>
           </div>
         </section>
 
@@ -285,28 +277,28 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
       <div className="about-settings-wrapper">
         <button className="settings-list-tile" onClick={() => handleOpenPage('about')}>
           <div className="settings-list-tile-leading">
-            <Info size={24} />
+            <Info size={20} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.about_baishou', '关于白守')}
             </span>
           </div>
-          <ChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={18} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
 
         <button className="settings-list-tile" onClick={() => handleOpenPage('privacy')}>
           <div className="settings-list-tile-leading">
-            <ShieldCheck size={24} />
+            <ShieldCheck size={20} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
               {t('settings.development_philosophy', '开发哲学与无痕承诺')}
             </span>
           </div>
-          <ChevronRight size={22} className="settings-list-tile-trailing" />
+          <ChevronRight size={18} className="settings-list-tile-trailing" />
         </button>
 
         <div className="settings-list-divider" />
@@ -319,7 +311,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           }}
         >
           <div className="settings-list-tile-leading">
-            <MessageSquare size={24} />
+            <MessageSquare size={20} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">

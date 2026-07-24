@@ -45,20 +45,23 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--color-primary);
-  color: white;
-  border: none;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
   border-radius: 10px;
   padding: 12px 24px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   width: 100%;
 }
 
 .about-github-btn:hover {
-  opacity: 0.9;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .privacy-section {
@@ -209,19 +212,6 @@
   padding-bottom: 8px;
   margin-bottom: 12px;
   border-bottom: 1px solid var(--border-card);
-}
-
-.about-flat-label-inner {
-  border-bottom: none;
-  margin-bottom: 8px;
-  padding-bottom: 0;
-}
-
-.about-flat-inner-card {
-  background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
-  border-radius: 10px;
-  padding: 16px;
 }
 
 .about-contributors-section {

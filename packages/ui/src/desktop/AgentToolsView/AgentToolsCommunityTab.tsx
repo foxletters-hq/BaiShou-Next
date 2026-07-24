@@ -5,6 +5,7 @@ import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
 import type { ToolManagementConfig } from './agent-tools.types'
 import styles from './AgentToolsView.module.css'
+import stack from '../shared/SettingsStack.module.css'
 
 interface AgentToolsCommunityTabProps {
   config: ToolManagementConfig
@@ -21,24 +22,26 @@ export const AgentToolsCommunityTab: React.FC<AgentToolsCommunityTabProps> = ({
   const emojiConfig = normalizeEmojiToolConfig(config.emojiConfig)
 
   return (
-    <div className={styles.categoryGroup}>
-      <div className={styles.categoryHeader}>
+    <div className={stack.stackGroup}>
+      <div className={stack.sectionLabelRow}>
         <span className={styles.categoryIcon}>
           <Smile size={18} />
         </span>
-        <span className={styles.categoryLabel}>
+        <h3 className={stack.sectionLabel}>
           {t('settings.agent_tools_category_interaction', '互动工具')}
-        </span>
+        </h3>
       </div>
-      <div className={styles.categoryList}>
-        <EmojiSettingsEntryRow
-          config={emojiConfig}
-          onChange={(nextEmojiConfig) =>
-            onConfigChange({ ...config, emojiConfig: nextEmojiConfig })
-          }
-          onPress={onOpenEmojiSettings}
-        />
-      </div>
+      <section className={stack.cardSection}>
+        <div className={styles.categoryListPadded}>
+          <EmojiSettingsEntryRow
+            config={emojiConfig}
+            onChange={(nextEmojiConfig) =>
+              onConfigChange({ ...config, emojiConfig: nextEmojiConfig })
+            }
+            onPress={onOpenEmojiSettings}
+          />
+        </div>
+      </section>
     </div>
   )
 }
