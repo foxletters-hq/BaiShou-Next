@@ -1,3 +1,6 @@
 import './ContextMenu.css'
 export * from './ContextMenu'
 export * from './GlobalInputContextMenu'
+export * from './AnchoredContextMenu'
+export * from './EditorContextMenuHost'
+export * from './editor-context-menu-icons'

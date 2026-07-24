@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { ClipboardPaste, Copy, Scissors, SquareDashedMousePointer } from 'lucide-react'
 import {
   applyFixedContextMenuLayout,
   getContextMenuBoundsForAnchor
 } from './context-menu-placement.util'
 import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 import './ContextMenu.css'
+
+const MENU_ICON_SIZE = 15
 
 export const GlobalInputContextMenu: React.FC = () => {
   const { t } = useTranslation()
@@ -156,24 +159,36 @@ export const GlobalInputContextMenu: React.FC = () => {
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <button className="context-menu-item" onClick={handleCopy} disabled={!hasSelection}>
-          <span className="context-menu-label">{t('common.copy', '复制')}</span>
-          <span className="context-menu-shortcut">Ctrl+C</span>
-        </button>
         <button
           className="context-menu-item"
           onClick={handleCut}
           disabled={!hasSelection || isReadOnly}
         >
+          <span className="context-menu-icon">
+            <Scissors size={MENU_ICON_SIZE} aria-hidden />
+          </span>
           <span className="context-menu-label">{t('common.cut', '剪切')}</span>
           <span className="context-menu-shortcut">Ctrl+X</span>
         </button>
+        <button className="context-menu-item" onClick={handleCopy} disabled={!hasSelection}>
+          <span className="context-menu-icon">
+            <Copy size={MENU_ICON_SIZE} aria-hidden />
+          </span>
+          <span className="context-menu-label">{t('common.copy', '复制')}</span>
+          <span className="context-menu-shortcut">Ctrl+C</span>
+        </button>
         <button className="context-menu-item" onClick={handlePaste} disabled={isReadOnly}>
+          <span className="context-menu-icon">
+            <ClipboardPaste size={MENU_ICON_SIZE} aria-hidden />
+          </span>
           <span className="context-menu-label">{t('common.paste', '粘贴')}</span>
           <span className="context-menu-shortcut">Ctrl+V</span>
         </button>
         <div className="context-menu-divider" />
         <button className="context-menu-item" onClick={handleSelectAll}>
+          <span className="context-menu-icon">
+            <SquareDashedMousePointer size={MENU_ICON_SIZE} aria-hidden />
+          </span>
           <span className="context-menu-label">{t('common.select_all', '全选')}</span>
           <span className="context-menu-shortcut">Ctrl+A</span>
         </button>
