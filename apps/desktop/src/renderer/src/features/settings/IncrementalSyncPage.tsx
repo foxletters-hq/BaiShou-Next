@@ -1,4 +1,4 @@
-import { RefreshCw, Cloud, HelpCircle } from 'lucide-react'
+import { RefreshCw, HelpCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady } from '@baishou/shared'
@@ -12,6 +12,7 @@ import { SyncConfigForm } from './components/sync/SyncConfigForm'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
 import styles from './IncrementalSyncPage.module.css'
+import pane from './components/GeneralSettingsPane.module.css'
 
 export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { t } = useTranslation()
@@ -40,10 +41,91 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
 
   const formatDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`)
 
+  const syncButton = (
+    <button
+      type="button"
+      className={styles.syncButton}
+      onClick={() => void startSync()}
+      disabled={isSyncing || isPlanning || !syncReady}
+      title={
+        syncReady
+          ? t('data_sync.sync_now', 'Sync')
+          : t('data_sync.error_sync_disabled', '请先在上方开启「文件同步」开关后再同步')
+      }
+    >
+      <RefreshCw size={14} className={isSyncing || isPlanning ? styles.spinning : undefined} />
+      {isSyncing
+        ? t('data_sync.syncing', 'Syncing...')
+        : isPlanning
+          ? t('data_sync.planning', 'Analyzing sync changes…')
+          : t('data_sync.sync_now', 'Sync')}
+    </button>
+  )
+
+  const syncStatusSlot = (
+    <>
+      {isSyncing && progress && progress.total > 0 && (
+        <div className={styles.syncStatusBlock}>
+          <div className={styles.progressTrack}>
+            <div
+              className={styles.progressFill}
+              style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
+            />
+          </div>
+          <div className={styles.progressMeta}>
+            {progress.current}/{progress.total}
+            {(() => {
+              const line = formatSyncProgressStatus(progress, t)
+              return line ? ` · ${line}` : ''
+            })()}
+          </div>
+        </div>
+      )}
+
+      {syncResult && (
+        <div className={styles.statsGrid}>
+          <StatCard
+            label={t('data_sync.stat_uploaded', 'Uploaded')}
+            value={syncResult.uploaded?.length || 0}
+            color="var(--color-primary)"
+          />
+          <StatCard
+            label={t('data_sync.stat_downloaded', 'Downloaded')}
+            value={syncResult.downloaded?.length || 0}
+            color="var(--color-success)"
+          />
+          <StatCard
+            label={t('data_sync.stat_deleted', 'Deleted')}
+            value={
+              (syncResult.deletedRemote?.length || 0) + (syncResult.deletedLocal?.length || 0)
+            }
+            color="var(--color-error)"
+          />
+          <StatCard
+            label={t('data_sync.stat_conflicts', 'Conflicts')}
+            value={syncResult.conflicted?.length || 0}
+            color="var(--color-warning)"
+          />
+          <StatCard
+            label={t('data_sync.stat_skipped', 'Skipped')}
+            value={syncResult.skipped?.length || 0}
+            color="var(--text-tertiary)"
+          />
+          <StatCard
+            label={t('data_sync.stat_duration', 'Duration')}
+            value={syncResult.duration ? formatDuration(syncResult.duration) : '-'}
+            color="var(--text-secondary)"
+            isText
+          />
+        </div>
+      )}
+    </>
+  )
+
   return (
     <SettingsPageChrome
       title={t('data_sync.incremental_sync', '增量同步')}
-      trailing={
+      titleAccessory={
         <Tooltip content={t('data_sync.incremental_sync_tooltip')}>
           <span className={styles.helpIcon}>
             <HelpCircle size={16} />
@@ -51,117 +133,36 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
         </Tooltip>
       }
     >
-      <div className={styles.container}>
-        <section className={styles.pageCard}>
-          {embedded ? (
-            <div className={styles.section}>
-              <p className={styles.embeddedDesc}>{t('data_sync.incremental_sync_desc')}</p>
-            </div>
-          ) : null}
+      <div className={pane.stack}>
+        {embedded ? (
+          <p className={styles.embeddedDesc}>{t('data_sync.incremental_sync_desc')}</p>
+        ) : null}
 
-          <div className={styles.section}>
-            <SyncConfigForm />
-          </div>
-
-          <div className={styles.section}>
-            <h3 className={styles.cardTitle}>
-              <Cloud size={14} />
-              {t('data_sync.sync_actions', 'Sync Actions')}
+        <div className={pane.stackGroup}>
+          <div className={pane.sectionLabelRow}>
+            <h3 className={pane.sectionLabel}>
+              {t('data_sync.sync_config_section', '同步配置')}
             </h3>
-
-            <button
-              className={styles.syncButton}
-              onClick={() => void startSync()}
-              disabled={isSyncing || isPlanning || !syncReady}
-              title={
-                syncReady
-                  ? t('data_sync.sync_now', 'Sync')
-                  : t('data_sync.error_sync_disabled', '请先在上方开启「文件同步」开关后再同步')
-              }
-              style={
-                isSyncing || isPlanning
-                  ? {
-                      background: 'var(--bg-surface)',
-                      color: 'var(--text-primary)'
-                    }
-                  : !syncReady
-                    ? { opacity: 0.55, cursor: 'not-allowed' }
-                    : undefined
-              }
-            >
-              <RefreshCw
-                size={16}
-                className={isSyncing || isPlanning ? styles.spinning : undefined}
-              />
-              {isSyncing
-                ? t('data_sync.syncing', 'Syncing...')
-                : isPlanning
-                  ? t('data_sync.planning', 'Analyzing sync changes…')
-                  : t('data_sync.sync_now', 'Sync')}
-            </button>
-
-            {isSyncing && progress && progress.total > 0 && (
-              <div>
-                <div className={styles.progressTrack}>
-                  <div
-                    className={styles.progressFill}
-                    style={{ width: `${Math.round((progress.current / progress.total) * 100)}%` }}
-                  />
-                </div>
-                <div className={styles.progressMeta}>
-                  {progress.current}/{progress.total}
-                  {(() => {
-                    const line = formatSyncProgressStatus(progress, t)
-                    return line ? ` · ${line}` : ''
-                  })()}
-                </div>
-              </div>
-            )}
-
-            {syncResult && (
-              <div className={styles.statsGrid}>
-                <StatCard
-                  label={t('data_sync.stat_uploaded', 'Uploaded')}
-                  value={syncResult.uploaded?.length || 0}
-                  color="var(--color-primary)"
-                />
-                <StatCard
-                  label={t('data_sync.stat_downloaded', 'Downloaded')}
-                  value={syncResult.downloaded?.length || 0}
-                  color="var(--color-success)"
-                />
-                <StatCard
-                  label={t('data_sync.stat_deleted', 'Deleted')}
-                  value={
-                    (syncResult.deletedRemote?.length || 0) +
-                    (syncResult.deletedLocal?.length || 0)
-                  }
-                  color="var(--color-error)"
-                />
-                <StatCard
-                  label={t('data_sync.stat_conflicts', 'Conflicts')}
-                  value={syncResult.conflicted?.length || 0}
-                  color="var(--color-warning)"
-                />
-                <StatCard
-                  label={t('data_sync.stat_skipped', 'Skipped')}
-                  value={syncResult.skipped?.length || 0}
-                  color="var(--text-tertiary)"
-                />
-                <StatCard
-                  label={t('data_sync.stat_duration', 'Duration')}
-                  value={syncResult.duration ? formatDuration(syncResult.duration) : '-'}
-                  color="var(--text-secondary)"
-                  isText
-                />
-              </div>
-            )}
           </div>
+          <section className={pane.cardSection}>
+            <div className={styles.sectionBody}>
+              <SyncConfigForm afterTestAction={syncButton} syncStatusSlot={syncStatusSlot} />
+            </div>
+          </section>
+        </div>
 
-          <div className={styles.section}>
-            <IncrementalSyncScopeList />
+        <div className={pane.stackGroup}>
+          <div className={pane.sectionLabelRow}>
+            <h3 className={pane.sectionLabel}>
+              {t('data_sync.sync_scope_section', '同步范围')}
+            </h3>
           </div>
-        </section>
+          <section className={pane.cardSection}>
+            <div className={styles.sectionBody}>
+              <IncrementalSyncScopeList />
+            </div>
+          </section>
+        </div>
       </div>
     </SettingsPageChrome>
   )
