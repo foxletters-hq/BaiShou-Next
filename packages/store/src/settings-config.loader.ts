@@ -98,12 +98,8 @@ export function getDefaultGlobalModels(): GlobalModelsConfig {
   }
 }
 
-/** 图关系槽位未配置时，回填为对话模型，保持默认一致 */
+/** 图关系槽位强制与对话模型一致（只读展示，不可单独配置） */
 export function ensureGlobalGraphModelsAligned(models: GlobalModelsConfig): GlobalModelsConfig {
-  const graphProvider = models.globalGraphProviderId?.trim() ?? ''
-  const graphModel = models.globalGraphModelId?.trim() ?? ''
-  const graphUnset = !graphProvider || !graphModel || graphModel === 'off'
-  if (!graphUnset) return models
   return {
     ...models,
     globalGraphProviderId: models.globalDialogueProviderId || '',
