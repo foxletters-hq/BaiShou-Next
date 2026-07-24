@@ -40,7 +40,7 @@ export const contextChainFlatListStyles = StyleSheet.create({
   roundLabel: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.2
   },
   roundMeta: {

@@ -29,6 +29,11 @@ import { NativeAppThemeBridge } from '@/src/providers/NativeAppThemeBridge'
 import { HeroUIThemeBridge } from '@/src/providers/HeroUIThemeBridge'
 import '@/src/screens/DiaryScreen/diary-filter-state.util'
 import { installMobileDiagnosticLog } from '@/src/services/install-mobile-diagnostic-log'
+import {
+  ensureMobileAgentGateNotifications,
+  setMobileAgentGateNotificationNavigateHandler
+} from '@/src/services/mobile-agent-gate-notifications'
+import { router } from 'expo-router'
 
 export const unstable_settings = {
   // 深链进入子页面时，栈底保留 tabs 而非引导页
@@ -71,6 +76,23 @@ function AppContent() {
     }
     loadSavedLanguage()
   }, [dbReady, services])
+
+  useEffect(() => {
+    setMobileAgentGateNotificationNavigateHandler((sessionId, requestId) => {
+      router.push({
+        pathname: '/(tabs)/agent',
+        params: { sessionId, gateRequestId: requestId }
+      })
+    })
+    let dispose: (() => void) | undefined
+    void ensureMobileAgentGateNotifications().then((unsub) => {
+      dispose = unsub
+    })
+    return () => {
+      dispose?.()
+      setMobileAgentGateNotificationNavigateHandler(null)
+    }
+  }, [])
 
   return (
     <ThemeProvider value={navigationTheme}>

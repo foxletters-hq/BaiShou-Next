@@ -191,7 +191,7 @@ const DraggableProviderRow = React.memo(function DraggableProviderRow({
           <Text
             style={{
               fontSize: 10,
-              fontWeight: '700',
+              fontWeight: '600',
               color: item.isEnabled ? colors.primary : colors.textTertiary
             }}
           >

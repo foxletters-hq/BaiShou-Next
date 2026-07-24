@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   header: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
     paddingHorizontal: 12,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
   command: {
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   name: {
     fontSize: 12,

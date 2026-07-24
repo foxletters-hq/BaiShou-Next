@@ -71,7 +71,7 @@ export const appearanceSettingsStyles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 20
   },
   colorPreview: {
@@ -93,7 +93,7 @@ export const appearanceSettingsStyles = StyleSheet.create({
   sliderLabel: {
     width: 40,
     fontSize: 14,
-    fontWeight: 'bold'
+    fontWeight: '600'
   },
   sliderTrackWrap: {
     flex: 1,
@@ -128,6 +128,6 @@ export const appearanceSettingsStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  modalBtnTextGray: { fontWeight: 'bold' },
-  modalBtnTextWhite: { fontWeight: 'bold' }
+  modalBtnTextGray: { fontWeight: '600' },
+  modalBtnTextWhite: { fontWeight: '600' }
 })

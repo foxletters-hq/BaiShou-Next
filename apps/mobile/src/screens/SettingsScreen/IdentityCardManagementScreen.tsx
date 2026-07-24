@@ -290,7 +290,7 @@ export const IdentityCardManagementScreen: React.FC = () => {
                 </Pressable>
                 {personas.length > 1 && (
                   <Pressable onPress={() => void handleDelete(persona.id)}>
-                    <Text style={[styles.action, { color: '#ef4444' }]}>
+                    <Text style={[styles.action, { color: colors.error }]}>
                       {t('workspace.delete', '删除')}
                     </Text>
                   </Pressable>

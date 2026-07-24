@@ -318,12 +318,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     flex: 1
   },
   countBadge: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,

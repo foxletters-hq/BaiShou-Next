@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   subtitle: {
     fontSize: 12,
@@ -224,11 +224,11 @@ const styles = StyleSheet.create({
   },
   countBadgeText: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   expandIcon: {
     fontSize: 10,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   modelList: {
     borderTopWidth: 1,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   modelName: {
     fontSize: 14

@@ -93,7 +93,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
               style={[
                 styles.segmentText,
                 { color: colors.textPrimary },
-                themeMode === mode && { fontWeight: 'bold' }
+                themeMode === mode && { fontWeight: '600' }
               ]}
             >
               {mode === 'system'
@@ -172,7 +172,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
                 style={[
                   styles.langText,
                   { color: colors.textPrimary },
-                  active && { fontWeight: 'bold', color: colors.primary }
+                  active && { fontWeight: '600', color: colors.primary }
                 ]}
               >
                 {lang.label}

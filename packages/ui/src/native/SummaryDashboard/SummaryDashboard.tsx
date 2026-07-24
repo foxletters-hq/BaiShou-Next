@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   dashboardTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 16
   },
   statsGrid: {

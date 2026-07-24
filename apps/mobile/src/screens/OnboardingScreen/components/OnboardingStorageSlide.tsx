@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native'
 import { FolderOpen, MapPin } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
-import { StoragePermissionPrompt, useNativeToast } from '@baishou/ui/native'
+import { StoragePermissionPrompt, useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import {
   EXTERNAL_STORAGE_ROOT,
@@ -36,6 +36,7 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
 }) => {
   const { t } = useTranslation()
   const toast = useNativeToast()
+  const { colors } = useNativeTheme()
   const { dbReady, services } = useBaishou()
   const [rootPath, setRootPath] = useState(displayPath(EXTERNAL_STORAGE_ROOT))
   const [changing, setChanging] = useState(false)
@@ -112,7 +113,9 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
               onPress={onRetryMount}
               activeOpacity={0.85}
             >
-              <Text style={styles.retryButtonText}>{t('common.retry', '重试')}</Text>
+              <Text style={[styles.retryButtonText, { color: colors.textOnPrimary }]}>
+                {t('common.retry', '重试')}
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -126,8 +129,8 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
         {!showPath ? (
           <ActivityIndicator size="small" color="#D4924A" style={styles.loader} />
         ) : (
-          <View style={styles.pathValueWrap}>
-            <Text style={styles.pathValue} selectable>
+          <View style={[styles.pathValueWrap, { backgroundColor: colors.bgSurface }]}>
+            <Text style={[styles.pathValue, { color: colors.textSecondary }]} selectable>
               {rootPath}
             </Text>
           </View>
@@ -142,11 +145,13 @@ export const OnboardingStorageSlide: React.FC<OnboardingStorageSlideProps> = ({
           activeOpacity={0.85}
         >
           {changing ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={colors.textOnPrimary} />
           ) : (
             <>
-              <MapPin size={18} color="#FFFFFF" strokeWidth={2} />
-              <Text style={styles.changeButtonText}>{t('onboarding.change_storage')}</Text>
+              <MapPin size={18} color={colors.textOnPrimary} strokeWidth={2} />
+              <Text style={[styles.changeButtonText, { color: colors.textOnPrimary }]}>
+                {t('onboarding.change_storage')}
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -187,7 +192,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFB74D'
   },
   retryButtonText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600'
   },
@@ -209,15 +213,13 @@ const styles = StyleSheet.create({
   pathValueWrap: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF'
+    borderRadius: 12
   },
   pathValue: {
     fontFamily: 'monospace',
     fontSize: 12,
     lineHeight: 18,
-    textAlign: 'center',
-    color: '#6B7280'
+    textAlign: 'center'
   },
   loader: {
     marginTop: 4,
@@ -235,7 +237,6 @@ const styles = StyleSheet.create({
     borderRadius: 12
   },
   changeButtonText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600'
   }

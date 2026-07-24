@@ -11,6 +11,11 @@
     "noUnusedParameters": false,
     "strictNullChecks": false
   },
-  "include": ["src/native/**/*", "src/theme/**/*", "src/shared/diary-codemirror/types.ts"],
+  "include": [
+    "src/native/**/*",
+    "src/agent-gate/**/*",
+    "src/theme/**/*",
+    "src/shared/diary-codemirror/types.ts"
+  ],
   "exclude": ["src/desktop/**/*"]
 }

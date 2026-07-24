@@ -35,7 +35,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   onRefreshToken
 }) => {
   const { t } = useTranslation()
-  const { colors } = useNativeTheme()
+  const { colors, isDark } = useNativeTheme()
 
   // 本地状态乐观更新，Switch 按钮交互无延迟响应
   const [localEnabled, setLocalEnabled] = React.useState(config.mcpEnabled)
@@ -186,12 +186,6 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
     </View>
   )
 
-  const isDark =
-    colors.textPrimary === '#ffffff' ||
-    colors.bgApp === '#000000' ||
-    colors.bgApp === '#121212' ||
-    colors.bgSurface === '#1e1e1e'
-
   const mcpHelpContent = (
     <View style={{ gap: 12 }}>
       <Text style={{ fontSize: 14, color: colors.textPrimary, lineHeight: 20 }}>
@@ -201,7 +195,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         )}
       </Text>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
           {t('settings.mcp_help_cursor_title', 'Cursor')}
         </Text>
         <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18 }}>

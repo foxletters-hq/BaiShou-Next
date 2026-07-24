@@ -130,7 +130,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
           </View>
         )}
         <View style={[styles.previewOverlay, { backgroundColor: 'rgba(0,0,0,0.35)' }]}>
-          <Text style={styles.previewOverlayText}>
+          <Text style={[styles.previewOverlayText, { color: colors.textOnPrimary }]}>
             {t('settings.chat_background_change', '更换背景')}
           </Text>
         </View>
@@ -216,7 +216,6 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   previewOverlayText: {
-    color: '#fff',
     fontSize: 15,
     fontWeight: '600'
   },

@@ -42,7 +42,7 @@ export const RecallDialogDiaryItem: React.FC<RecallDialogDiaryItemProps> = ({ it
         <Text
           style={{
             fontSize: 15,
-            fontWeight: '700',
+            fontWeight: '600',
             color: colors.textPrimary,
             flex: 1,
             marginRight: tokens.spacing.sm

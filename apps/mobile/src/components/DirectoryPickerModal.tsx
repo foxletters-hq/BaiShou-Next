@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   pathBar: {
     flexDirection: 'row',

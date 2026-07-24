@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   yearModalTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 12
   },
   yearGrid: {

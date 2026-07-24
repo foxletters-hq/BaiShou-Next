@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { SharedMemoryCopyPreview } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
+import {
+  getSummaryDashboardCacheVersion,
+  subscribeSummaryDashboardCache
+} from '../lib/summary-dashboard-cache'
 
 const previewCache = new Map<string, SharedMemoryCopyPreview>()
 const MAX_PREVIEW_CACHE = 12
 
 function previewCacheKey(
   vaultRevision: number,
+  cacheVersion: number,
   lookbackMonths: number,
   userCopyPrefix: string,
   locale?: string
 ): string {
-  return `${vaultRevision}:${lookbackMonths}:${userCopyPrefix}:${locale ?? ''}`
+  return `${vaultRevision}:${cacheVersion}:${lookbackMonths}:${userCopyPrefix}:${locale ?? ''}`
 }
 
 function readPreviewCache(key: string): SharedMemoryCopyPreview | undefined {
@@ -36,6 +41,10 @@ export function useSharedMemoryCopyPreview(
   const [loading, setLoading] = useState(false)
   const userCopyPrefix = options?.userCopyPrefix ?? ''
   const locale = options?.locale
+  const cacheVersion = useSyncExternalStore(
+    subscribeSummaryDashboardCache,
+    getSummaryDashboardCacheVersion
+  )
 
   useEffect(() => {
     if (!enabled || !services?.buildSharedContextPreview) {
@@ -44,7 +53,13 @@ export function useSharedMemoryCopyPreview(
       return undefined
     }
 
-    const cacheKey = previewCacheKey(vaultRevision, lookbackMonths, userCopyPrefix, locale)
+    const cacheKey = previewCacheKey(
+      vaultRevision,
+      cacheVersion,
+      lookbackMonths,
+      userCopyPrefix,
+      locale
+    )
     const cached = readPreviewCache(cacheKey)
     if (cached) {
       setPreview(cached)
@@ -75,7 +90,7 @@ export function useSharedMemoryCopyPreview(
       cancelled = true
       clearTimeout(timer)
     }
-  }, [lookbackMonths, enabled, services, userCopyPrefix, locale, vaultRevision])
+  }, [lookbackMonths, enabled, services, userCopyPrefix, locale, vaultRevision, cacheVersion])
 
   return { preview, loading }
 }

@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
     flexShrink: 1
   },
   rescanButton: {
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   },
   count: {
     fontSize: 20,
-    fontWeight: 'bold'
+    fontWeight: '600'
   },
   label: {
     fontSize: 11,

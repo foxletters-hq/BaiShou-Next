@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
     marginBottom: 16,
     textTransform: 'uppercase',
     letterSpacing: 1

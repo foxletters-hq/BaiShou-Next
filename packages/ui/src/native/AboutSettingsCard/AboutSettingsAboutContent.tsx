@@ -65,7 +65,7 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
       </Pressable>
 
       <View style={{ alignItems: 'center', gap: tokens.spacing.xs }}>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 24, fontWeight: '600', color: colors.textPrimary }}>
           {t('about.app_name', '白守')}
         </Text>
         <Text style={{ fontSize: 16, color: colors.textSecondary }}>{version}</Text>

@@ -122,7 +122,7 @@ export const assistantEditScreenStyles = StyleSheet.create({
   },
   valueText: {
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   sectionDivider: {
     height: StyleSheet.hairlineWidth,

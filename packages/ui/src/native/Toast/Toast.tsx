@@ -28,13 +28,6 @@ const ICON_BY_TYPE: Record<ToastType, React.ComponentType<LucideProps>> = {
   warning: TriangleAlert
 }
 
-const COLOR_BY_TYPE: Record<ToastType, string> = {
-  success: '#16A34A',
-  error: '#DC2626',
-  info: '#2563EB',
-  warning: '#D97706'
-}
-
 function durationForType(type: ToastType): number {
   if (type === 'error') return 5000
   if (type === 'success') return 3000
@@ -80,11 +73,17 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({
   hide,
   onDismiss
 }) => {
-  const { isDark, colors } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const { width } = useWindowDimensions()
 
   const toastMaxWidth = Math.min(width * 0.7, 360) // 限制最大宽度为 70% 屏幕宽度
   const topPosition = 12 // 直接设定为原版经典偏移值，配合 InsetsContainer 的 safeArea paddingTop 实现完美高度
+  const iconColorByType: Record<ToastType, string> = {
+    success: colors.success,
+    error: colors.error,
+    info: colors.primary,
+    warning: colors.warning
+  }
 
   return (
     <View
@@ -110,18 +109,18 @@ const BaishouHeroToast: React.FC<BaishouHeroToastProps> = ({
           style={[
             styles.toast,
             {
-              backgroundColor: isDark ? '#1C2936' : '#FFFFFF',
-              borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.borderMuted
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderMuted
             }
           ]}
         >
           {(() => {
             const Icon = ICON_BY_TYPE[type]
-            return <Icon size={18} color={COLOR_BY_TYPE[type]} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            return (
+              <Icon size={18} color={iconColorByType[type]} strokeWidth={DEFAULT_STROKE_WIDTH} />
+            )
           })()}
-          <Text style={[styles.message, { color: isDark ? colors.textPrimary : '#1A1C23' }]}>
-            {message}
-          </Text>
+          <Text style={[styles.message, { color: colors.textPrimary }]}>{message}</Text>
         </Pressable>
       </Animated.View>
     </View>

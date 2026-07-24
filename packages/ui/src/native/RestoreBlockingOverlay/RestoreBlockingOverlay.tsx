@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   },
   successMark: {
     fontSize: 40,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 44
   },
   message: {

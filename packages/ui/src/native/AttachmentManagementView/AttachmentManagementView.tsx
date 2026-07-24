@@ -7,9 +7,7 @@ import {
   RefreshControl,
   ScrollView
 } from 'react-native'
-import { NotebookText, Folder } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
-import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import type { AttachmentManagementViewProps } from './attachment-management.types'
 import { useAttachmentManagementView } from './useAttachmentManagementView'
@@ -29,6 +27,16 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   const { isLoading = false, onRefresh, style, ...rest } = props
   const vm = useAttachmentManagementView(props)
   const [refreshing, setRefreshing] = React.useState(false)
+  const activeTabStyle = {
+    backgroundColor: colors.primary,
+    shadowColor: '#0ea5e9',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 } as const,
+    elevation: 2
+  }
+  const activeTabTextStyle = { color: colors.textOnPrimary, fontWeight: '600' as const }
+  const idleTabTextStyle = { color: colors.textSecondary, fontWeight: '400' as const }
 
   const handleRefresh = async () => {
     if (!onRefresh) return
@@ -42,49 +50,29 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
 
   return (
     <View style={[styles.container, style]} {...rest}>
-      <View style={[styles.mainTabNav, { backgroundColor: colors.bgSurface, borderRadius: 10 }]}>
-        <View style={styles.mainTabs}>
+      <View style={styles.mainTabNav}>
+        <View style={[styles.mainTabs, { backgroundColor: colors.bgApp }]}>
           <TouchableOpacity
-            style={[
-              styles.mainTabItem,
-              vm.activePane === 'diary' && { backgroundColor: colors.primary }
-            ]}
+            style={[styles.mainTabItem, vm.activePane === 'diary' && activeTabStyle]}
             onPress={() => vm.setActivePane('diary')}
           >
-            <NotebookText
-              size={16}
-              color={vm.activePane === 'diary' ? colors.textOnPrimary : colors.textSecondary}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-            />
             <Text
               style={[
                 styles.mainTabText,
-                {
-                  color: vm.activePane === 'diary' ? colors.textOnPrimary : colors.textPrimary
-                }
+                vm.activePane === 'diary' ? activeTabTextStyle : idleTabTextStyle
               ]}
             >
               {vm.t('settings.attachment_pane_diary', '日记附件')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.mainTabItem,
-              vm.activePane === 'session' && { backgroundColor: colors.primary }
-            ]}
+            style={[styles.mainTabItem, vm.activePane === 'session' && activeTabStyle]}
             onPress={() => vm.setActivePane('session')}
           >
-            <Folder
-              size={16}
-              color={vm.activePane === 'session' ? colors.textOnPrimary : colors.textSecondary}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-            />
             <Text
               style={[
                 styles.mainTabText,
-                {
-                  color: vm.activePane === 'session' ? colors.textOnPrimary : colors.textPrimary
-                }
+                vm.activePane === 'session' ? activeTabTextStyle : idleTabTextStyle
               ]}
             >
               {vm.t('settings.attachment_pane_session', 'AI 会话附件')}

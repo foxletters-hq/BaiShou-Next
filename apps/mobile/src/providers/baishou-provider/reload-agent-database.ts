@@ -144,7 +144,7 @@ export function assignReloadAgentDatabaseHandler(
       pathService,
       vaultService
     )
-    setMobileDiaryEmbeddingDeps(nextRagDeps)
+    setMobileDiaryEmbeddingDeps(nextRagDeps, { agentDb: newRuntime.drizzleDb })
     vaultCtx.ragServiceRef.current = createMobileRagService(nextRagDeps)
     emitSyncMutation('resync-complete', 'agent-db-reload')
 

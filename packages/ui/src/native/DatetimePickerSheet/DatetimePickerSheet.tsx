@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   stepperValueText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     fontVariant: ['tabular-nums']
   },
   stepperLabel: {

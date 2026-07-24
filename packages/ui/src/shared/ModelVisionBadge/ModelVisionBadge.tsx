@@ -34,7 +34,7 @@ export function ModelVisionBadge({
         size={size}
         className={className}
         style={{
-          color: 'var(--text-secondary, #666)',
+          color: 'var(--text-secondary)',
           verticalAlign: 'middle',
           opacity: 0.8,
           ...style

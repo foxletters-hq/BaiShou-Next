@@ -11,7 +11,7 @@ export function getHeroInputFieldStyle(
   return {
     backgroundColor: colors.bgSurface,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.borderControl,
     borderRadius: 16,
     borderCurve: 'continuous',
     minHeight: options?.multiline || options?.compact ? undefined : 48,

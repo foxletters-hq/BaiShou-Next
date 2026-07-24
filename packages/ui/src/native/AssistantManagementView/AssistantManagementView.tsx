@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   createButton: {
     paddingHorizontal: 16,

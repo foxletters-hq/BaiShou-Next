@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   headerSpacer: {
     flex: 1
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   chipTitle: {
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   emptyWrap: {
     alignItems: 'center',
@@ -333,6 +333,6 @@ const styles = StyleSheet.create({
   },
   confirmBtnText: {
     fontSize: 15,
-    fontWeight: '700'
+    fontWeight: '600'
   }
 })

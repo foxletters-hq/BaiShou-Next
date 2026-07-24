@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 11,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   textCompact: {
     fontSize: 10

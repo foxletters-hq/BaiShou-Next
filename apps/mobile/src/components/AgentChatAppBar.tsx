@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   modelName: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500',
     flexShrink: 1,
     textAlign: 'left'
   },
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   costText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
     textAlign: 'center'
   }

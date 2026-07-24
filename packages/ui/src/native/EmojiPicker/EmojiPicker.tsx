@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 17,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   body: {
     flex: 1,

@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 15,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   card: {
     borderWidth: 1,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   hint: {
     fontSize: 12

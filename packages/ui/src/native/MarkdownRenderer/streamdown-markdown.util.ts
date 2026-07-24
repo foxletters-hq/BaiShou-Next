@@ -143,9 +143,10 @@ export function buildStreamdownMarkdownStyle(
     strikethrough: { color: colors.textSecondary },
     underline: { color: bodyColor },
     thematicBreak: {
-      color: colors.borderSubtle,
-      marginTop: isChat ? 10 : 16,
-      marginBottom: isChat ? 10 : 16
+      // 预览卡片里分割线要比编辑器更轻，避免抢正文
+      color: isPreview ? colors.borderSubtle : colors.borderMuted,
+      marginTop: isPreview ? 8 : isChat ? 10 : 16,
+      marginBottom: isPreview ? 8 : isChat ? 10 : 16
     },
     table: {
       color: bodyColor,

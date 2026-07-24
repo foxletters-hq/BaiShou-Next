@@ -497,8 +497,8 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                     style={[
                       styles.searchRow,
                       {
-                        backgroundColor: colors.bgSurfaceNormal,
-                        borderColor: colors.borderMuted
+                        backgroundColor: colors.bgSurface,
+                        borderColor: colors.borderControl
                       }
                     ]}
                   >
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 8,
     borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth
+    borderWidth: 1
   },
   searchInput: {
     flex: 1,

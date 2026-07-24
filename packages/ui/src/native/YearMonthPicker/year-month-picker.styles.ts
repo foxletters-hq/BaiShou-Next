@@ -12,7 +12,7 @@ export const yearMonthPickerStyles = StyleSheet.create({
   },
   triggerText: {
     fontSize: 14,
-    fontWeight: '600'
+    fontWeight: '500'
   },
   triggerArrow: {
     fontSize: 10,
@@ -40,7 +40,7 @@ export const yearMonthPickerStyles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   closeBtn: {
     fontSize: 18,

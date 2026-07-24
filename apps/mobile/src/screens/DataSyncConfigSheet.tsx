@@ -269,7 +269,7 @@ export const DataSyncConfigSheet: React.FC<DataSyncConfigSheetProps> = ({
             ]}
             onPress={onSave}
           >
-            <Text style={{ color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 }}>
+            <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 16 }}>
               {t('data_sync.save_config_button', '保存配置')}
             </Text>
           </TouchableOpacity>
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth
   },
   backBtn: { width: 40, alignItems: 'center' },
-  appTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700' },
+  appTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
   sectionLabel: {
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   targetTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
   targetDesc: { fontSize: 12, lineHeight: 17 },
-  configSectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 20, marginBottom: 8 },
+  configSectionTitle: { fontSize: 16, fontWeight: '600', marginTop: 20, marginBottom: 8 },
   divider: { height: StyleSheet.hairlineWidth, marginBottom: 16 },
   localHint: { fontSize: 14, lineHeight: 22, textAlign: 'center', paddingVertical: 24 },
   form: { gap: 4 },

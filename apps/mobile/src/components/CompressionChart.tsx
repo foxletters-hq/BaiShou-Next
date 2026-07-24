@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   baseBarText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '600',
     fontSize: 17,
     letterSpacing: 3
   }

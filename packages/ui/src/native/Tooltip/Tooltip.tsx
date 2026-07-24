@@ -14,7 +14,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
   style,
   ...props
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors, tokens, isDark } = useNativeTheme()
   const [isVisible, setIsVisible] = useState(false)
   const [layout, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 })
 
@@ -30,12 +30,6 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
     const { x, y, width, height } = event.nativeEvent.layout
     setLayout({ x, y, width, height })
   }, [])
-
-  const isDark =
-    colors.textPrimary === '#ffffff' ||
-    colors.bgApp === '#000000' ||
-    colors.bgApp === '#121212' ||
-    colors.bgSurface === '#1e1e1e'
 
   const solidBg = colors.bgSurface
   const solidBorder = colors.borderSubtle

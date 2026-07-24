@@ -12,31 +12,16 @@ export interface ColorPickerProps {
 }
 
 const presetColors = [
-  '#9AD4EA',
-  '#FF6B6B',
-  '#4ECDC4',
-  '#45B7D1',
-  '#96CEB4',
-  '#FFEAA7',
-  '#DDA0DD',
-  '#98D8C8',
-  '#F7DC6F',
-  '#BB8FCE',
-  '#FF8C42',
   '#5BA8F5',
+  '#FF6B6B',
+  '#FFD93D',
+  '#6BCB77',
+  '#4D96FF',
+  '#C77DFF',
+  '#9AD4EA',
   '#34D399',
   '#F472B6',
-  '#A78BFA',
-  '#6EE7B7',
-  '#FCA5A5',
-  '#93C5FD',
-  '#C4B5FD',
-  '#FCD34D',
-  '#67E8F9',
-  '#D8B4FE',
-  '#FDBA74',
-  '#86EFAC',
-  '#F9A8D4'
+  '#A78BFA'
 ]
 
 const hueBarColors = [
@@ -224,7 +209,7 @@ const styles = StyleSheet.create({
   checkMark: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   hueSliderWrap: {
     width: '100%',
