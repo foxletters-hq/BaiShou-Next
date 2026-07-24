@@ -18,7 +18,7 @@ export const lightColors = {
   bgGlassSurface: 'rgba(255, 255, 255, 0.48)',
   borderSubtle: 'rgba(0, 0, 0, 0.04)',
   borderMuted: 'rgba(0, 0, 0, 0.08)',
-  borderControl: '#d6d6d6',
+  borderControl: '#e5e5e5',
   borderStrong: 'rgba(0, 0, 0, 0.16)',
   textPrimary: '#1A1C23',
   textSecondary: '#4A5568',

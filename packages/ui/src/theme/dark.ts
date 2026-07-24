@@ -17,7 +17,7 @@ export const darkColors = {
   bgGlassSurface: 'rgba(30, 30, 34, 0.40)',
   borderSubtle: 'rgba(255, 255, 255, 0.08)',
   borderMuted: 'rgba(255, 255, 255, 0.12)',
-  borderControl: 'rgba(255, 255, 255, 0.22)',
+  borderControl: 'rgba(255, 255, 255, 0.16)',
   borderStrong: 'rgba(255, 255, 255, 0.20)',
   textPrimary: '#F8FAFC',
   textSecondary: '#A1A1AA',
