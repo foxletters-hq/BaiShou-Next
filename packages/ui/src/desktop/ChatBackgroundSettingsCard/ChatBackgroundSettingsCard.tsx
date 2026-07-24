@@ -87,7 +87,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
       <SettingsExpansionTile
         embedded={embedded}
         isLast={isLast}
-        icon={<Image size={24} />}
+        icon={<Image size={20} />}
         title={t('settings.chat_background', '聊天背景')}
         subtitle={subtitle}
       >

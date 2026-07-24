@@ -21,10 +21,15 @@
 }
 
 .settings-leading-icon {
-  margin-right: 16px;
+  margin-right: 12px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
+}
+
+.settings-leading-icon svg.lucide {
+  width: var(--settings-icon-leading-size);
+  height: var(--settings-icon-leading-size);
 }
 
 .settings-title-group {
@@ -35,14 +40,15 @@
 
 .settings-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--text-primary);
 }
 
 .settings-subtitle {
   margin: 4px 0 0 0;
-  font-size: 14px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
 }
 

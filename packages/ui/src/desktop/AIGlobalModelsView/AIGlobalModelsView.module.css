@@ -26,8 +26,8 @@
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
   line-height: 28px;
   color: var(--text-primary);
   margin: 0;
@@ -54,7 +54,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
 }
 

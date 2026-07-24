@@ -81,7 +81,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       <SettingsExpansionTile
         embedded={embedded}
         isLast={isLast}
-        icon={<Palette size={24} />}
+        icon={<Palette size={20} />}
         title={t('settings.appearance', '外观与主题')}
         subtitle={`${getThemeText()} · ${getLangText()}`}
       >

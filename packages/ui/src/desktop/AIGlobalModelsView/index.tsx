@@ -10,6 +10,8 @@ import {
 } from '@baishou/shared'
 import { Database, Cloud, MessageCircle, Pencil, ScrollText, Waypoints } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
+import { SettingsPageChrome } from '../shared/SettingsPageChrome'
+import stack from '../shared/SettingsStack.module.css'
 import { useTheme } from '../../hooks/useTheme'
 import { getProviderIcon } from '../../utils/provider-icons'
 
@@ -36,6 +38,8 @@ export interface AIGlobalModelsViewProps {
     }
   }) => Promise<boolean>
   onManageProviders?: () => void
+  /** 页面下方附加区块（如系统核心设定） */
+  footer?: React.ReactNode
 }
 
 type ModelSelectorKey = 'dialogue' | 'naming' | 'summary' | 'embedding'
@@ -45,7 +49,8 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   availableProviders,
   onChange,
   onEmbeddingMigrationRequest,
-  onManageProviders
+  onManageProviders,
+  footer
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
@@ -261,12 +266,8 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.headerRow}>
-        <h2 className={styles.title}>{t('ai_config.global_models_title', '全局默认模型分配')}</h2>
-      </div>
-
-      <div className={styles.scrollArea}>
+    <SettingsPageChrome title={t('ai_config.global_models_title', '全局默认模型分配')}>
+      <div className={stack.stack}>
         <div className={styles.grid}>
           {renderSection(
             'summary',
@@ -310,6 +311,8 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
             { isDanger: true }
           )}
         </div>
+
+        {footer}
       </div>
 
       {activeSelector && (
@@ -322,6 +325,6 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
           onManageProviders={onManageProviders}
         />
       )}
-    </div>
+    </SettingsPageChrome>
   )
 }

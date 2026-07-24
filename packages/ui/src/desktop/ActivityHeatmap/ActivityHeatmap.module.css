@@ -49,18 +49,20 @@
 .yearBtn {
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
-  color: var(--color-text-main);
+  color: var(--text-primary);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   outline: none;
-  transition: all var(--animation-micro);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .yearBtn:hover {
-  border-color: var(--color-primary);
+  border-color: var(--border-strong);
   background: var(--bg-surface-high);
 }
 

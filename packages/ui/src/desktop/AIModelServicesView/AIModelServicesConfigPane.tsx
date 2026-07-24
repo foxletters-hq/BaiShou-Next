@@ -67,7 +67,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
               </div>
             </div>
             <div className={styles.headerActions}>
-              <Switch checked={activeConfig.enabled} onChange={handleToggleEnable} />
+              <Switch size="sm" checked={activeConfig.enabled} onChange={handleToggleEnable} />
               {!activeProviderMeta.isSystem && (
                 <button
                   className={styles.deleteButton}
@@ -218,6 +218,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                               </span>
                             </div>
                             <Switch
+                              size="sm"
                               checked={isChecked}
                               onChange={(e) => handleModelToggle(mdl, e.target.checked)}
                             />
