@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useAgentStream,
   finishStreamingSession,
@@ -55,6 +56,7 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
 }
 
 export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentStreamResult {
+  const { t } = useTranslation()
   const stream = useAgentStream(sessionId)
   const [failedTools, setFailedTools] = useState<WorkspaceToolError[]>([])
 
@@ -102,7 +104,10 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
           id: newId,
           folderRoot,
           assistantId: options?.assistantId,
-          title: options?.title || text.trim().substring(0, 10) || '工作区对话'
+          title:
+            options?.title ||
+            text.trim().substring(0, 10) ||
+            t('agent_workspace.default_session_title', '工作区对话')
         })
         activeSessionId = newId
         createdNew = true
@@ -126,7 +131,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
         createdNew
       }
     },
-    [stream]
+    [stream, t]
   )
 
   const runWorkspaceChatStream = useCallback(

@@ -23,11 +23,20 @@ const GROUP_LABEL_KEYS: Record<SessionTimeGroupKey, string> = {
   older: 'workbench.sessions_group_older'
 }
 
-const GROUP_LABEL_FALLBACKS: Record<SessionTimeGroupKey, string> = {
-  today: '今天',
-  yesterday: '昨天',
-  previous7days: '过去 7 天',
-  older: '更早'
+function sessionGroupLabel(
+  t: (key: string, fallback: string) => string,
+  key: SessionTimeGroupKey
+): string {
+  switch (key) {
+    case 'today':
+      return t(GROUP_LABEL_KEYS.today, '今天')
+    case 'yesterday':
+      return t(GROUP_LABEL_KEYS.yesterday, '昨天')
+    case 'previous7days':
+      return t(GROUP_LABEL_KEYS.previous7days, '过去 7 天')
+    case 'older':
+      return t(GROUP_LABEL_KEYS.older, '更早')
+  }
 }
 
 function formatSessionTime(updatedAt: string): string {
@@ -152,9 +161,7 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
         ) : (
           groupedSessions.map((group) => (
             <section key={group.key} className={styles.group}>
-              <h4 className={styles.groupTitle}>
-                {t(GROUP_LABEL_KEYS[group.key], GROUP_LABEL_FALLBACKS[group.key])}
-              </h4>
+              <h4 className={styles.groupTitle}>{sessionGroupLabel(t, group.key)}</h4>
               <ul className={styles.sessionList}>
                 {group.sessions.map((session) => {
                   const isActive = activeSessionId === session.sessionId

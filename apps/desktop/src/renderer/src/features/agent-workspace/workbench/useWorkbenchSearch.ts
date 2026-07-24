@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   WorkspaceReplaceResult,
   WorkspaceSearchFileResult,
@@ -73,6 +74,7 @@ function persistState(folderRoot: string, state: WorkbenchSearchState): void {
 }
 
 export function useWorkbenchSearch(folderRoot: string | null) {
+  const { t } = useTranslation()
   const [state, setState] = useState<WorkbenchSearchState>(() => loadState(folderRoot))
   const [result, setResult] = useState<WorkspaceSearchResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -124,18 +126,22 @@ export function useWorkbenchSearch(folderRoot: string | null) {
       setResult(next)
       setCollapsedFiles(new Set())
       if (next.invalidPattern) {
-        setError('无效的正则表达式')
+        setError(t('workbench.search_invalid_regex', '无效的正则表达式'))
       }
     } catch (searchError) {
       if (requestIdRef.current !== requestId) return
       setResult(null)
-      setError(searchError instanceof Error ? searchError.message : '搜索失败')
+      setError(
+        searchError instanceof Error
+          ? searchError.message
+          : t('workbench.search_failed', '搜索失败')
+      )
     } finally {
       if (requestIdRef.current === requestId) {
         setLoading(false)
       }
     }
-  }, [folderRoot, state])
+  }, [folderRoot, state, t])
 
   useEffect(() => {
     if (!folderRoot) return
@@ -168,17 +174,21 @@ export function useWorkbenchSearch(folderRoot: string | null) {
         excludePattern: state.excludePattern || undefined
       })
       if (replaceResult.errors.length > 0) {
-        setError(replaceResult.errors[0] ?? '替换失败')
+        setError(replaceResult.errors[0] ?? t('workbench.replace_failed', '替换失败'))
       }
       await runSearch()
       return replaceResult
     } catch (replaceError) {
-      setError(replaceError instanceof Error ? replaceError.message : '替换失败')
+      setError(
+        replaceError instanceof Error
+          ? replaceError.message
+          : t('workbench.replace_failed', '替换失败')
+      )
       return null
     } finally {
       setReplacing(false)
     }
-  }, [folderRoot, runSearch, state])
+  }, [folderRoot, runSearch, state, t])
 
   const toggleFileCollapsed = useCallback((relativePath: string) => {
     setCollapsedFiles((prev) => {

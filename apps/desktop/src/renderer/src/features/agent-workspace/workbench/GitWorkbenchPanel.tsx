@@ -113,11 +113,12 @@ export interface GitWorkbenchPanelProps {
 export const GitWorkbenchPanel: React.FC<GitWorkbenchPanelProps> = ({ vm, repositoryName }) => {
   const { t } = useTranslation()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const { handleRefreshStatus, handleLoadHistory } = vm
 
   useEffect(() => {
-    void vm.handleRefreshStatus()
-    void vm.handleLoadHistory()
-  }, [vm.handleRefreshStatus, vm.handleLoadHistory])
+    void handleRefreshStatus()
+    void handleLoadHistory()
+  }, [handleRefreshStatus, handleLoadHistory])
 
   return (
     <div className={styles.panel}>

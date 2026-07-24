@@ -1,3 +1,5 @@
+import i18n from 'i18next'
+
 const INVALID_NAME_PATTERN = /[\\/:*?"<>|]/
 
 export function selectNameRange(
@@ -57,13 +59,13 @@ export function validateTreeEntryName(
 ): string | null {
   const trimmed = name.trim()
   if (!trimmed) {
-    return '请输入文件或文件夹名称'
+    return i18n.t('workbench.entry_name_required', '请输入文件或文件夹名称')
   }
   if (/^[\\/]/.test(trimmed)) {
-    return '名称不能以斜杠开头'
+    return i18n.t('workbench.entry_name_leading_slash', '名称不能以斜杠开头')
   }
   if (INVALID_NAME_PATTERN.test(trimmed)) {
-    return '名称包含无效字符'
+    return i18n.t('workbench.entry_name_invalid_chars', '名称包含无效字符')
   }
   const ignore = options?.ignoreName?.toLowerCase()
   const duplicate = existingNames.some(
@@ -71,7 +73,9 @@ export function validateTreeEntryName(
       existing.toLowerCase() === trimmed.toLowerCase() && existing.toLowerCase() !== ignore
   )
   if (duplicate) {
-    return `「${trimmed}」已存在，请使用其他名称`
+    return i18n.t('workbench.entry_name_duplicate', '「{{name}}」已存在，请使用其他名称', {
+      name: trimmed
+    })
   }
   return null
 }
