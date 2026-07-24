@@ -46,7 +46,7 @@
 }
 
 .chooseItem:hover {
-  background: var(--bg-surface-normal));
+  background: var(--bg-surface-normal);
 }
 
 .chooseItemCentered {

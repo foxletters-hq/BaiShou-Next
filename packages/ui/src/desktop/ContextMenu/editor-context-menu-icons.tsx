@@ -1,11 +1,5 @@
 import React from 'react'
-import {
-  ClipboardPaste,
-  Copy,
-  Scissors,
-  SquareDashedMousePointer,
-  Undo2
-} from 'lucide-react'
+import { ClipboardPaste, Copy, Scissors, SquareDashedMousePointer, Undo2 } from 'lucide-react'
 import { BuiltinEditorCommandId } from '../../shared/editor-menus'
 
 const ICON_SIZE = 15

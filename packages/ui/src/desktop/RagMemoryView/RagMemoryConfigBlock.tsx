@@ -34,9 +34,7 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
   return (
     <div className={stack.stackGroup}>
       <div className={stack.sectionLabelRow}>
-        <h3 className={stack.sectionLabel}>
-          {t('settings.rag_config_params', '检索参数调节')}
-        </h3>
+        <h3 className={stack.sectionLabel}>{t('settings.rag_config_params', '检索参数调节')}</h3>
       </div>
       <section className={stack.cardSection}>
         <div className={`${styles.paramSliders} ${stack.cardBodyPadded}`}>

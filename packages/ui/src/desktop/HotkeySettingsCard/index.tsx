@@ -254,7 +254,9 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
             <button
               className="settings-text-btn"
               style={{
-                background: isRecording ? 'rgba(var(--color-primary-rgb), 0.1)' : 'rgba(0,0,0,0.05)',
+                background: isRecording
+                  ? 'rgba(var(--color-primary-rgb), 0.1)'
+                  : 'rgba(0,0,0,0.05)',
                 color: isConflict && !isRecording ? 'var(--color-error)' : 'inherit',
                 display: 'flex',
                 alignItems: 'center',

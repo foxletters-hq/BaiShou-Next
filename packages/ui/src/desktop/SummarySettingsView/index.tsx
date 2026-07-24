@@ -116,20 +116,22 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const api = (window as Window & {
-            api?: {
-              summary?: {
-                buildSharedContextPreview?: (
-                  months: number
-                ) => Promise<SharedMemoryCopyPreview | null>
-              }
-              rag?: {
-                buildSharedContextPreview?: (
-                  months: number
-                ) => Promise<SharedMemoryCopyPreview | null>
+          const api = (
+            window as Window & {
+              api?: {
+                summary?: {
+                  buildSharedContextPreview?: (
+                    months: number
+                  ) => Promise<SharedMemoryCopyPreview | null>
+                }
+                rag?: {
+                  buildSharedContextPreview?: (
+                    months: number
+                  ) => Promise<SharedMemoryCopyPreview | null>
+                }
               }
             }
-          }).api
+          ).api
           const preview =
             (await api?.summary?.buildSharedContextPreview?.(lookbackDraft)) ??
             (await api?.rag?.buildSharedContextPreview?.(lookbackDraft)) ??
@@ -505,10 +507,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
               {config.generationMode === 'assistant' && (
                 <div className={styles.assistantPickRow}>
                   <div className={styles.subsectionTitle}>
-                    {t(
-                      'settings.summary_generation_assistant_label',
-                      'Summary generation partner'
-                    )}
+                    {t('settings.summary_generation_assistant_label', 'Summary generation partner')}
                   </div>
                   <button
                     type="button"
@@ -571,7 +570,10 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
                 <div className={styles.injectBody}>
                   <div className="sm-controls" style={{ marginBottom: 0 }}>
                     <div className="sm-label-row">
-                      <label className={styles.injectLookbackLabel} htmlFor="summary-inject-lookback">
+                      <label
+                        className={styles.injectLookbackLabel}
+                        htmlFor="summary-inject-lookback"
+                      >
                         {t('settings.summary_inject_lookback_label', '回溯月数')}
                       </label>
                       <input
@@ -639,10 +641,7 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
                       </div>
                       {injectPreview.total === 0 ? (
                         <p className="sm-previewEmpty">
-                          {t(
-                            'summary.copy_preview_empty',
-                            '当前回溯范围内暂无可复制内容'
-                          )}
+                          {t('summary.copy_preview_empty', '当前回溯范围内暂无可复制内容')}
                         </p>
                       ) : (
                         <>
