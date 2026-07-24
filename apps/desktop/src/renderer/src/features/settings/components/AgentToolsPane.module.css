@@ -44,7 +44,8 @@
 }
 
 .workspaceLabel {
-  font-size: 13px;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -54,22 +55,23 @@
   max-width: 280px;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1.5px solid var(--border-control);
-  background: var(--bg-surface);
+  border: 1px solid var(--form-field-border, var(--border-control));
+  background: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--settings-font-row-size);
   font-family: inherit;
 }
 
 .workspaceSelect:focus {
   outline: none;
   box-shadow: none;
-  border-color: var(--border-control);
+  border-color: var(--form-field-border, var(--border-control));
 }
 
 .emptyState {
   margin: 24px 0;
-  font-size: 14px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   line-height: 1.6;
   color: var(--text-secondary);
 }

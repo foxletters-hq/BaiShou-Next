@@ -20,8 +20,8 @@ import {
   type BaishouAgentGateConfig,
   DEFAULT_AGENT_GATE_NOTIFICATION_PREFS
 } from '@baishou/shared'
+import { HelpTooltip, SegmentedControl } from '@baishou/ui'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
-import seg from '@baishou/ui/desktop/shared/SegmentedControl.module.css'
 import pane from './GeneralSettingsPane.module.css'
 import styles from './AgentGateSettings.module.css'
 
@@ -171,6 +171,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
     trustedExternalDirs?: string[]
   ) => {
     if (!config) return
+    const prevConfig = config
     const current = capabilityStateFromConfig(config, scene)
     const nextState = {
       effects: { ...current.effects, ...effects } as Record<
@@ -180,12 +181,15 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
       trustedExternalDirs: trustedExternalDirs ?? current.trustedExternalDirs
     }
     const nextConfig = applyCapabilityStateToConfig(config, scene, nextState)
+    // 先本地更新，滑块立刻滑动；失败再回滚
+    setConfig(nextConfig)
     setSaving(true)
     try {
       const saved = await window.api.settings.setBaishouAgentGateConfig(nextConfig, scope)
       setConfig(saved)
     } catch (error) {
       console.error('[BaishouAgentGateSettings] save capability failed:', error)
+      setConfig(prevConfig)
     } finally {
       setSaving(false)
     }
@@ -193,20 +197,22 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
 
   if (loading && !config) {
     return (
-      <section className={pane.pageCard}>
-        <div className={pane.pageSection}>
-          <div className={pane.cardHeader}>
-            <h3 className={styles.cardTitle}>
+      <div className={pane.stack}>
+        <div className={pane.stackGroup}>
+          <div className={pane.sectionLabelRow}>
+            <h3 className={pane.sectionLabel}>
               {scene === 'workspace'
-                ? t('settings.workspace_gate_page_title', '工作台权限')
+                ? t('settings.agent_gate_matrix_title', '能力权限')
                 : t('settings.agent_gate_title', '伙伴操作门控')}
             </h3>
           </div>
-          <div className={`${pane.cardBody} ${styles.paddedBody}`}>
-            <p className={styles.emptyHint}>{t('common.loading', '加载中...')}</p>
-          </div>
+          <section className={pane.cardSection}>
+            <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+              <p className={styles.emptyHint}>{t('common.loading', '加载中...')}</p>
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
     )
   }
 
@@ -288,28 +294,31 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
   }
 
   return (
-    <section className={pane.pageCard}>
-      <div className={pane.pageSection}>
-        <div className={pane.cardHeader}>
-          {scene === 'workspace' ? (
-            <p className={`${styles.cardDesc} ${styles.cardDescOnly}`}>
-              {t(
-                'settings.workspace_gate_desc',
-                '仅约束当前工作区内模型调用的工具；你本人在工作台中的编辑、删除与 Git 操作不受影响。'
-              )}
-            </p>
-          ) : (
-            <>
-              <h3 className={styles.cardTitle}>
-                {t('settings.agent_gate_title', '伙伴操作门控')}
-              </h3>
-              <p className={styles.cardDesc}>
-                {t('settings.agent_gate_desc', '控制伙伴执行写入、修改等敏感操作前是否需要你确认。')}
-              </p>
-            </>
-          )}
+    <div className={pane.stack}>
+      <div className={pane.stackGroup}>
+        <div className={pane.sectionLabelRow}>
+          <h3 className={pane.sectionLabel}>
+            {scene === 'workspace'
+              ? t('settings.agent_gate_matrix_title', '能力权限')
+              : t('settings.agent_gate_title', '伙伴操作门控')}
+          </h3>
+          <HelpTooltip
+            size={14}
+            content={
+              scene === 'workspace'
+                ? t(
+                    'settings.workspace_gate_desc',
+                    '仅约束当前工作区内模型调用的工具；你本人在工作台中的编辑、删除与 Git 操作不受影响。'
+                  )
+                : t(
+                    'settings.agent_gate_desc',
+                    '控制伙伴执行写入、修改等敏感操作前是否需要你确认。'
+                  )
+            }
+          />
         </div>
-        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+        <section className={pane.cardSection}>
+          <div className={`${pane.cardBody} ${styles.paddedBody}`}>
           {capabilities.map((cap, index) => {
             const current = capabilityState.effects[cap.id] ?? AgentGateEffect.Ask
             const [titleKey, titleFallback] = CAPABILITY_TITLE_KEYS[cap.id]
@@ -328,19 +337,16 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     <div className={styles.matrixTitle}>{t(titleKey, titleFallback)}</div>
                     <div className={styles.matrixHint}>{t(hintKey, hintFallback)}</div>
                   </div>
-                  <div className={seg.group} role="group" aria-label={t(titleKey, titleFallback)}>
-                    {options.map((effect) => (
-                      <button
-                        key={effect}
-                        type="button"
-                        disabled={saving || (cap.lockedToAsk && effect !== AgentGateEffect.Ask)}
-                        className={`${seg.btn} ${current === effect ? seg.btnActive : ''}`}
-                        onClick={() => void saveCapabilityState({ [cap.id]: effect })}
-                      >
-                        {effectLabel(effect)}
-                      </button>
-                    ))}
-                  </div>
+                  <SegmentedControl
+                    aria-label={t(titleKey, titleFallback)}
+                    value={current}
+                    options={options.map((effect) => ({
+                      value: effect,
+                      label: effectLabel(effect),
+                      disabled: cap.lockedToAsk && effect !== AgentGateEffect.Ask
+                    }))}
+                    onChange={(effect) => void saveCapabilityState({ [cap.id]: effect })}
+                  />
                 </div>
 
                 {cap.id === 'external' && scene === 'workspace' ? (
@@ -494,247 +500,269 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
               }}
             />
           </div>
-        </div>
+          </div>
+        </section>
       </div>
 
-      <div className={pane.pageSection}>
-        <div className={pane.cardHeader}>
-          <h3 className={styles.cardTitle}>
+      <div className={pane.stackGroup}>
+        <div className={pane.sectionLabelRow}>
+          <h3 className={pane.sectionLabel}>
             {t('settings.agent_gate_allowlist_title', '始终允许列表')}
           </h3>
-          <p className={styles.cardDesc}>
-            {scene === 'workspace'
-              ? t(
-                  'settings.workspace_gate_allowlist_hint',
-                  '仅作用于当前工作区；不会影响伙伴或其他工作区。'
-                )
-              : t(
-                  'settings.agent_gate_allowlist_hint',
-                  '仅作用于伙伴会话；不会影响工作台。'
+          <HelpTooltip
+            size={14}
+            content={
+              scene === 'workspace'
+                ? t(
+                    'settings.workspace_gate_allowlist_hint',
+                    '仅作用于当前工作区；不会影响伙伴或其他工作区。'
+                  )
+                : t(
+                    'settings.agent_gate_allowlist_hint',
+                    '仅作用于伙伴会话；不会影响工作台。'
+                  )
+            }
+          />
+        </div>
+        <section className={pane.cardSection}>
+          <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+            {config.allowlist.length === 0 ? (
+              <p className={styles.emptyHint}>
+                {t(
+                  'settings.agent_gate_allowlist_empty',
+                  '暂无条目；在聊天中点「始终允许」后会出现在这里。'
                 )}
-          </p>
-        </div>
-        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
-          {config.allowlist.length === 0 ? (
-            <p className={styles.emptyHint}>
-              {t(
-                'settings.agent_gate_allowlist_empty',
-                '暂无条目；在聊天中点「始终允许」后会出现在这里。'
-              )}
-            </p>
-          ) : (
-            config.allowlist.map((entry, index) => (
-              <React.Fragment key={entry.id}>
-                {index > 0 ? <div className={pane.divider} /> : null}
-                <div className="settings-list-tile settings-list-tile-noclick">
-                  <div className="settings-list-tile-content">
-                    <span className="settings-list-tile-title">{entry.action}</span>
-                    <span className="settings-list-tile-subtitle">
-                      {entry.pattern
-                        ? t('settings.agent_gate_allowlist_pattern', '模式：{{pattern}}', {
-                            pattern: entry.pattern
-                          })
-                        : t('settings.agent_gate_allowlist_whole_action', '整工具放行')}
-                      {' · '}
-                      {new Date(entry.createdAt).toLocaleString()}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="settings-text-btn"
-                    disabled={saving}
-                    onClick={() => void removeAllowlistEntry(entry)}
-                  >
-                    {t('common.remove', '移除')}
-                  </button>
-                </div>
-              </React.Fragment>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className={pane.pageSection}>
-        <div className={pane.cardHeader}>
-          <h3 className={styles.cardTitle}>
-            {t('settings.agent_gate_advanced_title', '高级规则')}
-          </h3>
-          <p className={styles.cardDesc}>
-            {t(
-              'settings.agent_gate_advanced_hint',
-              '面向熟悉 action / pattern 的用户；日常使用可忽略。'
-            )}
-          </p>
-        </div>
-        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
-          <button
-            type="button"
-            className="settings-text-btn"
-            onClick={() => setShowAdvanced((v) => !v)}
-          >
-            {showAdvanced
-              ? t('settings.agent_gate_advanced_hide', '收起高级规则')
-              : t('settings.agent_gate_advanced_show', '展开高级规则')}
-          </button>
-
-          {showAdvanced ? (
-            <>
-              <ProfileRulesReadonly
-                title={
-                  scene === 'workspace'
-                    ? t('settings.agent_gate_profile_workspace', '工作区会话默认')
-                    : t('settings.agent_gate_profile_companion', '伙伴会话默认')
-                }
-                rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[profileId]]}
-              />
-
-              <div className={styles.sectionLabel}>
-                {t('settings.agent_gate_exclusion_title', '始终需确认的操作')}
-              </div>
-              {exclusionList.map((action, index) => (
-                <React.Fragment key={action}>
+              </p>
+            ) : (
+              config.allowlist.map((entry, index) => (
+                <React.Fragment key={entry.id}>
                   {index > 0 ? <div className={pane.divider} /> : null}
                   <div className="settings-list-tile settings-list-tile-noclick">
                     <div className="settings-list-tile-content">
-                      <span className="settings-list-tile-title settings-monospace">{action}</span>
+                      <span className="settings-list-tile-title">{entry.action}</span>
+                      <span className="settings-list-tile-subtitle">
+                        {entry.pattern
+                          ? t('settings.agent_gate_allowlist_pattern', '模式：{{pattern}}', {
+                              pattern: entry.pattern
+                            })
+                          : t('settings.agent_gate_allowlist_whole_action', '整工具放行')}
+                        {' · '}
+                        {new Date(entry.createdAt).toLocaleString()}
+                      </span>
                     </div>
                     <button
                       type="button"
                       className="settings-text-btn"
                       disabled={saving}
-                      onClick={() => removeExclusion(action)}
+                      onClick={() => void removeAllowlistEntry(entry)}
                     >
                       {t('common.remove', '移除')}
                     </button>
                   </div>
                 </React.Fragment>
-              ))}
-              <div className={styles.formRow}>
-                <input
-                  className={styles.textInput}
-                  value={exclusionDraft}
-                  onChange={(e) => setExclusionDraft(e.target.value)}
-                  placeholder="e.g. workspace_run"
-                  disabled={saving}
-                />
-                <button
-                  type="button"
-                  className="settings-text-btn"
-                  disabled={saving}
-                  onClick={addExclusion}
-                >
-                  {t('common.add', '添加')}
-                </button>
-              </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
 
-              <div className={styles.sectionLabel}>
-                {t('settings.agent_gate_user_rules', '我的额外规则')}
-              </div>
-              {permissionRules.length === 0 ? (
-                <p className={styles.emptyHint}>
-                  {t('settings.agent_gate_user_rules_empty', '暂无')}
-                </p>
-              ) : (
-                permissionRules.map((rule, index) => (
-                  <React.Fragment key={`${rule.action}-${index}`}>
+      <div className={pane.stackGroup}>
+        <div className={pane.sectionLabelRow}>
+          <h3 className={pane.sectionLabel}>
+            {t('settings.agent_gate_advanced_title', '高级规则')}
+          </h3>
+          <HelpTooltip
+            size={14}
+            content={t(
+              'settings.agent_gate_advanced_hint',
+              '面向熟悉 action / pattern 的用户；日常使用可忽略。'
+            )}
+          />
+        </div>
+        <section className={pane.cardSection}>
+          <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+            <button
+              type="button"
+              className="settings-text-btn"
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              {showAdvanced
+                ? t('settings.agent_gate_advanced_hide', '收起高级规则')
+                : t('settings.agent_gate_advanced_show', '展开高级规则')}
+            </button>
+
+            {showAdvanced ? (
+              <>
+                <ProfileRulesReadonly
+                  title={
+                    scene === 'workspace'
+                      ? t('settings.agent_gate_profile_workspace', '工作区会话默认')
+                      : t('settings.agent_gate_profile_companion', '伙伴会话默认')
+                  }
+                  rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[profileId]]}
+                />
+
+                <div className={styles.sectionLabel}>
+                  {t('settings.agent_gate_exclusion_title', '始终需确认的操作')}
+                </div>
+                {exclusionList.map((action, index) => (
+                  <React.Fragment key={action}>
                     {index > 0 ? <div className={pane.divider} /> : null}
                     <div className="settings-list-tile settings-list-tile-noclick">
                       <div className="settings-list-tile-content">
-                        <span className="settings-list-tile-title">
-                          <code>{rule.action}</code>
-                          {rule.pattern ? ` · ${rule.pattern}` : ''} → {rule.effect}
-                        </span>
+                        <span className="settings-list-tile-title settings-monospace">{action}</span>
                       </div>
                       <button
                         type="button"
                         className="settings-text-btn"
                         disabled={saving}
-                        onClick={() => removePermissionRule(index)}
+                        onClick={() => removeExclusion(action)}
                       >
                         {t('common.remove', '移除')}
                       </button>
                     </div>
                   </React.Fragment>
-                ))
-              )}
-              <div className={styles.formRow}>
-                <input
-                  className={styles.textInput}
-                  value={ruleAction}
-                  onChange={(e) => setRuleAction(e.target.value)}
-                  placeholder="action（支持 workspace_*）"
-                  disabled={saving}
-                />
-                <input
-                  className={styles.textInput}
-                  value={rulePattern}
-                  onChange={(e) => setRulePattern(e.target.value)}
-                  placeholder="可选 pattern"
-                  disabled={saving}
-                />
-                <select
-                  className={styles.selectInput}
-                  value={ruleEffect}
-                  disabled={saving}
-                  onChange={(e) => setRuleEffect(e.target.value as AgentGateEffect)}
-                >
-                  <option value={AgentGateEffect.Allow}>Allow</option>
-                  <option value={AgentGateEffect.Ask}>Ask</option>
-                  <option value={AgentGateEffect.Deny}>Deny</option>
-                </select>
-                <button
-                  type="button"
-                  className="settings-text-btn"
-                  disabled={saving}
-                  onClick={addPermissionRule}
-                >
-                  {t('common.add', '添加')}
-                </button>
-              </div>
-            </>
-          ) : null}
-        </div>
+                ))}
+                <div className={styles.formRow}>
+                  <input
+                    className={styles.textInput}
+                    value={exclusionDraft}
+                    onChange={(e) => setExclusionDraft(e.target.value)}
+                    placeholder="e.g. workspace_run"
+                    disabled={saving}
+                  />
+                  <button
+                    type="button"
+                    className="settings-text-btn"
+                    disabled={saving}
+                    onClick={addExclusion}
+                  >
+                    {t('common.add', '添加')}
+                  </button>
+                </div>
+
+                <div className={styles.sectionLabel}>
+                  {t('settings.agent_gate_user_rules', '我的额外规则')}
+                </div>
+                {permissionRules.length === 0 ? (
+                  <p className={styles.emptyHint}>
+                    {t('settings.agent_gate_user_rules_empty', '暂无')}
+                  </p>
+                ) : (
+                  permissionRules.map((rule, index) => (
+                    <React.Fragment key={`${rule.action}-${index}`}>
+                      {index > 0 ? <div className={pane.divider} /> : null}
+                      <div className="settings-list-tile settings-list-tile-noclick">
+                        <div className="settings-list-tile-content">
+                          <span className="settings-list-tile-title">
+                            <code>{rule.action}</code>
+                            {rule.pattern ? ` · ${rule.pattern}` : ''} → {rule.effect}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="settings-text-btn"
+                          disabled={saving}
+                          onClick={() => removePermissionRule(index)}
+                        >
+                          {t('common.remove', '移除')}
+                        </button>
+                      </div>
+                    </React.Fragment>
+                  ))
+                )}
+                <div className={styles.formRow}>
+                  <input
+                    className={styles.textInput}
+                    value={ruleAction}
+                    onChange={(e) => setRuleAction(e.target.value)}
+                    placeholder="action（支持 workspace_*）"
+                    disabled={saving}
+                  />
+                  <input
+                    className={styles.textInput}
+                    value={rulePattern}
+                    onChange={(e) => setRulePattern(e.target.value)}
+                    placeholder="可选 pattern"
+                    disabled={saving}
+                  />
+                  <select
+                    className={styles.selectInput}
+                    value={ruleEffect}
+                    disabled={saving}
+                    onChange={(e) => setRuleEffect(e.target.value as AgentGateEffect)}
+                  >
+                    <option value={AgentGateEffect.Allow}>Allow</option>
+                    <option value={AgentGateEffect.Ask}>Ask</option>
+                    <option value={AgentGateEffect.Deny}>Deny</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="settings-text-btn"
+                    disabled={saving}
+                    onClick={addPermissionRule}
+                  >
+                    {t('common.add', '添加')}
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </section>
       </div>
 
-      <div className={pane.pageSection}>
-        <div className={pane.cardHeader}>
-          <h3 className={styles.cardTitle}>
+      <div className={pane.stackGroup}>
+        <div className={pane.sectionLabelRow}>
+          <h3 className={pane.sectionLabel}>
             {t('settings.agent_gate_notifications_title', '系统通知')}
           </h3>
-          <p className={styles.cardDesc}>
-            {t(
+          <HelpTooltip
+            size={14}
+            content={t(
               'settings.agent_gate_notifications_hint',
               '设备级偏好，不写入权限策略。通知仅显示非敏感摘要。'
             )}
-          </p>
+          />
         </div>
-        <div className={`${pane.cardBody} ${styles.paddedBody}`}>
-          <label className="settings-list-tile">
-            <span className="settings-list-tile-label">
-              {t('settings.agent_gate_notify_enabled', '系统通知')}
-            </span>
-            <input
-              type="checkbox"
-              checked={notificationPrefs.enabled}
-              disabled={saving}
-              onChange={(e) => void updateNotificationPrefs({ enabled: e.target.checked })}
-            />
-          </label>
-          <div className={pane.divider} />
-          <label className="settings-list-tile">
-            <span className="settings-list-tile-label">
-              {t('settings.agent_gate_notify_sound', '通知声音')}
-            </span>
-            <input
-              type="checkbox"
-              checked={notificationPrefs.soundEnabled}
-              disabled={saving || !notificationPrefs.enabled}
-              onChange={(e) => void updateNotificationPrefs({ soundEnabled: e.target.checked })}
-            />
-          </label>
-        </div>
+        <section className={pane.cardSection}>
+          <div className={`${pane.cardBody} ${styles.paddedBody}`}>
+            <div className="settings-list-tile settings-list-tile-noclick">
+              <div className="settings-list-tile-content">
+                <span className="settings-list-tile-title">
+                  {t('settings.agent_gate_notify_enabled', '系统通知')}
+                </span>
+              </div>
+              <label className="settings-switch-label">
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.enabled}
+                  disabled={saving}
+                  onChange={(e) => void updateNotificationPrefs({ enabled: e.target.checked })}
+                />
+                <span className="settings-switch-slider" />
+              </label>
+            </div>
+            <div className={pane.divider} />
+            <div className="settings-list-tile settings-list-tile-noclick">
+              <div className="settings-list-tile-content">
+                <span className="settings-list-tile-title">
+                  {t('settings.agent_gate_notify_sound', '通知声音')}
+                </span>
+              </div>
+              <label className="settings-switch-label">
+                <input
+                  type="checkbox"
+                  checked={notificationPrefs.soundEnabled}
+                  disabled={saving || !notificationPrefs.enabled}
+                  onChange={(e) => void updateNotificationPrefs({ soundEnabled: e.target.checked })}
+                />
+                <span className="settings-switch-slider" />
+              </label>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   )
 }
 
