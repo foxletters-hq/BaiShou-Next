@@ -127,7 +127,7 @@ describe('Agent 3: RAG 记忆管理验证', () => {
     const tsx = readUiModule('packages/ui/src/desktop/RagMemoryView')
     expect(tsx).toMatch(/searchMode.*semantic/)
     expect(tsx).toContain('toggleSearchMode')
-    expect(tsx).toContain('segmentedControl')
+    expect(tsx).toContain('SegmentedControl')
   })
 
   it('任务15: EmbeddingService 有 migrateEmbeddings 方法', () => {
@@ -228,23 +228,17 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
 describe('Agent 7: 回忆生成页面验证', () => {
   it('任务17: 卡片 section 合并，无中间圆角', () => {
     const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
-    // 确认只有一个 cardSection 包裹
+    // 确认只有卡外 stack + cardSection 结构
     const cardSections = tsx.match(/cardSection/g)
     expect(cardSections).toBeTruthy()
-
-    const css = readFile(
-      'packages/ui/src/desktop/SummarySettingsView/SummarySettingsView.module.css'
-    )
-    // 确认有 divider 但没有中间圆角
-    expect(css).toContain('divider')
+    expect(tsx).toContain('stack.divider')
   })
 
-  it('任务17: Emoji 正确映射 🌱☘️🪴🌳', () => {
+  it('任务17: 共享记忆回溯月数滑块仍在设置页', () => {
     const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
-    expect(tsx).toContain("'🌱'")
-    expect(tsx).toContain("'☘️'")
-    expect(tsx).toContain("'🪴'")
-    expect(tsx).toContain("'🌳'")
+    expect(tsx).toContain('summary-inject-lookback')
+    expect(tsx).toContain('SHARED_MEMORY_LOOKBACK_MIN')
+    expect(tsx).toContain('lookbackDraft')
   })
 })
 
