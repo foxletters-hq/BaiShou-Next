@@ -3,7 +3,7 @@ export default {}
 
 export const Platform = {
   OS: 'ios',
-  select: <T,>(spec: { ios?: T; android?: T; default?: T }) =>
+  select: <T>(spec: { ios?: T; android?: T; default?: T }) =>
     spec.ios ?? spec.android ?? spec.default
 }
 
@@ -13,7 +13,7 @@ export const AppState = {
 }
 
 export const StyleSheet = {
-  create: <T,>(styles: T) => styles,
+  create: <T>(styles: T) => styles,
   hairlineWidth: 1,
   absoluteFill: {},
   flatten: (style: unknown) => style
