@@ -58,7 +58,7 @@ interface SummaryMissingSectionProps {
   onDetectMissing: () => void
 }
 
-/** AI 缺失摘要检测区域（含进度条、任务卡片列表） */
+/** AI 缺失摘要检测区域（大卡片容器 + 进度条、任务列表） */
 export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
   missingSummaries,
   generationStates,
@@ -111,6 +111,7 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
       ? Math.round(genStatesArr.reduce((sum, s) => sum + (s.progress || 0), 0) / genTotal)
       : 0
   const isGenerating = genStatesArr.some((s) => s.status === 'pending' || s.status === 'running')
+  const showSection = missingSummaries.length > 0 || stats.totalDiaryCount > 0
 
   const itemVariants = {
     hidden: { opacity: 0, y: 15, scale: 0.98 },
@@ -123,79 +124,85 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
     exit: {
       opacity: 0,
       height: 0,
-      overflow: 'hidden',
+      overflow: 'hidden' as const,
       padding: 0,
       margin: 0,
       transition: { duration: 0.4 }
     }
   }
 
+  if (!showSection) return null
+
   return (
     <motion.div
-      style={{ marginTop: 24, paddingBottom: 24 }}
+      className="sp-missing-panel"
       variants={{
         hidden: { opacity: 0 },
-        show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+        show: { opacity: 1, transition: { staggerChildren: 0.08 } }
       }}
       initial="hidden"
       animate="show"
     >
-      {(missingSummaries.length > 0 || stats.totalDiaryCount > 0) && (
-        <div className="sp-missing-section-title">
-          <Sparkles size={18} color="var(--color-warning)" />
+      <div className="sp-missing-panel-header">
+        <div className="sp-missing-panel-title">
+          <Sparkles size={16} strokeWidth={1.75} className="sp-missing-panel-title-icon" />
           <span>{t('summary.ai_suggestions', 'AI 建议补全')}</span>
-          <div className="sp-missing-count">
+          <span className="sp-missing-count">
             {t('common.count_items', '$count个').replace(
               '$count',
               missingSummaries.length.toString()
             )}
-          </div>
-          <button
-            type="button"
-            className="sp-detect-missing-btn"
-            onClick={onDetectMissing}
-            disabled={isDetectingMissing || isGenerating}
-            title={t('summary.detect_missing', '重新检测')}
-          >
-            <RefreshCw size={14} className={isDetectingMissing ? 'sp-detect-spin' : ''} />
-            <span>
-              {isDetectingMissing
-                ? t('summary.detecting_missing', '检测中...')
-                : t('summary.detect_missing', '重新检测')}
-            </span>
-          </button>
+          </span>
         </div>
-      )}
+        <button
+          type="button"
+          className="sp-outline-btn"
+          onClick={onDetectMissing}
+          disabled={isDetectingMissing || isGenerating}
+          title={t('summary.detect_missing', '重新检测')}
+        >
+          <RefreshCw size={14} strokeWidth={1.75} className={isDetectingMissing ? 'sp-detect-spin' : ''} />
+          <span>
+            {isDetectingMissing
+              ? t('summary.detecting_missing', '检测中...')
+              : t('summary.detect_missing', '重新检测')}
+          </span>
+        </button>
+      </div>
 
-      {/* 整体进度条（有任务时显示） */}
-      {genTotal > 0 && (
-        <div className="sp-progress-bar-wrap">
-          <div className="sp-progress-bar">
-            <div className="sp-progress-bar-fill" style={{ width: `${genProgress}%` }} />
-          </div>
-          <div className="sp-progress-text">
-            {genCompleted}/{genTotal}
-            {genError > 0 && (
-              <span className="sp-progress-error">
-                {' '}
-                ({t('summary.failed_count', '{{count}} failed', { count: genError })})
-              </span>
-            )}
-          </div>
+      {(genTotal > 0 || (genTotal === 0 && missingSummaries.length > 0 && !isBatchGenerating)) && (
+        <div className="sp-missing-panel-toolbar">
+          {genTotal > 0 && (
+            <div className="sp-progress-bar-wrap">
+              <div className="sp-progress-bar">
+                <div className="sp-progress-bar-fill" style={{ width: `${genProgress}%` }} />
+              </div>
+              <div className="sp-progress-text">
+                {genCompleted}/{genTotal}
+                {genError > 0 && (
+                  <span className="sp-progress-error">
+                    {' '}
+                    ({t('summary.failed_count', '{{count}} failed', { count: genError })})
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           <div className="sp-progress-actions">
             {isGenerating && (
-              <button className="sp-stop-btn" onClick={onStopGeneration}>
-                <XCircle size={14} />
+              <button type="button" className="sp-stop-btn" onClick={onStopGeneration}>
+                <XCircle size={14} strokeWidth={1.75} />
                 {t('summary.stop', 'Stop')}
               </button>
             )}
-            {!isGenerating && (
+            {!isGenerating && (genTotal > 0 || missingSummaries.length > 0) && (
               <button
-                className="sp-batch-generate-btn"
+                type="button"
+                className="sp-outline-btn"
                 onClick={onBatchGenerate}
                 disabled={isBatchGenerating}
               >
-                <Sparkles size={14} />
+                <Sparkles size={14} strokeWidth={1.75} />
                 {isBatchGenerating
                   ? t('summary.generating', '生成中...')
                   : t('summary.generate_all', '全部生成')}
@@ -204,28 +211,9 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
             <ConcurrencyDropdown
               value={concurrencyLimit}
               onChange={onConcurrencyChange}
-              disabled={isGenerating}
+              disabled={isGenerating || isBatchGenerating}
             />
           </div>
-        </div>
-      )}
-
-      {/* 初始状态（无任务、有待生成项） */}
-      {genTotal === 0 && missingSummaries.length > 0 && !isBatchGenerating && (
-        <div className="sp-progress-actions" style={{ marginBottom: 12 }}>
-          <button
-            className="sp-batch-generate-btn"
-            onClick={onBatchGenerate}
-            disabled={isBatchGenerating}
-          >
-            <Sparkles size={14} />
-            {t('summary.generate_all', '全部生成')}
-          </button>
-          <ConcurrencyDropdown
-            value={concurrencyLimit}
-            onChange={onConcurrencyChange}
-            disabled={isBatchGenerating}
-          />
         </div>
       )}
 
@@ -248,10 +236,9 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                 key={uKey}
                 variants={itemVariants}
                 exit="exit"
-                style={{ display: 'flex', flexDirection: 'column', width: '100%' }}
+                className="sp-missing-item"
               >
                 <div className="sp-missing-card">
-                  {/* 图标区域 */}
                   <div className="sp-missing-card-icon">
                     <span style={{ fontSize: 20 }}>
                       {mp.type === 'weekly'
@@ -286,29 +273,37 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                     </div>
                   </div>
 
-                  {/* 操作按钮区域 */}
                   <div>
                     {isRunning && progress < 100 ? (
                       <div className="sp-missing-card-action processing">
-                        <style>{`@keyframes baishouSpin { 100% { transform: rotate(360deg); } }`}</style>
                         <RefreshCw
-                          size={20}
-                          className="concurrency-trigger-icon"
-                          style={{ animation: 'baishouSpin 1.5s linear infinite' }}
+                          size={16}
+                          strokeWidth={1.75}
+                          className="sp-missing-card-action-icon spinning"
                         />
                       </div>
                     ) : isPending ? (
                       <div className="sp-missing-card-action processing">
-                        <Clock size={20} color="var(--text-tertiary)" />
+                        <Clock size={16} strokeWidth={1.75} className="sp-missing-card-action-icon muted" />
                       </div>
                     ) : isCompleted || (taskState && progress >= 100) ? (
                       <div className="sp-missing-card-action processing">
-                        <CheckCircle2 size={22} color="var(--color-success)" />
+                        <CheckCircle2
+                          size={18}
+                          strokeWidth={1.75}
+                          className="sp-missing-card-action-icon success"
+                        />
                       </div>
                     ) : (
-                      <div className="sp-missing-card-action" onClick={() => onQueueSingle(mp)}>
-                        <Sparkles size={18} />
-                      </div>
+                      <button
+                        type="button"
+                        className="sp-missing-card-action"
+                        onClick={() => onQueueSingle(mp)}
+                        title={t('summary.generate_now', '立即生成日记总结')}
+                        aria-label={t('summary.generate_now', '立即生成日记总结')}
+                      >
+                        <Sparkles size={16} strokeWidth={1.5} className="sp-missing-card-action-icon" />
+                      </button>
                     )}
                   </div>
                 </div>

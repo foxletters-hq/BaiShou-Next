@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import seg from '@baishou/ui/desktop/shared/SegmentedControl.module.css'
+import { SegmentedControl } from '@baishou/ui'
 
 interface SummaryTabBarProps {
   activeTab: 'panel' | 'gallery'
@@ -13,22 +13,14 @@ export const SummaryTabBar: React.FC<SummaryTabBarProps> = ({ activeTab, onTabCh
 
   return (
     <div className="sp-header">
-      <div className={seg.group}>
-        <button
-          type="button"
-          className={`${seg.btn} ${activeTab === 'panel' ? seg.btnActive : ''}`}
-          onClick={() => onTabChange('panel')}
-        >
-          {t('summary.panel_tab', '大盘概况')}
-        </button>
-        <button
-          type="button"
-          className={`${seg.btn} ${activeTab === 'gallery' ? seg.btnActive : ''}`}
-          onClick={() => onTabChange('gallery')}
-        >
-          {t('summary.memory_gallery', '归档画廊')}
-        </button>
-      </div>
+      <SegmentedControl
+        value={activeTab}
+        options={[
+          { value: 'panel', label: t('summary.panel_tab', '大盘概况') },
+          { value: 'gallery', label: t('summary.memory_gallery', '归档画廊') }
+        ]}
+        onChange={onTabChange}
+      />
     </div>
   )
 }

@@ -152,7 +152,13 @@ export function useRagSettings({
     handleRestoreMigration,
     handleResumeMigration,
     handleClearAll
-  } = useRagSystem(t, toast, confirm, alert, fetchRagInfo, settings.loadConfig)
+  } = useRagSystem(t, toast, confirm, alert, fetchRagInfo, async () => {
+    if (typeof settings.reloadConfigKeys === 'function') {
+      await settings.reloadConfigKeys(['ragConfig'])
+      return
+    }
+    await settings.loadConfig?.({ force: true })
+  })
 
   checkMigrationStatusRef.current = checkMigrationStatus
 
@@ -184,7 +190,12 @@ export function useRagSettings({
 
     const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
       if (event?.type !== 'embed-failed' && event?.type !== 'embed-failure-cleared') return
-      void settings.loadConfig?.()
+      // 必须强制重拉：loadConfig() 对已缓存键是 no-op，否则失败条清了 UI 仍残留
+      if (typeof settings.reloadConfigKeys === 'function') {
+        void settings.reloadConfigKeys(['ragConfig'])
+      } else {
+        void settings.loadConfig?.({ force: true })
+      }
     })
 
     return unsubscribe

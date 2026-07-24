@@ -35,12 +35,13 @@ export const ConcurrencyDropdown: React.FC<ConcurrencyDropdownProps> = ({
     <div className="concurrency-dropdown">
       <button
         ref={triggerRef}
-        className="concurrency-trigger"
+        type="button"
+        className="sp-outline-btn concurrency-trigger"
         disabled={disabled}
         onClick={() => !disabled && setOpen(!open)}
       >
-        <Gauge size={14} className="concurrency-trigger-icon" />
-        <span className="concurrency-trigger-text">
+        <Gauge size={14} strokeWidth={1.75} />
+        <span>
           {t('summary.concurrency', '并发')}: {value}
         </span>
       </button>

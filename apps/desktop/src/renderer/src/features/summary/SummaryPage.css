@@ -23,7 +23,7 @@
   border-radius: var(--radius-xs);
 }
 
-/* ── 顶部标签栏（滑块样式见 SegmentedControl.module.css）── */
+/* ── 顶部标签栏（滑块样式见 SegmentedControl 组件）── */
 .sp-header {
   display: flex;
   align-items: center;
@@ -86,42 +86,82 @@
   }
 }
 
-/* ── AI 建议补全区域 ── */
-.sp-missing-section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 16px;
+/* ── AI 建议补全：大卡片容器 ── */
+.sp-missing-panel {
+  margin-top: 8px;
+  margin-bottom: 24px;
+  padding: 16px 18px 18px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sp-missing-panel-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.sp-detect-missing-btn {
-  margin-left: auto;
+.sp-missing-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.sp-missing-panel-title-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.sp-missing-panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 统一描边按钮：淡边框 + 白底 */
+.sp-outline-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 4px 12px;
-  border: 1px solid var(--border-muted);
-  border-radius: var(--radius-full);
+  height: 32px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border-control);
+  border-radius: 8px;
   background: var(--bg-surface);
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.sp-detect-missing-btn:hover:not(:disabled) {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-  background: var(--color-primary-light);
+.sp-outline-btn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
-.sp-detect-missing-btn:disabled {
-  opacity: 0.6;
+.sp-outline-btn:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -135,36 +175,9 @@
   }
 }
 
-/* 并发下拉菜单 */
+/* 并发下拉 */
 .concurrency-dropdown {
   position: relative;
-}
-
-.concurrency-trigger {
-  display: flex;
-  align-items: center;
-  background: var(--color-primary-light);
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  border: none;
-  opacity: 1;
-  cursor: pointer;
-  gap: 6px;
-}
-
-.concurrency-trigger:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.concurrency-trigger-icon {
-  color: var(--color-primary);
-}
-
-.concurrency-trigger-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-primary);
 }
 
 .concurrency-menu {
@@ -174,10 +187,10 @@
   margin-top: 4px;
   background: var(--bg-surface);
   border: 1px solid var(--border-muted);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   box-shadow: var(--shadow-md);
   z-index: 100;
-  min-width: 90px;
+  min-width: 108px;
   padding: 4px;
 }
 
@@ -185,10 +198,10 @@
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
-  border-radius: var(--radius-xs);
+  border-radius: 6px;
   background: transparent;
   color: var(--text-primary);
-  font-weight: normal;
+  font-weight: 400;
   text-align: center;
 }
 
@@ -197,97 +210,82 @@
 }
 
 .concurrency-option.active {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
   font-weight: 500;
-}
-
-/* 批量生成按钮 */
-.sp-batch-generate-btn {
-  padding: 4px 12px;
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  border: none;
-  border-radius: var(--radius-full);
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 8px;
-}
-
-.sp-batch-generate-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
 }
 
 /* 缺失项计数 */
 .sp-missing-count {
-  padding: 4px 8px;
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  font-weight: 600;
+  padding: 2px 8px;
+  background: var(--bg-surface-high);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
-/* 缺失项卡片网格 */
+/* 缺失项列表（大卡片内） */
 .sp-missing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+
+.sp-missing-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
 }
 
 /* 空状态 */
 .sp-missing-empty {
-  padding: 24px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  grid-column: 1 / -1;
+  padding: 28px 16px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* 缺失项卡片 */
+/* 卡片内补全项：白底 + 与按钮同款浅描边 */
 .sp-missing-card {
-  padding: 12px;
+  padding: 10px 12px;
   background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  border: 1.5px solid var(--border-control);
   display: flex;
   align-items: center;
   width: 100%;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .sp-missing-card-icon {
-  width: 44px;
-  height: 44px;
-  background: var(--color-primary-light);
-  border-radius: var(--radius-md);
+  width: 40px;
+  height: 40px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--text-on-primary);
 }
 
 .sp-missing-card-body {
   flex: 1;
-  margin-left: 16px;
+  margin-left: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 .sp-missing-card-title {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -299,6 +297,7 @@
   align-items: center;
   margin-top: 4px;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .sp-missing-card-date {
@@ -308,34 +307,61 @@
 
 .sp-missing-card-badge {
   padding: 2px 8px;
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  border-radius: var(--radius-full);
+  background: var(--bg-surface-high);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sp-missing-card-action {
   margin-left: 12px;
-  width: 38px;
-  height: 38px;
-  background: var(--color-accent-purple);
-  border-radius: var(--radius-md);
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  color: var(--text-on-primary);
+  color: var(--text-secondary);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.sp-missing-card-action:hover {
-  opacity: 0.9;
+.sp-missing-card-action:hover:not(.processing) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .sp-missing-card-action.processing {
   background: transparent;
+  border-color: transparent;
   cursor: default;
+}
+
+.sp-missing-card-action-icon {
+  color: inherit;
+}
+
+.sp-missing-card-action-icon.muted {
+  color: var(--text-tertiary);
+}
+
+.sp-missing-card-action-icon.success {
+  color: var(--color-success);
+}
+
+.sp-missing-card-action-icon.spinning {
+  animation: sp-detect-spin 1.2s linear infinite;
+  color: var(--text-secondary);
 }
 
 /* 进度条 */
@@ -343,14 +369,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  flex: 1;
+  min-width: 160px;
   flex-wrap: wrap;
 }
 
 .sp-progress-bar {
   flex: 1;
-  min-width: 120px;
-  height: 6px;
+  min-width: 100px;
+  height: 5px;
   background: var(--bg-surface-normal);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -358,14 +385,14 @@
 
 .sp-progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-accent-purple));
+  background: var(--text-secondary);
   border-radius: var(--radius-full);
   transition: width 0.4s ease;
 }
 
 .sp-progress-text {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -379,26 +406,29 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
-/* 停止按钮 */
+/* 停止按钮：保留危险色，仍用淡描边 */
 .sp-stop-btn {
-  padding: 4px 12px;
-  background: var(--color-error-light, rgba(220, 38, 38, 0.1));
-  color: var(--color-error);
-  border: 1px solid var(--color-error);
-  border-radius: var(--radius-full);
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: opacity 0.15s ease;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--bg-surface);
+  color: var(--color-error);
+  border: 1.5px solid var(--color-error);
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .sp-stop-btn:hover {
-  opacity: 0.8;
+  background: var(--bg-surface-high);
 }
 
 /* ── 缺失项生成状态指示 ── */
@@ -408,13 +438,12 @@
   gap: 6px;
   font-size: 11px;
   color: var(--text-secondary);
-  padding: 6px 12px;
-  background: var(--bg-surface-normal);
-  border-radius: var(--radius-md);
-  margin-left: 8px;
-  margin-right: 8px;
-  border-left: 3px solid var(--color-primary);
-  box-shadow: var(--shadow-sm);
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border-radius: 8px;
+  /* 与描边按钮同色，避免边框过淡 */
+  border: 1.5px solid var(--border-control);
+  border-left: 3px solid var(--border-control);
   overflow: hidden;
 }
 
@@ -423,7 +452,7 @@
 }
 
 .sp-missing-card-status.running {
-  border-left-color: var(--color-primary);
+  border-left-color: var(--text-secondary);
 }
 
 .sp-missing-card-status.completed {
