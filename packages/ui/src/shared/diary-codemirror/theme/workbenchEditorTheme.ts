@@ -82,7 +82,7 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     width: '100%',
     height: '0',
     margin: '14px 0',
-    borderTop: '1px solid var(--border-control, #d6d6d6)',
+    borderTop: '1px solid var(--border-control, #e5e5e5)',
     verticalAlign: 'middle',
     pointerEvents: 'none',
     boxSizing: 'border-box'
