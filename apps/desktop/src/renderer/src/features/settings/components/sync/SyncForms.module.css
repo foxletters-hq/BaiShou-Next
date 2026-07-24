@@ -1,0 +1,113 @@
+.fieldLabel {
+  font-size: var(--settings-font-meta-size);
+  font-weight: var(--settings-font-meta-weight);
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--settings-font-label-size);
+  font-family: inherit;
+  box-sizing: border-box;
+  outline: none;
+  box-shadow: none;
+  transition: none;
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  border-color: var(--border-control);
+  box-shadow: none;
+  background: var(--bg-surface);
+}
+
+.input:hover {
+  border-color: var(--border-control);
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
+  font-family: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.actionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  align-items: center;
+}
+
+.targetBtn {
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--settings-font-label-size);
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.targetBtnActive {
+  border-color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

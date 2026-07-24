@@ -10,10 +10,21 @@ import { Switch, useDialog, Select } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
 import { notifyIncrementalSyncConfigChanged } from '../../../../lib/incremental-sync-config-events'
+import styles from './SyncForms.module.css'
 
 type SyncTarget = 's3' | 'webdav'
 
-export const SyncConfigForm: React.FC = () => {
+export interface SyncConfigFormProps {
+  /** 放在「测试连接」右侧，如同步按钮 */
+  afterTestAction?: React.ReactNode
+  /** 按钮行下方的进度 / 结果区 */
+  syncStatusSlot?: React.ReactNode
+}
+
+export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
+  afterTestAction,
+  syncStatusSlot
+}) => {
   const { t } = useTranslation()
   const dialog = useDialog()
   const { status, message, setStatus, setMessage } = useSyncStore()
@@ -291,24 +302,11 @@ export const SyncConfigForm: React.FC = () => {
           {(['s3', 'webdav'] as SyncTarget[]).map((item) => (
             <button
               key={item}
+              type="button"
               onClick={() => handleConfigChange({ target: item })}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '6px',
-                border: `1px solid ${config.target === item ? 'var(--color-primary)' : 'var(--border-muted)'}`,
-                background:
-                  config.target === item ? 'rgba(var(--color-primary-rgb), 0.08)' : 'var(--bg-surface-low)',
-                color: config.target === item ? 'var(--color-primary)' : 'var(--text-secondary)',
-                fontSize: '13px',
-                cursor: 'pointer',
-                fontWeight: config.target === item ? 600 : 400
-              }}
+              className={`${styles.targetBtn}${config.target === item ? ` ${styles.targetBtnActive}` : ''}`}
             >
-              {item === 's3' ? (
-                <Cloud size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-              ) : (
-                <Globe size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-              )}
+              {item === 's3' ? <Cloud size={14} /> : <Globe size={14} />}
               {item === 's3' ? 'S3' : 'WebDAV'}
             </button>
           ))}
@@ -368,17 +366,19 @@ export const SyncConfigForm: React.FC = () => {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-        <button onClick={handleSaveConfig} style={actionButtonStyle}>
+      <div className={styles.actionsRow}>
+        <button type="button" onClick={handleSaveConfig} className={styles.actionBtn}>
           {t('data_sync.save_config', 'Save Config')}
         </button>
         <button
+          type="button"
           onClick={handleTestConnection}
           disabled={status === 'connecting'}
-          style={{ ...actionButtonStyle, opacity: status === 'connecting' ? 0.5 : 1 }}
+          className={styles.actionBtn}
         >
           {t('data_sync.test_connection', 'Test Connection')}
         </button>
+        {afterTestAction}
       </div>
 
       {message && (status === 'error' || status === 'success' || status === 'connecting') && (
@@ -393,7 +393,7 @@ export const SyncConfigForm: React.FC = () => {
                 ? 'rgba(239, 68, 68, 0.1)'
                 : status === 'success'
                   ? 'rgba(16, 185, 129, 0.1)'
-                  : 'var(--bg-surface-low)',
+                  : 'var(--bg-surface-high)',
             color:
               status === 'error'
                 ? 'var(--color-error)'
@@ -406,19 +406,8 @@ export const SyncConfigForm: React.FC = () => {
           {message}
         </div>
       )}
+
+      {syncStatusSlot}
     </div>
   )
-}
-
-const actionButtonStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '8px 16px',
-  border: '1px solid var(--border-muted)',
-  borderRadius: '6px',
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  fontSize: '13px',
-  cursor: 'pointer'
 }

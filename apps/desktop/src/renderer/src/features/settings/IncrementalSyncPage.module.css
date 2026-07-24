@@ -1,73 +1,50 @@
-.container {
+.sectionBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 0;
-  background: transparent;
-  color: var(--text-primary);
-  box-sizing: border-box;
-  flex-shrink: 0;
-  width: 100%;
-}
-
-/* 对齐版本控制：单层大卡片，内部用 section 分隔，不再套小卡片 */
-.pageCard {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.section {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-card);
-  border-radius: 0;
-  padding: 20px 24px;
-}
-
-.pageCard > .section:last-child {
-  border-bottom: none;
-}
-
-.cardTitle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 16px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: 12px;
+  padding: 16px;
 }
 
 .embeddedDesc {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
+  padding: 0 4px;
+  font-size: var(--settings-font-meta-size);
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .syncButton {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: 1px solid var(--color-primary);
+  gap: 6px;
+  padding: 0 12px;
+  height: 32px;
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  font-size: 14px;
-  font-weight: 500;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
+  font-family: inherit;
   cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.syncButton:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .syncButton:disabled {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+.syncStatusBlock {
+  margin-top: 12px;
 }
 
 .progressTrack {
@@ -99,26 +76,27 @@
 }
 
 .statCard {
-  background: var(--bg-surface-low);
+  background: var(--bg-surface-high);
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
 }
 
 .statLabel {
-  font-size: 11px;
+  font-size: var(--settings-font-micro-size);
+  font-weight: var(--settings-font-meta-weight);
   color: var(--text-tertiary);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .statValue {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
 }
 
 .statValueText {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
 }
 
 @keyframes spin {
@@ -141,7 +119,6 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: color 0.2s ease;
-  margin-top: 2px;
 }
 
 .helpIcon:hover {
