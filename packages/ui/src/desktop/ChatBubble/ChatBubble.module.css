@@ -463,11 +463,11 @@
 
 .toolCountBadge {
   padding: 2px 7px;
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  background-color: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
   border-radius: 10px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .toolItemDetails {
@@ -534,8 +534,8 @@
 }
 
 .editorTextarea:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.12);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .editorActions {

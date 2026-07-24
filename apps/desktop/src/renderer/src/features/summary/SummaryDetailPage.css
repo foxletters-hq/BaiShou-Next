@@ -23,10 +23,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 32px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-overlay);
-  -webkit-backdrop-filter: var(--blur-overlay);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -98,7 +96,7 @@
   padding: 6px 14px;
   border-radius: var(--radius-full);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .summary-detail-type-badge.type-weekly {
@@ -194,8 +192,8 @@
 
 .summary-edit-textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-light, rgba(91, 168, 245, 0.2));
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .summary-edit-textarea::placeholder {

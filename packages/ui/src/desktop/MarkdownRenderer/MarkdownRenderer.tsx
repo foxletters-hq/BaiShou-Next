@@ -97,6 +97,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
           li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
           p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
+          hr: () => <hr className={styles.hr} />,
           em: ({ node, ...props }) => <em className={styles.italicAnnotation} {...props} />,
           a: ({ node, ...props }) => (
             <a className={styles.link} target="_blank" rel="noopener noreferrer" {...props} />

@@ -11,14 +11,14 @@
 }
 
 .toast {
-  background-color: var(--color-surface, #ffffff);
-  color: var(--color-on-surface, #1a1a1a);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
   padding: 12px 24px;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-muted);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -64,11 +64,4 @@
 .message {
   flex: 1;
   word-break: break-word;
-}
-
-[data-theme='dark'] .toast {
-  background-color: var(--color-surface, #242424);
-  color: var(--color-on-surface, #e2e8f0);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.08);
 }

@@ -156,13 +156,13 @@
 }
 
 .textBtn:hover {
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08);
+  background-color: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .sectionTitle {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.2px;
 }
@@ -219,9 +219,8 @@
 
 .inputField:focus {
   outline: none;
-  border-color: var(--color-primary);
-  border-width: 2px;
-  padding: 11px 15px; /* adjust for 2px border */
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 /* Buttons */
@@ -279,8 +278,8 @@
 }
 
 .outlineDangerBtn:hover:not(:disabled) {
-  background: rgba(var(--color-error-rgb, 244, 67, 54), 0.08);
-  border-color: rgba(var(--color-error-rgb, 244, 67, 54), 0.45);
+  background: rgba(var(--color-error-rgb), 0.08);
+  border-color: rgba(var(--color-error-rgb), 0.45);
 }
 
 .outlineDangerBtn:disabled {
@@ -357,13 +356,13 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
+  background: rgba(var(--color-error-rgb), 0.1);
   margin: 0 auto 8px auto;
 }
 
 .dialogTitle {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   text-align: center;
 }
@@ -402,11 +401,11 @@
 }
 
 .dialogBtnDanger {
-  background: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
+  background: rgba(var(--color-error-rgb), 0.1);
   color: var(--color-error);
 }
 .dialogBtnDanger:hover {
-  background: rgba(var(--color-error-rgb, 244, 67, 54), 1);
+  background: rgba(var(--color-error-rgb), 1);
   color: var(--text-on-primary);
   transform: translateY(-1px);
 }
@@ -483,7 +482,7 @@
 
 .valueText {
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--color-primary);
 }
 
@@ -545,37 +544,9 @@ input:checked + .sliderRound:before {
   padding: 8px 0;
 }
 
-/* M3 Slider replica (1:1 from DashboardSharedMemory) */
+/* 视觉样式见 theme/range-slider.css */
 .rangeInput {
-  -webkit-appearance: none;
   width: 100%;
-  height: 6px;
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.24);
-  border-radius: 3px;
-  outline: none;
-  cursor: pointer;
-  background-image: linear-gradient(var(--color-primary), var(--color-primary));
-  background-repeat: no-repeat;
-}
-
-.rangeInput::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  cursor: pointer;
-  transition: box-shadow 0.2s;
-  box-shadow: 0 0 0 0 rgba(var(--color-primary-rgb, 91, 168, 245), 0);
-}
-
-.rangeInput::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 10px rgba(var(--color-primary-rgb, 91, 168, 245), 0.16);
-}
-
-.rangeInput::-webkit-slider-thumb:active {
-  box-shadow: 0 0 0 14px rgba(var(--color-primary-rgb, 91, 168, 245), 0.24);
 }
 
 /* Bottom Sheet */
@@ -652,8 +623,8 @@ input:checked + .sliderRound:before {
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  background-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, var(--bg-surface));
-  color: var(--color-primary, #5ba8f5);
+  background-color: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
+  color: var(--color-primary);
 }
 
 .emojiGroupPickList {
@@ -691,8 +662,8 @@ input:checked + .sliderRound:before {
 
 .emojiGroupPickItemActive {
   border-width: 2px;
-  border-color: var(--color-primary, #5ba8f5);
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, var(--bg-surface));
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
 }
 
 .emojiGroupPickLeading {
@@ -712,8 +683,8 @@ input:checked + .sliderRound:before {
   height: 36px;
   padding: 8px;
   border-radius: 8px;
-  background-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, var(--bg-surface));
-  color: var(--color-primary, #5ba8f5);
+  background-color: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
+  color: var(--color-primary);
 }
 
 .emojiGroupPickText {

@@ -28,7 +28,7 @@
   background-color: var(--color-primary);
   border-radius: 50%;
   border: 2px solid #fff;
-  box-shadow: 0 2px 4px var(--color-primary-light, rgba(91, 168, 245, 0.3));
+  box-shadow: 0 2px 4px var(--color-primary-light, rgba(var(--color-primary-rgb), 0.3));
 }
 
 .timeline-content-v2 {

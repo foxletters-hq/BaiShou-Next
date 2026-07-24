@@ -44,7 +44,7 @@
   align-items: center;
   gap: 12px;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -81,45 +81,21 @@
   flex-wrap: wrap;
 }
 
-.tabs {
-  display: flex;
-  gap: 8px;
-  background: rgba(var(--color-outline-variant-rgb), 0.2);
-  padding: 4px;
-  border-radius: 12px;
-}
-
-.tab {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tabActive {
-  background: var(--bg-surface);
-  color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
 .searchBox {
   flex: 1;
   min-width: 200px;
   display: flex;
   align-items: center;
   background-color: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.6);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   padding: 8px 12px;
   transition: all 0.2s;
 }
 
 .searchBox:focus-within {
-  border-color: rgba(var(--color-primary-rgb), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .searchInput {
@@ -141,7 +117,7 @@
   display: flex;
   align-items: center;
   background: var(--bg-surface);
-  border: 1.5px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   padding: 10px 14px;
   gap: 8px;
@@ -151,8 +127,8 @@
 }
 
 .ragSearchInner:focus-within {
-  border-color: rgba(var(--color-primary-rgb), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .ragSearchIcon {
@@ -257,7 +233,7 @@
 .cardSelected {
   background: rgba(var(--color-primary-rgb), 0.05);
   border-color: rgba(var(--color-primary-rgb), 0.8);
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.1);
+  box-shadow: none;
 }
 
 .checkboxWrap {
@@ -293,7 +269,7 @@
 
 .cardTitle {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -335,7 +311,7 @@
 
 .selectionCount {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -361,14 +337,14 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.2);
+  box-shadow: none;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .injectBtn:hover:not(:disabled) {
   background: var(--color-primary-active);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.3);
+  box-shadow: none;
 }
 
 .injectBtn:disabled {
@@ -400,7 +376,7 @@
 
 .similarityBadge {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 8px;
   border-radius: 20px;
   display: inline-flex;
@@ -440,7 +416,7 @@
   background: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
   transition: all 0.2s ease;
@@ -480,39 +456,6 @@
 
 .copyBtn:active {
   transform: scale(0.95);
-}
-
-/* Segmented Control */
-.segmentedControl {
-  display: flex;
-  background: rgba(var(--color-outline-variant-rgb, 226, 232, 240), 0.2);
-  padding: 2px;
-  border-radius: 8px;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.segmentBtn {
-  padding: 4px 10px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-}
-
-.segmentBtn:hover {
-  color: var(--text-primary);
-}
-
-.segmentBtnActive {
-  background: var(--bg-surface);
-  color: var(--color-primary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .paginationArea {

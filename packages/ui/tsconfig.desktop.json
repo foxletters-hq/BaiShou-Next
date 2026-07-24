@@ -16,6 +16,7 @@
     "src/images.d.ts",
     "src/index.ts",
     "src/i18n.ts",
+    "src/agent-gate/**/*",
     "src/desktop/**/*",
     "src/hooks/**/*",
     "src/theme/**/*",

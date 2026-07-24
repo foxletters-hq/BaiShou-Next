@@ -52,10 +52,10 @@
   font-weight: 500;
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .sliderGroup input[type='range'] {
   flex: 1;
   margin: 0;
-  accent-color: var(--color-primary);
 }
 
 .actions {
@@ -75,7 +75,7 @@
 }
 
 .cancelBtn:hover {
-  background: var(--color-surface-variant);
+  background: var(--bg-surface-normal);
 }
 
 .confirmBtn {
@@ -85,7 +85,7 @@
   background: var(--color-primary);
   color: white;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
   transition: all 0.2s;
 }
 

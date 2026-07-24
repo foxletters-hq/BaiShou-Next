@@ -28,7 +28,7 @@
 .pathValueWrap {
   padding: 12px 14px;
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--bg-surface);
 }
 
 .pathValue {
@@ -51,7 +51,7 @@
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  color: #ffffff;
+  color: var(--text-on-primary);
   font-size: 15px;
   font-weight: 600;
   transition: opacity 0.2s ease;

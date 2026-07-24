@@ -66,7 +66,7 @@
   align-items: center;
   gap: 10px;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -85,21 +85,21 @@
 .searchInputWrapper {
   display: flex;
   align-items: center;
-  background-color: rgba(var(--bg-surface-lowest-rgb, 240, 240, 240), 0.8);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   padding: 8px 14px;
   transition: all 0.2s ease;
 }
 
 .searchInputWrapper:focus-within {
-  background-color: var(--bg-surface, #ffffff);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  background-color: var(--bg-surface);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .searchIcon {
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   margin-right: 10px;
   display: flex;
   align-items: center;
@@ -111,7 +111,7 @@
   background: transparent;
   outline: none;
   font-size: 14px;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
   font-family: inherit;
 }
 
@@ -142,7 +142,7 @@
 .emptyState {
   padding: 40px 20px;
   text-align: center;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   font-size: 14px;
   display: flex;
   flex-direction: column;
@@ -161,14 +161,13 @@
   display: flex;
   align-items: center;
   padding: 6px 20px;
-  background-color: rgba(var(--bg-surface-low-rgb, 250, 250, 250), 0.95);
-  backdrop-filter: blur(8px);
+  background-color: var(--bg-surface);
   z-index: 10;
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .providerIconPlaceholder {
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   margin-right: 8px;
   display: flex;
   align-items: center;
@@ -176,10 +175,10 @@
 
 .providerName {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   flex: 1;
 }
 
@@ -187,7 +186,7 @@
   font-size: 10px;
   font-weight: 600;
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   padding: 2px 6px;
   border-radius: 10px;
 }
@@ -215,8 +214,8 @@
 }
 
 .modelItemSelected {
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.2);
+  background-color: rgba(var(--color-primary-rgb), 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
 }
 
 .modelItemIcon {
@@ -240,7 +239,7 @@
 .modelItemName {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
 }
 
 .modelItemSelected .modelItemName {
@@ -260,14 +259,14 @@
   gap: 4px;
   font-size: 10px;
   font-weight: 500;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
   padding: 2px 6px;
   border-radius: 6px;
 }
 
 .modelBadgeHighlighted {
-  color: var(--color-tertiary, #ad88d4);
+  color: var(--color-accent-purple);
   background-color: rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.1);
 }
 
@@ -293,7 +292,7 @@
   gap: 8px;
   background: transparent;
   border: none;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -304,5 +303,5 @@
 
 .manageBtn:hover {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
 }

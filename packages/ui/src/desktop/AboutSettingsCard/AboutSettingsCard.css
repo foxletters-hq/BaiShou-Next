@@ -45,7 +45,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--color-primary, #5ba8f5);
+  background-color: var(--color-primary);
   color: white;
   border: none;
   border-radius: 10px;
@@ -77,7 +77,7 @@
 .privacy-item-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .privacy-item-desc {
@@ -156,7 +156,7 @@
 }
 
 .about-sub-page-back:hover {
-  background-color: var(--bg-surface-normal, rgba(0, 0, 0, 0.05));
+  background-color: var(--bg-surface-normal);
 }
 
 .about-sub-page-title {
@@ -259,7 +259,7 @@
 }
 
 .about-contributors-btn:hover {
-  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.02));
+  background: var(--bg-surface-normal);
   border-color: var(--border-control);
 }
 
@@ -307,7 +307,7 @@
 .about-card-title {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -365,8 +365,8 @@
 }
 
 .about-info-row:hover {
-  background: var(--bg-surface-normal, rgba(0, 0, 0, 0.02));
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
+  background: var(--bg-surface-normal);
+  border-color: rgba(var(--color-primary-rgb), 0.25);
 }
 
 .about-info-row-static {

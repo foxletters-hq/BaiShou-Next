@@ -252,15 +252,7 @@ export const SyncConfigForm: React.FC = () => {
   }
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: '12px',
-        padding: '20px 24px',
-        marginBottom: '20px'
-      }}
-    >
+    <div>
       <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600 }}>
         <Settings size={14} style={{ marginRight: 6 }} />
         {t('data_sync.config_section', 'Configuration')}
@@ -305,7 +297,7 @@ export const SyncConfigForm: React.FC = () => {
                 borderRadius: '6px',
                 border: `1px solid ${config.target === item ? 'var(--color-primary)' : 'var(--border-muted)'}`,
                 background:
-                  config.target === item ? 'rgba(91, 168, 245, 0.08)' : 'var(--bg-surface-low)',
+                  config.target === item ? 'rgba(var(--color-primary-rgb), 0.08)' : 'var(--bg-surface-low)',
                 color: config.target === item ? 'var(--color-primary)' : 'var(--text-secondary)',
                 fontSize: '13px',
                 cursor: 'pointer',

@@ -6,48 +6,53 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 9999px;
-  padding: 10px 24px;
+  border-radius: 10px;
+  padding: 10px 20px;
   font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s ease-in-out;
+  font-weight: 500;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
+/* 主 CTA：纯描边，无底色 */
 .elevated {
-  background-color: var(--color-primary, #5ba8f5);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
+  box-shadow: none;
 }
 
 .elevated:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.4);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .text {
   background-color: transparent;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
 }
 
 .text:hover:not(:disabled) {
-  background-color: var(--bg-surface-normal, #f2f2f2);
-  color: var(--text-primary, #1a1a1a);
+  background-color: var(--bg-surface-high);
+  color: var(--text-primary);
 }
 
 .outlined {
   background-color: transparent;
-  color: var(--color-primary);
+  color: var(--text-primary);
   border: 1.5px solid var(--border-control);
 }
 
 .outlined:hover:not(:disabled) {
-  background-color: var(--bg-surface-normal);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .spinner {

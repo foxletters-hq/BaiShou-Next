@@ -10,9 +10,9 @@ export const labelStyle: React.CSSProperties = {
 export const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '8px 12px',
-  border: '1px solid var(--border-muted)',
+  border: '1px solid var(--form-field-border, var(--border-control))',
   borderRadius: '6px',
-  background: 'var(--bg-surface-low)',
+  background: 'var(--form-field-bg, var(--bg-surface))',
   color: 'var(--text-primary)',
   fontSize: '13px',
   boxSizing: 'border-box'

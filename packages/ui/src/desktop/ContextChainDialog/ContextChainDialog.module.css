@@ -50,7 +50,7 @@
   background-color: var(--bg-surface-highlight);
   color: var(--color-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 8px;
   border-radius: 8px;
 }
@@ -147,7 +147,7 @@
 }
 
 .roleUser {
-  background-color: rgba(91, 168, 245, 0.1);
+  background-color: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
 }
 

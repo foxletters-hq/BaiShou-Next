@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--bg-surface-lowest, #f8fafc);
+  background-color: var(--bg-surface-lowest);
   overflow: hidden;
   font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
 }
@@ -17,18 +17,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 32px;
-  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
   z-index: 10;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
 }
 
 .appBarTitle {
   font-size: 24px;
-  font-weight: 800;
-  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -47,8 +44,8 @@
   display: flex;
   gap: 16px;
   align-items: center;
-  background: var(--bg-surface, #ffffff);
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .searchBox {
@@ -56,18 +53,17 @@
   max-width: 400px;
   display: flex;
   align-items: center;
-  background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.8);
+  background: var(--bg-surface);
   border-radius: 12px;
   padding: 10px 16px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border: 1px solid var(--border-control);
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) inset;
 }
 
 .searchBox:focus-within {
-  background: var(--bg-surface, #ffffff);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  background: var(--bg-surface);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .searchInput {
@@ -77,7 +73,7 @@
   flex: 1;
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary, #1e293b);
+  color: var(--text-primary);
 }
 
 .filterTag {
@@ -86,19 +82,19 @@
   font-size: 13px;
   font-weight: 600;
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .filterTag:hover {
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
-  color: var(--text-primary, #0f172a);
+  color: var(--text-primary);
 }
 
 .filterTagActive {
-  background: var(--color-primary, #5ba8f5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
 }
 
 /* --- Dashboard Stats Panel --- */
@@ -112,7 +108,7 @@
 .statCard {
   background: linear-gradient(
     145deg,
-    var(--bg-surface, #ffffff),
+    var(--bg-surface),
     rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.5)
   );
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
@@ -132,16 +128,16 @@
 
 .statLabel {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .statValue {
   font-size: 32px;
-  font-weight: 900;
-  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  color: var(--text-primary);
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -149,8 +145,8 @@
 
 .statTrend {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--color-secondary, #10b981);
+  font-weight: 600;
+  color: var(--color-success);
 }
 
 /* --- List Area --- */
@@ -175,7 +171,7 @@
 }
 
 .sessionCard {
-  background: var(--bg-surface, #ffffff);
+  background: var(--bg-surface);
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
   border-radius: 16px;
   padding: 16px 20px;
@@ -191,13 +187,13 @@
 .sessionCard:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
 }
 
 .sessionCardSelected {
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08) !important;
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.6) !important;
-  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15) !important;
+  background: rgba(var(--color-primary-rgb), 0.08) !important;
+  border-color: rgba(var(--color-primary-rgb), 0.6) !important;
+  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb), 0.15) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -224,14 +220,14 @@
 }
 
 .sessionCheckbox:hover {
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--color-primary);
   background: rgba(255, 255, 255, 0.4);
 }
 
 .sessionCheckbox:checked {
-  background-color: var(--color-primary, #5ba8f5);
-  border-color: var(--color-primary, #5ba8f5);
-  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: none;
 }
 
 .sessionCheckbox::after {
@@ -248,7 +244,7 @@
 }
 
 .sessionCheckbox:checked::after {
-  border-color: #fff;
+  border-color: var(--text-on-primary);
 }
 
 .sessionInfo {
@@ -265,8 +261,8 @@
 
 .sessionTitle {
   font-size: 16px;
-  font-weight: 800;
-  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -284,7 +280,7 @@
   align-items: center;
   gap: 12px;
   font-size: 13px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -323,14 +319,14 @@
 }
 
 .sessionActionBtn:hover {
-  background: var(--bg-surface, #ffffff);
+  background: var(--bg-surface);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transform: scale(1.05);
 }
 
 .sessionActionBtnDanger:hover {
-  color: var(--color-error, #ef4444);
-  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.1);
+  color: var(--color-error);
+  background: rgba(var(--color-error-rgb), 0.1);
 }
 
 /* --- Buttons --- */
@@ -338,7 +334,7 @@
   padding: 10px 20px;
   border-radius: 12px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -350,7 +346,7 @@
 .actionBtnOutline {
   background: transparent;
   border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
-  color: var(--text-primary, #0f172a);
+  color: var(--text-primary);
 }
 .actionBtnOutline:hover {
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.2);
@@ -359,25 +355,25 @@
 .actionBtnPrimary {
   background: linear-gradient(
     135deg,
-    var(--color-primary, #5ba8f5),
-    rgba(var(--color-primary-rgb, 91, 168, 245), 0.8)
+    var(--color-primary),
+    rgba(var(--color-primary-rgb), 0.8)
   );
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+  color: var(--text-on-primary);
+  box-shadow: none;
 }
 .actionBtnPrimary:hover {
-  box-shadow: 0 6px 16px rgba(91, 168, 245, 0.4);
+  box-shadow: none;
   transform: translateY(-1px);
 }
 
 .actionBtnDanger {
-  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.1);
-  color: var(--color-error, #ef4444);
+  background: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
 }
 .actionBtnDanger:hover {
-  background: var(--color-error, #ef4444);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  background: var(--color-error);
+  color: var(--text-on-primary);
+  box-shadow: 0 4px 12px rgba(var(--color-error-rgb), 0.3);
   transform: translateY(-1px);
 }
 
@@ -389,7 +385,7 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
 }
 
 .emptyIcon {
@@ -420,7 +416,7 @@
 }
 
 .dialogBox {
-  background: var(--bg-surface, #ffffff);
+  background: var(--bg-surface);
   border-radius: 24px;
   padding: 32px;
   width: 90%;
@@ -434,13 +430,13 @@
 
 .dialogTitle {
   font-size: 20px;
-  font-weight: 800;
-  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .dialogText {
   font-size: 15px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 

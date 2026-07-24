@@ -58,7 +58,7 @@ export const ShortcutManagerDialog: React.FC<ShortcutManagerDialogProps> = ({
         >
           <div
             style={{
-              fontWeight: 800,
+              fontWeight: '600',
               fontSize: 16,
               display: 'flex',
               alignItems: 'center',

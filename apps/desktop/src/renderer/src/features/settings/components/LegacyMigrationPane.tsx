@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { RestoreBlockingOverlay } from '@baishou/ui'
+import { RestoreBlockingOverlay, SettingsPageChrome } from '@baishou/ui'
 import { formatMigrationMegabytes } from '@baishou/shared'
 import type {
   LegacyVersionMigrationImportStatus,
@@ -154,16 +154,24 @@ export const LegacyMigrationPane: React.FC = () => {
 
   if (!apiAvailable) {
     return (
-      <div className="legacy-migration-pane settings-pane settings-pane-full">
-        <p className="legacy-migration-error">
-          {t('legacy_migration.api_unavailable', '迁移 API 不可用')}
-        </p>
+      <div
+        className="legacy-migration-pane settings-pane settings-pane-full"
+        style={{ overflow: 'hidden' }}
+      >
+        <SettingsPageChrome title={t('version_migration.title', '版本迁移')}>
+          <p className="legacy-migration-error">
+            {t('legacy_migration.api_unavailable', '迁移 API 不可用')}
+          </p>
+        </SettingsPageChrome>
       </div>
     )
   }
 
   return (
-    <div className="legacy-migration-pane settings-pane settings-pane-full">
+    <div
+      className="legacy-migration-pane settings-pane settings-pane-full"
+      style={{ overflow: 'hidden' }}
+    >
       <RestoreBlockingOverlay
         visible={overlayVisible}
         message={t('version_migration.importing', '正在导入旧版数据…')}
@@ -177,15 +185,18 @@ export const LegacyMigrationPane: React.FC = () => {
         }
       />
 
-      <header className="legacy-migration-header">
-        <h2>{t('version_migration.title', '版本迁移')}</h2>
-        <p className="legacy-migration-lead">
-          {t(
-            'version_migration.description',
-            '检测旧版白守数据，按板块查看体积并选择导入。导入过程不会删除旧版目录。'
-          )}
-        </p>
-      </header>
+      <SettingsPageChrome
+        title={t('version_migration.title', '版本迁移')}
+        scrollClassName="legacy-migration-scroll"
+      >
+        <header className="legacy-migration-header">
+          <p className="legacy-migration-lead">
+            {t(
+              'version_migration.description',
+              '检测旧版白守数据，按板块查看体积并选择导入。导入过程不会删除旧版目录。'
+            )}
+          </p>
+        </header>
 
       <section className="legacy-migration-card legacy-migration-source-card">
         <p className="legacy-migration-card-desc">
@@ -343,6 +354,7 @@ export const LegacyMigrationPane: React.FC = () => {
           </div>
         </section>
       ) : null}
+      </SettingsPageChrome>
     </div>
   )
 }

@@ -23,51 +23,17 @@
   border-radius: var(--radius-xs);
 }
 
-/* ── 顶部标签栏 ── */
+/* ── 顶部标签栏（滑块样式见 SegmentedControl.module.css）── */
 .sp-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 32px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-overlay);
-  -webkit-backdrop-filter: var(--blur-overlay);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
   position: sticky;
   top: 0;
   z-index: 50;
-}
-
-.sp-tabs {
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface-normal);
-  padding: 6px;
-  border-radius: var(--radius-md);
-}
-
-.sp-tab {
-  padding: 8px 16px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  transition: all 0.2s var(--ease-in-out);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sp-tab:hover {
-  color: var(--text-primary);
-  background: var(--bg-surface);
-}
-
-.sp-tab.active {
-  color: var(--color-primary);
-  background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
 }
 
 /* ── 主内容区 ── */
@@ -123,7 +89,7 @@
 /* ── AI 建议补全区域 ── */
 .sp-missing-section-title {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 16px;
   display: flex;
@@ -197,7 +163,7 @@
 
 .concurrency-trigger-text {
   font-size: 13px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--color-primary);
 }
 
@@ -233,7 +199,7 @@
 .concurrency-option.active {
   background: var(--color-primary-light);
   color: var(--color-primary);
-  font-weight: bold;
+  font-weight: 500;
 }
 
 /* 批量生成按钮 */
@@ -264,7 +230,7 @@
   color: var(--color-primary);
   border-radius: var(--radius-md);
   font-size: 13px;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 /* 缺失项卡片网格 */
@@ -321,7 +287,7 @@
 
 .sp-missing-card-title {
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -419,8 +385,8 @@
 .sp-stop-btn {
   padding: 4px 12px;
   background: var(--color-error-light, rgba(220, 38, 38, 0.1));
-  color: var(--color-error, #dc2626);
-  border: 1px solid var(--color-error, #dc2626);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
   border-radius: var(--radius-full);
   font-weight: 600;
   font-size: 13px;

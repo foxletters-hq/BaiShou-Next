@@ -74,7 +74,7 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
                 width: 32,
                 height: 32,
                 borderRadius: '8px',
-                background: 'rgba(var(--color-primary-rgb, 91, 168, 245), 0.1)',
+                background: 'rgba(var(--color-primary-rgb), 0.1)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -86,7 +86,7 @@ export const ShortcutManagerList: React.FC<ShortcutManagerListProps> = ({
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 800 }}>/{getShortcutCommand(s)}</span>
+                <span style={{ fontSize: 14, fontWeight: '600' }}>/{getShortcutCommand(s)}</span>
                 <span
                   style={{
                     fontSize: 11,

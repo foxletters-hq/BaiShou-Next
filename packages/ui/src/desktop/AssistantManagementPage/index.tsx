@@ -186,7 +186,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
           <div className={styles.dialogOverlay} onClick={() => setDeleteTargetId(null)}>
             <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
               <div className={styles.dialogHeaderIcon}>
-                <Trash2 size={32} color="var(--color-error, #F44336)" />
+                <Trash2 size={32} color="var(--color-error)" />
               </div>
               <div className={styles.dialogTitle}>
                 {t('agent.assistant.delete_confirm_title', '特级警告：抹除心智模式？')}

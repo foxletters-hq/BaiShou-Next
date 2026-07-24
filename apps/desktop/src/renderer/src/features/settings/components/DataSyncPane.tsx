@@ -12,7 +12,10 @@ export const DataSyncPane: React.FC<DataSyncPaneProps> = ({ settings }) => {
   const archiveLocale = settings.locale === 'system' ? i18n.language : settings.locale
 
   return (
-    <div className="settings-pane settings-pane-full">
+    <div
+      className="settings-pane settings-pane-full"
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
       <CloudSyncPanel
         savedConfig={settings.cloudSyncConfig}
         onSaveConfig={settings.setCloudSyncConfig}

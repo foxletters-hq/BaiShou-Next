@@ -15,9 +15,9 @@
 }
 
 .modal {
-  background-color: var(--bg-surface, #ffffff);
+  background-color: var(--bg-surface);
   border: 1px solid var(--bg-surface-highest, var(--border-subtle));
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
   border-radius: var(--radius-xl, 20px);
   padding: 24px 28px;
   min-width: 400px;
@@ -33,12 +33,12 @@
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
 }
 
 .body {
   font-size: 15px;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
 }
 
 @keyframes fadeIn {

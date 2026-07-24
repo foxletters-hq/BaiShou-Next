@@ -18,6 +18,32 @@
   transition: max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
+/* 工具栏 + 输入卡共用外框，展开时连成一体 */
+.composerShell {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
+  border-radius: 22px;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition:
+    border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    border-color 0.2s,
+    background-color 0.2s;
+}
+
+.composerShell:focus-within {
+  border-color: var(--border-control);
+  background-color: var(--bg-surface);
+}
+
+.composerShellExpanded {
+  border-radius: 18px;
+}
+
 .toolbarWrapper {
   width: 100%;
   min-width: 0;
@@ -29,6 +55,9 @@
   gap: 6px;
   width: 100%;
   min-width: 0;
+  padding: 8px 10px 6px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .toolbarScrollBtn {
@@ -36,7 +65,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.45);
+  border: 1px solid var(--border-control);
   background-color: var(--bg-surface);
   color: var(--text-secondary);
   display: flex;
@@ -44,7 +73,7 @@
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   transition:
     opacity 0.2s,
     background-color 0.2s;
@@ -67,7 +96,7 @@
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .toolbarViewport::-webkit-scrollbar {
@@ -78,16 +107,14 @@
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  padding: 4px;
+  padding: 0;
   gap: 8px;
   width: max-content;
   box-sizing: border-box;
-  border-radius: 12px;
-  background-color: var(--bg-glass-surface);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.2);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .quickActionChip {
@@ -98,34 +125,35 @@
   padding: 6px 10px;
   background-color: var(--bg-surface);
   border-radius: 10px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border: 1px solid var(--border-control);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   color: var(--text-secondary);
   outline: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
+  font-weight: 500;
 }
 
 .quickActionChip:hover {
-  background-color: var(--bg-surface-normal);
-  border-color: rgba(var(--color-outline-rgb), 0.3);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-control);
 }
 
 .quickActionChip:active {
-  background-color: var(--bg-surface-low);
+  background-color: var(--bg-surface-normal);
 }
 
 .chipActive,
 .chipActive:hover {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--text-on-primary) !important;
+  background-color: rgba(var(--color-primary-rgb), 0.12);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  color: var(--color-primary) !important;
 }
 
 .chipActive .chipLabel,
 .chipActive .chipIcon {
-  color: var(--text-on-primary) !important;
+  color: var(--color-primary) !important;
 }
 
 .chipIcon {
@@ -139,7 +167,7 @@
 
 .chipLabel {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -160,13 +188,13 @@
   position: relative;
   display: inline-flex;
   background-color: var(--bg-surface-normal);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.4);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   overflow: hidden;
   height: 64px;
   box-sizing: border-box;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
 .attPreviewImg {
@@ -189,7 +217,7 @@
 
 .attFileIcon {
   font-size: 18px;
-  color: var(--color-primary);
+  color: var(--text-secondary);
   margin-bottom: 2px;
 }
 
@@ -239,22 +267,20 @@
   transform: scale(1.1);
 }
 
-/* Input Card */
+/* Input Card — 外框由 .composerShell 承担，此处只负责内边距与布局 */
 .inputCard {
   position: relative; /* Ensure absolute positioning context is preserved */
-  background-color: var(--bg-surface);
-  border-radius: 22px; /* 胶囊圆角 */
-  border: 1.5px solid var(--border-control);
+  background-color: transparent;
+  border-radius: 0;
+  border: none;
   padding: 10px 14px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   transition:
     max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    border-color 0.2s,
-    background-color 0.2s,
-    box-shadow 0.2s;
+    padding 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    background-color 0.2s;
 }
 
 .inputCardAnimating {
@@ -270,15 +296,13 @@
 }
 
 .inputCard:focus-within {
-  border-color: var(--border-control);
-  background-color: var(--bg-surface);
+  background-color: transparent;
   box-shadow: none;
 }
 
 .inputCard:focus-within:active,
 .inputCard:active:focus-within {
-  border-color: var(--border-control);
-  background-color: var(--bg-surface);
+  background-color: transparent;
 }
 
 .topRow {
@@ -330,7 +354,8 @@
 
 .textarea {
   width: 100%;
-  min-height: 20px;
+  /* border-box 下 min-height 含 padding；需留给 line-height 足够内容区，避免 placeholder 被裁切 */
+  min-height: 36px;
   max-height: 144px;
   background: transparent;
   border: none;
@@ -338,9 +363,10 @@
   outline: none;
   font-family: var(--font-family, sans-serif);
   font-size: 14px;
+  font-weight: 400;
   color: var(--text-primary);
-  padding: 8px 6px;
-  line-height: 1.5;
+  padding: 7px 6px;
+  line-height: 22px;
   transition:
     padding-top 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
     padding-right 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -348,6 +374,9 @@
 
 .textarea::placeholder {
   color: var(--text-tertiary);
+  font-weight: 400;
+  line-height: 22px;
+  opacity: 1;
 }
 
 .sendBtnWrapper {
@@ -373,14 +402,22 @@
 }
 
 .sendBtn {
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
-  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb), 0.3);
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
+  box-shadow: none;
   font-size: 16px;
 }
 
+.sendBtn:hover:not(:disabled) {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
 .sendBtnDisabled {
-  background-color: rgba(var(--color-primary-rgb), 0.5);
+  background-color: transparent;
+  color: var(--text-tertiary);
+  border-color: var(--border-subtle);
   cursor: not-allowed;
   box-shadow: none;
 }
@@ -430,8 +467,7 @@
 }
 
 .inputCardExpanded {
-  border-radius: 18px;
-  background-color: var(--bg-surface);
+  background-color: transparent;
   min-height: 180px;
   height: 180px; /* Initial height when expanded */
   padding: 10px 14px;

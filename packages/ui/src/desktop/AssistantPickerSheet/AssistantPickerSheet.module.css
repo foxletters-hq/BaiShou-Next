@@ -57,7 +57,7 @@
 
 .headerTitle {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.5px;
 }
@@ -67,16 +67,15 @@
   display: flex;
   align-items: center;
   background-color: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.6);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   padding: 8px 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) inset;
   transition: all 0.2s;
 }
 
 .searchBox:focus-within {
-  border-color: rgba(var(--color-primary-rgb), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .searchInput {
@@ -250,7 +249,7 @@
 
 .itemName {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -260,14 +259,14 @@
 
 .currentBadgeInline {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-primary);
   line-height: 1.2;
 }
 
 .currentBadge {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   background: var(--color-primary);
   color: var(--text-on-primary);
   padding: 2px 6px;
@@ -276,7 +275,7 @@
 
 .defaultBadge {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   background: rgba(var(--color-outline-variant-rgb), 0.3);
   color: var(--text-secondary);
   padding: 2px 6px;
@@ -309,7 +308,7 @@
   border: 1px solid var(--border-muted);
   border-radius: 12px;
   color: var(--text-secondary);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
@@ -377,7 +376,7 @@
 
 .modelSelectorModel {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -469,7 +468,7 @@
   gap: 6px;
   margin: 0;
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.5px;
 }
@@ -491,12 +490,12 @@
   align-items: center;
   justify-content: center;
   font-size: 32px;
-  box-shadow: 0 8px 24px rgba(91, 168, 245, 0.1);
+  box-shadow: none;
 }
 
 .detailTitles h2 {
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.5px;
@@ -529,8 +528,9 @@
 }
 
 .descriptionInput:focus {
-  border-color: rgba(var(--color-primary-rgb), 0.5);
+  border-color: var(--form-field-border, var(--border-control));
   color: var(--text-primary);
+  box-shadow: none;
 }
 
 .descriptionInput::placeholder {
@@ -565,7 +565,7 @@
 .tab {
   padding: 10px 16px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
   border: none;
@@ -612,7 +612,7 @@
 
 .sectionTitle {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   text-transform: uppercase;
@@ -666,8 +666,8 @@
 
 .promptTextarea:focus {
   outline: none;
-  border-color: rgba(var(--color-primary-rgb), 0.5);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.12);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 /* Metadata Grid inside Memory Tab */
@@ -697,7 +697,7 @@
 .metaValue {
   font-size: 15px;
   color: var(--text-primary);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .actionRow {
@@ -715,7 +715,7 @@
   border: none;
   border-radius: 12px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   display: flex;
@@ -761,30 +761,11 @@
     transform: scale(1) translateY(0);
   }
 }
+/* 视觉样式见 theme/range-slider.css */
 .sliderInput {
   flex: 1;
-  appearance: none;
-  -webkit-appearance: none;
-  height: 6px;
-  background: rgba(var(--color-outline-variant-rgb), 0.4);
-  border-radius: 6px;
-  outline: none;
   width: 100%;
-}
-
-.sliderInput::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-
-.sliderInput::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  margin: 0 16px 0 0;
 }
 
 .toggleSwitch {

@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: var(--color-glass-bg);
+  background: var(--bg-glass-surface);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--color-glass-border);
@@ -19,7 +19,7 @@
   justify-content: center;
   align-items: center;
   border-radius: 50%;
-  background: rgba(91, 168, 245, 0.15); /* color-primary with opacity */
+  background: rgba(var(--color-primary-rgb), 0.15); /* color-primary with opacity */
 }
 
 .spinner {
@@ -38,7 +38,7 @@
 
 .label {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-family-main);
   margin-bottom: 2px;
 }

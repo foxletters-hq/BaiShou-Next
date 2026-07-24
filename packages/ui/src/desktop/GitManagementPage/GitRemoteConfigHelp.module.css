@@ -20,7 +20,7 @@
 
 .helpBtn:active {
   transform: scale(0.92);
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.12);
+  background-color: rgba(var(--color-primary-rgb), 0.12);
 }
 
 .helpIcon {

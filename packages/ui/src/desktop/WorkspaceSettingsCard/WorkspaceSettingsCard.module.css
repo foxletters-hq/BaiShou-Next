@@ -19,21 +19,21 @@
 .workspaceSectionLabel {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   letter-spacing: 0.2px;
 }
 
 .workspacePathText {
   font-size: 12px;
   font-family: 'Fira Code', 'Consolas', monospace;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   line-height: 1.4;
   word-break: break-all;
 }
 
 .workspaceEmptyHint {
   font-size: 13px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .workspaceManageButton {
@@ -41,8 +41,8 @@
   border: none;
   border-radius: 999px;
   padding: 8px 14px;
-  background: var(--color-primary, #5ba8f5);
-  color: var(--color-on-primary, #fff);
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -90,7 +90,7 @@
 .workspaceRecentTitle {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   flex: 1;
   min-width: 0;
   overflow: hidden;

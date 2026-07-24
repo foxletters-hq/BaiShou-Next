@@ -1,3 +1,10 @@
+.pageBodyScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -26,7 +33,7 @@
 .cardTitle {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -79,13 +86,18 @@
 }
 
 .statIconWrapper {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.statIconWrapper svg {
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
 }
 
@@ -123,7 +135,7 @@
   z-index: 10;
   background: var(--bg-surface);
   padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .titleArea {
@@ -140,7 +152,7 @@
 
 .titleLabel {
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -148,7 +160,7 @@
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 11px;
-  font-weight: bold;
+  font-weight: 600;
   background: transparent;
   border: 1px solid var(--color-primary);
   color: var(--color-primary);
@@ -269,10 +281,8 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-overlay);
-  -webkit-backdrop-filter: var(--blur-overlay);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .configBackButton {
@@ -295,7 +305,7 @@
 
 .configAppTitle {
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   text-align: center;
   flex: 1;
@@ -310,7 +320,7 @@
 
 .targetSectionTitle {
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 16px;
 }
@@ -353,7 +363,7 @@
 }
 
 .targetCardBig:hover {
-  background: var(--color-surface-variant);
+  background: var(--bg-surface-low);
 }
 
 .targetCardSelected {
@@ -366,15 +376,26 @@
 }
 
 .targetCardIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   color: var(--text-primary);
+  background: var(--bg-surface-high);
+}
+
+.targetCardIcon svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 .targetCardTitle {
   font-size: 15px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -402,7 +423,7 @@
   border: none;
   color: var(--color-primary-on-container);
   padding: 6px 16px;
-  font-weight: bold;
+  font-weight: 600;
   border-radius: 16px;
 }
 
@@ -412,7 +433,7 @@
 
 .configSectionTitle {
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -430,15 +451,15 @@
 
 .formField label {
   font-size: 13px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .inputPill {
   display: flex;
   align-items: center;
-  background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant);
+  background: var(--form-field-bg, var(--bg-surface));
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 10px;
   padding: 0 14px;
   height: 44px;
@@ -447,8 +468,9 @@
 }
 
 .inputPill:focus-within {
-  border-color: var(--color-primary);
-  background: var(--bg-surface);
+  border-color: var(--form-field-border, var(--border-control));
+  background: var(--form-field-bg, var(--bg-surface));
+  box-shadow: none;
 }
 
 .inputPill input {
@@ -485,6 +507,15 @@
   color: var(--text-primary);
 }
 
+/* lucide 全局按 1em 缩放，用 font-size 控制实际尺寸 */
+.emptyStateIcon {
+  display: block;
+  font-size: 48px;
+  margin-bottom: 8px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
 /* Records List */
 .recordList {
   display: flex;
@@ -516,10 +547,10 @@
   border-bottom: none;
 }
 .itemSelected {
-  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.08) !important;
+  background: rgba(var(--color-primary-rgb), 0.08) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-bottom-color: rgba(var(--color-primary-rgb, 14, 165, 233), 0.2) !important;
+  border-bottom-color: rgba(var(--color-primary-rgb), 0.2) !important;
 }
 
 .customCheck {
@@ -528,7 +559,7 @@
   width: 18px;
   height: 18px;
   border-radius: 4px;
-  border: 1px solid rgba(var(--text-primary-rgb, 15, 23, 42), 0.15);
+  border: 1px solid rgba(var(--text-primary-rgb), 0.15);
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -549,7 +580,7 @@
 .customCheck:checked {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 14, 165, 233), 0.4);
+  box-shadow: none;
 }
 
 .customCheck::after {
@@ -566,7 +597,7 @@
 }
 
 .customCheck:checked::after {
-  border-color: var(--text-on-primary, #fff);
+  border-color: var(--text-on-primary);
 }
 
 .recordIcon {
@@ -720,13 +751,24 @@
   color: var(--text-on-primary) !important;
 }
 .targetCardIcon {
-  color: var(--text-primary);
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-primary);
+  background: var(--bg-surface-high);
+}
+.targetCardIcon svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 .targetCardSelected .targetCardIcon {
   color: var(--text-on-primary) !important;
+  background: rgba(255, 255, 255, 0.18);
 }
 .targetCardContent {
   display: flex;
@@ -762,7 +804,7 @@
 }
 .configSection {
   background: var(--bg-surface);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   padding: 24px;
 }
@@ -790,8 +832,8 @@
 .inputPill {
   display: flex;
   align-items: center;
-  background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant);
+  background: var(--form-field-bg, var(--bg-surface));
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 12px;
   padding: 0 14px;
   height: 44px;
@@ -799,9 +841,9 @@
   color: var(--text-primary);
 }
 .inputPill:focus-within {
-  border-color: var(--color-primary);
-  background: var(--bg-surface);
-  box-shadow: 0 0 0 3px var(--color-primary-container);
+  border-color: var(--form-field-border, var(--border-control));
+  background: var(--form-field-bg, var(--bg-surface));
+  box-shadow: none;
 }
 .inputPill input {
   flex: 1;
@@ -839,7 +881,7 @@
   border: none;
   color: var(--text-on-primary);
   padding: 6px 16px;
-  font-weight: bold;
+  font-weight: 600;
   border-radius: 16px;
   cursor: pointer;
 }
@@ -855,7 +897,7 @@
 .configSectionFooter {
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  border-top: 1px solid var(--border-muted);
   margin-top: 24px;
   padding-top: 24px;
 }
@@ -870,16 +912,6 @@
   margin: 16px 16px 4px;
 }
 
-.tabsContainer {
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface-normal);
-  padding: 6px;
-  border-radius: var(--radius-md);
-  width: fit-content;
-  margin: 0;
-  border: 1px solid var(--border-subtle);
-}
 
 .localArchiveToolbar {
   display: flex;
@@ -913,85 +945,14 @@
   }
 }
 
-.tabButton {
-  background: transparent;
-  border: none;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.2s var(--ease-in-out);
-}
-
-.tabButton:hover {
-  color: var(--text-primary);
-  background: var(--bg-surface);
-}
-
-.tabButtonActive,
-.tabButtonActive:hover {
-  color: var(--color-primary) !important;
-  background: var(--bg-surface) !important;
-  box-shadow: var(--shadow-sm) !important;
-  font-weight: 700;
-}
-
 .smSliderContainer {
   width: 100%;
   padding: 8px 0;
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .smSlider {
-  -webkit-appearance: none;
-  appearance: none;
   width: 100%;
-  height: 6px;
-  background: rgba(14, 165, 233, 0.12);
-  border-radius: 3px;
-  outline: none;
-  background-image: linear-gradient(var(--color-primary, #0ea5e9), var(--color-primary, #0ea5e9));
-  background-repeat: no-repeat;
-}
-
-.smSlider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-primary, #0ea5e9);
-  cursor: pointer;
-  transition: box-shadow 0.2s;
-  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
-}
-
-.smSlider::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 10px rgba(14, 165, 233, 0.16);
-}
-
-.smSlider::-webkit-slider-thumb:active {
-  box-shadow: 0 0 0 14px rgba(14, 165, 233, 0.24);
-}
-
-.smSlider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 50%;
-  background: var(--color-primary, #0ea5e9);
-  cursor: pointer;
-  transition: box-shadow 0.2s;
-  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
-}
-
-.smSlider::-moz-range-thumb:hover {
-  box-shadow: 0 0 0 10px rgba(14, 165, 233, 0.16);
-}
-
-.smSlider::-moz-range-thumb:active {
-  box-shadow: 0 0 0 14px rgba(14, 165, 233, 0.24);
 }
 
 .helpIconWrapper {

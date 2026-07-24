@@ -74,11 +74,11 @@
 }
 
 .update-status-icon.downloaded {
-  color: var(--color-success, #4caf50);
+  color: var(--color-success);
 }
 
 .update-status-icon.error {
-  color: var(--color-error, #f44336);
+  color: var(--color-error);
 }
 
 @keyframes spin {

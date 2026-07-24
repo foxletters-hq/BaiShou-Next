@@ -103,69 +103,66 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
       </div>
 
       {isEnabled ? (
-        <>
-          <div className={styles.emojiSectionToolbar}>
-            <button
-              type="button"
-              className={styles.emojiAddGroupBtn}
-              onClick={() => void handleAddGroup()}
-            >
-              <Plus size={16} />
+        <div className={styles.categoryList}>
+          <button
+            type="button"
+            className={styles.emojiAddGroupCard}
+            onClick={() => void handleAddGroup()}
+          >
+            <span className={styles.emojiAddGroupCardIcon}>
+              <Plus size={22} strokeWidth={2} />
+            </span>
+            <span className={styles.emojiAddGroupCardTitle}>
               {t('agent.tools.emoji_group_add', '新建组')}
-            </button>
-          </div>
+            </span>
+            <span className={styles.emojiAddGroupCardHint}>
+              {normalized.groups.length === 0
+                ? t('agent.tools.emoji_groups_empty', '暂无表情包组，点击「新建组」开始添加')
+                : t('agent.tools.emoji_groups_hint', '为不同伙伴配置独立的表情包组')}
+            </span>
+          </button>
 
-          <div className={styles.categoryList}>
-            {normalized.groups.length === 0 ? (
-              <div className={styles.emojiSettingsEmpty}>
-                {t('agent.tools.emoji_groups_empty', '暂无表情包组，点击「新建组」开始添加')}
-              </div>
-            ) : (
-              normalized.groups.map((group) => (
-                <div key={group.id} className={`${styles.toolCard} ${styles.enabled}`}>
-                  <div className={styles.cardMain}>
-                    <div className={styles.toolIconWrapper}>
-                      <Smile size={20} />
-                    </div>
-                    <div className={styles.toolInfo}>
-                      <div className={styles.toolNameRow}>
-                        <span className={styles.toolName}>{group.name}</span>
-                      </div>
-                    </div>
-                    {normalized.groups.length > 1 ? (
-                      <button
-                        type="button"
-                        className={styles.emojiGroupDeleteBtn}
-                        onClick={() => void handleDeleteGroup(group.id, group.name)}
-                        aria-label={t('common.delete')}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className={styles.emojiSettingsBtn}
-                      onClick={() => onOpenGroup(group.id)}
-                      title={t('agent.tools.emoji_group_detail', '表情包组')}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                  <div className={styles.paramsWrapper}>
-                    <div className={styles.paramsDivider} />
-                    <div className={styles.paramsConfigArea}>
-                      <span className={styles.toolMeta}>
-                        {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
-                          count: group.emojis?.length ?? 0
-                        })}
-                      </span>
-                    </div>
+          {normalized.groups.map((group) => (
+            <div key={group.id} className={`${styles.toolCard} ${styles.enabled}`}>
+              <div className={styles.cardMain}>
+                <div className={styles.toolIconWrapper}>
+                  <Smile size={20} />
+                </div>
+                <div className={styles.toolInfo}>
+                  <div className={styles.toolNameRow}>
+                    <span className={styles.toolName}>{group.name}</span>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </>
+                <button
+                  type="button"
+                  className={styles.emojiGroupDeleteBtn}
+                  onClick={() => void handleDeleteGroup(group.id, group.name)}
+                  aria-label={t('common.delete')}
+                >
+                  <Trash2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.emojiSettingsBtn}
+                  onClick={() => onOpenGroup(group.id)}
+                  title={t('agent.tools.emoji_group_detail', '表情包组')}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <div className={styles.paramsWrapper}>
+                <div className={styles.paramsDivider} />
+                <div className={styles.paramsConfigArea}>
+                  <span className={styles.toolMeta}>
+                    {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
+                      count: group.emojis?.length ?? 0
+                    })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : null}
     </div>
   )

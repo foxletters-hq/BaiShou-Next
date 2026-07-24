@@ -135,7 +135,7 @@ export const GitDestructiveConfirmDialog: React.FC<GitDestructiveConfirmDialogPr
         aria-describedby={messageId}
       >
         <div className="gmp-confirm-icon">
-          <AlertTriangle size={28} color="var(--color-warning, #f59e0b)" />
+          <AlertTriangle size={28} color="var(--color-warning)" />
         </div>
         <div className="gmp-confirm-title" id={titleId}>
           {title}

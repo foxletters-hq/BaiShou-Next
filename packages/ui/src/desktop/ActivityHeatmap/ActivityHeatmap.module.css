@@ -1,7 +1,7 @@
 .container {
   padding: 24px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
   font-family: var(--font-family-main);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
@@ -41,7 +41,9 @@
 }
 
 .select:focus {
-  border-color: var(--color-primary);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
+  outline: none;
 }
 
 .yearBtn {
@@ -85,7 +87,7 @@
 
 .yearModalTitle {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text-main);
   margin-bottom: 16px;
   text-align: center;
@@ -148,7 +150,7 @@
 .header h3 {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text-main);
 }
 
@@ -156,7 +158,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--color-primary);
-  background: rgba(91, 168, 245, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
   padding: 4px 10px;
   border-radius: 8px;
 }
@@ -201,7 +203,7 @@
 
 .axisLabel {
   font-size: 10px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   height: 12px;
   line-height: 12px;
   white-space: nowrap;
@@ -260,23 +262,20 @@
 
 /* Coloring Levels */
 .level0 {
-  background: var(--color-surface-highest-light);
-}
-[data-theme='dark'] .level0 {
-  background: var(--color-surface-highest-dark);
+  background: var(--bg-surface-highest);
 }
 .level1 {
   background: var(--color-primary);
 }
 
-/* 独立滑块控件 */
+/* 区间滑块（非原生 range）：轨道细度对齐 range-slider，拇指仍为比例条 */
 .sliderTrack {
   position: relative;
   width: 100%;
-  height: 6px;
+  height: 3px;
   margin-top: 12px;
-  background: var(--bg-surface-normal);
-  border-radius: 3px;
+  background: rgba(var(--color-primary-rgb), 0.18);
+  border-radius: 999px;
   cursor: pointer;
   user-select: none;
   touch-action: none;
@@ -285,24 +284,24 @@
 .sliderThumb {
   position: absolute;
   left: 0;
-  top: -1px;
-  height: 8px;
+  top: 50%;
+  height: 10px;
   min-width: 20px;
-  background: var(--text-tertiary);
-  border-radius: 4px;
+  margin-top: -5px;
+  background: var(--color-primary);
+  border-radius: 999px;
   cursor: grab;
   will-change: transform;
   transition:
     transform 60ms cubic-bezier(0.25, 0.1, 0.25, 1),
-    background-color var(--duration-fast) var(--ease-in-out);
+    opacity var(--duration-fast) var(--ease-in-out);
 }
 
 .sliderThumb:hover {
-  background: var(--color-primary);
+  opacity: 0.9;
 }
 
 .sliderThumbActive {
-  background: var(--color-primary);
   cursor: grabbing;
   transition: none;
 }

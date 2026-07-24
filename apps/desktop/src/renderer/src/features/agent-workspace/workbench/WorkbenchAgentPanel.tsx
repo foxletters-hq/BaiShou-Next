@@ -68,6 +68,10 @@ export interface WorkbenchAgentPanelProps {
   onChangesUpdate: (changes: WorkspaceChangeEntry[]) => void
   onAssistantTap: () => void
   assistantName: string
+  /** 输入区上方插槽（如 Agent Gate Dock） */
+  gateSlot?: React.ReactNode
+  /** 有待确认 Gate 时禁用 composer */
+  gateBlocksComposer?: boolean
 }
 
 export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
@@ -94,7 +98,9 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   onRollbackRound,
   onChangesUpdate,
   onAssistantTap,
-  assistantName
+  assistantName,
+  gateSlot,
+  gateBlocksComposer = false
 }) => {
   const { t } = useTranslation()
 
@@ -216,9 +222,10 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
                   )}
                 </p>
               ) : null}
+              {gateSlot}
               <InputBar
                 isLoading={stream.isStreaming}
-                composerBlocked={!hasConfiguredModel}
+                composerBlocked={!hasConfiguredModel || gateBlocksComposer}
                 onSend={async (text) => {
                   await onSend(text)
                   return true

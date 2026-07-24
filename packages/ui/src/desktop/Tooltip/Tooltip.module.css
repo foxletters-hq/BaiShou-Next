@@ -4,7 +4,7 @@
 
 .tooltip {
   position: fixed;
-  background: var(--color-glass-bg);
+  background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-glass);
   -webkit-backdrop-filter: var(--blur-glass);
   color: var(--text-primary);
@@ -70,10 +70,10 @@
 
 .top::after {
   top: 100%;
-  border-color: var(--color-glass-bg) transparent transparent transparent;
+  border-color: var(--bg-glass-surface) transparent transparent transparent;
 }
 
 .bottom::after {
   bottom: 100%;
-  border-color: transparent transparent var(--color-glass-bg) transparent;
+  border-color: transparent transparent var(--bg-glass-surface) transparent;
 }

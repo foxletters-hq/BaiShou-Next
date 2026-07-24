@@ -15,14 +15,14 @@
 
 .title {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   margin: 0;
   color: var(--text-primary);
 }
 
 .createBtn {
   background-color: var(--color-primary);
-  color: #fff;
+  color: var(--text-on-primary);
   border: none;
   border-radius: 20px;
   padding: 8px 16px;
@@ -37,7 +37,7 @@
 
 .createBtn:hover {
   filter: brightness(1.1);
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
+  box-shadow: none;
 }
 
 .emptyState {
@@ -128,7 +128,7 @@
 
 .nameText {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;

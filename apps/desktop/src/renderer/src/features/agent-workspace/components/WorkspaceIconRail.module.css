@@ -42,7 +42,7 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   background: var(--bg-app);
   color: var(--text-primary);
   cursor: pointer;
@@ -53,7 +53,7 @@
   flex-shrink: 0;
   padding: 0;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 500;
   font-family: inherit;
   transition:
     border-color 0.15s,
@@ -62,13 +62,13 @@
 }
 
 .iconBtn:hover {
-  border-color: var(--border-subtle);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .iconBtnActive {
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.55);
-  box-shadow: 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.2);
+  border-color: rgba(var(--color-primary-rgb), 0.55);
+  box-shadow: 0 0 0 1px rgba(var(--color-primary-rgb), 0.2);
 }
 
 .iconBtn img {
@@ -91,15 +91,15 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
   transition:
     background-color 0.15s,
     border-color 0.15s,
@@ -107,8 +107,8 @@
 }
 
 .addBtn:hover {
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.35);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  box-shadow: none;
 }
 
 .menuBtn {

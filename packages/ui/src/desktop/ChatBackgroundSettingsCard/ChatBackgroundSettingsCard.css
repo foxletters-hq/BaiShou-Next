@@ -20,7 +20,7 @@
 }
 
 .chat-bg-preview-area:hover {
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--color-primary);
 }
 
 .chat-bg-preview-area:hover .chat-bg-preview-overlay {
@@ -63,41 +63,15 @@
 
 .chat-bg-slider-value {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--color-primary, #5ba8f5);
+  font-weight: 600;
+  color: var(--color-primary);
   flex-shrink: 0;
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .chat-bg-range-input {
-  -webkit-appearance: none;
   width: 100%;
-  height: 6px;
   margin: 4px 0 8px;
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.24);
-  border-radius: 3px;
-  outline: none;
-  cursor: pointer;
-  background-image: linear-gradient(var(--color-primary), var(--color-primary));
-  background-repeat: no-repeat;
-}
-
-.chat-bg-range-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-primary, #5ba8f5);
-  cursor: pointer;
-}
-
-.chat-bg-range-input::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 50%;
-  background: var(--color-primary, #5ba8f5);
-  cursor: pointer;
 }
 
 .chat-bg-preview-placeholder {
@@ -108,8 +82,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--text-secondary, #64748b);
-  background: var(--bg-surface, #f8fafc);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
   font-size: 14px;
   font-weight: 500;
 }
@@ -123,7 +97,7 @@
   justify-content: center;
   opacity: 0;
   transition: opacity 0.2s ease;
-  color: #fff;
+  color: var(--text-on-primary);
   font-size: 14px;
   font-weight: 600;
 }
@@ -137,7 +111,7 @@
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
-  color: var(--color-error, #ef4444);
+  color: var(--color-error);
   cursor: pointer;
   transition: all 0.2s;
   width: fit-content;

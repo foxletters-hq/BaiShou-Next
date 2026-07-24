@@ -15,9 +15,9 @@
 }
 
 .highlighted {
-  border-color: rgba(91, 168, 245, 0.4);
-  box-shadow: 0 8px 32px rgba(91, 168, 245, 0.1);
-  background: linear-gradient(180deg, rgba(91, 168, 245, 0.02) 0%, transparent 100%);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
+  box-shadow: none;
+  background: linear-gradient(180deg, rgba(var(--color-primary-rgb), 0.02) 0%, transparent 100%);
 }
 
 .header {
@@ -31,15 +31,11 @@
 
 .dateBadge {
   font-size: 14px;
-  font-weight: 800;
-  color: var(--color-text-main);
-  background: var(--color-surface-highest-light);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-surface-highest);
   padding: 6px 12px;
   border-radius: 8px;
-}
-
-[data-theme='dark'] .dateBadge {
-  background: var(--color-surface-highest-dark);
 }
 
 .metaInfo {
@@ -48,7 +44,7 @@
   gap: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   background: rgba(128, 128, 128, 0.05);
   padding: 4px 10px;
   border-radius: 20px;
@@ -61,5 +57,5 @@
 .body {
   font-size: 14px;
   line-height: 1.6;
-  color: var(--color-text-main);
+  color: var(--text-primary);
 }

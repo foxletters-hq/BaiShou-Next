@@ -47,10 +47,10 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ vm }) 
             size={32}
             style={{
               animation: 'spin 1.5s linear infinite',
-              color: 'var(--color-primary, #0ea5e9)'
+              color: 'var(--color-primary)'
             }}
           />
-          <div style={{ color: 'var(--color-on-surface-variant)', fontSize: 14 }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
             {activeTab === 'snapshot'
               ? t('data_sync.loading_snapshots', '正在载入本地快照...')
               : t('data_sync.loading_records', '正在连线获取云端记录...')}
@@ -70,10 +70,10 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ vm }) 
             justifyContent: 'center',
             padding: '64px 0',
             gap: '8px',
-            color: 'var(--color-on-surface-variant)'
+            color: 'var(--text-secondary)'
           }}
         >
-          <Package size={48} strokeWidth={1} style={{ opacity: 0.5, marginBottom: 8 }} />
+          <Package className={styles.emptyStateIcon} size={48} strokeWidth={1.25} aria-hidden />
           {activeTab === 'cloud' && config.target === 'local' ? (
             <div style={{ textAlign: 'center', maxWidth: '380px', lineHeight: '1.5' }}>
               <div>{t('data_sync.local_target_no_cloud_records', '当前备份目标为本地存储。')}</div>
@@ -137,7 +137,7 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ vm }) 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--color-primary, #0ea5e9)',
+                  color: 'var(--color-primary)',
                   flexShrink: 0
                 }}
               >

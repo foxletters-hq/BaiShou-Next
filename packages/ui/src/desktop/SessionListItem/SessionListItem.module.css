@@ -1,30 +1,46 @@
 .itemWrapper {
-  padding-bottom: 2px;
+  padding: 0 8px 6px;
   position: relative;
 }
 
 .container {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 10px 12px;
-  border-radius: 0;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
   background-color: transparent;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   user-select: none;
 }
 
-.selected {
-  background-color: var(--bg-surface-normal);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.container:hover {
+  background-color: var(--bg-surface-high, rgba(var(--text-primary-rgb), 0.04));
 }
 
-/* Header Line (Title & Time) */
+.selected {
+  background-color: rgba(var(--color-primary-rgb), 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.28);
+  box-shadow: none;
+}
+
+.selected:hover {
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+}
+
+/* Header Line (Title & Time / Actions) */
 .headerRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .titleArea {
@@ -32,6 +48,7 @@
   align-items: center;
   gap: 6px;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -39,12 +56,14 @@
   color: var(--color-primary);
   display: flex;
   align-items: center;
-  opacity: 0.8;
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .title {
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -55,12 +74,22 @@
   color: var(--color-primary);
 }
 
+.metaRight {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 64px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .timeLabel {
   font-size: 11px;
   color: var(--text-tertiary);
   font-weight: 500;
-  flex-shrink: 0;
-  margin-left: 8px;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
 }
 
 /* Body Line (Avatar & Snippet) */
@@ -68,19 +97,21 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  padding-right: 2px;
 }
 
 .avatarBox {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-surface-lowest);
+  background-color: var(--bg-surface-high, var(--bg-surface-lowest));
   color: var(--text-secondary);
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 11px;
   overflow: hidden;
 }
 
@@ -97,31 +128,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+  min-width: 0;
   line-height: 1.4;
 }
 
-/* Hover Action Bar */
+/* Hover Action Bar — 与时间同位，避免遮挡摘要 */
 .actionsBox {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  inset: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 2px;
-  background: rgba(var(--bg-surface-highest-rgb, 255, 255, 255), 0.9);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  padding: 2px 4px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
   opacity: 0;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
-/* Show actions on hover */
+.container:hover .timeLabel {
+  opacity: 0;
+}
+
 .container:hover .actionsBox {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .actionBtn {
@@ -135,24 +165,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .actionBtn:hover {
-  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  background-color: rgba(var(--text-primary-rgb), 0.08);
   color: var(--text-primary);
 }
 
 .actionBtnDanger:hover {
-  background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.8) !important;
+  background-color: rgba(var(--color-error-rgb), 0.12) !important;
   color: var(--color-error) !important;
 }
 
 /* Selection / Checkbox mode */
 .checkbox {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex-shrink: 0;
   cursor: pointer;
   accent-color: var(--color-primary);
 }

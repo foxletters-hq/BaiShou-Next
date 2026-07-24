@@ -67,8 +67,8 @@ input:checked + .slider:before {
 }
 .inputGroup {
   display: flex;
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--form-field-bg, var(--bg-surface));
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 8px;
   overflow: hidden;
   width: 250px;
@@ -97,8 +97,8 @@ input:checked + .slider:before {
   background: rgba(148, 163, 184, 0.3);
 }
 .recordBtn.recording {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  background: rgba(var(--color-error-rgb), 0.2);
+  color: var(--color-error);
   animation: pulse 1.5s infinite;
 }
 @keyframes pulse {

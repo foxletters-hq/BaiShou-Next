@@ -22,7 +22,7 @@
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -37,14 +37,14 @@
 
 .folderBtn:hover,
 .addBtn:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
 }
 
 .folderBtnActive {
-  color: var(--color-primary, #5ba8f5);
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 14%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 35%, transparent);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
 .folderBtn img {
@@ -57,17 +57,17 @@
 
 .initial {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   user-select: none;
 }
 
 .addBtn {
   border-style: dashed;
-  border-color: var(--wb-chrome-border, #d8dee4);
+  border-color: var(--border-muted);
 }
 
 .addBtn:hover {
-  border-color: color-mix(in srgb, var(--color-primary, #5ba8f5) 45%, transparent);
-  color: var(--color-primary, #5ba8f5);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  color: var(--color-primary);
 }

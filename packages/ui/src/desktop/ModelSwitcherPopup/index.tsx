@@ -65,7 +65,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
       <Cloud
         size={18}
         className={styles.providerIconPlaceholder}
-        style={{ color: 'var(--text-tertiary, #999)' }}
+        style={{ color: 'var(--text-tertiary)' }}
       />
     )
   }

@@ -61,8 +61,8 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
                 const isExpanded = expandedCommit === entry.commit.hash
                 const isHead = entry.isCurrent
                 const laneColor = isHead
-                  ? 'var(--color-primary, #5ba8f5)'
-                  : 'var(--wb-chrome-border, #d8dee4)'
+                  ? 'var(--color-primary)'
+                  : 'var(--border-muted)'
 
                 return (
                   <div key={entry.commit.hash} className={styles.graphRow}>

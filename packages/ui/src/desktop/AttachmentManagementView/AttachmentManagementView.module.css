@@ -3,16 +3,26 @@
   flex-direction: column;
   position: relative;
   width: 100%;
+  height: 100%;
   color: var(--text-primary);
-  padding: 24px 32px 32px;
+  padding: 0;
   background: var(--bg-app);
-  min-height: 100%;
   box-sizing: border-box;
   flex: 1;
   align-items: stretch;
+  overflow: hidden;
+}
+
+/* 与版本控制 .gmp-content 对应：顶栏外的内容区内边距 */
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 32px 32px;
+  box-sizing: border-box;
 }
 @media (max-width: 500px) {
-  .container {
+  .content {
     padding: 16px;
   }
 }
@@ -28,7 +38,7 @@
   background: var(--bg-surface);
   border-radius: 11px;
   padding: 14px 18px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   transition: border-color 0.2s ease;
 }
 .overviewCard:hover {
@@ -50,19 +60,19 @@
 
 .statValue {
   font-size: 18px;
-  font-weight: 800;
-  font-family: 'Outfit', 'Inter', var(--font-family), sans-serif;
+  font-weight: 600;
+  font-family: var(--font-family);
   letter-spacing: -0.5px;
 }
 .colorPrimary {
   color: var(--color-primary);
-  background: linear-gradient(135deg, var(--color-primary) 0%, #8ab4f8 100%);
+  background: var(--color-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 :global(body[data-theme='dark']) .colorPrimary {
   color: var(--color-primary);
-  background: linear-gradient(135deg, var(--color-primary) 0%, #8ab4f8 100%);
+  background: var(--color-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -130,7 +140,7 @@
 .btnFilled:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
+  box-shadow: none;
 }
 
 .btnDangerFilled {
@@ -166,7 +176,6 @@
   flex-direction: column;
   background: transparent;
   border-radius: 12px;
-  border: 1px solid transparent;
   overflow: hidden;
 }
 
@@ -195,7 +204,7 @@
   align-items: center;
   padding: 16px 20px;
   gap: 16px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   background: var(--bg-surface);
   border-radius: 12px;
   margin-bottom: 8px;
@@ -273,7 +282,7 @@
 }
 
 .customCheck:checked::after {
-  border-color: var(--text-on-primary, #fff);
+  border-color: var(--text-on-primary);
 }
 
 .folderIconBox {
@@ -282,44 +291,44 @@
   border-radius: 10px;
   background: linear-gradient(
     135deg,
-    rgba(var(--color-primary-rgb, 91, 168, 245), 0.1) 0%,
-    rgba(var(--color-primary-rgb, 91, 168, 245), 0.03) 100%
+    rgba(var(--color-primary-rgb), 0.1) 0%,
+    rgba(var(--color-primary-rgb), 0.03) 100%
   );
   color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.15);
   transition: all 0.25s ease;
 }
 :global(body[data-theme='dark']) .folderIconBox {
   background: linear-gradient(
     135deg,
-    rgba(var(--color-primary-rgb, 91, 168, 245), 0.15) 0%,
-    rgba(var(--color-primary-rgb, 91, 168, 245), 0.05) 100%
+    rgba(var(--color-primary-rgb), 0.15) 0%,
+    rgba(var(--color-primary-rgb), 0.05) 100%
   );
   color: var(--color-primary);
-  box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb, 91, 168, 245), 0.25);
+  box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.25);
 }
 
 .folderIconBoxOrphan {
   background: linear-gradient(
     135deg,
-    rgba(var(--color-error-rgb, 239, 68, 68), 0.1) 0%,
-    rgba(var(--color-error-rgb, 239, 68, 68), 0.03) 100%
+    rgba(var(--color-error-rgb), 0.1) 0%,
+    rgba(var(--color-error-rgb), 0.03) 100%
   ) !important;
   color: var(--color-error) !important;
-  box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb, 239, 68, 68), 0.15) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.15) !important;
 }
 :global(body[data-theme='dark']) .folderIconBoxOrphan {
   background: linear-gradient(
     135deg,
-    rgba(var(--color-error-rgb, 239, 68, 68), 0.15) 0%,
-    rgba(var(--color-error-rgb, 239, 68, 68), 0.05) 100%
+    rgba(var(--color-error-rgb), 0.15) 0%,
+    rgba(var(--color-error-rgb), 0.05) 100%
   ) !important;
   color: var(--color-error) !important;
-  box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb, 239, 68, 68), 0.25) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.25) !important;
 }
 
 .folderInfo {
@@ -363,7 +372,7 @@
 }
 .folderSizeValue {
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -421,7 +430,7 @@
   border-radius: 0 0 12px 12px;
   margin-top: -12px;
   margin-bottom: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-top: none;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.02);
 }
@@ -528,57 +537,18 @@
   color: #e67e22 !important;
 }
 
-/* 主 Tabs 导航 (对标版本控制：磨砂玻璃置顶 Banner 按钮组) */
+/* 主 Tabs 导航 — 与版本控制 .gmp-header 一致 */
 .mainTabNav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 32px;
-  margin: -32px -32px 24px -32px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   position: sticky;
-  top: -32px;
+  top: 0;
   z-index: 50;
-}
-
-.mainTabs {
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface-normal);
-  padding: 4px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
-}
-
-.mainTabItem {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s var(--ease-in-out);
-  font-size: 13px;
-  font-weight: 700;
-  height: 32px;
-  box-sizing: border-box;
-}
-
-.mainTabItem:hover {
-  color: var(--text-primary);
-  background: var(--bg-surface);
-}
-
-.mainTabItemActive {
-  color: var(--color-primary) !important;
-  background: var(--bg-surface) !important;
-  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
 /* 联合筛选 */
@@ -647,7 +617,7 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -659,7 +629,7 @@
 .diaryCard:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.2);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
 }
 
 .diaryCardSelected {
@@ -726,11 +696,11 @@
   background: var(--color-error);
   color: var(--text-on-primary);
   font-size: 9px;
-  font-weight: bold;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
   z-index: 10;
-  box-shadow: 0 2px 6px rgba(var(--color-error-rgb, 239, 68, 68), 0.3);
+  box-shadow: 0 2px 6px rgba(var(--color-error-rgb), 0.3);
 }
 
 .diaryCardHoverActions {
@@ -767,18 +737,18 @@
   color: var(--color-primary);
   background: var(--bg-surface);
   box-shadow:
-    inset 0 0 0 100px rgba(var(--color-primary-rgb, 91, 168, 245), 0.12),
-    0 2px 8px rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+    inset 0 0 0 100px rgba(var(--color-primary-rgb), 0.12),
+    0 2px 8px rgba(var(--color-primary-rgb), 0.15);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
 }
 
 .diaryHoverActionBtnDanger:hover {
   color: var(--color-error);
   background: var(--bg-surface);
   box-shadow:
-    inset 0 0 0 100px rgba(var(--color-error-rgb, 239, 68, 68), 0.12),
-    0 2px 8px rgba(var(--color-error-rgb, 239, 68, 68), 0.15);
-  border-color: rgba(var(--color-error-rgb, 239, 68, 68), 0.4);
+    inset 0 0 0 100px rgba(var(--color-error-rgb), 0.12),
+    0 2px 8px rgba(var(--color-error-rgb), 0.15);
+  border-color: rgba(var(--color-error-rgb), 0.4);
 }
 
 .diaryCardInfo {
@@ -846,8 +816,8 @@
 }
 
 .yearSelectTrigger:hover {
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.06);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  background: rgba(var(--color-primary-rgb), 0.06);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
   color: var(--color-primary);
 }
 
@@ -892,7 +862,7 @@
   max-width: 90vw;
   background: var(--bg-surface);
   border-radius: 16px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   padding: 20px;
   display: flex;
@@ -971,14 +941,14 @@
 .yearModalAllBtn:hover {
   background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
   color: var(--color-primary);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
 }
 
 .yearModalAllBtn.active {
   background: var(--color-primary) !important;
   color: var(--text-on-primary) !important;
   border-color: var(--color-primary) !important;
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+  box-shadow: none;
 }
 
 /* 粘性置顶容器 */
@@ -1015,7 +985,7 @@
 .yearModalGridItem:hover {
   background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
   color: var(--text-primary);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
 }
 
 /* 激活的年份 */
@@ -1024,30 +994,30 @@
   color: var(--text-on-primary) !important;
   border-color: var(--color-primary) !important;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb, 91, 168, 245), 0.3);
+  box-shadow: none;
 }
 
 /* Dark Mode Support for Modal */
 :global(body[data-theme='dark']) .yearModalContent {
-  background: var(--bg-surface-raised, #1a1a1a);
+  background: var(--bg-surface-raised);
   border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 :global(body[data-theme='dark']) .yearModalStickyHeader {
-  background: var(--bg-surface-raised, #1a1a1a);
+  background: var(--bg-surface-raised);
 }
 
 :global(body[data-theme='dark']) .yearModalAllBtn,
 :global(body[data-theme='dark']) .yearModalGridItem {
-  background: var(--bg-surface-lowest, #121212);
+  background: var(--bg-surface-lowest);
   border-color: var(--border-subtle, rgba(255, 255, 255, 0.05));
   color: var(--text-secondary);
 }
 
 :global(body[data-theme='dark']) .yearModalAllBtn:hover,
 :global(body[data-theme='dark']) .yearModalGridItem:hover {
-  background: var(--bg-surface-high, #262626);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
@@ -1089,8 +1059,8 @@
 }
 
 .dropdownTrigger:hover {
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.06);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  background: rgba(var(--color-primary-rgb), 0.06);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
   color: var(--color-primary);
 }
 
@@ -1115,7 +1085,7 @@
   min-width: 130px;
   background: var(--bg-surface);
   border-radius: 12px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   box-shadow: var(--shadow-lg);
   z-index: 1000;
   overflow: hidden;
@@ -1167,7 +1137,7 @@
 
 /* 暗黑模式适配 */
 :global(body[data-theme='dark']) .dropdownMenu {
-  background: var(--bg-surface-raised, #1a1a1a);
+  background: var(--bg-surface-raised);
   border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
@@ -1177,7 +1147,7 @@
 }
 
 :global(body[data-theme='dark']) .dropdownItem:hover {
-  background: var(--bg-surface-high, #262626);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 

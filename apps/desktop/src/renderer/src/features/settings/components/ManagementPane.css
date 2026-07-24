@@ -10,7 +10,8 @@
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--color-outline-variant);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -23,17 +24,13 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   cursor: pointer;
   transition: background-color 0.15s;
 }
 
 .settings-management-back:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-[data-theme='dark'] .settings-management-back:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: var(--bg-surface-high);
 }
 
 .settings-management-title {
@@ -41,7 +38,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
 }
 
 .settings-management-header-action {
@@ -54,7 +51,7 @@
   border: none;
   border-radius: 999px;
   background: var(--color-primary);
-  color: var(--color-on-primary, #fff);
+  color: var(--text-on-primary);
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
@@ -78,14 +75,14 @@
 
 .settings-management-card {
   background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
   padding: 12px 14px;
 }
 
 .settings-management-empty {
   text-align: center;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   font-size: 14px;
   padding: 20px 14px;
 }
@@ -107,12 +104,12 @@
 .settings-management-row-title {
   font-size: 16px;
   font-weight: 500;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
 }
 
 .settings-management-row-sub {
   font-size: 13px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
@@ -159,13 +156,13 @@
   gap: 10px;
   padding: 14px 16px 22px;
   background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
 }
 
 .settings-management-page-info {
   font-size: 12px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
@@ -176,7 +173,7 @@
 
 .settings-management-search {
   padding: 12px 14px;
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .settings-management-list-row {
@@ -187,12 +184,12 @@
 }
 
 .settings-management-list-row-divider {
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .settings-management-list-pagination {
   padding: 14px 14px 22px;
-  border-top: 1px solid var(--color-outline-variant);
+  border-top: 1px solid var(--border-muted);
   display: flex;
   flex-direction: column;
   gap: 10px;

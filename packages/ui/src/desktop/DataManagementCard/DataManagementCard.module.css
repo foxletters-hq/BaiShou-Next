@@ -34,8 +34,8 @@
 .actionsBox {
   display: flex;
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid transparent;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   overflow: hidden;
 }

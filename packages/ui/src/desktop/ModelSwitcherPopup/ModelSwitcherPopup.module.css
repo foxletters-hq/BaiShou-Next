@@ -1,9 +1,9 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
-  backdrop-filter: var(--blur-overlay, blur(4px));
-  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
+  background-color: var(--bg-overlay);
+  backdrop-filter: var(--blur-overlay);
+  -webkit-backdrop-filter: var(--blur-overlay);
   z-index: 1000;
 }
 
@@ -22,12 +22,8 @@
   flex-direction: column;
   overflow: hidden;
   animation: popIn 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.15);
-  font-family: var(--font-family-main);
-  border: 1px solid var(--color-glass-border);
-}
-
-[data-theme='dark'] .dialog {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-family);
+  border: 1px solid var(--border-muted);
 }
 
 .header {
@@ -51,15 +47,15 @@
 .headerTitle h2 {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text-main);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .closeBtn {
   background: transparent;
   border: none;
   font-size: 18px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 50%;
@@ -69,7 +65,7 @@
 }
 
 .closeBtn:hover {
-  background: rgba(128, 128, 128, 0.1);
+  background: var(--bg-surface-high);
 }
 
 .searchWrap {
@@ -83,7 +79,7 @@
   position: absolute;
   left: 12px;
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   opacity: 0.7;
 }
 
@@ -91,25 +87,24 @@
   width: 100%;
   padding: 8px 12px 8px 36px;
   font-size: 13px;
-  color: var(--color-text-main);
-  background: var(--color-surface-highest-light);
-  border: none;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
   outline: none;
-  font-family: var(--font-family-main);
-}
-
-[data-theme='dark'] .searchInput {
-  background: var(--color-surface-highest-dark);
+  font-family: var(--font-family);
+  box-sizing: border-box;
 }
 
 .searchInput::placeholder {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   opacity: 0.6;
 }
 
 .searchInput:focus {
-  box-shadow: 0 0 0 1.5px var(--color-primary);
+  background: var(--bg-surface);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .listContainer {
@@ -124,7 +119,7 @@
   align-items: center;
   height: 100%;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .providerGroup {
@@ -145,17 +140,17 @@
   margin-left: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-main);
+  color: var(--text-primary);
 }
 
 .modelCountBadge {
   margin-left: 6px;
   padding: 1px 6px;
-  background: rgba(128, 128, 128, 0.15);
+  background: var(--bg-surface-normal);
   border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .modelsGrid {
@@ -175,19 +170,19 @@
 }
 
 .modelItem:hover {
-  background: rgba(128, 128, 128, 0.05);
+  background: var(--bg-surface-high);
 }
 
 .modelItem.selected {
-  background: rgba(91, 168, 245, 0.15); /* primary washed */
-  border-color: rgba(91, 168, 245, 0.2);
+  background: rgba(var(--color-primary-rgb), 0.15); /* primary washed */
+  border-color: rgba(var(--color-primary-rgb), 0.2);
 }
 
 .modelIdText {
   margin-left: 10px;
   flex: 1;
   font-size: 13px;
-  color: var(--color-text-main);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -204,10 +199,10 @@
 
 .manageFooter {
   padding: 10px 16px;
-  border-top: 1px solid var(--color-outline-variant, rgba(200, 200, 200, 0.3));
+  border-top: 1px solid var(--border-muted);
   display: flex;
   justify-content: center;
-  background: var(--bg-surface, rgba(250, 250, 250, 0.6));
+  background: var(--bg-surface);
 }
 
 .manageBtn {
@@ -216,19 +211,19 @@
   gap: 6px;
   background: transparent;
   border: none;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   padding: 6px 12px;
   border-radius: 8px;
   transition: all 0.2s ease;
-  font-family: var(--font-family-main);
+  font-family: var(--font-family);
 }
 
 .manageBtn:hover {
-  background-color: rgba(128, 128, 128, 0.1);
-  color: var(--text-primary, #1a1a1a);
+  background-color: var(--bg-surface-high);
+  color: var(--text-primary);
 }
 
 @keyframes fadeIn {

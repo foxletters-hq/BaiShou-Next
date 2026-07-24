@@ -16,18 +16,18 @@
 }
 
 .title-content:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 .title-text {
   font-size: 16px;
-  font-weight: 700;
-  color: var(--color-on-surface, #1a1a1a);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .title-chevron {
   font-size: 14px;
-  color: var(--color-on-surface-variant, #475569);
+  color: var(--text-secondary);
 }
 
 /* Dropdown Picker */
@@ -37,8 +37,8 @@
   left: 50%;
   transform: translateX(-50%);
   margin-top: 8px;
-  background: var(--color-surface, #ffffff);
-  border: 1px solid rgba(208, 208, 208, 0.5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
   width: 320px;
@@ -46,7 +46,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: var(--font-family-main, sans-serif);
+  font-family: var(--font-family);
 }
 
 .dp-header {
@@ -68,30 +68,30 @@
 }
 
 .dp-cancel-btn {
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-secondary);
 }
 
 .dp-cancel-btn:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 .dp-confirm-btn {
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .dp-confirm-btn:hover {
-  background-color: rgba(91, 168, 245, 0.08);
+  background-color: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .dp-header-title {
   font-size: 15px;
-  font-weight: 700;
-  color: var(--color-on-surface, #1a1a1a);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .dp-divider {
   height: 1px;
-  background-color: rgba(208, 208, 208, 0.3);
+  background-color: var(--border-muted);
 }
 
 .dp-columns {
@@ -103,7 +103,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(208, 208, 208, 0.2);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .dp-column:last-child {
@@ -114,10 +114,10 @@
   text-align: center;
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-on-surface-variant, #64748b);
+  color: var(--text-secondary);
   padding: 8px 0;
-  background: rgba(0, 0, 0, 0.02);
-  border-bottom: 1px solid rgba(208, 208, 208, 0.2);
+  background: var(--bg-surface-low);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .dp-col-scroll {
@@ -135,19 +135,19 @@
   padding: 10px 0;
   text-align: center;
   font-size: 14px;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .dp-col-item:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: var(--bg-surface-high);
 }
 
 .dp-col-item.selected {
-  font-weight: 700;
-  color: var(--color-primary, #5ba8f5);
-  background-color: rgba(91, 168, 245, 0.08);
+  font-weight: 600;
+  color: var(--color-primary);
+  background-color: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .dp-quick-actions {
@@ -157,8 +157,8 @@
 }
 
 .dp-quick-btn {
-  background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
   border: none;
   font-size: 13px;
   font-weight: 600;
@@ -169,5 +169,5 @@
 }
 
 .dp-quick-btn:hover {
-  background: rgba(91, 168, 245, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
 }

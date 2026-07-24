@@ -36,8 +36,8 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
               className={styles.countModalTitleBlock}
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <Archive size={20} color="var(--color-primary, #0ea5e9)" />
-              <span className={styles.countModalTitle} style={{ fontWeight: 'bold', fontSize: 16 }}>
+              <Archive size={20} color="var(--color-primary)" />
+              <span className={styles.countModalTitle} style={{ fontWeight: '600', fontSize: 16 }}>
                 {activeTab === 'snapshot'
                   ? t('data_sync.max_snapshot_title', '快照上限设置')
                   : t('data_sync.max_backup_title', '备份上限设置')}
@@ -49,13 +49,13 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
               style={{
                 width: 72,
                 padding: '4px 8px',
-                border: '1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5)',
+                border: '1px solid var(--form-field-border, var(--border-control))',
                 borderRadius: 8,
                 fontSize: 14,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 textAlign: 'center',
-                background: 'var(--bg-surface-lowest, #f8fafc)',
+                background: 'var(--form-field-bg, var(--bg-surface))',
                 outline: 'none'
               }}
               value={tempCount === -1 ? noLimitLabel : tempCount}
@@ -101,7 +101,7 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
         >
           <div
             className={styles.countModalDesc}
-            style={{ fontSize: 13, color: 'var(--color-on-surface-variant)', lineHeight: 1.5 }}
+            style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}
           >
             {activeTab === 'snapshot'
               ? t(
@@ -137,17 +137,12 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
                 onClick={() => setTempCount(val)}
                 style={{
                   background:
-                    tempCount === val
-                      ? 'var(--color-primary, #0ea5e9)'
-                      : 'var(--bg-surface-normal, #f1f5f9)',
-                  color:
-                    tempCount === val
-                      ? 'var(--text-on-primary, #fff)'
-                      : 'var(--text-secondary, #64748b)',
+                    tempCount === val ? 'var(--color-primary)' : 'var(--bg-surface-normal)',
+                  color: tempCount === val ? 'var(--text-on-primary)' : 'var(--text-secondary)',
                   border:
                     tempCount === val
-                      ? '1px solid var(--color-primary, #0ea5e9)'
-                      : '1px solid var(--border-subtle, #e2e8f0)',
+                      ? '1px solid var(--color-primary)'
+                      : '1px solid var(--border-subtle)',
                   padding: '6px 12px',
                   borderRadius: 12,
                   fontSize: 12,

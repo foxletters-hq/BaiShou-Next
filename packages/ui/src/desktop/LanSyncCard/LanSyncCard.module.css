@@ -13,27 +13,6 @@
   border-radius: inherit;
 }
 
-/* 顶部导航栏 */
-.appBar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  z-index: 50;
-  background: transparent;
-}
-
-.appBarTitle {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .refreshBtn {
   background: transparent;
   border: none;
@@ -43,10 +22,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-full);
   transition: background 0.2s;
+  padding: 0;
 }
 
 .refreshBtn:hover {
@@ -62,11 +42,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-full);
   transition: background 0.2s;
-  margin-right: 4px;
+  padding: 0;
 }
 
 .helpBtn:hover {
@@ -160,7 +140,7 @@
   transform: translate(-50%, -50%);
   border-radius: 50%;
   border: 2px solid var(--color-primary);
-  box-shadow: 0 0 8px rgba(91, 168, 245, 0.2);
+  box-shadow: 0 0 8px rgba(var(--color-primary-rgb), 0.2);
   opacity: 0;
   animation: radarWave 6s infinite ease-out;
 }
@@ -214,15 +194,15 @@
 @keyframes coreThrob {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 4px rgba(91, 168, 245, 0.1);
+    box-shadow: 0 0 4px rgba(var(--color-primary-rgb), 0.1);
   }
   50% {
     transform: scale(1.03);
-    box-shadow: 0 0 10px rgba(91, 168, 245, 0.15);
+    box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.15);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 4px rgba(91, 168, 245, 0.1);
+    box-shadow: 0 0 4px rgba(var(--color-primary-rgb), 0.1);
   }
 }
 
@@ -240,7 +220,7 @@
 
 .scanTitle {
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
 }
@@ -310,7 +290,7 @@
 
 .bubbleName {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   max-width: 120px;
   white-space: nowrap;
@@ -338,7 +318,7 @@
   border: none;
   color: var(--text-on-primary);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   opacity: 0;
   transition: opacity 0.2s;
   cursor: pointer;

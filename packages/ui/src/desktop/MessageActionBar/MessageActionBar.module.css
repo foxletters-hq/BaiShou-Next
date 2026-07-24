@@ -29,7 +29,7 @@
   border-radius: 6px;
   border: none;
   background: transparent;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -48,8 +48,8 @@
 
 :global(.chat-over-background) .dangerBtn:hover {
   mix-blend-mode: normal;
-  background-color: rgba(239, 68, 68, 0.22) !important;
-  color: var(--color-error, #ef4444) !important;
+  background-color: rgba(var(--color-error-rgb), 0.22) !important;
+  color: var(--color-error) !important;
 }
 
 :global(.chat-over-background) .copiedIcon,
@@ -58,8 +58,8 @@
 }
 
 .iconBtn:hover {
-  background-color: var(--bg-surface-normal, rgba(0, 0, 0, 0.05));
-  color: var(--text-primary, #1e293b);
+  background-color: var(--bg-surface-normal);
+  color: var(--text-primary);
 }
 
 .iconBtn:active {
@@ -68,11 +68,11 @@
 
 .dangerBtn:hover {
   background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.8) !important;
-  color: var(--color-error, #ef4444) !important;
+  color: var(--color-error) !important;
 }
 
 .copiedIcon {
-  color: var(--color-success, #10b981);
+  color: var(--color-success);
 }
 
 @keyframes ttsSpin {
@@ -85,7 +85,7 @@
 }
 
 .ttsPlaying {
-  color: var(--color-primary, #3b82f6);
+  color: var(--color-primary);
 }
 
 .ttsSpinner {

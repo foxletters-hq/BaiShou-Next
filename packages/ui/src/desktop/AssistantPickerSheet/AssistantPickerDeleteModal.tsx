@@ -23,7 +23,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
       <div
         style={{
           width: '360px',
-          background: 'var(--bg-surface, #fff)',
+          background: 'var(--bg-surface)',
           borderRadius: '16px',
           overflow: 'hidden',
           boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
@@ -53,7 +53,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               marginBottom: 20
             }}
           >
-            <Trash2 size={32} color="#ef4444" />
+            <Trash2 size={32} color="var(--color-error)" />
           </div>
           <h3
             style={{
@@ -81,7 +81,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
             display: 'flex',
             padding: '16px 24px',
             gap: '12px',
-            background: 'var(--bg-surface-highlight, #f8fafc)',
+            background: 'var(--bg-surface-highlight)',
             borderTop: '1px solid rgba(148,163,184,0.1)'
           }}
         >
@@ -108,13 +108,13 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
               padding: '10px',
               borderRadius: '10px',
               border: 'none',
-              background: '#ef4444',
-              color: '#fff',
+              background: 'var(--color-error)',
+              color: 'var(--text-on-primary)',
               fontSize: '15px',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'background 0.2s',
-              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+              boxShadow: '0 4px 12px rgba(var(--color-error-rgb), 0.3)'
             }}
             onClick={() => void confirmDelete()}
           >

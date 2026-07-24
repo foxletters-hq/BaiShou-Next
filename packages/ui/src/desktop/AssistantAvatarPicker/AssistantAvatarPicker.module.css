@@ -13,7 +13,7 @@
   display: block;
   padding: 0;
   border: 2px solid var(--border-muted);
-  background-color: var(--bg-surface-highest, #f1f5f9);
+  background-color: var(--bg-surface-highest);
   cursor: pointer;
   overflow: hidden;
   line-height: 0;
@@ -65,7 +65,7 @@
   background: var(--bg-surface-normal);
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color 0.15s;
 }

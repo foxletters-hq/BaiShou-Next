@@ -17,8 +17,8 @@ export const ShortcutSlashHint: React.FC<{ className?: string; style?: React.CSS
         fontSize: 12,
         lineHeight: 1.55,
         color: 'var(--text-secondary)',
-        background: 'rgba(var(--color-primary-rgb, 91, 168, 245), 0.08)',
-        border: '1px solid rgba(var(--color-primary-rgb, 91, 168, 245), 0.18)',
+        background: 'rgba(var(--color-primary-rgb), 0.08)',
+        border: '1px solid rgba(var(--color-primary-rgb), 0.18)',
         ...style
       }}
     >

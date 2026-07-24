@@ -19,8 +19,8 @@
   padding: 6px 12px;
   border-radius: 8px;
   border: 1.5px solid var(--border-control);
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent);
-  color: var(--color-primary, #5ba8f5);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -33,8 +33,8 @@
 
 .storage-settings-action-btn-secondary {
   border: 1.5px solid var(--border-control);
-  background: var(--bg-surface, #fff);
-  color: var(--text-primary, #111);
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .storage-settings-action-btn-secondary:hover {
@@ -42,5 +42,5 @@
 }
 
 .storage-settings-warning {
-  color: var(--color-warning, #d97706);
+  color: var(--color-warning);
 }

@@ -1,80 +1,75 @@
 .legacy-migration-pane.settings-pane-full {
   box-sizing: border-box;
   width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.legacy-migration-scroll {
+  width: 100%;
   max-width: 920px;
   margin: 0 auto;
-  padding: 20px 28px 48px;
-  gap: 16px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 0;
+  padding-left: 28px;
+  padding-right: 28px;
 }
 
 .legacy-migration-header {
   flex-shrink: 0;
 }
 
-.legacy-migration-header h2 {
-  margin: 0 0 8px;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--color-on-surface);
-}
-
 .legacy-migration-lead {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   max-width: 72ch;
 }
 
 .legacy-migration-card {
-  background: #ffffff;
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.1));
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
   padding: 18px 20px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
   flex-shrink: 0;
-}
-
-[data-theme='dark'] .legacy-migration-card {
-  background: var(--bg-surface, #1e1e1e);
-  box-shadow: none;
 }
 
 .legacy-migration-card-desc {
   margin: 0 0 14px;
   font-size: 13px;
   line-height: 1.55;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .legacy-migration-source-kind {
   margin: 0 0 8px;
   font-size: 12px;
-  color: var(--color-primary, #6750a4);
+  color: var(--color-primary);
   font-weight: 500;
 }
 
 .legacy-migration-path-box {
   padding: 12px 14px;
   border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface-low);
+  border: 1px solid var(--border-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.5;
   word-break: break-all;
-  color: var(--color-on-surface);
-}
-
-[data-theme='dark'] .legacy-migration-path-box {
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
 }
 
 .legacy-migration-path-placeholder {
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   font-family: inherit;
 }
 
@@ -89,8 +84,8 @@
   padding: 9px 16px;
   border-radius: 10px;
   border: 1.5px solid var(--border-control);
-  background: #ffffff;
-  color: var(--color-on-surface);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
@@ -101,7 +96,7 @@
 }
 
 .legacy-migration-btn:hover:not(:disabled) {
-  background: #f5f5f5;
+  background: var(--bg-surface-high);
 }
 
 .legacy-migration-btn:disabled {
@@ -110,14 +105,14 @@
 }
 
 .legacy-migration-btn--primary {
-  background: var(--color-primary, #6750a4);
+  background: var(--color-primary);
   border-color: transparent;
-  color: var(--color-on-primary, #fff);
+  color: var(--text-on-primary);
 }
 
 .legacy-migration-btn--primary:hover:not(:disabled) {
   filter: brightness(1.05);
-  background: var(--color-primary, #6750a4);
+  background: var(--color-primary);
 }
 
 .legacy-migration-btn--compact {
@@ -129,7 +124,7 @@
   text-align: center;
   padding: 20px;
   font-size: 14px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .legacy-migration-group {
@@ -142,7 +137,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .legacy-migration-workspace-header {
@@ -185,7 +180,7 @@
 .legacy-migration-section-name {
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
 }
 
 .legacy-migration-status {
@@ -201,8 +196,8 @@
 }
 
 .legacy-migration-status.is-missing {
-  color: var(--color-on-surface-variant);
-  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+  background: var(--bg-surface-normal);
 }
 
 .legacy-migration-status.is-imported {
@@ -213,21 +208,21 @@
 .legacy-migration-section-meta {
   margin: 0;
   font-size: 13px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .legacy-migration-section-samples {
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .legacy-migration-section-hint {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .legacy-migration-section-warnings {
@@ -236,7 +231,7 @@
   border-radius: 8px;
   background: rgba(255, 193, 7, 0.12);
   font-size: 12px;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   list-style: none;
 }
 

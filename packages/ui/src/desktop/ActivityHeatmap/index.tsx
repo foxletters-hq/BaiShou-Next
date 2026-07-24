@@ -30,18 +30,18 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const dragStartScrollLeft = useRef(0)
 
   const MONTHS = [
-    t('common.jan', '一月'),
-    t('common.feb', '二月'),
-    t('common.mar', '三月'),
-    t('common.apr', '四月'),
-    t('common.may', '五月'),
-    t('common.jun', '六月'),
-    t('common.jul', '七月'),
-    t('common.aug', '八月'),
-    t('common.sep', '九月'),
-    t('common.oct', '十月'),
-    t('common.nov', '十一月'),
-    t('common.dec', '十二月')
+    t('common.jan', '1月'),
+    t('common.feb', '2月'),
+    t('common.mar', '3月'),
+    t('common.apr', '4月'),
+    t('common.may', '5月'),
+    t('common.jun', '6月'),
+    t('common.jul', '7月'),
+    t('common.aug', '8月'),
+    t('common.sep', '9月'),
+    t('common.oct', '10月'),
+    t('common.nov', '11月'),
+    t('common.dec', '12月')
   ]
 
   const DAYS = [

@@ -4,8 +4,8 @@
   flex-direction: column;
   min-width: 0;
   height: 100%;
-  background: var(--wb-chrome-bg, #f3f4f6);
-  border-right: 1px solid var(--wb-chrome-border, #d8dee4);
+  background: var(--bg-app);
+  border-right: 1px solid var(--border-muted);
 }
 
 .viewTabs {
@@ -14,8 +14,8 @@
   justify-content: center;
   gap: 2px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg-raised, #e8eaed);
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface-highest);
 }
 
 .viewTab {
@@ -25,7 +25,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -33,13 +33,13 @@
 }
 
 .viewTab:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
 }
 
 .viewTabActive {
-  color: var(--color-primary, #5ba8f5);
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .badge {
@@ -50,8 +50,8 @@
   height: 14px;
   padding: 0 3px;
   border-radius: 7px;
-  background: var(--color-primary, #5ba8f5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   font-size: 9px;
   line-height: 14px;
   text-align: center;
@@ -61,5 +61,5 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: var(--wb-chrome-bg, #f3f4f6);
+  background: var(--bg-app);
 }

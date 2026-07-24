@@ -51,7 +51,7 @@
   background: transparent;
   border: none;
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -59,7 +59,7 @@
   background: transparent;
   border: none;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-primary);
   cursor: pointer;
 }
@@ -87,14 +87,14 @@
 
 .wheelItem {
   font-size: 16px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   opacity: 0.5;
   transition: all var(--animation-micro);
 }
 
 .wheelItemActive {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text-main);
 }
 

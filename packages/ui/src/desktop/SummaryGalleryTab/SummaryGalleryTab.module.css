@@ -11,7 +11,7 @@
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .emptyIcon {
@@ -40,21 +40,17 @@
 .monthHeader h3 {
   margin: 0;
   font-size: 18px;
-  font-weight: 800;
-  color: var(--color-text-main);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .countBadge {
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-surface-highest-light);
+  color: var(--text-secondary);
+  background: var(--bg-surface-highest);
   padding: 2px 8px;
   border-radius: 12px;
-}
-
-[data-theme='dark'] .countBadge {
-  background: var(--color-surface-highest-dark);
 }
 
 .masonryGrid {
@@ -70,17 +66,12 @@
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  background: var(--color-surface-highest-light);
-  border: 1px solid rgba(128, 128, 128, 0.15);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface-highest);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
   transition:
     transform var(--animation-micro),
     box-shadow var(--animation-micro);
-}
-
-[data-theme='dark'] .imageCard {
-  background: var(--color-surface-highest-dark);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .imageCard:hover {
@@ -118,7 +109,7 @@
 
 .dateLabel {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   color: white;
   background: rgba(0, 0, 0, 0.5);
   padding: 2px 6px;

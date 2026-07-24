@@ -5,9 +5,9 @@
   right: 12px;
   z-index: 1000;
   border-radius: 10px;
-  border: 1px solid var(--color-border-subtle, rgba(0, 0, 0, 0.08));
-  background: var(--color-bg-glass-surface, var(--color-bg-surface, #fff));
-  color: var(--color-text-secondary, #666);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;

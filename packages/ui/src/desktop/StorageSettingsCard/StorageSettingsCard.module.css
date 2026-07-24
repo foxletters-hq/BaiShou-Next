@@ -20,7 +20,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  color: #fff;
+  color: var(--text-on-primary);
   gap: 16px;
   animation: fadeIn 0.3s ease;
 }
