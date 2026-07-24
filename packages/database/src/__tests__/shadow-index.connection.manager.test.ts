@@ -91,7 +91,7 @@ describe('ShadowIndexConnectionManager', () => {
     expect(columnNames).toContain('vault_name')
 
     const versionResult = await db.all(sql`PRAGMA user_version`)
-    expect((versionResult[0] as any).user_version).toBe(2)
+    expect((versionResult[0] as any).user_version).toBe(3)
   })
 
   it('should be able to recover from a corrupted database file', async () => {
