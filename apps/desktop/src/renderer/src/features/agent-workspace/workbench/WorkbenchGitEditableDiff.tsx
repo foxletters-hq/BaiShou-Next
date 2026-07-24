@@ -70,6 +70,8 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
       view.destroy()
       viewRef.current = null
     }
+    // Mount once; content changes sync via the effect below (avoid recreating EditorView).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- content
   }, [])
 
   useEffect(() => {

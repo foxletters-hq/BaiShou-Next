@@ -28,6 +28,8 @@ function persistExpandedPaths(folderRoot: string, paths: Set<string>): void {
   localStorage.setItem(treeStorageKey(folderRoot), JSON.stringify([...paths]))
 }
 
+const EMPTY_ROOT_CHILDREN: FileTreeNode[] = []
+
 function sortEntries(entries: AgentWorkspaceDirEntry[]): AgentWorkspaceDirEntry[] {
   return [...entries].sort((a, b) => {
     if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
@@ -113,7 +115,7 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
     [folderRoot, loadPath]
   )
 
-  const rootChildren = childrenByPath[''] ?? []
+  const rootChildren = childrenByPath[''] ?? EMPTY_ROOT_CHILDREN
 
   const isExpanded = useCallback(
     (relativePath: string) => expandedPaths.has(relativePath),
@@ -174,6 +176,7 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
       getChildren,
       isExpanded,
       loadDirectory,
+      loadPath,
       loadingRoot,
       refreshPath,
       refreshRoot,

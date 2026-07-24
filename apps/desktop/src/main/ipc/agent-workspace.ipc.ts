@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 工作区 IPC：目录/读写/搜索/预览等同通道聚合 */
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'

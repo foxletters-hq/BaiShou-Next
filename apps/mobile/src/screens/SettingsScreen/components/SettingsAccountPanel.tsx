@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 账户面板：登录态/同步/设备信息同页 */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, StyleSheet, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'

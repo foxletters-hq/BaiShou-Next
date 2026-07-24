@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 工作区文件树：节点渲染与内联新建/重命名同页 */
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {

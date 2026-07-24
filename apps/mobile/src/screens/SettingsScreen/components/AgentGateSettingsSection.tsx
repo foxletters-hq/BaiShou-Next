@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 移动端伙伴门控设置矩阵与规则同页 */
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native'
 import { useTranslation } from 'react-i18next'
