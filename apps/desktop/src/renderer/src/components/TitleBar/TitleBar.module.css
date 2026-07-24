@@ -53,13 +53,13 @@
 
 .activeTab {
   color: var(--color-primary);
-  font-weight: 600;
-  background: var(--color-primary-light);
+  font-weight: 500;
+  background: var(--bg-surface-high);
   box-shadow: none;
 }
 
 .activeTab:hover {
-  background: var(--color-primary-light);
+  background: var(--bg-surface-high);
 }
 
 .tabIcon {
@@ -192,8 +192,9 @@
 }
 
 .vaultMenuItemActive {
-  color: var(--color-primary);
-  background: rgba(91, 168, 245, 0.08);
+  color: var(--text-primary);
+  background: var(--bg-surface-high);
+  font-weight: 500;
 }
 
 .vaultMenuPlaceholder {
