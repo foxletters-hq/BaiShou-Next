@@ -181,7 +181,9 @@
   height: 28px;
   padding: 0;
   border-radius: 50%;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 .refreshBtn:hover:not(:disabled) {
   background: var(--bg-surface-high);
@@ -217,7 +219,10 @@
   font-weight: var(--settings-font-label-weight);
   font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
   height: 32px;
   box-sizing: border-box;
   white-space: nowrap;
@@ -305,7 +310,9 @@
   align-items: center;
   justify-content: center;
   margin-right: 12px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 .configBackButton:hover {
   background: var(--bg-surface-high);
@@ -355,7 +362,9 @@
   border-radius: 10px;
   border: 1.5px solid var(--border-control);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   background: var(--bg-surface);
   gap: 10px;
 }
@@ -439,7 +448,9 @@
   font-family: inherit;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btnSave:hover {
@@ -582,7 +593,9 @@
   background: var(--bg-surface);
   cursor: pointer;
   position: relative;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -690,7 +703,9 @@
   justify-content: center;
   cursor: pointer;
   color: var(--text-secondary);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .iconBtn:hover {
@@ -779,7 +794,6 @@
   gap: 10px;
   margin: 12px 16px 4px;
 }
-
 
 .localArchiveToolbar {
   display: flex;

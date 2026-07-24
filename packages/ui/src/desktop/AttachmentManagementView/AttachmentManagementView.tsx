@@ -14,10 +14,7 @@ export const AttachmentManagementView: React.FC<AttachmentManagementViewProps> =
   const vm = useAttachmentManagementView(props)
 
   return (
-    <SettingsPageChrome
-      title={vm.t('settings.attachment_management', '附件管理')}
-      layout="stack"
-    >
+    <SettingsPageChrome title={vm.t('settings.attachment_management', '附件管理')} layout="stack">
       <div className={styles.container}>
         <div className={styles.mainTabNav}>
           <SegmentedControl

@@ -79,7 +79,10 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                 'local',
                 <Folder size={18} />,
                 t('data_sync.target_local', '本地存储'),
-                t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')
+                t(
+                  'data_sync.local_storage_desc',
+                  '直接将备份转储保存在应用所运行设备的本地磁盘中。'
+                )
               )}
               {renderTargetCard(
                 's3',
@@ -102,124 +105,126 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
             </div>
             <section className={stack.cardSection}>
               <div className={stack.cardBodyPadded}>
-            {config.target === 'local' && (
-              <div className={styles.emptyLocalState}>
-                <div style={{ marginBottom: 12, color: 'var(--text-secondary)', fontSize: 64 }}>
-                  <Home size={64} strokeWidth={1} style={{ opacity: 0.5 }} />
-                </div>
-                <div>
-                  {t(
-                    'data_sync.local_no_config',
-                    '当前模式下产生的数据仅会存放于本地应用目录中，无需输入远程凭据。'
-                  )}
-                </div>
-              </div>
-            )}
+                {config.target === 'local' && (
+                  <div className={styles.emptyLocalState}>
+                    <div style={{ marginBottom: 12, color: 'var(--text-secondary)', fontSize: 64 }}>
+                      <Home size={64} strokeWidth={1} style={{ opacity: 0.5 }} />
+                    </div>
+                    <div>
+                      {t(
+                        'data_sync.local_no_config',
+                        '当前模式下产生的数据仅会存放于本地应用目录中，无需输入远程凭据。'
+                      )}
+                    </div>
+                  </div>
+                )}
 
-            {config.target === 'webdav' && (
-              <div className={styles.configGrid}>
-                <div className={styles.formField}>
-                  <label style={labelStyle}>
-                    {t('data_sync.webdav_url_label', 'WebDAV URL 地址')}
-                  </label>
-                  <input
-                    style={inputStyle}
-                    value={config.webdavUrl}
-                    onChange={(e) => updateField('webdavUrl', e.target.value)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label style={labelStyle}>
-                    {t('data_sync.webdav_path_label', 'Base Path 子路径')}
-                  </label>
-                  <input
-                    style={inputStyle}
-                    value={config.webdavPath}
-                    onChange={(e) => updateField('webdavPath', e.target.value)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label style={labelStyle}>
-                    {t('data_sync.webdav_user_label', 'Username 用户名')}
-                  </label>
-                  <input
-                    style={inputStyle}
-                    value={config.webdavUsername}
-                    onChange={(e) => updateField('webdavUsername', e.target.value)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <CloudSyncPasswordField
-                    label={t('data_sync.webdav_password_label', 'Password 密码')}
-                    value={config.webdavPassword}
-                    showPassword={showPassword}
-                    onTogglePassword={() => setShowPassword(!showPassword)}
-                    onChange={(v) => updateField('webdavPassword', v)}
-                  />
-                </div>
-              </div>
-            )}
+                {config.target === 'webdav' && (
+                  <div className={styles.configGrid}>
+                    <div className={styles.formField}>
+                      <label style={labelStyle}>
+                        {t('data_sync.webdav_url_label', 'WebDAV URL 地址')}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={config.webdavUrl}
+                        onChange={(e) => updateField('webdavUrl', e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <label style={labelStyle}>
+                        {t('data_sync.webdav_path_label', 'Base Path 子路径')}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={config.webdavPath}
+                        onChange={(e) => updateField('webdavPath', e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <label style={labelStyle}>
+                        {t('data_sync.webdav_user_label', 'Username 用户名')}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={config.webdavUsername}
+                        onChange={(e) => updateField('webdavUsername', e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <CloudSyncPasswordField
+                        label={t('data_sync.webdav_password_label', 'Password 密码')}
+                        value={config.webdavPassword}
+                        showPassword={showPassword}
+                        onTogglePassword={() => setShowPassword(!showPassword)}
+                        onChange={(v) => updateField('webdavPassword', v)}
+                      />
+                    </div>
+                  </div>
+                )}
 
-            {config.target === 's3' && (
-              <div className={styles.configGrid}>
-                <div className={styles.formField}>
-                  <label style={labelStyle}>
-                    {t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}
-                  </label>
-                  <input
-                    style={inputStyle}
-                    value={config.s3Endpoint}
-                    onChange={(e) => updateField('s3Endpoint', e.target.value)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label style={labelStyle}>
-                    {t('data_sync.s3_region_label', 'Region 区域名')}
-                  </label>
-                  <input
-                    style={inputStyle}
-                    value={config.s3Region}
-                    onChange={(e) => updateField('s3Region', e.target.value)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label style={labelStyle}>
-                    {t('data_sync.s3_bucket_label', 'Bucket 存储桶')}
-                  </label>
-                  <input
-                    style={inputStyle}
-                    value={config.s3Bucket}
-                    onChange={(e) => updateField('s3Bucket', e.target.value)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label style={labelStyle}>{t('data_sync.s3_path_label', 'Path 子路径')}</label>
-                  <input
-                    style={inputStyle}
-                    value={config.s3Path}
-                    onChange={(e) => updateField('s3Path', e.target.value)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <CloudSyncPasswordField
-                    label={t('data_sync.s3_ak_label', 'Access Key (AK)')}
-                    value={config.s3AccessKey}
-                    showPassword={showPassword}
-                    onTogglePassword={() => setShowPassword(!showPassword)}
-                    onChange={(v) => updateField('s3AccessKey', v)}
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <CloudSyncPasswordField
-                    label={t('data_sync.s3_sk_label', 'Secret Key (SK)')}
-                    value={config.s3SecretKey}
-                    showPassword={showPassword}
-                    onTogglePassword={() => setShowPassword(!showPassword)}
-                    onChange={(v) => updateField('s3SecretKey', v)}
-                  />
-                </div>
-              </div>
-            )}
+                {config.target === 's3' && (
+                  <div className={styles.configGrid}>
+                    <div className={styles.formField}>
+                      <label style={labelStyle}>
+                        {t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={config.s3Endpoint}
+                        onChange={(e) => updateField('s3Endpoint', e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <label style={labelStyle}>
+                        {t('data_sync.s3_region_label', 'Region 区域名')}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={config.s3Region}
+                        onChange={(e) => updateField('s3Region', e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <label style={labelStyle}>
+                        {t('data_sync.s3_bucket_label', 'Bucket 存储桶')}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={config.s3Bucket}
+                        onChange={(e) => updateField('s3Bucket', e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <label style={labelStyle}>
+                        {t('data_sync.s3_path_label', 'Path 子路径')}
+                      </label>
+                      <input
+                        style={inputStyle}
+                        value={config.s3Path}
+                        onChange={(e) => updateField('s3Path', e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <CloudSyncPasswordField
+                        label={t('data_sync.s3_ak_label', 'Access Key (AK)')}
+                        value={config.s3AccessKey}
+                        showPassword={showPassword}
+                        onTogglePassword={() => setShowPassword(!showPassword)}
+                        onChange={(v) => updateField('s3AccessKey', v)}
+                      />
+                    </div>
+                    <div className={styles.formField}>
+                      <CloudSyncPasswordField
+                        label={t('data_sync.s3_sk_label', 'Secret Key (SK)')}
+                        value={config.s3SecretKey}
+                        showPassword={showPassword}
+                        onTogglePassword={() => setShowPassword(!showPassword)}
+                        onChange={(v) => updateField('s3SecretKey', v)}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className={styles.configSectionFooter}>
                   <button

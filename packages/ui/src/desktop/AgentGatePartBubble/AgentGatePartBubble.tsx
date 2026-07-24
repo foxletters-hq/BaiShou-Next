@@ -51,8 +51,7 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)
   const alwaysScopeHint = resolveAlwaysAllowPrefixHint(request)
   const showPendingScopeHint = !resolved && alwaysScopeHint
-  const showResolvedAlwaysScope =
-    resolution?.reply === AgentGateReply.Always && alwaysScopeHint
+  const showResolvedAlwaysScope = resolution?.reply === AgentGateReply.Always && alwaysScopeHint
   const previewSummary = summarizePreviewForHistory(request.preview)
 
   return (
