@@ -87,11 +87,7 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle(
     'settings:set-baishou-agent-gate-config',
-    async (
-      _,
-      config: any,
-      scope?: import('@baishou/shared').AgentGateConfigScope
-    ) => {
+    async (_, config: any, scope?: import('@baishou/shared').AgentGateConfigScope) => {
       const { sanitizeBaishouAgentGateConfigPatch } = await import('@baishou/shared')
       const { patchScopedAgentGateConfig } = await import('../services/agent-gate.service')
       const normalized =
@@ -114,7 +110,8 @@ export function registerSettingsAppIPC() {
   ipcMain.handle(
     'settings:set-workspace-tool-management',
     async (_, workspaceId: string, config: any) => {
-      const { setWorkspaceToolManagement } = await import('../services/agent-workspace-policy.store')
+      const { setWorkspaceToolManagement } =
+        await import('../services/agent-workspace-policy.store')
       const { cloneWorkspaceToolManagementConfig } = await import('@baishou/shared')
       if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
         throw new Error('workspaceId is required')

@@ -3,10 +3,7 @@
  * html.inline → main.tsx.enter → app-bootstrap.imports-evaluated
  * 三段间隔可区分「等 HTML」「等 Vite 拉模块」「应用依赖求值」。
  */
-import {
-  flushPendingRendererStartupMarks,
-  markRendererStartup
-} from './startup-trace'
+import { flushPendingRendererStartupMarks, markRendererStartup } from './startup-trace'
 
 markRendererStartup('main.tsx.enter')
 flushPendingRendererStartupMarks()

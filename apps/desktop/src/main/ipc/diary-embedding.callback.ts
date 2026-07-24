@@ -15,10 +15,7 @@ import {
 
 import { vaultService } from './vault.ipc'
 import { deleteDiaryEmbeddingAliases } from '../services/diary-embedding.util'
-import {
-  deleteDiaryEmbedJob,
-  enqueueDiaryEmbedJob
-} from '../services/diary-embed-jobs.service'
+import { deleteDiaryEmbedJob, enqueueDiaryEmbedJob } from '../services/diary-embed-jobs.service'
 
 function broadcastDiaryEmbedFailed(message: string): void {
   for (const win of BrowserWindow.getAllWindows()) {

@@ -190,7 +190,8 @@ export function registerRagBuildIPC() {
         }
       })
       // 手动全量扫描后也清一轮欠账（强制，不受自动恢复开关限制）
-      const { consumeDiaryEmbedJobs } = await import('../services/diary-embed-jobs-consumer.service')
+      const { consumeDiaryEmbedJobs } =
+        await import('../services/diary-embed-jobs-consumer.service')
       const consumeResult = await consumeDiaryEmbedJobs({
         reason: 'after-manual-batch-embed',
         force: true,

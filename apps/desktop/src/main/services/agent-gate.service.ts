@@ -18,10 +18,7 @@ import {
   type AgentGateReplyInput
 } from '@baishou/shared'
 import { settingsManager } from '../ipc/settings.ipc'
-import {
-  getWorkspaceGateConfig,
-  setWorkspaceGateConfig
-} from './agent-workspace-policy.store'
+import { getWorkspaceGateConfig, setWorkspaceGateConfig } from './agent-workspace-policy.store'
 
 type GateRuntime = ReturnType<typeof createBaishouAgentGate>
 
@@ -295,7 +292,9 @@ export function cancelAllAgentGateSessions(reason?: string): void {
 }
 
 /** 聚合全部作用域的 pending（可选按 session 过滤）；供渲染进程水合 */
-export function listPendingAgentGateRequests(sessionId?: string): import('@baishou/shared').AgentGateRequest[] {
+export function listPendingAgentGateRequests(
+  sessionId?: string
+): import('@baishou/shared').AgentGateRequest[] {
   const byId = new Map<string, import('@baishou/shared').AgentGateRequest>()
   for (const scoped of allScopedRuntimes()) {
     for (const request of scoped.runtime.gate.listPending(sessionId)) {
