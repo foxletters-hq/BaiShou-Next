@@ -233,17 +233,27 @@
 }
 
 .btn {
-  border: none;
+  border: 1.5px solid var(--border-control);
   border-radius: 10px;
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .btnReject {
@@ -252,14 +262,21 @@
   border: 1px solid color-mix(in srgb, var(--color-error, #ef4444) 35%, transparent);
 }
 
+.btnReject:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error, #ef4444) 22%, transparent);
+  border-color: color-mix(in srgb, var(--color-error, #ef4444) 45%, transparent);
+}
+
 .btnSecondary {
   color: var(--text-primary);
-  background: var(--bg-surface-variant, rgba(0, 0, 0, 0.05));
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
 }
 
 .btnPrimary {
-  color: var(--text-on-primary);
-  background: var(--color-primary);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
 }
 
 .feedback {

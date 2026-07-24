@@ -6,6 +6,7 @@ import { useAgentToolsView } from './useAgentToolsView'
 import { AgentToolsBuiltInList } from './AgentToolsBuiltInList'
 import { EmojiSettingsGroupsView, EmojiGroupDetailView } from '../EmojiSettingsView'
 import { normalizeEmojiToolConfig } from '@baishou/shared'
+import { HelpTooltip } from '../HelpTooltip'
 import styles from './AgentToolsView.module.css'
 
 export type { ToolManagementConfig, AgentToolsViewProps } from './agent-tools.types'
@@ -108,14 +109,20 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               </span>
               <div className={styles.titleBlock}>
                 <h3 className={styles.title}>{t('settings.agent_tools_title', '工具管理')}</h3>
-                <p className={styles.headerSubtitle}>
-                  {scene === 'workspace'
-                    ? t(
-                        'settings.workspace_tools_desc',
-                        '管理当前工作区可用的工具；与伙伴工具相互独立。'
-                      )
-                    : t('settings.agent_tools_desc', '管理伙伴可使用的工具，开关或配置工具参数')}
-                </p>
+                <HelpTooltip
+                  size={14}
+                  content={
+                    scene === 'workspace'
+                      ? t(
+                          'settings.workspace_tools_desc',
+                          '管理当前工作区可用的工具；与伙伴工具相互独立。'
+                        )
+                      : t(
+                          'settings.agent_tools_desc',
+                          '管理伙伴可使用的工具，开关或配置工具参数'
+                        )
+                  }
+                />
               </div>
             </div>
           </div>

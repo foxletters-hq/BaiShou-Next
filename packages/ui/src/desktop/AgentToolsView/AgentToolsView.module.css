@@ -41,8 +41,8 @@
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
   color: var(--theme-on-surface);
   margin: 0;
   letter-spacing: -0.5px;
@@ -134,8 +134,9 @@
 
 .titleBlock {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -188,7 +189,7 @@
 }
 
 .containerDialog .title {
-  font-size: 18px;
+  font-size: var(--settings-font-page-title-size);
 }
 
 .containerDialog .categoryHeader {
@@ -216,7 +217,8 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   border-radius: 12px;
-  overflow: hidden;
+  /* 勿 hidden：卡内绝对定位下拉会被裁切 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -250,8 +252,8 @@
 }
 
 .categoryLabel {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   letter-spacing: 0;
   font-family: var(--font-family);
 }
@@ -264,6 +266,13 @@
   border-radius: 0;
   overflow: visible;
   background: transparent;
+}
+
+.categoryListPadded {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 12px 12px;
 }
 
 .toolCard {
@@ -341,8 +350,8 @@
 }
 
 .toolName {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -468,7 +477,7 @@
 }
 
 .communityTitle {
-  font-size: 16px;
+  font-size: var(--settings-font-section-size);
   font-weight: 500;
   color: var(--theme-on-surface-variant);
   margin: 0 0 8px 0;
@@ -943,13 +952,14 @@ input:checked + .slider:before {
 }
 
 .emojiEnableTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--theme-on-surface);
 }
 
 .emojiEnableSubtitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--theme-on-surface-variant);
   line-height: 1.4;
 }
@@ -1013,8 +1023,8 @@ input:checked + .slider:before {
 
 .emojiGroupName {
   flex: 1;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--theme-on-surface);
 }
 
@@ -1071,8 +1081,8 @@ input:checked + .slider:before {
 }
 
 .emojiEntryTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: 500;
   color: var(--theme-on-surface);
 }
 
@@ -1103,14 +1113,16 @@ input:checked + .slider:before {
 
 .emojiGroupNameInput {
   width: 100%;
-  border: 1px solid var(--theme-outline-variant);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 16px;
-  background: var(--theme-surface);
+  height: 32px;
+  border: 1.5px solid var(--form-field-border, var(--border-control));
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: var(--settings-font-row-size);
+  background: var(--form-field-bg, var(--bg-surface));
   color: var(--theme-on-surface);
   box-sizing: border-box;
   outline: none;
+  font-family: inherit;
 }
 
 .emojiGroupNameInput:focus {

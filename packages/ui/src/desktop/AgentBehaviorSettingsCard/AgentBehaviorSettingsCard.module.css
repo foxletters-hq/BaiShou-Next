@@ -1,25 +1,8 @@
-.container {
+.cardBody {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.header {
-  margin-bottom: 4px;
-}
-
-.title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 6px 0;
-}
-
-.subtitle {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.5;
+  padding: 16px;
 }
 
 .row {
@@ -35,8 +18,8 @@
 }
 
 .label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
   color: var(--text-primary);
   display: flex;
   align-items: center;
