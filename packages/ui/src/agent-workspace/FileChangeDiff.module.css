@@ -19,26 +19,26 @@
 
 .add {
   background: rgba(46, 160, 67, 0.12);
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary);
 }
 
 .del {
   background: rgba(248, 81, 73, 0.12);
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary);
 }
 
 .hunk {
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.04);
 }
 
 .context {
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
 }
 
 .empty {
   padding: 10px 12px;
-  color: var(--text-secondary, #888);
+  color: var(--text-secondary);
   font-style: italic;
   font-family: inherit;
 }

@@ -8,5 +8,40 @@
   "eslint.workingDirectories": [
     { "directory": "apps/desktop", "changeProcessCWD": true },
     { "directory": "apps/mobile", "changeProcessCWD": true }
-  ]
+  ],
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/dist-*/**": true,
+    "**/out/**": true,
+    "**/build/**": true,
+    "**/.next/**": true,
+    "**/.turbo/**": true,
+    "**/.expo/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/.pnpm-store/**": true,
+    "**/coverage/**": true,
+    "**/.cache/**": true,
+    "**/android/**/.gradle/**": true,
+    "**/android/**/build/**": true,
+    "**/ios/Pods/**": true,
+    "**/ios/build/**": true,
+    "**/release/**": true,
+    "**/releases/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/dist-*": true,
+    "**/out": true,
+    "**/build": true,
+    "**/.next": true,
+    "**/.turbo": true,
+    "**/.expo": true,
+    "**/coverage": true,
+    "**/pnpm-lock.yaml": true,
+    "**/release": true,
+    "**/releases": true
+  }
 }
