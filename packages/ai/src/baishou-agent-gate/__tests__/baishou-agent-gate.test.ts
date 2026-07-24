@@ -936,9 +936,9 @@ describe('scoped gate config isolation', () => {
     await gate.reply({ requestId: pending!.id, reply: AgentGateReply.Always })
     await assertPromise
 
-    expect(events.some((e) => (e as { scope?: { kind: string } }).scope?.kind === 'workspace')).toBe(
-      true
-    )
+    expect(
+      events.some((e) => (e as { scope?: { kind: string } }).scope?.kind === 'workspace')
+    ).toBe(true)
   })
 })
 

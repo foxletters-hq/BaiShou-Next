@@ -125,7 +125,7 @@
   margin: 0 0 8px;
   padding: 8px 12px;
   border-radius: 8px;
-  background: var(--bg-surface-high));
+  background: var(--bg-surface-high);
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;

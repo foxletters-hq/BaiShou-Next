@@ -11,10 +11,7 @@ import {
   hashWorkspaceContent,
   type WorkspaceFsAdapter
 } from './workspace-fs'
-import {
-  normalizeWorkspaceRelativePath,
-  resolveWorkspacePath
-} from './workspace-path.sandbox'
+import { normalizeWorkspaceRelativePath, resolveWorkspacePath } from './workspace-path.sandbox'
 import { scanWorkspaceRunCommand } from './workspace-command-scan'
 import { rememberWorkspaceGateFreshness } from './workspace-gate-freshness.registry'
 
@@ -46,9 +43,10 @@ function contentDigest(content: string): string {
   return agentGateSimpleHash(content.slice(0, 4096))
 }
 
-function resolveFs(ctx: {
-  workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter }
-}): { folderRoot: string; fs: WorkspaceFsAdapter } {
+function resolveFs(ctx: { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }): {
+  folderRoot: string
+  fs: WorkspaceFsAdapter
+} {
   const folderRoot = ctx.workspace?.folderRoot
   if (!folderRoot) {
     throw new WorkspaceGatePrepareError('Workspace is not configured for this session')
@@ -119,7 +117,9 @@ export async function prepareWorkspaceWriteGate(
   }
 
   const sessionId = resolveSessionId(ctx)
-  const { folderRoot, fs } = resolveFs(ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } })
+  const { folderRoot, fs } = resolveFs(
+    ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
+  )
   const relativePath = normalizeWorkspaceRelativePath(path)
   const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
   const existed = await fs.exists(absolutePath)
@@ -173,7 +173,9 @@ export async function prepareWorkspacePatchGate(
   }
 
   const sessionId = resolveSessionId(ctx)
-  const { folderRoot, fs } = resolveFs(ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } })
+  const { folderRoot, fs } = resolveFs(
+    ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
+  )
   const relativePath = normalizeWorkspaceRelativePath(path)
   const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
   const existed = await fs.exists(absolutePath)
@@ -242,7 +244,9 @@ export async function prepareWorkspaceDeleteGate(
   }
 
   const sessionId = resolveSessionId(ctx)
-  const { folderRoot, fs } = resolveFs(ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } })
+  const { folderRoot, fs } = resolveFs(
+    ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
+  )
   const relativePath = normalizeWorkspaceRelativePath(path)
   const absolutePath = resolveWorkspacePath(folderRoot, relativePath)
   const existed = await fs.exists(absolutePath)
@@ -291,7 +295,9 @@ export async function prepareWorkspaceRenameGate(
   }
 
   const sessionId = resolveSessionId(ctx)
-  const { folderRoot, fs } = resolveFs(ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } })
+  const { folderRoot, fs } = resolveFs(
+    ctx as { workspace?: { folderRoot?: string; fs?: WorkspaceFsAdapter } }
+  )
   const fromRel = normalizeWorkspaceRelativePath(path)
   const toRel = normalizeWorkspaceRelativePath(newPath)
   const fromAbs = resolveWorkspacePath(folderRoot, fromRel)
@@ -372,9 +378,7 @@ export function prepareWorkspaceRunGate(args: unknown, ctx: unknown): AgentGateP
 
   return {
     preview,
-    description: scan?.dangerous
-      ? `危险命令需要确认：${command}`
-      : `将运行命令：${command}`
+    description: scan?.dangerous ? `危险命令需要确认：${command}` : `将运行命令：${command}`
   }
 }
 
