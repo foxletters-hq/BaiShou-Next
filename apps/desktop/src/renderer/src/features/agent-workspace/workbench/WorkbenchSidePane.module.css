@@ -15,7 +15,7 @@
   gap: 2px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border-muted);
-  background: var(--bg-surface-highest);
+  background: var(--bg-app);
 }
 
 .viewTab {
@@ -33,13 +33,13 @@
 }
 
 .viewTab:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
 .viewTabActive {
   color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .badge {

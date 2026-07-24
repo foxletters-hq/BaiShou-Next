@@ -50,8 +50,11 @@ const WorkbenchGitPanelBody: React.FC<WorkbenchGitPanelBodyProps & { repositoryN
 
   useEffect(() => {
     if (!vm.branchInfo) return
+    const current = vm.branchInfo.current?.trim()
+    // 无提交/未建立分支时 rev-parse 可能得到 HEAD，状态栏不展示
+    const branch = current && current !== 'HEAD' ? current : undefined
     onGitMetaChange?.({
-      branch: vm.branchInfo.current,
+      branch,
       ahead: vm.branchInfo.ahead,
       behind: vm.branchInfo.behind
     })

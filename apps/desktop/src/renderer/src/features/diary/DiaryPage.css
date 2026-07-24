@@ -585,8 +585,9 @@
 }
 
 .diary-card-action-btn.edit-btn:hover {
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .diary-card-action-btn.delete-btn {
