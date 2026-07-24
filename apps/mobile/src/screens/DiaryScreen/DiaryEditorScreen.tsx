@@ -385,10 +385,18 @@ export const DiaryEditorScreen: React.FC = () => {
             <View style={styles.skeletonAppBar}>
               <View style={[styles.skeletonCircle, { backgroundColor: colors.bgSurfaceHighest }]} />
               <View
-                style={[styles.skeletonPill, styles.skeletonTitle, { backgroundColor: colors.bgSurfaceHighest }]}
+                style={[
+                  styles.skeletonPill,
+                  styles.skeletonTitle,
+                  { backgroundColor: colors.bgSurfaceHighest }
+                ]}
               />
               <View
-                style={[styles.skeletonPill, styles.skeletonAction, { backgroundColor: colors.bgSurfaceHighest }]}
+                style={[
+                  styles.skeletonPill,
+                  styles.skeletonAction,
+                  { backgroundColor: colors.bgSurfaceHighest }
+                ]}
               />
             </View>
             <View style={styles.skeletonMeta}>
@@ -396,11 +404,36 @@ export const DiaryEditorScreen: React.FC = () => {
               <View style={[styles.skeletonPill, { backgroundColor: colors.bgSurfaceHighest }]} />
             </View>
             <View style={styles.skeletonBody}>
-              <View style={[styles.skeletonLine, { width: '30%', backgroundColor: colors.bgSurfaceHighest }]} />
-              <View style={[styles.skeletonLine, { width: '70%', backgroundColor: colors.bgSurfaceHighest }]} />
-              <View style={[styles.skeletonLine, { width: '92%', backgroundColor: colors.bgSurfaceHighest }]} />
-              <View style={[styles.skeletonLine, { width: '78%', backgroundColor: colors.bgSurfaceHighest }]} />
-              <View style={[styles.skeletonLine, { width: '54%', backgroundColor: colors.bgSurfaceHighest }]} />
+              <View
+                style={[
+                  styles.skeletonLine,
+                  { width: '30%', backgroundColor: colors.bgSurfaceHighest }
+                ]}
+              />
+              <View
+                style={[
+                  styles.skeletonLine,
+                  { width: '70%', backgroundColor: colors.bgSurfaceHighest }
+                ]}
+              />
+              <View
+                style={[
+                  styles.skeletonLine,
+                  { width: '92%', backgroundColor: colors.bgSurfaceHighest }
+                ]}
+              />
+              <View
+                style={[
+                  styles.skeletonLine,
+                  { width: '78%', backgroundColor: colors.bgSurfaceHighest }
+                ]}
+              />
+              <View
+                style={[
+                  styles.skeletonLine,
+                  { width: '54%', backgroundColor: colors.bgSurfaceHighest }
+                ]}
+              />
             </View>
           </View>
         ) : (

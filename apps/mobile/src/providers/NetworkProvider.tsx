@@ -51,9 +51,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       if (next.isOnline && wasOnline !== true) {
         void import('../services/mobile-diary-embed-jobs-consumer.service').then(
           ({ scheduleConsumeDiaryEmbedJobs }) => {
-            scheduleConsumeDiaryEmbedJobs(
-              wasOnline === false ? 'network-online' : 'network-ready'
-            )
+            scheduleConsumeDiaryEmbedJobs(wasOnline === false ? 'network-online' : 'network-ready')
           }
         )
       }

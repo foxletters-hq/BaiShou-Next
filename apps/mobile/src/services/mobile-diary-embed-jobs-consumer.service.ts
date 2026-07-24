@@ -11,7 +11,10 @@ import {
   countDiaryEmbedJobs,
   failDiaryEmbedJob
 } from './mobile-diary-embed-jobs.service'
-import { getMobileDiaryEmbeddingCallback, getMobileDiaryEmbeddingDeps } from './mobile-diary-embedding.service'
+import {
+  getMobileDiaryEmbeddingCallback,
+  getMobileDiaryEmbeddingDeps
+} from './mobile-diary-embedding.service'
 import { resolveEmbeddingAdapter, resolveVaultScope } from './mobile-rag-core.helpers'
 import { loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
 
@@ -36,8 +39,7 @@ export async function consumeDiaryEmbedJobs(options?: {
       return { processed: 0, failed: 0, skipped: 'deps-missing' }
     }
 
-    const ragConfig =
-      (await deps.settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
+    const ragConfig = (await deps.settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
 
     if (!isRagMemoryEnabled(ragConfig)) {
       return { processed: 0, failed: 0, skipped: 'rag-disabled' }
@@ -98,9 +100,7 @@ export async function consumeDiaryEmbedJobs(options?: {
               : String(dateRaw ?? '')
 
         const updatedAt =
-          'updatedAt' in diary && diary.updatedAt instanceof Date
-            ? diary.updatedAt
-            : new Date()
+          'updatedAt' in diary && diary.updatedAt instanceof Date ? diary.updatedAt : new Date()
 
         const tags = normalizeDiaryTags('tags' in diary ? diary.tags : [])
 

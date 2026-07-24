@@ -4,10 +4,7 @@ import {
   AgentGateReply,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
-import {
-  selectActivePendingForSession,
-  useAgentGateInboxStore
-} from '@baishou/store'
+import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 

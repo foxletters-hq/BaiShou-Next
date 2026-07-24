@@ -22,7 +22,9 @@ let focusedSessionId: string | null = null
 const HANDLED_RESPONSE_STORAGE_KEY = 'agent_gate_last_handled_notif_response'
 let handledResponseKeyMemory: string | null = null
 
-async function loadAsyncStorage(): Promise<typeof import('@react-native-async-storage/async-storage').default | null> {
+async function loadAsyncStorage(): Promise<
+  typeof import('@react-native-async-storage/async-storage').default | null
+> {
   try {
     return (await import('@react-native-async-storage/async-storage')).default
   } catch {

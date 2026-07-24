@@ -378,9 +378,7 @@ export const OnboardingScreen: React.FC = () => {
       <View style={styles.slideSpacerMedium} />
       {renderSlideBody(t('onboarding.privacy_desc'))}
       <View style={styles.sloganSpacer} />
-      <Text style={[styles.slogan, { color: colors.textSecondary }]}>
-        {t('onboarding.slogan')}
-      </Text>
+      <Text style={[styles.slogan, { color: colors.textSecondary }]}>{t('onboarding.slogan')}</Text>
     </View>
   )
 
