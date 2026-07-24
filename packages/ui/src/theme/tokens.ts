@@ -1,5 +1,5 @@
 export const sharedTokens = {
-  fontFamily: "'Manrope', 'Microsoft YaHei', 'PingFang SC', sans-serif",
+  fontFamily: "'Noto Sans SC', 'Noto Sans', system-ui, sans-serif",
   radius: {
     sm: 4,
     md: 12,

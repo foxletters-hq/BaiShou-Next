@@ -37,7 +37,7 @@ body,
 
 .sidebar {
   width: 250px;
-  background: var(--color-glass-bg);
+  background: var(--bg-glass-surface);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border-right: 1px solid var(--color-glass-border);
@@ -55,7 +55,7 @@ body,
 
 /* Glass panel example */
 .glass-panel {
-  background: var(--color-glass-bg);
+  background: var(--bg-glass-surface);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--color-glass-border);
@@ -66,12 +66,12 @@ body,
 
 h1 {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 12px;
 }
 
 p {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 /* Globally hide all scrollbars while preserving scroll functionality */
