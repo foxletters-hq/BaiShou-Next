@@ -710,14 +710,16 @@
 .applyBtn {
   flex: 1;
   padding: 12px 24px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  border: none;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
   border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -725,7 +727,8 @@
 }
 
 .applyBtn:hover {
-  filter: brightness(1.05);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .applyBtnCurrent {

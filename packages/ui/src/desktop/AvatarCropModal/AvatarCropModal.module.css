@@ -67,30 +67,36 @@
 .cancelBtn {
   padding: 8px 20px;
   border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: transparent;
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .cancelBtn:hover {
-  background: var(--bg-surface-normal);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .confirmBtn {
   padding: 8px 20px;
   border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
-  color: white;
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   font-weight: 500;
-  transition: all 0.2s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .confirmBtn:hover {
-  opacity: 0.9;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 @keyframes cropFadeIn {

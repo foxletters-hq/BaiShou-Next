@@ -552,11 +552,19 @@
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-on-primary);
-  background: var(--color-primary);
-  border: none;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.recompressSubmit:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .recompressSubmit:disabled {

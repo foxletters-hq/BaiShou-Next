@@ -192,25 +192,20 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: none;
-  transition: all 0.2s;
-}
-
-.actionBtnSecondary {
-  background: var(--bg-surface-low);
-  color: var(--text-secondary);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .actionBtnSecondary:hover {
   background: var(--bg-surface-high);
-  color: var(--text-primary);
-}
-
-.actionBtnPrimary {
-  background: rgba(var(--color-primary-rgb), 0.1);
-  color: var(--color-primary);
+  border-color: var(--border-strong);
 }
 
 .actionBtnPrimary:hover {
-  background: rgba(var(--color-primary-rgb), 0.15);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
