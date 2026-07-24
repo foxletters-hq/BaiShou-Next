@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  AgentGateKind,
-  AgentGateRiskLevel,
-  type AgentGateToolMetadata
-} from '@baishou/shared'
+import { AgentGateKind, AgentGateRiskLevel, type AgentGateToolMetadata } from '@baishou/shared'
 import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate-tool.interceptor'
 import type { ToolContext } from '../../tools/agent.tool'
 import type { IBaishouAgentGate } from '../baishou-agent-gate.service'

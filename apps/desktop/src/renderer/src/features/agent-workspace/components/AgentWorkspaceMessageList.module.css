@@ -25,7 +25,7 @@
   flex: 1;
   padding: 10px 14px;
   border-radius: 12px;
-  background: var(--bg-surface-high));
+  background: var(--bg-surface-high);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -43,7 +43,7 @@
 .assistantBubble {
   padding: 10px 14px;
   border-radius: 12px;
-  background: var(--bg-surface));
+  background: var(--bg-surface);
   white-space: pre-wrap;
   font-size: 14px;
   line-height: 1.6;
@@ -71,7 +71,7 @@
 }
 
 .rollbackBtn:hover {
-  background: var(--bg-surface-high));
+  background: var(--bg-surface-high);
 }
 
 .fileChangeError {

@@ -240,11 +240,7 @@ describe('ShadowIndexSyncService', () => {
     const updateSpy = vi.spyOn(mockRepo, 'updateFileStat')
     const r2 = await service.syncJournal('2026-03-24')
     expect(r2.isChanged).toBe(false)
-    expect(updateSpy).toHaveBeenCalledWith(
-      '2026-03-24',
-      expect.any(Number),
-      expect.any(Number)
-    )
+    expect(updateSpy).toHaveBeenCalledWith('2026-03-24', expect.any(Number), expect.any(Number))
     updateSpy.mockRestore()
   })
 

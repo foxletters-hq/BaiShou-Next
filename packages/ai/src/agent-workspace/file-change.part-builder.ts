@@ -48,9 +48,7 @@ export function buildUnifiedDiff(
 
   const lines: string[] = [`--- a/${path}`, `+++ b/${path}`]
   for (const hunk of hunks) {
-    lines.push(
-      `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@`
-    )
+    lines.push(`@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@`)
     for (const line of hunk.lines) {
       lines.push(line)
     }
@@ -278,7 +276,13 @@ function buildHunk(ops: LineOp[], start: number, end: number): DiffHunk {
     newStart = Math.max(newStart - 1, 0)
   }
 
-  return { oldStart: Math.max(oldStart, 0), oldCount, newStart: Math.max(newStart, 0), newCount, lines }
+  return {
+    oldStart: Math.max(oldStart, 0),
+    oldCount,
+    newStart: Math.max(newStart, 0),
+    newCount,
+    lines
+  }
 }
 
 function buildPreview(

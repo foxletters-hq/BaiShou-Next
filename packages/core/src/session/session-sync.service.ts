@@ -145,11 +145,7 @@ export class SessionSyncService {
         if (dbRecord) {
           const diskMtimeMs = await this.fileService.getSessionFileMtimeMs(f.id, vaultName)
           const dbUpdatedMs = toEpochMs(dbRecord.updatedAt)
-          if (
-            diskMtimeMs != null &&
-            dbUpdatedMs != null &&
-            diskMtimeMs <= dbUpdatedMs
-          ) {
+          if (diskMtimeMs != null && dbUpdatedMs != null && diskMtimeMs <= dbUpdatedMs) {
             skippedUnchanged++
             continue
           }
