@@ -1,8 +1,8 @@
 .container {
   /* Adapting to BaiShou-Next's global theme variables, defaulting to light mode (dark text) */
   --theme-primary: var(--color-primary);
-  --theme-on-primary: var(--color-on-primary, #ffffff);
-  --theme-primary-container-50: rgba(91, 168, 245, 0.15);
+  --theme-on-primary: var(--text-on-primary);
+  --theme-primary-container-50: rgba(var(--color-primary-rgb), 0.12);
 
   --theme-on-surface: var(--text-primary);
   --theme-on-surface-variant: var(--text-secondary);
@@ -19,7 +19,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--bg-app);
+  min-height: 0;
+  background-color: transparent;
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
@@ -34,16 +35,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 32px 16px;
-  background-color: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
 }
 
 .title {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--theme-on-surface);
   margin: 0;
   letter-spacing: -0.5px;
@@ -51,11 +50,11 @@
 
 .scrollArea {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 88px 32px 48px 32px;
+  padding: 16px 32px 48px;
   display: flex;
   flex-direction: column;
-  height: 100%;
   box-sizing: border-box;
 }
 
@@ -65,12 +64,6 @@
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
   border-radius: 4px;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: var(--theme-on-surface-variant);
-  margin: 0 0 16px 0;
 }
 
 /* ── Dialog presentation (desktop modal) ── */
@@ -172,7 +165,7 @@
 }
 
 .dialogCloseBtn:hover {
-  background: var(--bg-surface-normal, var(--theme-surface-container-low-40));
+  background: var(--bg-surface-normal);
   color: var(--theme-on-surface);
 }
 
@@ -189,18 +182,9 @@
   background: linear-gradient(to bottom, var(--bg-surface) 75%, transparent);
 }
 
-.containerDialog .categoryList {
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.containerDialog .toolCard {
-  border-radius: 10px;
-}
-
 .containerDialog .cardMain {
   align-items: center;
-  padding: 12px 12px 12px 14px;
+  padding: 12px 4px;
 }
 
 .containerDialog .title {
@@ -208,183 +192,120 @@
 }
 
 .containerDialog .categoryHeader {
-  padding: 2px 0 8px 4px;
-  margin-bottom: 2px;
+  padding: 0 0 8px;
+  margin-bottom: 0;
 }
 
-@media (max-width: 560px) {
-  .containerDialog .categoryList {
-    grid-template-columns: 1fr;
-  }
+.containerDialog .pageCard {
+  border-radius: 10px;
 }
 
 .tabSwitcherWrapper {
   margin-bottom: 16px;
 }
 
-.tabSwitcher {
-  position: relative;
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface-normal, var(--theme-surface-container-low));
-  border-radius: 12px;
-  padding: 6px;
-  overflow: hidden;
-}
-
-.tabIndicator {
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 6px;
-  width: calc((100% - 12px - 8px) / 2);
-  border-radius: 8px;
-  background: var(--bg-surface, var(--theme-surface));
-  border: 1px solid var(--border-muted, var(--border-subtle));
-  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0, 0, 0, 0.06));
-  transition: transform 0.28s ease;
-  pointer-events: none;
-}
-
-.tabIndicatorCommunity {
-  transform: translateX(calc(100% + 8px));
-}
-
-.tabBtn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  color: var(--text-secondary, var(--theme-on-surface-variant));
-  position: relative;
-  z-index: 1;
-  transition: color 0.2s ease;
-}
-
-.tabBtn:hover {
-  color: var(--text-primary, var(--theme-on-surface));
-}
-
-.tabBtnActive {
-  color: var(--color-primary, var(--theme-primary));
-}
-
-.tabActive {
-  /* legacy alias — prefer tabBtnActive */
-}
-
-.tabText {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.tabBadge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 10px;
-  background: var(--bg-surface-high, rgba(0, 0, 0, 0.06));
-  color: var(--text-secondary, var(--theme-outline));
-}
-
-.tabBtnActive .tabBadge {
-  background: color-mix(in srgb, var(--color-primary, var(--theme-primary)) 14%, transparent);
-  color: var(--color-primary, var(--theme-primary));
-  opacity: 1;
-}
-
 .contentArea {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   min-height: 0;
 }
 
-.list {
+/* 单层大卡，分类作内部分块 */
+.pageCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 0 0 24px 0;
+  flex-shrink: 0;
 }
 
 .categoryGroup {
   display: flex;
   flex-direction: column;
-  margin-bottom: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-card);
+  background: transparent;
+}
+
+.pageCard > .categoryGroup:last-child {
+  border-bottom: none;
 }
 
 .categoryHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 0 8px 8px;
-  margin-bottom: 8px;
-  color: var(--theme-primary);
+  padding: 0 0 10px;
+  margin: 0;
+  color: var(--text-primary);
 }
 
 .categoryIcon {
   display: flex;
   align-items: center;
+  color: var(--theme-primary);
 }
 
 .categoryLabel {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
+  font-family: var(--font-family);
 }
 
 .categoryList {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
 }
 
 .toolCard {
-  border-radius: 12px;
-  border: 1px solid var(--theme-outline-variant-50);
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border: none;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-surface);
+  background-color: transparent;
 }
 
 .toolCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  background-color: var(--bg-surface-high);
 }
 
 .toolCard.enabled {
   /* 仅保留正常状态，依靠 switch 判断是否开启 */
 }
 
-.toolCard.enabled:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
 .toolCard.disabled {
-  background-color: rgba(0, 0, 0, 0.02);
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .cardMain {
   display: flex;
-  align-items: flex-start;
-  padding: 12px 8px 12px 16px;
+  align-items: center;
+  padding: 10px 8px;
   gap: 12px;
 }
 
 .toolIconWrapper {
-  padding: 8px;
+  padding: 6px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background-color: var(--theme-primary-container-50);
+  color: var(--theme-primary);
 }
 
 .enabled .toolIconWrapper {
@@ -393,12 +314,13 @@
 }
 
 .disabled .toolIconWrapper {
-  background-color: var(--theme-surface-container-highest);
-  color: var(--theme-on-surface-variant);
+  background-color: var(--theme-primary-container-50);
+  color: var(--theme-primary);
+  opacity: 0.55;
 }
 
 .toolEmoji {
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1;
 }
 
@@ -419,18 +341,15 @@
 }
 
 .toolName {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.enabled .toolName {
-  color: var(--theme-on-surface);
-}
-
+.enabled .toolName,
 .disabled .toolName {
-  color: var(--theme-on-surface-variant);
+  color: var(--theme-on-surface);
 }
 
 .toolIdTag {
@@ -490,7 +409,8 @@
   align-items: center;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid var(--theme-outline-variant-50);
+  border: 1px solid var(--form-field-border, var(--border-control));
+  background: var(--form-field-bg, var(--bg-surface));
 }
 
 .stepperBtn {
@@ -694,7 +614,7 @@ input:checked + .slider:before {
   display: flex;
   flex-direction: column;
   border-radius: 8px;
-  border: 1px solid var(--theme-outline-variant-50);
+  border: 1px solid var(--border-card);
   transition: all 0.15s ease;
   background: var(--bg-surface);
   width: 90px;
@@ -882,6 +802,36 @@ input:checked + .slider:before {
   font-weight: 600;
   cursor: pointer;
   padding: 0;
+  flex-shrink: 0;
+}
+
+/* 设置页内表情包子页：相对定位顶栏，避免被外层顶栏/分段栏挡住 */
+.emojiPageHeader {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 24px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
+  z-index: 5;
+  box-sizing: border-box;
+}
+
+.emojiPageTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emojiPageScroll {
+  padding-top: 20px;
 }
 
 .emojiSubHeader {
@@ -898,6 +848,61 @@ input:checked + .slider:before {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.emojiAddGroupCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 118px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.emojiAddGroupCard:hover {
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+  background: rgba(var(--color-primary-rgb), 0.04);
+  color: var(--color-primary);
+}
+
+.emojiAddGroupCardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+}
+
+.emojiAddGroupCardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emojiAddGroupCard:hover .emojiAddGroupCardTitle {
+  color: var(--color-primary);
+}
+
+.emojiAddGroupCardHint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  max-width: 220px;
 }
 
 .emojiEnableCard {
@@ -1109,7 +1114,9 @@ input:checked + .slider:before {
 }
 
 .emojiGroupNameInput:focus {
-  border-color: var(--theme-primary);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
+  outline: none;
 }
 
 .emojiStickerGrid {

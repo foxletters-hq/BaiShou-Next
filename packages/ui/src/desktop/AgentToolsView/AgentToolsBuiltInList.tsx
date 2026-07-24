@@ -1,103 +1,71 @@
 import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { BadgeCheck, Store } from 'lucide-react'
-import { AGENT_TOOL_CATEGORY_ORDER } from '@baishou/shared'
 import { AgentToolCard } from './AgentToolCard'
 import { AgentToolsCommunityTab } from './AgentToolsCommunityTab'
-import type { AgentToolDef, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
+import type { AgentToolDef, AgentToolsConfig, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
 import styles from './AgentToolsView.module.css'
 
 interface AgentToolsBuiltInListProps {
-  config: ToolManagementConfig
-  allTools: AgentToolDef[]
+  config: AgentToolsConfig
   categoryMeta: Record<string, { label: string; icon: React.ReactNode }>
+  categoryOrder: readonly string[]
   groupedTools: Record<string, AgentToolDef[]>
-  showCommunity: boolean
-  onShowCommunityChange: (show: boolean) => void
   onToggleTool: (toolId: string) => void
   getToolParam: (toolId: string, param: ToolConfigParam) => unknown
   setToolParam: (toolId: string, key: string, value: unknown) => void
-  onConfigChange: (config: ToolManagementConfig) => void
+  onConfigChange: (config: AgentToolsConfig) => void
   onOpenEmojiSettings: () => void
+  showEmojiTools?: boolean
 }
 
 export const AgentToolsBuiltInList: React.FC<AgentToolsBuiltInListProps> = ({
   config,
-  allTools,
   categoryMeta,
+  categoryOrder,
   groupedTools,
-  showCommunity,
-  onShowCommunityChange,
   onToggleTool,
   getToolParam,
   setToolParam,
   onConfigChange,
-  onOpenEmojiSettings
+  onOpenEmojiSettings,
+  showEmojiTools = true
 }) => {
-  const { t } = useTranslation()
-
   return (
-    <>
-      <div className={styles.tabSwitcherWrapper}>
-        <div className={styles.tabSwitcher}>
-          <div
-            className={`${styles.tabIndicator} ${showCommunity ? styles.tabIndicatorCommunity : ''}`}
-          />
-          <div
-            className={`${styles.tabBtn} ${!showCommunity ? styles.tabBtnActive : ''}`}
-            onClick={() => onShowCommunityChange(false)}
-          >
-            <BadgeCheck size={16} />
-            <span className={styles.tabText}>{t('agent.tools.built_in', '内置工具')}</span>
-            <span className={styles.tabBadge}>{allTools.length}</span>
-          </div>
-          <div
-            className={`${styles.tabBtn} ${showCommunity ? styles.tabBtnActive : ''}`}
-            onClick={() => onShowCommunityChange(true)}
-          >
-            <Store size={16} />
-            <span className={styles.tabText}>{t('agent.tools.community', '趣味工具')}</span>
-          </div>
-        </div>
-      </div>
+    <div className={styles.contentArea}>
+      <div className={styles.pageCard}>
+        {categoryOrder.map((catKey) => {
+          const list = groupedTools[catKey]
+          if (!list || list.length === 0) return null
+          const meta = categoryMeta[catKey]
+          return (
+            <div key={catKey} className={styles.categoryGroup}>
+              <div className={styles.categoryHeader}>
+                <span className={styles.categoryIcon}>{meta.icon}</span>
+                <span className={styles.categoryLabel}>{meta.label}</span>
+              </div>
+              <div className={styles.categoryList}>
+                {list.map((tool) => (
+                  <AgentToolCard
+                    key={tool.id}
+                    tool={tool}
+                    config={config}
+                    onToggle={onToggleTool}
+                    getToolParam={getToolParam}
+                    setToolParam={setToolParam}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
 
-      <div className={styles.contentArea}>
-        {!showCommunity ? (
-          <div className={styles.list}>
-            {AGENT_TOOL_CATEGORY_ORDER.map((catKey) => {
-              const list = groupedTools[catKey]
-              if (!list || list.length === 0) return null
-              const meta = categoryMeta[catKey]
-              return (
-                <div key={catKey} className={styles.categoryGroup}>
-                  <div className={styles.categoryHeader}>
-                    <span className={styles.categoryIcon}>{meta.icon}</span>
-                    <span className={styles.categoryLabel}>{meta.label}</span>
-                  </div>
-                  <div className={styles.categoryList}>
-                    {list.map((tool) => (
-                      <AgentToolCard
-                        key={tool.id}
-                        tool={tool}
-                        config={config}
-                        onToggle={onToggleTool}
-                        getToolParam={getToolParam}
-                        setToolParam={setToolParam}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
+        {showEmojiTools ? (
           <AgentToolsCommunityTab
-            config={config}
-            onConfigChange={onConfigChange}
+            config={config as ToolManagementConfig}
+            onConfigChange={onConfigChange as (config: ToolManagementConfig) => void}
             onOpenEmojiSettings={onOpenEmojiSettings}
           />
-        )}
+        ) : null}
       </div>
-    </>
+    </div>
   )
 }

@@ -1,5 +1,10 @@
-/** 工具管理页分类（内置工具 Tab） */
+/** 工具管理页分类（伙伴内置工具） */
 export type AgentToolCategory = 'diary' | 'summary' | 'memory' | 'search' | 'general'
+
+/** 工作台工具分类 */
+export type WorkspaceToolCategory = 'browse' | 'mutate' | 'command' | 'utility'
+
+export type AgentToolScene = 'companion' | 'workspace'
 
 export interface AgentToolConfigurableParamDef {
   key: string
@@ -22,8 +27,17 @@ export interface AgentToolUiDef {
   configurableParams?: AgentToolConfigurableParamDef[]
 }
 
+export interface WorkspaceToolUiDef {
+  id: string
+  category: WorkspaceToolCategory
+  nameKey: string
+  tooltipKey: string
+  canBeDisabled?: boolean
+  configurableParams?: AgentToolConfigurableParamDef[]
+}
+
 /**
- * 工具管理页「内置工具」完整列表（桌面 + 移动端共用）。
+ * 工具管理页「伙伴工具」完整列表（桌面 + 移动端共用）。
  * 顺序即页面展示顺序；分类内按数组顺序排列。
  */
 export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
@@ -143,6 +157,65 @@ export const AGENT_TOOL_UI_DEFS: readonly AgentToolUiDef[] = [
   }
 ] as const
 
+/** 工作台工具列表（按功能分类） */
+export const WORKSPACE_TOOL_UI_DEFS: readonly WorkspaceToolUiDef[] = [
+  {
+    id: 'workspace_list',
+    category: 'browse',
+    nameKey: 'agent.tools.workspace_list',
+    tooltipKey: 'agent.tools.workspace_list_tooltip'
+  },
+  {
+    id: 'workspace_read',
+    category: 'browse',
+    nameKey: 'agent.tools.workspace_read',
+    tooltipKey: 'agent.tools.workspace_read_tooltip'
+  },
+  {
+    id: 'workspace_write',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_write',
+    tooltipKey: 'agent.tools.workspace_write_tooltip'
+  },
+  {
+    id: 'workspace_patch',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_patch',
+    tooltipKey: 'agent.tools.workspace_patch_tooltip'
+  },
+  {
+    id: 'workspace_rename',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_rename',
+    tooltipKey: 'agent.tools.workspace_rename_tooltip'
+  },
+  {
+    id: 'workspace_delete',
+    category: 'mutate',
+    nameKey: 'agent.tools.workspace_delete',
+    tooltipKey: 'agent.tools.workspace_delete_tooltip'
+  },
+  {
+    id: 'workspace_run',
+    category: 'command',
+    nameKey: 'agent.tools.workspace_run',
+    tooltipKey: 'agent.tools.workspace_run_tooltip'
+  },
+  {
+    id: 'companion_ask',
+    category: 'utility',
+    nameKey: 'agent.tools.companion_ask',
+    tooltipKey: 'agent.tools.companion_ask_tooltip'
+  },
+  {
+    id: 'current_time',
+    category: 'utility',
+    nameKey: 'agent.tools.current_time',
+    tooltipKey: 'agent.tools.current_time_tooltip',
+    canBeDisabled: false
+  }
+] as const
+
 /** 工具管理页分类展示顺序 */
 export const AGENT_TOOL_CATEGORY_ORDER: readonly AgentToolCategory[] = [
   'diary',
@@ -150,6 +223,13 @@ export const AGENT_TOOL_CATEGORY_ORDER: readonly AgentToolCategory[] = [
   'memory',
   'search',
   'general'
+] as const
+
+export const WORKSPACE_TOOL_CATEGORY_ORDER: readonly WorkspaceToolCategory[] = [
+  'browse',
+  'mutate',
+  'command',
+  'utility'
 ] as const
 
 /** 仅 UI 使用的虚拟工具（非模型可调用） */

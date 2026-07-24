@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo } from 'react'
 import {
   normalizeToolManagementConfig,
   type EmojiToolConfig,
@@ -13,20 +13,15 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Platform,
-  Pressable,
-  Animated
+  Platform
 } from 'react-native'
-import { BadgeCheck, ListOrdered, Minus, Plus, Smile, Store } from 'lucide-react-native'
+import { ListOrdered, Minus, Plus, Smile } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
 import { AgentToolCategoryIcon, AgentToolIcon } from '../icons/agent-tools-icons'
 import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
-
-const TOOL_TAB_PADDING = 6
-const TOOL_TAB_GAP = 8
 
 export interface ToolManagementConfig {
   disabledToolIds: string[]
@@ -138,33 +133,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
   onChange,
   disableScroll,
-  onPickAndImportEmojis,
-  onResolveEmojiPath,
-  onDeleteEmoji,
   onOpenEmojiSettings
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
-
-  const [showCommunity, setShowCommunity] = useState(false)
-  const [toolTabsWidth, setToolTabsWidth] = useState(0)
-  const toolTabSlide = useRef(new Animated.Value(0)).current
-
-  const toolTabWidth =
-    toolTabsWidth > 0 ? (toolTabsWidth - TOOL_TAB_PADDING * 2 - TOOL_TAB_GAP) / 2 : 0
-
-  useEffect(() => {
-    Animated.timing(toolTabSlide, {
-      toValue: showCommunity ? 1 : 0,
-      duration: 280,
-      useNativeDriver: true
-    }).start()
-  }, [showCommunity, toolTabSlide])
-
-  const toolTabTranslateX = toolTabSlide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, toolTabWidth > 0 ? toolTabWidth + TOOL_TAB_GAP : 0]
-  })
+  const { colors } = useNativeTheme()
 
   const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
@@ -213,85 +185,6 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     )
   }, [allTools])
 
-  const renderTabSwitcher = () => (
-    <View style={styles.tabSwitcherWrapper}>
-      <View
-        style={[styles.tabSwitcher, { backgroundColor: colors.bgSurfaceNormal }]}
-        onLayout={(event) => setToolTabsWidth(event.nativeEvent.layout.width)}
-      >
-        {toolTabWidth > 0 ? (
-          <Animated.View
-            style={[
-              styles.tabIndicator,
-              {
-                width: toolTabWidth,
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderMuted,
-                transform: [{ translateX: toolTabTranslateX }],
-                ...Platform.select({
-                  ios: {
-                    shadowColor: '#000',
-                    shadowOpacity: 0.06,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 1 }
-                  },
-                  default: { elevation: 1 }
-                })
-              }
-            ]}
-          />
-        ) : null}
-        <Pressable style={styles.tabBtn} onPress={() => setShowCommunity(false)}>
-          <BadgeCheck
-            size={16}
-            color={!showCommunity ? colors.primary : colors.textSecondary}
-            strokeWidth={DEFAULT_STROKE_WIDTH}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              { color: !showCommunity ? colors.primary : colors.textSecondary }
-            ]}
-          >
-            {t('agent.tools.built_in', '内置工具')}
-          </Text>
-          <View
-            style={[
-              styles.tabBadge,
-              {
-                backgroundColor: !showCommunity ? colors.primaryLight : colors.bgSurfaceHigh
-              }
-            ]}
-          >
-            <Text
-              style={[
-                styles.tabBadgeText,
-                { color: !showCommunity ? colors.primary : colors.textSecondary }
-              ]}
-            >
-              {allTools.length}
-            </Text>
-          </View>
-        </Pressable>
-        <Pressable style={styles.tabBtn} onPress={() => setShowCommunity(true)}>
-          <Store
-            size={16}
-            color={showCommunity ? colors.primary : colors.textSecondary}
-            strokeWidth={DEFAULT_STROKE_WIDTH}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              { color: showCommunity ? colors.primary : colors.textSecondary }
-            ]}
-          >
-            {t('agent.tools.community', '趣味工具')}
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  )
-
   const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
     const toggleable = tool.canBeDisabled !== false
     const isEnabled = toggleable
@@ -305,35 +198,25 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
         style={
           !isLastInGroup
             ? {
-                borderBottomWidth: 1,
-                borderBottomColor: colors.borderStrong
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: colors.borderSubtle
               }
             : undefined
         }
       >
         <View style={styles.cardMain}>
-          <View style={[styles.cardMainLeading, !isEnabled && styles.cardMainDisabled]}>
-            <View
-              style={[
-                styles.toolIconWrapper,
-                {
-                  backgroundColor: isEnabled ? colors.primaryLight : colors.bgSurfaceNormal
-                }
-              ]}
-            >
+          <View style={styles.cardMainLeading}>
+            <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
               <AgentToolIcon
                 toolId={tool.id}
                 size={AGENT_TOOL_ICON_SIZE}
-                color={isEnabled ? colors.primary : colors.textSecondary}
+                color={colors.primary}
               />
             </View>
             <View style={styles.toolInfo}>
               <View style={styles.toolNameRow}>
                 <Text
-                  style={[
-                    styles.toolName,
-                    { color: isEnabled ? colors.textPrimary : colors.textSecondary }
-                  ]}
+                  style={[styles.toolName, { color: colors.textPrimary }]}
                   numberOfLines={1}
                 >
                   {tool.name}
@@ -364,18 +247,18 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 
         {hasParams && isEnabled && (
           <>
-            <View style={[styles.paramsDivider, { backgroundColor: colors.borderStrong }]} />
+            <View style={[styles.paramsDivider, { backgroundColor: colors.borderSubtle }]} />
             {tool.configurableParams?.map((param) => {
               const val = getToolParam(tool.id, param) as number
               return (
                 <View key={param.key} style={[styles.cardMain, styles.paramRow]}>
                   <View
-                    style={[styles.toolIconWrapper, { backgroundColor: colors.bgSurfaceNormal }]}
+                    style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}
                   >
                     {param.icon === 'ListOrdered' ? (
                       <ListOrdered
-                        size={18}
-                        color={colors.textSecondary}
+                        size={16}
+                        color={colors.primary}
                         strokeWidth={DEFAULT_STROKE_WIDTH}
                       />
                     ) : null}
@@ -454,87 +337,65 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     )
   }
 
-  const renderBuiltInList = () => (
-    <View style={styles.list}>
+  const emojiConfig = config.emojiConfig || { enabled: false, groups: [] }
+
+  const content = (
+    <View
+      style={[
+        styles.pageCard,
+        {
+          backgroundColor: colors.bgSurface,
+          borderColor: colors.borderStrong
+        }
+      ]}
+    >
       {AGENT_TOOL_CATEGORY_ORDER.map((catKey) => {
         const list = groupedTools[catKey]
         if (!list || list.length === 0) return null
-        const meta = (categoryMeta as any)[catKey]
+        const meta = categoryMeta[catKey]
 
         return (
-          <View key={catKey} style={styles.categoryGroup}>
+          <View
+            key={catKey}
+            style={[styles.categoryGroup, { borderBottomColor: colors.borderStrong }]}
+          >
             <View style={styles.categoryHeader}>
               <AgentToolCategoryIcon categoryId={catKey} color={colors.primary} />
-              <Text style={[styles.categoryLabel, { color: colors.primary }]}>{meta.label}</Text>
+              <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>{meta.label}</Text>
             </View>
-            <View
-              style={[
-                styles.categoryList,
-                {
-                  borderColor: colors.borderStrong,
-                  backgroundColor: colors.bgSurface
-                }
-              ]}
-            >
+            <View style={styles.categoryList}>
               {list.map((tool, index) => renderToolCard(tool, index === list.length - 1))}
             </View>
           </View>
         )
       })}
+
+      <View style={styles.categoryGroupLast}>
+        <View style={styles.categoryHeader}>
+          <Smile size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>
+            {t('settings.agent_tools_category_interaction', '互动工具')}
+          </Text>
+        </View>
+        <View style={styles.categoryList}>
+          <EmojiSettingsEntryRow config={emojiConfig} onPress={() => onOpenEmojiSettings?.()} />
+        </View>
+      </View>
     </View>
   )
 
-  const renderCommunityTab = () => {
-    const emojiConfig = config.emojiConfig || { enabled: false, groups: [] }
-
-    return (
-      <View style={styles.list}>
-        <View style={styles.categoryGroup}>
-          <View style={styles.categoryHeader}>
-            <Smile size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-            <Text style={[styles.categoryLabel, { color: colors.primary }]}>
-              {t('settings.agent_tools_category_interaction', '互动工具')}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.categoryList,
-              {
-                borderColor: colors.borderStrong,
-                backgroundColor: colors.bgSurface
-              }
-            ]}
-          >
-            <EmojiSettingsEntryRow config={emojiConfig} onPress={() => onOpenEmojiSettings?.()} />
-          </View>
-        </View>
-      </View>
-    )
+  if (disableScroll) {
+    return <View style={styles.nonScrollContainer}>{content}</View>
   }
 
-  const Container = disableScroll ? View : ScrollView
-  const containerProps = disableScroll
-    ? { style: styles.nonScrollContainer }
-    : {
-        style: styles.scroll,
-        contentContainerStyle: styles.scrollContent,
-        keyboardShouldPersistTaps: 'handled' as const
-      }
-
   return (
-    <Container {...containerProps}>
-      {!disableScroll && (
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {t('settings.agent_tools_desc', '管理伙伴可使用的工具，开关或配置工具参数')}
-        </Text>
-      )}
-
-      {renderTabSwitcher()}
-
-      <View style={styles.contentArea}>
-        {!showCommunity ? renderBuiltInList() : renderCommunityTab()}
-      </View>
-    </Container>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+    >
+      {content}
+    </ScrollView>
   )
 }
 
@@ -550,89 +411,41 @@ const styles = StyleSheet.create({
   nonScrollContainer: {
     width: '100%'
   },
-  subtitle: {
-    fontSize: 14,
-    marginBottom: 16,
-    lineHeight: 20
-  },
-  tabSwitcherWrapper: {
-    marginBottom: 16
-  },
-  tabSwitcher: {
-    flexDirection: 'row',
-    gap: TOOL_TAB_GAP,
+  pageCard: {
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 12,
-    padding: TOOL_TAB_PADDING,
-    overflow: 'hidden',
-    position: 'relative'
-  },
-  tabIndicator: {
-    position: 'absolute',
-    top: TOOL_TAB_PADDING,
-    bottom: TOOL_TAB_PADDING,
-    left: TOOL_TAB_PADDING,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth
-  },
-  tabBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 6,
-    zIndex: 1
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  tabBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 4,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  tabBadgeText: {
-    fontSize: 11,
-    fontWeight: 'bold'
-  },
-  contentArea: {
-    flex: 1
-  },
-  list: {
-    paddingBottom: 24
+    overflow: 'hidden'
   },
   categoryGroup: {
-    marginBottom: 16
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  categoryGroupLast: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 8,
-    paddingLeft: 8,
-    marginBottom: 8
+    paddingBottom: 10
   },
   categoryLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    letterSpacing: 0.5
+    letterSpacing: 0
   },
   categoryList: {
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: 'hidden'
+    backgroundColor: 'transparent'
   },
   cardMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
     gap: 12
   },
   cardMainLeading: {
@@ -641,9 +454,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     minWidth: 0
-  },
-  cardMainDisabled: {
-    opacity: 0.75
   },
   switchSlot: {
     flexShrink: 0
@@ -668,7 +478,7 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   toolName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     flexShrink: 1
   },
@@ -685,7 +495,7 @@ const styles = StyleSheet.create({
   },
   paramsDivider: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: 12
+    marginHorizontal: 4
   },
   paramRow: {
     paddingTop: 8,
@@ -729,25 +539,5 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingHorizontal: 0,
     includeFontPadding: false
-  },
-  communityBlank: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 260,
-    paddingVertical: 20
-  },
-  communityIcon: {
-    marginBottom: 16
-  },
-  communityTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8
-  },
-  communityDesc: {
-    fontSize: 13,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-    lineHeight: 18
   }
 })
