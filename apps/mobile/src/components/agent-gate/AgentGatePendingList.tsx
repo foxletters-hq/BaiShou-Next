@@ -1,11 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import {
-  selectGroupedPending,
-  selectPendingCount,
-  useAgentGateInboxStore
-} from '@baishou/store'
+import { selectGroupedPending, selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
 import { useNativeTheme } from '@baishou/ui/native'
 
 export interface AgentGatePendingListProps {
@@ -26,11 +22,17 @@ export const AgentGatePendingList: React.FC<AgentGatePendingListProps> = ({
   if (count <= 0) return null
 
   return (
-    <View style={[styles.wrap, { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }]}>
+    <View
+      style={[styles.wrap, { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }]}
+    >
       <Text style={[styles.title, { color: colors.textPrimary }]}>
         {t('agent_gate.pending_list_title', '待确认 · {{count}}', { count })}
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+      >
         {groups.flatMap((group) =>
           group.requests.map((request) => {
             const active = request.sessionId === currentSessionId
@@ -38,9 +40,7 @@ export const AgentGatePendingList: React.FC<AgentGatePendingListProps> = ({
               <Pressable
                 key={request.id}
                 onPress={() => {
-                  useAgentGateInboxStore
-                    .getState()
-                    .setFocusedRequest(request.sessionId, request.id)
+                  useAgentGateInboxStore.getState().setFocusedRequest(request.sessionId, request.id)
                   onSelect(request.sessionId, request.id)
                 }}
                 style={[

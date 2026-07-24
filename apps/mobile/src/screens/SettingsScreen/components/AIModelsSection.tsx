@@ -22,11 +22,7 @@ import { ensureGlobalGraphModelsAligned, getDefaultGlobalModels } from '@baishou
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 
-type ModelSelectorKey =
-  | 'globalDialogue'
-  | 'globalNaming'
-  | 'globalSummary'
-  | 'globalEmbedding'
+type ModelSelectorKey = 'globalDialogue' | 'globalNaming' | 'globalSummary' | 'globalEmbedding'
 
 const MODEL_FIELD_META: Array<{
   key: ModelSelectorKey | 'globalGraph'

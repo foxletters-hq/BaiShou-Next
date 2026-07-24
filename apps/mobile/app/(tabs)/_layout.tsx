@@ -88,7 +88,8 @@ export default function TabLayout() {
         options={{
           title: t('nav.agent'),
           tabBarHideOnKeyboard: false,
-          tabBarBadge: pendingGateCount > 0 ? (pendingGateCount > 99 ? '99+' : pendingGateCount) : undefined,
+          tabBarBadge:
+            pendingGateCount > 0 ? (pendingGateCount > 99 ? '99+' : pendingGateCount) : undefined,
           tabBarIcon: ({ color }) => <AppTabIcon id="agent" color={color} />
         }}
       />

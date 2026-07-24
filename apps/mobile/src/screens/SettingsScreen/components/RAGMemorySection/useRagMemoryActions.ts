@@ -220,9 +220,8 @@ export function useRagMemoryActions(
           statusText: p.status || t('common.processing')
         })
       })
-      const { consumeDiaryEmbedJobs } = await import(
-        '../../../../services/mobile-diary-embed-jobs-consumer.service'
-      )
+      const { consumeDiaryEmbedJobs } =
+        await import('../../../../services/mobile-diary-embed-jobs-consumer.service')
       await consumeDiaryEmbedJobs({
         reason: 'after-manual-batch-embed',
         force: true,
