@@ -1,60 +1,8 @@
-.container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 0;
-  background: transparent;
-  width: 100%;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-/* 对齐版本控制 / 增量同步：单层大卡片 + section 分隔 */
-.pageCard {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.section {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-card);
-  border-radius: 0;
-  padding: 20px 24px;
+.sectionBody {
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.pageCard > .section:last-child {
-  border-bottom: none;
-}
-
-.cardTitle {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.desc {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.hint {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  opacity: 0.85;
 }
 
 .textarea {
@@ -114,11 +62,19 @@
   padding: 8px 16px;
   border-radius: 8px;
   border: 1.5px solid var(--border-control);
-  background: transparent;
+  background: var(--bg-surface);
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .btn:disabled {
@@ -127,7 +83,12 @@
 }
 
 .btnPrimary {
-  border: none;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
