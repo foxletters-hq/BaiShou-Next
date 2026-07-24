@@ -35,7 +35,8 @@ export function useSettingsPaneApi() {
       refreshMcpAuthToken: s.refreshMcpAuthToken,
       setHotkeyConfig: s.setHotkeyConfig,
       setCloudSyncConfig: s.setCloudSyncConfig,
-      loadConfig: s.loadConfig
+      loadConfig: s.loadConfig,
+      reloadConfigKeys: s.reloadConfigKeys
     }))
   )
 }
