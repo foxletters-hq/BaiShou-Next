@@ -107,7 +107,9 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
         </div>
       </div>
       <div>
-        <label className={styles.fieldLabel}>{t('data_sync.file_concurrency', 'File Concurrency')}</label>
+        <label className={styles.fieldLabel}>
+          {t('data_sync.file_concurrency', 'File Concurrency')}
+        </label>
         <Select
           value={String(config.fileConcurrency || 5)}
           onChange={(e) => onChange({ fileConcurrency: parseInt(e.target.value) })}
