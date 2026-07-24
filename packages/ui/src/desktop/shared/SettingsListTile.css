@@ -13,7 +13,7 @@
 }
 
 .settings-expansion-summary-divider {
-  box-shadow: inset 0 -1px 0 var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  box-shadow: inset 0 -1px 0 var(--border-muted);
 }
 
 .settings-expansion-tile-embedded .settings-expansion-summary {
@@ -25,7 +25,7 @@
 }
 
 .settings-expansion-content-divider {
-  box-shadow: inset 0 -1px 0 var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  box-shadow: inset 0 -1px 0 var(--border-muted);
 }
 
 .settings-card-link-action {
@@ -36,20 +36,23 @@
   min-width: 128px;
   align-self: flex-end;
   margin-top: 12px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 12px;
-  background: var(--color-primary, #5ba8f5);
-  color: var(--color-on-primary, #fff);
+  padding: 9px 16px;
+  border: 1.5px solid var(--border-control);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.15s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .settings-card-link-action:hover:not(:disabled) {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .settings-card-link-action:disabled {
@@ -99,16 +102,6 @@
   background-color: transparent;
 }
 
-[data-theme='dark'] .settings-expansion-summary:hover {
-  background-color: transparent;
-}
-
-[data-theme='dark']
-  .settings-expansion-tile-embedded:not(.settings-open)
-  .settings-expansion-summary:hover {
-  background-color: transparent;
-}
-
 /* 展开按钮：圆形描边；悬停仅按钮变灰，不整行变灰 */
 .settings-expansion-toggle {
   display: inline-flex;
@@ -120,7 +113,7 @@
   border-radius: 50%;
   border: 1.5px solid var(--border-control);
   background: transparent;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -128,13 +121,7 @@
 }
 
 .settings-expansion-toggle:hover {
-  background-color: rgba(0, 0, 0, 0.06);
-  border-color: var(--border-control);
-  color: var(--text-primary);
-}
-
-[data-theme='dark'] .settings-expansion-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--bg-surface-high);
   border-color: var(--border-control);
   color: var(--text-primary);
 }
@@ -201,21 +188,12 @@
 }
 
 .settings-list-tile:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
-[data-theme='dark'] .settings-list-tile:hover {
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 /* 带展开按钮 / 禁整行灰底的列表行（需高于 .settings-list-tile:hover 优先级） */
 .settings-list-tile.settings-list-tile-expandable:hover,
 .settings-list-tile.settings-list-tile-no-row-hover:hover {
-  background-color: transparent;
-}
-
-[data-theme='dark'] .settings-list-tile.settings-list-tile-expandable:hover,
-[data-theme='dark'] .settings-list-tile.settings-list-tile-no-row-hover:hover {
   background-color: transparent;
 }
 
@@ -234,7 +212,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   flex-shrink: 0;
   font-size: 24px;
 }
@@ -256,22 +234,14 @@
 .settings-list-tile-title {
   font-size: 14px;
   font-weight: normal;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   line-height: 1.4;
-}
-
-[data-theme='dark'] .settings-list-tile-title {
-  color: rgba(255, 255, 255, 0.9);
 }
 
 .settings-list-tile-subtitle {
   font-size: 13px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   line-height: 1.4;
-}
-
-[data-theme='dark'] .settings-list-tile-subtitle {
-  color: rgba(255, 255, 255, 0.65);
 }
 
 /* monospace 字体（路径显示等） */
@@ -283,7 +253,7 @@
 
 /* Trailing 图标 */
 .settings-list-tile-trailing {
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   flex-shrink: 0;
   font-size: 22px;
 }
@@ -303,7 +273,7 @@
 /* 分割线 */
 .settings-list-divider {
   height: 1px;
-  background-color: var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  background-color: var(--border-muted);
   margin: 0;
 }
 
@@ -321,7 +291,7 @@
 .settings-empty-hint {
   padding: 16px 56px;
   font-size: 13px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 /* TextButton 样式（用于 trailing 操作按钮） */
@@ -341,7 +311,7 @@
 }
 
 .settings-text-btn:hover {
-  background-color: rgba(91, 168, 245, 0.1);
+  background-color: rgba(var(--color-primary-rgb), 0.08);
 }
 
 /* ---- Switch 开关 (复制 Flutter Switch 外观) ---- */
@@ -398,9 +368,9 @@
   width: 100px;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid var(--border-card, rgba(148, 163, 184, 0.3));
-  background: #fff;
-  color: var(--color-on-surface);
+  border: 1px solid var(--border-card);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 14px;
   font-family: inherit;
   text-align: center;
@@ -418,11 +388,6 @@
 }
 
 .settings-number-input:focus {
-  border-color: var(--color-primary);
-}
-
-[data-theme='dark'] .settings-number-input {
-  background: #fff;
-  border-color: var(--border-card, rgba(255, 255, 255, 0.15));
-  color: #1e293b;
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }

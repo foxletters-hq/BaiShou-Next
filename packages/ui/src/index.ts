@@ -80,6 +80,7 @@ export * from './agent-gate/index'
 export * from './agent-workspace/index'
 export * from './desktop/WebSearchSettingsView/index'
 export * from './desktop/SummarySettingsView/index'
+export * from './desktop/shared/index'
 
 export * from './desktop/ProfileSettingsCard/index'
 export * from './desktop/AvatarCropModal/index'

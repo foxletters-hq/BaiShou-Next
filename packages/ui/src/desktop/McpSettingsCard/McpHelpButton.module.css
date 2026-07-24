@@ -15,12 +15,12 @@
 }
 
 .helpBtn:hover {
-  background-color: rgba(var(--text-primary-rgb, 15, 23, 42), 0.06);
+  background-color: rgba(var(--text-primary-rgb), 0.06);
 }
 
 .helpBtn:active {
   transform: scale(0.92);
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.12);
+  background-color: rgba(var(--color-primary-rgb), 0.12);
 }
 
 .helpIcon {
@@ -62,8 +62,8 @@
   gap: 8px 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--color-surface-container-low, rgba(0, 0, 0, 0.03));
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface-low);
+  border: 1px solid var(--border-muted);
 }
 
 .urlLabel {
@@ -78,7 +78,7 @@
   font-size: 14px;
   font-weight: 400;
   word-break: break-all;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .section {
@@ -116,7 +116,7 @@
   font-size: 12px;
   line-height: 1.45;
   overflow-x: auto;
-  background: var(--color-surface-container-low, rgba(0, 0, 0, 0.04));
-  border: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  background: var(--bg-surface-low);
+  border: 1px solid var(--border-muted);
   color: var(--text-primary);
 }

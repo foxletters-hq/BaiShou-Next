@@ -107,7 +107,7 @@
 
 .portLabel {
   font-size: 14px;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
@@ -115,7 +115,7 @@
   flex-shrink: 0;
   font-size: 14px;
   font-weight: 400;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
 }
 
 .endpointRow {
@@ -136,11 +136,11 @@
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.01em;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .endpointUrlSecondary {
-  color: var(--text-secondary, var(--color-on-surface-variant));
+  color: var(--text-secondary);
 }
 
 .copyBtn {
@@ -152,7 +152,7 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   cursor: pointer;
   transition:
     background-color 0.2s ease,
@@ -160,8 +160,8 @@
 }
 
 .copyBtn:hover {
-  background: var(--color-surface-container-high, rgba(0, 0, 0, 0.06));
-  color: var(--color-primary, #5ba8f5);
+  background: var(--bg-surface-high);
+  color: var(--color-primary);
 }
 
 .copyBtn:active {
@@ -189,21 +189,21 @@
   width: min(400px, calc(100vw - 32px));
   padding: 20px 22px;
   border-radius: 12px;
-  background: var(--color-surface-container, #fff);
+  background: var(--bg-surface-normal);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 }
 
 .confirmTitle {
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
 .confirmMessage {
   font-size: 14px;
   line-height: 1.5;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
   margin-bottom: 18px;
 }
 
@@ -225,16 +225,16 @@
 
 .confirmCancelBtn {
   background: transparent;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 .confirmCancelBtn:hover {
-  background: var(--color-surface-container-high, rgba(0, 0, 0, 0.06));
+  background: var(--bg-surface-high);
 }
 
 .confirmDangerBtn {
-  background: var(--color-error, #dc2626);
-  color: #fff;
+  background: var(--color-error);
+  color: var(--text-on-primary);
 }
 
 .confirmDangerBtn:hover {

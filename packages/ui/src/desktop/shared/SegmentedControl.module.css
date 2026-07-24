@@ -1,0 +1,91 @@
+/**
+ * 分段滑块 — 与回忆生成设置「生成模式」同尺寸
+ * group / btn / btnActive；可选 groupStretch、groupInline、badge
+ */
+.group {
+  display: flex;
+  gap: 8px;
+  background-color: var(--bg-app);
+  padding: 4px;
+  border-radius: 8px;
+  width: fit-content;
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+.groupStretch {
+  width: 100%;
+}
+
+.groupInline {
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.groupSpaced {
+  margin-bottom: 12px;
+}
+
+.btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  /* 固定高度：6px*2 + 0.85rem*1.35，避免各页字重/徽章导致高低不一 */
+  height: calc(12px + 0.85rem * 1.35);
+  padding: 0 16px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  font-weight: 400;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.groupStretch .btn {
+  flex: 1;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.btnActive,
+.btnActive:hover:not(:disabled) {
+  /* 白底抬起选中；文字用品牌蓝 */
+  background: var(--bg-surface);
+  color: var(--color-primary);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnActive .badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: var(--text-on-primary);
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--bg-surface-high, rgba(0, 0, 0, 0.06));
+  color: var(--text-secondary);
+  box-sizing: border-box;
+  max-height: 18px;
+}

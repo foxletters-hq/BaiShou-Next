@@ -1,20 +1,36 @@
 .container {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px 32px 20px;
-  overflow-y: auto;
-  background: var(--bg-app);
+  padding: 0;
+  background: transparent;
   color: var(--text-primary);
   box-sizing: border-box;
+  flex-shrink: 0;
+  width: 100%;
 }
 
-.cardSection {
+/* 对齐版本控制：单层大卡片，内部用 section 分隔，不再套小卡片 */
+.pageCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.section {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-card);
+  border-radius: 0;
   padding: 20px 24px;
+}
+
+.pageCard > .section:last-child {
+  border-bottom: none;
 }
 
 .cardTitle {

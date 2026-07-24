@@ -25,12 +25,26 @@ export function TTSProviderSettingsForm({ vm }: { vm: TTSProviderSettingsViewMod
       </div>
 
       <div className={styles.scrollArea}>
-        <div className={styles.cardSection}>
-          <div className={styles.form}>
-            <TTSProviderSettingsFormConnectionFields vm={vm} />
-            <TTSProviderSettingsFormModelFields vm={vm} />
-            <TTSProviderSettingsFormVoiceFields vm={vm} />
-            <TTSProviderSettingsFormTestSection vm={vm} />
+        <div className={styles.pageCard}>
+          <div className={styles.blockSection}>
+            <div className={styles.form}>
+              <TTSProviderSettingsFormConnectionFields vm={vm} />
+            </div>
+          </div>
+          <div className={styles.blockSection}>
+            <div className={styles.form}>
+              <TTSProviderSettingsFormModelFields vm={vm} />
+            </div>
+          </div>
+          <div className={styles.blockSection}>
+            <div className={styles.form}>
+              <TTSProviderSettingsFormVoiceFields vm={vm} />
+            </div>
+          </div>
+          <div className={styles.blockSection}>
+            <div className={styles.form}>
+              <TTSProviderSettingsFormTestSection vm={vm} />
+            </div>
           </div>
         </div>
       </div>

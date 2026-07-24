@@ -42,20 +42,21 @@
   top: 0;
   left: 0;
   right: 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 20px 32px 16px;
-  background-color: var(--bg-glass-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  height: var(--settings-page-header-height, 64px);
+  padding: 0 32px;
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
 }
 
 .title {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 600;
+  line-height: 28px;
   color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.5px;
@@ -65,10 +66,10 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 80px 32px 48px 32px;
+  padding: var(--settings-page-scroll-padding-top, 88px) 32px 48px 32px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   height: 100%;
   box-sizing: border-box;
 }
@@ -125,32 +126,9 @@
   height: 38px; /* Match standard input height */
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .rangeInput {
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--bg-surface-normal);
-  outline: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-
-.rangeInput::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform 0.1s ease,
-    background-color 0.1s ease;
-}
-
-.rangeInput::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
-  background-color: var(--color-primary-dark);
 }
 
 .testRow {
@@ -198,7 +176,7 @@
   flex-shrink: 0;
   border: 1px solid var(--bg-surface-highest, var(--border-subtle));
   border-radius: var(--radius-md, 12px);
-  background: var(--bg-surface-low, #f6f7f8);
+  background: var(--bg-surface-low);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
@@ -208,9 +186,9 @@
 }
 
 .refAudioPickBtn:hover {
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   color: var(--text-primary);
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--color-primary);
 }
 
 .refAudioPickBtn:active {
@@ -247,9 +225,9 @@
 }
 
 .comboboxInput {
-  background-color: var(--bg-surface-low, #f6f7f8);
+  background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: var(--radius-md, 12px);
   padding: 10px 36px 10px 14px;
   font-size: 14px;
@@ -261,9 +239,9 @@
 }
 
 .comboboxInput:focus {
-  background-color: var(--bg-surface, #ffffff);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .comboboxInput::placeholder {
@@ -363,7 +341,7 @@
 }
 
 [data-theme='dark'] .selected {
-  background-color: rgba(91, 168, 245, 0.15);
+  background-color: rgba(var(--color-primary-rgb), 0.15);
   color: var(--color-primary);
 }
 
@@ -405,9 +383,9 @@
 }
 
 .passwordInput {
-  background-color: var(--bg-surface-low, #f6f7f8);
+  background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: var(--radius-md, 12px);
   padding: 10px 36px 10px 14px;
   font-size: 14px;
@@ -419,9 +397,9 @@
 }
 
 .passwordInput:focus {
-  background-color: var(--bg-surface, #ffffff);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .passwordInput::placeholder {
@@ -449,10 +427,24 @@
   color: var(--text-primary);
 }
 
-.cardSection {
+.pageCard {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.blockSection {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-card);
+  border-radius: 0;
   padding: 24px;
-  box-shadow: var(--shadow-sm);
+}
+
+.pageCard > .blockSection:last-child {
+  border-bottom: none;
 }

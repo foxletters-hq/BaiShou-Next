@@ -66,7 +66,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                         {resolveProviderTypeLabel(addModalData.type, t)}
                       </span>
                       <ChevronDown
-                        size={20}
+                        size={16}
                         className={`${styles.dropdownArrow} ${isTypeDropdownOpen ? styles.dropdownArrowOpen : ''}`}
                       />
                     </div>
@@ -144,14 +144,14 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     setSearchQuery('')
                   }}
                 >
-                  <X size={20} />
+                  <X size={16} />
                 </button>
               </div>
 
               <div className={styles.addModalBody}>
                 <p
                   style={{
-                    color: 'var(--color-text-secondary)',
+                    color: 'var(--text-secondary)',
                     marginBottom: 15,
                     fontSize: 13,
                     userSelect: 'none'

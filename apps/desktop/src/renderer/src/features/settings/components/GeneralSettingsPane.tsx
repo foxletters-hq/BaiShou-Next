@@ -12,6 +12,7 @@ import {
   AboutSettingsCard,
   RestoreBlockingOverlay,
   ChatBackgroundSettingsCard,
+  SettingsPageChrome,
   useOpenFeedbackChannel
 } from '@baishou/ui'
 import {
@@ -116,8 +117,15 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
       />
       <div
         className="settings-pane settings-pane-full"
-        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
       >
+        <SettingsPageChrome title={t('settings.general', '常规设置')}>
         <div className={styles.container}>
           <section className={styles.cardSection}>
             <div className={styles.cardHeader}>
@@ -278,6 +286,7 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
             </div>
           </section>
         </div>
+        </SettingsPageChrome>
       </div>
     </>
   )

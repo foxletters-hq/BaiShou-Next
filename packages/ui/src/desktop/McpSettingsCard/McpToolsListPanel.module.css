@@ -24,7 +24,7 @@
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
 }
 
 .toolCategory {
