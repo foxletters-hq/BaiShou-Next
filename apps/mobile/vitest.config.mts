@@ -10,7 +10,9 @@ export default defineConfig({
     alias: {
       '@baishou/core/shared': path.resolve(repoRoot, 'packages/core/src/index.shared.ts'),
       expo: path.resolve(rootDir, 'src/test-stubs/expo.ts'),
-      'expo-sqlite': path.resolve(rootDir, 'src/test-stubs/expo-sqlite.ts')
+      'expo-sqlite': path.resolve(rootDir, 'src/test-stubs/expo-sqlite.ts'),
+      'expo-crypto': path.resolve(rootDir, 'src/test-stubs/expo-crypto.ts'),
+      'react-native': path.resolve(rootDir, 'src/test-stubs/react-native.ts')
     }
   },
   test: {
