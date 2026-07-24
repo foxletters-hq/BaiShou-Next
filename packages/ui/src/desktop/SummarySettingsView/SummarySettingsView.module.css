@@ -1,61 +1,31 @@
-.container {
+.sectionBody {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 0;
-  background: transparent;
-  /* 必须随内容撑高，交给 SettingsPageChrome.scrollArea 滚动；勿用 min-height:0 */
-  flex-shrink: 0;
-  width: 100%;
-}
-
-/* 对齐版本控制 / 增量同步：单层大卡片，内部 section 分隔 */
-.pageCard {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.section {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-card);
-  border-radius: 0;
-  padding: 20px 24px;
-}
-
-.pageCard > .section:last-child {
-  border-bottom: none;
-}
-
-.cardTitleLine {
-  display: flex;
-  align-items: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  gap: 8px;
-  margin-bottom: 4px;
-  line-height: 1.4;
-}
-
-.cardDesc {
-  margin: 0 0 16px 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  line-height: 1.45;
+  gap: 12px;
+  padding: 16px;
 }
 
 .subsectionTitle {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin: 0;
   line-height: 1.4;
+}
+
+.subsectionTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 .assistantPickRow {
@@ -66,8 +36,8 @@
 }
 
 .fieldLabel {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-label-weight);
   color: var(--text-primary);
   line-height: 1.4;
 }
@@ -79,34 +49,57 @@
   border: 1.5px solid var(--border-control);
   background: var(--bg-app);
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: var(--settings-font-row-size);
 }
 
-.injectRow {
+.sectionLabelSwitch {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.injectToggleRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.injectToggleLabel {
+  font-size: var(--settings-font-row-size, 14px);
+  font-weight: var(--settings-font-row-weight, 400);
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.injectDivider {
+  height: 1px;
+  background: var(--border-muted);
+  margin: 0;
+}
+
+.injectBody {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
+  padding: 16px;
 }
 
-.injectText {
-  flex: 1;
-  min-width: 0;
-}
-
-.injectText .cardDesc {
-  margin-bottom: 0;
-}
-
-.injectText .subsectionTitle {
-  margin-bottom: 4px;
+.injectLookbackLabel {
+  font-size: var(--settings-font-row-size, 14px);
+  font-weight: var(--settings-font-row-weight, 400);
+  color: var(--text-primary);
+  line-height: 1.4;
 }
 
 .lookbackRow {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 12px;
   max-width: 200px;
 }
 
@@ -114,14 +107,14 @@
 .lookbackInput {
   width: 64px;
   padding: 4px 8px;
-  border: 1px solid var(--form-field-border, var(--border-control));
+  border: 1.5px solid var(--form-field-border, var(--border-control));
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size, 14px);
+  font-weight: var(--settings-font-section-weight, 600);
   color: var(--text-primary);
   text-align: center;
   background: var(--form-field-bg, var(--bg-surface));
-  transition: all 0.2s;
+  transition: border-color var(--duration-fast, 0.15s) ease;
   box-sizing: border-box;
 }
 
@@ -134,8 +127,7 @@
 .lookbackSliderBlock {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 12px;
+  gap: 10px;
   max-width: 420px;
 }
 
@@ -148,20 +140,18 @@
 
 .lookbackSliderContainer {
   width: 100%;
-  padding: 8px 0;
+  padding: 2px 0;
 }
 
-/* 视觉样式见 theme/range-slider.css */
 .lookbackSlider {
   width: 100%;
 }
 
 .systemPromptBlock {
-  margin-top: 16px;
-}
-
-.systemPromptBlock .cardDesc {
-  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .systemPromptArea {
@@ -170,10 +160,9 @@
   padding: 12px;
   border-radius: 8px;
   border: 1px solid var(--color-outline-variant);
-  /* 与下方模板 CodeMirror 容器一致：透出卡片 --bg-surface，不用 --bg-app */
   background: transparent;
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: var(--settings-font-desc-size);
   line-height: 1.5;
   resize: vertical;
   font-family: inherit;
@@ -234,7 +223,7 @@
 }
 
 .partnerName {
-  font-size: 0.85rem;
+  font-size: var(--settings-font-desc-size);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.4;
@@ -244,7 +233,7 @@
 }
 
 .partnerHint {
-  font-size: 0.8rem;
+  font-size: var(--settings-font-meta-size);
   color: var(--text-secondary);
   line-height: 1.35;
 }
@@ -282,9 +271,9 @@
 }
 
 .dataSourceList {
-  margin: 0 0 16px 0;
+  margin: 0;
   padding-left: 1.2em;
-  font-size: 0.85rem;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
   line-height: 1.7;
 }
@@ -294,24 +283,38 @@
 }
 
 .localeHint {
-  margin: 0 0 10px 0;
-  font-size: 0.8rem;
+  margin: 0 0 8px 0;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
+}
+
+.localeHint strong {
+  font-weight: var(--settings-font-section-weight);
+  color: var(--text-primary);
+}
+
+.localeHintMeta {
+  margin: 0 0 12px 0;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-tertiary);
+  line-height: 1.5;
 }
 
 .langBar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .langChip {
   border: 1.5px solid var(--border-control);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--settings-font-meta-size);
   padding: 6px 12px;
   border-radius: 999px;
   cursor: pointer;
@@ -346,46 +349,6 @@
   width: 100%;
 }
 
-.textArea {
-  flex: 1;
-  width: 100%;
-  resize: none;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--color-outline-variant);
-  background: transparent;
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  transition: border-color 0.2s;
-}
-
-.textArea:focus {
-  outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
-}
-
-.milkdownContainer {
-  width: 100%;
-  height: 350px;
-  min-height: 200px;
-  max-height: 80vh;
-  border-radius: 8px;
-  border: 1px solid var(--form-field-border, var(--border-control));
-  background: var(--form-field-bg, var(--bg-surface));
-  overflow-y: auto;
-  transition: border-color 0.2s;
-  resize: vertical;
-}
-
-.milkdownContainer:focus-within {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
-  outline: none;
-}
-
 .actionsRow {
   display: flex;
   justify-content: flex-end;
@@ -397,7 +360,7 @@
   background: transparent;
   border: 1px solid var(--border-muted);
   color: var(--text-tertiary);
-  font-size: 0.85rem;
+  font-size: var(--settings-font-desc-size);
   padding: 8px 20px;
   border-radius: 8px;
   cursor: pointer;
@@ -411,10 +374,10 @@
 }
 
 .saveBtn {
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  border: none;
-  font-size: 0.85rem;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
+  font-size: var(--settings-font-desc-size);
   padding: 8px 28px;
   border-radius: 8px;
   cursor: pointer;
@@ -424,8 +387,8 @@
 }
 
 .saveBtn:hover {
-  transform: translateY(-1px);
-  box-shadow: none;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .saveBtn:active {
@@ -448,7 +411,7 @@
 
 .infoDesc {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--settings-font-desc-size);
   color: var(--text-secondary);
   line-height: 1.5;
 }

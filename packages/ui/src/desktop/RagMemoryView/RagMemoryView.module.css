@@ -294,12 +294,13 @@
 }
 
 .btnBlueFlat {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  border-color: transparent;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
 }
 .btnBlueFlat:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.25);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .btnGreenOutlined {
@@ -555,25 +556,33 @@ input:checked + .slider:before {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--color-error-rgb), 0.18);
 }
 .migrationRestoreBtn,
 .migrationResumeBtn {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-label-weight, 500);
   border-radius: 8px;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
+  box-shadow: none;
+  line-height: 1.3;
 }
 .migrationRestoreBtn {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(var(--color-error-rgb), 0.1);
+  border-color: rgba(var(--color-error-rgb), 0.35);
   color: var(--color-error);
 }
 .migrationResumeBtn {
-  background: rgba(var(--color-primary-rgb), 0.12);
-  border-color: rgba(var(--color-primary-rgb), 0.35);
-  color: var(--color-primary);
+  background: var(--bg-surface);
+  border-color: var(--border-control);
+  color: var(--text-primary);
+}
+.migrationResumeBtn:hover {
+  background: var(--bg-surface-high);
 }
 .migTitle {
   font-size: 14px;
@@ -611,26 +620,31 @@ input:checked + .slider:before {
 }
 
 .dangerAlert {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(var(--color-error-rgb), 0.08);
+  border: 1px solid rgba(var(--color-error-rgb), 0.28);
   border-radius: 12px;
   padding: 16px;
+  box-sizing: border-box;
 }
 .dangerRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin: 0;
 }
 .dangerTitle {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size, 14px);
+  font-weight: var(--settings-font-section-weight, 600);
   color: var(--color-error);
 }
 .dangerDesc {
-  font-size: 13px;
-  color: var(--text-primary);
-  margin: 0 0 12px 0;
+  font-size: var(--settings-font-desc-size, 13px);
+  font-weight: var(--settings-font-desc-weight, 400);
+  color: var(--text-secondary);
+  margin: 0;
   line-height: 1.5;
 }
 .dangerBtn {
@@ -803,13 +817,16 @@ input:checked + .slider:before {
   font-size: 13px;
   font-weight: 500;
   border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .embedHintAction:hover {
-  opacity: 0.9;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
