@@ -14,9 +14,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--bg-surface-low);
+  background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: var(--radius-md);
   padding: 10px 14px;
   font-size: 14px;
@@ -30,15 +30,15 @@
 }
 
 .trigger:hover {
-  background-color: var(--bg-surface-high);
-  border-color: var(--border-control);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border, var(--border-control));
 }
 
 .trigger:focus-visible,
 .isOpen {
-  background-color: var(--bg-surface);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .valueText {
@@ -125,7 +125,7 @@
 }
 
 [data-theme='dark'] .selected {
-  background-color: rgba(91, 168, 245, 0.15);
+  background-color: rgba(var(--color-primary-rgb), 0.15);
   color: var(--color-primary);
 }
 
@@ -152,8 +152,9 @@
 
 .disabled .trigger {
   pointer-events: none;
-  background-color: var(--bg-surface-low);
-  border-color: var(--border-control);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border, var(--border-control));
+  opacity: 0.7;
 }
 
 .sizeSmall .trigger {

@@ -99,7 +99,7 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
 
             {config.target === 'local' && (
               <div className={styles.emptyLocalState}>
-                <div style={{ marginBottom: 12, color: 'var(--color-on-surface-variant)' }}>
+                <div style={{ marginBottom: 12, color: 'var(--text-secondary)', fontSize: 64 }}>
                   <Home size={64} strokeWidth={1} style={{ opacity: 0.5 }} />
                 </div>
                 <div>

@@ -26,7 +26,7 @@
   background: var(--color-primary-light);
   color: var(--color-primary);
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 600;
   padding: 4px 10px;
   border-radius: 8px;
 }
@@ -39,7 +39,7 @@
 
 .summary-card-v2-title {
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 8px 0;
 }

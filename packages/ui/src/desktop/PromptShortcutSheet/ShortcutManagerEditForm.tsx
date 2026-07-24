@@ -14,7 +14,7 @@ interface ShortcutManagerEditFormProps {
 
 const fieldLabel: React.CSSProperties = {
   fontSize: 12,
-  fontWeight: 700,
+  fontWeight: '600',
   color: 'var(--text-secondary)',
   marginBottom: 6,
   display: 'block'

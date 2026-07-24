@@ -5,15 +5,15 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: 8px;
-  border-left: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg-raised, #e8eaed);
+  border-left: 1px solid var(--border-muted);
+  background: var(--bg-surface-highest);
 }
 
 .expandBtn,
 .collapseBtn {
   border: none;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 6px;
@@ -21,8 +21,8 @@
 
 .expandBtn:hover,
 .collapseBtn:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
 }
 
 .panel {
@@ -31,8 +31,8 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  border-left: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg, #f3f4f6);
+  border-left: 1px solid var(--border-muted);
+  background: var(--bg-app);
 }
 
 .header {
@@ -42,8 +42,8 @@
   gap: 8px;
   min-height: 40px;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg-raised, #e8eaed);
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface-highest);
 }
 
 .headerTitle {
@@ -51,7 +51,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -68,7 +68,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -79,13 +79,13 @@
 }
 
 .headerIconBtn:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
 }
 
 .headerIconBtnActive {
-  color: var(--color-primary, #5ba8f5);
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .currentSessionBar {
@@ -94,21 +94,21 @@
   align-items: baseline;
   gap: 8px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg, #f3f4f6);
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-app);
 }
 
 .currentSessionLabel {
   font-size: 11px;
   font-weight: 600;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .currentSessionName {
   font-size: 13px;
   font-weight: 600;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -120,34 +120,34 @@
   min-height: 0;
   overflow: auto;
   padding: 12px;
-  background: var(--wb-chrome-bg, #f3f4f6);
+  background: var(--bg-app);
 }
 
 .sessionsBody {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: var(--wb-chrome-bg, #f3f4f6);
+  background: var(--bg-app);
 }
 
 .hint {
   margin: 0;
   font-size: 13px;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .inputArea {
   flex-shrink: 0;
   padding: 0 12px 12px;
-  background: var(--wb-chrome-bg, #f3f4f6);
+  background: var(--bg-app);
 }
 
 .noModelHint {
   margin: 0 0 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: var(--wb-chrome-bg-raised, #e8eaed);
-  color: var(--wb-chrome-fg, #57606a);
+  background: var(--bg-surface-highest);
+  color: var(--text-secondary);
   font-size: 12px;
 }

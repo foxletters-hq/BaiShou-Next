@@ -7,7 +7,7 @@
 
 .message {
   font-size: 15px;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -46,7 +46,7 @@
 }
 
 .chooseItem:hover {
-  background: var(--color-surface-variant, rgba(0, 0, 0, 0.04));
+  background: var(--bg-surface-normal));
 }
 
 .chooseItemCentered {
@@ -63,5 +63,5 @@
 .chooseLabel {
   font-size: 15px;
   font-weight: 500;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
 }

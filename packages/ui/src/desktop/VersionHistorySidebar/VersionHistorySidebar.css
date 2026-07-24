@@ -126,7 +126,7 @@
 }
 
 .vhs-diff-hunk-header {
-  color: #3b82f6;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -136,8 +136,8 @@
 }
 
 .vhs-diff-remove {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
 }
 
 .vhs-diff-normal {
@@ -182,7 +182,7 @@
 }
 
 .vhs-btn-danger {
-  background: #ef4444;
-  color: #fff;
-  border-color: #ef4444;
+  background: var(--color-error);
+  color: var(--text-on-primary);
+  border-color: var(--color-error);
 }

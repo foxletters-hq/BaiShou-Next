@@ -13,7 +13,7 @@ interface ColorPickerProps {
 export const ColorPicker: React.FC<ColorPickerProps> = ({
   value,
   onChange,
-  presets = ['#5BA8F5', '#4CAF50', '#FF9800', '#F44336', '#9C27B0']
+  presets = ['#5BA8F5', '#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#C77DFF']
 }) => {
   const { t } = useTranslation()
   const [localValue, setLocalValue] = useState(value)

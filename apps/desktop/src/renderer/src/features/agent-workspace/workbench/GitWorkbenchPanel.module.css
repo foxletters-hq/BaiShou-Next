@@ -4,7 +4,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--wb-chrome-bg, #f3f4f6);
+  background: var(--bg-app);
 }
 
 .scroll {
@@ -24,14 +24,14 @@
 .viewTitle {
   margin: 0;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .vscodeSection {
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .sectionHeader {
@@ -53,7 +53,7 @@
 
 .sectionChevron {
   flex-shrink: 0;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   transition: transform 0.15s ease;
 }
 
@@ -65,10 +65,10 @@
   flex: 1;
   min-width: 0;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .sectionBadge {
@@ -76,7 +76,7 @@
   padding: 1px 6px;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.06);
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .repoRow {
@@ -116,7 +116,7 @@
 .repoName {
   font-size: 13px;
   font-weight: 600;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -125,7 +125,7 @@
 
 .repoBranch {
   font-size: 12px;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -152,11 +152,11 @@
 }
 
 .changesSection {
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .changesSubgroup + .changesSubgroup {
-  border-top: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-top: 1px solid var(--border-muted);
 }
 
 .subgroupHeader {
@@ -191,7 +191,7 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .subgroupBadge {
@@ -199,7 +199,7 @@
   padding: 1px 6px;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.06);
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .subgroupActions {
@@ -222,7 +222,7 @@
 .treeEmpty {
   padding: 6px 12px 8px 44px;
   font-size: 12px;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   opacity: 0.75;
 }
 
@@ -258,7 +258,7 @@
   flex-shrink: 0;
   font-family: ui-monospace, monospace;
   /* VS Code：浅色状态底 + 默认前景色文字，不用白字实心块 */
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
 }
 
 .badge_added {
@@ -291,7 +291,7 @@
   min-width: 0;
   font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -309,7 +309,7 @@
 .treeActionBtn {
   border: none;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   font-size: 11px;
   font-family: inherit;
   padding: 2px 4px;
@@ -319,7 +319,7 @@
 
 .treeActionBtn:hover {
   background: rgba(0, 0, 0, 0.06);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
 }
 
 .graphBody {
@@ -350,13 +350,13 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 2px solid var(--wb-chrome-border, #d8dee4);
+  border: 2px solid var(--border-muted);
   flex-shrink: 0;
   z-index: 1;
 }
 
 .graphNodeHead {
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--color-primary);
 }
 
 .graphLine {
@@ -399,7 +399,7 @@
   flex: 1;
   min-width: 0;
   font-size: 12px;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -414,23 +414,23 @@
 
 .graphHeadBadge {
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 1px 5px;
   border-radius: 4px;
-  background: var(--color-primary, #5ba8f5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   letter-spacing: 0.02em;
 }
 
 .graphTime {
   font-size: 10px;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .graphHash {
   font-size: 10px;
   font-family: ui-monospace, monospace;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .graphFiles {
@@ -440,17 +440,17 @@
 .graphStats {
   font-size: 10px;
   font-family: ui-monospace, monospace;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .menuSectionLabel {
   padding: 4px 10px 2px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .stashMenuBlock {
@@ -466,7 +466,7 @@
 
 .stashMenuLabel {
   font-size: 11px;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -480,7 +480,7 @@
 .stashMenuBtn {
   border: none;
   background: rgba(0, 0, 0, 0.05);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 4px;
@@ -504,7 +504,7 @@
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
 }
 
 .conflictRow {
@@ -533,7 +533,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
@@ -556,10 +556,10 @@
   height: 14px;
   padding: 0 3px;
   border-radius: 7px;
-  background: var(--color-primary, #5ba8f5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 14px;
   text-align: center;
 }
@@ -579,7 +579,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
@@ -597,7 +597,7 @@
 
 .syncHint {
   font-size: 10px;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -612,8 +612,8 @@
   overflow: auto;
   padding: 4px;
   border-radius: 8px;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-editor-bg, #ffffff);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
@@ -631,7 +631,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   font-size: 12px;
   font-family: inherit;
   text-align: left;
@@ -643,14 +643,14 @@
 }
 
 .menuItemActive {
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .menuDivider {
   height: 1px;
   margin: 4px 6px;
-  background: var(--wb-chrome-border, #d8dee4);
+  background: var(--border-muted);
 }
 
 .menuInput {
@@ -658,17 +658,17 @@
   box-sizing: border-box;
   margin: 4px 0;
   padding: 6px 8px;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border: 1px solid var(--border-muted);
   border-radius: 6px;
-  background: var(--wb-chrome-bg, #f3f4f6);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: var(--bg-app);
+  color: var(--text-primary);
   font-size: 12px;
   font-family: inherit;
 }
 
 .commitBox {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-bottom: 1px solid var(--border-muted);
   flex-shrink: 0;
 }
 
@@ -678,10 +678,10 @@
   min-height: 62px;
   max-height: 120px;
   padding: 8px 10px;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border: 1px solid var(--border-muted);
   border-radius: 6px;
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 12px;
   line-height: 1.5;
   font-family: inherit;
@@ -690,7 +690,9 @@
 }
 
 .commitMessage:focus {
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
+  outline: none;
 }
 
 .commitActions {
@@ -708,8 +710,8 @@
   padding: 0 12px;
   border: 1px solid transparent;
   border-radius: 6px;
-  background: var(--color-primary, #5ba8f5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   font-size: 12px;
   font-weight: 600;
   font-family: inherit;
@@ -729,10 +731,10 @@
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border: 1px solid var(--border-muted);
   border-radius: 6px;
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
@@ -757,7 +759,7 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -782,8 +784,8 @@
   max-height: 85vh;
   overflow: auto;
   border-radius: 12px 12px 0 0;
-  background: var(--wb-editor-bg, #ffffff);
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-muted);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
 }
 
@@ -792,7 +794,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .sheetTitle {
@@ -811,13 +813,13 @@
 .sheetLabel {
   font-size: 11px;
   font-weight: 600;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .sheetDivider {
   height: 1px;
   margin: 8px 0;
-  background: var(--wb-chrome-border, #d8dee4);
+  background: var(--border-muted);
 }
 
 .tokenRow {
@@ -835,7 +837,7 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 14px;
-  border-top: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-top: 1px solid var(--border-muted);
 }
 
 .sheetBtn,
@@ -850,13 +852,13 @@
 }
 
 .sheetBtn {
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .sheetBtnPrimary {
   border: none;
-  background: var(--color-primary, #5ba8f5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
 }

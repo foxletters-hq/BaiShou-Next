@@ -17,7 +17,7 @@
 
 .timeText {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text-main);
   line-height: 1;
 }
@@ -25,7 +25,7 @@
 .dateText {
   margin-top: 4px;
   font-size: 10px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .trackerAxis {

@@ -26,6 +26,16 @@
   margin: 8px 0;
 }
 
+/* 覆盖浏览器默认 inset 粗线，预览卡片里保持轻量分割 */
+.hr {
+  border: none;
+  height: 0;
+  margin: 10px 0;
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  background: transparent;
+  color: transparent;
+}
+
 .link {
   color: var(--color-primary);
   text-decoration: none;
@@ -109,8 +119,8 @@
   border-left: 4px solid var(--color-primary);
   margin: 12px 0;
   padding: 4px 16px;
-  color: var(--color-text-secondary);
-  background: var(--color-glass-bg);
+  color: var(--text-secondary);
+  background: var(--bg-glass-surface);
   border-radius: 0 8px 8px 0;
 }
 
@@ -144,7 +154,7 @@
   margin: 16px 0;
   border-radius: 8px;
   border: 1px solid var(--color-glass-border, rgba(0, 0, 0, 0.08));
-  background: var(--bg-surface, #ffffff);
+  background: var(--bg-surface);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.015);
 }
 
@@ -157,7 +167,7 @@
 
 .tableWrap th {
   background: var(--bg-surface-hover, rgba(0, 0, 0, 0.02));
-  color: var(--text-primary, #111111);
+  color: var(--text-primary);
   font-weight: 600;
   padding: 12px 16px;
   border-bottom: 2px solid var(--color-glass-border, rgba(0, 0, 0, 0.08));
@@ -166,7 +176,7 @@
 .tableWrap td {
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-glass-border, rgba(0, 0, 0, 0.05));
-  color: var(--text-secondary, #444444);
+  color: var(--text-secondary);
 }
 
 .tableWrap tr:last-child td {
@@ -174,5 +184,5 @@
 }
 
 .tableWrap tr:hover {
-  background: var(--color-glass-bg-hover, rgba(0, 0, 0, 0.01));
+  background: color-mix(in srgb, var(--bg-surface-high) 40%, transparent);
 }

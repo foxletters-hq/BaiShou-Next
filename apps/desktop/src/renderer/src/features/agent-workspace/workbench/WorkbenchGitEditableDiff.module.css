@@ -9,8 +9,8 @@
 .header {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg, #f3f4f6);
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-app);
   flex-shrink: 0;
 }
 
@@ -18,11 +18,11 @@
   padding: 6px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .headerCell + .headerCell {
-  border-left: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-left: 1px solid var(--border-muted);
 }
 
 .body {
@@ -42,18 +42,18 @@
 }
 
 .pane + .pane {
-  border-left: 1px solid var(--wb-chrome-border, #d8dee4);
+  border-left: 1px solid var(--border-muted);
 }
 
 .readonlyPane {
-  background: var(--wb-chrome-bg, #f6f8fa);
+  background: var(--bg-surface-low);
 }
 
 .editorPane {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--wb-editor-bg, #ffffff);
+  background: var(--bg-surface);
 }
 
 .editorHost {
@@ -79,17 +79,17 @@
 .lineNum {
   padding: 0 8px;
   text-align: right;
-  color: var(--wb-chrome-fg, #8b949e);
+  color: var(--text-secondary);
   user-select: none;
-  border-right: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg, #f6f8fa);
+  border-right: 1px solid var(--border-muted);
+  background: var(--bg-surface-low);
 }
 
 .lineText {
   padding: 0 10px;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--wb-editor-fg, #24292f);
+  color: var(--text-primary);
 }
 
 .lineAdd .lineText {
@@ -103,7 +103,7 @@
 .emptyOriginal {
   padding: 24px 16px;
   font-size: 12px;
-  color: var(--wb-chrome-fg, #8b949e);
+  color: var(--text-secondary);
   font-style: italic;
   font-family: inherit;
 }
@@ -111,8 +111,8 @@
 .hint {
   padding: 8px 12px;
   font-size: 11px;
-  color: var(--wb-chrome-fg, #57606a);
-  border-top: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-chrome-bg, #f3f4f6);
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-app);
   flex-shrink: 0;
 }

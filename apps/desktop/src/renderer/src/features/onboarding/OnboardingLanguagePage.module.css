@@ -19,7 +19,7 @@
 .title {
   margin-top: 28px;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   text-align: center;
   /* 引导页背景固定为浅色，不跟随全局 dark theme 变量 */
   color: #111827;
@@ -67,11 +67,11 @@
 .langChipActive {
   border-color: #5ba8cd;
   background: rgba(154, 212, 234, 0.14);
-  font-weight: 700;
+  font-weight: 500;
   color: #5ba8cd;
 }
 
 .checkMark {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
 }

@@ -45,14 +45,14 @@
 
 .title {
   font-size: 16px;
-  font-weight: 800;
-  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
 .subtitle {
   font-size: 13px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
@@ -61,7 +61,7 @@
   height: 32px;
   border-radius: 50%;
   background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   border: none;
   cursor: pointer;
   display: flex;
@@ -71,8 +71,8 @@
 }
 
 .closeBtn:hover {
-  background: rgba(var(--color-error-rgb, 244, 67, 54), 0.1);
-  color: var(--color-error, #f44336);
+  background: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
   transform: rotate(90deg);
 }
 
@@ -107,10 +107,10 @@
 }
 
 .emojiBtn:hover {
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
-  border-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.4);
+  background: rgba(var(--color-primary-rgb), 0.15);
+  border-color: rgba(var(--color-primary-rgb), 0.4);
   transform: scale(1.2) translateY(-2px);
-  box-shadow: 0 8px 16px rgba(91, 168, 245, 0.2);
+  box-shadow: none;
 }
 
 .emojiBtn:active {

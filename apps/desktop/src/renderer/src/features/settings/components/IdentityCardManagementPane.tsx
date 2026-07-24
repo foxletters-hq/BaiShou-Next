@@ -262,7 +262,7 @@ export const IdentityCardManagementPane: React.FC = () => {
                   <button
                     type="button"
                     className="settings-text-btn"
-                    style={{ color: 'var(--color-on-surface-variant)' }}
+                    style={{ color: 'var(--text-secondary)' }}
                     onClick={() => void handleRename(persona.id)}
                   >
                     {t('common.rename', '重命名')}
@@ -271,7 +271,7 @@ export const IdentityCardManagementPane: React.FC = () => {
                     <button
                       type="button"
                       className="settings-text-btn"
-                      style={{ color: '#ef4444' }}
+                      style={{ color: 'var(--color-error)' }}
                       onClick={() => void handleDelete(persona.id)}
                     >
                       {t('workspace.delete', '删除')}

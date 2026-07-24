@@ -18,11 +18,11 @@ export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) =>
         <div
           className={styles.statIconWrapper}
           style={{
-            backgroundColor: `${getTargetColor(config.target)}15`,
+            backgroundColor: `${getTargetColor(config.target)}1a`,
             color: getTargetColor(config.target)
           }}
         >
-          {getTargetIcon(config.target)}
+          {getTargetIcon(config.target, 22)}
         </div>
         <div className={styles.statInfo}>
           <div className={styles.statLabel}>{t('data_sync.sync_target', '备份目标 (Target)')}</div>
@@ -38,7 +38,7 @@ export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) =>
             color: '#10b981'
           }}
         >
-          <Database size={20} strokeWidth={1.5} />
+          <Database size={22} strokeWidth={2} />
         </div>
         <div className={styles.statInfo}>
           <div className={styles.statLabel}>
@@ -58,7 +58,7 @@ export const CloudSyncStatCards: React.FC<CloudSyncStatCardsProps> = ({ vm }) =>
             color: '#a855f7'
           }}
         >
-          <History size={20} strokeWidth={1.5} />
+          <History size={22} strokeWidth={2} />
         </div>
         <div className={styles.statInfo}>
           <div className={styles.statLabel}>

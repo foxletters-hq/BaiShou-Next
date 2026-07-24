@@ -54,7 +54,7 @@ export const AssistantEditModelBinding: React.FC<AssistantEditModelBindingProps>
             </span>
           )}
         </div>
-        <ChevronRight size={20} color="var(--text-secondary, #64748B)" />
+        <ChevronRight size={20} color="var(--text-secondary)" />
       </div>
       {providerId ? (
         <button type="button" className={styles.restoreDefaultBtn} onClick={onClearBinding}>

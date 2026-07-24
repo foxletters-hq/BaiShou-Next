@@ -6,7 +6,7 @@ import { GripVertical, Settings, SlidersHorizontal } from 'lucide-react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
 import { useUserProfileStore } from '@baishou/store'
-import { useToast } from '@baishou/ui'
+import { useToast } from '@baishou/ui/desktop/Toast/useToast'
 import { buildAgentChatNavigationPath, isCustomUserAvatar } from '@baishou/shared'
 import appIcon from '@baishou/shared/assets/images/icon.png'
 import {

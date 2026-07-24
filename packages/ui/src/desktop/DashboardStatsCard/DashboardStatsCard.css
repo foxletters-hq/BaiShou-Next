@@ -1,6 +1,6 @@
 .dashboard-stats-card {
   padding: 20px;
-  background: var(--bg-surface, #fff);
+  background: var(--bg-surface);
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.5); /* outlineVariant */
   display: flex;
@@ -20,7 +20,7 @@
 }
 
 .stats-header-title {
-  font-weight: bold;
+  font-weight: 600;
   font-size: 14px;
   color: var(--text-primary);
 }
@@ -68,7 +68,7 @@
 
 .stats-count {
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .stats-label {

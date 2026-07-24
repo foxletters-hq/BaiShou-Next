@@ -33,10 +33,10 @@ export const CompressionChart: React.FC = () => {
         ctx.stroke()
       }
 
-      // Blue wave (Soul/Intelligence)
-      drawWave(0, '#5BA8F5', 15, 0.8)
-      // Lighter blue (Echo/Memory)
-      drawWave(10, 'rgba(91, 168, 245, 0.4)', 12, 0.5)
+      // Neutral wave (Soul/Intelligence)
+      drawWave(0, '#1A1C23', 15, 0.8)
+      // Lighter gray (Echo/Memory)
+      drawWave(10, 'rgba(26, 28, 35, 0.4)', 12, 0.5)
 
       // Draw "Compressed" Points
       for (let i = 0; i < 5; i++) {
@@ -44,10 +44,10 @@ export const CompressionChart: React.FC = () => {
         const y = centerY + Math.sin(x * 0.02 + time * 0.8) * 15
         ctx.beginPath()
         ctx.arc(x, y, 4, 0, Math.PI * 2)
-        ctx.fillStyle = '#5BA8F5'
+        ctx.fillStyle = '#1A1C23'
         ctx.fill()
         ctx.shadowBlur = 10
-        ctx.shadowColor = '#5BA8F5'
+        ctx.shadowColor = '#1A1C23'
         ctx.fill()
         ctx.shadowBlur = 0
       }

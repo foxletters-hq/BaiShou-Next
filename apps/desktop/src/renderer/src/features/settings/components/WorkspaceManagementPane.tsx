@@ -214,7 +214,7 @@ export const WorkspaceManagementPane: React.FC = () => {
                   <button
                     type="button"
                     className="settings-text-btn"
-                    style={{ color: '#ef4444' }}
+                    style={{ color: 'var(--color-error)' }}
                     onClick={() => void handleDelete(vault.name)}
                   >
                     {t('workspace.delete', '删除')}

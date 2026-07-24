@@ -227,7 +227,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
               <CheckCircle
                 size={22}
                 style={{
-                  color: 'var(--color-primary, #5BA8F5)',
+                  color: 'var(--color-primary)',
                   flexShrink: 0
                 }}
               />
@@ -246,7 +246,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
                 </button>
                 <button
                   className="settings-text-btn"
-                  style={{ color: '#ef4444' }}
+                  style={{ color: 'var(--color-error)' }}
                   onClick={() => handleDelete(vault.name)}
                 >
                   {t('workspace.delete', '删除')}

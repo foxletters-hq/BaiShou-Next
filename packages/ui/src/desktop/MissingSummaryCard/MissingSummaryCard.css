@@ -15,7 +15,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fff4e5;
+  background-color: color-mix(in srgb, var(--color-warning) 12%, var(--bg-surface));
   border-radius: 12px;
   color: #f28b50;
   font-size: 20px;
@@ -32,7 +32,7 @@
 
 .missing-title-v2 {
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   white-space: nowrap;
@@ -55,7 +55,7 @@
   font-size: 10px;
   font-weight: 600;
   color: #f28b50;
-  background-color: #fff4e5;
+  background-color: color-mix(in srgb, var(--color-warning) 12%, var(--bg-surface));
   padding: 2px 8px;
   border-radius: 12px;
 }

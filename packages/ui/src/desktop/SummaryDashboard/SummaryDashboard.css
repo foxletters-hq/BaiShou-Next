@@ -5,15 +5,15 @@
 }
 
 .dashboard-hero {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   padding: 32px 24px;
   border-radius: 16px;
-  color: #fff;
+  color: var(--text-on-primary);
 }
 
 .hero-title {
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 600;
   margin: 0 0 8px 0;
 }
 

@@ -22,14 +22,14 @@ export const DashboardHeroBanner: React.FC = () => {
         padding: '0 28px',
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: '0 8px 20px rgba(91, 168, 245, 0.25)'
+        boxShadow: '0 8px 20px rgba(var(--color-primary-rgb, 91, 168, 245), 0.25)'
       }}
     >
       <div
         style={{
           fontSize: 22,
-          fontWeight: 'bold',
-          color: '#ffffff',
+          fontWeight: '600',
+          color: 'var(--text-on-primary, #ffffff)',
           zIndex: 1,
           letterSpacing: '-0.5px'
         }}

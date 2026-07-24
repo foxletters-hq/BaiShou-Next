@@ -65,7 +65,7 @@
 
 .slideTitle {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.3px;
   line-height: 30px;
   color: #111827;
@@ -96,7 +96,7 @@
 .welcomeTitle {
   margin: 36px 0 0;
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.5px;
   color: #5ba8cd;
 }
@@ -185,7 +185,7 @@
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  color: #ffffff;
+  color: var(--text-on-primary);
   font-size: 15px;
   font-weight: 600;
   transition: opacity 0.2s ease;

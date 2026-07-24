@@ -36,7 +36,10 @@ export const AttachmentManagementPane: React.FC = () => {
   }, [])
 
   return (
-    <div className="settings-pane settings-pane-full">
+    <div
+      className="settings-pane settings-pane-full"
+      style={{ position: 'absolute', inset: 0, padding: 0, overflow: 'hidden' }}
+    >
       <AttachmentManagementView
         attachments={attachments}
         diaryAttachments={diaryAttachments}

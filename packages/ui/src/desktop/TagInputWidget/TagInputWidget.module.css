@@ -1,19 +1,15 @@
 .container {
-  background: var(--color-surface-highest-light);
-  border: 1px solid rgba(128, 128, 128, 0.2);
+  background: var(--bg-surface-highest);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   padding: 8px 12px;
   font-family: var(--font-family-main);
   transition: border-color var(--animation-micro);
 }
 
-[data-theme='dark'] .container {
-  background: var(--color-surface-highest-dark);
-}
-
 .container:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.15);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .tagsArea {
@@ -64,12 +60,12 @@
   background: transparent;
   outline: none;
   font-size: 13px;
-  color: var(--color-text-main);
+  color: var(--text-primary);
   padding: 4px 0;
 }
 
 .inputField::placeholder {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 @keyframes popIn {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, X, Check, ArrowUpCircle, BookOpen, Loader2, Copy } from 'lucide-react'
 import styles from './RecallDialog.module.css'
+import seg from '../shared/SegmentedControl.module.css'
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/DashboardSharedMemoryCard'
 import { toast } from '../Toast/useToast'
 import { Pagination } from '../Pagination/index'
@@ -109,9 +110,10 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
       <div className={styles.overlay}>
         <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
           <div className={styles.header}>
-            <div className={styles.tabs}>
-              <div
-                className={`${styles.tab} ${activeTab === 'diary' ? styles.tabActive : ''}`}
+            <div className={seg.group}>
+              <button
+                type="button"
+                className={`${seg.btn} ${activeTab === 'diary' ? seg.btnActive : ''}`}
                 onClick={() => {
                   setActiveTab('diary')
                   setSelectedIds(new Set())
@@ -119,9 +121,10 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                 }}
               >
                 {t('recall.tab_diary', '日记档案')}
-              </div>
-              <div
-                className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
+              </button>
+              <button
+                type="button"
+                className={`${seg.btn} ${activeTab === 'memory' ? seg.btnActive : ''}`}
                 onClick={() => {
                   setActiveTab('memory')
                   setSelectedIds(new Set())
@@ -129,7 +132,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                 }}
               >
                 {t('recall.tab_memory', '向量记忆')}
-              </div>
+              </button>
             </div>
             <button className={styles.closeBtn} onClick={onClose}>
               <X size={16} strokeWidth={3} />
@@ -152,17 +155,17 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <div className={styles.segmentedControl}>
+                <div className={`${seg.group} ${seg.groupInline}`}>
                   <button
                     type="button"
-                    className={`${styles.segmentBtn} ${searchMode === 'semantic' ? styles.segmentBtnActive : ''}`}
+                    className={`${seg.btn} ${searchMode === 'semantic' ? seg.btnActive : ''}`}
                     onClick={() => searchMode !== 'semantic' && onToggleSearchMode?.()}
                   >
                     {t('recall.search_semantic', '语义搜索')}
                   </button>
                   <button
                     type="button"
-                    className={`${styles.segmentBtn} ${searchMode === 'text' ? styles.segmentBtnActive : ''}`}
+                    className={`${seg.btn} ${searchMode === 'text' ? seg.btnActive : ''}`}
                     onClick={() => searchMode !== 'text' && onToggleSearchMode?.()}
                   >
                     {t('recall.search_text', '文本搜索')}

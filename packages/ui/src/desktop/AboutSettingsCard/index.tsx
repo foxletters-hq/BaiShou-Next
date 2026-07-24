@@ -329,7 +329,7 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
           <ExternalLink
             size={20}
             className="settings-list-tile-trailing"
-            style={{ color: 'var(--color-on-surface-variant)' }}
+            style={{ color: 'var(--text-secondary)' }}
           />
         </button>
       </div>

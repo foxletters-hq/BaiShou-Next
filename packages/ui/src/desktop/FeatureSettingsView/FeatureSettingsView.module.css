@@ -26,12 +26,12 @@
 .settingLabel {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
 }
 
 .settingHint {
   font-size: 12px;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
@@ -48,7 +48,7 @@
 }
 
 .switch[data-on='true'] {
-  background-color: var(--color-primary, #5ba8f5);
+  background-color: var(--color-primary);
 }
 
 .switchHandle {
@@ -78,15 +78,13 @@
 .valueDisplay {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   font-variant-numeric: tabular-nums;
   min-width: 36px;
   text-align: right;
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .rangeInput {
   flex: 1;
-  accent-color: var(--color-primary, #5ba8f5);
-  height: 6px;
-  cursor: pointer;
 }

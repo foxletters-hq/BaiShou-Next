@@ -30,7 +30,7 @@
   flex: 1;
   max-width: 360px;
   height: 32px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   padding: 0 10px;
   background: var(--bg-surface);
@@ -44,7 +44,8 @@
 
 .search:focus {
   outline: none;
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .btn {
@@ -67,9 +68,9 @@
   height: 32px;
   padding: 0 12px;
   border-radius: 8px;
-  border: 1px solid var(--color-primary, #5ba8f5);
-  background: var(--color-primary, #5ba8f5);
-  color: var(--color-on-primary, #fff);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
@@ -122,7 +123,7 @@
 }
 
 .tabActive {
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 14%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
   color: var(--text-primary);
   font-weight: 600;
 }

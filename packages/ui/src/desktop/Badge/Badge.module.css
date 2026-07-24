@@ -5,7 +5,7 @@
   background-color: var(--color-accent-green);
   color: var(--bg-surface);
   font-family: var(--font-family);
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .dot {

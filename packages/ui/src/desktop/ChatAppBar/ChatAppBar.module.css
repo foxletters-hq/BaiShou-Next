@@ -6,10 +6,8 @@
   height: 64px;
   padding: 0 20px;
   box-sizing: border-box;
-  background-color: rgba(var(--bg-surface-rgb, 255, 255, 255), 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -41,8 +39,8 @@
   height: 42px;
   border-radius: 12px; /* Super ellipse like */
   object-fit: cover;
-  background-color: var(--color-primary-container, #e3f2fd);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background-color: var(--color-primary-light);
+  box-shadow: none;
 }
 
 .avatarFallback {
@@ -58,9 +56,9 @@
     rgba(var(--color-primary-container-rgb, 227, 242, 253), 0.8),
     rgba(var(--color-secondary-container-rgb, 243, 229, 245), 0.5)
   );
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   font-size: 22px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  box-shadow: none;
 }
 
 .infoCol {
@@ -71,8 +69,8 @@
 
 .name {
   font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary, #1a1a1a);
+  font-weight: 600;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
@@ -88,11 +86,11 @@
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 6px;
-  background-color: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
-  border: 1px solid rgba(var(--color-primary-rgb, 91, 168, 245), 0.15);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.15);
 }
 
 .badgeToken {
@@ -101,7 +99,7 @@
   padding: 2px 6px;
   border-radius: 6px;
   background-color: rgba(var(--color-tertiary-rgb, 173, 136, 212), 0.1);
-  color: var(--color-tertiary, #ad88d4);
+  color: var(--color-accent-purple);
   background-clip: padding-box;
 }
 
@@ -118,7 +116,7 @@
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -127,10 +125,10 @@
 }
 
 .actionBtn:hover {
-  background-color: var(--bg-surface-low, #fafafa);
-  color: var(--text-primary, #1a1a1a);
+  background-color: var(--bg-surface-low);
+  color: var(--text-primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
 .actionBtn:active {
@@ -138,7 +136,7 @@
 }
 
 .dangerBtn:hover {
-  color: var(--color-error, #f44336);
+  color: var(--color-error);
   background-color: rgba(var(--color-error-container-rgb, 255, 235, 238), 0.6);
 }
 
@@ -150,10 +148,10 @@
 
 .nameInput {
   font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary, #1a1a1a);
+  font-weight: 600;
+  color: var(--text-primary);
   line-height: 1.2;
-  border: 1px dashed rgba(var(--color-primary-rgb, 91, 168, 245), 0.5);
+  border: 1px dashed rgba(var(--color-primary-rgb), 0.5);
   background: transparent;
   outline: none;
   padding: 0;
@@ -164,7 +162,8 @@
 
 .nameInput:focus {
   border-style: solid;
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .inlineEditBtn {
@@ -174,7 +173,7 @@
   border-radius: 4px;
   border: none;
   background: transparent;
-  color: var(--text-tertiary, #94a3b8);
+  color: var(--text-tertiary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -200,7 +199,7 @@
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background: var(--bg-surface, #ffffff);
+  background: var(--bg-surface);
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
   border-radius: 12px;
@@ -218,7 +217,7 @@
   padding: 8px 12px;
   border: none;
   background: transparent;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
   font-size: 13px;
   text-align: left;
   border-radius: 8px;
@@ -227,13 +226,13 @@
 }
 
 .dropdownItem:hover {
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.08);
+  background: rgba(var(--color-primary-rgb), 0.08);
 }
 
 .dangerText {
-  color: var(--color-error, #f44336);
+  color: var(--color-error);
 }
 
 .dangerText:hover {
-  background: rgba(var(--color-error-rgb, 244, 67, 54), 0.08);
+  background: rgba(var(--color-error-rgb), 0.08);
 }

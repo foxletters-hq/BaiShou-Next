@@ -69,7 +69,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
             <span
               style={{
                 fontSize: 13,
-                fontWeight: 'bold',
+                fontWeight: '600',
                 color: 'var(--color-primary)',
                 marginRight: 4
               }}
@@ -165,7 +165,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
             <span
               style={{
                 fontSize: 13,
-                fontWeight: 'bold',
+                fontWeight: '600',
                 color: 'var(--color-primary)',
                 marginRight: 8
               }}
@@ -245,7 +245,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               <span
                 style={{
                   fontSize: 13,
-                  fontWeight: 'bold',
+                  fontWeight: '600',
                   color: 'var(--color-primary)'
                 }}
               >
@@ -337,7 +337,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
                   border: 'none',
                   cursor: isSaving ? 'not-allowed' : 'pointer',
                   background: 'var(--color-primary)',
-                  color: 'var(--color-on-primary, #fff)',
+                  color: 'var(--text-on-primary)',
                   opacity: isSaving ? 0.6 : 1
                 }}
                 onClick={() => {

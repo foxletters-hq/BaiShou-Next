@@ -21,14 +21,14 @@
   max-width: min(360px, 90vw);
   padding: 28px 32px;
   border-radius: var(--radius-xl, 20px);
-  background-color: var(--bg-surface, #ffffff);
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
   text-align: center;
 }
 
 .spinner {
-  color: var(--primary, #6366f1);
+  color: var(--color-primary);
   animation: spin 1.2s linear infinite;
 }
 
@@ -36,14 +36,14 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--text-primary);
   line-height: 1.4;
 }
 
 .hint {
   margin: 0;
   font-size: 13px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 

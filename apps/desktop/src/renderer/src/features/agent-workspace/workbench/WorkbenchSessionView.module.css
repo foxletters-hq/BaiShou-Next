@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--wb-chrome-bg, #f3f4f6);
+  background: var(--bg-app);
 }
 
 .toolbar {
@@ -19,7 +19,7 @@
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
@@ -27,27 +27,23 @@
   width: 100%;
   height: 32px;
   padding: 0 10px 0 30px;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border: 1px solid var(--border-muted);
   border-radius: 8px;
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 13px;
   font-family: inherit;
   box-sizing: border-box;
 }
 
 .searchInput::placeholder {
-  color: var(--wb-chrome-fg-faint, #8c959f);
+  color: var(--text-tertiary);
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: color-mix(
-    in srgb,
-    var(--color-primary, #5ba8f5) 50%,
-    var(--wb-chrome-border, #d8dee4)
-  );
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #5ba8f5) 14%, transparent);
+  border-color: var(--border-muted);
+  box-shadow: none;
 }
 
 .currentBlock {
@@ -56,15 +52,15 @@
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid
-    color-mix(in srgb, var(--color-primary, #5ba8f5) 30%, var(--wb-chrome-border, #d8dee4));
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 8%, var(--wb-editor-bg, #ffffff));
+    color-mix(in srgb, var(--color-primary) 30%, var(--border-muted));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
 }
 
 .currentLabel {
   display: block;
   font-size: 11px;
   font-weight: 600;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
@@ -72,7 +68,7 @@
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -89,7 +85,7 @@
   margin: 0;
   padding: 16px 12px;
   font-size: 13px;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
@@ -102,7 +98,7 @@
   padding: 0 4px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .sessionList {
@@ -137,16 +133,16 @@
   text-align: left;
   padding: 8px 10px;
   cursor: pointer;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
 }
 
 .sessionBtn:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 5%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
 }
 
 .sessionBtnActive {
-  background: var(--wb-editor-bg, #ffffff);
-  border-color: var(--wb-chrome-border, #d8dee4);
+  background: var(--bg-surface);
+  border-color: var(--border-muted);
   box-shadow: 0 1px 2px color-mix(in srgb, #000 4%, transparent);
 }
 
@@ -162,7 +158,7 @@
 .sessionMeta {
   width: 100%;
   font-size: 11px;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .sessionActions {
@@ -181,7 +177,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -191,8 +187,8 @@
 }
 
 .iconBtn:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
 }
 
 .iconBtnDanger:hover {
@@ -213,19 +209,16 @@
   min-width: 0;
   height: 30px;
   padding: 0 8px;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border: 1px solid var(--border-muted);
   border-radius: 6px;
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 13px;
   font-family: inherit;
 }
 
 .editInput:focus {
   outline: none;
-  border-color: color-mix(
-    in srgb,
-    var(--color-primary, #5ba8f5) 50%,
-    var(--wb-chrome-border, #d8dee4)
-  );
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }

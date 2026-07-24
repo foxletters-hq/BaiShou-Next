@@ -10,6 +10,7 @@ import {
   Trash2
 } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
+import seg from '../shared/SegmentedControl.module.css'
 import { Tooltip } from '../Tooltip/Tooltip'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 
@@ -68,17 +69,17 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
   return (
     <>
       <div className={styles.tabsToolbarRow}>
-        <div className={styles.tabsContainer}>
+        <div className={seg.group}>
           <button
             type="button"
-            className={`${styles.tabButton} ${activeTab === 'cloud' ? styles.tabButtonActive : ''}`}
+            className={`${seg.btn} ${activeTab === 'cloud' ? seg.btnActive : ''}`}
             onClick={() => setActiveTab('cloud')}
           >
             {t('data_sync.cloud_backups_tab', '云端备份')}
           </button>
           <button
             type="button"
-            className={`${styles.tabButton} ${activeTab === 'snapshot' ? styles.tabButtonActive : ''}`}
+            className={`${seg.btn} ${activeTab === 'snapshot' ? seg.btnActive : ''}`}
             onClick={() => setActiveTab('snapshot')}
           >
             {t('data_sync.local_snapshots_tab', '本地快照')}
@@ -86,7 +87,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
           {showLocalArchive ? (
             <button
               type="button"
-              className={`${styles.tabButton} ${activeTab === 'local' ? styles.tabButtonActive : ''}`}
+              className={`${seg.btn} ${activeTab === 'local' ? seg.btnActive : ''}`}
               onClick={() => setActiveTab('local')}
             >
               {t('data_sync.local_backup_tab', '本地备份')}

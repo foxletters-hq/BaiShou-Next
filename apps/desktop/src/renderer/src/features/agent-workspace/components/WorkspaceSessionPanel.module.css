@@ -19,7 +19,7 @@
 .workspaceName {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -44,8 +44,8 @@
   gap: 6px;
   border: none;
   border-radius: 10px;
-  background: var(--color-primary, #5ba8f5);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
@@ -106,7 +106,7 @@
 
 .sessionBtnActive {
   border-color: var(--border-subtle);
-  background: rgba(var(--color-primary-rgb, 91, 168, 245), 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
 }
 
 .sessionTitle {

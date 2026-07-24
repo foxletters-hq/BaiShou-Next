@@ -168,10 +168,10 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
               }}
             />
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+              <div style={{ fontWeight: '600', fontSize: 15 }}>
                 {t('developer.open_onboarding', '打开开屏引导')}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                 {t('developer.open_onboarding_desc', '跳转到首次启动引导页，用于预览和调试。')}
               </div>
             </div>
@@ -182,7 +182,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
 
       <div
         className="glass-panel-card"
-        style={{ padding: 0, border: '1px solid rgba(91, 168, 245, 0.35)', marginBottom: 16 }}
+        style={{ padding: 0, border: '1px solid rgba(var(--color-primary-rgb), 0.35)', marginBottom: 16 }}
       >
         <div
           className="settings-action-item"
@@ -203,10 +203,10 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             }}
           />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+            <div style={{ fontWeight: '600', fontSize: 15 }}>
               {t('developer.open_onboarding', '预览开屏引导')}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               {t(
                 'developer.open_onboarding_desc',
                 '跳转到首次启动引导页，用于检查文案与排版（不会修改已有数据）。'
@@ -235,14 +235,14 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             size={24}
             style={{
               marginRight: 16,
-              color: 'var(--color-on-surface)'
+              color: 'var(--text-primary)'
             }}
           />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+            <div style={{ fontWeight: '600', fontSize: 15 }}>
               {t('developer.load_demo_data', '创建演示工作空间')}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               {t(
                 'developer.load_demo_desc',
                 '新建独立工作空间并写入 66 条日记与 17 篇总结（脱敏演示数据）。'
@@ -283,10 +283,10 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
             }}
           />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15 }}>
+            <div style={{ fontWeight: '600', fontSize: 15 }}>
               {t('developer.insert_compression_test', '注入压缩测试对话')}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               {t(
                 'developer.insert_compression_test_desc',
                 '新建一条含 15 轮、约 3 万 tokens 的模拟 AI 对话（含工具调用），用于测试滚动压缩。'
@@ -321,7 +321,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
         >
           <Trash2 size={24} style={{ marginRight: 16, color: '#f44336' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15, color: '#f44336' }}>
+            <div style={{ fontWeight: '600', fontSize: 15, color: '#f44336' }}>
               {t('developer.clear_all_data', '清理所有数据 (核弹级)')}
             </div>
             <div style={{ fontSize: 13, opacity: 0.8 }}>
@@ -355,7 +355,7 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
         >
           <Database size={24} style={{ marginRight: 16, color: '#ff9800' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 'bold', fontSize: 15, color: '#ff9800' }}>
+            <div style={{ fontWeight: '600', fontSize: 15, color: '#ff9800' }}>
               {t('developer.clear_agent_db', '清理 Agent 数据库')}
             </div>
             <div style={{ fontSize: 13, opacity: 0.8 }}>

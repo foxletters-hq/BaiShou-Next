@@ -136,191 +136,199 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
           </div>
         )}
 
-        {/* Animated Toolbar */}
-        <AnimatePresence initial={false}>
-          {showToolbar && (
-            <motion.div
-              className={styles.toolbarWrapper}
-              initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-              animate={{ height: 'auto', opacity: 1, marginBottom: 2 }}
-              exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              onAnimationComplete={updateToolbarScrollState}
-            >
-              <div className={styles.toolbarRow}>
-                {toolbarOverflow && (
-                  <button
-                    type="button"
-                    className={styles.toolbarScrollBtn}
-                    onClick={() => scrollToolbar(-1)}
-                    disabled={!toolbarCanScrollLeft}
-                    aria-label={t('input.toolbar_scroll_left', '向左滚动工具栏')}
-                    title={t('input.toolbar_scroll_left', '向左滚动')}
+        <div
+          className={`${styles.composerShell} ${isExpanded ? styles.composerShellExpanded : ''}`}
+        >
+          {/* Animated Toolbar — 与输入卡共用外框，滑出时连体 */}
+          <AnimatePresence initial={false}>
+            {showToolbar && (
+              <motion.div
+                className={styles.toolbarWrapper}
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                style={{ overflow: 'hidden' }}
+                onAnimationComplete={updateToolbarScrollState}
+              >
+                <div className={styles.toolbarRow}>
+                  {toolbarOverflow && (
+                    <button
+                      type="button"
+                      className={styles.toolbarScrollBtn}
+                      onClick={() => scrollToolbar(-1)}
+                      disabled={!toolbarCanScrollLeft}
+                      aria-label={t('input.toolbar_scroll_left', '向左滚动工具栏')}
+                      title={t('input.toolbar_scroll_left', '向左滚动')}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                  )}
+                  <div
+                    ref={toolbarViewportRef}
+                    className={styles.toolbarViewport}
+                    onScroll={updateToolbarScrollState}
                   >
-                    <ChevronLeft size={16} />
-                  </button>
-                )}
-                <div
-                  ref={toolbarViewportRef}
-                  className={styles.toolbarViewport}
-                  onScroll={updateToolbarScrollState}
-                >
-                  <div className={styles.toolbarScroll}>
-                    <QuickActionChip
-                      icon={<Paperclip size={14} />}
-                      label={t('input.upload_attachment', '上传附件')}
-                      onClick={handlePickFiles}
-                    />
-                    <QuickActionChip
-                      icon={<Zap size={14} />}
-                      label={t('input.shortcut_command', '快捷指令')}
-                      onClick={handlePromptShortcut}
-                    />
-                    {onRecall && (
+                    <div className={styles.toolbarScroll}>
                       <QuickActionChip
-                        icon={<BookOpen size={14} />}
-                        label={t('settings.recall_memories')}
-                        onClick={onRecall}
+                        icon={<Paperclip size={14} />}
+                        label={t('input.upload_attachment', '上传附件')}
+                        onClick={handlePickFiles}
                       />
-                    )}
-                    <QuickActionChip
-                      icon={
-                        searchMode ? (
-                          <Globe size={14} />
-                        ) : (
-                          <span style={{ opacity: 0.5 }}>
+                      <QuickActionChip
+                        icon={<Zap size={14} />}
+                        label={t('input.shortcut_command', '快捷指令')}
+                        onClick={handlePromptShortcut}
+                      />
+                      {onRecall && (
+                        <QuickActionChip
+                          icon={<BookOpen size={14} />}
+                          label={t('settings.recall_memories')}
+                          onClick={onRecall}
+                        />
+                      )}
+                      <QuickActionChip
+                        icon={
+                          searchMode ? (
                             <Globe size={14} />
-                          </span>
-                        )
-                      }
-                      label={
-                        searchMode
-                          ? t('settings.web_search_mode_tool')
-                          : t('settings.web_search_mode_off')
-                      }
-                      isActive={searchMode}
-                      onClick={toggleSearchMode}
-                    />
-                    {onToggleTtsMode && (
-                      <QuickActionChip
-                        icon={<Volume2 size={14} />}
-                        label={
-                          ttsMode === 'always'
-                            ? t('agent.chat.tts_always', '始终朗读')
-                            : t('agent.chat.tts_manual', '手动朗读')
+                          ) : (
+                            <span style={{ opacity: 0.5 }}>
+                              <Globe size={14} />
+                            </span>
+                          )
                         }
-                        isActive={ttsMode === 'always'}
-                        onClick={onToggleTtsMode}
+                        label={
+                          searchMode
+                            ? t('settings.web_search_mode_tool')
+                            : t('settings.web_search_mode_off')
+                        }
+                        isActive={searchMode}
+                        onClick={toggleSearchMode}
                       />
-                    )}
-                    {onOpenTools && (
-                      <QuickActionChip
-                        icon={<LayoutGrid size={14} />}
-                        label={t('settings.agent_tools_title', '工具管理')}
-                        onClick={onOpenTools}
-                      />
-                    )}
+                      {onToggleTtsMode && (
+                        <QuickActionChip
+                          icon={<Volume2 size={14} />}
+                          label={
+                            ttsMode === 'always'
+                              ? t('agent.chat.tts_always', '始终朗读')
+                              : t('agent.chat.tts_manual', '手动朗读')
+                          }
+                          isActive={ttsMode === 'always'}
+                          onClick={onToggleTtsMode}
+                        />
+                      )}
+                      {onOpenTools && (
+                        <QuickActionChip
+                          icon={<LayoutGrid size={14} />}
+                          label={t('settings.agent_tools_title', '工具管理')}
+                          onClick={onOpenTools}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  {toolbarOverflow && (
+                    <button
+                      type="button"
+                      className={styles.toolbarScrollBtn}
+                      onClick={() => scrollToolbar(1)}
+                      disabled={!toolbarCanScrollRight}
+                      aria-label={t('input.toolbar_scroll_right', '向右滚动工具栏')}
+                      title={t('input.toolbar_scroll_right', '向右滚动')}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Input Card */}
+          <div
+            className={`${styles.inputCard} ${isExpanded ? styles.inputCardExpanded : ''} ${isAnimating ? styles.inputCardAnimating : ''}`}
+          >
+            <div className={styles.topRow}>
+              <div className={styles.inputWrapper}>
+                <textarea
+                  ref={textareaRef}
+                  className={`${styles.textarea} ${isExpanded ? styles.textareaExpanded : ''}`}
+                  placeholder={t(
+                    'agent.chat.input_hint',
+                    'Type a message… Shift+Enter for new line'
+                  )}
+                  value={text}
+                  onChange={handleTextChange}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  rows={1}
+                />
+              </div>
+
+              {isExpanded && (
+                <div
+                  className={styles.resizeHandle}
+                  onMouseDown={handleMouseDown}
+                  title={t('input.drag_resize', '拖拽调整高度')}
+                >
+                  <div className={styles.resizeHandleIcon}>
+                    <span />
+                    <span />
                   </div>
                 </div>
-                {toolbarOverflow && (
-                  <button
-                    type="button"
-                    className={styles.toolbarScrollBtn}
-                    onClick={() => scrollToolbar(1)}
-                    disabled={!toolbarCanScrollRight}
-                    aria-label={t('input.toolbar_scroll_right', '向右滚动工具栏')}
-                    title={t('input.toolbar_scroll_right', '向右滚动')}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              )}
 
-        {/* Input Card */}
-        <div
-          className={`${styles.inputCard} ${isExpanded ? styles.inputCardExpanded : ''} ${isAnimating ? styles.inputCardAnimating : ''}`}
-        >
-          <div className={styles.topRow}>
-            <div className={styles.inputWrapper}>
-              <textarea
-                ref={textareaRef}
-                className={`${styles.textarea} ${isExpanded ? styles.textareaExpanded : ''}`}
-                placeholder={t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line')}
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                rows={1}
-              />
+              {/* Expand/Collapse Toggle Button */}
+              <button
+                className={styles.expandToggleBtn}
+                onClick={toggleExpand}
+                type="button"
+                title={
+                  isExpanded ? t('input.collapse', '折叠输入框') : t('input.expand', '展开输入框')
+                }
+              >
+                {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
             </div>
 
-            {isExpanded && (
-              <div
-                className={styles.resizeHandle}
-                onMouseDown={handleMouseDown}
-                title={t('input.drag_resize', '拖拽调整高度')}
+            <div className={styles.bottomRow}>
+              <button
+                className={styles.appMenuBtn}
+                onClick={() =>
+                  setShowToolbar((prev) => {
+                    const next = !prev
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('baishou_toolbar_open', String(next))
+                    }
+                    return next
+                  })
+                }
+                type="button"
               >
-                <div className={styles.resizeHandleIcon}>
-                  <span />
-                  <span />
-                </div>
+                {showToolbar ? <LayoutGrid size={20} /> : <Menu size={20} />}
+              </button>
+
+              <div className={styles.sendBtnWrapper}>
+                {isLoading ? (
+                  <motion.button
+                    className={`${styles.actionBtn} ${styles.stopBtn}`}
+                    onClick={onStop}
+                    type="button"
+                    whileTap={{ scale: 0.92 }}
+                  >
+                    <Square size={20} />
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    className={`${styles.actionBtn} ${styles.sendBtn} ${!text.trim() && attachments.length === 0 ? styles.sendBtnDisabled : ''}`}
+                    onClick={handleSend}
+                    disabled={isSending || (!text.trim() && attachments.length === 0)}
+                    type="button"
+                    whileTap={{ scale: 0.92 }}
+                  >
+                    <Send size={18} />
+                  </motion.button>
+                )}
               </div>
-            )}
-
-            {/* Expand/Collapse Toggle Button */}
-            <button
-              className={styles.expandToggleBtn}
-              onClick={toggleExpand}
-              type="button"
-              title={
-                isExpanded ? t('input.collapse', '折叠输入框') : t('input.expand', '展开输入框')
-              }
-            >
-              {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
-          </div>
-
-          <div className={styles.bottomRow}>
-            <button
-              className={styles.appMenuBtn}
-              onClick={() =>
-                setShowToolbar((prev) => {
-                  const next = !prev
-                  if (typeof window !== 'undefined') {
-                    localStorage.setItem('baishou_toolbar_open', String(next))
-                  }
-                  return next
-                })
-              }
-              type="button"
-            >
-              {showToolbar ? <LayoutGrid size={20} /> : <Menu size={20} />}
-            </button>
-
-            <div className={styles.sendBtnWrapper}>
-              {isLoading ? (
-                <motion.button
-                  className={`${styles.actionBtn} ${styles.stopBtn}`}
-                  onClick={onStop}
-                  type="button"
-                  whileTap={{ scale: 0.92 }}
-                >
-                  <Square size={20} />
-                </motion.button>
-              ) : (
-                <motion.button
-                  className={`${styles.actionBtn} ${styles.sendBtn} ${!text.trim() && attachments.length === 0 ? styles.sendBtnDisabled : ''}`}
-                  onClick={handleSend}
-                  disabled={isSending || (!text.trim() && attachments.length === 0)}
-                  type="button"
-                  whileTap={{ scale: 0.92 }}
-                >
-                  <Send size={18} />
-                </motion.button>
-              )}
             </div>
           </div>
         </div>

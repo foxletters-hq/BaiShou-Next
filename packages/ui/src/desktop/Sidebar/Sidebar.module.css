@@ -20,7 +20,7 @@
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: var(--color-primary);
+  background: var(--bg-surface-high);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -49,7 +49,7 @@
 .tagline {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .navList {
@@ -64,10 +64,12 @@
 .navItem {
   display: flex;
   align-items: center;
-  padding: 12px 12px;
+  padding: 9px 12px;
   border-radius: 10px;
   cursor: pointer;
-  transition: all var(--animation-micro);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
   position: relative;
   background: transparent;
 }
@@ -77,8 +79,8 @@
 }
 
 .navItem.active {
-  background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-surface-high);
+  box-shadow: none;
 }
 
 .navItem.dragging {
@@ -103,7 +105,7 @@
 
 .dragIndicator {
   font-size: 16px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .itemIcon {
@@ -113,7 +115,7 @@
   width: 24px;
   height: 24px;
   font-size: 18px;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   transition: color var(--animation-micro);
 }
 
@@ -129,12 +131,13 @@
   margin-left: 12px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  line-height: 1.25;
+  color: var(--text-primary);
   transition: all var(--animation-micro);
 }
 
 .navItem.active .itemLabel {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--color-primary);
 }
 
@@ -156,12 +159,12 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(91, 168, 245, 0.15);
+  background: rgba(var(--color-primary-rgb), 0.15);
   display: flex;
   justify-content: center;
   align-items: center;
   color: var(--color-primary);
-  font-weight: 700;
+  font-weight: 600;
   overflow: hidden;
 }
 
@@ -178,7 +181,7 @@
 
 .nickname {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-text-main);
   white-space: nowrap;
   overflow: hidden;

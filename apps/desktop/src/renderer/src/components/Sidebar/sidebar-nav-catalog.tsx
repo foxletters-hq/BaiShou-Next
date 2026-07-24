@@ -4,8 +4,8 @@ import type { TFunction } from 'i18next'
 import {
   Archive,
   BookOpen,
-  Boxes,
   Cable,
+  Layers,
   Cloud,
   Database,
   Globe,
@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Settings,
   Share2,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Volume2,
@@ -57,6 +58,7 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'rag',
   'web-search',
   'agent-tools',
+  'workspace-gate',
   'summary-settings',
   'tts',
   'incremental-sync',
@@ -139,7 +141,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L107',
       '记忆与工具'
     ),
-    itemIds: ['rag', 'web-search', 'agent-tools', 'tts']
+    itemIds: ['rag', 'web-search', 'agent-tools', 'workspace-gate', 'tts']
   },
   {
     key: 'sync',
@@ -167,6 +169,7 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   rag: `${SETTINGS_HUB_PREFIX}/rag`,
   'web-search': `${SETTINGS_HUB_PREFIX}/web-search`,
   'agent-tools': `${SETTINGS_HUB_PREFIX}/agent-tools`,
+  'workspace-gate': `${SETTINGS_HUB_PREFIX}/workspace-gate`,
   'summary-settings': `${SETTINGS_HUB_PREFIX}/summary`,
   tts: `${SETTINGS_HUB_PREFIX}/tts`,
   lan: `${SETTINGS_HUB_PREFIX}/lan-transfer`,
@@ -192,7 +195,7 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       path: '/chat'
     },
     workbench: {
-      icon: icon(<Boxes />),
+      icon: icon(<Layers />),
       label: t('nav.workbench', '工作台'),
       path: '/agent-workspace'
     },
@@ -248,8 +251,13 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
     },
     'agent-tools': {
       icon: icon(<Puzzle />),
-      label: t('settings.agent_tools_title', '工具管理'),
+      label: t('settings.companion_chat_tools_title', '伙伴对话'),
       path: `${SETTINGS_HUB_PREFIX}/agent-tools`
+    },
+    'workspace-gate': {
+      icon: icon(<ShieldCheck />),
+      label: t('settings.workspace_gate_page_title', '工作台权限'),
+      path: `${SETTINGS_HUB_PREFIX}/workspace-gate`
     },
     'summary-settings': {
       icon: icon(<Sparkles />),

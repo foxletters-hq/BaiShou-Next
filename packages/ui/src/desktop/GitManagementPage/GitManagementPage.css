@@ -9,62 +9,41 @@
   display: flex;
   align-items: center;
   padding: 12px 32px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-muted);
   position: sticky;
   top: 0;
   z-index: 50;
 }
 
-.gmp-tabs {
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface-normal);
-  padding: 6px;
-  border-radius: var(--radius-md);
-}
-
-.gmp-tab {
-  padding: 8px 16px;
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 14px;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s var(--ease-in-out);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.gmp-tab:hover {
-  color: var(--text-primary);
-  background: var(--bg-surface);
-}
-
-.gmp-tab.active {
-  color: var(--color-primary);
-  background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
-}
-
 .gmp-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 24px 32px 48px;
   background: transparent;
 }
 
-.gmp-section {
+.gmp-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.gmp-section {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-card);
+  border-radius: 0;
   padding: 20px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
+}
+
+.gmp-card > .gmp-section:last-child,
+.gmp-card > .gmp-conflict:last-child {
+  border-bottom: none;
 }
 
 .gmp-section-header {
@@ -83,11 +62,9 @@
 .gmp-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 8px;
-  background: var(--bg-glass-inset);
-  backdrop-filter: var(--blur-overlay);
-  -webkit-backdrop-filter: var(--blur-overlay);
+  background: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
@@ -98,8 +75,9 @@
 }
 
 .gmp-input:focus {
-  border-color: var(--color-primary);
-  background: var(--bg-glass-surface);
+  border-color: var(--form-field-border, var(--border-control));
+  background: var(--form-field-bg, var(--bg-surface));
+  box-shadow: none;
 }
 
 .gmp-switch {
@@ -205,7 +183,8 @@
 }
 
 .gmp-conflict {
-  border-color: var(--color-warning);
+  border-bottom: 1px solid var(--border-card);
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
 }
 
 .gmp-conflict-row {
@@ -383,7 +362,7 @@
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   border-radius: 4px;
   flex-shrink: 0;
   font-family: monospace;
@@ -474,19 +453,17 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  margin: -8px -8px 16px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-muted);
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  margin: 0;
+  padding: 16px 20px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-card);
+  box-shadow: none;
   position: sticky;
   top: 0;
   z-index: 20;
+  background: var(--bg-surface);
 }
 
 .gmp-commit-input {
@@ -568,7 +545,7 @@
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   border-radius: 4px;
   flex-shrink: 0;
   font-family: monospace;
@@ -620,16 +597,16 @@
 }
 
 .gmp-sections-container {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 8px 16px;
-  margin-top: 16px;
-  box-shadow: var(--shadow-sm);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0 16px;
+  margin-top: 0;
+  box-shadow: none;
 }
 
 .gmp-sections-container > .gmp-collapsible-section {
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-card);
   padding: 8px 0;
 }
 
@@ -666,7 +643,7 @@
 
 .gmp-confirm-title {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   text-align: center;
   margin-bottom: 8px;
@@ -692,9 +669,9 @@
 }
 
 .gmp-btn-danger {
-  background: var(--color-error, #ef4444);
-  border-color: var(--color-error, #ef4444);
-  color: #fff;
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--text-on-primary);
 }
 
 .gmp-btn-danger:hover {

@@ -139,7 +139,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                       })()
                     }}
                     title={t('common.delete', '删除')}
-                    style={{ color: '#ef4444' }}
+                    style={{ color: 'var(--color-error)' }}
                   >
                     <Trash2 size={20} />
                   </button>

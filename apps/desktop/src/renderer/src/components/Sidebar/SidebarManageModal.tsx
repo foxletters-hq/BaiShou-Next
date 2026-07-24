@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal } from '@baishou/ui'
+import { Modal } from '@baishou/ui/desktop/Modal/Modal'
 import { CheckSquare, Square } from 'lucide-react'
 import {
   SIDEBAR_NAV_GROUPS,

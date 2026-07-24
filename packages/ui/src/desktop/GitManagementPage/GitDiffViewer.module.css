@@ -10,18 +10,18 @@
   align-items: center;
   gap: 4px;
   padding: 6px 10px;
-  border-bottom: 1px solid var(--border-subtle, #d8dee4);
-  background: var(--bg-surface-normal, #f6f8fa);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
   flex-shrink: 0;
 }
 
 .modeBtn {
   height: 26px;
   padding: 0 10px;
-  border: 1px solid var(--border-subtle, #d8dee4);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   background: transparent;
-  color: var(--text-secondary, #57606a);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
   font-family: inherit;
@@ -29,9 +29,9 @@
 }
 
 .modeBtnActive {
-  background: var(--bg-surface, #fff);
-  color: var(--text-primary, #24292f);
-  border-color: var(--color-primary, #5ba8f5);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--color-primary);
 }
 
 .fill {
@@ -42,8 +42,8 @@
 }
 
 .unified {
-  border-top: 1px solid var(--border-subtle, #d8dee4);
-  background: var(--bg-surface-normal, #f6f8fa);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
   overflow: auto;
   max-height: 280px;
 }
@@ -64,23 +64,23 @@
 }
 
 .hunkHeader {
-  color: var(--color-accent-blue, #5ba8f5);
+  color: var(--color-primary);
   font-weight: 600;
   margin: 8px 0 4px;
 }
 
 .lineAdd {
   background: rgba(34, 197, 94, 0.12);
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary);
 }
 
 .lineRemove {
   background: rgba(239, 68, 68, 0.12);
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary);
 }
 
 .lineNormal {
-  color: var(--text-secondary, #57606a);
+  color: var(--text-secondary);
 }
 
 .splitRoot {
@@ -94,8 +94,8 @@
 .splitHeader {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid var(--border-subtle, #d8dee4);
-  background: var(--bg-surface-normal, #f6f8fa);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
   flex-shrink: 0;
 }
 
@@ -103,11 +103,11 @@
   padding: 6px 12px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-secondary, #57606a);
+  color: var(--text-secondary);
 }
 
 .splitHeaderCell + .splitHeaderCell {
-  border-left: 1px solid var(--border-subtle, #d8dee4);
+  border-left: 1px solid var(--border-subtle);
 }
 
 .splitBody {
@@ -127,7 +127,7 @@
 }
 
 .splitPane + .splitPane {
-  border-left: 1px solid var(--border-subtle, #d8dee4);
+  border-left: 1px solid var(--border-subtle);
 }
 
 .splitRow {
@@ -139,10 +139,10 @@
 .lineNum {
   padding: 0 8px;
   text-align: right;
-  color: var(--text-tertiary, #8b949e);
+  color: var(--text-tertiary);
   user-select: none;
-  border-right: 1px solid var(--border-subtle, #d8dee4);
-  background: var(--bg-surface-normal, #f6f8fa);
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-surface-normal);
 }
 
 .lineText {
@@ -153,12 +153,12 @@
 
 .rowRemove .lineText {
   background: rgba(239, 68, 68, 0.12);
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary);
 }
 
 .rowAdd .lineText {
   background: rgba(34, 197, 94, 0.12);
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary);
 }
 
 .rowEmpty .lineText {
@@ -167,7 +167,7 @@
 
 .empty {
   padding: 16px;
-  color: var(--text-tertiary, #8b949e);
+  color: var(--text-tertiary);
   font-size: 12px;
   font-style: italic;
 }

@@ -43,7 +43,7 @@
 
 .brandName {
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 700;
   letter-spacing: -0.5px;
   color: var(--text-primary);
 }
@@ -87,10 +87,12 @@
 .navList {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  padding: 0 10px;
 }
 
 .navItemWrapper {
-  padding: 0 12px;
+  padding: 0;
 }
 
 .dragging {
@@ -103,27 +105,41 @@
 .navItem {
   display: flex;
   align-items: center;
-  padding: 12px;
+  padding: 9px 12px;
   border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  color: var(--text-secondary);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  color: var(--text-primary);
   background-color: transparent;
   position: relative;
+  border: none;
+  outline: none;
+  text-align: left;
+  font-family: inherit;
 }
 
 .navItem:hover:not(.selected) {
-  background-color: rgba(var(--text-primary-rgb), 0.04);
+  background-color: var(--bg-surface-high);
 }
 
 .selected {
-  background-color: rgba(91, 168, 245, 0.15); /* primaryContainer ~0.4 */
+  background-color: var(--bg-surface-high);
   color: var(--color-primary);
-  font-weight: bold;
 }
 
 .selected:hover {
-  background-color: rgba(91, 168, 245, 0.15);
+  background-color: var(--bg-surface-high);
+}
+
+.selected .navLabel {
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.selected .navIcon {
+  color: var(--color-primary);
 }
 
 .dragHandle {
@@ -150,20 +166,25 @@
   justify-content: center;
   flex-shrink: 0;
   font-size: 18px;
+  color: var(--text-secondary);
 }
 
 .navIcon svg {
-  width: 18px;
-  height: 18px;
+  width: 1em;
+  height: 1em;
 }
 
 .navLabel {
   font-size: 14px;
-  font-weight: inherit;
+  font-weight: 500;
+  line-height: 1.25;
 }
 
 .fixedNav {
-  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 10px;
   margin-bottom: 8px;
   flex-shrink: 0;
 }
@@ -194,12 +215,12 @@
   border-radius: 50%;
   background-color: transparent;
   border: 1px solid var(--border-subtle);
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   margin-right: 12px;
 }
 
@@ -211,7 +232,7 @@
 
 .userName {
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -238,9 +259,9 @@
 }
 
 .managingActive {
-  background-color: rgba(91, 168, 245, 0.15) !important;
+  background-color: var(--bg-surface-high) !important;
   color: var(--color-primary) !important;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .hiddenSectionToggle {

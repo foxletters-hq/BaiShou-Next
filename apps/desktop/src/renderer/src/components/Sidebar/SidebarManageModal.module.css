@@ -30,7 +30,7 @@
   margin: 0 0 16px;
   font-size: 14px;
   line-height: 1.55;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
 }
 
 .groupList {
@@ -43,10 +43,10 @@
 .groupTitle {
   margin: 0 0 10px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
 }
 
 .optionGrid {
@@ -68,8 +68,8 @@
   padding: 11px 13px;
   border-radius: 10px;
   border: 1.5px solid var(--border-control);
-  background: var(--bg-surface, #fff);
-  color: var(--text-primary, #0f172a);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   text-align: left;
   transition:
@@ -108,7 +108,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -135,14 +135,14 @@
   flex-shrink: 0;
   padding-top: 16px;
   margin-top: 12px;
-  border-top: 1px solid var(--border-default, #cbd5e1);
+  border-top: 1px solid var(--border-muted);
 }
 
 .resetBtn {
   padding: 9px 4px;
   border: none;
   background: transparent;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -157,7 +157,7 @@
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--text-on-primary);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

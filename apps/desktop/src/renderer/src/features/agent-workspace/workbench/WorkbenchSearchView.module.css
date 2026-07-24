@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--wb-chrome-bg, #f3f4f6);
+  background: var(--bg-app);
 }
 
 .toolbar {
@@ -19,7 +19,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .toolbarActions {
@@ -31,7 +31,7 @@
 .iconBtn {
   border: none;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -41,13 +41,13 @@
 }
 
 .iconBtn:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
 }
 
 .iconBtnActive {
-  color: var(--color-primary, #5ba8f5);
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .form {
@@ -66,26 +66,26 @@
 }
 
 .inputIcon {
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .input {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border: 1px solid var(--border-muted);
   border-radius: 4px;
   padding: 4px 8px;
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 13px;
   line-height: 1.4;
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--color-primary, #5ba8f5);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary, #5ba8f5) 30%, transparent);
+  border-color: var(--border-muted);
+  box-shadow: none;
 }
 
 .toggles {
@@ -100,7 +100,7 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -108,18 +108,18 @@
 }
 
 .toggleBtn:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 8%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .toggleBtnActive {
-  color: var(--color-primary, #5ba8f5);
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 12%, transparent);
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .replaceAllBtn {
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 11px;
@@ -128,7 +128,7 @@
 }
 
 .replaceAllBtn:hover:not(:disabled) {
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--color-primary);
 }
 
 .replaceAllBtn:disabled {
@@ -142,14 +142,14 @@
   gap: 4px;
   border: none;
   background: transparent;
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 4px 0;
   font-size: 12px;
 }
 
 .filterToggle:hover {
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
 }
 
 .filters {
@@ -161,17 +161,18 @@
 
 .filterInput {
   width: 100%;
-  border: 1px solid var(--wb-chrome-border, #d8dee4);
+  border: 1px solid var(--border-muted);
   border-radius: 4px;
   padding: 4px 8px;
-  background: var(--wb-editor-bg, #ffffff);
-  color: var(--wb-chrome-fg-strong, #24292f);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 12px;
 }
 
 .filterInput:focus {
   outline: none;
-  border-color: var(--color-primary, #5ba8f5);
+  border-color: var(--border-muted);
+  box-shadow: none;
 }
 
 .results {
@@ -189,7 +190,7 @@
 }
 
 .hint {
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .error {
@@ -197,8 +198,8 @@
 }
 
 .summary {
-  color: var(--wb-chrome-fg, #57606a);
-  border-bottom: 1px solid var(--wb-chrome-border, #d8dee4);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .fileList,
@@ -220,7 +221,7 @@
   gap: 6px;
   border: none;
   background: transparent;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 4px;
@@ -229,11 +230,11 @@
 }
 
 .fileHeader:hover {
-  background: color-mix(in srgb, var(--wb-chrome-fg-strong, #24292f) 6%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .fileIcon {
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }
 
 .fileName {
@@ -244,7 +245,7 @@
 }
 
 .filePath {
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -256,8 +257,8 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--wb-chrome-fg, #57606a) 12%, transparent);
-  color: var(--wb-chrome-fg, #57606a);
+  background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
+  color: var(--text-secondary);
   font-size: 11px;
   line-height: 18px;
   text-align: center;
@@ -278,11 +279,11 @@
 }
 
 .matchRow:hover {
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 10%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .lineNo {
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
   font-size: 11px;
   line-height: 1.5;
   text-align: right;
@@ -297,11 +298,11 @@
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-size: 12px;
   line-height: 1.5;
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
 }
 
 .matchText {
-  color: var(--wb-chrome-fg-strong, #24292f);
+  color: var(--text-primary);
 }
 
 .matchHighlight {
@@ -312,5 +313,5 @@
 }
 
 .ellipsis {
-  color: var(--wb-chrome-fg, #57606a);
+  color: var(--text-secondary);
 }

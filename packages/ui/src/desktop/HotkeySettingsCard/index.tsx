@@ -242,7 +242,10 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
                 {t('hotkey.record_combo', '录入快捷组合键')}
               </span>
               {isConflict && (
-                <span className="settings-list-tile-subtitle" style={{ color: '#ef4444' }}>
+                <span
+                  className="settings-list-tile-subtitle"
+                  style={{ color: 'var(--color-error)' }}
+                >
                   ⚠ {t('hotkey.warning', '警告：可能会产生按键冲突')}
                 </span>
               )}
@@ -251,8 +254,8 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
             <button
               className="settings-text-btn"
               style={{
-                background: isRecording ? 'rgba(91, 168, 245, 0.1)' : 'rgba(0,0,0,0.05)',
-                color: isConflict && !isRecording ? '#ef4444' : 'inherit',
+                background: isRecording ? 'rgba(var(--color-primary-rgb), 0.1)' : 'rgba(0,0,0,0.05)',
+                color: isConflict && !isRecording ? 'var(--color-error)' : 'inherit',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,

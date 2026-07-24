@@ -1,51 +1,60 @@
 .wrapper {
   position: relative;
   display: inline-block;
-  font-family: var(--font-family-main, sans-serif);
+  font-family: var(--font-family);
 }
 
 .triggerBtn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  background: var(--color-surface, #ffffff);
+  padding: 7px 12px;
+  border-radius: var(--radius-md);
+  background: transparent;
   border: 1.5px solid var(--border-control);
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
+  /* 原生 button 默认系统字体，须显式指定，否则与「写日记」等控件字面不一致 */
+  font-family: var(--font-family);
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.25;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  box-shadow: none;
 }
 
 .triggerBtn:hover {
-  background: rgba(91, 168, 245, 0.05);
-  border-color: var(--border-control);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .placeholderText {
-  color: var(--color-on-surface-variant, #64748b);
-  font-weight: 400;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  color: var(--text-primary);
 }
 
-.yearText {
-  font-weight: 600;
-}
-
+.yearText,
 .monthText {
-  color: var(--color-on-surface-variant, #64748b);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  color: inherit;
 }
 
 .icon {
   opacity: 0.6;
+  flex-shrink: 0;
 }
 
-/* Glassmorphism Dropdown */
 .flexBaseline {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 4px;
 }
 
@@ -56,7 +65,7 @@
   right: 0;
   bottom: 0;
   z-index: 10000;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,7 +73,7 @@
 
 .modalContent {
   width: 420px;
-  background: var(--color-surface, #ffffff);
+  background: var(--bg-surface);
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   padding: 24px;
@@ -85,14 +94,14 @@
   gap: 4px;
   overflow-y: auto;
   padding-right: 8px;
-  border-right: 1px solid rgba(208, 208, 208, 0.4);
+  border-right: 1px solid var(--border-muted);
 }
 
 .yearPane::-webkit-scrollbar {
   width: 4px;
 }
 .yearPane::-webkit-scrollbar-thumb {
-  background: rgba(208, 208, 208, 0.5);
+  background: var(--border-muted);
   border-radius: 4px;
 }
 
@@ -111,25 +120,25 @@
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
 }
 
 .paneItem:hover {
-  background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
 }
 
 .paneItemActive {
-  background: rgba(91, 168, 245, 0.15);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.15);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .paneItemSelected {
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -140,32 +149,32 @@
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-on-surface, #1a1a1a);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .monthBtn:hover {
-  background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
 }
 
 .monthBtnSelected {
-  background: var(--color-primary, #5ba8f5) !important;
-  color: #ffffff !important;
+  background: var(--color-primary) !important;
+  color: var(--text-on-primary) !important;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(91, 168, 245, 0.3);
+  box-shadow: none;
 }
 
 .monthBtnCurrent {
-  color: var(--color-primary, #5ba8f5);
+  color: var(--color-primary);
   font-weight: 600;
-  border: 1px solid var(--color-primary, #5ba8f5);
+  border: 1px solid var(--color-primary);
 }
 
 .divider {
   height: 1px;
-  background: rgba(208, 208, 208, 0.4);
+  background: var(--border-muted);
   margin: 16px 0;
 }
 
@@ -181,65 +190,27 @@
   padding: 8px 0;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   border: none;
   transition: all 0.2s;
 }
 
 .actionBtnSecondary {
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--color-on-surface-variant, #64748b);
+  background: var(--bg-surface-low);
+  color: var(--text-secondary);
 }
 
 .actionBtnSecondary:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: var(--color-on-surface, #1a1a1a);
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
 }
 
 .actionBtnPrimary {
-  background: rgba(91, 168, 245, 0.1);
-  color: var(--color-primary, #5ba8f5);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
 }
 
 .actionBtnPrimary:hover {
-  background: rgba(91, 168, 245, 0.15);
-}
-
-/* Dark mode adjustments */
-[data-theme='dark'] .triggerBtn {
-  background: var(--color-surface-dark, #121212);
-  border-color: var(--border-control);
-  color: rgba(255, 255, 255, 0.9);
-}
-[data-theme='dark'] .triggerBtn:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-[data-theme='dark'] .modalContent {
-  background: var(--color-surface-dark, #1a1a1a);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-[data-theme='dark'] .yearPane {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-[data-theme='dark'] .paneItem,
-[data-theme='dark'] .monthBtn {
-  color: rgba(255, 255, 255, 0.9);
-}
-[data-theme='dark'] .paneItem:hover,
-[data-theme='dark'] .monthBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-[data-theme='dark'] .actionBtnSecondary {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
-}
-[data-theme='dark'] .actionBtnSecondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-[data-theme='dark'] .divider {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.15);
 }

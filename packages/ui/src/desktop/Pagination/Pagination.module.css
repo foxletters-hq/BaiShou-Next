@@ -24,9 +24,9 @@
 }
 
 .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
-  background: var(--bg-surface-high, rgba(91, 168, 245, 0.08));
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: var(--bg-surface-high);
+  border-color: var(--border-control);
+  color: var(--text-primary);
 }
 
 .pageBtn:disabled {
@@ -35,11 +35,11 @@
 }
 
 .pageBtnActive {
-  background: var(--color-primary) !important;
-  border-color: var(--color-primary) !important;
-  color: #fff !important;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.3);
+  background: var(--bg-surface-high) !important;
+  border-color: var(--border-control) !important;
+  color: var(--text-primary) !important;
+  font-weight: 500;
+  box-shadow: none;
   cursor: default;
 }
 
@@ -82,8 +82,8 @@
 }
 
 .jumperInput:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.15);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .jumperInput:disabled {
@@ -109,7 +109,7 @@
 }
 
 [data-theme='dark'] .pageBtnActive {
-  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.2);
+  box-shadow: none;
 }
 
 [data-theme='dark'] .jumperInput {
@@ -119,5 +119,5 @@
 }
 
 [data-theme='dark'] .jumperInput:focus {
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  box-shadow: none;
 }

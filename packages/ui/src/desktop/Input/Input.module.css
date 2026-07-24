@@ -17,9 +17,9 @@
 }
 
 .input {
-  background-color: var(--bg-surface-low, #f6f7f8);
+  background-color: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: var(--radius-md, 12px);
   padding: 10px 14px;
   font-size: 14px;
@@ -31,9 +31,9 @@
 }
 
 .input:focus {
-  background-color: var(--bg-surface, #ffffff);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 168, 245, 0.2);
+  background-color: var(--form-field-bg, var(--bg-surface));
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .input::placeholder {

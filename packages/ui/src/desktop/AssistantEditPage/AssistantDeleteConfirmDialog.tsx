@@ -32,7 +32,7 @@ export const AssistantDeleteConfirmDialog: React.FC<AssistantDeleteConfirmDialog
     <div className={styles.dialogOverlay} onClick={onCancel}>
       <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.dialogHeaderIcon}>
-          <Trash2 size={32} color="var(--color-error, #F44336)" />
+          <Trash2 size={32} color="var(--color-error)" />
         </div>
         <div className={styles.dialogTitle}>{t('agent.assistant.delete_confirm_title')}</div>
         <div className={styles.dialogText}>{t('agent.assistant.delete_confirm_content')}</div>
