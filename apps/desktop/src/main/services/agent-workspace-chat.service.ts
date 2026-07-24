@@ -12,6 +12,7 @@ import {
   type GlobalModelsConfig
 } from '@baishou/shared'
 import type { IpcMainInvokeEvent } from 'electron'
+import i18n from 'i18next'
 import { ElectronStreamEmitter } from '../ipc/electron-stream-emitter'
 import {
   buildStreamConfig,
@@ -90,7 +91,7 @@ export async function createWorkspaceAgentSession(params: {
     providerId: storageIds.providerId,
     modelId: storageIds.modelId,
     assistantId: params.assistantId,
-    title: params.title || '工作区对话'
+    title: params.title || i18n.t('agent_workspace.default_session_title', '工作区对话')
   } as never)
 
   await bindWorkspaceSession(params.id, params.folderRoot)

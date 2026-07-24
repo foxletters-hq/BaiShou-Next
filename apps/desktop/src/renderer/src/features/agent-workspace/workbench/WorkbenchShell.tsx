@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   AgentWorkspaceEntry,
   AgentWorkspaceSessionListItem,
@@ -71,6 +72,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   onRenameSession,
   agentPanel
 }) => {
+  const { t } = useTranslation()
   const {
     layout,
     toggleAgentPanel,
@@ -209,7 +211,10 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               changesCount={gitChangesCount}
               onGitChangesCountChange={setGitChangesCount}
             />
-            <WorkbenchResizeSash ariaLabel="调整左侧边栏宽度" onMouseDown={leftSash.onMouseDown} />
+            <WorkbenchResizeSash
+              ariaLabel={t('workbench.resize_side_pane', '调整左侧边栏宽度')}
+              onMouseDown={leftSash.onMouseDown}
+            />
           </>
         ) : null}
 
@@ -233,7 +238,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
         {showAgentPanel ? (
           <>
             <WorkbenchResizeSash
-              ariaLabel="调整右侧 Agent 面板宽度"
+              ariaLabel={t('workbench.resize_agent_panel', '调整右侧 Agent 面板宽度')}
               onMouseDown={rightSash.onMouseDown}
             />
             <WorkbenchAgentPanel

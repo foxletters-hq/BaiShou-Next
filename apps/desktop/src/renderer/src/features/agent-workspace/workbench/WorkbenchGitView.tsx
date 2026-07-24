@@ -28,10 +28,11 @@ const WorkbenchGitPanelBody: React.FC<WorkbenchGitPanelBodyProps & { repositoryN
       ? (filePath, commitHash) => onOpenGitDiff(filePath, { commitHash })
       : undefined
   })
+  const { setPageSize } = vm
 
   useEffect(() => {
-    vm.setPageSize(50)
-  }, [vm.setPageSize])
+    setPageSize(50)
+  }, [setPageSize])
 
   useEffect(() => {
     if (!panelProps.isInitialized) {

@@ -254,16 +254,22 @@ export const AgentWorkspaceScreen: React.FC = () => {
     [dialog, t]
   )
 
+  const {
+    model: { currentProviderId, currentModelId },
+    setShowModelSwitcher,
+    selectedAssistantId
+  } = chrome
+
   const handleSend = useCallback(
     async (text: string) => {
       const trimmed = text.trim()
       if (!trimmed || stream.isStreaming) return
 
       if (
-        !isConfiguredProviderId(chrome.model.currentProviderId) ||
-        !isConfiguredDialogueModelId(chrome.model.currentModelId)
+        !isConfiguredProviderId(currentProviderId) ||
+        !isConfiguredDialogueModelId(currentModelId)
       ) {
-        chrome.setShowModelSwitcher(true)
+        setShowModelSwitcher(true)
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
         return
       }
@@ -278,7 +284,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
 
       try {
         const prepared = await stream.prepareWorkspaceTurn(sessionId, trimmed, folder, {
-          assistantId: chrome.selectedAssistantId
+          assistantId: selectedAssistantId
         })
 
         if (prepared.createdNew && prepared.sessionId !== sessionId) {
@@ -289,8 +295,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
         chat.setStreamSessionId(prepared.sessionId)
 
         await stream.runWorkspaceChatStream(prepared.sessionId, trimmed, prepared.userMessageId, {
-          providerId: chrome.model.currentProviderId,
-          modelId: chrome.model.currentModelId
+          providerId: currentProviderId,
+          modelId: currentModelId
         })
         notifyWorkspaceSessionsChanged()
       } catch (error) {
@@ -300,14 +306,14 @@ export const AgentWorkspaceScreen: React.FC = () => {
     [
       activeFolderRoot,
       addWorkspaceFromPicker,
-      chrome.model.currentModelId,
-      chrome.model.currentProviderId,
-      chrome.setShowModelSwitcher,
-      chrome.selectedAssistantId,
       chat,
+      currentModelId,
+      currentProviderId,
       navigate,
+      selectedAssistantId,
       sessionId,
       setFolderRoot,
+      setShowModelSwitcher,
       stream,
       t
     ]

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { AgentWorkspaceEntry } from '@baishou/shared'
 
 const WORKSPACES_CHANGED_EVENT = 'baishou:agent-workspaces-changed'
@@ -24,6 +25,7 @@ export function notifyAgentWorkspacesChanged(): void {
 }
 
 export function useAgentWorkspaces() {
+  const { t } = useTranslation()
   const [workspaces, setWorkspaces] = useState<AgentWorkspaceEntry[]>([])
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,7 +79,12 @@ export function useAgentWorkspaces() {
     async (folderRoot: string): Promise<AgentWorkspaceEntry | null> => {
       const addWorkspace = window.api?.agentWorkspace?.addWorkspace
       if (!addWorkspace) {
-        throw new Error('agentWorkspace.addWorkspace API unavailable — 请重启应用以加载最新主进程')
+        throw new Error(
+          t(
+            'agent_workspace.add_workspace_api_unavailable',
+            'agentWorkspace.addWorkspace API unavailable — 请重启应用以加载最新主进程'
+          )
+        )
       }
       const entry = await addWorkspace(folderRoot)
       if (!entry) {
@@ -88,18 +95,23 @@ export function useAgentWorkspaces() {
       await selectWorkspace(entry.id)
       return entry
     },
-    [selectWorkspace]
+    [selectWorkspace, t]
   )
 
   const addWorkspaceFromPicker = useCallback(async (): Promise<AgentWorkspaceEntry | null> => {
     const pickFolder = window.api?.agentWorkspace?.pickFolder
     if (!pickFolder) {
-      throw new Error('agentWorkspace.pickFolder API unavailable — 请重启应用以加载最新主进程')
+      throw new Error(
+        t(
+          'agent_workspace.pick_folder_api_unavailable',
+          'agentWorkspace.pickFolder API unavailable — 请重启应用以加载最新主进程'
+        )
+      )
     }
     const folderRoot = await pickFolder()
     if (!folderRoot) return null
     return registerWorkspaceFolder(folderRoot)
-  }, [registerWorkspaceFolder])
+  }, [registerWorkspaceFolder, t])
 
   const updateWorkspaceAvatar = useCallback(async (workspaceId: string) => {
     const avatarPath = await window.api?.agentWorkspace?.pickAvatar?.()
