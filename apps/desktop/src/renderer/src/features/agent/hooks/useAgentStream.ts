@@ -1,9 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
 import type { AgentGateReply, AgentGateRequest } from '@baishou/shared'
-import {
-  selectActivePendingForSession,
-  useAgentGateInboxStore
-} from '@baishou/store'
+import { selectActivePendingForSession, useAgentGateInboxStore } from '@baishou/store'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 import { ensureDesktopAgentGateInboxBridge } from '../agent-gate-inbox-bridge'
 import {

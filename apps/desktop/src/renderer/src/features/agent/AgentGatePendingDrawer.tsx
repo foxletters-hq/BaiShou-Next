@@ -2,11 +2,7 @@ import React, { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Shield } from 'lucide-react'
-import {
-  selectGroupedPending,
-  selectPendingCount,
-  useAgentGateInboxStore
-} from '@baishou/store'
+import { selectGroupedPending, selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
 import styles from './AgentGatePendingDrawer.module.css'
 
 export interface AgentGatePendingDrawerProps {

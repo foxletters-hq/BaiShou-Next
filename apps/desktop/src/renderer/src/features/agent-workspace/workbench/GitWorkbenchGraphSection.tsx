@@ -60,9 +60,7 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
               {history.map((entry, index) => {
                 const isExpanded = expandedCommit === entry.commit.hash
                 const isHead = entry.isCurrent
-                const laneColor = isHead
-                  ? 'var(--color-primary)'
-                  : 'var(--border-muted)'
+                const laneColor = isHead ? 'var(--color-primary)' : 'var(--border-muted)'
 
                 return (
                   <div key={entry.commit.hash} className={styles.graphRow}>
