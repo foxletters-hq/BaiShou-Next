@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AgentToolsView, SettingsPageChrome } from '@baishou/ui'
+import { AgentToolsView, SegmentedControl, SettingsPageChrome } from '@baishou/ui'
 import { getDefaultToolManagementConfig } from '@baishou/store'
-import seg from '@baishou/ui/desktop/shared/SegmentedControl.module.css'
 import { BaishouAgentGateSettingsSection } from './BaishouAgentGateSettingsSection'
 import styles from './AgentToolsPane.module.css'
 
@@ -31,34 +30,22 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
             <>
               <div className={styles.tabHeader}>
                 <div className={styles.navStacks}>
-                  <div className={seg.group}>
-                    <button
-                      type="button"
-                      className={`${seg.btn} ${tab === 'permissions' ? seg.btnActive : ''}`}
-                      onClick={() => setTab('permissions')}
-                    >
-                      {t('settings.agent_tools_tab_companion_permissions', '权限')}
-                    </button>
-                    <button
-                      type="button"
-                      className={`${seg.btn} ${tab === 'tools' ? seg.btnActive : ''}`}
-                      onClick={() => setTab('tools')}
-                    >
-                      {t('settings.agent_tools_tab_companion_tools', '工具')}
-                    </button>
-                  </div>
+                  <SegmentedControl
+                    value={tab}
+                    options={[
+                      {
+                        value: 'permissions',
+                        label: t('settings.agent_tools_tab_companion_permissions', '权限')
+                      },
+                      {
+                        value: 'tools',
+                        label: t('settings.agent_tools_tab_companion_tools', '工具')
+                      }
+                    ]}
+                    onChange={setTab}
+                  />
                 </div>
               </div>
-              {tab === 'permissions' ? (
-                <div className={styles.introBlock}>
-                  <p className={styles.introText}>
-                    {t(
-                      'settings.companion_chat_gate_desc',
-                      '控制伙伴写入日记与记忆等敏感操作前是否需要确认；与工作台权限完全隔离。'
-                    )}
-                  </p>
-                </div>
-              ) : null}
             </>
           )}
 
