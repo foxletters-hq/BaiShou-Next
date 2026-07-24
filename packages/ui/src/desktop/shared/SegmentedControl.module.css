@@ -1,6 +1,7 @@
 /**
  * 分段滑块 — 与回忆生成设置「生成模式」同尺寸
- * group / btn / btnActive；可选 groupStretch、groupInline、badge
+ * 选中态由 .thumb 白底指示器滑动呈现；.btnActive 仅改文字色
+ * group / btn / btnActive / thumb；可选 groupStretch、groupInline、badge
  */
 .group {
   display: flex;
@@ -11,6 +12,7 @@
   width: fit-content;
   box-sizing: border-box;
   align-items: stretch;
+  position: relative;
 }
 
 .groupStretch {
@@ -26,7 +28,34 @@
   margin-bottom: 12px;
 }
 
+.thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  z-index: 0;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  will-change: transform, width;
+}
+
+.thumbAnimate {
+  transition:
+    transform var(--duration-fast) var(--ease-out-cubic),
+    width var(--duration-fast) var(--ease-out-cubic);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumbAnimate {
+    transition: none;
+  }
+}
+
 .btn {
+  position: relative;
+  z-index: 1;
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -39,9 +68,7 @@
   font-family: inherit;
   color: var(--text-secondary);
   cursor: pointer;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease;
+  transition: color var(--duration-fast) var(--ease-out-cubic);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -55,17 +82,15 @@
   flex: 1;
 }
 
-.btn:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.1);
+.btn:hover:not(:disabled):not(.btnActive) {
+  color: var(--text-primary);
 }
 
 .btnActive,
 .btnActive:hover:not(:disabled) {
-  /* 白底抬起选中；文字用品牌蓝 */
-  background: var(--bg-surface);
+  background: transparent;
   color: var(--color-primary);
   font-weight: 500;
-  box-shadow: var(--shadow-sm);
 }
 
 .btn:disabled {
