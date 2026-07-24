@@ -32,7 +32,7 @@ import type {
   IFileSystem
 } from '@baishou/core-mobile'
 import type { AgentSessionService } from '@baishou/ai'
-import type { SqliteHybridSearchRepository } from '@baishou/database'
+import type { AppDatabase, SqliteHybridSearchRepository } from '@baishou/database'
 import type { HybridSearchService, ToolDiarySearcher } from '@baishou/ai'
 import type { MobileStoragePathService } from '../../services/path.service'
 import type { MobileAttachmentManagerService } from '../../services/mobile-attachment-manager.service'
@@ -165,7 +165,7 @@ export async function bootstrapMobileSyncLayer(
     pathService,
     vaultService
   )
-  setMobileDiaryEmbeddingDeps(ragServiceDeps)
+  setMobileDiaryEmbeddingDeps(ragServiceDeps, { agentDb: drizzleDb as AppDatabase })
   const ragServiceRef = {
     current: createMobileRagService(ragServiceDeps)
   }

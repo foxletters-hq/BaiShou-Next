@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './RagMemoryView.module.css'
+import seg from '../shared/SegmentedControl.module.css'
 import { Search, X } from 'lucide-react'
 
 interface RagMemorySearchBarProps {
@@ -36,17 +37,17 @@ export const RagMemorySearchBar: React.FC<RagMemorySearchBarProps> = ({
         value={searchQuery}
         onChange={onSearch}
       />
-      <div className={styles.segmentedControl}>
+      <div className={`${seg.group} ${seg.groupInline}`}>
         <button
           type="button"
-          className={`${styles.segmentBtn} ${searchMode === 'semantic' ? styles.segmentBtnActive : ''}`}
+          className={`${seg.btn} ${searchMode === 'semantic' ? seg.btnActive : ''}`}
           onClick={() => searchMode !== 'semantic' && onToggleSearchMode()}
         >
           {t('settings.rag_search_semantic', '语义搜索')}
         </button>
         <button
           type="button"
-          className={`${styles.segmentBtn} ${searchMode === 'text' ? styles.segmentBtnActive : ''}`}
+          className={`${seg.btn} ${searchMode === 'text' ? seg.btnActive : ''}`}
           onClick={() => searchMode !== 'text' && onToggleSearchMode()}
         >
           {t('settings.rag_search_text', '文本搜索')}

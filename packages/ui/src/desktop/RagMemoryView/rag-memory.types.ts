@@ -5,6 +5,8 @@ export interface RagConfig {
   ragSimilarityThreshold: number
   ragEnabled: boolean
   batchEmbedConcurrency?: number
+  /** 联网后自动恢复嵌入欠账（默认 true） */
+  autoResumeEmbedOnOnline?: boolean
   lastDiaryEmbedFailureAt?: number
   lastDiaryEmbedFailureMessage?: string
 }

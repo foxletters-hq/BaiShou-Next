@@ -41,10 +41,23 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
+    let wasOnline: boolean | null = null
 
     const applyState = (state: NetInfoState) => {
       if (cancelled) return
-      setStatus(resolveNetworkStatus(state))
+      const next = resolveNetworkStatus(state)
+      setStatus(next)
+      // 首次检测到在线，或离线→在线时消费嵌入欠账
+      if (next.isOnline && wasOnline !== true) {
+        void import('../services/mobile-diary-embed-jobs-consumer.service').then(
+          ({ scheduleConsumeDiaryEmbedJobs }) => {
+            scheduleConsumeDiaryEmbedJobs(
+              wasOnline === false ? 'network-online' : 'network-ready'
+            )
+          }
+        )
+      }
+      wasOnline = next.isOnline
     }
 
     const unsubscribe = NetInfo.addEventListener(applyState)

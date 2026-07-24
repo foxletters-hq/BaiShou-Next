@@ -75,7 +75,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
             onPress={() => setActiveMenuId(menuOpen ? null : item.embeddingId)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '700' }}>⋮</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '600' }}>⋮</Text>
           </TouchableOpacity>
         </View>
         {menuOpen && (
@@ -116,7 +116,7 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
           </Text>
           {showSimilarity && item.similarity !== undefined && (
             <View style={[styles.entrySimilarity, { backgroundColor: colors.primaryLight }]}>
-              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
+              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600' }}>
                 {(item.similarity * 100).toFixed(0)}%
               </Text>
             </View>

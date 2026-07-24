@@ -10,6 +10,8 @@ export * from './schema/vectors'
 export * from './schema/graph'
 export * from './schema/system-settings'
 export * from './schema/shadow-index'
+export * from './schema/diary-embed-jobs'
+export * from './diary-embed-jobs.ops'
 
 export * from './repositories/diary.repository'
 export * from './repositories/agent.repository'

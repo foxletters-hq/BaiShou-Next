@@ -5,6 +5,8 @@ export interface RagConfig {
   ragSimilarityThreshold: number
   ragEnabled: boolean
   batchEmbedConcurrency?: number
+  /** 默认 true：联网/空闲时自动补嵌欠账日记 */
+  autoResumeEmbedOnOnline?: boolean
 }
 
 export interface RagStats {

@@ -44,7 +44,7 @@ export const ragMemoryStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     gap: 4
   },
-  statValue: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  statValue: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
   statLabel: { fontSize: 11, textAlign: 'center' },
   alertBox: {
     marginTop: 12,
@@ -54,7 +54,7 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   alertTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 4
   },
   migrationRow: {
@@ -126,7 +126,7 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   entryBraces: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     fontFamily: 'monospace'
   },
   entryContent: {
@@ -148,7 +148,7 @@ export const ragMemoryStyles = StyleSheet.create({
   entryDate: { fontSize: 11 },
   entrySimilarity: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4

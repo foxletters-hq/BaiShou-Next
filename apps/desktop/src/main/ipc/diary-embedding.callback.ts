@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { BrowserWindow } from 'electron'
 import type { IEmbeddingCallback } from '@baishou/core-desktop'
 import {
@@ -13,6 +14,10 @@ import {
 
 import { vaultService } from './vault.ipc'
 import { deleteDiaryEmbeddingAliases } from '../services/diary-embedding.util'
+import {
+  deleteDiaryEmbedJob,
+  enqueueDiaryEmbedJob
+} from '../services/diary-embed-jobs.service'
 
 function broadcastDiaryEmbedFailed(message: string): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -39,8 +44,14 @@ async function clearDiaryEmbedFailureIfSet(): Promise<void> {
   }
 }
 
+function resolveVaultName(explicit?: string): string {
+  return explicit?.trim() || vaultService.getActiveVault()?.name || 'Personal'
+}
+
 export const embeddingCallback: IEmbeddingCallback = {
   async reEmbedDiary(params) {
+    const vaultName = resolveVaultName(params.vaultName)
+    const contentHash = createHash('md5').update(params.content, 'utf8').digest('hex')
     try {
       const { settingsManager } = await import('./settings.ipc')
       const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
@@ -49,14 +60,18 @@ export const embeddingCallback: IEmbeddingCallback = {
       const embeddingService = getEmbeddingService()
 
       if (!isRagMemoryEnabled(ragConfig) || !embeddingService.isConfigured) {
-        return
+        await enqueueDiaryEmbedJob({
+          vaultName,
+          diaryId: params.diaryId,
+          contentHash
+        })
+        return false
       }
 
       const d = new Date(params.date)
       const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       const tagPrefix = params.tags.length > 0 ? `[标签: ${params.tags.join(', ')}] ` : ''
 
-      const vaultName = vaultService.getActiveVault()?.name ?? 'Personal'
       const sourceId = buildDiaryEmbeddingSourceId(vaultName, params.diaryId)
 
       await deleteDiaryEmbeddingAliases(vaultName, params.diaryId)
@@ -69,11 +84,31 @@ export const embeddingCallback: IEmbeddingCallback = {
         metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
         sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000
       })
+      await deleteDiaryEmbedJob(vaultName, params.diaryId)
       await clearDiaryEmbedFailureIfSet()
+      return true
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)
+      await enqueueDiaryEmbedJob(
+        {
+          vaultName,
+          diaryId: params.diaryId,
+          contentHash
+        },
+        formatAiApiCallError(e)
+      )
       await persistDiaryEmbedFailure(e)
+      return false
     }
+  },
+
+  async enqueueDiaryEmbed(params) {
+    const vaultName = resolveVaultName(params.vaultName)
+    await enqueueDiaryEmbedJob({
+      vaultName,
+      diaryId: params.diaryId,
+      contentHash: params.contentHash
+    })
   },
 
   async deleteEmbeddingsBySource(sourceType, sourceId) {
@@ -81,6 +116,13 @@ export const embeddingCallback: IEmbeddingCallback = {
       const { DesktopEmbeddingStorage } = await import('./rag.storage')
       const storage = new DesktopEmbeddingStorage()
       await storage.deleteEmbeddingsBySource(sourceType, sourceId)
+      if (sourceType === 'diary' && sourceId.includes('#')) {
+        const [vaultName, idPart] = sourceId.split('#')
+        const diaryId = Number(idPart)
+        if (vaultName && Number.isFinite(diaryId)) {
+          await deleteDiaryEmbedJob(vaultName, diaryId)
+        }
+      }
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 清理发生异常:', e)
     }

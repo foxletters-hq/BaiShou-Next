@@ -38,6 +38,29 @@ export const MEMORY_EMBEDDINGS_INDEX_SQL = `
   ON memory_embeddings (embedding_id)
 `
 
+/** 日记 RAG 嵌入欠账表；成功后删行，不保留永久历史 */
+export const DIARY_EMBED_JOBS_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS diary_embed_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    vault_name TEXT NOT NULL,
+    diary_id INTEGER NOT NULL,
+    content_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    next_retry_at INTEGER,
+    updated_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  )
+`
+
+export const DIARY_EMBED_JOBS_INDEXES_SQL = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS diary_embed_jobs_vault_diary_unique
+   ON diary_embed_jobs (vault_name, diary_id)`,
+  `CREATE INDEX IF NOT EXISTS diary_embed_jobs_status_retry_idx
+   ON diary_embed_jobs (status, next_retry_at)`
+] as const
+
 /** 原 0000 迁移内容；Flutter v3 agent.sqlite 无此表，但迁移记录可能被误标为已执行 */
 export const SYSTEM_SETTINGS_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS system_settings (

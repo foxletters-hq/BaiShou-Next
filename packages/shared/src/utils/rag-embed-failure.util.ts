@@ -6,6 +6,13 @@ export function isRagMemoryEnabled(config?: Pick<RagConfig, 'ragEnabled'> | null
   return config?.ragEnabled !== false
 }
 
+/** 联网后自动恢复嵌入；缺省为开启 */
+export function isAutoResumeEmbedOnOnline(
+  config?: Pick<RagConfig, 'autoResumeEmbedOnOnline'> | null
+): boolean {
+  return config?.autoResumeEmbedOnOnline !== false
+}
+
 export function hasRagDiaryEmbedFailure(
   config?: Pick<RagConfig, 'lastDiaryEmbedFailureAt'> | null
 ): boolean {

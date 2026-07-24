@@ -4,6 +4,7 @@ import {
   getMobileDiaryEmbeddingDeps,
   notifyDiaryEmbedFailure
 } from './mobile-diary-embedding.service'
+import { scheduleConsumeDiaryEmbedJobs } from './mobile-diary-embed-jobs-consumer.service'
 import {
   MobileRagAbortError,
   isMobileRagReembedInFlight,
@@ -29,10 +30,12 @@ export function schedulePostSyncDiaryBatchEmbed(): void {
       if (result.failed > 0 || result.skipReason === 'prepare-failed') {
         notifyDiaryEmbedFailure()
       }
+      scheduleConsumeDiaryEmbedJobs('post-sync-batch')
     })
     .catch((error: unknown) => {
       if (error instanceof MobileRagAbortError) return
       logger.warn('[MobilePostSyncEmbed] post-sync batch embed failed', error as Error)
       notifyDiaryEmbedFailure()
+      scheduleConsumeDiaryEmbedJobs('post-sync-batch-error')
     })
 }

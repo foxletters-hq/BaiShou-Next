@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Switch } from '../Switch'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
 import { settingsCardStyles } from '../settings/settings-card.styles'
 import {
@@ -74,6 +75,24 @@ export const RagMemoryRetrievalSection: React.FC<RagMemoryRetrievalSectionProps>
         step={1}
         onChange={(v) => onChange({ ...config, batchEmbedConcurrency: v })}
       />
+
+      <View style={[settingsCardStyles.row, { marginTop: 8 }]}>
+        <View style={settingsCardStyles.rowText}>
+          <Text style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+            {t('settings.rag_auto_resume_embed_on_online', '联网后自动恢复嵌入')}
+          </Text>
+          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 6 }]}>
+            {t(
+              'settings.rag_auto_resume_embed_on_online_hint',
+              '开启后，冷启动入账或嵌入失败的日记会在联网/空闲时自动补嵌。关闭后仍可手动「全量扫描未索引日记」。'
+            )}
+          </Text>
+        </View>
+        <Switch
+          value={config.autoResumeEmbedOnOnline !== false}
+          onValueChange={(v) => onChange({ ...config, autoResumeEmbedOnOnline: v })}
+        />
+      </View>
     </View>
   )
 }
