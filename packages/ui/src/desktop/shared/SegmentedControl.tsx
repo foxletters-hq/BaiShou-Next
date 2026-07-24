@@ -9,8 +9,8 @@ export interface SegmentedControlOption<T extends string = string> {
 
 export interface SegmentedControlProps<T extends string = string> {
   value: T
-  options: ReadonlyArray<SegmentedControlOption<T>>
-  onChange: (value: T) => void
+  options: ReadonlyArray<SegmentedControlOption<NoInfer<T>>>
+  onChange: (value: NoInfer<T>) => void
   stretch?: boolean
   inline?: boolean
   spaced?: boolean
