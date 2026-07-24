@@ -182,7 +182,11 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
 
       <div
         className="glass-panel-card"
-        style={{ padding: 0, border: '1px solid rgba(var(--color-primary-rgb), 0.35)', marginBottom: 16 }}
+        style={{
+          padding: 0,
+          border: '1px solid rgba(var(--color-primary-rgb), 0.35)',
+          marginBottom: 16
+        }}
       >
         <div
           className="settings-action-item"

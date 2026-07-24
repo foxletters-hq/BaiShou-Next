@@ -24,10 +24,7 @@ export interface SessionListItemProps {
   onCheckChanged?: (checked: boolean) => void
 }
 
-function formatSessionTime(
-  ts: number,
-  t: (key: string, fallback: string) => string
-): string {
+function formatSessionTime(ts: number, t: (key: string, fallback: string) => string): string {
   const now = Date.now()
   const diff = now - ts
   const mins = Math.floor(diff / 60000)

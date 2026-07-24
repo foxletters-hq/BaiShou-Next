@@ -36,10 +36,7 @@ export const CodeMirrorEditor = forwardRef<CodeMirrorEditorHandle, CodeMirrorEdi
             onClose={() => setPreviewSrc(null)}
           />
         )}
-        <EditorContextMenuHost
-          menu={textContextMenu}
-          onClose={() => setTextContextMenu(null)}
-        />
+        <EditorContextMenuHost menu={textContextMenu} onClose={() => setTextContextMenu(null)} />
       </div>
     )
   }

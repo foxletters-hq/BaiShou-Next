@@ -12,9 +12,6 @@ interface CodeMirrorEditorContextMenuProps {
 }
 
 /** @deprecated 请直接使用 EditorContextMenuHost；此处仅为日记编辑器兼容包装 */
-export function CodeMirrorEditorContextMenu({
-  menu,
-  onClose
-}: CodeMirrorEditorContextMenuProps) {
+export function CodeMirrorEditorContextMenu({ menu, onClose }: CodeMirrorEditorContextMenuProps) {
   return <EditorContextMenuHost menu={menu} onClose={onClose} variant="cm-context-menu" />
 }
