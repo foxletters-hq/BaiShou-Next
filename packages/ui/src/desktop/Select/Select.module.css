@@ -10,6 +10,12 @@
   width: 100%;
 }
 
+/* 展开时抬升，避免被后续设置卡盖住（卡片不再用 overflow:hidden 裁切） */
+.container:has(.dropdown) {
+  position: relative;
+  z-index: 20;
+}
+
 .trigger {
   display: flex;
   justify-content: space-between;

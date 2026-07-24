@@ -19,18 +19,21 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border: none;
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: var(--bg-surface-normal);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+  background-color: var(--bg-surface);
   color: var(--text-primary);
 }
 
 .update-action-btn:hover:not(:disabled) {
-  background-color: var(--bg-surface-highest);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .update-action-btn:disabled {
@@ -39,22 +42,25 @@
 }
 
 .update-action-btn.primary {
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
 }
 
 .update-action-btn.primary:hover:not(:disabled) {
-  opacity: 0.9;
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .update-action-btn.secondary {
-  background-color: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
 }
 
 .update-action-btn.secondary:hover:not(:disabled) {
-  background-color: var(--color-primary-container);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .update-status-icon {

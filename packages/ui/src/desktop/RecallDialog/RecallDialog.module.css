@@ -330,25 +330,26 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: var(--color-primary);
-  color: var(--text-on-primary) !important;
-  border: none;
+  background: var(--bg-surface);
+  color: var(--text-primary) !important;
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: none;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .injectBtn:hover:not(:disabled) {
-  background: var(--color-primary-active);
-  transform: translateY(-1px);
-  box-shadow: none;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .injectBtn:disabled {
-  background: rgba(var(--color-outline-variant-rgb), 0.5);
+  background: var(--bg-surface);
   color: var(--text-secondary) !important;
   box-shadow: none;
   cursor: not-allowed;
