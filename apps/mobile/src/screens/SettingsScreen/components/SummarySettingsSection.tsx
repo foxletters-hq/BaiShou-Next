@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 总结设置：模板/模型/批量任务同页 */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Image } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -191,23 +192,23 @@ export const SummarySettingsSection: React.FC = () => {
     [summaryConfig.customGenerationSystemPromptByLocale]
   )
 
-  const persistConfig = async (
-    next: SummaryConfig,
-    options?: { replaceLocalTemplates?: boolean }
-  ) => {
-    if (!services || !dbReady) return
-    await services.settingsManager.set('summary_config', next)
-    if (options?.replaceLocalTemplates) {
-      setSummaryConfig(next)
-      persistedTemplatesRef.current = next.instructionsByLocale
-      return
-    }
-    setSummaryConfig((prev) => ({
-      ...next,
-      // Keep in-memory template drafts until explicit Save / Restore default.
-      instructionsByLocale: prev.instructionsByLocale ?? next.instructionsByLocale
-    }))
-  }
+  const persistConfig = useCallback(
+    async (next: SummaryConfig, options?: { replaceLocalTemplates?: boolean }) => {
+      if (!services || !dbReady) return
+      await services.settingsManager.set('summary_config', next)
+      if (options?.replaceLocalTemplates) {
+        setSummaryConfig(next)
+        persistedTemplatesRef.current = next.instructionsByLocale
+        return
+      }
+      setSummaryConfig((prev) => ({
+        ...next,
+        // Keep in-memory template drafts until explicit Save / Restore default.
+        instructionsByLocale: prev.instructionsByLocale ?? next.instructionsByLocale
+      }))
+    },
+    [dbReady, services]
+  )
 
   const enqueuePersist = (fn: () => Promise<void>) => {
     persistChainRef.current = persistChainRef.current.then(fn).catch((err) => {
@@ -307,7 +308,7 @@ export const SummarySettingsSection: React.FC = () => {
       }
       await persistConfig(next)
     })
-  }, [dbReady, services])
+  }, [dbReady, persistConfig, services])
 
   useEffect(() => {
     if (!systemPromptDirtyRef.current) return
