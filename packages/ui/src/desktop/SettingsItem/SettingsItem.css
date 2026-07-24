@@ -35,13 +35,14 @@
 }
 
 .settings-item-title {
-  font-size: 16px;
+  font-size: var(--settings-font-row-size);
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: var(--settings-font-row-weight);
 }
 
 .settings-item-subtitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
 }
 

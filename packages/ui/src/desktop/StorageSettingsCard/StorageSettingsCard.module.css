@@ -61,14 +61,15 @@
 }
 
 .title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
   margin: 0;
 }
 
 .subtitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
   margin: 0;
 }

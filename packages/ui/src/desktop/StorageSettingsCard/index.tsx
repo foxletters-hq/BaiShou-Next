@@ -74,14 +74,14 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
     <SettingsExpansionTile
       embedded={embedded}
       isLast={isLast}
-      icon={<FolderSync size={24} />}
+      icon={<FolderSync size={20} />}
       title={t('settings.storage_manager', '存储管理')}
       subtitle={t('settings.storage_root_desc', '管理数据存储路径与附件')}
     >
       <div className="storage-settings-root-block">
         <div className="settings-list-tile settings-list-tile-noclick">
           <div className="settings-list-tile-leading">
-            <Folder size={22} />
+            <Folder size={18} />
           </div>
           <div className="settings-list-tile-content">
             <span className="settings-list-tile-title">
@@ -121,7 +121,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
         <div className="storage-settings-root-block">
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <Folder size={22} />
+              <Folder size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">
@@ -184,7 +184,7 @@ export const StorageSettingsCard: React.FC<StorageSettingsCardProps> = ({
         <div className="storage-settings-root-block">
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <Folder size={22} />
+              <Folder size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">

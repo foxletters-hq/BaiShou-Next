@@ -2,14 +2,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 4px 16px 16px;
+  padding: 16px;
 }
 
 .toolItem {
   padding: 14px 16px;
   border-radius: 10px;
-  background: var(--bg-app);
-  border: 1px solid var(--border-card);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
 }
 
 .toolHeader {
