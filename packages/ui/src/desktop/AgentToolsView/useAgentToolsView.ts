@@ -1,19 +1,39 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AgentToolDef, ToolConfigParam, ToolManagementConfig } from './agent-tools.types'
-import { buildAgentTools, buildCategoryMeta } from './agent-tools.constants'
+import type { AgentToolScene } from '@baishou/shared'
+import type { AgentToolDef, AgentToolsConfig, ToolConfigParam } from './agent-tools.types'
+import {
+  AGENT_TOOL_CATEGORY_ORDER,
+  WORKSPACE_TOOL_CATEGORY_ORDER,
+  buildAgentTools,
+  buildCategoryMeta,
+  buildWorkspaceCategoryMeta,
+  buildWorkspaceTools
+} from './agent-tools.constants'
 
 interface UseAgentToolsViewOptions {
-  config: ToolManagementConfig
-  onChange: (config: ToolManagementConfig) => void
+  config: AgentToolsConfig
+  onChange: (config: AgentToolsConfig) => void
+  scene?: AgentToolScene
 }
 
-export function useAgentToolsView({ config, onChange }: UseAgentToolsViewOptions) {
+export function useAgentToolsView({
+  config,
+  onChange,
+  scene = 'companion'
+}: UseAgentToolsViewOptions) {
   const { t } = useTranslation()
-  const [showCommunity, setShowCommunity] = useState(false)
 
-  const allTools = useMemo(() => buildAgentTools(t), [t])
-  const categoryMeta = useMemo(() => buildCategoryMeta(t), [t])
+  const allTools = useMemo(
+    () => (scene === 'workspace' ? buildWorkspaceTools(t) : buildAgentTools(t)),
+    [scene, t]
+  )
+  const categoryMeta = useMemo(
+    () => (scene === 'workspace' ? buildWorkspaceCategoryMeta(t) : buildCategoryMeta(t)),
+    [scene, t]
+  )
+  const categoryOrder =
+    scene === 'workspace' ? WORKSPACE_TOOL_CATEGORY_ORDER : AGENT_TOOL_CATEGORY_ORDER
 
   const toggleTool = async (toolId: string) => {
     const disabledList = Array.isArray(config.disabledToolIds) ? [...config.disabledToolIds] : []
@@ -55,13 +75,13 @@ export function useAgentToolsView({ config, onChange }: UseAgentToolsViewOptions
   )
 
   return {
-    showCommunity,
-    setShowCommunity,
     allTools,
     categoryMeta,
+    categoryOrder,
     groupedTools,
     toggleTool,
     setToolParam,
-    getToolParam
+    getToolParam,
+    showEmojiTools: scene === 'companion'
   }
 }

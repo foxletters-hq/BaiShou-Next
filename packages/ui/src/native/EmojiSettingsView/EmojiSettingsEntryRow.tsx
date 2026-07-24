@@ -26,13 +26,9 @@ export const EmojiSettingsEntryRow: React.FC<EmojiSettingsEntryRowProps> = ({
   )
 
   return (
-    <TouchableOpacity
-      style={[styles.row, { borderColor: colors.borderStrong }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
-        <Smile size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+        <Smile size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
       </View>
       <View style={styles.info}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -57,18 +53,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    paddingHorizontal: 4,
+    paddingVertical: 10
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },
   info: { flex: 1, gap: 2 },
-  title: { fontSize: 16, fontWeight: '600' },
-  meta: { fontSize: 13 }
+  title: { fontSize: 14, fontWeight: '600' },
+  meta: { fontSize: 12 }
 })

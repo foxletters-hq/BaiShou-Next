@@ -1,0 +1,112 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.introBlock {
+  flex-shrink: 0;
+  padding: 4px 32px 0;
+}
+
+.introText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.tabHeader {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 12px 32px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
+  z-index: 10;
+}
+
+.navStacks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.workspacePicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.workspaceLabel {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.workspaceSelect {
+  min-width: 180px;
+  max-width: 280px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.workspaceSelect:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: var(--border-control);
+}
+
+.emptyState {
+  margin: 24px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.tabBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollPane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.scrollPane::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollPane::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: 4px;
+}
+
+.toolsPane {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
