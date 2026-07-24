@@ -75,9 +75,7 @@ describe('agent-gate-capability.util', () => {
     expect(
       next.permissionRules?.some(
         (rule) =>
-          rule.action === 'workspace_run' &&
-          rule.effect === AgentGateEffect.Allow &&
-          !rule.pattern
+          rule.action === 'workspace_run' && rule.effect === AgentGateEffect.Allow && !rule.pattern
       )
     ).toBe(false)
     expect(capabilityStateFromConfig(next, 'workspace').effects.command).toBe(AgentGateEffect.Ask)
@@ -122,9 +120,7 @@ describe('agent-gate-capability.util', () => {
       effect: AgentGateEffect.Deny
     })
     expect(next.externalPathEffect).toBe('deny')
-    expect(capabilityStateFromConfig(next, 'workspace').effects.external).toBe(
-      AgentGateEffect.Deny
-    )
+    expect(capabilityStateFromConfig(next, 'workspace').effects.external).toBe(AgentGateEffect.Deny)
   })
 
   it('legacy FullTrust maps unmanaged caps to allow on readback', () => {
@@ -161,8 +157,6 @@ describe('agent-gate-capability.util', () => {
     expect(state.effects.diary_delete).toBe(AgentGateEffect.Ask)
     expect(state.effects.memory_store).toBe(AgentGateEffect.Allow)
     expect(state.effects.memory_delete).toBe(AgentGateEffect.Ask)
-    expect(next.exclusionList).toEqual(
-      expect.arrayContaining(['diary_delete', 'memory_delete'])
-    )
+    expect(next.exclusionList).toEqual(expect.arrayContaining(['diary_delete', 'memory_delete']))
   })
 })

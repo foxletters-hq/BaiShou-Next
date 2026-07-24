@@ -43,11 +43,13 @@ describe('agent-gate-inbox.store', () => {
   })
 
   it('removes replied precisely and advances active request', () => {
-    useAgentGateInboxStore.getState().hydrate([
-      req({ id: 'a', sessionId: 's1', createdAt: 1 }),
-      req({ id: 'b', sessionId: 's1', createdAt: 2 }),
-      req({ id: 'c', sessionId: 's2', createdAt: 3 })
-    ])
+    useAgentGateInboxStore
+      .getState()
+      .hydrate([
+        req({ id: 'a', sessionId: 's1', createdAt: 1 }),
+        req({ id: 'b', sessionId: 's1', createdAt: 2 }),
+        req({ id: 'c', sessionId: 's2', createdAt: 3 })
+      ])
     expect(selectActivePendingForSession(useAgentGateInboxStore.getState(), 's1')?.id).toBe('a')
     useAgentGateInboxStore.getState().removeReplied('a')
     const next = useAgentGateInboxStore.getState()
@@ -57,21 +59,31 @@ describe('agent-gate-inbox.store', () => {
   })
 
   it('hydrates authoritatively and prunes ghost pending', () => {
-    useAgentGateInboxStore.getState().upsertAsked(req({ id: 'ghost', sessionId: 's1', createdAt: 1 }))
-    useAgentGateInboxStore.getState().upsertAsked(req({ id: 'keep', sessionId: 's1', createdAt: 2 }))
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(req({ id: 'ghost', sessionId: 's1', createdAt: 1 }))
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(req({ id: 'keep', sessionId: 's1', createdAt: 2 }))
     useAgentGateInboxStore.getState().hydrate([req({ id: 'keep', sessionId: 's1', createdAt: 2 })])
     expect(useAgentGateInboxStore.getState().pending.map((r) => r.id)).toEqual(['keep'])
   })
 
   it('keeps asks that arrived during fetch when snapshot is provided', () => {
-    useAgentGateInboxStore.getState().upsertAsked(req({ id: 'old', sessionId: 's1', createdAt: 10 }))
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(req({ id: 'old', sessionId: 's1', createdAt: 10 }))
     const snapshotIdsAtFetchStart = new Set(
       useAgentGateInboxStore.getState().pending.map((item) => item.id)
     )
-    useAgentGateInboxStore.getState().upsertAsked(req({ id: 'live', sessionId: 's1', createdAt: 50 }))
-    useAgentGateInboxStore.getState().hydrate([req({ id: 'old', sessionId: 's1', createdAt: 10 })], {
-      snapshotIdsAtFetchStart
-    })
+    useAgentGateInboxStore
+      .getState()
+      .upsertAsked(req({ id: 'live', sessionId: 's1', createdAt: 50 }))
+    useAgentGateInboxStore
+      .getState()
+      .hydrate([req({ id: 'old', sessionId: 's1', createdAt: 10 })], {
+        snapshotIdsAtFetchStart
+      })
     expect(useAgentGateInboxStore.getState().pending.map((r) => r.id)).toEqual(['old', 'live'])
   })
 
@@ -82,22 +94,26 @@ describe('agent-gate-inbox.store', () => {
       useAgentGateInboxStore.getState().pending.map((item) => item.id)
     )
     useAgentGateInboxStore.getState().removeReplied('a')
-    useAgentGateInboxStore.getState().hydrate(
-      [
-        req({ id: 'a', sessionId: 's1', createdAt: 1 }),
-        req({ id: 'b', sessionId: 's1', createdAt: 2 })
-      ],
-      { snapshotIdsAtFetchStart }
-    )
+    useAgentGateInboxStore
+      .getState()
+      .hydrate(
+        [
+          req({ id: 'a', sessionId: 's1', createdAt: 1 }),
+          req({ id: 'b', sessionId: 's1', createdAt: 2 })
+        ],
+        { snapshotIdsAtFetchStart }
+      )
     expect(useAgentGateInboxStore.getState().pending.map((r) => r.id)).toEqual(['b'])
   })
 
   it('counts same-action pending in a session for cascade hints', () => {
-    useAgentGateInboxStore.getState().hydrate([
-      req({ id: '1', sessionId: 's1', createdAt: 1, action: 'workspace_write' }),
-      req({ id: '2', sessionId: 's1', createdAt: 2, action: 'workspace_write' }),
-      req({ id: '3', sessionId: 's1', createdAt: 3, action: 'workspace_run' })
-    ])
+    useAgentGateInboxStore
+      .getState()
+      .hydrate([
+        req({ id: '1', sessionId: 's1', createdAt: 1, action: 'workspace_write' }),
+        req({ id: '2', sessionId: 's1', createdAt: 2, action: 'workspace_write' }),
+        req({ id: '3', sessionId: 's1', createdAt: 3, action: 'workspace_run' })
+      ])
     expect(
       selectSameActionCountInSession(useAgentGateInboxStore.getState(), 's1', 'workspace_write')
     ).toBe(2)

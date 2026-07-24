@@ -317,16 +317,9 @@ export class ShadowIndexSyncService {
       // ── 5b. 内容未变时的 mtime/size 指纹回写 ──
       for (const update of fileStatUpdates) {
         try {
-          await this.shadowRepo.updateFileStat(
-            update.dateStr,
-            update.fileMtimeMs,
-            update.fileSize
-          )
+          await this.shadowRepo.updateFileStat(update.dateStr, update.fileMtimeMs, update.fileSize)
         } catch (e: any) {
-          logger.warn(
-            `[ShadowSync] 更新文件指纹失败 (${update.dateStr}):`,
-            e?.message ?? e
-          )
+          logger.warn(`[ShadowSync] 更新文件指纹失败 (${update.dateStr}):`, e?.message ?? e)
         }
       }
 

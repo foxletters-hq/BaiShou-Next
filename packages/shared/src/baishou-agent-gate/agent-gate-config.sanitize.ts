@@ -1,5 +1,9 @@
 import { AgentGateEffect, AgentGateTrustMode } from './agent-gate.enums'
-import type { AgentGateAllowlistEntry, AgentGatePermissionRule, BaishouAgentGateConfig } from './agent-gate.types'
+import type {
+  AgentGateAllowlistEntry,
+  AgentGatePermissionRule,
+  BaishouAgentGateConfig
+} from './agent-gate.types'
 
 const ALLOWED_EFFECTS = new Set<string>([
   AgentGateEffect.Allow,
@@ -31,9 +35,7 @@ function sanitizeAllowlist(raw: unknown): AgentGateAllowlistEntry[] {
     .map((entry) => {
       const action = entry.action.trim()
       const pattern =
-        typeof entry.pattern === 'string' && entry.pattern.trim()
-          ? entry.pattern.trim()
-          : undefined
+        typeof entry.pattern === 'string' && entry.pattern.trim() ? entry.pattern.trim() : undefined
       if (action === 'workspace_run' && !pattern) return null
       if (pattern === '*' || pattern === '* *' || pattern === '**') return null
       return {

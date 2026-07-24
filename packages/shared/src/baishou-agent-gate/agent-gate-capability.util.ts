@@ -72,7 +72,9 @@ export const COMPANION_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'memory_delete', actions: ['memory_delete'], lockedToAsk: true }
 ]
 
-export function getGateCapabilitiesForScene(scene: AgentToolScene): readonly AgentGateCapabilityDef[] {
+export function getGateCapabilitiesForScene(
+  scene: AgentToolScene
+): readonly AgentGateCapabilityDef[] {
   return scene === 'workspace' ? WORKSPACE_GATE_CAPABILITIES : COMPANION_GATE_CAPABILITIES
 }
 
@@ -109,7 +111,9 @@ function isManagedExternalAllowRule(
   trustedDirs: readonly string[]
 ): boolean {
   if (!rule.pattern || rule.effect !== AgentGateEffect.Allow) return false
-  if (!ALL_WORKSPACE_FILE_ACTIONS.includes(rule.action as (typeof ALL_WORKSPACE_FILE_ACTIONS)[number])) {
+  if (
+    !ALL_WORKSPACE_FILE_ACTIONS.includes(rule.action as (typeof ALL_WORKSPACE_FILE_ACTIONS)[number])
+  ) {
     return false
   }
   const normalized = normalizeTrustedDir(rule.pattern)
@@ -222,9 +226,7 @@ export function matchesTrustedExternalDirs(
     .filter((resource) => resource.kind === 'external_path')
     .map((resource) => resource.value.replace(/\\/g, '/'))
   if (externalPaths.length === 0) return false
-  return externalPaths.some((path) =>
-    patterns.some((pattern) => agentGateGlobMatch(pattern, path))
-  )
+  return externalPaths.some((path) => patterns.some((pattern) => agentGateGlobMatch(pattern, path)))
 }
 
 export interface ApplyCapabilityPatch {
@@ -262,7 +264,10 @@ export function applyCapabilityToConfig(
   const existingRules = config.permissionRules ?? []
   const preserved = existingRules.filter((rule) => {
     if (isManagedActionOnlyRule(rule, managedActions)) return false
-    if (isManagedExternalAllowRule(rule, prevTrusted) || isManagedExternalAllowRule(rule, nextTrusted)) {
+    if (
+      isManagedExternalAllowRule(rule, prevTrusted) ||
+      isManagedExternalAllowRule(rule, nextTrusted)
+    ) {
       return false
     }
     return true
@@ -296,8 +301,14 @@ export function applyCapabilityToConfig(
   }
 
   if (scene === 'workspace') {
-    applyWorkspaceExternalFields(next, state.effects.external ?? AgentGateEffect.Ask, state.trustedExternalDirs)
-    const exclusion = new Set(config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST])
+    applyWorkspaceExternalFields(
+      next,
+      state.effects.external ?? AgentGateEffect.Ask,
+      state.trustedExternalDirs
+    )
+    const exclusion = new Set(
+      config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST]
+    )
     exclusion.add('workspace_delete')
     next.exclusionList = [...exclusion]
   } else {
@@ -347,7 +358,10 @@ export function applyCapabilityStateToConfig(
   const existingRules = config.permissionRules ?? []
   const preserved = existingRules.filter((rule) => {
     if (isManagedActionOnlyRule(rule, managedActions)) return false
-    if (isManagedExternalAllowRule(rule, prevTrusted) || isManagedExternalAllowRule(rule, nextTrusted)) {
+    if (
+      isManagedExternalAllowRule(rule, prevTrusted) ||
+      isManagedExternalAllowRule(rule, nextTrusted)
+    ) {
       return false
     }
     return true
@@ -371,12 +385,10 @@ export function applyCapabilityStateToConfig(
   }
 
   if (scene === 'workspace') {
-    applyWorkspaceExternalFields(
-      next,
-      state.effects.external ?? AgentGateEffect.Ask,
-      nextTrusted
+    applyWorkspaceExternalFields(next, state.effects.external ?? AgentGateEffect.Ask, nextTrusted)
+    const exclusion = new Set(
+      config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST]
     )
-    const exclusion = new Set(config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST])
     exclusion.add('workspace_delete')
     next.exclusionList = [...exclusion]
   } else {
