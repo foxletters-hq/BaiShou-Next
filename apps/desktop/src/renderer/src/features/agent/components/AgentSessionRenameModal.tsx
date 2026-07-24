@@ -37,7 +37,7 @@ export const AgentSessionRenameModal: React.FC<AgentSessionRenameModalProps> = (
   >
     <div
       style={{
-        background: 'var(--bg-surface, #fff)',
+        background: 'var(--bg-surface)',
         borderRadius: 16,
         padding: '24px 24px 16px',
         width: 320,
@@ -47,10 +47,10 @@ export const AgentSessionRenameModal: React.FC<AgentSessionRenameModalProps> = (
     >
       <div
         style={{
-          fontWeight: 700,
+          fontWeight: '600',
           fontSize: 15,
           marginBottom: 12,
-          color: 'var(--text-primary, #1e293b)'
+          color: 'var(--text-primary)'
         }}
       >
         {t('agent.rename_session', '重命名对话')}
@@ -65,8 +65,8 @@ export const AgentSessionRenameModal: React.FC<AgentSessionRenameModalProps> = (
           border: '1px solid rgba(148,163,184,0.4)',
           fontSize: 14,
           outline: 'none',
-          background: 'var(--bg-surface-highlight, #f8fafc)',
-          color: 'var(--text-primary, #1e293b)',
+          background: 'var(--bg-surface-highlight)',
+          color: 'var(--text-primary)',
           boxSizing: 'border-box'
         }}
         value={renameTarget.title}
@@ -98,7 +98,7 @@ export const AgentSessionRenameModal: React.FC<AgentSessionRenameModalProps> = (
             padding: '8px 20px',
             borderRadius: 8,
             border: 'none',
-            background: 'var(--color-primary, #5BA8F5)',
+            background: 'var(--color-primary)',
             color: '#fff',
             cursor: 'pointer',
             fontSize: 14,

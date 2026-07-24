@@ -13,7 +13,7 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  gap: 10px;
+  gap: 12px;
 }
 
 .toolbar {
@@ -35,15 +35,17 @@
   height: 36px;
   padding: 0 32px 0 12px;
   border-radius: 10px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-app, var(--bg-surface));
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
 }
 
 .searchInput:focus {
-  border-color: rgba(var(--color-primary-rgb), 0.45);
+  background: var(--bg-surface);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .searchClear {
@@ -53,7 +55,7 @@
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  color: var(--text-tertiary, #94a3b8);
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 12px;
   padding: 4px;
@@ -65,11 +67,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
   background: var(--bg-surface);
+  color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.multiSelectBtn:hover {
+  background: var(--bg-surface-high, rgba(var(--text-primary-rgb), 0.04));
+  color: var(--text-primary);
+}
+
+.multiSelectBtnActive {
+  border-color: rgba(var(--color-error-rgb), 0.35);
+  background: rgba(var(--color-error-rgb), 0.08);
+  color: var(--color-error);
 }
 
 .listWrap {
@@ -79,9 +97,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
-  background: var(--bg-app, var(--bg-surface));
+  background: var(--bg-surface);
 }
 
 .listWrap > * {
@@ -94,7 +112,7 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  padding-top: 4px;
+  padding: 4px 2px 0;
 }
 
 .selectAllBtn,
@@ -104,15 +122,26 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  padding: 6px 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
 }
 
 .selectAllBtn {
   color: var(--text-secondary);
 }
 
+.selectAllBtn:hover {
+  background: rgba(var(--text-primary-rgb), 0.05);
+  color: var(--text-primary);
+}
+
 .batchDeleteBtn {
-  color: var(--color-error, #ef4444);
+  color: var(--color-error);
+}
+
+.batchDeleteBtn:hover:not(:disabled) {
+  background: rgba(var(--color-error-rgb), 0.08);
 }
 
 .batchDeleteBtn:disabled {

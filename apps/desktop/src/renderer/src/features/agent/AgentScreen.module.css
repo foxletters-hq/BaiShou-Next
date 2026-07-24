@@ -33,10 +33,9 @@
   padding: 16px 24px;
   gap: 12px;
   flex-shrink: 0;
-  --app-bar-chip-height: 32px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  --app-bar-chip-height: 36px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .appBarLeft {
@@ -61,8 +60,8 @@
   padding: 0;
   border-radius: 12px;
   cursor: pointer;
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
   color: var(--text-secondary);
   transition:
     background-color 0.2s,
@@ -72,7 +71,7 @@
 
 .sidebarToggleBtn:hover {
   background-color: var(--bg-surface-high);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
   color: var(--text-primary);
 }
 
@@ -88,8 +87,8 @@
   gap: 8px;
   border-radius: 12px;
   cursor: pointer;
-  background-color: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-control);
   transition:
     background-color 0.2s,
     border-color 0.2s;
@@ -98,7 +97,7 @@
 
 .modelSwitcherTrigger:hover {
   background-color: var(--bg-surface-high);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
 }
 
 .modelProviderIcon {
@@ -119,7 +118,7 @@
 
 .modelName {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
   max-width: 220px;
   white-space: nowrap;
@@ -233,13 +232,13 @@
   background: var(--bg-glass-surface);
   backdrop-filter: var(--blur-glass);
   -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  border: 1px solid var(--border-control);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   transition:
     transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);

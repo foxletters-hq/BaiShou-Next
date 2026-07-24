@@ -1,7 +1,6 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { GraduationCap, MessageSquareText, Plus } from 'lucide-react'
+import { MessageSquareText, Plus } from 'lucide-react'
 import type { AgentAssistant } from './AgentSidebar'
 import { CurrentAssistantSlot } from './AgentSidebarHeader'
 import styles from './AgentChatChrome.module.css'
@@ -25,7 +24,6 @@ export const AgentChatChrome: React.FC<AgentChatChromeProps> = ({
   trailingControls
 }) => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
 
   return (
     <div className={styles.chrome}>
@@ -43,15 +41,6 @@ export const AgentChatChrome: React.FC<AgentChatChromeProps> = ({
         {trailingControls}
         <button
           type="button"
-          className={`${styles.iconBtn} ${styles.iconBtnPrimary}`}
-          title={t('agent.sessions.new_chat', '新对话')}
-          aria-label={t('agent.sessions.new_chat', '新对话')}
-          onClick={onNewSession}
-        >
-          <Plus size={18} />
-        </button>
-        <button
-          type="button"
           className={styles.iconBtn}
           title={t('agent.sidebar.recent_chats', '最近对话')}
           aria-label={t('agent.sidebar.recent_chats', '最近对话')}
@@ -61,12 +50,12 @@ export const AgentChatChrome: React.FC<AgentChatChromeProps> = ({
         </button>
         <button
           type="button"
-          className={styles.iconBtn}
-          title={t('agent.assistant.settings_entry', '伙伴管理')}
-          aria-label={t('agent.assistant.settings_entry', '伙伴管理')}
-          onClick={() => navigate('/assistants')}
+          className={`${styles.iconBtn} ${styles.iconBtnPrimary}`}
+          title={t('agent.sessions.new_chat', '新对话')}
+          aria-label={t('agent.sessions.new_chat', '新对话')}
+          onClick={onNewSession}
         >
-          <GraduationCap size={18} />
+          <Plus size={18} />
         </button>
       </div>
     </div>

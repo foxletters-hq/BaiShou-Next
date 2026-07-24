@@ -67,7 +67,7 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
   <div className={`${styles.currentAssistantWrapper} ${wrapperClassName ?? ''}`.trim()}>
     <div
       className={styles.currentAssistantCard}
-      style={compact ? { height: 44, padding: '6px 10px' } : undefined}
+      style={compact ? { height: 36, padding: '0 10px' } : undefined}
       onClick={() => {
         if (onShowPicker) onShowPicker()
         else if (currentAssistant) onAssistantSwitched(currentAssistant)
@@ -75,7 +75,7 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
     >
       {currentAssistant ? (
         <>
-          <AssistantAvatar assistant={currentAssistant} size={compact ? 32 : 36} />
+          <AssistantAvatar assistant={currentAssistant} size={compact ? 28 : 36} />
           <div className={styles.assistantInfo}>
             <div className={styles.assistantNameRow}>
               <div className={styles.assistantName}>{currentAssistant.name}</div>
@@ -89,7 +89,10 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
         </>
       ) : (
         <>
-          <div className={styles.avatarSkeleton} />
+          <div
+            className={styles.avatarSkeleton}
+            style={compact ? { width: 28, height: 28 } : undefined}
+          />
           <div className={styles.assistantInfo}>
             <div className={styles.skeletonLine} style={{ width: 80 }} />
             {!compact ? (
@@ -140,7 +143,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
           <div
             style={{
               fontSize: 12,
-              color: 'var(--text-secondary, #94a3b8)',
+              color: 'var(--text-secondary)',
               flex: 1,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
@@ -202,7 +205,7 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
             <ListChecks
               size={16}
               color={
-                isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'
+                isMultiSelect ? 'var(--color-error)' : 'var(--text-secondary)'
               }
             />
           </button>
