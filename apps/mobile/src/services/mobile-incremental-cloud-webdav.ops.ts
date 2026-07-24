@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- WebDAV 增量同步上传/下载/清单操作聚合 */
 import i18n from 'i18next'
 import {
   describeWebDavTarget,

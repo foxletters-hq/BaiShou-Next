@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 增量同步 IPC：编排/计划/云端客户端同文件 */
 import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import * as fs from 'fs'
