@@ -46,6 +46,12 @@ export {
   resolvePreviewCursorPos
 } from './extensions/previewCursor'
 
+export {
+  editorContextMenuExtension,
+  type EditorContextMenuOpenPayload,
+  type EditorContextMenuExtensionOptions
+} from './extensions/editorContextMenuExtension'
+
 export { ImageWidget } from './widgets/ImageWidget'
 export { editorTheme, mobileTouchEditorLayoutTheme } from './theme/editorTheme'
 export { workbenchEditorTheme } from './theme/workbenchEditorTheme'
