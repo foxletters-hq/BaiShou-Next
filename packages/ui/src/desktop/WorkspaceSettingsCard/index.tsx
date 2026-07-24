@@ -187,7 +187,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
       <SettingsExpansionTile
         embedded
         isLast={isLast}
-        icon={<Layers size={24} />}
+        icon={<Layers size={20} />}
         title={t('workspace.title', '工作空间')}
         titleAddon={<WorkspaceScopeHelpTooltip />}
         subtitle={t('workspace.current', '当前空间: {{name}}', {
@@ -201,7 +201,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
   return (
     <SettingsExpansionTile
-      icon={<Layers size={24} />}
+      icon={<Layers size={20} />}
       title={t('workspace.title', '工作空间')}
       titleAddon={<WorkspaceScopeHelpTooltip />}
       subtitle={t('workspace.current', '当前空间: {{name}}', {
@@ -213,7 +213,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
         return (
           <div key={vault.name} className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <FolderOpen size={22} />
+              <FolderOpen size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">{vault.name}</span>
@@ -225,7 +225,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
             </div>
             {isActive ? (
               <CheckCircle
-                size={22}
+                size={18}
                 style={{
                   color: 'var(--color-primary)',
                   flexShrink: 0
@@ -261,7 +261,7 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
 
       <button className="settings-list-tile" onClick={handleCreate}>
         <div className="settings-list-tile-leading">
-          <Plus size={22} />
+          <Plus size={18} />
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">

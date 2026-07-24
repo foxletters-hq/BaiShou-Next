@@ -186,7 +186,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
         style={{ cursor: config.hotkeyEnabled ? 'pointer' : 'default' }}
       >
         <div className="settings-list-tile-leading">
-          <Keyboard size={24} />
+          <Keyboard size={20} />
         </div>
         <div className="settings-list-tile-content">
           <span className="settings-list-tile-title">
@@ -235,7 +235,7 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
           <div className="settings-list-divider indent" />
           <div className="settings-list-tile settings-list-tile-noclick">
             <div className="settings-list-tile-leading">
-              <Pencil size={22} />
+              <Pencil size={18} />
             </div>
             <div className="settings-list-tile-content">
               <span className="settings-list-tile-title">

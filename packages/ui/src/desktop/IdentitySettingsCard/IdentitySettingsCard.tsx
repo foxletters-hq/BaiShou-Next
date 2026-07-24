@@ -49,7 +49,7 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
       <SettingsExpansionTile
         embedded
         isLast={isLast}
-        icon={<IdCard size={24} />}
+        icon={<IdCard size={20} />}
         title={t('settings.identity_card')}
         subtitle={t('settings.identity_current_named', { name: card.activeId })}
       >
