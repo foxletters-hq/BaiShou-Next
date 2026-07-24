@@ -16,9 +16,7 @@ export const Switch: React.FC<SwitchProps> = ({
   ...props
 }) => {
   return (
-    <label
-      className={`${styles.root} ${size === 'sm' ? styles.sizeSm : ''} ${className}`.trim()}
-    >
+    <label className={`${styles.root} ${size === 'sm' ? styles.sizeSm : ''} ${className}`.trim()}>
       <input type="checkbox" className={styles.input} {...props} />
       <div className={styles.track}>
         <div className={styles.thumb}>

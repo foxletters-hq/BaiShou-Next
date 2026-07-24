@@ -207,18 +207,11 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
         <View style={styles.cardMain}>
           <View style={styles.cardMainLeading}>
             <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
-              <AgentToolIcon
-                toolId={tool.id}
-                size={AGENT_TOOL_ICON_SIZE}
-                color={colors.primary}
-              />
+              <AgentToolIcon toolId={tool.id} size={AGENT_TOOL_ICON_SIZE} color={colors.primary} />
             </View>
             <View style={styles.toolInfo}>
               <View style={styles.toolNameRow}>
-                <Text
-                  style={[styles.toolName, { color: colors.textPrimary }]}
-                  numberOfLines={1}
-                >
+                <Text style={[styles.toolName, { color: colors.textPrimary }]} numberOfLines={1}>
                   {tool.name}
                 </Text>
                 <HelpTooltip
@@ -252,9 +245,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               const val = getToolParam(tool.id, param) as number
               return (
                 <View key={param.key} style={[styles.cardMain, styles.paramRow]}>
-                  <View
-                    style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}
-                  >
+                  <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
                     {param.icon === 'ListOrdered' ? (
                       <ListOrdered
                         size={16}
@@ -361,7 +352,9 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
           >
             <View style={styles.categoryHeader}>
               <AgentToolCategoryIcon categoryId={catKey} color={colors.primary} />
-              <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>{meta.label}</Text>
+              <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>
+                {meta.label}
+              </Text>
             </View>
             <View style={styles.categoryList}>
               {list.map((tool, index) => renderToolCard(tool, index === list.length - 1))}
