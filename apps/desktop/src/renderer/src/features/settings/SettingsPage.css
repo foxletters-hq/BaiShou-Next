@@ -92,8 +92,8 @@
 }
 
 .settings-title {
-  font-size: 22px; /* titleLarge usually translates to 22px in material 3 */
-  font-weight: 600;
+  font-size: var(--settings-font-shell-title-size);
+  font-weight: var(--settings-font-shell-title-weight);
   letter-spacing: -0.5px;
   color: var(--text-primary);
   margin: 0;
@@ -123,8 +123,8 @@
 .settings-nav-section-label {
   margin: 14px 8px 6px;
   padding: 0 4px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--settings-font-meta-size);
+  font-weight: var(--settings-font-meta-weight);
   line-height: 1.2;
   letter-spacing: 0.02em;
   color: var(--text-tertiary, var(--text-secondary));
@@ -186,8 +186,8 @@
 }
 
 .settings-nav-label {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--settings-font-nav-size);
+  font-weight: var(--settings-font-nav-weight);
   line-height: 1.25;
 }
 

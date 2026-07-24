@@ -230,11 +230,16 @@
 .btn {
   min-width: 88px;
   padding: 8px 14px;
-  border: none;
+  border: 1.5px solid var(--border-control);
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btn:disabled {
@@ -242,18 +247,33 @@
   cursor: not-allowed;
 }
 
+.btn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
 .btnCancel {
-  color: var(--text-secondary);
-  background: var(--bg-subtle, rgba(0, 0, 0, 0.06));
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
 }
 
 .btnConfirm {
-  color: var(--text-on-primary);
-  background: var(--color-primary);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
 }
 
 .btnConfirmDanger {
+  color: var(--text-on-primary);
   background: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.btnConfirmDanger:hover:not(:disabled) {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  filter: brightness(1.05);
 }
 
 .countdownHint {
@@ -300,16 +320,35 @@
 }
 
 .btnChoice {
-  color: var(--text-on-primary);
-  background: var(--color-primary);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
+}
+
+.btnChoice:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .btnChoiceDanger {
   color: var(--text-on-primary);
   background: var(--color-error);
+  border: 1.5px solid var(--color-error);
+}
+
+.btnChoiceDanger:hover:not(:disabled) {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  filter: brightness(1.05);
 }
 
 .btnChoiceMuted {
-  color: var(--text-secondary);
-  background: var(--bg-subtle, rgba(0, 0, 0, 0.06));
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-control);
+}
+
+.btnChoiceMuted:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }

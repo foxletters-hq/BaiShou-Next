@@ -92,6 +92,12 @@ export const SettingsShell: React.FC = () => {
         icon: <SlidersHorizontal size={NAV_ICON_SIZE} />
       },
       {
+        id: 11,
+        kind: 'item',
+        label: t('settings.tts_settings', 'TTS 语音合成'),
+        icon: <Volume2 size={NAV_ICON_SIZE} />
+      },
+      {
         kind: 'section',
         label: t('settings.nav_group_companion', '伙伴')
       },
@@ -106,12 +112,6 @@ export const SettingsShell: React.FC = () => {
         kind: 'item',
         label: t('settings.companion_chat_tools_title', '伙伴对话'),
         icon: <Puzzle size={NAV_ICON_SIZE} />
-      },
-      {
-        id: 11,
-        kind: 'item',
-        label: t('settings.tts_settings', 'TTS 语音合成'),
-        icon: <Volume2 size={NAV_ICON_SIZE} />
       },
       {
         kind: 'section',
