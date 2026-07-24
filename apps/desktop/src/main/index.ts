@@ -43,6 +43,9 @@ import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
 import { logger } from '@baishou/shared'
+import { markStartup, traceStartupStep } from './startup-trace.util'
+
+markStartup('main.module.loaded')
 
 if (is.dev) {
   app.commandLine.appendSwitch('remote-debugging-port', '9333')
@@ -71,8 +74,36 @@ function createWindow(needsOnboarding: boolean): void {
   })
 
   mainWindow.on('ready-to-show', () => {
+    markStartup('window.ready-to-show')
     mainWindow!.show()
+    markStartup('window.show')
   })
+
+  mainWindow.webContents.on('did-start-loading', () => {
+    markStartup('window.did-start-loading')
+  })
+
+  mainWindow.webContents.on('dom-ready', () => {
+    markStartup('window.dom-ready')
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    markStartup('window.did-finish-load', {
+      url: mainWindow?.webContents.getURL()
+    })
+  })
+
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      markStartup('window.did-fail-load', {
+        errorCode,
+        errorDescription,
+        validatedURL,
+        isMainFrame
+      })
+    }
+  )
 
   mainWindow.webContents.on('context-menu', (event, properties) => {
     const { isEditable, selectionText, editFlags } = properties
@@ -136,19 +167,24 @@ function createWindow(needsOnboarding: boolean): void {
       ? process.env['ELECTRON_RENDERER_URL']
       : join(__dirname, '../renderer/index.html')
 
+  markStartup('window.load.begin', {
+    needsOnboarding,
+    baseUrl: typeof baseUrl === 'string' ? baseUrl : String(baseUrl)
+  })
   if (needsOnboarding) {
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-      mainWindow.loadURL(`${baseUrl}#/welcome`)
+      void mainWindow.loadURL(`${baseUrl}#/welcome`)
     } else {
-      mainWindow.loadFile(baseUrl, { hash: '/welcome' })
+      void mainWindow.loadFile(baseUrl, { hash: '/welcome' })
     }
   } else {
     if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-      mainWindow.loadURL(baseUrl)
+      void mainWindow.loadURL(baseUrl)
     } else {
-      mainWindow.loadFile(baseUrl)
+      void mainWindow.loadFile(baseUrl)
     }
   }
+  markStartup('window.load.called')
 }
 
 /**
@@ -159,39 +195,46 @@ async function completeFullBootstrap() {
   isBootstrapping = true
 
   try {
-    // 1. 初始化 Vault 系统 (此时 path.service 已经可以读到正确的 rootPath)
-    await initVaultSystem()
+    await traceStartupStep('completeFullBootstrap', async () => {
+      // 1. 初始化 Vault 系统 (此时 path.service 已经可以读到正确的 rootPath)
+      await traceStartupStep('initVaultSystem', () => initVaultSystem())
 
-    const { initDesktopMainCacheCoordinator } =
-      await import('./cache/desktop-main-cache-coordinator')
-    initDesktopMainCacheCoordinator()
+      const { initDesktopMainCacheCoordinator } =
+        await import('./cache/desktop-main-cache-coordinator')
+      initDesktopMainCacheCoordinator()
 
-    // 2. 业务级 IPC 已在 app.whenReady 中提前注册，此处无需重复
-    // (JSON → SQLite 的全量同步已由 initVaultSystem() 内的 GlobalDataBootstrapper 完成)
+      // 2. 业务级 IPC 已在 app.whenReady 中提前注册，此处无需重复
+      // (冷启动全量扫盘已延后到渲染进程首屏后再 schedule)
 
-    // 3. 这里的逻辑在引导完成后或者已有配置时执行
-    if (mainWindow) {
-      const settingsRepo = new SettingsRepository(getAppDb())
-      const { settingsManager } = await import('./ipc/settings.ipc')
-      const { purgeDeviceLocalSettingsFromAgentDb } =
-        await import('./services/desktop-device-settings.util')
-      await purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () => settingsManager.flushToDisk())
+      // 3. 这里的逻辑在引导完成后或者已有配置时执行
+      if (mainWindow) {
+        const settingsRepo = new SettingsRepository(getAppDb())
+        const { settingsManager } = await import('./ipc/settings.ipc')
+        const { purgeDeviceLocalSettingsFromAgentDb } =
+          await import('./services/desktop-device-settings.util')
+        await traceStartupStep('purgeDeviceLocalSettings', () =>
+          purgeDeviceLocalSettingsFromAgentDb(settingsRepo, () => settingsManager.flushToDisk())
+        )
 
-      const { migrateDesktopHotkeyConfigFromSharedSettings, desktopHotkeyConfigStore } =
-        await import('./services/desktop-hotkey-config.store')
-      await migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo, () =>
-        settingsManager.flushToDisk()
-      )
-      const hotkeyService = new HotkeyService(desktopHotkeyConfigStore, mainWindow)
-      hotkeyService.start()
-      setHotkeyService(hotkeyService)
+        const { migrateDesktopHotkeyConfigFromSharedSettings, desktopHotkeyConfigStore } =
+          await import('./services/desktop-hotkey-config.store')
+        await traceStartupStep('migrateHotkeyConfig', () =>
+          migrateDesktopHotkeyConfigFromSharedSettings(settingsRepo, () =>
+            settingsManager.flushToDisk()
+          )
+        )
+        const hotkeyService = new HotkeyService(desktopHotkeyConfigStore, mainWindow)
+        hotkeyService.start()
+        setHotkeyService(hotkeyService)
 
-      const { bootstrapMcpServer } = await import('./services/mcp-runtime')
-      await bootstrapMcpServer()
+        const { bootstrapMcpServer } = await import('./services/mcp-runtime')
+        await traceStartupStep('bootstrapMcpServer', () => bootstrapMcpServer())
 
-      // 通知渲染进程引导已就绪，可以跳转了
-      mainWindow.webContents.send('onboarding:ready')
-    }
+        // 通知渲染进程引导已就绪，可以跳转了
+        mainWindow.webContents.send('onboarding:ready')
+        markStartup('onboarding:ready sent')
+      }
+    })
 
     isBootstrapping = false
   } catch (err: any) {
@@ -204,6 +247,23 @@ async function completeFullBootstrap() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
+  markStartup('app.whenReady')
+
+  // 渲染进程 / preload 启动打点 → 主进程终端（与 [Startup] 同一时间轴）
+  ipcMain.on(
+    'startup:mark',
+    (
+      _event,
+      payload: { step?: string; navMs?: number; detail?: Record<string, unknown> } | undefined
+    ) => {
+      const step = payload?.step || 'renderer.unknown'
+      markStartup(step, {
+        navMs: payload?.navMs,
+        ...(payload?.detail ?? {})
+      })
+    }
+  )
+
   // Inject Electron net.fetch to global scope to automatically bypass network isolation in custom components
   // like model-pricing.service that may be proxy-sensitive
   ;(global as any).customNetFetch = net.fetch
@@ -288,7 +348,9 @@ app.whenReady().then(async () => {
   const settingsPath = join(app.getPath('userData'), 'baishou_settings.json')
   const { resolveDesktopStorageBootstrap } =
     await import('./services/desktop-legacy-bootstrap.service')
-  const bootstrap = await resolveDesktopStorageBootstrap(settingsPath)
+  const bootstrap = await traceStartupStep('resolveDesktopStorageBootstrap', () =>
+    resolveDesktopStorageBootstrap(settingsPath)
+  )
   const needsOnboarding = bootstrap.needsOnboarding
   const customStorageRoot = bootstrap.storageRoot
 
@@ -300,9 +362,13 @@ app.whenReady().then(async () => {
 
   // ── 核心变更：在确定存储路径后，再初始化全局 Agent DB ──
   // connectionManager 提供全局访问句柄，供所有 Agent 相关 IPC 使用
-  const appDb = getAppDb(customStorageRoot || undefined)
+  const appDb = await traceStartupStep(
+    'agentDb.open',
+    () => getAppDb(customStorageRoot || undefined),
+    { root: customStorageRoot || null }
+  )
   connectionManager.setDb(appDb)
-  await installDatabaseSchema(appDb)
+  await traceStartupStep('agentDb.installSchema', () => installDatabaseSchema(appDb))
 
   // ======================================
   // 5. 自动升级探测已在 resolveDesktopStorageBootstrap 中完成
@@ -317,37 +383,44 @@ app.whenReady().then(async () => {
   registerSettingsIPC()
 
   // 2.5 提前注册所有业务级 IPC，防止渲染进程在窗口创建后立刻调用时 handler 尚未注册
-  registerAgentIPC()
-  registerCompressionEventBridge()
-  registerVaultIPC()
-  registerArchiveIPC()
-  registerLanIPC()
-  registerCloudSyncIPC()
-  registerGitSyncIPC()
-  registerIncrementalSyncIPC()
-  registerLegacyMigrationIPC()
-  registerDiaryIPC()
-  registerProfileIPC()
-  registerSummaryIPC()
-  registerStorageIPC()
-  registerAttachmentIPC()
-  registerDiaryAttachmentIPC()
-  registerRagIPC()
-  registerDeveloperIPC()
-  registerEmojiIPC()
-  registerSearchIPC()
-  registerGraphIPC()
-  registerUpdaterIPC()
-  registerShellIPC()
-  registerShortcutIPC()
+  await traceStartupStep('registerBusinessIpc', () => {
+    registerAgentIPC()
+    registerCompressionEventBridge()
+    registerVaultIPC()
+    registerArchiveIPC()
+    registerLanIPC()
+    registerCloudSyncIPC()
+    registerGitSyncIPC()
+    registerIncrementalSyncIPC()
+    registerLegacyMigrationIPC()
+    registerDiaryIPC()
+    registerProfileIPC()
+    registerSummaryIPC()
+    registerStorageIPC()
+    registerAttachmentIPC()
+    registerDiaryAttachmentIPC()
+    registerRagIPC()
+    registerDeveloperIPC()
+    registerEmojiIPC()
+    registerSearchIPC()
+    registerGraphIPC()
+    registerUpdaterIPC()
+    registerShellIPC()
+    registerShortcutIPC()
+  })
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
+  markStartup('createWindow.call', { needsOnboarding })
   createWindow(needsOnboarding)
 
   // 4. 决定是否立即执行全量初始化
   if (!needsOnboarding) {
     await completeFullBootstrap()
+  } else {
+    markStartup('skip completeFullBootstrap (needsOnboarding)')
   }
+
+  markStartup('whenReady handler finished', { needsOnboarding })
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(needsOnboarding)

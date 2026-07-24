@@ -108,6 +108,22 @@ export default defineConfig({
         ...workspaceAliases
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    // 硬刷新（清空模块缓存）时预打包常用重依赖，缩短 Vite 冷 transform
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'framer-motion',
+        'i18next',
+        'react-i18next',
+        'zustand',
+        'lucide-react',
+        'd3-force',
+        'katex',
+        'highlight.js'
+      ]
+    }
   }
 })
