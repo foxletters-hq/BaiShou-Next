@@ -1,0 +1,67 @@
+/**
+ * 设置页分割层级（§3.7）
+ * 大分割：卡外 sectionLabel + sibling cardSection
+ * 小分割：卡内 divider
+ *
+ * 注意：cardSection 勿设 overflow:hidden。
+ * Select / Combobox 下拉为绝对定位，会被裁切；圆角由卡片自身 border-radius 承担即可。
+ */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stackGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sectionLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.sectionLabel {
+  margin: 0;
+  padding: 0;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-section-weight);
+  line-height: 1.4;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  user-select: none;
+}
+
+.cardSection {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+.cardBodyPadded {
+  padding: 16px;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border-muted);
+  margin: 0;
+}
