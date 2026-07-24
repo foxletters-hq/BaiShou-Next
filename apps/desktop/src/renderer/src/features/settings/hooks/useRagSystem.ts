@@ -84,15 +84,7 @@ export function useRagSystem(
     void refreshMigrationState()
   }, [refreshMigrationState])
 
-  useEffect(() => {
-    if (!activeRagState.isRunning) {
-      void refreshMigrationState()
-      migrationWaitRef.current?.resolve()
-      migrationWaitRef.current = null
-    }
-  }, [activeRagState.isRunning, refreshMigrationState])
-
-  const checkMigrationStatus = async () => {
+  const checkMigrationStatus = useCallback(async () => {
     try {
       const [pending, mismatch] = await Promise.all([
         (window as any).api?.rag?.hasPendingMigration?.(),
@@ -100,8 +92,18 @@ export function useRagSystem(
         refreshMigrationState()
       ])
       setHasMismatchModel(!!pending || !!mismatch)
-    } catch {}
-  }
+    } catch {
+      // keep previous flag; callers may optimistically clear on known-complete outcomes
+    }
+  }, [refreshMigrationState])
+
+  useEffect(() => {
+    if (!activeRagState.isRunning) {
+      void checkMigrationStatus()
+      migrationWaitRef.current?.resolve()
+      migrationWaitRef.current = null
+    }
+  }, [activeRagState.isRunning, checkMigrationStatus])
 
   const handleDetectDimension = async () => {
     setIsProcessing(true)
@@ -197,8 +199,12 @@ export function useRagSystem(
       if (result?.aborted) {
         await reloadSettings?.()
       }
+      // 迁移成功后立刻清掉「版本不匹配」标，避免 toast 已完成但卡片仍残留
+      if (result?.outcome === 'completed' || result?.completed || result?.outcome === 'no_data') {
+        setHasMismatchModel(false)
+      }
       showMigrationResultToast(result, t, toast)
-      await refreshMigrationState()
+      await checkMigrationStatus()
     } catch (e: unknown) {
       const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
       setCachedRagActiveState({
@@ -210,6 +216,7 @@ export function useRagSystem(
       toast.showError(
         t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', { message: detail })
       )
+      await checkMigrationStatus()
     } finally {
       setIsProcessing(false)
     }
@@ -232,7 +239,7 @@ export function useRagSystem(
       await (window as any).api?.rag?.restoreMigrationBackup()
       await fetchRagInfo()
       await reloadSettings?.()
-      await refreshMigrationState()
+      await checkMigrationStatus()
       toast.showSuccess(
         t('settings.rag_migration_restore_success', '已恢复迁移前的向量数据与嵌入模型。')
       )
@@ -242,6 +249,7 @@ export function useRagSystem(
           message: e?.message || String(e)
         })
       )
+      await checkMigrationStatus()
     } finally {
       setIsProcessing(false)
     }
@@ -257,8 +265,11 @@ export function useRagSystem(
       if (result?.aborted) {
         await reloadSettings?.()
       }
+      if (result?.outcome === 'completed' || result?.completed || result?.outcome === 'no_data') {
+        setHasMismatchModel(false)
+      }
       showMigrationResultToast(result, t, toast)
-      await refreshMigrationState()
+      await checkMigrationStatus()
     } catch (e: unknown) {
       const detail = localizeRagEmbedError(extractIpcErrorMessage(e), t)
       setCachedRagActiveState({
@@ -270,6 +281,7 @@ export function useRagSystem(
       toast.showError(
         t('settings.rag_migration_failed', '向量库迁移失败：{{message}}', { message: detail })
       )
+      await checkMigrationStatus()
     } finally {
       setIsProcessing(false)
     }
