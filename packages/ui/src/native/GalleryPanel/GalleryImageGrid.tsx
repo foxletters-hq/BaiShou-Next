@@ -41,7 +41,10 @@ export const GalleryImageGrid: React.FC<GalleryImageGridProps> = ({ images, onIm
       <Image source={{ uri: item.uri }} style={styles.image} resizeMode="cover" />
       {item.caption && (
         <View style={styles.captionBar}>
-          <Text style={styles.captionText} numberOfLines={1}>
+          <Text
+            style={[styles.captionText, { color: colors.textOnPrimary }]}
+            numberOfLines={1}
+          >
             {item.caption}
           </Text>
         </View>
@@ -90,7 +93,7 @@ export const GalleryImageGrid: React.FC<GalleryImageGridProps> = ({ images, onIm
           onPress={() => setFullscreenUri(null)}
         >
           <Pressable style={styles.closeBtn} onPress={() => setFullscreenUri(null)}>
-            <Text style={styles.closeBtnText}>×</Text>
+            <Text style={[styles.closeBtnText, { color: colors.textOnPrimary }]}>×</Text>
           </Pressable>
           {fullscreenUri && (
             <Image

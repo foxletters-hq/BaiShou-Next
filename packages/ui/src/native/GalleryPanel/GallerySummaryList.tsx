@@ -13,6 +13,8 @@ interface GallerySummaryListProps {
   selectedSummary?: SummaryItem
   onItemClick: (id: string) => void
   onScroll: (e: any) => void
+  onViewportLayout?: (height: number) => void
+  onContentSizeChange?: (height: number) => void
   activeTab?: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 }
 
@@ -22,6 +24,8 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
   selectedSummary,
   onItemClick,
   onScroll,
+  onViewportLayout,
+  onContentSizeChange,
   activeTab
 }) => {
   const { t } = useTranslation()
@@ -39,6 +43,8 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
         items.length === 0 && styles.listContentEmpty
       ]}
       onScroll={onScroll}
+      onLayout={(e) => onViewportLayout?.(e.nativeEvent.layout.height)}
+      onContentSizeChange={(_width, height) => onContentSizeChange?.(height)}
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
