@@ -32,6 +32,7 @@ const SETTINGS_NAV_ICONS: Record<SettingsNavIconId, React.ComponentType<LucidePr
   mcp: Cable,
   'agent-tools': Puzzle,
   'agent-gate': ShieldCheck,
+  'workspace-gate': ShieldCheck,
   tts: Volume2,
   'diary-template': NotebookPen,
   'summary-settings': Sparkles,

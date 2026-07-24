@@ -3,7 +3,7 @@ import {
   LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
   LEGACY_UPGRADE_RAG_PENDING_KEY
 } from '@baishou/core/shared'
-import { resolveWebSearchEnabled, BAISHOU_AGENT_GATE_CONFIG_KEY } from '@baishou/shared'
+import { resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 /**
@@ -73,142 +73,64 @@ export function registerSettingsAppIPC() {
     return true
   })
 
-  ipcMain.handle('settings:get-baishou-agent-gate-config', async () => {
-    const { getAgentGateConfig } = await import('../services/agent-gate.service')
-    return getAgentGateConfig()
+  ipcMain.handle(
+    'settings:get-baishou-agent-gate-config',
+    async (_, scope?: import('@baishou/shared').AgentGateConfigScope) => {
+      const { getScopedAgentGateConfig } = await import('../services/agent-gate.service')
+      const normalized =
+        scope?.kind === 'workspace' && scope.workspaceId
+          ? ({ kind: 'workspace', workspaceId: scope.workspaceId } as const)
+          : ({ kind: 'companion' } as const)
+      return getScopedAgentGateConfig(normalized)
+    }
+  )
+
+  ipcMain.handle(
+    'settings:set-baishou-agent-gate-config',
+    async (
+      _,
+      config: any,
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => {
+      const { sanitizeBaishouAgentGateConfigPatch } = await import('@baishou/shared')
+      const { patchScopedAgentGateConfig } = await import('../services/agent-gate.service')
+      const normalized =
+        scope?.kind === 'workspace' && scope.workspaceId
+          ? ({ kind: 'workspace', workspaceId: scope.workspaceId } as const)
+          : ({ kind: 'companion' } as const)
+      const patch = sanitizeBaishouAgentGateConfigPatch(config)
+      return patchScopedAgentGateConfig(normalized, patch)
+    }
+  )
+
+  ipcMain.handle('settings:get-workspace-tool-management', async (_, workspaceId: string) => {
+    const { getWorkspaceToolManagement } = await import('../services/agent-workspace-policy.store')
+    if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+      throw new Error('workspaceId is required')
+    }
+    return getWorkspaceToolManagement(workspaceId.trim())
   })
 
-  ipcMain.handle('settings:set-baishou-agent-gate-config', async (_, config: any) => {
-    const { ensureAgentGateRuntime } = await import('../services/agent-gate.service')
-    const { AgentGateEffect } = await import('@baishou/shared')
-    const rt = await ensureAgentGateRuntime()
-    const next = rt.getConfig()
-    if (config?.trustMode !== undefined) next.trustMode = config.trustMode
-    if (Array.isArray(config?.allowlist)) {
-      next.allowlist = config.allowlist
-        .filter(
-          (
-            entry: unknown
-          ): entry is {
-            id: string
-            action: string
-            createdAt: number
-            pattern?: string
-            resourceKind?: string
-          } =>
-            !!entry &&
-            typeof entry === 'object' &&
-            typeof (entry as { id?: unknown }).id === 'string' &&
-            typeof (entry as { action?: unknown }).action === 'string' &&
-            typeof (entry as { createdAt?: unknown }).createdAt === 'number'
-        )
-        .map(
-          (entry: {
-            id: string
-            action: string
-            createdAt: number
-            pattern?: string
-            resourceKind?: string
-            sourceSessionId?: string
-            sourceRequestId?: string
-          }) => {
-            const action = entry.action.trim()
-            const pattern =
-              typeof entry.pattern === 'string' && entry.pattern.trim()
-                ? entry.pattern.trim()
-                : undefined
-            // workspace_run must never be whole-action allowlisted
-            if (action === 'workspace_run' && !pattern) return null
-            if (pattern === '*' || pattern === '* *' || pattern === '**') return null
-            return {
-              id: entry.id,
-              action,
-              createdAt: entry.createdAt,
-              ...(pattern
-                ? {
-                    pattern,
-                    resourceKind:
-                      entry.resourceKind === 'shell_command' ||
-                      entry.resourceKind === 'workspace_path' ||
-                      entry.resourceKind === 'file_path' ||
-                      entry.resourceKind === 'external_path'
-                        ? entry.resourceKind
-                        : action === 'workspace_run'
-                          ? ('shell_command' as const)
-                          : undefined
-                  }
-                : {}),
-              ...(typeof entry.sourceSessionId === 'string'
-                ? { sourceSessionId: entry.sourceSessionId }
-                : {}),
-              ...(typeof entry.sourceRequestId === 'string'
-                ? { sourceRequestId: entry.sourceRequestId }
-                : {})
-            }
-          }
-        )
-        .filter(Boolean)
-    }
-    if (Array.isArray(config?.exclusionList)) {
-      next.exclusionList = config.exclusionList
-        .filter((item: unknown): item is string => typeof item === 'string')
-        .map((item: string) => item.trim())
-        .filter(Boolean)
-    }
-    const allowedEffects = new Set([
-      AgentGateEffect.Allow,
-      AgentGateEffect.Ask,
-      AgentGateEffect.Deny
-    ])
-    if (Array.isArray(config?.permissionRules)) {
-      next.permissionRules = config.permissionRules
-        .filter(
-          (rule: unknown): rule is { action: string; effect: string; pattern?: string } =>
-            !!rule &&
-            typeof rule === 'object' &&
-            typeof (rule as { action?: unknown }).action === 'string' &&
-            typeof (rule as { effect?: unknown }).effect === 'string' &&
-            allowedEffects.has((rule as { effect: string }).effect as never)
-        )
-        .map((rule: { action: string; effect: string; pattern?: string }) => ({
-          action: rule.action.trim(),
-          effect: rule.effect as (typeof AgentGateEffect)[keyof typeof AgentGateEffect],
-          ...(typeof rule.pattern === 'string' && rule.pattern.trim()
-            ? { pattern: rule.pattern.trim() }
-            : {})
-        }))
-        .filter((rule: { action: string; effect: string; pattern?: string }) => {
-          if (!rule.action) return false
-          // Reject silent whole-action Allow for host commands
-          if (
-            rule.action === 'workspace_run' &&
-            rule.effect === AgentGateEffect.Allow &&
-            !rule.pattern
-          ) {
-            return false
-          }
-          if (rule.pattern === '*' || rule.pattern === '**' || rule.pattern === '**/*') {
-            return false
-          }
-          return true
+  ipcMain.handle(
+    'settings:set-workspace-tool-management',
+    async (_, workspaceId: string, config: any) => {
+      const { setWorkspaceToolManagement } = await import('../services/agent-workspace-policy.store')
+      const { cloneWorkspaceToolManagementConfig } = await import('@baishou/shared')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      return setWorkspaceToolManagement(
+        workspaceId.trim(),
+        cloneWorkspaceToolManagementConfig({
+          disabledToolIds: Array.isArray(config?.disabledToolIds) ? config.disabledToolIds : [],
+          customConfigs:
+            config?.customConfigs && typeof config.customConfigs === 'object'
+              ? config.customConfigs
+              : {}
         })
+      )
     }
-    if (typeof config?.hideDeniedTools === 'boolean') {
-      next.hideDeniedTools = config.hideDeniedTools
-    }
-    if (typeof config?.forceAskExternalPath === 'boolean') {
-      next.forceAskExternalPath = config.forceAskExternalPath
-    }
-    if (
-      typeof config?.repeatAssertAskThreshold === 'number' &&
-      Number.isFinite(config.repeatAssertAskThreshold) &&
-      config.repeatAssertAskThreshold >= 0
-    ) {
-      next.repeatAssertAskThreshold = Math.floor(config.repeatAssertAskThreshold)
-    }
-    await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, next)
-    return next
-  })
+  )
 
   ipcMain.handle('settings:get-search-mode-enabled', async () => {
     const stored = await settingsManager.get<boolean>('search_mode_enabled')

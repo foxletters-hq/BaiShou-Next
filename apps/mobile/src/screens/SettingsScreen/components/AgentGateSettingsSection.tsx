@@ -8,11 +8,17 @@ import {
   AgentGateTrustMode,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   DEFAULT_AGENT_GATE_EXCLUSION_LIST,
+  DEFAULT_AGENT_GATE_NOTIFICATION_PREFS,
   DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
+  type AgentGateNotificationPrefs,
   type BaishouAgentGateConfig,
   type AgentGateAllowlistEntry,
   type AgentGatePermissionRule
 } from '@baishou/shared'
+import {
+  getMobileAgentGateNotificationPrefs,
+  setMobileAgentGateNotificationPrefs
+} from '../../../services/mobile-agent-gate-notification-prefs.service'
 import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/database'
 import { Switch, useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -28,6 +34,9 @@ export const AgentGateSettingsSection: React.FC = () => {
   const [ruleAction, setRuleAction] = useState('')
   const [rulePattern, setRulePattern] = useState('')
   const [ruleEffect, setRuleEffect] = useState<AgentGateEffect>(AgentGateEffect.Ask)
+  const [notificationPrefs, setNotificationPrefs] = useState<AgentGateNotificationPrefs>(
+    DEFAULT_AGENT_GATE_NOTIFICATION_PREFS
+  )
 
   const loadConfig = useCallback(async () => {
     if (!services || !dbReady) return
@@ -41,11 +50,17 @@ export const AgentGateSettingsSection: React.FC = () => {
       allowlist: [...(saved.allowlist ?? [])],
       permissionRules: [...(saved.permissionRules ?? [])]
     })
+    setNotificationPrefs(await getMobileAgentGateNotificationPrefs())
   }, [services, dbReady])
 
   useEffect(() => {
     void loadConfig()
   }, [loadConfig])
+
+  const updateNotificationPrefs = async (patch: Partial<AgentGateNotificationPrefs>) => {
+    const next = await setMobileAgentGateNotificationPrefs(patch)
+    setNotificationPrefs(next)
+  }
 
   const persist = useCallback(
     async (next: BaishouAgentGateConfig) => {
@@ -400,6 +415,42 @@ export const AgentGateSettingsSection: React.FC = () => {
           </TouchableOpacity>
         </View>
       </SettingsGroupCard>
+
+      <SettingsGroupCard>
+        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+          {t('settings.agent_gate_notifications_title', '系统通知')}
+        </Text>
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>
+          {t(
+            'settings.agent_gate_notifications_hint',
+            '设备级偏好，不写入权限策略。开启时才会申请系统通知权限；拒绝后仍保留应用内角标与队列。'
+          )}
+        </Text>
+        <View style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('settings.agent_gate_notify_enabled', '系统通知')}
+            </Text>
+          </View>
+          <Switch
+            value={notificationPrefs.enabled}
+            onValueChange={(value) => void updateNotificationPrefs({ enabled: value })}
+          />
+        </View>
+        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+        <View style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('settings.agent_gate_notify_sound', '通知声音')}
+            </Text>
+          </View>
+          <Switch
+            value={notificationPrefs.soundEnabled}
+            disabled={!notificationPrefs.enabled}
+            onValueChange={(value) => void updateNotificationPrefs({ soundEnabled: value })}
+          />
+        </View>
+      </SettingsGroupCard>
     </>
   )
 }
@@ -432,7 +483,7 @@ function ProfileRulesReadonly({
 const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 8
   },
   desc: {
@@ -491,7 +542,7 @@ const styles = StyleSheet.create({
   },
   addText: {
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   addRow: {
     flexDirection: 'row',

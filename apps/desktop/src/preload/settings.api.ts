@@ -34,9 +34,17 @@ export const settingsApi = {
     setToolManagementConfig: (config: any) =>
       ipcRenderer.invoke('settings:set-tool-management-config', config),
 
-    getBaishouAgentGateConfig: () => ipcRenderer.invoke('settings:get-baishou-agent-gate-config'),
-    setBaishouAgentGateConfig: (config: any) =>
-      ipcRenderer.invoke('settings:set-baishou-agent-gate-config', config),
+    getBaishouAgentGateConfig: (scope?: import('@baishou/shared').AgentGateConfigScope) =>
+      ipcRenderer.invoke('settings:get-baishou-agent-gate-config', scope),
+    setBaishouAgentGateConfig: (
+      config: any,
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => ipcRenderer.invoke('settings:set-baishou-agent-gate-config', config, scope),
+
+    getWorkspaceToolManagement: (workspaceId: string) =>
+      ipcRenderer.invoke('settings:get-workspace-tool-management', workspaceId),
+    setWorkspaceToolManagement: (workspaceId: string, config: any) =>
+      ipcRenderer.invoke('settings:set-workspace-tool-management', workspaceId, config),
 
     getSearchModeEnabled: () => ipcRenderer.invoke('settings:get-search-mode-enabled'),
     setSearchModeEnabled: (enabled: boolean) =>
@@ -84,6 +92,8 @@ export const settingsApi = {
     switchActive: (vaultName: string) => ipcRenderer.invoke('vault:switch', vaultName),
     waitForResync: () => ipcRenderer.invoke('vault:wait-for-resync'),
     getIndexingStatus: () => ipcRenderer.invoke('vault:getIndexingStatus'),
+    releaseColdStartResync: (trigger?: string) =>
+      ipcRenderer.invoke('vault:releaseColdStartResync', trigger),
     preload: (vaultName: string) => ipcRenderer.invoke('vault:preload', vaultName),
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
     createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),

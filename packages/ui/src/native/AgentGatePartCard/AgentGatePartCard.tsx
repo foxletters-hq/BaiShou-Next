@@ -43,7 +43,7 @@ export const AgentGatePartCard: React.FC<AgentGatePartCardProps> = ({ data }) =>
         styles.card,
         {
           borderColor: colors.borderSubtle,
-          backgroundColor: 'rgba(91, 168, 245, 0.08)'
+          backgroundColor: colors.primaryTrackMuted
         }
       ]}
     >
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 6
   },
   title: {

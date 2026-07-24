@@ -4,7 +4,6 @@ import {
   createNodeWorkspaceFs
 } from '@baishou/ai'
 import {
-  BAISHOU_AGENT_GATE_CONFIG_KEY,
   logger,
   type BaishouAgentGateConfig,
   buildAgentDialogueSelectionState,
@@ -25,7 +24,7 @@ import {
   toolRegistry
 } from '../ipc/agent-helpers'
 import { settingsManager } from '../ipc/settings.ipc'
-import { getAgentGate } from './agent-gate.service'
+import { getWorkspaceAgentGate } from './agent-gate.service'
 import {
   bindWorkspaceSession,
   getWorkspaceCheckpointForUserMessage,
@@ -35,6 +34,12 @@ import {
   touchWorkspaceSession,
   updateWorkspaceSessionSelection
 } from './agent-workspace-session.store'
+import { resolveOrCreateWorkspaceIdByFolder } from './agent-workspace-registry.store'
+import {
+  getWorkspaceGateConfig,
+  getWorkspaceToolManagement,
+  setWorkspaceGateConfig
+} from './agent-workspace-policy.store'
 import {
   pushActiveWorkspaceStreamSessionId,
   removeActiveWorkspaceStreamSessionId
@@ -115,6 +120,7 @@ export async function runWorkspaceStreamChat(params: {
   }
 
   const folderRoot = binding.folderRoot
+  const workspaceId = await resolveOrCreateWorkspaceIdByFolder(folderRoot)
   const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
   const assistantContextWindow = await AgentChatService.getAssistantContextWindow(params.sessionId)
 
@@ -130,6 +136,11 @@ export async function runWorkspaceStreamChat(params: {
     false,
     assistantContextWindow
   )
+
+  const [workspaceGateConfig, workspaceTools] = await Promise.all([
+    getWorkspaceGateConfig(workspaceId),
+    getWorkspaceToolManagement(workspaceId)
+  ])
 
   pushActiveWorkspaceStreamSessionId(params.sessionId)
   invalidateMcpToolContextCache()
@@ -147,7 +158,7 @@ export async function runWorkspaceStreamChat(params: {
     }
 
     const emitter = new ElectronStreamEmitter(params.event)
-    const agentGate = await getAgentGate()
+    const agentGate = await getWorkspaceAgentGate(workspaceId)
 
     await AgentChatCoreService.runStreamChat({
       emitter,
@@ -159,6 +170,10 @@ export async function runWorkspaceStreamChat(params: {
       systemModels,
       userConfig: {
         ...userConfig,
+        // 工作区使用独立工具开关与门控配置，不共享伙伴 Vault 配置
+        disabledToolIds: workspaceTools.disabledToolIds,
+        baishou_agent_gate_config: workspaceGateConfig,
+        workspaceId,
         workspaceSystemHint: `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。`
       },
       skipUserMessageRecording: params.skipUserMessageRecording,
@@ -170,7 +185,7 @@ export async function runWorkspaceStreamChat(params: {
       fetchSearchPage: createFetchSearchPage(),
       agentGate,
       persistBaishouAgentGateConfig: async (config: BaishouAgentGateConfig) => {
-        await settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, config)
+        await setWorkspaceGateConfig(workspaceId, config)
       },
       workspace: {
         folderRoot,

@@ -117,11 +117,30 @@ export const agentApi = {
       message?: string
       selectedOptionIds?: string[]
     }) => ipcRenderer.invoke('agent-gate:reply', input),
-    getConfig: () => ipcRenderer.invoke('agent-gate:get-config'),
-    setTrustMode: (trustMode: import('@baishou/shared').AgentGateTrustMode) =>
-      ipcRenderer.invoke('agent-gate:set-trust-mode', trustMode),
-    removeAllowlistEntry: (entryId: string) =>
-      ipcRenderer.invoke('agent-gate:remove-allowlist-entry', entryId),
+    listPending: (sessionId?: string) =>
+      ipcRenderer.invoke('agent-gate:list-pending', sessionId) as Promise<
+        import('@baishou/shared').AgentGateRequest[]
+      >,
+    getNotificationPrefs: () =>
+      ipcRenderer.invoke('agent-gate:get-notification-prefs') as Promise<
+        import('@baishou/shared').AgentGateNotificationPrefs
+      >,
+    setNotificationPrefs: (prefs: Partial<import('@baishou/shared').AgentGateNotificationPrefs>) =>
+      ipcRenderer.invoke('agent-gate:set-notification-prefs', prefs) as Promise<
+        import('@baishou/shared').AgentGateNotificationPrefs
+      >,
+    notifyAsked: (request: import('@baishou/shared').AgentGateRequest) =>
+      ipcRenderer.invoke('agent-gate:notify-asked', request),
+    getConfig: (scope?: import('@baishou/shared').AgentGateConfigScope) =>
+      ipcRenderer.invoke('agent-gate:get-config', scope),
+    setTrustMode: (
+      trustMode: import('@baishou/shared').AgentGateTrustMode,
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => ipcRenderer.invoke('agent-gate:set-trust-mode', trustMode, scope),
+    removeAllowlistEntry: (
+      entryId: string,
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => ipcRenderer.invoke('agent-gate:remove-allowlist-entry', entryId, scope),
     onAsked: (callback: (request: import('@baishou/shared').AgentGateRequest) => void) => {
       const handler = (_: unknown, request: import('@baishou/shared').AgentGateRequest) =>
         callback(request)
@@ -140,14 +159,45 @@ export const agentApi = {
       return () => ipcRenderer.removeListener('agent-gate:replied', handler)
     },
     onAllowlistChanged: (
-      callback: (allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]) => void
+      callback: (
+        allowlist: import('@baishou/shared').AgentGateAllowlistEntry[],
+        scope?: import('@baishou/shared').AgentGateConfigScope
+      ) => void
     ) => {
       const handler = (
         _: unknown,
-        allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]
-      ) => callback(allowlist)
+        payload:
+          | import('@baishou/shared').AgentGateAllowlistEntry[]
+          | {
+              allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]
+              scope?: import('@baishou/shared').AgentGateConfigScope
+            }
+      ) => {
+        if (Array.isArray(payload)) {
+          callback(payload)
+          return
+        }
+        callback(payload.allowlist, payload.scope)
+      }
       ipcRenderer.on('agent-gate:allowlist-changed', handler)
       return () => ipcRenderer.removeListener('agent-gate:allowlist-changed', handler)
+    },
+    onFocusCheck: (callback: (request: import('@baishou/shared').AgentGateRequest) => void) => {
+      const handler = (_: unknown, request: import('@baishou/shared').AgentGateRequest) =>
+        callback(request)
+      ipcRenderer.on('agent-gate:focus-check', handler)
+      return () => ipcRenderer.removeListener('agent-gate:focus-check', handler)
+    },
+    onNavigate: (
+      callback: (payload: {
+        sessionId: string
+        requestId: string
+        scope?: import('@baishou/shared').AgentGateConfigScope
+      }) => void
+    ) => {
+      const handler = (_: unknown, payload: Parameters<typeof callback>[0]) => callback(payload)
+      ipcRenderer.on('agent-gate:navigate', handler)
+      return () => ipcRenderer.removeListener('agent-gate:navigate', handler)
     }
   },
 
@@ -157,6 +207,8 @@ export const agentApi = {
     detectDimension: () => ipcRenderer.invoke('rag:detect-dimension'),
     clearDimension: () => ipcRenderer.invoke('rag:clear-dimension'),
     triggerBatchEmbed: () => ipcRenderer.invoke('rag:trigger-batch-embed'),
+    consumeEmbedJobs: (reason?: string) => ipcRenderer.invoke('rag:consume-embed-jobs', reason),
+    getEmbedJobsPendingCount: () => ipcRenderer.invoke('rag:embed-jobs-pending-count'),
     addManualMemory: (text: string) => ipcRenderer.invoke('rag:add-manual-memory', text),
     clearAll: () => ipcRenderer.invoke('rag:clear-all'),
     triggerMigration: (options?: { rollbackConfig?: any }) =>

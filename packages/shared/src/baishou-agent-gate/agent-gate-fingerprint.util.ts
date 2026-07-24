@@ -1,3 +1,4 @@
+import { agentGatePreviewFingerprintPart } from './agent-gate-preview.types'
 import type { AgentGateAssertInput, AgentGateResourceRef } from './agent-gate.types'
 
 /** Lightweight non-crypto hash for fingerprint payloads */
@@ -24,13 +25,15 @@ function resourcesKey(resources: readonly AgentGateResourceRef[] | undefined): s
 /**
  * Build a stable fingerprint for repeat-assert detection within one session.
  * Same action + equivalent key args → same fingerprint.
+ * Preview digest distinguishes same-path writes with different content.
  */
 export function buildAgentGateAssertFingerprint(
-  input: Pick<AgentGateAssertInput, 'action' | 'metadata' | 'resources'>
+  input: Pick<AgentGateAssertInput, 'action' | 'metadata' | 'resources' | 'preview'>
 ): string {
   const metadata = input.metadata ?? {}
   const action = input.action
   const parts: string[] = [action]
+  const previewPart = agentGatePreviewFingerprintPart(input.preview)
 
   if (action === 'memory_store') {
     const content = asString(metadata.preview) ?? asString(metadata.content) ?? ''
@@ -42,6 +45,9 @@ export function buildAgentGateAssertFingerprint(
     parts.push(resourcesKey(input.resources))
     parts.push(asString(metadata.path) ?? asString(metadata.workspacePath) ?? '')
     parts.push(asString(metadata.new_path) ?? '')
+    if (previewPart) {
+      parts.push(agentGateSimpleHash(previewPart))
+    }
   } else if (action === 'graph_upsert') {
     const summary =
       asString(metadata.preview) ??
@@ -52,6 +58,10 @@ export function buildAgentGateAssertFingerprint(
     parts.push(resourcesKey(input.resources))
     const titleHint = asString(metadata.preview) ?? asString(metadata.path) ?? ''
     if (titleHint) parts.push(agentGateSimpleHash(titleHint.slice(0, 256)))
+  }
+
+  if (previewPart && !action.startsWith('workspace_')) {
+    parts.push(agentGateSimpleHash(previewPart))
   }
 
   return parts.join('::')

@@ -93,7 +93,7 @@
 
 .settings-title {
   font-size: 22px; /* titleLarge usually translates to 22px in material 3 */
-  font-weight: bold;
+  font-weight: 600;
   letter-spacing: -0.5px;
   color: var(--text-primary);
   margin: 0;
@@ -102,6 +102,7 @@
 .settings-nav-scroll {
   flex: 1;
   overflow-y: auto;
+  padding: 4px 0 20px;
 }
 
 .settings-nav-scroll::-webkit-scrollbar {
@@ -115,17 +116,33 @@
 .settings-nav-group {
   display: flex;
   flex-direction: column;
+  padding: 0 10px;
+  gap: 2px;
+}
+
+.settings-nav-section-label {
+  margin: 14px 8px 6px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary, var(--text-secondary));
+  user-select: none;
+}
+
+.settings-nav-section-label:first-child {
+  margin-top: 4px;
 }
 
 .settings-nav-item {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
-  border-radius: 8px; /* shapeMedium */
+  padding: 9px 12px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: var(--text-secondary);
-  margin-bottom: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  color: var(--text-primary);
   background: transparent;
   border: none;
   outline: none;
@@ -140,11 +157,11 @@
 .settings-nav-item.active {
   background-color: var(--bg-surface-high);
   color: var(--color-primary);
-  font-weight: 600;
 }
 
 .settings-nav-item.active .settings-nav-label {
-  font-weight: bold;
+  font-weight: 500;
+  color: var(--color-primary);
 }
 
 .settings-nav-icon {
@@ -156,6 +173,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.settings-nav-item.active .settings-nav-icon {
+  color: var(--color-primary);
 }
 
 .settings-nav-icon svg {
@@ -166,13 +188,13 @@
 .settings-nav-label {
   font-size: 14px;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .settings-divider {
   height: 1px;
   background-color: var(--color-outline-variant);
-  margin: 0 20px;
+  margin: 8px 10px;
 }
 
 .settings-content-area {
@@ -323,7 +345,7 @@
 .settings-config-failed-text {
   margin: 0;
   font-size: 14px;
-  color: var(--color-on-surface-variant);
+  color: var(--text-secondary);
 }
 
 @keyframes settings-config-spin {
@@ -338,12 +360,12 @@
   border-radius: 6px;
   border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
-  color: var(--color-on-surface);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
 .settings-retry-btn:hover {
-  background: var(--color-surface-container-high);
+  background: var(--bg-surface-high);
 }
 
 /* Glass panel equivalent to Flutter cards (Card with elevation 0 or 1) */

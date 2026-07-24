@@ -53,6 +53,17 @@ function findWorkspaceByFolder(
   return workspaces.find((entry) => normalizeWorkspaceFolderKey(entry.folderRoot) === key)
 }
 
+/** 按目录解析稳定 workspaceId；不存在则自动注册 */
+export async function resolveOrCreateWorkspaceIdByFolder(folderRoot: string): Promise<string> {
+  const entry = await addAgentWorkspace(folderRoot)
+  return entry.id
+}
+
+export async function findWorkspaceIdByFolder(folderRoot: string): Promise<string | null> {
+  const workspaces = await listAgentWorkspaces()
+  return findWorkspaceByFolder(workspaces, folderRoot)?.id ?? null
+}
+
 async function syncFromSessionBindings(
   registry: WorkspaceRegistryFile,
   workspaces: AgentWorkspaceEntry[]

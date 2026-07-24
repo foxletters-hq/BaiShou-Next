@@ -5,6 +5,14 @@ import {
 } from '@baishou/shared'
 import { classifyWorkspacePathForGate } from './agent-gate-workspace-path.util'
 import { scanWorkspaceRunCommand } from '../agent-workspace/workspace-command-scan'
+import {
+  prepareContentGatePreview,
+  prepareWorkspaceDeleteGate,
+  prepareWorkspacePatchGate,
+  prepareWorkspaceRenameGate,
+  prepareWorkspaceRunGate,
+  prepareWorkspaceWriteGate
+} from '../agent-workspace/workspace-gate-preview'
 
 type GateArgs = Record<string, unknown>
 
@@ -66,7 +74,15 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
     action: 'diary_write',
     riskLevel: AgentGateRiskLevel.Mutating,
     buildTitle: (args) => diaryDateTitle('创建日记', args),
-    buildMetadata: (args) => ({ date: (args as GateArgs).date })
+    buildMetadata: (args) => ({ date: (args as GateArgs).date }),
+    prepare: async (args) => {
+      const date = (args as GateArgs).date
+      return prepareContentGatePreview({
+        subject: diaryDateTitle('创建日记', args),
+        summary: typeof date === 'string' ? `日期 ${date}` : undefined,
+        detailLines: typeof date === 'string' ? [`日期：${date}`] : undefined
+      })
+    }
   },
   diary_edit: {
     action: 'diary_edit',
@@ -75,14 +91,37 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
     buildMetadata: (args) => ({
       date: (args as GateArgs).date,
       mode: (args as GateArgs).mode
-    })
+    }),
+    prepare: async (args) => {
+      const date = (args as GateArgs).date
+      const mode = (args as GateArgs).mode
+      return prepareContentGatePreview({
+        subject: diaryDateTitle('编辑日记', args),
+        summary:
+          typeof date === 'string'
+            ? `日期 ${date}${typeof mode === 'string' ? ` · ${mode}` : ''}`
+            : undefined,
+        detailLines: [
+          typeof date === 'string' ? `日期：${date}` : null,
+          typeof mode === 'string' ? `模式：${mode}` : null
+        ].filter((line): line is string => Boolean(line))
+      })
+    }
   },
   diary_delete: {
     action: 'diary_delete',
     riskLevel: AgentGateRiskLevel.Destructive,
     forceExclusion: true,
     buildTitle: (args) => diaryDateTitle('删除日记', args),
-    buildMetadata: (args) => ({ date: (args as GateArgs).date })
+    buildMetadata: (args) => ({ date: (args as GateArgs).date }),
+    prepare: async (args) => {
+      const date = (args as GateArgs).date
+      return prepareContentGatePreview({
+        subject: diaryDateTitle('删除日记', args),
+        summary: typeof date === 'string' ? `将删除 ${date} 的日记` : '将删除日记',
+        detailLines: typeof date === 'string' ? [`日期：${date}`] : undefined
+      })
+    }
   },
   memory_store: {
     action: 'memory_store',
@@ -93,7 +132,16 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         typeof (args as GateArgs).content === 'string'
           ? String((args as GateArgs).content).slice(0, 120)
           : undefined
-    })
+    }),
+    prepare: async (args) => {
+      const content =
+        typeof (args as GateArgs).content === 'string' ? String((args as GateArgs).content) : ''
+      return prepareContentGatePreview({
+        subject: '存储长期记忆',
+        summary: content.slice(0, 160) || undefined,
+        detailLines: content ? [content.slice(0, 400)] : undefined
+      })
+    }
   },
   memory_delete: {
     action: 'memory_delete',
@@ -103,7 +151,19 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
     buildMetadata: (args) => ({
       query: (args as GateArgs).query,
       message_id: (args as GateArgs).message_id
-    })
+    }),
+    prepare: async (args) => {
+      const query = (args as GateArgs).query
+      const messageId = (args as GateArgs).message_id
+      return prepareContentGatePreview({
+        subject: '删除记忆',
+        summary: typeof query === 'string' ? query.slice(0, 120) : undefined,
+        detailLines: [
+          typeof query === 'string' ? `查询：${query}` : null,
+          typeof messageId === 'string' ? `消息：${messageId}` : null
+        ].filter((line): line is string => Boolean(line))
+      })
+    }
   },
   workspace_write: {
     action: 'workspace_write',
@@ -116,7 +176,8 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       path: (args as GateArgs).path,
       workspacePath: (args as GateArgs).path
     }),
-    buildResources: workspacePathResources
+    buildResources: workspacePathResources,
+    prepare: prepareWorkspaceWriteGate
   },
   workspace_patch: {
     action: 'workspace_patch',
@@ -129,7 +190,8 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       path: (args as GateArgs).path,
       workspacePath: (args as GateArgs).path
     }),
-    buildResources: workspacePathResources
+    buildResources: workspacePathResources,
+    prepare: prepareWorkspacePatchGate
   },
   workspace_delete: {
     action: 'workspace_delete',
@@ -143,7 +205,8 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       path: (args as GateArgs).path,
       workspacePath: (args as GateArgs).path
     }),
-    buildResources: workspacePathResources
+    buildResources: workspacePathResources,
+    prepare: prepareWorkspaceDeleteGate
   },
   workspace_rename: {
     action: 'workspace_rename',
@@ -161,7 +224,8 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       new_path: (args as GateArgs).new_path,
       workspacePath: (args as GateArgs).path
     }),
-    buildResources: workspaceRenameResources
+    buildResources: workspaceRenameResources,
+    prepare: prepareWorkspaceRenameGate
   },
   workspace_run: {
     action: 'workspace_run',
@@ -192,7 +256,8 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         ...(scan?.dangerous ? { forceExclusion: true } : {})
       }
     },
-    buildResources: workspaceRunResources
+    buildResources: workspaceRunResources,
+    prepare: async (args, ctx) => prepareWorkspaceRunGate(args, ctx)
   },
   graph_upsert: {
     action: 'graph_upsert',
@@ -208,6 +273,22 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         entities: (args as GateArgs).entities,
         edges: (args as GateArgs).edges
       }
+    },
+    prepare: async (args) => {
+      const summary = (args as GateArgs).summary
+      const entities = (args as GateArgs).entities
+      const edges = (args as GateArgs).edges
+      const entityCount = Array.isArray(entities) ? entities.length : 0
+      const edgeCount = Array.isArray(edges) ? edges.length : 0
+      return prepareContentGatePreview({
+        subject: '写入记忆图谱',
+        summary: typeof summary === 'string' ? summary.slice(0, 160) : undefined,
+        counts: { entities: entityCount, edges: edgeCount },
+        detailLines: [
+          typeof summary === 'string' ? `摘要：${summary.slice(0, 200)}` : null,
+          `实体 ${entityCount} · 关系 ${edgeCount}`
+        ].filter((line): line is string => Boolean(line))
+      })
     }
   }
 }

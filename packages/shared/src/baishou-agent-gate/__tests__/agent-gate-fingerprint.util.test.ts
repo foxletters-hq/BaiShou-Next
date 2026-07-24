@@ -40,4 +40,34 @@ describe('buildAgentGateAssertFingerprint', () => {
     })
     expect(fingerprint).toContain('workspace_path:src/a.ts')
   })
+
+  it('distinguishes same path with different preview digests', () => {
+    const a = buildAgentGateAssertFingerprint({
+      action: 'workspace_write',
+      metadata: { path: 'src/a.ts' },
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+      preview: {
+        type: 'file_change',
+        path: 'src/a.ts',
+        kind: 'modify',
+        additions: 1,
+        deletions: 0,
+        contentDigest: 'aaa'
+      }
+    })
+    const b = buildAgentGateAssertFingerprint({
+      action: 'workspace_write',
+      metadata: { path: 'src/a.ts' },
+      resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+      preview: {
+        type: 'file_change',
+        path: 'src/a.ts',
+        kind: 'modify',
+        additions: 2,
+        deletions: 1,
+        contentDigest: 'bbb'
+      }
+    })
+    expect(a).not.toBe(b)
+  })
 })

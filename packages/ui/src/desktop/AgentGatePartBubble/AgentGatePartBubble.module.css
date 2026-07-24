@@ -2,15 +2,34 @@
   margin: 8px 0;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px dashed var(--border-subtle, rgba(0, 0, 0, 0.12));
-  background: color-mix(in srgb, var(--color-primary, #5ba8f5) 6%, transparent);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface-high);
+}
+
+.bubble[data-resolved='false'] {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-muted));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
+}
+
+.bubble[data-reply='reject'] {
+  border-color: color-mix(in srgb, var(--color-error, #ef4444) 40%, var(--border-muted));
+  background: color-mix(in srgb, var(--color-error, #ef4444) 8%, var(--bg-surface));
 }
 
 .badge {
   font-size: 11px;
-  font-weight: 700;
-  color: var(--color-primary, #5ba8f5);
+  font-weight: 600;
   margin-bottom: 6px;
+  color: var(--color-primary);
+}
+
+.bubble[data-reply='reject'] .badge {
+  color: var(--color-error, #ef4444);
+}
+
+.bubble[data-reply='always'] .badge,
+.bubble[data-reply='once'] .badge {
+  color: var(--text-secondary);
 }
 
 .title {
@@ -30,5 +49,11 @@
 .meta {
   margin-top: 8px;
   font-size: 12px;
-  color: var(--text-tertiary, var(--text-secondary));
+  color: var(--text-tertiary);
+}
+
+.scopeHint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }

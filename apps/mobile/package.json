@@ -56,6 +56,7 @@
     "expo-intent-launcher": "~55.0.12",
     "expo-linking": "~55.0.15",
     "expo-network": "~55.0.14",
+    "expo-notifications": "~55.0.25",
     "expo-pdf-text-extract": "^1.1.0",
     "expo-router": "~55.0.16",
     "expo-sharing": "~55.0.20",

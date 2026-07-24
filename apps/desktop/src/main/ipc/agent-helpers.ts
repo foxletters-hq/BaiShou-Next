@@ -17,8 +17,13 @@ import {
   AssistantManagerService
 } from '@baishou/core-desktop'
 import { DesktopAttachmentManagerService } from '../services/desktop-attachment-manager.service'
-import { getAgentGate } from '../services/agent-gate.service'
+import { getAgentGate, getWorkspaceAgentGate } from '../services/agent-gate.service'
 import { resolveActiveWorkspaceToolContext } from '../services/agent-workspace-tool-context'
+import { resolveOrCreateWorkspaceIdByFolder } from '../services/agent-workspace-registry.store'
+import {
+  getWorkspaceGateConfig,
+  getWorkspaceToolManagement
+} from '../services/agent-workspace-policy.store'
 import { fileSystem, pathService, vaultService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import {
@@ -497,10 +502,29 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     )
   }
 
+  const activeWorkspace = await resolveActiveWorkspaceToolContext()
+  let agentGate = await getAgentGate()
+  let scopedUserConfig = userConfig
+
+  if (activeWorkspace?.folderRoot) {
+    const workspaceId = await resolveOrCreateWorkspaceIdByFolder(activeWorkspace.folderRoot)
+    const [workspaceGateConfig, workspaceTools] = await Promise.all([
+      getWorkspaceGateConfig(workspaceId),
+      getWorkspaceToolManagement(workspaceId)
+    ])
+    agentGate = await getWorkspaceAgentGate(workspaceId)
+    scopedUserConfig = {
+      ...userConfig,
+      disabledToolIds: workspaceTools.disabledToolIds,
+      baishou_agent_gate_config: workspaceGateConfig,
+      workspaceId
+    }
+  }
+
   const context = syncMcpToolUserConfig({
     sessionId: MCP_EXTERNAL_SESSION_ID,
     vaultName,
-    userConfig,
+    userConfig: scopedUserConfig,
     diarySearcher: createDiarySearcher(),
     embeddingService: embAdapter,
     vectorStore: dbAdapter,
@@ -509,13 +533,12 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     deduplicationService: dedupService,
     webSearchResultFetcher: createWebSearchResultFetcher(),
     fetchSearchPage: createFetchSearchPage(),
-    agentGate: await getAgentGate(),
+    agentGate,
     rawDataSourceManager: (
       await import('../services/raw-data-source.runtime')
     ).getRawDataSourceManager()
   })
 
-  const activeWorkspace = await resolveActiveWorkspaceToolContext()
   if (activeWorkspace) {
     context.workspace = activeWorkspace
   }

@@ -100,10 +100,20 @@ interface SettingsAPI {
   getGlobalModels(): Promise<import('@baishou/shared').GlobalModelsConfig | null>
   getLegacyUpgradeNoticeState(): Promise<{ pending: boolean; shownCount: number }>
   markLegacyUpgradeNoticeShown(): Promise<number>
-  getBaishouAgentGateConfig(): Promise<import('@baishou/shared').BaishouAgentGateConfig>
-  setBaishouAgentGateConfig(
-    config: import('@baishou/shared').BaishouAgentGateConfig
+  getBaishouAgentGateConfig(
+    scope?: import('@baishou/shared').AgentGateConfigScope
   ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  setBaishouAgentGateConfig(
+    config: import('@baishou/shared').BaishouAgentGateConfig,
+    scope?: import('@baishou/shared').AgentGateConfigScope
+  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  getWorkspaceToolManagement(
+    workspaceId: string
+  ): Promise<import('@baishou/shared').WorkspaceToolManagementConfig>
+  setWorkspaceToolManagement(
+    workspaceId: string,
+    config: import('@baishou/shared').WorkspaceToolManagementConfig
+  ): Promise<import('@baishou/shared').WorkspaceToolManagementConfig>
   testTts(
     config: unknown,
     text: string
@@ -119,11 +129,23 @@ interface AgentGateAPI {
     message?: string
     selectedOptionIds?: string[]
   }): Promise<{ success: boolean }>
-  getConfig(): Promise<import('@baishou/shared').BaishouAgentGateConfig>
-  setTrustMode(
-    trustMode: import('@baishou/shared').AgentGateTrustMode
+  listPending(sessionId?: string): Promise<import('@baishou/shared').AgentGateRequest[]>
+  getNotificationPrefs(): Promise<import('@baishou/shared').AgentGateNotificationPrefs>
+  setNotificationPrefs(
+    prefs: Partial<import('@baishou/shared').AgentGateNotificationPrefs>
+  ): Promise<import('@baishou/shared').AgentGateNotificationPrefs>
+  notifyAsked(request: import('@baishou/shared').AgentGateRequest): Promise<{ success: boolean }>
+  getConfig(
+    scope?: import('@baishou/shared').AgentGateConfigScope
   ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
-  removeAllowlistEntry(entryId: string): Promise<{ success: boolean }>
+  setTrustMode(
+    trustMode: import('@baishou/shared').AgentGateTrustMode,
+    scope?: import('@baishou/shared').AgentGateConfigScope
+  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  removeAllowlistEntry(
+    entryId: string,
+    scope?: import('@baishou/shared').AgentGateConfigScope
+  ): Promise<{ success: boolean }>
   onAsked(callback: (request: import('@baishou/shared').AgentGateRequest) => void): () => void
   onReplied(
     callback: (payload: {
@@ -133,7 +155,18 @@ interface AgentGateAPI {
     }) => void
   ): () => void
   onAllowlistChanged(
-    callback: (allowlist: import('@baishou/shared').AgentGateAllowlistEntry[]) => void
+    callback: (
+      allowlist: import('@baishou/shared').AgentGateAllowlistEntry[],
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    ) => void
+  ): () => void
+  onFocusCheck(callback: (request: import('@baishou/shared').AgentGateRequest) => void): () => void
+  onNavigate(
+    callback: (payload: {
+      sessionId: string
+      requestId: string
+      scope?: import('@baishou/shared').AgentGateConfigScope
+    }) => void
   ): () => void
 }
 
@@ -349,7 +382,8 @@ interface VaultAPI {
     resyncing: boolean
     shadowScanning: boolean
   }>
-  [key: string]: (...args: unknown[]) => Promise<unknown>
+  releaseColdStartResync?(trigger?: string): Promise<boolean>
+  [key: string]: ((...args: unknown[]) => Promise<unknown>) | undefined
 }
 
 interface StorageAPI {

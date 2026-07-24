@@ -70,7 +70,7 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
       },
       {
         id: 'agent-tools',
-        titleKey: 'settings.agent_tools_title',
+        titleKey: 'settings.companion_chat_tools_title',
         icon: 'agent-tools',
         route: { type: 'stack', pathname: '/settings/agent-tools' }
       },

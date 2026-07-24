@@ -15,6 +15,7 @@ import {
   Puzzle,
   RefreshCw,
   Settings,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Volume2,
@@ -32,7 +33,7 @@ import { useSettingsRouteActive } from './hooks/useSettingsRouteActive'
 const NAV_ICON_SIZE = 18
 
 type SettingsTabItem =
-  | { kind: 'divider' }
+  | { kind: 'section'; label: string }
   | { kind: 'item'; id: number; label: string; icon: React.ReactNode }
 
 /** 全屏 overlay 设置（伙伴区等入口）：自带设置侧栏 + 内容区 */
@@ -65,18 +66,19 @@ export const SettingsShell: React.FC = () => {
   const TABS = useMemo<SettingsTabItem[]>(
     () => [
       {
+        kind: 'section',
+        label: t('settings.nav_group_general', '常规')
+      },
+      {
         id: 0,
         kind: 'item',
         label: t('settings.general', '常规设置'),
         icon: <Settings size={NAV_ICON_SIZE} />
       },
       {
-        id: 13,
-        kind: 'item',
-        label: t('settings.mcp_title', 'MCP 服务'),
-        icon: <Cable size={NAV_ICON_SIZE} />
+        kind: 'section',
+        label: t('settings.nav_group_models', '模型')
       },
-      { kind: 'divider' },
       {
         id: 1,
         kind: 'item',
@@ -90,17 +92,46 @@ export const SettingsShell: React.FC = () => {
         icon: <SlidersHorizontal size={NAV_ICON_SIZE} />
       },
       {
+        kind: 'section',
+        label: t('settings.nav_group_companion', '伙伴')
+      },
+      {
         id: 3,
         kind: 'item',
         label: t('agent.assistant.settings_entry', '伙伴管理'),
         icon: <GraduationCap size={NAV_ICON_SIZE} />
       },
-      { kind: 'divider' },
       {
-        id: 4,
+        id: 6,
         kind: 'item',
-        label: t('agent.rag.title', 'RAG 记忆管理'),
-        icon: <Database size={NAV_ICON_SIZE} />
+        label: t('settings.companion_chat_tools_title', '伙伴对话'),
+        icon: <Puzzle size={NAV_ICON_SIZE} />
+      },
+      {
+        id: 11,
+        kind: 'item',
+        label: t('settings.tts_settings', 'TTS 语音合成'),
+        icon: <Volume2 size={NAV_ICON_SIZE} />
+      },
+      {
+        kind: 'section',
+        label: t('settings.nav_group_workbench', '工作台')
+      },
+      {
+        id: 18,
+        kind: 'item',
+        label: t('settings.workspace_gate_page_title', '工作台权限'),
+        icon: <ShieldCheck size={NAV_ICON_SIZE} />
+      },
+      {
+        kind: 'section',
+        label: t('settings.nav_group_capabilities', '能力与集成')
+      },
+      {
+        id: 13,
+        kind: 'item',
+        label: t('settings.mcp_title', 'MCP 服务'),
+        icon: <Cable size={NAV_ICON_SIZE} />
       },
       {
         id: 5,
@@ -109,12 +140,15 @@ export const SettingsShell: React.FC = () => {
         icon: <Globe size={NAV_ICON_SIZE} />
       },
       {
-        id: 6,
+        id: 4,
         kind: 'item',
-        label: t('settings.agent_tools_title', '工具管理'),
-        icon: <Puzzle size={NAV_ICON_SIZE} />
+        label: t('agent.rag.title', 'RAG 记忆管理'),
+        icon: <Database size={NAV_ICON_SIZE} />
       },
-      { kind: 'divider' },
+      {
+        kind: 'section',
+        label: t('settings.nav_group_diary', '日记与回忆')
+      },
       {
         id: 15,
         kind: 'item',
@@ -128,12 +162,9 @@ export const SettingsShell: React.FC = () => {
         icon: <Sparkles size={NAV_ICON_SIZE} />
       },
       {
-        id: 11,
-        kind: 'item',
-        label: t('settings.tts_settings', 'TTS 语音合成'),
-        icon: <Volume2 size={NAV_ICON_SIZE} />
+        kind: 'section',
+        label: t('settings.nav_group_sync', '同步与数据')
       },
-      { kind: 'divider' },
       {
         id: 14,
         kind: 'item',
@@ -212,15 +243,20 @@ export const SettingsShell: React.FC = () => {
           </div>
 
           <div className="settings-nav-scroll">
-            <div className="settings-nav-group">
+            <nav className="settings-nav-group" aria-label={t('settings.title', '系统设置')}>
               {TABS.map((tab, idx) => {
-                if (tab.kind === 'divider') {
-                  return <div key={`div-${idx}`} className="settings-divider" />
+                if (tab.kind === 'section') {
+                  return (
+                    <div key={`section-${idx}`} className="settings-nav-section-label">
+                      {tab.label}
+                    </div>
+                  )
                 }
                 const isSelected = activeTab === tab.id
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     className={`settings-nav-item ${isSelected ? 'active' : ''}`}
                     onClick={() => handleTabChange(tab.id)}
                   >
@@ -229,7 +265,7 @@ export const SettingsShell: React.FC = () => {
                   </button>
                 )
               })}
-            </div>
+            </nav>
           </div>
         </div>
 
