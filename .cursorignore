@@ -1,0 +1,76 @@
+# 依赖
+**/node_modules/
+.pnpm-store/
+.yarn/
+.npm/
+
+# 构建产物
+**/dist/
+**/dist-*/
+**/out/
+**/build/
+**/.next/
+**/.turbo/
+**/.expo/
+**/web-build/
+*.tsbuildinfo
+
+# Electron / 发布产物
+/release/
+/releases/
+*.dmg
+*.exe
+*.msi
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.nupkg
+*.blockmap
+*.apk
+*.aab
+*.ipa
+
+# React Native / 原生构建
+**/.gradle/
+**/.cxx/
+**/.kotlin/
+**/android/**/build/
+**/ios/Pods/
+**/ios/build/
+**/ios/**/xcuserdata/
+
+# 测试 / 覆盖率 / 缓存
+**/coverage/
+**/.nyc_output/
+**/test-results/
+**/playwright-report/
+**/.cache/
+**/.eslintcache
+**/.stylelintcache
+**/.metro-health-check*
+
+# 日志与临时文件
+**/logs/
+**/*.log
+**/tmp/
+**/temp/
+**/.temp-*
+**/草稿纸/
+**/code-review-worktree/
+
+# 大型资源 / 锁文件（索引价值低）
+**/pnpm-lock.yaml
+**/package-lock.json
+**/yarn.lock
+**/*.map
+**/*.min.js
+**/*.min.css
+
+# 本地环境与密钥
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.keystore
