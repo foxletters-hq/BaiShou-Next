@@ -85,7 +85,12 @@ export async function consumeDiaryEmbedJobs(options?: {
           content: diary.content,
           tags: normalizeDiaryTags(diary.tags),
           date: dateStr,
-          updatedAt: diary.updatedAt instanceof Date ? diary.updatedAt : new Date(diary.updatedAt),
+          updatedAt:
+            diary.updatedAt instanceof Date
+              ? diary.updatedAt
+              : diary.updatedAt != null
+                ? new Date(diary.updatedAt)
+                : new Date(),
           vaultName: job.vaultName
         })
 
