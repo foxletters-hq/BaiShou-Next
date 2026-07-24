@@ -22,9 +22,18 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
   return (
     <div
       className="settings-pane settings-pane-full"
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
     >
-      <SettingsPageChrome title={t('settings.companion_chat_tools_title', '伙伴对话')} layout="stack">
+      <SettingsPageChrome
+        title={t('settings.companion_chat_tools_title', '伙伴对话')}
+        layout="stack"
+      >
         <div className={styles.page}>
           {hideTabHeader ? null : (
             <>
@@ -52,10 +61,7 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
           <div className={styles.tabBody}>
             {tab === 'permissions' ? (
               <div className={styles.scrollPane}>
-                <BaishouAgentGateSettingsSection
-                  scene="companion"
-                  scope={{ kind: 'companion' }}
-                />
+                <BaishouAgentGateSettingsSection scene="companion" scope={{ kind: 'companion' }} />
               </div>
             ) : (
               <div className={styles.toolsPane}>

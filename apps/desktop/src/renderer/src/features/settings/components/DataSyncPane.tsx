@@ -14,7 +14,13 @@ export const DataSyncPane: React.FC<DataSyncPaneProps> = ({ settings }) => {
   return (
     <div
       className="settings-pane settings-pane-full"
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
     >
       <CloudSyncPanel
         savedConfig={settings.cloudSyncConfig}

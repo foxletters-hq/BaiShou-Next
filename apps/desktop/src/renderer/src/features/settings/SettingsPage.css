@@ -141,7 +141,9 @@
   padding: 9px 12px;
   border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
   color: var(--text-primary);
   background: transparent;
   border: none;

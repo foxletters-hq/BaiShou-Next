@@ -96,9 +96,7 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
           />
           <StatCard
             label={t('data_sync.stat_deleted', 'Deleted')}
-            value={
-              (syncResult.deletedRemote?.length || 0) + (syncResult.deletedLocal?.length || 0)
-            }
+            value={(syncResult.deletedRemote?.length || 0) + (syncResult.deletedLocal?.length || 0)}
             color="var(--color-error)"
           />
           <StatCard
@@ -140,9 +138,7 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
 
         <div className={pane.stackGroup}>
           <div className={pane.sectionLabelRow}>
-            <h3 className={pane.sectionLabel}>
-              {t('data_sync.sync_config_section', '同步配置')}
-            </h3>
+            <h3 className={pane.sectionLabel}>{t('data_sync.sync_config_section', '同步配置')}</h3>
           </div>
           <section className={pane.cardSection}>
             <div className={styles.sectionBody}>
@@ -153,9 +149,7 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
 
         <div className={pane.stackGroup}>
           <div className={pane.sectionLabelRow}>
-            <h3 className={pane.sectionLabel}>
-              {t('data_sync.sync_scope_section', '同步范围')}
-            </h3>
+            <h3 className={pane.sectionLabel}>{t('data_sync.sync_scope_section', '同步范围')}</h3>
           </div>
           <section className={pane.cardSection}>
             <div className={styles.sectionBody}>
