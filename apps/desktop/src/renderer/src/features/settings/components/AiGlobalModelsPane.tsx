@@ -69,27 +69,27 @@ export const AiGlobalModelsPane: React.FC<{ settings: any }> = ({ settings }) =>
     [t, toast, settings, settingsNav]
   )
 
+  if (!settings.globalModels) {
+    return <div className="settings-pane settings-pane-full" />
+  }
+
   return (
     <div className="settings-pane settings-pane-full">
-      {settings.globalModels && (
-        <div style={{ height: '100%', display: 'flex', width: '100%' }}>
-          <AIGlobalModelsView
-            config={settings.globalModels}
-            availableProviders={providerRecord}
-            onChange={(config) => settings.setGlobalModels(config)}
-            onEmbeddingMigrationRequest={handleEmbeddingMigrationRequest}
-            onManageProviders={() => settingsNav.goAiServices()}
-          />
-        </div>
-      )}
-      {settings.agentBehaviorConfig && (
-        <div className="settings-card-section" style={{ margin: 16 }}>
-          <AgentBehaviorSettingsCard
-            config={settings.agentBehaviorConfig}
-            onChange={(config) => settings.setAgentBehaviorConfig(config)}
-          />
-        </div>
-      )}
+      <AIGlobalModelsView
+        config={settings.globalModels}
+        availableProviders={providerRecord}
+        onChange={(config) => settings.setGlobalModels(config)}
+        onEmbeddingMigrationRequest={handleEmbeddingMigrationRequest}
+        onManageProviders={() => settingsNav.goAiServices()}
+        footer={
+          settings.agentBehaviorConfig ? (
+            <AgentBehaviorSettingsCard
+              config={settings.agentBehaviorConfig}
+              onChange={(config) => settings.setAgentBehaviorConfig(config)}
+            />
+          ) : null
+        }
+      />
     </div>
   )
 }

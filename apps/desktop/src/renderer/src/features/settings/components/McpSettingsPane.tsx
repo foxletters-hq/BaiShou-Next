@@ -29,9 +29,14 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings }) =>
       }}
     >
       <SettingsPageChrome title={t('settings.mcp_title', 'MCP 服务')}>
-        <div className={styles.container}>
-          <section className={styles.pageCard}>
-            <div className={styles.pageSection}>
+        <div className={styles.stack}>
+          <div className={styles.stackGroup}>
+            <div className={styles.sectionLabelRow}>
+              <h3 className={styles.sectionLabel}>
+                {t('settings.mcp_server_section', '服务配置')}
+              </h3>
+            </div>
+            <section className={styles.cardSection}>
               <div className={styles.cardBody}>
                 <McpSettingsCard
                   standalone
@@ -41,17 +46,19 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings }) =>
                   onRefreshToken={settings.refreshMcpAuthToken}
                 />
               </div>
-            </div>
+            </section>
+          </div>
 
-            <div className={styles.pageSection}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>
-                  {t('settings.mcp_tools_provided', '目前提供的工具列表')}
-                </h3>
-              </div>
-              <McpToolsListPanel />
+          <div className={styles.stackGroup}>
+            <div className={styles.sectionLabelRow}>
+              <h3 className={styles.sectionLabel}>
+                {t('settings.mcp_tools_provided', '目前提供的工具列表')}
+              </h3>
             </div>
-          </section>
+            <section className={styles.cardSection}>
+              <McpToolsListPanel />
+            </section>
+          </div>
         </div>
       </SettingsPageChrome>
     </div>
