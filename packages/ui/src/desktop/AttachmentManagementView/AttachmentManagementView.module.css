@@ -13,22 +13,28 @@
   overflow: hidden;
 }
 
-/* 与版本控制 .gmp-content 对应：顶栏外的内容区内边距 */
 .content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 24px 32px 32px;
+  padding: var(--settings-page-content-gap, 24px) 32px 32px;
   box-sizing: border-box;
 }
+
 @media (max-width: 500px) {
   .content {
     padding: 16px;
   }
 }
 
+.paneContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .overviewCardWrapper {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .overviewCard {
@@ -36,45 +42,36 @@
   justify-content: space-around;
   align-items: center;
   background: var(--bg-surface);
-  border-radius: 11px;
-  padding: 14px 18px;
+  border-radius: 12px;
+  padding: 16px 20px;
   border: 1px solid var(--border-card);
-  transition: border-color 0.2s ease;
-}
-.overviewCard:hover {
-  border-color: rgba(var(--color-primary-rgb), 0.2);
 }
 
 .statColumn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .statLabel {
-  font-size: 11px;
+  font-size: var(--settings-font-meta-size, 12px);
+  font-weight: var(--settings-font-meta-weight, 500);
   color: var(--text-secondary);
-  font-weight: 500;
+  line-height: 1.4;
 }
 
 .statValue {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--settings-font-page-title-size, 18px);
+  font-weight: var(--settings-font-page-title-weight, 600);
   font-family: var(--font-family);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
 }
+
 .colorPrimary {
   color: var(--color-primary);
-  background: var(--color-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-:global(body[data-theme='dark']) .colorPrimary {
-  color: var(--color-primary);
-  background: var(--color-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .colorOnSurface {
@@ -84,17 +81,14 @@
 .colorError {
   color: var(--color-error);
 }
-:global(body[data-theme='dark']) .colorError {
-  color: var(--color-error);
-}
 
 .statDivider {
   width: 1px;
-  height: 40px;
-  background: var(--color-outline-variant);
+  height: 36px;
+  background: var(--border-muted);
+  flex-shrink: 0;
 }
 
-/* Toolbar Buttons mirroring CloudSyncPanel Actions */
 .toolbarWrapper {
   display: flex;
   flex-wrap: wrap;
@@ -116,31 +110,26 @@
   gap: 6px;
   padding: 6px 12px;
   border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-label-weight, 500);
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    opacity var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
   height: 32px;
+  box-shadow: none;
 }
+
 .btnOutlined {
   background: transparent;
   border: 1.5px solid var(--border-control);
   color: var(--text-primary);
 }
-.btnOutlined:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.1);
-  color: var(--color-primary);
-}
 
-.btnFilled {
-  background: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  color: var(--text-on-primary);
-}
-.btnFilled:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: none;
+.btnOutlined:hover:not(:disabled) {
+  background: var(--bg-surface-high);
 }
 
 .btnDangerFilled {
@@ -148,29 +137,16 @@
   border: 1px solid var(--color-error);
   color: var(--text-on-primary);
 }
+
 .btnDangerFilled:hover:not(:disabled) {
   opacity: 0.9;
-  box-shadow: 0 4px 12px rgba(var(--color-error-rgb), 0.3);
-}
-
-.textBtn {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  padding: 8px 12px;
-}
-.textBtn:hover {
-  background: rgba(var(--text-primary-rgb), 0.05);
 }
 
 .actionBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
-/* List Area */
 .listArea {
   display: flex;
   flex-direction: column;
@@ -180,62 +156,86 @@
 }
 
 .emptyState {
-  padding: 64px 48px;
+  padding: 48px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   color: var(--text-secondary);
 }
 
-.emptyIcon {
-  font-size: 48px;
+.emptyIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(var(--color-primary-rgb), 0.08);
   color: var(--color-primary);
-  opacity: 0.5;
-  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+/* 显式宽高，避免设置页/全局 svg 规则把 Lucide size 压小 */
+.emptyIconWrap svg,
+.emptyIcon {
+  width: 36px !important;
+  height: 36px !important;
+  flex-shrink: 0;
+  color: var(--color-primary);
 }
 
 .emptyText {
-  font-size: 12px;
+  font-size: var(--settings-font-row-size, 14px);
+  font-weight: var(--settings-font-desc-weight, 400);
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.emptyActionBtn {
+  margin-top: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border-control);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-label-weight, 500);
+  cursor: pointer;
+  box-shadow: none;
+  transition: background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+}
+
+.emptyActionBtn:hover {
+  background: var(--bg-surface-high);
 }
 
 .folderItem {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  gap: 16px;
+  padding: 14px 18px;
+  gap: 14px;
   border: 1px solid var(--border-card);
   background: var(--bg-surface);
   border-radius: 12px;
   margin-bottom: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.015);
-  transition: all 0.2s ease-in-out;
+  transition:
+    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
   cursor: pointer;
 }
+
 .folderItem:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-  border-color: rgba(var(--color-primary-rgb), 0.2);
+  border-color: rgba(var(--color-primary-rgb), 0.25);
   background: var(--bg-surface-high);
-}
-:global(body[data-theme='dark']) .folderItem {
-  border-bottom-color: rgba(255, 255, 255, 0.05);
-}
-.folderItem:last-child {
-  border-bottom: none;
 }
 
 .itemSelected {
   border-color: var(--color-primary) !important;
-  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.08) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb, 14, 165, 233), 0.08);
-}
-:global(body[data-theme='dark']) .itemSelected {
-  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.12) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(var(--color-primary-rgb), 0.08) !important;
 }
 
 .customCheck {
@@ -244,28 +244,27 @@
   width: 18px;
   height: 18px;
   border-radius: 4px;
-  border: 1px solid rgba(var(--text-primary-rgb, 15, 23, 42), 0.15);
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
   cursor: pointer;
   position: relative;
-  transition: all 0.2s ease;
+  transition:
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   outline: none;
+  box-shadow: none;
 }
 
 .customCheck:hover {
   border-color: var(--color-primary);
-  background: rgba(255, 255, 255, 0.4);
 }
 
 .customCheck:checked {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 14, 165, 233), 0.4);
 }
 
 .customCheck::after {
@@ -285,50 +284,38 @@
   border-color: var(--text-on-primary);
 }
 
+.checkboxWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .folderIconBox {
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-primary-rgb), 0.1) 0%,
-    rgba(var(--color-primary-rgb), 0.03) 100%
-  );
+  background: rgba(var(--color-primary-rgb), 0.08);
   color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.15);
-  transition: all 0.25s ease;
+  flex-shrink: 0;
+  overflow: hidden;
 }
-:global(body[data-theme='dark']) .folderIconBox {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-primary-rgb), 0.15) 0%,
-    rgba(var(--color-primary-rgb), 0.05) 100%
-  );
-  color: var(--color-primary);
-  box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.25);
+
+.folderIconThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .folderIconBoxOrphan {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-error-rgb), 0.1) 0%,
-    rgba(var(--color-error-rgb), 0.03) 100%
-  ) !important;
+  background: rgba(var(--color-error-rgb), 0.08) !important;
   color: var(--color-error) !important;
   box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.15) !important;
-}
-:global(body[data-theme='dark']) .folderIconBoxOrphan {
-  background: linear-gradient(
-    135deg,
-    rgba(var(--color-error-rgb), 0.15) 0%,
-    rgba(var(--color-error-rgb), 0.05) 100%
-  ) !important;
-  color: var(--color-error) !important;
-  box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.25) !important;
 }
 
 .folderInfo {
@@ -336,16 +323,18 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .folderTitleRow {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .folderTitle {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size, 14px);
+  font-weight: var(--settings-font-section-weight, 600);
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -353,35 +342,39 @@
 }
 
 .orphanLabel {
-  background: var(--color-error-container);
-  color: var(--color-on-error-container);
-  font-size: 10px;
-  font-weight: 600;
+  background: rgba(var(--color-error-rgb), 0.12);
+  color: var(--color-error);
+  font-size: var(--settings-font-micro-size, 11px);
+  font-weight: var(--settings-font-micro-weight, 600);
   padding: 2px 6px;
   border-radius: 4px;
   margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .folderFilesSubtitle {
-  font-size: 10px;
+  font-size: var(--settings-font-desc-size, 13px);
+  font-weight: var(--settings-font-desc-weight, 400);
   color: var(--text-secondary);
 }
 
 .folderSizeWrapper {
   margin-left: 12px;
+  flex-shrink: 0;
 }
+
 .folderSizeValue {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-label-weight, 500);
   color: var(--text-primary);
 }
 
-/* 新增的卡片动作样式 */
 .cardHeaderActions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: 12px;
+  gap: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .cardHeaderActionBtn {
@@ -394,45 +387,44 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
-  transition: all 0.2s;
+  border-radius: 8px;
+  transition:
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
 }
 
 .cardHeaderActionBtn:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.1);
+  background: var(--bg-surface-high);
   color: var(--color-primary);
 }
 
 .cardHeaderActionBtnDanger:hover:not(:disabled) {
-  background: var(--color-error-container);
+  background: rgba(var(--color-error-rgb), 0.1);
   color: var(--color-error);
 }
 
 .expandIcon {
-  transition: transform 0.2s ease;
+  transition: transform var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
 }
 
 .expandIconRotated {
   transform: rotate(180deg);
 }
 
-/* 子文件列表样式 */
 .fileListContainer {
   display: grid;
   grid-template-rows: 0fr;
   transition:
-    grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.3s ease;
+    grid-template-rows 0.25s var(--ease-out-cubic, ease),
+    opacity 0.25s ease;
   opacity: 0;
   overflow: hidden;
-  background: var(--bg-surface-normal);
-  border-left: 3px solid var(--color-primary);
+  background: var(--bg-surface);
   border-radius: 0 0 12px 12px;
   margin-top: -12px;
   margin-bottom: 8px;
   border: 1px solid var(--border-card);
-  border-top: none;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.02);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .fileListContainer.expanded {
@@ -442,16 +434,16 @@
 
 .fileListContent {
   min-height: 0;
-  padding: 12px 0 6px 0;
+  padding: 10px 0 6px;
 }
 
 .fileItem {
   display: flex;
   align-items: center;
-  padding: 10px 24px 10px 76px;
+  padding: 10px 20px 10px 72px;
   gap: 12px;
   border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.2s;
+  transition: background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
 }
 
 .fileItem:last-child {
@@ -459,32 +451,52 @@
 }
 
 .fileItem:hover {
-  background: rgba(var(--text-primary-rgb), 0.02);
+  background: var(--bg-surface-high);
 }
 
 .fileIcon {
   color: var(--text-secondary);
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.fileThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--border-card);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  cursor: zoom-in;
 }
 
 .fileName {
   flex: 1;
-  font-size: 11px;
+  font-size: var(--settings-font-desc-size, 13px);
+  font-weight: var(--settings-font-desc-weight, 400);
   color: var(--text-primary);
   word-break: break-all;
+  min-width: 0;
 }
 
 .fileMeta {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .fileSize {
-  font-size: 10px;
+  font-size: var(--settings-font-meta-size, 12px);
+  font-weight: var(--settings-font-meta-weight, 500);
   color: var(--text-secondary);
-  min-width: 60px;
+  min-width: 56px;
   text-align: right;
 }
 
@@ -503,41 +515,46 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: 6px;
+  transition:
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
 }
 
 .fileActionBtn:hover:not(:disabled) {
-  background: rgba(var(--color-primary-rgb), 0.1);
+  background: var(--bg-surface-high);
   color: var(--color-primary);
 }
 
 .fileActionBtnDanger:hover:not(:disabled) {
-  background: var(--color-error-container);
+  background: rgba(var(--color-error-rgb), 0.1);
   color: var(--color-error);
 }
 
-/* File type specific icon colors */
 .iconImage {
-  color: #2ecc71 !important;
+  color: var(--color-success) !important;
 }
+
 .iconVideo {
   color: #9b59b6 !important;
 }
+
 .iconPdf {
-  color: #e74c3c !important;
+  color: var(--color-error) !important;
 }
+
 .iconText {
-  color: #3498db !important;
+  color: var(--color-primary) !important;
 }
+
 .iconArchive {
-  color: #f1c40f !important;
+  color: var(--color-warning) !important;
 }
+
 .iconAudio {
   color: #e67e22 !important;
 }
 
-/* 主 Tabs 导航 — 与版本控制 .gmp-header 一致 */
 .mainTabNav {
   display: flex;
   align-items: center;
@@ -551,10 +568,9 @@
   flex-shrink: 0;
 }
 
-/* 联合筛选 */
 .filtersGroup {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -574,31 +590,124 @@
 
 .filterIcon {
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
-.filterSelect {
-  background: transparent;
-  border: none;
-  font-size: 12px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-weight: 500;
-  outline: none;
-  padding-right: 18px; /* 留出空间给 Chevron */
-  appearance: none;
-  -webkit-appearance: none;
-  z-index: 1;
-}
-
-.selectArrow {
-  margin-left: -12px;
-  pointer-events: none; /* 让点击穿透 */
+.filterSelectEmpty {
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-label-weight, 500);
   color: var(--text-secondary);
-  transition: transform 0.2s ease;
-  z-index: 2;
 }
 
-/* 日记附件卡片网格 */
+.filterFieldDropdown {
+  position: relative;
+}
+
+.dropdownTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-control);
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-label-weight, 500);
+  cursor: pointer;
+  min-width: 105px;
+  height: 32px;
+  box-sizing: border-box;
+  box-shadow: none;
+  outline: none;
+  transition:
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+}
+
+.dropdownTrigger:hover {
+  background: var(--bg-surface-high);
+}
+
+.dropdownTrigger.open {
+  background: var(--bg-surface-high);
+  border-color: var(--border-control);
+}
+
+.dropdownChevron {
+  transition: transform var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.dropdownTrigger.open .dropdownChevron {
+  transform: rotate(180deg);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 140px;
+  background: var(--bg-surface);
+  border-radius: 12px;
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.12));
+  z-index: 1000;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.dropdownMenuYear {
+  min-width: 148px;
+}
+
+.dropdownList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.dropdownList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dropdownList::-webkit-scrollbar-thumb {
+  background: var(--border-muted);
+  border-radius: 2px;
+}
+
+.dropdownItem {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-label-weight, 500);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dropdownItem:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.dropdownItem.active {
+  background: var(--bg-surface-high);
+  color: var(--color-primary);
+}
+
 .diaryContentArea {
   display: flex;
   flex-direction: column;
@@ -608,8 +717,8 @@
 .diaryGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 16px;
   width: 100%;
 }
 
@@ -620,34 +729,26 @@
   border: 1px solid var(--border-card);
   border-radius: 12px;
   overflow: hidden;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
   cursor: pointer;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.015);
+  box-shadow: none;
 }
 
 .diaryCard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-  border-color: rgba(var(--color-primary-rgb), 0.2);
+  border-color: rgba(var(--color-primary-rgb), 0.28);
 }
 
 .diaryCardSelected {
   border-color: var(--color-primary) !important;
-  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.08) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 4px 16px rgba(var(--color-primary-rgb, 14, 165, 233), 0.08);
-}
-:global(body[data-theme='dark']) .diaryCardSelected {
-  background: rgba(var(--color-primary-rgb, 14, 165, 233), 0.12) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(var(--color-primary-rgb), 0.06) !important;
 }
 
 .diaryCardPreview {
   height: 120px;
-  background: var(--bg-surface-normal);
+  background: rgba(var(--color-primary-rgb), 0.04);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -660,16 +761,16 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s;
+  transition: transform 0.25s var(--ease-out-cubic, ease);
 }
 
 .diaryCard:hover .diaryPreviewImg {
-  transform: scale(1.05);
+  transform: scale(1.03);
 }
 
 .diaryPreviewFallback {
   color: var(--text-secondary);
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
 .diaryCardCheckbox {
@@ -678,7 +779,7 @@
   left: 8px;
   z-index: 10;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -695,12 +796,11 @@
   right: 8px;
   background: var(--color-error);
   color: var(--text-on-primary);
-  font-size: 9px;
-  font-weight: 600;
+  font-size: var(--settings-font-micro-size, 11px);
+  font-weight: var(--settings-font-micro-weight, 600);
   padding: 2px 6px;
   border-radius: 4px;
   z-index: 10;
-  box-shadow: 0 2px 6px rgba(var(--color-error-rgb), 0.3);
 }
 
 .diaryCardHoverActions {
@@ -710,7 +810,7 @@
   display: flex;
   gap: 6px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
   z-index: 10;
 }
 
@@ -719,7 +819,7 @@
 }
 
 .diaryHoverActionBtn {
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface);
   border: 1.5px solid var(--border-control);
   border-radius: 6px;
   width: 28px;
@@ -729,26 +829,22 @@
   justify-content: center;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition:
+    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
+    color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
+  box-shadow: none;
 }
 
 .diaryHoverActionBtn:hover {
   color: var(--color-primary);
-  background: var(--bg-surface);
-  box-shadow:
-    inset 0 0 0 100px rgba(var(--color-primary-rgb), 0.12),
-    0 2px 8px rgba(var(--color-primary-rgb), 0.15);
-  border-color: rgba(var(--color-primary-rgb), 0.4);
+  background: var(--bg-surface-high);
 }
 
 .diaryHoverActionBtnDanger:hover {
   color: var(--color-error);
-  background: var(--bg-surface);
-  box-shadow:
-    inset 0 0 0 100px rgba(var(--color-error-rgb), 0.12),
-    0 2px 8px rgba(var(--color-error-rgb), 0.15);
-  border-color: rgba(var(--color-error-rgb), 0.4);
+  background: rgba(var(--color-error-rgb), 0.08);
+  border-color: rgba(var(--color-error-rgb), 0.35);
 }
 
 .diaryCardInfo {
@@ -760,8 +856,8 @@
 }
 
 .diaryCardTitle {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--settings-font-meta-size, 12px);
+  font-weight: var(--settings-font-section-weight, 600);
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -769,408 +865,13 @@
 }
 
 .diaryCardMeta {
-  font-size: 10px;
+  font-size: var(--settings-font-meta-size, 12px);
+  font-weight: var(--settings-font-desc-weight, 400);
   color: var(--text-secondary);
 }
 
-/* 分页器 */
-.diaryPagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  margin-top: 16px;
-  margin-bottom: 32px;
-}
-
-.paginationInfo {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-  min-width: 60px;
-  text-align: center;
-}
-
-/* 年份筛选下拉选择器 (对齐记忆画廊风格) */
-.filterFieldYear {
-  position: relative;
-}
-
-.yearSelectTrigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  min-width: 105px;
-  height: 32px;
-  box-sizing: border-box;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.yearSelectTrigger:hover {
-  background: rgba(var(--color-primary-rgb), 0.06);
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-  color: var(--color-primary);
-}
-
-.yearSelectTrigger.open {
-  border-color: var(--color-primary);
-  box-sizing: border-box;
-}
-
-.yearSelectChevron {
-  transition: transform var(--duration-fast) var(--ease-out-cubic);
-  color: var(--text-secondary);
-}
-
-.yearSelectTrigger.open .yearSelectChevron {
-  transform: rotate(180deg);
-}
-
-.filterSelectEmpty {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-/* 年份选择弹窗 Overlay */
-.yearModalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10000;
-  background-color: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(4px);
-}
-
-/* 弹窗卡片 Content */
-.yearModalContent {
-  width: 420px;
-  max-width: 90vw;
-  background: var(--bg-surface);
-  border-radius: 16px;
-  border: 1px solid var(--border-card);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  max-height: 70vh;
-  overflow: hidden;
-  color: var(--text-primary);
-}
-
-.yearModalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.yearModalHeader h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.yearModalClose {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.yearModalClose:hover {
-  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
-  color: var(--text-primary);
-}
-
-.yearModalBody {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.yearModalBody::-webkit-scrollbar {
-  width: 6px;
-}
-
-.yearModalBody::-webkit-scrollbar-thumb {
-  background: var(--border-subtle, rgba(200, 200, 200, 0.4));
-  border-radius: 3px;
-}
-
-/* 全部年份 独立大按钮 */
-.yearModalAllBtn {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface-lowest);
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-}
-
-.yearModalAllBtn:hover {
-  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
-  color: var(--color-primary);
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-}
-
-.yearModalAllBtn.active {
-  background: var(--color-primary) !important;
-  color: var(--text-on-primary) !important;
-  border-color: var(--color-primary) !important;
-  box-shadow: none;
-}
-
-/* 粘性置顶容器 */
-.yearModalStickyHeader {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg-surface);
-  padding-bottom: 8px;
-  margin-top: -4px;
-}
-
-/* 网格布局 */
-.yearModalGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding-bottom: 8px;
-}
-
-.yearModalGridItem {
-  padding: 10px 0;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface-lowest);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-}
-
-.yearModalGridItem:hover {
-  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
-  color: var(--text-primary);
-  border-color: rgba(var(--color-primary-rgb), 0.3);
-}
-
-/* 激活的年份 */
-.yearModalGridItem.active {
-  background: var(--color-primary) !important;
-  color: var(--text-on-primary) !important;
-  border-color: var(--color-primary) !important;
-  font-weight: 600;
-  box-shadow: none;
-}
-
-/* Dark Mode Support for Modal */
-:global(body[data-theme='dark']) .yearModalContent {
-  background: var(--bg-surface-raised);
-  border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
-
-:global(body[data-theme='dark']) .yearModalStickyHeader {
-  background: var(--bg-surface-raised);
-}
-
-:global(body[data-theme='dark']) .yearModalAllBtn,
-:global(body[data-theme='dark']) .yearModalGridItem {
-  background: var(--bg-surface-lowest);
-  border-color: var(--border-subtle, rgba(255, 255, 255, 0.05));
-  color: var(--text-secondary);
-}
-
-:global(body[data-theme='dark']) .yearModalAllBtn:hover,
-:global(body[data-theme='dark']) .yearModalGridItem:hover {
-  background: var(--bg-surface-high);
-  color: var(--text-primary);
-}
-
-:global(body[data-theme='dark']) .yearModalAllBtn.active,
-:global(body[data-theme='dark']) .yearModalGridItem.active {
-  background: var(--color-primary) !important;
-  color: var(--text-on-primary) !important;
-}
-
-:global(body[data-theme='dark']) .yearSelectTrigger {
-  background: var(--bg-surface);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-/* 自定义局部下拉菜单 (对标 beautiful 设计) */
-.filterFieldDropdown {
-  position: relative;
-}
-
-.dropdownTrigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--color-outline-variant);
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  min-width: 105px;
-  height: 32px;
-  box-sizing: border-box;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  outline: none;
-}
-
-.dropdownTrigger:hover {
-  background: rgba(var(--color-primary-rgb), 0.06);
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-  color: var(--color-primary);
-}
-
-.dropdownTrigger.open {
-  border-color: var(--color-primary);
-  box-sizing: border-box;
-}
-
-.dropdownChevron {
-  transition: transform var(--duration-fast) var(--ease-out-cubic);
-  color: var(--text-secondary);
-}
-
-.dropdownTrigger.open .dropdownChevron {
-  transform: rotate(180deg);
-}
-
-.dropdownMenu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 130px;
-  background: var(--bg-surface);
-  border-radius: 12px;
-  border: 1px solid var(--border-card);
-  box-shadow: var(--shadow-lg);
-  z-index: 1000;
-  overflow: hidden;
-  padding: 4px;
-}
-
-.dropdownList {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.dropdownList::-webkit-scrollbar {
-  width: 4px;
-}
-
-.dropdownList::-webkit-scrollbar-thumb {
-  background: var(--border-subtle, rgba(200, 200, 200, 0.4));
-  border-radius: 2px;
-}
-
-.dropdownItem {
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.dropdownItem:hover {
-  background: var(--bg-surface-hover, rgba(0, 0, 0, 0.05));
-  color: var(--text-primary);
-}
-
-.dropdownItem.active {
-  background: var(--color-primary) !important;
-  color: var(--text-on-primary) !important;
-  font-weight: 600;
-}
-
-/* 暗黑模式适配 */
-:global(body[data-theme='dark']) .dropdownMenu {
-  background: var(--bg-surface-raised);
-  border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
-
-:global(body[data-theme='dark']) .dropdownItem {
-  color: var(--text-secondary);
-}
-
-:global(body[data-theme='dark']) .dropdownItem:hover {
-  background: var(--bg-surface-high);
-  color: var(--text-primary);
-}
-
-:global(body[data-theme='dark']) .dropdownItem.active {
-  background: var(--color-primary) !important;
-  color: var(--text-on-primary) !important;
-}
-
-:global(body[data-theme='dark']) .dropdownTrigger {
-  background: var(--bg-surface);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-.diaryPagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 24px;
-  width: 100%;
-}
-
-.paginationRow {
+.paginationRow,
+.paginationRowTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1178,6 +879,13 @@
   gap: 12px;
   flex-wrap: wrap;
   box-sizing: border-box;
-  margin-top: 16px;
-  padding-bottom: 24px;
+}
+
+.paginationRowTop {
+  margin-bottom: 16px;
+}
+
+.paginationRow {
+  margin-top: 8px;
+  padding-bottom: 16px;
 }
