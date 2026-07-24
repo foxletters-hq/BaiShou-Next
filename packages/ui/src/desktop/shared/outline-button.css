@@ -1,0 +1,40 @@
+/**
+ * 全局描边按钮规范（与 Button.elevated / SettingsListTile action 一致）
+ * 用法：class 加上 bs-outline-btn；或在模块 CSS 中复用下方属性值。
+ *
+ * 标准：
+ *   border: 1.5px solid var(--border-control)
+ *   background: var(--bg-surface) | transparent
+ *   color: var(--text-primary)
+ *   hover → background: var(--bg-surface-high); border-color: var(--border-strong)
+ */
+
+.bs-outline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.bs-outline-btn:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
+.bs-outline-btn:disabled,
+.bs-outline-btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

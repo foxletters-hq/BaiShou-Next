@@ -206,20 +206,20 @@
   background-color: transparent;
 }
 
-/* Leading 图标区 — Material 24dp */
+/* Leading 图标区 — 见 --settings-icon-* */
 .settings-list-tile-leading {
-  width: 40px;
+  width: var(--settings-icon-leading-slot);
   display: flex;
   align-items: center;
   justify-content: flex-start;
   color: var(--text-secondary);
   flex-shrink: 0;
-  font-size: 24px;
+  font-size: var(--settings-icon-leading-size);
 }
 
 .settings-list-tile-leading svg.lucide {
-  width: 24px;
-  height: 24px;
+  width: var(--settings-icon-leading-size);
+  height: var(--settings-icon-leading-size);
 }
 
 /* 文本内容区 */
@@ -232,14 +232,15 @@
 }
 
 .settings-list-tile-title {
-  font-size: 14px;
-  font-weight: normal;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--text-primary);
   line-height: 1.4;
 }
 
 .settings-list-tile-subtitle {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -255,22 +256,23 @@
 .settings-list-tile-trailing {
   color: var(--text-secondary);
   flex-shrink: 0;
-  font-size: 22px;
+  font-size: var(--settings-icon-trailing-size);
 }
 
 .settings-list-tile-trailing svg.lucide {
-  width: 22px;
-  height: 22px;
+  width: var(--settings-icon-trailing-size);
+  height: var(--settings-icon-trailing-size);
 }
 
 /* 列表行内直接放置的 Lucide 图标（如快捷键折叠箭头） */
 .settings-list-tile > svg.lucide {
-  width: 20px;
-  height: 20px;
+  width: var(--settings-icon-trailing-size);
+  height: var(--settings-icon-trailing-size);
   flex-shrink: 0;
 }
 
 /* 分割线 */
+/* 卡内行分隔（小分割）；板块之间勿用此线，改用 sibling 卡 + 卡外标题 */
 .settings-list-divider {
   height: 1px;
   background-color: var(--border-muted);

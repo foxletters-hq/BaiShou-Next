@@ -35,9 +35,17 @@
   flex-shrink: 0;
 }
 
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
 .title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
   line-height: 28px;
   color: var(--text-primary);
   margin: 0;
@@ -46,22 +54,32 @@
   font-family: var(--font-family);
 }
 
+.titleAccessory {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 28px;
+}
+
 .trailing {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
   height: 28px;
+  margin-left: auto;
 }
 
 /* 右侧控件不得撑高顶栏 */
-.trailing :is(button, a) {
+.trailing :is(button, a),
+.titleAccessory :is(button, a) {
   width: 28px;
   height: 28px;
   box-sizing: border-box;
 }
 
 .title,
+.titleAccessory,
 .trailing {
   max-height: 100%;
 }
