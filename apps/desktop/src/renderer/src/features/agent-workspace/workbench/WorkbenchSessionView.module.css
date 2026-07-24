@@ -51,9 +51,8 @@
   margin: 0 12px 8px;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid
-    color-mix(in srgb, var(--color-primary) 30%, var(--border-muted));
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
 }
 
 .currentLabel {
@@ -137,13 +136,14 @@
 }
 
 .sessionBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .sessionBtnActive {
   background: var(--bg-surface);
   border-color: var(--border-muted);
-  box-shadow: 0 1px 2px color-mix(in srgb, #000 4%, transparent);
+  color: var(--color-primary);
+  box-shadow: none;
 }
 
 .sessionTitle {
@@ -187,13 +187,13 @@
 }
 
 .iconBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
 .iconBtnDanger:hover {
-  background: rgba(220, 38, 38, 0.08);
-  color: #dc2626;
+  background: var(--bg-surface-high);
+  color: var(--color-error);
 }
 
 .editRow {

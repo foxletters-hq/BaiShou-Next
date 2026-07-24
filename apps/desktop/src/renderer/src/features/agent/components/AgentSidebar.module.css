@@ -233,9 +233,9 @@
   height: 38px;
   box-sizing: border-box;
   border-radius: 10px;
-  border: none;
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
   display: flex;
@@ -244,7 +244,8 @@
   gap: 6px;
   cursor: pointer;
   transition:
-    opacity 0.2s,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
     transform 0.1s;
   white-space: nowrap;
   overflow: hidden;
@@ -252,7 +253,8 @@
 }
 
 .newChatBtn:hover {
-  opacity: 0.9;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .newChatBtn:active {

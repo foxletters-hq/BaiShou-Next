@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import {
@@ -8,6 +8,11 @@ import {
   placePreviewCursorAt,
   type DiaryCmPlatform
 } from '@baishou/ui/shared/diary-codemirror'
+import {
+  editorContextMenuExtension,
+  type EditorContextMenuOpenPayload
+} from '@baishou/ui/shared/diary-codemirror'
+import { EditorContextMenuHost } from '@baishou/ui/desktop/ContextMenu/EditorContextMenuHost'
 import styles from './WorkbenchLivePreviewEditor.module.css'
 
 export interface WorkbenchLivePreviewEditorProps {
@@ -36,6 +41,9 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
   const onChangeRef = useRef(onChange)
   const suppressEchoRef = useRef(false)
   const pendingScrollRef = useRef<{ line: number; column?: number } | null>(null)
+  const [textContextMenu, setTextContextMenu] = useState<EditorContextMenuOpenPayload | null>(
+    null
+  )
 
   useEffect(() => {
     if (scrollToLine) {
@@ -76,7 +84,12 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
       extraExtensions: [
         workbenchEditorTheme,
         EditorView.editorAttributes.of({ class: 'workbench-cm-editor' }),
-        ...(readOnly ? [EditorState.readOnly.of(true)] : [])
+        ...(readOnly ? [EditorState.readOnly.of(true)] : []),
+        editorContextMenuExtension({
+          readOnly,
+          docUri: documentId,
+          onOpen: (payload) => setTextContextMenu(payload)
+        })
       ]
     })
     viewRef.current = view
@@ -86,6 +99,7 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
     })
 
     return () => {
+      setTextContextMenu(null)
       view.destroy()
       viewRef.current = null
     }
@@ -112,5 +126,14 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
     onScrolledToLine?.()
   }, [content, documentId, onScrolledToLine, scrollToColumn, scrollToLine])
 
-  return <div ref={containerRef} className={`workbench-cm-editor ${styles.editor}`} />
+  return (
+    <>
+      <div ref={containerRef} className={`workbench-cm-editor ${styles.editor}`} />
+      <EditorContextMenuHost
+        menu={textContextMenu}
+        onClose={() => setTextContextMenu(null)}
+        variant="context-menu"
+      />
+    </>
+  )
 }

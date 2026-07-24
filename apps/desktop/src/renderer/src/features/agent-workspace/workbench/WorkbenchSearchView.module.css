@@ -41,13 +41,13 @@
 }
 
 .iconBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
 .iconBtnActive {
   color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .form {
@@ -108,12 +108,12 @@
 }
 
 .toggleBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .toggleBtnActive {
   color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .replaceAllBtn {
@@ -194,7 +194,7 @@
 }
 
 .error {
-  color: #cf222e;
+  color: var(--color-error);
 }
 
 .summary {
@@ -230,7 +230,7 @@
 }
 
 .fileHeader:hover {
-  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .fileIcon {
@@ -257,7 +257,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
+  background: var(--bg-surface-normal);
   color: var(--text-secondary);
   font-size: 11px;
   line-height: 18px;
@@ -279,7 +279,7 @@
 }
 
 .matchRow:hover {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .lineNo {

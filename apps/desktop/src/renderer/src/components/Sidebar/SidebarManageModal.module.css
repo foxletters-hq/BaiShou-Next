@@ -155,14 +155,18 @@
 .doneBtn {
   padding: 9px 20px;
   border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .doneBtn:hover {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }

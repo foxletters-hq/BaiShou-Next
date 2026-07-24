@@ -238,21 +238,23 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
 
         {gitStatusBar ? (
           <div className={styles.statusBar}>
-            <button
-              type="button"
-              className={styles.statusBranch}
-              onClick={gitStatusBar.onOpenGitView}
-              title={t('workbench.git', 'Git')}
-            >
-              <span className={styles.statusBranchIcon}>⎇</span>
-              <span>{gitStatusBar.branch ?? '—'}</span>
-              {gitStatusBar.behind ? (
-                <span className={styles.statusSync}>↓{gitStatusBar.behind}</span>
-              ) : null}
-              {gitStatusBar.ahead ? (
-                <span className={styles.statusSync}>↑{gitStatusBar.ahead}</span>
-              ) : null}
-            </button>
+            {gitStatusBar.branch ? (
+              <button
+                type="button"
+                className={styles.statusBranch}
+                onClick={gitStatusBar.onOpenGitView}
+                title={t('workbench.git', 'Git')}
+              >
+                <span className={styles.statusBranchIcon}>⎇</span>
+                <span>{gitStatusBar.branch}</span>
+                {gitStatusBar.behind ? (
+                  <span className={styles.statusSync}>↓{gitStatusBar.behind}</span>
+                ) : null}
+                {gitStatusBar.ahead ? (
+                  <span className={styles.statusSync}>↑{gitStatusBar.ahead}</span>
+                ) : null}
+              </button>
+            ) : null}
             <span className={styles.statusSpacer} />
             {(gitStatusBar.changesCount ?? 0) > 0 ? (
               <span className={styles.statusChanges}>
