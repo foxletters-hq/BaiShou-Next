@@ -1,7 +1,7 @@
 import React from 'react'
 import { Cloud, Globe, Folder } from 'lucide-react'
 
-export function getTargetIcon(target: string, size = 22): React.ReactNode {
+export function getTargetIcon(target: string, size = 18): React.ReactNode {
   if (target === 's3') return <Cloud size={size} strokeWidth={2} />
   if (target === 'webdav') return <Globe size={size} strokeWidth={2} />
   return <Folder size={size} strokeWidth={2} />

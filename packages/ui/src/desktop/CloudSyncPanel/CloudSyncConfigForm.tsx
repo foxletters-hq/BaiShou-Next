@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Cloud, Folder, Globe, Home } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
+import stack from '../shared/SettingsStack.module.css'
 import { inputStyle, labelStyle } from './cloud-sync.styles'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 import type { SyncConfig } from './cloud-sync.types'
@@ -60,43 +61,47 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
             className={styles.configBackButton}
             onClick={() => setShowConfig(false)}
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={18} />
           </button>
           <div className={styles.configAppTitle}>{t('data_sync.config_title', '数据备份配置')}</div>
-          <div style={{ width: 40 }} />
+          <div style={{ width: 28 }} />
         </div>
 
-        <div className={styles.configContent}>
-          <div className={styles.targetSectionTitle}>
-            {t('data_sync.select_target_title', '选择备份目标')}
-          </div>
-          <div className={styles.targetCardsLayout}>
-            {renderTargetCard(
-              'local',
-              <Folder size={24} />,
-              t('data_sync.target_local', '本地存储'),
-              t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')
-            )}
-            {renderTargetCard(
-              's3',
-              <Cloud size={24} />,
-              t('data_sync.target_s3', 'S3 兼容存储'),
-              t('data_sync.s3_storage_desc', '兼容 S3 协议的对象存储服务')
-            )}
-            {renderTargetCard(
-              'webdav',
-              <Globe size={24} />,
-              t('data_sync.target_webdav', 'WebDAV'),
-              t('data_sync.webdav_storage_desc', '通用网络文件存储协议')
-            )}
-          </div>
-
-          <div className={styles.configSection}>
-            <div className={styles.configSectionHeader}>
-              <div className={styles.configSectionTitle}>{sectionTitle}</div>
+        <div className={`${styles.configContent} ${stack.stack}`}>
+          <div className={stack.stackGroup}>
+            <div className={stack.sectionLabelRow}>
+              <h3 className={stack.sectionLabel}>
+                {t('data_sync.select_target_title', '选择备份目标')}
+              </h3>
             </div>
-            <div className={styles.formDivider} />
+            <div className={styles.targetCardsLayout}>
+              {renderTargetCard(
+                'local',
+                <Folder size={18} />,
+                t('data_sync.target_local', '本地存储'),
+                t('data_sync.local_storage_desc', '直接将备份转储保存在应用所运行设备的本地磁盘中。')
+              )}
+              {renderTargetCard(
+                's3',
+                <Cloud size={18} />,
+                t('data_sync.target_s3', 'S3 兼容存储'),
+                t('data_sync.s3_storage_desc', '兼容 S3 协议的对象存储服务')
+              )}
+              {renderTargetCard(
+                'webdav',
+                <Globe size={18} />,
+                t('data_sync.target_webdav', 'WebDAV'),
+                t('data_sync.webdav_storage_desc', '通用网络文件存储协议')
+              )}
+            </div>
+          </div>
 
+          <div className={stack.stackGroup}>
+            <div className={stack.sectionLabelRow}>
+              <h3 className={stack.sectionLabel}>{sectionTitle}</h3>
+            </div>
+            <section className={stack.cardSection}>
+              <div className={stack.cardBodyPadded}>
             {config.target === 'local' && (
               <div className={styles.emptyLocalState}>
                 <div style={{ marginBottom: 12, color: 'var(--text-secondary)', fontSize: 64 }}>
@@ -216,15 +221,17 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
               </div>
             )}
 
-            <div className={styles.configSectionFooter}>
-              <button
-                type="button"
-                className={`${styles.actionBtn} ${styles.btnSave}`}
-                onClick={handleSaveConfig}
-              >
-                {t('data_sync.save_config_button', '保存配置')}
-              </button>
-            </div>
+                <div className={styles.configSectionFooter}>
+                  <button
+                    type="button"
+                    className={`${styles.actionBtn} ${styles.btnSave}`}
+                    onClick={handleSaveConfig}
+                  >
+                    {t('data_sync.save_config_button', '保存配置')}
+                  </button>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>

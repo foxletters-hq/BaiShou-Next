@@ -36,8 +36,14 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
               className={styles.countModalTitleBlock}
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              <Archive size={20} color="var(--color-primary)" />
-              <span className={styles.countModalTitle} style={{ fontWeight: '600', fontSize: 16 }}>
+              <Archive size={16} color="var(--color-primary)" />
+              <span
+                className={styles.countModalTitle}
+                style={{
+                  fontWeight: 600,
+                  fontSize: 'var(--settings-font-section-size)'
+                }}
+              >
                 {activeTab === 'snapshot'
                   ? t('data_sync.max_snapshot_title', '快照上限设置')
                   : t('data_sync.max_backup_title', '备份上限设置')}
