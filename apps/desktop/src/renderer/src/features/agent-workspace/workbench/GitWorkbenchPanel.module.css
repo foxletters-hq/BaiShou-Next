@@ -708,14 +708,17 @@
   gap: 4px;
   height: 28px;
   padding: 0 12px;
-  border: 1px solid transparent;
+  border: 1.5px solid var(--border-control);
   border-radius: 6px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .commitPrimary:disabled {
@@ -724,7 +727,8 @@
 }
 
 .commitPrimary:not(:disabled):hover {
-  filter: brightness(1.05);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .commitMenuBtn {
@@ -849,16 +853,16 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-}
-
-.sheetBtn {
-  border: 1px solid var(--border-muted);
+  border: 1.5px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.sheetBtnPrimary {
-  border: none;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+.sheetBtn:hover,
+.sheetBtnPrimary:hover {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
