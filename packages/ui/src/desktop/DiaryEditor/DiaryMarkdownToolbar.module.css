@@ -4,8 +4,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 8px;
-  border-top: 1px solid var(--border-subtle);
+  padding: 10px 8px;
+  /* 与编辑区明确分区：用可见分割线，不用几乎看不见的 subtle */
+  border-top: 1px solid var(--border-muted);
   background: var(--bg-surface);
   flex-shrink: 0;
 }
@@ -19,7 +20,7 @@
   flex-shrink: 0;
   border: 1.5px solid var(--border-control);
   border-radius: 8px;
-  background: var(--bg-surface-low, var(--bg-surface));
+  background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
@@ -30,9 +31,9 @@
 }
 
 .scrollBtn:hover:not(:disabled) {
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
-  border-color: var(--border-muted, var(--border-subtle));
+  border-color: var(--border-muted);
 }
 
 .scrollBtn:disabled {
@@ -81,7 +82,7 @@
   padding: 0 10px;
   border-radius: 8px;
   border: 1.5px solid var(--border-control);
-  background: var(--bg-surface-low, var(--bg-surface));
+  background: var(--bg-surface);
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
@@ -94,9 +95,9 @@
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
-  border-color: var(--border-muted, var(--border-subtle));
+  border-color: var(--border-muted);
 }
 
 .btn:disabled {

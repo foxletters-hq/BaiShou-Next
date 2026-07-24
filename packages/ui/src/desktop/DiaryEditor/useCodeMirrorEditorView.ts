@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { EditorView } from '@codemirror/view'
 import {
   createDiaryCodeMirror,
+  editorContextMenuExtension,
   forceImageRefresh,
   type DiaryCmPlatform
 } from '../../shared/diary-codemirror'
@@ -94,34 +95,8 @@ export function useCodeMirrorEditorView(
           onChangeRef.current(content)
         },
         extraExtensions: [
-          EditorView.domEventHandlers({
-            contextmenu: (event, view) => {
-              const rawTarget = event.target
-              const target =
-                rawTarget instanceof Element
-                  ? rawTarget
-                  : rawTarget instanceof Node
-                    ? rawTarget.parentElement
-                    : null
-              if (
-                target?.closest(
-                  '.cm-image-container, .cm-table-block, .cm-table-context-menu-layer, .tbl-menu, .cm-tooltip.tbl-menu-tooltip'
-                )
-              ) {
-                return false
-              }
-
-              event.preventDefault()
-              event.stopPropagation()
-
-              const { from, to } = view.state.selection.main
-              setTextContextMenu({
-                x: event.clientX,
-                y: event.clientY,
-                hasSelection: from !== to
-              })
-              return true
-            }
+          editorContextMenuExtension({
+            onOpen: (payload) => setTextContextMenu(payload)
           })
         ]
       })

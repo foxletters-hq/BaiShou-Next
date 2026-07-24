@@ -5,7 +5,11 @@ import { toggleMarkdownMark } from '../../shared/diary-codemirror/extensions/key
 import type { DiaryCmMarkdownMark } from '../../shared/diary-codemirror/types'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
-import type { CodeMirrorEditorHandle, CodeMirrorEditorProps } from './codeMirrorEditor.types'
+import type {
+  CodeMirrorEditorHandle,
+  CodeMirrorEditorProps,
+  TextContextMenuState
+} from './codeMirrorEditor.types'
 import { useCodeMirrorEditorView } from './useCodeMirrorEditorView'
 import { useCodeMirrorImageCallbacks } from './useCodeMirrorImageCallbacks'
 import { useCodeMirrorFileTransfer } from './useCodeMirrorFileTransfer'
@@ -19,11 +23,7 @@ export function useCodeMirrorEditor(
   const dialog = useDialog()
 
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
-  const [textContextMenu, setTextContextMenu] = useState<{
-    x: number
-    y: number
-    hasSelection: boolean
-  } | null>(null)
+  const [textContextMenu, setTextContextMenu] = useState<TextContextMenuState | null>(null)
 
   const { containerRef, viewRef } = useCodeMirrorEditorView(
     props,
