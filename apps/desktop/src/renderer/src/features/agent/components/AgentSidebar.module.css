@@ -207,7 +207,7 @@
   width: 40px;
   height: 40px;
   border-radius: 22px;
-  background-color: var(--color-surface-container-highest);
+  background-color: var(--bg-surface-highest);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,7 +217,7 @@
   transition: background-color 0.2s;
 }
 .managePinnedBtn:hover {
-  background-color: var(--color-surface-container-highest);
+  background-color: var(--bg-surface-highest);
 }
 
 /* ─── 新建对话按钮 — FilledButton, padding:vertical:14, r:12 ─── */
@@ -237,7 +237,7 @@
   background-color: var(--color-primary);
   color: var(--text-on-primary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -323,7 +323,7 @@
   background-color: rgba(148, 163, 184, 0.1);
 }
 
-/* ─── 搜索框 — 无边框，半透底色，isDense ─── */
+/* ─── 搜索框 — 白底 + 灰边框 ─── */
 .searchWrapper {
   position: relative;
   padding: 4px 16px;
@@ -338,9 +338,9 @@
   box-sizing: border-box;
   padding: 8px 12px;
   padding-right: 30px;
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
-  background-color: var(--color-surface-container-low);
+  background-color: var(--bg-surface);
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
@@ -351,9 +351,9 @@
 }
 
 .searchInput:focus {
-  background-color: var(--color-surface);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.25);
+  background-color: var(--bg-surface);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .searchInput::placeholder {

@@ -1,0 +1,106 @@
+.scroller {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding: 8px 0 12px;
+}
+
+.scroller::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scroller::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--text-primary-rgb), 0.12);
+  border-radius: 4px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.groupHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 18px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary);
+  background: linear-gradient(
+    to bottom,
+    var(--bg-surface) 70%,
+    color-mix(in srgb, var(--bg-surface) 40%, transparent)
+  );
+}
+
+.groupItems {
+  display: flex;
+  flex-direction: column;
+}
+
+.emptyState {
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+/* lucide 全局按 1em 缩放，用 font-size 控制实际尺寸 */
+.emptyIcon {
+  display: block;
+  font-size: 40px;
+  color: var(--text-tertiary);
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.emptyText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  max-width: 260px;
+}
+
+.loadMoreWrap {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+
+.loadMoreBtn {
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.loadMoreBtn:hover:not(:disabled) {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.loadMoreBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}

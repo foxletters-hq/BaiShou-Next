@@ -5,14 +5,15 @@
   gap: 12px;
   padding: 10px 16px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-subtle);
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface);
   z-index: 20;
-  --chrome-chip-height: 32px;
+  /* 与右侧加号 / 会话 iconBtn（36px）对齐 */
+  --chrome-chip-height: 36px;
 }
 
 :global(body[data-theme='dark']) .chrome {
-  background: var(--bg-surface, #ffffff);
+  background: var(--bg-surface);
 }
 
 .left {
@@ -41,6 +42,15 @@
   margin-right: 4px;
 }
 
+/* TokenBadge 等自带纵向 padding，强制与加号同高 */
+.trailing .chip {
+  height: var(--chrome-chip-height);
+  min-height: var(--chrome-chip-height);
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .iconBtn {
   width: 36px;
   height: 36px;
@@ -49,7 +59,7 @@
   justify-content: center;
   border: 1.5px solid var(--border-control);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--bg-surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
@@ -76,25 +86,30 @@
   color: var(--color-primary);
 }
 
-/* 与 AgentScreen 原 appBar chip 对齐，便于模型/用量塞进同一顶栏 */
+/* 与右侧加号 / 会话 iconBtn 同高 */
 .chip {
   height: var(--chrome-chip-height);
+  min-height: var(--chrome-chip-height);
   box-sizing: border-box;
   padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .modelSwitcherTrigger {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
-  background-color: #ffffff;
+  background-color: var(--bg-surface);
   border: 1.5px solid var(--border-control);
   transition:
     background-color 0.2s,
     border-color 0.2s;
   color: var(--text-primary);
+  height: var(--chrome-chip-height);
+  box-sizing: border-box;
 }
 
 .modelSwitcherTrigger:hover {
@@ -120,7 +135,7 @@
 
 .modelName {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
   max-width: 180px;
   overflow: hidden;

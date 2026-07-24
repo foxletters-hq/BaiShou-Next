@@ -43,14 +43,14 @@
 
 .emptyTitle {
   font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary, #1e293b);
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .emptySubtitle {
   font-size: 14px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   opacity: 0.6;
   max-width: 280px;
   line-height: 1.5;
@@ -61,8 +61,8 @@
   width: 88px;
   height: 88px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.4), rgba(91, 168, 245, 0.15));
-  box-shadow: 0 4px 24px rgba(91, 168, 245, 0.1);
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.4), rgba(var(--color-primary-rgb), 0.15));
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,7 +71,7 @@
 
 .awesomeIcon {
   font-size: 38px;
-  color: rgba(91, 168, 245, 0.7);
+  color: rgba(var(--color-primary-rgb), 0.7);
 }
 
 /* 底部输入栏粘底区域 */

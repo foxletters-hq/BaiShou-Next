@@ -108,19 +108,15 @@ export const AgentSessionsModal: React.FC<AgentSessionsModalProps> = ({
           {sessions.length > 0 ? (
             <button
               type="button"
-              className={styles.multiSelectBtn}
+              className={`${styles.multiSelectBtn} ${isMultiSelect ? styles.multiSelectBtnActive : ''}`}
               title={t('common.multi_select', '多选')}
+              aria-pressed={isMultiSelect}
               onClick={() => {
                 setIsMultiSelect((prev) => !prev)
                 setSelectedIds(new Set())
               }}
             >
-              <ListChecks
-                size={16}
-                color={
-                  isMultiSelect ? 'var(--color-error, #ef4444)' : 'var(--text-secondary, #94a3b8)'
-                }
-              />
+              <ListChecks size={16} />
             </button>
           ) : null}
         </div>
