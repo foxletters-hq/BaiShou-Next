@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { GraphForceCanvas } from './GraphForceCanvas'
 import styles from './GraphPage.module.css'
@@ -6,6 +7,7 @@ import styles from './GraphPage.module.css'
 type SideTab = 'reextract' | 'pending' | 'detail'
 
 export const GraphPage: React.FC = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [nodes, setNodes] = useState<any[]>([])
   const [edges, setEdges] = useState<any[]>([])
@@ -74,7 +76,7 @@ export const GraphPage: React.FC = () => {
 
   const runExtract = async (filePaths?: string[]) => {
     setBusy(true)
-    setStatus('正在抽取…')
+    setStatus(t('graph.extracting', '正在抽取…'))
     try {
       const result = await window.api.graph.extract({ filePaths })
       setStatus(`完成 ${result.done}，失败 ${result.failed}`)
@@ -100,10 +102,10 @@ export const GraphPage: React.FC = () => {
   return (
     <div className={styles.root}>
       <div className={styles.toolbar}>
-        <div className={styles.title}>关系图谱</div>
+        <div className={styles.title}>{t('graph.title', '关系图谱')}</div>
         <input
           className={styles.search}
-          placeholder="搜索实体 / 别名"
+          placeholder={t('graph.search_placeholder', '搜索实体 / 别名')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -111,7 +113,7 @@ export const GraphPage: React.FC = () => {
           }}
         />
         <button type="button" className={styles.btn} onClick={() => void onSearch()}>
-          搜索
+          {t('graph.search', '搜索')}
         </button>
         <button
           type="button"
@@ -122,7 +124,7 @@ export const GraphPage: React.FC = () => {
             setSelectedId(null)
           }}
         >
-          全局
+          {t('graph.global_view', '全局')}
         </button>
         <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input
@@ -130,7 +132,7 @@ export const GraphPage: React.FC = () => {
             checked={hideEntry}
             onChange={(e) => setHideEntry(e.target.checked)}
           />
-          隐藏日记锚点
+          {t('graph.hide_entry_anchors', '隐藏日记锚点')}
         </label>
         <button
           type="button"
@@ -138,10 +140,12 @@ export const GraphPage: React.FC = () => {
           disabled={busy || pendingReextract.length === 0}
           onClick={() => void runExtract()}
         >
-          梳理待重抽 ({pendingReextract.length})
+          {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
+            count: pendingReextract.length
+          })}
         </button>
         <button type="button" className={styles.btn} disabled={busy} onClick={() => void refresh()}>
-          刷新
+          {t('graph.refresh', '刷新')}
         </button>
         {status ? <span className={styles.itemMeta}>{status}</span> : null}
       </div>
@@ -163,28 +167,30 @@ export const GraphPage: React.FC = () => {
             className={`${styles.tab} ${tab === 'reextract' ? styles.tabActive : ''}`}
             onClick={() => setTab('reextract')}
           >
-            待重抽
+            {t('graph.tab_reextract', '待重抽')}
           </button>
           <button
             type="button"
             className={`${styles.tab} ${tab === 'pending' ? styles.tabActive : ''}`}
             onClick={() => setTab('pending')}
           >
-            待确认
+            {t('graph.tab_pending', '待确认')}
           </button>
           <button
             type="button"
             className={`${styles.tab} ${tab === 'detail' ? styles.tabActive : ''}`}
             onClick={() => setTab('detail')}
           >
-            详情
+            {t('graph.tab_detail', '详情')}
           </button>
         </div>
         <div className={styles.panel}>
           {tab === 'reextract' && (
             <>
               {pendingReextract.length === 0 ? (
-                <div className={styles.empty}>暂无待重抽日记</div>
+                <div className={styles.empty}>
+                  {t('graph.no_pending_reextract', '暂无待重抽日记')}
+                </div>
               ) : (
                 pendingReextract.map((item) => (
                   <div key={item.filePath} className={styles.item}>
@@ -197,7 +203,7 @@ export const GraphPage: React.FC = () => {
                         disabled={busy}
                         onClick={() => void runExtract([item.filePath])}
                       >
-                        抽取这篇
+                        {t('graph.extract_this', '抽取这篇')}
                       </button>
                       {item.date ? (
                         <button
@@ -205,7 +211,7 @@ export const GraphPage: React.FC = () => {
                           className={styles.btn}
                           onClick={() => navigate(`/diary/${item.date}`)}
                         >
-                          打开原文
+                          {t('graph.open_source', '打开原文')}
                         </button>
                       ) : null}
                     </div>
@@ -218,7 +224,7 @@ export const GraphPage: React.FC = () => {
           {tab === 'pending' && (
             <>
               {pendingEdges.length === 0 ? (
-                <div className={styles.empty}>没有待确认的边</div>
+                <div className={styles.empty}>{t('graph.no_pending_edges', '没有待确认的边')}</div>
               ) : (
                 pendingEdges.map((edge) => (
                   <div key={edge.id} className={styles.item}>
@@ -235,21 +241,21 @@ export const GraphPage: React.FC = () => {
                         className={styles.btnPrimary}
                         onClick={() => void reviewEdge(edge.id, 'approved')}
                       >
-                        通过
+                        {t('graph.approve', '通过')}
                       </button>
                       <button
                         type="button"
                         className={styles.btn}
                         onClick={() => void reviewEdge(edge.id, 'rejected')}
                       >
-                        拒绝
+                        {t('graph.reject', '拒绝')}
                       </button>
                       <button
                         type="button"
                         className={styles.btn}
                         onClick={() => openSource(edge.sourceRef)}
                       >
-                        原文
+                        {t('graph.source', '原文')}
                       </button>
                     </div>
                   </div>
@@ -261,34 +267,40 @@ export const GraphPage: React.FC = () => {
           {tab === 'detail' && (
             <>
               {!selectedNode ? (
-                <div className={styles.empty}>点击画布节点查看详情</div>
+                <div className={styles.empty}>
+                  {t('graph.click_node_for_detail', '点击画布节点查看详情')}
+                </div>
               ) : (
                 <>
                   <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>名称</div>
+                    <div className={styles.detailLabel}>{t('graph.label_name', '名称')}</div>
                     <div className={styles.detailValue}>{selectedNode.name}</div>
                   </div>
                   <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>类型</div>
+                    <div className={styles.detailLabel}>{t('graph.label_type', '类型')}</div>
                     <div className={styles.detailValue}>{selectedNode.nodeType}</div>
                   </div>
                   {selectedNode.summary ? (
                     <div className={styles.detailBlock}>
-                      <div className={styles.detailLabel}>摘要</div>
+                      <div className={styles.detailLabel}>{t('graph.label_summary', '摘要')}</div>
                       <div className={styles.detailValue}>{selectedNode.summary}</div>
                     </div>
                   ) : null}
                   {Array.isArray(selectedNode.aliases) && selectedNode.aliases.length > 0 ? (
                     <div className={styles.detailBlock}>
-                      <div className={styles.detailLabel}>别名</div>
+                      <div className={styles.detailLabel}>{t('graph.label_aliases', '别名')}</div>
                       <div className={styles.detailValue}>{selectedNode.aliases.join('、')}</div>
                     </div>
                   ) : null}
                   <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>局部关系</div>
+                    <div className={styles.detailLabel}>
+                      {t('graph.local_relations', '局部关系')}
+                    </div>
                     <div className={styles.detailValue}>
-                      {(localView?.edges || []).length} 条边 · {(localView?.nodes || []).length}{' '}
-                      个节点
+                      {t('graph.local_view_stats', '{{edgeCount}} 条边 · {{nodeCount}} 个节点', {
+                        edgeCount: (localView?.edges || []).length,
+                        nodeCount: (localView?.nodes || []).length
+                      })}
                     </div>
                   </div>
                   {(localView?.edges || [])
@@ -306,7 +318,9 @@ export const GraphPage: React.FC = () => {
                             className={styles.btn}
                             onClick={() => openSource(e.sourceRef)}
                           >
-                            打开原文 {e.sourceRef}
+                            {t('graph.open_source_with_ref', '打开原文 {{ref}}', {
+                              ref: e.sourceRef
+                            })}
                           </button>
                         </div>
                       </div>

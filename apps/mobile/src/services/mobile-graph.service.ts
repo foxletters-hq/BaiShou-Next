@@ -12,6 +12,7 @@ import { GraphRepository, type AppDatabase, type ShadowIndexRepository } from '@
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
+import i18n from 'i18next'
 import {
   ensureMobileRawDataRuntime,
   syncMobileGraphPendingIndex
@@ -90,7 +91,14 @@ export async function mobileExtractDiaries(options: {
   const freshness = ensureMobileGraphFreshnessBound(options)
   const { graphManager } = ensureMobileRawDataRuntime(options)
   const llmDeps = await resolveChatLlm(options.settingsManager)
-  if (!llmDeps) throw new Error('未配置对话模型，无法抽取图谱')
+  if (!llmDeps) {
+    throw new Error(
+      i18n.t(
+        'auto.apps.mobile.src.services.mobile.graph.service.L93',
+        '未配置对话模型，无法抽取图谱'
+      )
+    )
+  }
   const repo = new GraphRepository(options.drizzleDb)
   const graphSync = new GraphSyncService(graphManager, repo, null)
   const service = new GraphLlmExtractionService(
@@ -139,7 +147,9 @@ export async function mobileSetEdgeReview(options: {
 }) {
   const repo = new GraphRepository(options.drizzleDb)
   const edge = await repo.getEdgeById(options.edgeId)
-  if (!edge) throw new Error('边不存在')
+  if (!edge) {
+    throw new Error(i18n.t('auto.apps.mobile.src.services.mobile.graph.service.L142', '边不存在'))
+  }
   const now = Date.now()
   const { graphManager } = ensureMobileRawDataRuntime(options)
   let props: Record<string, unknown> = {}
