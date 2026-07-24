@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   type WebSearchConfig,
   type AIProviderConfig,
@@ -6,7 +7,7 @@ import {
   normalizeChatBackgroundOverlayOpacity
 } from '@baishou/shared'
 import { DEFAULT_WEB_SEARCH_CONFIG } from '@baishou/database'
-import { useAgentStore } from '@baishou/store'
+import { useAgentGateInboxStore, useAgentStore } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useAgentSession } from '../../../hooks/useAgentSession'
 import { useAgentSessions } from '../../../hooks/useAgentSessions'
@@ -29,6 +30,18 @@ export function useAgentScreenSession(deps: {
 }) {
   const { drawerOpen, tr, webSearchEngine, setWebSearchEngine } = deps
   const { searchMode, clearSession } = useAgentStore()
+  const routeParams = useLocalSearchParams<{
+    sessionId?: string | string[]
+    gateRequestId?: string | string[]
+  }>()
+  const routeSessionId = Array.isArray(routeParams.sessionId)
+    ? routeParams.sessionId[0]
+    : routeParams.sessionId
+  const routeGateRequestId = Array.isArray(routeParams.gateRequestId)
+    ? routeParams.gateRequestId[0]
+    : routeParams.gateRequestId
+  const router = useRouter()
+  const consumedGateRouteRef = useRef<string | null>(null)
   const {
     services,
     dbReady,
@@ -125,6 +138,23 @@ export function useAgentScreenSession(deps: {
 
   const composerDraftKey = useAgentComposerDraftKey(currentSessionId)
 
+  // 通知深链只消费一次，避免 params 残留把用户手动切换的会话打回去
+  useEffect(() => {
+    if (!routeSessionId) return
+    const token = `${routeSessionId}|${routeGateRequestId ?? ''}`
+    if (consumedGateRouteRef.current === token) return
+    consumedGateRouteRef.current = token
+    handleSelectSession(routeSessionId)
+    if (routeGateRequestId) {
+      useAgentGateInboxStore.getState().setFocusedRequest(routeSessionId, routeGateRequestId)
+    }
+    try {
+      router.setParams({ sessionId: undefined, gateRequestId: undefined })
+    } catch {
+      /* ignore */
+    }
+  }, [routeSessionId, routeGateRequestId, handleSelectSession, router])
+
   useEffect(() => {
     void syncWithSession(currentSessionId)
   }, [currentSessionId, syncWithSession])
@@ -195,6 +225,7 @@ export function useAgentScreenSession(deps: {
     completedTools,
     pendingEmojis,
     pendingAgentGate,
+    isAgentGateReplying,
     replyAgentGate,
     handleSend,
     handleStop,
@@ -275,6 +306,7 @@ export function useAgentScreenSession(deps: {
     completedTools,
     pendingEmojis,
     pendingAgentGate,
+    isAgentGateReplying,
     replyAgentGate,
     handleSend,
     handleStop,
