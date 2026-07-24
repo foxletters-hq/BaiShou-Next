@@ -4,6 +4,7 @@ import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { AgentChatList } from './components/AgentChatList'
 import { AgentScreenOverlays } from './components/AgentScreenOverlays'
 import { AgentGateCardHost } from '../../components/agent-gate/AgentGateCardHost'
+import { AgentGatePendingList } from '../../components/agent-gate/AgentGatePendingList'
 import { useAgentScreenController } from './hooks/useAgentScreenController'
 
 export const AgentScreen = () => {
@@ -113,8 +114,20 @@ export const AgentScreen = () => {
           ttsMode={c.ttsMode}
           toggleTtsMode={c.toggleTtsMode}
         />
+        <AgentGatePendingList
+          currentSessionId={c.currentSessionId}
+          onSelect={(sessionId) => {
+            if (sessionId !== c.currentSessionId) {
+              c.handleSelectSession(sessionId)
+            }
+          }}
+        />
       </ScreenSafeArea>
-      <AgentGateCardHost request={c.pendingAgentGate} onReply={c.replyAgentGate} />
+      <AgentGateCardHost
+        request={c.pendingAgentGate}
+        isReplying={c.isAgentGateReplying}
+        onReply={c.replyAgentGate}
+      />
       <AgentScreenOverlays
         drawerOpen={c.drawerOpen}
         setDrawerOpen={c.setDrawerOpen}

@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback, useRef, useContext } from 'react'
 import type { AgentGateReply, AgentGateRequest } from '@baishou/shared'
+import {
+  selectActivePendingForSession,
+  useAgentGateInboxStore
+} from '@baishou/store'
 import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
+import { ensureDesktopAgentGateInboxBridge } from '../agent-gate-inbox-bridge'
 import {
   ensureGlobalStreamIpcListeners,
   sessionListeners,
@@ -87,10 +92,17 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
   const [, setVersion] = useState(0)
   const sessionIdRef = useRef(currentSessionId)
   const isPageActive = useContext(MainPageCacheActiveContext)
+  const pendingAgentGate = useAgentGateInboxStore((state) =>
+    selectActivePendingForSession(state, currentSessionId)
+  )
 
   useEffect(() => {
     sessionIdRef.current = currentSessionId
   }, [currentSessionId])
+
+  useEffect(() => {
+    ensureDesktopAgentGateInboxBridge()
+  }, [])
 
   // 订阅当前活动会话的更新，并在其变化时强制 React 重新渲染
   useEffect(() => {
@@ -288,6 +300,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
 
       try {
         await window.api.agentGate.reply(input)
+        useAgentGateInboxStore.getState().removeReplied(input.requestId)
         if (sessionId) {
           updateSessionState(sessionId, (state) => {
             if (state.pendingAgentGate?.id === input.requestId) {
@@ -382,7 +395,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     completedTools: activeState.completedTools,
     pendingEmojis: activeState.pendingEmojis,
     error: activeState.error,
-    pendingAgentGate: activeState.pendingAgentGate,
+    pendingAgentGate,
     isAgentGateReplying: activeState.isAgentGateReplying,
     saveUserMessage,
     startChat,

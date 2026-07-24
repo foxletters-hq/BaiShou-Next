@@ -410,31 +410,23 @@ function registerGlobalStreamIpcListeners(): () => void {
   ipc.on('agent:compression-event', onCompressionEvent)
   window.addEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
 
-  const onAgentGateAsked = (request: AgentGateRequest) => {
-    if (!request?.sessionId) return
-    updateSessionState(request.sessionId, (state) => {
-      state.pendingAgentGate = request
-      state.isAgentGateReplying = false
-    })
-  }
-
+  // pending Gate 队列由 agent-gate-inbox-bridge 统一维护；此处仅清理回复中状态
   const onAgentGateReplied = (payload: { sessionId?: string; requestId?: string }) => {
     const sId = payload?.sessionId
     if (!sId) return
     updateSessionState(sId, (state) => {
+      state.isAgentGateReplying = false
+      // 兼容旧字段：不再作为真相源
       if (state.pendingAgentGate?.id === payload.requestId) {
         state.pendingAgentGate = null
-        state.isAgentGateReplying = false
       }
     })
   }
 
-  const unsubscribeAsked = window.api?.agentGate?.onAsked?.(onAgentGateAsked)
   const unsubscribeReplied = window.api?.agentGate?.onReplied?.(onAgentGateReplied)
 
   return () => {
     window.removeEventListener('baishou:compression-stream-reset', onCompressionStreamReset)
-    unsubscribeAsked?.()
     unsubscribeReplied?.()
     clearAgentStreamIpcListeners(ipc)
   }
@@ -446,6 +438,10 @@ export function ensureGlobalStreamIpcListeners(): void {
   if (globalStreamIpcRegistered) return
   if (typeof window === 'undefined' || !window.electron?.ipcRenderer) return
   registerGlobalStreamIpcListeners()
+  // 动态 import 避免循环依赖；失败时忽略（App 层也会 ensure）
+  void import('../agent-gate-inbox-bridge')
+    .then((m) => m.ensureDesktopAgentGateInboxBridge())
+    .catch(() => {})
   globalStreamIpcRegistered = true
 }
 
