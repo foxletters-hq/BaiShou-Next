@@ -70,7 +70,9 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
         </div>
       </div>
       <div>
-        <label className={styles.fieldLabel}>{t('data_sync.webdav_password', 'Password/App Token')}</label>
+        <label className={styles.fieldLabel}>
+          {t('data_sync.webdav_password', 'Password/App Token')}
+        </label>
         <div style={{ position: 'relative' }}>
           <input
             type={showSecretKey ? 'text' : 'password'}
@@ -89,7 +91,9 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
         </div>
       </div>
       <div>
-        <label className={styles.fieldLabel}>{t('data_sync.file_concurrency', 'File Concurrency')}</label>
+        <label className={styles.fieldLabel}>
+          {t('data_sync.file_concurrency', 'File Concurrency')}
+        </label>
         <Select
           value={String(config.fileConcurrency || 5)}
           onChange={(e) => onChange({ fileConcurrency: parseInt(e.target.value) })}

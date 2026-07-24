@@ -161,7 +161,11 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
           disabled={isDetectingMissing || isGenerating}
           title={t('summary.detect_missing', '重新检测')}
         >
-          <RefreshCw size={14} strokeWidth={1.75} className={isDetectingMissing ? 'sp-detect-spin' : ''} />
+          <RefreshCw
+            size={14}
+            strokeWidth={1.75}
+            className={isDetectingMissing ? 'sp-detect-spin' : ''}
+          />
           <span>
             {isDetectingMissing
               ? t('summary.detecting_missing', '检测中...')
@@ -284,7 +288,11 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                       </div>
                     ) : isPending ? (
                       <div className="sp-missing-card-action processing">
-                        <Clock size={16} strokeWidth={1.75} className="sp-missing-card-action-icon muted" />
+                        <Clock
+                          size={16}
+                          strokeWidth={1.75}
+                          className="sp-missing-card-action-icon muted"
+                        />
                       </div>
                     ) : isCompleted || (taskState && progress >= 100) ? (
                       <div className="sp-missing-card-action processing">
@@ -302,7 +310,11 @@ export const SummaryMissingSection: React.FC<SummaryMissingSectionProps> = ({
                         title={t('summary.generate_now', '立即生成日记总结')}
                         aria-label={t('summary.generate_now', '立即生成日记总结')}
                       >
-                        <Sparkles size={16} strokeWidth={1.5} className="sp-missing-card-action-icon" />
+                        <Sparkles
+                          size={16}
+                          strokeWidth={1.5}
+                          className="sp-missing-card-action-icon"
+                        />
                       </button>
                     )}
                   </div>
