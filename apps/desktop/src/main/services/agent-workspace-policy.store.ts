@@ -60,7 +60,10 @@ function buildDefaultPolicy(workspaceId: string): AgentWorkspacePolicy {
   }
 }
 
-function normalizePolicy(workspaceId: string, raw?: AgentWorkspacePolicy | null): AgentWorkspacePolicy {
+function normalizePolicy(
+  workspaceId: string,
+  raw?: AgentWorkspacePolicy | null
+): AgentWorkspacePolicy {
   if (!raw) return buildDefaultPolicy(workspaceId)
   return {
     workspaceId,

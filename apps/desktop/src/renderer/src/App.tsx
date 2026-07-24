@@ -280,11 +280,11 @@ export function App() {
   useEffect(() => {
     markRendererStartup('App.mount')
     // 首屏后再放开冷启动全量扫盘，避免与 Vite 模块求值抢资源
-    void (window as any).api?.vault?.releaseColdStartResync?.('App.mount')?.then?.(
-      (released: boolean) => {
+    void (window as any).api?.vault
+      ?.releaseColdStartResync?.('App.mount')
+      ?.then?.((released: boolean) => {
         markRendererStartup('App.coldStartResync-release', { released })
-      }
-    )
+      })
   }, [])
 
   useEffect(() => {
@@ -357,9 +357,7 @@ export function App() {
   // 确保 store 中持久化的语言设置在每次启动时同步到 i18n，并挂上 html[lang] / 区域字体
   useEffect(() => {
     const lang =
-      locale === 'system'
-        ? resolveAppLanguage(navigator.language)
-        : resolveAppLanguage(locale)
+      locale === 'system' ? resolveAppLanguage(navigator.language) : resolveAppLanguage(locale)
     document.documentElement.lang = lang
     void ensureUiFontForLanguage(lang)
     if (i18n.language !== lang) {

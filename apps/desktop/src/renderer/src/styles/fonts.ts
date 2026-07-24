@@ -6,9 +6,11 @@ import '@fontsource/noto-sans/latin-400.css'
 const loadedRegional = new Set<string>()
 
 function scheduleIdle(task: () => void): void {
-  const ric = (window as Window & {
-    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
-  }).requestIdleCallback
+  const ric = (
+    window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+    }
+  ).requestIdleCallback
   if (typeof ric === 'function') {
     ric(task, { timeout: 1500 })
     return

@@ -179,7 +179,10 @@ export class GlobalDataBootstrapper {
           ? sessionManager.reconcileFromDisks(sessionResyncOptions)
           : sessionManager.fullResyncFromDisks(sessionResyncOptions)
       )
-      const settingsScan = timed('settings.fullResyncFromDisk', settingsManager.fullResyncFromDisk())
+      const settingsScan = timed(
+        'settings.fullResyncFromDisk',
+        settingsManager.fullResyncFromDisk()
+      )
 
       await traceStartupStep('resync.parallelScans', () =>
         Promise.all([shadowScan, summaryScan, assistantScan, sessionScan, settingsScan])
