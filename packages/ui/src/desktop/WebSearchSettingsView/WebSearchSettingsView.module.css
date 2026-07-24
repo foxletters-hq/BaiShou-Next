@@ -26,8 +26,8 @@
 }
 
 .title {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--settings-font-page-title-size);
+  font-weight: var(--settings-font-page-title-weight);
   line-height: 28px;
   color: var(--text-primary);
   margin: 0;
@@ -59,7 +59,8 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   border-radius: 12px;
-  overflow: hidden;
+  /* 勿 hidden：卡内绝对定位下拉会被裁切 */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -91,15 +92,16 @@
 }
 
 .cardTitle {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
   margin: 0;
 }
 
 .cardDesc {
-  font-size: 12px;
-  color: var(--text-primary);
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  color: var(--text-secondary);
   margin-top: 8px;
 }
 
@@ -119,20 +121,23 @@
 /* Radio List Tile */
 .radioListTile {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   padding: 10px 12px;
   margin: 0;
-  border: 1px solid transparent;
+  /* 始终占位，避免选中/悬停换边框时布局跳动闪烁 */
+  border: 1.5px solid transparent;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.15);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   background-color: transparent;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .radioListTile:hover {
   background-color: var(--bg-surface-high);
-  transform: translateY(-1px);
 }
 
 .radioSelected {
@@ -146,11 +151,11 @@
 
 .radioCustomContainer {
   margin-right: 10px;
-  margin-top: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  line-height: 0;
 }
 
 .radioCustomRing {
@@ -186,13 +191,14 @@
 
 .radioTitleRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
+  min-height: 20px;
 }
 
 .radioTitle {
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 20px;
   color: var(--text-primary);
 }
 
@@ -242,15 +248,15 @@
 .iconIconButton {
   background: transparent;
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .iconIconButton:hover {
@@ -287,8 +293,8 @@
 }
 
 .sliderTitle {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--text-primary);
 }
 

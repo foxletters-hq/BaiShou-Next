@@ -4,6 +4,7 @@ import { WEB_SEARCH_MAX_RESULTS_LIMIT } from '@baishou/shared'
 import { Switch } from '../Switch/Switch'
 import type { WebSearchConfig } from './web-search-settings.types'
 import styles from './WebSearchSettingsView.module.css'
+import stack from '../shared/SettingsStack.module.css'
 import { AlignLeft, Library, ListOrdered, Minimize2, Sparkles } from 'lucide-react'
 
 interface GeneralSettingsSectionProps {
@@ -18,11 +19,12 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={styles.cardSection}>
-      <div className={styles.cardHeader}>
-        <h3 className={styles.cardTitle}>{t('settings.general', '通用规则设置')}</h3>
+    <div className={stack.stackGroup}>
+      <div className={stack.sectionLabelRow}>
+        <h3 className={stack.sectionLabel}>{t('settings.general', '通用规则设置')}</h3>
       </div>
-      <div className={styles.cardBody}>
+      <div className={stack.cardSection}>
+        <div className={styles.cardBody}>
         <div className={styles.sliderRow}>
           <div className={styles.sliderRowHeader}>
             <ListOrdered className={styles.sliderIcon} />
@@ -162,6 +164,7 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )
