@@ -1,14 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
-import { DiaryPage } from '../features/diary/DiaryPage'
-import { SummaryPage } from '../features/summary/SummaryPage'
-import { CloudSyncPage } from '../features/settings/CloudSyncPage'
-import { IncrementalSyncPage } from '../features/settings/IncrementalSyncPage'
-import { GitManagementPage } from '../features/settings/GitManagementPage'
-import { SettingsHubPage } from '../features/settings/SettingsHubPage'
-import { AgentChatCachedPage } from '../features/agent/AgentChatCachedPage'
-import { AgentWorkspaceCachedPage } from '../features/agent-workspace/AgentWorkspaceCachedPage'
-import { GraphPage } from '../features/graph/GraphPage'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
 import styles from './MainLayout.module.css'
 import { MainPageCacheActiveContext } from './main-page-cache.context'
@@ -18,18 +9,46 @@ export { MainPageCacheActiveContext } from './main-page-cache.context'
 /** 离开路由后仍保持挂载，便于日记 ↔ 伙伴快速切换 */
 const PERSISTENT_MAIN_PAGE_KEYS = new Set(['/diary', '/chat'])
 
-/** 侧边栏主页面：日记/伙伴保活；设置、总结等离开即卸载 */
-
+/**
+ * 侧边栏主页面：按路由懒加载，避免硬刷新时一次拉起全部页面模块图。
+ * 日记/伙伴保活；设置、总结等离开即卸载。
+ */
 export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
-  '/diary': DiaryPage,
-  '/summary': SummaryPage,
-  '/graph': GraphPage,
-  '/data-sync': CloudSyncPage,
-  '/incremental-sync': IncrementalSyncPage,
-  '/git': GitManagementPage,
-  '/hub': SettingsHubPage,
-  '/chat': AgentChatCachedPage,
-  '/agent-workspace': AgentWorkspaceCachedPage
+  '/diary': lazy(() =>
+    import('../features/diary/DiaryPage').then((m) => ({ default: m.DiaryPage }))
+  ),
+  '/summary': lazy(() =>
+    import('../features/summary/SummaryPage').then((m) => ({ default: m.SummaryPage }))
+  ),
+  '/graph': lazy(() =>
+    import('../features/graph/GraphPage').then((m) => ({ default: m.GraphPage }))
+  ),
+  '/data-sync': lazy(() =>
+    import('../features/settings/CloudSyncPage').then((m) => ({ default: m.CloudSyncPage }))
+  ),
+  '/incremental-sync': lazy(() =>
+    import('../features/settings/IncrementalSyncPage').then((m) => ({
+      default: m.IncrementalSyncPage
+    }))
+  ),
+  '/git': lazy(() =>
+    import('../features/settings/GitManagementPage').then((m) => ({
+      default: m.GitManagementPage
+    }))
+  ),
+  '/hub': lazy(() =>
+    import('../features/settings/SettingsHubPage').then((m) => ({ default: m.SettingsHubPage }))
+  ),
+  '/chat': lazy(() =>
+    import('../features/agent/AgentChatCachedPage').then((m) => ({
+      default: m.AgentChatCachedPage
+    }))
+  ),
+  '/agent-workspace': lazy(() =>
+    import('../features/agent-workspace/AgentWorkspaceCachedPage').then((m) => ({
+      default: m.AgentWorkspaceCachedPage
+    }))
+  )
 }
 
 export function getMainPageCacheKey(pathname: string): string | null {
@@ -81,7 +100,9 @@ const CachedPageLayer: React.FC<{
       animate={controls}
     >
       <MainPageCacheActiveContext.Provider value={layerActive}>
-        <Component />
+        <Suspense fallback={null}>
+          <Component />
+        </Suspense>
       </MainPageCacheActiveContext.Provider>
     </motion.div>
   )

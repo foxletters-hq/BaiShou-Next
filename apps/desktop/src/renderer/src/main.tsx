@@ -1,24 +1,27 @@
-// Inject Core CSS Design System directly from the UI library
-import '@baishou/ui/theme/css-variables.css'
-import '@baishou/ui/theme/lucide-icons.css'
-import './styles/variables.css'
-import './styles/index.css'
-// 必须最早导入，确保 i18n 在任何组件渲染前初始化
-import '@baishou/shared'
+/**
+ * 薄入口：仅加载启动打点，再动态 import 真实应用。
+ * html.inline → main.tsx.enter → app-bootstrap.imports-evaluated
+ * 三段间隔可区分「等 HTML」「等 Vite 拉模块」「应用依赖求值」。
+ */
+import {
+  flushPendingRendererStartupMarks,
+  markRendererStartup
+} from './startup-trace'
 
-window.onerror = (message, _s, _l, _c, error) => {
-  console.error('[renderer] uncaught error:', message, error)
-}
+markRendererStartup('main.tsx.enter')
+flushPendingRendererStartupMarks()
 
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('[renderer] unhandled promise rejection:', event.reason)
-})
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { App } from './App'
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-)
+const bootstrapStarted = performance.now()
+void import('./app-bootstrap')
+  .then(() => {
+    markRendererStartup('main.tsx.dynamic-import-resolved', {
+      ms: Math.round(performance.now() - bootstrapStarted)
+    })
+  })
+  .catch((error) => {
+    console.error('[renderer] app-bootstrap failed:', error)
+    markRendererStartup('main.tsx.dynamic-import-failed', {
+      ms: Math.round(performance.now() - bootstrapStarted),
+      message: error instanceof Error ? error.message : String(error)
+    })
+  })

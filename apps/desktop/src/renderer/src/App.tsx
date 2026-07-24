@@ -1,30 +1,45 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { MainLayout } from './layouts/MainLayout'
 import { CachedRoutePlaceholder } from './layouts/MainPageCache'
 import { HomeScreen } from './features/home/HomeScreen'
-import { OnboardingScreen } from './features/onboarding/OnboardingScreen'
-import { SessionManagementScreen } from './features/agent/SessionManagementScreen'
-import { AssistantManagementScreen } from './features/agent/AssistantManagementScreen'
-import { AssistantEditScreen } from './features/agent/AssistantEditScreen'
-
-// Phase 14: Recover Missing Feature Routes
-import { DiaryEditorPage } from './features/diary/DiaryEditorPage'
 import {
   rememberSettingsReturnPath,
   locationToReturnPath
 } from './features/settings/settings-navigation.util'
-import { SummaryDetailPage } from './features/summary/SummaryDetailPage'
-import {
-  useToast,
-  useDialog,
-  DialogProvider,
-  ToastProvider,
-  GlobalInputContextMenu,
-  RestoreBlockingOverlay
-} from '@baishou/ui'
+import { useToast } from '@baishou/ui/desktop/Toast/useToast'
+import { useDialog, DialogProvider } from '@baishou/ui/desktop/Dialog'
+import { ToastProvider } from '@baishou/ui/desktop/Toast/Toast'
+import { GlobalInputContextMenu } from '@baishou/ui/desktop/ContextMenu'
+import { RestoreBlockingOverlay } from '@baishou/ui/desktop/RestoreBlockingOverlay'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
+import { ensureDesktopAgentGateInboxBridge } from './features/agent/agent-gate-inbox-bridge'
+import { ensureDesktopAgentGateNotificationBridge } from './features/agent/agent-gate-notification-bridge'
+import { resolveThemeColor } from '@baishou/ui/theme/preset-theme-colors'
+
+const OnboardingScreen = lazy(() =>
+  import('./features/onboarding/OnboardingScreen').then((m) => ({ default: m.OnboardingScreen }))
+)
+const SessionManagementScreen = lazy(() =>
+  import('./features/agent/SessionManagementScreen').then((m) => ({
+    default: m.SessionManagementScreen
+  }))
+)
+const AssistantManagementScreen = lazy(() =>
+  import('./features/agent/AssistantManagementScreen').then((m) => ({
+    default: m.AssistantManagementScreen
+  }))
+)
+const AssistantEditScreen = lazy(() =>
+  import('./features/agent/AssistantEditScreen').then((m) => ({ default: m.AssistantEditScreen }))
+)
+const DiaryEditorPage = lazy(() =>
+  import('./features/diary/DiaryEditorPage').then((m) => ({ default: m.DiaryEditorPage }))
+)
+const SummaryDetailPage = lazy(() =>
+  import('./features/summary/SummaryDetailPage').then((m) => ({ default: m.SummaryDetailPage }))
+)
 import {
   initDesktopRendererCacheCoordinator,
   handleRendererDomainMutation
@@ -37,7 +52,8 @@ import {
   subscribeDesktopVaultScope
 } from './cache/desktop-vault-scope'
 import type { DomainMutationEvent } from '@baishou/shared/cache'
-import { i18n, isRagMemoryEnabled } from '@baishou/shared'
+import { i18n, isRagMemoryEnabled, resolveAppLanguage } from '@baishou/shared'
+import { ensureUiFontForLanguage } from './styles/fonts'
 import { TitleBar } from './components/TitleBar'
 import { NetworkProvider } from './providers/NetworkProvider'
 import { IncrementalSyncConfirmHost } from './components/IncrementalSyncConfirmDialog/IncrementalSyncConfirmHost'
@@ -45,6 +61,7 @@ import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
 import { DesktopLegacyMigrationPrompt } from './components/DesktopLegacyMigrationPrompt'
 import shellStyles from './AppShell.module.css'
+import { markRendererStartup, traceRendererStep } from './startup-trace'
 
 const GlobalErrorHandler = () => {
   const toast = useToast()
@@ -197,36 +214,38 @@ const AppRoutes = () => {
 
   return (
     <DesktopSettingsOverlayContext.Provider value={isSettings}>
-      <Routes location={mainRoutesLocation}>
-        <Route path="/welcome" element={<OnboardingScreen />} />
+      <Suspense fallback={null}>
+        <Routes location={mainRoutesLocation}>
+          <Route path="/welcome" element={<OnboardingScreen />} />
 
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<HomeScreen />} />
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<HomeScreen />} />
 
-          {/* Main Business Logic Sub-Routes — 列表页由 MainPageCache 保活 */}
-          <Route path="/diary" element={<CachedRoutePlaceholder />} />
-          <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
-          <Route path="/summary" element={<CachedRoutePlaceholder />} />
-          <Route path="/summary/:id" element={<SummaryDetailPage />} />
-          <Route path="/graph" element={<CachedRoutePlaceholder />} />
+            {/* Main Business Logic Sub-Routes — 列表页由 MainPageCache 保活 */}
+            <Route path="/diary" element={<CachedRoutePlaceholder />} />
+            <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
+            <Route path="/summary" element={<CachedRoutePlaceholder />} />
+            <Route path="/summary/:id" element={<SummaryDetailPage />} />
+            <Route path="/graph" element={<CachedRoutePlaceholder />} />
 
-          {/* Tools Routing */}
-          <Route path="/lan-transfer" element={<Navigate to="/hub/lan-transfer" replace />} />
-          <Route path="/data-sync" element={<CachedRoutePlaceholder />} />
-          <Route path="/incremental-sync" element={<CachedRoutePlaceholder />} />
-          <Route path="/git" element={<CachedRoutePlaceholder />} />
+            {/* Tools Routing */}
+            <Route path="/lan-transfer" element={<Navigate to="/hub/lan-transfer" replace />} />
+            <Route path="/data-sync" element={<CachedRoutePlaceholder />} />
+            <Route path="/incremental-sync" element={<CachedRoutePlaceholder />} />
+            <Route path="/git" element={<CachedRoutePlaceholder />} />
 
-          {/* 日记区侧边栏内嵌设置（非全屏 overlay） */}
-          <Route path="/hub/*" element={<CachedRoutePlaceholder />} />
+            {/* 日记区侧边栏内嵌设置（非全屏 overlay） */}
+            <Route path="/hub/*" element={<CachedRoutePlaceholder />} />
 
-          {/* AI / Agent Role Routing - 由 MainPageCache 保活 */}
-          <Route path="/chat/*" element={<CachedRoutePlaceholder />} />
-          <Route path="/agent-workspace/*" element={<CachedRoutePlaceholder />} />
-          <Route path="/sessions" element={<SessionManagementScreen />} />
-          <Route path="/assistants" element={<AssistantManagementScreen />} />
-          <Route path="/assistants/:id" element={<AssistantEditScreen />} />
-        </Route>
-      </Routes>
+            {/* AI / Agent Role Routing - 由 MainPageCache 保活 */}
+            <Route path="/chat/*" element={<CachedRoutePlaceholder />} />
+            <Route path="/agent-workspace/*" element={<CachedRoutePlaceholder />} />
+            <Route path="/sessions" element={<SessionManagementScreen />} />
+            <Route path="/assistants" element={<AssistantManagementScreen />} />
+            <Route path="/assistants/:id" element={<AssistantEditScreen />} />
+          </Route>
+        </Routes>
+      </Suspense>
 
       {mountSettingsHost ? (
         <SettingsOverlayHost
@@ -259,6 +278,16 @@ export function App() {
   const [archiveImporting, setArchiveImporting] = useState(false)
 
   useEffect(() => {
+    markRendererStartup('App.mount')
+    // 首屏后再放开冷启动全量扫盘，避免与 Vite 模块求值抢资源
+    void (window as any).api?.vault?.releaseColdStartResync?.('App.mount')?.then?.(
+      (released: boolean) => {
+        markRendererStartup('App.coldStartResync-release', { released })
+      }
+    )
+  }, [])
+
+  useEffect(() => {
     if (!import.meta.env.DEV) return
     void import('./dev/memory-leak-probe').then((m) => m.installMemoryLeakProbe())
   }, [])
@@ -266,9 +295,10 @@ export function App() {
   useEffect(() => {
     initDesktopRendererCacheCoordinator()
     let cancelled = false
-    void initDesktopVaultScope().then(() => {
+    void traceRendererStep('App.initDesktopVaultScope', () => initDesktopVaultScope()).then(() => {
       if (!cancelled) {
         useSettingsStore.getState().scheduleDeferredConfigWarmup()
+        markRendererStartup('App.deferredConfigWarmup-scheduled')
       }
     })
     const unsub = (window as any).api?.cache?.onDomainMutation?.((event: DomainMutationEvent) => {
@@ -286,6 +316,11 @@ export function App() {
       unsub?.()
       useSettingsStore.getState().cancelDeferredConfigWarmup()
     }
+  }, [])
+
+  useEffect(() => {
+    ensureDesktopAgentGateInboxBridge()
+    ensureDesktopAgentGateNotificationBridge()
   }, [])
 
   useEffect(() => {
@@ -319,11 +354,16 @@ export function App() {
 
   const themeColor = useSettingsStore((s) => s.themeColor)
 
-  // 确保 store 中持久化的语言设置在每次启动时同步到 i18n
+  // 确保 store 中持久化的语言设置在每次启动时同步到 i18n，并挂上 html[lang] / 区域字体
   useEffect(() => {
-    const lang = locale === 'system' ? navigator.language.split('-')[0] : locale
+    const lang =
+      locale === 'system'
+        ? resolveAppLanguage(navigator.language)
+        : resolveAppLanguage(locale)
+    document.documentElement.lang = lang
+    void ensureUiFontForLanguage(lang)
     if (i18n.language !== lang) {
-      i18n.changeLanguage(lang)
+      void i18n.changeLanguage(lang)
     }
   }, [locale])
 
@@ -351,21 +391,33 @@ export function App() {
     }
   }, [themeMode])
 
+  // 只应用 CSS；历史色归一不在 effect 里写回 store，避免 Zustand 更新环
   useEffect(() => {
-    if (themeColor) {
-      document.documentElement.style.setProperty('--color-primary', themeColor)
-      let hex = themeColor.replace('#', '')
-      if (hex.length === 3)
-        hex = hex
-          .split('')
-          .map((x) => x + x)
-          .join('')
-      if (hex.length === 6) {
-        const r = parseInt(hex.substring(0, 2), 16)
-        const g = parseInt(hex.substring(2, 4), 16)
-        const b = parseInt(hex.substring(4, 6), 16)
-        document.documentElement.style.setProperty('--color-primary-rgb', `${r}, ${g}, ${b}`)
-      }
+    const resolved = resolveThemeColor(themeColor)
+    if (resolved !== themeColor) {
+      // 空闲时一次性持久化，不阻塞当前渲染提交
+      queueMicrotask(() => {
+        if (useSettingsStore.getState().themeColor !== resolved) {
+          useSettingsStore.getState().setThemeColor(resolved)
+        }
+      })
+    }
+    document.documentElement.style.setProperty('--color-primary', resolved)
+    let hex = resolved.replace('#', '')
+    if (hex.length === 3)
+      hex = hex
+        .split('')
+        .map((x) => x + x)
+        .join('')
+    if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+      document.documentElement.style.setProperty('--color-primary-rgb', `${r}, ${g}, ${b}`)
+      document.documentElement.style.setProperty(
+        '--color-primary-light',
+        `rgba(${r}, ${g}, ${b}, 0.18)`
+      )
     }
   }, [themeColor])
 

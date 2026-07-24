@@ -4,6 +4,7 @@ import { VaultService, VaultNameExistsError, VaultInvalidNameError } from '@bais
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
+import { traceStartupStep } from '../startup-trace.util'
 import { resetSyncService } from './incremental-sync.ipc'
 import { resetGitService } from './git-sync.ipc'
 import { diaryWatcher } from '../services/diary-watcher.service'
@@ -29,9 +30,11 @@ export function notifyVaultRegistryUpdated(): void {
 
 /** 连接全局影子索引库（单库多 Vault，Vault 切换无需重连） */
 export async function connectGlobalShadowDb(): Promise<void> {
-  const sysDir = await pathService.getGlobalShadowIndexDirectory()
-  await shadowConnectionManager.connect(sysDir)
-  logger.info(`[VaultIPC] 全局 Shadow DB 已连接: ${sysDir}`)
+  await traceStartupStep('shadowDb.connect', async () => {
+    const sysDir = await pathService.getGlobalShadowIndexDirectory()
+    await shadowConnectionManager.connect(sysDir)
+    logger.info(`[VaultIPC] 全局 Shadow DB 已连接: ${sysDir}`)
+  })
 }
 
 /** 基于当前活跃 Vault 创建 ShadowIndexRepository */
@@ -82,6 +85,13 @@ export async function switchVaultFast(vaultName: string) {
 
   await vaultService.switchVault(vaultName)
 
+  try {
+    const { resetAgentGateRuntimes } = await import('../services/agent-gate.service')
+    resetAgentGateRuntimes(`vault-switch:${vaultName}`)
+  } catch (e) {
+    logger.warn('[Vault] reset agent gate runtimes failed:', e as Error)
+  }
+
   const { resetRawDataRuntime } = await import('../services/raw-data-source.runtime')
   resetRawDataRuntime()
 
@@ -109,17 +119,18 @@ export async function switchVaultFast(vaultName: string) {
 }
 
 export async function initVaultSystem() {
-  await vaultService.initRegistry()
+  await traceStartupStep('vault.initRegistry', () => vaultService.initRegistry())
   await connectGlobalShadowDb()
 
   const { rebindSummaryCacheForActiveVault } = await import('./summary.ipc')
-  await rebindSummaryCacheForActiveVault()
+  await traceStartupStep('summary.rebindCache', () => rebindSummaryCacheForActiveVault())
 
   const { globalBootstrapper } = await import('../services/bootstrapper.service')
-  await globalBootstrapper.activateVaultRuntime()
+  await traceStartupStep('vault.activateRuntime', () => globalBootstrapper.activateVaultRuntime())
 
-  const { scheduleVaultEcosystemResync } = await import('../services/vault-resync.service')
-  scheduleVaultEcosystemResync('cold-start')
+  // 全量扫盘延后到渲染进程首屏，避免与 Vite 模块图抢主线程/磁盘
+  const { armDeferredColdStartResync } = await import('../services/vault-resync.service')
+  armDeferredColdStartResync()
 }
 
 export function registerVaultIPC() {
@@ -168,6 +179,13 @@ export function registerVaultIPC() {
     const resyncing = isVaultEcosystemResyncInFlight()
     const shadowScanning = getSharedShadowSync().isScanning
     return { indexing: resyncing || shadowScanning, resyncing, shadowScanning }
+  })
+
+  ipcMain.handle('vault:releaseColdStartResync', async (_event, trigger?: string) => {
+    const { releaseDeferredColdStartResync } = await import('../services/vault-resync.service')
+    return releaseDeferredColdStartResync(
+      typeof trigger === 'string' && trigger.trim() ? trigger.trim() : 'renderer'
+    )
   })
 
   ipcMain.handle('vault:delete', async (_, vaultName: string) => {

@@ -2,8 +2,9 @@ import { app } from 'electron'
 import { resolveAgentDbPath as resolveSharedAgentDbPath } from '@baishou/core/shared'
 import { initNodeDatabase, AppDatabase } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
-import { renameSync, existsSync, mkdirSync } from 'fs'
+import { renameSync, existsSync, mkdirSync, statSync } from 'fs'
 import { dirname, join } from 'path'
+import { markStartup, startupElapsedMs } from './startup-trace.util'
 
 export function resolveAgentDbPath(workspaceRoot?: string | null): string {
   if (workspaceRoot && workspaceRoot.trim() !== '') {
@@ -87,22 +88,41 @@ export function getAppDb(customBasePath?: string): AppDatabase {
 
   // 未初始化时创建新实例
   if (!_appDb) {
+    const started = performance.now()
+    let fileSizeMb: number | null = null
+    try {
+      if (existsSync(agentDbPath)) {
+        fileSizeMb = Math.round((statSync(agentDbPath).size / (1024 * 1024)) * 10) / 10
+      }
+    } catch {
+      fileSizeMb = null
+    }
     logger.info(`[DB] Agent DB 初始化，路径: ${agentDbPath}`)
+    markStartup('agentDb.init.begin', { path: agentDbPath, fileSizeMb })
     try {
       const dbDir = dirname(agentDbPath)
       if (!existsSync(dbDir)) {
         mkdirSync(dbDir, { recursive: true })
       }
+      const openStarted = performance.now()
       _appDb = initNodeDatabase(agentDbPath, (err) => {
         handleMalformedDb(agentDbPath, err)
       })
       _appDbPath = agentDbPath
+      markStartup('agentDb.initNodeDatabase', {
+        ms: startupElapsedMs(openStarted),
+        fileSizeMb
+      })
 
       // 运行一次快速完整性校验以发现损坏
       const client = (_appDb as any)?.session?.client
       if (client && typeof client.pragma === 'function') {
         try {
+          const checkStarted = performance.now()
           const rows = client.pragma('integrity_check')
+          markStartup('agentDb.integrity_check', {
+            ms: startupElapsedMs(checkStarted)
+          })
           if (rows && rows[0] && rows[0].integrity_check !== 'ok') {
             throw new Error(`integrity_check returned: ${rows[0].integrity_check}`)
           }
@@ -114,6 +134,7 @@ export function getAppDb(customBasePath?: string): AppDatabase {
           }
         }
       }
+      markStartup('agentDb.init.done', { ms: startupElapsedMs(started), fileSizeMb })
     } catch (err: any) {
       if (
         err?.message?.includes('malformed') ||

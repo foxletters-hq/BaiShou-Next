@@ -1,4 +1,4 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { diaryApi } from './diary.api'
 import { settingsApi } from './settings.api'
@@ -10,6 +10,12 @@ import { legacyMigrationApi } from './legacy-migration.api'
 import { cacheApi } from './cache.api'
 import { agentWorkspaceApi } from './agent-workspace.api'
 import { graphApi } from './graph.api'
+
+const preloadStarted = performance.now()
+ipcRenderer.send('startup:mark', {
+  step: 'preload.begin',
+  navMs: Math.round(preloadStarted)
+})
 
 // Custom APIs for renderer
 
@@ -66,3 +72,12 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.api = api
 }
+
+ipcRenderer.send('startup:mark', {
+  step: 'preload.ready',
+  navMs: Math.round(performance.now()),
+  detail: {
+    ms: Math.round(performance.now() - preloadStarted),
+    contextIsolated: process.contextIsolated
+  }
+})
