@@ -111,11 +111,9 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   const preview = request.preview
   const cascadeHint =
     sameActionCount > 1
-      ? t(
-          'agent_gate.cascade_hint',
-          '此决定将影响本会话中另外 {{count}} 个相同操作',
-          { count: sameActionCount - 1 }
-        )
+      ? t('agent_gate.cascade_hint', '此决定将影响本会话中另外 {{count}} 个相同操作', {
+          count: sameActionCount - 1
+        })
       : null
 
   const handleReject = () => {
@@ -152,12 +150,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
       aria-labelledby={titleId}
       data-agent-gate-dock="true"
     >
-      <div
-        className={styles.liveRegion}
-        role="status"
-        aria-live="assertive"
-        aria-atomic="true"
-      >
+      <div className={styles.liveRegion} role="status" aria-live="assertive" aria-atomic="true">
         {t('agent_gate.live_announcement', '需要确认：{{title}}', { title: request.title })}
       </div>
 
@@ -194,9 +187,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
             </span>
             <span className={styles.additions}>+{preview.additions}</span>
             <span className={styles.deletions}>-{preview.deletions}</span>
-            {preview.truncated ? (
-              <span>{t('agent_gate.diff_truncated', '预览已截断')}</span>
-            ) : null}
+            {preview.truncated ? <span>{t('agent_gate.diff_truncated', '预览已截断')}</span> : null}
           </div>
           {preview.diff ? (
             <>
@@ -296,9 +287,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
               type="button"
               className={`${styles.btn} ${styles.btnPrimary}`}
               disabled={isReplying}
-              onClick={() =>
-                void onReply({ requestId: request.id, reply: AgentGateReply.Always })
-              }
+              onClick={() => void onReply({ requestId: request.id, reply: AgentGateReply.Always })}
             >
               {t('agent_gate.always_confirm', '确认始终允许')}
             </button>

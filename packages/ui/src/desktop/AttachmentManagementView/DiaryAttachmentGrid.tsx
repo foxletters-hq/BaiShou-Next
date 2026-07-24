@@ -98,14 +98,10 @@ export const DiaryAttachmentGrid: React.FC<DiaryAttachmentGridProps> = ({ vm }) 
                       loading="lazy"
                     />
                   ) : (
-                    <div className={styles.diaryPreviewFallback}>
-                      {getFileIcon(item.name, 36)}
-                    </div>
+                    <div className={styles.diaryPreviewFallback}>{getFileIcon(item.name, 36)}</div>
                   )
                 ) : (
-                  <div className={styles.diaryPreviewFallback}>
-                    {getFileIcon(item.name, 36)}
-                  </div>
+                  <div className={styles.diaryPreviewFallback}>{getFileIcon(item.name, 36)}</div>
                 )}
 
                 <div className={styles.diaryCardCheckbox} onClick={(e) => e.stopPropagation()}>
@@ -123,10 +119,7 @@ export const DiaryAttachmentGrid: React.FC<DiaryAttachmentGridProps> = ({ vm }) 
                   </span>
                 )}
 
-                <div
-                  className={styles.diaryCardHoverActions}
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className={styles.diaryCardHoverActions} onClick={(e) => e.stopPropagation()}>
                   {isImage && (
                     <button
                       type="button"

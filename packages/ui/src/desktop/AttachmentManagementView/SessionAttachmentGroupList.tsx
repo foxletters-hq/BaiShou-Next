@@ -100,12 +100,7 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
                 className={`${styles.folderIconBox} ${group.isOrphan && !coverThumb ? styles.folderIconBoxOrphan : ''}`}
               >
                 {coverThumb ? (
-                  <img
-                    src={coverThumb}
-                    alt=""
-                    className={styles.folderIconThumb}
-                    loading="lazy"
-                  />
+                  <img src={coverThumb} alt="" className={styles.folderIconThumb} loading="lazy" />
                 ) : group.isOrphan ? (
                   <FolderMinus size={20} />
                 ) : (

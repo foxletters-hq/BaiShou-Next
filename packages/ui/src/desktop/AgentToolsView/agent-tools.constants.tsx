@@ -217,7 +217,10 @@ export function buildWorkspaceCategoryMeta(
     WORKSPACE_TOOL_CATEGORY_ORDER.map((category) => [
       category,
       {
-        label: t(WORKSPACE_CATEGORY_LABEL_KEYS[category], WORKSPACE_CATEGORY_LABEL_FALLBACKS[category]),
+        label: t(
+          WORKSPACE_CATEGORY_LABEL_KEYS[category],
+          WORKSPACE_CATEGORY_LABEL_FALLBACKS[category]
+        ),
         icon: WORKSPACE_CATEGORY_ICONS[category]
       }
     ])

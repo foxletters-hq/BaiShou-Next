@@ -117,10 +117,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
                           'settings.workspace_tools_desc',
                           '管理当前工作区可用的工具；与伙伴工具相互独立。'
                         )
-                      : t(
-                          'settings.agent_tools_desc',
-                          '管理伙伴可使用的工具，开关或配置工具参数'
-                        )
+                      : t('settings.agent_tools_desc', '管理伙伴可使用的工具，开关或配置工具参数')
                   }
                 />
               </div>

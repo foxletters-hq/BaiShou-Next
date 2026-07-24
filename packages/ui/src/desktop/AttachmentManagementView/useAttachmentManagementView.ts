@@ -82,11 +82,16 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
     }
   )
 
-  const { diaryYear, diaryMonth, diaryOrphanOnly, setDiaryYear, setDiaryMonth, setDiaryOrphanOnly } =
-    diary
+  const {
+    diaryYear,
+    diaryMonth,
+    diaryOrphanOnly,
+    setDiaryYear,
+    setDiaryMonth,
+    setDiaryOrphanOnly
+  } = diary
 
-  const hasActiveDiaryFilters =
-    diaryYear !== 'all' || diaryMonth !== 'all' || diaryOrphanOnly
+  const hasActiveDiaryFilters = diaryYear !== 'all' || diaryMonth !== 'all' || diaryOrphanOnly
 
   const clearDiaryFilters = React.useCallback(() => {
     setDiaryYear('all')
@@ -114,11 +119,7 @@ export function useAttachmentManagementView(props: AttachmentManagementViewProps
       }
       if (!expandedIds.has(group.sessionId)) continue
       for (const file of files) {
-        if (
-          isImageFile(file.name) &&
-          !thumbnailCache.has(file.path) &&
-          !seen.has(file.path)
-        ) {
+        if (isImageFile(file.name) && !thumbnailCache.has(file.path) && !seen.has(file.path)) {
           pendingPaths.push(file.path)
           seen.add(file.path)
         }
