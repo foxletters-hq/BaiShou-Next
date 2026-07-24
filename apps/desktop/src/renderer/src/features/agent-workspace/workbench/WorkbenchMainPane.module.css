@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--bg-app);
+  background: var(--bg-surface);
 }
 
 .tabBar {
@@ -14,7 +14,7 @@
   min-height: 36px;
   padding: 0;
   border-bottom: 1px solid var(--border-muted);
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface);
   overflow: hidden;
 }
 
@@ -46,13 +46,13 @@
 }
 
 .layoutBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
 .layoutBtnActive {
   color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .tabScroll {
@@ -130,7 +130,7 @@
 }
 
 .error {
-  color: #cf222e;
+  color: var(--color-error);
 }
 
 .diffWrap {

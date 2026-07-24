@@ -5,8 +5,8 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: 8px;
-  border-left: 1px solid var(--border-muted);
-  background: var(--bg-surface-highest);
+  border-left: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
 }
 
 .expandBtn,
@@ -21,7 +21,7 @@
 
 .expandBtn:hover,
 .collapseBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
@@ -31,7 +31,7 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  border-left: 1px solid var(--border-muted);
+  border-left: 1px solid var(--border-subtle);
   background: var(--bg-app);
 }
 
@@ -43,7 +43,7 @@
   min-height: 40px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-muted);
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface);
 }
 
 .headerTitle {
@@ -79,13 +79,13 @@
 }
 
 .headerIconBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
 .headerIconBtnActive {
   color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  background: var(--bg-surface-high);
 }
 
 .currentSessionBar {
@@ -147,7 +147,7 @@
   margin: 0 0 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: var(--bg-surface-highest);
+  background: var(--bg-surface-normal);
   color: var(--text-secondary);
   font-size: 12px;
 }

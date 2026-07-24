@@ -37,14 +37,14 @@
 
 .folderBtn:hover,
 .addBtn:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  background: var(--bg-surface-high);
   color: var(--text-primary);
 }
 
 .folderBtnActive {
   color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  background: var(--bg-surface-high);
+  border-color: var(--border-muted);
 }
 
 .folderBtn img {
@@ -68,6 +68,6 @@
 }
 
 .addBtn:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  border-color: var(--border-control);
   color: var(--color-primary);
 }

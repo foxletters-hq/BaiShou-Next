@@ -41,17 +41,21 @@
 }
 
 .primaryBtn {
-  border: none;
+  border: 1.5px solid var(--border-control);
   border-radius: 8px;
   padding: 8px 16px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 13px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .primaryBtn:hover {
-  filter: brightness(1.05);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .addWorkspaceBtn {
@@ -60,19 +64,22 @@
   justify-content: center;
   gap: 8px;
   padding: 10px 18px;
-  border: none;
+  border: 1.5px solid var(--border-control);
   border-radius: 10px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
-  transition: filter 0.2s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .addWorkspaceBtn:hover {
-  filter: brightness(1.05);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .addWorkspaceBtnIcon {
