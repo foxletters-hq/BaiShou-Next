@@ -215,66 +215,66 @@ export const LegacyMigrationPane: React.FC = () => {
             </div>
             <section className={`${pane.cardSection} legacy-migration-source-card`}>
               <div className="legacy-migration-source-body">
-        <div className="legacy-migration-actions">
-          <button
-            type="button"
-            className="legacy-migration-btn legacy-migration-btn--primary"
-            onClick={() => void handlePickSource()}
-            disabled={scanning}
-          >
-            {t('version_migration.choose_legacy_directory', '选择旧版目录')}
-          </button>
-          {customSourceRoot ? (
-            <button
-              type="button"
-              className="legacy-migration-btn"
-              onClick={() => void handleClearCustomSource()}
-              disabled={scanning}
-            >
-              {t('version_migration.clear_custom_legacy_directory', '恢复自动检测')}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="legacy-migration-btn"
-            onClick={() => void refreshScan()}
-            disabled={scanning}
-          >
-            {scanning
-              ? t('version_migration.scanning', '正在扫描…')
-              : t('version_migration.rescan', '重新扫描')}
-          </button>
-        </div>
+                <div className="legacy-migration-actions">
+                  <button
+                    type="button"
+                    className="legacy-migration-btn legacy-migration-btn--primary"
+                    onClick={() => void handlePickSource()}
+                    disabled={scanning}
+                  >
+                    {t('version_migration.choose_legacy_directory', '选择旧版目录')}
+                  </button>
+                  {customSourceRoot ? (
+                    <button
+                      type="button"
+                      className="legacy-migration-btn"
+                      onClick={() => void handleClearCustomSource()}
+                      disabled={scanning}
+                    >
+                      {t('version_migration.clear_custom_legacy_directory', '恢复自动检测')}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="legacy-migration-btn"
+                    onClick={() => void refreshScan()}
+                    disabled={scanning}
+                  >
+                    {scanning
+                      ? t('version_migration.scanning', '正在扫描…')
+                      : t('version_migration.rescan', '重新扫描')}
+                  </button>
+                </div>
 
-        {scanResult ? (
-          <>
-            {inPlace ? (
-              <p className="legacy-migration-source-kind">
-                {t(
-                  'version_migration.in_place_notice',
-                  '旧版数据与当前工作区目录相同，将在此目录原位转换数据结构（不会复制到新文件夹）。'
+                {scanResult ? (
+                  <>
+                    {inPlace ? (
+                      <p className="legacy-migration-source-kind">
+                        {t(
+                          'version_migration.in_place_notice',
+                          '旧版数据与当前工作区目录相同，将在此目录原位转换数据结构（不会复制到新文件夹）。'
+                        )}
+                      </p>
+                    ) : null}
+                    {legacySourceKindKey ? (
+                      <p className="legacy-migration-source-kind">{t(legacySourceKindKey)}</p>
+                    ) : null}
+                    <div className="legacy-migration-path-box" title={scanResult.sourceDisplayPath}>
+                      {t('version_migration.source_path', '旧版目录：{{path}}', {
+                        path: formatDisplayPath(scanResult.sourceDisplayPath)
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="legacy-migration-path-box">
+                    <span className="legacy-migration-path-placeholder">
+                      {t(
+                        'version_migration.no_legacy_data',
+                        '未检测到可迁移的旧版数据。若您刚升级，请确认旧版目录仍可访问，或手动选择旧版 Flutter 数据目录。'
+                      )}
+                    </span>
+                  </div>
                 )}
-              </p>
-            ) : null}
-            {legacySourceKindKey ? (
-              <p className="legacy-migration-source-kind">{t(legacySourceKindKey)}</p>
-            ) : null}
-            <div className="legacy-migration-path-box" title={scanResult.sourceDisplayPath}>
-              {t('version_migration.source_path', '旧版目录：{{path}}', {
-                path: formatDisplayPath(scanResult.sourceDisplayPath)
-              })}
-            </div>
-          </>
-        ) : (
-          <div className="legacy-migration-path-box">
-            <span className="legacy-migration-path-placeholder">
-              {t(
-                'version_migration.no_legacy_data',
-                '未检测到可迁移的旧版数据。若您刚升级，请确认旧版目录仍可访问，或手动选择旧版 Flutter 数据目录。'
-              )}
-            </span>
-          </div>
-        )}
               </div>
             </section>
           </div>

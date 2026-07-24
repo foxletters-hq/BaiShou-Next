@@ -1,10 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  AgentToolsView,
-  SettingsPageChrome,
-  type AgentToolsConfig
-} from '@baishou/ui'
+import { AgentToolsView, SettingsPageChrome, type AgentToolsConfig } from '@baishou/ui'
 import {
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
   type AgentWorkspaceEntry,
@@ -76,9 +72,7 @@ export const WorkspaceGatePane: React.FC = () => {
 
   const gateScope = useMemo(
     () =>
-      workspaceId
-        ? ({ kind: 'workspace' as const, workspaceId })
-        : ({ kind: 'companion' as const }),
+      workspaceId ? { kind: 'workspace' as const, workspaceId } : { kind: 'companion' as const },
     [workspaceId]
   )
 
@@ -102,9 +96,18 @@ export const WorkspaceGatePane: React.FC = () => {
   return (
     <div
       className="settings-pane settings-pane-full"
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
     >
-      <SettingsPageChrome title={t('settings.workspace_gate_page_title', '工作台权限')} layout="stack">
+      <SettingsPageChrome
+        title={t('settings.workspace_gate_page_title', '工作台权限')}
+        layout="stack"
+      >
         <div className={styles.page}>
           {hideTabHeader ? null : (
             <div className={styles.tabHeader}>
