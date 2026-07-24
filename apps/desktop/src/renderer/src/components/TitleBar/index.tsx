@@ -9,7 +9,11 @@ import { resolveDiaryHomePath } from '../Sidebar/sidebar-preferences'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
 import { switchActiveVault, persistActiveVaultName } from '../../lib/vault-runtime.util'
 import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-sync-config-events'
-import { BookOpen, ChevronDown, FolderSync, LayoutPanelLeft, Minus, Square, X } from 'lucide-react'
+import { BookOpen, ChevronDown, FolderSync, Layers, Minus, Square, X } from 'lucide-react'
+import {
+  AgentGatePendingBadgeButton,
+  AgentGatePendingDrawer
+} from '../../features/agent/AgentGatePendingDrawer'
 
 export const TitleBar: React.FC = () => {
   const { t } = useTranslation()
@@ -21,6 +25,7 @@ export const TitleBar: React.FC = () => {
   const [vaults, setVaults] = useState<any[]>([])
   const [activeVault, setActiveVault] = useState<any>(null)
   const [showVaultMenu, setShowVaultMenu] = useState(false)
+  const [showGateDrawer, setShowGateDrawer] = useState(false)
   const [isSwitchingVault, setIsSwitchingVault] = useState(false)
   const vaultMenuRef = useRef<HTMLDivElement>(null)
   const wasOnboardingRef = useRef(isOnboarding)
@@ -194,7 +199,7 @@ export const TitleBar: React.FC = () => {
               className={`${styles.tab} ${isAgentWorkspace ? styles.activeTab : ''}`}
               onClick={() => navigate('/agent-workspace')}
             >
-              <LayoutPanelLeft className={styles.tabIcon} />
+              <Layers className={styles.tabIcon} />
               <span>{t('nav.workbench', '工作台')}</span>
             </div>
           </div>
@@ -204,6 +209,11 @@ export const TitleBar: React.FC = () => {
       <div className={styles.actions}>
         {!isOnboarding && (
           <>
+            <AgentGatePendingBadgeButton onClick={() => setShowGateDrawer(true)} />
+            <AgentGatePendingDrawer
+              open={showGateDrawer}
+              onClose={() => setShowGateDrawer(false)}
+            />
             {s3Configured && (
               <div className={styles.syncPanelWrap}>
                 <IncrementalSyncPanel
