@@ -1,104 +1,64 @@
+/**
+ * 桌面遗留别名层（非 SSOT）
+ *
+ * 权威数值见 @baishou/ui/theme/css-variables.css（须先于本文件导入）。
+ * 此处仅把 Flutter / Material 时代的 --color-surface* / --color-text* 等
+ * 映射到语义 token；禁止在此重写漂移的 --bg-* / --text-* / --border-*。
+ * 新代码请直接使用 --bg-* / --text-* / --border-* / --color-primary*。
+ * 见 docs/1-AI-Code/2-UI-Theme-Rule.md
+ */
 :root {
-  /* Colors from Flutter AppTheme.dart */
-  --color-primary: #5ba8f5;
-  --color-on-primary: #ffffff;
-  --color-background-light: #f6f7f8;
-  --color-background-dark: #101922;
-  --color-surface-dark: #192633;
-  --color-surface-highlight: #233648;
+  /* —— deprecated aliases → SSOT —— */
+  --color-on-primary: var(--text-on-primary);
+  --color-background-light: var(--bg-app);
+  --color-background-dark: var(--bg-app);
+  --color-surface-dark: var(--bg-surface);
+  --color-surface-highlight: var(--bg-surface-high);
 
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #92adc9;
-  --color-text-secondary-light: #475569;
-  --color-text-secondary-dark: #94a3b8;
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-secondary-light: var(--text-secondary);
+  --color-text-secondary-dark: var(--text-secondary);
 
-  --color-primary-container: #5ba8f5; /* Seed color */
-  --color-on-primary-container: #1565c0;
+  --color-primary-container: var(--color-primary-light);
+  --color-on-primary-container: var(--text-primary);
 
-  --color-secondary: #78909c;
-  --color-tertiary: #4caf50;
-  --color-on-tertiary: #ffffff;
-  --color-tertiary-container: #e8f5e9;
+  /* --color-secondary / --color-outline-variant 已由 SSOT 定义，勿自引用 */
+  --color-tertiary: var(--color-success);
+  --color-on-tertiary: var(--text-on-primary);
+  --color-tertiary-container: var(--color-primary-light);
 
-  --color-surface: #ffffff;
-  --color-on-surface: #1a1a1a;
-  --color-on-surface-variant: #475569;
+  --color-surface: var(--bg-surface);
+  --color-on-surface: var(--text-primary);
+  --color-on-surface-variant: var(--text-secondary);
 
-  --color-surface-container-highest: #e8e8e8;
-  --color-surface-container-high: #eeeeee;
-  --color-surface-container: #f2f2f2;
-  --color-surface-container-low: #f6f7f8;
-  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: var(--bg-surface-highest);
+  --color-surface-container-high: var(--bg-surface-high);
+  --color-surface-container: var(--bg-surface-normal);
+  --color-surface-container-low: var(--bg-surface-low);
+  --color-surface-container-lowest: var(--bg-surface-lowest);
 
-  --color-outline: #9e9e9e;
-  --color-outline-variant: #d0d0d0;
+  --color-outline: var(--border-control);
 
-  /* RGB Channels (Light) */
-  --color-primary-rgb: 91, 168, 245;
-  --text-primary-rgb: 26, 26, 26;
-  --text-secondary-rgb: 146, 173, 201;
+  --color-surface-container-highest-rgb: var(--color-outline-variant-rgb);
+  --text-secondary-rgb: 74, 85, 104;
 
-  /* Glassmorphism Overlays (Light) */
-  --color-glass-bg: rgba(255, 255, 255, 0.65);
+  /* 桌面侧遗留 glass 别名（页面顶栏勿用；优先 --bg-glass-* / 实色 surface） */
+  --color-glass-bg: var(--bg-glass-surface);
   --glass-blur: 24px;
-  --color-glass-border: rgba(0, 0, 0, 0.08);
+  --color-glass-border: var(--border-muted);
 
-  /* Fonts */
-  --font-family-main: 'Manrope', 'Microsoft YaHei', 'Noto Sans SC', 'PingFang SC', sans-serif;
+  /* 桌面字体别名 → SSOT --font-family（Noto Sans） */
+  --font-family-main: var(--font-family);
 }
 
 [data-theme='dark'] {
-  /* Brand Colors - Adjusted for dark mode contrast */
-  --color-primary: #5ba8f5;
-  --color-on-primary: #ffffff;
-  --color-primary-container: rgba(91, 168, 245, 0.2);
-  --color-on-primary-container: #89c3ff;
+  /* 仅维护仍被存量引用、且无法纯 alias 的 RGB 通道；--bg-* 以 SSOT 为准 */
+  --color-primary-container: var(--color-primary-light);
+  --color-on-primary-container: var(--text-primary);
+  --color-surface-container-highest-rgb: 56, 56, 61;
+  --text-secondary-rgb: 161, 161, 170;
 
-  /* Dark theme background & surface (From Flutter AppTheme.dart) */
-  --color-background-dark: #101922;
-  --color-surface-dark: #192633;
-  --color-surface-highlight: #233648;
-
-  --color-surface: #192633;
-  --color-on-surface: #f8fafc;
-  --color-on-surface-variant: #94a3b8;
-
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-secondary-light: #94a3b8;
-  --color-text-secondary-dark: #94a3b8;
-
-  --color-surface-container-lowest: #101922;
-  --color-surface-container-low: #141f2b;
-  --color-surface-container: #192633;
-  --color-surface-container-high: #1e2f3f;
-  --color-surface-container-highest: #233648;
-
-  --color-outline: #3a4b5c;
-  --color-outline-variant: #2d3b48;
-
-  /* RGB Channels (Dark) */
-  --text-primary-rgb: 248, 250, 252;
-  --text-secondary-rgb: 148, 163, 184;
-
-  /* Glassmorphism Overlays (Dark) */
-  --color-glass-bg: rgba(25, 38, 51, 0.65);
-  --color-glass-border: rgba(255, 255, 255, 0.1);
-
-  /* Override Core UI global variables to seamlessly blend UI package components */
-  --bg-app: #101922;
-  --bg-surface: #192633;
-  --bg-surface-raised: #1d2c3b;
-  --bg-surface-highest: #2d3e4f;
-  --bg-surface-high: #233648;
-  --bg-surface-normal: #141f2b;
-  --bg-surface-lowest: #101922;
-  --bg-surface-low: #141f2b;
-
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-muted: rgba(255, 255, 255, 0.12);
-  --border-strong: rgba(255, 255, 255, 0.2);
+  --color-glass-bg: var(--bg-glass-surface);
+  --color-glass-border: var(--border-muted);
 }

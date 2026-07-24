@@ -1,52 +1,63 @@
+/**
+ * UI 主题 Token SSOT（桌面 CSS）
+ * 语义与布局约定见 docs/1-AI-Code/2-UI-Theme-Rule.md
+ *
+ * 背景主层级：--bg-app（壳）→ --bg-surface（页面/顶栏）→ --bg-surface-raised（卡片）
+ * 页面顶栏必须用实色 --bg-surface，禁止 glass
+ */
+@import './range-slider.css';
 :root {
   /* ========================================================= */
   /* COLOR PALETTE - LIGHT THEME (DEFAULT)                    */
   /* ========================================================= */
 
-  /* Brand Colors */
+  /* Brand — 原品牌蓝 #5BA8F5；主 CTA 仍优先描边，选中文字可用主色 */
   --color-primary: #5ba8f5;
   --color-primary-dark: #3a88d5;
   --color-primary-light: #e0f0fe;
+  --color-primary-rgb: 91, 168, 245;
 
-  /* Backgrounds: Depth and Elevations (Light) */
-  --bg-app: #f4f5f7; /* Cool, purely neutral grayish background for sidebar and app shell */
-  --bg-surface: #ffffff; /* Primary container backgrounds - stark white */
-  --bg-surface-raised: #ffffff; /* Cards, Dropdowns */
-  --bg-surface-highest: #e8eaed; /* Modals, Popovers */
-  --bg-surface-high: #f0f2f5; /* Hover states for surface items */
-  --bg-surface-normal: #eaecef; /* Secondary containers (e.g. gray panels) */
-  --bg-surface-lowest: #f8fafc; /* Lightest surface, near-white */
+  /* Backgrounds — 见主题规范 §3.1 */
+  --bg-app: #f4f5f7; /* 壳 / 侧栏下画布 / 页面外灰底 */
+  --bg-surface: #ffffff; /* 主工作区、页面顶栏、列表底（实色） */
+  --bg-surface-raised: #ffffff; /* 卡片 / 下拉 / 抬起块 */
+  --bg-surface-highest: #e8eaed; /* 模态 / Popover */
+  --bg-surface-high: #f0f2f5; /* 悬停 */
+  --bg-surface-normal: #eaecef; /* 内凹次级区、分段轨道 */
+  /* 存量兼容（新代码优先用上表） */
+  --bg-surface-lowest: #f8fafc;
   --bg-surface-lowest-rgb: 248, 250, 252;
-  --bg-surface-low: #f8f9fa; /* Tertiary background */
-  --bg-surface-highlight: var(--bg-surface-high); /* Hover / inset panels, footers */
+  --bg-surface-low: #f8f9fa;
+  --bg-surface-highlight: var(--bg-surface-high);
 
-  /* Glassmorphism Overlays (Light) */
+  /* Overlay / Glass — 仅非页面 chrome；顶栏勿用 */
   --bg-overlay: rgba(0, 0, 0, 0.35);
   --bg-glass-surface: rgba(255, 255, 255, 0.48);
   --bg-glass-inset: rgba(255, 255, 255, 0.24);
   --blur-overlay: blur(20px) saturate(200%);
   --blur-glass: blur(28px) saturate(200%);
 
-  /* 窗口顶栏：实色白底（Electron 无边框窗口难以稳定实现 QQ 式毛玻璃） */
+  /* 窗口顶栏：实色（映射 surface） */
   --titlebar-glass-bg: var(--bg-surface);
   --titlebar-glass-blur: none;
-  --titlebar-glass-border: var(--border-subtle);
+  --titlebar-glass-border: var(--border-muted);
   --titlebar-glass-shadow: none;
 
-  /* Borders / Dividers (Light) */
-  --border-subtle: rgba(0, 0, 0, 0.04);
-  --border-muted: rgba(0, 0, 0, 0.08); /* faint lines */
-  --border-card: rgba(0, 0, 0, 0.12); /* settings / content cards on gray bg */
-  --border-control: #d6d6d6; /* 次要按钮 / 控件描边（如模型选择、图标按钮） */
-  --border-strong: rgba(0, 0, 0, 0.16);
+  /* Borders — 见主题规范 §3.2 */
+  --border-subtle: rgba(0, 0, 0, 0.04); /* 极淡分割 */
+  --border-muted: rgba(0, 0, 0, 0.08); /* 分割线 / 顶栏底边 */
+  --border-card: rgba(0, 0, 0, 0.12); /* 灰底上内容卡片外框 */
+  --border-control: #d6d6d6; /* 可见控件 / 次要按钮描边 */
+  --border-strong: rgba(0, 0, 0, 0.16); /* Focus / 强调 */
 
-  /* Text & Inks (Light) */
-  --text-primary: #1a1c23; /* Headlines, strong text */
-  --text-secondary: #4a5568; /* Body text, descriptions */
-  --text-tertiary: #a0aec0; /* Placeholders, disabled states */
+  /* Text */
+  --text-primary: #1a1c23;
+  --text-secondary: #4a5568;
+  --text-tertiary: #a0aec0;
   --text-on-primary: #ffffff;
+  --text-primary-rgb: 26, 28, 35;
 
-  /* Semantic Colors */
+  /* Semantic accents */
   --color-accent-green: #34d399;
   --color-accent-blue: #60a5fa;
   --color-accent-purple: #a78bfa;
@@ -55,12 +66,26 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
+  --color-success-rgb: 16, 185, 129;
+  --color-error-rgb: 239, 68, 68;
 
-  /* Typography */
-  --font-family: 'Inter', 'Roboto', 'Outfit', 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  /* Typography — UI 统一 Noto Sans；按 html[lang] 切换 CJK 区域字形 */
+  --font-family:
+    'Noto Sans SC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace;
 
-  /* Border Radii */
+  /* Settings page chrome — 页面标题顶栏统一高度；内容区与顶栏间距 */
+  --settings-page-header-height: 64px;
+  --settings-page-content-gap: 24px;
+  --settings-page-scroll-padding-top: calc(
+    var(--settings-page-header-height) + var(--settings-page-content-gap)
+  );
+
+  /* 表单输入框 — 白底 + 可见描边（禁止用 --bg-surface-low/normal 作输入底） */
+  --form-field-bg: var(--bg-surface);
+  --form-field-border: var(--border-control);
+
+  /* Radii */
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -76,21 +101,19 @@
   --spacing-xl: 32px;
   --spacing-2xl: 48px;
 
-  /* Global Outline Variants */
+  /* Legacy outline aliases（优先用 --border-*） */
   --color-outline-variant: rgba(208, 208, 208, 0.5);
   --color-outline-variant-rgb: 208, 208, 208;
-
-  /* Surface Variants */
   --color-surface-variant: #f1f5f9;
 
-  /* Shadows (Light) */
+  /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.08);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 16px rgba(91, 168, 245, 0.3);
+  --shadow-glow: 0 0 12px rgba(0, 0, 0, 0.06);
 
-  /* Animation Timings */
+  /* Motion */
   --duration-fast: 150ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
@@ -103,54 +126,47 @@
 /* COLOR PALETTE - DARK THEME                                */
 /* ========================================================= */
 [data-theme='dark'] {
-  /* Brand Colors - Adjusted for dark mode contrast */
   --color-primary: #5ba8f5;
   --color-primary-dark: #3a88d5;
   --color-primary-light: rgba(91, 168, 245, 0.2);
+  --color-primary-rgb: 91, 168, 245;
 
-  /* Backgrounds: Depth and Elevations (Dark) */
-  /* Using sleek, slightly tinted dark grays instead of pure black for a premium look */
-  --bg-app: #1a1a1e; /* App Sidebar & deeply recessed area */
-  --bg-surface: #262629; /* Main Content / Chat Windows */
-  --bg-surface-raised: #2d2d31; /* Cards, Dropdowns */
-  --bg-surface-highest: #38383d; /* Modals, Popovers */
-  --bg-surface-high: #323236; /* Hover states for surface items */
-  --bg-surface-normal: #1e1e22; /* Secondary containers (e.g. gray panels, sidebars) */
-  --bg-surface-lowest: #151518; /* Darkest surface, near-black */
+  --bg-app: #1a1a1e;
+  --bg-surface: #262629;
+  --bg-surface-raised: #2d2d31;
+  --bg-surface-highest: #38383d;
+  --bg-surface-high: #323236;
+  --bg-surface-normal: #1e1e22;
+  --bg-surface-lowest: #151518;
   --bg-surface-lowest-rgb: 21, 21, 24;
-  --bg-surface-low: #151518; /* Tertiary background */
+  --bg-surface-low: #151518;
   --bg-surface-highlight: var(--bg-surface-high);
 
-  /* Glassmorphism Overlays (Dark) */
   --bg-overlay: rgba(0, 0, 0, 0.55);
   --bg-glass-surface: rgba(30, 30, 34, 0.4);
   --bg-glass-inset: rgba(255, 255, 255, 0.06);
 
   --titlebar-glass-bg: var(--bg-surface);
   --titlebar-glass-blur: none;
-  --titlebar-glass-border: var(--border-subtle);
+  --titlebar-glass-border: var(--border-muted);
   --titlebar-glass-shadow: none;
 
-  /* Borders / Dividers (Dark) */
-  --border-subtle: rgba(255, 255, 255, 0.08); /* increased visibility for dividers */
+  --border-subtle: rgba(255, 255, 255, 0.08);
   --border-muted: rgba(255, 255, 255, 0.12);
   --border-card: rgba(255, 255, 255, 0.16);
-  --border-control: rgba(255, 255, 255, 0.22); /* 次要按钮 / 控件描边 */
+  --border-control: rgba(255, 255, 255, 0.22);
   --border-strong: rgba(255, 255, 255, 0.2);
 
   --color-outline-variant: rgba(255, 255, 255, 0.1);
   --color-outline-variant-rgb: 255, 255, 255;
-
-  /* Surface Variants */
   --color-surface-variant: rgba(255, 255, 255, 0.05);
 
-  /* Text & Inks (Dark) */
-  --text-primary: #f8fafc; /* Headlines, strong text */
-  --text-secondary: #a1a1aa; /* Body text, descriptions */
-  --text-tertiary: #71717a; /* Placeholders, disabled states */
+  --text-primary: #f8fafc;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
   --text-on-primary: #ffffff;
+  --text-primary-rgb: 248, 250, 252;
 
-  /* Semantic Colors (Tweaked slightly for dark mode vibrancy) */
   --color-accent-green: #10b981;
   --color-accent-blue: #3b82f6;
   --color-accent-purple: #8b5cf6;
@@ -158,16 +174,33 @@
   --color-secondary: #64748b;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
+  --color-success: #10b981;
+  --color-success-rgb: 16, 185, 129;
+  --color-error-rgb: 239, 68, 68;
 
-  /* Shadows (Dark) - Deeper to simulate elevation without strong light sources */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.7);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.8);
-  --shadow-glow: 0 0 20px rgba(91, 168, 245, 0.15);
+  --shadow-glow: 0 0 16px rgba(0, 0, 0, 0.35);
 }
 
-/* Global utility for smooth theme shifting */
+/* 语言字形：与 i18n 写入的 html[lang] 对齐 */
+html[lang='zh-TW'],
+html[lang='zh-HK'] {
+  --font-family:
+    'Noto Sans TC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html[lang='ja'] {
+  --font-family:
+    'Noto Sans JP', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html[lang='en'] {
+  --font-family: 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
 body {
   background-color: var(--bg-app);
   color: var(--text-primary);

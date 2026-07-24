@@ -1,0 +1,41 @@
+---
+description: 桌面/UI 语义色与布局约定（顶栏白底、背景三层、边框、分段滑块）
+globs: packages/ui/src/**/*.{css,tsx},apps/desktop/src/renderer/**/*.{css,tsx},apps/mobile/src/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# UI 主题与布局（摘要）
+
+完整规范见 [docs/1-AI-Code/2-UI-Theme-Rule.md](docs/1-AI-Code/2-UI-Theme-Rule.md)。Token SSOT：`packages/ui/src/theme/css-variables.css`。
+
+## 背景（优先）
+
+- `--bg-app`：壳 / 页面外灰底
+- `--bg-surface`：主工作区与**页面顶栏**（实色，禁止 glass）
+- `--bg-surface-raised`：卡片 / 下拉
+- `--bg-surface-high`：悬停
+- `--bg-surface-normal`：内凹 / 分段轨道
+- `--bg-surface-highest`：模态 / Popover
+
+## 边框
+
+- 顶栏底边 / 分割线：`--border-muted`（极淡用 `--border-subtle`）
+- 可见控件描边：`--border-control`
+- 灰底卡片外框：`--border-card`
+- Focus：`--border-strong`
+
+## 布局
+
+- 页面顶栏：`padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`
+- 设置内容区：约 `24px 32px`；卡片 `radius: 12` + `--border-card`
+- 分段滑块：只用 `packages/ui/src/desktop/shared/SegmentedControl.module.css`（`group` / `btn` / `btnActive`）
+
+## 禁止
+
+- 新代码勿新增 `--color-surface-*` / `--color-background-*` / glass 页面 chrome
+- 勿 `var(--token, #fff)` 硬编码兜底；勿在组件内用 `[data-theme='dark']` 另写一套色
+- 主色按钮文字用 `--text-on-primary`，勿 `#fff`
+
+## 例外
+
+阴影 `rgba(0,0,0,…)`、图表/品牌色、`mix-blend-mode` 反色字、桌面 `variables.css` 别名层——见主题文档 §6。

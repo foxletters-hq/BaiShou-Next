@@ -1,0 +1,75 @@
+/**
+ * 原生 range 统一样式（与共同回忆 DashboardSharedMemoryCard 滑动条对齐）
+ * 填充进度：可在元素上设 style={{ backgroundSize: `${pct}% 100%` }}
+ */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background-color: rgba(var(--color-primary-rgb), 0.18);
+  background-image: linear-gradient(var(--color-primary), var(--color-primary));
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+}
+
+input[type='range']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+}
+
+input[type='range']::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(var(--color-primary-rgb), 0.18);
+}
+
+input[type='range']::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 0 0 rgba(var(--color-primary-rgb), 0);
+  transition: box-shadow 0.2s;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 8px rgba(var(--color-primary-rgb), 0.12);
+}
+
+input[type='range']::-webkit-slider-thumb:active {
+  box-shadow: 0 0 0 10px rgba(var(--color-primary-rgb), 0.18);
+}
+
+input[type='range']:disabled::-webkit-slider-thumb,
+input[type='range']:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+}
