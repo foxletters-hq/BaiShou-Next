@@ -6,8 +6,7 @@ import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
 import {
   GlobalModelsConfig as SharedGlobalModelsConfig,
   isEmbeddingModel,
-  isTtsModel,
-  shouldSyncGraphModelsWithDialogue
+  isTtsModel
 } from '@baishou/shared'
 import { Database, Cloud, MessageCircle, Pencil, ScrollText, Waypoints } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
@@ -39,7 +38,7 @@ export interface AIGlobalModelsViewProps {
   onManageProviders?: () => void
 }
 
-type ModelSelectorKey = 'dialogue' | 'graph' | 'naming' | 'summary' | 'embedding'
+type ModelSelectorKey = 'dialogue' | 'naming' | 'summary' | 'embedding'
 
 export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   config,
@@ -129,14 +128,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
       setActiveSelector(null)
       return
     } else if (activeSelector === 'dialogue') {
-      const syncGraph = shouldSyncGraphModelsWithDialogue(config)
       newConfig.globalDialogueProviderId = providerId
       newConfig.globalDialogueModelId = modelId
-      if (syncGraph) {
-        newConfig.globalGraphProviderId = providerId
-        newConfig.globalGraphModelId = modelId
-      }
-    } else if (activeSelector === 'graph') {
+      // 图关系抽取始终跟随对话模型
       newConfig.globalGraphProviderId = providerId
       newConfig.globalGraphModelId = modelId
     } else if (activeSelector === 'naming') {
@@ -152,14 +146,15 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
   }
 
   const renderSection = (
-    key: ModelSelectorKey,
+    key: ModelSelectorKey | 'graph',
     title: string,
     icon: React.ReactNode,
     currentProvider: string,
     currentModel: string,
-    isDanger: boolean = false
+    options: { isDanger?: boolean; readOnly?: boolean } = {}
   ) => {
-    const isModelSet = currentProvider && currentModel
+    const { isDanger = false, readOnly = false } = options
+    const isModelSet = Boolean(currentProvider && currentModel)
     const providerMeta = availableProviders[currentProvider]
     const providerIconUrl =
       getProviderIcon(currentProvider, isDark) ||
@@ -177,7 +172,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         case 'graph':
           return t(
             'settings.tooltip_graph_model',
-            '用于离线梳理日记中的人物、事件与关系（图关系抽取）。默认与对话模型一致，可单独更换。'
+            '用于梳理日记中的人物、事件与关系（图关系抽取）。始终与默认对话模型保持一致，不可单独修改。'
           )
         case 'naming':
           return t(
@@ -205,8 +200,15 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         </div>
 
         <div
-          className={`${styles.selectorBtn} ${isModelSet ? styles.hasValue : ''}`}
-          onClick={() => setActiveSelector(key)}
+          className={`${styles.selectorBtn} ${isModelSet ? styles.hasValue : ''} ${
+            readOnly ? styles.selectorBtnReadonly : ''
+          }`}
+          onClick={
+            readOnly || key === 'graph'
+              ? undefined
+              : () => setActiveSelector(key as ModelSelectorKey)
+          }
+          aria-disabled={readOnly}
         >
           {isModelSet ? (
             <div className={styles.selectedValueInfo}>
@@ -217,10 +219,12 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
             </div>
           ) : (
             <div className={styles.placeholderText}>
-              {t('models.click_to_assign', '点击分配默认处理模型')}
+              {readOnly
+                ? t('settings.not_set', '未设置')
+                : t('models.click_to_assign', '点击分配默认处理模型')}
             </div>
           )}
-          <span className={styles.dropdownIcon}>▼</span>
+          {!readOnly && <span className={styles.dropdownIcon}>▼</span>}
         </div>
       </div>
     )
@@ -230,8 +234,6 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     switch (activeSelector) {
       case 'dialogue':
         return config.globalDialogueProviderId
-      case 'graph':
-        return config.globalGraphProviderId
       case 'naming':
         return config.globalNamingProviderId
       case 'summary':
@@ -247,8 +249,6 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     switch (activeSelector) {
       case 'dialogue':
         return config.globalDialogueModelId
-      case 'graph':
-        return config.globalGraphModelId
       case 'naming':
         return config.globalNamingModelId
       case 'summary':
@@ -288,8 +288,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
             'graph',
             t('ai_config.graph_model_title', '图关系抽取模型'),
             <Waypoints size={22} />,
-            config.globalGraphProviderId,
-            config.globalGraphModelId
+            config.globalDialogueProviderId,
+            config.globalDialogueModelId,
+            { readOnly: true }
           )}
 
           {renderSection(
@@ -306,7 +307,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
             <Database size={22} />,
             config.globalEmbeddingProviderId,
             config.globalEmbeddingModelId,
-            true
+            { isDanger: true }
           )}
         </div>
       </div>
