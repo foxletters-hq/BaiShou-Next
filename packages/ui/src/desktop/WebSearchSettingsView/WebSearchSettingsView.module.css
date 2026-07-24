@@ -221,7 +221,9 @@
   border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 12px;
   padding: 4px 8px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   background-color: var(--form-field-bg, var(--bg-surface));
 }
 
@@ -256,7 +258,9 @@
   justify-content: center;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .iconIconButton:hover {

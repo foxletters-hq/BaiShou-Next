@@ -41,10 +41,7 @@ export const GalleryImageGrid: React.FC<GalleryImageGridProps> = ({ images, onIm
       <Image source={{ uri: item.uri }} style={styles.image} resizeMode="cover" />
       {item.caption && (
         <View style={styles.captionBar}>
-          <Text
-            style={[styles.captionText, { color: colors.textOnPrimary }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.captionText, { color: colors.textOnPrimary }]} numberOfLines={1}>
             {item.caption}
           </Text>
         </View>

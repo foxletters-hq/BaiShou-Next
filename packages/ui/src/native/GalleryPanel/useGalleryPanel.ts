@@ -100,7 +100,10 @@ export function useGalleryPanel({ summaries, onOpen, onSave }: UseGalleryPanelOp
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (activeTab !== 'weekly') return
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - SCROLL_BOTTOM_THRESHOLD) {
+    if (
+      layoutMeasurement.height + contentOffset.y >=
+      contentSize.height - SCROLL_BOTTOM_THRESHOLD
+    ) {
       loadMore()
     }
   }

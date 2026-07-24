@@ -39,7 +39,9 @@ export const SettingsPageChrome: React.FC<SettingsPageChromeProps> = ({
         {trailing ? <div className={styles.trailing}>{trailing}</div> : null}
       </div>
       {layout === 'stack' ? (
-        <div className={`${styles.body}${bodyClassName ? ` ${bodyClassName}` : ''}`}>{children}</div>
+        <div className={`${styles.body}${bodyClassName ? ` ${bodyClassName}` : ''}`}>
+          {children}
+        </div>
       ) : (
         <div className={`${styles.scrollArea}${scrollClassName ? ` ${scrollClassName}` : ''}`}>
           {children}

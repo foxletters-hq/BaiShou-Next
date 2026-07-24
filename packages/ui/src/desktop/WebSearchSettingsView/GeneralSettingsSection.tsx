@@ -25,145 +25,145 @@ export const GeneralSettingsSection: React.FC<GeneralSettingsSectionProps> = ({
       </div>
       <div className={stack.cardSection}>
         <div className={styles.cardBody}>
-        <div className={styles.sliderRow}>
-          <div className={styles.sliderRowHeader}>
-            <ListOrdered className={styles.sliderIcon} />
-            <div className={styles.sliderTextGroup}>
+          <div className={styles.sliderRow}>
+            <div className={styles.sliderRowHeader}>
+              <ListOrdered className={styles.sliderIcon} />
+              <div className={styles.sliderTextGroup}>
+                <span className={styles.sliderTitle}>
+                  {t('agent.tools.param_max_results', '搜索结果上限')}
+                </span>
+                <span className={styles.sliderDesc}>
+                  {t('agent.tools.param_max_results_desc', '最多返回的条目数')}
+                </span>
+              </div>
+            </div>
+            <div className={styles.sliderControlRow}>
+              <input
+                type="range"
+                min="1"
+                max={WEB_SEARCH_MAX_RESULTS_LIMIT}
+                value={searchConfig.webSearchMaxResults}
+                onChange={(e) => onChange('webSearchMaxResults', parseInt(e.target.value))}
+                className={styles.sliderInput}
+              />
+              <span className={styles.sliderValue}>{searchConfig.webSearchMaxResults}</span>
+            </div>
+          </div>
+
+          <div className={styles.divider} />
+
+          <div className={styles.switchTile}>
+            <Sparkles className={styles.switchIcon} />
+            <div className={styles.switchTextGroup}>
               <span className={styles.sliderTitle}>
-                {t('agent.tools.param_max_results', '搜索结果上限')}
+                {t('agent.tools.param_rag_enabled', '网页智能抽取 (Web-RAG)')}
               </span>
               <span className={styles.sliderDesc}>
-                {t('agent.tools.param_max_results_desc', '最多返回的条目数')}
+                {t('agent.tools.param_rag_enabled_desc', '开启深入阅读理解')}
               </span>
             </div>
-          </div>
-          <div className={styles.sliderControlRow}>
-            <input
-              type="range"
-              min="1"
-              max={WEB_SEARCH_MAX_RESULTS_LIMIT}
-              value={searchConfig.webSearchMaxResults}
-              onChange={(e) => onChange('webSearchMaxResults', parseInt(e.target.value))}
-              className={styles.sliderInput}
+            <Switch
+              checked={searchConfig.webSearchRagEnabled}
+              onChange={(e) => onChange('webSearchRagEnabled', e.target.checked)}
             />
-            <span className={styles.sliderValue}>{searchConfig.webSearchMaxResults}</span>
           </div>
-        </div>
 
-        <div className={styles.divider} />
+          {searchConfig.webSearchRagEnabled ? (
+            <>
+              <div className={styles.divider} />
+              <div className={styles.sliderRow}>
+                <div className={styles.sliderRowHeader}>
+                  <Minimize2 className={styles.sliderIcon} />
+                  <div className={styles.sliderTextGroup}>
+                    <span className={styles.sliderTitle}>
+                      {t('agent.tools.param_rag_max_chunks', '总片段上限')}
+                    </span>
+                    <span className={styles.sliderDesc}>
+                      {t('agent.tools.param_rag_max_chunks_desc', '最多提取的片段数')}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.sliderControlRow}>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={searchConfig.webSearchRagMaxChunks}
+                    onChange={(e) => onChange('webSearchRagMaxChunks', parseInt(e.target.value))}
+                    className={styles.sliderInput}
+                  />
+                  <span className={styles.sliderValue}>{searchConfig.webSearchRagMaxChunks}</span>
+                </div>
+              </div>
 
-        <div className={styles.switchTile}>
-          <Sparkles className={styles.switchIcon} />
-          <div className={styles.switchTextGroup}>
-            <span className={styles.sliderTitle}>
-              {t('agent.tools.param_rag_enabled', '网页智能抽取 (Web-RAG)')}
-            </span>
-            <span className={styles.sliderDesc}>
-              {t('agent.tools.param_rag_enabled_desc', '开启深入阅读理解')}
-            </span>
-          </div>
-          <Switch
-            checked={searchConfig.webSearchRagEnabled}
-            onChange={(e) => onChange('webSearchRagEnabled', e.target.checked)}
-          />
-        </div>
+              <div className={styles.divider} />
 
-        {searchConfig.webSearchRagEnabled ? (
-          <>
-            <div className={styles.divider} />
-            <div className={styles.sliderRow}>
-              <div className={styles.sliderRowHeader}>
-                <Minimize2 className={styles.sliderIcon} />
-                <div className={styles.sliderTextGroup}>
-                  <span className={styles.sliderTitle}>
-                    {t('agent.tools.param_rag_max_chunks', '总片段上限')}
-                  </span>
-                  <span className={styles.sliderDesc}>
-                    {t('agent.tools.param_rag_max_chunks_desc', '最多提取的片段数')}
+              <div className={styles.sliderRow}>
+                <div className={styles.sliderRowHeader}>
+                  <Library className={styles.sliderIcon} />
+                  <div className={styles.sliderTextGroup}>
+                    <span className={styles.sliderTitle}>
+                      {t('agent.tools.param_rag_chunks_per_source', '单站抽取块数')}
+                    </span>
+                    <span className={styles.sliderDesc}>
+                      {t('agent.tools.param_rag_chunks_per_source_desc', '单个网页提取最大数')}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.sliderControlRow}>
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={searchConfig.webSearchRagChunksPerSource}
+                    onChange={(e) =>
+                      onChange('webSearchRagChunksPerSource', parseInt(e.target.value))
+                    }
+                    className={styles.sliderInput}
+                  />
+                  <span className={styles.sliderValue}>
+                    {searchConfig.webSearchRagChunksPerSource}
                   </span>
                 </div>
               </div>
-              <div className={styles.sliderControlRow}>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={searchConfig.webSearchRagMaxChunks}
-                  onChange={(e) => onChange('webSearchRagMaxChunks', parseInt(e.target.value))}
-                  className={styles.sliderInput}
-                />
-                <span className={styles.sliderValue}>{searchConfig.webSearchRagMaxChunks}</span>
-              </div>
-            </div>
-
-            <div className={styles.divider} />
-
-            <div className={styles.sliderRow}>
-              <div className={styles.sliderRowHeader}>
-                <Library className={styles.sliderIcon} />
-                <div className={styles.sliderTextGroup}>
-                  <span className={styles.sliderTitle}>
-                    {t('agent.tools.param_rag_chunks_per_source', '单站抽取块数')}
-                  </span>
-                  <span className={styles.sliderDesc}>
-                    {t('agent.tools.param_rag_chunks_per_source_desc', '单个网页提取最大数')}
+            </>
+          ) : (
+            <>
+              <div className={styles.divider} />
+              <div className={styles.sliderRow}>
+                <div className={styles.sliderRowHeader}>
+                  <AlignLeft className={styles.sliderIcon} />
+                  <div className={styles.sliderTextGroup}>
+                    <span className={styles.sliderTitle}>
+                      {t('agent.tools.param_plain_snippet_length', '简单摘要截取长度')}
+                    </span>
+                    <span className={styles.sliderDesc}>
+                      {t(
+                        'agent.tools.param_plain_snippet_length_desc',
+                        '当不启用 RAG 时提取正文的字符数'
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.sliderControlRow}>
+                  <input
+                    type="range"
+                    min="500"
+                    max="30000"
+                    step="100"
+                    value={searchConfig.webSearchPlainSnippetLength}
+                    onChange={(e) =>
+                      onChange('webSearchPlainSnippetLength', parseInt(e.target.value))
+                    }
+                    className={styles.sliderInput}
+                  />
+                  <span className={styles.sliderValue}>
+                    {searchConfig.webSearchPlainSnippetLength}
                   </span>
                 </div>
               </div>
-              <div className={styles.sliderControlRow}>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={searchConfig.webSearchRagChunksPerSource}
-                  onChange={(e) =>
-                    onChange('webSearchRagChunksPerSource', parseInt(e.target.value))
-                  }
-                  className={styles.sliderInput}
-                />
-                <span className={styles.sliderValue}>
-                  {searchConfig.webSearchRagChunksPerSource}
-                </span>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className={styles.divider} />
-            <div className={styles.sliderRow}>
-              <div className={styles.sliderRowHeader}>
-                <AlignLeft className={styles.sliderIcon} />
-                <div className={styles.sliderTextGroup}>
-                  <span className={styles.sliderTitle}>
-                    {t('agent.tools.param_plain_snippet_length', '简单摘要截取长度')}
-                  </span>
-                  <span className={styles.sliderDesc}>
-                    {t(
-                      'agent.tools.param_plain_snippet_length_desc',
-                      '当不启用 RAG 时提取正文的字符数'
-                    )}
-                  </span>
-                </div>
-              </div>
-              <div className={styles.sliderControlRow}>
-                <input
-                  type="range"
-                  min="500"
-                  max="30000"
-                  step="100"
-                  value={searchConfig.webSearchPlainSnippetLength}
-                  onChange={(e) =>
-                    onChange('webSearchPlainSnippetLength', parseInt(e.target.value))
-                  }
-                  className={styles.sliderInput}
-                />
-                <span className={styles.sliderValue}>
-                  {searchConfig.webSearchPlainSnippetLength}
-                </span>
-              </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
         </div>
       </div>
     </div>

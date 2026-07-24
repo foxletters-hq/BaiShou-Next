@@ -88,11 +88,9 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const preview = request.preview
   const cascadeHint =
     sameActionCount > 1
-      ? t(
-          'agent_gate.cascade_hint',
-          '此决定将影响本会话中另外 {{count}} 个相同操作',
-          { count: sameActionCount - 1 }
-        )
+      ? t('agent_gate.cascade_hint', '此决定将影响本会话中另外 {{count}} 个相同操作', {
+          count: sameActionCount - 1
+        })
       : null
   const scrollMaxHeight = Math.min(height * 0.62, diffExpanded ? 520 : 360)
 
@@ -137,10 +135,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           pointerEvents="box-none"
           accessibilityRole="summary"
         >
-          <ScrollView
-            style={{ maxHeight: scrollMaxHeight }}
-            contentContainerStyle={styles.header}
-          >
+          <ScrollView style={{ maxHeight: scrollMaxHeight }} contentContainerStyle={styles.header}>
             <View style={styles.headerRow}>
               <Text
                 accessibilityRole="header"
@@ -152,13 +147,12 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 {t('agent_gate.pending_badge', '待确认')}
               </Text>
               {queueLabel ? (
-                <Text style={[styles.queueLabel, { color: colors.textTertiary }]}>{queueLabel}</Text>
+                <Text style={[styles.queueLabel, { color: colors.textTertiary }]}>
+                  {queueLabel}
+                </Text>
               ) : null}
             </View>
-            <Text
-              accessibilityRole="header"
-              style={[styles.title, { color: colors.textPrimary }]}
-            >
+            <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>
               {request.title}
             </Text>
             {request.description ? (
@@ -222,7 +216,9 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   {preview.command}
                 </Text>
                 {preview.dangerReason ? (
-                  <Text style={[styles.hint, { color: colors.warning }]}>{preview.dangerReason}</Text>
+                  <Text style={[styles.hint, { color: colors.warning }]}>
+                    {preview.dangerReason}
+                  </Text>
                 ) : null}
               </View>
             ) : null}
@@ -270,7 +266,9 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                     })}
                   </Text>
                 ) : null}
-                <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>{scopeLabel}</Text>
+                <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
+                  {scopeLabel}
+                </Text>
               </>
             ) : null}
 

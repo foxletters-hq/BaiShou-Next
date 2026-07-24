@@ -28,9 +28,7 @@ export function TTSProviderSettingsForm({ vm }: { vm: TTSProviderSettingsViewMod
       <div className={stack.stack}>
         <div className={stack.stackGroup}>
           <div className={stack.sectionLabelRow}>
-            <h3 className={stack.sectionLabel}>
-              {t('tts.settings.section_connection', '连接')}
-            </h3>
+            <h3 className={stack.sectionLabel}>{t('tts.settings.section_connection', '连接')}</h3>
           </div>
           <section className={stack.cardSection}>
             <div className={`${styles.form} ${stack.cardBodyPadded}`}>

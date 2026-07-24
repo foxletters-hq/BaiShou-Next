@@ -4,7 +4,4 @@ import './outline-button.css'
 export { SettingsPageChrome } from './SettingsPageChrome'
 export type { SettingsPageChromeLayout, SettingsPageChromeProps } from './SettingsPageChrome'
 export { SegmentedControl } from './SegmentedControl'
-export type {
-  SegmentedControlOption,
-  SegmentedControlProps
-} from './SegmentedControl'
+export type { SegmentedControlOption, SegmentedControlProps } from './SegmentedControl'
