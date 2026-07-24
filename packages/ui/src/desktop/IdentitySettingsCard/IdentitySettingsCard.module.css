@@ -124,21 +124,24 @@
 
 .identityManageButton {
   flex-shrink: 0;
-  border: none;
+  border: 1.5px solid var(--border-control);
   border-radius: 999px;
   padding: 8px 14px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   white-space: nowrap;
 }
 
 .identityManageButton:hover:not(:disabled) {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .identityManageButton:disabled {

@@ -18,12 +18,13 @@
   gap: 6px;
 }
 .title {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--text-primary);
 }
 .subtitle {
-  font-size: 12px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
 }
 .switch {
@@ -85,16 +86,20 @@ input:checked + .slider:before {
   outline: none;
 }
 .recordBtn {
-  background: rgba(148, 163, 184, 0.2);
+  background: var(--bg-surface);
   color: var(--text-primary);
-  border: none;
+  border: 1.5px solid var(--border-control);
+  border-radius: 8px;
   padding: 0 16px;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.2s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 .recordBtn:hover {
-  background: rgba(148, 163, 184, 0.3);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 .recordBtn.recording {
   background: rgba(var(--color-error-rgb), 0.2);

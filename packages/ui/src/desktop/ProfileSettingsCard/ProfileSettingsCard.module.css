@@ -187,28 +187,19 @@
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.cancelBtn {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary);
-}
-.cancelBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
   color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.confirmBtn {
-  background: rgba(74, 222, 128, 0.2);
-  color: #4ade80;
-  border: 1px solid rgba(74, 222, 128, 0.3);
-}
+.cancelBtn:hover,
 .confirmBtn:hover {
-  background: rgba(74, 222, 128, 0.3);
-  box-shadow: 0 0 16px rgba(74, 222, 128, 0.2);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 @keyframes fadeIn {
