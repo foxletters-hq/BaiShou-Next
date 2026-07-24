@@ -1,20 +1,23 @@
 import type React from 'react'
 
 export const labelStyle: React.CSSProperties = {
-  fontSize: '12px',
-  color: 'var(--text-secondary)',
+  fontSize: 'var(--settings-font-label-size)',
+  fontWeight: 500 as const,
+  color: 'var(--text-primary)',
   display: 'block',
   marginBottom: 4
 }
 
 export const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '8px 12px',
-  border: '1px solid var(--form-field-border, var(--border-control))',
-  borderRadius: '6px',
+  height: 32,
+  padding: '0 12px',
+  border: '1.5px solid var(--form-field-border, var(--border-control))',
+  borderRadius: 8,
   background: 'var(--form-field-bg, var(--bg-surface))',
   color: 'var(--text-primary)',
-  fontSize: '13px',
+  fontSize: 'var(--settings-font-row-size)',
+  fontFamily: 'inherit',
   boxSizing: 'border-box'
 }
 

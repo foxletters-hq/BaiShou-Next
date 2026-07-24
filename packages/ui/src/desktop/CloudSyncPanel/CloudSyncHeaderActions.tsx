@@ -10,7 +10,7 @@ import {
   Trash2
 } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
-import seg from '../shared/SegmentedControl.module.css'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import { Tooltip } from '../Tooltip/Tooltip'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 
@@ -69,31 +69,22 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
   return (
     <>
       <div className={styles.tabsToolbarRow}>
-        <div className={seg.group}>
-          <button
-            type="button"
-            className={`${seg.btn} ${activeTab === 'cloud' ? seg.btnActive : ''}`}
-            onClick={() => setActiveTab('cloud')}
-          >
-            {t('data_sync.cloud_backups_tab', '云端备份')}
-          </button>
-          <button
-            type="button"
-            className={`${seg.btn} ${activeTab === 'snapshot' ? seg.btnActive : ''}`}
-            onClick={() => setActiveTab('snapshot')}
-          >
-            {t('data_sync.local_snapshots_tab', '本地快照')}
-          </button>
-          {showLocalArchive ? (
-            <button
-              type="button"
-              className={`${seg.btn} ${activeTab === 'local' ? seg.btnActive : ''}`}
-              onClick={() => setActiveTab('local')}
-            >
-              {t('data_sync.local_backup_tab', '本地备份')}
-            </button>
-          ) : null}
-        </div>
+        <SegmentedControl
+          value={activeTab}
+          options={[
+            { value: 'cloud', label: t('data_sync.cloud_backups_tab', '云端备份') },
+            { value: 'snapshot', label: t('data_sync.local_snapshots_tab', '本地快照') },
+            ...(showLocalArchive
+              ? [
+                  {
+                    value: 'local' as const,
+                    label: t('data_sync.local_backup_tab', '本地备份')
+                  }
+                ]
+              : [])
+          ]}
+          onChange={setActiveTab}
+        />
       </div>
 
       <div className={styles.headerRow}>
@@ -116,7 +107,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                 disabled={isLoading}
                 title={t('common.refresh', '刷新')}
               >
-                <RefreshCw size={18} />
+                <RefreshCw size={16} />
               </button>
             )}
           </div>
@@ -157,7 +148,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                   onClick={handleBatchDelete}
                   disabled={selected.size === 0}
                 >
-                  <Trash2 size={16} /> {t('common.delete', '删除')} ({selected.size})
+                  <Trash2 size={14} /> {t('common.delete', '删除')} ({selected.size})
                 </button>
               </>
             ) : (
@@ -167,7 +158,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                 onClick={() => setManageMode(true)}
                 disabled={records.length === 0 || isLoading}
               >
-                <CheckSquare size={16} /> {t('data_sync.batch_manage', '批量管理')}
+                <CheckSquare size={14} /> {t('data_sync.batch_manage', '批量管理')}
               </button>
             )}
 
@@ -177,7 +168,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                 className={`${styles.actionBtn} ${styles.btnOutlined}`}
                 onClick={openCountModal}
               >
-                <Archive size={16} />{' '}
+                <Archive size={14} />{' '}
                 {config.maxSnapshotCount === -1
                   ? t('data_sync.no_limit', '不限制数量')
                   : t('data_sync.max_backup_count_value', '保留: $count').replace(
@@ -194,7 +185,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                   className={`${styles.actionBtn} ${styles.btnOutlined}`}
                   onClick={openSettings}
                 >
-                  <Settings size={16} /> {t('data_sync.sync_settings_button', '备份设置')}
+                  <Settings size={14} /> {t('data_sync.sync_settings_button', '备份设置')}
                 </button>
 
                 <button
@@ -202,7 +193,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                   className={`${styles.actionBtn} ${styles.btnOutlined}`}
                   onClick={openCountModal}
                 >
-                  <Archive size={16} />{' '}
+                  <Archive size={14} />{' '}
                   {config.maxBackupCount === -1
                     ? t('data_sync.no_limit', '不限制数量')
                     : t('data_sync.max_backup_count_value', '保留: $count').replace(
@@ -219,12 +210,12 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                 >
                   {isSyncing ? (
                     <>
-                      <Loader2 size={16} style={{ animation: 'spin 1.5s linear infinite' }} />{' '}
+                      <Loader2 size={14} style={{ animation: 'spin 1.5s linear infinite' }} />{' '}
                       {t('data_sync.syncing_status', '备份中...')}
                     </>
                   ) : (
                     <>
-                      <CloudUpload size={16} /> {t('data_sync.sync_now_button', '立即备份')}
+                      <CloudUpload size={14} /> {t('data_sync.sync_now_button', '立即备份')}
                     </>
                   )}
                 </button>
