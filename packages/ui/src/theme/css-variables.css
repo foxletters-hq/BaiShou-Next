@@ -6,6 +6,7 @@
  * 页面顶栏必须用实色 --bg-surface，禁止 glass
  */
 @import './range-slider.css';
+@import '../desktop/shared/outline-button.css';
 :root {
   /* ========================================================= */
   /* COLOR PALETTE - LIGHT THEME (DEFAULT)                    */
@@ -47,7 +48,7 @@
   --border-subtle: rgba(0, 0, 0, 0.04); /* 极淡分割 */
   --border-muted: rgba(0, 0, 0, 0.08); /* 分割线 / 顶栏底边 */
   --border-card: rgba(0, 0, 0, 0.12); /* 灰底上内容卡片外框 */
-  --border-control: #d6d6d6; /* 可见控件 / 次要按钮描边 */
+  --border-control: #e5e5e5; /* 可见控件 / 次要按钮描边（略浅，避免发闷） */
   --border-strong: rgba(0, 0, 0, 0.16); /* Focus / 强调 */
 
   /* Text */
@@ -80,6 +81,35 @@
   --settings-page-scroll-padding-top: calc(
     var(--settings-page-header-height) + var(--settings-page-content-gap)
   );
+
+  /*
+   * Settings typography — 设置页字号/字重 SSOT（单位 px，勿用 rem）
+   * 参照侧栏 + 常规设置；详见 docs/1-AI-Code/2-UI-Theme-Rule.md §3.6
+   * 字重仅用 400 / 500 / 600（700+ 留给 About 品牌等例外）
+   */
+  --settings-font-shell-title-size: 22px; /* 侧栏「系统设置」 */
+  --settings-font-shell-title-weight: 600;
+  --settings-font-page-title-size: 18px; /* SettingsPageChrome 页标题 */
+  --settings-font-page-title-weight: 600;
+  --settings-font-section-size: 15px; /* 卡内区块标题 */
+  --settings-font-section-weight: 600;
+  --settings-font-nav-size: 14px; /* 侧栏导航项 */
+  --settings-font-nav-weight: 500;
+  --settings-font-row-size: 14px; /* ListTile 行标题 / 正文 */
+  --settings-font-row-weight: 400;
+  --settings-font-label-size: 13px; /* 表单标签、chip 文案 */
+  --settings-font-label-weight: 500;
+  --settings-font-desc-size: 13px; /* 行说明 / 次要文案 */
+  --settings-font-desc-weight: 400;
+  --settings-font-meta-size: 12px; /* 侧栏分组、hint、路径标签 */
+  --settings-font-meta-weight: 500;
+  --settings-font-micro-size: 11px; /* badge / 极次要，少用 */
+  --settings-font-micro-weight: 600;
+
+  /* Settings icons — ListTile 行图标；详见 2-UI-Theme-Rule.md §3.6 */
+  --settings-icon-leading-size: 20px; /* 行左侧 Lucide */
+  --settings-icon-trailing-size: 18px; /* 行右侧箭头 / 外链 */
+  --settings-icon-leading-slot: 32px; /* 左侧图标占位宽 */
 
   /* 表单输入框 — 白底 + 可见描边（禁止用 --bg-surface-low/normal 作输入底） */
   --form-field-bg: var(--bg-surface);
@@ -154,7 +184,7 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-muted: rgba(255, 255, 255, 0.12);
   --border-card: rgba(255, 255, 255, 0.16);
-  --border-control: rgba(255, 255, 255, 0.22);
+  --border-control: rgba(255, 255, 255, 0.16);
   --border-strong: rgba(255, 255, 255, 0.2);
 
   --color-outline-variant: rgba(255, 255, 255, 0.1);

@@ -28,7 +28,8 @@ alwaysApply: false
 
 - 页面顶栏：`padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`
 - 设置内容区：约 `24px 32px`；卡片 `radius: 12` + `--border-card`
-- 分段滑块：只用 `packages/ui/src/desktop/shared/SegmentedControl.module.css`（`group` / `btn` / `btnActive`）
+- 设置白卡（`cardSection` / `pageCard` / `settings-section-content`）：**禁止 `overflow: hidden`**——`Select` / Combobox 下拉为绝对定位，会被裁切；展开层叠由组件自身 `z-index` 处理
+- 分段滑块：只用 `SegmentedControl` 组件（`packages/ui` 导出）；选中指示器滑动切换，勿手写 `group` / `btn` / `btnActive`
 
 ## 禁止
 
