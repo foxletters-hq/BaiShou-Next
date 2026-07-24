@@ -76,7 +76,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       {showEmbedError && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
-            <TriangleAlert size={18} color="#ef4444" />
+            <TriangleAlert size={18} color="var(--color-error)" />
             <span className={styles.dangerTitle}>
               {t('settings.rag_operation_failed', '向量嵌入操作失败')}
             </span>
@@ -88,7 +88,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       {showInterrupted && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
-            <TriangleAlert size={18} color="#ef4444" />
+            <TriangleAlert size={18} color="var(--color-error)" />
             <span className={styles.dangerTitle}>
               {t('settings.rag_migration_interrupted_title', '检测到未完成的嵌入迁移')}
             </span>
@@ -130,7 +130,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
       {!isMigrating && !showInterrupted && hasMismatchModel && (
         <div className={styles.dangerAlert}>
           <div className={styles.dangerRow}>
-            <TriangleAlert size={18} color="#ef4444" />
+            <TriangleAlert size={18} color="var(--color-error)" />
             <span className={styles.dangerTitle}>
               {t('settings.rag_model_mismatch', '模型版本不匹配')}
             </span>

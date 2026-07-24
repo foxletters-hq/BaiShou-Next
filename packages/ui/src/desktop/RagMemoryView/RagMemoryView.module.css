@@ -15,13 +15,13 @@
   top: 0;
   left: 0;
   right: 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 32px 16px;
-  background-color: var(--bg-glass-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  height: var(--settings-page-header-height, 64px);
+  padding: 0 32px;
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 10;
 }
@@ -30,11 +30,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .title {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 600;
+  line-height: 28px;
   color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.5px;
@@ -44,7 +47,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 80px 32px 48px 32px;
+  padding: var(--settings-page-scroll-padding-top, 88px) 32px 48px 32px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -133,7 +136,7 @@
 }
 
 .chipStrong {
-  font-weight: 700;
+  font-weight: 600;
   color: inherit;
 }
 
@@ -151,7 +154,7 @@
 .chipBlue {
   background: var(--color-primary-light);
   color: var(--color-primary);
-  border-color: rgba(91, 168, 245, 0.2);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
 }
 
 .chipGreen {
@@ -175,7 +178,7 @@
 /* === 3. Config Block === */
 .configBlock {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -222,10 +225,24 @@
 .paramValueBlue {
   width: 40px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-primary);
   text-align: right;
   flex-shrink: 0;
+}
+
+.toggleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.toggleRow input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
 }
 
 .paramHint {
@@ -235,27 +252,9 @@
   color: var(--text-tertiary);
 }
 
+/* 视觉样式见 theme/range-slider.css */
 .rangeInput {
   flex: 1;
-  appearance: none;
-  -webkit-appearance: none;
-  height: 4px;
-  background: var(--bg-surface-normal);
-  border-radius: 2px;
-  outline: none;
-}
-.rangeInput::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-.rangeInput::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
 }
 
 /* === 4. Action Buttons === */
@@ -300,7 +299,7 @@
   border-color: transparent;
 }
 .btnBlueFlat:hover:not(:disabled) {
-  background: rgba(91, 168, 245, 0.25);
+  background: rgba(var(--color-primary-rgb), 0.25);
 }
 
 .btnGreenOutlined {
@@ -325,22 +324,17 @@
 .searchBoxOuter {
   display: flex;
   align-items: center;
-  background-color: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
+  background-color: var(--bg-surface);
   border-radius: 12px;
   padding: 8px 12px;
   margin-top: 8px;
-  border: 1px solid var(--border-muted);
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  border: 1px solid var(--border-control);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .searchBoxOuter:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.1);
+  border-color: var(--border-control);
+  box-shadow: none;
 }
 
 .searchIconOuter {
@@ -364,44 +358,10 @@
   color: var(--text-tertiary);
   margin-left: 12px;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
 }
 .clearSearchOuter:hover {
   color: var(--color-error);
-}
-
-/* Segmented Control */
-.segmentedControl {
-  display: flex;
-  background: rgba(var(--color-outline-variant-rgb, 226, 232, 240), 0.2);
-  padding: 2px;
-  border-radius: 8px;
-  gap: 2px;
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-
-.segmentBtn {
-  padding: 4px 12px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-}
-
-.segmentBtn:hover {
-  color: var(--text-primary);
-}
-
-.segmentBtnActive {
-  background: var(--bg-surface);
-  color: var(--color-primary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 /* === 6. List === */
@@ -445,7 +405,7 @@
 
 .memoryEntryCard {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -469,7 +429,7 @@
   color: var(--color-primary);
   font-family: 'Fira Code', monospace;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .memoryEntryContentBlock {
@@ -568,7 +528,7 @@ input:checked + .slider:before {
 /* Alerts */
 .migrationAlert {
   background: var(--color-primary-light);
-  border: 1px solid rgba(91, 168, 245, 0.3);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
   border-radius: 12px;
   padding: 16px;
 }
@@ -583,13 +543,13 @@ input:checked + .slider:before {
   padding: 4px 10px;
   font-size: 12px;
   border-radius: 8px;
-  border: 1px solid rgba(var(--color-error-rgb, 239, 68, 68), 0.45);
-  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.12);
+  border: 1px solid rgba(var(--color-error-rgb), 0.45);
+  background: rgba(var(--color-error-rgb), 0.12);
   color: var(--color-error);
   cursor: pointer;
 }
 .migrationCancelBtn:hover {
-  background: rgba(var(--color-error-rgb, 239, 68, 68), 0.2);
+  background: rgba(var(--color-error-rgb), 0.2);
 }
 .migrationActionRow {
   display: flex;
@@ -608,11 +568,11 @@ input:checked + .slider:before {
 .migrationRestoreBtn {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.35);
-  color: #ef4444;
+  color: var(--color-error);
 }
 .migrationResumeBtn {
-  background: rgba(91, 168, 245, 0.12);
-  border-color: rgba(91, 168, 245, 0.35);
+  background: rgba(var(--color-primary-rgb), 0.12);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
   color: var(--color-primary);
 }
 .migTitle {
@@ -623,7 +583,7 @@ input:checked + .slider:before {
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(91, 168, 245, 0.3);
+  border: 2px solid rgba(var(--color-primary-rgb), 0.3);
   border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -664,7 +624,7 @@ input:checked + .slider:before {
 }
 .dangerTitle {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-error);
 }
 .dangerDesc {
@@ -698,8 +658,8 @@ input:checked + .slider:before {
   justify-content: space-between;
   padding: 14px 20px;
   margin-top: 16px;
-  background: var(--bg-surface, #fff);
-  border: 1px solid var(--border-subtle, #e2e8f0);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
   border-radius: 14px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
@@ -720,8 +680,8 @@ input:checked + .slider:before {
   padding: 6px 12px;
   border: 1.5px solid var(--border-control);
   border-radius: 8px;
-  background: var(--bg-surface, #fff);
-  color: var(--text-primary, #0f172a);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -732,12 +692,12 @@ input:checked + .slider:before {
 
 .pageSizeSelect:hover {
   border-color: var(--border-control);
-  box-shadow: 0 2px 8px rgba(91, 168, 245, 0.15);
+  box-shadow: none;
 }
 
 .pageSizeSelect:focus {
-  border-color: var(--color-primary, #5ba8f5);
-  box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.1);
+  border-color: var(--form-field-border, var(--border-control));
+  box-shadow: none;
 }
 
 .pageBtn {
@@ -748,8 +708,8 @@ input:checked + .slider:before {
   justify-content: center;
   border: 1.5px solid var(--border-control);
   border-radius: 8px;
-  background: var(--bg-surface, #fff);
-  color: var(--text-primary, #0f172a);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -766,14 +726,14 @@ input:checked + .slider:before {
   opacity: 0.35;
   cursor: not-allowed;
   background: rgba(0, 0, 0, 0.02);
-  border-color: var(--border-muted, #f1f5f9);
+  border-color: var(--border-muted);
 }
 
 .pageCurrent {
   min-width: 40px;
   text-align: center;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-primary);
 }
 
@@ -782,7 +742,7 @@ input:checked + .slider:before {
   background: rgba(var(--color-primary-rgb), 0.1);
   color: var(--color-primary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
   transition: all 0.2s ease;
@@ -801,7 +761,7 @@ input:checked + .slider:before {
   border-radius: 999px;
   border: 1px solid rgba(var(--color-warning-rgb, 245, 158, 11), 0.35);
   background: rgba(var(--color-warning-rgb, 245, 158, 11), 0.08);
-  color: var(--color-warning, #d97706);
+  color: var(--color-warning);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -816,15 +776,15 @@ input:checked + .slider:before {
   margin-top: 10px;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid var(--border-subtle, #e2e8f0);
-  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-card);
+  background: var(--bg-surface);
 }
 
 .embedHintDesc {
   margin: 0 0 10px;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
 }
 
 .embedHintError {
@@ -832,7 +792,7 @@ input:checked + .slider:before {
   padding: 8px 10px;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--color-error, #dc2626);
+  color: var(--color-error);
   background: var(--color-error-container, rgba(239, 68, 68, 0.08));
   border-radius: 8px;
   word-break: break-word;
@@ -845,7 +805,7 @@ input:checked + .slider:before {
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--text-on-primary);
   cursor: pointer;
   transition: opacity 0.15s ease;
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RagConfig } from '../../types/settings.types'
 import {
   clearRagDiaryEmbedFailure,
+  isAutoResumeEmbedOnOnline,
   markRagDiaryEmbedFailure,
   normalizeDiaryEmbedFailureMessage
 } from '../rag-embed-failure.util'
@@ -34,5 +35,12 @@ describe('rag-embed-failure.util', () => {
     })
     expect(cleared.lastDiaryEmbedFailureAt).toBeUndefined()
     expect(cleared.lastDiaryEmbedFailureMessage).toBeUndefined()
+  })
+
+  it('autoResumeEmbedOnOnline defaults to true', () => {
+    expect(isAutoResumeEmbedOnOnline(undefined)).toBe(true)
+    expect(isAutoResumeEmbedOnOnline({})).toBe(true)
+    expect(isAutoResumeEmbedOnOnline({ autoResumeEmbedOnOnline: false })).toBe(false)
+    expect(isAutoResumeEmbedOnOnline({ autoResumeEmbedOnOnline: true })).toBe(true)
   })
 })

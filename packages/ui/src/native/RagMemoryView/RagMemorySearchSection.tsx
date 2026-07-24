@@ -66,8 +66,8 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
         styles.searchBox,
         compact && styles.searchBoxCompact,
         {
-          backgroundColor: colors.bgGlassSurface,
-          borderColor: colors.borderMuted
+          backgroundColor: colors.bgSurface,
+          borderColor: colors.borderControl
         }
       ]}
     >
@@ -141,7 +141,7 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
         style={[
           styles.segmented,
           compact && styles.segmentedCompact,
-          { backgroundColor: colors.bgSurfaceNormal }
+          { backgroundColor: colors.bgApp }
         ]}
       >
         {(['semantic', 'text'] as const).map((mode) => {
@@ -153,15 +153,25 @@ export const RagMemorySearchSection: React.FC<RagMemorySearchSectionProps> = ({
               style={[
                 styles.segmentBtn,
                 compact && styles.segmentBtnCompact,
-                active && { backgroundColor: colors.bgSurface }
+                active && {
+                  backgroundColor: colors.primary,
+                  shadowColor: '#0ea5e9',
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 2
+                }
               ]}
               onPress={() => handleModeChange(mode)}
             >
               <Text
                 style={[
                   styles.segmentText,
-                  { color: active ? colors.primary : colors.textSecondary },
-                  active && styles.segmentTextActive
+                  compact && styles.segmentTextCompact,
+                  {
+                    color: active ? colors.textOnPrimary : colors.textSecondary,
+                    fontWeight: active ? '600' : '400'
+                  }
                 ]}
                 numberOfLines={1}
               >
@@ -240,31 +250,33 @@ const styles = StyleSheet.create({
   segmented: {
     flexDirection: 'row',
     flexShrink: 0,
-    padding: 2,
+    padding: 4,
     borderRadius: 8,
-    gap: 2
+    gap: 8
   },
   segmentedCompact: {
-    padding: 2,
-    gap: 2,
+    padding: 3,
+    gap: 4,
     height: 32,
     alignItems: 'center',
     alignSelf: 'center'
   },
   segmentBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderRadius: 6
   },
   segmentBtnCompact: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 10,
     paddingVertical: 4
   },
   segmentText: {
-    fontSize: 11,
-    fontWeight: '600'
+    fontSize: 14,
+    lineHeight: 18.9,
+    fontWeight: '400'
   },
-  segmentTextActive: {
-    fontWeight: '700'
+  segmentTextCompact: {
+    fontSize: 12,
+    lineHeight: 16
   }
 })

@@ -278,7 +278,8 @@ export function useRagMemoryData(ctx: RagMemorySectionCtx) {
           ragSimilarityThreshold:
             saved?.ragSimilarityThreshold ?? DEFAULT_RAG_CONFIG.ragSimilarityThreshold,
           batchEmbedConcurrency:
-            saved?.batchEmbedConcurrency ?? MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
+            saved?.batchEmbedConcurrency ?? MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY,
+          autoResumeEmbedOnOnline: saved?.autoResumeEmbedOnOnline !== false
         })
         if (cancelled) return
         setConfig(loaded)

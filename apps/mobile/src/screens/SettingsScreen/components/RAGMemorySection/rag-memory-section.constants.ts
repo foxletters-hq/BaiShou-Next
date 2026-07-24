@@ -10,7 +10,8 @@ export const DEFAULT_RAG_CONFIG: RagConfig = {
   ragEnabled: true,
   ragTopK: 20,
   ragSimilarityThreshold: 0.4,
-  batchEmbedConcurrency: MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY
+  batchEmbedConcurrency: MOBILE_DEFAULT_BATCH_EMBED_CONCURRENCY,
+  autoResumeEmbedOnOnline: true
 }
 
 /** 持久化/迁移可能把数值存成字符串，统一兜底，避免下游 toFixed 等数值方法崩溃 */
@@ -27,7 +28,8 @@ export function clampMobileRagConfig(config: RagConfig): RagConfig {
       config.ragSimilarityThreshold,
       DEFAULT_RAG_CONFIG.ragSimilarityThreshold
     ),
-    batchEmbedConcurrency: resolveMobileBatchEmbedConcurrency(config.batchEmbedConcurrency)
+    batchEmbedConcurrency: resolveMobileBatchEmbedConcurrency(config.batchEmbedConcurrency),
+    autoResumeEmbedOnOnline: config.autoResumeEmbedOnOnline !== false
   }
 }
 

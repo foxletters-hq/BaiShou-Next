@@ -120,6 +120,36 @@ export const RagMemoryConfigBlock: React.FC<RagMemoryConfigBlockProps> = ({ conf
           />
           <span className={styles.paramValueBlue}>{batchEmbedConcurrency}</span>
         </div>
+        <div className={styles.paramSliderRow}>
+          <div className={styles.paramLabelGroup}>
+            <span className={styles.paramLabel}>
+              {t('settings.rag_auto_resume_embed_on_online', '联网后自动恢复嵌入')}
+            </span>
+            <HelpTooltip
+              content={t(
+                'settings.rag_auto_resume_embed_on_online_hint',
+                '开启后，冷启动入账或嵌入失败的日记会在联网/空闲时自动补嵌。关闭后仍可手动「全量扫描未索引日记」。'
+              )}
+            />
+          </div>
+          <label className={styles.toggleRow}>
+            <input
+              type="checkbox"
+              checked={config.autoResumeEmbedOnOnline !== false}
+              onChange={(e) =>
+                onChange({
+                  ...config,
+                  autoResumeEmbedOnOnline: e.target.checked
+                })
+              }
+            />
+            <span className={styles.paramValueBlue}>
+              {config.autoResumeEmbedOnOnline !== false
+                ? t('common.on', '开')
+                : t('common.off', '关')}
+            </span>
+          </label>
+        </div>
       </div>
     </div>
   )

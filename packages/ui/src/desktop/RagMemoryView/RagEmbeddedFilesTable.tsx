@@ -93,8 +93,8 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                     position: 'absolute',
                     right: 0,
                     top: 32,
-                    background: 'var(--bg-color-primary, #fff)',
-                    border: '1px solid var(--border-color, #eee)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-control)',
                     borderRadius: 6,
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                     zIndex: 10,
@@ -107,14 +107,14 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                       padding: '8px 16px',
                       cursor: 'pointer',
                       fontSize: 13,
-                      color: 'var(--text-color, #333)',
+                      color: 'var(--text-primary)',
                       transition: 'background 0.2s',
                       whiteSpace: 'nowrap',
                       position: 'relative',
                       zIndex: 11
                     }}
                     onMouseEnter={(ev) =>
-                      (ev.currentTarget.style.background = 'var(--bg-color-secondary, #f5f5f5)')
+                      (ev.currentTarget.style.background = 'var(--bg-surface-high)')
                     }
                     onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
                     onClick={() => {
@@ -129,14 +129,14 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                       padding: '8px 16px',
                       cursor: 'pointer',
                       fontSize: 13,
-                      color: '#ef4444',
+                      color: 'var(--color-error)',
                       transition: 'background 0.2s',
                       whiteSpace: 'nowrap',
                       position: 'relative',
                       zIndex: 11
                     }}
                     onMouseEnter={(ev) =>
-                      (ev.currentTarget.style.background = 'var(--bg-color-secondary, #f5f5f5)')
+                      (ev.currentTarget.style.background = 'var(--bg-surface-high)')
                     }
                     onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
                     onClick={() => {

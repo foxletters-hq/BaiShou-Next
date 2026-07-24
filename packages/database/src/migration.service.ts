@@ -8,6 +8,8 @@ import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
 import { isAgentMigrationArchiveImport } from './migration-context'
 import {
   AGENT_DB_COLUMN_PATCHES,
+  DIARY_EMBED_JOBS_CREATE_SQL,
+  DIARY_EMBED_JOBS_INDEXES_SQL,
   GRAPH_EDGES_CREATE_SQL,
   GRAPH_INDEXES_SQL,
   GRAPH_NODES_CREATE_SQL,
@@ -105,6 +107,7 @@ export class MigrationService {
               await this._ensureSystemSettingsTable()
               await this._ensureMemoryEmbeddingsTable()
               await this._ensureGraphTables()
+              await this._ensureDiaryEmbedJobsTable()
             }
           }
         } catch (e: any) {
@@ -118,6 +121,7 @@ export class MigrationService {
         await this._ensureSystemSettingsTable()
         await this._ensureMemoryEmbeddingsTable()
         await this._ensureGraphTables()
+        await this._ensureDiaryEmbedJobsTable()
         await this._ensureAgentSchemaColumns()
         await this._backfillAgentMessagesOrderIndex()
         return
@@ -188,6 +192,7 @@ export class MigrationService {
       await this._ensureSystemSettingsTable()
       await this._ensureMemoryEmbeddingsTable()
       await this._ensureGraphTables()
+      await this._ensureDiaryEmbedJobsTable()
       await this._ensureAgentSchemaColumns()
       await this._backfillAgentMessagesOrderIndex()
 
@@ -294,6 +299,25 @@ export class MigrationService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.warn('[MigrationService] graph 表检查失败（非阻塞）:', message)
+    }
+  }
+
+  /** 确保日记 RAG 嵌入欠账表存在。 */
+  private async _ensureDiaryEmbedJobsTable(): Promise<void> {
+    try {
+      const table = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='diary_embed_jobs'`
+      )
+      if (table.rows.length === 0) {
+        logger.info('[MigrationService] 创建缺失的 diary_embed_jobs 表...')
+        await this._executeSql(DIARY_EMBED_JOBS_CREATE_SQL)
+      }
+      for (const ddl of DIARY_EMBED_JOBS_INDEXES_SQL) {
+        await this._executeSql(ddl)
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] diary_embed_jobs 表检查失败（非阻塞）:', message)
     }
   }
 
