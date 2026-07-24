@@ -49,7 +49,10 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
         <Text
           style={[
             styles.tabText,
-            { color: active ? '#ffffff' : colors.textSecondary, fontWeight: active ? '600' : '500' }
+            {
+              color: active ? colors.textOnPrimary : colors.textSecondary,
+              fontWeight: active ? '600' : '500'
+            }
           ]}
         >
           {t(`summary.tab_${tab}`)}

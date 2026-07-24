@@ -25,7 +25,6 @@ export const galleryPanelStyles = StyleSheet.create({
     paddingVertical: 2
   },
   captionText: {
-    color: '#FFFFFF',
     fontSize: 11
   },
   empty: {
@@ -62,7 +61,6 @@ export const galleryPanelStyles = StyleSheet.create({
     zIndex: 1
   },
   closeBtnText: {
-    color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '300'
   },
@@ -123,7 +121,7 @@ export const galleryPanelStyles = StyleSheet.create({
   },
   summaryItemTitle: {
     fontSize: 16,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   summaryItemDate: {
     fontSize: 12

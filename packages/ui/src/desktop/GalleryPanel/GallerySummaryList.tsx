@@ -8,6 +8,7 @@ interface GallerySummaryListProps {
   items: SummaryItem[]
   selectedSummary?: SummaryItem
   language: string
+  listRef?: React.RefObject<HTMLDivElement | null>
   onItemClick: (id: string) => void
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void
 }
@@ -16,13 +17,14 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
   items,
   selectedSummary,
   language,
+  listRef,
   onItemClick,
   onScroll
 }) => {
   const { t } = useTranslation()
 
   return (
-    <div className="gallery-list" onScroll={onScroll}>
+    <div ref={listRef} className="gallery-list" onScroll={onScroll}>
       {items.length === 0 ? (
         <div className="gallery-list-empty">
           <Edit3 size={32} className="gallery-empty-icon" />

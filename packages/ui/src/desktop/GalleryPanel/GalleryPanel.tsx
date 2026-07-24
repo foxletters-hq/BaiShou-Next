@@ -45,6 +45,7 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
           items={panel.displayedSummaries}
           selectedSummary={panel.selectedSummary}
           language={i18n.language}
+          listRef={panel.listRef}
           onItemClick={panel.handleItemClick}
           onScroll={panel.handleScroll}
         />
