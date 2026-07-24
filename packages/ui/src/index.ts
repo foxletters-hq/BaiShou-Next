@@ -30,6 +30,7 @@ export * from './desktop/Pagination/index'
 export * from './desktop/DiaryEditor/index'
 export * from './desktop/MarkdownRenderer/index'
 export * from './desktop/ContextMenu/index'
+export * from './shared/editor-menus'
 
 export * from './desktop/SummaryCard/index'
 export * from './desktop/MissingSummaryCard/MissingSummaryCard'
