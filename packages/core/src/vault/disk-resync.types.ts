@@ -13,4 +13,9 @@ export type DiskResyncOptions = {
    * 避免 vault/存储根切换窗口内「库有盘无」被误清。
    */
   preserveSessionIds?: ReadonlySet<string> | readonly string[]
+  /**
+   * 冷启动 reconcile：盘 mtime 未新于 DB 记录时间时跳过读文件内容。
+   * 仅 Summary 等支持该选项的层使用。
+   */
+  skipUnchangedByMtime?: boolean
 }

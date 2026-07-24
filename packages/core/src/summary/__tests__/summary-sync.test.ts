@@ -16,7 +16,8 @@ describe('SummarySyncService (Ghost indexing)', () => {
   beforeEach(() => {
     mockFileService = {
       readSummary: vi.fn(),
-      listAllSummaries: vi.fn()
+      listAllSummaries: vi.fn(),
+      getSummaryFileMtimeMs: vi.fn()
     } as any
 
     mockRepo = {
@@ -156,5 +157,61 @@ describe('SummarySyncService (Ghost indexing)', () => {
 
     expect(mockRepo.delete).toHaveBeenCalledWith(42)
     expect(mockRepo.upsert).not.toHaveBeenCalled()
+  })
+
+  it('syncSummaryFile() skips read when skipUnchangedByMtime and disk mtime is not newer', async () => {
+    const dbUpdatedAt = new Date('2026-07-01T12:00:00.000Z')
+    mockRepo.getByDateRange.mockResolvedValue({
+      id: 7,
+      content: 'cached',
+      endDate: end,
+      updatedAt: dbUpdatedAt,
+      generatedAt: dbUpdatedAt
+    } as any)
+    mockFileService.getSummaryFileMtimeMs.mockResolvedValue(dbUpdatedAt.getTime())
+
+    await service.syncSummaryFile(type, start, end, {
+      skipUnchangedByMtime: true,
+      diskPath: '/Summaries/Monthly/2026-07-01.md'
+    })
+
+    expect(mockFileService.getSummaryFileMtimeMs).toHaveBeenCalledWith(
+      type,
+      start,
+      '/Summaries/Monthly/2026-07-01.md'
+    )
+    expect(mockFileService.readSummary).not.toHaveBeenCalled()
+    expect(mockRepo.upsert).not.toHaveBeenCalled()
+    expect(mockRepo.update).not.toHaveBeenCalled()
+  })
+
+  it('fullScanArchives({ skipUnchangedByMtime }) still reads when disk mtime is newer', async () => {
+    const dbUpdatedAt = new Date('2026-07-01T12:00:00.000Z')
+    mockFileService.listAllSummaries.mockResolvedValue([
+      {
+        type: SummaryType.monthly,
+        startDate: start,
+        endDate: end,
+        fullPath: '/a.md'
+      }
+    ])
+    mockRepo.getByDateRange.mockResolvedValue({
+      id: 1,
+      content: 'Stale DB',
+      endDate: end,
+      updatedAt: dbUpdatedAt,
+      generatedAt: dbUpdatedAt
+    } as any)
+    mockFileService.getSummaryFileMtimeMs.mockResolvedValue(dbUpdatedAt.getTime() + 10_000)
+    mockFileService.readSummary.mockResolvedValue('Fresh New File')
+    mockRepo.getSummaries.mockResolvedValue([])
+
+    await service.fullScanArchives({
+      activeVaultName: 'MainVault',
+      skipUnchangedByMtime: true
+    })
+
+    expect(mockFileService.readSummary).toHaveBeenCalled()
+    expect(mockRepo.update).toHaveBeenCalledWith(1, { content: 'Fresh New File' })
   })
 })

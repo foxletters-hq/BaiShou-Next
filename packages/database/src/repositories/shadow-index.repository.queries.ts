@@ -15,7 +15,8 @@ import type {
   DiaryListFilterOptions,
   ShadowFTSResult,
   ShadowJournalRecord,
-  ShadowJournalRow
+  ShadowJournalRow,
+  ShadowSyncFingerprint
 } from './shadow-index.repository.types'
 
 export class ShadowIndexQueryOps {
@@ -86,24 +87,33 @@ export class ShadowIndexQueryOps {
     return rows[0]?.contentHash ?? null
   }
 
-  /** 批量读取日期对应的 contentHash，供全量扫描时避免 N 次单条查询 */
-  async getHashesByDates(dateIsos: string[]): Promise<Map<string, string>> {
+  /**
+   * 批量读取日期对应的同步指纹（contentHash + mtime/size），
+   * 供全量扫描时避免 N 次单条查询，并支持 Obsidian 风格快路径。
+   */
+  async getHashesByDates(dateIsos: string[]): Promise<Map<string, ShadowSyncFingerprint>> {
     const uniqueDates = [...new Set(dateIsos.filter(Boolean))]
     if (uniqueDates.length === 0) return new Map()
 
     const rows = await this.database
       .select({
         date: shadowJournalIndexTable.date,
-        contentHash: shadowJournalIndexTable.contentHash
+        contentHash: shadowJournalIndexTable.contentHash,
+        fileMtimeMs: shadowJournalIndexTable.fileMtimeMs,
+        fileSize: shadowJournalIndexTable.fileSize
       })
       .from(shadowJournalIndexTable)
       .where(this.withVault(inArray(shadowJournalIndexTable.date, uniqueDates)))
 
-    const map = new Map<string, string>()
+    const map = new Map<string, ShadowSyncFingerprint>()
     for (const row of rows) {
       const day = row.date.split('T')[0] ?? row.date
       if (row.contentHash) {
-        map.set(day, row.contentHash)
+        map.set(day, {
+          contentHash: row.contentHash,
+          fileMtimeMs: row.fileMtimeMs ?? null,
+          fileSize: row.fileSize ?? null
+        })
       }
     }
     return map
@@ -176,6 +186,8 @@ export class ShadowIndexQueryOps {
   }
 
   private mapSqlRowToIndexRow(row: Record<string, unknown>): ShadowJournalRow {
+    const fileMtimeMs = row.file_mtime_ms ?? row.fileMtimeMs
+    const fileSize = row.file_size ?? row.fileSize
     return {
       id: Number(row.rowid ?? row.id),
       vaultName: String(row.vault_name ?? row.vaultName ?? this.vaultName),
@@ -184,6 +196,8 @@ export class ShadowIndexQueryOps {
       createdAt: String(row.created_at ?? row.createdAt ?? ''),
       updatedAt: String(row.updated_at ?? row.updatedAt ?? ''),
       contentHash: String(row.content_hash ?? row.contentHash ?? ''),
+      fileMtimeMs: fileMtimeMs == null ? null : Number(fileMtimeMs),
+      fileSize: fileSize == null ? null : Number(fileSize),
       weather: (row.weather as string | null) ?? null,
       mood: (row.mood as string | null) ?? null,
       location: (row.location as string | null) ?? null,
@@ -401,6 +415,8 @@ export class ShadowIndexQueryOps {
         createdAt: shadowJournalIndexTable.createdAt,
         updatedAt: shadowJournalIndexTable.updatedAt,
         contentHash: shadowJournalIndexTable.contentHash,
+        fileMtimeMs: shadowJournalIndexTable.fileMtimeMs,
+        fileSize: shadowJournalIndexTable.fileSize,
         weather: shadowJournalIndexTable.weather,
         mood: shadowJournalIndexTable.mood,
         location: shadowJournalIndexTable.location,
@@ -491,6 +507,8 @@ export class ShadowIndexQueryOps {
         created_at: string
         updated_at: string
         content_hash: string
+        file_mtime_ms?: number | null
+        file_size?: number | null
         weather: string | null
         mood: string | null
         location: string | null
@@ -509,6 +527,8 @@ export class ShadowIndexQueryOps {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         contentHash: row.content_hash,
+        fileMtimeMs: row.file_mtime_ms ?? null,
+        fileSize: row.file_size ?? null,
         weather: row.weather,
         mood: row.mood,
         location: row.location,

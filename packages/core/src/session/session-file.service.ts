@@ -73,6 +73,22 @@ export class SessionFileService {
     }
   }
 
+  /** 会话 JSON 的磁盘 mtime（ms）；文件不存在或不可读时返回 undefined */
+  async getSessionFileMtimeMs(
+    sessionId: string,
+    vaultName?: string | null
+  ): Promise<number | undefined> {
+    const dir = await this.getDirectory(vaultName)
+    const fullPath = path.join(dir, `${sessionId}.json`)
+    try {
+      const stat = await this.fileSystem.stat(fullPath)
+      if (!stat.isFile || stat.mtimeMs == null) return undefined
+      return stat.mtimeMs
+    } catch {
+      return undefined
+    }
+  }
+
   async deleteSession(sessionId: string, vaultName?: string | null): Promise<void> {
     const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${sessionId}.json`)

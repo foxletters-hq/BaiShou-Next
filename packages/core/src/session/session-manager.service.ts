@@ -478,4 +478,25 @@ export class SessionManagerService {
       preserveSessionIds: preserve.size > 0 ? preserve : options?.preserveSessionIds
     })
   }
+
+  /**
+   * 冷启动 reconcile：mtime 比对后仅灌入缺失/更新的会话，并清理已扫 vault 幽灵。
+   */
+  async reconcileFromDisks(
+    options?: import('../vault/disk-resync.types').DiskResyncOptions
+  ): Promise<void> {
+    try {
+      await this.persistence.flushPending()
+    } catch (e) {
+      console.warn('[SessionManager] flushPending before reconcile failed:', e)
+    }
+    const preserve = new Set<string>([
+      ...this.persistence.getDirtySessionIds(),
+      ...(options?.preserveSessionIds ?? [])
+    ])
+    await this.syncService.reconcileFromDisks({
+      ...options,
+      preserveSessionIds: preserve.size > 0 ? preserve : options?.preserveSessionIds
+    })
+  }
 }

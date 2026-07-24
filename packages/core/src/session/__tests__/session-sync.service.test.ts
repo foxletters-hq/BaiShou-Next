@@ -11,8 +11,10 @@ describe('SessionSyncService', () => {
   beforeEach(() => {
     mockFileService = {
       listAllSessions: vi.fn().mockResolvedValue([]),
+      listSessionsAcrossVaults: vi.fn().mockResolvedValue([]),
       readSession: vi.fn(),
       getSessionFileByteSize: vi.fn(),
+      getSessionFileMtimeMs: vi.fn(),
       writeSession: vi.fn(),
       deleteSession: vi.fn()
     } as any
@@ -112,5 +114,39 @@ describe('SessionSyncService', () => {
     })
 
     expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost-work'])
+  })
+
+  it('reconcileFromDisks skips read when disk mtime is not newer than DB updatedAt', async () => {
+    const dbUpdatedAt = new Date('2026-07-01T12:00:00.000Z')
+    mockFileService.listSessionsAcrossVaults.mockResolvedValue([
+      { id: 'unchanged', fullPath: '/Work/Sessions/unchanged.json', vaultName: 'Work' },
+      { id: 'newer', fullPath: '/Work/Sessions/newer.json', vaultName: 'Work' },
+      { id: 'missing', fullPath: '/Work/Sessions/missing.json', vaultName: 'Work' }
+    ])
+    mockRepo.findAllSessions.mockResolvedValue([
+      { id: 'unchanged', vaultName: 'Work', updatedAt: dbUpdatedAt },
+      { id: 'newer', vaultName: 'Work', updatedAt: dbUpdatedAt },
+      { id: 'ghost', vaultName: 'Work', updatedAt: dbUpdatedAt }
+    ] as any)
+    mockFileService.getSessionFileMtimeMs.mockImplementation(async (id: string) => {
+      if (id === 'unchanged') return dbUpdatedAt.getTime()
+      if (id === 'newer') return dbUpdatedAt.getTime() + 5_000
+      return undefined
+    })
+    mockFileService.readSession.mockImplementation(async (id: string) => ({
+      session: { id },
+      messages: []
+    }))
+
+    await service.reconcileFromDisks({
+      activeVaultName: 'Work',
+      diskVaultNames: ['Work']
+    })
+
+    expect(mockFileService.readSession).not.toHaveBeenCalledWith('unchanged', 'Work')
+    expect(mockFileService.readSession).toHaveBeenCalledWith('newer', 'Work')
+    expect(mockFileService.readSession).toHaveBeenCalledWith('missing', 'Work')
+    expect(mockRepo.upsertAggregate).toHaveBeenCalledTimes(2)
+    expect(mockRepo.deleteSessions).toHaveBeenCalledWith(['ghost'])
   })
 })

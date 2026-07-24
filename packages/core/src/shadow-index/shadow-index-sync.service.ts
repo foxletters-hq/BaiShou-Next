@@ -196,7 +196,8 @@ export class ShadowIndexSyncService {
       const parsedDiaries: ParsedJournal[] = []
       const events: JournalSyncEvent[] = []
       const idsToDelete: { id: number; dateStr: string }[] = []
-      const existingHashes = await this.shadowRepo.getHashesByDates(chunk)
+      const fileStatUpdates: { dateStr: string; fileMtimeMs: number; fileSize: number }[] = []
+      const existingFingerprints = await this.shadowRepo.getHashesByDates(chunk)
 
       await Promise.all(
         chunk.map(async (dateStr) => {
@@ -226,17 +227,47 @@ export class ShadowIndexSyncService {
             return
           }
 
-          // ── 2. 单次读盘：Hash 脏检测 + 解析共用同一份内容 ──
-          const rawContent = await this.fileSystem.readFile(filePath, 'utf8')
-          const currentHash = md5Hex(rawContent)
-          const existingHash = existingHashes.get(dateKey) ?? null
+          // ── 2. Obsidian 风格 mtime/size 快路径（跳过读盘/哈希/解析） ──
+          const fileStat = await this.fileSystem.stat(filePath)
+          const fileMtimeMs =
+            fileStat.mtimeMs != null && Number.isFinite(fileStat.mtimeMs)
+              ? Math.round(fileStat.mtimeMs)
+              : null
+          const fileSize =
+            fileStat.size != null && Number.isFinite(fileStat.size)
+              ? Math.round(fileStat.size)
+              : null
+          const existing = existingFingerprints.get(dateKey) ?? null
 
-          if (existingHash !== null && existingHash === currentHash) {
+          const canSkipByStat =
+            existing != null &&
+            existing.fileMtimeMs != null &&
+            existing.fileSize != null &&
+            fileMtimeMs != null &&
+            fileSize != null &&
+            existing.fileMtimeMs === fileMtimeMs &&
+            existing.fileSize === fileSize
+
+          if (canSkipByStat) {
             results.push({ meta: null, isChanged: false })
             return
           }
 
-          // ── 3. 解析落盘 ──
+          // ── 3. 单次读盘：Hash 脏检测 + 解析共用同一份内容 ──
+          const rawContent = await this.fileSystem.readFile(filePath, 'utf8')
+          const currentHash = md5Hex(rawContent)
+          const existingHash = existing?.contentHash ?? null
+
+          if (existingHash !== null && existingHash === currentHash) {
+            // 内容未变但 mtime/size 漂移：轻量回写指纹
+            if (fileMtimeMs != null && fileSize != null) {
+              fileStatUpdates.push({ dateStr, fileMtimeMs, fileSize })
+            }
+            results.push({ meta: null, isChanged: false })
+            return
+          }
+
+          // ── 4. 解析落盘 ──
           const diary = parseJournalMarkdown(rawContent, dateStr)
           if (!diary) {
             results.push({ meta: null, isChanged: false })
@@ -252,6 +283,8 @@ export class ShadowIndexSyncService {
             createdAt: diary.createdAt.toISOString(),
             updatedAt: diary.updatedAt.toISOString(),
             contentHash: currentHash,
+            fileMtimeMs,
+            fileSize,
             weather: diary.weather ? normalizeWeatherId(diary.weather) || null : null,
             mood: diary.mood ? normalizeMoodId(diary.mood) || null : null,
             location: diary.location ?? null,
@@ -267,7 +300,7 @@ export class ShadowIndexSyncService {
         })
       )
 
-      // ── 4. 提交物理清退 ──
+      // ── 5. 提交物理清退 ──
       for (const req of idsToDelete) {
         await this.shadowRepo.deleteById(req.id)
         logger.info(`[ShadowSync] 已批量清理孤立索引 ID=${req.id} (日期: ${req.dateStr})`)
@@ -281,7 +314,23 @@ export class ShadowIndexSyncService {
         }
       }
 
-      // ── 5. 批量写入影子索引 ──
+      // ── 5b. 内容未变时的 mtime/size 指纹回写 ──
+      for (const update of fileStatUpdates) {
+        try {
+          await this.shadowRepo.updateFileStat(
+            update.dateStr,
+            update.fileMtimeMs,
+            update.fileSize
+          )
+        } catch (e: any) {
+          logger.warn(
+            `[ShadowSync] 更新文件指纹失败 (${update.dateStr}):`,
+            e?.message ?? e
+          )
+        }
+      }
+
+      // ── 6. 批量写入影子索引 ──
       if (payloads.length > 0) {
         logger.info(`[ShadowSync] 批量写入影子索引：${payloads.length} 篇日记`)
         const rowIds = await this.shadowRepo.batchUpsert(payloads)
@@ -291,8 +340,17 @@ export class ShadowIndexSyncService {
           const d = parsedDiaries[j]!
           const id = rowIds[j]!
 
-          if (!skipRag && this.embeddingCallback) {
-            this._triggerEmbeddingAsync({ ...d, id })
+          if (this.embeddingCallback) {
+            if (!skipRag) {
+              this._triggerEmbeddingAsync({ ...d, id })
+            } else if (this.embeddingCallback.enqueueDiaryEmbed) {
+              void this.embeddingCallback.enqueueDiaryEmbed({
+                diaryId: id,
+                contentHash: p.contentHash,
+                date: d.date,
+                vaultName: this.shadowRepo.vaultName
+              })
+            }
           }
 
           const meta: DiaryMeta = {
@@ -323,7 +381,7 @@ export class ShadowIndexSyncService {
         }
       }
 
-      // ── 6. 广播事件 ──
+      // ── 7. 广播事件 ──
       for (const e of events) {
         for (const listener of this._listeners) {
           try {

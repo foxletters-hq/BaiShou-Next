@@ -123,6 +123,42 @@ export class SummaryFileService {
     return [...searchDirs]
   }
 
+  /** 总结 md 的磁盘 mtime（ms）；优先 preferredPath，否则按 readSummary 搜索规则解析 */
+  async getSummaryFileMtimeMs(
+    type: SummaryType,
+    startDate: Date,
+    preferredPath?: string
+  ): Promise<number | undefined> {
+    if (preferredPath?.trim()) {
+      try {
+        const stat = await this.fileSystem.stat(preferredPath.trim())
+        if (stat.isFile && stat.mtimeMs != null) return stat.mtimeMs
+      } catch {
+        // fall through to resolve
+      }
+    }
+
+    const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
+    const standardFileName = this.buildFileName(type, startDate)
+    const transitionFileName = this.buildTransitionFileName(type, startDate)
+    const searchDirs = await this.collectSummarySearchDirectories()
+
+    for (const fileName of [standardFileName, transitionFileName]) {
+      for (const baseDir of searchDirs) {
+        const typeDir = path.join(baseDir, typeDirName)
+        const fullPath = await findExistingSummaryFileInTypeDir(this.fileSystem, typeDir, fileName)
+        if (!fullPath) continue
+        try {
+          const stat = await this.fileSystem.stat(fullPath)
+          if (stat.isFile && stat.mtimeMs != null) return stat.mtimeMs
+        } catch {
+          // try next candidate
+        }
+      }
+    }
+    return undefined
+  }
+
   async readSummary(type: SummaryType, startDate: Date): Promise<string | null> {
     const typeDirName = type.charAt(0).toUpperCase() + type.slice(1)
     const standardFileName = this.buildFileName(type, startDate)

@@ -8,8 +8,9 @@ export const SHADOW_INDEX_DB_FILENAME = 'shadow_index_v2.db'
  * Schema 版本：
  * - 1：per-vault 单库，`journals_index` 无 `vault_name`，唯一索引 `(file_path)`
  * - 2：全局单库多 Vault，`vault_name` + 唯一索引 `(vault_name, file_path)`
+ * - 3：`journals_index` 增加 `file_mtime_ms` / `file_size`（mtime/size 快路径）
  */
-export const SHADOW_INDEX_SCHEMA_VERSION = 2
+export const SHADOW_INDEX_SCHEMA_VERSION = 3
 
 export const JOURNALS_INDEX_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS journals_index (
@@ -20,6 +21,8 @@ export const JOURNALS_INDEX_CREATE_SQL = `
     created_at      TEXT    NOT NULL,
     updated_at      TEXT    NOT NULL,
     content_hash    TEXT    NOT NULL,
+    file_mtime_ms   INTEGER,
+    file_size       INTEGER,
     weather         TEXT,
     mood            TEXT,
     location        TEXT,
@@ -127,6 +130,18 @@ async function ensureTagColorsColumn(client: unknown, logPrefix: string): Promis
   await executeRawSql(client, 'ALTER TABLE journals_index ADD COLUMN tag_colors TEXT')
 }
 
+async function ensureFileStatColumns(client: unknown, logPrefix: string): Promise<void> {
+  if (!(await tableExists(client, 'journals_index'))) return
+  if (!(await tableHasColumn(client, 'journals_index', 'file_mtime_ms'))) {
+    logger.info(`${logPrefix} journals_index 添加 file_mtime_ms 列（mtime/size 快路径）`)
+    await executeRawSql(client, 'ALTER TABLE journals_index ADD COLUMN file_mtime_ms INTEGER')
+  }
+  if (!(await tableHasColumn(client, 'journals_index', 'file_size'))) {
+    logger.info(`${logPrefix} journals_index 添加 file_size 列（mtime/size 快路径）`)
+    await executeRawSql(client, 'ALTER TABLE journals_index ADD COLUMN file_size INTEGER')
+  }
+}
+
 /**
  * 桌面 / 移动端共用的影子索引建表与迁移入口。
  */
@@ -140,6 +155,7 @@ export async function ensureShadowIndexSchema(
   await dropLegacyIndexes(client)
   await executeRawSql(client, JOURNALS_INDEX_VAULT_FILE_PATH_UNIQUE_SQL)
   await ensureTagColorsColumn(client, logPrefix)
+  await ensureFileStatColumns(client, logPrefix)
   await createJournalsFts(client, logPrefix)
 
   await executeRawSql(client, `PRAGMA user_version = ${SHADOW_INDEX_SCHEMA_VERSION}`)
