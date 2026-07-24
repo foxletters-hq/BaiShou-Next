@@ -1,7 +1,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   padding: 0;
   background: transparent;
   width: 100%;
@@ -9,7 +9,34 @@
   flex-shrink: 0;
 }
 
-/* 常规设置：多组 sibling 卡仍可用 */
+/* 卡外标题 + 卡片（大分割） */
+.stackGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sectionLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.sectionLabel {
+  margin: 0;
+  padding: 0;
+  font-size: var(--settings-font-label-size);
+  font-weight: var(--settings-font-section-weight);
+  line-height: 1.4;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  user-select: none;
+}
+
+/* 常规设置：多组 sibling 卡（勿 overflow:hidden，否则 Select 下拉被裁切） */
 .cardSection {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
@@ -17,15 +44,15 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
-/* MCP / 门控等：单层大卡 + 内部分块 */
+/* 遗留：单层大卡（新页优先用 sibling cardSection + sectionLabel） */
 .pageCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -34,7 +61,7 @@
 .pageSection {
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--border-card);
+  border-bottom: 1px solid var(--border-muted);
   border-radius: 0;
   display: flex;
   flex-direction: column;
@@ -51,8 +78,8 @@
 
 .cardTitle {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
   color: var(--text-primary);
   font-family: var(--font-family);
 }
@@ -63,8 +90,18 @@
   padding-bottom: 0;
 }
 
+/* 卡内行分隔（小分割） */
 .divider {
   height: 1px;
-  background-color: var(--color-outline-variant, var(--border-subtle));
+  background-color: var(--border-muted);
   margin: 0;
+}
+
+/* 多板块堆叠（门控等试点页） */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }

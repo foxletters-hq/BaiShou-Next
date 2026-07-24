@@ -48,20 +48,23 @@
   gap: 6px;
   height: 36px;
   padding: 0 14px;
-  border: none;
+  border: 1.5px solid var(--border-control);
   border-radius: 999px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   white-space: nowrap;
 }
 
 .settings-management-header-action:hover {
-  opacity: 0.92;
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .settings-management-scroll {
@@ -102,13 +105,14 @@
 }
 
 .settings-management-row-title {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
   color: var(--text-primary);
 }
 
 .settings-management-row-sub {
-  font-size: 13px;
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   color: var(--text-secondary);
   line-height: 1.4;
 }

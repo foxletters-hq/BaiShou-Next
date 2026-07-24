@@ -127,13 +127,14 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
       >
         <SettingsPageChrome title={t('settings.general', '常规设置')}>
         <div className={styles.container}>
-          <section className={styles.cardSection}>
-            <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>
-                {t('settings.general_section_personal', '个人与环境')}
+          <div className={styles.stackGroup}>
+            <div className={styles.sectionLabelRow}>
+              <h3 className={styles.sectionLabel}>
+                {t('settings.general_section_profile', '个人与账户')}
               </h3>
             </div>
-            <div className={styles.cardBody}>
+            <section className={styles.cardSection}>
+              <div className={styles.cardBody}>
               <ProfileSettingsCard
                 profile={profile || { nickname: '', avatarPath: '' }}
                 onSave={async (p) => {
@@ -220,11 +221,18 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                   />
                 </>
               ) : null}
-            </div>
-          </section>
+              </div>
+            </section>
+          </div>
 
-          <section className={styles.cardSection}>
-            <div className={styles.cardBody}>
+          <div className={styles.stackGroup}>
+            <div className={styles.sectionLabelRow}>
+              <h3 className={styles.sectionLabel}>
+                {t('settings.general_section_storage', '存储')}
+              </h3>
+            </div>
+            <section className={styles.cardSection}>
+              <div className={styles.cardBody}>
               <StorageSettingsCard
                 embedded
                 isLast
@@ -264,14 +272,18 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                   await storageSettings.refreshStorageInfo({ includeFileCounts: true })
                 }}
               />
-            </div>
-          </section>
+              </div>
+            </section>
+          </div>
 
-          <section className={styles.cardSection}>
-            <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>{t('settings.general_section_about', '关于')}</h3>
+          <div className={styles.stackGroup}>
+            <div className={styles.sectionLabelRow}>
+              <h3 className={styles.sectionLabel}>
+                {t('settings.general_section_about', '关于')}
+              </h3>
             </div>
-            <div className={styles.cardBody}>
+            <section className={styles.cardSection}>
+              <div className={styles.cardBody}>
               <AboutSettingsCard
                 version={appVersion}
                 heroImageSrc={baishouHeroImg}
@@ -283,8 +295,9 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                   await switchActiveVault(vaultName)
                 }}
               />
-            </div>
-          </section>
+              </div>
+            </section>
+          </div>
         </div>
         </SettingsPageChrome>
       </div>
