@@ -275,7 +275,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
         <ChevronDown
           size={24}
           style={{
-            color: 'var(--color-on-surface-variant)',
+            color: 'var(--text-secondary)',
             transition: 'transform 0.25s',
             transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)',
             flexShrink: 0

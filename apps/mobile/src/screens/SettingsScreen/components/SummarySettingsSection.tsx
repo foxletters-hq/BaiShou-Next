@@ -859,7 +859,7 @@ export const SummarySettingsSection: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  cardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 8, lineHeight: 22 },
+  cardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 8, lineHeight: 22 },
   subsectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 8, lineHeight: 20 },
   sourceGroup: {
     flexDirection: 'row',

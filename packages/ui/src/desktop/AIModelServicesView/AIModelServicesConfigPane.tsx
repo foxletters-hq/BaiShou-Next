@@ -74,7 +74,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   onClick={handleDeleteProvider}
                   title={t('agent.provider.delete_tooltip', '删除供应商')}
                 >
-                  <Trash2 size={22} />
+                  <Trash2 size={18} />
                 </button>
               )}
             </div>
@@ -90,11 +90,11 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                     'ai_config.test_connection_help',
                     '连接测试会调用对话接口。请在弹窗中选择大语言模型（对话模型），不要选择 Embedding、Rerank 或 TTS 模型。若列表为空，请先获取模型并启用对话模型。'
                   )}
-                  size={16}
+                  size={14}
                 />
               </div>
               <button className={styles.resetBtnInline} onClick={handleResetCurrentProvider}>
-                <RotateCcw size={16} />
+                <RotateCcw size={14} />
                 <span>{t('settings.reset_default', '恢复默认')}</span>
               </button>
             </div>
@@ -157,7 +157,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
           <div className={styles.modelListSection}>
             <div className={styles.modelListHeader}>
               <div className={styles.modelListTitleBox}>
-                <List size={20} className={styles.modelListTitleIcon} />
+                <List size={16} className={styles.modelListTitleIcon} />
                 <span className={styles.modelListTitle}>
                   {t('settings.model_list_count', '模型列表 ($enabled / $total)')
                     .replace('$enabled', String(activeConfig.enabledModels?.length || 0))
@@ -181,7 +181,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             {activeConfig.models && activeConfig.models.length > 0 ? (
               <>
                 <div className={styles.modelSearchWrap}>
-                  <Search className={styles.modelSearchIcon} size={20} aria-hidden />
+                  <Search className={styles.modelSearchIcon} size={16} aria-hidden />
                   <input
                     type="search"
                     value={modelSearchQuery}
@@ -228,14 +228,14 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   </div>
                 ) : (
                   <div className={styles.emptyModelsCard}>
-                    <Search size={32} className={styles.emptyModelsIcon} />
+                    <Search size={24} className={styles.emptyModelsIcon} />
                     <span>{t('common.no_match_model', '没有匹配的可用模型')}</span>
                   </div>
                 )}
               </>
             ) : (
               <div className={styles.emptyModelsCard}>
-                <List size={32} className={styles.emptyModelsIcon} />
+                <List size={24} className={styles.emptyModelsIcon} />
                 <span>{t('settings.no_models_hint', '暂无模型，点击右上角按钮获取')}</span>
               </div>
             )}

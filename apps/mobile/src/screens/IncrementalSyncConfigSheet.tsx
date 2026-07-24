@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12
   },
-  enableTitle: { fontSize: 16, fontWeight: '700' },
+  enableTitle: { fontSize: 16, fontWeight: '600' },
   sectionLabel: {
     fontSize: 13,
     fontWeight: '600',

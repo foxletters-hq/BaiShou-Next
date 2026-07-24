@@ -1,0 +1,96 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-app);
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.headerRow,
+.headerRowStacked {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--settings-page-header-height, 64px);
+  padding: 0 32px;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 20;
+}
+
+.headerRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.headerRowStacked {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 28px;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.2px;
+  min-width: 0;
+  font-family: var(--font-family);
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 28px;
+}
+
+/* 右侧控件不得撑高顶栏 */
+.trailing :is(button, a) {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.title,
+.trailing {
+  max-height: 100%;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--settings-page-scroll-padding-top, 88px) 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: 4px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

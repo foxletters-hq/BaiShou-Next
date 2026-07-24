@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { McpSettingsCard, McpToolsListPanel } from '@baishou/ui'
+import { McpSettingsCard, McpToolsListPanel, SettingsPageChrome } from '@baishou/ui'
 import styles from './GeneralSettingsPane.module.css'
 
 interface McpSettingsPaneProps {
@@ -20,33 +20,40 @@ export const McpSettingsPane: React.FC<McpSettingsPaneProps> = ({ settings }) =>
   return (
     <div
       className="settings-pane settings-pane-full"
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
     >
-      <div className={styles.container}>
-        <section className={styles.cardSection}>
-          <div className={styles.cardHeader}>
-            <h3 className={styles.cardTitle}>{t('settings.mcp_title', 'MCP 服务')}</h3>
-          </div>
-          <div className={styles.cardBody}>
-            <McpSettingsCard
-              standalone
-              lanHost={lanHost}
-              config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
-              onChange={settings.setMcpServerConfig}
-              onRefreshToken={settings.refreshMcpAuthToken}
-            />
-          </div>
-        </section>
+      <SettingsPageChrome title={t('settings.mcp_title', 'MCP 服务')}>
+        <div className={styles.container}>
+          <section className={styles.pageCard}>
+            <div className={styles.pageSection}>
+              <div className={styles.cardBody}>
+                <McpSettingsCard
+                  standalone
+                  lanHost={lanHost}
+                  config={settings.mcpServerConfig || { mcpEnabled: false, mcpPort: 31004 }}
+                  onChange={settings.setMcpServerConfig}
+                  onRefreshToken={settings.refreshMcpAuthToken}
+                />
+              </div>
+            </div>
 
-        <section className={styles.cardSection}>
-          <div className={styles.cardHeader}>
-            <h3 className={styles.cardTitle}>
-              {t('settings.mcp_tools_provided', '目前提供的工具列表')}
-            </h3>
-          </div>
-          <McpToolsListPanel />
-        </section>
-      </div>
+            <div className={styles.pageSection}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle}>
+                  {t('settings.mcp_tools_provided', '目前提供的工具列表')}
+                </h3>
+              </div>
+              <McpToolsListPanel />
+            </div>
+          </section>
+        </div>
+      </SettingsPageChrome>
     </div>
   )
 }

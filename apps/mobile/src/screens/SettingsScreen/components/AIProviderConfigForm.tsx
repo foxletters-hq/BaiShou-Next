@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   configTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     flex: 1
   },
   systemBadge: {
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   },
   loadMoreModelsText: {
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '600'
   },
   modelCountHint: {
     marginTop: 10,

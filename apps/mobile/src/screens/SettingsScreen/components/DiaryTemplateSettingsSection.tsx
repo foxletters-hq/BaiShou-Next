@@ -88,19 +88,21 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
   }
 
   const canSave = hydrated && dirty && !saving
+  const fieldShellStyle = [
+    styles.fieldShell,
+    { backgroundColor: colors.bgSurface, borderColor: colors.borderControl }
+  ]
 
   return (
-    <>
-      <SettingsGroupCard>
-        <Text style={[styles.desc, { color: colors.textSecondary }]}>
-          {t(
-            'settings.diary_format_unified_desc',
-            '日记时间标题格式以下方模板为唯一来源，编辑器、伙伴写日记与系统提示词均遵循同一套模板。'
-          )}
-        </Text>
-      </SettingsGroupCard>
+    <SettingsGroupCard>
+      <Text style={[styles.desc, { color: colors.textSecondary }]}>
+        {t(
+          'settings.diary_format_unified_desc',
+          '日记时间标题格式以下方模板为唯一来源，编辑器、伙伴写日记与系统提示词均遵循同一套模板。'
+        )}
+      </Text>
 
-      <SettingsGroupCard>
+      <View style={styles.fieldBlock}>
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('settings.diary_template_new_entry', '新建日记模板')}
         </Text>
@@ -115,24 +117,26 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : (
-          <Input
-            value={localNewEntry}
-            onChangeText={(text) => {
-              setLocalNewEntry(text)
-              setDirty(true)
-            }}
-            multiline
-            textarea
-            numberOfLines={6}
-            placeholder={DEFAULT_DIARY_NEW_ENTRY_TEMPLATE}
-            style={{ minHeight: 120, lineHeight: 20 }}
-            containerStyle={{ marginBottom: 8 }}
-            editable={!saving}
-          />
+          <View style={fieldShellStyle}>
+            <Input
+              bare
+              value={localNewEntry}
+              onChangeText={(text) => {
+                setLocalNewEntry(text)
+                setDirty(true)
+              }}
+              multiline
+              textarea
+              numberOfLines={6}
+              placeholder={DEFAULT_DIARY_NEW_ENTRY_TEMPLATE}
+              style={styles.fieldInputTall}
+              editable={!saving}
+            />
+          </View>
         )}
-      </SettingsGroupCard>
+      </View>
 
-      <SettingsGroupCard>
+      <View style={styles.fieldBlock}>
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('settings.diary_template_append', '追加记录模板')}
         </Text>
@@ -144,24 +148,26 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : (
-          <Input
-            value={localAppendBlock}
-            onChangeText={(text) => {
-              setLocalAppendBlock(text)
-              setDirty(true)
-            }}
-            multiline
-            textarea
-            numberOfLines={6}
-            placeholder={DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE}
-            style={{ minHeight: 120, lineHeight: 20 }}
-            containerStyle={{ marginBottom: 8 }}
-            editable={!saving}
-          />
+          <View style={fieldShellStyle}>
+            <Input
+              bare
+              value={localAppendBlock}
+              onChangeText={(text) => {
+                setLocalAppendBlock(text)
+                setDirty(true)
+              }}
+              multiline
+              textarea
+              numberOfLines={6}
+              placeholder={DEFAULT_DIARY_APPEND_BLOCK_TEMPLATE}
+              style={styles.fieldInputTall}
+              editable={!saving}
+            />
+          </View>
         )}
-      </SettingsGroupCard>
+      </View>
 
-      <SettingsGroupCard>
+      <View style={styles.fieldBlock}>
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('settings.diary_writing_style_supplement_title', '伙伴补充书写说明（可选）')}
         </Text>
@@ -182,27 +188,29 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : (
-          <Input
-            value={localSupplement}
-            onChangeText={(text) => {
-              setLocalSupplement(text)
-              setDirty(true)
-            }}
-            multiline
-            textarea
-            numberOfLines={8}
-            placeholder={t(
-              'settings.diary_writing_style_supplement_placeholder',
-              '例如：用第一人称、简洁记录当下感受…'
-            )}
-            style={{ minHeight: 160, lineHeight: 20 }}
-            containerStyle={{ marginBottom: 8 }}
-            editable={!saving}
-          />
+          <View style={fieldShellStyle}>
+            <Input
+              bare
+              value={localSupplement}
+              onChangeText={(text) => {
+                setLocalSupplement(text)
+                setDirty(true)
+              }}
+              multiline
+              textarea
+              numberOfLines={8}
+              placeholder={t(
+                'settings.diary_writing_style_supplement_placeholder',
+                '例如：用第一人称、简洁记录当下感受…'
+              )}
+              style={styles.fieldInputLarge}
+              editable={!saving}
+            />
+          </View>
         )}
-      </SettingsGroupCard>
+      </View>
 
-      <SettingsGroupCard>
+      <View style={styles.fieldBlock}>
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
           {t('settings.diary_agent_guidelines_preview', '伙伴将看到的格式规范（预览）')}
         </Text>
@@ -217,7 +225,7 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
             styles.previewBox,
             {
               backgroundColor: colors.bgSurface,
-              borderColor: colors.borderStrong
+              borderColor: colors.borderControl
             }
           ]}
         >
@@ -233,49 +241,50 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
             </Text>
           </ScrollView>
         </View>
-      </SettingsGroupCard>
+      </View>
 
-      <SettingsGroupCard>
-        <Text style={[styles.varsHint, { color: colors.textSecondary }]}>
-          {t(
-            'settings.diary_template_vars_hint',
-            '可用变量：{time} 当前时间 (HH:mm)，{date} 日期 (yyyy-MM-dd)，{datetime} 完整日期时间 (yyyy-MM-dd HH:mm)'
-          )}
-        </Text>
+      <Text style={[styles.varsHint, { color: colors.textSecondary }]}>
+        {t(
+          'settings.diary_template_vars_hint',
+          '可用变量：{time} 当前时间 (HH:mm)，{date} 日期 (yyyy-MM-dd)，{datetime} 完整日期时间 (yyyy-MM-dd HH:mm)'
+        )}
+      </Text>
 
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.btn, { borderColor: colors.borderSubtle, opacity: saving ? 0.5 : 1 }]}
-            onPress={() => void handleReset()}
-            disabled={!hydrated || saving}
-          >
-            <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-              {t('common.reset', '重置')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.btn,
-              styles.btnPrimary,
-              { backgroundColor: colors.primary, opacity: canSave ? 1 : 0.5 }
-            ]}
-            onPress={() => void handleSave()}
-            disabled={!canSave}
-          >
-            <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
-              {saving ? t('common.saving', '保存中…') : t('common.save', '保存')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SettingsGroupCard>
-    </>
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.btn, { borderColor: colors.borderSubtle, opacity: saving ? 0.5 : 1 }]}
+          onPress={() => void handleReset()}
+          disabled={!hydrated || saving}
+        >
+          <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
+            {t('common.reset', '重置')}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.btn,
+            styles.btnPrimary,
+            { backgroundColor: colors.primary, opacity: canSave ? 1 : 0.5 }
+          ]}
+          onPress={() => void handleSave()}
+          disabled={!canSave}
+        >
+          <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
+            {saving ? t('common.saving', '保存中…') : t('common.save', '保存')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SettingsGroupCard>
   )
 }
 
 const styles = StyleSheet.create({
+  fieldBlock: {
+    marginTop: 4
+  },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 6
   },
   desc: {
@@ -287,6 +296,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 12
+  },
+  fieldShell: {
+    borderWidth: 1,
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    overflow: 'hidden'
+  },
+  fieldInputTall: {
+    minHeight: 120,
+    lineHeight: 20
+  },
+  fieldInputLarge: {
+    minHeight: 160,
+    lineHeight: 20
   },
   previewBox: {
     borderWidth: 1,

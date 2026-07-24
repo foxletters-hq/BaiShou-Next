@@ -71,7 +71,10 @@ export const SummarySettingsPane: React.FC<SummarySettingsPaneProps> = ({ settin
   if (!combinedConfig) return <div />
 
   return (
-    <div className="settings-pane settings-pane-full">
+    <div
+      className="settings-pane settings-pane-full"
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
       <SummarySettingsView
         config={combinedConfig}
         assistants={assistants}

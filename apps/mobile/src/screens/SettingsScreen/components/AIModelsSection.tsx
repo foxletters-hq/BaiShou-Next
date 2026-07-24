@@ -16,7 +16,6 @@ import {
   AIProviderConfig,
   GlobalModelsConfig,
   filterProvidersForModelSwitcher,
-  shouldSyncGraphModelsWithDialogue,
   type ModelSwitcherProvider
 } from '@baishou/shared'
 import { ensureGlobalGraphModelsAligned, getDefaultGlobalModels } from '@baishou/store'
@@ -25,17 +24,17 @@ import { ProviderBrandIcon } from './ProviderBrandIcon'
 
 type ModelSelectorKey =
   | 'globalDialogue'
-  | 'globalGraph'
   | 'globalNaming'
   | 'globalSummary'
   | 'globalEmbedding'
 
 const MODEL_FIELD_META: Array<{
-  key: ModelSelectorKey
+  key: ModelSelectorKey | 'globalGraph'
   labelKey: string
   tooltipKey: string
   icon: LucideIcon
   forEmbedding: boolean
+  readOnly?: boolean
 }> = [
   {
     key: 'globalSummary',
@@ -56,7 +55,8 @@ const MODEL_FIELD_META: Array<{
     labelKey: 'ai_config.graph_model_title',
     tooltipKey: 'settings.tooltip_graph_model',
     icon: Waypoints,
-    forEmbedding: false
+    forEmbedding: false,
+    readOnly: true
   },
   {
     key: 'globalNaming',
@@ -171,7 +171,8 @@ export const AIModelsSection: React.FC = () => {
       [providerKey]: providerId,
       [modelKey]: modelId
     }
-    if (activeSelector === 'globalDialogue' && shouldSyncGraphModelsWithDialogue(globalModels)) {
+    if (activeSelector === 'globalDialogue') {
+      // 图关系抽取始终跟随对话模型
       newConfig.globalGraphProviderId = providerId
       newConfig.globalGraphModelId = modelId
     }
@@ -198,11 +199,15 @@ export const AIModelsSection: React.FC = () => {
     <View style={styles.section}>
       {MODEL_FIELD_META.map((field) => {
         const RouteIcon = field.icon
-        const providerKey = `${field.key}ProviderId` as keyof GlobalModelsConfig
-        const modelKey = `${field.key}ModelId` as keyof GlobalModelsConfig
-        const isSet = Boolean(globalModels[providerKey] && globalModels[modelKey])
+        const displayProviderKey = (
+          field.readOnly ? 'globalDialogueProviderId' : `${field.key}ProviderId`
+        ) as keyof GlobalModelsConfig
+        const displayModelKey = (
+          field.readOnly ? 'globalDialogueModelId' : `${field.key}ModelId`
+        ) as keyof GlobalModelsConfig
+        const isSet = Boolean(globalModels[displayProviderKey] && globalModels[displayModelKey])
         const selectedProvider = isSet
-          ? providers.find((p) => p.id === globalModels[providerKey])
+          ? providers.find((p) => p.id === globalModels[displayProviderKey])
           : undefined
 
         return (
@@ -237,16 +242,21 @@ export const AIModelsSection: React.FC = () => {
                 styles.selectorBtn,
                 {
                   backgroundColor: colors.bgSurface,
-                  borderColor: isSet ? colors.borderMuted : colors.borderSubtle
+                  borderColor: isSet ? colors.borderMuted : colors.borderSubtle,
+                  opacity: field.readOnly ? 0.85 : 1
                 }
               ]}
-              activeOpacity={0.7}
-              onPress={() => openSelector(field.key, field.forEmbedding)}
+              activeOpacity={field.readOnly ? 1 : 0.7}
+              disabled={field.readOnly}
+              onPress={() => {
+                if (field.readOnly || field.key === 'globalGraph') return
+                openSelector(field.key, field.forEmbedding)
+              }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                 {isSet && (
                   <ProviderBrandIcon
-                    providerId={globalModels[providerKey] as string}
+                    providerId={globalModels[displayProviderKey] as string}
                     providerType={selectedProvider?.type}
                     size={18}
                   />
@@ -259,11 +269,15 @@ export const AIModelsSection: React.FC = () => {
                   numberOfLines={2}
                 >
                   {isSet
-                    ? getModelDisplay(modelKey)
-                    : t('models.click_to_assign', '点击分配默认处理模型')}
+                    ? getModelDisplay(displayModelKey)
+                    : field.readOnly
+                      ? t('settings.not_set', '未设置')
+                      : t('models.click_to_assign', '点击分配默认处理模型')}
                 </Text>
               </View>
-              <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
+              {!field.readOnly && (
+                <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
+              )}
             </TouchableOpacity>
           </View>
         )
