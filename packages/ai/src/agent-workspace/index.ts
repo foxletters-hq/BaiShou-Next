@@ -1,6 +1,7 @@
 export * from './workspace-path.sandbox'
 export * from './workspace-fs'
 export * from './file-change.part-builder'
+export * from './workspace-gate-preview'
 export * from './agent-round-checkpoint.service'
 export * from './workspace.tools'
 export * from './workspace-session-buffer'

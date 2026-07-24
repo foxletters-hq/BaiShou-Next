@@ -76,4 +76,25 @@ describe('ToolRegistry', () => {
     expect(registry.isToolEnabled('workspace_write', ctx)).toBe(false)
     expect(probeEffect).toHaveBeenCalled()
   })
+
+  it('respects per-workspace disabledToolIds for workspace tools only', () => {
+    const registry = new ToolRegistry()
+    const ctx: ToolContext = {
+      sessionId: 'ws-session',
+      vaultName: 'Personal',
+      userConfig: {
+        disabledToolIds: ['workspace_run', 'diary_write']
+      },
+      workspace: {
+        folderRoot: 'D:/proj',
+        sessionKind: 'workspace'
+      }
+    }
+
+    expect(registry.isToolEnabled('workspace_list', ctx)).toBe(true)
+    expect(registry.isToolEnabled('workspace_run', ctx)).toBe(false)
+    // diary tools are hard-filtered out of workspace sessions regardless of disabled list
+    expect(registry.isToolEnabled('diary_write', ctx)).toBe(false)
+    expect(registry.isToolEnabled('companion_ask', ctx)).toBe(true)
+  })
 })
