@@ -27,23 +27,6 @@ function shouldTreatAsFactoryLatteAssistant(input: {
   )
 }
 
-function factoryLatteSeedMatchesAssistant(
-  seed: ReturnType<typeof getDefaultLatteAssistantSeed>,
-  assistant: {
-    name: string
-    description?: string | null
-    systemPrompt?: string | null
-    avatarPath?: string | null
-  }
-): boolean {
-  return (
-    assistant.name === seed.name &&
-    (assistant.description ?? '') === (seed.description ?? '') &&
-    (assistant.systemPrompt ?? '') === (seed.systemPrompt ?? '') &&
-    (hasCustomAssistantAvatar(assistant.avatarPath) || assistant.avatarPath === seed.avatarPath)
-  )
-}
-
 function resolveDefaultAssistantId(existingIds: Set<string>): string {
   if (!existingIds.has(DEFAULT_LATTE_ASSISTANT_ID)) return DEFAULT_LATTE_ASSISTANT_ID
   return `latte-${Date.now()}`
@@ -53,7 +36,7 @@ function resolveDefaultAssistantId(existingIds: Set<string>): string {
  * 确保当前工作区存在内置默认伙伴 Latte：
  * - 无伙伴时创建
  * - 有伙伴但无 isDefault 时补建
- * - 仍为出厂/旧版默认伙伴时，无损升级为当前 Latte
+ * - 不修改已有伙伴的提示词或其他字段
  */
 export async function ensureDefaultLatteAssistant(
   assistantManager: AssistantManagerService,
@@ -71,28 +54,13 @@ export async function ensureDefaultLatteAssistant(
   if (!hasDefault) {
     const id = resolveDefaultAssistantId(new Set(assistants.map((a) => a.id)))
     await assistantManager.create({ id, ...seed })
-    return
-  }
-
-  const legacyDefault = assistants.find(
-    (a) =>
-      a.id === DEFAULT_LATTE_ASSISTANT_ID &&
-      a.isDefault &&
-      shouldTreatAsFactoryLatteAssistant({ name: a.name, systemPrompt: a.systemPrompt })
-  )
-  if (legacyDefault && !factoryLatteSeedMatchesAssistant(seed, legacyDefault)) {
-    await assistantManager.update(legacyDefault.id, {
-      name: seed.name,
-      description: seed.description,
-      ...(hasCustomAssistantAvatar(legacyDefault.avatarPath)
-        ? {}
-        : { avatarPath: seed.avatarPath }),
-      systemPrompt: seed.systemPrompt
-    })
   }
 }
 
-/** 用户切换 UI 语言时，将出厂 Latte 的提示词与描述同步到对应语言 */
+/**
+ * 用户切换 UI 语言时：仅同步出厂 Latte 的名称 / 描述 / 默认头像。
+ * 不修改 systemPrompt（已有提示词一律保留）。
+ */
 export async function syncDefaultLatteAssistantLocale(
   assistantManager: AssistantManagerService,
   locale?: string
@@ -110,13 +78,23 @@ export async function syncDefaultLatteAssistantLocale(
   }
 
   const seed = getDefaultLatteAssistantSeed(locale)
-  if (factoryLatteSeedMatchesAssistant(seed, assistant)) {
+  const nextName = seed.name
+  const nextDescription = seed.description
+  const nextAvatar = hasCustomAssistantAvatar(assistant.avatarPath)
+    ? undefined
+    : seed.avatarPath
+
+  if (
+    assistant.name === nextName &&
+    (assistant.description ?? '') === (nextDescription ?? '') &&
+    (nextAvatar === undefined || assistant.avatarPath === nextAvatar)
+  ) {
     return
   }
+
   await assistantManager.update(DEFAULT_LATTE_ASSISTANT_ID, {
-    name: seed.name,
-    description: seed.description,
-    ...(hasCustomAssistantAvatar(assistant.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
-    systemPrompt: seed.systemPrompt
+    name: nextName,
+    description: nextDescription,
+    ...(nextAvatar !== undefined ? { avatarPath: nextAvatar } : {})
   })
 }
