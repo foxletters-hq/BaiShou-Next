@@ -1,6 +1,11 @@
-import { MEMORY_SOURCE_TYPE, type MemoryRawRecord } from '@baishou/shared'
+import {
+  MEMORY_SOURCE_TYPE,
+  buildMemoryMetadataJson,
+  type MemoryRawRecord
+} from '@baishou/shared'
 import type { MemoryRawManager } from './managers/memory.raw-manager'
 import { collapseJsonlById } from './stores/monthly-jsonl.store'
+import { shardMonthFromInstant } from './raw-data-month.util'
 
 export { MEMORY_SOURCE_TYPE }
 
@@ -10,9 +15,44 @@ export interface MemoryEmbedSink {
     sourceType: string
     sourceId: string
     groupId: string
+    metadataJson?: string
+    sourceCreatedAt?: number
   }): Promise<void>
   deleteBySource?(sourceType: string, sourceId: string): Promise<void>
   listSourceIdsByType?(sourceType: string, groupId?: string): Promise<string[]>
+}
+
+export interface MemoryConsistencyMissingItem {
+  id: string
+  content: string
+  createdAt: number
+  updatedAt: number
+  vaultName: string
+  tags: string[]
+  sourceSessionId: string | null
+}
+
+export interface MemoryConsistencyReport {
+  jsonlLiveCount: number
+  vectorCount: number
+  missing: MemoryConsistencyMissingItem[]
+  orphans: string[]
+}
+
+export interface MemoryConsistencyRepairOptions {
+  /** JSONL live + no vector → user confirms historical delete: write tombstone. */
+  confirmDeleteIds?: string[]
+  /** JSONL live + no vector → user wants index back: re-embed. */
+  restoreIds?: string[]
+  /** Vector has + JSONL has no live row → drop derived rows. */
+  cleanOrphans?: boolean
+  vaultName?: string
+}
+
+export interface MemoryConsistencyRepairResult {
+  tombstoned: number
+  restored: number
+  orphansCleaned: number
 }
 
 /**
@@ -49,7 +89,9 @@ export class MemorySyncService {
           text: row.content,
           sourceType: MEMORY_SOURCE_TYPE,
           sourceId: row.id,
-          groupId: `memory:${row.vaultName}`
+          groupId: `memory:${row.vaultName}`,
+          metadataJson: buildMemoryMetadataJson(row),
+          sourceCreatedAt: row.createdAt
         })
         upserted += 1
       }
@@ -57,44 +99,185 @@ export class MemorySyncService {
       await this.memoryManager.commitIndexed(shard.relativePath, shard.contentHash)
     }
 
-    // Orphan sweep scoped to vault(s) present in this manager's JSONL only.
-    if (this.sink.listSourceIdsByType && this.sink.deleteBySource) {
-      const liveIdsByVault = new Map<string, Set<string>>()
-      for (const shard of await this.memoryManager.listShards()) {
-        const rows = collapseJsonlById(
-          (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
-        )
-        for (const row of rows) {
-          if (row?.id && row.deletedAt == null && row.vaultName) {
-            if (!inferredVault) inferredVault = row.vaultName
-            let set = liveIdsByVault.get(row.vaultName)
-            if (!set) {
-              set = new Set()
-              liveIdsByVault.set(row.vaultName, set)
-            }
-            set.add(row.id)
-          }
-        }
+    const orphansCleaned = await this.sweepOrphans(inferredVault)
+    deleted += orphansCleaned
+
+    return { shards: pending.length, upserted, deleted }
+  }
+
+  /**
+   * Diff JSONL live rows vs vector source ids.
+   * Missing (JSONL live, no vector) is NOT auto-fixed — caller must let the user choose.
+   * Orphans are listed here; syncPendingIndex / repairConsistency(cleanOrphans) can remove them.
+   */
+  async checkConsistency(options?: { vaultName?: string }): Promise<MemoryConsistencyReport> {
+    const { liveById, liveIdsByVault, inferredVault } = await this.collectLiveState()
+    const vaults = this.resolveVaults(liveIdsByVault, options?.vaultName ?? inferredVault)
+
+    const missing: MemoryConsistencyMissingItem[] = []
+    const orphans: string[] = []
+    let vectorCount = 0
+
+    if (!this.sink.listSourceIdsByType) {
+      return {
+        jsonlLiveCount: liveById.size,
+        vectorCount: 0,
+        missing: [...liveById.values()].map((row) => this.toMissingItem(row)),
+        orphans: []
       }
+    }
 
-      const vaults = new Set<string>([
-        ...liveIdsByVault.keys(),
-        ...(inferredVault ? [inferredVault] : [])
-      ])
-
-      for (const vault of vaults) {
-        const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
-        const groupId = `memory:${vault}`
-        const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, groupId)
-        for (const id of dbIds) {
-          if (!liveIds.has(id)) {
-            await this.sink.deleteBySource(MEMORY_SOURCE_TYPE, id)
-            deleted += 1
-          }
+    for (const vault of vaults) {
+      const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
+      const groupId = `memory:${vault}`
+      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, groupId)
+      const dbSet = new Set(dbIds)
+      vectorCount += dbIds.length
+      for (const id of dbIds) {
+        if (!liveIds.has(id)) orphans.push(id)
+      }
+      for (const id of liveIds) {
+        if (!dbSet.has(id)) {
+          const row = liveById.get(id)
+          if (row) missing.push(this.toMissingItem(row))
         }
       }
     }
 
-    return { shards: pending.length, upserted, deleted }
+    if (vaults.size === 0) {
+      for (const row of liveById.values()) {
+        missing.push(this.toMissingItem(row))
+      }
+    }
+
+    return {
+      jsonlLiveCount: liveById.size,
+      vectorCount,
+      missing,
+      orphans
+    }
+  }
+
+  async repairConsistency(
+    options: MemoryConsistencyRepairOptions
+  ): Promise<MemoryConsistencyRepairResult> {
+    let tombstoned = 0
+    let restored = 0
+    let orphansCleaned = 0
+
+    const confirmDeleteIds = [...new Set(options.confirmDeleteIds ?? [])]
+    for (const id of confirmDeleteIds) {
+      const live = await this.findLiveRecord(id)
+      try {
+        await this.memoryManager.tombstone(id, {
+          shardMonth: live ? shardMonthFromInstant(live.createdAt) : undefined
+        })
+        tombstoned += 1
+      } catch {
+        // already absent
+      }
+      await this.sink.deleteBySource?.(MEMORY_SOURCE_TYPE, id)
+    }
+
+    const restoreIds = [...new Set(options.restoreIds ?? [])]
+    for (const id of restoreIds) {
+      const live = await this.findLiveRecord(id)
+      if (!live || live.deletedAt != null) continue
+      await this.sink.embedText({
+        text: live.content,
+        sourceType: MEMORY_SOURCE_TYPE,
+        sourceId: live.id,
+        groupId: `memory:${live.vaultName}`,
+        metadataJson: buildMemoryMetadataJson(live),
+        sourceCreatedAt: live.createdAt
+      })
+      restored += 1
+    }
+
+    if (options.cleanOrphans) {
+      orphansCleaned = await this.sweepOrphans(options.vaultName)
+    }
+
+    return { tombstoned, restored, orphansCleaned }
+  }
+
+  private async sweepOrphans(inferredVault?: string): Promise<number> {
+    if (!this.sink.listSourceIdsByType || !this.sink.deleteBySource) return 0
+
+    const { liveIdsByVault, inferredVault: fromJsonl } = await this.collectLiveState()
+    const vaults = this.resolveVaults(liveIdsByVault, inferredVault ?? fromJsonl)
+    let deleted = 0
+
+    for (const vault of vaults) {
+      const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
+      const groupId = `memory:${vault}`
+      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, groupId)
+      for (const id of dbIds) {
+        if (!liveIds.has(id)) {
+          await this.sink.deleteBySource(MEMORY_SOURCE_TYPE, id)
+          deleted += 1
+        }
+      }
+    }
+    return deleted
+  }
+
+  private async collectLiveState(): Promise<{
+    liveById: Map<string, MemoryRawRecord>
+    liveIdsByVault: Map<string, Set<string>>
+    inferredVault?: string
+  }> {
+    const liveById = new Map<string, MemoryRawRecord>()
+    const liveIdsByVault = new Map<string, Set<string>>()
+    let inferredVault: string | undefined
+
+    for (const shard of await this.memoryManager.listShards()) {
+      const rows = collapseJsonlById(
+        (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
+      )
+      for (const row of rows) {
+        if (!row?.id || row.deletedAt != null) continue
+        liveById.set(row.id, row)
+        if (row.vaultName) {
+          if (!inferredVault) inferredVault = row.vaultName
+          let set = liveIdsByVault.get(row.vaultName)
+          if (!set) {
+            set = new Set()
+            liveIdsByVault.set(row.vaultName, set)
+          }
+          set.add(row.id)
+        }
+      }
+    }
+
+    return { liveById, liveIdsByVault, inferredVault }
+  }
+
+  private resolveVaults(
+    liveIdsByVault: Map<string, Set<string>>,
+    preferred?: string
+  ): Set<string> {
+    return new Set<string>([...liveIdsByVault.keys(), ...(preferred ? [preferred] : [])])
+  }
+
+  private toMissingItem(row: MemoryRawRecord): MemoryConsistencyMissingItem {
+    return {
+      id: row.id,
+      content: row.content,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      vaultName: row.vaultName,
+      tags: row.tags ?? [],
+      sourceSessionId: row.sourceSessionId ?? null
+    }
+  }
+
+  private async findLiveRecord(id: string): Promise<MemoryRawRecord | undefined> {
+    for (const shard of await this.memoryManager.listShards()) {
+      const rows = await this.memoryManager.readCollapsedShard(shard.shardMonth)
+      const hit = rows.find((r) => r.id === id && r.deletedAt == null)
+      if (hit) return hit
+    }
+    return undefined
   }
 }
