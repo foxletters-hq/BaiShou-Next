@@ -93,9 +93,8 @@ export async function mobileRebuildKnowledgeIndex(notebookId: string): Promise<v
       vaultId: source.vaultId?.trim() || vaultId
     })
   }
-  const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
-    './mobile-knowledge-ingest-jobs.consumer'
-  )
+  const { scheduleConsumeMobileKnowledgeIngestJobs } =
+    await import('./mobile-knowledge-ingest-jobs.consumer')
   scheduleConsumeMobileKnowledgeIngestJobs('mobile-rebuild')
 }
 
@@ -265,7 +264,7 @@ export async function mobileImportSource(input: {
     const originUrl = (input.originUrl || input.textContent || '').trim()
     if (!originUrl) throw new Error('import url requires originUrl')
     const fetched = await fetchUrlAsMarkdown(originUrl)
-    if (!fetched.markdown?.trim()) throw new Error('URL 内容为空或无法解析')
+    if (!fetched.markdown?.trim()) throw new Error('URL content empty or could not be parsed')
     payload = {
       ...input,
       kind: 'url',
@@ -284,9 +283,8 @@ export async function mobileImportSource(input: {
     originUrl: payload.originUrl
   })
 
-  const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
-    './mobile-knowledge-ingest-jobs.consumer'
-  )
+  const { scheduleConsumeMobileKnowledgeIngestJobs } =
+    await import('./mobile-knowledge-ingest-jobs.consumer')
   scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-import')
   return result
 }
@@ -299,9 +297,8 @@ export async function mobileSaveAskAsNote(input: {
 }): Promise<{ sourceId: string }> {
   const svc = await buildMobileIngestService()
   const result = await svc.saveAskAsNote(input)
-  const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
-    './mobile-knowledge-ingest-jobs.consumer'
-  )
+  const { scheduleConsumeMobileKnowledgeIngestJobs } =
+    await import('./mobile-knowledge-ingest-jobs.consumer')
   scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-save-note')
   return result
 }

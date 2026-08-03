@@ -18,7 +18,7 @@ import {
   deleteDiaryEmbedJob,
   enqueueDiaryEmbedJob
 } from './mobile-diary-embed-jobs.service'
-import { resolveEmbeddingAdapter, resolveVaultScope } from './mobile-rag-core.helpers'
+import { resolveEmbeddingAdapter } from './mobile-rag-core.helpers'
 
 const failureListeners = new Set<(message?: string) => void>()
 let embeddingDeps: MobileRagServiceDeps | null = null

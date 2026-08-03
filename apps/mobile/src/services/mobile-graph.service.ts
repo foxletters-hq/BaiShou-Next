@@ -297,10 +297,7 @@ async function mobileSetEdgeReviewInner(options: {
     { collection: 'edges' }
   )
 
-  if (
-    options.reviewStatus === 'approved' &&
-    options.approvePendingEndpoints !== false
-  ) {
+  if (options.reviewStatus === 'approved' && options.approvePendingEndpoints !== false) {
     for (const endpointId of [edge.fromId, edge.toId]) {
       const node = await repo.getNodeById(endpointId, edge.vaultId)
       if (node && node.reviewStatus === 'pending') {
