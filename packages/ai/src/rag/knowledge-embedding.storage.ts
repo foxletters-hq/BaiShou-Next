@@ -62,8 +62,8 @@ export class KnowledgeEmbeddingStorage implements IEmbeddingStorage {
   async hasMigrationRollbackTable(): Promise<boolean> {
     return false
   }
-  async countHeterogeneousEmbeddings(_currentModelId: string): Promise<number> {
-    return 0
+  async countHeterogeneousEmbeddings(currentModelId: string): Promise<number> {
+    return this.getRepo().countHeterogeneousEmbeddings(currentModelId)
   }
   async createMigrationBackup(): Promise<number> {
     return 0

@@ -265,6 +265,55 @@ export class KnowledgeRepository {
       .orderBy(knowledgeChunksTable.chunkIndex)
   }
 
+  /** 库内全部 source_id（orphan 差集用） */
+  async listDistinctSourceIds(notebookId?: string): Promise<string[]> {
+    if (notebookId) {
+      const rows = await this.db
+        .selectDistinct({ sourceId: knowledgeChunksTable.sourceId })
+        .from(knowledgeChunksTable)
+        .where(eq(knowledgeChunksTable.notebookId, notebookId))
+      const fromChunks = rows.map((r) => r.sourceId)
+      const sources = await this.listSources(notebookId)
+      return [...new Set([...fromChunks, ...sources.map((s) => s.id)])]
+    }
+    const chunkRows = await this.db
+      .selectDistinct({ sourceId: knowledgeChunksTable.sourceId })
+      .from(knowledgeChunksTable)
+    const sourceRows = await this.db
+      .select({ id: knowledgeSourcesTable.id })
+      .from(knowledgeSourcesTable)
+    return [...new Set([...chunkRows.map((r) => r.sourceId), ...sourceRows.map((r) => r.id)])]
+  }
+
+  /** 与当前嵌入模型不一致的 chunk 数（Ask 硬拦截） */
+  async countHeterogeneousEmbeddings(currentModelId: string): Promise<number> {
+    const modelId = (currentModelId || '').trim()
+    if (!modelId) return 0
+    const rows = await this.db
+      .select({ c: sql<number>`count(*)` })
+      .from(knowledgeChunksTable)
+      .where(
+        and(
+          sql`${knowledgeChunksTable.modelId} != ''`,
+          sql`${knowledgeChunksTable.modelId} != ${modelId}`
+        )
+      )
+    return Number(rows[0]?.c ?? 0)
+  }
+
+  async deleteSource(sourceId: string): Promise<void> {
+    await this.deleteChunksBySource(sourceId)
+    await this.db.delete(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.id, sourceId))
+  }
+
+  async deleteNotebook(notebookId: string): Promise<void> {
+    await this.deleteChunksByNotebook(notebookId)
+    await this.db
+      .delete(knowledgeSourcesTable)
+      .where(eq(knowledgeSourcesTable.notebookId, notebookId))
+    await this.db.delete(notebooksTable).where(eq(notebooksTable.id, notebookId))
+  }
+
   /** 简易 LIKE 检索（K1.1 验收用；真 FTS+向量 Ask 在 K1.2） */
   async searchChunksLike(
     notebookId: string,
@@ -418,6 +467,10 @@ export class KnowledgeRepository {
     sources: number
     chunks: number
     pendingJobs: number
+    /** 原文合计（knowledge_sources.byte_size） */
+    originalBytes: number
+    /** 本笔记本/库估算占用：原文 + 提取正文长度 + 向量 blob */
+    totalBytes: number
   }> {
     const notebooks = notebookId
       ? 1
@@ -442,7 +495,37 @@ export class KnowledgeRepository {
         )
     const chunks = await this.countChunks(notebookId)
     const pendingJobs = await this.countIngestJobs()
-    return { notebooks, sources, chunks, pendingJobs }
+
+    const originalRows = notebookId
+      ? await this.db
+          .select({
+            c: sql<number>`coalesce(sum(${knowledgeSourcesTable.byteSize}), 0)`
+          })
+          .from(knowledgeSourcesTable)
+          .where(eq(knowledgeSourcesTable.notebookId, notebookId))
+      : await this.db
+          .select({
+            c: sql<number>`coalesce(sum(${knowledgeSourcesTable.byteSize}), 0)`
+          })
+          .from(knowledgeSourcesTable)
+    const originalBytes = Number(originalRows[0]?.c ?? 0)
+
+    const derivedRows = notebookId
+      ? await this.db
+          .select({
+            c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText}) + length(${knowledgeChunksTable.embedding})), 0)`
+          })
+          .from(knowledgeChunksTable)
+          .where(eq(knowledgeChunksTable.notebookId, notebookId))
+      : await this.db
+          .select({
+            c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText}) + length(${knowledgeChunksTable.embedding})), 0)`
+          })
+          .from(knowledgeChunksTable)
+    const derivedBytes = Number(derivedRows[0]?.c ?? 0)
+    const totalBytes = originalBytes + derivedBytes
+
+    return { notebooks, sources, chunks, pendingJobs, originalBytes, totalBytes }
   }
 
   /** 暴露底层 job 行（调试） */
