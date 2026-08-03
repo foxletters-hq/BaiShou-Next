@@ -224,17 +224,16 @@ const IncrementalSyncScreen: React.FC = () => {
                   )}
                 </Text>
               </View>
-              <Switch
-                value={trafficSettings.enabled}
-                onValueChange={handleTrafficEnabledChange}
-              />
+              <Switch value={trafficSettings.enabled} onValueChange={handleTrafficEnabledChange} />
             </View>
             {trafficSettings.enabled ? (
               <>
                 <Text style={[styles.trafficTitle, { color: colors.textPrimary, marginTop: 12 }]}>
                   {t('settings.sync_traffic_threshold', '流量提示阈值（MB）')}
                 </Text>
-                <Text style={[styles.trafficHint, { color: colors.textSecondary, marginBottom: 6 }]}>
+                <Text
+                  style={[styles.trafficHint, { color: colors.textSecondary, marginBottom: 6 }]}
+                >
                   {t(
                     'settings.sync_traffic_threshold_hint',
                     '移动数据下，上传+下载合计超过此值才弹出警告'

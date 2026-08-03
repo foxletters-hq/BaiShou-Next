@@ -56,17 +56,24 @@ function formatMb(bytes: number): string {
 }
 
 function statusLabel(status: string, t: (k: string, f: string) => string): string {
-  const map: Record<string, [string, string]> = {
-    pending: ['knowledge.status_pending', '等待中'],
-    extracting: ['knowledge.status_extracting', '提取中'],
-    needs_ocr: ['knowledge.status_needs_ocr', '需 OCR'],
-    partial: ['knowledge.status_partial', '部分文本'],
-    embedding: ['knowledge.status_embedding', '索引中'],
-    ready: ['knowledge.status_ready', '就绪'],
-    failed: ['knowledge.status_failed', '失败']
+  switch (status) {
+    case 'pending':
+      return t('knowledge.status_pending', '等待中')
+    case 'extracting':
+      return t('knowledge.status_extracting', '提取中')
+    case 'needs_ocr':
+      return t('knowledge.status_needs_ocr', '需 OCR')
+    case 'partial':
+      return t('knowledge.status_partial', '部分文本')
+    case 'embedding':
+      return t('knowledge.status_embedding', '索引中')
+    case 'ready':
+      return t('knowledge.status_ready', '就绪')
+    case 'failed':
+      return t('knowledge.status_failed', '失败')
+    default:
+      return status
   }
-  const entry = map[status]
-  return entry ? t(entry[0], entry[1]) : status
 }
 
 export function KnowledgeScreen() {
@@ -466,9 +473,7 @@ export function KnowledgeScreen() {
                 style={[styles.sourceRow, { borderBottomColor: colors.borderSubtle }]}
               >
                 <Text style={{ color: colors.textPrimary, flex: 1 }}>{s.title}</Text>
-                <Text style={{ color: colors.textSecondary }}>
-                  {statusLabel(s.status, t)}
-                </Text>
+                <Text style={{ color: colors.textSecondary }}>{statusLabel(s.status, t)}</Text>
               </View>
             ))
           )}
@@ -553,9 +558,7 @@ export function KnowledgeScreen() {
             </Text>
           }
           ListHeaderComponent={
-            error ? (
-              <Text style={{ color: colors.error, marginBottom: 8 }}>{error}</Text>
-            ) : null
+            error ? <Text style={{ color: colors.error, marginBottom: 8 }}>{error}</Text> : null
           }
           renderItem={({ item }) => {
             const stats = statsById[item.id]
