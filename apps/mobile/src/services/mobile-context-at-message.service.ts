@@ -261,7 +261,9 @@ export async function loadContextAtMessage(
     ? await buildSystemPromptForSession({
         sessionId,
         sessionRepo: deps.sessionRepo,
-        assistantRepo: { findById: (id) => deps.assistantManager.findById(id) },
+        assistantRepo: {
+          findById: async (id) => (await deps.assistantManager.findById(id)) ?? null
+        },
         userConfig,
         provider,
         modelId,

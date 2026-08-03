@@ -324,6 +324,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     agentDbRuntimeRef.current = {
       expoDb,
       drizzleDb,
+      pathService,
       sessionRepo,
       assistantRepo,
       settingsRepo,
