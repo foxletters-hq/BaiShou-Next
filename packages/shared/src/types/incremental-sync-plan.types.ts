@@ -71,6 +71,11 @@ export interface IncrementalSyncPlanPreview {
   prunedRegistryVaults?: string[]
   /** 规划完成时的本地/远端指纹，供确认前漂移检测 */
   planReuseBaseline?: IncrementalSyncPlanReuseBaseline
+  /**
+   * V2.5：rename pass（服务端移动）涉及的文件数。
+   * 规划阶段为模拟值；执行成功后对应实际移动数。
+   */
+  renamedFileCount?: number
 }
 
 export type IncrementalSyncPlanDecision = Pick<MergeDecision, 'filePath' | 'type' | 'direction'>

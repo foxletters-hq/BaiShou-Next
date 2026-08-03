@@ -255,6 +255,8 @@ export function buildIncrementalSyncPlanPreview(options: {
   blockedDeleteCount?: number
   blockedDeleteDirection?: 'local' | 'remote'
   extraWarnings?: string[]
+  /** V2.5 rename pass 文件数（模拟或实际） */
+  renamedFileCount?: number
 }): IncrementalSyncPlanPreview {
   const skippedCount = options.decisions.filter((d) => d.type === 'skip').length
   const items = options.decisions
@@ -310,6 +312,9 @@ export function buildIncrementalSyncPlanPreview(options: {
     deletePropagationReason: options.deletePropagationReason,
     requiresDeletePropagationChoice: options.deletePropagationBlocked ?? false,
     blockedDeleteCount: options.blockedDeleteCount,
-    blockedDeleteDirection: options.blockedDeleteDirection
+    blockedDeleteDirection: options.blockedDeleteDirection,
+    ...(typeof options.renamedFileCount === 'number' && options.renamedFileCount > 0
+      ? { renamedFileCount: options.renamedFileCount }
+      : {})
   }
 }
