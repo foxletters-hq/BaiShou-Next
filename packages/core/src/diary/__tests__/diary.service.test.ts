@@ -7,6 +7,8 @@ import { ShadowIndexRepository } from '@baishou/database'
 import { DiaryDateConflictError } from '../diary.types'
 import { Diary, parseDateStr, formatLocalDate } from '@baishou/shared'
 
+const TEST_VAULT_ID = 'vlt_test'
+
 describe('DiaryService - Single Source of Truth architecture', () => {
   let mockShadowRepo: import('vitest').Mocked<ShadowIndexRepository>
   let mockFileSync: import('vitest').Mocked<FileSyncService>
@@ -130,7 +132,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       mood: null,
       location: null,
       locationDetail: null,
-      vaultName: 'TestVault'
+      vaultId: TEST_VAULT_ID
     })
 
     const existingDiary: Diary = {
@@ -184,7 +186,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       mood: null,
       location: null,
       locationDetail: null,
-      vaultName: 'TestVault'
+      vaultId: TEST_VAULT_ID
     })
 
     mockFileSync.readJournal.mockImplementation(async (d) => {
@@ -234,7 +236,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       mood: null,
       location: null,
       locationDetail: null,
-      vaultName: 'TestVault'
+      vaultId: TEST_VAULT_ID
     })
 
     await service.delete(1)
@@ -290,7 +292,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-        vaultName: 'TestVault'
+        vaultId: TEST_VAULT_ID
       })
       mockShadowSync.syncJournal.mockResolvedValue({
         isChanged: true,
@@ -340,7 +342,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-        vaultName: 'TestVault'
+        vaultId: TEST_VAULT_ID
       })
       mockShadowSync.syncJournal.mockResolvedValue({
         isChanged: false,
@@ -375,7 +377,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-        vaultName: 'TestVault'
+        vaultId: TEST_VAULT_ID
       })
       mockFileSync.readJournal.mockResolvedValue({
         id: 20,
@@ -411,7 +413,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
   describe('searchPage', () => {
     const shadowRow = (id: number, favorite = false) => ({
       id,
-      vaultName: 'default',
+      vaultId: TEST_VAULT_ID,
       filePath: `d/${id}.md`,
       date: '2026-03-15T00:00:00.000Z',
       createdAt: '2026-03-15T00:00:00.000Z',
@@ -484,7 +486,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-        vaultName: 'TestVault'
+        vaultId: TEST_VAULT_ID
       })
       mockShadowSync.syncJournal.mockResolvedValue({ isChanged: false, meta: null })
       mockFileSync.readJournal.mockResolvedValue({
@@ -519,7 +521,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: 'happy',
         location: null,
         locationDetail: null,
-        vaultName: 'TestVault',
+        vaultId: TEST_VAULT_ID,
         rawContent: '影子索引正文',
         tags: '工作,日记'
       })
@@ -551,7 +553,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-        vaultName: 'TestVault',
+        vaultId: TEST_VAULT_ID,
         rawContent: '影子正文'
       })
       mockFileSync.readJournal.mockResolvedValue({
@@ -585,7 +587,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
         mood: null,
         location: null,
         locationDetail: null,
-        vaultName: 'TestVault',
+        vaultId: TEST_VAULT_ID,
         rawContent: '仅影子索引中的正文',
         tags: 'a,b'
       })
