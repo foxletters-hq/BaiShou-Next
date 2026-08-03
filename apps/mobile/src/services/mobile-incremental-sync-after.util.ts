@@ -168,10 +168,14 @@ export async function runMobileIncrementalAfterSync(
             activeVaultId = deriveLegacyVaultId(activeVaultName)
           }
           const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+          const vaults = deps.vaultService
+            ? deps.vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name }))
+            : undefined
           await runMobileDerivedIndexHydration({
             drizzleDb: runtime.drizzleDb,
             vaultId: activeVaultId,
             vaultName: activeVaultName,
+            vaults,
             embeddingProvider: emb.embeddingProvider,
             embeddingModelId: emb.embeddingModelId,
             reason: 'incremental-sync'

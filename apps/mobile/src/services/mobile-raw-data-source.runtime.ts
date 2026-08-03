@@ -1,13 +1,14 @@
 import {
   createRawDataSourceManager,
   MemoryJsonlBackfillService,
+  LegacyManualMemoryCopyService,
+  MemoryRawManager,
+  DerivedFreshnessService,
   MemorySyncService,
   GraphSyncService,
   FsVersionManager,
   type RawDataSourceManager,
-  type MemoryRawManager,
   type GraphRawManager,
-  type DerivedFreshnessService,
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
@@ -18,7 +19,7 @@ import {
   type AppDatabase
 } from '@baishou/database'
 import { AIProviderRegistry, EmbeddingAdapter, type IAIProvider } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import { logger, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 
 export async function resolveMobileEmbeddingForHydration(
@@ -52,6 +53,7 @@ let runtime: {
   graphManager: GraphRawManager
   freshness: DerivedFreshnessService
   pathService: IStoragePathService
+  fileSystem: IFileSystem
 } | null = null
 
 export function ensureMobileRawDataRuntime(options: {
@@ -77,7 +79,8 @@ export function ensureMobileRawDataRuntime(options: {
     memoryManager: created.memoryManager,
     graphManager: created.graphManager,
     freshness: created.freshness,
-    pathService: options.pathService
+    pathService: options.pathService,
+    fileSystem: options.fileSystem
   }
   return runtime
 }
@@ -102,6 +105,57 @@ export function resetMobileRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
   runtime = null
+}
+
+function createMobileMemoryEmbedSink(
+  hsRepo: SqliteHybridSearchRepository,
+  embeddingAdapter?: EmbeddingAdapter | null
+) {
+  return {
+    embedText: async (opts: {
+      text: string
+      sourceType: string
+      sourceId: string
+      groupId: string
+      vaultId: string
+      metadataJson?: string
+      sourceCreatedAt?: number
+    }) => {
+      if (!embeddingAdapter?.isConfigured) {
+        throw new Error('Embedding adapter not configured')
+      }
+      await embeddingAdapter.embedText({
+        ...opts,
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId: opts.vaultId
+      })
+    },
+    deleteBySource: (sourceType: string, sourceId: string) =>
+      hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
+    listSourceIdsByType: (
+      sourceType: string,
+      options?: { groupId?: string; vaultId?: string }
+    ) =>
+      hsRepo.listSourceIdsByType(sourceType, {
+        groupId: options?.groupId ?? MEMORY_EMBED_GROUP_ID,
+        vaultId: options?.vaultId
+      })
+  }
+}
+
+function createVaultScopedMemoryManager(vaultName: string): MemoryRawManager {
+  if (!runtime) {
+    throw new Error('mobile raw-data runtime not ready')
+  }
+  const { pathService, fileSystem } = runtime
+  const scopedPath = {
+    getMemoryBaseDirectory: async () => {
+      const vaultDir = await pathService.getVaultDirectory(vaultName)
+      return `${vaultDir}/Memory`
+    }
+  } as unknown as IStoragePathService
+  // 独立 freshness，避免覆盖活跃仓库 Memory 注册
+  return new MemoryRawManager(scopedPath, fileSystem, new DerivedFreshnessService())
 }
 
 /** Tool hook: only graph pending-index → SQLite. */
@@ -129,6 +183,8 @@ export async function runMobileDerivedIndexHydration(options: {
   drizzleDb: AppDatabase
   vaultId: string
   vaultName?: string
+  /** 全部仓库；缺省则仅活跃仓库（V1.6 复制为空操作） */
+  vaults?: Array<{ id: string; name: string }>
   embeddingProvider?: IAIProvider | null
   embeddingModelId?: string | null
   reason: string
@@ -174,15 +230,37 @@ export async function runMobileDerivedIndexHydration(options: {
     }
     await hsRepo.normalizeManualToMemory({ vaultId: options.vaultId })
 
+    // V1.6：遗留手动记忆复制到各仓库
+    const vaults =
+      options.vaults && options.vaults.length > 0
+        ? options.vaults
+        : [{ id: options.vaultId, name: vaultName }]
+    const activeId = options.vaultId
+    const legacyCopy = await new LegacyManualMemoryCopyService().copyToOtherVaults({
+      vaults,
+      getManager: (vault) => {
+        if (vault.id === activeId) return runtime!.memoryManager
+        return createVaultScopedMemoryManager(vault.name)
+      },
+      afterWrite: async (vault, manager) => {
+        if (!embeddingAdapter?.isConfigured) return
+        const memorySync = new MemorySyncService(
+          manager,
+          createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
+        )
+        await memorySync.syncPendingIndex({ vaultId: vault.id, vaultName: vault.name })
+      }
+    })
+
     if (embeddingAdapter?.isConfigured) {
-      const memorySync = new MemorySyncService(runtime.memoryManager, {
-        embedText: (opts) => embeddingAdapter!.embedText(opts),
-        deleteBySource: (sourceType, sourceId) =>
-          hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-        listSourceIdsByType: (sourceType, groupId) =>
-          hsRepo.listSourceIdsByType(sourceType, groupId)
+      const memorySync = new MemorySyncService(
+        runtime.memoryManager,
+        createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
+      )
+      await memorySync.syncPendingIndex({
+        vaultId: options.vaultId,
+        vaultName: options.vaultName
       })
-      await memorySync.syncPendingIndex()
     }
 
     const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
@@ -193,7 +271,9 @@ export async function runMobileDerivedIndexHydration(options: {
     })
     await graphSync.syncPendingIndex()
 
-    logger.info(`[RawData] mobile derived hydration done (${options.reason})`)
+    logger.info(
+      `[RawData] mobile derived hydration done (${options.reason}): legacyCopy=${legacyCopy.copied}/${legacyCopy.skipped}`
+    )
   } catch (e) {
     logger.warn(`[RawData] mobile derived hydration failed (${options.reason}):`, e as Error)
   }

@@ -1,18 +1,21 @@
 import {
   createRawDataSourceManager,
   MemoryJsonlBackfillService,
+  LegacyManualMemoryCopyService,
+  MemoryRawManager,
+  DerivedFreshnessService,
   MemorySyncService,
   GraphSyncService,
   FsVersionManager,
   bindPendingReextractCollaborators,
   type IVersionManager,
   type RawDataSourceManager,
-  type MemoryRawManager,
   type GraphRawManager,
-  type DerivedFreshnessService,
   type MemoryConsistencyReport,
-  type MemoryConsistencyRepairResult
+  type MemoryConsistencyRepairResult,
+  type IStoragePathService
 } from '@baishou/core-desktop'
+import { VaultScopedStoragePathService } from './vault-scoped-path.service'
 import {
   connectionManager,
   createSqlExecutorFromDrizzleDb,
@@ -120,25 +123,35 @@ function createMemoryEmbedSink(
       sourceType: string
       sourceId: string
       groupId: string
-      vaultName: string
+      vaultId: string
       metadataJson?: string
       sourceCreatedAt?: number
     }) => {
       if (!embeddingAdapter?.isConfigured) {
         throw new Error('Embedding adapter not configured')
       }
-      const vaultId = resolveVaultIdByName(opts.vaultName)
       await embeddingAdapter.embedText({
         ...opts,
         groupId: MEMORY_EMBED_GROUP_ID,
-        vaultId
+        vaultId: opts.vaultId
       })
     },
     deleteBySource: (sourceType: string, sourceId: string) =>
       hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-    listSourceIdsByType: (sourceType: string, groupId?: string) => {
-      if (typeof groupId === 'string' && groupId.startsWith('memory:')) {
-        const vaultName = groupId.slice('memory:'.length)
+    listSourceIdsByType: (
+      sourceType: string,
+      options?: { groupId?: string; vaultId?: string }
+    ) => {
+      if (options && typeof options === 'object' && ('groupId' in options || 'vaultId' in options)) {
+        return hsRepo.listSourceIdsByType(sourceType, {
+          groupId: options.groupId ?? MEMORY_EMBED_GROUP_ID,
+          vaultId: options.vaultId
+        })
+      }
+      // legacy string arg: memory:<name> or bare vault name / id
+      const legacy = options as unknown as string | undefined
+      if (typeof legacy === 'string' && legacy.startsWith('memory:')) {
+        const vaultName = legacy.slice('memory:'.length)
         return hsRepo.listSourceIdsByType(sourceType, {
           groupId: MEMORY_EMBED_GROUP_ID,
           vaultId: resolveVaultIdByName(vaultName)
@@ -146,23 +159,71 @@ function createMemoryEmbedSink(
       }
       return hsRepo.listSourceIdsByType(sourceType, {
         groupId: MEMORY_EMBED_GROUP_ID,
-        vaultId: groupId ? resolveVaultIdByName(groupId) : undefined
+        vaultId: typeof legacy === 'string' ? resolveVaultIdByName(legacy) : undefined
       })
     }
   }
 }
 
+function createVaultScopedMemoryManager(vaultName: string): MemoryRawManager {
+  const scoped: IStoragePathService = new VaultScopedStoragePathService(pathService, vaultName)
+  // 独立 freshness，避免覆盖活跃仓库 Memory 在 DerivedFreshnessService 上的注册
+  return new MemoryRawManager(scoped, fileSystem, new DerivedFreshnessService())
+}
+
 export async function syncMemoryPendingIndex(options: {
   hsRepo: SqliteHybridSearchRepository
   embeddingAdapter?: EmbeddingAdapter | null
+  memoryManager?: MemoryRawManager
+  vaultId?: string
+  vaultName?: string
 }): Promise<{ shards: number; upserted: number; deleted: number }> {
-  const { memoryManager } = ensureRawDataRuntime()
+  const memoryManager = options.memoryManager ?? ensureRawDataRuntime().memoryManager
   const { hsRepo, embeddingAdapter } = options
   if (!embeddingAdapter?.isConfigured) {
     return { shards: 0, upserted: 0, deleted: 0 }
   }
   const sync = new MemorySyncService(memoryManager, createMemoryEmbedSink(hsRepo, embeddingAdapter))
-  return sync.syncPendingIndex()
+  return sync.syncPendingIndex({
+    vaultId: options.vaultId,
+    vaultName: options.vaultName
+  })
+}
+
+/** V1.6：遗留手动记忆复制到除原件外的各仓库，并排队嵌入。 */
+async function copyLegacyManualMemoriesAcrossVaults(options: {
+  hsRepo: SqliteHybridSearchRepository
+  embeddingAdapter?: EmbeddingAdapter | null
+}): Promise<{ originals: number; copied: number; skipped: number }> {
+  const vaults = vaultService
+    .getAllVaults()
+    .map((v) => ({ id: v.id, name: v.name }))
+    .filter((v) => v.id && v.name)
+  if (vaults.length <= 1) {
+    return { originals: 0, copied: 0, skipped: 0 }
+  }
+
+  const { memoryManager } = ensureRawDataRuntime()
+  const active = vaultService.getActiveVault()
+  const service = new LegacyManualMemoryCopyService()
+
+  return service.copyToOtherVaults({
+    vaults,
+    getManager: (vault) => {
+      if (active && vault.id === active.id) return memoryManager
+      return createVaultScopedMemoryManager(vault.name)
+    },
+    afterWrite: async (vault, manager) => {
+      if (!options.embeddingAdapter?.isConfigured) return
+      await syncMemoryPendingIndex({
+        hsRepo: options.hsRepo,
+        embeddingAdapter: options.embeddingAdapter,
+        memoryManager: manager,
+        vaultId: vault.id,
+        vaultName: vault.name
+      })
+    }
+  })
 }
 
 export async function backfillMemoryJsonlFromEmbeddings(options: {
@@ -314,11 +375,20 @@ export async function runDerivedIndexHydration(reason: string): Promise<void> {
       hsRepo,
       vaultId: activeVault.id
     })
-    const memory = await syncMemoryPendingIndex({ hsRepo, embeddingAdapter })
+    const legacyCopy = await copyLegacyManualMemoriesAcrossVaults({
+      hsRepo,
+      embeddingAdapter
+    })
+    const memory = await syncMemoryPendingIndex({
+      hsRepo,
+      embeddingAdapter,
+      vaultId: activeVault.id,
+      vaultName: activeVault.name
+    })
     const graph = await syncGraphPendingIndexWithDeps({ graphRepo, embeddingAdapter })
 
     logger.info(
-      `[RawData] derived hydration done (${reason}): backfill=${backfill.written}/${backfill.skipped} normalized=${backfill.normalized} meta=${backfill.metadataPatched} memoryShards=${memory.shards} graphShards=${graph.shards}`
+      `[RawData] derived hydration done (${reason}): backfill=${backfill.written}/${backfill.skipped} normalized=${backfill.normalized} meta=${backfill.metadataPatched} legacyCopy=${legacyCopy.copied}/${legacyCopy.skipped} memoryShards=${memory.shards} graphShards=${graph.shards}`
     )
   } catch (e) {
     logger.warn(`[RawData] derived hydration failed (${reason}):`, e as Error)
