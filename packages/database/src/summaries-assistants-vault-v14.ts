@@ -22,9 +22,7 @@ async function tableExists(exec: SqlExec, table: string): Promise<boolean> {
 async function columnNames(exec: SqlExec, table: string): Promise<Set<string>> {
   const info = await exec(`PRAGMA table_info(${table})`)
   return new Set(
-    info.rows
-      .map((r) => String((r as { name?: unknown }).name ?? ''))
-      .filter((n) => n.length > 0)
+    info.rows.map((r) => String((r as { name?: unknown }).name ?? '')).filter((n) => n.length > 0)
   )
 }
 
@@ -59,9 +57,7 @@ export async function ensureSummariesVaultIsolation(exec: SqlExec): Promise<{
   await exec(`DROP INDEX IF EXISTS summaries_type_start_date_end_date_unique`)
   await exec(SUMMARIES_VAULT_UNIQUE_INDEX_SQL)
 
-  const del = await exec(
-    `DELETE FROM summaries WHERE vault_id IS NULL OR TRIM(vault_id) = ''`
-  )
+  const del = await exec(`DELETE FROM summaries WHERE vault_id IS NULL OR TRIM(vault_id) = ''`)
 
   return {
     droppedLegacyIndex: true,
@@ -91,8 +87,7 @@ export async function ensureAssistantsVaultIsolation(exec: SqlExec): Promise<{
   const deletedOrphans = Number(del.rowsAffected ?? 0)
 
   const pk = await pkColumns(exec, 'agent_assistants')
-  const hasComposite =
-    pk.length === 2 && pk.includes('vault_id') && pk.includes('id')
+  const hasComposite = pk.length === 2 && pk.includes('vault_id') && pk.includes('id')
   if (hasComposite) {
     return { rebuiltPk: false, deletedOrphans }
   }
@@ -132,9 +127,7 @@ export async function ensureAssistantsVaultIsolation(exec: SqlExec): Promise<{
   const selectEmojiGroupId = freshCols.has('emoji_group_id')
     ? 'emoji_group_id'
     : 'NULL AS emoji_group_id'
-  const selectEmojiEnabled = freshCols.has('emoji_enabled')
-    ? 'emoji_enabled'
-    : '0 AS emoji_enabled'
+  const selectEmojiEnabled = freshCols.has('emoji_enabled') ? 'emoji_enabled' : '0 AS emoji_enabled'
   const selectEmojiGroupIds = freshCols.has('emoji_group_ids')
     ? 'emoji_group_ids'
     : 'NULL AS emoji_group_ids'

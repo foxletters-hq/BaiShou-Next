@@ -217,15 +217,9 @@ export class MessageRepository implements AgentMessageRepository {
             sessionTitle: agentSessionsTable.title
           })
           .from(agentMessagesTable)
-          .innerJoin(
-            agentSessionsTable,
-            eq(agentMessagesTable.sessionId, agentSessionsTable.id)
-          )
+          .innerJoin(agentSessionsTable, eq(agentMessagesTable.sessionId, agentSessionsTable.id))
           .where(
-            and(
-              eq(agentMessagesTable.id, row.message_id),
-              eq(agentSessionsTable.vaultId, vaultId)
-            )
+            and(eq(agentMessagesTable.id, row.message_id), eq(agentSessionsTable.vaultId, vaultId))
           )
           .limit(1)
 

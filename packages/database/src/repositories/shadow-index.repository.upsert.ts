@@ -412,10 +412,7 @@ export class ShadowIndexUpsertOps {
     const deleted = await this.database
       .delete(shadowJournalIndexTable)
       .where(
-        and(
-          eq(shadowJournalIndexTable.id, id),
-          eq(shadowJournalIndexTable.vaultId, this.vaultId)
-        )
+        and(eq(shadowJournalIndexTable.id, id), eq(shadowJournalIndexTable.vaultId, this.vaultId))
       )
       .returning({ id: shadowJournalIndexTable.id })
 

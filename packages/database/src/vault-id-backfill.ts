@@ -40,9 +40,7 @@ async function tableExists(exec: SqlExecFn, table: string): Promise<boolean> {
 
 async function columnNames(exec: SqlExecFn, table: string): Promise<Set<string>> {
   const info = await exec(`PRAGMA table_info(${table})`)
-  return new Set(
-    info.rows.map((c) => String((c as { name?: unknown }).name ?? '')).filter(Boolean)
-  )
+  return new Set(info.rows.map((c) => String((c as { name?: unknown }).name ?? '')).filter(Boolean))
 }
 
 async function renameColumnIfNeeded(
@@ -260,5 +258,8 @@ export async function migrateAgentDbVaultNameToVaultId(
 }
 
 /** 保留 V1.0 名字回填（在 rename 之前调用，便于旧库先从 group_id 推断 vault_name） */
-export { backfillMemoryEmbeddingsVaultName, countEmptyVaultEmbeddingsByBucket } from './memory-embeddings-vault-backfill'
+export {
+  backfillMemoryEmbeddingsVaultName,
+  countEmptyVaultEmbeddingsByBucket
+} from './memory-embeddings-vault-backfill'
 export type { MemoryEmbeddingsVaultBackfillCounts } from './memory-embeddings-vault-backfill'

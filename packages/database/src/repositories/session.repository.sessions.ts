@@ -75,14 +75,10 @@ export class SessionCrudOps {
     searchQuery?: string,
     vaultId?: string | null
   ): Promise<AgentSessionRow[]> {
-    const normalizedVaultId = vaultId?.trim()
-      ? resolveInsertVaultId(vaultId.trim())
-      : undefined
+    const normalizedVaultId = vaultId?.trim() ? resolveInsertVaultId(vaultId.trim()) : undefined
     // 公开列表缺 vaultId → fail-closed（等价 1=0），禁止静默扫全表
     if (!normalizedVaultId) {
-      console.warn(
-        '[SessionRepo] findAllSessions refused: vaultId is required (fail-closed)'
-      )
+      console.warn('[SessionRepo] findAllSessions refused: vaultId is required (fail-closed)')
       return []
     }
 
