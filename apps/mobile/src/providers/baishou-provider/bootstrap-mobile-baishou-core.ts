@@ -123,11 +123,12 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       )
     }
 
-    // 3. 构建 Repositories
+    // 3. 构建 Repositories（vault id 解析器稍后挂上活跃仓）
+    let resolveActiveVaultId: () => string | null = () => null
     const sessionRepo = new SessionRepository(drizzleDb)
-    const assistantRepo = new AssistantRepository(drizzleDb)
+    const assistantRepo = new AssistantRepository(drizzleDb, () => resolveActiveVaultId())
     const settingsRepo = new SettingsRepository(drizzleDb)
-    const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+    const summaryRepo = new SummaryRepositoryImpl(drizzleDb, () => resolveActiveVaultId())
     const profileRepo = new UserProfileRepository(drizzleDb)
     const attachmentManager = new MobileAttachmentManagerService(pathService, fileSystem)
 
@@ -206,10 +207,16 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
     const assistantManager = new AssistantManagerService(
       assistantRepo,
       assistantFileService,
-      attachmentManager
+      attachmentManager,
+      () => resolveActiveVaultId()
     )
 
     const vaultService = new VaultService(pathService, fileSystem)
+    resolveActiveVaultId = () => {
+      const active = vaultService.getActiveVault()
+      if (active?.id) return active.id
+      return null
+    }
 
     const settingsFileService = new SettingsFileService(pathService, fileSystem)
     const settingsManager = new SettingsManagerService(settingsRepo, settingsFileService)
@@ -273,7 +280,8 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       summaryGenerator,
       summaryRepo,
       summaryFileService,
-      mobileAgentDbRecovery
+      mobileAgentDbRecovery,
+      () => resolveActiveVaultId()
     )
     const summaryManager = new SummaryManagerService(
       summaryRepo,

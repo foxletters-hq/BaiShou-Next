@@ -50,9 +50,10 @@ export class RecoveryAwareSummarySyncService extends SummarySyncService {
     generator: SummaryGeneratorService | null,
     summaryRepo: SummaryRepository,
     fileService: SummaryFileService,
-    private readonly recovery: MobileAgentDbRecoveryCoordinator
+    private readonly recovery: MobileAgentDbRecoveryCoordinator,
+    resolveVaultId?: () => string | null | undefined
   ) {
-    super(detector, generator, summaryRepo, fileService)
+    super(detector, generator, summaryRepo, fileService, resolveVaultId)
   }
 
   override syncSummaryFile(

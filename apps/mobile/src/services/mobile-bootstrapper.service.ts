@@ -19,8 +19,12 @@ export interface MobileBootstrapperDeps {
   settingsManager: SettingsManagerService
   summarySyncService: SummarySyncService
   getActiveVaultName?: () => Promise<string>
-  /** 磁盘上全部工作区名；会话 fullScan 需跨 vault 水合 */
+  /** 活跃工作空间稳定 ID（V1.4） */
+  getActiveVaultId?: () => Promise<string | null>
+  /** 磁盘上全部工作区名；会话/助手/总结 fullScan 需跨 vault 水合 */
   getDiskVaultNames?: () => Promise<string[]>
+  /** 目录名 → vault_id */
+  getVaultIdByName?: () => Promise<Record<string, string>>
 }
 
 /**
@@ -104,6 +108,11 @@ export class MobileDataBootstrapper {
     const activeVaultName = deps.getActiveVaultName
       ? await deps.getActiveVaultName().catch(() => undefined)
       : undefined
+    const activeVaultId = deps.getActiveVaultId
+      ? await deps.getActiveVaultId().catch(() => null)
+      : activeVaultName
+        ? deriveLegacyVaultId(activeVaultName)
+        : null
     let diskVaultNames: string[] = []
     if (deps.getDiskVaultNames) {
       try {
@@ -112,10 +121,15 @@ export class MobileDataBootstrapper {
         diskVaultNames = []
       }
     }
+    const vaultIdByName = deps.getVaultIdByName
+      ? await deps.getVaultIdByName().catch(() => ({} as Record<string, string>))
+      : {}
     const resyncOptions = {
       ...(activeVaultName ? { activeVaultName } : {}),
+      ...(activeVaultId ? { activeVaultId } : {}),
       maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
-      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {})
+      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {}),
+      ...(Object.keys(vaultIdByName).length > 0 ? { vaultIdByName } : {})
     }
 
     const tasks: Promise<unknown>[] = []
@@ -186,6 +200,12 @@ export class MobileDataBootstrapper {
       ? await deps.getActiveVaultName().catch(() => undefined)
       : undefined
 
+    const activeVaultId = deps.getActiveVaultId
+      ? await deps.getActiveVaultId().catch(() => null)
+      : activeVaultName
+        ? deriveLegacyVaultId(activeVaultName)
+        : null
+
     let diskVaultNames: string[] = []
     if (deps.getDiskVaultNames) {
       try {
@@ -198,10 +218,16 @@ export class MobileDataBootstrapper {
       }
     }
 
+    const vaultIdByName = deps.getVaultIdByName
+      ? await deps.getVaultIdByName().catch(() => ({} as Record<string, string>))
+      : {}
+
     const resyncOptions = {
       ...(activeVaultName ? { activeVaultName } : {}),
+      ...(activeVaultId ? { activeVaultId } : {}),
       maxSessionJsonReadBytes: MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES,
-      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {})
+      ...(diskVaultNames.length > 0 ? { diskVaultNames } : {}),
+      ...(Object.keys(vaultIdByName).length > 0 ? { vaultIdByName } : {})
     }
 
     logger.info('[MobileBootstrapper] session resync options', {
