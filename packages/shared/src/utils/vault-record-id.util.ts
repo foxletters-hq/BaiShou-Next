@@ -38,10 +38,7 @@ export function resolveVaultIdentity(params: {
   const defaultName = params.defaultName?.trim() || 'Personal'
   const idRaw = params.vaultId?.trim()
   if (idRaw && isVaultId(idRaw)) {
-    const name =
-      params.resolveNameById?.(idRaw)?.trim() ||
-      params.vaultName?.trim() ||
-      defaultName
+    const name = params.resolveNameById?.(idRaw)?.trim() || params.vaultName?.trim() || defaultName
     return { id: idRaw, name }
   }
   const name = params.vaultName?.trim() || defaultName
