@@ -276,7 +276,10 @@ export async function finalizeVaultRuntimeHandlers(
   }
 
   state.deleteVault = async (vaultName: string) => {
-    await deleteVaultWithShadowCleanup(vaultName, { vaultService })
+    await deleteVaultWithShadowCleanup(vaultName, {
+      vaultService,
+      agentDb: sqlExecutor ?? null
+    })
     if (isMounted()) {
       ctx.setValue((prev) => ({
         ...prev,

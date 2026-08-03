@@ -511,8 +511,17 @@ export async function switchVaultRuntime(
 /** 删除工作空间前清理其在全局 Shadow DB 中的索引 */
 export async function deleteVaultWithShadowCleanup(
   vaultName: string,
-  deps: { vaultService: VaultService }
+  deps: {
+    vaultService: VaultService
+    /** Agent DB SQL 执行器；传入时先清派生数据再删目录 */
+    agentDb?: import('@baishou/shared').ISqlExecutor | null
+  }
 ): Promise<void> {
+  if (deps.agentDb) {
+    const { purgeVaultDerivedData } = await import('@baishou/database')
+    const counts = await purgeVaultDerivedData(deps.agentDb, vaultName)
+    logger.info('[VaultRuntime] purged agent.db derived data', { vaultName, ...counts })
+  }
   if (shadowConnectionManager.isConnected()) {
     const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
     await shadowRepo.deleteAllForVault(vaultName)
