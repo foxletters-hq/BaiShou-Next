@@ -25,7 +25,13 @@ import {
 } from '@baishou/database-desktop'
 import { EmbeddingAdapter } from '@baishou/ai'
 import { logger, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
-import { fileSystem, getActiveVaultShadowRepo, pathService, vaultService, resolveVaultIdByName } from '../ipc/vault.ipc'
+import {
+  fileSystem,
+  getActiveVaultShadowRepo,
+  pathService,
+  vaultService,
+  resolveVaultIdByName
+} from '../ipc/vault.ipc'
 
 let runtime: {
   manager: RawDataSourceManager
@@ -146,11 +152,12 @@ function createMemoryEmbedSink(
     },
     deleteBySource: (sourceType: string, sourceId: string) =>
       hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-    listSourceIdsByType: (
-      sourceType: string,
-      options?: { groupId?: string; vaultId?: string }
-    ) => {
-      if (options && typeof options === 'object' && ('groupId' in options || 'vaultId' in options)) {
+    listSourceIdsByType: (sourceType: string, options?: { groupId?: string; vaultId?: string }) => {
+      if (
+        options &&
+        typeof options === 'object' &&
+        ('groupId' in options || 'vaultId' in options)
+      ) {
         return hsRepo.listSourceIdsByType(sourceType, {
           groupId: options.groupId ?? MEMORY_EMBED_GROUP_ID,
           vaultId: options.vaultId
@@ -286,7 +293,9 @@ export async function checkMemoryConsistency(options: {
   const activeVault = vaultService.getActiveVault()
   const vaultName =
     activeVault?.name ??
-    (options.vaultId ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name : undefined)
+    (options.vaultId
+      ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name
+      : undefined)
   return sync.checkConsistency({ vaultName: vaultName ?? options.vaultId })
 }
 
@@ -307,7 +316,9 @@ export async function repairMemoryConsistency(options: {
   const activeVault = vaultService.getActiveVault()
   const vaultName =
     activeVault?.name ??
-    (options.vaultId ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name : undefined)
+    (options.vaultId
+      ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name
+      : undefined)
   return sync.repairConsistency({
     confirmDeleteIds: options.confirmDeleteIds,
     restoreIds: options.restoreIds,
@@ -413,9 +424,8 @@ export async function runDerivedIndexHydration(reason: string): Promise<void> {
 /** K1.4：同步后 Notebooks/ 差集 → knowledge.db embed jobs */
 export async function runKnowledgeHydrationAfterSync(reason: string): Promise<void> {
   try {
-    const { knowledgeConnectionManager, KnowledgeRepository } = await import(
-      '@baishou/database-desktop'
-    )
+    const { knowledgeConnectionManager, KnowledgeRepository } =
+      await import('@baishou/database-desktop')
     if (!knowledgeConnectionManager.isConnected()) {
       logger.warn(`[KnowledgeHydration] skip (${reason}): knowledge db not connected`)
       return
@@ -438,9 +448,8 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
     const result = await hydration.hydrate()
 
     if (result.embedJobsEnqueued > 0) {
-      const { scheduleConsumeKnowledgeIngestJobs } = await import(
-        './knowledge-ingest-jobs.consumer'
-      )
+      const { scheduleConsumeKnowledgeIngestJobs } =
+        await import('./knowledge-ingest-jobs.consumer')
       scheduleConsumeKnowledgeIngestJobs(reason)
     }
 

@@ -11,7 +11,12 @@ import {
   shadowConnectionManager,
   knowledgeConnectionManager
 } from '@baishou/database-desktop'
-import { pathService, vaultService, connectGlobalShadowDb, connectKnowledgeDb } from '../ipc/vault.ipc'
+import {
+  pathService,
+  vaultService,
+  connectGlobalShadowDb,
+  connectKnowledgeDb
+} from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { settingsManager } from '../ipc/settings.ipc'
 import { diaryWatcher } from './diary-watcher.service'

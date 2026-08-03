@@ -43,12 +43,8 @@ export class GlobalDataBootstrapper {
       fileSystem,
       getRawDataSourceManager()
     )
-    return new SummarySyncService(
-      null,
-      null,
-      summaryRepo,
-      summaryFileService,
-      () => resolveActiveVaultId()
+    return new SummarySyncService(null, null, summaryRepo, summaryFileService, () =>
+      resolveActiveVaultId()
     )
   }
 

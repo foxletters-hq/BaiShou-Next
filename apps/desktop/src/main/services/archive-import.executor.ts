@@ -221,9 +221,7 @@ export async function executeArchiveImportFromZip(
         await fsp.copyFile(extractedDbPath, actualDbPath)
       }
 
-      await fsp
-        .rm(path.join(rootDir, 'database'), { recursive: true, force: true })
-        .catch(() => {})
+      await fsp.rm(path.join(rootDir, 'database'), { recursive: true, force: true }).catch(() => {})
     } catch (e: any) {
       logger.error('Failed to restore database from archive', e)
     }

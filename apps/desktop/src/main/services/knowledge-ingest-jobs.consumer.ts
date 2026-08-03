@@ -5,8 +5,7 @@ import { KnowledgeIngestService } from '@baishou/core-desktop'
 import { getNotebookRawManager } from './raw-data-source.runtime'
 import { fileSystem } from './node-file-system'
 
-let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null =
-  null
+let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null
 
 async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | null> {
   if (!knowledgeConnectionManager.isConnected()) {
