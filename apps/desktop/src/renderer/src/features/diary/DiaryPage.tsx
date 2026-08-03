@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -16,6 +16,7 @@ import type { DiaryEntry } from './DiaryCard'
 import { useToast } from '@baishou/ui'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryGrid } from './components/DiaryGrid'
+import { DiaryGraphExtractBanner } from './components/DiaryGraphExtractBanner'
 import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
@@ -90,6 +91,22 @@ export const DiaryPage: React.FC = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
   const gridScrollRef = useRef<HTMLDivElement>(null)
+  const [pendingGraphCount, setPendingGraphCount] = useState(0)
+  const [graphExtractBusy, setGraphExtractBusy] = useState(false)
+  const [graphExtractProgress, setGraphExtractProgress] = useState('')
+
+  const refreshPendingGraph = useCallback(async () => {
+    try {
+      const pending = await window.api.graph.listPendingReextract()
+      setPendingGraphCount(pending.length)
+    } catch {
+      setPendingGraphCount(0)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshPendingGraph()
+  }, [refreshPendingGraph])
 
   useEffect(() => {
     const api = (window as any).api
@@ -98,13 +115,51 @@ export const DiaryPage: React.FC = () => {
     const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
       if (event?.type === 'saved') {
         gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+        void refreshPendingGraph()
       }
     })
 
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [])
+  }, [refreshPendingGraph])
+
+  const handleBatchGraphExtract = useCallback(async () => {
+    if (graphExtractBusy || pendingGraphCount <= 0) return
+    setGraphExtractBusy(true)
+    setGraphExtractProgress(t('graph.extracting', '正在抽取…'))
+    const unsubscribe = window.api.graph.onExtractProgress?.((p) => {
+      setGraphExtractProgress(
+        t('graph.extract_progress', '正在整理 {{current}}/{{total}}', {
+          current: p.current,
+          total: p.total
+        })
+      )
+    })
+    try {
+      const result = await window.api.graph.extract()
+      if (result.failed > 0) {
+        toast.showError(
+          t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
+            done: result.done,
+            failed: result.failed
+          })
+        )
+      } else {
+        toast.showSuccess(
+          t('graph.extract_batch_done', '已整理 {{done}} 篇日记', { done: result.done })
+        )
+      }
+      await refreshPendingGraph()
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      toast.showError(message || t('graph.extract_failed', '整理失败'))
+    } finally {
+      unsubscribe?.()
+      setGraphExtractBusy(false)
+      setGraphExtractProgress('')
+    }
+  }, [graphExtractBusy, pendingGraphCount, refreshPendingGraph, t, toast])
 
   // sessionStorage 同步
   useEffect(() => {
@@ -270,6 +325,13 @@ export const DiaryPage: React.FC = () => {
         todayEntry={todayEntry}
         onEditToday={handleEditToday}
         onAddNew={handleAddNew}
+      />
+
+      <DiaryGraphExtractBanner
+        pendingCount={pendingGraphCount}
+        busy={graphExtractBusy}
+        progressLabel={graphExtractProgress}
+        onExtract={() => void handleBatchGraphExtract()}
       />
 
       <DiaryGrid

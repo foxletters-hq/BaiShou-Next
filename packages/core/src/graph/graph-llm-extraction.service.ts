@@ -229,7 +229,9 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
 }
 
 /**
- * Manual diary → graph LLM extraction (management UI).
+ * Manual diary → graph LLM extraction (management UI + diary-side entry points).
+ * Single-file extract: pass `filePaths: [path]` (must be in pending-reextract).
+ * Batch progress: provide `onProgress`.
  * Order: file write → pending-index sync → commitReextract.
  * LLM failure leaves the diary in pending-reextract.
  */

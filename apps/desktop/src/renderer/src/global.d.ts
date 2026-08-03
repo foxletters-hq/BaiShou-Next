@@ -406,6 +406,9 @@ interface GraphAPI {
     failed: number
     errors: Array<{ filePath: string; message: string }>
   }>
+  onExtractProgress(
+    callback: (progress: { current: number; total: number; filePath: string }) => void
+  ): () => void
   getGlobalGraph(opts?: {
     maxNodes?: number
     minMentionCount?: number

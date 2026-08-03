@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, createElement } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -355,7 +355,72 @@ export function useDiaryEditorPage() {
     setSavePhase('saving')
     try {
       await autoSave(content)
-      toast.showSuccess(t('common.saved', '已保存'))
+      const dateKey = formatLocalDate(selectedDate)
+      let pendingFilePath: string | null = null
+      try {
+        const pending = await window.api.graph.listPendingReextract()
+        const hit = pending.find(
+          (p) => p.date === dateKey || String(p.filePath || '').includes(dateKey)
+        )
+        pendingFilePath = hit?.filePath ?? null
+      } catch {
+        // graph API optional for save success path
+      }
+
+      if (pendingFilePath) {
+        const extractPath = pendingFilePath
+        toast.showSuccess(
+          createElement(
+            'span',
+            { style: { display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' } },
+            t('common.saved', '已保存'),
+            ' · ',
+            createElement(
+              'button',
+              {
+                type: 'button',
+                style: {
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  color: 'var(--accent, #2563eb)',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  font: 'inherit'
+                },
+                onClick: (e: { stopPropagation: () => void }) => {
+                  e.stopPropagation()
+                  void (async () => {
+                    try {
+                      toast.showInfo(t('graph.extracting', '正在抽取…'), { duration: 0 })
+                      const result = await window.api.graph.extract({ filePaths: [extractPath] })
+                      if (result.failed > 0) {
+                        toast.showError(
+                          t('graph.extract_failed', '整理失败（{{failed}}）', {
+                            failed: result.failed
+                          })
+                        )
+                      } else {
+                        toast.showSuccess(
+                          t('graph.extract_this_done', '已记住这篇里的人和事')
+                        )
+                      }
+                    } catch (err: unknown) {
+                      const message = err instanceof Error ? err.message : String(err)
+                      toast.showError(message || t('graph.extract_failed', '整理失败'))
+                    }
+                  })()
+                }
+              },
+              t('graph.extract_this_entry', '让伙伴记住这篇里的人和事')
+            )
+          ),
+          { duration: 8000 }
+        )
+      } else {
+        toast.showSuccess(t('common.saved', '已保存'))
+      }
       setSavePhase('leaving')
       await new Promise((resolve) => setTimeout(resolve, 320))
       goBackToSidebar()
