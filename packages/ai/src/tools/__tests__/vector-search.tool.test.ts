@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { VectorSearchTool } from '../vector-search.tool'
 import type { ToolContext } from '../agent.tool'
 
@@ -60,7 +61,7 @@ describe('VectorSearchTool', () => {
       expect.objectContaining({
         startMs: new Date(2024, 2, 1).getTime(),
         endMs: new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1,
-        vaultName: 'Personal'
+        vaultId: deriveLegacyVaultId('Personal')
       })
     )
     expect(searchFts).not.toHaveBeenCalled()
@@ -85,7 +86,7 @@ describe('VectorSearchTool', () => {
     const expectedFilter = {
       startMs: new Date(2024, 0, 1).getTime(),
       endMs: undefined,
-      vaultName: 'Personal'
+      vaultId: deriveLegacyVaultId('Personal')
     }
     expect(searchSimilar).toHaveBeenCalledWith([0.5, 0.5], 20, expectedFilter)
     expect(searchFts).toHaveBeenCalledWith('旅行', 20, expectedFilter)

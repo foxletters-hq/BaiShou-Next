@@ -26,7 +26,7 @@ describe('MemoryDeleteTool', () => {
           {
             sourceType: MEMORY_SOURCE_TYPE,
             sourceId: 'mem-1',
-            groupId: 'memory:Personal',
+            groupId: 'memory',
             chunkText: 'user likes dark theme',
             distance: 0.1,
             createdAt: Date.parse('2026-08-01T12:00:00Z')

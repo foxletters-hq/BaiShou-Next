@@ -226,8 +226,9 @@ export class SessionManagerService {
     let skippedUnresolvedVault = 0
 
     for (const session of missing) {
+      // V2.2: DB stores vaultId; disk paths still use vault name — flush to active vault.
       const targetVault = resolveSessionFlushTargetVault(
-        session.vaultName,
+        undefined,
         activeVaultName,
         diskVaultNames
       )
@@ -236,16 +237,9 @@ export class SessionManagerService {
         console.warn('[IncrementalSync][SessionFlush] skip-unresolved-vault', {
           sessionId: session.id,
           assistantId: session.assistantId ?? null,
-          vaultName: session.vaultName ?? null
+          vaultId: session.vaultId ?? null
         })
         continue
-      }
-      const remapped =
-        Boolean(session.vaultName?.trim()) &&
-        session.vaultName !== 'default' &&
-        session.vaultName !== targetVault
-      if (remapped) {
-        remappedVaultSamples.push(`${session.id}:${session.vaultName}->${targetVault}`)
       }
       try {
         await this.persistence.flushNow(session.id, { vaultName: targetVault })
@@ -253,9 +247,8 @@ export class SessionManagerService {
         console.warn('[IncrementalSync][SessionFlush] wrote-missing-json', {
           sessionId: session.id,
           assistantId: session.assistantId ?? null,
-          sessionVaultName: session.vaultName ?? null,
+          sessionVaultId: session.vaultId ?? null,
           targetVault,
-          remapped,
           title: session.title ?? null
         })
       } catch (e) {
@@ -263,7 +256,7 @@ export class SessionManagerService {
         console.warn('[IncrementalSync][SessionFlush] write-missing-json-failed', {
           sessionId: session.id,
           assistantId: session.assistantId ?? null,
-          sessionVaultName: session.vaultName ?? null,
+          sessionVaultId: session.vaultId ?? null,
           targetVault,
           error: e instanceof Error ? e.message : String(e)
         })

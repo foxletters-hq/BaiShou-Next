@@ -2,6 +2,7 @@ import type { GraphRepository } from '@baishou/database'
 import type { GraphEdgeRawRecord, GraphNodeRawRecord } from './raw-data-source.types'
 import type { GraphRawManager } from './managers/graph.raw-manager'
 import { collapseJsonlById } from './stores/monthly-jsonl.store'
+import { resolveVaultIdForDb } from '../vault/vault-id.util'
 
 export interface GraphSyncEmbedder {
   embedQuery?(text: string): Promise<number[] | null>
@@ -64,6 +65,7 @@ export class GraphSyncService {
           }
           await this.repo.applyRawNode({
             ...raw,
+            vaultId: resolveVaultIdForDb(raw.vaultName),
             props: raw.props ?? {},
             shardMonth: shard.shardMonth,
             embedding,
@@ -82,6 +84,7 @@ export class GraphSyncService {
           }
           await this.repo.applyRawEdge({
             ...raw,
+            vaultId: resolveVaultIdForDb(raw.vaultName),
             props: raw.props ?? {},
             isCurrent: raw.isCurrent ?? true,
             sourceExcerpt: raw.sourceExcerpt ?? '',
@@ -113,14 +116,14 @@ export class GraphSyncService {
       )
       for (const row of rows) {
         if (!row?.id || row.deletedAt != null) continue
-        const vault = row.vaultName || inferredVault
-        if (!vault) continue
-        if (!inferredVault) inferredVault = vault
+        const vaultId = resolveVaultIdForDb(row.vaultName || inferredVault || '')
+        if (!vaultId) continue
+        if (!inferredVault && row.vaultName) inferredVault = row.vaultName
         const bucket = collection === 'nodes' ? liveNodeIdsByVault : liveEdgeIdsByVault
-        let set = bucket.get(vault)
+        let set = bucket.get(vaultId)
         if (!set) {
           set = new Set()
-          bucket.set(vault, set)
+          bucket.set(vaultId, set)
         }
         set.add(row.id)
       }
@@ -129,7 +132,7 @@ export class GraphSyncService {
     const vaults = new Set<string>([
       ...liveNodeIdsByVault.keys(),
       ...liveEdgeIdsByVault.keys(),
-      ...(inferredVault ? [inferredVault] : [])
+      ...(inferredVault ? [resolveVaultIdForDb(inferredVault)] : [])
     ])
 
     for (const vault of vaults) {
