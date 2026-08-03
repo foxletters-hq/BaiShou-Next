@@ -33,26 +33,6 @@
   background: var(--bg-surface-high);
 }
 
-.helpBtn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--text-primary);
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-full);
-  transition: background 0.2s;
-  padding: 0;
-}
-
-.helpBtn:hover {
-  background: var(--bg-surface-high);
-}
-
 /* 雷达扫描区域 */
 .radarZone {
   position: relative;
@@ -315,7 +295,7 @@
   width: 100%;
   height: 100%;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;

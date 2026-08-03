@@ -18,7 +18,7 @@
   flex: 0 0 auto;
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   color: var(--color-primary);
   font-size: 13px;
@@ -32,7 +32,7 @@
 }
 
 .storage-settings-action-btn-secondary {
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
 }

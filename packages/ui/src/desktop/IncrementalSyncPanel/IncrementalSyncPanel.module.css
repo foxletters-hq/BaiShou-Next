@@ -12,7 +12,7 @@
   height: 32px;
   padding: 0 12px;
   /* 与设置页 / 全部生成等同款控件描边 */
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);

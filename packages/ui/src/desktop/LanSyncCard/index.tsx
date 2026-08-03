@@ -271,7 +271,6 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                 '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。'
               )}
               size={16}
-              className={styles.helpBtn}
             />
             <button
               className={styles.refreshBtn}

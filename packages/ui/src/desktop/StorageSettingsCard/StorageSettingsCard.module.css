@@ -82,7 +82,7 @@
   padding: 14px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 12px;
-  border: 1px dashed rgba(148, 163, 184, 0.2);
+  border: 1px dashed var(--border-control);
 }
 
 .pathLabel {
@@ -164,7 +164,7 @@
   background: rgba(0, 0, 0, 0.15);
   padding: 12px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.05);
+  border: 1px solid var(--border-subtle);
 }
 
 .dot {
@@ -196,7 +196,7 @@
   justify-content: flex-end;
   gap: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-top: 1px solid var(--border-muted);
 }
 
 .vacuumBtn,

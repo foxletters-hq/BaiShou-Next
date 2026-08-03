@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.55));
+  background-color: var(--bg-overlay);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   pointer-events: all;
@@ -22,7 +22,7 @@
   padding: 28px 32px;
   border-radius: var(--radius-xl, 20px);
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--border-subtle);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
   text-align: center;
 }
