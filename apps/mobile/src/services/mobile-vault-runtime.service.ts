@@ -13,7 +13,7 @@ import {
   ShadowIndexRepository,
   ShadowIndexUpsertOps
 } from '@baishou/database'
-import { logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import type { ToolDiaryMutationResult } from '@baishou/ai'
 import { mobileDataBootstrapper, type MobileBootstrapperDeps } from './mobile-bootstrapper.service'
 import { unbindShadowVaultScanState } from './mobile-shadow-scan-state.service'
@@ -517,14 +517,18 @@ export async function deleteVaultWithShadowCleanup(
     agentDb?: import('@baishou/shared').ISqlExecutor | null
   }
 ): Promise<void> {
+  await deps.vaultService.initRegistry()
+  const vaultId =
+    deps.vaultService.getAllVaults().find((v) => v.name === vaultName)?.id ??
+    deriveLegacyVaultId(vaultName)
   if (deps.agentDb) {
     const { purgeVaultDerivedData } = await import('@baishou/database')
-    const counts = await purgeVaultDerivedData(deps.agentDb, vaultName)
-    logger.info('[VaultRuntime] purged agent.db derived data', { vaultName, ...counts })
+    const counts = await purgeVaultDerivedData(deps.agentDb, vaultId)
+    logger.info('[VaultRuntime] purged agent.db derived data', { vaultName, vaultId, ...counts })
   }
   if (shadowConnectionManager.isConnected()) {
-    const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
-    await shadowRepo.deleteAllForVault(vaultName)
+    const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+    await shadowRepo.deleteAllForVault(vaultId)
   }
   await deps.vaultService.deleteVault(vaultName)
 }
@@ -534,8 +538,8 @@ export async function clearAllVaultShadowIndexes(vaultService: VaultService): Pr
   if (!shadowConnectionManager.isConnected()) return
   const db = shadowConnectionManager.getDb()
   for (const vault of vaultService.getAllVaults()) {
-    const shadowRepo = new ShadowIndexRepository(db, vault.name)
-    await shadowRepo.deleteAllForVault(vault.name)
+    const shadowRepo = new ShadowIndexRepository(db, vault.id)
+    await shadowRepo.deleteAllForVault(vault.id)
   }
   logger.info('[VaultRuntime] Cleared shadow index for all vaults before archive restore resync')
 }

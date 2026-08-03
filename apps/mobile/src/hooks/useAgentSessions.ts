@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import type { AgentSession } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 
@@ -65,16 +66,20 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
       }
 
       try {
-        const activeVaultName =
-          services.vaultService?.getActiveVault?.()?.name ||
-          (await services.pathService?.getActiveVaultNameForContext?.().catch(() => 'Personal')) ||
-          'Personal'
+        const activeVault = services.vaultService?.getActiveVault?.()
+        const activeVaultId =
+          activeVault?.id ??
+          deriveLegacyVaultId(
+            (await services.pathService
+              ?.getActiveVaultNameForContext?.()
+              .catch(() => 'Personal')) || 'Personal'
+          )
         const sessionList = await services.sessionManager.list(
           SESSION_PAGE_SIZE + 1,
           offset,
           targetAssistantId.trim(),
           undefined,
-          activeVaultName
+          activeVaultId
         )
 
         if (reqId !== lastLoadRequestId.current) return

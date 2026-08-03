@@ -8,7 +8,7 @@ import {
   type VaultInfo
 } from '@baishou/core-desktop'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
-import { fileSystem, pathService, vaultService } from '../ipc/vault.ipc'
+import { fileSystem, pathService, vaultService, resolveVaultIdByName } from '../ipc/vault.ipc'
 import { embeddingCallback } from '../ipc/diary-embedding.callback'
 import { VaultScopedStoragePathService } from './vault-scoped-path.service'
 import { DesktopStoragePathService } from './path.service'
@@ -95,7 +95,8 @@ export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryS
     )
   }
 
-  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
+  const vaultId = resolveVaultIdByName(vaultName)
+  const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
   const { getRawDataSourceManager } = await import('./raw-data-source.runtime')
   const fileSync = new FileSyncServiceImpl(scopedPath, fileSystem, getRawDataSourceManager())
   const shadowSync = new ShadowIndexSyncService(
