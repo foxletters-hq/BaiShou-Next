@@ -60,6 +60,11 @@ export {
   deriveLegacyVaultId,
   isVaultId
 } from './utils/vault-id.util'
+export {
+  resolveVaultIdFromRecord,
+  resolveVaultIdentity,
+  type VaultIdentity
+} from './utils/vault-record-id.util'
 export * from './utils/s3-list.util'
 export * from './utils/s3-url'
 export * from './utils/cloud-sync-config.util'
