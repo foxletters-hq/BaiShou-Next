@@ -217,6 +217,12 @@ export const agentApi = {
     deleteEntry: (id: string) => ipcRenderer.invoke('rag:delete-entry', id),
     editEntry: (params: { embeddingId: string; newText: string }) =>
       ipcRenderer.invoke('rag:edit-entry', params),
+    checkConsistency: () => ipcRenderer.invoke('rag:check-consistency'),
+    repairConsistency: (params: {
+      confirmDeleteIds?: string[]
+      restoreIds?: string[]
+      cleanOrphans?: boolean
+    }) => ipcRenderer.invoke('rag:repair-consistency', params),
     hasPendingMigration: () => ipcRenderer.invoke('rag:has-pending-migration'),
     hasModelMismatch: () => ipcRenderer.invoke('rag:has-model-mismatch'),
     onRagProgress: (callback: (state: any) => void) => {
