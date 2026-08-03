@@ -369,13 +369,20 @@ export {
   resolveIncrementalSyncTransferBytes,
   formatIncrementalSyncPlanBytes,
   collectManifestVaultScopes,
-  isRegistryVaultOnDisk,
-  INCREMENTAL_SYNC_GLOBAL_SCOPE
+  isRegistryVaultOnDisk
 } from './sync/incremental-sync-plan.util'
 export type {
   IncrementalSyncBoundaryHint,
   IncrementalSyncBoundaryHintKey
 } from './sync/incremental-sync-plan.util'
+export {
+  migrateSyncManifestVaultPrefix,
+  rewriteSyncManifestVaultPath,
+  isSyncManifestPathUnderVault,
+  sumVaultFileBytes,
+  countVaultRemovedEntries
+} from './sync/migrate-sync-manifest-vault-prefix.util'
+export type { MigrateSyncManifestVaultPrefixResult } from './sync/migrate-sync-manifest-vault-prefix.util'
 
 export * from './cache'
 

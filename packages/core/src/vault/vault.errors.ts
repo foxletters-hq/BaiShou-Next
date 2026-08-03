@@ -65,3 +65,18 @@ export class VaultDeleteFilesystemError extends Error {
     this.cause = cause
   }
 }
+
+export class VaultRenameFilesystemError extends Error {
+  readonly oldName: string
+  readonly newName: string
+  readonly cause: unknown
+
+  constructor(oldName: string, newName: string, cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    super(`Failed to rename vault directory from "${oldName}" to "${newName}": ${detail}`)
+    this.name = 'VaultRenameFilesystemError'
+    this.oldName = oldName
+    this.newName = newName
+    this.cause = cause
+  }
+}
