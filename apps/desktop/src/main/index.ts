@@ -31,6 +31,7 @@ import { registerEmojiIPC } from './ipc/emoji.ipc'
 import { registerCompressionEventBridge } from './services/compression-event.service'
 import { registerSearchIPC } from './ipc/search.ipc'
 import { registerGraphIPC } from './ipc/graph.ipc'
+import { registerKnowledgeIPC } from './ipc/knowledge.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
 import { registerShortcutIPC } from './ipc/shortcut.ipc'
@@ -437,10 +438,20 @@ app.whenReady().then(async () => {
     registerEmojiIPC()
     registerSearchIPC()
     registerGraphIPC()
+    registerKnowledgeIPC()
     registerUpdaterIPC()
     registerShellIPC()
     registerShortcutIPC()
   })
+
+  // 注册桌面 PDF 按页抽取器（知识库摄入）
+  try {
+    const { registerDesktopPdfPageExtractor } =
+      await import('./services/register-desktop-pdf-extractor')
+    registerDesktopPdfPageExtractor()
+  } catch (e) {
+    logger.warn('[Startup] registerDesktopPdfPageExtractor failed:', e as Error)
+  }
 
   // 3. 确保创建 mainWindow，因为全量引导（如全局快捷键）依赖该实例结构
   markStartup('createWindow.call', { needsOnboarding })

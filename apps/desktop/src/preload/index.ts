@@ -10,6 +10,7 @@ import { legacyMigrationApi } from './legacy-migration.api'
 import { cacheApi } from './cache.api'
 import { agentWorkspaceApi } from './agent-workspace.api'
 import { graphApi } from './graph.api'
+import { knowledgeApi } from './knowledge.api'
 
 const preloadStarted = performance.now()
 ipcRenderer.send('startup:mark', {
@@ -52,6 +53,7 @@ export const api = {
   ...legacyMigrationApi,
   ...cacheApi,
   ...graphApi,
+  ...knowledgeApi,
   agentWorkspace: agentWorkspaceApi,
   shortcuts: shortcutsApi
 }
