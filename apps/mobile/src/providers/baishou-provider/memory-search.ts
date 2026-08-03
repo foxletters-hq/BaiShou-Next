@@ -1,5 +1,5 @@
 import { EmbeddingAdapter } from '@baishou/ai'
-import { filterDiaryScopedSearchResults, logger } from '@baishou/shared'
+import { logger } from '@baishou/shared'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import type { AIProviderRegistry } from '@baishou/ai'
 import type { MobileStoragePathService } from '../../services/path.service'
@@ -18,17 +18,14 @@ export function createMemorySearch(deps: {
     const runtime = agentDbRuntimeRef.current
     if (!runtime) return []
     const activeVault = await pathService.getActiveVaultNameForContext().catch(() => 'Personal')
-    const mapScopedResults = (
+    const mapResults = (
       rows: Array<{
         chunkText: string
         score: number
         createdAt?: number
-        sourceType?: string
-        sessionId?: string
-        groupId?: string
       }>
     ) =>
-      filterDiaryScopedSearchResults(rows, activeVault).map((r) => ({
+      rows.map((r) => ({
         chunkText: r.chunkText,
         score: r.score,
         createdAt: r.createdAt
@@ -43,15 +40,19 @@ export function createMemorySearch(deps: {
 
       if (!embeddingProviderId || !embeddingModelId) {
         logger.warn('[MemorySearch] 嵌入模型未配置，降级为 FTS 搜索')
-        const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-        return mapScopedResults(ftsResults)
+        const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
+          vaultName: activeVault
+        })
+        return mapResults(ftsResults)
       }
 
       const embeddingProviderConfig = providers.find((p: any) => p.id === embeddingProviderId)
       if (!embeddingProviderConfig) {
         logger.warn('[MemorySearch] 嵌入供应商配置未找到，降级为 FTS 搜索')
-        const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-        return mapScopedResults(ftsResults)
+        const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
+          vaultName: activeVault
+        })
+        return mapResults(ftsResults)
       }
 
       const embeddingProvider = registry.getOrUpdateProvider(embeddingProviderConfig)
@@ -61,8 +62,10 @@ export function createMemorySearch(deps: {
       const queryVector = await embAdapter.embedQuery(query)
       if (!queryVector) {
         logger.warn('[MemorySearch] 查询向量生成失败，降级为 FTS 搜索')
-        const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-        return mapScopedResults(ftsResults)
+        const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
+          vaultName: activeVault
+        })
+        return mapResults(ftsResults)
       }
 
       // 执行混合搜索（FTS + 向量 RRF 融合）
@@ -73,14 +76,17 @@ export function createMemorySearch(deps: {
         queryVector,
         queryText: query,
         topK,
-        similarityThreshold: minScore
+        similarityThreshold: minScore,
+        filter: { vaultName: activeVault }
       })
 
-      return mapScopedResults(results)
+      return mapResults(results)
     } catch (e) {
       logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e as Error)
-      const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20)
-      return mapScopedResults(ftsResults)
+      const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
+        vaultName: activeVault
+      })
+      return mapResults(ftsResults)
     }
   }
 }

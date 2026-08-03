@@ -78,6 +78,7 @@ export const embeddingCallback: IEmbeddingCallback = {
         sourceType: 'diary',
         sourceId,
         groupId: buildDiaryEmbeddingGroupId(vaultName),
+        vaultName,
         chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
         metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
         sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000

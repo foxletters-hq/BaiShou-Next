@@ -302,6 +302,7 @@ export function registerRagBuildIPC() {
       sourceType: MEMORY_SOURCE_TYPE,
       sourceId: id,
       groupId: `memory:${vaultName}`,
+      vaultName,
       metadataJson: buildMemoryMetadataJson(record),
       sourceCreatedAt: now
     })

@@ -77,11 +77,17 @@ export async function resolveVaultScope(deps: MobileRagServiceDeps): Promise<Mob
   return deps.vaultScope ?? defaultVaultScope()
 }
 
-export function diaryVaultListFilterSql(vaultGroupId: string): { clause: string; args: string[] } {
+export function vaultNameListFilterSql(vaultName: string): { clause: string; args: string[] } {
   return {
-    clause: `(source_type != 'diary' OR group_id = ?)`,
-    args: [vaultGroupId]
+    clause: `vault_name = ?`,
+    args: [vaultName]
   }
+}
+
+/** @deprecated 使用 vaultNameListFilterSql；保留别名以免旧引用断裂 */
+export function diaryVaultListFilterSql(vaultGroupId: string): { clause: string; args: string[] } {
+  const vaultName = vaultGroupId.startsWith('diary:') ? vaultGroupId.slice(6) : vaultGroupId
+  return vaultNameListFilterSql(vaultName)
 }
 
 function broadcastRagProgress(
@@ -277,6 +283,7 @@ export async function embedDiaryEntry(
     sourceType: 'diary',
     sourceId,
     groupId,
+    vaultName: resolvedVault,
     sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000,
     metadataJson,
     requireSuccess: true as const

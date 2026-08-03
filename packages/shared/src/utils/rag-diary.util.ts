@@ -46,18 +46,6 @@ export function parseDiaryEmbeddingSourceId(
   }
 }
 
-/** 混合检索结果：日记向量仅限指定工作空间，chat/manual 等保持可见 */
-export function filterDiaryScopedSearchResults<
-  T extends { sourceType?: string; sessionId?: string; groupId?: string }
->(results: T[], vaultName: string): T[] {
-  const expectedGroupId = buildDiaryEmbeddingGroupId(vaultName)
-  return results.filter((row) => {
-    if (row.sourceType !== 'diary') return true
-    const groupId = row.sessionId ?? row.groupId
-    return groupId === expectedGroupId
-  })
-}
-
 /** 筛选尚未嵌入或日记内容已更新、需重新嵌入的条目 */
 export function filterUnindexedDiaries<T extends { id: unknown; updatedAt?: Date }>(
   diaries: T[],

@@ -331,6 +331,7 @@ async function embedVaultDiaries(
         sourceType: 'diary',
         sourceId,
         groupId,
+        vaultName,
         chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
         metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
         sourceCreatedAt,
