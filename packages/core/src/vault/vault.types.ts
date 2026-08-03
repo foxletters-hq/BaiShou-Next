@@ -32,7 +32,10 @@ export interface IVaultService {
    */
   initRegistry(): Promise<void>
 
-  /** 获取最后访问的有效 Vault */
+  /**
+   * 本机活跃 Vault（优先本机 activeVaultId；找不到则回退 lastAccessedAt 最大者）。
+   * lastAccessedAt 仍写入注册表，仅供列表排序展示。
+   */
   getActiveVault(): VaultInfo | null
 
   /**
@@ -64,8 +67,8 @@ export interface IVaultService {
   createVault(vaultName: string): Promise<void>
 
   /**
-   * 切换或创建空间库
-   * 如果存在则更新 lastAccessedAt，不存在则在磁盘建立物理目录并存入注册表
+   * 切换或创建空间库。
+   * 存在则更新本机 activeVaultId + lastAccessedAt；不存在则建目录并登记。
    */
   switchVault(vaultName: string): Promise<void>
 

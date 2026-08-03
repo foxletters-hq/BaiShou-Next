@@ -8,10 +8,12 @@ import fs from 'node:fs/promises'
 describe('VaultService Integration', () => {
   let tempDir: string
   let service: VaultService
+  let localActiveVaultId: string | null
 
   beforeEach(async () => {
     // 建立一个真实的沙盒目录模拟多系统的应用数据目录
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'baishou-vault-test-'))
+    localActiveVaultId = null
 
     // 提供给 VaultService 真实的临时目录
     const mockPathService = {
@@ -24,7 +26,11 @@ describe('VaultService Integration', () => {
       getAvatarsDirectory: vi.fn().mockResolvedValue('/tmp/avatars'),
       getVaultSystemDirectory: vi
         .fn()
-        .mockImplementation(async (name: string) => path.join(tempDir, name, '.baishou'))
+        .mockImplementation(async (name: string) => path.join(tempDir, name, '.baishou')),
+      getLocalActiveVaultId: vi.fn().mockImplementation(async () => localActiveVaultId),
+      setLocalActiveVaultId: vi.fn().mockImplementation(async (id: string) => {
+        localActiveVaultId = id
+      })
     }
 
     service = new VaultService(mockPathService as any, createNodeFileSystem())
@@ -547,6 +553,95 @@ describe('VaultService Integration', () => {
       expect(result.id).toBe(id)
       expect(result.newName).toBe('Target')
       expect(service.getAllVaults().some((v) => v.name === 'Target' && v.id === id)).toBe(true)
+    })
+  })
+
+  describe('V2-D6 local activeVaultId', () => {
+    function createServiceWithLocalPreference(): VaultService {
+      return new VaultService(
+        {
+          getRootDirectory: vi.fn().mockResolvedValue(tempDir),
+          getGlobalRegistryDirectory: vi.fn().mockResolvedValue(tempDir),
+          getVaultDirectory: vi
+            .fn()
+            .mockImplementation(async (name: string) => path.join(tempDir, name)),
+          getUserAvatarsDirectory: vi.fn().mockResolvedValue('/tmp/user-avatars'),
+          getAvatarsDirectory: vi.fn().mockResolvedValue('/tmp/avatars'),
+          getVaultSystemDirectory: vi
+            .fn()
+            .mockImplementation(async (name: string) => path.join(tempDir, name, '.baishou')),
+          getLocalActiveVaultId: vi.fn().mockImplementation(async () => localActiveVaultId),
+          setLocalActiveVaultId: vi.fn().mockImplementation(async (id: string) => {
+            localActiveVaultId = id
+          })
+        } as any,
+        createNodeFileSystem()
+      )
+    }
+
+    it('persists active vault across cold start even if registry lastAccessedAt is rewritten', async () => {
+      await service.initRegistry()
+      await service.createVault('Work')
+      await service.switchVault('Work')
+      const workId = service.getActiveVault()?.id
+      expect(workId).toBeTruthy()
+      expect(localActiveVaultId).toBe(workId)
+      expect(service.getActiveVault()?.name).toBe('Work')
+
+      // 模拟跨设备同步：注册表里 Personal 的 lastAccessedAt 被改得更新
+      const registryPath = path.join(tempDir, 'vault_registry.json')
+      const registry = JSON.parse(await fs.readFile(registryPath, 'utf8')) as Array<{
+        name: string
+        lastAccessedAt: string
+      }>
+      for (const entry of registry) {
+        if (entry.name === 'Personal') {
+          entry.lastAccessedAt = new Date('2099-01-01T00:00:00.000Z').toISOString()
+        }
+        if (entry.name === 'Work') {
+          entry.lastAccessedAt = new Date('2000-01-01T00:00:00.000Z').toISOString()
+        }
+      }
+      await fs.writeFile(registryPath, JSON.stringify(registry))
+
+      const service2 = createServiceWithLocalPreference()
+      await service2.initRegistry()
+      expect(service2.getActiveVault()?.name).toBe('Work')
+      expect(service2.getActiveVault()?.id).toBe(workId)
+      expect(localActiveVaultId).toBe(workId)
+    })
+
+    it('falls back to lastAccessedAt when local activeVaultId is unknown', async () => {
+      await service.initRegistry()
+      await service.createVault('Work')
+      await service.switchVault('Work')
+      expect(service.getActiveVault()?.name).toBe('Work')
+
+      localActiveVaultId = 'vlt_does_not_exist_anymore'
+      const service2 = createServiceWithLocalPreference()
+      await service2.initRegistry()
+
+      // Work 刚被 switch 过，lastAccessedAt 更新；回退后应落在 Work，并把本机偏好纠正
+      expect(service2.getActiveVault()?.name).toBe('Work')
+      expect(localActiveVaultId).toBe(service2.getActiveVault()?.id)
+    })
+
+    it('keeps active vault after rename because id is stable', async () => {
+      await service.initRegistry()
+      await service.createVault('Alpha')
+      await service.switchVault('Alpha')
+      const id = service.getActiveVault()?.id
+      expect(id).toBeTruthy()
+
+      await service.renameVault('Alpha', 'Beta')
+      expect(service.getActiveVault()?.name).toBe('Beta')
+      expect(service.getActiveVault()?.id).toBe(id)
+      expect(localActiveVaultId).toBe(id)
+
+      const service2 = createServiceWithLocalPreference()
+      await service2.initRegistry()
+      expect(service2.getActiveVault()?.name).toBe('Beta')
+      expect(service2.getActiveVault()?.id).toBe(id)
     })
   })
 })
