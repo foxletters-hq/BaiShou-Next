@@ -13,7 +13,7 @@ const params = z.object({
     .string()
     .optional()
     .describe(
-      'Notebook id to search. Defaults to the notebook attached to this workspace session. Required when no notebook is attached.'
+      'Notebook id to search (companion sessions only). Workspace sessions always use the mounted notebook and ignore this.'
     ),
   limit: z
     .number()
@@ -32,7 +32,7 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
     'Call this when:\n' +
     '- the user asks about imported documents / research notes in a notebook\n' +
     '- you need citations or passages before editing local files in the workspace\n\n' +
-    'In a workspace session, search is scoped to the attached notebookId. ' +
+    'In a workspace session, a notebook must be mounted first; args.notebookId cannot bypass that. ' +
     'Read-only; does not modify notebooks or sources.'
 
   readonly parameters = params
@@ -55,14 +55,26 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
 
     const attached = context.workspace?.notebookId?.trim() || ''
     const isWorkspace = context.workspace?.sessionKind === 'workspace'
-    // 工作台：绑定 notebookId 强制过滤；伙伴：允许显式传入 notebookId
-    const notebookId = isWorkspace && attached ? attached : args.notebookId?.trim() || attached
-    if (!notebookId) {
-      return (
-        'No knowledge notebook is attached and notebookId was not provided. ' +
-        'Attach a notebook to this workspace session, or pass notebookId explicitly. ' +
-        'Do not invent document contents.'
-      )
+
+    let notebookId = ''
+    if (isWorkspace) {
+      // 工作台：必须已挂载；禁止 args.notebookId 绕过
+      if (!attached) {
+        return (
+          '工作台尚未挂载知识库笔记本，拒绝检索。' +
+          '请先在工作台挂载笔记本；不可通过 notebookId 参数绕过。'
+        )
+      }
+      notebookId = attached
+    } else {
+      notebookId = args.notebookId?.trim() || attached
+      if (!notebookId) {
+        return (
+          'No knowledge notebook is attached and notebookId was not provided. ' +
+          'Attach a notebook or pass notebookId explicitly. ' +
+          'Do not invent document contents.'
+        )
+      }
     }
 
     const reader = context.knowledgeReader

@@ -2,6 +2,8 @@ import type { PdfPageBitmapRenderer, VisionPageRecognizer } from './types'
 
 let pdfPageBitmapRenderer: PdfPageBitmapRenderer | null = null
 let visionPageRecognizer: VisionPageRecognizer | null = null
+/** 探测 PDF 总页数（pdf-parse numpages / pdfjs numPages） */
+let pdfNumPagesProbe: ((absolutePath: string) => Promise<number | null>) | null = null
 
 /** tesseract.js 是否已被探测为可加载（缓存） */
 let tesseractProbe: { ok: boolean; reason?: string } | null = null
@@ -12,6 +14,34 @@ export function registerPdfPageBitmapRenderer(fn: PdfPageBitmapRenderer | null):
 
 export function getPdfPageBitmapRenderer(): PdfPageBitmapRenderer | null {
   return pdfPageBitmapRenderer
+}
+
+export function registerPdfNumPagesProbe(
+  fn: ((absolutePath: string) => Promise<number | null>) | null
+): void {
+  pdfNumPagesProbe = fn
+}
+
+export function getPdfNumPagesProbe():
+  | ((absolutePath: string) => Promise<number | null>)
+  | null {
+  return pdfNumPagesProbe
+}
+
+/** 页数未知时优先用 probe；仍未知返回 null（调用方须保持 needs_ocr） */
+export async function resolvePdfNumPages(
+  absolutePath: string,
+  existingPageCount: number
+): Promise<number | null> {
+  if (existingPageCount > 0) return existingPageCount
+  if (!pdfNumPagesProbe) return null
+  try {
+    const n = await pdfNumPagesProbe(absolutePath)
+    if (typeof n === 'number' && n > 0) return n
+  } catch {
+    /* ignore */
+  }
+  return null
 }
 
 export function registerVisionPageRecognizer(fn: VisionPageRecognizer | null): void {

@@ -23,6 +23,7 @@ import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest
 import { getEmbeddingService } from './rag.ipc'
 import { buildSummaryAiClient } from './summary-ai-client'
 import { settingsManager } from './settings.ipc'
+import { resolveActiveVaultId } from './vault.ipc'
 
 const DEFAULT_KNOWLEDGE_CONFIG: KnowledgeConfig = {
   defaultExtractEngine: 'simple',
@@ -36,6 +37,26 @@ function requireKnowledgeRepo(): KnowledgeRepository {
     throw new Error('knowledge db not connected')
   }
   return new KnowledgeRepository(knowledgeConnectionManager.getDb())
+}
+
+function requireActiveVaultId(): string {
+  const id = resolveActiveVaultId()?.trim() || ''
+  if (!id) throw new Error('active vault not ready')
+  return id
+}
+
+async function assertKnowledgeModelMatch(repo: KnowledgeRepository): Promise<void> {
+  const embeddingService = getEmbeddingService()
+  const { getEmbeddingConfig } = await import('./rag.ipc')
+  const embeddingConfig = getEmbeddingConfig()
+  await embeddingConfig.load()
+  const modelId = embeddingConfig.getGlobalEmbeddingModelId()
+  if (!modelId || !embeddingService.isConfigured) return
+  const vaultId = requireActiveVaultId()
+  const mismatch = await repo.countHeterogeneousEmbeddings(modelId, { vaultId })
+  if (mismatch > 0) {
+    throw new Error('knowledge-model-mismatch')
+  }
 }
 
 async function loadKnowledgeConfig(): Promise<KnowledgeConfig> {
@@ -66,6 +87,7 @@ function buildIngestService(): KnowledgeIngestService {
     repo,
     notebookManager,
     fs: fileSystem,
+    getVaultId: () => requireActiveVaultId(),
     getExtractConfig: async () => {
       const cfg = await loadKnowledgeConfig()
       const vision = await resolveVisionConfigured()
@@ -83,7 +105,7 @@ function buildIngestService(): KnowledgeIngestService {
         sourceType: 'knowledge',
         sourceId: params.sourceId,
         groupId: params.notebookId,
-        vaultId: 'knowledge',
+        vaultId: params.vaultId,
         chunkIndex: params.chunkIndex,
         chunkText: params.chunkText,
         metadataJson: params.metadataJson,
@@ -256,7 +278,7 @@ export function registerKnowledgeIPC(): void {
 
   ipcMain.handle('knowledge:get-stats', async (_e, notebookId?: string) => {
     const repo = requireKnowledgeRepo()
-    return repo.getStats(notebookId)
+    return repo.getStats(notebookId, requireActiveVaultId())
   })
 
   ipcMain.handle('knowledge:has-model-mismatch', async () => {
@@ -267,7 +289,8 @@ export function registerKnowledgeIPC(): void {
     await embeddingConfig.load()
     const modelId = embeddingConfig.getGlobalEmbeddingModelId()
     if (!modelId || !embeddingService.isConfigured) return false
-    const count = await repo.countHeterogeneousEmbeddings(modelId)
+    const vaultId = requireActiveVaultId()
+    const count = await repo.countHeterogeneousEmbeddings(modelId, { vaultId })
     return count > 0
   })
 
@@ -282,6 +305,8 @@ export function registerKnowledgeIPC(): void {
       _e,
       input: { notebookId: string; query: string; topK?: number }
     ) => {
+      const repo = requireKnowledgeRepo()
+      await assertKnowledgeModelMatch(repo)
       const embeddingService = getEmbeddingService()
       const queryVector = await embeddingService.embedQuery(input.query)
       if (!queryVector?.length) {
@@ -304,17 +329,7 @@ export function registerKnowledgeIPC(): void {
       input: { notebookId: string; question: string; topK?: number; multiQuery?: boolean }
     ) => {
       const repo = requireKnowledgeRepo()
-      const embeddingService = getEmbeddingService()
-      const { getEmbeddingConfig } = await import('./rag.ipc')
-      const embeddingConfig = getEmbeddingConfig()
-      await embeddingConfig.load()
-      const modelId = embeddingConfig.getGlobalEmbeddingModelId()
-      if (modelId && embeddingService.isConfigured) {
-        const mismatch = await repo.countHeterogeneousEmbeddings(modelId)
-        if (mismatch > 0) {
-          throw new Error('knowledge-model-mismatch')
-        }
-      }
+      await assertKnowledgeModelMatch(repo)
       const cfg = await loadKnowledgeConfig()
       const ask = buildAskService()
       return ask.ask({
@@ -336,7 +351,11 @@ export function registerKnowledgeIPC(): void {
       }
     ) => {
       const chat = buildChatService()
-      return chat.chat(input)
+      const { clampKnowledgeChatContextChars } = await import('@baishou/core-desktop')
+      return chat.chat({
+        ...input,
+        maxContextChars: clampKnowledgeChatContextChars(input.maxContextChars)
+      })
     }
   )
 

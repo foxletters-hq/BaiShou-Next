@@ -1,4 +1,4 @@
-import { logger } from '@baishou/shared'
+import { logger, deriveLegacyVaultId } from '@baishou/shared'
 import {
   expoKnowledgeConnectionManager,
   KnowledgeRepository,
@@ -26,6 +26,21 @@ function requireRepo(): KnowledgeRepository {
   return new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
 }
 
+async function resolveMobileActiveVaultId(): Promise<string> {
+  const runtime = agentDbRuntimeRef.current
+  if (runtime?.pathService) {
+    try {
+      const stored = await runtime.pathService.getLocalActiveVaultId()
+      if (stored?.trim()) return stored.trim()
+      const name = await runtime.pathService.getActiveVaultNameForContext()
+      if (name?.trim()) return deriveLegacyVaultId(name.trim())
+    } catch {
+      /* fall through */
+    }
+  }
+  return deriveLegacyVaultId('Personal')
+}
+
 function createKnowledgeSqlExecutor(expoDb: ExpoSqliteDatabase): KnowledgeSqlExecutor {
   const db = expoDb as ExpoSqliteDatabase & {
     getAllSync?: (sql: string, params?: unknown[]) => unknown[]
@@ -41,7 +56,7 @@ function createKnowledgeSqlExecutor(expoDb: ExpoSqliteDatabase): KnowledgeSqlExe
 }
 
 export async function mobileListNotebooks() {
-  return requireRepo().listNotebooks()
+  return requireRepo().listNotebooks({ vaultId: await resolveMobileActiveVaultId() })
 }
 
 export async function mobileListSources(notebookId: string) {
@@ -49,7 +64,7 @@ export async function mobileListSources(notebookId: string) {
 }
 
 export async function mobileGetKnowledgeStats(notebookId?: string) {
-  return requireRepo().getStats(notebookId)
+  return requireRepo().getStats(notebookId, await resolveMobileActiveVaultId())
 }
 
 export async function mobileHasKnowledgeModelMismatch(): Promise<boolean> {
@@ -57,12 +72,15 @@ export async function mobileHasKnowledgeModelMismatch(): Promise<boolean> {
   if (!runtime?.settingsManager) return false
   const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
   if (!emb.embeddingModelId) return false
-  const count = await requireRepo().countHeterogeneousEmbeddings(emb.embeddingModelId)
+  const count = await requireRepo().countHeterogeneousEmbeddings(emb.embeddingModelId, {
+    vaultId: await resolveMobileActiveVaultId()
+  })
   return count > 0
 }
 
 export async function mobileRebuildKnowledgeIndex(notebookId: string): Promise<void> {
   const repo = requireRepo()
+  const vaultId = await resolveMobileActiveVaultId()
   const sources = await repo.listSources(notebookId)
   await repo.deleteChunksByNotebook(notebookId)
   for (const source of sources) {
@@ -71,7 +89,8 @@ export async function mobileRebuildKnowledgeIndex(notebookId: string): Promise<v
     await repo.enqueueIngestJob({
       notebookId,
       sourceId: source.id,
-      stage: 'embed'
+      stage: 'embed',
+      vaultId: source.vaultId?.trim() || vaultId
     })
   }
   const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
@@ -198,11 +217,13 @@ async function buildMobileIngestService() {
   const { KnowledgeEmbeddingStorage } = await import('@baishou/ai')
   const { KnowledgeIngestService } = await import('@baishou/core-mobile')
   const storage = new KnowledgeEmbeddingStorage(() => repo)
+  const vaultId = await resolveMobileActiveVaultId()
 
   return new KnowledgeIngestService({
     repo,
     notebookManager,
     fs: fileSystem,
+    getVaultId: () => vaultId,
     embedding:
       emb.embeddingProvider && emb.embeddingModelId
         ? {
@@ -217,7 +238,7 @@ async function buildMobileIngestService() {
         sourceType: 'knowledge',
         sourceId: params.sourceId,
         groupId: params.notebookId,
-        vaultId: 'knowledge',
+        vaultId: params.vaultId,
         chunkIndex: params.chunkIndex,
         chunkText: params.chunkText,
         metadataJson: params.metadataJson,
@@ -307,6 +328,10 @@ export async function mobileSearchKnowledge(opts: {
   if (!runtime?.settingsManager) throw new Error('runtime not ready')
   if (!expoKnowledgeConnectionManager.isConnected()) {
     throw new Error('knowledge db not connected')
+  }
+  const mismatch = await mobileHasKnowledgeModelMismatch()
+  if (mismatch) {
+    throw new Error('knowledge-model-mismatch')
   }
   const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
   if (!emb.embeddingProvider || !emb.embeddingModelId) {

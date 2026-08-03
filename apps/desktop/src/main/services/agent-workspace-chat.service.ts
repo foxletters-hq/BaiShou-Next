@@ -180,7 +180,7 @@ export async function runWorkspaceStreamChat(params: {
         workspaceId,
         workspaceSystemHint: notebookId
           ? `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。已挂载知识库笔记本 notebookId=${notebookId}，可用 knowledge_search 检索资料。`
-          : `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。尚未挂载知识库笔记本；knowledge_search 需先挂载或显式传入 notebookId。`
+          : `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。尚未挂载知识库笔记本；knowledge_search 需先挂载（不可用 notebookId 绕过）。`
       },
       skipUserMessageRecording: params.skipUserMessageRecording,
       realSessionRepo,

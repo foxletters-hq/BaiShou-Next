@@ -1,4 +1,4 @@
-import { logger } from '@baishou/shared'
+import { logger, deriveLegacyVaultId } from '@baishou/shared'
 import {
   expoKnowledgeConnectionManager,
   KnowledgeRepository
@@ -38,11 +38,18 @@ async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestServi
   const storage = new KnowledgeEmbeddingStorage(() => repo)
   const embeddingProvider = emb.embeddingProvider
   const embeddingModelId = emb.embeddingModelId
+  const vaultId =
+    (await runtime.pathService.getLocalActiveVaultId()) ||
+    deriveLegacyVaultId(
+      (await runtime.pathService.getActiveVaultNameForContext().catch(() => 'Personal')) ||
+        'Personal'
+    )
 
   return new KnowledgeIngestService({
     repo,
     notebookManager,
     fs: fileSystem,
+    getVaultId: () => vaultId,
     embedding: {
       isConfigured: true,
       getModelId: () => embeddingModelId,
@@ -54,7 +61,7 @@ async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestServi
         sourceType: 'knowledge',
         sourceId: params.sourceId,
         groupId: params.notebookId,
-        vaultId: 'knowledge',
+        vaultId: params.vaultId,
         chunkIndex: params.chunkIndex,
         chunkText: params.chunkText,
         metadataJson: params.metadataJson,

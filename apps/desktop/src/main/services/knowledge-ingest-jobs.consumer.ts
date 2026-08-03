@@ -14,6 +14,7 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
   }
 
   const { getEmbeddingService, getEmbeddingConfig } = await import('../ipc/rag.ipc')
+  const { resolveActiveVaultId } = await import('../ipc/vault.ipc')
   const embeddingService = getEmbeddingService()
   const embeddingConfig = getEmbeddingConfig()
   await embeddingConfig.load()
@@ -26,6 +27,7 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
     repo,
     notebookManager,
     fs: fileSystem,
+    getVaultId: () => resolveActiveVaultId(),
     embedding: {
       isConfigured: embeddingService.isConfigured,
       getModelId: () => embeddingConfig.getGlobalEmbeddingModelId(),
@@ -37,7 +39,7 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
         sourceType: 'knowledge',
         sourceId: params.sourceId,
         groupId: params.notebookId,
-        vaultId: 'knowledge',
+        vaultId: params.vaultId,
         chunkIndex: params.chunkIndex,
         chunkText: params.chunkText,
         metadataJson: params.metadataJson,

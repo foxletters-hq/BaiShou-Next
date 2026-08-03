@@ -1,24 +1,26 @@
 import { analyzePageTexts, extractPdfPageTexts, MIN_TEXT_LAYER_CHARS } from '../knowledge-extract'
-import { getPdfPageBitmapRenderer, getVisionPageRecognizer } from './adapters'
+import { md5Hex } from '../../fs/md5'
+import { getPdfPageBitmapRenderer, getVisionPageRecognizer, resolvePdfNumPages } from './adapters'
 import { getRegisteredSimplePageTexts, rememberSimplePageTexts } from './simple-page-cache'
 import type { ExtractEngine, ExtractEngineContext, EngineExtractResult } from './types'
 
 function resolveMissingPageNumbers(
   existingPageTexts: string[],
+  pageCount: number,
   explicit?: number[]
 ): number[] {
   if (explicit?.length) {
     return [...new Set(explicit)]
-      .filter((p) => p >= 1 && p <= existingPageTexts.length)
+      .filter((p) => p >= 1 && p <= pageCount)
       .sort((a, b) => a - b)
   }
   const missing: number[] = []
-  for (let i = 0; i < existingPageTexts.length; i++) {
+  for (let i = 0; i < pageCount; i++) {
     const t = (existingPageTexts[i] ?? '').trim()
     if (t.length < MIN_TEXT_LAYER_CHARS) missing.push(i + 1)
   }
   if (missing.length === 0 && existingPageTexts.every((t) => !t.trim())) {
-    return Array.from({ length: existingPageTexts.length }, (_, i) => i + 1)
+    return Array.from({ length: pageCount }, (_, i) => i + 1)
   }
   return missing
 }
@@ -44,24 +46,27 @@ export const visionExtractEngine: ExtractEngine = {
       (await extractPdfPageTexts(ctx.absolutePath))
     rememberSimplePageTexts(ctx.absolutePath, existing)
 
-    while (existing.length === 0) {
-      // 纯扫描件可能 page extractor 返回空；渲染器会告诉总页数
-      const probe = await renderer({
-        absolutePath: ctx.absolutePath,
-        pageNumbers: [1],
-        dpi: ctx.dpi ?? 200
-      })
-      if (!probe.length) throw new Error('PDF 无法渲染任何页')
-      // 无法预知总页数时，先只 OCR 用户指定页；否则要求至少渲染探测
-      existing = ['']
-      break
+    const pageCount = await resolvePdfNumPages(ctx.absolutePath, existing.length)
+    if (pageCount == null || pageCount <= 0) {
+      return {
+        text: existing.join('\n\n'),
+        pages: { pages: [] },
+        pageCount: 0,
+        textPageCount: 0,
+        quality: 'needs_ocr',
+        evidence: '无法确定 PDF 页数，禁止标 ready',
+        extractEngine: 'vision',
+        textHash: md5Hex(existing.join('\n\n')),
+        processedPages: []
+      }
     }
+    while (existing.length < pageCount) existing = [...existing, '']
+    if (existing.length > pageCount) existing = existing.slice(0, pageCount)
 
-    const pagesToOcr = resolveMissingPageNumbers(existing, ctx.pageNumbers)
-    // 若 existing 只有占位，且未指定页，让渲染器渲全部（pageNumbers 省略）
+    const pagesToOcr = resolveMissingPageNumbers(existing, pageCount, ctx.pageNumbers)
     const bitmaps = await renderer({
       absolutePath: ctx.absolutePath,
-      pageNumbers: pagesToOcr.length ? pagesToOcr : ctx.pageNumbers,
+      pageNumbers: pagesToOcr.length ? pagesToOcr : undefined,
       dpi: ctx.dpi ?? 200
     })
 
@@ -69,8 +74,7 @@ export const visionExtractEngine: ExtractEngine = {
       throw new Error('视觉 OCR：未能渲染任何页')
     }
 
-    // 扩展 merged 长度到最大页码
-    const maxPage = Math.max(...bitmaps.map((b) => b.page), existing.length)
+    const maxPage = Math.max(...bitmaps.map((b) => b.page), pageCount)
     const merged = [...existing]
     while (merged.length < maxPage) merged.push('')
 
@@ -83,9 +87,9 @@ export const visionExtractEngine: ExtractEngine = {
       processed.push(bmp.page)
     }
 
-    rememberSimplePageTexts(ctx.absolutePath, merged)
+    rememberSimplePageTexts(ctx.absolutePath, merged.slice(0, pageCount))
     return {
-      ...analyzePageTexts(merged),
+      ...analyzePageTexts(merged.slice(0, pageCount)),
       extractEngine: 'vision',
       processedPages: processed
     }
