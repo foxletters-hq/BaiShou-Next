@@ -46,7 +46,7 @@
 .langChip {
   min-height: 52px;
   border-radius: 14px;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-control);
   background: rgba(255, 255, 255, 0.72);
   padding: 0 18px;
   display: flex;

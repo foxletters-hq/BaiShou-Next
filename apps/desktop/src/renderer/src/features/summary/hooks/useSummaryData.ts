@@ -172,6 +172,26 @@ export function useSummaryData(selectedYear: number) {
     ])
   }, [fetchMissingSummaries, fetchSummariesForGallery, refreshDashboard])
 
+  const removeSummaryLocally = useCallback((id: string) => {
+    setSummaries((prev) => prev.filter((s) => String(s.id) !== id))
+  }, [])
+
+  const patchSummaryLocally = useCallback(
+    (
+      id: string,
+      patch: {
+        content?: string
+        generatedAt?: string
+        updatedAt?: string
+      }
+    ) => {
+      setSummaries((prev) =>
+        prev.map((s) => (String(s.id) === id ? { ...s, ...patch } : s))
+      )
+    },
+    []
+  )
+
   useEffect(() => {
     if (!scopeReady) return
     hydrateDashboardFromCache()
@@ -272,6 +292,8 @@ export function useSummaryData(selectedYear: number) {
     refreshDashboard,
     refreshSummaries: fetchSummariesForGallery,
     refreshData: fetchData,
-    refreshMissing: fetchMissingSummaries
+    refreshMissing: fetchMissingSummaries,
+    removeSummaryLocally,
+    patchSummaryLocally
   }
 }

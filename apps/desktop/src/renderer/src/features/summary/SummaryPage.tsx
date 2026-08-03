@@ -53,6 +53,8 @@ export const SummaryPage: React.FC = () => {
     refreshSummaries,
     refreshData,
     refreshMissing,
+    removeSummaryLocally,
+    patchSummaryLocally,
     scopeKey
   } = useSummaryData(selectedYear)
 
@@ -260,7 +262,13 @@ export const SummaryPage: React.FC = () => {
               />
             </motion.div>
           ) : (
-            <SummaryGalleryView summaries={summaries} onRefreshData={refreshData} />
+            <SummaryGalleryView
+              summaries={summaries}
+              onRefreshSummaries={refreshSummaries}
+              onRefreshData={refreshData}
+              onSummaryDeleted={removeSummaryLocally}
+              onSummaryPatched={patchSummaryLocally}
+            />
           )}
         </AnimatePresence>
       </div>
