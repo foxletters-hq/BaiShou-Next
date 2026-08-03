@@ -4,6 +4,7 @@ export const graphApi = {
   graph: {
     listPendingReextract: () => ipcRenderer.invoke('graph:list-pending-reextract'),
     listPendingIndex: () => ipcRenderer.invoke('graph:list-pending-index'),
+    estimateExtraction: () => ipcRenderer.invoke('graph:estimate-extraction'),
     extract: (opts?: { filePaths?: string[] }) => ipcRenderer.invoke('graph:extract', opts),
     onExtractProgress: (
       callback: (progress: { current: number; total: number; filePath: string }) => void
@@ -26,11 +27,16 @@ export const graphApi = {
     }) => ipcRenderer.invoke('graph:get-global-graph', opts),
     getView: (opts: { centerNodeId: string; depth?: 1 | 2 }) =>
       ipcRenderer.invoke('graph:get-view', opts),
+    findPaths: (opts: { fromId: string; toId: string; maxHops?: 2 | 3 }) =>
+      ipcRenderer.invoke('graph:find-paths', opts),
     search: (opts: { query: string; nodeTypes?: string[]; limit?: number }) =>
       ipcRenderer.invoke('graph:search', opts),
     listPendingEdges: () => ipcRenderer.invoke('graph:list-pending-edges'),
+    listPending: () => ipcRenderer.invoke('graph:list-pending'),
     setEdgeReview: (opts: { edgeId: string; reviewStatus: 'approved' | 'rejected' }) =>
       ipcRenderer.invoke('graph:set-edge-review', opts),
+    setNodeReview: (opts: { nodeId: string; reviewStatus: 'approved' | 'rejected' }) =>
+      ipcRenderer.invoke('graph:set-node-review', opts),
     upsertNode: (input: {
       id?: string
       name: string
