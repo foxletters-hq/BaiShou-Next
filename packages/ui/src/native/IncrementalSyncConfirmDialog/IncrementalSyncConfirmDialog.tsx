@@ -24,6 +24,7 @@ import {
   requiresExplicitDeletePropagationChoice,
   getDeletePropagationChoiceTitleKey,
   getDeletePropagationChoiceDescKey,
+  formatIncrementalSyncPlanBytes,
   type SyncDeletePropagationChoice
 } from '@baishou/shared'
 import { Button } from '../Button'
@@ -511,6 +512,13 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                   activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
                 })}
               </Text>
+              <Text style={[styles.trafficSummary, { color: colors.textTertiary }]}>
+                {t('data_sync.plan_traffic_summary', {
+                  download: formatIncrementalSyncPlanBytes(preview.totalDownloadBytes),
+                  upload: formatIncrementalSyncPlanBytes(preview.totalUploadBytes),
+                  defaultValue: '下载 {{download}} · 上传 {{upload}}'
+                })}
+              </Text>
             </View>
 
             <PlanScrollContent preview={preview} />
@@ -560,6 +568,11 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   subtitle: {
+    fontSize: 13,
+    lineHeight: 20
+  },
+  trafficSummary: {
+    marginTop: 6,
     fontSize: 13,
     lineHeight: 20
   },

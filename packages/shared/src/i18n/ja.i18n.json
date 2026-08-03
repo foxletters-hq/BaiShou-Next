@@ -1121,6 +1121,7 @@
     "plan_stat_delete_local": "ローカル削除 {{count}}",
     "plan_stat_delete_remote": "リモート削除 {{count}}",
     "plan_stat_conflict": "競合 {{count}}",
+    "plan_traffic_summary": "ダウンロード {{download}} · アップロード {{upload}}",
     "plan_boundary_disk_only": "ディスク上にあるが未登録のワークスペース",
     "plan_boundary_registry_only": "登録済みだがディスク上にないワークスペース",
     "plan_warning_unknown_vault_paths": "以下のワークスペースにファイル変更がありますが、ローカル登録表にありません：{{paths}}。「設定 → ワークスペース管理」で同名のワークスペースを作成するか、これらのフォルダを同期対象にするか確認してください。",

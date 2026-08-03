@@ -35,6 +35,13 @@
   line-height: 1.55;
 }
 
+.trafficSummary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary, var(--text-secondary));
+  line-height: 1.5;
+}
+
 .warnings {
   display: flex;
   flex-direction: column;
