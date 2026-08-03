@@ -139,9 +139,21 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     expect(result.dbTotalCount).toBe(3)
     expect(result.diskCount).toBe(1)
     expect(result.missingIds.sort()).toEqual(['b', 'legacy'])
-    expect(mockFileService.writeSession).toHaveBeenCalledWith('b', aggregateDummy, 'Personal85')
+    expect(mockFileService.writeSession).toHaveBeenCalledWith(
+      'b',
+      expect.objectContaining({
+        session: expect.objectContaining({ vaultName: 'Personal85' })
+      }),
+      'Personal85'
+    )
     // V2.2: DB vaultId cannot map to disk folder name here — flush to active vault
-    expect(mockFileService.writeSession).toHaveBeenCalledWith('legacy', aggregateDummy, 'Personal85')
+    expect(mockFileService.writeSession).toHaveBeenCalledWith(
+      'legacy',
+      expect.objectContaining({
+        session: expect.objectContaining({ vaultName: 'Personal85' })
+      }),
+      'Personal85'
+    )
   })
 
   it('ensureSessionsFlushedToDisk({ mode: pending-only }) skips missing-session backfill', async () => {

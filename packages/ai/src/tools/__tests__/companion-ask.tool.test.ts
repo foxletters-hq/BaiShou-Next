@@ -5,6 +5,7 @@ import {
   AgentGateRejectedError,
   AgentGateReply
 } from '@baishou/shared'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { CompanionAskTool } from '../companion-ask.tool'
 import type { ToolContext } from '../agent.tool'
 import type { IBaishouAgentGate } from '../../baishou-agent-gate/baishou-agent-gate.service'
@@ -12,6 +13,7 @@ import { createBaishouAgentGate } from '../../baishou-agent-gate/baishou-agent-g
 
 const baseContext: ToolContext = {
   sessionId: 'sess_1',
+  vaultId: deriveLegacyVaultId('Personal'),
   vaultName: 'Personal'
 }
 

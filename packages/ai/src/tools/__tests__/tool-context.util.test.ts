@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { ToolRegistry } from '../tool-registry'
 import { hasEmbeddingCapability, syncMcpToolUserConfig } from '../tool-context.util'
 import { MCP_EXTERNAL_SESSION_ID } from '../mcp-tool.util'
@@ -8,6 +9,7 @@ describe('tool-context.util', () => {
   it('detects embedding capability from runtime services', () => {
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: { ragEnabled: true, hasEmbeddingModel: false },
       embeddingService: {
@@ -26,6 +28,7 @@ describe('tool-context.util', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: { ragEnabled: true, hasEmbeddingModel: false },
       embeddingService: {

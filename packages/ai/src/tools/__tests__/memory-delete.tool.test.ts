@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { MEMORY_SOURCE_TYPE } from '@baishou/shared'
+import { deriveLegacyVaultId, MEMORY_SOURCE_TYPE } from '@baishou/shared'
 import { MemoryDeleteTool } from '../memory-delete.tool'
 import type { ToolContext } from '../agent.tool'
 
@@ -15,6 +15,7 @@ describe('MemoryDeleteTool', () => {
     const deleteBySource = vi.fn().mockResolvedValue(undefined)
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       embeddingService: {
         isConfigured: true,
@@ -56,6 +57,7 @@ describe('MemoryDeleteTool', () => {
     const deleteBySource = vi.fn().mockResolvedValue(undefined)
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       vectorStore: { searchSimilar: vi.fn(), deleteBySource },
       rawDataSourceManager: {
@@ -76,6 +78,7 @@ describe('MemoryDeleteTool', () => {
     const deleteBySource = vi.fn().mockResolvedValue(undefined)
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       embeddingService: {
         isConfigured: true,

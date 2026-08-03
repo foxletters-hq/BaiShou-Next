@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { MEMORY_SOURCE_TYPE } from '@baishou/shared'
+import { deriveLegacyVaultId, MEMORY_SOURCE_TYPE } from '@baishou/shared'
 import { MemoryStoreTool } from '../memory-store.tool'
 import type { ToolContext } from '../agent.tool'
 
@@ -30,6 +30,7 @@ describe('MemoryStoreTool', () => {
 
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default',
       embeddingService: { isConfigured: true } as any,
       deduplicationService: mockDedup as any,
@@ -41,6 +42,7 @@ describe('MemoryStoreTool', () => {
     expect(mockDedup.checkAndMerge).toHaveBeenCalledWith({
       newMemoryContent: 'Test deduplication',
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default'
     })
     expect(result).toContain('[MemoryDeduplication Intercept]')
@@ -68,6 +70,7 @@ describe('MemoryStoreTool', () => {
 
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default',
       embeddingService: mockEmbedService as any,
       deduplicationService: mockDedup as any,
@@ -105,6 +108,7 @@ describe('MemoryStoreTool', () => {
 
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default',
       embeddingService: mockEmbedService as any,
       deduplicationService: mockDedup as any,
@@ -140,6 +144,7 @@ describe('MemoryStoreTool', () => {
 
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default',
       embeddingService: mockEmbedService as any
     }
@@ -153,6 +158,7 @@ describe('MemoryStoreTool', () => {
     const tool = new MemoryStoreTool()
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default'
     }
 
@@ -164,6 +170,7 @@ describe('MemoryStoreTool', () => {
     const tool = new MemoryStoreTool()
     const context: ToolContext = {
       sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default',
       embeddingService: { isConfigured: false } as any,
       rawDataSourceManager: mockRawManager() as any

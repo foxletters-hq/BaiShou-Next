@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { runDiaryEditViaDb, runDiaryReadViaDb } from '../diary-crud-db.util'
 import type { ToolContext } from '../agent.tool'
 
 function createContext(overrides: Partial<ToolContext> = {}): ToolContext {
   return {
     sessionId: 's1',
+    vaultId: deriveLegacyVaultId('Personal'),
     vaultName: 'Personal',
     ...overrides
   }
