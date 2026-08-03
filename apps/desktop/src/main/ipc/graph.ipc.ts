@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import * as nodePath from 'node:path'
 import {
   GraphLlmExtractionService,
   GraphSyncService,
@@ -77,6 +78,11 @@ function parseProps(propsJson: string | null | undefined): Record<string, unknow
   }
 }
 
+/** Prefer record vaultId; never fall back to name-derived id (random-id vaults). */
+function writeVaultId(recordVaultId: string | null | undefined): string {
+  return recordVaultId?.trim() || requireVaultId()
+}
+
 async function writeNodeReview(
   nodeId: string,
   reviewStatus: 'approved' | 'rejected'
@@ -85,10 +91,25 @@ async function writeNodeReview(
   const node = await repo.getNodeById(nodeId)
   if (!node) throw new Error(`Node not found: ${nodeId}`)
   const now = Date.now()
+  const vaultId = writeVaultId(node.vaultId)
+
+  // Rejecting a node also rejects/discards connected edges so recall stays clean.
+  if (reviewStatus === 'rejected') {
+    const related = await repo.listEntityTimeline(vaultId, nodeId, {
+      approvedOnly: false,
+      limit: 500
+    })
+    for (const edge of related.edges) {
+      if (edge.reviewStatus === 'rejected' || edge.deletedAt != null) continue
+      await writeEdgeReview(edge.id, 'rejected', { approvePendingEndpoints: false })
+    }
+  }
+
   const record: GraphNodeRawRecord = {
     id: node.id,
     schemaVersion: 1,
-    vaultName: resolveVaultNameById(node.vaultId),
+    vaultId,
+    vaultName: resolveVaultNameById(vaultId),
     nodeType: node.nodeType,
     name: node.name,
     aliases: node.aliases,
@@ -115,10 +136,12 @@ async function writeEdgeReview(
   const edge = await repo.getEdgeById(edgeId)
   if (!edge) throw new Error(`Edge not found: ${edgeId}`)
   const now = Date.now()
+  const vaultId = writeVaultId(edge.vaultId)
   const record: GraphEdgeRawRecord = {
     id: edge.id,
     schemaVersion: 1,
-    vaultName: resolveVaultNameById(edge.vaultId),
+    vaultId,
+    vaultName: resolveVaultNameById(vaultId),
     fromId: edge.fromId,
     toId: edge.toId,
     edgeType: edge.edgeType,
@@ -143,7 +166,7 @@ async function writeEdgeReview(
   // Approving an edge must also approve pending endpoints so Agent can see them.
   if (reviewStatus === 'approved' && opts?.approvePendingEndpoints !== false) {
     for (const endpointId of [edge.fromId, edge.toId]) {
-      const node = await repo.getNodeById(endpointId)
+      const node = await repo.getNodeById(endpointId, vaultId)
       if (node && node.reviewStatus === 'pending') {
         await writeNodeReview(endpointId, 'approved')
       }
@@ -165,24 +188,53 @@ export function registerGraphIPC(): void {
   ipcMain.handle('graph:estimate-extraction', async () => {
     ensureRawDataRuntime()
     const pending = await getDerivedFreshness().listPendingReextract()
-    return estimateExtractionCost(pending.length)
+    const vault = await pathService.getActiveVaultPath()
+    const charCounts: number[] = []
+    if (vault) {
+      for (const item of pending) {
+        try {
+          const full = nodePath.join(vault, item.filePath.replace(/^[/\\]+/, ''))
+          const text = await fileSystem.readFile(full, 'utf8')
+          charCounts.push(typeof text === 'string' ? text.length : 0)
+        } catch {
+          charCounts.push(0)
+        }
+      }
+    }
+    return estimateExtractionCost(pending.length, { charCounts })
+  })
+
+  // Active extract abort controller (single in-flight batch).
+  let extractAbort: AbortController | null = null
+
+  ipcMain.handle('graph:extract-cancel', async () => {
+    extractAbort?.abort()
+    return { ok: true }
   })
 
   ipcMain.handle('graph:extract', async (event, opts?: { filePaths?: string[] }) => {
     const vaultName = requireVaultName()
     const service = await buildExtractionService()
-    return service.extractDiaries({
-      vaultId: requireVaultId(),
-      vaultName,
-      filePaths: opts?.filePaths,
-      onProgress: (p) => {
-        try {
-          event.sender.send('graph:extract-progress', p)
-        } catch {
-          // sender may be gone
+    extractAbort?.abort()
+    extractAbort = new AbortController()
+    const signal = extractAbort.signal
+    try {
+      return await service.extractDiaries({
+        vaultId: requireVaultId(),
+        vaultName,
+        filePaths: opts?.filePaths,
+        signal,
+        onProgress: (p) => {
+          try {
+            event.sender.send('graph:extract-progress', p)
+          } catch {
+            // sender may be gone
+          }
         }
-      }
-    })
+      })
+    } finally {
+      if (extractAbort?.signal === signal) extractAbort = null
+    }
   })
 
   ipcMain.handle(
@@ -285,13 +337,15 @@ export function registerGraphIPC(): void {
       const repo = requireGraphRepo()
       const now = Date.now()
       const nodeType = GRAPH_NODE_TYPES.includes(input.nodeType as never) ? input.nodeType : 'topic'
-      const existing = input.id ? await repo.getNodeById(input.id) : null
+      const existing = input.id ? await repo.getNodeById(input.id, requireVaultId()) : null
       const name = input.name.trim()
       const aliases = Array.isArray(input.aliases) ? input.aliases : (existing?.aliases ?? [])
+      const vaultId = writeVaultId(existing?.vaultId)
       const record: GraphNodeRawRecord = {
         id: existing?.id || input.id || newId('n'),
         schemaVersion: 1,
-        vaultName,
+        vaultId,
+        vaultName: resolveVaultNameById(vaultId) || vaultName,
         nodeType: existing?.nodeType || nodeType,
         name,
         aliases,
@@ -327,6 +381,7 @@ export function registerGraphIPC(): void {
       }
     ) => {
       const vaultName = requireVaultName()
+      const vaultId = requireVaultId()
       const now = Date.now()
       const d = new Date(now)
       const shardMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -336,6 +391,7 @@ export function registerGraphIPC(): void {
       const record: GraphEdgeRawRecord = {
         id: input.id || newId('e'),
         schemaVersion: 1,
+        vaultId,
         vaultName,
         fromId: input.fromId,
         toId: input.toId,

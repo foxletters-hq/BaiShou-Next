@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { NodeFileSystem } from '../../fs/node-file-system'
 import { DerivedFreshnessService } from '../derived-freshness.service'
 import { GraphRawManager } from '../managers/graph.raw-manager'
@@ -70,7 +71,7 @@ describe('GraphSyncService write→index order', () => {
 
     expect(result.nodesUpserted).toBe(1)
     expect(applyRawNode).toHaveBeenCalledWith(expect.objectContaining({ id: 'n1', name: 'Anson' }))
-    expect(listNodeIds).toHaveBeenCalledWith('Personal')
+    expect(listNodeIds).toHaveBeenCalledWith(deriveLegacyVaultId('Personal'))
     expect(softDeleteNode).toHaveBeenCalledWith('orphan')
     expect(result.deleted).toBe(1)
     expect(await graphManager.listPendingIndex('nodes')).toHaveLength(0)
@@ -118,8 +119,8 @@ describe('GraphSyncService write→index order', () => {
     const result = await sync.syncPendingIndex()
 
     expect(result.shards).toBe(0)
-    expect(listNodeIds).toHaveBeenCalledWith('Personal')
-    expect(listEdgeIds).toHaveBeenCalledWith('Personal')
+    expect(listNodeIds).toHaveBeenCalledWith(deriveLegacyVaultId('Personal'))
+    expect(listEdgeIds).toHaveBeenCalledWith(deriveLegacyVaultId('Personal'))
     expect(softDeleteNode).toHaveBeenCalledWith('ghost')
     expect(softDeleteEdge).toHaveBeenCalledWith('e-orphan')
     expect(result.deleted).toBe(2)
