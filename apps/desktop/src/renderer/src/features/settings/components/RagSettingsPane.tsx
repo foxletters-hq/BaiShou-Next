@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { RagMemoryView, useDialog, useToast } from '@baishou/ui'
 import { getDefaultRagConfig } from '@baishou/store'
 import { useRagSettings } from '../hooks/useRagSettings'
@@ -9,6 +10,7 @@ import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   useRagStatsPrefetch()
   const settingsNav = useSettingsScopeNavigation()
+  const navigate = useNavigate()
   const { t } = useTranslation()
   const { confirm, prompt, alert } = useDialog()
   const toast = useToast()
@@ -83,6 +85,9 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
         onEditEntry={handleEditEntry}
         onExportEmbeddings={handleExportEmbeddings}
         onManageBackups={handleManageBackups}
+        onOpenSourceSession={(sessionId) => navigate(`/chat/${sessionId}`)}
+        onCheckConsistency={async () => (window as any).api?.rag?.checkConsistency()}
+        onRepairConsistency={async (params) => (window as any).api?.rag?.repairConsistency(params)}
         migrationCancelBusy={
           isProcessing && activeRagState.isRunning && activeRagState.type === 'migration'
         }

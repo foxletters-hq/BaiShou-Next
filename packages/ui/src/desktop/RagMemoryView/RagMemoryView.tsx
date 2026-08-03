@@ -11,6 +11,7 @@ import { RagMemoryDiaryEmbedHint } from './RagMemoryDiaryEmbedHint'
 import { RagMemoryActionButtons } from './RagMemoryActionButtons'
 import { RagMemorySearchBar } from './RagMemorySearchBar'
 import { RagMemoryEntriesList } from './RagMemoryEntriesList'
+import { RagMemoryConsistencySection } from './RagMemoryConsistencySection'
 import styles from './RagMemoryView.module.css'
 
 export type {
@@ -46,7 +47,10 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   onEditEntry,
   onNavigateToConfig,
   onDetectDimension,
-  onPageChange
+  onPageChange,
+  onOpenSourceSession,
+  onCheckConsistency,
+  onRepairConsistency
 }) => {
   const view = useRagMemoryView({
     totalCount,
@@ -121,8 +125,14 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           totalPages={view.totalPages}
           onEditEntry={onEditEntry}
           onDeleteEntry={onDeleteEntry}
+          onOpenSourceSession={onOpenSourceSession}
           onPageChange={view.handlePageChange}
           onPageSizeChange={view.handlePageSizeChange}
+        />
+
+        <RagMemoryConsistencySection
+          onCheckConsistency={onCheckConsistency}
+          onRepairConsistency={onRepairConsistency}
         />
       </div>
     </div>

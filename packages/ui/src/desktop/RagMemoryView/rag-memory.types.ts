@@ -39,6 +39,29 @@ export interface RagEntry {
   createdAt: number
   sourceType?: string
   similarity?: number
+  sourceId?: string
+  tags?: string[]
+  sourceSessionId?: string | null
+  memoryCreatedAt?: number
+  memoryUpdatedAt?: number
+  isManual?: boolean
+}
+
+export interface MemoryConsistencyMissingItem {
+  id: string
+  content: string
+  createdAt: number
+  updatedAt: number
+  vaultName: string
+  tags: string[]
+  sourceSessionId: string | null
+}
+
+export interface MemoryConsistencyReport {
+  jsonlLiveCount: number
+  vectorCount: number
+  missing: MemoryConsistencyMissingItem[]
+  orphans: string[]
 }
 
 export interface RagMemoryViewProps {
@@ -70,4 +93,11 @@ export interface RagMemoryViewProps {
   onPageChange?: (page: number, pageSize: number) => void
   onExportEmbeddings?: () => Promise<void>
   onManageBackups?: () => Promise<void>
+  onOpenSourceSession?: (sessionId: string) => void
+  onCheckConsistency?: () => Promise<MemoryConsistencyReport>
+  onRepairConsistency?: (params: {
+    confirmDeleteIds?: string[]
+    restoreIds?: string[]
+    cleanOrphans?: boolean
+  }) => Promise<{ tombstoned: number; restored: number; orphansCleaned: number }>
 }
