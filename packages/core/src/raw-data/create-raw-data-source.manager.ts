@@ -4,6 +4,7 @@ import type { IVersionManager } from '../sync/version-manager.interface'
 import { DerivedFreshnessService } from './derived-freshness.service'
 import { GraphRawManager } from './managers/graph.raw-manager'
 import { MemoryRawManager } from './managers/memory.raw-manager'
+import { NotebookRawManager } from './managers/notebook.raw-manager'
 import { WholeFileRawManager } from './managers/whole-file.raw-manager'
 import { RawDataSourceManager } from './raw-data-source.manager'
 
@@ -19,13 +20,21 @@ export function createRawDataSourceManager(options: CreateRawDataSourceManagerOp
   freshness: DerivedFreshnessService
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  notebookManager: NotebookRawManager
 } {
   const freshness = new DerivedFreshnessService()
   const manager = new RawDataSourceManager(freshness)
   const memoryManager = new MemoryRawManager(options.pathService, options.fs, freshness)
   const graphManager = new GraphRawManager(options.pathService, options.fs, freshness)
+  const notebookManager = new NotebookRawManager(
+    options.pathService,
+    options.fs,
+    options.versionManager,
+    options.maxVersionsPerFile ?? 20
+  )
   manager.registerRecord(memoryManager)
   manager.registerRecord(graphManager)
+  manager.registerFile(notebookManager)
 
   const maxVersions = options.maxVersionsPerFile ?? 20
   for (const kind of ['journal', 'summary', 'session'] as const) {
@@ -40,5 +49,5 @@ export function createRawDataSourceManager(options: CreateRawDataSourceManagerOp
     )
   }
 
-  return { manager, freshness, memoryManager, graphManager }
+  return { manager, freshness, memoryManager, graphManager, notebookManager }
 }

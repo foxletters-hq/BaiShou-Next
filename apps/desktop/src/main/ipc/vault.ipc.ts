@@ -1,7 +1,7 @@
 import i18n from 'i18next'
 import { ipcMain, BrowserWindow } from 'electron'
 import { VaultService, VaultNameExistsError, VaultInvalidNameError, VaultNotFoundError, VaultRenameFilesystemError } from '@baishou/core-desktop'
-import { ShadowIndexRepository, shadowConnectionManager, connectionManager } from '@baishou/database-desktop'
+import { ShadowIndexRepository, shadowConnectionManager, connectionManager, knowledgeConnectionManager } from '@baishou/database-desktop'
 import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
 import { traceStartupStep } from '../startup-trace.util'
@@ -67,6 +67,18 @@ export async function connectGlobalShadowDb(): Promise<void> {
     const sysDir = await pathService.getGlobalShadowIndexDirectory()
     await shadowConnectionManager.connect(sysDir)
     logger.info(`[VaultIPC] 全局 Shadow DB 已连接: ${sysDir}`)
+  })
+}
+
+/** 连接知识库（存储根下 knowledge.db；切换存储根时需 disconnect/reconnect） */
+export async function connectKnowledgeDb(): Promise<void> {
+  await traceStartupStep('knowledgeDb.connect', async () => {
+    const root = await pathService.getRootDirectory()
+    await knowledgeConnectionManager.connect(root)
+    const vec = knowledgeConnectionManager.getVecVersion()
+    logger.info(
+      `[VaultIPC] 知识库已连接: ${root}/knowledge.db vec_version=${vec ?? 'unavailable'}`
+    )
   })
 }
 
@@ -154,6 +166,7 @@ export async function switchVaultFast(vaultName: string) {
 export async function initVaultSystem() {
   await traceStartupStep('vault.initRegistry', () => vaultService.initRegistry())
   await connectGlobalShadowDb()
+  await connectKnowledgeDb()
 
   const { rebindSummaryCacheForActiveVault } = await import('./summary.ipc')
   await traceStartupStep('summary.rebindCache', () => rebindSummaryCacheForActiveVault())
@@ -164,6 +177,15 @@ export async function initVaultSystem() {
   // 全量扫盘延后到渲染进程首屏，避免与 Vite 模块图抢主线程/磁盘
   const { armDeferredColdStartResync } = await import('../services/vault-resync.service')
   armDeferredColdStartResync()
+
+  // 冷启动挂知识库摄入消费者
+  try {
+    const { scheduleConsumeKnowledgeIngestJobs } =
+      await import('../services/knowledge-ingest-jobs.consumer')
+    scheduleConsumeKnowledgeIngestJobs('cold-start')
+  } catch (e) {
+    logger.warn('[VaultIPC] schedule knowledge ingest consumer failed:', e as Error)
+  }
 }
 
 export function registerVaultIPC() {

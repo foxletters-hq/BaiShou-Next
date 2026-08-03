@@ -107,7 +107,13 @@ export class VaultScopedStoragePathService implements IStoragePathService {
   }
 
   async getAttachmentsBaseDirectory(): Promise<string> {
-    const dir = join(await this.vaultDir(), 'attachments')
+    const dir = join(await this.vaultDir(), 'Attachments')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
+  async getNotebooksBaseDirectory(): Promise<string> {
+    const dir = join(await this.vaultDir(), 'Notebooks')
     await fs.mkdir(dir, { recursive: true })
     return dir
   }

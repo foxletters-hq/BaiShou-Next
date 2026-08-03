@@ -440,6 +440,13 @@ export class MobileStoragePathService implements IStoragePathService {
     return dir
   }
 
+  public async getNotebooksBaseDirectory(): Promise<string> {
+    const name = await this.getActiveVaultName()
+    const dir = `${await this.getVaultDirectory(name)}/Notebooks`
+    await this.ensureDir(dir)
+    return dir
+  }
+
   public async getAvatarsDirectory(): Promise<string> {
     const att = await this.getAttachmentsBaseDirectory()
     const dir = `${att}/avatars`

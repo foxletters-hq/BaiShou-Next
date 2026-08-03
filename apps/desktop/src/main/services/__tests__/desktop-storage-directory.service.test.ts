@@ -18,6 +18,11 @@ const databaseMock = vi.hoisted(() => ({
   installDatabaseSchema: vi.fn(),
   shadowConnectionManager: {
     disconnect: vi.fn()
+  },
+  knowledgeConnectionManager: {
+    disconnect: vi.fn(),
+    connect: vi.fn(),
+    isConnected: vi.fn(() => false)
   }
 }))
 
@@ -54,7 +59,8 @@ vi.mock('@baishou/database-desktop', () => databaseMock)
 vi.mock('../../ipc/vault.ipc', () => ({
   pathService: pathServiceMock,
   vaultService: { initRegistry: vi.fn(), getActiveVault: vi.fn(() => ({ name: 'Personal' })) },
-  connectGlobalShadowDb: vi.fn()
+  connectGlobalShadowDb: vi.fn(),
+  connectKnowledgeDb: vi.fn()
 }))
 
 vi.mock('../node-file-system', () => ({

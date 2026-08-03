@@ -8,9 +8,10 @@ import { isPathInsideStorageRoot, isSameStorageRoot, logger } from '@baishou/sha
 import {
   connectionManager,
   installDatabaseSchema,
-  shadowConnectionManager
+  shadowConnectionManager,
+  knowledgeConnectionManager
 } from '@baishou/database-desktop'
-import { pathService, vaultService, connectGlobalShadowDb } from '../ipc/vault.ipc'
+import { pathService, vaultService, connectGlobalShadowDb, connectKnowledgeDb } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { settingsManager } from '../ipc/settings.ipc'
 import { diaryWatcher } from './diary-watcher.service'
@@ -121,6 +122,12 @@ export async function quiesceStorageForFileCopy(): Promise<void> {
     logger.warn('[StorageDirectory] shadow disconnect failed:', e as Error)
   }
 
+  try {
+    knowledgeConnectionManager.disconnect()
+  } catch (e) {
+    logger.warn('[StorageDirectory] knowledge disconnect failed:', e as Error)
+  }
+
   await new Promise((resolve) => setTimeout(resolve, 200))
 }
 
@@ -132,6 +139,7 @@ export async function resumeStorageAfterFileCopy(): Promise<void> {
   await reconnectAgentDbForCurrentStorageRoot()
   await vaultService.initRegistry()
   await connectGlobalShadowDb()
+  await connectKnowledgeDb()
 
   const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
   resetSharedShadowSync()
