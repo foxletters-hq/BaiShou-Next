@@ -1,11 +1,14 @@
 .titleBar {
-  height: 48px;
-  background: var(--bg-surface);
+  --titlebar-height: 52px;
+  --tab-height: 36px;
+  height: var(--titlebar-height);
+  background: transparent;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
   box-shadow: none;
-  position: fixed;
+  /* absolute：叠在外壳顶栏区，不占文档流 */
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -25,49 +28,101 @@
 }
 
 .tabsContainer {
+  position: relative;
   display: flex;
-  height: calc(100% - 8px);
+  align-items: center;
+  height: var(--tab-height);
+  gap: 6px;
   -webkit-app-region: no-drag;
-  margin-top: 8px;
-  gap: 2px;
+}
+
+/* 选中指示器：悬浮胶囊，与内容卡分离 */
+.tabThumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  height: var(--tab-height);
+  box-sizing: border-box;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  pointer-events: none;
+  will-change: transform, width;
+  box-shadow: var(--shadow-sm);
+}
+
+.tabThumbAnimate {
+  transition:
+    transform var(--duration-normal) var(--ease-out-cubic),
+    width var(--duration-normal) var(--ease-out-cubic),
+    opacity var(--duration-fast) var(--ease-out-cubic);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabThumbAnimate {
+    transition: none;
+  }
 }
 
 .tab {
-  width: 160px;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 112px;
+  max-width: 168px;
+  height: var(--tab-height);
+  margin: 0;
+  padding: 0 14px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 8px;
   cursor: pointer;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
-  background-color: transparent;
-  border-radius: 12px 12px 0 0;
-  transition: all 0.2s;
-  position: relative;
+  background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-card) 70%, transparent);
+  border-radius: 10px;
+  box-shadow: none;
+  transition:
+    color var(--duration-normal) var(--ease-out-cubic),
+    background-color var(--duration-normal) var(--ease-out-cubic),
+    border-color var(--duration-normal) var(--ease-out-cubic);
 }
 
 .tab:hover:not(.activeTab) {
-  background-color: rgba(var(--text-primary-rgb), 0.04);
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  color: var(--text-primary);
 }
 
 .activeTab {
-  color: var(--color-primary);
+  color: var(--text-primary);
   font-weight: 500;
-  background: var(--bg-surface-high);
-  box-shadow: none;
+  background: transparent;
+  border-color: transparent;
 }
 
 .activeTab:hover {
-  background: var(--bg-surface-high);
+  background: transparent;
+  color: var(--text-primary);
 }
 
 .tabIcon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  margin-right: 6px;
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  margin-right: 0;
   flex-shrink: 0;
+}
+
+.tabLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .actions {
@@ -245,25 +300,10 @@
   color: var(--text-on-primary) !important;
 }
 
-/* Onboarding mode: transparent overlay titlebar */
+/* 兼容旧类名；顶栏已默认透明 */
+.titleBarTransparent,
 .titleBarOnboarding {
   background: transparent !important;
   border-bottom: none !important;
   box-shadow: none !important;
-}
-
-.titleBarOnboarding .winBtn {
-  color: var(--text-primary);
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-}
-
-.titleBarOnboarding .winBtn:hover {
-  opacity: 1;
-}
-
-.titleBarOnboarding .winCloseBtn:hover {
-  background-color: #e81123 !important;
-  color: var(--text-on-primary) !important;
-  opacity: 1;
 }

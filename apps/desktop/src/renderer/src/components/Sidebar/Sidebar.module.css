@@ -1,7 +1,7 @@
 .sidebar {
   width: 240px;
-  background-color: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  background-color: transparent;
+  border-right: 1px solid var(--border-muted);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -150,11 +150,11 @@
   margin-right: 4px;
   cursor: grab;
   transition: opacity 0.15s;
-  color: var(--color-outline);
+  color: var(--text-secondary);
 }
 
 .navItem:hover .dragHandle {
-  opacity: 0.5;
+  opacity: 0.85;
 }
 
 .navIcon {
@@ -202,7 +202,7 @@
 
 .userCard {
   padding: 20px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-muted);
   display: flex;
   align-items: center;
   background-color: var(--bg-surface);

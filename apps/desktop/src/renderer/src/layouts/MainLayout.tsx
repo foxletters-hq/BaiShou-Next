@@ -76,7 +76,8 @@ export const MainLayout: React.FC = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden',
-                  zIndex: 10
+                  zIndex: 10,
+                  backgroundColor: 'var(--bg-app)'
                 }}
               >
                 <Outlet />
@@ -84,7 +85,7 @@ export const MainLayout: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {/* 原版白守渐变过渡：切换任意底座根路由时展示一个瞬发并淡出的背景遮罩层以统一视效 */}
+          {/* 切换底座根路由时淡出遮罩；颜色与页面画布一致，避免闪白 */}
           <motion.div
             key={location.pathname.split('/')[1] || 'home'}
             initial={{ opacity: 1 }}
