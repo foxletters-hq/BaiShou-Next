@@ -38,6 +38,7 @@ export type { MemoryRawRecord } from '@baishou/shared'
 export interface GraphNodeRawRecord {
   id: string
   schemaVersion: 1
+  vaultId?: string
   vaultName: string
   nodeType: string
   name: string
@@ -58,6 +59,7 @@ export interface GraphNodeRawRecord {
 export interface GraphEdgeRawRecord {
   id: string
   schemaVersion: 1
+  vaultId?: string
   vaultName: string
   fromId: string
   toId: string
@@ -83,6 +85,7 @@ export interface GraphEdgeRawRecord {
 export interface GraphExtractStateRawRecord {
   id: string
   schemaVersion: 1
+  vaultId?: string
   vaultName: string
   filePath: string
   sourceContentHash: string

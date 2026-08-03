@@ -26,6 +26,12 @@ export interface IVaultService {
   /** 获取最后访问的有效 Vault */
   getActiveVault(): VaultInfo | null
 
+  /**
+   * 活跃仓库 { id, name }；无活跃仓库时返回 null。
+   * 调用方写库/检索应使用 id，展示用 name。
+   */
+  resolveActiveVault(): Pick<VaultInfo, 'id' | 'name'> | null
+
   /** 获取所有注册的 Vault 列表 */
   getAllVaults(): VaultInfo[]
 

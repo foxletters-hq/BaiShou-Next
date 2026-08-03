@@ -255,6 +255,12 @@ export class VaultService implements IVaultService {
     )
   }
 
+  public resolveActiveVault(): Pick<VaultInfo, 'id' | 'name'> | null {
+    const active = this.getActiveVault()
+    if (!active) return null
+    return { id: active.id, name: active.name }
+  }
+
   public getAllVaults(): VaultInfo[] {
     return [...this._vaults]
   }
