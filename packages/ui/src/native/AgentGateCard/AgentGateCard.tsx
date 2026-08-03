@@ -17,6 +17,7 @@ import { useNativeTheme } from '../theme'
 import {
   resolveAlwaysAllowPrefixHint,
   resolveAlwaysDisabledReason,
+  formatDecisionSourceLine,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -80,6 +81,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const showAlways = shouldShowAlwaysAllow(request)
   const alwaysDisabledReason = resolveAlwaysDisabledReason(request)
   const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
+  const decisionSourceLine = formatDecisionSourceLine(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const showActionMeta = request.kind === AgentGateKind.Tool
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
@@ -128,7 +130,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             styles.card,
             {
               backgroundColor: colors.bgSurface,
-              borderColor: colors.borderSubtle,
+              borderColor: colors.borderMuted,
               shadowColor: colors.textPrimary
             }
           ]}
@@ -163,6 +165,13 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             {repeatHint ? (
               <Text style={[styles.hint, { color: colors.textSecondary }]}>{repeatHint}</Text>
             ) : null}
+            {decisionSourceLine ? (
+              <Text style={[styles.hint, { color: colors.textTertiary }]}>
+                {t('agent_gate.decision_source', '来源：{{source}}', {
+                  source: decisionSourceLine
+                })}
+              </Text>
+            ) : null}
             {cascadeHint ? (
               <Text style={[styles.hint, { color: colors.textSecondary }]}>{cascadeHint}</Text>
             ) : null}
@@ -171,7 +180,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               <View
                 style={[
                   styles.previewBlock,
-                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgApp }
+                  { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
                 ]}
               >
                 <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
@@ -209,7 +218,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               <View
                 style={[
                   styles.previewBlock,
-                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgApp }
+                  { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
                 ]}
               >
                 <Text style={[styles.commandText, { color: colors.textPrimary }]}>
@@ -227,7 +236,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               <View
                 style={[
                   styles.previewBlock,
-                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgApp }
+                  { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
                 ]}
               >
                 <Text style={{ color: colors.textPrimary }}>{preview.subject}</Text>
@@ -304,7 +313,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                       style={[
                         styles.option,
                         {
-                          borderColor: selected ? colors.primary : colors.borderSubtle,
+                          borderColor: selected ? colors.primary : colors.borderControl,
                           backgroundColor: selected ? colors.primaryLight : 'transparent'
                         }
                       ]}
@@ -331,7 +340,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   styles.feedbackInput,
                   {
                     color: colors.textPrimary,
-                    borderColor: colors.borderSubtle,
+                    borderColor: colors.borderControl,
                     backgroundColor: colors.bgSurface
                   }
                 ]}
@@ -339,7 +348,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             ) : null}
           </ScrollView>
 
-          <View style={[styles.actions, { borderTopColor: colors.borderSubtle }]}>
+          <View style={[styles.actions, { borderTopColor: colors.borderMuted }]}>
             {alwaysConfirm ? (
               <>
                 <Button
@@ -454,9 +463,19 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                     onPress={() => setAlwaysConfirm(true)}
                     disabled={isReplying}
                     style={styles.actionButton}
-                    accessibilityLabel={t('agent_gate.always', '始终允许')}
+                    accessibilityLabel={
+                      alwaysPrefixHint
+                        ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
+                            pattern: alwaysPrefixHint
+                          })
+                        : t('agent_gate.always', '始终允许')
+                    }
                   >
-                    {t('agent_gate.always', '始终允许')}
+                    {alwaysPrefixHint
+                      ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
+                          pattern: alwaysPrefixHint
+                        })
+                      : t('agent_gate.always', '始终允许')}
                   </Button>
                 ) : alwaysDisabledReason ? (
                   <Text style={[styles.actionMeta, { color: colors.textSecondary }]}>
