@@ -119,7 +119,10 @@ export interface ToolDeduplicationService {
   checkAndMerge(options: {
     newMemoryContent: string
     sessionId: string
-    vaultName: string
+    /** 稳定 vault id（写入/检索）；勿再用 name 派生 */
+    vaultId: string
+    /** 显示名快照（可选，仅日志/展示） */
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<{
@@ -169,6 +172,9 @@ export interface ToolDiarySearcher {
  */
 export interface ToolContext {
   sessionId: string
+  /** 稳定仓库身份（vlt_…）；embedding / graph / memory 写入与检索一律用此字段 */
+  vaultId: string
+  /** 显示名：仅供 system prompt / MCP / Gate UI；不得用于 DB 键或派生 id */
   vaultName: string
   embeddingService?: ToolEmbeddingService
   vectorStore?: ToolVectorStore

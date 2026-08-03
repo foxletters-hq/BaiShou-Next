@@ -63,6 +63,11 @@ export interface StreamChatOptions {
   syncGraphPendingIndex?: () => Promise<void>
   /** Read-only GraphRAG for recall_relations */
   graphReader?: import('@baishou/shared').ToolGraphReader
+  /**
+   * 解析 vaultId → 显示名（供 prompt / Gate）。
+   * 宿主有 registry 时应注入；缺省时退回 vaultId 或 'Personal'。
+   */
+  resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
   /** Workspace session context for folder-bound agent tools */
   workspace?: {
     folderRoot: string
