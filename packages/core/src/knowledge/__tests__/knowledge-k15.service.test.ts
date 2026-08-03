@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  classifyExtractQuality,
-  analyzePageTexts
-} from '../knowledge-extract'
+import { classifyExtractQuality, analyzePageTexts } from '../knowledge-extract'
 import {
   resolveExtractEngine,
   type ExtractEngineCapabilities

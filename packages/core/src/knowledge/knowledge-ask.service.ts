@@ -101,7 +101,10 @@ export function heuristicSplitSubQueries(question: string, max = 2): string[] {
   if (parts.length >= 2) {
     return parts.slice(0, max)
   }
-  const conj = q.split(/(?:以及|还有|并且|和|与|and|&)/i).map((s) => s.trim()).filter(Boolean)
+  const conj = q
+    .split(/(?:以及|还有|并且|和|与|and|&)/i)
+    .map((s) => s.trim())
+    .filter(Boolean)
   if (conj.length >= 2) {
     return conj.slice(0, max)
   }
