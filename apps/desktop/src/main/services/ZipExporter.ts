@@ -181,5 +181,25 @@ export class ZipExporter {
       }
       archive.file(sqliteDbPath, { name: 'database/baishou_agent.db' })
     }
+
+    // K1.4：知识库派生库一并打包（损坏时导入侧隔离重建）
+    try {
+      const storageRoot = await this.pathService.getRootDirectory()
+      const knowledgeDbPath = path.join(storageRoot, 'knowledge.db')
+      if (fs.existsSync(knowledgeDbPath)) {
+        try {
+          const { knowledgeConnectionManager } = await import('@baishou/database-desktop')
+          if (knowledgeConnectionManager.isConnected()) {
+            const sqlite = knowledgeConnectionManager.getSqlite()
+            sqlite.pragma('wal_checkpoint(TRUNCATE)')
+          }
+        } catch (e: unknown) {
+          logger.warn('Failed to checkpoint knowledge WAL:', e as Error)
+        }
+        archive.file(knowledgeDbPath, { name: 'database/knowledge.db' })
+      }
+    } catch (e: unknown) {
+      logger.warn('Failed to include knowledge.db in archive:', e as Error)
+    }
   }
 }

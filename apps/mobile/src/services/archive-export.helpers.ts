@@ -150,6 +150,19 @@ export async function buildArchiveSupplement(
     }
   }
 
+  // K1.4：尽量打包 knowledge.db（存储根下）
+  try {
+    const rootDir = normalizeStoragePath(await ctx.pathService.getRootDirectory())
+    const knowledgeSrc = `${rootDir}/knowledge.db`
+    if (await ctx.fileSystem.exists(knowledgeSrc)) {
+      const dbDir = `${cacheDir}/database`
+      await ctx.fileSystem.mkdir(dbDir, { recursive: true })
+      await ctx.fileSystem.copyFile(knowledgeSrc, `${dbDir}/knowledge.db`)
+    }
+  } catch (e) {
+    console.warn('[MobileArchive] Failed to pack knowledge.db', e)
+  }
+
   const manifest = {
     formatVersion: 1,
     exportedAt: Date.now(),

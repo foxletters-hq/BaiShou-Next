@@ -180,15 +180,50 @@ export async function executeArchiveImportFromZip(
 
     try {
       const extractedDbPath = path.join(rootDir, 'database', 'baishou_agent.db')
+      const extractedKnowledgePath = path.join(rootDir, 'database', 'knowledge.db')
+
+      if (fs.existsSync(extractedKnowledgePath)) {
+        try {
+          const { pathService, connectKnowledgeDb } = await import('../ipc/vault.ipc')
+          const { knowledgeConnectionManager } = await import('@baishou/database-desktop')
+          if (knowledgeConnectionManager.isConnected()) {
+            knowledgeConnectionManager.disconnect()
+          }
+          const storageRoot = await pathService.getRootDirectory()
+          const dest = path.join(storageRoot, 'knowledge.db')
+          await fsp.mkdir(storageRoot, { recursive: true })
+          await fsp.copyFile(extractedKnowledgePath, dest)
+          await connectKnowledgeDb()
+        } catch (e: any) {
+          logger.warn('Failed to restore knowledge.db from archive (will rebuild on demand):', e)
+          try {
+            const { pathService, connectKnowledgeDb } = await import('../ipc/vault.ipc')
+            const { knowledgeConnectionManager } = await import('@baishou/database-desktop')
+            if (knowledgeConnectionManager.isConnected()) {
+              knowledgeConnectionManager.disconnect()
+            }
+            const storageRoot = await pathService.getRootDirectory()
+            const dest = path.join(storageRoot, 'knowledge.db')
+            await fsp.rm(dest, { force: true }).catch(() => {})
+            await fsp.rm(`${dest}-wal`, { force: true }).catch(() => {})
+            await fsp.rm(`${dest}-shm`, { force: true }).catch(() => {})
+            await connectKnowledgeDb()
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
       if (fs.existsSync(extractedDbPath)) {
         const { getAppDbPath } = await import('../db')
         const actualDbPath =
           getAppDbPath() || path.join(app.getPath('userData'), 'baishou_agent.db')
         await fsp.copyFile(extractedDbPath, actualDbPath)
-        await fsp
-          .rm(path.join(rootDir, 'database'), { recursive: true, force: true })
-          .catch(() => {})
       }
+
+      await fsp
+        .rm(path.join(rootDir, 'database'), { recursive: true, force: true })
+        .catch(() => {})
     } catch (e: any) {
       logger.error('Failed to restore database from archive', e)
     }
