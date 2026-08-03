@@ -15,6 +15,7 @@ import {
   runWorkspaceStreamChat
 } from '../services/agent-workspace-chat.service'
 import {
+  attachWorkspaceNotebook,
   getWorkspaceSessionBinding,
   listWorkspaceSessions,
   removeWorkspaceSession
@@ -320,6 +321,14 @@ export function registerAgentWorkspaceIPC(): void {
   ipcMain.handle('agent-workspace:get-binding', async (_, sessionId: string) => {
     return getWorkspaceSessionBinding(sessionId)
   })
+
+  ipcMain.handle(
+    'agent-workspace:attach-notebook',
+    async (_, params: { sessionId: string; notebookId: string | null }) => {
+      if (!params?.sessionId?.trim()) throw new Error('sessionId is required')
+      return attachWorkspaceNotebook(params.sessionId, params.notebookId)
+    }
+  )
 
   ipcMain.handle(
     'agent-workspace:list-sessions',

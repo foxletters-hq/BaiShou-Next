@@ -214,7 +214,19 @@ interface AgentWorkspaceAPI {
     assistantId?: string
     title?: string
   }): Promise<string>
-  getBinding(sessionId: string): Promise<{ sessionId: string; folderRoot: string } | null>
+  getBinding(sessionId: string): Promise<{
+    sessionId: string
+    folderRoot: string
+    notebookId?: string
+  } | null>
+  attachNotebook(params: {
+    sessionId: string
+    notebookId: string | null
+  }): Promise<{
+    sessionId: string
+    folderRoot: string
+    notebookId?: string
+  } | null>
   listSessions(): Promise<import('@baishou/shared').AgentWorkspaceSessionListItem[]>
   deleteSession(sessionId: string): Promise<{ success: boolean }>
   chat(params: {
