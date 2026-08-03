@@ -402,3 +402,40 @@ export async function runDerivedIndexHydration(reason: string): Promise<void> {
     logger.warn(`[RawData] derived hydration failed (${reason}):`, e as Error)
   }
 }
+
+/** K1.4：同步后 Notebooks/ 差集 → knowledge.db embed jobs */
+export async function runKnowledgeHydrationAfterSync(reason: string): Promise<void> {
+  try {
+    const { knowledgeConnectionManager, KnowledgeRepository } = await import(
+      '@baishou/database-desktop'
+    )
+    if (!knowledgeConnectionManager.isConnected()) {
+      logger.warn(`[KnowledgeHydration] skip (${reason}): knowledge db not connected`)
+      return
+    }
+
+    const { KnowledgeHydrationService } = await import('@baishou/core-desktop')
+    const { getEmbeddingService } = await import('../ipc/rag.ipc')
+    const embeddingService = getEmbeddingService()
+    const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
+    const notebookManager = getNotebookRawManager()
+
+    const hydration = new KnowledgeHydrationService({
+      repo,
+      notebookManager,
+      isEmbeddingConfigured: () => embeddingService.isConfigured
+    })
+    const result = await hydration.hydrate()
+
+    if (result.embedJobsEnqueued > 0) {
+      const { scheduleConsumeKnowledgeIngestJobs } = await import(
+        './knowledge-ingest-jobs.consumer'
+      )
+      scheduleConsumeKnowledgeIngestJobs(reason)
+    }
+
+    logger.info(`[KnowledgeHydration] done (${reason})`, result)
+  } catch (e) {
+    logger.warn(`[KnowledgeHydration] failed (${reason}):`, e as Error)
+  }
+}
