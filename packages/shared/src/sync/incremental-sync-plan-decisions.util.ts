@@ -18,27 +18,37 @@ export type IncrementalSyncPlanMergeResult = {
   } | null
 }
 
+export type IncrementalSyncPlanMergeOptions = IncrementalSyncRunOptions & {
+  /** V2.5：rename 旧前缀路径，不计入 mass_delete */
+  ignoreDeleteRemotePaths?: ReadonlySet<string>
+}
+
 /** 生成规划/预览用合并决策；若已提供删除传播选择则与执行阶段一致 */
 export function buildIncrementalSyncPlanMergeResult(
   local: SyncManifest,
   remote: SyncManifest,
   ancestor: SyncManifest,
   previousLocal?: SyncManifest,
-  runOptions?: IncrementalSyncRunOptions
+  runOptions?: IncrementalSyncPlanMergeOptions
 ): IncrementalSyncPlanMergeResult {
   const rawDecisions = threeWayMerge(local, remote, ancestor)
+  const guardOptions = {
+    ignoreDeleteRemotePaths: runOptions?.ignoreDeleteRemotePaths
+  }
   const deleteBlock = inspectDeletePropagationBlock(
     rawDecisions,
     local,
     remote,
     ancestor,
-    previousLocal
+    previousLocal,
+    guardOptions
   )
 
   if (runOptions?.deletePropagationChoice) {
     return {
       decisions: resolveSyncMergeDecisions(rawDecisions, local, remote, ancestor, previousLocal, {
-        deletePropagationChoice: runOptions.deletePropagationChoice
+        deletePropagationChoice: runOptions.deletePropagationChoice,
+        ignoreDeleteRemotePaths: runOptions.ignoreDeleteRemotePaths
       }),
       deleteBlock: null
     }

@@ -98,14 +98,37 @@ function isRemoteInitiatedDeleteLocalPropagation(
   return remote.updatedAt > ancestor.updatedAt
 }
 
+export type SyncDeletePropagationGuardOptions = {
+  /**
+   * V2.5：vault rename pass / 朴素改名产生的旧前缀 delete-remote 路径。
+   * 不计为 mass_delete，避免改名批次被误拦或误放行后的二次确认。
+   */
+  ignoreDeleteRemotePaths?: ReadonlySet<string>
+}
+
+function filterDeleteRemoteForGuard(
+  decisions: MergeDecision[],
+  ignoreDeleteRemotePaths?: ReadonlySet<string>
+): MergeDecision[] {
+  return decisions.filter((d) => {
+    if (d.type !== 'delete-remote') return false
+    if (!ignoreDeleteRemotePaths || ignoreDeleteRemotePaths.size === 0) return true
+    return !ignoreDeleteRemotePaths.has(d.filePath.replace(/\\/g, '/'))
+  })
+}
+
 function assertDeleteRemotePropagationAllowed(
   decisions: MergeDecision[],
   local: SyncManifest,
   remote: SyncManifest,
   ancestor: SyncManifest,
-  previousLocal?: SyncManifest
+  previousLocal?: SyncManifest,
+  options?: SyncDeletePropagationGuardOptions
 ): void {
-  const deleteRemoteDecisions = decisions.filter((d) => d.type === 'delete-remote')
+  const deleteRemoteDecisions = filterDeleteRemoteForGuard(
+    decisions,
+    options?.ignoreDeleteRemotePaths
+  )
   const deleteRemoteCount = deleteRemoteDecisions.length
   if (deleteRemoteCount === 0) return
 
@@ -228,9 +251,17 @@ export function assertBidirectionalDeletePropagationAllowed(
   local: SyncManifest,
   remote: SyncManifest,
   ancestor: SyncManifest,
-  previousLocal?: SyncManifest
+  previousLocal?: SyncManifest,
+  options?: SyncDeletePropagationGuardOptions
 ): void {
-  assertDeleteRemotePropagationAllowed(decisions, local, remote, ancestor, previousLocal)
+  assertDeleteRemotePropagationAllowed(
+    decisions,
+    local,
+    remote,
+    ancestor,
+    previousLocal,
+    options
+  )
   assertDeleteLocalPropagationAllowed(decisions, local, remote, ancestor)
 }
 
@@ -253,10 +284,18 @@ export function inspectDeletePropagationBlock(
   local: SyncManifest,
   remote: SyncManifest,
   ancestor: SyncManifest,
-  previousLocal?: SyncManifest
+  previousLocal?: SyncManifest,
+  options?: SyncDeletePropagationGuardOptions
 ): SyncDeletePropagationBlockedError | null {
   try {
-    assertBidirectionalDeletePropagationAllowed(decisions, local, remote, ancestor, previousLocal)
+    assertBidirectionalDeletePropagationAllowed(
+      decisions,
+      local,
+      remote,
+      ancestor,
+      previousLocal,
+      options
+    )
     return null
   } catch (error) {
     if (error instanceof SyncDeletePropagationBlockedError) {
@@ -304,9 +343,14 @@ export function resolveSyncMergeDecisions(
   remote: SyncManifest,
   ancestor: SyncManifest,
   previousLocal?: SyncManifest,
-  options?: { deletePropagationChoice?: SyncDeletePropagationChoice }
+  options?: {
+    deletePropagationChoice?: SyncDeletePropagationChoice
+    ignoreDeleteRemotePaths?: ReadonlySet<string>
+  }
 ): MergeDecision[] {
-  const block = inspectDeletePropagationBlock(decisions, local, remote, ancestor, previousLocal)
+  const block = inspectDeletePropagationBlock(decisions, local, remote, ancestor, previousLocal, {
+    ignoreDeleteRemotePaths: options?.ignoreDeleteRemotePaths
+  })
   if (!block) {
     return decisions
   }

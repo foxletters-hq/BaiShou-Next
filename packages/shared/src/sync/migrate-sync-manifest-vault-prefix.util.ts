@@ -57,7 +57,8 @@ export type MigrateSyncManifestVaultPrefixResult = {
 
 /**
  * 迁移本地 sync manifest 的 vault 路径前缀，保留 hash/size/mtime（及 removed 元数据）。
- * **不要**对祖先快照（last-remote-manifest）调用——否则三方合并会判成 delete-local。
+ * 本地改名（V2.4）时**不要**对祖先快照（last-remote-manifest）调用——否则三方合并会判成 delete-local。
+ * V2.5 rename pass 成功后由 `applyVaultRenamePassManifests` 同时迁移远端与祖先。
  */
 export function migrateSyncManifestVaultPrefix(
   manifest: SyncManifest,
