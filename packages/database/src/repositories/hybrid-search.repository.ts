@@ -73,6 +73,18 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.embeddingStore.listEmbeddingChunksByType(...args)
   }
 
+  normalizeManualToMemory(
+    ...args: Parameters<HybridSearchEmbeddingStore['normalizeManualToMemory']>
+  ) {
+    return this.embeddingStore.normalizeManualToMemory(...args)
+  }
+
+  updateMetadataBySource(
+    ...args: Parameters<HybridSearchEmbeddingStore['updateMetadataBySource']>
+  ) {
+    return this.embeddingStore.updateMetadataBySource(...args)
+  }
+
   clearEmbeddings(...args: Parameters<HybridSearchEmbeddingStore['clearEmbeddings']>) {
     return this.embeddingStore.clearEmbeddings(...args)
   }

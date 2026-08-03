@@ -141,6 +141,73 @@ export class HybridSearchEmbeddingStore {
     })
   }
 
+  /**
+   * Flip source_type from manual → memory and align group_id, without re-embedding.
+   * Returns number of distinct source_id values that had at least one row updated.
+   */
+  async normalizeManualToMemory(params: {
+    vaultName: string
+    sourceIds?: string[]
+  }): Promise<number> {
+    const groupId = `memory:${params.vaultName}`
+    if (params.sourceIds && params.sourceIds.length > 0) {
+      const placeholders = params.sourceIds.map(() => '?').join(', ')
+      const before = await this.db.execute({
+        sql: `
+          SELECT COUNT(DISTINCT source_id) AS c FROM ${HYBRID_SEARCH_TABLE}
+          WHERE source_type = 'manual' AND source_id IN (${placeholders})
+        `,
+        args: [...params.sourceIds]
+      })
+      const count = Number((before.rows[0] as { c?: unknown } | undefined)?.c ?? 0)
+      if (count === 0) return 0
+      await this.db.execute({
+        sql: `
+          UPDATE ${HYBRID_SEARCH_TABLE}
+          SET source_type = 'memory',
+              group_id = CASE
+                WHEN group_id LIKE 'memory:%' THEN group_id
+                ELSE ?
+              END
+          WHERE source_type = 'manual' AND source_id IN (${placeholders})
+        `,
+        args: [groupId, ...params.sourceIds]
+      })
+      return count
+    }
+
+    const before = await this.db.execute({
+      sql: `SELECT COUNT(DISTINCT source_id) AS c FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'manual'`,
+      args: []
+    })
+    const count = Number((before.rows[0] as { c?: unknown } | undefined)?.c ?? 0)
+    if (count === 0) return 0
+    await this.db.execute({
+      sql: `
+        UPDATE ${HYBRID_SEARCH_TABLE}
+        SET source_type = 'memory',
+            group_id = CASE
+              WHEN group_id LIKE 'memory:%' THEN group_id
+              ELSE ?
+            END
+        WHERE source_type = 'manual'
+      `,
+      args: [groupId]
+    })
+    return count
+  }
+
+  async updateMetadataBySource(
+    sourceType: string,
+    sourceId: string,
+    metadataJson: string
+  ): Promise<void> {
+    await this.db.execute({
+      sql: `UPDATE ${HYBRID_SEARCH_TABLE} SET metadata_json = ? WHERE source_type = ? AND source_id = ?`,
+      args: [metadataJson, sourceType, sourceId]
+    })
+  }
+
   async clearEmbeddings(): Promise<void> {
     await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
   }
