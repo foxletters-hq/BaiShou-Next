@@ -128,11 +128,8 @@ export class MobileIncrementalSyncService {
   private async resolveActiveUserProfileSyncRelPath(): Promise<string | null> {
     try {
       const syncRoot = (await this.pathService.getRootDirectory()).replace(/\\/g, '/')
-      const settingsDir = (await this.pathService.getActiveVaultSettingsDirectory()).replace(
-        /\\/g,
-        '/'
-      )
-      const full = `${settingsDir.replace(/\/$/, '')}/settings/user_profile.json`
+      const settingsDir = (await this.pathService.getGlobalSettingsDirectory()).replace(/\\/g, '/')
+      const full = `${settingsDir.replace(/\/$/, '')}/user_profile.json`
       const root = syncRoot.replace(/\/$/, '')
       if (full === root || !full.startsWith(`${root}/`)) return null
       return full.slice(root.length + 1)

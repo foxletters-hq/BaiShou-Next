@@ -7,6 +7,7 @@ describe('classifyIncrementalSyncPaths', () => {
       'Personal/Journals/2026/07/14.md',
       'Work/Sessions/abc123.json',
       'Personal/.baishou/settings/user_profile.json',
+      '.baishou/settings/ai_providers.json',
       'Personal/Summaries/week.md',
       'Personal/Assistants/latte.json',
       'Personal/Memory/2026-07.jsonl',

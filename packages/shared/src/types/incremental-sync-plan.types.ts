@@ -11,7 +11,7 @@ export type IncrementalSyncPlanAction =
 export interface IncrementalSyncPlanItem {
   filePath: string
   action: IncrementalSyncPlanAction
-  /** 工作区名、`__root__`（注册表等根级文件）或 `__unknown__` */
+  /** 工作区名、`global`（根级 settings）、`__root__`（注册表等）或 `__unknown__` */
   vaultScope: string
   /** 来自 MergeDecision.size（字节）；删除类动作不计入流量汇总但仍保留原值 */
   sizeBytes: number
