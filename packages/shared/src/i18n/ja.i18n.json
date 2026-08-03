@@ -2890,5 +2890,17 @@
     "scene_more_p2": "私のアイデアを実行可能な計画に整理して",
     "scene_more_p3": "始める前に重要な質問を3つ聞いて",
     "back_to_home": "すべてのフォルダ"
+  },
+  "graph": {
+    "extract_this_entry": "この日記の人や出来事を相棒に覚えさせよう",
+    "extract_this_done": "この日記の人や出来事を覚えました",
+    "pending_entries_hint": "まだ整理していない日記が {{count}} 件あります",
+    "extract_pending_batch": "整理を開始",
+    "extract_remember": "覚える",
+    "extracting": "抽出中…",
+    "extract_progress": "整理中 {{current}}/{{total}}",
+    "extract_failed": "整理に失敗しました",
+    "extract_batch_done": "{{done}} 件の日記を整理しました",
+    "extract_batch_result": "完了 {{done}}、失敗 {{failed}}"
   }
 }
