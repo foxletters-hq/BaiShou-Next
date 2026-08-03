@@ -103,7 +103,10 @@ export const KnowledgeListPage: React.FC = () => {
           <div className={styles.titleBlock}>
             <h1 className={styles.title}>{t('knowledge.title', '知识库')}</h1>
             <p className={styles.subtitle}>
-              {t('knowledge.list_subtitle', '按主题隔离的向量笔记本：导入资料，提问并获得带引用的回答。')}
+              {t(
+                'knowledge.list_subtitle',
+                '按主题隔离的向量笔记本：导入资料，提问并获得带引用的回答。'
+              )}
             </p>
           </div>
           <div className={styles.actions}>
@@ -121,7 +124,9 @@ export const KnowledgeListPage: React.FC = () => {
         {error ? <p className={styles.errorLine}>{error}</p> : null}
 
         {notebooks.length === 0 ? (
-          <div className={styles.empty}>{t('knowledge.empty_notebooks', '还没有笔记本，先新建一个主题容器。')}</div>
+          <div className={styles.empty}>
+            {t('knowledge.empty_notebooks', '还没有笔记本，先新建一个主题容器。')}
+          </div>
         ) : (
           <div className={styles.grid}>
             {notebooks.map((nb) => {
@@ -164,7 +169,11 @@ export const KnowledgeListPage: React.FC = () => {
       </div>
 
       {showCreate ? (
-        <div className={styles.dialogBackdrop} role="presentation" onClick={() => !busy && setShowCreate(false)}>
+        <div
+          className={styles.dialogBackdrop}
+          role="presentation"
+          onClick={() => !busy && setShowCreate(false)}
+        >
           <div
             className={styles.dialog}
             role="dialog"
@@ -183,7 +192,9 @@ export const KnowledgeListPage: React.FC = () => {
               />
             </label>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>{t('knowledge.notebook_desc', '描述（可选）')}</span>
+              <span className={styles.fieldLabel}>
+                {t('knowledge.notebook_desc', '描述（可选）')}
+              </span>
               <textarea
                 className={styles.fieldTextarea}
                 value={description}
@@ -191,10 +202,20 @@ export const KnowledgeListPage: React.FC = () => {
               />
             </label>
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.btnGhost} onClick={() => setShowCreate(false)} disabled={busy}>
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => setShowCreate(false)}
+                disabled={busy}
+              >
                 {t('common.cancel', '取消')}
               </button>
-              <button type="button" className={styles.btnPrimary} onClick={() => void onCreate()} disabled={busy || !name.trim()}>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => void onCreate()}
+                disabled={busy || !name.trim()}
+              >
                 {t('knowledge.create_action', '创建')}
               </button>
             </div>

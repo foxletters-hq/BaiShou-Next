@@ -124,9 +124,7 @@ export const IncrementalSyncPage: React.FC = () => {
   return (
     <SettingsPageChrome
       title={t('data_sync.incremental_sync', '增量同步')}
-      titleAccessory={
-        <HelpTooltip content={t('data_sync.incremental_sync_tooltip')} size={16} />
-      }
+      titleAccessory={<HelpTooltip content={t('data_sync.incremental_sync_tooltip')} size={16} />}
     >
       <div className={pane.stack}>
         <div className={pane.stackGroup}>

@@ -431,9 +431,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
     if (scene === 'workspace' && !isCustomPresets) {
       void saveWorkspacePresets(
         inferredPresets.scopePreset,
-        inferredPresets.approvalPreset === 'custom'
-          ? 'always_ask'
-          : inferredPresets.approvalPreset,
+        inferredPresets.approvalPreset === 'custom' ? 'always_ask' : inferredPresets.approvalPreset,
         nextDirs
       )
       return
@@ -481,10 +479,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                       {t('settings.agent_gate_scope_preset', '活动范围')}
                     </div>
                     <div className={styles.matrixHint}>
-                      {t(
-                        'settings.agent_gate_scope_preset_hint',
-                        'AI 在这个工作区能碰到多大范围'
-                      )}
+                      {t('settings.agent_gate_scope_preset_hint', 'AI 在这个工作区能碰到多大范围')}
                     </div>
                   </div>
                   <Select
@@ -511,10 +506,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                       {t('settings.agent_gate_approval_preset', '审批时机')}
                     </div>
                     <div className={styles.matrixHint}>
-                      {t(
-                        'settings.agent_gate_approval_preset_hint',
-                        '什么时候需要你确认'
-                      )}
+                      {t('settings.agent_gate_approval_preset_hint', '什么时候需要你确认')}
                     </div>
                   </div>
                   <Select
@@ -651,198 +643,201 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
 
             {scene !== 'workspace' || customMatrixExpanded
               ? capabilities.map((cap, index) => {
-              const current = capabilityState.effects[cap.id] ?? AgentGateEffect.Ask
-              const title = capabilityTitle(cap.id, t)
-              const hint = capabilityHint(cap.id, t)
-              const options: AgentGateEffect[] = cap.lockedToAsk
-                ? [AgentGateEffect.Ask]
-                : cap.disallowAllow
-                  ? [AgentGateEffect.Ask, AgentGateEffect.Deny]
-                  : [AgentGateEffect.Allow, AgentGateEffect.Ask, AgentGateEffect.Deny]
+                  const current = capabilityState.effects[cap.id] ?? AgentGateEffect.Ask
+                  const title = capabilityTitle(cap.id, t)
+                  const hint = capabilityHint(cap.id, t)
+                  const options: AgentGateEffect[] = cap.lockedToAsk
+                    ? [AgentGateEffect.Ask]
+                    : cap.disallowAllow
+                      ? [AgentGateEffect.Ask, AgentGateEffect.Deny]
+                      : [AgentGateEffect.Allow, AgentGateEffect.Ask, AgentGateEffect.Deny]
 
-              return (
-                <React.Fragment key={cap.id}>
-                  {(scene === 'workspace' || index > 0) && index > 0 ? (
-                    <div className={pane.divider} />
-                  ) : index > 0 ? (
-                    <div className={pane.divider} />
-                  ) : scene === 'workspace' ? (
-                    <div className={pane.divider} />
-                  ) : null}
-                  <div className={styles.matrixRow}>
-                    <div className={styles.matrixText}>
-                      <div className={styles.matrixTitle}>{title}</div>
-                      <div className={styles.matrixHint}>{hint}</div>
-                    </div>
-                    <SegmentedControl
-                      aria-label={title}
-                      value={current}
-                      options={options.map((effect) => ({
-                        value: effect,
-                        label: effectLabel(effect),
-                        disabled: cap.lockedToAsk && effect !== AgentGateEffect.Ask
-                      }))}
-                      onChange={(effect) => void saveCapabilityState({ [cap.id]: effect })}
-                    />
-                  </div>
-
-                  {cap.id === 'external' && scene === 'workspace' && isCustomPresets ? (
-                    <div className={styles.subBlock}>
-                      <div className={styles.sectionLabel}>
-                        {t('settings.agent_gate_trusted_dirs_title', '可信区外目录')}
-                      </div>
-                      <p className={styles.emptyHint}>
-                        {t(
-                          'settings.agent_gate_trusted_dirs_hint',
-                          '匹配这些目录的区外路径可通过区外门，再按读取/编辑等能力决定；未匹配仍询问或拒绝。'
-                        )}
-                      </p>
-                      {capabilityState.trustedExternalDirs.length === 0 ? (
-                        <p className={styles.emptyHint}>
-                          {t('settings.agent_gate_trusted_dirs_empty', '暂无可信目录')}
-                        </p>
-                      ) : (
-                        capabilityState.trustedExternalDirs.map((dir) => (
-                          <div key={dir} className="settings-list-tile settings-list-tile-noclick">
-                            <div className="settings-list-tile-content">
-                              <span className="settings-list-tile-title settings-monospace">
-                                {dir}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="settings-text-btn"
-                              disabled={saving}
-                              onClick={() => removeTrustedDir(dir)}
-                            >
-                              {t('common.remove', '移除')}
-                            </button>
-                          </div>
-                        ))
-                      )}
-                      <div className={styles.formRow}>
-                        <input
-                          className={styles.textInput}
-                          value={trustedDirDraft}
-                          onChange={(e) => setTrustedDirDraft(e.target.value)}
-                          placeholder={t(
-                            'settings.agent_gate_trusted_dirs_placeholder',
-                            '例如 D:/Notes 或 ~/projects/personal/**'
-                          )}
-                          disabled={saving}
+                  return (
+                    <React.Fragment key={cap.id}>
+                      {(scene === 'workspace' || index > 0) && index > 0 ? (
+                        <div className={pane.divider} />
+                      ) : index > 0 ? (
+                        <div className={pane.divider} />
+                      ) : scene === 'workspace' ? (
+                        <div className={pane.divider} />
+                      ) : null}
+                      <div className={styles.matrixRow}>
+                        <div className={styles.matrixText}>
+                          <div className={styles.matrixTitle}>{title}</div>
+                          <div className={styles.matrixHint}>{hint}</div>
+                        </div>
+                        <SegmentedControl
+                          aria-label={title}
+                          value={current}
+                          options={options.map((effect) => ({
+                            value: effect,
+                            label: effectLabel(effect),
+                            disabled: cap.lockedToAsk && effect !== AgentGateEffect.Ask
+                          }))}
+                          onChange={(effect) => void saveCapabilityState({ [cap.id]: effect })}
                         />
-                        <button
-                          type="button"
-                          className="settings-text-btn"
-                          disabled={saving}
-                          onClick={addTrustedDir}
-                        >
-                          {t('common.add', '添加')}
-                        </button>
                       </div>
-                    </div>
-                  ) : null}
 
-                  {cap.id === 'command' && scene === 'workspace' ? (
-                    <div className={styles.subBlock}>
-                      <div className={styles.sectionLabel}>
-                        {t('settings.agent_gate_command_prefixes_title', '始终允许的命令前缀')}
-                      </div>
-                      <p className={styles.emptyHint}>
-                        {t(
-                          'settings.agent_gate_command_prefixes_hint',
-                          '来自会话中的「始终允许」；仅作用于当前工作区。'
-                        )}
-                      </p>
-                      {commandAllowlist.length === 0 ? (
-                        <p className={styles.emptyHint}>
-                          {t('settings.agent_gate_command_prefixes_empty', '暂无前缀')}
-                        </p>
-                      ) : (
-                        commandAllowlist.map((entry) => (
-                          <div
-                            key={entry.id}
-                            className="settings-list-tile settings-list-tile-noclick"
-                          >
-                            <div className="settings-list-tile-content">
-                              <span className="settings-list-tile-title settings-monospace">
-                                {entry.pattern ?? entry.action}
-                              </span>
-                            </div>
+                      {cap.id === 'external' && scene === 'workspace' && isCustomPresets ? (
+                        <div className={styles.subBlock}>
+                          <div className={styles.sectionLabel}>
+                            {t('settings.agent_gate_trusted_dirs_title', '可信区外目录')}
+                          </div>
+                          <p className={styles.emptyHint}>
+                            {t(
+                              'settings.agent_gate_trusted_dirs_hint',
+                              '匹配这些目录的区外路径可通过区外门，再按读取/编辑等能力决定；未匹配仍询问或拒绝。'
+                            )}
+                          </p>
+                          {capabilityState.trustedExternalDirs.length === 0 ? (
+                            <p className={styles.emptyHint}>
+                              {t('settings.agent_gate_trusted_dirs_empty', '暂无可信目录')}
+                            </p>
+                          ) : (
+                            capabilityState.trustedExternalDirs.map((dir) => (
+                              <div
+                                key={dir}
+                                className="settings-list-tile settings-list-tile-noclick"
+                              >
+                                <div className="settings-list-tile-content">
+                                  <span className="settings-list-tile-title settings-monospace">
+                                    {dir}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="settings-text-btn"
+                                  disabled={saving}
+                                  onClick={() => removeTrustedDir(dir)}
+                                >
+                                  {t('common.remove', '移除')}
+                                </button>
+                              </div>
+                            ))
+                          )}
+                          <div className={styles.formRow}>
+                            <input
+                              className={styles.textInput}
+                              value={trustedDirDraft}
+                              onChange={(e) => setTrustedDirDraft(e.target.value)}
+                              placeholder={t(
+                                'settings.agent_gate_trusted_dirs_placeholder',
+                                '例如 D:/Notes 或 ~/projects/personal/**'
+                              )}
+                              disabled={saving}
+                            />
                             <button
                               type="button"
                               className="settings-text-btn"
                               disabled={saving}
-                              onClick={() => void removeAllowlistEntry(entry)}
+                              onClick={addTrustedDir}
                             >
-                              {t('common.remove', '移除')}
+                              {t('common.add', '添加')}
                             </button>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  ) : null}
-                </React.Fragment>
-              )
-            })
+                        </div>
+                      ) : null}
+
+                      {cap.id === 'command' && scene === 'workspace' ? (
+                        <div className={styles.subBlock}>
+                          <div className={styles.sectionLabel}>
+                            {t('settings.agent_gate_command_prefixes_title', '始终允许的命令前缀')}
+                          </div>
+                          <p className={styles.emptyHint}>
+                            {t(
+                              'settings.agent_gate_command_prefixes_hint',
+                              '来自会话中的「始终允许」；仅作用于当前工作区。'
+                            )}
+                          </p>
+                          {commandAllowlist.length === 0 ? (
+                            <p className={styles.emptyHint}>
+                              {t('settings.agent_gate_command_prefixes_empty', '暂无前缀')}
+                            </p>
+                          ) : (
+                            commandAllowlist.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="settings-list-tile settings-list-tile-noclick"
+                              >
+                                <div className="settings-list-tile-content">
+                                  <span className="settings-list-tile-title settings-monospace">
+                                    {entry.pattern ?? entry.action}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="settings-text-btn"
+                                  disabled={saving}
+                                  onClick={() => void removeAllowlistEntry(entry)}
+                                >
+                                  {t('common.remove', '移除')}
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      ) : null}
+                    </React.Fragment>
+                  )
+                })
               : null}
 
             {scene !== 'workspace' || customMatrixExpanded ? (
               <>
-            <div className={pane.divider} />
+                <div className={pane.divider} />
 
-            <div className="settings-list-tile settings-list-tile-noclick">
-              <div className="settings-list-tile-content">
-                <span className="settings-list-tile-title">
-                  {t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
-                </span>
-                <span className="settings-list-tile-subtitle">
-                  {t(
-                    'settings.agent_gate_hide_denied_hint',
-                    '开启后，当前场景下被默认拒绝的工具不会出现在可选列表中。'
-                  )}
-                </span>
-              </div>
-              <label className={`settings-switch-label ${styles.compactSwitch}`}>
-                <input
-                  type="checkbox"
-                  disabled={saving}
-                  checked={config.hideDeniedTools !== false}
-                  onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
-                />
-                <span className="settings-switch-slider" />
-              </label>
-            </div>
-            <div className={pane.divider} />
+                <div className="settings-list-tile settings-list-tile-noclick">
+                  <div className="settings-list-tile-content">
+                    <span className="settings-list-tile-title">
+                      {t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
+                    </span>
+                    <span className="settings-list-tile-subtitle">
+                      {t(
+                        'settings.agent_gate_hide_denied_hint',
+                        '开启后，当前场景下被默认拒绝的工具不会出现在可选列表中。'
+                      )}
+                    </span>
+                  </div>
+                  <label className={`settings-switch-label ${styles.compactSwitch}`}>
+                    <input
+                      type="checkbox"
+                      disabled={saving}
+                      checked={config.hideDeniedTools !== false}
+                      onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
+                    />
+                    <span className="settings-switch-slider" />
+                  </label>
+                </div>
+                <div className={pane.divider} />
 
-            <div className="settings-list-tile settings-list-tile-noclick">
-              <div className="settings-list-tile-content">
-                <span className="settings-list-tile-title">
-                  {t('settings.agent_gate_repeat_threshold', '同参连打再确认阈值')}
-                </span>
-                <span className="settings-list-tile-subtitle">
-                  {t(
-                    'settings.agent_gate_repeat_threshold_hint',
-                    '相同指纹连续请求达到该次数时再次弹出确认；0 表示关闭。'
-                  )}
-                </span>
-              </div>
-              <input
-                className={styles.compactNumberInput}
-                type="number"
-                min={0}
-                max={20}
-                disabled={saving}
-                value={threshold}
-                onChange={(e) => {
-                  const n = Number(e.target.value)
-                  if (!Number.isFinite(n)) return
-                  void patchConfig({
-                    repeatAssertAskThreshold: Math.max(0, Math.min(20, Math.floor(n)))
-                  })
-                }}
-              />
-            </div>
+                <div className="settings-list-tile settings-list-tile-noclick">
+                  <div className="settings-list-tile-content">
+                    <span className="settings-list-tile-title">
+                      {t('settings.agent_gate_repeat_threshold', '同参连打再确认阈值')}
+                    </span>
+                    <span className="settings-list-tile-subtitle">
+                      {t(
+                        'settings.agent_gate_repeat_threshold_hint',
+                        '相同指纹连续请求达到该次数时再次弹出确认；0 表示关闭。'
+                      )}
+                    </span>
+                  </div>
+                  <input
+                    className={styles.compactNumberInput}
+                    type="number"
+                    min={0}
+                    max={20}
+                    disabled={saving}
+                    value={threshold}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      if (!Number.isFinite(n)) return
+                      void patchConfig({
+                        repeatAssertAskThreshold: Math.max(0, Math.min(20, Math.floor(n)))
+                      })
+                    }}
+                  />
+                </div>
               </>
             ) : (
               <>
