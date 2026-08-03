@@ -54,6 +54,7 @@ export * from './utils/rag-embedding-sort.util'
 export * from './utils/web-search-config.util'
 export * from './utils/mcp-auth.util'
 export { signS3Request, s3FetchHeaders } from './utils/aws-v4-sign'
+export { sha256Pure, hmacSha256Pure } from './utils/sha256-pure'
 export * from './utils/s3-list.util'
 export * from './utils/s3-url'
 export * from './utils/cloud-sync-config.util'
@@ -69,9 +70,11 @@ export {
 export {
   INCREMENTAL_SYNC_BAISHOU_ALLOWLIST,
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX,
+  VAULT_IDENTITY_META_SYNC_FILENAME,
   isSqliteRuntimeSyncPath,
   isIncrementalSyncChatBackgroundPath,
   isIncrementalSyncConflictBackupPath,
+  isVaultIdentityMetaRelPath,
   shouldIncludeIncrementalSyncFile,
   shouldScanIncrementalSyncDirectory
 } from './utils/incremental-sync-scan.util'

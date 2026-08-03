@@ -1,6 +1,9 @@
 /** 增量同步在 `.baishou/settings/` 下纳入扫描的文件前缀（相对同步根路径） */
 export const INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX = '.baishou/settings/' as const
 
+/** 仓内身份元数据文件名（必须跨设备同步；勿与 external_paths 一并排除） */
+export const VAULT_IDENTITY_META_SYNC_FILENAME = 'vault.json' as const
+
 /** @deprecated 使用 INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX */
 export const INCREMENTAL_SYNC_BAISHOU_ALLOWLIST = [
   INCREMENTAL_SYNC_BAISHOU_SETTINGS_PREFIX
@@ -10,6 +13,12 @@ const SYNC_SKIP_DIR_NAMES = new Set(['node_modules', 'snapshots', 'temp', '.snap
 
 function normalizeRel(relativePath: string): string {
   return relativePath.replace(/\\/g, '/').replace(/^\//, '')
+}
+
+/** `<vault>/.baishou/vault.json` — 仓库稳定 ID 锚点，须纳入增量同步 */
+export function isVaultIdentityMetaRelPath(relativePath: string): boolean {
+  const rel = normalizeRel(relativePath)
+  return rel.endsWith(`/.baishou/${VAULT_IDENTITY_META_SYNC_FILENAME}`)
 }
 
 function basenameFromRel(relativePath: string): string {
@@ -115,7 +124,9 @@ export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath
       ? rel.endsWith('.json') && !entryName.endsWith('.tmp')
       : false
   }
-  // external_paths.json 为设备本地配置（日记/总结绝对路径），不参与跨设备增量同步
+  // 仓内 vault.json 必须同步（稳定 ID）；与设备本地的 external_paths.json 区分
+  if (isVaultIdentityMetaRelPath(rel)) return true
+  // external_paths.json 等其它 `.baishou/` 内容为设备本地或运行时数据，不参与跨设备增量同步
   if (rel.includes('/.baishou/') || rel.startsWith('.baishou/')) return false
   if (entryName.startsWith('.')) return false
   return true

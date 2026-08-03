@@ -67,6 +67,15 @@ describe('incremental-sync-scan.util', () => {
     ).toBe(false)
   })
 
+  it('includes vault identity meta vault.json in incremental sync', () => {
+    expect(shouldIncludeIncrementalSyncFile('vault.json', 'Personal/.baishou/vault.json')).toBe(
+      true
+    )
+    expect(shouldIncludeIncrementalSyncFile('vault.json', '工作/.baishou/vault.json')).toBe(true)
+    // 根 .baishou 下不应出现 vault.json；即便路径形似也不放行根级
+    expect(shouldIncludeIncrementalSyncFile('vault.json', '.baishou/vault.json')).toBe(false)
+  })
+
   it('excludes incremental sync conflict backup files from scan', () => {
     expect(
       isIncrementalSyncConflictBackupPath(
