@@ -41,6 +41,38 @@ describe('RecallRelationsTool path rendering', () => {
     expect(text).toContain('关系路径')
     expect(text).toContain('小明 → 毕业旅行 → 杭州')
     expect(text).toContain('和小明一起去毕业旅行')
+    expect(text).toContain('小明 —participates_in→ 毕业旅行')
     expect(recallRelations).toHaveBeenCalledWith({ entity: '小明和杭州', mode: 'network' })
+  })
+
+  it('annotates reverse hop direction when edgeDirections say reverse', async () => {
+    const tool = new RecallRelationsTool()
+    const recallRelations = vi.fn().mockResolvedValue({
+      anchors: [{ id: 'a', name: '杭州', nodeType: 'place', summary: '' }],
+      subgraph: [],
+      nodes: [
+        { id: 'a', name: '杭州', nodeType: 'place' },
+        { id: 'b', name: '毕业旅行', nodeType: 'event' }
+      ],
+      paths: [
+        {
+          nodeIds: ['a', 'b'],
+          nodeNames: ['杭州', '毕业旅行'],
+          edgeDirections: ['reverse'],
+          edges: [
+            {
+              id: 'e1',
+              fromId: 'b',
+              toId: 'a',
+              edgeType: 'located_at',
+              sourceExcerpt: '毕业旅行在杭州'
+            }
+          ]
+        }
+      ]
+    })
+    const context = { graphReader: { recallRelations } } as unknown as ToolContext
+    const text = await tool.execute({ entity: '杭州', mode: 'network' }, context)
+    expect(text).toContain('杭州 ←located_at— 毕业旅行')
   })
 })
