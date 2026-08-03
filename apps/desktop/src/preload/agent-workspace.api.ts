@@ -11,6 +11,8 @@ export const agentWorkspaceApi = {
   pickFolder: (): Promise<string | null> => ipcRenderer.invoke('agent-workspace:pick-folder'),
   listWorkspaces: (): Promise<AgentWorkspaceEntry[]> =>
     ipcRenderer.invoke('agent-workspace:list-workspaces'),
+  ensureScratchWorkspace: (): Promise<AgentWorkspaceEntry> =>
+    ipcRenderer.invoke('agent-workspace:ensure-scratch-workspace'),
   addWorkspace: (folderRoot: string): Promise<AgentWorkspaceEntry | null> =>
     ipcRenderer.invoke('agent-workspace:add-workspace', folderRoot),
   updateWorkspace: (
@@ -18,10 +20,16 @@ export const agentWorkspaceApi = {
     patch: AgentWorkspaceEntryUpdate
   ): Promise<AgentWorkspaceEntry | null> =>
     ipcRenderer.invoke('agent-workspace:update-workspace', { workspaceId, patch }),
+  removeWorkspace: (workspaceId: string): Promise<boolean> =>
+    ipcRenderer.invoke('agent-workspace:remove-workspace', workspaceId),
   getLastActiveWorkspaceId: (): Promise<string | undefined> =>
     ipcRenderer.invoke('agent-workspace:get-last-active-workspace-id'),
   setLastActiveWorkspaceId: (workspaceId: string | null): Promise<boolean> =>
     ipcRenderer.invoke('agent-workspace:set-last-active-workspace-id', workspaceId),
+  getAutoAccept: (workspaceId: string): Promise<boolean> =>
+    ipcRenderer.invoke('agent-workspace:get-auto-accept', workspaceId),
+  setAutoAccept: (workspaceId: string, enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke('agent-workspace:set-auto-accept', workspaceId, enabled),
   pickAvatar: (): Promise<string | null> => ipcRenderer.invoke('agent-workspace:pick-avatar'),
   listDir: (rootPath: string, relativePath?: string): Promise<AgentWorkspaceDirEntry[]> =>
     ipcRenderer.invoke('agent-workspace:list-dir', rootPath, relativePath),

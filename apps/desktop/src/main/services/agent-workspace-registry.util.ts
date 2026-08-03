@@ -37,14 +37,16 @@ export function reconcileRegistryFromSessionBindings(
   workspaces: AgentWorkspaceEntry[],
   bindings: Array<{ folderRoot: string; folderDisplayName?: string }>,
   createId: () => string,
-  nowIso: string
+  nowIso: string,
+  /** 用户主动移除过的目录，不再由会话绑定自动恢复 */
+  excludedFolderKeys: ReadonlySet<string> = new Set()
 ): AgentWorkspaceEntry[] {
   const merged = dedupeAgentWorkspacesByFolder(workspaces)
   const map = new Map(merged.map((entry) => [normalizeWorkspaceFolderKey(entry.folderRoot), entry]))
 
   for (const binding of bindings) {
     const key = normalizeWorkspaceFolderKey(binding.folderRoot)
-    if (map.has(key)) continue
+    if (map.has(key) || excludedFolderKeys.has(key)) continue
     const entry: AgentWorkspaceEntry = {
       id: createId(),
       folderRoot: binding.folderRoot,

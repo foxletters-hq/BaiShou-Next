@@ -47,6 +47,19 @@ describe('agent-workspace-registry.util', () => {
     expect(merged.find((item) => item.id === 'generated-id')?.displayName).toBe('binding-name')
   })
 
+  it('keeps removed folders out even when session bindings still reference them', () => {
+    const merged = reconcileRegistryFromSessionBindings(
+      [entry({ id: 'existing', folderRoot: 'D:/keep' })],
+      [{ folderRoot: 'D:/Removed', folderDisplayName: 'removed-name' }],
+      () => 'generated-id',
+      '2026-06-01T00:00:00.000Z',
+      new Set(['d:/removed'])
+    )
+
+    expect(merged).toHaveLength(1)
+    expect(merged[0]?.id).toBe('existing')
+  })
+
   it('clears stale last active workspace id after dedupe', () => {
     const workspaces = [entry({ id: 'kept', folderRoot: 'D:/demo' })]
     expect(resolveValidLastActiveWorkspaceId('removed', workspaces)).toBeUndefined()

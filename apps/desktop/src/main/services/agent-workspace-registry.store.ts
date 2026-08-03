@@ -15,6 +15,8 @@ import {
 interface WorkspaceRegistryFile {
   workspaces: AgentWorkspaceEntry[]
   lastActiveWorkspaceId?: string
+  /** 被用户移除的目录 key，避免会话绑定把它们重新加回列表 */
+  removedFolderKeys?: string[]
 }
 
 const STORE_FILE = 'agent-workspace-registry.json'
@@ -76,7 +78,8 @@ async function syncFromSessionBindings(
     workspaces,
     bindings,
     () => crypto.randomUUID(),
-    new Date().toISOString()
+    new Date().toISOString(),
+    new Set(registry.removedFolderKeys ?? [])
   )
   registry.lastActiveWorkspaceId = resolveValidLastActiveWorkspaceId(
     registry.lastActiveWorkspaceId,
@@ -97,6 +100,10 @@ export async function addAgentWorkspace(folderRoot: string): Promise<AgentWorksp
   const resolved = path.resolve(folderRoot)
   const registry = await loadRegistry()
   registry.workspaces = dedupeAgentWorkspacesByFolder(registry.workspaces)
+  const resolvedKey = normalizeWorkspaceFolderKey(resolved)
+  if (registry.removedFolderKeys?.length) {
+    registry.removedFolderKeys = registry.removedFolderKeys.filter((key) => key !== resolvedKey)
+  }
   const existing = findWorkspaceByFolder(registry.workspaces, resolved)
   if (existing) {
     existing.updatedAt = new Date().toISOString()
@@ -132,9 +139,35 @@ export async function updateAgentWorkspace(
   if (patch.avatarPath !== undefined) {
     entry.avatarPath = patch.avatarPath
   }
+  if (patch.kind !== undefined) {
+    entry.kind = patch.kind
+  }
   entry.updatedAt = new Date().toISOString()
   await saveRegistry()
   return entry
+}
+
+/** 从列表移除工作目录（不删除磁盘文件，也不删除会话数据） */
+export async function removeAgentWorkspace(workspaceId: string): Promise<boolean> {
+  const registry = await loadRegistry()
+  const entry = registry.workspaces.find((item) => item.id === workspaceId)
+  if (!entry) return false
+
+  // 内置「稿纸」不可从列表永久移除；ensureScratchWorkspace 可随时重建
+  if (entry.kind === 'scratch') {
+    return false
+  }
+
+  const removedKey = normalizeWorkspaceFolderKey(entry.folderRoot)
+  registry.workspaces = registry.workspaces.filter((item) => item.id !== workspaceId)
+  registry.removedFolderKeys = [
+    ...new Set([...(registry.removedFolderKeys ?? []), removedKey])
+  ]
+  if (registry.lastActiveWorkspaceId === workspaceId) {
+    registry.lastActiveWorkspaceId = undefined
+  }
+  await saveRegistry()
+  return true
 }
 
 export async function getLastActiveWorkspaceId(): Promise<string | undefined> {

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
-  AgentGateTrustMode,
+  AgentGateEffect,
   cloneBaishouAgentGateConfig,
-  cloneWorkspaceToolManagementConfig
+  cloneWorkspaceToolManagementConfig,
+  hasCatchAllAllowRule
 } from '@baishou/shared'
 
 /**
@@ -11,19 +12,30 @@ import {
  * 与 agent-workspace-policy.store 使用同一套 shared helpers。
  */
 describe('workspace policy defaults (migration safety)', () => {
-  it('fresh workspace policy never inherits companion FullTrust allowlist', () => {
+  it('fresh workspace policy never inherits companion FullTrust catch-all', () => {
     const companionLike = cloneBaishouAgentGateConfig({
-      trustMode: AgentGateTrustMode.FullTrust,
       exclusionList: ['diary_delete'],
       allowlist: [{ id: 'x', action: 'diary_write', createdAt: 1 }],
-      hideDeniedTools: true
+      hideDeniedTools: true,
+      permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
     })
     const workspaceFresh = cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
 
-    expect(companionLike.trustMode).toBe(AgentGateTrustMode.FullTrust)
-    expect(workspaceFresh.trustMode).toBe(AgentGateTrustMode.Manual)
+    expect(hasCatchAllAllowRule(companionLike)).toBe(true)
+    expect(hasCatchAllAllowRule(workspaceFresh)).toBe(false)
     expect(workspaceFresh.allowlist).toEqual([])
     expect(workspaceFresh.exclusionList).toEqual(['workspace_delete'])
+  })
+
+  it('migrates legacy trustMode full_trust to catch-all allow', () => {
+    const migrated = cloneBaishouAgentGateConfig({
+      exclusionList: ['diary_delete'],
+      allowlist: [],
+      trustMode: 'full_trust'
+    } as never)
+
+    expect(hasCatchAllAllowRule(migrated)).toBe(true)
+    expect((migrated as { trustMode?: unknown }).trustMode).toBeUndefined()
   })
 
   it('clones tool management without sharing nested customConfigs', () => {
