@@ -141,6 +141,7 @@ describe('ShadowIndexSyncService', () => {
     mockVaultService = {
       initRegistry: async () => {},
       getActiveVault: () => vault,
+      resolveActiveVault: () => ({ id: vault.id, name: vault.name }),
       getAllVaults: () => [vault],
       switchVault: async () => {},
       deleteVault: async () => {},

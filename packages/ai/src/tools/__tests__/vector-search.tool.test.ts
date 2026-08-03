@@ -6,6 +6,7 @@ import type { ToolContext } from '../agent.tool'
 function createContext(overrides: Partial<ToolContext> = {}): ToolContext {
   return {
     sessionId: 'sess-1',
+    vaultId: deriveLegacyVaultId('Personal'),
     vaultName: 'Personal',
     userConfig: {},
     ...overrides

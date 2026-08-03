@@ -296,7 +296,7 @@ describe('vault isolation V2.2 (vault_id)', () => {
     )
     expect(byId.g1).toEqual({ g: 'memory', s: 'm1' })
     expect(byId.g2).toEqual({ g: 'diary', s: `${VAULT_A}#7` })
-    expect(String(byId.g2.s).startsWith('vlt_')).toBe(true)
+    expect(String(byId.g2!.s).startsWith('vlt_')).toBe(true)
   })
 
   it('6) V1 vault_name backfill then V2.2 name→id + diary source_id rewrite', async () => {
