@@ -15,14 +15,20 @@ export class HybridSearchService {
    */
   public async search(opts: ISearchQueryOptions): Promise<ISearchResult[]> {
     const topK = opts.topK ?? 20
+    const filter = {
+      ...opts.filter,
+      threshold: opts.similarityThreshold ?? opts.filter?.threshold
+    }
 
     const ftsPromise = opts.queryText.trim()
-      ? this.storage.queryFTS(opts.queryText, topK)
+      ? this.storage.queryFTS(opts.queryText, topK, {
+          startMs: filter.startMs,
+          endMs: filter.endMs,
+          vaultName: filter.vaultName
+        })
       : Promise.resolve([])
 
-    const vectorPromise = this.storage.queryNativeVector(opts.queryVector, topK, {
-      threshold: opts.similarityThreshold
-    })
+    const vectorPromise = this.storage.queryNativeVector(opts.queryVector, topK, filter)
 
     const [ftsResults, vectorResults] = await Promise.all([ftsPromise, vectorPromise])
 

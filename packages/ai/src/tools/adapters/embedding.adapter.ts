@@ -83,6 +83,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
+    vaultName: string
     sourceCreatedAt?: number
     metadataJson?: string
     /** 为 true 时，任一分块失败或全部失败均抛出错误（日记嵌入路径使用） */
@@ -90,6 +91,10 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
   }): Promise<void> {
     if (!this.hybridRepo) {
       throw new Error('hybridRepo must be provided to store embeddings permanently.')
+    }
+    const vaultName = options.vaultName.trim()
+    if (!vaultName) {
+      throw new Error('embedText: vaultName is required')
     }
     const hybridRepo = this.hybridRepo
 
@@ -109,6 +114,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         sourceType: options.sourceType,
         sourceId: options.sourceId,
         groupId: options.groupId,
+        vaultName,
         chunkIndex: index,
         chunkText: chunk,
         metadataJson: options.metadataJson || '{}',

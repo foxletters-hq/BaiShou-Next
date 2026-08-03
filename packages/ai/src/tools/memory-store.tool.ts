@@ -91,7 +91,8 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
       if (context.deduplicationService) {
         const dedupResult = await context.deduplicationService.checkAndMerge({
           newMemoryContent: fullContent,
-          sessionId: context.sessionId
+          sessionId: context.sessionId,
+          vaultName: context.vaultName
         })
 
         switch (dedupResult.action) {
@@ -116,7 +117,9 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
       } else if (context.vectorStore) {
         const embArray = await embeddingService.embedQuery(fullContent)
         if (embArray) {
-          const similarCount = await context.vectorStore.searchSimilar(embArray, 1)
+          const similarCount = await context.vectorStore.searchSimilar(embArray, 1, {
+            vaultName: context.vaultName
+          })
           const threshold =
             (context.userConfig?.['memory_dedup_threshold'] as number | undefined) ?? 0.9
           const firstSimilar = similarCount[0]
@@ -152,6 +155,7 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId: id,
         groupId: `memory:${context.vaultName}`,
+        vaultName: context.vaultName,
         metadataJson: buildMemoryMetadataJson(record),
         sourceCreatedAt: now
       })

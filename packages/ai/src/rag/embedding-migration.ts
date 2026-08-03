@@ -4,6 +4,7 @@ import {
   RAG_MIGRATION_STATUS,
   mapMigrationBackupRow,
   assertMigrationBackupRow,
+  inferVaultNameFromEmbeddingRefs,
   type EmbeddingMigrationRollbackConfig
 } from '@baishou/shared'
 import type { IEmbeddingConfig, IEmbeddingStorage, MigrationProgress } from './embedding.types'
@@ -422,11 +423,24 @@ async function* reEmbedFromBackup(
             value: chunk.chunkText
           })
 
+          const vaultName = inferVaultNameFromEmbeddingRefs({
+            groupId: chunk.groupId,
+            sourceType: chunk.sourceType,
+            sourceId: chunk.sourceId,
+            vaultName: chunk.vaultName
+          })
+          if (!vaultName) {
+            throw new Error(
+              `migrate chunk ${chunk.embeddingId}: cannot infer vaultName (groupId=${chunk.groupId})`
+            )
+          }
+
           await deps.db.insertEmbedding({
             id: chunk.embeddingId,
             sourceType: chunk.sourceType,
             sourceId: chunk.sourceId,
             groupId: chunk.groupId,
+            vaultName,
             chunkIndex: chunk.chunkIndex,
             chunkText: chunk.chunkText,
             metadataJson: chunk.metadataJson,

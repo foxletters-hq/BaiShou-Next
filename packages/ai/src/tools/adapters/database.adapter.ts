@@ -20,15 +20,16 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   async searchSimilar(
     queryEmbedding: number[],
     topK: number,
-    timeFilter?: { startMs?: number; endMs?: number }
+    timeFilter?: { startMs?: number; endMs?: number; vaultName?: string }
   ): Promise<VectorSearchResult[]> {
     const rows = await this.hybridRepo.queryNativeVector(queryEmbedding, topK, {
       startMs: timeFilter?.startMs,
-      endMs: timeFilter?.endMs
+      endMs: timeFilter?.endMs,
+      vaultName: timeFilter?.vaultName
     })
     return rows.map((r: any) => ({
-      sourceType: r.source || 'chat',
-      sourceId: r.messageId,
+      sourceType: r.sourceType || r.source || 'chat',
+      sourceId: r.sourceId || r.messageId,
       groupId: r.sessionId,
       chunkText: r.chunkText,
       distance: 1.0 - r.score,
@@ -48,10 +49,15 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     // 日记文件的向量索引由 ShadowIndexSyncService 的文件监听自动处理，此处为 no-op
   }
 
-  async searchFts(query: string, limit: number, timeFilter?: { startMs?: number; endMs?: number }) {
+  async searchFts(
+    query: string,
+    limit: number,
+    timeFilter?: { startMs?: number; endMs?: number; vaultName?: string }
+  ) {
     const rows = await this.hybridRepo.queryFTS(query, limit, {
       startMs: timeFilter?.startMs,
-      endMs: timeFilter?.endMs
+      endMs: timeFilter?.endMs,
+      vaultName: timeFilter?.vaultName
     })
     return rows.map((r: any) => ({
       messageId: r.messageId,

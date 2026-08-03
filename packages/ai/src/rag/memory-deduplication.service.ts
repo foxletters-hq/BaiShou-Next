@@ -61,6 +61,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
   async checkAndMerge(options: {
     newMemoryContent: string
     sessionId: string
+    vaultName: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -76,6 +77,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
   private async _doCheckAndMerge(options: {
     newMemoryContent: string
     sessionId: string
+    vaultName: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -88,7 +90,9 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
     }
 
     // 2. 检索最相似的 TOP_K 条记忆
-    const rawResults = await this.vectorStore.searchSimilar(queryVector, TOP_K)
+    const rawResults = await this.vectorStore.searchSimilar(queryVector, TOP_K, {
+      vaultName: options.vaultName
+    })
     if (rawResults.length === 0) {
       return { action: 'stored', removedIds: [], highestSimilarity: 0 }
     }
