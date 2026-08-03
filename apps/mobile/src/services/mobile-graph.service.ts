@@ -9,7 +9,12 @@ import {
   type IFileSystem,
   type IStoragePathService
 } from '@baishou/core-mobile'
-import { GraphRepository, type AppDatabase, type ShadowIndexRepository } from '@baishou/database'
+import {
+  GRAPH_EDGE_TYPES,
+  GraphRepository,
+  type AppDatabase,
+  type ShadowIndexRepository
+} from '@baishou/database'
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
@@ -349,6 +354,71 @@ export async function mobileUpsertNode(options: {
     embeddingModelId: options.embeddingModelId
   })
   return { id: existing.id }
+}
+
+function newGraphId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
+}
+
+export async function mobileUpsertEdge(options: {
+  drizzleDb: AppDatabase
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  vaultId: string
+  vaultDisplayName: string
+  fromId: string
+  toId: string
+  edgeType: string
+  id?: string
+  sourceRef?: string
+  sourceExcerpt?: string
+  embeddingProvider?: IAIProvider | null
+  embeddingModelId?: string | null
+}) {
+  const now = Date.now()
+  const d = new Date(now)
+  const shardMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  const edgeType = GRAPH_EDGE_TYPES.includes(options.edgeType as (typeof GRAPH_EDGE_TYPES)[number])
+    ? options.edgeType
+    : 'relates_to'
+  const { graphManager } = ensureMobileRawDataRuntime(options)
+  const id = options.id || newGraphId('e')
+  await graphManager.writeRecord(
+    {
+      id,
+      schemaVersion: 1,
+      vaultId: options.vaultId,
+      vaultName: options.vaultDisplayName,
+      fromId: options.fromId,
+      toId: options.toId,
+      edgeType,
+      props: {},
+      validFrom: now,
+      validTo: null,
+      isCurrent: true,
+      sourceKind: 'manual',
+      sourceRef: options.sourceRef ?? null,
+      sourceExcerpt: options.sourceExcerpt ?? '',
+      sourceContentHash: null,
+      confidence: 100,
+      origin: 'user',
+      reviewStatus: 'approved',
+      shardMonth,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    },
+    { collection: 'edges' }
+  )
+  await syncMobileGraphPendingIndex({
+    drizzleDb: options.drizzleDb,
+    embeddingProvider: options.embeddingProvider,
+    embeddingModelId: options.embeddingModelId
+  })
+  return { id }
 }
 
 export async function mobileSoftDeleteGraph(options: {
