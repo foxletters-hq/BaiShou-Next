@@ -40,10 +40,7 @@ type UseAgentNavigationPersistenceOptions = {
 
 const RECONCILE_THROTTLE_MS = 2000
 
-async function lookupSession(
-  services: Services,
-  sessionId: string
-): Promise<SessionRow | null> {
+async function lookupSession(services: Services, sessionId: string): Promise<SessionRow | null> {
   const session = await services.sessionManager.getSessionById(sessionId)
   if (!session) return null
   const active = services.vaultService?.getActiveVault?.()

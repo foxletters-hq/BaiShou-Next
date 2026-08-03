@@ -275,7 +275,14 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
       return true
     },
-    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageContext, resetSessionState]
+    [
+      dbReady,
+      services,
+      mapDbMessageToUI,
+      ingestFetchedTail,
+      resolveStorageContext,
+      resetSessionState
+    ]
   )
 
   const loadMessages = useCallback(

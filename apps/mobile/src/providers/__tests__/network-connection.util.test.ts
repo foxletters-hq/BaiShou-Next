@@ -14,10 +14,7 @@ describe('network-connection.util', () => {
     expect(resolveIsMetered({ type: 'cellular' } as never, 'cellular')).toBe(true)
     expect(resolveIsMetered({ type: 'wifi', details: {} } as never, 'wifi')).toBe(false)
     expect(
-      resolveIsMetered(
-        { type: 'wifi', details: { isConnectionExpensive: true } } as never,
-        'wifi'
-      )
+      resolveIsMetered({ type: 'wifi', details: { isConnectionExpensive: true } } as never, 'wifi')
     ).toBe(true)
     expect(resolveIsMetered({ type: 'unknown' } as never, 'unknown')).toBe(false)
   })

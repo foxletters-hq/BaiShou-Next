@@ -396,15 +396,7 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
         wifiPromptInFlightRef.current = false
       }
     })()
-  }, [
-    connectionType,
-    dialog,
-    isPlanning,
-    isSyncing,
-    planDialogOpen,
-    runIncrementalSync,
-    t
-  ])
+  }, [connectionType, dialog, isPlanning, isSyncing, planDialogOpen, runIncrementalSync, t])
 
   const showProgressOverlay = isSyncing || isPlanning
   const showBlockingOverlay = showProgressOverlay && !planDialogOpen
