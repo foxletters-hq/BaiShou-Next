@@ -926,6 +926,23 @@ describe('Agent Gate profile + probeEffect', () => {
       })
     ).toBe(AgentGateEffect.Allow)
   })
+
+  it('companion profile does not force Ask for recall_relations (G1.d / G-D4)', () => {
+    // recall_relations 无 Gate metadata → 拦截器直接放行；此处断言 companion 规则也未对其设 Ask
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: [],
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
+      }
+    })
+    expect(
+      gate.probeEffect({
+        action: 'recall_relations',
+        profileId: AgentGateProfileId.Companion
+      })
+    ).toBe(AgentGateEffect.Allow)
+  })
 })
 
 describe('scoped gate config isolation', () => {

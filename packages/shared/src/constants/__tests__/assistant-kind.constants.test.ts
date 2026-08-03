@@ -14,6 +14,12 @@ describe('assistant-kind.constants', () => {
     expect(ids).not.toContain('web_search')
   })
 
+  it('should disable graph tools for work assistants (G1.d)', () => {
+    const ids = getAssistantDisabledToolIds('work')
+    expect(ids).toContain('graph_upsert')
+    expect(ids).toContain('recall_relations')
+  })
+
   it('should not add extra disabled tools for companion assistants', () => {
     expect(getAssistantDisabledToolIds('companion')).toEqual([])
   })

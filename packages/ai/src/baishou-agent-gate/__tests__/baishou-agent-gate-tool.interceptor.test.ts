@@ -8,6 +8,7 @@ import {
   type AgentGateToolMetadata
 } from '@baishou/shared'
 import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate-tool.interceptor'
+import { resolveAgentGateToolMetadata } from '../agent-gate-tool-metadata'
 import type { ToolContext } from '../../tools/agent.tool'
 import type { IBaishouAgentGate } from '../baishou-agent-gate.service'
 
@@ -78,5 +79,21 @@ describe('wrapVercelToolExecuteWithAgentGate', () => {
     const result = await wrapped({ date: '2026-01-01' })
     expect(result).toContain('拒绝')
     expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('skips Ask for recall_relations (no gate metadata / G-D4)', async () => {
+    expect(resolveAgentGateToolMetadata('recall_relations')).toBeUndefined()
+    const assert = vi.fn()
+    const gate = { assert } as unknown as IBaishouAgentGate
+    const execute = vi.fn().mockResolvedValue('graph-ok')
+    const wrapped = wrapVercelToolExecuteWithAgentGate(
+      'recall_relations',
+      resolveAgentGateToolMetadata('recall_relations'),
+      { ...baseContext, agentGate: gate },
+      execute
+    )
+    await expect(wrapped({ entity: '小明' })).resolves.toBe('graph-ok')
+    expect(assert).not.toHaveBeenCalled()
+    expect(execute).toHaveBeenCalledOnce()
   })
 })
