@@ -3,7 +3,7 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background-color: var(--bg-surface);
+  background-color: transparent;
   box-sizing: border-box;
 }
 
@@ -14,7 +14,7 @@
   position: relative;
   overflow: hidden;
   z-index: 10;
-  background-color: var(--bg-surface);
+  background-color: var(--bg-app);
   display: flex;
   flex-direction: column;
 }
@@ -29,7 +29,7 @@
   align-items: center;
   padding-top: 16px;
   background-color: var(--bg-app);
-  border-right: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-muted);
   cursor: pointer;
   transition: background-color 0.2s;
 }

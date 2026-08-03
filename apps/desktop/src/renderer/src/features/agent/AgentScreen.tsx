@@ -116,23 +116,6 @@ export const AgentScreen: React.FC = () => {
         onOpenSessions={() => onOpenSessions?.()}
         trailingControls={
           <div className={chromeStyles.trailing}>
-            <button
-              type="button"
-              className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.chip}`}
-              onClick={() => flow.setShowModelSwitcher(true)}
-            >
-              <span className={chromeStyles.modelProviderIcon} aria-hidden>
-                {providerIconUrl ? (
-                  <img src={providerIconUrl} alt="" />
-                ) : noModelSelected ? (
-                  <Sparkles size={18} />
-                ) : (
-                  <Cloud size={18} />
-                )}
-              </span>
-              <span className={chromeStyles.modelName}>{displayModelName}</span>
-              <span className={chromeStyles.chevron}>▼</span>
-            </button>
             <TokenBadge
               className={chromeStyles.chip}
               inputTokens={flow.tokens.totalInputTokens}
@@ -300,7 +283,7 @@ export const AgentScreen: React.FC = () => {
               toast.showInfo(
                 hasPendingGate
                   ? flow.t('agent_gate.composer_blocked', '请先处理待确认操作')
-                  : flow.t('agent.error.no_model', '请先在顶部选择一个模型')
+                  : flow.t('agent.error.no_model', '请先选择一个模型')
               )
             }
             composerDraftKey={composerDraftKey}
@@ -315,6 +298,25 @@ export const AgentScreen: React.FC = () => {
             onToggleSearchMode={flow.toggleSearchMode}
             ttsMode={flow.tts.ttsMode}
             onToggleTtsMode={flow.tts.toggleTtsMode}
+            bottomTrailing={
+              <button
+                type="button"
+                className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInComposer}`}
+                onClick={() => flow.setShowModelSwitcher(true)}
+              >
+                <span className={chromeStyles.modelProviderIcon} aria-hidden>
+                  {providerIconUrl ? (
+                    <img src={providerIconUrl} alt="" />
+                  ) : noModelSelected ? (
+                    <Sparkles size={16} />
+                  ) : (
+                    <Cloud size={16} />
+                  )}
+                </span>
+                <span className={chromeStyles.modelName}>{displayModelName}</span>
+                <span className={chromeStyles.chevron}>▼</span>
+              </button>
+            }
           />
         </div>
       </div>

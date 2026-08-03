@@ -251,7 +251,7 @@ export function useAgentChatFlow() {
       !isConfiguredProviderId(model.currentProviderId) ||
       !isConfiguredDialogueModelId(model.currentModelId)
     ) {
-      toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
+      toast.showInfo(t('agent.error.no_model', '请先选择一个模型'))
       return false
     }
 

@@ -40,12 +40,13 @@
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
+  transition: var(--form-field-transition);
 }
 
 .searchInput:focus {
   background: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .searchClear {
