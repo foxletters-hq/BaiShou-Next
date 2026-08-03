@@ -85,6 +85,7 @@ export function GraphScreen() {
   const [approvedOnly, setApprovedOnly] = useState(false)
   const [dismissGuide, setDismissGuide] = useState(false)
   const [estimate, setEstimate] = useState<CostEstimate | null>(null)
+  const extractAbortRef = React.useRef<AbortController | null>(null)
 
   const activeVault = services?.vaultService.getActiveVault()
   const vaultName = activeVault?.name || 'Personal'
@@ -199,6 +200,9 @@ export function GraphScreen() {
     if (!services) return
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
+    extractAbortRef.current?.abort()
+    const ac = new AbortController()
+    extractAbortRef.current = ac
     setBusy(true)
     setDismissGuide(true)
     setStatus(t('graph.extracting', '抽取中…'))
@@ -213,6 +217,7 @@ export function GraphScreen() {
         fileSystem: services.fileSystem,
         settingsManager: services.settingsManager,
         filePaths,
+        signal: ac.signal,
         onProgress: (p) => {
           setStatus(
             t('graph.extract_progress', '正在整理 {{current}}/{{total}}', {
@@ -222,16 +227,33 @@ export function GraphScreen() {
           )
         }
       })
-      setStatus(
-        t('graph.extract_done', '完成 {{done}}，失败 {{failed}}', {
-          done: result.done,
-          failed: result.failed
-        })
-      )
+      if (result.cancelled) {
+        setStatus(
+          t('graph.extract_cancelled', '已停止：完成 {{done}}，剩余仍待重抽', {
+            done: result.done
+          })
+        )
+      } else if (result.done === 0 && result.failed === 0) {
+        setStatus(t('graph.extract_nothing', '没有可抽取的日记'))
+      } else if (result.done === 0) {
+        setStatus(
+          t('graph.extract_all_failed', '抽取未成功（失败 {{failed}}）', {
+            failed: result.failed
+          })
+        )
+      } else {
+        setStatus(
+          t('graph.extract_done', '完成 {{done}}，失败 {{failed}}', {
+            done: result.done,
+            failed: result.failed
+          })
+        )
+      }
       await refresh()
     } catch (e: any) {
       setStatus(e?.message || String(e))
     } finally {
+      if (extractAbortRef.current === ac) extractAbortRef.current = null
       setBusy(false)
     }
   }
@@ -385,11 +407,18 @@ export function GraphScreen() {
     <StackScreenLayout
       title={t('graph.title', '关系图谱')}
       {...chrome}
-      headerRight={{
-        label: t('graph.extract', '梳理'),
-        onPress: () => void runExtract(),
-        disabled: busy
-      }}
+      headerRight={
+        busy
+          ? {
+              label: t('graph.stop_extract', '停止'),
+              onPress: () => extractAbortRef.current?.abort()
+            }
+          : {
+              label: t('graph.extract', '梳理'),
+              onPress: () => void runExtract(),
+              disabled: busy
+            }
+      }
       contentStyle={styles.layoutContent}
     >
       <View style={[styles.tabTrack, { backgroundColor: colors.bgSurfaceNormal }]}>

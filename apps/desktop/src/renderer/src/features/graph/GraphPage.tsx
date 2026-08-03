@@ -144,18 +144,38 @@ export const GraphPage: React.FC = () => {
       })
       const result = await window.api.graph.extract({ filePaths })
       unsub()
-      setStatus(
-        t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
-          done: result.done,
-          failed: result.failed
-        })
-      )
+      if (result.cancelled) {
+        setStatus(
+          t('graph.extract_cancelled', '已停止：完成 {{done}}，剩余仍待重抽', {
+            done: result.done
+          })
+        )
+      } else if (result.done === 0 && result.failed === 0) {
+        setStatus(t('graph.extract_nothing', '没有可抽取的日记'))
+      } else if (result.done === 0) {
+        setStatus(
+          t('graph.extract_all_failed', '抽取未成功（失败 {{failed}}）', {
+            failed: result.failed
+          })
+        )
+      } else {
+        setStatus(
+          t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
+            done: result.done,
+            failed: result.failed
+          })
+        )
+      }
       await refresh()
     } catch (e: any) {
       setStatus(e?.message || String(e))
     } finally {
       setBusy(false)
     }
+  }
+
+  const cancelExtract = async () => {
+    await window.api.graph.cancelExtract()
   }
 
   const reviewEdge = async (edgeId: string, reviewStatus: 'approved' | 'rejected') => {
@@ -327,6 +347,11 @@ export const GraphPage: React.FC = () => {
             count: pendingReextract.length
           })}
         </button>
+        {busy ? (
+          <button type="button" className={styles.btn} onClick={() => void cancelExtract()}>
+            {t('graph.stop_extract', '停止')}
+          </button>
+        ) : null}
         <button type="button" className={styles.btn} disabled={busy} onClick={() => void refresh()}>
           {t('graph.refresh', '刷新')}
         </button>
