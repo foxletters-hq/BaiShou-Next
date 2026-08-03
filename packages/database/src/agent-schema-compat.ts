@@ -235,6 +235,17 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     column: 'updated_at',
     ddl: `ALTER TABLE summaries ADD COLUMN updated_at INTEGER`
   },
+  // ── summaries / agent_assistants（仓库隔离 V1.4；先可空，迁移步骤回填/重建后再收紧）──
+  {
+    table: 'summaries',
+    column: 'vault_id',
+    ddl: `ALTER TABLE summaries ADD COLUMN vault_id TEXT`
+  },
+  {
+    table: 'agent_assistants',
+    column: 'vault_id',
+    ddl: `ALTER TABLE agent_assistants ADD COLUMN vault_id TEXT`
+  },
   // ── memory_embeddings（仓库身份 V2.2；旧库若仍无 vault 列则直接加 vault_id）──
   {
     table: 'memory_embeddings',
@@ -242,3 +253,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     ddl: `ALTER TABLE memory_embeddings ADD COLUMN vault_id TEXT`
   }
 ]
+
+/** V1.4：summaries 唯一约束必须带 vault_id，否则跨仓同月总结互相顶掉 */
+export const SUMMARIES_VAULT_UNIQUE_INDEX_SQL = `
+  CREATE UNIQUE INDEX IF NOT EXISTS summaries_vault_id_type_start_date_end_date_unique
+  ON summaries (vault_id, type, start_date, end_date)
+`
+
+export const SUMMARIES_LEGACY_UNIQUE_INDEX_NAME = 'summaries_type_start_date_end_date_unique'

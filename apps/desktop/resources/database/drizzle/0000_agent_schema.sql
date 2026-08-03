@@ -1,5 +1,6 @@
 CREATE TABLE `agent_assistants` (
-	`id` text PRIMARY KEY NOT NULL,
+	`id` text NOT NULL,
+	`vault_id` text NOT NULL,
 	`name` text NOT NULL,
 	`emoji` text,
 	`description` text DEFAULT '',
@@ -18,7 +19,8 @@ CREATE TABLE `agent_assistants` (
 	`assistant_kind` text DEFAULT 'companion' NOT NULL,
 	`sort_order` integer DEFAULT 0 NOT NULL,
 	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
-	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
+	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	PRIMARY KEY(`vault_id`, `id`)
 );
 --> statement-breakpoint
 CREATE TABLE `agent_sessions` (
@@ -80,6 +82,7 @@ CREATE TABLE `compression_snapshots` (
 --> statement-breakpoint
 CREATE TABLE `summaries` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`vault_id` text NOT NULL,
 	`type` text NOT NULL,
 	`start_date` integer NOT NULL,
 	`end_date` integer NOT NULL,
@@ -88,7 +91,7 @@ CREATE TABLE `summaries` (
 	`generated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `summaries_type_start_date_end_date_unique` ON `summaries` (`type`,`start_date`,`end_date`);
+CREATE UNIQUE INDEX `summaries_vault_id_type_start_date_end_date_unique` ON `summaries` (`vault_id`,`type`,`start_date`,`end_date`);
 --> statement-breakpoint
 CREATE TABLE `system_settings` (
 	`key` text PRIMARY KEY NOT NULL,
