@@ -89,12 +89,11 @@ export const AgentWorkspaceScreen: React.FC = () => {
   useStreamError(stream.error, stream.isStreaming)
   const resolvedActiveWorkspace =
     activeWorkspace ??
-    (routeWorkspaceId
-      ? (workspaces.find((entry) => entry.id === routeWorkspaceId) ?? null)
-      : null) ??
+    (routeWorkspaceId ? workspaces.find((entry) => entry.id === routeWorkspaceId) : undefined) ??
     (folderRoot
-      ? (workspaces.find((entry) => workspaceEntryMatchesFolder(entry, folderRoot)) ?? null)
-      : null)
+      ? workspaces.find((entry) => workspaceEntryMatchesFolder(entry, folderRoot))
+      : undefined) ??
+    null
   const activeFolderRoot = resolvedActiveWorkspace?.folderRoot ?? folderRoot
   const hasWorkspace = Boolean(activeFolderRoot)
 
