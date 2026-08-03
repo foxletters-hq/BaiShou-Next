@@ -41,6 +41,7 @@ export class HybridSearchEmbeddingStore {
     sourceType: string
     sourceId: string
     groupId: string
+    vaultName: string
     chunkIndex: number
     chunkText: string
     metadataJson?: string
@@ -48,25 +49,32 @@ export class HybridSearchEmbeddingStore {
     modelId: string
     sourceCreatedAt?: number
   }): Promise<void> {
+    const vaultName = params.vaultName.trim()
+    if (!vaultName) {
+      throw new Error('insertEmbedding: vaultName is required')
+    }
     const vectorBuffer = embeddingVectorToBytes(params.embedding)
     await this.db.execute({
       sql: `
         INSERT INTO ${HYBRID_SEARCH_TABLE}
-        (embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+        (embedding_id, source_type, source_id, group_id, vault_name, chunk_index, chunk_text,
          metadata_json, embedding, dimension, model_id, created_at, source_created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(embedding_id) DO UPDATE SET
           chunk_text = excluded.chunk_text,
           embedding = excluded.embedding,
           dimension = excluded.dimension,
           model_id = excluded.model_id,
-          metadata_json = excluded.metadata_json
+          metadata_json = excluded.metadata_json,
+          vault_name = excluded.vault_name,
+          group_id = excluded.group_id
       `,
       args: [
         params.id,
         params.sourceType,
         params.sourceId,
         params.groupId,
+        vaultName,
         params.chunkIndex,
         params.chunkText,
         params.metadataJson || '{}',
@@ -150,6 +158,7 @@ export class HybridSearchEmbeddingStore {
     sourceIds?: string[]
   }): Promise<number> {
     const groupId = `memory:${params.vaultName}`
+    const vaultName = params.vaultName.trim()
     if (params.sourceIds && params.sourceIds.length > 0) {
       const placeholders = params.sourceIds.map(() => '?').join(', ')
       const before = await this.db.execute({
@@ -165,13 +174,17 @@ export class HybridSearchEmbeddingStore {
         sql: `
           UPDATE ${HYBRID_SEARCH_TABLE}
           SET source_type = 'memory',
+              vault_name = CASE
+                WHEN vault_name IS NOT NULL AND vault_name != '' THEN vault_name
+                ELSE ?
+              END,
               group_id = CASE
                 WHEN group_id LIKE 'memory:%' THEN group_id
                 ELSE ?
               END
           WHERE source_type = 'manual' AND source_id IN (${placeholders})
         `,
-        args: [groupId, ...params.sourceIds]
+        args: [vaultName, groupId, ...params.sourceIds]
       })
       return count
     }
@@ -186,13 +199,17 @@ export class HybridSearchEmbeddingStore {
       sql: `
         UPDATE ${HYBRID_SEARCH_TABLE}
         SET source_type = 'memory',
+            vault_name = CASE
+              WHEN vault_name IS NOT NULL AND vault_name != '' THEN vault_name
+              ELSE ?
+            END,
             group_id = CASE
               WHEN group_id LIKE 'memory:%' THEN group_id
               ELSE ?
             END
         WHERE source_type = 'manual'
       `,
-      args: [groupId]
+      args: [vaultName, groupId]
     })
     return count
   }
@@ -263,7 +280,7 @@ export class HybridSearchMigrationStore {
     await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_BACKUP_TABLE}`)
     await this.db.execute(`
       CREATE TABLE ${HYBRID_SEARCH_BACKUP_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+      SELECT embedding_id, source_type, source_id, group_id, vault_name, chunk_index, chunk_text,
              metadata_json, source_created_at, 0 as is_migrated
       FROM ${HYBRID_SEARCH_TABLE}
     `)
@@ -293,8 +310,8 @@ export class HybridSearchMigrationStore {
     try {
       const res = await this.db.execute(`
         SELECT embedding_id, source_type as sourceType, source_id as sourceId, group_id as groupId,
-               chunk_index as chunkIndex, chunk_text as chunkText, metadata_json as metadataJson,
-               source_created_at as sourceCreatedAt
+               vault_name as vaultName, chunk_index as chunkIndex, chunk_text as chunkText,
+               metadata_json as metadataJson, source_created_at as sourceCreatedAt
         FROM ${HYBRID_SEARCH_BACKUP_TABLE}
         WHERE is_migrated = 0
         LIMIT 50
@@ -340,7 +357,7 @@ export class HybridSearchMigrationStore {
     await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_ROLLBACK_TABLE}`)
     await this.db.execute(`
       CREATE TABLE ${HYBRID_SEARCH_ROLLBACK_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+      SELECT embedding_id, source_type, source_id, group_id, vault_name, chunk_index, chunk_text,
              metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_TABLE}
     `)
     logger.info(`[RAG] Migration rollback snapshot created: ${count} rows`)
@@ -355,9 +372,9 @@ export class HybridSearchMigrationStore {
       throw new Error(`Rollback snapshot table ${HYBRID_SEARCH_ROLLBACK_TABLE} does not exist`)
     await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
     await this.db.execute(`
-      INSERT INTO ${HYBRID_SEARCH_TABLE} (embedding_id, source_type, source_id, group_id, chunk_index,
+      INSERT INTO ${HYBRID_SEARCH_TABLE} (embedding_id, source_type, source_id, group_id, vault_name, chunk_index,
                                           chunk_text, metadata_json, embedding, dimension, model_id, created_at, source_created_at)
-      SELECT embedding_id, source_type, source_id, group_id, chunk_index, chunk_text,
+      SELECT embedding_id, source_type, source_id, group_id, vault_name, chunk_index, chunk_text,
              metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_ROLLBACK_TABLE}
     `)
     const restored = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
