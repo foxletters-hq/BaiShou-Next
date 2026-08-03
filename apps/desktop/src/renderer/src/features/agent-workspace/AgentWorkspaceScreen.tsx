@@ -1,5 +1,6 @@
+/* eslint-disable max-lines -- workbench screen orchestrates chrome/stream/gate/session */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   AgentGateDock,
@@ -29,6 +30,7 @@ import { formatWorkspaceRollbackSummary } from './utils/workspace-rollback.util'
 import { useWorkspaceSessions } from './hooks/useWorkspaceSessions'
 import { useAgentWorkspaces } from './hooks/useAgentWorkspaces'
 import { useAgentWorkspaceChrome } from './hooks/useAgentWorkspaceChrome'
+import { useWorkspaceInitMessage } from './hooks/useWorkspaceInitMessage'
 import { useStreamError } from '../agent/hooks/useStreamError'
 import { workspaceEntryMatchesFolder } from './utils/workspace-display.util'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
@@ -46,8 +48,12 @@ function notifyWorkspaceSessionsChanged(): void {
 export const AgentWorkspaceScreen: React.FC = () => {
   const { t } = useTranslation()
   const dialog = useDialog()
-  const { sessionId } = useParams()
+  const { sessionId, workspaceId: routeWorkspaceId } = useParams<{
+    sessionId?: string
+    workspaceId?: string
+  }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { folderRoot, setFolderRoot } = useOutletContext<WorkspaceOutletContext>()
   const {
     workspaces,
@@ -83,11 +89,59 @@ export const AgentWorkspaceScreen: React.FC = () => {
   useStreamError(stream.error, stream.isStreaming)
   const resolvedActiveWorkspace =
     activeWorkspace ??
+    (routeWorkspaceId
+      ? (workspaces.find((entry) => entry.id === routeWorkspaceId) ?? null)
+      : null) ??
     (folderRoot
       ? (workspaces.find((entry) => workspaceEntryMatchesFolder(entry, folderRoot)) ?? null)
       : null)
   const activeFolderRoot = resolvedActiveWorkspace?.folderRoot ?? folderRoot
   const hasWorkspace = Boolean(activeFolderRoot)
+
+  const openWorkspacePath = useCallback((workspaceId: string) => {
+    return `/agent-workspace/open/${workspaceId}`
+  }, [])
+
+  // 从 /open/:workspaceId 进入：校验并选中目录
+  useEffect(() => {
+    if (!routeWorkspaceId || loadingWorkspaces) return
+    const target = workspaces.find((entry) => entry.id === routeWorkspaceId)
+    if (!target) {
+      navigate('/agent-workspace', { replace: true })
+      return
+    }
+    if (activeWorkspace?.id !== target.id) {
+      void selectWorkspace(target.id)
+    }
+    if (folderRoot !== target.folderRoot) {
+      setFolderRoot(target.folderRoot)
+    }
+  }, [
+    activeWorkspace?.id,
+    folderRoot,
+    loadingWorkspaces,
+    navigate,
+    routeWorkspaceId,
+    selectWorkspace,
+    setFolderRoot,
+    workspaces
+  ])
+
+  // 从会话深链进入：按 binding 恢复目录
+  useEffect(() => {
+    if (!sessionId || sessionId === 'new-session' || routeWorkspaceId) return
+    let cancelled = false
+    void window.api?.agentWorkspace
+      ?.getBinding?.(sessionId)
+      .then((binding) => {
+        if (cancelled || !binding?.folderRoot) return
+        setFolderRoot(binding.folderRoot)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [routeWorkspaceId, sessionId, setFolderRoot])
 
   useEffect(() => {
     if (resolvedActiveWorkspace?.folderRoot) {
@@ -141,11 +195,17 @@ export const AgentWorkspaceScreen: React.FC = () => {
     }
   }, [sessionId])
 
+  const handleBackToHome = useCallback(() => {
+    setFolderRoot(null)
+    navigate('/agent-workspace')
+  }, [navigate, setFolderRoot])
+
   const handleAddWorkspace = useCallback(async () => {
     try {
       const entry = await addWorkspaceFromPicker()
       if (entry) {
         setFolderRoot(entry.folderRoot)
+        navigate(openWorkspacePath(entry.id))
       }
     } catch (error) {
       console.error('[AgentWorkspaceScreen] add workspace failed:', error)
@@ -156,20 +216,26 @@ export const AgentWorkspaceScreen: React.FC = () => {
         t('agent_workspace.add_workspace', '添加工作区')
       )
     }
-  }, [addWorkspaceFromPicker, dialog, setFolderRoot, t])
+  }, [addWorkspaceFromPicker, dialog, navigate, openWorkspacePath, setFolderRoot, t])
 
   const handleSelectWorkspace = useCallback(
     async (workspaceId: string) => {
-      if (workspaceId === resolvedActiveWorkspace?.id) return
+      if (workspaceId === resolvedActiveWorkspace?.id && !sessionId) return
       const target = workspaces.find((entry) => entry.id === workspaceId)
       if (!target) return
       await selectWorkspace(workspaceId)
       setFolderRoot(target.folderRoot)
-      if (sessionId) {
-        navigate('/agent-workspace')
-      }
+      navigate(openWorkspacePath(workspaceId))
     },
-    [navigate, resolvedActiveWorkspace?.id, selectWorkspace, sessionId, setFolderRoot, workspaces]
+    [
+      navigate,
+      openWorkspacePath,
+      resolvedActiveWorkspace?.id,
+      selectWorkspace,
+      sessionId,
+      setFolderRoot,
+      workspaces
+    ]
   )
 
   const handleChangeWorkspaceAvatar = useCallback(
@@ -180,9 +246,10 @@ export const AgentWorkspaceScreen: React.FC = () => {
   )
 
   const handleNewSession = useCallback(() => {
-    if (!activeFolderRoot) return
-    navigate('/agent-workspace')
-  }, [activeFolderRoot, navigate])
+    const id = resolvedActiveWorkspace?.id
+    if (!id) return
+    navigate(openWorkspacePath(id))
+  }, [navigate, openWorkspacePath, resolvedActiveWorkspace?.id])
 
   const handleSelectSession = useCallback(
     async (targetSessionId: string) => {
@@ -221,7 +288,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
         await window.api.agentWorkspace.deleteSession(targetSessionId)
         notifyWorkspaceSessionsChanged()
         if (targetSessionId === sessionId) {
-          navigate('/agent-workspace')
+          const id = resolvedActiveWorkspace?.id
+          navigate(id ? openWorkspacePath(id) : '/agent-workspace')
         }
       } catch (error) {
         console.error('[AgentWorkspaceScreen] delete session failed:', error)
@@ -231,7 +299,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
         )
       }
     },
-    [dialog, navigate, sessionId, t]
+    [dialog, navigate, openWorkspacePath, resolvedActiveWorkspace?.id, sessionId, t]
   )
 
   const handleRenameSession = useCallback(
@@ -319,6 +387,19 @@ export const AgentWorkspaceScreen: React.FC = () => {
     ]
   )
 
+  useWorkspaceInitMessage({
+    searchParams,
+    setSearchParams,
+    sessionId,
+    activeFolderRoot,
+    isStreaming: stream.isStreaming,
+    loadingWorkspaces,
+    currentProviderId,
+    currentModelId,
+    setShowModelSwitcher,
+    onSend: handleSend
+  })
+
   const handleRollback = useCallback(
     async (userMessageId: string) => {
       if (!sessionId) return
@@ -370,6 +451,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
         onOpenFolder={() => void handleAddWorkspace()}
         onSelectWorkspace={(id) => void handleSelectWorkspace(id)}
         onChangeWorkspaceAvatar={handleChangeWorkspaceAvatar}
+        onBackToHome={handleBackToHome}
         onNewSession={handleNewSession}
         onSelectSession={(id) => void handleSelectSession(id)}
         onDeleteSession={(id) => void handleDeleteSession(id)}

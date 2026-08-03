@@ -28,6 +28,7 @@ export function useAgentWorkspaces() {
   const { t } = useTranslation()
   const [workspaces, setWorkspaces] = useState<AgentWorkspaceEntry[]>([])
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+  const [lastActiveWorkspaceId, setLastActiveWorkspaceId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
@@ -47,10 +48,15 @@ export function useAgentWorkspaces() {
       if (!Array.isArray(list)) return
 
       setWorkspaces((prev) => (list.length === 0 && prev.length > 0 ? prev : list))
+      setLastActiveWorkspaceId(
+        typeof lastActiveId === 'string' && list.some((entry) => entry.id === lastActiveId)
+          ? lastActiveId
+          : null
+      )
+      // 不自动选中 lastActive / list[0]；仅在当前选中仍存在时保留
       setActiveWorkspaceId((prev) => {
         if (prev && list.some((entry) => entry.id === prev)) return prev
-        if (lastActiveId && list.some((entry) => entry.id === lastActiveId)) return lastActiveId
-        return list[0]?.id ?? prev
+        return null
       })
     } catch (error) {
       console.error('[useAgentWorkspaces] refresh failed:', error)
@@ -68,11 +74,16 @@ export function useAgentWorkspaces() {
 
   const selectWorkspace = useCallback(async (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId)
+    setLastActiveWorkspaceId(workspaceId)
     try {
       await window.api?.agentWorkspace?.setLastActiveWorkspaceId?.(workspaceId)
     } catch {
       /* ignore */
     }
+  }, [])
+
+  const clearActiveWorkspace = useCallback(() => {
+    setActiveWorkspaceId(null)
   }, [])
 
   const registerWorkspaceFolder = useCallback(
@@ -91,7 +102,6 @@ export function useAgentWorkspaces() {
         throw new Error('register workspace failed')
       }
       setWorkspaces((prev) => upsertWorkspaceEntry(prev, entry))
-      setActiveWorkspaceId(entry.id)
       await selectWorkspace(entry.id)
       return entry
     },
@@ -113,6 +123,28 @@ export function useAgentWorkspaces() {
     return registerWorkspaceFolder(folderRoot)
   }, [registerWorkspaceFolder, t])
 
+  const removeWorkspace = useCallback(
+    async (workspaceId: string): Promise<boolean> => {
+      const remove = window.api?.agentWorkspace?.removeWorkspace
+      if (!remove) {
+        throw new Error(
+          t(
+            'agent_workspace.remove_workspace_api_unavailable',
+            'agentWorkspace.removeWorkspace API unavailable — 请重启应用以加载最新主进程'
+          )
+        )
+      }
+      const removed = await remove(workspaceId)
+      if (!removed) return false
+      setWorkspaces((prev) => prev.filter((item) => item.id !== workspaceId))
+      setActiveWorkspaceId((prev) => (prev === workspaceId ? null : prev))
+      setLastActiveWorkspaceId((prev) => (prev === workspaceId ? null : prev))
+      notifyAgentWorkspacesChanged()
+      return true
+    },
+    [t]
+  )
+
   const updateWorkspaceAvatar = useCallback(async (workspaceId: string) => {
     const avatarPath = await window.api?.agentWorkspace?.pickAvatar?.()
     if (!avatarPath) return null
@@ -124,18 +156,37 @@ export function useAgentWorkspaces() {
     return updated
   }, [])
 
-  const activeWorkspace =
-    workspaces.find((entry) => entry.id === activeWorkspaceId) ?? workspaces[0] ?? null
+  const ensureScratchWorkspace = useCallback(async (): Promise<AgentWorkspaceEntry> => {
+    const ensure = window.api?.agentWorkspace?.ensureScratchWorkspace
+    if (!ensure) {
+      throw new Error(
+        t(
+          'agent_workspace.ensure_scratch_api_unavailable',
+          'agentWorkspace.ensureScratchWorkspace API unavailable — 请重启应用以加载最新主进程'
+        )
+      )
+    }
+    const entry = await ensure()
+    setWorkspaces((prev) => upsertWorkspaceEntry(prev, entry))
+    notifyAgentWorkspacesChanged()
+    return entry
+  }, [t])
+
+  const activeWorkspace = workspaces.find((entry) => entry.id === activeWorkspaceId) ?? null
 
   return {
     workspaces,
     activeWorkspace,
-    activeWorkspaceId: activeWorkspace?.id ?? null,
+    activeWorkspaceId,
+    lastActiveWorkspaceId,
     loading,
     selectWorkspace,
+    clearActiveWorkspace,
     addWorkspaceFromPicker,
     registerWorkspaceFolder,
+    removeWorkspace,
     updateWorkspaceAvatar,
+    ensureScratchWorkspace,
     refresh
   }
 }
