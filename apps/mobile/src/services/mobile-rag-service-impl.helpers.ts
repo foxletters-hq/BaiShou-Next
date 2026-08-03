@@ -488,7 +488,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const rawManager = getMobileRawDataSourceManager()
       const memoryMgr = getMobileMemoryRawManager()
       const createdAtRaw = row.source_created_at
-      let createdAtMs =
+      const createdAtMs =
         typeof createdAtRaw === 'number'
           ? createdAtRaw > 1e12
             ? createdAtRaw
@@ -610,8 +610,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
               ? createdAtRaw
               : createdAtRaw * 1000
             : undefined
-        const shardMonth =
-          createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
+        const shardMonth = createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
         const rawManager = getMobileRawDataSourceManager()
         try {
           await rawManager?.tombstone('memory', sourceId, { shardMonth })

@@ -39,7 +39,7 @@ import {
   type MobileAgentDbRecoveryCoordinator
 } from './mobile-agent-db-recovery.coordinator'
 import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
-import { resolveSummaryTemplatesForGeneration, logger } from '@baishou/shared'
+import { resolveSummaryTemplatesForGeneration } from '@baishou/shared'
 
 export type AgentDbRuntime = {
   expoDb: ExpoSqliteDatabase

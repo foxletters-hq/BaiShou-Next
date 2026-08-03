@@ -6,7 +6,12 @@ import type {
   SummarySyncService
 } from '@baishou/core-mobile'
 import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
-import { deriveLegacyVaultId, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY, logger } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  DEFAULT_USER_PROFILE,
+  USER_PROFILE_SETTINGS_KEY,
+  logger
+} from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
 
@@ -122,7 +127,7 @@ export class MobileDataBootstrapper {
       }
     }
     const vaultIdByName = deps.getVaultIdByName
-      ? await deps.getVaultIdByName().catch(() => ({} as Record<string, string>))
+      ? await deps.getVaultIdByName().catch(() => ({}) as Record<string, string>)
       : {}
     const resyncOptions = {
       ...(activeVaultName ? { activeVaultName } : {}),
@@ -219,7 +224,7 @@ export class MobileDataBootstrapper {
     }
 
     const vaultIdByName = deps.getVaultIdByName
-      ? await deps.getVaultIdByName().catch(() => ({} as Record<string, string>))
+      ? await deps.getVaultIdByName().catch(() => ({}) as Record<string, string>)
       : {}
 
     const resyncOptions = {
@@ -287,8 +292,7 @@ export class MobileDataBootstrapper {
         const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
         const runtime = agentDbRuntimeRef.current
         const vaultName = activeVaultName ?? (await deps.getActiveVaultName?.().catch(() => null))
-        const vaultId =
-          activeVaultId ?? (vaultName ? deriveLegacyVaultId(vaultName) : null)
+        const vaultId = activeVaultId ?? (vaultName ? deriveLegacyVaultId(vaultName) : null)
         if (runtime?.drizzleDb && vaultId) {
           const emb = await resolveMobileEmbeddingForHydration(deps.settingsManager)
           // V1.6：传全仓列表，遗留手动记忆才能复制到其它仓（单仓时退化为空操作）

@@ -140,10 +140,7 @@ function createMobileMemoryEmbedSink(
     },
     deleteBySource: (sourceType: string, sourceId: string) =>
       hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-    listSourceIdsByType: (
-      sourceType: string,
-      options?: { groupId?: string; vaultId?: string }
-    ) =>
+    listSourceIdsByType: (sourceType: string, options?: { groupId?: string; vaultId?: string }) =>
       hsRepo.listSourceIdsByType(sourceType, {
         groupId: options?.groupId ?? MEMORY_EMBED_GROUP_ID,
         vaultId: options?.vaultId
@@ -299,9 +296,8 @@ export async function runMobileKnowledgeHydration(options: {
   settingsManager: SettingsManagerService
 }): Promise<void> {
   try {
-    const { expoKnowledgeConnectionManager, KnowledgeRepository } = await import(
-      '@baishou/database/expo'
-    )
+    const { expoKnowledgeConnectionManager, KnowledgeRepository } =
+      await import('@baishou/database/expo')
     if (!expoKnowledgeConnectionManager.isConnected()) {
       const root = await options.pathService.getRootDirectory()
       await options.fileSystem.mkdir(root, { recursive: true })
@@ -342,9 +338,8 @@ export async function runMobileKnowledgeHydration(options: {
     const result = await hydration.hydrate()
 
     if (result.embedJobsEnqueued > 0 && embeddingOk) {
-      const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
-        './mobile-knowledge-ingest-jobs.consumer'
-      )
+      const { scheduleConsumeMobileKnowledgeIngestJobs } =
+        await import('./mobile-knowledge-ingest-jobs.consumer')
       scheduleConsumeMobileKnowledgeIngestJobs(options.reason)
     }
 

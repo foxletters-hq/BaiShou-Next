@@ -15,7 +15,7 @@ import {
   getMobileDiaryEmbeddingCallback,
   getMobileDiaryEmbeddingDeps
 } from './mobile-diary-embedding.service'
-import { resolveEmbeddingAdapter, resolveVaultScope, type MobileRagServiceDeps } from './mobile-rag-core.helpers'
+import { resolveEmbeddingAdapter, resolveVaultScope } from './mobile-rag-core.helpers'
 import { loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
 
 let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null

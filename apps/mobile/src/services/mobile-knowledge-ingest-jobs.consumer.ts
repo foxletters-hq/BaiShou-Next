@@ -1,8 +1,5 @@
 import { logger, deriveLegacyVaultId } from '@baishou/shared'
-import {
-  expoKnowledgeConnectionManager,
-  KnowledgeRepository
-} from '@baishou/database/expo'
+import { expoKnowledgeConnectionManager, KnowledgeRepository } from '@baishou/database/expo'
 import { KnowledgeEmbeddingStorage } from '@baishou/ai'
 import { KnowledgeIngestService } from '@baishou/core-mobile'
 import { createMobileFileSystem } from './create-mobile-file-system'
@@ -14,8 +11,7 @@ import {
 } from './mobile-raw-data-source.runtime'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 
-let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null =
-  null
+let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null
 
 async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestService | null> {
   if (!expoKnowledgeConnectionManager.isConnected()) return null
@@ -28,8 +24,7 @@ async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestServi
 
   const fileSystem = createMobileFileSystem()
   const pathService =
-    (runtime.pathService as MobileStoragePathService) ||
-    new MobileStoragePathService(fileSystem)
+    (runtime.pathService as MobileStoragePathService) || new MobileStoragePathService(fileSystem)
   ensureMobileRawDataRuntime({ pathService, fileSystem })
   const notebookManager = getMobileNotebookRawManager()
   if (!notebookManager) return null
