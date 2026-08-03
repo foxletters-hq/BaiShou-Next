@@ -27,7 +27,7 @@ const SHEET_CSS = `
   width: 100%;
   border-radius: 20px 20px 0 0;
   background: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border-top: 1px solid var(--border-subtle);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   display: flex;
@@ -51,7 +51,7 @@ const SHEET_CSS = `
   width: 36px;
   height: 4px;
   border-radius: 999px;
-  background: var(--border-subtle, rgba(0, 0, 0, 0.2));
+  background: var(--border-subtle);
   margin: 8px auto 2px;
   flex-shrink: 0;
 }
@@ -76,7 +76,7 @@ const SHEET_CSS = `
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg-surface-normal);
-  box-shadow: inset 0 0 0 1px var(--border-subtle, rgba(0, 0, 0, 0.06));
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 .cm-table-sheet-group--destructive {
   margin-top: 2px;
@@ -88,7 +88,7 @@ const SHEET_CSS = `
   min-height: 52px;
   text-align: left;
   border: none;
-  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  border-bottom: 1px solid var(--border-subtle);
   background: transparent;
   color: var(--text-primary);
   font-size: 16px;
@@ -136,7 +136,7 @@ const CONTEXT_MENU_CSS = `
   min-width: 120px;
   padding: 4px;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

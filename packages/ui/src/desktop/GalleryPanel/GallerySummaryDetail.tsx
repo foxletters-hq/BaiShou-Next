@@ -67,7 +67,7 @@ export const GallerySummaryDetail: React.FC<GallerySummaryDetailProps> = ({
                 {formatDateRange(summary, language, t)}
               </span>
               {timeDisplay ? (
-                <span className="gallery-detail-date">
+                <span className="gallery-detail-time">
                   {t(timeDisplay.labelKey)} {formatGallerySavedAt(timeDisplay.at)}
                 </span>
               ) : null}

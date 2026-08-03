@@ -53,7 +53,7 @@
 .de-save-btn {
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 100px;
   padding: 8px 24px;
   font-weight: 600;
@@ -125,7 +125,7 @@
 .de-meta-fav-btn {
   margin-left: auto;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   width: 36px;
   height: 36px;
@@ -155,7 +155,7 @@
 
 .de-meta-tts-btn {
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   width: 36px;
   height: 36px;
@@ -441,14 +441,22 @@
   gap: 8px;
 }
 
+.de-save-spinner {
+  flex-shrink: 0;
+  color: currentColor;
+  animation: de-spin 0.6s linear infinite;
+}
+
+/* 兼容旧引用；与按钮文字同色，避免浅底上看不见 */
 .de-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #ffffff;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: de-spin 0.6s linear infinite;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 @keyframes de-spin {

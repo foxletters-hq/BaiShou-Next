@@ -1,6 +1,6 @@
 .missing-summary-card-v2 {
   background: var(--bg-surface);
-  border: 1px solid rgba(148, 163, 184, 0.5); /* var(--outline-variant) */
+  border: 1px solid var(--border-control);
   border-radius: 16px;
   padding: 12px;
   display: flex;
