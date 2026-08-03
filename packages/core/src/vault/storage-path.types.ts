@@ -17,6 +17,12 @@ export interface IStoragePathService {
   setLocalActiveVaultId?(vaultId: string): Promise<void>
 
   /**
+   * 当前活跃 Vault 显示名（供上下文/日志；勿作 DB 键）。
+   * 未实现时调用方回退 Personal。
+   */
+  getActiveVaultNameForContext?(): Promise<string>
+
+  /**
    * 获取当前活跃 Vault 的物理路径
    */
   getActiveVaultPath(): Promise<string | null>

@@ -10,7 +10,7 @@ type TesseractWorker = {
 }
 
 async function createTesseractWorker(lang: string): Promise<TesseractWorker> {
-  const mod = (await import(/* @vite-ignore */ 'tesseract.js')) as {
+  const mod = (await import(/* @vite-ignore */ 'tesseract.js')) as unknown as {
     createWorker?: (langs?: string | string[]) => Promise<TesseractWorker>
     default?: { createWorker?: (langs?: string | string[]) => Promise<TesseractWorker> }
   }

@@ -72,7 +72,7 @@ export async function prepareVaultRenamePassForSync(options: {
   }
 
   const executeResult = await executeVaultRenamePass(options)
-  if (!executeResult.ok) {
+  if (executeResult.ok === false) {
     console.warn(
       `[VaultRenamePass] abandoned (${executeResult.reason}); falling back to naive delete+upload`,
       executeResult.error instanceof Error ? executeResult.error.message : executeResult.error

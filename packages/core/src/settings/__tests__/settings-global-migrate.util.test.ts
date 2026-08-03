@@ -21,7 +21,9 @@ function createNodeFileSystem(): IFileSystem {
         return false
       }
     },
-    mkdir: (p, options) => fs.mkdir(p, options),
+    mkdir: async (p, options) => {
+      await fs.mkdir(p, options)
+    },
     readFile: (p) => fs.readFile(p, 'utf8'),
     writeFile: (p, data) => fs.writeFile(p, data, 'utf8'),
     appendFile: (p, data) => fs.appendFile(p, data, 'utf8'),

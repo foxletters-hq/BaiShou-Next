@@ -13,11 +13,12 @@ describe('graph_upsert gate prepare', () => {
       },
       {}
     )
-    expect(prepared.preview).toMatchObject({
+    expect(prepared).not.toBeNull()
+    expect(prepared!.preview).toMatchObject({
       type: 'content',
       counts: { entities: 2, edges: 1 }
     })
-    const lines = (prepared.preview as { detailLines?: string[] }).detailLines ?? []
+    const lines = (prepared!.preview as { detailLines?: string[] }).detailLines ?? []
     expect(lines.some((l) => l.includes('实体 2'))).toBe(true)
     expect(lines.some((l) => l.includes('小明'))).toBe(true)
   })
@@ -25,7 +26,8 @@ describe('graph_upsert gate prepare', () => {
   it('counts zero when entities is neither array nor JSON array', async () => {
     const meta = resolveAgentGateToolMetadata('graph_upsert')
     const prepared = await meta!.prepare!({ summary: 'x', entities: 'not-json', edges: null }, {})
-    expect(prepared.preview).toMatchObject({
+    expect(prepared).not.toBeNull()
+    expect(prepared!.preview).toMatchObject({
       counts: { entities: 0, edges: 0 }
     })
   })
