@@ -94,6 +94,10 @@ export function getMobileRawDataSourceManager(): RawDataSourceManager | null {
   return runtime?.manager ?? null
 }
 
+export function getMobileMemoryRawManager(): MemoryRawManager | null {
+  return runtime?.memoryManager ?? null
+}
+
 export function resetMobileRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
@@ -149,15 +153,28 @@ export async function runMobileDerivedIndexHydration(options: {
     const backfill = new MemoryJsonlBackfillService(runtime.memoryManager)
     const chatChunks = await hsRepo.listEmbeddingChunksByType('chat')
     const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory')
+    const manualChunks = await hsRepo.listEmbeddingChunksByType('manual')
     await backfill.backfillFromChunks(chatChunks, options.vaultName)
     await backfill.backfillFromChunks(memoryChunks, options.vaultName)
+    await backfill.migrateManualAndPatchMetadata(manualChunks, options.vaultName, {
+      normalizeManualToMemory: (params) => hsRepo.normalizeManualToMemory(params),
+      updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
+        hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
+    })
+    if (manualChunks.length === 0) {
+      await backfill.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
+        hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
+      )
+    }
+    await hsRepo.normalizeManualToMemory({ vaultName: options.vaultName })
 
     if (embeddingAdapter?.isConfigured) {
       const memorySync = new MemorySyncService(runtime.memoryManager, {
         embedText: (opts) => embeddingAdapter!.embedText(opts),
         deleteBySource: (sourceType, sourceId) =>
           hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-        listSourceIdsByType: (sourceType) => hsRepo.listSourceIdsByType(sourceType)
+        listSourceIdsByType: (sourceType, groupId) =>
+          hsRepo.listSourceIdsByType(sourceType, groupId)
       })
       await memorySync.syncPendingIndex()
     }

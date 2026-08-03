@@ -140,10 +140,20 @@ export const ragMemoryStyles = StyleSheet.create({
   },
   entryModel: { fontSize: 12, fontWeight: '600', flex: 1 },
   entryText: { fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  entryMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6
+  },
+  entryMetaBadge: { fontSize: 11 },
+  entryTag: { fontSize: 11 },
   entryFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: 8
   },
   entryDate: { fontSize: 11 },
   entrySimilarity: {

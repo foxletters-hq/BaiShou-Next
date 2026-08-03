@@ -110,10 +110,35 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
         <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
           {item.text}
         </Text>
+        <View style={styles.entryMetaRow}>
+          {item.isManual ? (
+            <Text style={[styles.entryMetaBadge, { color: colors.textSecondary }]}>
+              {t('settings.rag_source_manual', '手动')}
+            </Text>
+          ) : null}
+          {!item.isManual && item.sourceSessionId ? (
+            <Text style={[styles.entryMetaBadge, { color: colors.primary }]}>
+              {t('settings.rag_source_session', '来源会话')}
+            </Text>
+          ) : null}
+          {item.tags && item.tags.length > 0
+            ? item.tags.map((tag) => (
+                <Text key={tag} style={[styles.entryTag, { color: colors.textTertiary }]}>
+                  {tag}
+                </Text>
+              ))
+            : null}
+        </View>
         <View style={styles.entryFooter}>
           <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
             {formatRagEntryTimestamp(item.createdAt, item.sourceType)}
           </Text>
+          {item.memoryUpdatedAt != null && item.memoryUpdatedAt !== item.memoryCreatedAt ? (
+            <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
+              {t('settings.rag_updated_at', '修改')}{' '}
+              {formatRagEntryTimestamp(item.memoryUpdatedAt, item.sourceType)}
+            </Text>
+          ) : null}
           {showSimilarity && item.similarity !== undefined && (
             <View style={[styles.entrySimilarity, { backgroundColor: colors.primaryLight }]}>
               <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '600' }}>
