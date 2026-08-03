@@ -104,6 +104,40 @@ async function createSchema(db: Client) {
       created_at INTEGER NOT NULL
     )
   `)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS summaries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vault_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      start_date INTEGER NOT NULL,
+      end_date INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      source_ids TEXT,
+      generated_at INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER
+    )
+  `)
+  await db.execute(`
+    CREATE UNIQUE INDEX IF NOT EXISTS summaries_vault_id_type_start_date_end_date_unique
+    ON summaries (vault_id, type, start_date, end_date)
+  `)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS agent_assistants (
+      id TEXT NOT NULL,
+      vault_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
+      context_window INTEGER NOT NULL DEFAULT -1,
+      compress_token_threshold INTEGER NOT NULL DEFAULT 150000,
+      compress_keep_turns INTEGER NOT NULL DEFAULT 3,
+      assistant_kind TEXT NOT NULL DEFAULT 'companion',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (vault_id, id)
+    )
+  `)
 }
 
 function vec(n: number): number[] {
@@ -240,6 +274,24 @@ describe('vault isolation V2.2 (vault_id)', () => {
             VALUES (?, 1, 'h', 1, 1)`,
       args: [VAULT_B]
     })
+    await db.execute({
+      sql: `INSERT INTO summaries (vault_id, type, start_date, end_date, content, generated_at)
+            VALUES (?, 'monthly', 1, 2, 'sumA', 1)`,
+      args: [VAULT_A]
+    })
+    await db.execute({
+      sql: `INSERT INTO summaries (vault_id, type, start_date, end_date, content, generated_at)
+            VALUES (?, 'monthly', 1, 2, 'sumB', 1)`,
+      args: [VAULT_B]
+    })
+    await db.execute({
+      sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'Latte A')`,
+      args: [VAULT_A]
+    })
+    await db.execute({
+      sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'Latte B')`,
+      args: [VAULT_B]
+    })
 
     await purgeVaultDerivedData(exec, VAULT_B)
 
@@ -263,6 +315,66 @@ describe('vault isolation V2.2 (vault_id)', () => {
       args: [VAULT_B]
     })
     expect(Number(nodesB.rows[0]?.c)).toBe(0)
+    const sumB = await db.execute({
+      sql: `SELECT count(*) as c FROM summaries WHERE vault_id = ?`,
+      args: [VAULT_B]
+    })
+    expect(Number(sumB.rows[0]?.c)).toBe(0)
+    const sumA = await db.execute({
+      sql: `SELECT count(*) as c FROM summaries WHERE vault_id = ?`,
+      args: [VAULT_A]
+    })
+    expect(Number(sumA.rows[0]?.c)).toBe(1)
+    const astB = await db.execute({
+      sql: `SELECT count(*) as c FROM agent_assistants WHERE vault_id = ?`,
+      args: [VAULT_B]
+    })
+    expect(Number(astB.rows[0]?.c)).toBe(0)
+    const astA = await db.execute({
+      sql: `SELECT id, name FROM agent_assistants WHERE vault_id = ?`,
+      args: [VAULT_A]
+    })
+    expect(astA.rows).toEqual([{ id: 'default', name: 'Latte A' }])
+  })
+
+  it('4b) assistant list scoped by vault_id; same id can coexist across vaults', async () => {
+    await db.execute({
+      sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'A')`,
+      args: [VAULT_A]
+    })
+    await db.execute({
+      sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'B')`,
+      args: [VAULT_B]
+    })
+
+    const inA = await db.execute({
+      sql: `SELECT name FROM agent_assistants WHERE vault_id = ?`,
+      args: [VAULT_A]
+    })
+    expect(inA.rows.map((r) => r.name)).toEqual(['A'])
+
+    const allDefaults = await db.execute({
+      sql: `SELECT count(*) as c FROM agent_assistants WHERE id = 'default'`
+    })
+    expect(Number(allDefaults.rows[0]?.c)).toBe(2)
+  })
+
+  it('4c) summaries unique allows same period in different vaults', async () => {
+    await db.execute({
+      sql: `INSERT INTO summaries (vault_id, type, start_date, end_date, content, generated_at)
+            VALUES (?, 'weekly', 10, 20, 'A', 1)`,
+      args: [VAULT_A]
+    })
+    await db.execute({
+      sql: `INSERT INTO summaries (vault_id, type, start_date, end_date, content, generated_at)
+            VALUES (?, 'weekly', 10, 20, 'B', 1)`,
+      args: [VAULT_B]
+    })
+    const inA = await db.execute({
+      sql: `SELECT content FROM summaries WHERE vault_id = ?`,
+      args: [VAULT_A]
+    })
+    expect(inA.rows.map((r) => r.content)).toEqual(['A'])
   })
 
   it('5) new embeds use group_id memory/diary (not vault-prefixed)', async () => {

@@ -10,6 +10,7 @@ const sqlite = new Database(':memory:')
 sqlite.exec(`
   CREATE TABLE summaries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vault_id TEXT NOT NULL,
     type TEXT NOT NULL,
     start_date INTEGER NOT NULL,
     end_date INTEGER NOT NULL,
@@ -17,11 +18,12 @@ sqlite.exec(`
     source_ids TEXT,
     generated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
     updated_at INTEGER,
-    UNIQUE(type, start_date, end_date)
+    UNIQUE(vault_id, type, start_date, end_date)
   );
 `)
 
 const db = drizzle(sqlite)
+const TEST_VAULT = 'vlt_test_summary_repo'
 
 afterAll(() => {
   sqlite.close()
@@ -32,7 +34,7 @@ describe('SummaryRepositoryImpl', () => {
 
   beforeEach(async () => {
     await db.delete(summariesTable)
-    repo = new SummaryRepositoryImpl(db as any)
+    repo = new SummaryRepositoryImpl(db as any, () => TEST_VAULT)
   })
 
   const startDate = new Date('2026-03-01T00:00:00.000Z')
@@ -49,6 +51,7 @@ describe('SummaryRepositoryImpl', () => {
     expect(summary).toBeDefined()
     expect(summary.id).toBeGreaterThan(0)
     expect(summary.content).toBe('Monthly summary test content.')
+    expect((summary as any).vaultId).toBe(TEST_VAULT)
   })
 
   it('should update a specific summary by id', async () => {

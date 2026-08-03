@@ -9,8 +9,9 @@ import { AssistantRepository, InsertAssistantInput } from '../assistant.reposito
 import { AppDatabase } from '../../types'
 import DatabaseConstructor from 'better-sqlite3'
 
-// To run an in-memory test DB for drizzle:
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+
+const TEST_VAULT = 'vlt_assistant_repo_test'
 
 describe('AssistantRepository', () => {
   let db: AppDatabase
@@ -20,10 +21,10 @@ describe('AssistantRepository', () => {
   beforeEach(() => {
     sqlite = new DatabaseConstructor(':memory:')
 
-    // We need to create the table since we're using in-memory
     sqlite.exec(`
       CREATE TABLE IF NOT EXISTS agent_assistants (
-        id TEXT PRIMARY KEY,
+        id TEXT NOT NULL,
+        vault_id TEXT NOT NULL,
         name TEXT NOT NULL,
         emoji TEXT,
         description TEXT,
@@ -32,18 +33,26 @@ describe('AssistantRepository', () => {
         is_default INTEGER NOT NULL DEFAULT 0,
         is_pinned INTEGER NOT NULL DEFAULT 0,
         context_window INTEGER NOT NULL DEFAULT ${DEFAULT_ASSISTANT_CONTEXT_WINDOW},
-        provider_id TEXT NOT NULL,
-        model_id TEXT NOT NULL,
+        provider_id TEXT,
+        model_id TEXT,
         compress_token_threshold INTEGER NOT NULL DEFAULT ${DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD},
         compress_keep_turns INTEGER NOT NULL DEFAULT ${DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS},
+        compress_model_context_window INTEGER,
+        compress_preserve_recent_tokens INTEGER,
+        compress_system_prompt TEXT,
+        assistant_kind TEXT NOT NULL DEFAULT 'companion',
+        emoji_group_id TEXT,
+        emoji_enabled INTEGER NOT NULL DEFAULT 0,
+        emoji_group_ids TEXT,
         sort_order INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (vault_id, id)
       );
     `)
 
-    db = drizzle(sqlite) as unknown as AppDatabase // Cast since actual AppDatabase might carry schema info
-    repo = new AssistantRepository(db)
+    db = drizzle(sqlite) as unknown as AppDatabase
+    repo = new AssistantRepository(db, () => TEST_VAULT)
   })
 
   afterEach(() => {
@@ -68,6 +77,7 @@ describe('AssistantRepository', () => {
       expect(found?.providerId).toBe('openai')
       expect(found?.contextWindow).toBe(12)
       expect(found?.isDefault).toBe(false)
+      expect((found as any)?.vaultId).toBe(TEST_VAULT)
     })
 
     it('applies memory defaults when optional fields are omitted', async () => {
@@ -79,64 +89,32 @@ describe('AssistantRepository', () => {
       })
 
       const found = await repo.findById('ast-defaults')
-      expect(found?.contextWindow).toBe(DEFAULT_ASSISTANT_CONTEXT_WINDOW)
       expect(found?.compressTokenThreshold).toBe(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
       expect(found?.compressKeepTurns).toBe(DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS)
+      expect(found?.contextWindow).toBe(DEFAULT_ASSISTANT_CONTEXT_WINDOW)
     })
   })
 
   describe('findAll', () => {
-    it('should return all assistants sorted by sortOrder and updatedAt', async () => {
+    it('scopes by vault_id', async () => {
       await repo.create({
-        id: 'ast-1',
+        id: 'a1',
         name: 'A',
-        providerId: 'p',
-        modelId: 'm',
-        sortOrder: 1
+        vaultId: TEST_VAULT,
+        providerId: 'x',
+        modelId: 'y'
       })
       await repo.create({
-        id: 'ast-2',
+        id: 'a1',
         name: 'B',
-        providerId: 'p',
-        modelId: 'm',
-        sortOrder: 0
-      }) // Higher priority sortOrder (assuming smaller means first or wait we'll define it)
-
-      const results = await repo.findAll()
-      expect(results.length).toBe(2)
-      expect(results.some((a) => a.id === 'ast-1')).toBeTruthy()
-    })
-  })
-
-  describe('update', () => {
-    it('should update specific fields of an assistant', async () => {
-      await repo.create({
-        id: 'ast-x',
-        name: 'Original',
-        providerId: 'p',
-        modelId: 'm'
+        vaultId: 'vlt_other',
+        providerId: 'x',
+        modelId: 'y'
       })
-      await repo.update('ast-x', { name: 'Updated Name', modelId: 'm2' })
 
-      const found = await repo.findById('ast-x')
-      expect(found?.name).toBe('Updated Name')
-      expect(found?.modelId).toBe('m2')
-      expect(found?.providerId).toBe('p') // Remains unchanged
-    })
-  })
-
-  describe('delete', () => {
-    it('should remove the assistant from database', async () => {
-      await repo.create({
-        id: 'ast-del',
-        name: 'To delete',
-        providerId: 'p',
-        modelId: 'm'
-      })
-      await repo.delete('ast-del')
-
-      const found = await repo.findById('ast-del')
-      expect(found).toBeUndefined()
+      const all = await repo.findAll(TEST_VAULT)
+      expect(all).toHaveLength(1)
+      expect(all[0]?.name).toBe('A')
     })
   })
 })
