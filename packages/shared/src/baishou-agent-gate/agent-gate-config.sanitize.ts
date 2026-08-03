@@ -1,9 +1,14 @@
-import { AgentGateEffect, AgentGateTrustMode } from './agent-gate.enums'
+import { AgentGateEffect } from './agent-gate.enums'
 import type {
   AgentGateAllowlistEntry,
   AgentGatePermissionRule,
   BaishouAgentGateConfig
 } from './agent-gate.types'
+import {
+  migrateLegacyExternalPathFields,
+  migrateLegacyTrustMode,
+  setCatchAllAllowRule
+} from './agent-gate-migrate.util'
 
 const ALLOWED_EFFECTS = new Set<string>([
   AgentGateEffect.Allow,
@@ -53,7 +58,9 @@ function sanitizeAllowlist(raw: unknown): AgentGateAllowlistEntry[] {
                   ? entry.resourceKind
                   : action === 'workspace_run'
                     ? ('shell_command' as const)
-                    : undefined
+                    : action === 'external_directory'
+                      ? ('external_path' as const)
+                      : undefined
             }
           : {}),
         ...(typeof entry.sourceSessionId === 'string'
@@ -87,14 +94,14 @@ function sanitizePermissionRules(raw: unknown): AgentGatePermissionRule[] | unde
     }))
     .filter((rule) => {
       if (!rule.action) return false
-      if (
-        rule.action === 'workspace_run' &&
-        rule.effect === AgentGateEffect.Allow &&
-        !rule.pattern
-      ) {
+      if (rule.action === 'workspace_run' && rule.effect === AgentGateEffect.Allow && !rule.pattern) {
         return false
       }
-      if (rule.pattern === '*' || rule.pattern === '**' || rule.pattern === '**/*') {
+      // bare catch-alls only; path prefixes like D:/Notes/** are fine
+      if (rule.pattern === '*' || rule.pattern === '**') {
+        return false
+      }
+      if (rule.pattern === '**/*' && rule.action !== 'external_directory') {
         return false
       }
       return true
@@ -108,13 +115,6 @@ export function sanitizeBaishouAgentGateConfigPatch(
   if (!config || typeof config !== 'object') return {}
 
   const next: Partial<BaishouAgentGateConfig> = {}
-
-  if (
-    config.trustMode === AgentGateTrustMode.Manual ||
-    config.trustMode === AgentGateTrustMode.FullTrust
-  ) {
-    next.trustMode = config.trustMode
-  }
 
   if (Array.isArray(config.allowlist)) {
     next.allowlist = sanitizeAllowlist(config.allowlist)
@@ -134,36 +134,60 @@ export function sanitizeBaishouAgentGateConfigPatch(
   if (typeof config.hideDeniedTools === 'boolean') {
     next.hideDeniedTools = config.hideDeniedTools
   }
-  if (typeof config.forceAskExternalPath === 'boolean') {
-    next.forceAskExternalPath = config.forceAskExternalPath
-  }
-  if (
-    config.externalPathEffect === 'ask' ||
-    config.externalPathEffect === 'allow' ||
-    config.externalPathEffect === 'deny'
-  ) {
-    next.externalPathEffect = config.externalPathEffect
-    if (config.externalPathEffect === 'allow') {
-      next.forceAskExternalPath =
-        Array.isArray(config.trustedExternalDirs) && config.trustedExternalDirs.length > 0
-          ? true
-          : false
-    } else {
-      next.forceAskExternalPath = true
-    }
-  }
-  if (Array.isArray(config.trustedExternalDirs)) {
-    next.trustedExternalDirs = config.trustedExternalDirs
-      .filter((item: unknown): item is string => typeof item === 'string')
-      .map((item) => item.trim().replace(/\\/g, '/'))
-      .filter((item) => item && item !== '*' && item !== '**' && item !== '**/*')
-  }
   if (
     typeof config.repeatAssertAskThreshold === 'number' &&
     Number.isFinite(config.repeatAssertAskThreshold) &&
     config.repeatAssertAskThreshold >= 0
   ) {
     next.repeatAssertAskThreshold = Math.floor(config.repeatAssertAskThreshold)
+  }
+
+  if (config.scopePreset !== undefined) {
+    const allowed = new Set(['readonly', 'workspace_write', 'with_trusted_dirs', 'custom'])
+    if (typeof config.scopePreset === 'string' && allowed.has(config.scopePreset)) {
+      next.scopePreset = config.scopePreset as BaishouAgentGateConfig['scopePreset']
+    }
+  }
+  if (config.approvalPreset !== undefined) {
+    const allowed = new Set(['always_ask', 'dangerous_only', 'never_ask', 'custom'])
+    if (typeof config.approvalPreset === 'string' && allowed.has(config.approvalPreset)) {
+      next.approvalPreset = config.approvalPreset as BaishouAgentGateConfig['approvalPreset']
+    }
+  }
+
+  // 旧 trustMode → `*: allow`
+  const legacyTrust = (config as { trustMode?: string }).trustMode
+  if (legacyTrust === 'full_trust') {
+    const base: BaishouAgentGateConfig = {
+      exclusionList: next.exclusionList ?? [],
+      allowlist: next.allowlist ?? [],
+      permissionRules: next.permissionRules
+    }
+    next.permissionRules = setCatchAllAllowRule(base, true).permissionRules
+  }
+
+  // 旧字段 → external_directory 规则
+  const legacy = config as Partial<BaishouAgentGateConfig> & {
+    forceAskExternalPath?: boolean
+    externalPathEffect?: 'ask' | 'allow' | 'deny'
+    trustedExternalDirs?: string[]
+  }
+  if (
+    legacy.trustedExternalDirs != null ||
+    legacy.externalPathEffect != null ||
+    typeof legacy.forceAskExternalPath === 'boolean'
+  ) {
+    const migrated = migrateLegacyTrustMode(
+      migrateLegacyExternalPathFields({
+        exclusionList: next.exclusionList ?? [],
+        allowlist: next.allowlist ?? [],
+        permissionRules: next.permissionRules,
+        forceAskExternalPath: legacy.forceAskExternalPath,
+        externalPathEffect: legacy.externalPathEffect,
+        trustedExternalDirs: legacy.trustedExternalDirs
+      })
+    )
+    next.permissionRules = migrated.permissionRules
   }
 
   return next

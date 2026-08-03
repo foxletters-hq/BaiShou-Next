@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AgentGateEffect, AgentGateTrustMode } from '../agent-gate.enums'
+import { AgentGateEffect } from '../agent-gate.enums'
 import {
   applyCapabilityStateToConfig,
   applyCapabilityToConfig,
@@ -81,7 +81,7 @@ describe('agent-gate-capability.util', () => {
     expect(capabilityStateFromConfig(next, 'workspace').effects.command).toBe(AgentGateEffect.Ask)
   })
 
-  it('compiles trusted external dirs and round-trips allow+dirs', () => {
+  it('compiles trusted external dirs into external_directory Allow rules', () => {
     const config = cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
     const next = applyCapabilityStateToConfig(config, 'workspace', {
       effects: {
@@ -98,13 +98,21 @@ describe('agent-gate-capability.util', () => {
       trustedExternalDirs: ['D:/Notes']
     })
 
-    expect(next.externalPathEffect).toBe('allow')
-    expect(next.forceAskExternalPath).toBe(true)
-    expect(next.trustedExternalDirs).toEqual(['D:/Notes/**'])
-    // 可信目录只写入 trustedExternalDirs，不编译成绕过编辑询问的 Allow 规则
     expect(
       next.permissionRules?.some(
-        (rule) => rule.pattern === 'D:/Notes/**' && rule.effect === AgentGateEffect.Allow
+        (rule) =>
+          rule.action === 'external_directory' &&
+          rule.pattern === 'D:/Notes/**' &&
+          rule.effect === AgentGateEffect.Allow
+      )
+    ).toBe(true)
+    // 可信目录不编译成 workspace_write Allow，编辑仍询问
+    expect(
+      next.permissionRules?.some(
+        (rule) =>
+          rule.action === 'workspace_write' &&
+          rule.pattern === 'D:/Notes/**' &&
+          rule.effect === AgentGateEffect.Allow
       )
     ).toBe(false)
 
@@ -113,21 +121,28 @@ describe('agent-gate-capability.util', () => {
     expect(state.trustedExternalDirs).toEqual(['D:/Notes/**'])
   })
 
-  it('external deny sets externalPathEffect', () => {
+  it('external deny writes external_directory Deny rule', () => {
     const config = cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
     const next = applyCapabilityToConfig(config, 'workspace', {
       capabilityId: 'external',
       effect: AgentGateEffect.Deny
     })
-    expect(next.externalPathEffect).toBe('deny')
+    expect(
+      next.permissionRules?.some(
+        (rule) =>
+          rule.action === 'external_directory' &&
+          rule.effect === AgentGateEffect.Deny &&
+          !rule.pattern
+      )
+    ).toBe(true)
     expect(capabilityStateFromConfig(next, 'workspace').effects.external).toBe(AgentGateEffect.Deny)
   })
 
-  it('legacy FullTrust maps unmanaged caps to allow on readback', () => {
+  it('catch-all allow rule maps unmanaged caps to allow on readback', () => {
     const config = cloneBaishouAgentGateConfig(
       {
         ...DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
-        trustMode: AgentGateTrustMode.FullTrust
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
       },
       DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
     )

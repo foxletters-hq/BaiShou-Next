@@ -1,6 +1,5 @@
-import { AgentGateEffect, AgentGateTrustMode } from './agent-gate.enums'
+import { AgentGateEffect } from './agent-gate.enums'
 import type {
-  AgentGateExternalPathEffect,
   AgentGatePermissionRule,
   AgentGateResourceRef,
   BaishouAgentGateConfig
@@ -11,10 +10,9 @@ import {
   DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST
 } from './agent-gate.defaults'
 import { agentGateGlobMatch } from './agent-gate-ruleset.util'
+import { EXTERNAL_DIRECTORY_ACTION, hasCatchAllAllowRule } from './agent-gate-migrate.util'
 
-export type { AgentGateExternalPathEffect }
-
-/** 面向设置页的能力行 */
+export { EXTERNAL_DIRECTORY_ACTION }
 export type AgentGateCapabilityId =
   | 'browse'
   | 'edit'
@@ -36,13 +34,13 @@ export interface AgentGateCapabilityDef {
   lockedToAsk?: boolean
   /** 命令等：不可整项允许，仅可询问/拒绝（或通过始终允许前缀） */
   disallowAllow?: boolean
-  /** 区外路径能力：不写 action 规则，走 externalPathEffect */
+  /** 区外目录能力：管理 external_directory 规则 */
   external?: boolean
 }
 
 export interface AgentGateCapabilityState {
   effects: Record<AgentGateCapabilityId, AgentGateCapabilityEffect>
-  /** 工作台：可信区外目录（glob / 绝对路径前缀） */
+  /** 工作台：可信区外目录（glob / 绝对路径前缀）→ 编译为 external_directory Allow */
   trustedExternalDirs: string[]
 }
 
@@ -51,18 +49,12 @@ const WORKSPACE_EDIT_ACTIONS = ['workspace_write', 'workspace_patch', 'workspace
 const WORKSPACE_DELETE_ACTIONS = ['workspace_delete'] as const
 const WORKSPACE_COMMAND_ACTIONS = ['workspace_run'] as const
 
-const ALL_WORKSPACE_FILE_ACTIONS = [
-  ...WORKSPACE_BROWSE_ACTIONS,
-  ...WORKSPACE_EDIT_ACTIONS,
-  ...WORKSPACE_DELETE_ACTIONS
-] as const
-
 export const WORKSPACE_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'browse', actions: WORKSPACE_BROWSE_ACTIONS },
   { id: 'edit', actions: WORKSPACE_EDIT_ACTIONS },
   { id: 'delete', actions: WORKSPACE_DELETE_ACTIONS, lockedToAsk: true },
   { id: 'command', actions: WORKSPACE_COMMAND_ACTIONS, disallowAllow: true },
-  { id: 'external', actions: [], external: true }
+  { id: 'external', actions: [EXTERNAL_DIRECTORY_ACTION], external: true }
 ]
 
 export const COMPANION_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
@@ -89,9 +81,7 @@ function managedActionSet(scene: AgentToolScene): Set<string> {
 function normalizeTrustedDir(dir: string): string | null {
   const trimmed = dir.trim().replace(/\\/g, '/')
   if (!trimmed) return null
-  // Reject bare catch-alls that the engine ignores for path resources
   if (trimmed === '*' || trimmed === '**' || trimmed === '**/*') return null
-  // Directory path without wildcard → prefix match under that root
   if (!trimmed.includes('*')) {
     return `${trimmed.replace(/\/+$/, '')}/**`
   }
@@ -106,36 +96,21 @@ function isManagedActionOnlyRule(
   return managedActions.has(rule.action)
 }
 
-function isManagedExternalAllowRule(
-  rule: AgentGatePermissionRule,
-  trustedDirs: readonly string[]
-): boolean {
-  if (!rule.pattern || rule.effect !== AgentGateEffect.Allow) return false
-  if (
-    !ALL_WORKSPACE_FILE_ACTIONS.includes(rule.action as (typeof ALL_WORKSPACE_FILE_ACTIONS)[number])
-  ) {
-    return false
-  }
-  const normalized = normalizeTrustedDir(rule.pattern)
-  return normalized != null && trustedDirs.some((dir) => normalizeTrustedDir(dir) === normalized)
+function isManagedExternalDirectoryRule(rule: AgentGatePermissionRule): boolean {
+  return rule.action === EXTERNAL_DIRECTORY_ACTION
 }
 
-function readExternalPathEffect(config: BaishouAgentGateConfig): AgentGateExternalPathEffect {
-  if (
-    config.externalPathEffect === 'allow' ||
-    config.externalPathEffect === 'deny' ||
-    config.externalPathEffect === 'ask'
-  ) {
-    return config.externalPathEffect
-  }
-  return config.forceAskExternalPath === false ? 'allow' : 'ask'
-}
-
-function readTrustedExternalDirs(config: BaishouAgentGateConfig): string[] {
-  if (!Array.isArray(config.trustedExternalDirs)) return []
-  return config.trustedExternalDirs
-    .filter((item): item is string => typeof item === 'string')
-    .map(normalizeTrustedDir)
+function readTrustedExternalDirsFromRules(
+  rules: readonly AgentGatePermissionRule[]
+): string[] {
+  return rules
+    .filter(
+      (rule) =>
+        rule.action === EXTERNAL_DIRECTORY_ACTION &&
+        rule.effect === AgentGateEffect.Allow &&
+        !!rule.pattern
+    )
+    .map((rule) => normalizeTrustedDir(rule.pattern!))
     .filter((item): item is string => !!item)
 }
 
@@ -157,8 +132,8 @@ function effectForActions(
   )
   if (allow) return AgentGateEffect.Allow
 
-  // Legacy FullTrust: treat unmanaged routine caps as Allow when no Deny rule
-  if (config.trustMode === AgentGateTrustMode.FullTrust) {
+  // 旧 FullTrust 等价：`*: allow` 垫底时，未显式 Deny 的能力显示为允许
+  if (hasCatchAllAllowRule(config)) {
     const hasDeny = actions.some((action) =>
       actionOnly.some((rule) => rule.action === action && rule.effect === AgentGateEffect.Deny)
     )
@@ -168,12 +143,32 @@ function effectForActions(
   return defaults
 }
 
+function effectForExternalDirectory(
+  config: BaishouAgentGateConfig
+): AgentGateCapabilityEffect {
+  const rules = config.permissionRules ?? []
+  const actionOnly = rules.filter(
+    (rule) => rule.action === EXTERNAL_DIRECTORY_ACTION && !rule.pattern
+  )
+  if (actionOnly.some((rule) => rule.effect === AgentGateEffect.Deny)) {
+    return AgentGateEffect.Deny
+  }
+  if (actionOnly.some((rule) => rule.effect === AgentGateEffect.Allow)) {
+    return AgentGateEffect.Allow
+  }
+  // 仅有带 pattern 的 Allow（可信目录）时，UI 仍显示 Allow（配合目录列表）
+  if (readTrustedExternalDirsFromRules(rules).length > 0) {
+    return AgentGateEffect.Allow
+  }
+  return AgentGateEffect.Ask
+}
+
 /** 从现有配置反推能力矩阵状态 */
 export function capabilityStateFromConfig(
   config: BaishouAgentGateConfig,
   scene: AgentToolScene
 ): AgentGateCapabilityState {
-  const trustedExternalDirs = readTrustedExternalDirs(config)
+  const trustedExternalDirs = readTrustedExternalDirsFromRules(config.permissionRules ?? [])
   const effects = {} as Record<AgentGateCapabilityId, AgentGateCapabilityEffect>
 
   if (scene === 'workspace') {
@@ -181,13 +176,7 @@ export function capabilityStateFromConfig(
     effects.edit = effectForActions(config, WORKSPACE_EDIT_ACTIONS, AgentGateEffect.Ask)
     effects.delete = AgentGateEffect.Ask
     effects.command = effectForActions(config, WORKSPACE_COMMAND_ACTIONS, AgentGateEffect.Ask)
-    const external = readExternalPathEffect(config)
-    effects.external =
-      external === 'allow'
-        ? AgentGateEffect.Allow
-        : external === 'deny'
-          ? AgentGateEffect.Deny
-          : AgentGateEffect.Ask
+    effects.external = effectForExternalDirectory(config)
   } else {
     effects.diary_write = effectForActions(config, ['diary_write'], AgentGateEffect.Ask)
     effects.diary_delete = AgentGateEffect.Ask
@@ -203,7 +192,6 @@ function buildActionOnlyRules(
   effect: AgentGateCapabilityEffect
 ): AgentGatePermissionRule[] {
   if (effect === AgentGateEffect.Ask) return []
-  // workspace_run 禁止无 pattern 的 Allow
   if (effect === AgentGateEffect.Allow && actions.includes('workspace_run')) {
     return actions
       .filter((action) => action !== 'workspace_run')
@@ -212,15 +200,39 @@ function buildActionOnlyRules(
   return actions.map((action) => ({ action, effect }))
 }
 
+function buildExternalDirectoryRules(
+  externalEffect: AgentGateCapabilityEffect,
+  trustedDirs: readonly string[]
+): AgentGatePermissionRule[] {
+  const normalizedDirs = trustedDirs
+    .map(normalizeTrustedDir)
+    .filter((item): item is string => !!item)
+
+  if (externalEffect === AgentGateEffect.Deny) {
+    return [{ action: EXTERNAL_DIRECTORY_ACTION, effect: AgentGateEffect.Deny }]
+  }
+
+  if (externalEffect === AgentGateEffect.Allow && normalizedDirs.length === 0) {
+    return [{ action: EXTERNAL_DIRECTORY_ACTION, effect: AgentGateEffect.Allow }]
+  }
+
+  // Ask 或 Allow+可信目录：只写带 pattern 的 Allow；未匹配默认 Ask
+  return normalizedDirs.map((pattern) => ({
+    action: EXTERNAL_DIRECTORY_ACTION,
+    pattern,
+    effect: AgentGateEffect.Allow
+  }))
+}
+
 /**
- * 区外路径是否命中可信目录（仅过区外门，仍需再走读取/编辑等能力矩阵）。
- * 不再把可信目录编译成 action Allow 规则，避免绕过「编辑=询问」。
+ * 区外路径是否命中可信目录规则（external_directory Allow + pattern）。
+ * 两道门模型下主要用于 UI / 诊断；求值走普通规则表。
  */
 export function matchesTrustedExternalDirs(
-  config: Pick<BaishouAgentGateConfig, 'trustedExternalDirs'>,
+  config: Pick<BaishouAgentGateConfig, 'permissionRules'>,
   resources: readonly AgentGateResourceRef[]
 ): boolean {
-  const patterns = readTrustedExternalDirs(config as BaishouAgentGateConfig)
+  const patterns = readTrustedExternalDirsFromRules(config.permissionRules ?? [])
   if (patterns.length === 0) return false
   const externalPaths = resources
     .filter((resource) => resource.kind === 'external_path')
@@ -235,10 +247,67 @@ export interface ApplyCapabilityPatch {
   trustedExternalDirs?: string[]
 }
 
+function rebuildManagedRules(
+  config: BaishouAgentGateConfig,
+  scene: AgentToolScene,
+  state: AgentGateCapabilityState
+): BaishouAgentGateConfig {
+  const caps = getGateCapabilitiesForScene(scene)
+  const managedActions = managedActionSet(scene)
+  const nextTrusted = state.trustedExternalDirs
+    .map(normalizeTrustedDir)
+    .filter((item): item is string => !!item)
+
+  const existingRules = config.permissionRules ?? []
+  const preserved = existingRules.filter((rule) => {
+    if (isManagedExternalDirectoryRule(rule)) return false
+    if (isManagedActionOnlyRule(rule, managedActions)) return false
+    return true
+  })
+
+  const nextRules: AgentGatePermissionRule[] = [...preserved]
+  for (const cap of caps) {
+    if (cap.external) continue
+    let capEffect = cap.lockedToAsk
+      ? AgentGateEffect.Ask
+      : (state.effects[cap.id] ?? AgentGateEffect.Ask)
+    if (cap.disallowAllow && capEffect === AgentGateEffect.Allow) {
+      capEffect = AgentGateEffect.Ask
+    }
+    nextRules.push(...buildActionOnlyRules(cap.actions, capEffect))
+  }
+
+  if (scene === 'workspace') {
+    nextRules.push(
+      ...buildExternalDirectoryRules(state.effects.external ?? AgentGateEffect.Ask, nextTrusted)
+    )
+  }
+
+  const next: BaishouAgentGateConfig = {
+    ...config,
+    permissionRules: nextRules
+  }
+
+  if (scene === 'workspace') {
+    const exclusion = new Set(
+      config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST]
+    )
+    exclusion.add('workspace_delete')
+    next.exclusionList = [...exclusion]
+  } else {
+    const exclusion = new Set(config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST])
+    exclusion.add('diary_delete')
+    exclusion.add('memory_delete')
+    next.exclusionList = [...exclusion]
+  }
+
+  return next
+}
+
 /**
  * 将能力矩阵变更写回配置。
- * - 只替换该能力管理的 action-only 规则与可信区外 Allow 规则
- * - 保留用户自定义（带 pattern 且非可信目录管理）的高级规则
+ * - 只替换该能力管理的 action-only 规则与 external_directory 托管规则
+ * - 保留用户自定义（带 pattern 且非区外托管）的高级规则
  */
 export function applyCapabilityToConfig(
   config: BaishouAgentGateConfig,
@@ -249,97 +318,21 @@ export function applyCapabilityToConfig(
   const def = caps.find((item) => item.id === patch.capabilityId)
   if (!def) return config
 
-  const managedActions = managedActionSet(scene)
-  const prevTrusted = readTrustedExternalDirs(config)
-  const nextTrusted = (patch.trustedExternalDirs ?? prevTrusted)
-    .map(normalizeTrustedDir)
-    .filter((item): item is string => !!item)
-
   const effect = def.lockedToAsk
     ? AgentGateEffect.Ask
     : def.disallowAllow && patch.effect === AgentGateEffect.Allow
       ? AgentGateEffect.Ask
       : patch.effect
 
-  const existingRules = config.permissionRules ?? []
-  const preserved = existingRules.filter((rule) => {
-    if (isManagedActionOnlyRule(rule, managedActions)) return false
-    if (
-      isManagedExternalAllowRule(rule, prevTrusted) ||
-      isManagedExternalAllowRule(rule, nextTrusted)
-    ) {
-      return false
-    }
-    return true
-  })
-
-  const nextRules: AgentGatePermissionRule[] = [...preserved]
-
-  // Rebuild all managed action-only rules from full capability state for consistency
   const state = capabilityStateFromConfig(config, scene)
   state.effects[patch.capabilityId] = effect
   if (patch.trustedExternalDirs) {
-    state.trustedExternalDirs = nextTrusted
+    state.trustedExternalDirs = patch.trustedExternalDirs
+      .map(normalizeTrustedDir)
+      .filter((item): item is string => !!item)
   }
 
-  for (const cap of caps) {
-    if (cap.external) continue
-    let capEffect = cap.lockedToAsk
-      ? AgentGateEffect.Ask
-      : (state.effects[cap.id] ?? AgentGateEffect.Ask)
-    if (cap.disallowAllow && capEffect === AgentGateEffect.Allow) {
-      capEffect = AgentGateEffect.Ask
-    }
-    nextRules.push(...buildActionOnlyRules(cap.actions, capEffect))
-  }
-
-  const next: BaishouAgentGateConfig = {
-    ...config,
-    permissionRules: nextRules,
-    // Matrix replaces trustMode as primary UX
-    trustMode: AgentGateTrustMode.Manual
-  }
-
-  if (scene === 'workspace') {
-    applyWorkspaceExternalFields(
-      next,
-      state.effects.external ?? AgentGateEffect.Ask,
-      state.trustedExternalDirs
-    )
-    const exclusion = new Set(
-      config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST]
-    )
-    exclusion.add('workspace_delete')
-    next.exclusionList = [...exclusion]
-  } else {
-    const exclusion = new Set(config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST])
-    exclusion.add('diary_delete')
-    exclusion.add('memory_delete')
-    next.exclusionList = [...exclusion]
-  }
-
-  return next
-}
-
-function applyWorkspaceExternalFields(
-  next: BaishouAgentGateConfig,
-  externalEffect: AgentGateCapabilityEffect,
-  trustedDirs: readonly string[]
-): void {
-  next.trustedExternalDirs = [...trustedDirs]
-  if (externalEffect === AgentGateEffect.Deny) {
-    next.externalPathEffect = 'deny'
-    next.forceAskExternalPath = true
-    return
-  }
-  if (externalEffect === AgentGateEffect.Allow) {
-    next.externalPathEffect = 'allow'
-    // 有可信目录时：未匹配路径仍询问；无可信目录时：关闭强制询问（仍受编辑/命令能力约束）
-    next.forceAskExternalPath = trustedDirs.length > 0
-    return
-  }
-  next.externalPathEffect = 'ask'
-  next.forceAskExternalPath = true
+  return rebuildManagedRules(config, scene, state)
 }
 
 /** 一次性用完整矩阵状态覆盖托管规则（设置页批量保存） */
@@ -348,55 +341,10 @@ export function applyCapabilityStateToConfig(
   scene: AgentToolScene,
   state: AgentGateCapabilityState
 ): BaishouAgentGateConfig {
-  const caps = getGateCapabilitiesForScene(scene)
-  const managedActions = managedActionSet(scene)
-  const prevTrusted = readTrustedExternalDirs(config)
-  const nextTrusted = state.trustedExternalDirs
-    .map(normalizeTrustedDir)
-    .filter((item): item is string => !!item)
-
-  const existingRules = config.permissionRules ?? []
-  const preserved = existingRules.filter((rule) => {
-    if (isManagedActionOnlyRule(rule, managedActions)) return false
-    if (
-      isManagedExternalAllowRule(rule, prevTrusted) ||
-      isManagedExternalAllowRule(rule, nextTrusted)
-    ) {
-      return false
-    }
-    return true
+  return rebuildManagedRules(config, scene, {
+    effects: { ...state.effects },
+    trustedExternalDirs: state.trustedExternalDirs
+      .map(normalizeTrustedDir)
+      .filter((item): item is string => !!item)
   })
-
-  const nextRules: AgentGatePermissionRule[] = [...preserved]
-  for (const cap of caps) {
-    if (cap.external) continue
-    let capEffect = cap.lockedToAsk
-      ? AgentGateEffect.Ask
-      : (state.effects[cap.id] ?? AgentGateEffect.Ask)
-    if (cap.disallowAllow && capEffect === AgentGateEffect.Allow) {
-      capEffect = AgentGateEffect.Ask
-    }
-    nextRules.push(...buildActionOnlyRules(cap.actions, capEffect))
-  }
-  const next: BaishouAgentGateConfig = {
-    ...config,
-    permissionRules: nextRules,
-    trustMode: AgentGateTrustMode.Manual
-  }
-
-  if (scene === 'workspace') {
-    applyWorkspaceExternalFields(next, state.effects.external ?? AgentGateEffect.Ask, nextTrusted)
-    const exclusion = new Set(
-      config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST]
-    )
-    exclusion.add('workspace_delete')
-    next.exclusionList = [...exclusion]
-  } else {
-    const exclusion = new Set(config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST])
-    exclusion.add('diary_delete')
-    exclusion.add('memory_delete')
-    next.exclusionList = [...exclusion]
-  }
-
-  return next
 }

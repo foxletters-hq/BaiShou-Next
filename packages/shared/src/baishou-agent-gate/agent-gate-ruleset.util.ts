@@ -84,6 +84,14 @@ export function agentGatePermissionRuleMatches(
     if (action === 'workspace_run' && rule.effect === AgentGateEffect.Allow) {
       return false
     }
+    // Wildcard action-only Allow must not open the external_directory gate.
+    if (
+      action === 'external_directory' &&
+      rule.effect === AgentGateEffect.Allow &&
+      rule.action.includes('*')
+    ) {
+      return false
+    }
     return true
   }
   return agentGateResourcePatternMatch(rule.pattern, resources)
@@ -129,6 +137,72 @@ export function evaluateAgentGatePermissionRules(
   }
 
   return combined
+}
+
+export interface EvaluateLayeredAgentGateRulesInput {
+  action: string
+  resources?: readonly AgentGateResourceRef[]
+  /** 分层规则：后者覆盖前者；层内顺序即优先级（最后匹配赢） */
+  layers: readonly (readonly AgentGatePermissionRule[])[]
+}
+
+export type AgentGateRuleLayerKind = 'profile' | 'user' | 'remembered' | 'session'
+
+export interface FindLastMatchingLayeredRuleInput {
+  action: string
+  resources?: readonly AgentGateResourceRef[]
+  layers: ReadonlyArray<{
+    kind: AgentGateRuleLayerKind
+    rules: readonly AgentGatePermissionRule[]
+  }>
+}
+
+export interface FindLastMatchingLayeredRuleResult {
+  rule: AgentGatePermissionRule
+  layer: AgentGateRuleLayerKind
+}
+
+/**
+ * G4：分层拼接后取最后一条命中规则（findLast）。
+ * 未命中返回 undefined，由调用方默认 Ask。
+ */
+export function evaluateLayeredRules(
+  input: EvaluateLayeredAgentGateRulesInput
+): AgentGateEffect | undefined {
+  const matched = findLastMatchingLayeredRule({
+    action: input.action,
+    resources: input.resources,
+    layers: input.layers.map((rules) => ({ kind: 'user' as const, rules }))
+  })
+  return matched?.rule.effect
+}
+
+export function findLastMatchingLayeredRule(
+  input: FindLastMatchingLayeredRuleInput
+): FindLastMatchingLayeredRuleResult | undefined {
+  const resources = input.resources ?? []
+  for (let layerIndex = input.layers.length - 1; layerIndex >= 0; layerIndex--) {
+    const layer = input.layers[layerIndex]
+    if (!layer) continue
+    for (let i = layer.rules.length - 1; i >= 0; i--) {
+      const rule = layer.rules[i]
+      if (!rule) continue
+      if (!agentGatePermissionRuleMatches(rule, input.action, resources)) continue
+      return { rule, layer: layer.kind }
+    }
+  }
+  return undefined
+}
+
+/** 将始终允许名单转为规则层（全部为 Allow） */
+export function allowlistEntriesToPermissionRules(
+  entries: ReadonlyArray<{ action: string; pattern?: string }>
+): AgentGatePermissionRule[] {
+  return entries.map((entry) => ({
+    action: entry.action,
+    effect: AgentGateEffect.Allow,
+    ...(entry.pattern ? { pattern: entry.pattern } : {})
+  }))
 }
 
 /**
