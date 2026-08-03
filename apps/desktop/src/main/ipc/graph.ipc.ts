@@ -13,7 +13,7 @@ import {
   GRAPH_NODE_TYPES
 } from '@baishou/database-desktop'
 import { logger, resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
-import { fileSystem, pathService, vaultService } from './vault.ipc'
+import { fileSystem, pathService, vaultService, resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
 import {
   ensureRawDataRuntime,
   getDerivedFreshness,
@@ -24,6 +24,10 @@ import { getActiveProvider } from './agent-helpers'
 
 function requireVaultName(): string {
   return vaultService.getActiveVault()?.name || 'Personal'
+}
+
+function requireVaultId(): string {
+  return resolveActiveVaultId()
 }
 
 function requireGraphRepo(): GraphRepository {
@@ -96,7 +100,7 @@ export function registerGraphIPC(): void {
     ) => {
       const repo = requireGraphRepo()
       return repo.getGlobalGraph({
-        vaultName: requireVaultName(),
+        vaultId: requireVaultId(),
         maxNodes: opts?.maxNodes ?? 200,
         minMentionCount: opts?.minMentionCount ?? 0,
         nodeTypes: opts?.nodeTypes
@@ -106,14 +110,14 @@ export function registerGraphIPC(): void {
 
   ipcMain.handle('graph:get-view', async (_e, opts: { centerNodeId: string; depth?: 1 | 2 }) => {
     const repo = requireGraphRepo()
-    return repo.traverse(requireVaultName(), opts.centerNodeId, opts.depth ?? 2)
+    return repo.traverse(requireVaultId(), opts.centerNodeId, opts.depth ?? 2)
   })
 
   ipcMain.handle(
     'graph:search',
     async (_e, opts: { query: string; nodeTypes?: string[]; limit?: number }) => {
       const repo = requireGraphRepo()
-      return repo.searchNodesByName(requireVaultName(), opts.query, {
+      return repo.searchNodesByName(requireVaultId(), opts.query, {
         nodeTypes: opts.nodeTypes,
         limit: opts.limit ?? 20
       })
@@ -122,7 +126,7 @@ export function registerGraphIPC(): void {
 
   ipcMain.handle('graph:list-pending-edges', async () => {
     const repo = requireGraphRepo()
-    return repo.listPendingEdges(requireVaultName())
+    return repo.listPendingEdges(requireVaultId())
   })
 
   ipcMain.handle(
@@ -135,7 +139,7 @@ export function registerGraphIPC(): void {
       const record: GraphEdgeRawRecord = {
         id: edge.id,
         schemaVersion: 1,
-        vaultName: edge.vaultName,
+        vaultName: resolveVaultNameById(edge.vaultId),
         fromId: edge.fromId,
         toId: edge.toId,
         edgeType: edge.edgeType,

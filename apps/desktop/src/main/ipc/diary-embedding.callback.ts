@@ -13,7 +13,7 @@ import {
   buildDiaryEmbeddingTagPrefix
 } from '@baishou/shared'
 
-import { vaultService } from './vault.ipc'
+import { vaultService, resolveActiveVaultId, resolveVaultIdByName } from './vault.ipc'
 import { deleteDiaryEmbeddingAliases } from '../services/diary-embedding.util'
 import { deleteDiaryEmbedJob, enqueueDiaryEmbedJob } from '../services/diary-embed-jobs.service'
 
@@ -42,13 +42,18 @@ async function clearDiaryEmbedFailureIfSet(): Promise<void> {
   }
 }
 
-function resolveVaultName(explicit?: string): string {
-  return explicit?.trim() || vaultService.getActiveVault()?.name || 'Personal'
+function resolveVaultId(explicit?: string): string {
+  if (explicit?.trim()) {
+    const trimmed = explicit.trim()
+    const fromRegistry = vaultService.getAllVaults().find((v) => v.id === trimmed || v.name === trimmed)
+    return fromRegistry?.id ?? resolveVaultIdByName(trimmed)
+  }
+  return resolveActiveVaultId()
 }
 
 export const embeddingCallback: IEmbeddingCallback = {
   async reEmbedDiary(params) {
-    const vaultName = resolveVaultName(params.vaultName)
+    const vaultId = resolveVaultId(params.vaultName)
     const contentHash = createHash('md5').update(params.content, 'utf8').digest('hex')
     try {
       const { settingsManager } = await import('./settings.ipc')
@@ -59,7 +64,7 @@ export const embeddingCallback: IEmbeddingCallback = {
 
       if (!isRagMemoryEnabled(ragConfig) || !embeddingService.isConfigured) {
         await enqueueDiaryEmbedJob({
-          vaultName,
+          vaultId,
           diaryId: params.diaryId,
           contentHash
         })
@@ -70,27 +75,27 @@ export const embeddingCallback: IEmbeddingCallback = {
       const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       const tagPrefix = buildDiaryEmbeddingTagPrefix(params.tags)
 
-      const sourceId = buildDiaryEmbeddingSourceId(vaultName, params.diaryId)
+      const sourceId = buildDiaryEmbeddingSourceId(vaultId, params.diaryId)
 
-      await deleteDiaryEmbeddingAliases(vaultName, params.diaryId)
+      await deleteDiaryEmbeddingAliases(vaultId, params.diaryId)
       await embeddingService.reEmbedText({
         text: params.content,
         sourceType: 'diary',
         sourceId,
-        groupId: buildDiaryEmbeddingGroupId(vaultName),
-        vaultName,
+        groupId: buildDiaryEmbeddingGroupId(),
+        vaultId,
         chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
         metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
         sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000
       })
-      await deleteDiaryEmbedJob(vaultName, params.diaryId)
+      await deleteDiaryEmbedJob(vaultId, params.diaryId)
       await clearDiaryEmbedFailureIfSet()
       return true
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)
       await enqueueDiaryEmbedJob(
         {
-          vaultName,
+          vaultId,
           diaryId: params.diaryId,
           contentHash
         },
@@ -102,9 +107,9 @@ export const embeddingCallback: IEmbeddingCallback = {
   },
 
   async enqueueDiaryEmbed(params) {
-    const vaultName = resolveVaultName(params.vaultName)
+    const vaultId = resolveVaultId(params.vaultName)
     await enqueueDiaryEmbedJob({
-      vaultName,
+      vaultId,
       diaryId: params.diaryId,
       contentHash: params.contentHash
     })
@@ -116,10 +121,10 @@ export const embeddingCallback: IEmbeddingCallback = {
       const storage = new DesktopEmbeddingStorage()
       await storage.deleteEmbeddingsBySource(sourceType, sourceId)
       if (sourceType === 'diary' && sourceId.includes('#')) {
-        const [vaultName, idPart] = sourceId.split('#')
+        const [vaultId, idPart] = sourceId.split('#')
         const diaryId = Number(idPart)
-        if (vaultName && Number.isFinite(diaryId)) {
-          await deleteDiaryEmbedJob(vaultName, diaryId)
+        if (vaultId && Number.isFinite(diaryId)) {
+          await deleteDiaryEmbedJob(vaultId, diaryId)
         }
       }
     } catch (e: any) {

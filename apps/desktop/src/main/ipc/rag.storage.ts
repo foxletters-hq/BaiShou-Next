@@ -38,7 +38,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     sourceType: string
     sourceId: string
     groupId: string
-    vaultName: string
+    vaultId: string
     chunkIndex: number
     chunkText: string
     metadataJson?: string
@@ -48,9 +48,9 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
   }): Promise<void> {
     await withEmbeddingWriteLock(async () => {
       const db = getAppDb()
-      const vaultName = params.vaultName.trim()
-      if (!vaultName) {
-        throw new Error('insertEmbedding: vaultName is required')
+      const vaultId = params.vaultId.trim()
+      if (!vaultId) {
+        throw new Error('insertEmbedding: vaultId is required')
       }
       const vectorBuffer = Buffer.from(new Float32Array(params.embedding).buffer)
 
@@ -61,7 +61,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
           sourceType: params.sourceType,
           sourceId: params.sourceId,
           groupId: params.groupId,
-          vaultName,
+          vaultId,
           chunkIndex: params.chunkIndex,
           chunkText: params.chunkText,
           metadataJson: params.metadataJson || '{}',
@@ -81,7 +81,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
             dimension: params.embedding.length,
             modelId: params.modelId,
             metadataJson: params.metadataJson || '{}',
-            vaultName,
+            vaultId,
             groupId: params.groupId,
             sourceCreatedAt: new Date(
               normalizeUnixToSeconds(params.sourceCreatedAt ?? Date.now()) * 1000
@@ -326,7 +326,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     await db.run(
       sql.raw(`
       CREATE TABLE ${ROLLBACK_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, vault_name, chunk_index, chunk_text,
+      SELECT embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
              metadata_json, embedding, dimension, model_id, created_at, source_created_at
       FROM memory_embeddings
     `)
@@ -347,10 +347,10 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     await db.delete(memoryEmbeddingsTable)
     await db.run(
       sql.raw(`
-      INSERT INTO memory_embeddings (embedding_id, source_type, source_id, group_id, vault_name, chunk_index,
+      INSERT INTO memory_embeddings (embedding_id, source_type, source_id, group_id, vault_id, chunk_index,
                                      chunk_text, metadata_json, embedding, dimension, model_id,
                                      created_at, source_created_at)
-      SELECT embedding_id, source_type, source_id, group_id, vault_name, chunk_index, chunk_text,
+      SELECT embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
              metadata_json, embedding, dimension, model_id, created_at, source_created_at
       FROM ${ROLLBACK_TABLE}
     `)
@@ -385,7 +385,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
       await db.run(
         sql.raw(`
       CREATE TABLE ${BACKUP_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, vault_name, chunk_index, chunk_text,
+      SELECT embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
              metadata_json, source_created_at, 0 as is_migrated
       FROM memory_embeddings
     `)
@@ -427,7 +427,7 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
       const rows = await db.all(
         sql.raw(`
         SELECT embedding_id, source_type as sourceType, source_id as sourceId, group_id as groupId,
-               vault_name as vaultName, chunk_index as chunkIndex, chunk_text as chunkText,
+               vault_id as vaultId, chunk_index as chunkIndex, chunk_text as chunkText,
                metadata_json as metadataJson, source_created_at as sourceCreatedAt
         FROM ${BACKUP_TABLE}
         WHERE is_migrated = 0

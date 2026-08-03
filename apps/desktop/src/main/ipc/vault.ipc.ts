@@ -2,7 +2,7 @@ import i18n from 'i18next'
 import { ipcMain, BrowserWindow } from 'electron'
 import { VaultService, VaultNameExistsError, VaultInvalidNameError } from '@baishou/core-desktop'
 import { ShadowIndexRepository, shadowConnectionManager, connectionManager } from '@baishou/database-desktop'
-import { logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
 import { traceStartupStep } from '../startup-trace.util'
 import { resetSyncService } from './incremental-sync.ipc'
@@ -21,6 +21,28 @@ export { fileSystem }
  * 全局 Shadow DB 由 connectGlobalShadowDb() 在启动时连接一次
  */
 export const vaultService = new VaultService(pathService, fileSystem)
+
+/** 活跃工作空间稳定 ID；无 registry 时用名称派生 legacy id */
+export function resolveActiveVaultId(): string {
+  const vault = vaultService.getActiveVault()
+  if (vault?.id) return vault.id
+  return deriveLegacyVaultId(vault?.name ?? 'Personal')
+}
+
+/** 按显示名解析 vault id；仅名称无 service 时 fallback 到 deriveLegacyVaultId */
+export function resolveVaultIdByName(vaultName: string): string {
+  const trimmed = vaultName.trim()
+  if (!trimmed) return deriveLegacyVaultId('Personal')
+  const fromRegistry = vaultService.getAllVaults().find((v) => v.name === trimmed)
+  return fromRegistry?.id ?? deriveLegacyVaultId(trimmed)
+}
+
+/** 将 vault id 还原为显示名（JSONL / 路径仍用 name） */
+export function resolveVaultNameById(vaultId: string): string {
+  const trimmed = vaultId.trim()
+  if (!trimmed) return 'Personal'
+  return vaultService.getAllVaults().find((v) => v.id === trimmed)?.name ?? trimmed
+}
 
 export function notifyVaultRegistryUpdated(): void {
   BrowserWindow.getAllWindows().forEach((win) => {
@@ -48,7 +70,7 @@ export function getActiveVaultShadowRepo(): ShadowIndexRepository {
       )
     )
   }
-  return new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.name)
+  return new ShadowIndexRepository(shadowConnectionManager.getDb(), activeVault.id)
 }
 
 /** 全局单库模式下 per-vault preload 已无意义，保留 IPC 兼容为 no-op */
@@ -189,6 +211,7 @@ export function registerVaultIPC() {
   })
 
   ipcMain.handle('vault:delete', async (_, vaultName: string) => {
+    const vaultId = resolveVaultIdByName(vaultName)
     // 先清 agent.db 派生数据，再清 shadow / 删目录（中途失败可重试，避免幽灵索引）
     if (connectionManager.isConnected()) {
       const { createSqlExecutorFromDrizzleDb, purgeVaultDerivedData } = await import(
@@ -196,13 +219,13 @@ export function registerVaultIPC() {
       )
       const counts = await purgeVaultDerivedData(
         createSqlExecutorFromDrizzleDb(connectionManager.getDb()),
-        vaultName
+        vaultId
       )
-      logger.info('[vault:delete] purged agent.db derived data', { vaultName, ...counts })
+      logger.info('[vault:delete] purged agent.db derived data', { vaultName, vaultId, ...counts })
     }
     if (shadowConnectionManager.isConnected()) {
-      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
-      await shadowRepo.deleteAllForVault(vaultName)
+      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+      await shadowRepo.deleteAllForVault(vaultId)
     }
     await vaultService.deleteVault(vaultName)
     return true

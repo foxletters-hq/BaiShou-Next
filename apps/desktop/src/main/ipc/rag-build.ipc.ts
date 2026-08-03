@@ -9,7 +9,7 @@ import { sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { settingsManager } from './settings.ipc'
-import { vaultService } from './vault.ipc'
+import { vaultService, resolveActiveVaultId } from './vault.ipc'
 import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
 import { countDiaryEmbeddingsForVault } from '../services/diary-embedding.util'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
@@ -20,6 +20,7 @@ import {
   clearRagDiaryEmbedFailure,
   hasRagDiaryEmbedFailure,
   logger,
+  MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   RAG_MIGRATION_STATUS,
   toSerializableAiError,
@@ -170,7 +171,8 @@ export function registerRagBuildIPC() {
     const countRes = await db.select({ count: sql<number>`count(*)` }).from(memoryEmbeddingsTable)
     const count = countRes[0]?.count || 0
     const activeVaultName = vaultService.getActiveVault()?.name ?? 'Personal'
-    const diaryCountForVault = await countDiaryEmbeddingsForVault(activeVaultName)
+    const activeVaultId = resolveActiveVaultId()
+    const diaryCountForVault = await countDiaryEmbeddingsForVault(activeVaultId)
 
     return {
       totalCount: count,
@@ -282,6 +284,7 @@ export function registerRagBuildIPC() {
     const now = Date.now()
     const id = newMemoryId()
     const vaultName = vaultService.getActiveVault()?.name ?? 'Personal'
+    const vaultId = resolveActiveVaultId()
     const content = text.trim()
     const record: MemoryRawRecord = {
       id,
@@ -301,8 +304,8 @@ export function registerRagBuildIPC() {
       text: content,
       sourceType: MEMORY_SOURCE_TYPE,
       sourceId: id,
-      groupId: `memory:${vaultName}`,
-      vaultName,
+      groupId: MEMORY_EMBED_GROUP_ID,
+      vaultId,
       metadataJson: buildMemoryMetadataJson(record),
       sourceCreatedAt: now
     })

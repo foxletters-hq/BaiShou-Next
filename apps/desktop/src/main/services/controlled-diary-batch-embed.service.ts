@@ -14,6 +14,7 @@ import {
   buildDiaryEmbeddingTagPrefix,
   resolveBatchEmbedConcurrency,
   sortDiariesByDateAsc,
+  DIARY_EMBED_GROUP_ID,
   type RagConfig
 } from '@baishou/shared'
 
@@ -54,12 +55,11 @@ type RunControlledDiaryBatchEmbedOptions = {
 let inFlight: Promise<ControlledDiaryBatchEmbedResult> | null = null
 let rerunRequested = false
 
-async function loadEmbeddedDiaryIndex(vaultName: string): Promise<{
+async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
 }> {
   const db = getAppDb()
-  const groupId = buildDiaryEmbeddingGroupId(vaultName)
   const existingRows = await db
     .select({
       sourceId: memoryEmbeddingsTable.sourceId,
@@ -67,7 +67,11 @@ async function loadEmbeddedDiaryIndex(vaultName: string): Promise<{
     })
     .from(memoryEmbeddingsTable)
     .where(
-      and(eq(memoryEmbeddingsTable.sourceType, 'diary'), eq(memoryEmbeddingsTable.groupId, groupId))
+      and(
+        eq(memoryEmbeddingsTable.sourceType, 'diary'),
+        eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+        eq(memoryEmbeddingsTable.vaultId, vaultId)
+      )
     )
     .groupBy(memoryEmbeddingsTable.sourceId)
 
@@ -164,6 +168,7 @@ export async function runControlledDiaryBatchEmbed(
     ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
   >
   const vaultPlans: Array<{
+    vaultId: string
     vaultName: string
     diariesToEmbed: DiaryMetaList
     allDiaryIds: Array<number | string>
@@ -173,14 +178,15 @@ export async function runControlledDiaryBatchEmbed(
   for (const vault of vaults) {
     const diaryManager = await getDiaryManagerForVault(vault.name)
     const diaries = await diaryManager.listAll({ limit: 10000 })
-    const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(vault.name)
+    const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(vault.id)
     const resolveSourceId = (meta: { id: unknown }) =>
-      buildDiaryEmbeddingSourceId(vault.name, meta.id as number | string)
+      buildDiaryEmbeddingSourceId(vault.id, meta.id as number | string)
     const diariesToEmbed = sortDiariesByDateAsc(
       filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, { resolveSourceId })
     )
     if (diariesToEmbed.length === 0) continue
     vaultPlans.push({
+      vaultId: vault.id,
       vaultName: vault.name,
       diariesToEmbed,
       allDiaryIds: diaries.map((d) => d.id)
@@ -256,6 +262,7 @@ export async function runControlledDiaryBatchEmbed(
 }
 
 type VaultEmbedPlan = {
+  vaultId: string
   vaultName: string
   diariesToEmbed: Awaited<
     ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
@@ -282,12 +289,12 @@ async function embedVaultDiaries(
   loadSkipped: number
   failed: number
 }> {
-  const { vaultName, diariesToEmbed } = plan
+  const { vaultId, vaultName, diariesToEmbed } = plan
   const diaryManager = await getDiaryManagerForVault(vaultName)
 
-  await purgeLegacyDiaryEmbeddingsForVault(vaultName, plan.allDiaryIds)
+  await purgeLegacyDiaryEmbeddingsForVault(vaultId, plan.allDiaryIds)
 
-  const groupId = buildDiaryEmbeddingGroupId(vaultName)
+  const groupId = buildDiaryEmbeddingGroupId()
   let embedded = 0
   let loadSkipped = 0
   let failed = 0
@@ -322,16 +329,16 @@ async function embedVaultDiaries(
     const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const tagPrefix = buildDiaryEmbeddingTagPrefix(diary.tags ?? meta.tags)
     const sourceCreatedAt = diaryDateToSourceCreatedSeconds(d) * 1000
-    const sourceId = buildDiaryEmbeddingSourceId(vaultName, diary.id)
+    const sourceId = buildDiaryEmbeddingSourceId(vaultId, diary.id)
 
     try {
-      await deleteDiaryEmbeddingAliases(vaultName, diary.id)
+      await deleteDiaryEmbeddingAliases(vaultId, diary.id)
       await ctx.embeddingService.reEmbedText({
         text: diary.content,
         sourceType: 'diary',
         sourceId,
         groupId,
-        vaultName,
+        vaultId,
         chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
         metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
         sourceCreatedAt,
