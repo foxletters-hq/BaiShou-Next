@@ -46,7 +46,7 @@
 @layer theme {
   :root {
     @variant light {
-      --background: #f4f5f7;
+      --background: #fafafa;
       --foreground: #1a1c23;
       --surface: #ffffff;
       --surface-foreground: #1a1c23;
@@ -79,7 +79,7 @@
       --color-primary-hover: #3a88d5;
       --color-accent: #5ba8f5;
       --color-accent-foreground: #ffffff;
-      --color-background: #f4f5f7;
+      --color-background: #fafafa;
       --color-background-subtle: #f0f2f5;
       --color-foreground: #1a1c23;
       --color-foreground-secondary: #4a5568;

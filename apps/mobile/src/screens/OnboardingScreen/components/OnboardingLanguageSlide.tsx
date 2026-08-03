@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   langChip: {
     minHeight: 52,
     borderRadius: 14,
-    borderWidth: 1.5,
+    borderWidth: 1,
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',

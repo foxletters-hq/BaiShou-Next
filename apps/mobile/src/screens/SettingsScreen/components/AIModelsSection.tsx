@@ -238,7 +238,7 @@ export const AIModelsSection: React.FC = () => {
                 styles.selectorBtn,
                 {
                   backgroundColor: colors.bgSurface,
-                  borderColor: isSet ? colors.borderMuted : colors.borderSubtle,
+                  borderColor: colors.borderControl,
                   opacity: field.readOnly ? 0.85 : 1
                 }
               ]}

@@ -447,7 +447,7 @@ export const SummarySettingsSection: React.FC = () => {
           style={[
             styles.langChip,
             {
-              borderColor: activePromptLocale === lang.id ? colors.primary : colors.borderMuted,
+              borderColor: activePromptLocale === lang.id ? colors.primary : colors.borderControl,
               backgroundColor: activePromptLocale === lang.id ? colors.primary : 'transparent'
             },
             generationLocale === lang.id && styles.langChipGeneration
@@ -547,7 +547,7 @@ export const SummarySettingsSection: React.FC = () => {
               containerStyle={{ marginBottom: 8 }}
             />
             <TouchableOpacity
-              style={[styles.btn, { borderColor: colors.borderSubtle, marginBottom: 4 }]}
+              style={[styles.btn, { borderColor: colors.borderControl, marginBottom: 4 }]}
               onPress={() => {
                 const defaultText = getDefaultCustomGenerationSystemPrompt(activePromptLocale)
                 systemPromptDirtyRef.current = false
@@ -759,7 +759,7 @@ export const SummarySettingsSection: React.FC = () => {
 
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.btn, { borderColor: colors.borderSubtle }]}
+            style={[styles.btn, { borderColor: colors.borderControl }]}
             onPress={() => void handleReset()}
           >
             <Text style={{ color: colors.textSecondary }}>{t('settings.restore_default')}</Text>

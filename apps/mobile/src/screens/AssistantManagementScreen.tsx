@@ -237,7 +237,7 @@ export const AssistantManagementScreen: React.FC = () => {
           {options?.showDragHandle ? (
             <TouchableOpacity
               onPressIn={options.drag}
-              style={[styles.dragHandle, { borderColor: colors.borderSubtle }]}
+              style={[styles.dragHandle, { borderColor: colors.borderControl }]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <GripVertical size={20} color={colors.textSecondary} strokeWidth={2} />
@@ -268,7 +268,7 @@ export const AssistantManagementScreen: React.FC = () => {
 
         <View style={styles.cardActions}>
           <TouchableOpacity
-            style={[styles.chipBtn, { borderColor: colors.borderSubtle }]}
+            style={[styles.chipBtn, { borderColor: colors.borderControl }]}
             onPress={() => void handleTogglePin(item)}
           >
             <Pin

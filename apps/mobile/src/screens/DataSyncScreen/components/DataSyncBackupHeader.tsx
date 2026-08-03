@@ -53,7 +53,7 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
           {isMultiSelectMode ? (
             <>
               <TouchableOpacity
-                style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
+                style={[styles.headerActionBtn, { borderColor: colors.borderControl }]}
                 onPress={() => {
                   if (selectedRecords.size === cloudRecords.length) setSelectedRecords(new Set())
                   else setSelectedRecords(new Set(cloudRecords.map((r) => r.filename)))
@@ -92,7 +92,7 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
             </>
           ) : (
             <TouchableOpacity
-              style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
+              style={[styles.headerActionBtn, { borderColor: colors.borderControl }]}
               onPress={() => {
                 setIsMultiSelectMode(true)
                 setSelectedRecords(new Set())
@@ -107,7 +107,7 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
+            style={[styles.headerActionBtn, { borderColor: colors.borderControl }]}
             onPress={openSettings}
           >
             <Settings size={14} color={colors.textSecondary} strokeWidth={2} />
@@ -120,7 +120,7 @@ export function DataSyncBackupHeader(props: DataSyncBackupHeaderProps) {
       )}
 
       <TouchableOpacity
-        style={[styles.headerActionBtn, { borderColor: colors.borderSubtle }]}
+        style={[styles.headerActionBtn, { borderColor: colors.borderControl }]}
         onPress={openCountModal}
       >
         <Archive size={14} color={colors.textSecondary} strokeWidth={2} />

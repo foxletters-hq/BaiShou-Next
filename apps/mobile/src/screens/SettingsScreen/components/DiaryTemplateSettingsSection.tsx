@@ -252,7 +252,7 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
 
       <View style={styles.actions}>
         <TouchableOpacity
-          style={[styles.btn, { borderColor: colors.borderSubtle, opacity: saving ? 0.5 : 1 }]}
+          style={[styles.btn, { borderColor: colors.borderControl, opacity: saving ? 0.5 : 1 }]}
           onPress={() => void handleReset()}
           disabled={!hydrated || saving}
         >
