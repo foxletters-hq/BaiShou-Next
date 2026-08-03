@@ -62,7 +62,7 @@ export const AgentSessionRenameModal: React.FC<AgentSessionRenameModalProps> = (
           width: '100%',
           padding: '10px 14px',
           borderRadius: 10,
-          border: '1px solid rgba(148,163,184,0.4)',
+          border: '1px solid var(--form-field-border)',
           fontSize: 14,
           outline: 'none',
           background: 'var(--bg-surface-highlight)',

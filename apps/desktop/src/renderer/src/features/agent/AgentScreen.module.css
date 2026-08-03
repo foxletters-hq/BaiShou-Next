@@ -4,7 +4,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background-color: var(--bg-app);
+  background-color: transparent;
 }
 
 .chatBackground {
@@ -163,29 +163,33 @@
 }
 
 .loadMoreBanner {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  margin: 0 0 8px;
-  padding: 10px 16px;
-  border: 1px dashed var(--border-subtle);
-  border-radius: 10px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  color: var(--color-primary);
+  align-self: center;
+  width: auto;
+  max-width: 100%;
+  margin: 4px auto 12px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
+  box-shadow: none;
   transition:
-    background-color 0.15s,
-    border-color 0.15s;
+    background-color var(--duration-fast) var(--ease-out-cubic),
+    border-color var(--duration-fast) var(--ease-out-cubic),
+    color var(--duration-fast) var(--ease-out-cubic);
 }
 
 .loadMoreBanner:hover {
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-  background: rgba(var(--color-primary-rgb), 0.06);
+  border-color: var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .loadMoreBanner:disabled {

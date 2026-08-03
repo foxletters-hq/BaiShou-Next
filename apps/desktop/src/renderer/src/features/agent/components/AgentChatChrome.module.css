@@ -57,7 +57,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
   background: var(--bg-surface);
   color: var(--text-secondary);
@@ -103,7 +103,7 @@
   border-radius: 10px;
   cursor: pointer;
   background-color: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   transition:
     background-color 0.2s,
     border-color 0.2s;
@@ -146,4 +146,31 @@
 .chevron {
   font-size: 10px;
   color: var(--text-tertiary);
+}
+
+/* 输入框底部模型切换：与 32px 加号/发送对齐 */
+.modelSwitcherInComposer {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  gap: 6px;
+  border-radius: 999px;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.modelSwitcherInComposer:hover {
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-control);
+}
+
+.modelSwitcherInComposer .modelName {
+  max-width: min(160px, 28vw);
+  font-size: 12px;
+}
+
+.modelSwitcherInComposer .modelProviderIcon,
+.modelSwitcherInComposer .modelProviderIcon img {
+  width: 16px;
+  height: 16px;
 }

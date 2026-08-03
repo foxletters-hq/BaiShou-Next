@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg-surface);
-  border-right: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-muted);
   flex-shrink: 0;
   overflow: hidden;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -75,7 +75,7 @@
   align-items: center;
   padding: 10px 12px;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   box-shadow: none;
   cursor: pointer;
@@ -233,7 +233,7 @@
   height: 38px;
   box-sizing: border-box;
   border-radius: 10px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 13px;
@@ -354,8 +354,8 @@
 
 .searchInput:focus {
   background-color: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .searchInput::placeholder {
@@ -401,7 +401,7 @@
   display: flex;
   align-items: center;
   padding: 8px 16px;
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  border-top: 1px solid var(--border-muted);
 }
 
 .selectAllBtn {
@@ -437,7 +437,7 @@
   display: flex;
   align-items: center;
   padding: 16px;
-  border-top: 1px solid rgba(148, 163, 184, 0.3);
+  border-top: 1px solid var(--border-muted);
 }
 
 .userAvatar {
