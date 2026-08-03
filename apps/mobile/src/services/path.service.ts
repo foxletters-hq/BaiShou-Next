@@ -6,7 +6,8 @@ import {
   readVaultExternalPaths,
   resolveJournalsBaseDirectory,
   resolveSummariesBaseDirectory,
-  patchVaultExternalPaths
+  patchVaultExternalPaths,
+  pickActiveVaultNameFromRegistryEntries
 } from '@baishou/core-mobile'
 import { getAppDocumentDirectory } from './mobile-app-paths'
 import { joinStoragePath } from './mobile-storage-path.util'
@@ -39,6 +40,7 @@ export class MobileStoragePathService implements IStoragePathService {
   constructor(private readonly fileSystem: IFileSystem) {}
 
   private customRootKey = 'baishou_custom_storage_root'
+  private activeVaultIdKey = 'baishou_active_vault_id'
 
   public async getCustomRootPath(): Promise<string | null> {
     try {
@@ -60,6 +62,22 @@ export class MobileStoragePathService implements IStoragePathService {
   public async updateRootDirectory(newPath: string): Promise<void> {
     const normalized = normalizeStoragePath(normalizeExternalStoragePath(newPath))
     await AsyncStorage.setItem(this.customRootKey, normalized)
+  }
+
+  /** V2-D6：本机活跃仓 id（AsyncStorage，不进同步） */
+  public async getLocalActiveVaultId(): Promise<string | null> {
+    try {
+      const stored = await AsyncStorage.getItem(this.activeVaultIdKey)
+      return stored?.trim() ? stored.trim() : null
+    } catch {
+      return null
+    }
+  }
+
+  public async setLocalActiveVaultId(vaultId: string): Promise<void> {
+    const trimmed = vaultId.trim()
+    if (!trimmed) return
+    await AsyncStorage.setItem(this.activeVaultIdKey, trimmed)
   }
 
   /**
@@ -204,12 +222,14 @@ export class MobileStoragePathService implements IStoragePathService {
       const registryFile = `${rootDir}/vault_registry.json`
       if (!(await this.fileSystem.exists(registryFile))) return 'Personal'
       const data = await this.fileSystem.readFile(registryFile)
-      const vaults = JSON.parse(data) as Array<{ name: string; lastAccessedAt: string }>
+      const vaults = JSON.parse(data) as Array<{
+        id?: string
+        name: string
+        lastAccessedAt: string
+      }>
       if (!Array.isArray(vaults) || vaults.length === 0) return 'Personal'
-      const active = [...vaults].sort(
-        (a, b) => new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime()
-      )[0]
-      return active?.name || 'Personal'
+      const preferredId = await this.getLocalActiveVaultId()
+      return pickActiveVaultNameFromRegistryEntries(vaults, preferredId) || 'Personal'
     } catch {
       return 'Personal'
     }
