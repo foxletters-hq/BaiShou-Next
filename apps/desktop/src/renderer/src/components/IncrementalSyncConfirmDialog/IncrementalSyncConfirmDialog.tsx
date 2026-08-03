@@ -203,6 +203,12 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             upload: formatIncrementalSyncPlanBytes(preview.totalUploadBytes),
             defaultValue: '下载 {{download}} · 上传 {{upload}}'
           })}
+          {typeof preview.renamedFileCount === 'number' && preview.renamedFileCount > 0
+            ? ` · ${t('data_sync.plan_rename_summary', {
+                count: preview.renamedFileCount,
+                defaultValue: '云端重命名 {{count}} 个文件'
+              })}`
+            : null}
         </p>
 
         {boundaryHints.map((hint, index) => (
