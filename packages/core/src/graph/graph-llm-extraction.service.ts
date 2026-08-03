@@ -24,6 +24,9 @@ export interface GraphExtractLlmDeps {
 export type GraphExtractLlmFn = (prompt: { system: string; user: string }) => Promise<string | null>
 
 export interface ExtractDiariesOptions {
+  /** 稳定仓库身份（GraphRepository 键） */
+  vaultId: string
+  /** 写入 JSONL 的显示名快照 */
   vaultName: string
   /** Empty = all pending-reextract */
   filePaths?: string[]
@@ -259,7 +262,7 @@ export class GraphLlmExtractionService {
         filePath: target.filePath
       })
       try {
-        await this.extractOne(opts.vaultName, target.filePath, target.contentHash)
+        await this.extractOne(opts.vaultId, opts.vaultName, target.filePath, target.contentHash)
         done += 1
       } catch (e) {
         failed += 1
@@ -293,7 +296,7 @@ export class GraphLlmExtractionService {
   }
 
   private async resolveEndpointId(
-    vaultName: string,
+    vaultId: string,
     rawName: string,
     nameToId: Map<string, string>
   ): Promise<string | null> {
@@ -302,7 +305,7 @@ export class GraphLlmExtractionService {
     if (!key) return null
     const mapped = nameToId.get(key)
     if (mapped) return mapped
-    const hits = await this.repo.searchNodesByName(vaultName, trimmed, { limit: 8 })
+    const hits = await this.repo.searchNodesByName(vaultId, trimmed, { limit: 8 })
     const exact = hits.find((h) => {
       if (h.name.trim().toLowerCase() === key) return true
       return h.aliases.some((a) => a.trim().toLowerCase() === key)
@@ -315,6 +318,7 @@ export class GraphLlmExtractionService {
   }
 
   private async extractOne(
+    vaultId: string,
     vaultName: string,
     filePath: string,
     contentHash: string
@@ -348,6 +352,7 @@ export class GraphLlmExtractionService {
     nodeRecords.push({
       id: entryId,
       schemaVersion: 1,
+      vaultId,
       vaultName,
       nodeType: 'entry',
       name: entryName,
@@ -378,7 +383,7 @@ export class GraphLlmExtractionService {
           : 80
       const reviewStatus = confidence < LOW_CONFIDENCE ? 'pending' : 'approved'
 
-      const existing = await this.repo.findNodeByNameOrAlias(vaultName, name, nodeType)
+      const existing = await this.repo.findNodeByNameOrAlias(vaultId, name, nodeType)
       const id = existing?.id ?? newId('n')
       const incomingAliases = Array.isArray(ent.aliases)
         ? ent.aliases.filter((a): a is string => typeof a === 'string')
@@ -386,6 +391,7 @@ export class GraphLlmExtractionService {
       nodeRecords.push({
         id,
         schemaVersion: 1,
+        vaultId,
         vaultName,
         nodeType,
         name,
@@ -409,8 +415,8 @@ export class GraphLlmExtractionService {
       const fromRaw = String(edge.from || '').trim()
       const toRaw = String(edge.to || '').trim()
       if (!fromRaw || !toRaw) continue
-      const fromId = await this.resolveEndpointId(vaultName, fromRaw, nameToId)
-      const toId = await this.resolveEndpointId(vaultName, toRaw, nameToId)
+      const fromId = await this.resolveEndpointId(vaultId, fromRaw, nameToId)
+      const toId = await this.resolveEndpointId(vaultId, toRaw, nameToId)
       if (!fromId || !toId) continue
       const confidence =
         typeof edge.confidence === 'number'
@@ -420,6 +426,7 @@ export class GraphLlmExtractionService {
       edgeRecords.push({
         id: newId('e'),
         schemaVersion: 1,
+        vaultId,
         vaultName,
         fromId,
         toId,

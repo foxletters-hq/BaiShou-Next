@@ -1,8 +1,8 @@
 import type { GraphRepository } from '@baishou/database'
+import { resolveVaultIdFromRecord } from '@baishou/shared'
 import type { GraphEdgeRawRecord, GraphNodeRawRecord } from './raw-data-source.types'
 import type { GraphRawManager } from './managers/graph.raw-manager'
 import { collapseJsonlById } from './stores/monthly-jsonl.store'
-import { resolveVaultIdForDb } from '../vault/vault-id.util'
 
 export interface GraphSyncEmbedder {
   embedQuery?(text: string): Promise<number[] | null>
@@ -19,7 +19,7 @@ export class GraphSyncService {
     private readonly embedder?: GraphSyncEmbedder | null
   ) {}
 
-  async syncPendingIndex(options?: { vaultName?: string }): Promise<{
+  async syncPendingIndex(options?: { vaultName?: string; vaultId?: string }): Promise<{
     shards: number
     nodesUpserted: number
     edgesUpserted: number
@@ -41,6 +41,7 @@ export class GraphSyncService {
       const rows = collapseJsonlById(
         (await this.graphManager.readShardRecords(shard.relativePath)) as Array<{
           id: string
+          vaultId?: string
           vaultName?: string
           updatedAt: number
         }>
@@ -63,9 +64,14 @@ export class GraphSyncService {
               embedding = null
             }
           }
+          const vaultId = resolveVaultIdFromRecord({
+            vaultId: raw.vaultId,
+            vaultName: raw.vaultName,
+            inferredVaultName: inferredVault
+          })
           await this.repo.applyRawNode({
             ...raw,
-            vaultId: resolveVaultIdForDb(raw.vaultName),
+            vaultId,
             props: raw.props ?? {},
             shardMonth: shard.shardMonth,
             embedding,
@@ -82,9 +88,14 @@ export class GraphSyncService {
             deleted += 1
             continue
           }
+          const vaultId = resolveVaultIdFromRecord({
+            vaultId: raw.vaultId,
+            vaultName: raw.vaultName,
+            inferredVaultName: inferredVault
+          })
           await this.repo.applyRawEdge({
             ...raw,
-            vaultId: resolveVaultIdForDb(raw.vaultName),
+            vaultId,
             props: raw.props ?? {},
             isCurrent: raw.isCurrent ?? true,
             sourceExcerpt: raw.sourceExcerpt ?? '',
@@ -109,6 +120,7 @@ export class GraphSyncService {
       const rows = collapseJsonlById(
         (await this.graphManager.readShardRecords(shard.relativePath)) as Array<{
           id: string
+          vaultId?: string
           vaultName?: string
           updatedAt: number
           deletedAt?: number | null
@@ -116,7 +128,11 @@ export class GraphSyncService {
       )
       for (const row of rows) {
         if (!row?.id || row.deletedAt != null) continue
-        const vaultId = resolveVaultIdForDb(row.vaultName || inferredVault || '')
+        const vaultId = resolveVaultIdFromRecord({
+          vaultId: row.vaultId,
+          vaultName: row.vaultName,
+          inferredVaultName: inferredVault
+        })
         if (!vaultId) continue
         if (!inferredVault && row.vaultName) inferredVault = row.vaultName
         const bucket = collection === 'nodes' ? liveNodeIdsByVault : liveEdgeIdsByVault
@@ -132,7 +148,15 @@ export class GraphSyncService {
     const vaults = new Set<string>([
       ...liveNodeIdsByVault.keys(),
       ...liveEdgeIdsByVault.keys(),
-      ...(inferredVault ? [resolveVaultIdForDb(inferredVault)] : [])
+      ...(options?.vaultId?.trim()
+        ? [options.vaultId.trim()]
+        : inferredVault
+          ? [
+              resolveVaultIdFromRecord({
+                inferredVaultName: inferredVault
+              })
+            ]
+          : [])
     ])
 
     for (const vault of vaults) {

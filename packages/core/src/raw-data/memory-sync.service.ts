@@ -2,12 +2,13 @@ import {
   MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   buildMemoryMetadataJson,
+  isVaultId,
+  resolveVaultIdFromRecord,
   type MemoryRawRecord
 } from '@baishou/shared'
 import type { MemoryRawManager } from './managers/memory.raw-manager'
 import { collapseJsonlById } from './stores/monthly-jsonl.store'
 import { shardMonthFromInstant } from './raw-data-month.util'
-import { resolveVaultIdForDb } from '../vault/vault-id.util'
 
 export { MEMORY_SOURCE_TYPE }
 
@@ -52,7 +53,9 @@ export interface MemoryConsistencyRepairOptions {
   restoreIds?: string[]
   /** Vector has + JSONL has no live row → drop derived rows. */
   cleanOrphans?: boolean
+  /** 路径/活跃上下文推导名（兼容） */
   vaultName?: string
+  vaultId?: string
 }
 
 export interface MemoryConsistencyRepairResult {
@@ -72,6 +75,7 @@ export class MemorySyncService {
 
   async syncPendingIndex(options?: {
     vaultName?: string
+    vaultId?: string
   }): Promise<{ shards: number; upserted: number; deleted: number }> {
     const pending = await this.memoryManager.listPendingIndex()
     let upserted = 0
@@ -96,7 +100,11 @@ export class MemorySyncService {
           sourceType: MEMORY_SOURCE_TYPE,
           sourceId: row.id,
           groupId: MEMORY_EMBED_GROUP_ID,
-          vaultId: resolveVaultIdForDb(row.vaultName),
+          vaultId: resolveVaultIdFromRecord({
+            vaultId: row.vaultId,
+            vaultName: row.vaultName,
+            inferredVaultName: inferredVault
+          }),
           metadataJson: buildMemoryMetadataJson(row),
           sourceCreatedAt: row.createdAt
         })
@@ -106,7 +114,11 @@ export class MemorySyncService {
       await this.memoryManager.commitIndexed(shard.relativePath, shard.contentHash)
     }
 
-    const orphansCleaned = await this.sweepOrphans(inferredVault)
+    const orphansCleaned = await this.sweepOrphans({
+      inferredVaultName: inferredVault,
+      vaultId: options?.vaultId,
+      vaultName: options?.vaultName
+    })
     deleted += orphansCleaned
 
     return { shards: pending.length, upserted, deleted }
@@ -117,9 +129,15 @@ export class MemorySyncService {
    * Missing (JSONL live, no vector) is NOT auto-fixed — caller must let the user choose.
    * Orphans are listed here; syncPendingIndex / repairConsistency(cleanOrphans) can remove them.
    */
-  async checkConsistency(options?: { vaultName?: string }): Promise<MemoryConsistencyReport> {
+  async checkConsistency(options?: {
+    vaultName?: string
+    vaultId?: string
+  }): Promise<MemoryConsistencyReport> {
     const { liveById, liveIdsByVault, inferredVault } = await this.collectLiveState()
-    const vaults = this.resolveVaults(liveIdsByVault, options?.vaultName ?? inferredVault)
+    const vaults = this.resolveVaults(liveIdsByVault, {
+      inferredVaultName: options?.vaultName ?? inferredVault,
+      vaultId: options?.vaultId
+    })
 
     const missing: MemoryConsistencyMissingItem[] = []
     const orphans: string[] = []
@@ -136,7 +154,8 @@ export class MemorySyncService {
 
     for (const vault of vaults) {
       const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
-      const vaultId = resolveVaultIdForDb(vault)
+      // liveIdsByVault keys are already stable vault ids after collectLiveState
+      const vaultId = vault
       const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, {
         groupId: MEMORY_EMBED_GROUP_ID,
         vaultId
@@ -198,7 +217,10 @@ export class MemorySyncService {
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId: live.id,
         groupId: MEMORY_EMBED_GROUP_ID,
-        vaultId: resolveVaultIdForDb(live.vaultName),
+        vaultId: resolveVaultIdFromRecord({
+          vaultId: live.vaultId,
+          vaultName: live.vaultName
+        }),
         metadataJson: buildMemoryMetadataJson(live),
         sourceCreatedAt: live.createdAt
       })
@@ -206,22 +228,32 @@ export class MemorySyncService {
     }
 
     if (options.cleanOrphans) {
-      orphansCleaned = await this.sweepOrphans(options.vaultName)
+      orphansCleaned = await this.sweepOrphans({
+        inferredVaultName: options.vaultName,
+        vaultId: options.vaultId
+      })
     }
 
     return { tombstoned, restored, orphansCleaned }
   }
 
-  private async sweepOrphans(inferredVault?: string): Promise<number> {
+  private async sweepOrphans(scope?: {
+    inferredVaultName?: string
+    vaultId?: string
+    vaultName?: string
+  }): Promise<number> {
     if (!this.sink.listSourceIdsByType || !this.sink.deleteBySource) return 0
 
     const { liveIdsByVault, inferredVault: fromJsonl } = await this.collectLiveState()
-    const vaults = this.resolveVaults(liveIdsByVault, inferredVault ?? fromJsonl)
+    const vaults = this.resolveVaults(liveIdsByVault, {
+      inferredVaultName: scope?.inferredVaultName ?? scope?.vaultName ?? fromJsonl,
+      vaultId: scope?.vaultId
+    })
     let deleted = 0
 
     for (const vault of vaults) {
       const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
-      const vaultId = resolveVaultIdForDb(vault)
+      const vaultId = vault
       const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, {
         groupId: MEMORY_EMBED_GROUP_ID,
         vaultId
@@ -252,15 +284,17 @@ export class MemorySyncService {
       for (const row of rows) {
         if (!row?.id || row.deletedAt != null) continue
         liveById.set(row.id, row)
-        if (row.vaultName) {
-          if (!inferredVault) inferredVault = row.vaultName
-          let set = liveIdsByVault.get(row.vaultName)
-          if (!set) {
-            set = new Set()
-            liveIdsByVault.set(row.vaultName, set)
-          }
-          set.add(row.id)
+        const vaultKey = resolveVaultIdFromRecord({
+          vaultId: row.vaultId,
+          vaultName: row.vaultName
+        })
+        if (!inferredVault && row.vaultName) inferredVault = row.vaultName
+        let set = liveIdsByVault.get(vaultKey)
+        if (!set) {
+          set = new Set()
+          liveIdsByVault.set(vaultKey, set)
         }
+        set.add(row.id)
       }
     }
 
@@ -269,9 +303,24 @@ export class MemorySyncService {
 
   private resolveVaults(
     liveIdsByVault: Map<string, Set<string>>,
-    preferred?: string
+    scope?: { inferredVaultName?: string; vaultId?: string }
   ): Set<string> {
-    return new Set<string>([...liveIdsByVault.keys(), ...(preferred ? [preferred] : [])])
+    const vaults = new Set<string>(liveIdsByVault.keys())
+    const explicitId = scope?.vaultId?.trim()
+    if (explicitId) {
+      vaults.add(explicitId)
+      return vaults
+    }
+    const inferred = scope?.inferredVaultName?.trim()
+    if (inferred) {
+      vaults.add(
+        resolveVaultIdFromRecord({
+          vaultId: isVaultId(inferred) ? inferred : undefined,
+          inferredVaultName: isVaultId(inferred) ? undefined : inferred
+        })
+      )
+    }
+    return vaults
   }
 
   private toMissingItem(row: MemoryRawRecord): MemoryConsistencyMissingItem {

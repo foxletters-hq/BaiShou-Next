@@ -11,7 +11,7 @@
  * 原始实现：lib/agent/rag/memory_deduplication_service.dart (412 行)
  */
 
-import { formatLocalDateTime, deriveLegacyVaultId } from '@baishou/shared'
+import { formatLocalDateTime } from '@baishou/shared'
 
 // ─── 类型定义 ──────────────────────────────────────────────
 
@@ -102,7 +102,8 @@ export class MemoryDeduplicationService {
   async checkAndMerge(options: {
     newMemoryContent: string
     sessionId: string
-    vaultName: string
+    vaultId: string
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -117,7 +118,8 @@ export class MemoryDeduplicationService {
   private async doCheckAndMerge(options: {
     newMemoryContent: string
     sessionId: string
-    vaultName: string
+    vaultId: string
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -129,7 +131,7 @@ export class MemoryDeduplicationService {
       return { action: 'stored', removedIds: [], highestSimilarity: 0 }
     }
 
-    const vaultId = deriveLegacyVaultId(options.vaultName)
+    const vaultId = options.vaultId
 
     // 2. 在向量数据库中做 top-K 相似度检索
     const candidates = await this.vectorStore.searchSimilar(
@@ -173,6 +175,7 @@ export class MemoryDeduplicationService {
       return this.llmMergeJudgment({
         newMemoryContent: options.newMemoryContent,
         sessionId: options.sessionId,
+        vaultId: options.vaultId,
         vaultName: options.vaultName,
         candidates: relevantMemories,
         highestSimilarity: best.similarity,
@@ -195,7 +198,8 @@ export class MemoryDeduplicationService {
   private async llmMergeJudgment(params: {
     newMemoryContent: string
     sessionId: string
-    vaultName: string
+    vaultId: string
+    vaultName?: string
     candidates: ScoredMemory[]
     highestSimilarity: number
     sourceType: string
@@ -268,7 +272,7 @@ ${params.newMemoryContent}
             sourceType,
             sourceId: params.sourceId ?? `mem_${Date.now()}`,
             groupId: params.sessionId,
-            vaultId: deriveLegacyVaultId(params.vaultName)
+            vaultId: params.vaultId
           })
 
           return {
