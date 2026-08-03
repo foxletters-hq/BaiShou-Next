@@ -4,6 +4,7 @@ import { AgentWorkspaceLayout } from './AgentWorkspaceLayout'
 import { AgentWorkspaceScreen } from './AgentWorkspaceScreen'
 import { WorkbenchHomePage } from './workbench/WorkbenchHomePage'
 import { WorkbenchPlaceholderPage } from './workbench/home/WorkbenchPlaceholderPage'
+import { KnowledgeListPage, KnowledgeDetailPage } from '../knowledge'
 import { MainPageCacheActiveContext } from '../../layouts/MainPageCache'
 
 function parseFrozenLocation(pathWithSearch: string): Pick<Location, 'pathname' | 'search'> {
@@ -44,7 +45,8 @@ export const AgentWorkspaceCachedPage: React.FC = () => {
     <Routes location={routesLocation}>
       <Route path="/agent-workspace" element={<AgentWorkspaceLayout />}>
         <Route index element={<WorkbenchHomePage />} />
-        <Route path="knowledge" element={<WorkbenchPlaceholderPage section="knowledge" />} />
+        <Route path="knowledge" element={<KnowledgeListPage />} />
+        <Route path="knowledge/:notebookId" element={<KnowledgeDetailPage />} />
         <Route path="templates" element={<WorkbenchPlaceholderPage section="templates" />} />
         <Route path="projects" element={<WorkbenchPlaceholderPage section="projects" />} />
         <Route path="open/:workspaceId" element={<AgentWorkspaceScreen />} />
