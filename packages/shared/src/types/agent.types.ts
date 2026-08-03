@@ -8,6 +8,9 @@ import {
 export const AgentSessionSchema = z.object({
   id: z.string(),
   title: z.string().min(1),
+  /** 稳定身份；新写入必填；存量可读路径推导 */
+  vaultId: z.string().optional(),
+  /** 写入时显示名快照 / 目录名；逻辑优先 vaultId */
   vaultName: z.string(),
   assistantId: z.string().optional().nullable(),
   isPinned: z.boolean().default(false),

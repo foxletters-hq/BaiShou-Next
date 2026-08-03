@@ -3,6 +3,9 @@
 export interface GraphNodeRawRecord {
   id: string
   schemaVersion: 1
+  /** 稳定身份；新写入必填；存量可读路径/活跃上下文推导 */
+  vaultId?: string
+  /** 写入时显示名快照，仅供人阅读；逻辑不得当真值 */
   vaultName: string
   nodeType: string
   name: string
@@ -22,6 +25,9 @@ export interface GraphNodeRawRecord {
 export interface GraphEdgeRawRecord {
   id: string
   schemaVersion: 1
+  /** 稳定身份；新写入必填；存量可读路径/活跃上下文推导 */
+  vaultId?: string
+  /** 写入时显示名快照，仅供人阅读；逻辑不得当真值 */
   vaultName: string
   fromId: string
   toId: string
