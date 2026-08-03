@@ -21,7 +21,7 @@ describe.skip('MessageRepository - searchMessagesByKeyword', () => {
       CREATE TABLE agent_sessions (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL DEFAULT '新对话',
-        vault_name TEXT NOT NULL,
+        vault_id TEXT NOT NULL,
         assistant_id TEXT,
         is_pinned INTEGER NOT NULL DEFAULT 0,
         system_prompt TEXT,
@@ -75,7 +75,7 @@ describe.skip('MessageRepository - searchMessagesByKeyword', () => {
 
     // 插入一个会话
     sqlite.exec(`
-      INSERT INTO agent_sessions (id, title, vault_name, provider_id, model_id)
+      INSERT INTO agent_sessions (id, title, vault_id, provider_id, model_id)
       VALUES ('session-1', '测试会话 1', 'vault-1', 'provider-1', 'model-1')
     `)
   })

@@ -131,7 +131,7 @@ describe('MigrationService', () => {
         CREATE TABLE agent_sessions (
           id TEXT PRIMARY KEY NOT NULL,
           title TEXT NOT NULL DEFAULT '新对话',
-          vault_name TEXT NOT NULL,
+          vault_id TEXT NOT NULL,
           assistant_id TEXT,
           is_pinned INTEGER NOT NULL DEFAULT 0,
           system_prompt TEXT,
@@ -259,7 +259,7 @@ describe('MigrationService', () => {
         CREATE TABLE agent_sessions (
           id TEXT PRIMARY KEY NOT NULL,
           title TEXT NOT NULL DEFAULT '新对话',
-          vault_name TEXT NOT NULL,
+          vault_id TEXT NOT NULL,
           provider_id TEXT NOT NULL,
           model_id TEXT NOT NULL,
           created_at INTEGER NOT NULL,

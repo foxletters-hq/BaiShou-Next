@@ -38,23 +38,23 @@ export type VaultDiaryEmbedRow = {
 
 export async function listVaultDiaryMetas(
   shadowDb: AppDatabase,
-  vaultName: string,
+  vaultId: string,
   limit = 10000
 ): Promise<DiaryMeta[]> {
-  const repo = new ShadowIndexRepository(shadowDb, vaultName)
+  const repo = new ShadowIndexRepository(shadowDb, vaultId)
   const rows = await repo.listAllWithFTS({ limit })
   return rows.map(mapShadowRowToMeta)
 }
 
 export async function loadVaultDiariesForEmbedding(
   shadowDb: AppDatabase,
-  vaultName: string,
+  vaultId: string,
   ids: number[]
 ): Promise<Map<number, VaultDiaryEmbedRow>> {
   const result = new Map<number, VaultDiaryEmbedRow>()
   if (ids.length === 0) return result
 
-  const repo = new ShadowIndexRepository(shadowDb, vaultName)
+  const repo = new ShadowIndexRepository(shadowDb, vaultId)
   const rows = await repo.findByIds(ids)
   for (const shadow of rows as ShadowDetailRow[]) {
     const content = shadow.rawContent?.trim()

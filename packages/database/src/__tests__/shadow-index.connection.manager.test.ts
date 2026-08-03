@@ -46,7 +46,7 @@ describe('ShadowIndexConnectionManager', () => {
     )
   })
 
-  it('should ensure journals_fts and journals_index tables are initialized with vault_name', async () => {
+  it('should ensure journals_fts and journals_index tables are initialized with vault_id', async () => {
     await manager.connect(tempDir)
     const db = manager.getDb()
 
@@ -60,10 +60,10 @@ describe('ShadowIndexConnectionManager', () => {
 
     const columnsResult = await db.all(sql`PRAGMA table_info(journals_index)`)
     const columnNames = columnsResult.map((row) => (row as any).name)
-    expect(columnNames).toContain('vault_name')
+    expect(columnNames).toContain('vault_id')
   })
 
-  it('should migrate legacy schema without vault_name by rebuilding tables', async () => {
+  it('should migrate legacy schema without vault_id by rebuilding tables', async () => {
     const dbFile = path.join(tempDir, SHADOW_INDEX_DB_FILENAME)
     await fs.mkdir(tempDir, { recursive: true })
 
@@ -88,10 +88,51 @@ describe('ShadowIndexConnectionManager', () => {
     const db = manager.getDb()
     const columnsResult = await db.all(sql`PRAGMA table_info(journals_index)`)
     const columnNames = columnsResult.map((row) => (row as any).name)
-    expect(columnNames).toContain('vault_name')
+    expect(columnNames).toContain('vault_id')
 
     const versionResult = await db.all(sql`PRAGMA user_version`)
-    expect((versionResult[0] as any).user_version).toBe(3)
+    expect((versionResult[0] as any).user_version).toBe(4)
+  })
+
+  it('should in-place migrate vault_name to vault_id without dropping rows', async () => {
+    const dbFile = path.join(tempDir, SHADOW_INDEX_DB_FILENAME)
+    await fs.mkdir(tempDir, { recursive: true })
+
+    const { createClient } = await import('@libsql/client')
+    const { deriveLegacyVaultId } = await import('@baishou/shared')
+    const legacy = createClient({ url: `file:${dbFile}` })
+    await legacy.execute(`
+      CREATE TABLE journals_index (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        vault_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        date TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        content_hash TEXT NOT NULL
+      )
+    `)
+    await legacy.execute(`
+      INSERT INTO journals_index (vault_name, file_path, date, created_at, updated_at, content_hash)
+      VALUES ('Personal', 'a.md', '2026-01-01', '2026-01-01', '2026-01-01', 'h')
+    `)
+    await legacy.execute('PRAGMA user_version = 3')
+    legacy.close()
+
+    await manager.connect(tempDir)
+    const db = manager.getDb()
+    const columnsResult = await db.all(sql`PRAGMA table_info(journals_index)`)
+    const columnNames = columnsResult.map((row) => (row as any).name)
+    expect(columnNames).toContain('vault_id')
+    expect(columnNames).not.toContain('vault_name')
+
+    const rows = await db.all(sql`SELECT vault_id, file_path FROM journals_index`)
+    expect(rows).toHaveLength(1)
+    expect((rows[0] as any).vault_id).toBe(deriveLegacyVaultId('Personal'))
+    expect((rows[0] as any).file_path).toBe('a.md')
+
+    const versionResult = await db.all(sql`PRAGMA user_version`)
+    expect((versionResult[0] as any).user_version).toBe(4)
   })
 
   it('should be able to recover from a corrupted database file', async () => {
