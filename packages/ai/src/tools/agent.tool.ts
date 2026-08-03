@@ -24,6 +24,8 @@ export interface ToolEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
+    metadataJson?: string
+    sourceCreatedAt?: number
   }): Promise<void>
 }
 

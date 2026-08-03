@@ -7,6 +7,7 @@
 import { z } from 'zod'
 import {
   MEMORY_SOURCE_TYPE,
+  buildMemoryMetadataJson,
   type MemoryRawRecord,
   type ToolRawDataSourceManager
 } from '@baishou/shared'
@@ -150,7 +151,9 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
         text: contentToStore,
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId: id,
-        groupId: `memory:${context.vaultName}`
+        groupId: `memory:${context.vaultName}`,
+        metadataJson: buildMemoryMetadataJson(record),
+        sourceCreatedAt: now
       })
 
       const memoryMgr = rawManager.getMemoryManager?.()
