@@ -22,7 +22,8 @@ alwaysApply: false
 - 顶栏底边 / 分割线：`--border-muted`（极淡用 `--border-subtle`）
 - 可见控件描边：`--border-control`
 - 灰底卡片外框：`--border-card`
-- Focus：`--border-strong`
+- Focus（通用强调）：`--border-strong`
+- 表单输入聚焦：`--form-field-border-focus`（更深灰描边），`--form-field-focus-ring: none`；过渡 `--form-field-transition`
 
 ## 布局
 

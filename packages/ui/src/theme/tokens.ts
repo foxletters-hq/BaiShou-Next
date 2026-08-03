@@ -29,8 +29,8 @@ export const sharedTokens = {
  * 桌面 CSS 用变量；移动 RN 可直接引用本对象，避免再写散落字号。
  */
 export const settingsTypography = {
-  /** 侧栏壳标题「系统设置」 */
-  shellTitle: { fontSize: 22, fontWeight: '600' as const },
+  /** 侧栏壳标题「系统设置」（与日记侧栏 brandName 对齐） */
+  shellTitle: { fontSize: 16, fontWeight: '700' as const },
   /** 内容区页标题（SettingsPageChrome） */
   pageTitle: { fontSize: 18, fontWeight: '600' as const },
   /** 卡内区块标题 */
