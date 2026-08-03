@@ -100,9 +100,7 @@ function isManagedExternalDirectoryRule(rule: AgentGatePermissionRule): boolean 
   return rule.action === EXTERNAL_DIRECTORY_ACTION
 }
 
-function readTrustedExternalDirsFromRules(
-  rules: readonly AgentGatePermissionRule[]
-): string[] {
+function readTrustedExternalDirsFromRules(rules: readonly AgentGatePermissionRule[]): string[] {
   return rules
     .filter(
       (rule) =>
@@ -143,9 +141,7 @@ function effectForActions(
   return defaults
 }
 
-function effectForExternalDirectory(
-  config: BaishouAgentGateConfig
-): AgentGateCapabilityEffect {
+function effectForExternalDirectory(config: BaishouAgentGateConfig): AgentGateCapabilityEffect {
   const rules = config.permissionRules ?? []
   const actionOnly = rules.filter(
     (rule) => rule.action === EXTERNAL_DIRECTORY_ACTION && !rule.pattern

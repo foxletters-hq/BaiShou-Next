@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { AgentGateEffect } from '../agent-gate.enums'
-import { DEFAULT_WORKSPACE_AGENT_GATE_CONFIG, cloneBaishouAgentGateConfig } from '../agent-gate.defaults'
+import {
+  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+  cloneBaishouAgentGateConfig
+} from '../agent-gate.defaults'
 import {
   applyWorkspacePresetsToConfig,
   inferWorkspacePresets,
@@ -22,7 +25,9 @@ describe('agent-gate-preset.util', () => {
     // Ask 是默认效果，能力编译器不会落盘 Ask 规则
     expect(rules.some((rule) => rule.action === 'workspace_write')).toBe(false)
     expect(
-      rules.some((rule) => rule.action === 'external_directory' && rule.effect === AgentGateEffect.Deny)
+      rules.some(
+        (rule) => rule.action === 'external_directory' && rule.effect === AgentGateEffect.Deny
+      )
     ).toBe(true)
   })
 
@@ -77,7 +82,9 @@ describe('agent-gate-preset.util', () => {
     expect(
       (next.permissionRules ?? []).some(
         (rule) =>
-          rule.action === 'external_directory' && rule.effect === AgentGateEffect.Allow && !rule.pattern
+          rule.action === 'external_directory' &&
+          rule.effect === AgentGateEffect.Allow &&
+          !rule.pattern
       )
     ).toBe(false)
     const inferred = inferWorkspacePresets(next)

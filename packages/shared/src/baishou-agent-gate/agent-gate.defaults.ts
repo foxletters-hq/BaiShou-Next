@@ -5,10 +5,7 @@ import type {
   WorkspaceGatePolicyV2,
   WorkspaceToolManagementConfig
 } from './agent-gate.types'
-import {
-  migrateLegacyExternalPathFields,
-  migrateLegacyTrustMode
-} from './agent-gate-migrate.util'
+import { migrateLegacyExternalPathFields, migrateLegacyTrustMode } from './agent-gate-migrate.util'
 
 export const DEFAULT_AGENT_GATE_EXCLUSION_LIST = [
   'diary_delete',
