@@ -306,7 +306,7 @@ export async function finalizeVaultRuntimeHandlers(
 
   state.renameVault = async (oldNameOrId: string, newName: string) => {
     const before =
-      vaultService.getAllVaults().find((v) => v.id === oldNameOrId || v.name === oldNameOrId) ??
+      vaultService.getAllVaults().find((v: { id: string; name: string }) => v.id === oldNameOrId || v.name === oldNameOrId) ??
       null
     const wasActive = Boolean(before && vaultService.getActiveVault()?.id === before.id)
 

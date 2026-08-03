@@ -348,7 +348,7 @@ export async function runMobileKnowledgeHydration(options: {
       scheduleConsumeMobileKnowledgeIngestJobs(options.reason)
     }
 
-    logger.info(`[KnowledgeHydration] mobile done (${options.reason})`, result)
+    logger.info(`[KnowledgeHydration] mobile done (${options.reason})`, { ...result })
   } catch (e) {
     logger.warn(`[KnowledgeHydration] mobile failed (${options.reason}):`, e as Error)
   }

@@ -44,6 +44,7 @@ import { resolveSummaryTemplatesForGeneration, logger } from '@baishou/shared'
 export type AgentDbRuntime = {
   expoDb: ExpoSqliteDatabase
   drizzleDb: AppDatabase
+  pathService: MobileStoragePathService
   sessionRepo: SessionRepository
   assistantRepo: AssistantRepository
   settingsRepo: SettingsRepository
@@ -211,6 +212,7 @@ export async function createAgentDbRuntime(
   return {
     expoDb,
     drizzleDb,
+    pathService,
     sessionRepo,
     assistantRepo,
     settingsRepo,
