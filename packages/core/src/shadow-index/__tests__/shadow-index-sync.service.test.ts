@@ -131,6 +131,7 @@ describe('ShadowIndexSyncService', () => {
     } as unknown as IStoragePathService
 
     const vault: VaultInfo = {
+      id: 'vlt_testshadowidx001',
       name: 'TestVault',
       path: path.join(tmpDir, 'TestVault'),
       createdAt: new Date(),

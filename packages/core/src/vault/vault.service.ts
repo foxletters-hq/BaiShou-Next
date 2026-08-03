@@ -1,6 +1,11 @@
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
-import { IVaultService, VaultInfo } from './vault.types'
+import {
+  IVaultService,
+  VAULT_IDENTITY_META_FILENAME,
+  VaultIdentityMeta,
+  VaultInfo
+} from './vault.types'
 import { IStoragePathService } from './storage-path.types'
 import {
   VaultActiveDeleteError,
@@ -15,6 +20,7 @@ import {
   sanitizeVaultDirectoryName,
   validateVaultName
 } from './vault-name.util'
+import { createRandomVaultId, deriveLegacyVaultId, isVaultId } from './vault-id.util'
 import {
   discoverVaultNames,
   readLegacyVaultRegistry,
@@ -123,6 +129,7 @@ export class VaultService implements IVaultService {
 
           this._vaults = [
             {
+              id: createRandomVaultId(),
               name: defaultVaultName,
               path: defaultVaultPath,
               createdAt: new Date(),
@@ -137,6 +144,7 @@ export class VaultService implements IVaultService {
         const rawList = JSON.parse(content)
         const fallbackNow = new Date()
         this._vaults = rawList.map((item: any) => ({
+          id: isVaultId(item.id) ? item.id : '',
           name: item.name,
           path: item.path,
           createdAt: parseRegistryTimestamp(item.createdAt, fallbackNow),
@@ -148,6 +156,7 @@ export class VaultService implements IVaultService {
           const defaultVaultPath = await this.pathService.getVaultDirectory(defaultVaultName)
           this._vaults = [
             {
+              id: createRandomVaultId(),
               name: defaultVaultName,
               path: defaultVaultPath,
               createdAt: fallbackNow,
@@ -206,6 +215,7 @@ export class VaultService implements IVaultService {
         const defaultVaultPath = await this.pathService.getVaultDirectory('Personal')
         this._vaults = [
           {
+            id: createRandomVaultId(),
             name: 'Personal',
             path: defaultVaultPath,
             createdAt: new Date(),
@@ -216,6 +226,8 @@ export class VaultService implements IVaultService {
       }
     }
 
+    // 先落盘注册表修正，再 sync（含改名自愈 + 三级 ID 回写）。
+    // 不可在 sync 前 ensure 写 vault.json，否则改名中断时会在旧路径造出幽灵目录。
     if (shouldSave) {
       await this.saveRegistry(registryFile)
     }
@@ -228,6 +240,8 @@ export class VaultService implements IVaultService {
       try {
         await this.fileSystem.mkdir(path.join(activeVault.path, 'config'), { recursive: true })
       } catch {}
+      // 全新安装时 sync 阶段目录可能尚不存在，此处补齐仓内身份文件
+      await this.writeVaultIdentityMeta(activeVault)
     }
   }
 
@@ -277,9 +291,60 @@ export class VaultService implements IVaultService {
 
   public async syncRegistryWithDisk(): Promise<string[]> {
     const rootDir = await this.pathService.getRootDirectory()
+    const registryFile = path.join(rootDir, 'vault_registry.json')
     const diskNames = await listDiskVaultFolderNames(this.fileSystem, rootDir)
-    const missing = diskNames.filter((name) => !this.registryCoversDiskFolder(name))
-    return this.ensureVaultsRegistered(missing)
+    const added: string[] = []
+    let dirty = false
+
+    for (const diskName of diskNames) {
+      if (this.registryCoversDiskFolder(diskName)) continue
+
+      const diskPath = path.join(rootDir, diskName)
+      const meta = await this.readVaultIdentityMeta(diskPath)
+      if (meta?.id) {
+        const existing = this._vaults.find((v) => v.id === meta.id)
+        if (existing) {
+          const validated = validateVaultName(diskName)
+          const nextName = validated.ok ? validated.name : diskName
+          const nextPath = await this.pathService.getVaultDirectory(nextName)
+          if (
+            existing.name !== nextName ||
+            normalizeRegistryPath(existing.path) !== normalizeRegistryPath(nextPath)
+          ) {
+            existing.name = nextName
+            existing.path = nextPath
+            dirty = true
+          }
+          await this.writeVaultIdentityMeta(existing)
+          continue
+        }
+      }
+
+      const result = validateVaultName(diskName)
+      if (!result.ok) continue
+      if (
+        findConflictingVaultName(
+          result.name,
+          this._vaults.map((v) => v.name)
+        )
+      ) {
+        continue
+      }
+
+      await this.addNewVault(result.name, { touchAccess: false, idMode: 'legacy' })
+      added.push(result.name)
+      dirty = true
+    }
+
+    if (await this.ensureAllVaultIdentities()) {
+      dirty = true
+    }
+
+    if (dirty) {
+      await this.saveRegistry(registryFile)
+    }
+
+    return added
   }
 
   private registryCoversDiskFolder(diskFolderName: string): boolean {
@@ -315,7 +380,7 @@ export class VaultService implements IVaultService {
         continue
       }
 
-      await this.addNewVault(name, { touchAccess: false })
+      await this.addNewVault(name, { touchAccess: false, idMode: 'legacy' })
       added.push(name)
     }
 
@@ -350,12 +415,15 @@ export class VaultService implements IVaultService {
     this._vaults = kept
     if (this._vaults.length === 0) {
       const personalPath = await this.pathService.getVaultDirectory('Personal')
-      this._vaults.push({
+      const personal: VaultInfo = {
+        id: deriveLegacyVaultId('Personal'),
         name: 'Personal',
         path: personalPath,
         createdAt: new Date(),
         lastAccessedAt: new Date()
-      })
+      }
+      this._vaults.push(personal)
+      await this.writeVaultIdentityMeta(personal)
     }
 
     const rootDir = await this.pathService.getRootDirectory()
@@ -366,7 +434,7 @@ export class VaultService implements IVaultService {
   public async createVault(vaultName: string): Promise<void> {
     const name = this.resolveVaultNameOrThrow(vaultName)
     this.assertVaultNameAvailable(name)
-    await this.addNewVault(name)
+    await this.addNewVault(name, { idMode: 'random' })
     const rootDir = await this.pathService.getRootDirectory()
     await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
   }
@@ -407,7 +475,7 @@ export class VaultService implements IVaultService {
       }
     } else {
       this.resolveVaultNameOrThrow(name)
-      await this.addNewVault(name)
+      await this.addNewVault(name, { idMode: 'random' })
     }
 
     await this.saveRegistry(registryFile)
@@ -421,7 +489,10 @@ export class VaultService implements IVaultService {
     return result.name
   }
 
-  private async addNewVault(vaultName: string, options?: { touchAccess?: boolean }): Promise<void> {
+  private async addNewVault(
+    vaultName: string,
+    options?: { touchAccess?: boolean; idMode?: 'random' | 'legacy' }
+  ): Promise<void> {
     const newPath = await this.pathService.getVaultDirectory(vaultName)
     await this.fileSystem.mkdir(newPath, { recursive: true })
     await this.fileSystem.mkdir(await this.pathService.getVaultSystemDirectory(vaultName), {
@@ -429,13 +500,25 @@ export class VaultService implements IVaultService {
     })
 
     const touchAccess = options?.touchAccess !== false
+    const idMode = options?.idMode ?? 'random'
+    const existingMeta = await this.readVaultIdentityMeta(newPath)
+    const id =
+      existingMeta?.id ??
+      (idMode === 'legacy' ? deriveLegacyVaultId(vaultName) : createRandomVaultId())
+    const createdAt =
+      existingMeta?.createdAt && !Number.isNaN(Date.parse(existingMeta.createdAt))
+        ? new Date(existingMeta.createdAt)
+        : new Date()
+
     const newVault: VaultInfo = {
+      id,
       name: vaultName,
       path: newPath,
-      createdAt: new Date(),
+      createdAt,
       lastAccessedAt: touchAccess ? new Date() : new Date(0)
     }
     this._vaults.push(newVault)
+    await this.writeVaultIdentityMeta(newVault)
   }
 
   public async deleteVault(vaultName: string): Promise<void> {
@@ -468,16 +551,90 @@ export class VaultService implements IVaultService {
 
     if (this._vaults.length === 0) {
       const p = await this.pathService.getVaultDirectory('Personal')
-      this._vaults.push({
+      const personal: VaultInfo = {
+        id: deriveLegacyVaultId('Personal'),
         name: 'Personal',
         path: p,
         createdAt: new Date(),
         lastAccessedAt: new Date()
-      })
+      }
+      this._vaults.push(personal)
+      await this.writeVaultIdentityMeta(personal)
     }
 
     const registryFile = path.join(rootDir, 'vault_registry.json')
     await this.saveRegistry(registryFile)
+  }
+
+  /**
+   * 三级 ID 来源回落并回写缺失级别：
+   * 1. `<vault>/.baishou/vault.json`
+   * 2. 注册表条目 id
+   * 3. 从名字确定性派生（存量兜底；全新创建应在进入前已赋随机 id）
+   */
+  private async ensureAllVaultIdentities(): Promise<boolean> {
+    let dirty = false
+    for (const vault of this._vaults) {
+      if (await this.ensureVaultIdentity(vault)) dirty = true
+    }
+    return dirty
+  }
+
+  private async ensureVaultIdentity(vault: VaultInfo): Promise<boolean> {
+    let registryDirty = false
+    const pathExists = await this.fileSystem.exists(vault.path)
+    const meta = pathExists ? await this.readVaultIdentityMeta(vault.path) : null
+
+    let id = meta?.id
+    if (!id && isVaultId(vault.id)) id = vault.id
+    if (!id) id = deriveLegacyVaultId(vault.name)
+
+    if (vault.id !== id) {
+      vault.id = id
+      registryDirty = true
+    }
+
+    // 路径尚不存在时不写 vault.json（避免改名自愈前在旧路径建幽灵目录）
+    if (pathExists) {
+      const needsMetaWrite =
+        !meta || meta.id !== vault.id || meta.displayName !== vault.name
+      if (needsMetaWrite) {
+        await this.writeVaultIdentityMeta(vault)
+      }
+    }
+
+    return registryDirty
+  }
+
+  private vaultIdentityMetaPath(vaultPath: string): string {
+    return path.join(vaultPath, '.baishou', VAULT_IDENTITY_META_FILENAME)
+  }
+
+  private async readVaultIdentityMeta(vaultPath: string): Promise<VaultIdentityMeta | null> {
+    try {
+      const raw = await this.fileSystem.readFile(this.vaultIdentityMetaPath(vaultPath), 'utf8')
+      const parsed = JSON.parse(raw) as Partial<VaultIdentityMeta>
+      if (!isVaultId(parsed.id)) return null
+      return {
+        id: parsed.id,
+        displayName: typeof parsed.displayName === 'string' ? parsed.displayName : '',
+        createdAt: typeof parsed.createdAt === 'string' ? parsed.createdAt : ''
+      }
+    } catch (e: any) {
+      if (e?.code === 'ENOENT') return null
+      return null
+    }
+  }
+
+  private async writeVaultIdentityMeta(vault: VaultInfo): Promise<void> {
+    const metaPath = this.vaultIdentityMetaPath(vault.path)
+    await this.fileSystem.mkdir(path.dirname(metaPath), { recursive: true })
+    const meta: VaultIdentityMeta = {
+      id: vault.id,
+      displayName: vault.name,
+      createdAt: vault.createdAt.toISOString()
+    }
+    await this.fileSystem.writeFile(metaPath, JSON.stringify(meta), 'utf8')
   }
 
   private async saveRegistry(registryFile: string): Promise<void> {
@@ -485,6 +642,7 @@ export class VaultService implements IVaultService {
 
     const jsonStr = JSON.stringify(
       this._vaults.map((v) => ({
+        id: v.id,
         name: v.name,
         path: v.path,
         createdAt: v.createdAt.toISOString(),
