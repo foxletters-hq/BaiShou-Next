@@ -216,9 +216,13 @@ export async function runMobileDerivedIndexHydration(options: {
     }
 
     const backfill = new MemoryJsonlBackfillService(runtime.memoryManager)
-    const chatChunks = await hsRepo.listEmbeddingChunksByType('chat')
-    const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory')
-    const manualChunks = await hsRepo.listEmbeddingChunksByType('manual')
+    const chatChunks = await hsRepo.listEmbeddingChunksByType('chat', { vaultId: options.vaultId })
+    const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory', {
+      vaultId: options.vaultId
+    })
+    const manualChunks = await hsRepo.listEmbeddingChunksByType('manual', {
+      vaultId: options.vaultId
+    })
     const vaultName = options.vaultName ?? options.vaultId
     await backfill.backfillFromChunks(chatChunks, vaultName)
     await backfill.backfillFromChunks(memoryChunks, vaultName)

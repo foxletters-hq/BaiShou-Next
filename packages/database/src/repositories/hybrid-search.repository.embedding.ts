@@ -122,7 +122,10 @@ export class HybridSearchEmbeddingStore {
   }
 
   /** Chunk rows for a source_type (backfill Memory JSONL from legacy chat/mem_*). */
-  async listEmbeddingChunksByType(sourceType: string): Promise<
+  async listEmbeddingChunksByType(
+    sourceType: string,
+    options?: { vaultId?: string }
+  ): Promise<
     Array<{
       sourceId: string
       chunkText: string
@@ -131,14 +134,19 @@ export class HybridSearchEmbeddingStore {
       sourceCreatedAt: number | null
     }>
   > {
+    const vaultId = options?.vaultId?.trim()
+    // 未传 vaultId → fail-closed，避免冷启动回填把别仓记忆写入本仓 JSONL
+    if (!vaultId) {
+      return []
+    }
     const result = await this.db.execute({
       sql: `
         SELECT source_id, chunk_text, group_id, chunk_index, source_created_at
         FROM ${HYBRID_SEARCH_TABLE}
-        WHERE source_type = ?
+        WHERE source_type = ? AND vault_id = ?
         ORDER BY source_id, chunk_index
       `,
-      args: [sourceType]
+      args: [sourceType, vaultId]
     })
     return result.rows.map((row) => {
       const r = row as Record<string, unknown>

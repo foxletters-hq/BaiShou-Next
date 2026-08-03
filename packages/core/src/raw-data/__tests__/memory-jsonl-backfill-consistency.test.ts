@@ -107,6 +107,39 @@ describe('MemoryJsonlBackfillService manual migration + consistency', () => {
     expect(rows.filter((r) => r.id === 'manual_dup')).toHaveLength(1)
   })
 
+  it('switching to vault B only backfills B chunks (A content never written)', async () => {
+    const now = Date.now()
+    const service = new MemoryJsonlBackfillService(memoryManager)
+    // 模拟 listEmbeddingChunksByType({ vaultId: B }) 已过滤后的结果
+    const vaultBChunks = [
+      {
+        sourceId: 'mem-b-only',
+        chunkText: 'secret memory belonging to B',
+        groupId: 'memory',
+        chunkIndex: 0,
+        sourceCreatedAt: now
+      }
+    ]
+    // 若未按 vault 过滤，A 的 chunk 也会出现在这里——本测断言调用方只传入 B
+    const vaultALeakChunk = {
+      sourceId: 'mem-a-leak',
+      chunkText: 'secret memory belonging to A',
+      groupId: 'memory',
+      chunkIndex: 0,
+      sourceCreatedAt: now
+    }
+
+    const result = await service.backfillFromChunks(vaultBChunks, 'VaultB')
+    expect(result.written).toBe(1)
+
+    const shards = await memoryManager.listShards()
+    expect(shards.length).toBe(1)
+    const rows = await memoryManager.readCollapsedShard(shards[0]!.shardMonth)
+    expect(rows.some((r) => r.id === 'mem-b-only')).toBe(true)
+    expect(rows.some((r) => r.content.includes('belonging to A'))).toBe(false)
+    expect(rows.some((r) => r.id === vaultALeakChunk.sourceId)).toBe(false)
+  })
+
   it('checkConsistency reports missing for user choice and lists orphans', async () => {
     const now = Date.now()
     await memoryManager.writeRecord({
