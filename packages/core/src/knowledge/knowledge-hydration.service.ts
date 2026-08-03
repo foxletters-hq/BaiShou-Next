@@ -14,21 +14,35 @@ export interface KnowledgeHydrationResult {
 export interface KnowledgeHydrationDeps {
   repo: KnowledgeRepository
   notebookManager: NotebookRawManager
+  /** 当前活跃仓库；orphan 与写入均按此过滤，禁止误清他仓 */
+  vaultId: string
   /** 未配嵌入模型时仍同步结构层并清理 orphan，但不排 embed job */
   isEmbeddingConfigured: () => boolean
 }
 
 /**
  * 换端 / 同步后：磁盘 Notebooks/ ↔ knowledge.db 差集水合。
- * - 结构层（notebooks / sources）从 JSONL upsert 进库
+ * - 结构层（notebooks / sources）从 JSONL upsert 进库（带 vault_id）
  * - 有 extracted/*.md 且缺向量或 hash 变了 → 排 embed job
- * - DB 有、磁盘已无的 source → orphan 清理
+ * - DB 有、磁盘已无的 source → orphan 清理（仅当前 vault）
  * - 磁盘尚无 Notebooks 结构时不做 orphan 全清（避免空 vault 误删）
  */
 export class KnowledgeHydrationService {
   constructor(private readonly deps: KnowledgeHydrationDeps) {}
 
   async hydrate(): Promise<KnowledgeHydrationResult> {
+    const vaultId = this.deps.vaultId.trim()
+    if (!vaultId) {
+      logger.warn('[KnowledgeHydration] skip: vaultId empty')
+      return {
+        notebooksUpserted: 0,
+        sourcesUpserted: 0,
+        embedJobsEnqueued: 0,
+        orphansCleaned: 0,
+        skipped: 'vault-id-empty'
+      }
+    }
+
     const embeddingOk = this.deps.isEmbeddingConfigured()
     let notebooksUpserted = 0
     let sourcesUpserted = 0
@@ -45,16 +59,19 @@ export class KnowledgeHydrationService {
         await this.deps.repo.createNotebook({
           id: nb.id,
           name: nb.name,
-          description: nb.description
+          description: nb.description,
+          vaultId
         })
         notebooksUpserted += 1
       } else if (
         existingNb.name !== nb.name ||
-        (existingNb.description ?? '') !== (nb.description ?? '')
+        (existingNb.description ?? '') !== (nb.description ?? '') ||
+        existingNb.vaultId !== vaultId
       ) {
         await this.deps.repo.updateNotebook(nb.id, {
           name: nb.name,
-          description: nb.description
+          description: nb.description,
+          vaultId
         })
         notebooksUpserted += 1
       }
@@ -69,6 +86,7 @@ export class KnowledgeHydrationService {
 
         await this.deps.repo.upsertSource({
           id: src.id,
+          vaultId,
           notebookId: nb.id,
           title: src.title,
           sourceKind: src.kind || 'file',
@@ -107,13 +125,14 @@ export class KnowledgeHydrationService {
         await this.deps.repo.enqueueIngestJob({
           notebookId: nb.id,
           sourceId: src.id,
-          stage: 'embed'
+          stage: 'embed',
+          vaultId
         })
         embedJobsEnqueued += 1
       }
     }
 
-    const orphansCleaned = await this.sweepOrphans(liveSourceIds, liveNotebookIds)
+    const orphansCleaned = await this.sweepOrphans(vaultId, liveSourceIds, liveNotebookIds)
 
     const result: KnowledgeHydrationResult = {
       notebooksUpserted,
@@ -123,7 +142,7 @@ export class KnowledgeHydrationService {
       skipped: embeddingOk ? undefined : 'embedding-not-configured'
     }
 
-    logger.info('[KnowledgeHydration] done', result)
+    logger.info('[KnowledgeHydration] done', { ...result, vaultId })
     return result
   }
 
@@ -135,22 +154,30 @@ export class KnowledgeHydrationService {
     return `${notebookId}/sources/${norm}`
   }
 
+  /**
+   * 仅清当前 vault 下、磁盘差集不可见的 orphan。
+   * 禁止对全局 knowledge.db 在只看见当前 vault Notebooks 时全清。
+   */
   private async sweepOrphans(
+    vaultId: string,
     liveSourceIds: Set<string>,
     liveNotebookIds: Set<string>
   ): Promise<number> {
-    // 磁盘无任何笔记本：可能尚未同步到 Notebooks/，不要清空本地库
+    // 磁盘无任何笔记本：可能尚未同步到 Notebooks/，不要清空本仓库
     if (liveNotebookIds.size === 0) return 0
 
     let cleaned = 0
-    const dbSourceIds = await this.deps.repo.listDistinctSourceIds()
+    const dbSourceIds = await this.deps.repo.listDistinctSourceIds({ vaultId })
     for (const sourceId of dbSourceIds) {
       if (liveSourceIds.has(sourceId)) continue
       await this.deps.repo.deleteSource(sourceId)
       cleaned += 1
     }
 
-    const dbNotebooks = await this.deps.repo.listNotebooks({ includeArchived: true })
+    const dbNotebooks = await this.deps.repo.listNotebooks({
+      includeArchived: true,
+      vaultId
+    })
     for (const nb of dbNotebooks) {
       if (liveNotebookIds.has(nb.id)) continue
       await this.deps.repo.deleteNotebook(nb.id)
