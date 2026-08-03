@@ -26,6 +26,7 @@ export async function resolveActiveWorkspaceToolContext(): Promise<
   | {
       folderRoot: string
       sessionKind: AgentSessionKind
+      notebookId?: string
     }
   | undefined
 > {
@@ -35,6 +36,7 @@ export async function resolveActiveWorkspaceToolContext(): Promise<
   if (!binding?.folderRoot) return undefined
   return {
     folderRoot: binding.folderRoot,
-    sessionKind: 'workspace'
+    sessionKind: 'workspace',
+    notebookId: binding.notebookId
   }
 }

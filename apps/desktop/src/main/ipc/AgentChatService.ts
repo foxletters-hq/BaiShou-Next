@@ -25,6 +25,7 @@ import {
   cancelAgentGateSession,
   getAgentGate
 } from '../services/agent-gate.service'
+import { createDesktopKnowledgeReader } from '../services/desktop-knowledge-reader'
 
 export class AgentChatService {
   public static stopStream(sessionId?: string) {
@@ -181,6 +182,8 @@ export class AgentChatService {
         })
       : undefined
 
+    const knowledgeReader = createDesktopKnowledgeReader(embedQuery)
+
     const { DesktopStoragePathService } = await import('../services/path.service')
     const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')
     await refreshDesktopAttachmentPathRemapper(new DesktopStoragePathService())
@@ -204,6 +207,7 @@ export class AgentChatService {
       rawDataSourceManager,
       syncGraphPendingIndex,
       graphReader,
+      knowledgeReader,
       realSessionRepo,
       realSnapshotRepo,
       toolRegistry,

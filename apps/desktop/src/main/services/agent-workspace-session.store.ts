@@ -12,6 +12,8 @@ interface WorkspaceSessionBinding {
   sessionId: string
   folderRoot: string
   folderDisplayName?: string
+  /** 工作台挂载的知识库笔记本（检索作用域，非 folderRoot） */
+  notebookId?: string
   updatedAt: string
   checkpointsByUserMessageId: Record<string, string>
   selection?: AgentDialogueSelectionState
@@ -53,14 +55,36 @@ export async function bindWorkspaceSession(sessionId: string, folderRoot: string
   const now = new Date().toISOString()
   const folderDisplayName =
     folderRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? folderRoot
+  const prev = store.bindings[sessionId]
   store.bindings[sessionId] = {
     sessionId,
     folderRoot,
     folderDisplayName,
+    notebookId: prev?.notebookId,
     updatedAt: now,
-    checkpointsByUserMessageId: store.bindings[sessionId]?.checkpointsByUserMessageId ?? {}
+    checkpointsByUserMessageId: prev?.checkpointsByUserMessageId ?? {},
+    selection: prev?.selection,
+    lastSelectionSwitch: prev?.lastSelectionSwitch
   }
   await saveStore()
+}
+
+export async function attachWorkspaceNotebook(
+  sessionId: string,
+  notebookId: string | null
+): Promise<WorkspaceSessionBinding | null> {
+  const store = await loadStore()
+  const binding = store.bindings[sessionId]
+  if (!binding) return null
+  const trimmed = notebookId?.trim() || ''
+  if (trimmed) {
+    binding.notebookId = trimmed
+  } else {
+    delete binding.notebookId
+  }
+  binding.updatedAt = new Date().toISOString()
+  await saveStore()
+  return binding
 }
 
 export async function touchWorkspaceSession(sessionId: string): Promise<void> {
