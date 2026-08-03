@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentGateReply, type AgentGatePartData, type AgentGateRequest } from '@baishou/shared'
-import { resolveAlwaysAllowPrefixHint } from '../../agent-gate'
+import { formatDecisionSourceLine, resolveAlwaysAllowPrefixHint } from '../../agent-gate'
 import { summarizePreviewForHistory } from '../../agent-gate/agent-gate-preview-copy'
 import styles from './AgentGatePartBubble.module.css'
 
@@ -50,6 +50,7 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
   const resolved = Boolean(resolution)
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)
   const alwaysScopeHint = resolveAlwaysAllowPrefixHint(request)
+  const decisionSourceLine = formatDecisionSourceLine(request)
   const showPendingScopeHint = !resolved && alwaysScopeHint
   const showResolvedAlwaysScope = resolution?.reply === AgentGateReply.Always && alwaysScopeHint
   const previewSummary = summarizePreviewForHistory(request.preview)
@@ -74,6 +75,11 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
       ) : null}
       {!resolved && !previewSummary && request.title && request.title !== request.description ? (
         <div className={styles.meta}>{request.title}</div>
+      ) : null}
+      {!resolved && decisionSourceLine ? (
+        <div className={styles.meta}>
+          {t('agent_gate.decision_source', '来源：{{source}}', { source: decisionSourceLine })}
+        </div>
       ) : null}
       {showPendingScopeHint ? (
         <div className={styles.scopeHint}>

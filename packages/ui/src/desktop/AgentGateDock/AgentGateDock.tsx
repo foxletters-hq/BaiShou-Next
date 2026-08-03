@@ -4,6 +4,7 @@ import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/s
 import {
   resolveAlwaysAllowPrefixHint,
   resolveAlwaysDisabledReason,
+  formatDecisionSourceLine,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -103,6 +104,7 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   const showAlways = shouldShowAlwaysAllow(request)
   const alwaysDisabledReason = resolveAlwaysDisabledReason(request)
   const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
+  const decisionSourceLine = formatDecisionSourceLine(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const showActionMeta = request.kind === AgentGateKind.Tool
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
@@ -176,6 +178,11 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
       )}
 
       {repeatHint ? <p className={styles.hint}>{repeatHint}</p> : null}
+      {decisionSourceLine ? (
+        <p className={styles.meta}>
+          {t('agent_gate.decision_source', '来源：{{source}}', { source: decisionSourceLine })}
+        </p>
+      ) : null}
       {cascadeHint ? <p className={styles.hint}>{cascadeHint}</p> : null}
 
       {preview?.type === 'file_change' ? (
@@ -396,9 +403,19 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
               className={`${styles.btn} ${styles.btnSecondary}`}
               disabled={isReplying}
               onClick={() => setAlwaysConfirm(true)}
-              aria-label={t('agent_gate.always', '始终允许')}
+              aria-label={
+                alwaysPrefixHint
+                  ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
+                      pattern: alwaysPrefixHint
+                    })
+                  : t('agent_gate.always', '始终允许')
+              }
             >
-              {t('agent_gate.always', '始终允许')}
+              {alwaysPrefixHint
+                ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
+                    pattern: alwaysPrefixHint
+                  })
+                : t('agent_gate.always', '始终允许')}
             </button>
           ) : alwaysDisabledReason ? (
             <span className={styles.meta}>{alwaysDisabledReason}</span>
