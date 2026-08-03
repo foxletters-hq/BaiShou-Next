@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { deriveLegacyVaultId } from '@baishou/shared'
+import { deriveLegacyVaultId, sessionBelongsToActiveVaultId } from '@baishou/shared'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
@@ -33,6 +33,18 @@ export function useBranchSession() {
           throw new Error(t('agent.sessions.empty', '暂无会话记录...'))
         }
 
+        const activeVault = vaultService?.getActiveVault?.()
+        const activeVaultId =
+          activeVault?.id || deriveLegacyVaultId(activeVault?.name || 'Personal')
+        if (
+          !sessionBelongsToActiveVaultId(
+            (originalSession as { vaultId?: string }).vaultId,
+            activeVaultId
+          )
+        ) {
+          throw new Error(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+        }
+
         const allMessages = await sessionManager.getMessagesBySession(sessionId, 9999)
 
         const targetIndex = allMessages.findIndex((m: any) => m.id === messageId)
@@ -42,11 +54,7 @@ export function useBranchSession() {
 
         const messagesToCopy = allMessages.slice(0, targetIndex + 1)
 
-        const activeVault = vaultService?.getActiveVault?.()
-        const vaultId =
-          activeVault?.id ||
-          originalSession.vaultId ||
-          deriveLegacyVaultId(activeVault?.name || 'Personal')
+        const vaultId = activeVaultId
 
         const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
         const branchTitle = `${assistantName || originalSession.title || t('agent.sessions.default_title', '新对话')} (${t('agent.chat.branch', '从此处创建分支')})`

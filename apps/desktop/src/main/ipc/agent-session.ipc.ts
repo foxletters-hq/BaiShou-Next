@@ -2,11 +2,29 @@ import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import * as crypto from 'crypto'
 import { getAgentManagers } from './agent-helpers'
-import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
-import { GlobalModelsConfig, logger } from '@baishou/shared'
+import { GlobalModelsConfig, logger, sessionBelongsToActiveVaultId } from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
-import { vaultService, resolveActiveVaultId, resolveVaultIdByName } from './vault.ipc'
+import { vaultService, resolveActiveVaultId } from './vault.ipc'
+
+function assertSessionInActiveVault<T extends { vaultId?: string | null }>(
+  session: T | null | undefined,
+  activeVaultId: string,
+  notFoundKey: string,
+  notFoundFallback: string
+): asserts session is T {
+  if (!session) {
+    throw new Error(i18n.t(notFoundKey, notFoundFallback))
+  }
+  if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+    throw new Error(
+      i18n.t(
+        'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
+        '无权访问其他工作空间的会话'
+      )
+    )
+  }
+}
 
 export function registerSessionIPC() {
   // ==========================================
@@ -40,7 +58,16 @@ export function registerSessionIPC() {
 
   ipcMain.handle('agent:get-session', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
-    return await realSessionRepo.getSessionById(sessionId)
+    const session = await realSessionRepo.getSessionById(sessionId)
+    const activeVaultId = resolveActiveVaultId()
+    if (!session) return null
+    if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+      logger.warn(
+        `[IPC] agent:get-session denied cross-vault: session=${sessionId} vault=${session.vaultId} active=${activeVaultId}`
+      )
+      return null
+    }
+    return session
   })
 
   ipcMain.handle(
@@ -119,17 +146,45 @@ export function registerSessionIPC() {
   )
 
   ipcMain.handle('agent:delete-sessions', async (_, ids: string[]) => {
-    const { sessionManager } = getAgentManagers()
-    await sessionManager.deleteSessions(ids)
+    const { sessionManager, realSessionRepo } = getAgentManagers()
+    const activeVaultId = resolveActiveVaultId()
+    const allowed: string[] = []
+    for (const id of ids) {
+      const session = await realSessionRepo.getSessionById(id)
+      if (session && sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+        allowed.push(id)
+      } else {
+        logger.warn(
+          `[IPC] agent:delete-sessions skipped cross-vault or missing: ${id}`
+        )
+      }
+    }
+    if (allowed.length > 0) {
+      await sessionManager.deleteSessions(allowed)
+    }
   })
 
   ipcMain.handle('agent:pin-session', async (_, id: string, isPinned: boolean) => {
-    const { sessionManager } = getAgentManagers()
+    const { sessionManager, realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(id)
+    assertSessionInActiveVault(
+      session,
+      resolveActiveVaultId(),
+      'auto.apps.desktop.src.main.ipc.agent.session.ipc.L157',
+      '原会话不存在'
+    )
     await sessionManager.togglePin(id, isPinned)
   })
 
   ipcMain.handle('agent:update-session-title', async (_, sessionId: string, title: string) => {
-    const { sessionManager } = getAgentManagers()
+    const { sessionManager, realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(sessionId)
+    assertSessionInActiveVault(
+      session,
+      resolveActiveVaultId(),
+      'auto.apps.desktop.src.main.ipc.agent.session.ipc.L157',
+      '原会话不存在'
+    )
     await sessionManager.updateTitle(sessionId, title)
     return true
   })
@@ -137,7 +192,14 @@ export function registerSessionIPC() {
   ipcMain.handle(
     'agent:update-session-dialogue-model',
     async (_, sessionId: string, providerId: string, modelId: string) => {
-      const { sessionManager } = getAgentManagers()
+      const { sessionManager, realSessionRepo } = getAgentManagers()
+      const session = await realSessionRepo.getSessionById(sessionId)
+      assertSessionInActiveVault(
+        session,
+        resolveActiveVaultId(),
+        'auto.apps.desktop.src.main.ipc.agent.session.ipc.L157',
+        '原会话不存在'
+      )
       await sessionManager.updateSessionDialogueModel(sessionId, providerId, modelId)
       return true
     }
@@ -145,6 +207,13 @@ export function registerSessionIPC() {
 
   ipcMain.handle('agent:export-session', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(sessionId)
+    assertSessionInActiveVault(
+      session,
+      resolveActiveVaultId(),
+      'auto.apps.desktop.src.main.ipc.agent.session.ipc.L157',
+      '原会话不存在'
+    )
     const messages = await realSessionRepo.getMessagesBySession(sessionId, 999)
 
     // 格式化为 Markdown
@@ -170,6 +239,16 @@ export function registerSessionIPC() {
   ipcMain.handle('agent:get-token-usage', async (_, sessionId: string) => {
     const { realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
+    const activeVaultId = resolveActiveVaultId()
+    if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+      return {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheWriteInputTokens: 0,
+        totalCostMicros: 0
+      }
+    }
     return {
       inputTokens: session?.totalInputTokens || 0,
       outputTokens: session?.totalOutputTokens || 0,
@@ -204,11 +283,12 @@ export function registerSessionIPC() {
 
       // 1. 获取原会话信息
       const originalSession = await realSessionRepo.getSessionById(sessionId)
-      if (!originalSession) {
-        throw new Error(
-          i18n.t('auto.apps.desktop.src.main.ipc.agent.session.ipc.L157', '原会话不存在')
-        )
-      }
+      assertSessionInActiveVault(
+        originalSession,
+        resolveActiveVaultId(),
+        'auto.apps.desktop.src.main.ipc.agent.session.ipc.L157',
+        '原会话不存在'
+      )
 
       // 2. 获取原会话的所有消息
       const allMessages = await realSessionRepo.getMessagesBySession(sessionId, 9999)

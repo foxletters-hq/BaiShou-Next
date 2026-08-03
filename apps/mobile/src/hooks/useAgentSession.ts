@@ -3,6 +3,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useNativeToast } from '@baishou/ui/native'
 import { useAgentStore, type AgentMessagePart } from '@baishou/store'
+import { deriveLegacyVaultId, sessionBelongsToActiveVaultId } from '@baishou/shared'
 import { useBaishou } from '../providers/BaishouProvider'
 import { buildInsertSessionInput } from '../utils/session-input.util'
 import { mapSessionMessageFromDb } from '../utils/map-session-message.util'
@@ -50,6 +51,20 @@ function resetPaginationRefs(refs: {
   refs.roundWindowStartRef.current = 0
   refs.loadedFromEndRef.current = 0
   refs.fetchHasMoreRef.current = false
+}
+
+async function assertMobileSessionInActiveVault(
+  services: {
+    sessionManager: { getSessionById: (id: string) => Promise<{ vaultId?: string | null } | null> }
+    vaultService?: { getActiveVault?: () => { id?: string; name?: string } | null }
+  },
+  sessionId: string
+): Promise<boolean> {
+  const session = await services.sessionManager.getSessionById(sessionId)
+  if (!session) return false
+  const active = services.vaultService?.getActiveVault?.()
+  const activeVaultId = active?.id || deriveLegacyVaultId(active?.name || 'Personal')
+  return sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)
 }
 
 export function useAgentSession(_options: UseAgentSessionOptions = {}) {
@@ -204,6 +219,11 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     ) => {
       if (!dbReady || !services) return false
 
+      if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
+        resetSessionState()
+        return false
+      }
+
       const retryCount = options?.retryCount ?? 1
       const waitForLatestUsage = options?.waitForLatestUsage ?? false
       const commitToUi = options?.commitToUi ?? true
@@ -255,7 +275,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
       return true
     },
-    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageContext]
+    [dbReady, services, mapDbMessageToUI, ingestFetchedTail, resolveStorageContext, resetSessionState]
   )
 
   const loadMessages = useCallback(
@@ -321,14 +341,18 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
 
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
+      if (!dbReady || !services || vaultSwitching) return
+      if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
+        toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+        return
+      }
       if (sessionId === useAgentStore.getState().currentSessionId) {
-        if (!dbReady || !services || vaultSwitching) return
         await loadMessages(sessionId)
         return
       }
       setCurrentSessionId(sessionId)
     },
-    [setCurrentSessionId, dbReady, services, vaultSwitching, loadMessages]
+    [setCurrentSessionId, dbReady, services, vaultSwitching, loadMessages, toast, t]
   )
 
   useFocusEffect(
@@ -411,6 +435,10 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     async (sessionId: string) => {
       if (!services) return
       try {
+        if (!(await assertMobileSessionInActiveVault(services, sessionId))) {
+          toast.showError(t('agent.sessions.cross_vault_denied', '无权访问其他工作空间的会话'))
+          return
+        }
         await services.sessionManager.deleteSessions([sessionId])
         if (sessionId === currentSessionId) {
           resetSessionState()
@@ -427,6 +455,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     async (sessionId: string, isPinned: boolean) => {
       if (!services) return
       try {
+        if (!(await assertMobileSessionInActiveVault(services, sessionId))) return
         await services.sessionManager.togglePin(sessionId, !isPinned)
       } catch (e) {
         console.error('Failed to pin session', e)
@@ -439,6 +468,7 @@ export function useAgentSession(_options: UseAgentSessionOptions = {}) {
     async (sessionId: string, newTitle: string) => {
       if (!services || !newTitle.trim()) return
       try {
+        if (!(await assertMobileSessionInActiveVault(services, sessionId))) return
         await services.sessionManager.updateTitle(sessionId, newTitle.trim())
       } catch (e) {
         console.error('Failed to rename session', e)

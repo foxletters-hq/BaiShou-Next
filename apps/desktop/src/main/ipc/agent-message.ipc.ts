@@ -5,7 +5,12 @@ import {
   reconcileCompressionStateAfterTruncate
 } from '@baishou/ai'
 import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
-import { isAutoInjectCurrentTimeEnabled, resolveWebSearchEnabled } from '@baishou/shared'
+import {
+  isAutoInjectCurrentTimeEnabled,
+  resolveWebSearchEnabled,
+  sessionBelongsToActiveVaultId,
+  logger
+} from '@baishou/shared'
 import {
   getAgentManagers,
   buildStreamConfig,
@@ -14,6 +19,7 @@ import {
 import { AgentChatService } from './AgentChatService'
 import { settingsManager } from './settings.ipc'
 import { groupPartsByMessageId, mapAgentMessageForRenderer } from './map-agent-message-for-renderer'
+import { resolveActiveVaultId } from './vault.ipc'
 
 export function registerMessageIPC() {
   // ==========================================
@@ -28,7 +34,15 @@ export function registerMessageIPC() {
       offset: number = 0,
       includeParts: boolean = false
     ) => {
-      const { realMessageRepo } = getAgentManagers()
+      const { realMessageRepo, realSessionRepo } = getAgentManagers()
+      const session = await realSessionRepo.getSessionById(sessionId)
+      const activeVaultId = resolveActiveVaultId()
+      if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+        logger.warn(
+          `[IPC] agent:get-messages denied cross-vault: session=${sessionId} active=${activeVaultId}`
+        )
+        return []
+      }
       const rows = await realMessageRepo.findBySessionId(sessionId, limit, offset)
       if (rows.length === 0) return []
 
@@ -48,6 +62,12 @@ export function registerMessageIPC() {
     'agent:get-context-at-message',
     async (_, sessionId: string, messageId: string, searchMode?: boolean) => {
       const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
+      const session = await realSessionRepo.getSessionById(sessionId)
+      const activeVaultId = resolveActiveVaultId()
+      if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+        throw new Error('无权访问其他工作空间的会话')
+      }
+
       const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
       const storedSearchMode = await settingsManager.get<boolean>('search_mode_enabled')
       const webSearchEnabled = resolveWebSearchEnabled(searchMode, storedSearchMode)
@@ -63,7 +83,6 @@ export function registerMessageIPC() {
       const recentCount =
         typeof userConfig?.['recentCount'] === 'number' ? userConfig['recentCount'] : 30
 
-      const session = await realSessionRepo.getSessionById(sessionId)
       const { buildAgentSystemPrompt } = await import('./build-agent-system-prompt')
       const systemPrompt = await buildAgentSystemPrompt(sessionId, webSearchEnabled)
 
@@ -90,7 +109,8 @@ export function registerMessageIPC() {
   ipcMain.handle('agent:recompress-context', async (_, sessionId: string) => {
     const { realSessionRepo, realSnapshotRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
-    if (!session) {
+    const activeVaultId = resolveActiveVaultId()
+    if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
       return { ok: false, error: 'Session not found' }
     }
 
@@ -129,6 +149,11 @@ export function registerMessageIPC() {
   ipcMain.handle('agent:delete-message', async (_, sessionId: string, messageId: string) => {
     const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
       getAgentManagers()
+    const session = await realSessionRepo.getSessionById(sessionId)
+    const activeVaultId = resolveActiveVaultId()
+    if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+      throw new Error('无权访问其他工作空间的会话')
+    }
     const ids = await realSessionRepo.listMessageIdsFromMessageAndFollowing(sessionId, messageId)
     const parts = ids.length > 0 ? await realSessionRepo.getPartsByMessageIds(ids) : []
     await realSessionRepo.deleteMessageAndFollowing(sessionId, messageId)
