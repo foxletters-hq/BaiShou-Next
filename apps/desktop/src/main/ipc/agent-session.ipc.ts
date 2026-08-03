@@ -22,10 +22,17 @@ export function registerSessionIPC() {
       searchQuery?: string
     ) => {
       const { sessionManager } = getAgentManagers()
+      const activeVaultName = vaultService.getActiveVault()?.name || 'Personal'
       logger.info(
-        `[IPC] agent:get-sessions - astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
+        `[IPC] agent:get-sessions - vault=${activeVaultName}, astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
-      const results = await sessionManager.findAllSessions(limit, offset, assistantId, searchQuery)
+      const results = await sessionManager.findAllSessions(
+        limit,
+        offset,
+        assistantId,
+        searchQuery,
+        activeVaultName
+      )
       logger.info(`[IPC] agent:get-sessions - found ${results.length} sessions`)
       return results
     }
@@ -179,7 +186,8 @@ export function registerSessionIPC() {
           ? String(assistantId).trim()
           : ''
     if (!normalized) return []
-    return sessionManager.findAllSessions(-1, 0, normalized)
+    const activeVaultName = vaultService.getActiveVault()?.name || 'Personal'
+    return sessionManager.findAllSessions(-1, 0, normalized, undefined, activeVaultName)
   })
 
   // 对话分支：从指定消息位置复制一个新会话

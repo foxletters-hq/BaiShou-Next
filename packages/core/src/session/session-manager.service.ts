@@ -81,8 +81,14 @@ export class SessionManagerService {
     await this.persistence.flushNow(sessionId)
   }
 
-  async list(limit: number = 20, offset: number = 0, assistantId?: string, searchQuery?: string) {
-    return this.findAllSessions(limit, offset, assistantId, searchQuery)
+  async list(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
+    searchQuery?: string,
+    vaultName?: string
+  ) {
+    return this.findAllSessions(limit, offset, assistantId, searchQuery, vaultName)
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
@@ -103,9 +109,10 @@ export class SessionManagerService {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
-    searchQuery?: string
+    searchQuery?: string,
+    vaultName?: string
   ) {
-    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery)
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery, vaultName)
   }
 
   async getSessionById(sessionId: string) {

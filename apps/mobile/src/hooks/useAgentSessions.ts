@@ -65,11 +65,16 @@ export function useAgentSessions(activeAssistantId: string | undefined) {
       }
 
       try {
+        const activeVaultName =
+          services.vaultService?.getActiveVault?.()?.name ||
+          (await services.pathService?.getActiveVaultNameForContext?.().catch(() => 'Personal')) ||
+          'Personal'
         const sessionList = await services.sessionManager.list(
           SESSION_PAGE_SIZE + 1,
           offset,
           targetAssistantId.trim(),
-          undefined
+          undefined,
+          activeVaultName
         )
 
         if (reqId !== lastLoadRequestId.current) return
