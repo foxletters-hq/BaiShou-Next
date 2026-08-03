@@ -95,7 +95,7 @@
   background: rgba(0, 0, 0, 0.04);
   padding: 6px;
   border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  border: 1px solid var(--border-muted);
 }
 
 .theme-btn {
@@ -186,7 +186,7 @@
 .lang-chip {
   padding: 8px 16px;
   background: var(--bg-glass-surface);
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  border: 1px solid var(--border-muted);
   border-radius: 20px;
   font-size: 13px;
   color: var(--text-secondary);

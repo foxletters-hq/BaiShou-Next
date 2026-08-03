@@ -4,7 +4,7 @@
   padding: 24px;
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  border: 1px solid var(--border-muted);
   gap: 24px;
 }
 
@@ -69,7 +69,7 @@
   gap: 12px;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  border: 1px solid var(--border-muted);
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
@@ -81,7 +81,7 @@
 
 .actionBtn:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(148, 163, 184, 0.2);
+  border-color: var(--border-control);
   transform: translateX(4px);
 }
 

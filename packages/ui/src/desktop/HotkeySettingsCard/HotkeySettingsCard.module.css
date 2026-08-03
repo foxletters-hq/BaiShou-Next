@@ -10,7 +10,7 @@
   padding: 16px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.05);
+  border: 1px solid var(--border-subtle);
 }
 .info {
   display: flex;
@@ -73,6 +73,13 @@ input:checked + .slider:before {
   border-radius: 8px;
   overflow: hidden;
   width: 250px;
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+.inputGroup:focus-within {
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 .keyInput {
   flex: 1;
@@ -88,7 +95,7 @@ input:checked + .slider:before {
 .recordBtn {
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   padding: 0 16px;
   cursor: pointer;

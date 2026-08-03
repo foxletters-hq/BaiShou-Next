@@ -248,8 +248,8 @@
 
 .comboboxInput:focus {
   background-color: var(--form-field-bg, var(--bg-surface));
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .comboboxInput::placeholder {
@@ -290,7 +290,7 @@
   left: 0;
   width: 100%;
   background-color: var(--bg-surface-raised);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   z-index: 100;
@@ -406,8 +406,8 @@
 
 .passwordInput:focus {
   background-color: var(--form-field-bg, var(--bg-surface));
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .passwordInput::placeholder {

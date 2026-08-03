@@ -12,17 +12,16 @@
   border-radius: 50%;
   overflow: hidden;
   cursor: pointer;
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--bg-surface-high);
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 2px solid rgba(154, 212, 234, 0.2);
-  transition: all 0.2s;
+  border: 1px solid var(--border-card);
+  transition: border-color 0.15s ease;
 }
 
 .avatarZone:hover {
-  border-color: rgba(154, 212, 234, 0.6);
-  transform: scale(1.05);
+  border-color: var(--border-strong, var(--border-card));
 }
 
 .avatarImg {
@@ -34,7 +33,7 @@
 .avatarFallback {
   font-size: 32px;
   font-weight: 600;
-  color: #9ad4ea;
+  color: var(--text-tertiary, var(--text-secondary));
 }
 
 .avatarHover {
@@ -118,7 +117,7 @@
 
 .cropModal {
   background: rgba(30, 41, 59, 0.9);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border-control);
   border-radius: 16px;
   padding: 24px;
   width: 90%;
@@ -187,7 +186,7 @@
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;

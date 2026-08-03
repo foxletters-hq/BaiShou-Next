@@ -124,7 +124,7 @@
 
 .identityManageButton {
   flex-shrink: 0;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 999px;
   padding: 8px 14px;
   background: var(--bg-surface);
@@ -162,7 +162,7 @@
   align-items: center;
   gap: 4px;
   padding: 0 12px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background-color: transparent;
   color: var(--text-primary);
@@ -179,7 +179,7 @@
 
 .inputChipActive {
   background-color: transparent;
-  border-width: 1.5px;
+  border-width: 1px;
   border-color: var(--border-control);
   color: var(--text-primary);
   font-weight: 600;
@@ -267,7 +267,7 @@
   align-items: center;
   gap: 4px;
   background: transparent;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 12px;
@@ -344,12 +344,13 @@
   outline: none;
   flex: 1;
   min-width: 0;
+  transition: var(--form-field-transition);
 }
 
 .factEditInput:focus {
-  border-color: var(--form-field-border, var(--border-control));
+  border-color: var(--form-field-border-focus);
   background: var(--form-field-bg, var(--bg-surface));
-  box-shadow: none;
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .factEditDivider {

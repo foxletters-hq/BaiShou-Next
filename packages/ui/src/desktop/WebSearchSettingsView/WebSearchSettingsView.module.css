@@ -125,7 +125,7 @@
   padding: 10px 12px;
   margin: 0;
   /* 始终占位，避免选中/悬停换边框时布局跳动闪烁 */
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   border-radius: 12px;
   cursor: pointer;
   transition:
@@ -228,8 +228,8 @@
 }
 
 .textFieldWrapper:focus-within {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .textFieldIcon {

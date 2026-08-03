@@ -129,7 +129,7 @@
   width: 100%;
   padding: 14px 16px;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   cursor: pointer;
   margin-bottom: 16px;
@@ -196,13 +196,4 @@
   align-items: center;
   margin-left: 6px;
   cursor: pointer;
-}
-
-.helpIcon {
-  color: var(--text-tertiary);
-  transition: color 0.2s;
-}
-
-.helpIcon:hover {
-  color: var(--color-primary);
 }

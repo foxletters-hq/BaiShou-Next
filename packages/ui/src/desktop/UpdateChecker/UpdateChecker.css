@@ -19,7 +19,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
@@ -44,7 +44,7 @@
 .update-action-btn.primary {
   background-color: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .update-action-btn.primary:hover:not(:disabled) {
@@ -55,7 +55,7 @@
 .update-action-btn.secondary {
   background-color: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .update-action-btn.secondary:hover:not(:disabled) {

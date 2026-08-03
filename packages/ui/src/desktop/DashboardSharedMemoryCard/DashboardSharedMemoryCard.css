@@ -2,7 +2,7 @@
   padding: 20px;
   background: var(--bg-surface);
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.5);
+  border: 1px solid var(--border-control);
   display: flex;
   flex-direction: column;
   /* Removed hover box-shadow to match stats card */
@@ -19,12 +19,13 @@
 .sm-header-main {
   display: flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
   flex: 1;
 }
 
 .sm-header-icon {
-  margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .sm-header-title {
@@ -55,7 +56,7 @@
 .sm-number-input {
   width: 64px;
   padding: 4px 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -67,8 +68,8 @@
 
 .sm-number-input:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .sm-slider-container {
@@ -84,7 +85,7 @@
 .sm-btn {
   background: transparent;
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   padding: 14px;
   font-size: 14px;
@@ -106,16 +107,6 @@
 .sm-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-.sm-help-icon-wrapper {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 8px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s ease;
 }
 
 .sm-prefix-btn {
@@ -140,16 +131,12 @@
   background: rgba(var(--color-primary-rgb), 0.1);
 }
 
-.sm-help-icon-wrapper:hover {
-  color: var(--color-primary);
-}
-
 .sm-preview {
   margin-bottom: 16px;
   padding: 12px 14px;
   border-radius: 12px;
   background: var(--bg-surface-lowest);
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 1px solid var(--border-control);
 }
 
 .sm-previewLoading {
