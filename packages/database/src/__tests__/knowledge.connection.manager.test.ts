@@ -68,7 +68,7 @@ describeKnowledge('KnowledgeConnectionManager', () => {
   it('repository 可创建笔记本并写 chunk', async () => {
     await manager.connect(tempDir)
     const repo = new KnowledgeRepository(manager.getDb())
-    const nb = await repo.createNotebook({ id: 'nb_test', name: '测试本' })
+    const nb = await repo.createNotebook({ id: 'nb_test', name: '测试本', vaultId: 'vault_test' })
     expect(nb.name).toBe('测试本')
 
     const src = await repo.upsertSource({
@@ -78,7 +78,8 @@ describeKnowledge('KnowledgeConnectionManager', () => {
       sourceKind: 'text',
       contentHash: 'abc',
       status: 'ready',
-      byteSize: 3
+      byteSize: 3,
+      vaultId: 'vault_test'
     })
     expect(src.id).toBe('src_1')
 
@@ -92,12 +93,17 @@ describeKnowledge('KnowledgeConnectionManager', () => {
       chunkText: 'hello knowledge',
       embedding,
       dimension: dim,
-      modelId: 'mock'
+      modelId: 'mock',
+      vaultId: 'vault_test'
     })
 
     const hits = await repo.searchChunksLike(nb.id, 'knowledge')
     expect(hits.length).toBe(1)
     expect(hits[0]?.chunkText).toContain('knowledge')
+
+    const purged = await repo.deleteAllForVault('vault_test')
+    expect(purged.notebooks).toBe(1)
+    expect(await repo.getNotebook(nb.id)).toBeNull()
   })
 })
 
