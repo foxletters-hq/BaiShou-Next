@@ -1,7 +1,7 @@
 import i18n from 'i18next'
 import { ipcMain, BrowserWindow } from 'electron'
 import { VaultService, VaultNameExistsError, VaultInvalidNameError } from '@baishou/core-desktop'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database-desktop'
+import { ShadowIndexRepository, shadowConnectionManager, connectionManager } from '@baishou/database-desktop'
 import { logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
 import { traceStartupStep } from '../startup-trace.util'
@@ -189,6 +189,17 @@ export function registerVaultIPC() {
   })
 
   ipcMain.handle('vault:delete', async (_, vaultName: string) => {
+    // 先清 agent.db 派生数据，再清 shadow / 删目录（中途失败可重试，避免幽灵索引）
+    if (connectionManager.isConnected()) {
+      const { createSqlExecutorFromDrizzleDb, purgeVaultDerivedData } = await import(
+        '@baishou/database-desktop'
+      )
+      const counts = await purgeVaultDerivedData(
+        createSqlExecutorFromDrizzleDb(connectionManager.getDb()),
+        vaultName
+      )
+      logger.info('[vault:delete] purged agent.db derived data', { vaultName, ...counts })
+    }
     if (shadowConnectionManager.isConnected()) {
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
       await shadowRepo.deleteAllForVault(vaultName)
