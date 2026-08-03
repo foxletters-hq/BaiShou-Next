@@ -1,0 +1,51 @@
+/**
+ * Desktop help "?" icon SSOT — tertiary → primary on hover.
+ * Used by HelpTooltip (hover) and SettingsHelpIconButton (click / modal).
+ */
+
+.helpHost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.helpBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 4px;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+  line-height: 0;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.helpBtn:hover {
+  background-color: rgba(var(--text-primary-rgb, 15, 23, 42), 0.06);
+}
+
+.helpBtn:active {
+  transform: scale(0.92);
+  background-color: rgba(var(--color-primary-rgb), 0.12);
+}
+
+.helpIcon {
+  color: var(--text-tertiary);
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.helpBtn:hover .helpIcon,
+.helpHost:hover .helpIcon {
+  color: var(--color-primary);
+}
