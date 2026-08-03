@@ -8,11 +8,7 @@
  */
 
 import { z } from 'zod'
-import {
-  formatLocalDate,
-  MEMORY_SOURCE_TYPE,
-  type ToolRawDataSourceManager
-} from '@baishou/shared'
+import { formatLocalDate, MEMORY_SOURCE_TYPE, type ToolRawDataSourceManager } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSearchResult } from './agent.tool'
 
