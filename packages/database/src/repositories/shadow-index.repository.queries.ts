@@ -22,11 +22,11 @@ import type {
 export class ShadowIndexQueryOps {
   constructor(
     private readonly database: AppDatabase,
-    private readonly vaultName: string
+    private readonly vaultId: string
   ) {}
 
   private vaultFilter() {
-    return eq(shadowJournalIndexTable.vaultName, this.vaultName)
+    return eq(shadowJournalIndexTable.vaultId, this.vaultId)
   }
 
   private withVault(...conditions: Parameters<typeof and>) {
@@ -175,7 +175,7 @@ export class ShadowIndexQueryOps {
           FROM journals_fts
           INNER JOIN journals_index i ON i.id = journals_fts.rowid
           WHERE journals_fts MATCH ${terms.ftsMatchExpr}
-            AND i.vault_name = ${this.vaultName}
+            AND i.vault_id = ${this.vaultId}
         `
       )) as Array<{ cnt: number }>
       return Number(rows[0]?.cnt ?? 0)
@@ -190,7 +190,7 @@ export class ShadowIndexQueryOps {
     const fileSize = row.file_size ?? row.fileSize
     return {
       id: Number(row.rowid ?? row.id),
-      vaultName: String(row.vault_name ?? row.vaultName ?? this.vaultName),
+      vaultId: String(row.vault_id ?? row.vaultId ?? this.vaultId),
       filePath: String(row.file_path ?? row.filePath ?? ''),
       date: String(row.date ?? ''),
       createdAt: String(row.created_at ?? row.createdAt ?? ''),
@@ -228,7 +228,7 @@ export class ShadowIndexQueryOps {
           sql`
             SELECT 
               journals_fts.rowid,
-              i.vault_name,
+              i.vault_id,
               i.file_path,
               i.date,
               i.created_at,
@@ -247,7 +247,7 @@ export class ShadowIndexQueryOps {
             FROM journals_fts
             INNER JOIN journals_index i ON i.id = journals_fts.rowid
             WHERE journals_fts MATCH ${ftsMatchExpr}
-              AND i.vault_name = ${this.vaultName}
+              AND i.vault_id = ${this.vaultId}
             ORDER BY i.date DESC
             LIMIT ${needCount}
           `
@@ -409,7 +409,7 @@ export class ShadowIndexQueryOps {
     let query = this.database
       .select({
         id: shadowJournalIndexTable.id,
-        vaultName: shadowJournalIndexTable.vaultName,
+        vaultId: shadowJournalIndexTable.vaultId,
         filePath: shadowJournalIndexTable.filePath,
         date: shadowJournalIndexTable.date,
         createdAt: shadowJournalIndexTable.createdAt,
@@ -492,7 +492,7 @@ export class ShadowIndexQueryOps {
       SELECT i.*, i.raw_content as rawContent, i.tags as rawTags
       FROM journals_index i
       LEFT JOIN journals_fts f ON i.id = f.rowid
-      WHERE i.vault_name = ${this.vaultName}
+      WHERE i.vault_id = ${this.vaultId}
       ORDER BY i.date ${direction}
     `
     if (limit > 0) queryStr = sql`${queryStr} LIMIT ${limit}`
@@ -501,7 +501,7 @@ export class ShadowIndexQueryOps {
     try {
       interface RawFTSRow {
         id: number
-        vault_name: string
+        vault_id: string
         file_path: string
         date: string
         created_at: string
@@ -521,7 +521,7 @@ export class ShadowIndexQueryOps {
       const rawResults = (await this.database.all(queryStr)) as RawFTSRow[]
       return rawResults.map((row) => ({
         id: row.id,
-        vaultName: row.vault_name,
+        vaultId: row.vault_id,
         filePath: row.file_path,
         date: row.date,
         createdAt: row.created_at,

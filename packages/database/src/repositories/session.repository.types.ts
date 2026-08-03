@@ -1,7 +1,7 @@
 export interface InsertSessionInput {
   id: string
   title?: string
-  vaultName: string
+  vaultId: string
   assistantId?: string
   systemPrompt?: string
   providerId: string

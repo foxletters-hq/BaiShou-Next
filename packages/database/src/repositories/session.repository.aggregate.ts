@@ -1,9 +1,21 @@
 import { eq } from 'drizzle-orm'
+import { deriveLegacyVaultId, isVaultId } from '@baishou/shared'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
+
+function resolveSessionVaultId(session: {
+  vaultId?: string | null
+  vaultName?: string | null
+  vault_id?: string | null
+  vault_name?: string | null
+}): string {
+  const raw = String(session.vaultId ?? session.vault_id ?? session.vaultName ?? session.vault_name ?? '')
+  if (!raw) return deriveLegacyVaultId('default')
+  return isVaultId(raw) ? raw : deriveLegacyVaultId(raw)
+}
 
 export class SessionAggregateSync {
   private static writeMutex: Promise<void> = Promise.resolve()
@@ -126,7 +138,7 @@ export class SessionAggregateSync {
 
     stmts.push({
       sql: `INSERT INTO agent_sessions
-              (id, title, vault_name, assistant_id, is_pinned, system_prompt,
+              (id, title, vault_id, assistant_id, is_pinned, system_prompt,
                provider_id, model_id, total_input_tokens, total_output_tokens,
                total_cache_read_input_tokens, total_cache_write_input_tokens,
                total_cost_micros, created_at, updated_at)
@@ -134,7 +146,7 @@ export class SessionAggregateSync {
       args: [
         session.id,
         session.title ?? null,
-        session.vaultName ?? null,
+        resolveSessionVaultId(session),
         session.assistantId ?? null,
         session.isPinned ? 1 : 0,
         session.systemPrompt ?? null,

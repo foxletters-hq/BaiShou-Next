@@ -1,5 +1,6 @@
 import { eq, desc, or, sql, and, inArray } from 'drizzle-orm'
 import type { InferSelectModel } from 'drizzle-orm'
+import { deriveLegacyVaultId, isVaultId } from '@baishou/shared'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
@@ -9,11 +10,16 @@ import { usesSyncTransaction } from './session.repository.utils'
 
 export type AgentSessionRow = InferSelectModel<typeof agentSessionsTable>
 
+function resolveInsertVaultId(raw: string | undefined): string {
+  const value = raw || 'default'
+  return isVaultId(value) ? value : deriveLegacyVaultId(value)
+}
+
 export class SessionCrudOps {
   constructor(private readonly db: AppDatabase) {}
 
   async upsertSession(input: InsertSessionInput): Promise<void> {
-    const vaultName = input.vaultName || 'default'
+    const vaultId = resolveInsertVaultId(input.vaultId)
     const providerId = input.providerId || 'default'
     const modelId = input.modelId || 'default'
 
@@ -22,7 +28,7 @@ export class SessionCrudOps {
       .values({
         id: input.id,
         title: input.title,
-        vaultName: vaultName,
+        vaultId: vaultId,
         assistantId: input.assistantId,
         systemPrompt: input.systemPrompt,
         providerId: providerId,
@@ -67,7 +73,7 @@ export class SessionCrudOps {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string,
-    vaultName?: string
+    vaultId?: string
   ): Promise<AgentSessionRow[]> {
     let matchedSessionIds: string[] = []
 
@@ -137,9 +143,11 @@ export class SessionCrudOps {
     // 组合过滤条件
     const conditions: any[] = []
 
-    const normalizedVaultName = vaultName?.trim()
-    if (normalizedVaultName) {
-      conditions.push(eq(agentSessionsTable.vaultName, normalizedVaultName))
+    const normalizedVaultId = vaultId?.trim()
+      ? resolveInsertVaultId(vaultId.trim())
+      : undefined
+    if (normalizedVaultId) {
+      conditions.push(eq(agentSessionsTable.vaultId, normalizedVaultId))
     }
 
     const normalizedAssistantId = assistantId?.trim()
@@ -177,7 +185,7 @@ export class SessionCrudOps {
 
     const results = (await finalQuery) as AgentSessionRow[]
     console.log(
-      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, vault=${normalizedVaultName ?? '-'}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
+      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, vault=${normalizedVaultId ?? '-'}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
     )
     if (results.length === 0 && !searchQuery && normalizedAssistantId) {
       const allDocs = await this.db.select().from(agentSessionsTable)
