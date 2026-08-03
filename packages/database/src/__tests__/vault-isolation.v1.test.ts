@@ -138,6 +138,16 @@ async function createSchema(db: Client) {
       PRIMARY KEY (vault_id, id)
     )
   `)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS compression_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      summary_text TEXT NOT NULL DEFAULT '',
+      covered_up_to_message_id TEXT NOT NULL DEFAULT '',
+      message_count INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT 0
+    )
+  `)
 }
 
 function vec(n: number): number[] {
@@ -229,6 +239,44 @@ describe('vault isolation V2.2 (vault_id)', () => {
     expect(inA.rows.map((r) => r.id)).toEqual(['sA'])
   })
 
+  it('3b) listEmbeddingChunksByType only returns active vault (JSONL backfill isolation)', async () => {
+    await repo.insertEmbedding({
+      id: 'mem-a',
+      sourceType: 'memory',
+      sourceId: 'memA',
+      groupId: 'memory',
+      vaultId: VAULT_A,
+      chunkIndex: 0,
+      chunkText: 'memory content A only',
+      embedding: vec(0.2),
+      modelId: 'm'
+    })
+    await repo.insertEmbedding({
+      id: 'mem-b',
+      sourceType: 'memory',
+      sourceId: 'memB',
+      groupId: 'memory',
+      vaultId: VAULT_B,
+      chunkIndex: 0,
+      chunkText: 'memory content B only',
+      embedding: vec(0.3),
+      modelId: 'm'
+    })
+
+    // 切到 B 仓 hydration：只应拿到 B，不得带入 A
+    const forB = await repo.listEmbeddingChunksByType('memory', { vaultId: VAULT_B })
+    expect(forB.map((c) => c.sourceId)).toEqual(['memB'])
+    expect(forB.some((c) => c.chunkText.includes('content A'))).toBe(false)
+
+    const forA = await repo.listEmbeddingChunksByType('memory', { vaultId: VAULT_A })
+    expect(forA.map((c) => c.sourceId)).toEqual(['memA'])
+    expect(forA.some((c) => c.chunkText.includes('content B'))).toBe(false)
+
+    // fail-closed
+    expect(await repo.listEmbeddingChunksByType('memory')).toEqual([])
+    expect(await repo.listEmbeddingChunksByType('memory', {})).toEqual([])
+  })
+
   it('4) purgeVaultDerivedData removes B and leaves A intact', async () => {
     await db.execute({
       sql: `INSERT INTO agent_sessions (id, title, vault_id) VALUES (?, ?, ?)`,
@@ -292,8 +340,17 @@ describe('vault isolation V2.2 (vault_id)', () => {
       sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'Latte B')`,
       args: [VAULT_B]
     })
+    await db.execute({
+      sql: `INSERT INTO compression_snapshots (session_id, summary_text, covered_up_to_message_id, message_count, created_at)
+            VALUES ('sA', 'sumA', 'm1', 1, 1)`
+    })
+    await db.execute({
+      sql: `INSERT INTO compression_snapshots (session_id, summary_text, covered_up_to_message_id, message_count, created_at)
+            VALUES ('sB', 'sumB', 'm2', 2, 1)`
+    })
 
-    await purgeVaultDerivedData(exec, VAULT_B)
+    const purged = await purgeVaultDerivedData(exec, VAULT_B)
+    expect(purged.compressionSnapshots).toBe(1)
 
     const embB = await db.execute({
       sql: `SELECT count(*) as c FROM memory_embeddings WHERE vault_id = ?`,
@@ -310,6 +367,14 @@ describe('vault isolation V2.2 (vault_id)', () => {
       args: [VAULT_B]
     })
     expect(Number(sessB.rows[0]?.c)).toBe(0)
+    const snapB = await db.execute({
+      sql: `SELECT count(*) as c FROM compression_snapshots WHERE session_id = 'sB'`
+    })
+    expect(Number(snapB.rows[0]?.c)).toBe(0)
+    const snapA = await db.execute({
+      sql: `SELECT count(*) as c FROM compression_snapshots WHERE session_id = 'sA'`
+    })
+    expect(Number(snapA.rows[0]?.c)).toBe(1)
     const nodesB = await db.execute({
       sql: `SELECT count(*) as c FROM graph_nodes WHERE vault_id = ?`,
       args: [VAULT_B]

@@ -9,6 +9,7 @@ import {
   type IFileSystem
 } from '@baishou/core-mobile'
 import {
+  assertSafeSyncRelPath,
   buildS3ListUrl,
   buildS3ObjectUrl,
   fetchAllS3ListPages,
@@ -157,8 +158,10 @@ class MobileWebDavClient implements ICloudSyncClient {
   }
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
-    const oldPath = this.getRemotePath(oldFilename)
-    const newPath = this.getRemotePath(newFilename)
+    const oldSafe = assertSafeSyncRelPath(oldFilename)
+    const newSafe = assertSafeSyncRelPath(newFilename)
+    const oldPath = this.getRemotePath(oldSafe)
+    const newPath = this.getRemotePath(newSafe)
 
     const response = await this.request('MOVE', oldPath, undefined, {
       Destination: `${this.baseUrl}${newPath}`,
@@ -327,8 +330,10 @@ class MobileS3Client implements ICloudSyncClient {
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
     // S3 不支持原子 rename，需要 copy + delete
-    const oldObjectName = this.basePath + oldFilename
-    const newObjectName = this.basePath + newFilename
+    const oldSafe = assertSafeSyncRelPath(oldFilename)
+    const newSafe = assertSafeSyncRelPath(newFilename)
+    const oldObjectName = this.basePath + oldSafe
+    const newObjectName = this.basePath + newSafe
 
     // 先 copy
     const copyUrl = this.getObjectUrl(newObjectName)
@@ -344,8 +349,17 @@ class MobileS3Client implements ICloudSyncClient {
       throw new Error(`S3 copy failed: ${copyResponse.status} ${copyResponse.statusText}`)
     }
 
-    // 再 delete
-    await this.deleteFile(oldFilename)
+    // 再 delete；失败则删新 key 回滚
+    try {
+      await this.deleteFile(oldSafe)
+    } catch (error) {
+      try {
+        await this.deleteFile(newSafe)
+      } catch {
+        // best-effort rollback
+      }
+      throw error
+    }
   }
 }
 

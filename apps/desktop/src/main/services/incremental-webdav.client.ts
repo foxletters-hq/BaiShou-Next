@@ -4,6 +4,7 @@ import { createClient, WebDAVClient } from 'webdav'
 import {
   INCREMENTAL_SYNC_CHUNK_SIZE,
   WEBDAV_SHALLOW_LIST_CONCURRENCY,
+  assertSafeSyncRelPath,
   isStrictWebDavChildUrl,
   limitExecute,
   normalizeWebDavListingUrl
@@ -320,8 +321,10 @@ export class IncrementalWebDavClient implements ICloudSyncClient {
   }
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
-    const oldPath = this.basePath + oldFilename
-    const newPath = this.basePath + newFilename
+    const oldSafe = assertSafeSyncRelPath(oldFilename)
+    const newSafe = assertSafeSyncRelPath(newFilename)
+    const oldPath = this.basePath + oldSafe
+    const newPath = this.basePath + newSafe
     await this.client.moveFile(oldPath, newPath)
   }
 }

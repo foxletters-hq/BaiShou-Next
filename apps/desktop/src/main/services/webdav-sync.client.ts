@@ -1,6 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import { createClient, WebDAVClient } from 'webdav'
+import { assertSafeSyncRelPath } from '@baishou/shared'
 import { ICloudSyncClient, SyncRecord } from '@baishou/core-desktop'
 
 /**
@@ -93,8 +94,10 @@ export class WebDavSyncClient implements ICloudSyncClient {
   }
 
   async renameFile(oldFilename: string, newFilename: string): Promise<void> {
-    const oldPath = this.basePath + oldFilename
-    const newPath = this.basePath + newFilename
+    const oldSafe = assertSafeSyncRelPath(oldFilename)
+    const newSafe = assertSafeSyncRelPath(newFilename)
+    const oldPath = this.basePath + oldSafe
+    const newPath = this.basePath + newSafe
     // WebDAV 使用 MOVE 方法
     await this.client.moveFile(oldPath, newPath)
   }
