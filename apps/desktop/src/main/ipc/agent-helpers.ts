@@ -540,7 +540,10 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     agentGate,
     rawDataSourceManager: (
       await import('../services/raw-data-source.runtime')
-    ).getRawDataSourceManager()
+    ).getRawDataSourceManager(),
+    knowledgeReader: (await import('../services/desktop-knowledge-reader')).createDesktopKnowledgeReader(
+      embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
+    )
   })
 
   if (activeWorkspace) {

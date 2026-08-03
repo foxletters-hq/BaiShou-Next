@@ -45,6 +45,7 @@ import {
   pushActiveWorkspaceStreamSessionId,
   removeActiveWorkspaceStreamSessionId
 } from './agent-workspace-tool-context'
+import { createDesktopKnowledgeReader } from './desktop-knowledge-reader'
 import { AgentChatService } from '../ipc/AgentChatService'
 
 const checkpointService = new AgentRoundCheckpointService(createNodeWorkspaceFs())
@@ -160,6 +161,8 @@ export async function runWorkspaceStreamChat(params: {
 
     const emitter = new ElectronStreamEmitter(params.event)
     const agentGate = await getWorkspaceAgentGate(workspaceId)
+    const knowledgeReader = createDesktopKnowledgeReader()
+    const notebookId = binding.notebookId?.trim() || undefined
 
     await AgentChatCoreService.runStreamChat({
       emitter,
@@ -175,7 +178,9 @@ export async function runWorkspaceStreamChat(params: {
         disabledToolIds: workspaceTools.disabledToolIds,
         baishou_agent_gate_config: workspaceGateConfig,
         workspaceId,
-        workspaceSystemHint: `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。`
+        workspaceSystemHint: notebookId
+          ? `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。已挂载知识库笔记本 notebookId=${notebookId}，可用 knowledge_search 检索资料。`
+          : `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。尚未挂载知识库笔记本；knowledge_search 需先挂载或显式传入 notebookId。`
       },
       skipUserMessageRecording: params.skipUserMessageRecording,
       realSessionRepo,
@@ -188,9 +193,11 @@ export async function runWorkspaceStreamChat(params: {
       persistBaishouAgentGateConfig: async (config: BaishouAgentGateConfig) => {
         await setWorkspaceGateConfig(workspaceId, config)
       },
+      knowledgeReader,
       workspace: {
         folderRoot,
         sessionKind: 'workspace',
+        notebookId,
         fs: createNodeWorkspaceFs(),
         roundCheckpointService: checkpointService,
         roundCheckpointId
