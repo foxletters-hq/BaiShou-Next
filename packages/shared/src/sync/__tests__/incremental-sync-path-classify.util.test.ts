@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { classifyIncrementalSyncPaths } from '../incremental-sync-path-classify.util'
 
 describe('classifyIncrementalSyncPaths', () => {
-  it('classifies journals, sessions, settings, summaries, assistants, memory, graph', () => {
+  it('classifies journals, sessions, settings, summaries, assistants, memory, graph, notebooks', () => {
     const result = classifyIncrementalSyncPaths([
       'Personal/Journals/2026/07/14.md',
       'Work/Sessions/abc123.json',
@@ -11,7 +11,9 @@ describe('classifyIncrementalSyncPaths', () => {
       'Personal/Summaries/week.md',
       'Personal/Assistants/latte.json',
       'Personal/Memory/2026-07.jsonl',
-      'Personal/Graph/nodes/2026-07.jsonl'
+      'Personal/Graph/nodes/2026-07.jsonl',
+      'Personal/Notebooks/notebooks.jsonl',
+      'Personal/Notebooks/nb1/extracted/src1.md'
     ])
     expect(result.journals).toBe(true)
     expect(result.sessions).toBe(true)
@@ -20,6 +22,7 @@ describe('classifyIncrementalSyncPaths', () => {
     expect(result.assistants).toBe(true)
     expect(result.memory).toBe(true)
     expect(result.graph).toBe(true)
+    expect(result.notebooks).toBe(true)
     expect(result.sessionRefs).toEqual([{ vaultName: 'Work', sessionId: 'abc123' }])
   })
 })
