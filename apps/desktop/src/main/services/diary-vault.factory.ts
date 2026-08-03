@@ -82,6 +82,14 @@ class FixedVaultServiceStub implements IVaultService {
   ): Promise<string[]> {
     return vaultService.pruneOrphanRegistryVaults(manifestVaultScopes, diskVaultNames)
   }
+
+  renameVault(oldNameOrId: string, newName: string) {
+    return vaultService.renameVault(oldNameOrId, newName)
+  }
+
+  estimateVaultLocalSyncBytes(vaultNameOrId: string) {
+    return vaultService.estimateVaultLocalSyncBytes(vaultNameOrId)
+  }
 }
 
 export async function getDiaryManagerForVault(vaultName: string): Promise<DiaryService> {

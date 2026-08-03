@@ -97,6 +97,10 @@ export const settingsApi = {
     preload: (vaultName: string) => ipcRenderer.invoke('vault:preload', vaultName),
     delete: (vaultName: string) => ipcRenderer.invoke('vault:delete', vaultName),
     createDialog: (name?: string) => ipcRenderer.invoke('vault:createDialog', name),
+    rename: (oldNameOrId: string, newName: string) =>
+      ipcRenderer.invoke('vault:rename', oldNameOrId, newName),
+    estimateRenameBytes: (vaultNameOrId: string) =>
+      ipcRenderer.invoke('vault:estimateRenameBytes', vaultNameOrId),
     pickCustomRootPath: () => ipcRenderer.invoke('vault:pickCustomRootPath'),
     getCustomRootPath: () => ipcRenderer.invoke('vault:getCustomRootPath'),
     onRegistryUpdated: (callback: () => void) => {

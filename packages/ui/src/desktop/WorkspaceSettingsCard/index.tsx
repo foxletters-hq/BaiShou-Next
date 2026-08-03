@@ -19,6 +19,8 @@ export type {
 } from './workspace-name.validation'
 
 export interface VaultInfo {
+  /** 稳定身份；旧调用方可能未传 */
+  id?: string
   name: string
   path: string
   createdAt: Date | string

@@ -10,6 +10,8 @@ import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
 
 export interface VaultInfo {
+  /** 稳定身份；旧调用方可能未传 */
+  id?: string
   name: string
   path: string
   createdAt: Date | string
