@@ -27,7 +27,7 @@ import type {
 import { safeParseDate } from '@baishou/shared'
 import { DesktopAttachmentManagerService } from './desktop-attachment-manager.service'
 import { getAgentManagers } from '../ipc/agent-helpers'
-import { vaultService } from '../ipc/vault.ipc'
+import { vaultService, resolveVaultIdByName } from '../ipc/vault.ipc'
 import { getDiaryManagerForVault } from './diary-vault.factory'
 import {
   emptySectionResult,
@@ -408,6 +408,7 @@ export async function importChatMessages(
 
       const vaultName = session.vault_name?.trim() || 'Personal'
       await ensureTargetVault(vaultName)
+      const vaultId = resolveVaultIdByName(vaultName)
 
       const newSessionId = randomUUID()
       await sessionManager.upsertSession({
@@ -418,7 +419,7 @@ export async function importChatMessages(
             'auto.apps.desktop.src.main.services.legacy.selective.migration.service.L991',
             '导入的对话'
           ),
-        vaultName,
+        vaultId,
         assistantId: mappedAssistantId,
         systemPrompt: session.system_prompt ?? undefined,
         providerId: session.provider_id || 'default',

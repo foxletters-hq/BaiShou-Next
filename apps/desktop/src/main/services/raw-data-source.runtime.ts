@@ -252,7 +252,8 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
   const r1 = await service.backfillFromChunks(chatChunks, options.vaultId)
   const r2 = await service.backfillFromChunks(memoryChunks, options.vaultId)
   const manual = await service.migrateManualAndPatchMetadata(manualChunks, options.vaultId, {
-    normalizeManualToMemory: (params) => options.hsRepo.normalizeManualToMemory(params),
+    normalizeManualToMemory: ({ vaultName, sourceIds }) =>
+      options.hsRepo.normalizeManualToMemory({ vaultId: vaultName, sourceIds }),
     updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
       options.hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
   })
@@ -443,7 +444,7 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
       scheduleConsumeKnowledgeIngestJobs(reason)
     }
 
-    logger.info(`[KnowledgeHydration] done (${reason})`, result)
+    logger.info(`[KnowledgeHydration] done (${reason})`, { ...result })
   } catch (e) {
     logger.warn(`[KnowledgeHydration] failed (${reason}):`, e as Error)
   }

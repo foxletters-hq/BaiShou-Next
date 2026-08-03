@@ -35,6 +35,7 @@ describe.sequential('McpService', () => {
     } as unknown as ToolRegistry
     service = new McpService(emptyRegistry, async () => ({
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: 'vlt_test',
       vaultName: 'Personal',
       userConfig: {}
     }))
@@ -259,6 +260,7 @@ describe.sequential('McpService', () => {
 
     const context = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: 'vlt_test',
       vaultName: 'Personal',
       userConfig: {}
     }

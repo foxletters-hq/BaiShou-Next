@@ -38,7 +38,9 @@ export async function buildAgentSystemPrompt(
   return buildSystemPromptForSession({
     sessionId,
     sessionRepo: realSessionRepo,
-    assistantRepo: realAssistantRepo,
+    assistantRepo: {
+      findById: async (id) => (await realAssistantRepo.findById(id)) ?? null
+    },
     userConfig: userConfig as Record<string, unknown>,
     provider,
     modelId,
