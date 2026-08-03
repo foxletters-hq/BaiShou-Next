@@ -15,7 +15,7 @@ import {
   type HybridSearchRuntimeState
 } from './hybrid-search.repository.constants'
 
-type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs' | 'vaultName'>
+type QueryFilter = Pick<VectorSearchQueryFilter, 'sourceType' | 'startMs' | 'endMs' | 'vaultId'>
 type SqlBindValue = string | number | null | Uint8Array | ArrayBuffer
 
 export class HybridSearchVectorQuery {
@@ -36,10 +36,10 @@ export class HybridSearchVectorQuery {
     const conditions: string[] = []
     const args: SqlBindValue[] = []
 
-    const vaultName = filter?.vaultName?.trim()
-    if (vaultName) {
-      conditions.push(`${columnPrefix}vault_name = ?`)
-      args.push(vaultName)
+    const vaultId = filter?.vaultId?.trim()
+    if (vaultId) {
+      conditions.push(`${columnPrefix}vault_id = ?`)
+      args.push(vaultId)
     } else {
       // 未传仓库 → fail-closed，避免漏传退化成跨仓库检索
       conditions.push('1 = 0')
@@ -75,7 +75,7 @@ export class HybridSearchVectorQuery {
   async queryFTS(
     keyword: string,
     limit: number,
-    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultName'>
+    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultId'>
   ): Promise<ISearchResult[]> {
     const timeWhere = this.buildWhereClause(filter)
     const keywordClause = timeWhere.sql ? ' AND chunk_text LIKE ?' : ' WHERE chunk_text LIKE ?'
@@ -113,7 +113,7 @@ export class HybridSearchVectorQuery {
       sourceType: filter?.sourceType,
       startMs: filter?.startMs,
       endMs: filter?.endMs,
-      vaultName: filter?.vaultName
+      vaultId: filter?.vaultId
     }
 
     if (this.runtime.vecDistanceCosineAvailable !== false) {

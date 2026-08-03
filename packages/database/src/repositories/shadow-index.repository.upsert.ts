@@ -45,14 +45,14 @@ function trackAssignedId(maps: IdPathMaps, filePath: string, rowId: number): voi
   maps.pathById.set(rowId, normalizedPath)
 }
 
-async function loadIdPathMaps(database: UpsertDb, vaultName: string): Promise<IdPathMaps> {
+async function loadIdPathMaps(database: UpsertDb, vaultId: string): Promise<IdPathMaps> {
   const existing = await database
     .select({
       id: shadowJournalIndexTable.id,
       filePath: shadowJournalIndexTable.filePath
     })
     .from(shadowJournalIndexTable)
-    .where(eq(shadowJournalIndexTable.vaultName, vaultName))
+    .where(eq(shadowJournalIndexTable.vaultId, vaultId))
 
   return buildMapsFromRows(existing)
 }
@@ -60,15 +60,15 @@ async function loadIdPathMaps(database: UpsertDb, vaultName: string): Promise<Id
 function buildUpsertSet(
   indexData: Omit<
     UpsertShadowIndexPayload,
-    'rawContent' | 'tags' | 'tagColors' | 'id' | 'filePath' | 'vaultName'
+    'rawContent' | 'tags' | 'tagColors' | 'id' | 'filePath' | 'vaultId'
   >,
-  vaultName: string,
+  vaultId: string,
   rawContent: string,
   tags: string,
   tagColors: string | null
 ) {
   return {
-    vaultName,
+    vaultId,
     date: indexData.date,
     createdAt: indexData.createdAt,
     updatedAt: indexData.updatedAt,
@@ -127,7 +127,7 @@ async function syncFtsRowAsync(
 async function upsertOne(
   db: UpsertDb,
   payload: UpsertShadowIndexPayload,
-  vaultName: string,
+  vaultId: string,
   maps: IdPathMaps
 ): Promise<number> {
   const filePath = normalizeShadowFilePath(payload.filePath)
@@ -137,7 +137,7 @@ async function upsertOne(
     tagColors = null,
     id: requestedId,
     filePath: _path,
-    vaultName: _vault,
+    vaultId: _vault,
     ...indexData
   } = payload
 
@@ -147,11 +147,11 @@ async function upsertOne(
   if (existingId != null) {
     await db
       .update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors))
+      .set(buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
-          eq(shadowJournalIndexTable.vaultName, vaultName)
+          eq(shadowJournalIndexTable.vaultId, vaultId)
         )
       )
 
@@ -168,7 +168,7 @@ async function upsertOne(
   }
 
   const baseValues = {
-    vaultName,
+    vaultId,
     ...indexData,
     filePath,
     rawContent,
@@ -187,7 +187,7 @@ async function upsertOne(
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
       target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors)
+      set: buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
 
@@ -203,7 +203,7 @@ async function upsertOne(
 function upsertOneSync(
   tx: UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
   payload: UpsertShadowIndexPayload,
-  vaultName: string,
+  vaultId: string,
   maps: IdPathMaps
 ): number {
   const filePath = normalizeShadowFilePath(payload.filePath)
@@ -213,7 +213,7 @@ function upsertOneSync(
     tagColors = null,
     id: requestedId,
     filePath: _path,
-    vaultName: _vault,
+    vaultId: _vault,
     ...indexData
   } = payload
 
@@ -222,11 +222,11 @@ function upsertOneSync(
   const existingId = maps.idByPath.get(filePath)
   if (existingId != null) {
     tx.update(shadowJournalIndexTable)
-      .set(buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors))
+      .set(buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors))
       .where(
         and(
           eq(shadowJournalIndexTable.id, existingId),
-          eq(shadowJournalIndexTable.vaultName, vaultName)
+          eq(shadowJournalIndexTable.vaultId, vaultId)
         )
       )
       .run()
@@ -244,7 +244,7 @@ function upsertOneSync(
   }
 
   const baseValues = {
-    vaultName,
+    vaultId,
     ...indexData,
     filePath,
     rawContent,
@@ -260,7 +260,7 @@ function upsertOneSync(
     .values(insertId != null ? { ...baseValues, id: insertId } : baseValues)
     .onConflictDoUpdate({
       target: shadowJournalIndexTable.id,
-      set: buildUpsertSet(indexData, vaultName, rawContent, tags, serializedTagColors)
+      set: buildUpsertSet(indexData, vaultId, rawContent, tags, serializedTagColors)
     })
     .returning({ id: shadowJournalIndexTable.id })
     .all() as any
@@ -284,11 +284,11 @@ export class ShadowIndexUpsertOps {
 
   constructor(
     private readonly database: AppDatabase,
-    private readonly vaultName: string
+    private readonly vaultId: string
   ) {}
 
-  private resolveVaultName(payload: UpsertShadowIndexPayload): string {
-    return payload.vaultName ?? this.vaultName
+  private resolveVaultId(payload: UpsertShadowIndexPayload): string {
+    return payload.vaultId ?? this.vaultId
   }
 
   private async withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -307,9 +307,9 @@ export class ShadowIndexUpsertOps {
   }
 
   async upsert(payload: UpsertShadowIndexPayload): Promise<number> {
-    const vaultName = this.resolveVaultName(payload)
-    const maps = await loadIdPathMaps(this.database, vaultName)
-    const rowId = await upsertOne(this.database, payload, vaultName, maps)
+    const vaultId = this.resolveVaultId(payload)
+    const maps = await loadIdPathMaps(this.database, vaultId)
+    const rowId = await upsertOne(this.database, payload, vaultId, maps)
 
     await syncFtsRowAsync(
       this.database,
@@ -325,7 +325,7 @@ export class ShadowIndexUpsertOps {
     if (payloads.length === 0) return []
 
     return this.withWriteLock(async () => {
-      const maps = await loadIdPathMaps(this.database, this.vaultName)
+      const maps = await loadIdPathMaps(this.database, this.vaultId)
       const rowIds: number[] = []
       const driver = detectSqliteDriver(this.database)
 
@@ -339,7 +339,7 @@ export class ShadowIndexUpsertOps {
         // 必须走 upsertOneSync，否则并发写同一连接会导致 Android 原生崩溃。
         await this.database.transaction(async (tx) => {
           for (const payload of payloads) {
-            const itemVault = this.resolveVaultName(payload)
+            const itemVault = this.resolveVaultId(payload)
             const rowId = upsertOneSync(
               tx as UpsertDb & { run: (query: ReturnType<typeof sql>) => void },
               payload,
@@ -370,7 +370,7 @@ export class ShadowIndexUpsertOps {
       } else {
         await this.database.transaction(async (tx) => {
           for (const payload of payloads) {
-            const itemVault = this.resolveVaultName(payload)
+            const itemVault = this.resolveVaultId(payload)
             const rowId = await upsertOne(tx, payload, itemVault, maps)
             rowIds.push(rowId)
           }
@@ -401,7 +401,7 @@ export class ShadowIndexUpsertOps {
         .set({ fileMtimeMs, fileSize })
         .where(
           and(
-            eq(shadowJournalIndexTable.vaultName, this.vaultName),
+            eq(shadowJournalIndexTable.vaultId, this.vaultId),
             like(shadowJournalIndexTable.date, `${dateStr}%`)
           )
         )
@@ -414,7 +414,7 @@ export class ShadowIndexUpsertOps {
       .where(
         and(
           eq(shadowJournalIndexTable.id, id),
-          eq(shadowJournalIndexTable.vaultName, this.vaultName)
+          eq(shadowJournalIndexTable.vaultId, this.vaultId)
         )
       )
       .returning({ id: shadowJournalIndexTable.id })
@@ -433,18 +433,18 @@ export class ShadowIndexUpsertOps {
   }
 
   /** 删除指定 vault 的全部影子索引（含 FTS），供删除工作空间时使用 */
-  async deleteAllForVault(vaultName?: string): Promise<void> {
-    const targetVault = vaultName ?? this.vaultName
+  async deleteAllForVault(vaultId?: string): Promise<void> {
+    const targetVault = vaultId ?? this.vaultId
     const rows = await this.database
       .select({ id: shadowJournalIndexTable.id })
       .from(shadowJournalIndexTable)
-      .where(eq(shadowJournalIndexTable.vaultName, targetVault))
+      .where(eq(shadowJournalIndexTable.vaultId, targetVault))
 
     if (rows.length === 0) return
 
     await this.database
       .delete(shadowJournalIndexTable)
-      .where(eq(shadowJournalIndexTable.vaultName, targetVault))
+      .where(eq(shadowJournalIndexTable.vaultId, targetVault))
 
     for (const { id } of rows) {
       try {

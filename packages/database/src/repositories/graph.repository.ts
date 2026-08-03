@@ -34,7 +34,7 @@ function ms(date: Date | null | undefined): number | null {
 
 export interface GraphNodeRow {
   id: string
-  vaultName: string
+  vaultId: string
   nodeType: string
   name: string
   aliases: string[]
@@ -55,7 +55,7 @@ export interface GraphNodeRow {
 
 export interface GraphEdgeRow {
   id: string
-  vaultName: string
+  vaultId: string
   fromId: string
   toId: string
   edgeType: string
@@ -78,7 +78,7 @@ export interface GraphEdgeRow {
 
 export interface UpsertNodeInput {
   id?: string
-  vaultName: string
+  vaultId: string
   nodeType: GraphNodeType | string
   name: string
   aliases?: string[]
@@ -101,7 +101,7 @@ export interface UpsertNodeInput {
 
 export interface UpsertEdgeInput {
   id: string
-  vaultName: string
+  vaultId: string
   fromId: string
   toId: string
   edgeType: GraphEdgeType | string
@@ -125,7 +125,7 @@ export interface UpsertEdgeInput {
 function mapNode(row: typeof graphNodesTable.$inferSelect): GraphNodeRow {
   return {
     id: row.id,
-    vaultName: row.vaultName,
+    vaultId: row.vaultId,
     nodeType: row.nodeType,
     name: row.name,
     aliases: parseAliases(row.aliases),
@@ -148,7 +148,7 @@ function mapNode(row: typeof graphNodesTable.$inferSelect): GraphNodeRow {
 function mapEdge(row: typeof graphEdgesTable.$inferSelect): GraphEdgeRow {
   return {
     id: row.id,
-    vaultName: row.vaultName,
+    vaultId: row.vaultId,
     fromId: row.fromId,
     toId: row.toId,
     edgeType: row.edgeType,
@@ -177,7 +177,7 @@ export class GraphRepository {
   constructor(private readonly database: AppDatabase) {}
 
   async findNodeByNameOrAlias(
-    vaultName: string,
+    vaultId: string,
     name: string,
     type: GraphNodeType | string
   ): Promise<GraphNodeRow | null> {
@@ -188,7 +188,7 @@ export class GraphRepository {
       .from(graphNodesTable)
       .where(
         and(
-          eq(graphNodesTable.vaultName, vaultName),
+          eq(graphNodesTable.vaultId, vaultId),
           eq(graphNodesTable.nodeType, type),
           isNull(graphNodesTable.deletedAt)
         )
@@ -203,13 +203,13 @@ export class GraphRepository {
   }
 
   async searchNodesByVector(
-    vaultName: string,
+    vaultId: string,
     vector: number[],
     topK: number,
     opts?: { nodeType?: string; modelId?: string }
   ): Promise<Array<GraphNodeRow & { distance: number }>> {
     const filters = [
-      eq(graphNodesTable.vaultName, vaultName),
+      eq(graphNodesTable.vaultId, vaultId),
       isNull(graphNodesTable.deletedAt),
       ...(opts?.nodeType ? [eq(graphNodesTable.nodeType, opts.nodeType)] : [])
     ]
@@ -232,7 +232,7 @@ export class GraphRepository {
   }
 
   async searchNodesByName(
-    vaultName: string,
+    vaultId: string,
     query: string,
     opts?: { nodeTypes?: Array<GraphNodeType | string>; limit?: number }
   ): Promise<GraphNodeRow[]> {
@@ -245,7 +245,7 @@ export class GraphRepository {
       .from(graphNodesTable)
       .where(
         and(
-          eq(graphNodesTable.vaultName, vaultName),
+          eq(graphNodesTable.vaultId, vaultId),
           isNull(graphNodesTable.deletedAt),
           or(like(graphNodesTable.name, pattern), like(graphNodesTable.aliases, pattern))
         )
@@ -271,7 +271,7 @@ export class GraphRepository {
     const createdAt = input.createdAt ?? now
 
     if (!input.forceId) {
-      const existing = await this.findNodeByNameOrAlias(input.vaultName, name, input.nodeType)
+      const existing = await this.findNodeByNameOrAlias(input.vaultId, name, input.nodeType)
       if (existing) {
         await this.touchNode(existing.id, {
           aliases: mergeAliases(existing.aliases, input.aliases ?? [name]),
@@ -285,7 +285,7 @@ export class GraphRepository {
         return existing.id
       }
       if (input.embedding?.length) {
-        const hits = await this.searchNodesByVector(input.vaultName, input.embedding, 1, {
+        const hits = await this.searchNodesByVector(input.vaultId, input.embedding, 1, {
           nodeType: input.nodeType,
           modelId: input.modelId
         })
@@ -315,7 +315,7 @@ export class GraphRepository {
     const embeddingBuf = input.embedding?.length ? serializeVector(input.embedding) : null
     const values = {
       id,
-      vaultName: input.vaultName,
+      vaultId: input.vaultId,
       nodeType: input.nodeType,
       name,
       aliases,
@@ -394,7 +394,7 @@ export class GraphRepository {
     const updatedAt = input.updatedAt ?? now
     const values = {
       id: input.id,
-      vaultName: input.vaultName,
+      vaultId: input.vaultId,
       fromId: input.fromId,
       toId: input.toId,
       edgeType: input.edgeType,
@@ -454,7 +454,7 @@ export class GraphRepository {
   }
 
   async supersedeEdgesBySourceRef(
-    vaultName: string,
+    vaultId: string,
     sourceRef: string,
     opts?: { keepUserOrigin?: boolean }
   ): Promise<void> {
@@ -464,7 +464,7 @@ export class GraphRepository {
       .from(graphEdgesTable)
       .where(
         and(
-          eq(graphEdgesTable.vaultName, vaultName),
+          eq(graphEdgesTable.vaultId, vaultId),
           eq(graphEdgesTable.sourceRef, sourceRef),
           eq(graphEdgesTable.isCurrent, true),
           isNull(graphEdgesTable.deletedAt)
@@ -477,7 +477,7 @@ export class GraphRepository {
   }
 
   async traverse(
-    vaultName: string,
+    vaultId: string,
     centerId: string,
     depth: 1 | 2,
     opts?: { approvedOnly?: boolean }
@@ -493,7 +493,7 @@ export class GraphRepository {
         .from(graphEdgesTable)
         .where(
           and(
-            eq(graphEdgesTable.vaultName, vaultName),
+            eq(graphEdgesTable.vaultId, vaultId),
             eq(graphEdgesTable.isCurrent, true),
             isNull(graphEdgesTable.deletedAt),
             or(inArray(graphEdgesTable.fromId, frontier), inArray(graphEdgesTable.toId, frontier))
@@ -532,7 +532,7 @@ export class GraphRepository {
    * ordered by validFrom. Used by GraphRAG timeline mode.
    */
   async listEntityTimeline(
-    vaultName: string,
+    vaultId: string,
     nodeId: string,
     opts?: { approvedOnly?: boolean; limit?: number }
   ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
@@ -543,7 +543,7 @@ export class GraphRepository {
       .from(graphEdgesTable)
       .where(
         and(
-          eq(graphEdgesTable.vaultName, vaultName),
+          eq(graphEdgesTable.vaultId, vaultId),
           isNull(graphEdgesTable.deletedAt),
           or(eq(graphEdgesTable.fromId, nodeId), eq(graphEdgesTable.toId, nodeId))
         )
@@ -576,7 +576,7 @@ export class GraphRepository {
   }
 
   async getGlobalGraph(opts: {
-    vaultName: string
+    vaultId: string
     maxNodes?: number
     minMentionCount?: number
     nodeTypes?: Array<GraphNodeType | string>
@@ -588,7 +588,7 @@ export class GraphRepository {
         .select()
         .from(graphNodesTable)
         .where(
-          and(eq(graphNodesTable.vaultName, opts.vaultName), isNull(graphNodesTable.deletedAt))
+          and(eq(graphNodesTable.vaultId, opts.vaultId), isNull(graphNodesTable.deletedAt))
         )
         .orderBy(desc(graphNodesTable.mentionCount))
         .limit(maxNodes)
@@ -605,7 +605,7 @@ export class GraphRepository {
         .from(graphEdgesTable)
         .where(
           and(
-            eq(graphEdgesTable.vaultName, opts.vaultName),
+            eq(graphEdgesTable.vaultId, opts.vaultId),
             eq(graphEdgesTable.isCurrent, true),
             isNull(graphEdgesTable.deletedAt)
           )
@@ -650,19 +650,19 @@ export class GraphRepository {
       .where(eq(graphEdgesTable.id, id))
   }
 
-  async listNodeIds(vaultName: string): Promise<string[]> {
+  async listNodeIds(vaultId: string): Promise<string[]> {
     const rows = await this.database
       .select({ id: graphNodesTable.id })
       .from(graphNodesTable)
-      .where(and(eq(graphNodesTable.vaultName, vaultName), isNull(graphNodesTable.deletedAt)))
+      .where(and(eq(graphNodesTable.vaultId, vaultId), isNull(graphNodesTable.deletedAt)))
     return rows.map((r) => r.id)
   }
 
-  async listEdgeIds(vaultName: string): Promise<string[]> {
+  async listEdgeIds(vaultId: string): Promise<string[]> {
     const rows = await this.database
       .select({ id: graphEdgesTable.id })
       .from(graphEdgesTable)
-      .where(and(eq(graphEdgesTable.vaultName, vaultName), isNull(graphEdgesTable.deletedAt)))
+      .where(and(eq(graphEdgesTable.vaultId, vaultId), isNull(graphEdgesTable.deletedAt)))
     return rows.map((r) => r.id)
   }
 
@@ -684,13 +684,13 @@ export class GraphRepository {
     return rows.map((r) => r.id)
   }
 
-  async listPendingEdges(vaultName: string): Promise<GraphEdgeRow[]> {
+  async listPendingEdges(vaultId: string): Promise<GraphEdgeRow[]> {
     const rows = await this.database
       .select()
       .from(graphEdgesTable)
       .where(
         and(
-          eq(graphEdgesTable.vaultName, vaultName),
+          eq(graphEdgesTable.vaultId, vaultId),
           eq(graphEdgesTable.reviewStatus, 'pending'),
           isNull(graphEdgesTable.deletedAt)
         )
@@ -701,7 +701,7 @@ export class GraphRepository {
   /** Apply a collapsed JSONL node row into SQLite (sync path; forceId). */
   async applyRawNode(row: {
     id: string
-    vaultName: string
+    vaultId: string
     nodeType: string
     name: string
     aliases: string[]
@@ -726,7 +726,7 @@ export class GraphRepository {
     await this.upsertNode({
       id: row.id,
       forceId: true,
-      vaultName: row.vaultName,
+      vaultId: row.vaultId,
       nodeType: row.nodeType,
       name: row.name,
       aliases: row.aliases,
@@ -748,7 +748,7 @@ export class GraphRepository {
 
   async applyRawEdge(row: {
     id: string
-    vaultName: string
+    vaultId: string
     fromId: string
     toId: string
     edgeType: string
@@ -774,7 +774,7 @@ export class GraphRepository {
     }
     await this.upsertEdge({
       id: row.id,
-      vaultName: row.vaultName,
+      vaultId: row.vaultId,
       fromId: row.fromId,
       toId: row.toId,
       edgeType: row.edgeType,

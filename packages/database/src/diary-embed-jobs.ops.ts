@@ -5,7 +5,7 @@ import type { AppDatabase } from './types'
 export type DiaryEmbedJobStatus = 'pending' | 'running' | 'failed'
 
 export interface DiaryEmbedJobKey {
-  vaultName: string
+  vaultId: string
   diaryId: number
   contentHash: string
 }
@@ -22,7 +22,7 @@ export async function enqueueDiaryEmbedJob(
     .from(diaryEmbedJobsTable)
     .where(
       and(
-        eq(diaryEmbedJobsTable.vaultName, job.vaultName),
+        eq(diaryEmbedJobsTable.vaultId, job.vaultId),
         eq(diaryEmbedJobsTable.diaryId, job.diaryId)
       )
     )
@@ -43,7 +43,7 @@ export async function enqueueDiaryEmbedJob(
   }
 
   await database.insert(diaryEmbedJobsTable).values({
-    vaultName: job.vaultName,
+    vaultId: job.vaultId,
     diaryId: job.diaryId,
     contentHash: job.contentHash,
     status: error ? 'failed' : 'pending',
@@ -57,13 +57,13 @@ export async function enqueueDiaryEmbedJob(
 
 export async function deleteDiaryEmbedJob(
   database: AppDatabase,
-  vaultName: string,
+  vaultId: string,
   diaryId: number
 ): Promise<void> {
   await database
     .delete(diaryEmbedJobsTable)
     .where(
-      and(eq(diaryEmbedJobsTable.vaultName, vaultName), eq(diaryEmbedJobsTable.diaryId, diaryId))
+      and(eq(diaryEmbedJobsTable.vaultId, vaultId), eq(diaryEmbedJobsTable.diaryId, diaryId))
     )
 }
 
@@ -82,7 +82,7 @@ export async function claimDiaryEmbedJobs(
 ): Promise<
   Array<{
     id: number
-    vaultName: string
+    vaultId: string
     diaryId: number
     contentHash: string
     attempts: number
@@ -102,7 +102,7 @@ export async function claimDiaryEmbedJobs(
 
   const claimed: Array<{
     id: number
-    vaultName: string
+    vaultId: string
     diaryId: number
     contentHash: string
     attempts: number
@@ -119,7 +119,7 @@ export async function claimDiaryEmbedJobs(
       .where(eq(diaryEmbedJobsTable.id, row.id))
     claimed.push({
       id: row.id,
-      vaultName: row.vaultName,
+      vaultId: row.vaultId,
       diaryId: row.diaryId,
       contentHash: row.contentHash,
       attempts: row.attempts + 1
