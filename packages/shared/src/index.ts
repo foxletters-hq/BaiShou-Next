@@ -55,6 +55,11 @@ export * from './utils/web-search-config.util'
 export * from './utils/mcp-auth.util'
 export { signS3Request, s3FetchHeaders } from './utils/aws-v4-sign'
 export { sha256Pure, hmacSha256Pure } from './utils/sha256-pure'
+export {
+  createRandomVaultId,
+  deriveLegacyVaultId,
+  isVaultId
+} from './utils/vault-id.util'
 export * from './utils/s3-list.util'
 export * from './utils/s3-url'
 export * from './utils/cloud-sync-config.util'

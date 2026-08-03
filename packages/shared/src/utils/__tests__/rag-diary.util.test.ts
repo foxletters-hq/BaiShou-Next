@@ -39,8 +39,8 @@ describe('sortDiariesByDateDesc', () => {
 
 describe('diary embedding keys', () => {
   it('builds vault-scoped source and group ids', () => {
-    expect(buildDiaryEmbeddingSourceId('Personal', 42)).toBe('Personal#42')
-    expect(buildDiaryEmbeddingGroupId('Personal')).toBe('diary:Personal')
+    expect(buildDiaryEmbeddingSourceId('vlt_abc', 42)).toBe('vlt_abc#42')
+    expect(buildDiaryEmbeddingGroupId('anything')).toBe('diary')
     expect(isLegacyDiaryEmbeddingSourceId('42')).toBe(true)
     expect(isLegacyDiaryEmbeddingSourceId('Personal#42')).toBe(false)
   })
@@ -52,13 +52,13 @@ describe('filterUnindexedDiaries', () => {
       { id: 1, updatedAt: new Date('2026-05-20T00:00:00Z') },
       { id: 2, updatedAt: new Date('2026-05-20T00:00:00Z') }
     ]
-    const embeddedIds = new Set([buildDiaryEmbeddingSourceId('Personal', 1)])
+    const embeddedIds = new Set([buildDiaryEmbeddingSourceId('vlt_abc', 1)])
     const embeddedUpdatedAtMap = new Map<string, number>([
-      [buildDiaryEmbeddingSourceId('Personal', 1), new Date('2026-05-20T00:00:00Z').getTime()]
+      [buildDiaryEmbeddingSourceId('vlt_abc', 1), new Date('2026-05-20T00:00:00Z').getTime()]
     ])
 
     const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
-      resolveSourceId: (d) => buildDiaryEmbeddingSourceId('Personal', d.id)
+      resolveSourceId: (d) => buildDiaryEmbeddingSourceId('vlt_abc', d.id)
     })
 
     expect(result).toHaveLength(1)
