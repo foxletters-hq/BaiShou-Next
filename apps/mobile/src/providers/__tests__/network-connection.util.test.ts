@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest'
 import { resolveConnectionType, resolveIsMetered } from '../network-connection.util'
 
 describe('network-connection.util', () => {

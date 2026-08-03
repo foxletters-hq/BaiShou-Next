@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_SYNC_TRAFFIC_PROMPT_ENABLED,
   DEFAULT_SYNC_TRAFFIC_THRESHOLD_BYTES,
