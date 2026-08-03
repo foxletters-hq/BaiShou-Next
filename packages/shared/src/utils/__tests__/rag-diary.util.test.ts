@@ -5,8 +5,7 @@ import {
   filterUnindexedDiaries,
   buildDiaryEmbeddingSourceId,
   buildDiaryEmbeddingGroupId,
-  isLegacyDiaryEmbeddingSourceId,
-  filterDiaryScopedSearchResults
+  isLegacyDiaryEmbeddingSourceId
 } from '../rag-diary.util'
 
 describe('sortDiariesByDateAsc', () => {
@@ -44,21 +43,6 @@ describe('diary embedding keys', () => {
     expect(buildDiaryEmbeddingGroupId('Personal')).toBe('diary:Personal')
     expect(isLegacyDiaryEmbeddingSourceId('42')).toBe(true)
     expect(isLegacyDiaryEmbeddingSourceId('Personal#42')).toBe(false)
-  })
-})
-
-describe('filterDiaryScopedSearchResults', () => {
-  it('keeps non-diary rows and filters diary rows by vault group', () => {
-    const results = [
-      { sourceType: 'chat', sessionId: 'sess-1', chunkText: 'a' },
-      { sourceType: 'diary', sessionId: 'diary:Personal', chunkText: 'b' },
-      { sourceType: 'diary', sessionId: 'diary:Work', chunkText: 'c' },
-      { sourceType: 'diary', groupId: 'diary:Personal', chunkText: 'd' }
-    ]
-
-    const filtered = filterDiaryScopedSearchResults(results, 'Personal')
-
-    expect(filtered.map((r) => r.chunkText)).toEqual(['a', 'b', 'd'])
   })
 })
 

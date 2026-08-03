@@ -39,6 +39,7 @@ describe('EmbeddingAdapter', () => {
         sourceType: 'diary',
         sourceId: '1',
         groupId: 'batch',
+        vaultName: 'Personal',
         requireSuccess: true
       })
     ).rejects.toThrow(/Embedding API returned no vectors/)
@@ -60,6 +61,7 @@ describe('EmbeddingAdapter', () => {
         sourceType: 'diary',
         sourceId: '2',
         groupId: 'batch',
+        vaultName: 'Personal',
         requireSuccess: true
       })
     ).rejects.toThrow(/incomplete vectors/)
@@ -73,6 +75,7 @@ describe('EmbeddingAdapter', () => {
       sourceType: 'diary',
       sourceId: '3',
       groupId: 'batch',
+      vaultName: 'Personal',
       requireSuccess: true
     })
 
