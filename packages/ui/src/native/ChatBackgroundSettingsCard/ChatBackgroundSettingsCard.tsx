@@ -165,7 +165,7 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
           <TouchableOpacity
             activeOpacity={0.6}
             onPress={onClearBackground}
-            style={[styles.resetBtn, { borderColor: colors.borderMuted }]}
+            style={[styles.resetBtn, { borderColor: colors.borderControl }]}
           >
             <Text style={[styles.resetBtnText, { color: colors.error }]}>
               {t('settings.chat_background_reset', '清除背景')}

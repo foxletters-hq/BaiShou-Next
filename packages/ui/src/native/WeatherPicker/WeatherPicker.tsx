@@ -68,7 +68,7 @@ export const WeatherPicker: React.FC<NativeWeatherPickerProps> = ({ value, onCha
           {
             opacity: pressed ? 0.9 : 1,
             backgroundColor: colors.bgSurface,
-            borderColor: open || selectedId ? colors.primary : colors.borderSubtle,
+            borderColor: open || selectedId ? colors.primary : colors.borderControl,
             shadowColor: open ? colors.primary : 'transparent',
             ...(open
               ? {

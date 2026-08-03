@@ -111,12 +111,12 @@ export const TtsModelCombobox: React.FC<TtsModelComboboxProps> = ({
               comboboxStyles.modalPanel,
               {
                 backgroundColor: colors.bgSurface,
-                borderColor: colors.borderSubtle,
+                borderColor: colors.borderMuted,
                 borderRadius: tokens.radius.lg
               }
             ]}
           >
-            <View style={[comboboxStyles.modalHeader, { borderBottomColor: colors.borderSubtle }]}>
+            <View style={[comboboxStyles.modalHeader, { borderBottomColor: colors.borderMuted }]}>
               <Text style={[comboboxStyles.modalTitle, { color: colors.textPrimary }]}>
                 {t('tts.settings.model_id_label', '模型 ID')}
               </Text>

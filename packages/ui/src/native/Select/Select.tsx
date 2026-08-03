@@ -184,7 +184,7 @@ export const Select: React.FC<NativeSelectProps> = ({
                 settingsSelectorStyles.trigger,
                 {
                   backgroundColor: colors.bgSurface,
-                  borderColor: hasValue ? colors.borderMuted : colors.borderSubtle
+                  borderColor: hasValue ? colors.borderControl : colors.borderSubtle
                 }
               ]
             : {

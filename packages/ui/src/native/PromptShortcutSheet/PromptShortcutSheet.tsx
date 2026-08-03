@@ -427,7 +427,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
                   <View style={styles.formActions}>
                     <Pressable
-                      style={[styles.formBtn, { borderColor: colors.borderMuted }]}
+                      style={[styles.formBtn, { borderColor: colors.borderControl }]}
                       onPress={resetEditing}
                     >
                       <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
@@ -578,7 +578,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           style={[
                             styles.pageNavBtn,
                             {
-                              borderColor: colors.borderMuted,
+                              borderColor: colors.borderControl,
                               opacity: currentPage <= 1 ? 0.4 : 1
                             }
                           ]}
@@ -595,7 +595,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                           style={[
                             styles.pageNavBtn,
                             {
-                              borderColor: colors.borderMuted,
+                              borderColor: colors.borderControl,
                               opacity: currentPage >= totalPages ? 0.4 : 1
                             }
                           ]}

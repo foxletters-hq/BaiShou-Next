@@ -120,7 +120,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
     styles.pageBtn,
     {
       backgroundColor: colors.bgSurface,
-      borderColor: colors.borderSubtle,
+      borderColor: colors.borderControl,
       opacity: isDisabled ? 0.35 : 1
     }
   ]
@@ -144,7 +144,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
           styles.pageBtn,
           {
             backgroundColor: isActive ? colors.primary : colors.bgSurface,
-            borderColor: isActive ? colors.primary : colors.borderSubtle,
+            borderColor: isActive ? colors.primary : colors.borderControl,
             opacity: disabled ? 0.5 : 1
           },
           isActive && {
@@ -228,7 +228,7 @@ export const Pagination: React.FC<NativePaginationProps> = ({
               styles.jumperInput,
               {
                 backgroundColor: colors.bgSurface,
-                borderColor: colors.borderSubtle,
+                borderColor: colors.borderControl,
                 color: colors.textPrimary
               }
             ]}

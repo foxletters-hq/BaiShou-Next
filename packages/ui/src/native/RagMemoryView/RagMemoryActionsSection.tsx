@@ -83,7 +83,7 @@ export const RagMemoryActionsSection: React.FC<RagMemoryActionsSectionProps> = (
               styles.actionBtnOutlined,
               {
                 backgroundColor: colors.bgSurfaceHigh,
-                borderColor: colors.borderMuted,
+                borderColor: colors.borderControl,
                 opacity: ragState.isRunning ? 0.5 : 1
               }
             ]}

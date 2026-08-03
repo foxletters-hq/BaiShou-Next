@@ -120,7 +120,7 @@ export const MarkdownToolbarSettingsSheet: React.FC<MarkdownToolbarSettingsSheet
 
             <View style={[styles.footer, { borderTopColor: colors.borderSubtle }]}>
               <TouchableOpacity
-                style={[styles.footerBtn, { borderColor: colors.borderSubtle }]}
+                style={[styles.footerBtn, { borderColor: colors.borderControl }]}
                 onPress={onClose}
                 activeOpacity={0.75}
               >

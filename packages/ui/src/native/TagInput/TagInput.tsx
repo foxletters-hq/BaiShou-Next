@@ -55,7 +55,7 @@ export const TagInput: React.FC<TagInputProps> = ({
         styles.container,
         {
           backgroundColor: colors.bgSurface,
-          borderColor: colors.borderSubtle
+          borderColor: colors.borderControl
         }
       ]}
     >

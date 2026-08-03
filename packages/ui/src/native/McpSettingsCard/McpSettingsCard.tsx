@@ -98,7 +98,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         style={localApplying ? styles.panelDimmed : undefined}
         pointerEvents={localApplying ? 'none' : 'auto'}
       >
-        <View style={[styles.portRow, styles.rowBorder]}>
+        <View style={[styles.portRow, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             {t('settings.mcp_port', '端口')}
           </Text>
@@ -117,7 +117,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           />
         </View>
 
-        <View style={[styles.row, styles.col, styles.rowBorder]}>
+        <View style={[styles.row, styles.col, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             {t('settings.mcp_endpoint', '连接地址')}
           </Text>
@@ -143,7 +143,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         </View>
 
         {config.mcpAuthToken ? (
-          <View style={[styles.row, styles.col, styles.rowBorder]}>
+          <View style={[styles.row, styles.col, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>
               {t('settings.mcp_auth_token', '访问令牌')}
             </Text>
@@ -258,7 +258,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
       </View>
 
       <View style={styles.block}>
-        <View style={[styles.row, styles.rowBorder]}>
+        <View style={[styles.row, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
           <Text style={[hubStyles.rowTitle, { color: colors.textPrimary, flex: 1 }]}>
             {t('settings.mcp_enable', '启用 MCP 服务')}
           </Text>
@@ -298,8 +298,7 @@ const styles = StyleSheet.create({
     gap: 8
   },
   rowBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.08)'
+    borderTopWidth: StyleSheet.hairlineWidth
   },
   col: {
     flexDirection: 'column',
