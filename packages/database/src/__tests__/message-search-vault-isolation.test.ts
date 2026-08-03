@@ -104,11 +104,21 @@ describe('message_search vault isolation (P0-1)', () => {
     })
     await client.execute({
       sql: `INSERT INTO agent_parts (id, message_id, session_id, type, data) VALUES (?, ?, ?, 'text', ?)`,
-      args: ['part-a', 'msg-a', 'sess-a', JSON.stringify({ text: 'alpha secret keyword in vault A' })]
+      args: [
+        'part-a',
+        'msg-a',
+        'sess-a',
+        JSON.stringify({ text: 'alpha secret keyword in vault A' })
+      ]
     })
     await client.execute({
       sql: `INSERT INTO agent_parts (id, message_id, session_id, type, data) VALUES (?, ?, ?, 'text', ?)`,
-      args: ['part-b', 'msg-b', 'sess-b', JSON.stringify({ text: 'beta secret keyword in vault B' })]
+      args: [
+        'part-b',
+        'msg-b',
+        'sess-b',
+        JSON.stringify({ text: 'beta secret keyword in vault B' })
+      ]
     })
   })
 

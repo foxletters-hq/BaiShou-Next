@@ -610,9 +610,7 @@ export class GraphRepository {
       await this.database
         .select()
         .from(graphNodesTable)
-        .where(
-          and(eq(graphNodesTable.vaultId, opts.vaultId), isNull(graphNodesTable.deletedAt))
-        )
+        .where(and(eq(graphNodesTable.vaultId, opts.vaultId), isNull(graphNodesTable.deletedAt)))
         .orderBy(desc(graphNodesTable.mentionCount))
         .limit(maxNodes)
     ).map(mapNode)
@@ -799,8 +797,7 @@ export class GraphRepository {
       const curState = visited.get(cur)!
       if (cur === toId) break
       if (curState.hops >= maxHops) continue
-      const isHub =
-        cur !== fromId && cur !== toId && (degree.get(cur) ?? 0) > hubDegreeThreshold
+      const isHub = cur !== fromId && cur !== toId && (degree.get(cur) ?? 0) > hubDegreeThreshold
       if (isHub) continue
       for (const { neighbor, edge } of adj.get(cur) ?? []) {
         if (visited.has(neighbor)) continue
@@ -894,8 +891,7 @@ export class GraphRepository {
         destinations.push(cur)
       }
       if (curState.hops >= maxHops) continue
-      const isHub =
-        cur !== fromId && (degree.get(cur) ?? 0) > hubDegreeThreshold
+      const isHub = cur !== fromId && (degree.get(cur) ?? 0) > hubDegreeThreshold
       if (isHub) continue
       for (const { neighbor, edge } of adj.get(cur) ?? []) {
         if (visited.has(neighbor)) continue

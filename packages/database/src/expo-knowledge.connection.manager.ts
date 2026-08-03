@@ -4,10 +4,7 @@ import { logger } from '@baishou/shared'
 import type { AppDatabase } from './types'
 import type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
 import { loadExpoSqliteVecExtension } from './drivers/expo-sqlite-vec.loader'
-import {
-  KNOWLEDGE_DB_FILENAME,
-  ensureKnowledgeSchema
-} from './knowledge-schema.shared'
+import { KNOWLEDGE_DB_FILENAME, ensureKnowledgeSchema } from './knowledge-schema.shared'
 
 const KNOWLEDGE_DB_CACHE_KB = 512
 
@@ -105,9 +102,7 @@ export class ExpoKnowledgeConnectionManager {
             const rows = await probe.getAllAsync('SELECT vec_version() AS v')
             version = rows[0]?.v
           }
-          logger.info(
-            `[ExpoKnowledgeDB] sqlite-vec 已加载，vec_version()=${version ?? 'loaded'}`
-          )
+          logger.info(`[ExpoKnowledgeDB] sqlite-vec 已加载，vec_version()=${version ?? 'loaded'}`)
         } catch (e) {
           logger.warn('[ExpoKnowledgeDB] vec_version() 探测失败:', e as Error)
         }

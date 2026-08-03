@@ -62,9 +62,7 @@ export async function deleteDiaryEmbedJob(
 ): Promise<void> {
   await database
     .delete(diaryEmbedJobsTable)
-    .where(
-      and(eq(diaryEmbedJobsTable.vaultId, vaultId), eq(diaryEmbedJobsTable.diaryId, diaryId))
-    )
+    .where(and(eq(diaryEmbedJobsTable.vaultId, vaultId), eq(diaryEmbedJobsTable.diaryId, diaryId)))
 }
 
 export async function countDiaryEmbedJobs(database: AppDatabase): Promise<number> {
