@@ -19,7 +19,7 @@ import { SHADOW_INDEX_DB_FILENAME, ensureShadowIndexSchema } from './shadow-inde
  * 4. Vault 切换无需 close/open — 同一连接复用
  *
  * 表结构：
- * - `journals_index`  — 主影子索引表（含 `vault_name` 列）
+ * - `journals_index`  — 主影子索引表（含 `vault_id` 列）
  * - `journals_fts`    — FTS5 全文搜索虚拟表（content + tags）
  */
 export class ShadowIndexConnectionManager {

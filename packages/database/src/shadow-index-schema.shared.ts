@@ -1,21 +1,27 @@
-import { logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { executeRawSql } from './raw-sql.executor'
+import {
+  ensureVaultIdsForNames,
+  loadVaultNameToIdMapFromStorageRoot,
+  resolveVaultIdFromName
+} from './vault-id-map'
 
 /** 全局单库文件名（桌面 / 移动端共用） */
 export const SHADOW_INDEX_DB_FILENAME = 'shadow_index_v2.db'
 
 /**
  * Schema 版本：
- * - 1：per-vault 单库，`journals_index` 无 `vault_name`，唯一索引 `(file_path)`
+ * - 1：per-vault 单库，`journals_index` 无 vault 列，唯一索引 `(file_path)`
  * - 2：全局单库多 Vault，`vault_name` + 唯一索引 `(vault_name, file_path)`
  * - 3：`journals_index` 增加 `file_mtime_ms` / `file_size`（mtime/size 快路径）
+ * - 4：`vault_name` → `vault_id`（in-place rename + 回填，避免整表 DROP）
  */
-export const SHADOW_INDEX_SCHEMA_VERSION = 3
+export const SHADOW_INDEX_SCHEMA_VERSION = 4
 
 export const JOURNALS_INDEX_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS journals_index (
     id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    vault_name      TEXT    NOT NULL,
+    vault_id        TEXT    NOT NULL,
     file_path       TEXT    NOT NULL,
     date            TEXT    NOT NULL,
     created_at      TEXT    NOT NULL,
@@ -36,8 +42,8 @@ export const JOURNALS_INDEX_CREATE_SQL = `
 `
 
 export const JOURNALS_INDEX_VAULT_FILE_PATH_UNIQUE_SQL = `
-  CREATE UNIQUE INDEX IF NOT EXISTS journals_index_vault_file_path_unique
-  ON journals_index (vault_name, file_path)
+  CREATE UNIQUE INDEX IF NOT EXISTS journals_index_vault_id_file_path_unique
+  ON journals_index (vault_id, file_path)
 `
 
 export const JOURNALS_FTS_FTS5_SQL = `
@@ -83,6 +89,7 @@ async function getUserVersion(client: unknown): Promise<number> {
 
 async function dropLegacyIndexes(client: unknown): Promise<void> {
   await executeRawSql(client, 'DROP INDEX IF EXISTS journals_index_file_path_unique')
+  await executeRawSql(client, 'DROP INDEX IF EXISTS journals_index_vault_file_path_unique')
 }
 
 async function createJournalsFts(client: unknown, logPrefix: string): Promise<void> {
@@ -97,10 +104,78 @@ async function createJournalsFts(client: unknown, logPrefix: string): Promise<vo
 }
 
 /**
- * 若旧表缺少 `vault_name`，整表重建（影子索引为可重建缓存）。
- * 旧 per-vault 物理文件不在此路径时会被忽略，依赖 fullScan 重建。
+ * V2.2：in-place 将 vault_name 列改为 vault_id 并回填，避免整表 DROP。
  */
-async function migrateLegacySchemaIfNeeded(client: unknown, logPrefix: string): Promise<void> {
+async function migrateVaultNameToVaultIdInPlace(
+  client: unknown,
+  logPrefix: string,
+  storageRoot?: string
+): Promise<void> {
+  if (!(await tableExists(client, 'journals_index'))) return
+  const hasVaultId = await tableHasColumn(client, 'journals_index', 'vault_id')
+  const hasVaultName = await tableHasColumn(client, 'journals_index', 'vault_name')
+
+  if (hasVaultId && !hasVaultName) {
+    // 已是 vault_id：仍把名字形态的值 remap 一次（幂等）
+  } else if (hasVaultName && !hasVaultId) {
+    logger.info(`${logPrefix} journals_index：RENAME vault_name → vault_id`)
+    await executeRawSql(client, 'ALTER TABLE journals_index RENAME COLUMN vault_name TO vault_id')
+  } else if (hasVaultName && hasVaultId) {
+    await executeRawSql(
+      client,
+      `
+      UPDATE journals_index
+      SET vault_id = vault_name
+      WHERE (vault_id IS NULL OR vault_id = '')
+        AND vault_name IS NOT NULL AND vault_name != ''
+    `
+    )
+    try {
+      await executeRawSql(client, 'ALTER TABLE journals_index DROP COLUMN vault_name')
+    } catch {
+      /* 旧 SQLite */
+    }
+  } else {
+    // 无 vault 列的极旧库：整表重建（影子索引可重建）
+    logger.info(`${logPrefix} journals_index 缺少 vault 列，重建 journals_index / journals_fts`)
+    await executeRawSql(client, 'DROP TABLE IF EXISTS journals_fts')
+    await executeRawSql(client, 'DROP TABLE IF EXISTS journals_index')
+    await dropLegacyIndexes(client)
+    return
+  }
+
+  const seed = storageRoot ? loadVaultNameToIdMapFromStorageRoot(storageRoot) : undefined
+  const distinct = await executeRawSql(
+    client,
+    `SELECT DISTINCT vault_id AS v FROM journals_index WHERE vault_id IS NOT NULL AND vault_id != ''`
+  )
+  const names = distinct.rows
+    .map((r) => String((r as { v?: unknown }).v ?? ''))
+    .filter(Boolean)
+  const map = ensureVaultIdsForNames(names, seed)
+
+  for (const old of names) {
+    if (!old || old.startsWith('vlt_')) continue
+    const next = resolveVaultIdFromName(old, map)
+    if (next === old) continue
+    await executeRawSql(client, `UPDATE journals_index SET vault_id = ? WHERE vault_id = ?`, [
+      next,
+      old
+    ])
+  }
+
+  // 空值兜底（不应出现；填派生占位以免 NOT NULL 违规——实际不应有空行）
+  void deriveLegacyVaultId
+}
+
+/**
+ * 若旧表缺少 vault 列，整表重建；若仅缺 vault_id（仍为 vault_name），in-place 迁移。
+ */
+async function migrateLegacySchemaIfNeeded(
+  client: unknown,
+  logPrefix: string,
+  storageRoot?: string
+): Promise<void> {
   const userVersion = await getUserVersion(client)
   const indexExists = await tableExists(client, 'journals_index')
 
@@ -108,14 +183,24 @@ async function migrateLegacySchemaIfNeeded(client: unknown, logPrefix: string): 
     return
   }
 
+  const hasVaultId = await tableHasColumn(client, 'journals_index', 'vault_id')
   const hasVaultName = await tableHasColumn(client, 'journals_index', 'vault_name')
-  if (userVersion >= SHADOW_INDEX_SCHEMA_VERSION && hasVaultName) {
+
+  if (userVersion >= SHADOW_INDEX_SCHEMA_VERSION && hasVaultId && !hasVaultName) {
+    await dropLegacyIndexes(client)
+    // 仍跑一次 remap（幂等）
+    await migrateVaultNameToVaultIdInPlace(client, logPrefix, storageRoot)
+    return
+  }
+
+  if (hasVaultName || hasVaultId) {
+    await migrateVaultNameToVaultIdInPlace(client, logPrefix, storageRoot)
     await dropLegacyIndexes(client)
     return
   }
 
   logger.info(
-    `${logPrefix} 检测到旧版 shadow schema（user_version=${userVersion}, vault_name=${hasVaultName}），重建 journals_index / journals_fts`
+    `${logPrefix} 检测到旧版 shadow schema（user_version=${userVersion}），重建 journals_index / journals_fts`
   )
 
   await executeRawSql(client, 'DROP TABLE IF EXISTS journals_fts')
@@ -147,9 +232,10 @@ async function ensureFileStatColumns(client: unknown, logPrefix: string): Promis
  */
 export async function ensureShadowIndexSchema(
   client: unknown,
-  logPrefix = '[ShadowIndexSchema]'
+  logPrefix = '[ShadowIndexSchema]',
+  options?: { storageRoot?: string }
 ): Promise<void> {
-  await migrateLegacySchemaIfNeeded(client, logPrefix)
+  await migrateLegacySchemaIfNeeded(client, logPrefix, options?.storageRoot)
 
   await executeRawSql(client, JOURNALS_INDEX_CREATE_SQL)
   await dropLegacyIndexes(client)
