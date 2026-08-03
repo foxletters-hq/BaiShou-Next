@@ -3300,6 +3300,27 @@
     "retry": "重试",
     "pasted_text": "粘贴文本",
     "source_title": "标题",
-    "source_body": "正文"
+    "source_body": "正文",
+    "storage_usage": "本笔记本 {{total}} MB，其中原文 {{original}} MB",
+    "settings": "知识库设置",
+    "default_engine": "默认提取引擎",
+    "ocr_language": "OCR 语言",
+    "engine_caps": "引擎状态",
+    "settings_saved": "知识库设置已保存",
+    "ocr_missing_pages": "只 OCR 缺失页",
+    "ocr_queued": "已对缺失页执行 OCR",
+    "notes_panel": "Notes",
+    "save_note": "保存为 Note",
+    "note_saved": "已保存为 Note，并加入索引队列",
+    "chat_mode": "Chat 精读",
+    "chat_hint": "勾选左侧资料，全文进上下文（有预算裁剪）",
+    "chat_submit": "精读提问",
+    "chat_need_sources": "请先勾选要精读的资料",
+    "chat_truncated": "材料已按 token 预算裁剪",
+    "chatting": "正在精读所选材料…",
+    "multi_query": "多子查询（最多 2）",
+    "sub_queries": "子查询",
+    "import_engine_hint": "将使用当前默认引擎",
+    "model_mismatch_hard_block": "嵌入模型与知识库向量不一致，提问已拦截。请先「重建索引」。"
   }
 }
