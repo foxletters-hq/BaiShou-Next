@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import styles from './TitleBar.module.css'
 import { useTranslation } from 'react-i18next'
@@ -182,25 +182,92 @@ export const TitleBar: React.FC = () => {
   const isAgentWorkspace = location.pathname.startsWith('/agent-workspace')
   const isSettings = location.pathname.startsWith('/settings')
   const isDiaryTab = !isAgentWorkspace && !isSettings
+  const activeNavTab: 'diary' | 'workbench' | null = isAgentWorkspace
+    ? 'workbench'
+    : isDiaryTab
+      ? 'diary'
+      : null
+
+  const tabsContainerRef = useRef<HTMLDivElement>(null)
+  const diaryTabRef = useRef<HTMLDivElement>(null)
+  const workbenchTabRef = useRef<HTMLDivElement>(null)
+  const [tabThumb, setTabThumb] = useState<{ left: number; width: number } | null>(null)
+  const [tabThumbAnimate, setTabThumbAnimate] = useState(false)
+
+  const measureNavTabThumb = useCallback(() => {
+    const target =
+      activeNavTab === 'diary'
+        ? diaryTabRef.current
+        : activeNavTab === 'workbench'
+          ? workbenchTabRef.current
+          : null
+    if (!target || !tabsContainerRef.current) {
+      setTabThumb(null)
+      return
+    }
+    const next = { left: target.offsetLeft, width: target.offsetWidth }
+    setTabThumb((prev) => {
+      if (prev && prev.left === next.left && prev.width === next.width) return prev
+      return next
+    })
+  }, [activeNavTab])
+
+  useLayoutEffect(() => {
+    measureNavTabThumb()
+    const id = requestAnimationFrame(() => setTabThumbAnimate(true))
+    return () => cancelAnimationFrame(id)
+  }, [measureNavTabThumb])
+
+  useLayoutEffect(() => {
+    const container = tabsContainerRef.current
+    if (!container || typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(() => measureNavTabThumb())
+    observer.observe(container)
+    if (diaryTabRef.current) observer.observe(diaryTabRef.current)
+    if (workbenchTabRef.current) observer.observe(workbenchTabRef.current)
+    return () => observer.disconnect()
+  }, [measureNavTabThumb, isOnboarding])
 
   return (
-    <div className={`${styles.titleBar} ${isOnboarding ? styles.titleBarOnboarding : ''}`}>
+    <div className={styles.titleBar}>
       <div className={styles.dragRegion}>
         {!isOnboarding && (
-          <div className={styles.tabsContainer}>
+          <div
+            ref={tabsContainerRef}
+            className={styles.tabsContainer}
+            role="tablist"
+            aria-label={t('nav.main', '主导航')}
+          >
+            {tabThumb ? (
+              <span
+                className={`${styles.tabThumb}${tabThumbAnimate ? ` ${styles.tabThumbAnimate}` : ''}`}
+                style={{
+                  width: tabThumb.width,
+                  transform: `translateX(${tabThumb.left}px)`,
+                  opacity: activeNavTab ? 1 : 0
+                }}
+                aria-hidden
+              />
+            ) : null}
             <div
+              ref={diaryTabRef}
               className={`${styles.tab} ${isDiaryTab ? styles.activeTab : ''}`}
               onClick={() => navigate(resolveDiaryHomePath())}
+              role="tab"
+              aria-selected={isDiaryTab}
             >
               <BookOpen className={styles.tabIcon} />
-              <span>{t('nav.diary', '日记')}</span>
+              <span className={styles.tabLabel}>{t('nav.diary', '日记')}</span>
             </div>
             <div
+              ref={workbenchTabRef}
               className={`${styles.tab} ${isAgentWorkspace ? styles.activeTab : ''}`}
               onClick={() => navigate('/agent-workspace')}
+              role="tab"
+              aria-selected={isAgentWorkspace}
             >
               <Layers className={styles.tabIcon} />
-              <span>{t('nav.workbench', '工作台')}</span>
+              <span className={styles.tabLabel}>{t('nav.workbench', '工作台')}</span>
             </div>
           </div>
         )}

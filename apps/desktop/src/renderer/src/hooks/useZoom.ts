@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
 
-const STORAGE_KEY = 'baishou-zoom-factor'
+const STORAGE_KEY = 'baishou-zoom-factor-v2'
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 2.0
 const STEP = 0.1
+/** 默认略小于 100%，接近 Ctrl+- 一次后的密度（日记卡片 / 设置页） */
+const DEFAULT_ZOOM = 0.9
 
 function getSavedZoom(): number {
   try {
@@ -13,7 +15,7 @@ function getSavedZoom(): number {
       if (!isNaN(val) && val >= MIN_ZOOM && val <= MAX_ZOOM) return val
     }
   } catch {}
-  return 1
+  return DEFAULT_ZOOM
 }
 
 function isApiReady(): boolean {
@@ -60,7 +62,7 @@ export function useZoom() {
         applyZoom(getSavedZoom() - STEP)
       } else if (e.key === '0') {
         e.preventDefault()
-        applyZoom(1)
+        applyZoom(DEFAULT_ZOOM)
       }
     }
 

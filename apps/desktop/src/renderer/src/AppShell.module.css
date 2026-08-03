@@ -1,12 +1,13 @@
 .shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
   position: relative;
-  background-color: var(--bg-app);
-  padding-top: 48px;
+  /* 半透色罩叠在系统 Acrylic 上；圆角由 Win11 roundedCorners 负责 */
+  background-color: var(--bg-window-shell);
+  padding-top: 52px;
   box-sizing: border-box;
 }
 
@@ -16,5 +17,5 @@
   position: relative;
   display: flex;
   overflow: hidden;
-  background-color: var(--bg-app);
+  background-color: transparent;
 }

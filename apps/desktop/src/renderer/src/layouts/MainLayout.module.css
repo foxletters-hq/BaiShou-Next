@@ -4,8 +4,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: var(--bg-app);
+  background-color: transparent;
   color: var(--text-primary);
+  box-sizing: border-box;
+  /* 顶栏已含标签上下留白；内容卡紧贴顶栏底，左右下留边 */
+  padding: 0 8px 8px;
 }
 
 .mainContent {
@@ -13,6 +16,12 @@
   display: flex;
   overflow: hidden;
   min-height: 0;
+  min-width: 0;
+  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
 }
 
 .pageContent {
@@ -21,6 +30,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  /* 懒加载 / Suspense 空档时露出画布灰，避免闪白（页面本体用 --bg-app） */
   background-color: var(--bg-app);
   min-height: 0;
 }
@@ -34,6 +44,7 @@
   overflow: hidden;
   width: 100%;
   height: 100%;
+  background-color: var(--bg-app);
 }
 
 .cachedPage[hidden] {
