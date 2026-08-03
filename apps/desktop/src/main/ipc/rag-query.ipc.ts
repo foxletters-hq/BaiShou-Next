@@ -1,14 +1,30 @@
 import { ipcMain } from 'electron'
+import { shardMonthFromInstant } from '@baishou/core-desktop'
 import { memoryEmbeddingsTable, SqliteHybridSearchRepository } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
 import { eq, desc, like, sql, or, and, ne } from 'drizzle-orm'
 import {
   buildDiaryEmbeddingGroupId,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
-  timestampToMillis
+  MEMORY_SOURCE_TYPE,
+  timestampToMillis,
+  type MemoryRawRecord
 } from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
+import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
 import { vaultService } from './vault.ipc'
+
+function embeddingInstantMs(value: unknown): number | undefined {
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'number') return timestampToMillis(value)
+  return undefined
+}
+
+function vaultNameFromGroupId(groupId: string | null | undefined): string | undefined {
+  if (!groupId?.startsWith('memory:')) return undefined
+  const name = groupId.slice('memory:'.length).trim()
+  return name || undefined
+}
 
 /** 分页列表：优先 source_created_at（日记 date），兼容秒/毫秒混用 */
 const embeddingSortMillis = sql.raw(EMBEDDING_SOURCE_SORT_MILLIS_SQL)
@@ -175,6 +191,33 @@ export function registerRagQueryIPC() {
 
   ipcMain.handle('rag:delete-entry', async (_, embeddingId: string) => {
     const db = getAppDb()
+    const records = await db
+      .select()
+      .from(memoryEmbeddingsTable)
+      .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
+    const record = records[0]
+    if (!record) return true
+
+    const sourceType = record.sourceType
+    const sourceId = record.sourceId
+
+    if (sourceType === MEMORY_SOURCE_TYPE || sourceType === 'manual') {
+      const createdAtMs = embeddingInstantMs(record.sourceCreatedAt)
+      const shardMonth = createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
+      try {
+        await getRawDataSourceManager().tombstone('memory', sourceId, { shardMonth })
+      } catch {
+        // legacy / already-absent JSONL rows: still drop derived embeddings
+      }
+      const { DesktopEmbeddingStorage } = await import('./rag.storage')
+      const storage = new DesktopEmbeddingStorage()
+      await storage.deleteEmbeddingsBySource(sourceType, sourceId)
+      if (sourceType === 'manual') {
+        await storage.deleteEmbeddingsBySource(MEMORY_SOURCE_TYPE, sourceId)
+      }
+      return true
+    }
+
     await db.delete(memoryEmbeddingsTable).where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
     return true
   })
@@ -191,17 +234,72 @@ export function registerRagQueryIPC() {
     const record = records[0]
     if (!record) throw new Error('Memory not found')
 
-    await embeddingService.updateMemoryChunk({
-      entry: {
-        embedding_id: record.embeddingId,
-        source_type: record.sourceType,
-        source_id: record.sourceId,
-        group_id: record.groupId,
-        chunk_index: record.chunkIndex,
-        metadata_json: record.metadataJson
-      },
-      newText: params.newText
+    const newText = params.newText.trim()
+    if (record.sourceType !== MEMORY_SOURCE_TYPE && record.sourceType !== 'manual') {
+      await embeddingService.updateMemoryChunk({
+        entry: {
+          embedding_id: record.embeddingId,
+          source_type: record.sourceType,
+          source_id: record.sourceId,
+          group_id: record.groupId,
+          chunk_index: record.chunkIndex,
+          metadata_json: record.metadataJson
+        },
+        newText
+      })
+      return true
+    }
+
+    const createdAtMs = embeddingInstantMs(record.sourceCreatedAt)
+    const shardMonth = createdAtMs != null ? shardMonthFromInstant(createdAtMs) : undefined
+    const memoryMgr = getMemoryRawManager()
+
+    let existing: MemoryRawRecord | undefined
+    if (shardMonth) {
+      const rows = await memoryMgr.readCollapsedShard(shardMonth)
+      existing = rows.find((r) => r.id === record.sourceId && r.deletedAt == null)
+    }
+    if (!existing) {
+      for (const shard of await memoryMgr.listShards()) {
+        const rows = await memoryMgr.readCollapsedShard(shard.shardMonth)
+        existing = rows.find((r) => r.id === record.sourceId && r.deletedAt == null)
+        if (existing) break
+      }
+    }
+
+    const now = Date.now()
+    const vaultName =
+      existing?.vaultName ??
+      vaultNameFromGroupId(record.groupId) ??
+      vaultService.getActiveVault()?.name ??
+      'Personal'
+    const createdAt = existing?.createdAt ?? createdAtMs ?? now
+    const updated: MemoryRawRecord = {
+      id: record.sourceId,
+      schemaVersion: 1,
+      vaultName,
+      content: newText,
+      tags: existing?.tags ?? [],
+      sourceSessionId: existing?.sourceSessionId ?? null,
+      createdAt,
+      updatedAt: now,
+      deletedAt: null,
+      ...(existing?.legacySourceId ? { legacySourceId: existing.legacySourceId } : {})
+    }
+
+    const written = await getRawDataSourceManager().writeRecord('memory', updated)
+    await embeddingService.reEmbedText({
+      text: newText,
+      sourceType: MEMORY_SOURCE_TYPE,
+      sourceId: updated.id,
+      groupId: `memory:${vaultName}`,
+      sourceCreatedAt: createdAt
     })
+    if (record.sourceType === 'manual') {
+      const { DesktopEmbeddingStorage } = await import('./rag.storage')
+      await new DesktopEmbeddingStorage().deleteEmbeddingsBySource('manual', record.sourceId)
+    }
+    await memoryMgr.commitIndexed(written.relativePath, written.contentHash)
     return true
   })
 }

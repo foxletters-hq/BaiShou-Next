@@ -2,14 +2,15 @@
  * MemoryDeleteTool — 删除向量记忆
  *
  * 通过语义搜索找到匹配的记忆条目，然后删除对应的嵌入数据。
- * 安全机制：描述要求 Agent 先确认用户意图。
+ * sourceType=memory 时同步 tombstone JSONL；chat 等非 JSONL 管辖类型只删向量。
  *
  * 原始实现：lib/agent/tools/memory/memory_delete_tool.dart (143 行)
  */
 
 import { z } from 'zod'
+import { formatLocalDate, MEMORY_SOURCE_TYPE, type ToolRawDataSourceManager } from '@baishou/shared'
 import { AgentTool } from './agent.tool'
-import type { ToolContext } from './agent.tool'
+import type { ToolContext, VectorSearchResult } from './agent.tool'
 
 const memoryDeleteParams = z.object({
   query: z
@@ -24,6 +25,37 @@ const memoryDeleteParams = z.object({
       'Optional. Delete a specific memory by its message ID. If provided, query is ignored.'
     )
 })
+
+function memoryShardMonth(createdAt?: number): string | undefined {
+  if (createdAt == null || !Number.isFinite(createdAt)) return undefined
+  return formatLocalDate(new Date(createdAt)).slice(0, 7)
+}
+
+async function tombstoneMemoryIfNeeded(
+  rawManager: ToolRawDataSourceManager | undefined,
+  sourceId: string,
+  createdAt?: number
+): Promise<void> {
+  if (!rawManager) return
+  try {
+    await rawManager.tombstone('memory', sourceId, {
+      shardMonth: memoryShardMonth(createdAt)
+    })
+  } catch {
+    // legacy ids may not exist in JSONL yet
+  }
+}
+
+async function deleteHit(result: VectorSearchResult, context: ToolContext): Promise<void> {
+  if (result.sourceType === MEMORY_SOURCE_TYPE) {
+    await tombstoneMemoryIfNeeded(
+      context.rawDataSourceManager as ToolRawDataSourceManager | undefined,
+      result.sourceId,
+      result.createdAt
+    )
+  }
+  await context.vectorStore!.deleteBySource(result.sourceType, result.sourceId)
+}
 
 export class MemoryDeleteTool extends AgentTool<typeof memoryDeleteParams> {
   readonly name = 'memory_delete'
@@ -43,7 +75,7 @@ export class MemoryDeleteTool extends AgentTool<typeof memoryDeleteParams> {
     }
 
     try {
-      // 精确删除模式
+      // 精确删除模式：message_id 面向 chat 消息嵌入，不在 Memory JSONL 管辖内
       if (args.message_id && args.message_id.length > 0) {
         await vectorStore.deleteBySource('chat', args.message_id)
         return `Memory chunks for message ID "${args.message_id}" have been deleted.`
@@ -74,15 +106,19 @@ export class MemoryDeleteTool extends AgentTool<typeof memoryDeleteParams> {
       }
 
       const previews: string[] = []
+      const deletedSourceKeys = new Set<string>()
       for (const result of toDelete) {
-        await vectorStore.deleteBySource(result.sourceType, result.sourceId)
+        const key = `${result.sourceType}:${result.sourceId}`
+        if (deletedSourceKeys.has(key)) continue
+        deletedSourceKeys.add(key)
+        await deleteHit(result, context)
         const preview =
           result.chunkText.length > 60 ? result.chunkText.slice(0, 60) + '...' : result.chunkText
         const score = (1.0 - result.distance).toFixed(2)
         previews.push(`- [${score}] ${preview}`)
       }
 
-      return `Deleted ${toDelete.length} matching memory entries:\n${previews.join('\n')}`
+      return `Deleted ${previews.length} matching memory entries:\n${previews.join('\n')}`
     } catch (e) {
       return `Failed to delete memories: ${e instanceof Error ? e.message : String(e)}`
     }
