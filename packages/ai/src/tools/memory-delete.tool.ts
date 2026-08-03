@@ -41,13 +41,10 @@ async function tombstoneMemoryIfNeeded(
   createdAt?: number
 ): Promise<void> {
   if (!rawManager) return
-  try {
-    await rawManager.tombstone('memory', sourceId, {
-      shardMonth: memoryShardMonth(createdAt)
-    })
-  } catch {
-    // legacy ids may not exist in JSONL yet
-  }
+  // fail-closed：tombstone IO/写入失败必须抛出，禁止吞错后仍删向量（否则 JSONL 与索引脱节）
+  await rawManager.tombstone('memory', sourceId, {
+    shardMonth: memoryShardMonth(createdAt)
+  })
 }
 
 async function deleteHit(result: VectorSearchResult, context: ToolContext): Promise<void> {
