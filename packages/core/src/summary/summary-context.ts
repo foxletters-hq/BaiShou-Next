@@ -1,6 +1,11 @@
 import i18n from 'i18next'
 import { shadowConnectionManager, ShadowIndexRepository } from '@baishou/database'
-import { deriveLegacyVaultId, logger, parseDateStr, type SharedMemoryCopyPreview } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  logger,
+  parseDateStr,
+  type SharedMemoryCopyPreview
+} from '@baishou/shared'
 import { quarterlySummariesForMonthCascade } from './summary-cascade.util'
 
 /** 国际化字典类型 */
@@ -399,7 +404,10 @@ export async function buildSharedContextText(
     const shadowDb = shadowConnectionManager.getDb()
     if (!shadowDb || !options?.vaultName) return ''
 
-    const shadowRepo = new ShadowIndexRepository(shadowDb as any, deriveLegacyVaultId(options.vaultName))
+    const shadowRepo = new ShadowIndexRepository(
+      shadowDb as any,
+      deriveLegacyVaultId(options.vaultName)
+    )
     // 与预览路径一致：只拉回溯窗口内日记，避免全量 FTS 扫描
     diaries = await shadowRepo.listContentSinceDate(
       formatLookbackCutoffIso(lookbackMonths, referenceDate)

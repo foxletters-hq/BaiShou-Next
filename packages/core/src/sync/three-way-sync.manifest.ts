@@ -404,9 +404,7 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
    * 与祖先快照同时提交：写入上次同步时的 id→目录名。
    * `vaults` 缺省时从本机注册表读取（一致点提交用当前本机映射）。
    */
-  protected async saveLastRemoteVaultsSnapshot(
-    vaults?: Record<string, string>
-  ): Promise<void> {
+  protected async saveLastRemoteVaultsSnapshot(vaults?: Record<string, string>): Promise<void> {
     await this.loadConfig()
     const metaDir = await this.getSyncMetaDirectory()
     const vaultsPath = path.join(metaDir, SYNC_REMOTE_VAULTS_FILENAME)

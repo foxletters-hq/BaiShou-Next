@@ -259,7 +259,9 @@ describe('VaultService Integration', () => {
       const vault = service.getAllVaults().find((v) => v.name === 'Work')
       expect(vault?.id).toMatch(/^vlt_[0-9a-f]{16}$/)
 
-      const registry = JSON.parse(await fs.readFile(path.join(tempDir, 'vault_registry.json'), 'utf8'))
+      const registry = JSON.parse(
+        await fs.readFile(path.join(tempDir, 'vault_registry.json'), 'utf8')
+      )
       const regEntry = registry.find((v: { name: string }) => v.name === 'Work')
       expect(regEntry.id).toBe(vault!.id)
 
@@ -293,7 +295,9 @@ describe('VaultService Integration', () => {
       expect(service.getAllVaults()[0]?.id).toBe(expected)
       expect(deriveLegacyVaultId('Personal')).toBe(expected)
 
-      const registry = JSON.parse(await fs.readFile(path.join(tempDir, 'vault_registry.json'), 'utf8'))
+      const registry = JSON.parse(
+        await fs.readFile(path.join(tempDir, 'vault_registry.json'), 'utf8')
+      )
       expect(registry[0].id).toBe(expected)
       const meta = JSON.parse(
         await fs.readFile(path.join(tempDir, 'Personal', '.baishou', 'vault.json'), 'utf8')
@@ -385,7 +389,9 @@ describe('VaultService Integration', () => {
       expect(originalId).toBe(deriveLegacyVaultId('Personal'))
 
       await fs.rm(path.join(tempDir, 'Personal', '.baishou', 'vault.json'))
-      const registry = JSON.parse(await fs.readFile(path.join(tempDir, 'vault_registry.json'), 'utf8'))
+      const registry = JSON.parse(
+        await fs.readFile(path.join(tempDir, 'vault_registry.json'), 'utf8')
+      )
       delete registry[0].id
       await fs.writeFile(path.join(tempDir, 'vault_registry.json'), JSON.stringify(registry))
 

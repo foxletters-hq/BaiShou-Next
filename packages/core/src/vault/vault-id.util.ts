@@ -3,11 +3,7 @@
  * 本文件保留 re-export，避免打破既有 `@baishou/core` 导入路径。
  */
 
-export {
-  createRandomVaultId,
-  deriveLegacyVaultId,
-  isVaultId
-} from '@baishou/shared'
+export { createRandomVaultId, deriveLegacyVaultId, isVaultId } from '@baishou/shared'
 
 import { deriveLegacyVaultId, isVaultId } from '@baishou/shared'
 

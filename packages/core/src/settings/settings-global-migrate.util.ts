@@ -126,7 +126,10 @@ export async function migrateVaultSettingsToGlobal(options: {
   }
 
   const globalHasContent = await hasSettingsContent(globalSettingsDirectory, fileSystem)
-  const globalLegacyPath = path.join(path.dirname(globalSettingsDirectory), LEGACY_SETTINGS_FILENAME)
+  const globalLegacyPath = path.join(
+    path.dirname(globalSettingsDirectory),
+    LEGACY_SETTINGS_FILENAME
+  )
   const globalHasLegacy =
     !globalHasContent && (await fileSystem.exists(globalLegacyPath).catch(() => false))
 
