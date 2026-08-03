@@ -22,6 +22,7 @@ export const MEMORY_EMBEDDINGS_CREATE_SQL = `
     source_type     TEXT NOT NULL,
     source_id       TEXT NOT NULL,
     group_id        TEXT NOT NULL,
+    vault_name      TEXT,
     chunk_index     INTEGER DEFAULT 0 NOT NULL,
     chunk_text      TEXT NOT NULL,
     metadata_json   TEXT DEFAULT '{}' NOT NULL,
@@ -36,6 +37,11 @@ export const MEMORY_EMBEDDINGS_CREATE_SQL = `
 export const MEMORY_EMBEDDINGS_INDEX_SQL = `
   CREATE UNIQUE INDEX IF NOT EXISTS memory_embeddings_embedding_id_unique
   ON memory_embeddings (embedding_id)
+`
+
+export const MEMORY_EMBEDDINGS_VAULT_INDEX_SQL = `
+  CREATE INDEX IF NOT EXISTS memory_embeddings_vault_source
+  ON memory_embeddings (vault_name, source_type)
 `
 
 /** 日记 RAG 嵌入欠账表；成功后删行，不保留永久历史 */
@@ -227,5 +233,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     table: 'summaries',
     column: 'updated_at',
     ddl: `ALTER TABLE summaries ADD COLUMN updated_at INTEGER`
+  },
+  // ── memory_embeddings（仓库隔离 V1.0）──
+  {
+    table: 'memory_embeddings',
+    column: 'vault_name',
+    ddl: `ALTER TABLE memory_embeddings ADD COLUMN vault_name TEXT`
   }
 ]

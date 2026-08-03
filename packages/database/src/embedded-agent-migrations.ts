@@ -6,15 +6,15 @@ import type { EmbeddedMigrations } from './migration.service'
  */
 export const EMBEDDED_AGENT_MIGRATIONS: EmbeddedMigrations = {
   journal: {
-    version: '7',
-    dialect: 'sqlite',
-    entries: [
+    "version": "7",
+    "dialect": "sqlite",
+    "entries": [
       {
-        idx: 0,
-        version: '6',
-        when: 1781510528245,
-        tag: '0000_agent_schema',
-        breakpoints: true
+        "idx": 0,
+        "version": "6",
+        "when": 1781510528245,
+        "tag": "0000_agent_schema",
+        "breakpoints": true
       }
     ]
   },
@@ -123,6 +123,7 @@ CREATE TABLE \`memory_embeddings\` (
 	\`source_type\` text NOT NULL,
 	\`source_id\` text NOT NULL,
 	\`group_id\` text NOT NULL,
+	\`vault_name\` text,
 	\`chunk_index\` integer DEFAULT 0 NOT NULL,
 	\`chunk_text\` text NOT NULL,
 	\`metadata_json\` text DEFAULT '{}' NOT NULL,
@@ -133,6 +134,8 @@ CREATE TABLE \`memory_embeddings\` (
 	\`source_created_at\` integer
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX \`memory_embeddings_embedding_id_unique\` ON \`memory_embeddings\` (\`embedding_id\`);`
+CREATE UNIQUE INDEX \`memory_embeddings_embedding_id_unique\` ON \`memory_embeddings\` (\`embedding_id\`);
+--> statement-breakpoint
+CREATE INDEX \`memory_embeddings_vault_source\` ON \`memory_embeddings\` (\`vault_name\`,\`source_type\`);`
   }
 }

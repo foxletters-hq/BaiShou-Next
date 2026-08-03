@@ -102,6 +102,7 @@ CREATE TABLE `memory_embeddings` (
 	`source_type` text NOT NULL,
 	`source_id` text NOT NULL,
 	`group_id` text NOT NULL,
+	`vault_name` text,
 	`chunk_index` integer DEFAULT 0 NOT NULL,
 	`chunk_text` text NOT NULL,
 	`metadata_json` text DEFAULT '{}' NOT NULL,
@@ -113,3 +114,5 @@ CREATE TABLE `memory_embeddings` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `memory_embeddings_embedding_id_unique` ON `memory_embeddings` (`embedding_id`);
+--> statement-breakpoint
+CREATE INDEX `memory_embeddings_vault_source` ON `memory_embeddings` (`vault_name`,`source_type`);
