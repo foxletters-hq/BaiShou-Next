@@ -17,9 +17,11 @@ function preview(overrides: Partial<IncrementalSyncPlanPreview> = {}): Increment
     vaultSummaries: [],
     changeCount: 1,
     skippedCount: 0,
+    totalUploadBytes: 0,
+    totalDownloadBytes: 0,
     deletePropagationBlocked: false,
     requiresHighDivergenceConfirm: false,
-    items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }],
+    items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }],
     warnings: [],
     boundaryIssues: {
       unknownVaultPaths: [],
@@ -123,7 +125,7 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
       shouldRequireIncrementalSyncReconfirmAfterReplan(
         false,
         preview(),
-        preview({ items: [{ action: 'download', filePath: 'b.md', vaultScope: 'Personal' }] }),
+        preview({ items: [{ action: 'download', filePath: 'b.md', vaultScope: 'Personal', sizeBytes: 0 }] }),
         false
       )
     ).toBe(false)
@@ -131,10 +133,10 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
 
   it('replan 后规划实质变化时要求二次确认', () => {
     const stale = preview({
-      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     const fresh = preview({
-      items: [{ action: 'download', filePath: 'b.md', vaultScope: 'Personal' }]
+      items: [{ action: 'download', filePath: 'b.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false)).toBe(true)
   })
@@ -143,20 +145,20 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
     const stale = preview({
       changeCount: 5,
       items: [
-        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal' },
-        { action: 'upload', filePath: 'b.md', vaultScope: 'Personal' },
-        { action: 'upload', filePath: 'c.md', vaultScope: 'Personal' },
-        { action: 'upload', filePath: 'd.md', vaultScope: 'Personal' },
-        { action: 'upload', filePath: 'e.md', vaultScope: 'Personal' }
+        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'upload', filePath: 'b.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'upload', filePath: 'c.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'upload', filePath: 'd.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'upload', filePath: 'e.md', vaultScope: 'Personal', sizeBytes: 0 }
       ]
     })
     const fresh = preview({
       changeCount: 4,
       items: [
-        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal' },
-        { action: 'upload', filePath: 'b.md', vaultScope: 'Personal' },
-        { action: 'upload', filePath: 'c.md', vaultScope: 'Personal' },
-        { action: 'upload', filePath: 'd.md', vaultScope: 'Personal' }
+        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'upload', filePath: 'b.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'upload', filePath: 'c.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'upload', filePath: 'd.md', vaultScope: 'Personal', sizeBytes: 0 }
       ]
     })
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false)).toBe(false)
@@ -164,13 +166,13 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
 
   it('replan 后新增删除项时仍要二次确认', () => {
     const stale = preview({
-      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     const fresh = preview({
       changeCount: 2,
       items: [
-        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal' },
-        { action: 'delete-remote', filePath: 'gone.md', vaultScope: 'Personal' }
+        { action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 },
+        { action: 'delete-remote', filePath: 'gone.md', vaultScope: 'Personal', sizeBytes: 0 }
       ]
     })
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false)).toBe(true)
@@ -179,11 +181,11 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
   it('已确认高差异时忽略 requiresHighDivergenceConfirm 被清除', () => {
     const stale = preview({
       requiresHighDivergenceConfirm: true,
-      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     const fresh = preview({
       requiresHighDivergenceConfirm: false,
-      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, false, true)).toBe(
       false
@@ -192,10 +194,10 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
 
   it('已选删除传播时跳过二次确认', () => {
     const stale = preview({
-      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal' }]
+      items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     const fresh = preview({
-      items: [{ action: 'delete-remote', filePath: 'gone.md', vaultScope: 'Personal' }]
+      items: [{ action: 'delete-remote', filePath: 'gone.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, true)).toBe(false)
   })

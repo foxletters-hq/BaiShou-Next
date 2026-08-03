@@ -121,6 +121,45 @@ export function buildIncrementalSyncBoundaryHints(
   return hints
 }
 
+function normalizeSizeBytes(size: number | undefined): number {
+  if (typeof size !== 'number' || !Number.isFinite(size) || size < 0) return 0
+  return size
+}
+
+/**
+ * 将计划项字节归入上传/下载。
+ * 删除不产生传输；冲突按 direction 归类；无 direction 的冲突不计流量。
+ */
+export function resolveIncrementalSyncTransferBytes(item: Pick<
+  IncrementalSyncPlanItem,
+  'action' | 'sizeBytes' | 'direction'
+>): { uploadBytes: number; downloadBytes: number } {
+  const sizeBytes = normalizeSizeBytes(item.sizeBytes)
+  switch (item.action) {
+    case 'upload':
+      return { uploadBytes: sizeBytes, downloadBytes: 0 }
+    case 'download':
+      return { uploadBytes: 0, downloadBytes: sizeBytes }
+    case 'conflict-resolved':
+      if (item.direction === 'upload') return { uploadBytes: sizeBytes, downloadBytes: 0 }
+      if (item.direction === 'download') return { uploadBytes: 0, downloadBytes: sizeBytes }
+      return { uploadBytes: 0, downloadBytes: 0 }
+    case 'delete-local':
+    case 'delete-remote':
+    default:
+      return { uploadBytes: 0, downloadBytes: 0 }
+  }
+}
+
+/** 人类可读字节（如 `12.4 MB`），供确认弹窗流量摘要使用 */
+export function formatIncrementalSyncPlanBytes(bytes: number): string {
+  const value = normalizeSizeBytes(bytes)
+  if (value >= 1024 * 1024 * 1024) return `${(value / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`
+  if (value >= 1024) return `${Math.round(value / 1024)} KB`
+  return `${Math.round(value)} B`
+}
+
 function toPlanItem(decision: MergeDecision): IncrementalSyncPlanItem | null {
   if (decision.type === 'skip') return null
   const action =
@@ -128,7 +167,9 @@ function toPlanItem(decision: MergeDecision): IncrementalSyncPlanItem | null {
   return {
     filePath: decision.filePath,
     action,
-    vaultScope: resolveIncrementalSyncVaultScope(decision.filePath)
+    vaultScope: resolveIncrementalSyncVaultScope(decision.filePath),
+    sizeBytes: normalizeSizeBytes(decision.size),
+    ...(decision.direction ? { direction: decision.direction } : {})
   }
 }
 
@@ -145,7 +186,9 @@ function summarizeByVault(items: IncrementalSyncPlanItem[]): IncrementalSyncVaul
       deleteLocal: 0,
       deleteRemote: 0,
       conflict: 0,
-      samplePaths: []
+      samplePaths: [],
+      uploadBytes: 0,
+      downloadBytes: 0
     }
     map.set(vaultName, created)
     return created
@@ -170,6 +213,9 @@ function summarizeByVault(items: IncrementalSyncPlanItem[]): IncrementalSyncVaul
         summary.conflict += 1
         break
     }
+    const transfer = resolveIncrementalSyncTransferBytes(item)
+    summary.uploadBytes += transfer.uploadBytes
+    summary.downloadBytes += transfer.downloadBytes
     if (summary.samplePaths.length < 5) {
       summary.samplePaths.push(item.filePath)
     }
@@ -221,14 +267,24 @@ export function buildIncrementalSyncPlanPreview(options: {
     warnings.push('data_sync.plan_warning_delete_blocked')
   }
 
+  const vaultSummaries = summarizeByVault(items)
+  let totalUploadBytes = 0
+  let totalDownloadBytes = 0
+  for (const summary of vaultSummaries) {
+    totalUploadBytes += summary.uploadBytes
+    totalDownloadBytes += summary.downloadBytes
+  }
+
   return {
     activeVaultName: options.activeVaultName,
     registeredVaults: [...options.registeredVaults],
-    vaultSummaries: summarizeByVault(items),
+    vaultSummaries,
     items,
     warnings,
     changeCount: items.length,
     skippedCount,
+    totalUploadBytes,
+    totalDownloadBytes,
     boundaryIssues,
     requiresHighDivergenceConfirm: options.requiresHighDivergenceConfirm ?? false,
     divergencePercent: options.divergencePercent,

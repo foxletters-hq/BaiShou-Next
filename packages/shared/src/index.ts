@@ -366,6 +366,8 @@ export {
   buildIncrementalSyncBoundaryIssues,
   buildIncrementalSyncBoundaryHints,
   resolveIncrementalSyncVaultScope,
+  resolveIncrementalSyncTransferBytes,
+  formatIncrementalSyncPlanBytes,
   collectManifestVaultScopes,
   isRegistryVaultOnDisk
 } from './sync/incremental-sync-plan.util'
