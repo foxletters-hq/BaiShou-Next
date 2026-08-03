@@ -25,27 +25,27 @@ BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。�
 
 主层级：**壳 `app` → 页面/顶栏 `surface` → 抬起 `raised`**。其余为交互 / 内凹 / 浮层。
 
-| 用途                           | Token                  | 说明                              |
-| ------------------------------ | ---------------------- | --------------------------------- |
+| 用途                             | Token                  | 说明                              |
+| -------------------------------- | ---------------------- | --------------------------------- |
 | 壳 / 侧栏下画布 / 页面内容区画布 | `--bg-app`             | 浅色中性灰 `#fafafa`（衬白卡）    |
-| 窗口外圈磨砂罩（非页面 chrome） | `--bg-window-shell`    | 半透 `bg-app`，配合系统 Acrylic   |
-| 主工作区、**页面顶栏**、列表底 | `--bg-surface`         | 浅色实色白；顶栏禁止 glass        |
-| 卡片 / 下拉 / 抬起块           | `--bg-surface-raised`  | 浅色可与 surface 同色，靠边框区分 |
-| 悬停                           | `--bg-surface-high`    | 仅交互态                          |
-| 内凹次级区                     | `--bg-surface-normal`  | 分段轨道、灰底分组                |
-| 模态 / 最高浮层                | `--bg-surface-highest` | Dialog、Popover                   |
+| 窗口外圈磨砂罩（非页面 chrome）  | `--bg-window-shell`    | 半透 `bg-app`，配合系统 Acrylic   |
+| 主工作区、**页面顶栏**、列表底   | `--bg-surface`         | 浅色实色白；顶栏禁止 glass        |
+| 卡片 / 下拉 / 抬起块             | `--bg-surface-raised`  | 浅色可与 surface 同色，靠边框区分 |
+| 悬停                             | `--bg-surface-high`    | 仅交互态                          |
+| 内凹次级区                       | `--bg-surface-normal`  | 分段轨道、灰底分组                |
+| 模态 / 最高浮层                  | `--bg-surface-highest` | Dialog、Popover                   |
 
 辅助（存量兼容，新代码尽量不用）：`--bg-surface-low`、`--bg-surface-lowest`、`--bg-surface-highlight`（≈ `high`）。
 
 ### 3.2 边框
 
-| 用途                    | Token                                    |
-| ----------------------- | ---------------------------------------- |
-| 极淡分割                | `--border-subtle`                        |
-| 分割线 / **顶栏底边**   | `--border-muted`                         |
-| 灰底上的内容卡片外框    | `--border-card`                          |
-| 可见控件 / 次要按钮描边 | `--border-control`（默认 `1px solid`） |
-| Focus / 强调描边        | `--border-strong`                        |
+| 用途                    | Token                                                        |
+| ----------------------- | ------------------------------------------------------------ |
+| 极淡分割                | `--border-subtle`                                            |
+| 分割线 / **顶栏底边**   | `--border-muted`                                             |
+| 灰底上的内容卡片外框    | `--border-card`                                              |
+| 可见控件 / 次要按钮描边 | `--border-control`（默认 `1px solid`）                       |
+| Focus / 强调描边        | `--border-strong`                                            |
 | 表单输入聚焦描边        | `--form-field-border-focus`（比 `--border-strong` 更深的灰） |
 | 表单输入聚焦外圈        | `--form-field-focus-ring`（默认 `none`，不用光晕）           |
 
@@ -144,16 +144,16 @@ stackGroup
 
 ## 4. 布局约定（桌面）
 
-| 区域                       | 规则                                                                                                                                                                                                                                                                                                                                                            |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 页面顶栏                   | `padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`；可 `position: sticky; top: 0`                                                                                                                                                                                                                            |
-| 设置 / 管理内容区          | 顶栏下内容间距 `--settings-page-content-gap`（24px）；卡片 `border-radius: 12px`；外框用 `border: 1px solid var(--border-card)`；背景 `--bg-surface`（参照 `GeneralSettingsPane` / `SettingsPageChrome`）；**禁止大卡套小卡**；板块分割见 §3.7（卡外标题 + 卡片间距，卡内细线）；**设置白卡禁止 `overflow: hidden`**（会裁切绝对定位的 Select / Combobox 下拉） |
-| 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；`:focus` / `:focus-within` 用 `--form-field-border-focus`（更深灰描边）+ `--form-field-focus-ring: none`；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈                                                                                                              |
-| 分段滑块                   | 只用 [`SegmentedControl`](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                       |
-| 原生滑动条                 | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`                                                                                                                                                                                                                    |
-| 主按钮                     | 纯描边：透明底 + `--border-control`；悬停可 `--bg-surface-high`；勿用深蓝实心                                                                                                                                                                                                                                                                                   |
-| 次要按钮                   | `border: 1px solid var(--border-control)`，文字 `--text-primary`                                                                                                                                                                                                                                                                                              |
-| 顶栏 / 侧栏选中            | 灰底 `--bg-surface-high` + 文字/图标 `--color-primary`，不用主色实心底                                                                                                                                                                                                                                                                                          |
+| 区域                       | 规则                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 页面顶栏                   | `padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`；可 `position: sticky; top: 0`                                                                                                                                                                                                                                              |
+| 设置 / 管理内容区          | 顶栏下内容间距 `--settings-page-content-gap`（24px）；卡片 `border-radius: 12px`；外框用 `border: 1px solid var(--border-card)`；背景 `--bg-surface`（参照 `GeneralSettingsPane` / `SettingsPageChrome`）；**禁止大卡套小卡**；板块分割见 §3.7（卡外标题 + 卡片间距，卡内细线）；**设置白卡禁止 `overflow: hidden`**（会裁切绝对定位的 Select / Combobox 下拉）                   |
+| 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；`:focus` / `:focus-within` 用 `--form-field-border-focus`（更深灰描边）+ `--form-field-focus-ring: none`；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈 |
+| 分段滑块                   | 只用 [`SegmentedControl`](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                                         |
+| 原生滑动条                 | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`                                                                                                                                                                                                                                      |
+| 主按钮                     | 纯描边：透明底 + `--border-control`；悬停可 `--bg-surface-high`；勿用深蓝实心                                                                                                                                                                                                                                                                                                     |
+| 次要按钮                   | `border: 1px solid var(--border-control)`，文字 `--text-primary`                                                                                                                                                                                                                                                                                                                  |
+| 顶栏 / 侧栏选中            | 灰底 `--bg-surface-high` + 文字/图标 `--color-primary`，不用主色实心底                                                                                                                                                                                                                                                                                                            |
 
 ## 5. 动效与视觉风格
 

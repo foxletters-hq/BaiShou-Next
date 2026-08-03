@@ -34,11 +34,11 @@ export interface VaultInfo {
 
 先把最大的产品岔路口交代清楚。引入 ID 之后，磁盘目录用什么命名有三种选择：
 
-| 选择 | 改名代价 | 用户感受 |
-| --- | --- | --- |
-| 目录名 = ID（`vlt_a3f9c2/`） | 零 | 打开存储根看到一堆乱码目录 |
-| 目录名固定为创建时的名字 | 零 | 界面叫「工作」，文件夹还叫 `Personal` |
-| **目录名跟着显示名改**（本方案） | 见 §五 | 所见即所得 |
+| 选择                             | 改名代价 | 用户感受                              |
+| -------------------------------- | -------- | ------------------------------------- |
+| 目录名 = ID（`vlt_a3f9c2/`）     | 零       | 打开存储根看到一堆乱码目录            |
+| 目录名固定为创建时的名字         | 零       | 界面叫「工作」，文件夹还叫 `Personal` |
+| **目录名跟着显示名改**（本方案） | 见 §五   | 所见即所得                            |
 
 **选第三条。** 白手的核心承诺之一是「你的数据就是你自己文件夹里的普通 Markdown」，用户是真的会去翻那个目录的。让目录名和界面显示名脱节，等于在这个承诺上开了个口子。
 
@@ -89,11 +89,11 @@ export function resolveIncrementalSyncVaultScope(filePath: string): string {
 
 ### V2-D1：三级 ID 来源，按优先级回落
 
-| 优先级 | 来源 | 说明 |
-| --- | --- | --- |
-| 1 | `<vault>/.baishou/vault.json` | 仓内元数据文件，老版本不认识也不会碰它 |
-| 2 | `<root>/vault_registry.json` 的 `id` 字段 | 快路径，避免每次读 N 个文件 |
-| 3 | 从名字确定性派生 | 兜底；纯本地新建、或前两者都丢失时 |
+| 优先级 | 来源                                      | 说明                                   |
+| ------ | ----------------------------------------- | -------------------------------------- |
+| 1      | `<vault>/.baishou/vault.json`             | 仓内元数据文件，老版本不认识也不会碰它 |
+| 2      | `<root>/vault_registry.json` 的 `id` 字段 | 快路径，避免每次读 N 个文件            |
+| 3      | 从名字确定性派生                          | 兜底；纯本地新建、或前两者都丢失时     |
 
 读到 ID 后，缺失的那几级要**回写补齐**。
 
@@ -126,14 +126,14 @@ export function resolveIncrementalSyncVaultScope(filePath: string): string {
 
 已有六张表带仓库列：
 
-| 表 | Schema | 现列 | 备注 |
-| --- | --- | --- | --- |
-| `agent_sessions` | `packages/database/src/schema/agent-sessions.ts` | `vault_name` NOT NULL | 无独立索引 |
-| `memory_embeddings` | `packages/database/src/schema/vectors.ts` | `vault_name` 可空 | V1.0 刚加，尚未发布 |
-| `graph_nodes` | `packages/database/src/schema/graph.ts` | `vault_name` NOT NULL | 有索引 |
-| `graph_edges` | 同上 | `vault_name` NOT NULL | 有多个索引 |
-| `diary_embed_jobs` | `packages/database/src/schema/diary-embed-jobs.ts` | `vault_name` NOT NULL | 唯一键含它 |
-| `journals_index` | `packages/database/src/schema/shadow-index.ts` | `vault_name` NOT NULL | 在独立的 `shadow_index_v2.db` |
+| 表                  | Schema                                             | 现列                  | 备注                          |
+| ------------------- | -------------------------------------------------- | --------------------- | ----------------------------- |
+| `agent_sessions`    | `packages/database/src/schema/agent-sessions.ts`   | `vault_name` NOT NULL | 无独立索引                    |
+| `memory_embeddings` | `packages/database/src/schema/vectors.ts`          | `vault_name` 可空     | V1.0 刚加，尚未发布           |
+| `graph_nodes`       | `packages/database/src/schema/graph.ts`            | `vault_name` NOT NULL | 有索引                        |
+| `graph_edges`       | 同上                                               | `vault_name` NOT NULL | 有多个索引                    |
+| `diary_embed_jobs`  | `packages/database/src/schema/diary-embed-jobs.ts` | `vault_name` NOT NULL | 唯一键含它                    |
+| `journals_index`    | `packages/database/src/schema/shadow-index.ts`     | `vault_name` NOT NULL | 在独立的 `shadow_index_v2.db` |
 
 全部改名为 `vault_id`，回填靠注册表的 name→id 映射。**`memory_embeddings` 那列还没发布，改起来只是改代码，不需要额外的用户数据迁移。**
 
@@ -168,13 +168,13 @@ V1.4 待加的 `summaries` / `agent_assistants` 直接加 `vault_id`，不走 `v
 
 以下位置**不要**换成 ID：
 
-| 位置 | 形式 |
-| --- | --- |
-| 工作空间切换器 / 管理页 | `activeVault.name` |
-| System prompt | `Vault: ${vaultName}`、`[Current Vault / Workspace]: ${vaultName}` |
-| MCP 握手指令 | `Current workspace: ${vaultName}` |
-| 增量同步确认弹窗 | 按仓库名分组展示计划 |
-| 错误文案 | `VaultNameExistsError` 等 |
+| 位置                    | 形式                                                               |
+| ----------------------- | ------------------------------------------------------------------ |
+| 工作空间切换器 / 管理页 | `activeVault.name`                                                 |
+| System prompt           | `Vault: ${vaultName}`、`[Current Vault / Workspace]: ${vaultName}` |
+| MCP 握手指令            | `Current workspace: ${vaultName}`                                  |
+| 增量同步确认弹窗        | 按仓库名分组展示计划                                               |
+| 错误文案                | `VaultNameExistsError` 等                                          |
 
 给模型看的 prompt 尤其重要——`vlt_a3f9c2b1` 对模型没有任何语义，`工作` 才有。
 
@@ -235,10 +235,10 @@ export interface ICloudSyncClient {
 
 ### V2-D7：改名分两步交付，先正确后便宜
 
-| 阶段 | 同步行为 | 用户感受 |
-| --- | --- | --- |
-| **V2.4 朴素路径** | 老老实实 delete + upload | 能改名，改名前弹窗明确告知「将重新上传约 X MB」 |
-| **V2.5 服务端移动** | rename pass 走 `renameFile` | 改名几乎瞬时，其它设备零下载 |
+| 阶段                | 同步行为                    | 用户感受                                        |
+| ------------------- | --------------------------- | ----------------------------------------------- |
+| **V2.4 朴素路径**   | 老老实实 delete + upload    | 能改名，改名前弹窗明确告知「将重新上传约 X MB」 |
+| **V2.5 服务端移动** | rename pass 走 `renameFile` | 改名几乎瞬时，其它设备零下载                    |
 
 先交付 V2.4 有两个理由：它不动合并算法，风险可控；而且 V2.5 的失败回落路径**就是** V2.4，先把它做对，优化才有安全网。
 
@@ -353,15 +353,15 @@ export function sanitizeVaultDirectoryName(vaultName: string): string {
 
 ## 七、施工阶段
 
-| 阶段 | 内容 | 验收 | 独立提交 |
-| --- | --- | --- | --- |
-| **V2.0** | 修 §六 三个历史坑 | 单测覆盖 off-by-one、大小写、sanitize 撞名 | **已落地** |
-| **V2.1** | `VaultInfo` / 注册表 / `vault.json` 落地 ID；三级来源与回写；`vault.json` 纳入同步 | 升级后每个仓库都有 ID；删掉注册表 id 字段后能从 `vault.json` 恢复 | **已落地** |
-| **V2.2** | 六张表 `vault_name` → `vault_id` + 回填；`source_id` 前缀换 ID；停写 `group_id` 仓库名 | 回填后无空值；A/B 隔离测试仍通过 | **已落地** |
-| **V2.3** | 传递层迁 ID（IPC、`ToolContext`、path service、前端 scope key）；展示层保留名字 | 全链路 typecheck 通过；prompt 里仍是人类可读名 | **已落地** |
-| —— | **回到 V1.4 / V1.5 / V1.6 / V1.7**，新增列直接用 `vault_id` | 见 V1 方案 | —— |
-| **V2.4** | 重命名功能（朴素同步路径）+ 改名前字节量提示 | 改名后数据不丢；提示显示正确的 MB 数 | **已落地** |
-| **V2.5** | 同步 rename pass（服务端移动）+ 移动端补 `renameFile` | 改名后同步计划为空；失败能回落 | **已落地** |
+| 阶段     | 内容                                                                                   | 验收                                                              | 独立提交   |
+| -------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------- |
+| **V2.0** | 修 §六 三个历史坑                                                                      | 单测覆盖 off-by-one、大小写、sanitize 撞名                        | **已落地** |
+| **V2.1** | `VaultInfo` / 注册表 / `vault.json` 落地 ID；三级来源与回写；`vault.json` 纳入同步     | 升级后每个仓库都有 ID；删掉注册表 id 字段后能从 `vault.json` 恢复 | **已落地** |
+| **V2.2** | 六张表 `vault_name` → `vault_id` + 回填；`source_id` 前缀换 ID；停写 `group_id` 仓库名 | 回填后无空值；A/B 隔离测试仍通过                                  | **已落地** |
+| **V2.3** | 传递层迁 ID（IPC、`ToolContext`、path service、前端 scope key）；展示层保留名字        | 全链路 typecheck 通过；prompt 里仍是人类可读名                    | **已落地** |
+| ——       | **回到 V1.4 / V1.5 / V1.6 / V1.7**，新增列直接用 `vault_id`                            | 见 V1 方案                                                        | ——         |
+| **V2.4** | 重命名功能（朴素同步路径）+ 改名前字节量提示                                           | 改名后数据不丢；提示显示正确的 MB 数                              | **已落地** |
+| **V2.5** | 同步 rename pass（服务端移动）+ 移动端补 `renameFile`                                  | 改名后同步计划为空；失败能回落                                    | **已落地** |
 
 **V2.4 依赖 S1.0（同步计划字节统计）先落地。**
 
@@ -371,15 +371,15 @@ export function sanitizeVaultDirectoryName(vaultName: string): string {
 
 ## 八、风险
 
-| 风险 | 影响 | 缓解 |
-| --- | --- | --- |
-| V2.2 迁六张表 + shadow db，回填出错就是数据错位 | 高 | 回填后跑一致性自检；`vault_id` 为空时 fail-closed（检索返回空而非全量），与 V1.0 同策略 |
-| 老版本客户端吃掉注册表 `id` 字段 | 中 | 三级来源兜底，`vault.json` 老版本不碰；确定性派生作为最后一道 |
-| 混合版本同步期，新旧设备对 `source_id` 前缀理解不同 | 中 | `source_id` 只在 DB 内，不进同步文件，两端各自迁移互不影响 |
-| V2.5 动合并算法，改错会丢文件 | 高 | rename pass 失败即整体放弃回落朴素路径；pass 只做路径迁移不删内容；先在测试环境跑满 5000 文件规模 |
-| 改名中断留下半改名状态 | 中 | V2-D9 的扫盘自愈；`vault.json` 是恢复锚点 |
-| 移动端 `renameFile` 是新代码 | 中 | S3 用 CopyObject + Delete；WebDAV 用 MOVE；未实现时降级到朴素路径而非报错 |
-| 确定性派生的 ID 在两个用户间相同（都叫 Personal） | 无 | 不同用户不共享云端存储，无实际影响 |
+| 风险                                                | 影响 | 缓解                                                                                              |
+| --------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------- |
+| V2.2 迁六张表 + shadow db，回填出错就是数据错位     | 高   | 回填后跑一致性自检；`vault_id` 为空时 fail-closed（检索返回空而非全量），与 V1.0 同策略           |
+| 老版本客户端吃掉注册表 `id` 字段                    | 中   | 三级来源兜底，`vault.json` 老版本不碰；确定性派生作为最后一道                                     |
+| 混合版本同步期，新旧设备对 `source_id` 前缀理解不同 | 中   | `source_id` 只在 DB 内，不进同步文件，两端各自迁移互不影响                                        |
+| V2.5 动合并算法，改错会丢文件                       | 高   | rename pass 失败即整体放弃回落朴素路径；pass 只做路径迁移不删内容；先在测试环境跑满 5000 文件规模 |
+| 改名中断留下半改名状态                              | 中   | V2-D9 的扫盘自愈；`vault.json` 是恢复锚点                                                         |
+| 移动端 `renameFile` 是新代码                        | 中   | S3 用 CopyObject + Delete；WebDAV 用 MOVE；未实现时降级到朴素路径而非报错                         |
+| 确定性派生的 ID 在两个用户间相同（都叫 Personal）   | 无   | 不同用户不共享云端存储，无实际影响                                                                |
 
 ---
 
@@ -417,17 +417,17 @@ export function sanitizeVaultDirectoryName(vaultName: string): string {
 
 ## 十、决策记录
 
-| 日期 | 决策 |
-| --- | --- |
-| 2026-08-04 | 引入稳定 `vaultId`，名字降级为显示名；**推翻 V1 方案 V-D8「本期不动仓库身份」** |
-| 2026-08-04 | 插在 V1.4 之前做，让 `summaries` / `agent_assistants` 直接用 `vault_id` |
-| 2026-08-04 | 磁盘目录名跟着显示名走，不用 ID 命名——「数据是你自己文件夹里的普通文件」优先 |
+| 日期       | 决策                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| 2026-08-04 | 引入稳定 `vaultId`，名字降级为显示名；**推翻 V1 方案 V-D8「本期不动仓库身份」**                              |
+| 2026-08-04 | 插在 V1.4 之前做，让 `summaries` / `agent_assistants` 直接用 `vault_id`                                      |
+| 2026-08-04 | 磁盘目录名跟着显示名走，不用 ID 命名——「数据是你自己文件夹里的普通文件」优先                                 |
 | 2026-08-04 | ID 三级来源：仓内 `vault.json` > 注册表 > 从名字确定性派生；解决升级期各设备独立生成与老客户端吃字段两个问题 |
-| 2026-08-04 | 存量仓库 ID 确定性派生，新建仓库随机生成 |
-| 2026-08-04 | `group_id` 停止写入仓库名并废除全部反向解析；`source_id` 保留前缀结构但换成 ID（承担全局唯一性） |
-| 2026-08-04 | 同步文件里的 `vaultName` 字段不重写，读取侧改以路径 / 上下文为准——重写会让改名退化成全量重传 |
-| 2026-08-04 | 改名分两步交付：先朴素 delete+upload（配 S1 字节提示），再上服务端移动优化 |
-| 2026-08-04 | 本地改名时迁移本地 manifest 但**不动祖先快照**，否则合并会判成 delete-local |
-| 2026-08-04 | 改名冲突不设专门机制，以注册表的三方合并结果为唯一真相 |
-| 2026-08-04 | 活跃仓库改为本机独立存储、不进同步（可拆分为独立子项） |
-| 2026-08-04 | 展示层（UI / system prompt / MCP 握手 / 同步预览）继续用名字，不换 ID |
+| 2026-08-04 | 存量仓库 ID 确定性派生，新建仓库随机生成                                                                     |
+| 2026-08-04 | `group_id` 停止写入仓库名并废除全部反向解析；`source_id` 保留前缀结构但换成 ID（承担全局唯一性）             |
+| 2026-08-04 | 同步文件里的 `vaultName` 字段不重写，读取侧改以路径 / 上下文为准——重写会让改名退化成全量重传                 |
+| 2026-08-04 | 改名分两步交付：先朴素 delete+upload（配 S1 字节提示），再上服务端移动优化                                   |
+| 2026-08-04 | 本地改名时迁移本地 manifest 但**不动祖先快照**，否则合并会判成 delete-local                                  |
+| 2026-08-04 | 改名冲突不设专门机制，以注册表的三方合并结果为唯一真相                                                       |
+| 2026-08-04 | 活跃仓库改为本机独立存储、不进同步（可拆分为独立子项）                                                       |
+| 2026-08-04 | 展示层（UI / system prompt / MCP 握手 / 同步预览）继续用名字，不换 ID                                        |
