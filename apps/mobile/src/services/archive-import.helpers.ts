@@ -36,6 +36,7 @@ import {
 } from './archive-guards.util'
 import {
   MOBILE_ARCHIVE_DB_ZIP_NAME,
+  MOBILE_ARCHIVE_KNOWLEDGE_DB_ZIP_NAME,
   ARCHIVE_USER_AVATARS_ZIP_PREFIX,
   type MobileArchiveDbBridge,
   type ArchiveRestoreRebootstrapOptions
@@ -461,6 +462,34 @@ export async function runArchiveImportFromZip(
 
       if (restoredDatabase) {
         await ctx.dbBridge!.replaceAgentDatabaseFrom(dbPath)
+      }
+
+      // K1.4：恢复 knowledge.db（损坏则隔离删除，启动时会重建）
+      try {
+        const knowledgeSrc = joinStoragePath(payloadDir, MOBILE_ARCHIVE_KNOWLEDGE_DB_ZIP_NAME)
+        if (await ctx.fileSystem.exists(knowledgeSrc)) {
+          const knowledgeDest = joinStoragePath(rootDir, 'knowledge.db')
+          const { expoKnowledgeConnectionManager } = await import('@baishou/database/expo')
+          if (expoKnowledgeConnectionManager.isConnected()) {
+            await expoKnowledgeConnectionManager.disconnect()
+          }
+          try {
+            await ctx.fileSystem.copyFile(knowledgeSrc, knowledgeDest)
+            await expoKnowledgeConnectionManager.connect(rootDir)
+          } catch (e) {
+            console.warn('[MobileArchive] knowledge.db restore failed, isolating rebuild', e)
+            await ctx.fileSystem.unlink(knowledgeDest).catch(() => undefined)
+            await ctx.fileSystem.unlink(`${knowledgeDest}-wal`).catch(() => undefined)
+            await ctx.fileSystem.unlink(`${knowledgeDest}-shm`).catch(() => undefined)
+            try {
+              await expoKnowledgeConnectionManager.connect(rootDir)
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[MobileArchive] knowledge.db restore skipped', e)
       }
 
       const configPath = joinStoragePath(payloadDir, 'config/device_preferences.json')
