@@ -42,7 +42,7 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({ config
     <div className={styles.container}>
       {/* ─── RAG Settings ─── */}
       <SettingsSection
-        title={t('settings.features.rag_title', 'RAG 记忆检索')}
+        title={t('settings.features.rag_title', '伙伴记忆检索')}
         description={t(
           'settings.features.rag_desc',
           '配置 AI 在对话时如何从历史日记和记忆中召回上下文。'

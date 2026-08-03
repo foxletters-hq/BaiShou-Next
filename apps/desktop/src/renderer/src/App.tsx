@@ -126,12 +126,12 @@ const DiaryEmbedFailureNotifier = () => {
         reason
           ? t(
               'settings.rag_diary_auto_embed_failed_with_reason',
-              '日记已保存，但记忆嵌入未成功：{{message}}。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。',
+              '日记已保存，但记忆嵌入未成功：{{message}}。请前往 设置 → 伙伴记忆，点击「全量扫描未索引日记」补全嵌入。',
               { message: reason }
             )
           : t(
               'settings.rag_diary_auto_embed_failed',
-              '日记已保存，但记忆嵌入未成功。请前往 设置 → RAG 记忆，点击「全量扫描未索引日记」补全嵌入。'
+              '日记已保存，但记忆嵌入未成功。请前往 设置 → 伙伴记忆，点击「全量扫描未索引日记」补全嵌入。'
             ),
         { duration: 8000 }
       )

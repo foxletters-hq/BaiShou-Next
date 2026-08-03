@@ -238,7 +238,7 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
     },
     rag: {
       icon: icon(<Database />),
-      label: t('agent.rag.title', 'RAG 记忆管理'),
+      label: t('agent.rag.title', '伙伴记忆管理'),
       path: `${SETTINGS_HUB_PREFIX}/rag`
     },
     'web-search': {

@@ -49,7 +49,7 @@ export function showMigrationResultToast(
     toast.showWarning(
       t(
         'settings.rag_migration_interrupted_toast',
-        '向量迁移未完成，已保留备份。请在 RAG 记忆管理中继续迁移或恢复备份。'
+        '向量迁移未完成，已保留备份。请在伙伴记忆管理中继续迁移或恢复备份。'
       )
     )
     return

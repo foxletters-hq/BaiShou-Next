@@ -131,7 +131,7 @@ export const SettingsShell: React.FC = () => {
       {
         id: 4,
         kind: 'item',
-        label: t('agent.rag.title', 'RAG 记忆管理'),
+        label: t('agent.rag.title', '伙伴记忆管理'),
         icon: <Database size={NAV_ICON_SIZE} />
       },
       {
