@@ -526,6 +526,18 @@ export async function deleteVaultWithShadowCleanup(
     const counts = await purgeVaultDerivedData(deps.agentDb, vaultId)
     logger.info('[VaultRuntime] purged agent.db derived data', { vaultName, vaultId, ...counts })
   }
+  try {
+    const { expoKnowledgeConnectionManager, KnowledgeRepository } = await import(
+      '@baishou/database/expo'
+    )
+    if (expoKnowledgeConnectionManager.isConnected()) {
+      const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
+      const kbCounts = await repo.deleteAllForVault(vaultId)
+      logger.info('[VaultRuntime] purged knowledge.db', { vaultName, vaultId, ...kbCounts })
+    }
+  } catch (e) {
+    logger.warn('[VaultRuntime] purge knowledge.db failed:', e as Error)
+  }
   if (shadowConnectionManager.isConnected()) {
     const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
     await shadowRepo.deleteAllForVault(vaultId)

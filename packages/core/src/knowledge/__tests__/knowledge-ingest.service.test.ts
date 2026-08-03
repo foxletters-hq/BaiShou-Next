@@ -73,6 +73,7 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
       repo: knowledgeRepo,
       notebookManager,
       fs: fsApi,
+      getVaultId: () => 'vault_test',
       embedding: {
         isConfigured: true,
         getModelId: () => 'mock-emb',
@@ -94,7 +95,8 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
           metadataJson: params.metadataJson,
           embedding: Buffer.from(new Float32Array(params.embedding).buffer),
           dimension: params.embedding.length,
-          modelId: params.modelId
+          modelId: params.modelId,
+          vaultId: params.vaultId
         })
       },
       deleteChunksBySource: (id) => knowledgeRepo.deleteChunksBySource(id)
@@ -123,6 +125,7 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     const source = await repo.getSource(sourceId)
     expect(source?.status).toBe('ready')
     expect(source?.extractedTextHash).toBeTruthy()
+    expect(source?.vaultId).toBe('vault_test')
 
     const pagesPath = path.join(notebooksDir, notebookId, 'extracted', `${sourceId}.pages.json`)
     const pagesRaw = await fs.readFile(pagesPath, 'utf8')
@@ -132,5 +135,39 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     const hits = await repo.searchChunksLike(notebookId, 'knowledge.db')
     expect(hits.length).toBeGreaterThan(0)
     expect(hits[0]?.chunkText).toContain('knowledge.db')
+  })
+
+  it('同名文件导入使用 sourceId 前缀避免覆盖', async () => {
+    const { id: notebookId } = await svc.createNotebook({ name: '文件本' })
+    const a = path.join(tempDir, 'a.txt')
+    const b = path.join(tempDir, 'b.txt')
+    await fs.writeFile(a, 'content-a', 'utf8')
+    await fs.writeFile(b, 'content-b', 'utf8')
+
+    const { sourceId: id1 } = await svc.importSource({
+      notebookId,
+      title: 'same.txt',
+      kind: 'file',
+      absolutePath: a,
+      fileName: 'same.txt'
+    })
+    const { sourceId: id2 } = await svc.importSource({
+      notebookId,
+      title: 'same.txt',
+      kind: 'file',
+      absolutePath: b,
+      fileName: 'same.txt'
+    })
+
+    const s1 = await repo.getSource(id1)
+    const s2 = await repo.getSource(id2)
+    expect(s1?.relativePath).toContain(`${id1}_same.txt`)
+    expect(s2?.relativePath).toContain(`${id2}_same.txt`)
+    expect(s1?.relativePath).not.toBe(s2?.relativePath)
+
+    const text1 = await fs.readFile(path.join(notebooksDir, s1!.relativePath!), 'utf8')
+    const text2 = await fs.readFile(path.join(notebooksDir, s2!.relativePath!), 'utf8')
+    expect(text1).toBe('content-a')
+    expect(text2).toBe('content-b')
   })
 })
