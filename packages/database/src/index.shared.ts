@@ -32,6 +32,7 @@ export * from './memory-embeddings-vault-backfill'
 export * from './vault-id-map'
 export * from './vault-id-backfill'
 export * from './vault-derived-data.purge'
+export * from './summaries-assistants-vault-v14'
 export * from './agent-schema-compat'
 
 export * from './drivers/vec-capability'

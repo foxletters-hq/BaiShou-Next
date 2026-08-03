@@ -4,8 +4,8 @@ import type { ISqlExecutor } from '@baishou/shared'
  * 删除仓库时清理 agent.db 中按 vault_id 可定位的派生数据。
  * 必须在删目录之前调用（失败时目录仍在，可重试清理）。
  *
- * V1.3 / V2.2 范围：sessions（级联 messages/parts）、memory_embeddings、graph_*、diary_embed_jobs。
- * summaries / agent_assistants 尚无 vault 列（V1.4）；当前表只缓存活跃仓库，删非活跃库时通常无对应行。
+ * V1.3 / V2.2：sessions（级联 messages/parts）、memory_embeddings、graph_*、diary_embed_jobs。
+ * V1.4：summaries、agent_assistants。
  */
 export async function purgeVaultDerivedData(
   db: ISqlExecutor,
@@ -16,6 +16,8 @@ export async function purgeVaultDerivedData(
   graphNodes: number
   graphEdges: number
   diaryEmbedJobs: number
+  summaries: number
+  assistants: number
 }> {
   const id = vaultId.trim()
   if (!id) {
@@ -36,6 +38,11 @@ export async function purgeVaultDerivedData(
   const graphEdges = await count(`SELECT count(*) as c FROM graph_edges WHERE vault_id = ?`, [id])
   const diaryEmbedJobs = await count(
     `SELECT count(*) as c FROM diary_embed_jobs WHERE vault_id = ?`,
+    [id]
+  )
+  const summaries = await count(`SELECT count(*) as c FROM summaries WHERE vault_id = ?`, [id])
+  const assistants = await count(
+    `SELECT count(*) as c FROM agent_assistants WHERE vault_id = ?`,
     [id]
   )
 
@@ -60,6 +67,22 @@ export async function purgeVaultDerivedData(
     sql: `DELETE FROM diary_embed_jobs WHERE vault_id = ?`,
     args: [id]
   })
+  await db.execute({
+    sql: `DELETE FROM summaries WHERE vault_id = ?`,
+    args: [id]
+  })
+  await db.execute({
+    sql: `DELETE FROM agent_assistants WHERE vault_id = ?`,
+    args: [id]
+  })
 
-  return { sessions, embeddings, graphNodes, graphEdges, diaryEmbedJobs }
+  return {
+    sessions,
+    embeddings,
+    graphNodes,
+    graphEdges,
+    diaryEmbedJobs,
+    summaries,
+    assistants
+  }
 }

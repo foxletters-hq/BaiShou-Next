@@ -21,6 +21,7 @@ import {
 import { backfillMemoryEmbeddingsVaultName } from './memory-embeddings-vault-backfill'
 import { migrateAgentDbVaultNameToVaultId } from './vault-id-backfill'
 import { loadVaultNameToIdMapFromStorageRoot } from './vault-id-map'
+import { migrateSummariesAndAssistantsVaultV14 } from './summaries-assistants-vault-v14'
 
 export interface MigrationJournal {
   version: string
@@ -139,6 +140,7 @@ export class MigrationService {
         await this._ensureMemoryEmbeddingsVaultIndex()
         await this._backfillMemoryEmbeddingsVaultName()
         await this._migrateVaultNameToVaultId()
+        await this._migrateSummariesAndAssistantsVaultV14()
         await this._backfillAgentMessagesOrderIndex()
         return
       }
@@ -213,6 +215,7 @@ export class MigrationService {
       await this._ensureMemoryEmbeddingsVaultIndex()
       await this._backfillMemoryEmbeddingsVaultName()
       await this._migrateVaultNameToVaultId()
+      await this._migrateSummariesAndAssistantsVaultV14()
       await this._backfillAgentMessagesOrderIndex()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
@@ -346,6 +349,19 @@ export class MigrationService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.warn('[MigrationService] vault_name→vault_id 回填失败（非阻塞）:', message)
+    }
+  }
+
+  /** 仓库隔离 V1.4：summaries / agent_assistants 加 vault_id + 唯一约束 / 复合主键 */
+  private async _migrateSummariesAndAssistantsVaultV14(): Promise<void> {
+    try {
+      const result = await migrateSummariesAndAssistantsVaultV14((sql, args) =>
+        this._executeSql(sql, args)
+      )
+      logger.info('[MigrationService] summaries/assistants vault_id V1.4 完成', result)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] summaries/assistants vault_id V1.4 失败（非阻塞）:', message)
     }
   }
 
