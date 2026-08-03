@@ -47,7 +47,7 @@ export const graphNodesTable = sqliteTable(
   'graph_nodes',
   {
     id: text('id').primaryKey(),
-    vaultName: text('vault_name').notNull(),
+    vaultId: text('vault_id').notNull(),
     nodeType: text('node_type').notNull(),
     name: text('name').notNull(),
     aliases: text('aliases').notNull().default('[]'),
@@ -66,14 +66,14 @@ export const graphNodesTable = sqliteTable(
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
     deletedAt: integer('deleted_at', { mode: 'timestamp' })
   },
-  (t) => [index('graph_nodes_vault_type').on(t.vaultName, t.nodeType)]
+  (t) => [index('graph_nodes_vault_id_type').on(t.vaultId, t.nodeType)]
 )
 
 export const graphEdgesTable = sqliteTable(
   'graph_edges',
   {
     id: text('id').primaryKey(),
-    vaultName: text('vault_name').notNull(),
+    vaultId: text('vault_id').notNull(),
     fromId: text('from_id').notNull(),
     toId: text('to_id').notNull(),
     edgeType: text('edge_type').notNull(),
@@ -96,8 +96,8 @@ export const graphEdgesTable = sqliteTable(
   (t) => [
     index('graph_edges_from').on(t.fromId),
     index('graph_edges_to').on(t.toId),
-    index('graph_edges_vault_type_current').on(t.vaultName, t.edgeType, t.isCurrent),
-    index('graph_edges_source_ref').on(t.vaultName, t.sourceRef),
-    index('graph_edges_shard_month').on(t.vaultName, t.shardMonth)
+    index('graph_edges_vault_id_type_current').on(t.vaultId, t.edgeType, t.isCurrent),
+    index('graph_edges_vault_id_source_ref').on(t.vaultId, t.sourceRef),
+    index('graph_edges_vault_id_shard_month').on(t.vaultId, t.shardMonth)
   ]
 )

@@ -24,7 +24,7 @@ CREATE TABLE `agent_assistants` (
 CREATE TABLE `agent_sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`title` text DEFAULT '新对话' NOT NULL,
-	`vault_name` text NOT NULL,
+	`vault_id` text NOT NULL,
 	`assistant_id` text,
 	`is_pinned` integer DEFAULT false NOT NULL,
 	`system_prompt` text,
@@ -102,7 +102,7 @@ CREATE TABLE `memory_embeddings` (
 	`source_type` text NOT NULL,
 	`source_id` text NOT NULL,
 	`group_id` text NOT NULL,
-	`vault_name` text,
+	`vault_id` text,
 	`chunk_index` integer DEFAULT 0 NOT NULL,
 	`chunk_text` text NOT NULL,
 	`metadata_json` text DEFAULT '{}' NOT NULL,
@@ -115,4 +115,4 @@ CREATE TABLE `memory_embeddings` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `memory_embeddings_embedding_id_unique` ON `memory_embeddings` (`embedding_id`);
 --> statement-breakpoint
-CREATE INDEX `memory_embeddings_vault_source` ON `memory_embeddings` (`vault_name`,`source_type`);
+CREATE INDEX `memory_embeddings_vault_id_source` ON `memory_embeddings` (`vault_id`,`source_type`);

@@ -22,7 +22,7 @@ export const MEMORY_EMBEDDINGS_CREATE_SQL = `
     source_type     TEXT NOT NULL,
     source_id       TEXT NOT NULL,
     group_id        TEXT NOT NULL,
-    vault_name      TEXT,
+    vault_id        TEXT,
     chunk_index     INTEGER DEFAULT 0 NOT NULL,
     chunk_text      TEXT NOT NULL,
     metadata_json   TEXT DEFAULT '{}' NOT NULL,
@@ -40,15 +40,15 @@ export const MEMORY_EMBEDDINGS_INDEX_SQL = `
 `
 
 export const MEMORY_EMBEDDINGS_VAULT_INDEX_SQL = `
-  CREATE INDEX IF NOT EXISTS memory_embeddings_vault_source
-  ON memory_embeddings (vault_name, source_type)
+  CREATE INDEX IF NOT EXISTS memory_embeddings_vault_id_source
+  ON memory_embeddings (vault_id, source_type)
 `
 
 /** 日记 RAG 嵌入欠账表；成功后删行，不保留永久历史 */
 export const DIARY_EMBED_JOBS_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS diary_embed_jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    vault_name TEXT NOT NULL,
+    vault_id TEXT NOT NULL,
     diary_id INTEGER NOT NULL,
     content_hash TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -61,8 +61,8 @@ export const DIARY_EMBED_JOBS_CREATE_SQL = `
 `
 
 export const DIARY_EMBED_JOBS_INDEXES_SQL = [
-  `CREATE UNIQUE INDEX IF NOT EXISTS diary_embed_jobs_vault_diary_unique
-   ON diary_embed_jobs (vault_name, diary_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS diary_embed_jobs_vault_id_diary_unique
+   ON diary_embed_jobs (vault_id, diary_id)`,
   `CREATE INDEX IF NOT EXISTS diary_embed_jobs_status_retry_idx
    ON diary_embed_jobs (status, next_retry_at)`
 ] as const
@@ -80,7 +80,7 @@ export const SYSTEM_SETTINGS_CREATE_SQL = `
 export const GRAPH_NODES_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS graph_nodes (
     id TEXT PRIMARY KEY NOT NULL,
-    vault_name TEXT NOT NULL,
+    vault_id TEXT NOT NULL,
     node_type TEXT NOT NULL,
     name TEXT NOT NULL,
     aliases TEXT DEFAULT '[]' NOT NULL,
@@ -104,7 +104,7 @@ export const GRAPH_NODES_CREATE_SQL = `
 export const GRAPH_EDGES_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS graph_edges (
     id TEXT PRIMARY KEY NOT NULL,
-    vault_name TEXT NOT NULL,
+    vault_id TEXT NOT NULL,
     from_id TEXT NOT NULL,
     to_id TEXT NOT NULL,
     edge_type TEXT NOT NULL,
@@ -127,16 +127,17 @@ export const GRAPH_EDGES_CREATE_SQL = `
 `
 
 export const GRAPH_INDEXES_SQL = [
-  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_type ON graph_nodes(vault_name, node_type)`,
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_id_type ON graph_nodes(vault_id, node_type)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_from ON graph_edges(from_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_to ON graph_edges(to_id)`,
-  `CREATE INDEX IF NOT EXISTS graph_edges_vault_type_current ON graph_edges(vault_name, edge_type, is_current)`,
-  `CREATE INDEX IF NOT EXISTS graph_edges_source_ref ON graph_edges(vault_name, source_ref)`,
-  `CREATE INDEX IF NOT EXISTS graph_edges_shard_month ON graph_edges(vault_name, shard_month)`
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_type_current ON graph_edges(vault_id, edge_type, is_current)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_source_ref ON graph_edges(vault_id, source_ref)`,
+  `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_shard_month ON graph_edges(vault_id, shard_month)`
 ] as const
 
 /**
  * 按表聚合的缺列补丁（顺序无关，逐条检测后执行）。
+ * V2.2：vault_name → vault_id 由 MigrationService 的 rename+回填负责；此处仅兜底缺列。
  */
 export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
   // ── agent_assistants ──
@@ -234,10 +235,10 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     column: 'updated_at',
     ddl: `ALTER TABLE summaries ADD COLUMN updated_at INTEGER`
   },
-  // ── memory_embeddings（仓库隔离 V1.0）──
+  // ── memory_embeddings（仓库身份 V2.2；旧库若仍无 vault 列则直接加 vault_id）──
   {
     table: 'memory_embeddings',
-    column: 'vault_name',
-    ddl: `ALTER TABLE memory_embeddings ADD COLUMN vault_name TEXT`
+    column: 'vault_id',
+    ddl: `ALTER TABLE memory_embeddings ADD COLUMN vault_id TEXT`
   }
 ]
