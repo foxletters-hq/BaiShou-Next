@@ -6,9 +6,8 @@ import {
   SqliteHybridSearchRepository
 } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
-import { eq, desc, like, sql, or, and, ne } from 'drizzle-orm'
+import { eq, desc, like, sql, and } from 'drizzle-orm'
 import {
-  buildDiaryEmbeddingGroupId,
   buildMemoryMetadataJson,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   MEMORY_SOURCE_TYPE,
@@ -124,12 +123,7 @@ export function registerRagQueryIPC() {
       await config.load()
       const db = getAppDb()
       const activeVaultName = vaultService.getActiveVault()?.name ?? 'Personal'
-      const vaultDiaryGroupId = buildDiaryEmbeddingGroupId(activeVaultName)
-
-      const vaultScopeFilter = or(
-        ne(memoryEmbeddingsTable.sourceType, 'diary'),
-        eq(memoryEmbeddingsTable.groupId, vaultDiaryGroupId)
-      )
+      const vaultScopeFilter = eq(memoryEmbeddingsTable.vaultName, activeVaultName)
 
       // ── 语义检索分支（Semantic Search Mode） ──
       if (params.mode === 'semantic' && params.keyword && params.keyword.trim() !== '') {
@@ -174,16 +168,15 @@ export function registerRagQueryIPC() {
 
                 const hybridRepo = new SqliteHybridSearchRepository(mockClient as any)
                 const limit = params.limit || 30
-                const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit)
-                const scopedResults = vectorResults.filter(
-                  (r) => r.sourceType !== 'diary' || r.sessionId === vaultDiaryGroupId
-                )
+                const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit, {
+                  vaultName: activeVaultName
+                })
 
                 const metaMap = await loadMetadataByEmbeddingIds(
-                  scopedResults.map((r) => r.messageId).filter(Boolean)
+                  vectorResults.map((r) => r.messageId).filter(Boolean)
                 )
 
-                const entries = scopedResults.map((r) => {
+                const entries = vectorResults.map((r) => {
                   const metaRow = metaMap.get(r.messageId)
                   return enrichEntryFromMetadata({
                     embeddingId: r.messageId,
@@ -333,6 +326,7 @@ export function registerRagQueryIPC() {
           source_type: record.sourceType,
           source_id: record.sourceId,
           group_id: record.groupId,
+          vault_name: record.vaultName,
           chunk_index: record.chunkIndex,
           metadata_json: record.metadataJson
         },
@@ -384,6 +378,7 @@ export function registerRagQueryIPC() {
       sourceType: MEMORY_SOURCE_TYPE,
       sourceId: updated.id,
       groupId: `memory:${vaultName}`,
+      vaultName,
       metadataJson: buildMemoryMetadataJson(updated),
       sourceCreatedAt: createdAt
     })
