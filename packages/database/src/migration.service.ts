@@ -15,8 +15,10 @@ import {
   GRAPH_NODES_CREATE_SQL,
   MEMORY_EMBEDDINGS_CREATE_SQL,
   MEMORY_EMBEDDINGS_INDEX_SQL,
+  MEMORY_EMBEDDINGS_VAULT_INDEX_SQL,
   SYSTEM_SETTINGS_CREATE_SQL
 } from './agent-schema-compat'
+import { backfillMemoryEmbeddingsVaultName } from './memory-embeddings-vault-backfill'
 
 export interface MigrationJournal {
   version: string
@@ -123,6 +125,8 @@ export class MigrationService {
         await this._ensureGraphTables()
         await this._ensureDiaryEmbedJobsTable()
         await this._ensureAgentSchemaColumns()
+        await this._ensureMemoryEmbeddingsVaultIndex()
+        await this._backfillMemoryEmbeddingsVaultName()
         await this._backfillAgentMessagesOrderIndex()
         return
       }
@@ -194,6 +198,8 @@ export class MigrationService {
       await this._ensureGraphTables()
       await this._ensureDiaryEmbedJobsTable()
       await this._ensureAgentSchemaColumns()
+      await this._ensureMemoryEmbeddingsVaultIndex()
+      await this._backfillMemoryEmbeddingsVaultName()
       await this._backfillAgentMessagesOrderIndex()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
@@ -270,9 +276,46 @@ export class MigrationService {
       logger.info('[MigrationService] 创建缺失的 memory_embeddings 表...')
       await this._executeSql(MEMORY_EMBEDDINGS_CREATE_SQL)
       await this._executeSql(MEMORY_EMBEDDINGS_INDEX_SQL)
+      await this._executeSql(MEMORY_EMBEDDINGS_VAULT_INDEX_SQL)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.warn('[MigrationService] memory_embeddings 表检查失败（非阻塞）:', message)
+    }
+  }
+
+  private async _ensureMemoryEmbeddingsVaultIndex(): Promise<void> {
+    try {
+      const table = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'`
+      )
+      if (table.rows.length === 0) return
+      await this._executeSql(MEMORY_EMBEDDINGS_VAULT_INDEX_SQL)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] memory_embeddings vault 索引检查失败（非阻塞）:', message)
+    }
+  }
+
+  /** 仓库隔离 V1.0：回填 vault_name（幂等；遗留手动记忆保持空值） */
+  private async _backfillMemoryEmbeddingsVaultName(): Promise<void> {
+    try {
+      const table = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='memory_embeddings'`
+      )
+      if (table.rows.length === 0) return
+      const tableInfo = await this._executeSql(`PRAGMA table_info(memory_embeddings)`)
+      const hasVault = tableInfo.rows.some((c: { name?: string }) => c.name === 'vault_name')
+      if (!hasVault) return
+
+      const counts = await backfillMemoryEmbeddingsVaultName((sql, args) =>
+        this._executeSql(sql, args)
+      )
+      logger.info('[MigrationService] memory_embeddings.vault_name 回填完成', {
+        ...counts
+      })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] memory_embeddings.vault_name 回填失败（非阻塞）:', message)
     }
   }
 

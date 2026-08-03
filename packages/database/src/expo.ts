@@ -29,6 +29,9 @@ export * from './repositories/summary.repository'
 export * from './repositories/summary.repository.impl'
 export * from './repositories/graph.repository'
 
+export * from './memory-embeddings-vault-backfill'
+export * from './vault-derived-data.purge'
+
 export * from './drivers/vec-capability'
 export * from './drivers/expo-sqlite-vec.loader'
 export type { ExpoSqliteDatabase } from './drivers/expo-sqlite.driver'
