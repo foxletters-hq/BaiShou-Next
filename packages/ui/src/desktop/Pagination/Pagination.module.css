@@ -3,29 +3,35 @@
   align-items: center;
   gap: 4px;
   font-family: var(--font-family-main, sans-serif);
+  line-height: 1;
 }
 
 .pageBtn {
   min-width: 32px;
   height: 32px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 6px;
   border-radius: 8px;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
   background: var(--bg-surface-high);
-  border-color: var(--border-control);
+  border-color: var(--border-strong);
   color: var(--text-primary);
 }
 
@@ -35,45 +41,50 @@
 }
 
 .pageBtnActive {
-  background: var(--bg-surface-high) !important;
-  border-color: var(--border-control) !important;
-  color: var(--text-primary) !important;
-  font-weight: 500;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface)) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--border-control)) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600;
   box-shadow: none;
   cursor: default;
 }
 
 .ellipsis {
-  min-width: 32px;
+  min-width: 28px;
   height: 32px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--text-tertiary);
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-size: 13px;
+  letter-spacing: 1px;
   user-select: none;
 }
 
 .jumper {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 8px;
+  gap: 6px;
+  margin-left: 4px;
+  height: 32px;
 }
 
 .jumperInput {
-  width: 48px;
+  width: 44px;
   height: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 13px;
+  line-height: 1;
   text-align: center;
   outline: none;
-  transition: all 0.15s ease;
+  box-sizing: border-box;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .jumperInput::placeholder {
@@ -82,8 +93,8 @@
 }
 
 .jumperInput:focus {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .jumperInput:disabled {
@@ -93,31 +104,7 @@
 
 .jumperSuffix {
   font-size: 13px;
+  line-height: 32px;
   color: var(--text-tertiary);
   white-space: nowrap;
-}
-
-/* 深色模式适配 */
-[data-theme='dark'] .pageBtn {
-  background: var(--bg-surface);
-  border-color: var(--border-control);
-  color: var(--text-primary);
-}
-
-[data-theme='dark'] .pageBtn:hover:not(:disabled):not(.pageBtnActive) {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-[data-theme='dark'] .pageBtnActive {
-  box-shadow: none;
-}
-
-[data-theme='dark'] .jumperInput {
-  background: var(--bg-surface);
-  border-color: var(--border-subtle);
-  color: var(--text-primary);
-}
-
-[data-theme='dark'] .jumperInput:focus {
-  box-shadow: none;
 }

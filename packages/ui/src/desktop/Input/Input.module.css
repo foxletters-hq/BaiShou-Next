@@ -27,13 +27,13 @@
   width: 100%;
   box-sizing: border-box;
   outline: none;
-  transition: all var(--duration-fast) ease;
+  transition: var(--form-field-transition);
 }
 
 .input:focus {
   background-color: var(--form-field-bg, var(--bg-surface));
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .input::placeholder {

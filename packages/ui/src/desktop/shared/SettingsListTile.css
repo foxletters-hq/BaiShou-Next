@@ -37,7 +37,7 @@
   align-self: flex-end;
   margin-top: 12px;
   padding: 9px 16px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
   background: transparent;
   color: var(--text-primary);
@@ -111,7 +111,7 @@
   height: 28px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: transparent;
   color: var(--text-secondary);
   transition:
@@ -377,7 +377,7 @@
   font-family: inherit;
   text-align: center;
   outline: none;
-  transition: border-color 0.2s;
+  transition: var(--form-field-transition);
   flex-shrink: 0;
   -moz-appearance: textfield;
   appearance: textfield;
@@ -390,6 +390,6 @@
 }
 
 .settings-number-input:focus {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }

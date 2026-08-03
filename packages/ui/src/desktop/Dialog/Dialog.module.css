@@ -38,7 +38,7 @@
   width: 100%;
   padding: 12px 10px;
   border: none;
-  border-bottom: 1px solid var(--color-outline-variant, rgba(0, 0, 0, 0.08));
+  border-bottom: 1px solid var(--border-muted);
   background: transparent;
   cursor: pointer;
   text-align: left;
