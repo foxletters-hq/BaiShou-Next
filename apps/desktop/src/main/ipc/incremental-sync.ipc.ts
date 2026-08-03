@@ -195,6 +195,7 @@ async function afterIncrementalSync(
       assistants: cls.assistants,
       memory: cls.memory,
       graph: cls.graph,
+      notebooks: cls.notebooks,
       sessionRefCount: cls.sessionRefs.length
     }
   })
@@ -259,7 +260,7 @@ async function afterIncrementalSync(
     // Memory/Graph-only downloads skip selective resync but still need derived-index hydration
     const { runDerivedIndexHydration } = await import('../services/raw-data-source.runtime')
     await runDerivedIndexHydration('incremental-sync-memory-graph')
-  } else {
+  } else if (!cls.notebooks) {
     logger.warn('[IncrementalSync][PostSync] done-lite', { reason: 'sessions-hydrated-only' })
     return
   }
@@ -268,6 +269,11 @@ async function afterIncrementalSync(
     const { schedulePostSyncDiaryBatchEmbed } =
       await import('../services/controlled-diary-batch-embed.service')
     schedulePostSyncDiaryBatchEmbed()
+  }
+
+  if (cls.notebooks) {
+    const { runKnowledgeHydrationAfterSync } = await import('../services/raw-data-source.runtime')
+    await runKnowledgeHydrationAfterSync('incremental-sync-notebooks')
   }
 
   logger.warn('[IncrementalSync][PostSync] done')
