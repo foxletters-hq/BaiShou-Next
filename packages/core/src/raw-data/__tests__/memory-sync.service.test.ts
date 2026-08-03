@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { deriveLegacyVaultId, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -68,7 +69,10 @@ describe('MemorySyncService', () => {
     )
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'b')
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
-    expect(listSourceIdsByType).toHaveBeenCalledWith('memory', 'memory:Personal')
+    expect(listSourceIdsByType).toHaveBeenCalledWith('memory', {
+      groupId: MEMORY_EMBED_GROUP_ID,
+      vaultId: deriveLegacyVaultId('Personal')
+    })
     expect(await memoryManager.listPendingIndex()).toHaveLength(0)
   })
 
@@ -97,7 +101,10 @@ describe('MemorySyncService', () => {
     const result = await sync.syncPendingIndex()
 
     expect(result.shards).toBe(0)
-    expect(listSourceIdsByType).toHaveBeenCalledWith('memory', 'memory:Personal')
+    expect(listSourceIdsByType).toHaveBeenCalledWith('memory', {
+      groupId: MEMORY_EMBED_GROUP_ID,
+      vaultId: deriveLegacyVaultId('Personal')
+    })
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
     expect(deleteBySource).not.toHaveBeenCalledWith('memory', 'live')
   })

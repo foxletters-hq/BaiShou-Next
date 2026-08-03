@@ -308,7 +308,7 @@ export class ShadowIndexSyncService {
           try {
             await this.embeddingCallback.deleteEmbeddingsBySource(
               'diary',
-              buildDiaryEmbeddingSourceId(this.shadowRepo.vaultName, req.id)
+              buildDiaryEmbeddingSourceId(this.shadowRepo.vaultId, req.id)
             )
           } catch (e: any) {}
         }
@@ -341,7 +341,7 @@ export class ShadowIndexSyncService {
                 diaryId: id,
                 contentHash: p.contentHash,
                 date: d.date,
-                vaultName: this.shadowRepo.vaultName
+                vaultName: this.shadowRepo.vaultId
               })
             }
           }
@@ -460,7 +460,7 @@ export class ShadowIndexSyncService {
             try {
               await this.embeddingCallback.deleteEmbeddingsBySource(
                 'diary',
-                buildDiaryEmbeddingSourceId(this.shadowRepo.vaultName, record.id)
+                buildDiaryEmbeddingSourceId(this.shadowRepo.vaultId, record.id)
               )
             } catch (e: any) {
               logger.warn(`[ShadowSync] 清理孤立 RAG 向量失败 (ID=${record.id}):`, e.message)
