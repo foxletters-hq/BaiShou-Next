@@ -19,15 +19,16 @@ export function resolveIncrementalSyncVaultScope(filePath: string): string {
   return normalized.slice(0, slash)
 }
 
-/** 与 core vault-name.util 一致：判断注册名是否已有对应磁盘目录 */
+/** 与 core vault-name.util 一致：判断注册名是否已有对应磁盘目录（大小写不敏感） */
 export function isRegistryVaultOnDisk(
   vaultName: string,
   diskVaultNames: readonly string[]
 ): boolean {
-  const diskSet = new Set(diskVaultNames)
-  if (diskSet.has(vaultName)) return true
   const sanitized = vaultName.replace(/[\\/:%#?*\x00-\x1f]/g, '_').trim() || 'vault'
-  return diskSet.has(sanitized)
+  const targets = new Set(
+    [vaultName, sanitized].map((name) => name.trim().toLocaleLowerCase()).filter(Boolean)
+  )
+  return diskVaultNames.some((diskName) => targets.has(diskName.trim().toLocaleLowerCase()))
 }
 
 /** 汇总 manifest 中出现的工作区作用域（不含 __root__ / __unknown__） */

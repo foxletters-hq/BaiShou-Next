@@ -48,6 +48,16 @@ describe('incremental-sync-plan.util', () => {
     expect(issues.unknownVaultPaths).toEqual(['Archive'])
   })
 
+  it('treats case-only disk folder as present for registry vault', () => {
+    const issues = buildIncrementalSyncBoundaryIssues({
+      registeredVaults: ['Work'],
+      diskVaultNames: ['work'],
+      planItems: [],
+      manifestVaultScopes: new Set(['Work'])
+    })
+    expect(issues.registryVaultsMissingOnDisk).toEqual([])
+  })
+
   it('ignores registry-only vaults without manifest data or pending changes', () => {
     const issues = buildIncrementalSyncBoundaryIssues({
       registeredVaults: ['Personal', 'C__Users_Desktop_OldVault'],

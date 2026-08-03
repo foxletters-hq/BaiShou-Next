@@ -33,8 +33,13 @@ export function inferVaultNameFromEmbeddingRefs(params: {
   const explicit = params.vaultName?.trim()
   if (explicit) return explicit
   const groupId = params.groupId ?? ''
-  if (groupId.startsWith('memory:') && groupId.length > 7) return groupId.slice(8)
-  if (groupId.startsWith('diary:') && groupId.length > 6) return groupId.slice(6)
+  // `memory:` 长度 7；勿写成 slice(8)（会把 Personal 切成 ersonal）
+  if (groupId.startsWith('memory:') && groupId.length > 7) {
+    return groupId.slice('memory:'.length)
+  }
+  if (groupId.startsWith('diary:') && groupId.length > 6) {
+    return groupId.slice('diary:'.length)
+  }
   if (params.sourceType === 'diary') {
     const idx = params.sourceId.indexOf('#')
     if (idx > 0) return params.sourceId.slice(0, idx)
