@@ -71,12 +71,17 @@ export interface AgentWorkspaceSessionListItem {
   updatedAt: string
 }
 
+/** 工作区类型：普通文件夹 / 内置临时「稿纸」 */
+export type AgentWorkspaceKind = 'folder' | 'scratch'
+
 /** Agent 页左侧工作区条目（本地文件夹 + 可自定义方形图标） */
 export interface AgentWorkspaceEntry {
   id: string
   folderRoot: string
   displayName: string
   avatarPath?: string | null
+  /** 缺省视为 folder；scratch 为内置临时「稿纸」工作区 */
+  kind?: AgentWorkspaceKind
   createdAt: string
   updatedAt: string
 }
@@ -84,4 +89,5 @@ export interface AgentWorkspaceEntry {
 export interface AgentWorkspaceEntryUpdate {
   displayName?: string
   avatarPath?: string | null
+  kind?: AgentWorkspaceKind
 }
