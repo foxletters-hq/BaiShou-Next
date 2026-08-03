@@ -184,6 +184,18 @@ export function registerKnowledgeIPC(): void {
     return repo.getStats(notebookId)
   })
 
+  ipcMain.handle('knowledge:has-model-mismatch', async () => {
+    const repo = requireKnowledgeRepo()
+    const embeddingService = getEmbeddingService()
+    const { getEmbeddingConfig } = await import('./rag.ipc')
+    const embeddingConfig = getEmbeddingConfig()
+    await embeddingConfig.load()
+    const modelId = embeddingConfig.getGlobalEmbeddingModelId()
+    if (!modelId || !embeddingService.isConfigured) return false
+    const count = await repo.countHeterogeneousEmbeddings(modelId)
+    return count > 0
+  })
+
   ipcMain.handle('knowledge:list-sources', async (_e, notebookId: string) => {
     const repo = requireKnowledgeRepo()
     return repo.listSources(notebookId)
@@ -213,6 +225,18 @@ export function registerKnowledgeIPC(): void {
   ipcMain.handle(
     'knowledge:ask',
     async (_e, input: { notebookId: string; question: string; topK?: number }) => {
+      const repo = requireKnowledgeRepo()
+      const embeddingService = getEmbeddingService()
+      const { getEmbeddingConfig } = await import('./rag.ipc')
+      const embeddingConfig = getEmbeddingConfig()
+      await embeddingConfig.load()
+      const modelId = embeddingConfig.getGlobalEmbeddingModelId()
+      if (modelId && embeddingService.isConfigured) {
+        const mismatch = await repo.countHeterogeneousEmbeddings(modelId)
+        if (mismatch > 0) {
+          throw new Error('knowledge-model-mismatch')
+        }
+      }
       const ask = buildAskService()
       return ask.ask(input)
     }

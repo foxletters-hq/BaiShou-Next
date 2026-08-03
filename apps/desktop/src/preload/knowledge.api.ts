@@ -18,6 +18,7 @@ export const knowledgeApi = {
     rebuildIndex: (notebookId: string) =>
       ipcRenderer.invoke('knowledge:rebuild-index', notebookId),
     getStats: (notebookId?: string) => ipcRenderer.invoke('knowledge:get-stats', notebookId),
+    hasModelMismatch: () => ipcRenderer.invoke('knowledge:has-model-mismatch'),
     listSources: (notebookId: string) => ipcRenderer.invoke('knowledge:list-sources', notebookId),
     search: (input: { notebookId: string; query: string; topK?: number }) =>
       ipcRenderer.invoke('knowledge:search', input),
