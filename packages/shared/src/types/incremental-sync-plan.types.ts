@@ -13,6 +13,10 @@ export interface IncrementalSyncPlanItem {
   action: IncrementalSyncPlanAction
   /** 工作区名、`__root__`（注册表等根级文件）或 `__unknown__` */
   vaultScope: string
+  /** 来自 MergeDecision.size（字节）；删除类动作不计入流量汇总但仍保留原值 */
+  sizeBytes: number
+  /** 冲突解决时的数据流向，用于把 sizeBytes 归入上传/下载 */
+  direction?: 'upload' | 'download'
 }
 
 export interface IncrementalSyncVaultSummary {
@@ -23,6 +27,10 @@ export interface IncrementalSyncVaultSummary {
   deleteRemote: number
   conflict: number
   samplePaths: string[]
+  /** 本工作区预计上传字节（含按 direction 归入的冲突项；不含删除） */
+  uploadBytes: number
+  /** 本工作区预计下载字节（含按 direction 归入的冲突项；不含删除） */
+  downloadBytes: number
 }
 
 export interface IncrementalSyncBoundaryIssues {
@@ -39,6 +47,10 @@ export interface IncrementalSyncPlanPreview {
   warnings: string[]
   changeCount: number
   skippedCount: number
+  /** 全计划预计上传字节合计（不含删除） */
+  totalUploadBytes: number
+  /** 全计划预计下载字节合计（不含删除） */
+  totalDownloadBytes: number
   boundaryIssues: IncrementalSyncBoundaryIssues
   requiresHighDivergenceConfirm: boolean
   divergencePercent?: number
