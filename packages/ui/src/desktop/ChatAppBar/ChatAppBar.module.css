@@ -158,12 +158,13 @@
   margin: 0;
   width: 140px;
   border-radius: 4px;
+  transition: var(--form-field-transition);
 }
 
 .nameInput:focus {
   border-style: solid;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .inlineEditBtn {
@@ -200,7 +201,7 @@
   right: 0;
   margin-top: 8px;
   background: var(--bg-surface);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-control);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   padding: 6px;

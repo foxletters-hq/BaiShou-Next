@@ -4,7 +4,7 @@
   gap: 8px;
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -15,7 +15,7 @@
 }
 
 .summary:hover:not(:disabled) {
-  background: var(--bg-hover, rgba(0, 0, 0, 0.03));
+  background: var(--bg-hover);
 }
 
 .summary:disabled {
@@ -38,7 +38,7 @@
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: var(--bg-muted, rgba(0, 0, 0, 0.05));
+  background: var(--bg-muted);
   color: var(--text-secondary);
 }
 

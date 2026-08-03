@@ -100,7 +100,7 @@
 }
 
 .divider {
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  border-bottom: 1px solid var(--border-muted);
   margin: 16px 0;
 }
 
@@ -137,7 +137,7 @@
 
 .refreshButton {
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;
@@ -239,7 +239,7 @@
 
 .refreshButtonInline {
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 500;

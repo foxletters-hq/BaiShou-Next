@@ -252,7 +252,7 @@
   padding: 8px 10px;
   border-radius: 8px;
   cursor: pointer;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   transition:
     background-color 0.12s ease,
@@ -511,7 +511,7 @@
   padding: 4px 0;
   font-size: 12px;
   line-height: 1.45;
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb), 0.25);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .recompressPreviewList li:last-child {
@@ -554,7 +554,7 @@
   font-weight: 600;
   color: var(--text-primary);
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   cursor: pointer;
   transition:

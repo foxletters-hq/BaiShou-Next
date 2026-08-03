@@ -150,7 +150,7 @@
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: 20px 4px 20px 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -162,7 +162,7 @@
 
 .userBubbleCard .attDocument {
   background-color: var(--bg-surface-normal);
-  border-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  border-color: var(--border-subtle);
 }
 
 .userBubbleCard .attDocName {
@@ -172,7 +172,7 @@
 .editingBubbleCard {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
   width: 800px !important;
   max-width: 100% !important;
   align-self: stretch !important;
@@ -197,7 +197,7 @@
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: 4px 20px 20px 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -265,7 +265,7 @@
   padding: 8px;
   background-color: var(--bg-surface-normal);
   border-radius: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -401,7 +401,7 @@
   background: rgba(0, 0, 0, 0.02);
   border-radius: 8px;
   padding: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 224, 224, 224), 0.5);
+  border: 1px solid var(--border-muted);
 }
 .reasoningSummary {
   cursor: pointer;
@@ -534,8 +534,8 @@
 }
 
 .editorTextarea:focus {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .editorActions {
@@ -552,7 +552,7 @@
   font-weight: 600;
   border-radius: 6px;
   cursor: pointer;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
@@ -561,7 +561,7 @@
 .editorBtnCancel {
   background: var(--bg-surface);
   color: var(--text-secondary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .editorBtnCancel:hover {
@@ -572,7 +572,7 @@
 .editorBtnSave {
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .editorBtnSave:hover {
@@ -583,7 +583,7 @@
 .editorBtnResend {
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .editorBtnResend:hover {

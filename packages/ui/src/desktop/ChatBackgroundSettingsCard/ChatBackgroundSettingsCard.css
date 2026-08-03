@@ -14,7 +14,7 @@
   border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid var(--border-card, rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--border-card);
   transition: border-color 0.2s;
   contain: paint;
 }
@@ -107,7 +107,7 @@
   align-items: center;
   gap: 6px;
   background: transparent;
-  border: 1px solid var(--border-muted, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
