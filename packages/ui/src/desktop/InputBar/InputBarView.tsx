@@ -247,7 +247,6 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   onChange={handleTextChange}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
-                  rows={1}
                 />
               </div>
             </div>
