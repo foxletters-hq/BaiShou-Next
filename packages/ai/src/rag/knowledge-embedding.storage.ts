@@ -34,6 +34,7 @@ export class KnowledgeEmbeddingStorage implements IEmbeddingStorage {
     const vectorBuffer = Buffer.from(new Float32Array(params.embedding).buffer)
     await repo.insertChunk({
       chunkId: params.id,
+      vaultId: params.vaultId,
       notebookId,
       sourceId: params.sourceId,
       chunkIndex: params.chunkIndex,

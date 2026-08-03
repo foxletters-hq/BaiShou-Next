@@ -29,6 +29,8 @@ export interface KnowledgeIngestDeps {
   repo: KnowledgeRepository
   notebookManager: NotebookRawManager
   fs: IFileSystem
+  /** 当前活跃仓库 id；写入 knowledge.db 时必填 */
+  getVaultId: () => string
   embedding?: KnowledgeIngestEmbeddingConfig
   /** 提取引擎偏好；可每次 process 时覆盖 */
   getExtractConfig?: () => Promise<KnowledgeExtractConfig> | KnowledgeExtractConfig
@@ -41,6 +43,7 @@ export interface KnowledgeIngestDeps {
     metadataJson?: string
     embedding: number[]
     modelId: string
+    vaultId: string
   }) => Promise<void>
   deleteChunksBySource: (sourceId: string) => Promise<void>
   /** 可选：真实网络嵌入；缺省时用 insertChunk 传入的向量由调用方 mock */
@@ -65,6 +68,12 @@ function byteLengthUtf8(text: string): number {
   return new TextEncoder().encode(text).length
 }
 
+function requireVaultId(getVaultId: () => string): string {
+  const id = getVaultId()?.trim() || ''
+  if (!id) throw new Error('vaultId is required for knowledge ingest')
+  return id
+}
+
 /**
  * 知识库摄入编排：extract → embed 两段 job；磁盘先落定再灌库。
  */
@@ -76,12 +85,14 @@ export class KnowledgeIngestService {
     description?: string
     id?: string
   }): Promise<{ id: string; name: string }> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
     const id = input.id ?? newId('nb')
     const now = Date.now()
     await this.deps.repo.createNotebook({
       id,
       name: input.name,
-      description: input.description
+      description: input.description,
+      vaultId
     })
     await this.deps.notebookManager.appendNotebookRecord({
       id,
@@ -95,7 +106,8 @@ export class KnowledgeIngestService {
   }
 
   async listNotebooks() {
-    return this.deps.repo.listNotebooks()
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    return this.deps.repo.listNotebooks({ vaultId })
   }
 
   async importSource(input: {
@@ -108,8 +120,12 @@ export class KnowledgeIngestService {
     originUrl?: string
     extractEngine?: ExtractEngineId
   }): Promise<{ sourceId: string }> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
     const notebook = await this.deps.repo.getNotebook(input.notebookId)
     if (!notebook) throw new Error(`notebook not found: ${input.notebookId}`)
+    if (notebook.vaultId && notebook.vaultId !== vaultId) {
+      throw new Error(`notebook belongs to another vault: ${input.notebookId}`)
+    }
 
     const sourceId = newId(input.kind === 'note' ? 'note' : 'src')
     const now = Date.now()
@@ -124,7 +140,8 @@ export class KnowledgeIngestService {
     if (input.kind === 'file') {
       if (!input.absolutePath) throw new Error('import file requires absolutePath')
       const safeName = fileName.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
-      relativePath = path.join(input.notebookId, 'sources', safeName)
+      // 同名文件不覆盖：sources/${sourceId}_${safeName}
+      relativePath = path.join(input.notebookId, 'sources', `${sourceId}_${safeName}`)
       const written = await this.deps.notebookManager.copySourceFile(
         relativePath,
         input.absolutePath
@@ -162,6 +179,7 @@ export class KnowledgeIngestService {
 
     await this.deps.repo.upsertSource({
       id: sourceId,
+      vaultId,
       notebookId: input.notebookId,
       title: input.title,
       sourceKind,
@@ -190,7 +208,8 @@ export class KnowledgeIngestService {
     await this.deps.repo.enqueueIngestJob({
       notebookId: input.notebookId,
       sourceId,
-      stage: 'extract'
+      stage: 'extract',
+      vaultId
     })
 
     return { sourceId }
@@ -241,6 +260,7 @@ ${citeBlock}
   }
 
   async retrySource(sourceId: string): Promise<void> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
     const stage =
@@ -249,7 +269,8 @@ ${citeBlock}
     await this.deps.repo.enqueueIngestJob({
       notebookId: source.notebookId,
       sourceId,
-      stage
+      stage,
+      vaultId: source.vaultId?.trim() || vaultId
     })
   }
 
@@ -274,8 +295,6 @@ ${citeBlock}
       errorMessage: null,
       extractEngine: engine
     })
-    // 把意图记在 errorMessage 临时字段不合适；用 extractEngine + 下次 processExtract 读 pageNumbers
-    // 简化：直接同步跑一次 OCR extract（调用方也可排 job）
     const result = await this.processExtractJob(sourceId, {
       forceEngine: engine,
       pageNumbers: options?.pageNumbers,
@@ -285,6 +304,7 @@ ${citeBlock}
   }
 
   async rebuildIndex(notebookId: string): Promise<void> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
     const sources = await this.deps.repo.listSources(notebookId)
     await this.deps.repo.deleteChunksByNotebook(notebookId)
     for (const source of sources) {
@@ -293,7 +313,8 @@ ${citeBlock}
       await this.deps.repo.enqueueIngestJob({
         notebookId,
         sourceId: source.id,
-        stage: 'embed'
+        stage: 'embed',
+        vaultId: source.vaultId?.trim() || vaultId
       })
     }
   }
@@ -306,11 +327,34 @@ ${citeBlock}
       onlyMissingPages?: boolean
     }
   ): Promise<ExtractResult> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
 
     await this.deps.repo.updateSourceStatus(sourceId, 'extracting')
 
+    try {
+      return await this.runExtract(sourceId, source, vaultId, override)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      await this.deps.repo.updateSourceStatus(sourceId, 'failed', {
+        errorMessage: message.slice(0, 500)
+      })
+      throw e
+    }
+  }
+
+  private async runExtract(
+    sourceId: string,
+    source: Awaited<ReturnType<KnowledgeRepository['getSource']>> & object,
+    vaultId: string,
+    override?: {
+      forceEngine?: ExtractEngineId
+      pageNumbers?: number[]
+      onlyMissingPages?: boolean
+    }
+  ): Promise<ExtractResult> {
+    if (!source) throw new Error(`source not found: ${sourceId}`)
     const rel = source.relativePath
     if (!rel) throw new Error(`source ${sourceId} missing relativePath`)
     const abs = await this.deps.notebookManager.absolutePath(rel)
@@ -374,7 +418,6 @@ ${citeBlock}
             sourceId
           )
           if (existing) {
-            // 粗拆：按页边界表
             const pagesJson = await this.deps.notebookManager.readPagesJson(
               source.notebookId,
               sourceId
@@ -405,12 +448,22 @@ ${citeBlock}
 
     const usedEngine = result.extractEngine || 'simple'
 
+    // 页数未知：禁止进入 ready 路径，保持 needs_ocr
+    const pageCountUnknown = !result.pageCount || result.pageCount <= 0
+    if (ext === '.pdf' && pageCountUnknown) {
+      result = {
+        ...result,
+        quality: 'needs_ocr',
+        evidence: result.evidence || '无法确定 PDF 页数，禁止标 ready'
+      }
+    }
+
     if (!result.text.trim() || result.quality === 'needs_ocr') {
       await this.deps.repo.updateSourceStatus(sourceId, 'needs_ocr', {
         errorMessage:
           [result.degradationMessage, result.evidence].filter(Boolean).join('；') ||
           'needs_ocr',
-        pageCount: result.pageCount,
+        pageCount: result.pageCount > 0 ? result.pageCount : null,
         textPageCount: result.textPageCount,
         extractEngine: usedEngine
       })
@@ -445,13 +498,15 @@ ${citeBlock}
     await this.deps.repo.enqueueIngestJob({
       notebookId: source.notebookId,
       sourceId,
-      stage: 'embed'
+      stage: 'embed',
+      vaultId: source.vaultId?.trim() || vaultId
     })
 
     return result
   }
 
   async processEmbedJob(sourceId: string): Promise<void> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
 
@@ -474,6 +529,7 @@ ${citeBlock}
     const modelId = embeddingCfg?.getModelId() ?? 'mock'
     const chunks = splitTextIntoChunks(text)
     let charCursor = 0
+    const chunkVaultId = source.vaultId?.trim() || vaultId
 
     for (const chunk of chunks) {
       let vector: number[]
@@ -504,13 +560,28 @@ ${citeBlock}
           chunker: 'tiktoken-1024-128'
         }),
         embedding: vector,
-        modelId
+        modelId,
+        vaultId: chunkVaultId
       })
     }
 
-    // partial：embed 后仍标 partial，提醒可继续补 OCR；否则 ready
     const pageCount = source.pageCount
     const textPageCount = source.textPageCount
+    const isPdfLike =
+      source.sourceKind === 'file' &&
+      (source.relativePath || '').toLowerCase().endsWith('.pdf')
+
+    // 页数未知禁止标 ready（尤其 PDF）
+    if (isPdfLike && (pageCount == null || pageCount <= 0)) {
+      await this.deps.repo.updateSourceStatus(sourceId, 'needs_ocr', {
+        errorMessage: '页数未知，禁止标 ready'
+      })
+      logger.info('[KnowledgeIngest] embed done but pageCount unknown → needs_ocr', {
+        sourceId
+      })
+      return
+    }
+
     const stillPartial =
       pageCount != null &&
       textPageCount != null &&

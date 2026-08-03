@@ -132,15 +132,16 @@ describeSearchDb('KnowledgeSearchService notebook isolation (sqlite)', () => {
     await dbManager.connect(tempDir)
     const repo = new KnowledgeRepository(dbManager.getDb())
 
-    await repo.createNotebook({ id: 'nb_a', name: 'A' })
-    await repo.createNotebook({ id: 'nb_b', name: 'B' })
+    await repo.createNotebook({ id: 'nb_a', name: 'A', vaultId: 'vault_test' })
+    await repo.createNotebook({ id: 'nb_b', name: 'B', vaultId: 'vault_test' })
     await repo.upsertSource({
       id: 'src_a',
       notebookId: 'nb_a',
       title: 'alpha.md',
       sourceKind: 'text',
       contentHash: 'ha',
-      status: 'ready'
+      status: 'ready',
+      vaultId: 'vault_test'
     })
     await repo.upsertSource({
       id: 'src_b',
@@ -148,7 +149,8 @@ describeSearchDb('KnowledgeSearchService notebook isolation (sqlite)', () => {
       title: 'beta.md',
       sourceKind: 'text',
       contentHash: 'hb',
-      status: 'ready'
+      status: 'ready',
+      vaultId: 'vault_test'
     })
 
     const vecA = embeddingVectorToBytes([1, 0, 0])
@@ -162,7 +164,8 @@ describeSearchDb('KnowledgeSearchService notebook isolation (sqlite)', () => {
       metadataJson: JSON.stringify({ offset: 0, len: 20 }),
       embedding: Buffer.from(vecA),
       dimension: 3,
-      modelId: 'mock'
+      modelId: 'mock',
+      vaultId: 'vault_test'
     })
     await repo.insertChunk({
       chunkId: 'c_b',
@@ -173,7 +176,8 @@ describeSearchDb('KnowledgeSearchService notebook isolation (sqlite)', () => {
       metadataJson: JSON.stringify({ offset: 0, len: 22 }),
       embedding: Buffer.from(vecB),
       dimension: 3,
-      modelId: 'mock'
+      modelId: 'mock',
+      vaultId: 'vault_test'
     })
   })
 

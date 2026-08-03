@@ -245,7 +245,7 @@ export function registerVaultIPC() {
 
   ipcMain.handle('vault:delete', async (_, vaultName: string) => {
     const vaultId = resolveVaultIdByName(vaultName)
-    // 先清 agent.db 派生数据，再清 shadow / 删目录（中途失败可重试，避免幽灵索引）
+    // 先清 agent.db 派生数据，再清 knowledge / shadow / 删目录（中途失败可重试，避免幽灵索引）
     if (connectionManager.isConnected()) {
       const { createSqlExecutorFromDrizzleDb, purgeVaultDerivedData } = await import(
         '@baishou/database-desktop'
@@ -255,6 +255,12 @@ export function registerVaultIPC() {
         vaultId
       )
       logger.info('[vault:delete] purged agent.db derived data', { vaultName, vaultId, ...counts })
+    }
+    if (knowledgeConnectionManager.isConnected()) {
+      const { KnowledgeRepository } = await import('@baishou/database-desktop')
+      const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
+      const kbCounts = await repo.deleteAllForVault(vaultId)
+      logger.info('[vault:delete] purged knowledge.db', { vaultName, vaultId, ...kbCounts })
     }
     if (shadowConnectionManager.isConnected()) {
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
