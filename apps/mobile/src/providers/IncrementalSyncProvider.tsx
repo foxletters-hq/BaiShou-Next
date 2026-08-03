@@ -13,6 +13,16 @@ import { useTranslation } from 'react-i18next'
 import { IncrementalSyncConfirmDialog, useDialog, useNativeToast } from '@baishou/ui/native'
 import { useRouter } from 'expo-router'
 import type { IncrementalSyncPlanPreview } from '@baishou/shared'
+import {
+  isIncrementalSyncReady,
+  logger,
+  readVaultRegistryFingerprint,
+  resolvePlanConfirmEligibleAt,
+  runIncrementalSyncWithDivergenceConfirmation,
+  shouldWarnCellularSyncTraffic,
+  syncTrafficThresholdMbToBytes,
+  type IncrementalSyncRunOptions
+} from '@baishou/shared'
 import type {
   IncrementalSyncProgress,
   IncrementalSyncResult
@@ -21,15 +31,12 @@ import {
   planIncrementalSyncWithVaultRegistry,
   reconcileVaultRegistryForIncrementalSync
 } from '../services/incremental-sync-vault-registry'
-import { useBaishou } from './BaishouProvider'
 import {
-  isIncrementalSyncReady,
-  logger,
-  readVaultRegistryFingerprint,
-  resolvePlanConfirmEligibleAt,
-  runIncrementalSyncWithDivergenceConfirmation,
-  type IncrementalSyncRunOptions
-} from '@baishou/shared'
+  getSyncTrafficSettings,
+  type SyncTrafficSettings
+} from '../services/mobile-sync-traffic-settings.service'
+import { useBaishou } from './BaishouProvider'
+import { useNetworkStatus } from './NetworkProvider'
 import { friendlyMobileSyncError } from '../utils/friendly-sync-error'
 import {
   IncrementalSyncOverlayHost,
@@ -64,12 +71,16 @@ const IncrementalSyncActionsContext = createContext<IncrementalSyncActionsValue>
 
 export const useIncrementalSync = () => useContext(IncrementalSyncActionsContext)
 
+/** 「等 Wi-Fi」pending：进程内有效，重启失效可接受 */
+let pendingSyncAfterWifi = false
+
 export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
   const toast = useNativeToast()
   const dialog = useDialog()
   const router = useRouter()
   const { services, dbReady } = useBaishou()
+  const { connectionType, isMetered } = useNetworkStatus()
 
   const overlayRef = useRef<IncrementalSyncOverlayHandle>(null)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -80,12 +91,15 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
   const [planPreview, setPlanPreview] = useState<IncrementalSyncPlanPreview | null>(null)
   const [planDialogOpen, setPlanDialogOpen] = useState(false)
   const [planConfirmEligibleAt, setPlanConfirmEligibleAt] = useState<number | null>(null)
+  const [showCellularTrafficWarning, setShowCellularTrafficWarning] = useState(false)
   const planPreparedAtRef = useRef<number | null>(null)
   const planVaultRegistryFingerprintRef = useRef<string | null>(null)
   const planGenerationRef = useRef(0)
   const syncingRef = useRef(false)
   const confirmingRef = useRef(false)
   const syncAbortRef = useRef<AbortController | null>(null)
+  const prevConnectionTypeRef = useRef(connectionType)
+  const wifiPromptInFlightRef = useRef(false)
 
   const beginSyncAbortController = useCallback((): AbortSignal => {
     syncAbortRef.current?.abort()
@@ -106,6 +120,7 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     setPlanPreview(null)
     setPlanDialogOpen(false)
     setPlanConfirmEligibleAt(null)
+    setShowCellularTrafficWarning(false)
     planPreparedAtRef.current = null
     planVaultRegistryFingerprintRef.current = null
     overlayRef.current?.reset()
@@ -115,9 +130,29 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     setPlanPreview(null)
     setPlanDialogOpen(false)
     setPlanConfirmEligibleAt(null)
+    setShowCellularTrafficWarning(false)
     planPreparedAtRef.current = null
     planVaultRegistryFingerprintRef.current = null
   }, [])
+
+  const resolveCellularTrafficWarning = useCallback(
+    async (preview: IncrementalSyncPlanPreview): Promise<boolean> => {
+      let settings: SyncTrafficSettings
+      try {
+        settings = await getSyncTrafficSettings()
+      } catch {
+        settings = { enabled: true, thresholdMb: 50 }
+      }
+      return shouldWarnCellularSyncTraffic({
+        enabled: settings.enabled,
+        thresholdBytes: syncTrafficThresholdMbToBytes(settings.thresholdMb),
+        isMetered,
+        totalUploadBytes: preview.totalUploadBytes,
+        totalDownloadBytes: preview.totalDownloadBytes
+      })
+    },
+    [isMetered]
+  )
 
   const refreshConfigured = useCallback(async () => {
     if (!services?.incrementalSyncService || !dbReady) {
@@ -184,6 +219,8 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
   const finishIncrementalSync = useCallback(
     async (result: IncrementalSyncResult) => {
       if (!services?.incrementalSyncService) return
+
+      pendingSyncAfterWifi = false
 
       try {
         await services.incrementalSyncService.awaitPostSyncMaintenance()
@@ -272,9 +309,13 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
         if (planGeneration !== planGenerationRef.current) return undefined
 
         if (preview.changeCount === 0 && preview.warnings.length === 0) {
+          pendingSyncAfterWifi = false
           toast.showSuccess(t('data_sync.plan_up_to_date', '本地与云端已一致，无需同步'))
           return undefined
         }
+
+        const warnCellular = await resolveCellularTrafficWarning(preview)
+        if (planGeneration !== planGenerationRef.current) return undefined
 
         openedDialog = true
         planPreparedAtRef.current = preview.planReuseBaseline?.preparedAtMs ?? Date.now()
@@ -282,6 +323,7 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
           services.fileSystem,
           `${await services.pathService.getRootDirectory()}/vault_registry.json`
         )
+        setShowCellularTrafficWarning(warnCellular)
         setPlanPreview(preview)
         setPlanDialogOpen(true)
         setPlanConfirmEligibleAt(resolvePlanConfirmEligibleAt(preview))
@@ -309,10 +351,59 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
     isPlanning,
     isSyncing,
     planDialogOpen,
+    resolveCellularTrafficWarning,
     router,
     services,
     t,
     toast
+  ])
+
+  const handleWaitForWifi = useCallback(() => {
+    pendingSyncAfterWifi = true
+    clearPlanPreview()
+    overlayRef.current?.reset()
+    toast.showInfo(t('data_sync.plan_wait_for_wifi_marked', '已记下，连上 Wi-Fi 后会提醒你'))
+  }, [clearPlanPreview, t, toast])
+
+  // S1.3：cellular → wifi 且有 pending → 轻提示是否现在同步
+  useEffect(() => {
+    const prev = prevConnectionTypeRef.current
+    prevConnectionTypeRef.current = connectionType
+
+    if (prev !== 'cellular' || connectionType !== 'wifi') return
+    if (!pendingSyncAfterWifi) return
+    if (wifiPromptInFlightRef.current) return
+    if (syncingRef.current || confirmingRef.current || isSyncing || isPlanning || planDialogOpen) {
+      return
+    }
+
+    wifiPromptInFlightRef.current = true
+    void (async () => {
+      try {
+        const confirmed = await dialog.confirm(
+          t('data_sync.wifi_ready_sync_prompt', '已连上 Wi-Fi，现在同步？'),
+          {
+            title: t('data_sync.incremental_sync'),
+            confirmText: t('data_sync.sync_now', '同步'),
+            cancelText: t('common.cancel', '取消')
+          }
+        )
+        pendingSyncAfterWifi = false
+        if (confirmed) {
+          await runIncrementalSync()
+        }
+      } finally {
+        wifiPromptInFlightRef.current = false
+      }
+    })()
+  }, [
+    connectionType,
+    dialog,
+    isPlanning,
+    isSyncing,
+    planDialogOpen,
+    runIncrementalSync,
+    t
   ])
 
   const showProgressOverlay = isSyncing || isPlanning
@@ -386,8 +477,13 @@ export function IncrementalSyncProvider({ children }: { children: ReactNode }) {
           preview={planPreview}
           confirmEligibleAtMs={planConfirmEligibleAt}
           isConfirming={isConfirmingPlan}
-          onConfirm={(choice) => void confirmSyncPlan(choice)}
+          showCellularTrafficWarning={showCellularTrafficWarning}
+          onConfirm={(choice) => {
+            pendingSyncAfterWifi = false
+            void confirmSyncPlan(choice)
+          }}
           onCancel={clearPlanPreview}
+          onWaitForWifi={handleWaitForWifi}
         />
       </View>
     </IncrementalSyncActionsContext.Provider>

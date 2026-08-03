@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { S3SyncConfig } from '@baishou/shared'
+import { DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB } from '@baishou/shared'
 import {
   scrollIndicatorStyle,
   KeyboardAwareScrollView,
@@ -9,7 +10,9 @@ import {
   useNativeToast,
   useDialog,
   Button,
-  IncrementalSyncScopeList
+  IncrementalSyncScopeList,
+  Switch,
+  Input
 } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { useIncrementalSync } from '../providers/IncrementalSyncProvider'
@@ -21,6 +24,11 @@ import {
   DEFAULT_CONFIG,
   projectIncrementalSyncRuntime
 } from '../services/mobile-incremental-sync-config.util'
+import {
+  getSyncTrafficSettings,
+  saveSyncTrafficSettings,
+  type SyncTrafficSettings
+} from '../services/mobile-sync-traffic-settings.service'
 
 const IncrementalSyncScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -37,6 +45,11 @@ const IncrementalSyncScreen: React.FC = () => {
   const [showSecretKey, setShowSecretKey] = useState(false)
   const [testing, setTesting] = useState(false)
   const [config, setConfig] = useState<S3SyncConfig>(DEFAULT_CONFIG)
+  const [trafficSettings, setTrafficSettings] = useState<SyncTrafficSettings>({
+    enabled: true,
+    thresholdMb: DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB
+  })
+  const [thresholdText, setThresholdText] = useState(String(DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB))
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadConfig = useCallback(async () => {
@@ -48,10 +61,21 @@ const IncrementalSyncScreen: React.FC = () => {
     }
   }, [services, dbReady])
 
+  const loadTrafficSettings = useCallback(async () => {
+    try {
+      const next = await getSyncTrafficSettings()
+      setTrafficSettings(next)
+      setThresholdText(String(next.thresholdMb))
+    } catch {
+      // keep defaults
+    }
+  }, [])
+
   useEffect(() => {
     void refreshConfigured()
     void loadConfig()
-  }, [refreshConfigured, loadConfig])
+    void loadTrafficSettings()
+  }, [refreshConfigured, loadConfig, loadTrafficSettings])
 
   useEffect(() => {
     return () => {
@@ -99,6 +123,30 @@ const IncrementalSyncScreen: React.FC = () => {
       applyConfigChange(next, immediate)
     },
     [applyConfigChange, config.enabled, dialog, t]
+  )
+
+  const handleTrafficEnabledChange = useCallback(
+    (enabled: boolean) => {
+      setTrafficSettings((prev) => ({ ...prev, enabled }))
+      void saveSyncTrafficSettings({ enabled }).catch(() => {
+        toast.showError(t('data_sync.save_failed'))
+      })
+    },
+    [t, toast]
+  )
+
+  const handleThresholdChange = useCallback(
+    (text: string) => {
+      setThresholdText(text)
+      const n = Number(text)
+      if (!Number.isFinite(n)) return
+      const thresholdMb = Math.max(1, Math.min(10240, Math.floor(n)))
+      setTrafficSettings((prev) => ({ ...prev, thresholdMb }))
+      void saveSyncTrafficSettings({ thresholdMb }).catch(() => {
+        toast.showError(t('data_sync.save_failed'))
+      })
+    },
+    [t, toast]
   )
 
   const handleSync = useCallback(async () => {
@@ -162,6 +210,46 @@ const IncrementalSyncScreen: React.FC = () => {
             onTestConnection={() => void handleTestConnection()}
           />
 
+          <View style={[styles.actionDivider, { backgroundColor: colors.borderMuted }]} />
+          <View style={styles.trafficSection}>
+            <View style={styles.trafficRow}>
+              <View style={styles.trafficText}>
+                <Text style={[styles.trafficTitle, { color: colors.textPrimary }]}>
+                  {t('settings.sync_traffic_enabled', '同步流量提示')}
+                </Text>
+                <Text style={[styles.trafficHint, { color: colors.textSecondary }]}>
+                  {t(
+                    'settings.sync_traffic_enabled_hint',
+                    '在移动数据下超过阈值时提示流量用量；Wi-Fi 下不会打扰'
+                  )}
+                </Text>
+              </View>
+              <Switch
+                value={trafficSettings.enabled}
+                onValueChange={handleTrafficEnabledChange}
+              />
+            </View>
+            {trafficSettings.enabled ? (
+              <>
+                <Text style={[styles.trafficTitle, { color: colors.textPrimary, marginTop: 12 }]}>
+                  {t('settings.sync_traffic_threshold', '流量提示阈值（MB）')}
+                </Text>
+                <Text style={[styles.trafficHint, { color: colors.textSecondary, marginBottom: 6 }]}>
+                  {t(
+                    'settings.sync_traffic_threshold_hint',
+                    '移动数据下，上传+下载合计超过此值才弹出警告'
+                  )}
+                </Text>
+                <Input
+                  value={thresholdText}
+                  keyboardType="number-pad"
+                  onChangeText={handleThresholdChange}
+                  containerStyle={{ marginTop: 4 }}
+                />
+              </>
+            ) : null}
+          </View>
+
           {config.enabled ? (
             <>
               <View style={[styles.actionDivider, { backgroundColor: colors.borderMuted }]} />
@@ -202,6 +290,26 @@ const styles = StyleSheet.create({
     height: 1,
     marginTop: 16,
     marginBottom: 12
+  },
+  trafficSection: {
+    gap: 4
+  },
+  trafficRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  trafficText: {
+    flex: 1,
+    gap: 4
+  },
+  trafficTitle: {
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  trafficHint: {
+    fontSize: 12,
+    lineHeight: 18
   },
   syncButton: {
     marginTop: 4
