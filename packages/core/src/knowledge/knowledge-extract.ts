@@ -22,8 +22,10 @@ export interface ExtractResult {
   quality: ExtractQuality
   /** 人类可读证据，例如「112 页中有 98 页没有文本层」 */
   evidence?: string
-  extractEngine: 'simple'
+  extractEngine: 'simple' | 'ocr' | 'vision'
   textHash: string
+  degradationMessage?: string
+  processedPages?: number[]
 }
 
 /** 单页判定「有文本层」的最小字符数（过滤页眉页脚水印） */
@@ -135,11 +137,16 @@ export async function extractMarkdownOrText(content: string): Promise<ExtractRes
   }
 }
 
-export async function extractPdfFromPath(filePath: string): Promise<ExtractResult> {
+/** 仅返回按页文本（供 OCR 引擎合并缺失页） */
+export async function extractPdfPageTexts(filePath: string): Promise<string[]> {
   if (!pdfPageExtractor) {
     throw new Error('PDF page extractor not registered')
   }
-  const pageTexts = await pdfPageExtractor(filePath)
+  return pdfPageExtractor(filePath)
+}
+
+export async function extractPdfFromPath(filePath: string): Promise<ExtractResult> {
+  const pageTexts = await extractPdfPageTexts(filePath)
   if (pageTexts.length === 0) {
     return {
       text: '',
@@ -151,6 +158,12 @@ export async function extractPdfFromPath(filePath: string): Promise<ExtractResul
       extractEngine: 'simple',
       textHash: md5Hex('')
     }
+  }
+  try {
+    const { rememberSimplePageTexts } = await import('./extract-engines/simple-page-cache')
+    rememberSimplePageTexts(filePath, pageTexts)
+  } catch {
+    /* optional cache */
   }
   return analyzePageTexts(pageTexts)
 }
