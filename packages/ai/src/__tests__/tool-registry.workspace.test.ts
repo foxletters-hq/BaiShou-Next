@@ -52,14 +52,30 @@ describe('ToolRegistry workspace session', () => {
     })).toBe(false)
   })
 
-  it('keeps graph tools available for companion sessions', () => {
+  it('exposes knowledge_search in workspace sessions (K1.3 whitelist)', () => {
+    const enabled = registry.getEnabledToolsRaw({
+      sessionId: 'ws-session',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
+    })
+    const names = enabled.map((tool) => tool.name)
+    expect(names).toContain('knowledge_search')
+    expect(registry.isToolEnabled('knowledge_search', {
+      sessionId: 'ws-session',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
+    })).toBe(true)
+  })
+
+  it('keeps knowledge_search available for companion sessions', () => {
     const enabled = registry.getEnabledToolsRaw({
       sessionId: 's1',
       vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal'
     })
     const names = enabled.map((tool) => tool.name)
-    expect(names).toContain('graph_upsert')
-    expect(names).toContain('recall_relations')
+    expect(names).toContain('knowledge_search')
   })
 })
