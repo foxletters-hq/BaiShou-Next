@@ -5,6 +5,7 @@ import type { ToolContext } from '../agent.tool'
 function createContext(overrides: Partial<ToolContext> = {}): ToolContext {
   return {
     sessionId: 'sess-1',
+    vaultName: 'Personal',
     userConfig: {},
     ...overrides
   } as ToolContext
@@ -58,7 +59,8 @@ describe('VectorSearchTool', () => {
       20,
       expect.objectContaining({
         startMs: new Date(2024, 2, 1).getTime(),
-        endMs: new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1
+        endMs: new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1,
+        vaultName: 'Personal'
       })
     )
     expect(searchFts).not.toHaveBeenCalled()
@@ -80,7 +82,11 @@ describe('VectorSearchTool', () => {
       })
     )
 
-    const expectedFilter = { startMs: new Date(2024, 0, 1).getTime(), endMs: undefined }
+    const expectedFilter = {
+      startMs: new Date(2024, 0, 1).getTime(),
+      endMs: undefined,
+      vaultName: 'Personal'
+    }
     expect(searchSimilar).toHaveBeenCalledWith([0.5, 0.5], 20, expectedFilter)
     expect(searchFts).toHaveBeenCalledWith('旅行', 20, expectedFilter)
   })

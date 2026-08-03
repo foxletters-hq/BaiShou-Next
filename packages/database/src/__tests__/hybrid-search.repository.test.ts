@@ -26,6 +26,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         source_type     TEXT NOT NULL,
         source_id       TEXT NOT NULL,
         group_id        TEXT NOT NULL,
+        vault_name      TEXT,
         chunk_index     INTEGER NOT NULL,
         chunk_text      TEXT NOT NULL,
         metadata_json   TEXT NOT NULL DEFAULT '{}',
@@ -68,6 +69,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'fallback_group',
+        vaultName: 'Personal',
         chunkIndex: 0,
         chunkText: 'Match node',
         embedding: [0.9, 0.1, 0],
@@ -79,6 +81,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'fallback_group',
+        vaultName: 'Personal',
         chunkIndex: 0,
         chunkText: 'Non match node',
         embedding: [0, 1, 0],
@@ -90,7 +93,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
       repo.supportsNativeVectorSearch = () => false
 
       const target = [1, 0, 0]
-      const results = await repo.queryNativeVector(target, 2)
+      const results = await repo.queryNativeVector(target, 2, { vaultName: 'Personal' })
 
       expect(results.length).toBe(2)
       expect(results[0]!.messageId).toBe('f1')
@@ -126,6 +129,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src_test',
         groupId: 'sessionA',
+        vaultName: 'Personal',
         chunkIndex: 1,
         chunkText: 'Memory context hello',
         embedding: [0.1, 0.2, 0.3],
@@ -150,6 +154,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultName: 'Personal',
         chunkIndex: 0,
         chunkText: 'The quick brown fox jumps over the lazy dog',
         embedding: [1, 0, 0],
@@ -160,13 +165,14 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultName: 'Personal',
         chunkIndex: 1,
         chunkText: 'A completely unrelated sentence',
         embedding: [0, 1, 0],
         modelId: 'x'
       })
 
-      const res = await repo.queryFTS('fox', 5)
+      const res = await repo.queryFTS('fox', 5, { vaultName: 'Personal' })
       expect(res).toHaveLength(1)
       expect(res[0]!.messageId).toBe('fts1')
     })
@@ -180,6 +186,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultName: 'Personal',
         chunkIndex: 0,
         chunkText: 'march fox diary',
         embedding: [1, 0, 0],
@@ -191,6 +198,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'test',
         sourceId: 'src',
         groupId: 'sess',
+        vaultName: 'Personal',
         chunkIndex: 1,
         chunkText: 'june fox diary',
         embedding: [0, 1, 0],
@@ -200,7 +208,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
 
       const startMs = new Date(2024, 2, 1).getTime()
       const endMs = new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1
-      const res = await repo.queryFTS('fox', 5, { startMs, endMs })
+      const res = await repo.queryFTS('fox', 5, { startMs, endMs, vaultName: 'Personal' })
 
       expect(res).toHaveLength(1)
       expect(res[0]!.messageId).toBe('fts-march')
@@ -217,6 +225,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'range_group',
+        vaultName: 'Personal',
         chunkIndex: 0,
         chunkText: 'March match',
         embedding: [0.2, 0.9, 0],
@@ -228,6 +237,7 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
         sourceType: 'c',
         sourceId: 's',
         groupId: 'range_group',
+        vaultName: 'Personal',
         chunkIndex: 0,
         chunkText: 'June best match',
         embedding: [0.95, 0.1, 0],
@@ -240,7 +250,11 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
 
       const startMs = new Date(2024, 2, 1).getTime()
       const endMs = new Date(2024, 2, 31).getTime() + 24 * 60 * 60 * 1000 - 1
-      const results = await repo.queryNativeVector([1, 0, 0], 5, { startMs, endMs })
+      const results = await repo.queryNativeVector([1, 0, 0], 5, {
+        startMs,
+        endMs,
+        vaultName: 'Personal'
+      })
 
       expect(results).toHaveLength(1)
       expect(results[0]!.messageId).toBe('vec-march')
