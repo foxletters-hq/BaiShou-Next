@@ -1,0 +1,22 @@
+/**
+ * 表单控件聚焦描边过渡（桌面）
+ * Token：--form-field-transition / --form-field-border-focus
+ */
+:where(
+  input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='range'],
+      [type='button'],
+      [type='submit'],
+      [type='reset'],
+      [type='file'],
+      [type='color'],
+      [type='hidden'],
+      [type='image']
+    ),
+  textarea,
+  select
+) {
+  transition: var(--form-field-transition);
+}

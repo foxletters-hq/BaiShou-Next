@@ -6,6 +6,7 @@
  * 页面顶栏必须用实色 --bg-surface，禁止 glass
  */
 @import './range-slider.css';
+@import './form-field.css';
 @import '../desktop/shared/outline-button.css';
 :root {
   /* ========================================================= */
@@ -19,7 +20,7 @@
   --color-primary-rgb: 91, 168, 245;
 
   /* Backgrounds — 见主题规范 §3.1 */
-  --bg-app: #f4f5f7; /* 壳 / 侧栏下画布 / 页面外灰底 */
+  --bg-app: #fafafa; /* 壳 / 侧栏下画布 / 页面内容区画布（衬白卡） */
   --bg-surface: #ffffff; /* 主工作区、页面顶栏、列表底（实色） */
   --bg-surface-raised: #ffffff; /* 卡片 / 下拉 / 抬起块 */
   --bg-surface-highest: #e8eaed; /* 模态 / Popover */
@@ -37,6 +38,8 @@
   --bg-glass-inset: rgba(255, 255, 255, 0.24);
   --blur-overlay: blur(20px) saturate(200%);
   --blur-glass: blur(28px) saturate(200%);
+  /* 窗口外圈磨砂罩：半透让系统 Acrylic / 桌面隐约透出，勿用纯透明 */
+  --bg-window-shell: color-mix(in srgb, var(--bg-app) 62%, transparent);
 
   /* 窗口顶栏：实色（映射 surface） */
   --titlebar-glass-bg: var(--bg-surface);
@@ -48,7 +51,7 @@
   --border-subtle: rgba(0, 0, 0, 0.04); /* 极淡分割 */
   --border-muted: rgba(0, 0, 0, 0.08); /* 分割线 / 顶栏底边 */
   --border-card: rgba(0, 0, 0, 0.12); /* 灰底上内容卡片外框 */
-  --border-control: #e5e5e5; /* 可见控件 / 次要按钮描边（略浅，避免发闷） */
+  --border-control: rgba(0, 0, 0, 0.08); /* 可见控件 / 次要按钮 / 内容卡描边 */
   --border-strong: rgba(0, 0, 0, 0.16); /* Focus / 强调 */
 
   /* Text */
@@ -86,8 +89,8 @@
    * 参照侧栏 + 常规设置；详见 docs/1-AI-Code/2-UI-Theme-Rule.md §3.6
    * 字重仅用 400 / 500 / 600（700+ 留给 About 品牌等例外）
    */
-  --settings-font-shell-title-size: 22px; /* 侧栏「系统设置」 */
-  --settings-font-shell-title-weight: 600;
+  --settings-font-shell-title-size: 16px; /* 侧栏「系统设置」，与日记侧栏 brandName 对齐 */
+  --settings-font-shell-title-weight: 700;
   --settings-font-page-title-size: 18px; /* SettingsPageChrome 页标题 */
   --settings-font-page-title-weight: 600;
   --settings-font-section-size: 15px; /* 卡内区块标题 */
@@ -113,6 +116,13 @@
   /* 表单输入框 — 白底 + 可见描边（禁止用 --bg-surface-low/normal 作输入底） */
   --form-field-bg: var(--bg-surface);
   --form-field-border: var(--border-control);
+  /* 聚焦：灰色加深描边（比 --border-strong 更明显），无外圈光晕；变色用 --form-field-transition */
+  --form-field-border-focus: rgba(0, 0, 0, 0.32);
+  --form-field-focus-ring: none;
+  --form-field-transition:
+    border-color var(--duration-normal) var(--ease-out-cubic),
+    box-shadow var(--duration-normal) var(--ease-out-cubic),
+    background-color var(--duration-normal) var(--ease-out-cubic);
 
   /* Radii */
   --radius-xs: 4px;
@@ -174,6 +184,8 @@
   --bg-overlay: rgba(0, 0, 0, 0.55);
   --bg-glass-surface: rgba(30, 30, 34, 0.4);
   --bg-glass-inset: rgba(255, 255, 255, 0.06);
+  /* 深色外圈磨砂罩 */
+  --bg-window-shell: color-mix(in srgb, var(--bg-app) 72%, transparent);
 
   --titlebar-glass-bg: var(--bg-surface);
   --titlebar-glass-blur: none;
@@ -183,7 +195,7 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-muted: rgba(255, 255, 255, 0.12);
   --border-card: rgba(255, 255, 255, 0.16);
-  --border-control: rgba(255, 255, 255, 0.16);
+  --border-control: rgba(255, 255, 255, 0.12);
   --border-strong: rgba(255, 255, 255, 0.2);
 
   --color-outline-variant: rgba(255, 255, 255, 0.1);
@@ -212,6 +224,10 @@
   --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.7);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.8);
   --shadow-glow: 0 0 16px rgba(0, 0, 0, 0.35);
+
+  /* 表单聚焦：深色用更亮的灰描边，无光晕 */
+  --form-field-border-focus: rgba(255, 255, 255, 0.42);
+  --form-field-focus-ring: none;
 }
 
 /* 语言字形：与 i18n 写入的 html[lang] 对齐 */

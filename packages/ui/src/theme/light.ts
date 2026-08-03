@@ -5,8 +5,8 @@ export const lightColors = {
   primaryLight: '#E0F0FE',
   primaryTrackMuted: 'rgba(91, 168, 245, 0.24)',
   primaryRgb: '91, 168, 245',
-  dashboardCardBorder: 'rgba(148, 163, 184, 0.5)',
-  bgApp: '#F4F5F7',
+  dashboardCardBorder: 'rgba(0, 0, 0, 0.08)',
+  bgApp: '#F3F3F3',
   bgSurface: '#FFFFFF',
   bgSurfaceRaised: '#FFFFFF',
   bgSurfaceHighest: '#E8EAED',
@@ -18,7 +18,7 @@ export const lightColors = {
   bgGlassSurface: 'rgba(255, 255, 255, 0.48)',
   borderSubtle: 'rgba(0, 0, 0, 0.04)',
   borderMuted: 'rgba(0, 0, 0, 0.08)',
-  borderControl: '#e5e5e5',
+  borderControl: 'rgba(0, 0, 0, 0.08)',
   borderStrong: 'rgba(0, 0, 0, 0.16)',
   textPrimary: '#1A1C23',
   textSecondary: '#4A5568',
@@ -45,6 +45,6 @@ export const lightColors = {
   onError: '#FFFFFF',
   outlineVariant: 'rgba(208, 208, 208, 0.5)',
   inverseSurface: '#1A1C23',
-  inverseOnSurface: '#F4F5F7',
+  inverseOnSurface: '#F3F3F3',
   overlay: 'rgba(0, 0, 0, 0.35)'
 }
