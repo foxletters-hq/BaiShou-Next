@@ -1,5 +1,6 @@
 import { AgentSessionRepository, AgentMessageRepository } from '@baishou/database'
 import { AIProviderRegistry, ToolRegistry } from '@baishou/ai'
+import { resolveVaultIdentity } from '@baishou/shared'
 import { streamText, ModelMessage, stepCountIs } from 'ai'
 import { SessionNotFoundError } from '../errors/agent.errors'
 
@@ -55,9 +56,14 @@ export class AgentService {
 
     // 3. 构建 tools 环境
     // Vercel 会在生成过程中自动匹配对应的 tools 并执行
+    const vaultIdentity = resolveVaultIdentity({
+      vaultId: session.vaultId,
+      vaultName: session.vaultName
+    })
     const vercelTools = this.toolRegistry.getEnabledToolsAsVercel({
       sessionId: input.sessionId,
-      vaultName: session.vaultName
+      vaultId: vaultIdentity.id,
+      vaultName: vaultIdentity.name
     })
 
     // 4. 调用流式生成接口

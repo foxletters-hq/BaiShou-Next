@@ -1,5 +1,5 @@
 import type { SessionRepository } from '@baishou/database'
-import { sanitizeSessionAggregateForDisk } from '@baishou/shared'
+import { isVaultId, sanitizeSessionAggregateForDisk } from '@baishou/shared'
 import type { SessionFileService } from './session-file.service'
 
 export type SessionDiskFlushUrgency = 'immediate' | 'debounced'
@@ -157,12 +157,34 @@ export class SessionDiskPersistenceService {
       return
     }
 
+    // V2-D4: 新写入 dual-write vaultId + vaultName（名字快照）；不发明假 id
+    const sessionObj =
+      cleaned?.session && typeof cleaned.session === 'object'
+        ? ({ ...(cleaned.session as Record<string, unknown>) } as Record<string, unknown>)
+        : undefined
+    if (sessionObj) {
+      const rawId = String(sessionObj.vaultId ?? sessionObj.vault_id ?? '').trim()
+      const nameSnapshot =
+        options?.vaultName?.trim() ||
+        String(sessionObj.vaultName ?? sessionObj.vault_name ?? '').trim() ||
+        undefined
+      if (rawId) {
+        sessionObj.vaultId = isVaultId(rawId) ? rawId : rawId
+        delete sessionObj.vault_id
+      }
+      if (nameSnapshot) {
+        sessionObj.vaultName = nameSnapshot
+        delete sessionObj.vault_name
+      }
+    }
+    const enriched = sessionObj ? { ...cleaned, session: sessionObj } : cleaned
+
     this.hooks?.onBeforeWrite?.(sessionId, sessionId)
     const targetVault = options?.vaultName?.trim()
     if (targetVault) {
-      await this.fileService.writeSession(sessionId, cleaned, targetVault)
+      await this.fileService.writeSession(sessionId, enriched, targetVault)
     } else {
-      await this.fileService.writeSession(sessionId, cleaned)
+      await this.fileService.writeSession(sessionId, enriched)
     }
     this.dirty.delete(sessionId)
   }
