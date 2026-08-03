@@ -1,9 +1,20 @@
 export interface VaultInfo {
+  /** 稳定身份（vlt_…）；与显示名 / 目录名解耦 */
+  id: string
   name: string
   path: string
   createdAt: Date
   lastAccessedAt: Date
 }
+
+/** 仓内身份元数据：`<vault>/.baishou/vault.json`（不写 path） */
+export interface VaultIdentityMeta {
+  id: string
+  displayName: string
+  createdAt: string
+}
+
+export const VAULT_IDENTITY_META_FILENAME = 'vault.json' as const
 
 export interface IVaultService {
   /**
