@@ -738,7 +738,7 @@
     "rag_clear_all_confirm_phrase": "CONFIRM CLEAR",
     "rag_clear_all_confirm": "Please type \"CONFIRM CLEAR\" below to clear all RAG memory:",
     "rag_clear_all_mismatch": "Input does not match, operation cancelled.",
-    "rag_disabled_alert": "RAG memory feature has been turned off~",
+    "rag_disabled_alert": "Companion memory feature has been turned off~",
     "rag_model_unassigned": "Unassigned (Click)",
     "rag_detect_dimension": "Detect Dimension",
     "rag_config_params": "Retrieval Tuning",

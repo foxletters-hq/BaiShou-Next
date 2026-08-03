@@ -714,7 +714,7 @@
     "rag_clear_all_confirm_phrase": "確認清除",
     "rag_clear_all_confirm": "下に「確認清除」と入力してRAGメモリをクリアしてください：",
     "rag_clear_all_mismatch": "入力が一致しません。操作はキャンセルされました。",
-    "rag_disabled_alert": "RAGメモリ機能はオフになりました~",
+    "rag_disabled_alert": "コンパニオン記憶機能はオフになりました~",
     "rag_model_unassigned": "未配置(点击跳转)",
     "rag_detect_dimension": "检测维度",
     "rag_config_params": "检索参数调节",

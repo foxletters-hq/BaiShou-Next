@@ -685,7 +685,7 @@
     "storage_scanning": "正在處理...",
     "rag_title": "語意搜尋庫 (RAG)",
     "rag_subtitle": "管理本地知識的向量化進度與搜尋參數。",
-    "rag_disabled_alert": "RAG記憶功能已經關閉了喵~",
+    "rag_disabled_alert": "夥伴記憶功能已經關閉了喵~",
     "rag_total_count": "向量塊總數",
     "rag_vault_diary_count": "{{vault}} 日記向量",
     "rag_dimension": "向量維度",
