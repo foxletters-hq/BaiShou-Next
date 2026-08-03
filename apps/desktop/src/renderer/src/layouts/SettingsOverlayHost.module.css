@@ -1,0 +1,54 @@
+.host {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: transparent;
+  padding: 0 8px 8px;
+}
+
+/* 关闭/退出中：后代即便写了 pointer-events:auto（如 settings-pane-body--visible）也不能命中 */
+.hostInactive,
+.hostInactive * {
+  pointer-events: none !important;
+}
+
+.surfaceCard {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+/* 退出过渡：卡片变透明，veil 淡出时直接露出底层页面 */
+.surfaceExiting {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.surfaceContent {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg-surface);
+  pointer-events: none;
+  z-index: 200;
+}
