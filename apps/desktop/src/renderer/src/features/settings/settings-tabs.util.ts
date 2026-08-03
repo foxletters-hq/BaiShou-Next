@@ -10,7 +10,6 @@ export const SETTINGS_TAB_SEGMENTS: Record<number, string> = {
   4: 'rag',
   5: 'web-search',
   6: 'agent-tools',
-  18: 'workspace-gate',
   15: 'diary-template',
   7: 'summary',
   11: 'tts',

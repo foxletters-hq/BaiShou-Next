@@ -20,60 +20,105 @@
   margin: 0;
 }
 
+/* 卡片内容区：水平边距交给 list-tile / matrixRow，避免双重 padding 错位 */
 .paddedBody {
-  padding: 0 16px 12px;
+  padding: 0;
   font-family: var(--font-family);
-}
-
-/* ListTile 自带 16px 水平 padding；外层已有 cardBody 边距时回拉到卡片全宽 */
-.paddedBody :global(.settings-list-tile) {
-  margin-left: -16px;
-  margin-right: -16px;
-  width: calc(100% + 32px);
 }
 
 .formRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 0 12px;
+  padding: 8px 16px 12px;
   flex-wrap: wrap;
 }
 
 .textInput {
   flex: 1;
   min-width: 140px;
-  padding: 6px 10px;
+  height: 32px;
+  padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--form-field-border, var(--border-control));
   background: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  font-size: var(--settings-font-row-size);
-  font-weight: var(--settings-font-row-weight);
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
   font-family: var(--font-family);
+  box-sizing: border-box;
+  transition: var(--form-field-transition);
 }
 
 .textInput:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
-.selectInput {
-  width: 140px;
+.presetSelect {
+  width: 188px;
   flex: 0 0 auto;
-  padding: 6px 10px;
+  min-width: 160px;
+}
+
+.ruleEffectSelect {
+  width: 96px;
+  flex: 0 0 auto;
+}
+
+.compactNumberInput {
+  width: 64px;
+  height: 32px;
+  padding: 0 8px;
   border-radius: 8px;
   border: 1px solid var(--form-field-border, var(--border-control));
   background: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
-  font-size: var(--settings-font-row-size);
-  font-weight: var(--settings-font-row-weight);
+  font-size: var(--settings-font-desc-size);
   font-family: var(--font-family);
+  text-align: center;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+  appearance: textfield;
+  transition: var(--form-field-transition);
+}
+
+.compactNumberInput::-webkit-outer-spin-button,
+.compactNumberInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.compactNumberInput:focus {
+  outline: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
+}
+
+/* 对齐供应商管理：44×24 开关，替代默认 52×28 */
+.compactSwitch {
+  width: 44px !important;
+  height: 24px !important;
+}
+
+.compactSwitch :global(.settings-switch-slider) {
+  border-radius: 24px;
+}
+
+.compactSwitch :global(.settings-switch-slider):before {
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+}
+
+.compactSwitch input:checked + :global(.settings-switch-slider):before {
+  transform: translateX(20px);
 }
 
 .profileBlock {
-  padding: 8px 0 4px;
+  padding: 8px 16px 4px;
 }
 
 .profileTitle {
@@ -93,7 +138,7 @@
 }
 
 .sectionLabel {
-  padding: 12px 0 4px;
+  padding: 10px 16px 2px;
   margin: 0;
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-section-weight);
@@ -104,7 +149,7 @@
 
 .emptyHint {
   margin: 0;
-  padding: 4px 0 10px;
+  padding: 12px 16px 14px;
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
   line-height: 1.5;
@@ -112,12 +157,15 @@
   font-family: var(--font-family);
 }
 
+/* 与 settings-list-tile 同水平边距 / 行高 */
 .matrixRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
+  padding: 8px 16px;
+  min-height: 54px;
+  box-sizing: border-box;
   flex-wrap: wrap;
 }
 
@@ -127,9 +175,13 @@
 }
 
 .matrixTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: var(--settings-font-row-size);
   font-weight: var(--settings-font-row-weight);
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--text-primary);
   font-family: var(--font-family);
 }
@@ -138,12 +190,33 @@
   margin-top: 2px;
   font-size: var(--settings-font-desc-size);
   font-weight: var(--settings-font-desc-weight);
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--text-secondary);
   font-family: var(--font-family);
 }
 
 .subBlock {
   padding: 0 0 4px;
-  margin: 0 0 4px;
+  margin: 0;
+}
+
+.disclosureStatic {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 16px;
+  min-height: 54px;
+  box-sizing: border-box;
+}
+
+.inlineBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
 }
