@@ -19,6 +19,8 @@ import {
   SYSTEM_SETTINGS_CREATE_SQL
 } from './agent-schema-compat'
 import { backfillMemoryEmbeddingsVaultName } from './memory-embeddings-vault-backfill'
+import { migrateAgentDbVaultNameToVaultId } from './vault-id-backfill'
+import { loadVaultNameToIdMapFromStorageRoot } from './vault-id-map'
 
 export interface MigrationJournal {
   version: string
@@ -48,12 +50,21 @@ export class MigrationService {
   private client: any // 兼容 LibSQL.Client、Better-SQLite3、expo-sqlite
   private migrationDir: string
   private embedded?: EmbeddedMigrations
+  /** 可选：存储根，用于读 vault_registry.json 做 name→id 回填 */
+  private storageRoot?: string
 
-  constructor(db: AppDatabase, client: any, migrationDir: string, embedded?: EmbeddedMigrations) {
+  constructor(
+    db: AppDatabase,
+    client: any,
+    migrationDir: string,
+    embedded?: EmbeddedMigrations,
+    options?: { storageRoot?: string }
+  ) {
     this.db = db
     this.client = client
     this.migrationDir = migrationDir
     this.embedded = embedded
+    this.storageRoot = options?.storageRoot
   }
 
   private async _executeSql(statement: string, args: any[] = []): Promise<any> {
@@ -127,6 +138,7 @@ export class MigrationService {
         await this._ensureAgentSchemaColumns()
         await this._ensureMemoryEmbeddingsVaultIndex()
         await this._backfillMemoryEmbeddingsVaultName()
+        await this._migrateVaultNameToVaultId()
         await this._backfillAgentMessagesOrderIndex()
         return
       }
@@ -200,6 +212,7 @@ export class MigrationService {
       await this._ensureAgentSchemaColumns()
       await this._ensureMemoryEmbeddingsVaultIndex()
       await this._backfillMemoryEmbeddingsVaultName()
+      await this._migrateVaultNameToVaultId()
       await this._backfillAgentMessagesOrderIndex()
 
       logger.info('[MigrationService] Agent DB 迁移同步完成！')
@@ -296,7 +309,7 @@ export class MigrationService {
     }
   }
 
-  /** 仓库隔离 V1.0：回填 vault_name（幂等；遗留手动记忆保持空值） */
+  /** 仓库隔离 V1.0：回填 vault_name（幂等；遗留手动记忆保持空值）。须在 V2.2 rename 之前执行。 */
   private async _backfillMemoryEmbeddingsVaultName(): Promise<void> {
     try {
       const table = await this._executeSql(
@@ -304,8 +317,8 @@ export class MigrationService {
       )
       if (table.rows.length === 0) return
       const tableInfo = await this._executeSql(`PRAGMA table_info(memory_embeddings)`)
-      const hasVault = tableInfo.rows.some((c: { name?: string }) => c.name === 'vault_name')
-      if (!hasVault) return
+      const hasVaultName = tableInfo.rows.some((c: { name?: string }) => c.name === 'vault_name')
+      if (!hasVaultName) return
 
       const counts = await backfillMemoryEmbeddingsVaultName((sql, args) =>
         this._executeSql(sql, args)
@@ -316,6 +329,23 @@ export class MigrationService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.warn('[MigrationService] memory_embeddings.vault_name 回填失败（非阻塞）:', message)
+    }
+  }
+
+  /** 仓库身份 V2.2：vault_name → vault_id + diary source_id 前缀重写 */
+  private async _migrateVaultNameToVaultId(): Promise<void> {
+    try {
+      const seed = this.storageRoot
+        ? loadVaultNameToIdMapFromStorageRoot(this.storageRoot)
+        : undefined
+      const counts = await migrateAgentDbVaultNameToVaultId(
+        (sql, args) => this._executeSql(sql, args),
+        seed
+      )
+      logger.info('[MigrationService] vault_name→vault_id 回填完成', { ...counts })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[MigrationService] vault_name→vault_id 回填失败（非阻塞）:', message)
     }
   }
 
