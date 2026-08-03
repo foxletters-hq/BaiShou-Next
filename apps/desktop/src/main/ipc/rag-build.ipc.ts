@@ -289,6 +289,7 @@ export function registerRagBuildIPC() {
     const record: MemoryRawRecord = {
       id,
       schemaVersion: 1,
+      vaultId,
       vaultName,
       content,
       tags: [],

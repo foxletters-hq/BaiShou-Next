@@ -22,22 +22,33 @@ export { fileSystem }
  */
 export const vaultService = new VaultService(pathService, fileSystem)
 
-/** 活跃工作空间稳定 ID；无 registry 时用名称派生 legacy id */
-export function resolveActiveVaultId(): string {
+/**
+ * 活跃工作空间 { id, name }。有 registry 时禁止对已知随机 id 仓库仅用 name 派生。
+ */
+export function resolveActiveVault(): { id: string; name: string } {
   const vault = vaultService.getActiveVault()
-  if (vault?.id) return vault.id
-  return deriveLegacyVaultId(vault?.name ?? 'Personal')
+  if (vault?.id) {
+    return { id: vault.id, name: vault.name || 'Personal' }
+  }
+  const name = vault?.name?.trim() || 'Personal'
+  return { id: deriveLegacyVaultId(name), name }
 }
 
-/** 按显示名解析 vault id；仅名称无 service 时 fallback 到 deriveLegacyVaultId */
+/** 活跃工作空间稳定 ID；优先 registry.id */
+export function resolveActiveVaultId(): string {
+  return resolveActiveVault().id
+}
+
+/** 按显示名解析 vault id；能拿到 registry 时用真实 id，禁止盲目 derive */
 export function resolveVaultIdByName(vaultName: string): string {
   const trimmed = vaultName.trim()
   if (!trimmed) return deriveLegacyVaultId('Personal')
   const fromRegistry = vaultService.getAllVaults().find((v) => v.name === trimmed)
-  return fromRegistry?.id ?? deriveLegacyVaultId(trimmed)
+  if (fromRegistry?.id) return fromRegistry.id
+  return deriveLegacyVaultId(trimmed)
 }
 
-/** 将 vault id 还原为显示名（JSONL / 路径仍用 name） */
+/** 将 vault id 还原为显示名（prompt / 路径 / UI） */
 export function resolveVaultNameById(vaultId: string): string {
   const trimmed = vaultId.trim()
   if (!trimmed) return 'Personal'
@@ -118,7 +129,7 @@ export async function switchVaultFast(vaultName: string) {
   resetRawDataRuntime()
 
   const { emitVaultSwitchMutation } = await import('../cache/desktop-main-cache-coordinator')
-  emitVaultSwitchMutation(vaultName, 'vault-switch')
+  emitVaultSwitchMutation(resolveActiveVaultId(), 'vault-switch')
 
   const { rebindSummaryCacheForActiveVault } = await import('./summary.ipc')
   await rebindSummaryCacheForActiveVault()

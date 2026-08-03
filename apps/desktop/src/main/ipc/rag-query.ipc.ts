@@ -350,11 +350,12 @@ export function registerRagQueryIPC() {
     const now = Date.now()
     const vaultName =
       existing?.vaultName ?? vaultService.getActiveVault()?.name ?? 'Personal'
-    const vaultId = resolveVaultIdByName(vaultName)
+    const vaultId = existing?.vaultId ?? resolveActiveVaultId()
     const createdAt = existing?.createdAt ?? createdAtMs ?? now
     const updated: MemoryRawRecord = {
       id: record.sourceId,
       schemaVersion: 1,
+      vaultId,
       vaultName,
       content: newText,
       tags: existing?.tags ?? [],
