@@ -29,10 +29,10 @@ export interface VectorSearchQueryFilter {
   startMs?: number
   endMs?: number
   /**
-   * 工作空间名。检索必须传入；空 vault_name 行一律不返回。
+   * 工作空间稳定 ID。检索必须传入；空 vault_id 行一律不返回。
    * 未传时 SQL 层 fail-closed（不返回任何行），避免静默跨仓库泄漏。
    */
-  vaultName?: string
+  vaultId?: string
 }
 
 /**
@@ -52,7 +52,7 @@ export interface IHybridSearchStorage {
   queryFTS(
     keyword: string,
     limit: number,
-    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultName'>
+    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultId'>
   ): Promise<ISearchResult[]>
 
   /**
@@ -117,8 +117,8 @@ export interface IEmbeddingStorage {
     sourceType: string
     sourceId: string
     groupId: string
-    /** 工作空间名；写入必填，检索按此列过滤 */
-    vaultName: string
+    /** 工作空间稳定 ID；写入必填，检索按此列过滤 */
+    vaultId: string
     chunkIndex: number
     chunkText: string
     metadataJson?: string
