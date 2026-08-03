@@ -17,6 +17,7 @@ export * from './desktop/Select/Select'
 export * from './desktop/Badge/Badge'
 export * from './desktop/Tooltip/Tooltip'
 export * from './desktop/HelpTooltip/index'
+export * from './desktop/HelpTooltip/SettingsHelpIconButton'
 
 export * from './desktop/DiaryCard/index'
 export * from './desktop/DiaryMetaCard/index'

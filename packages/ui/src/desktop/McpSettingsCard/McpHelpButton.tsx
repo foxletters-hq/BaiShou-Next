@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
-import { mergeSettingsHelpButtonHandlers } from '../shared/settingsInlineHelpBlock'
+import { SettingsHelpIconButton } from '../HelpTooltip/SettingsHelpIconButton'
 import styles from './McpHelpButton.module.css'
 import { buildMcpClientJsonExample } from '../../shared/mcp-client-config.util'
 import { buildMcpUrl } from './mcp-url'
-import { CircleHelp } from 'lucide-react'
 
 export interface McpHelpButtonProps {
   size?: number
@@ -30,14 +29,12 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
 
   return (
     <>
-      <button
-        type="button"
-        className={`${styles.helpBtn} ${className}`.trim()}
+      <SettingsHelpIconButton
         aria-label={t('settings.mcp_help_aria', 'MCP 连接说明')}
-        {...mergeSettingsHelpButtonHandlers(() => setOpen(true))}
-      >
-        <CircleHelp size={size} className={styles.helpIcon} aria-hidden />
-      </button>
+        size={size}
+        className={className}
+        onActivate={() => setOpen(true)}
+      />
       <Modal
         isOpen={open}
         onClose={() => setOpen(false)}

@@ -1,7 +1,7 @@
 import React from 'react'
-import { Tooltip } from '../Tooltip/Tooltip'
-import styles from './HelpTooltip.module.css'
 import { CircleHelp } from 'lucide-react'
+import { Tooltip } from '../Tooltip/Tooltip'
+import styles from './SettingsHelpIcon.module.css'
 
 export interface HelpTooltipProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'content'> {
   content: React.ReactNode
@@ -9,7 +9,7 @@ export interface HelpTooltipProps extends Omit<React.HTMLAttributes<HTMLDivEleme
   tooltipClassName?: string
 }
 
-/** Glass-style help icon with hover tooltip (same pattern as RAG Memory Manager). */
+/** Hover "?" help icon — shares icon colors with SettingsHelpIconButton. */
 export const HelpTooltip: React.FC<HelpTooltipProps> = ({
   content,
   size = 16,
@@ -23,7 +23,7 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
     <Tooltip
       content={content}
       tooltipClassName={tooltipClassName}
-      className={`${styles.helpTooltip} ${className}`.trim()}
+      className={`${styles.helpHost} ${className}`.trim()}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       {...props}

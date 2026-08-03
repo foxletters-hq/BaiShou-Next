@@ -1,37 +1,3 @@
-.helpBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 2px;
-  margin: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  vertical-align: middle;
-  transition:
-    background-color 0.15s,
-    transform 0.1s;
-}
-
-.helpBtn:hover {
-  background-color: rgba(var(--text-primary-rgb, 15, 23, 42), 0.06);
-}
-
-.helpBtn:active {
-  transform: scale(0.92);
-}
-
-.helpIcon {
-  color: var(--text-tertiary);
-  transition: color 0.15s;
-}
-
-.helpBtn:hover .helpIcon {
-  color: var(--color-primary);
-}
-
 .helpModal {
   min-width: min(480px, 92vw);
   max-width: 560px;
