@@ -459,6 +459,28 @@ interface GraphAPI {
   meta(): Promise<{ nodeTypes: string[]; edgeTypes: string[] }>
 }
 
+interface KnowledgeAPI {
+  createNotebook(input: { name: string; description?: string }): Promise<{ id: string; name: string }>
+  listNotebooks(): Promise<unknown[]>
+  importSource(input: {
+    notebookId: string
+    title: string
+    kind: 'file' | 'text'
+    absolutePath?: string
+    textContent?: string
+    fileName?: string
+  }): Promise<{ sourceId: string }>
+  retrySource(sourceId: string): Promise<{ ok: boolean }>
+  rebuildIndex(notebookId: string): Promise<{ ok: boolean }>
+  getStats(notebookId?: string): Promise<{
+    notebooks: number
+    sources: number
+    chunks: number
+    pendingJobs: number
+  }>
+  listSources(notebookId: string): Promise<unknown[]>
+}
+
 interface AppAPI {
   onboarding: OnboardingAPI
   window: WindowAPI
@@ -480,6 +502,7 @@ interface AppAPI {
   agentGate: AgentGateAPI
   agentWorkspace: AgentWorkspaceAPI
   graph: GraphAPI
+  knowledge: KnowledgeAPI
   getMessages(sessionId: string): Promise<unknown>
   [key: string]: unknown
 }
