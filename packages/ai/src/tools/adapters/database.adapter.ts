@@ -134,9 +134,7 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     const rows = await this.db
       .select({ start: summariesTable.startDate, end: summariesTable.endDate })
       .from(summariesTable)
-      .where(
-        and(eq(summariesTable.vaultId, vaultId), eq(summariesTable.type as any, type as any))
-      )
+      .where(and(eq(summariesTable.vaultId, vaultId), eq(summariesTable.type as any, type as any)))
       .orderBy(desc(summariesTable.startDate))
       .limit(limit)
 

@@ -149,7 +149,13 @@ export class EmbeddingService {
     if (!provider) return
 
     const aiModel = provider.getEmbeddingModel(modelId)
-    const rawVault = String(params.entry.vault_id ?? params.entry.vaultId ?? params.entry.vault_name ?? params.entry.vaultName ?? '').trim()
+    const rawVault = String(
+      params.entry.vault_id ??
+        params.entry.vaultId ??
+        params.entry.vault_name ??
+        params.entry.vaultName ??
+        ''
+    ).trim()
     if (!rawVault) {
       throw new Error('updateMemoryChunk: entry vault_id is required')
     }

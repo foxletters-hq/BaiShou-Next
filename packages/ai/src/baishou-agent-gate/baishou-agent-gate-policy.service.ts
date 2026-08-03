@@ -90,9 +90,7 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       (rule) => !isCatchAllAllowRule(rule)
     )
     const rememberedRules = allowlistEntriesToPermissionRules(this.allowlistStore.list())
-    const sessionRules = input.autoAccept
-      ? [{ action: '*', effect: AgentGateEffect.Allow }]
-      : []
+    const sessionRules = input.autoAccept ? [{ action: '*', effect: AgentGateEffect.Allow }] : []
 
     const matched = findLastMatchingLayeredRule({
       action: input.action,

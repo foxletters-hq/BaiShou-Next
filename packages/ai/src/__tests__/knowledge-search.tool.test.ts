@@ -7,36 +7,30 @@ describe('KnowledgeSearchTool mount gate', () => {
 
   it('工作台未挂载时拒绝，且不可用 notebookId 绕过', async () => {
     const search = vi.fn()
-    const result = await tool.execute(
-      { query: 'hello', notebookId: 'nb_bypass' },
-      {
-        sessionId: 'ws1',
-        vaultId: deriveLegacyVaultId('Personal'),
-        vaultName: 'Personal',
-        workspace: { folderRoot: '/tmp/p', sessionKind: 'workspace' },
-        knowledgeReader: { search }
-      } as any
-    )
+    const result = await tool.execute({ query: 'hello', notebookId: 'nb_bypass' }, {
+      sessionId: 'ws1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      workspace: { folderRoot: '/tmp/p', sessionKind: 'workspace' },
+      knowledgeReader: { search }
+    } as any)
     expect(result).toMatch(/尚未挂载|不可通过 notebookId/)
     expect(search).not.toHaveBeenCalled()
   })
 
   it('工作台已挂载时使用挂载 notebookId', async () => {
     const search = vi.fn().mockResolvedValue([])
-    await tool.execute(
-      { query: 'hello', notebookId: 'nb_bypass' },
-      {
-        sessionId: 'ws1',
-        vaultId: deriveLegacyVaultId('Personal'),
-        vaultName: 'Personal',
-        workspace: {
-          folderRoot: '/tmp/p',
-          sessionKind: 'workspace',
-          notebookId: 'nb_mounted'
-        },
-        knowledgeReader: { search }
-      } as any
-    )
+    await tool.execute({ query: 'hello', notebookId: 'nb_bypass' }, {
+      sessionId: 'ws1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      workspace: {
+        folderRoot: '/tmp/p',
+        sessionKind: 'workspace',
+        notebookId: 'nb_mounted'
+      },
+      knowledgeReader: { search }
+    } as any)
     expect(search).toHaveBeenCalledWith(
       expect.objectContaining({ notebookId: 'nb_mounted', query: 'hello' })
     )

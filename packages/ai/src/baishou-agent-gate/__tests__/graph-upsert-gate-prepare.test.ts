@@ -8,7 +8,10 @@ describe('graph_upsert gate prepare', () => {
     const prepared = await meta!.prepare!(
       {
         summary: '记一次旅行',
-        entities: JSON.stringify([{ name: '小明', type: 'person' }, { name: '杭州', type: 'place' }]),
+        entities: JSON.stringify([
+          { name: '小明', type: 'person' },
+          { name: '杭州', type: 'place' }
+        ]),
         edges: JSON.stringify([{ from: '小明', to: '杭州', type: 'visited' }])
       },
       {}

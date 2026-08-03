@@ -116,9 +116,7 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
       ].join('\n')
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      return (
-        `Knowledge search failed: ${message}. Do not call this tool again for the same query in this conversation.`
-      )
+      return `Knowledge search failed: ${message}. Do not call this tool again for the same query in this conversation.`
     }
   }
 }
