@@ -185,6 +185,17 @@ export class SummaryFileService {
     return null
   }
 
+  /** 按绝对路径读取总结正文（跨仓扫描时用，绕过活跃仓搜索） */
+  async readSummaryAtAbsolutePath(fullPath: string): Promise<string | null> {
+    try {
+      const content = await this.fileSystem.readFile(fullPath, 'utf8')
+      return this.cleanMarkdownContent(content)
+    } catch (e: any) {
+      if (e.code === 'ENOENT') return null
+      throw e
+    }
+  }
+
   private cleanMarkdownContent(rawContent: string): string {
     const cleanContent = rawContent.startsWith('\uFEFF') ? rawContent.substring(1) : rawContent
     // 剥离 YAML Frontmatter
@@ -217,13 +228,14 @@ export class SummaryFileService {
   }
 
   async listAllSummaries(): Promise<
-    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string }[]
+    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string; vaultName?: string }[]
   > {
     const results: {
       type: SummaryType
       startDate: Date
       endDate: Date
       fullPath: string
+      vaultName?: string
     }[] = []
     const searchDirs = await this.collectSummarySearchDirectories()
 
@@ -231,6 +243,48 @@ export class SummaryFileService {
       await this.scanSummaryDir(baseDir, results)
     }
 
+    return results
+  }
+
+  /**
+   * 列出指定工作区 Archives/ 下的总结（跨仓冷启动水合用）。
+   * 仅扫仓内 Archives，不含活跃仓外部总结目录映射。
+   */
+  async listSummariesForVault(vaultName: string): Promise<
+    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string; vaultName: string }[]
+  > {
+    const name = vaultName.trim()
+    if (!name) return []
+    const vaultDir = await this.pathProvider.getVaultDirectory(name)
+    const results: {
+      type: SummaryType
+      startDate: Date
+      endDate: Date
+      fullPath: string
+    }[] = []
+    await this.scanSummaryDir(path.join(vaultDir, 'Archives'), results)
+    // 兼容少数仍用 Summaries/ 的布局
+    await this.scanSummaryDir(path.join(vaultDir, 'Summaries'), results)
+    return results.map((r) => ({ ...r, vaultName: name }))
+  }
+
+  async listSummariesAcrossVaults(
+    vaultNames: string[]
+  ): Promise<
+    { type: SummaryType; startDate: Date; endDate: Date; fullPath: string; vaultName: string }[]
+  > {
+    const unique = [...new Set(vaultNames.map((n) => n.trim()).filter(Boolean))]
+    const results: {
+      type: SummaryType
+      startDate: Date
+      endDate: Date
+      fullPath: string
+      vaultName: string
+    }[] = []
+    for (const name of unique) {
+      const listed = await this.listSummariesForVault(name)
+      results.push(...listed)
+    }
     return results
   }
 

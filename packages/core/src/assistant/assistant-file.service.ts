@@ -19,14 +19,20 @@ export class AssistantFileService {
     private readonly fileSystem: IFileSystem
   ) {}
 
-  private async getDirectory(): Promise<string> {
+  private async getDirectory(vaultName?: string | null): Promise<string> {
+    if (vaultName?.trim()) {
+      const vaultDir = await this.pathProvider.getVaultDirectory(vaultName.trim())
+      const targetDir = path.join(vaultDir, 'Assistants')
+      await this.fileSystem.mkdir(targetDir, { recursive: true })
+      return targetDir
+    }
     const targetDir = await this.pathProvider.getAssistantsBaseDirectory()
     await this.fileSystem.mkdir(targetDir, { recursive: true })
     return targetDir
   }
 
-  async writeAssistant(id: string, data: any): Promise<string> {
-    const dir = await this.getDirectory()
+  async writeAssistant(id: string, data: any, vaultName?: string | null): Promise<string> {
+    const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${id}.json`)
     const nextContent = stableAssistantDiskJson(data as Record<string, unknown>)
     try {
@@ -45,8 +51,8 @@ export class AssistantFileService {
     return fullPath
   }
 
-  async readAssistant(id: string): Promise<any | null> {
-    const dir = await this.getDirectory()
+  async readAssistant(id: string, vaultName?: string | null): Promise<any | null> {
+    const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${id}.json`)
     try {
       const content = await this.fileSystem.readFile(fullPath, 'utf8')
@@ -57,8 +63,8 @@ export class AssistantFileService {
     }
   }
 
-  async deleteAssistant(id: string): Promise<void> {
-    const dir = await this.getDirectory()
+  async deleteAssistant(id: string, vaultName?: string | null): Promise<void> {
+    const dir = await this.getDirectory(vaultName)
     const fullPath = path.join(dir, `${id}.json`)
     try {
       await this.fileSystem.unlink(fullPath)
@@ -67,21 +73,42 @@ export class AssistantFileService {
     }
   }
 
-  async listAllAssistants(): Promise<{ id: string; fullPath: string }[]> {
-    const dir = await this.getDirectory()
+  async listAllAssistants(
+    vaultName?: string | null
+  ): Promise<{ id: string; fullPath: string; vaultName?: string }[]> {
+    const dir = await this.getDirectory(vaultName)
     let files: string[] = []
     try {
       files = await this.fileSystem.readdir(dir)
     } catch (e: any) {
-      if (e.code !== 'ENOENT') return []
+      if (e.code === 'ENOENT') return []
       throw e
     }
 
-    const results: { id: string; fullPath: string }[] = []
+    const results: { id: string; fullPath: string; vaultName?: string }[] = []
     for (const f of files) {
       if (!f.endsWith('.json')) continue
       const id = f.slice(0, -5)
-      results.push({ id, fullPath: path.join(dir, f) })
+      results.push({
+        id,
+        fullPath: path.join(dir, f),
+        ...(vaultName?.trim() ? { vaultName: vaultName.trim() } : {})
+      })
+    }
+    return results
+  }
+
+  /** 列出多个工作区 Assistants 目录中的全部伙伴文件 */
+  async listAssistantsAcrossVaults(
+    vaultNames: string[]
+  ): Promise<{ id: string; fullPath: string; vaultName: string }[]> {
+    const unique = [...new Set(vaultNames.map((n) => n.trim()).filter(Boolean))]
+    const results: { id: string; fullPath: string; vaultName: string }[] = []
+    for (const name of unique) {
+      const listed = await this.listAllAssistants(name)
+      for (const item of listed) {
+        results.push({ id: item.id, fullPath: item.fullPath, vaultName: name })
+      }
     }
     return results
   }
