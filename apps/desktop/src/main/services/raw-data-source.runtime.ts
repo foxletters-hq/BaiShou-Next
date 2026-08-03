@@ -240,9 +240,15 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
 }): Promise<{ written: number; skipped: number; normalized: number; metadataPatched: number }> {
   const { memoryManager } = ensureRawDataRuntime()
   const service = new MemoryJsonlBackfillService(memoryManager)
-  const chatChunks = await options.hsRepo.listEmbeddingChunksByType('chat')
-  const memoryChunks = await options.hsRepo.listEmbeddingChunksByType('memory')
-  const manualChunks = await options.hsRepo.listEmbeddingChunksByType('manual')
+  const chatChunks = await options.hsRepo.listEmbeddingChunksByType('chat', {
+    vaultId: options.vaultId
+  })
+  const memoryChunks = await options.hsRepo.listEmbeddingChunksByType('memory', {
+    vaultId: options.vaultId
+  })
+  const manualChunks = await options.hsRepo.listEmbeddingChunksByType('manual', {
+    vaultId: options.vaultId
+  })
   const r1 = await service.backfillFromChunks(chatChunks, options.vaultId)
   const r2 = await service.backfillFromChunks(memoryChunks, options.vaultId)
   const manual = await service.migrateManualAndPatchMetadata(manualChunks, options.vaultId, {
@@ -416,13 +422,16 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
 
     const { KnowledgeHydrationService } = await import('@baishou/core-desktop')
     const { getEmbeddingService } = await import('../ipc/rag.ipc')
+    const { resolveActiveVaultId } = await import('../ipc/vault.ipc')
     const embeddingService = getEmbeddingService()
     const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
     const notebookManager = getNotebookRawManager()
+    const vaultId = resolveActiveVaultId()
 
     const hydration = new KnowledgeHydrationService({
       repo,
       notebookManager,
+      vaultId,
       isEmbeddingConfigured: () => embeddingService.isConfigured
     })
     const result = await hydration.hydrate()
