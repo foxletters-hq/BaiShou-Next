@@ -9,6 +9,7 @@ import {
 } from '@baishou/shared'
 import { isFilesystemRootPath } from '../storage/workspace-root.util'
 import { journalMarkdownExistsInTree } from '../journal/journal-files.util'
+import { deriveLegacyVaultId } from '../vault/vault-id.util'
 import { sanitizeVaultDirectoryName } from '../vault/vault-name.util'
 import type { VaultInfo } from '../vault/vault.types'
 
@@ -519,6 +520,7 @@ export async function writeNextVaultRegistry(
   const vaults: VaultInfo[] = vaultNames.map((name) => {
     const legacy = legacyRegistry.find((item) => item.name === name)
     return {
+      id: deriveLegacyVaultId(name),
       name,
       path: path.join(targetRoot, sanitizeVaultDirectoryName(name)),
       createdAt: legacy?.createdAt ? new Date(legacy.createdAt) : now,
@@ -528,6 +530,7 @@ export async function writeNextVaultRegistry(
 
   const registryFile = path.join(targetRoot, NEXT_REGISTRY_FILENAME)
   const serializable = vaults.map((vault) => ({
+    id: vault.id,
     name: vault.name,
     path: vault.path,
     createdAt: vault.createdAt.toISOString(),

@@ -24,11 +24,13 @@ class FixedVaultServiceStub implements IVaultService {
   }
 
   getActiveVault(): VaultInfo | null {
+    const fromRegistry = vaultService.getAllVaults().find((v) => v.name === this.vaultName)
     return {
+      id: fromRegistry?.id ?? `vlt_stub_${this.vaultName}`,
       name: this.vaultName,
       path: this.vaultPath,
-      createdAt: new Date(),
-      lastAccessedAt: new Date()
+      createdAt: fromRegistry?.createdAt ?? new Date(),
+      lastAccessedAt: fromRegistry?.lastAccessedAt ?? new Date()
     }
   }
 
