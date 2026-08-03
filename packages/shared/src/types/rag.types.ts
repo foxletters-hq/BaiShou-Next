@@ -19,6 +19,7 @@ export interface ISearchQueryOptions {
   similarityThreshold?: number // 如果纯余弦距离低于阈值，抛弃不再参与 RRF 排位
   ftsWeight?: number // RRF 合成时关键词权重，默认 0.3
   vectorWeight?: number // RRF 合成时向量占比，默认 0.7
+  filter?: VectorSearchQueryFilter
 }
 
 /** 向量/FTS 检索可选过滤（先按时间收窄候选，再做语义/关键词排序）。 */
@@ -27,6 +28,11 @@ export interface VectorSearchQueryFilter {
   sourceType?: string
   startMs?: number
   endMs?: number
+  /**
+   * 工作空间名。检索必须传入；空 vault_name 行一律不返回。
+   * 未传时 SQL 层 fail-closed（不返回任何行），避免静默跨仓库泄漏。
+   */
+  vaultName?: string
 }
 
 /**
@@ -46,7 +52,7 @@ export interface IHybridSearchStorage {
   queryFTS(
     keyword: string,
     limit: number,
-    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs'>
+    filter?: Pick<VectorSearchQueryFilter, 'startMs' | 'endMs' | 'vaultName'>
   ): Promise<ISearchResult[]>
 
   /**
@@ -111,6 +117,8 @@ export interface IEmbeddingStorage {
     sourceType: string
     sourceId: string
     groupId: string
+    /** 工作空间名；写入必填，检索按此列过滤 */
+    vaultName: string
     chunkIndex: number
     chunkText: string
     metadataJson?: string
