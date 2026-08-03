@@ -490,7 +490,10 @@ interface KnowledgeAPI {
     sources: number
     chunks: number
     pendingJobs: number
+    originalBytes: number
+    totalBytes: number
   }>
+  hasModelMismatch(): Promise<boolean>
   listSources(notebookId: string): Promise<unknown[]>
   search(input: {
     notebookId: string

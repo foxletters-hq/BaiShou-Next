@@ -56,6 +56,7 @@ export const KnowledgeDetailPage: React.FC = () => {
   const { setFolderRoot } = useOutletContext<WorkspaceOutletContext>()
 
   const [notebookName, setNotebookName] = useState('')
+  const [storageLine, setStorageLine] = useState('')
   const [sources, setSources] = useState<SourceRow[]>([])
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
@@ -81,7 +82,20 @@ export const KnowledgeDetailPage: React.FC = () => {
     setNotebookName(nb?.name || notebookId)
     const list = (await window.api.knowledge.listSources(notebookId)) as SourceRow[]
     setSources(list || [])
-  }, [notebookId])
+    try {
+      const stats = await window.api.knowledge.getStats(notebookId)
+      const total = ((stats.totalBytes ?? 0) / (1024 * 1024)).toFixed(2)
+      const original = ((stats.originalBytes ?? 0) / (1024 * 1024)).toFixed(2)
+      setStorageLine(
+        t('knowledge.storage_usage', '本笔记本 {{total}} MB，其中原文 {{original}} MB', {
+          total,
+          original
+        })
+      )
+    } catch {
+      setStorageLine('')
+    }
+  }, [notebookId, t])
 
   useEffect(() => {
     void refresh().catch((e) => setError(String(e?.message || e)))
@@ -98,12 +112,26 @@ export const KnowledgeDetailPage: React.FC = () => {
     setError('')
     setStatus(t('knowledge.asking', '正在检索并生成回答…'))
     try {
+      const mismatch = await window.api.knowledge.hasModelMismatch?.()
+      if (mismatch) {
+        throw new Error('knowledge-model-mismatch')
+      }
       const result = await window.api.knowledge.ask({ notebookId, question: q })
       setAnswer(result.answer)
       setCitations(result.citations || [])
       setStatus('')
     } catch (e: any) {
-      setError(String(e?.message || e))
+      const msg = String(e?.message || e)
+      if (msg === 'knowledge-model-mismatch') {
+        setError(
+          t(
+            'knowledge.model_mismatch_hard_block',
+            '嵌入模型与知识库向量不一致，提问已拦截。请先「重建索引」。'
+          )
+        )
+      } else {
+        setError(msg)
+      }
       setStatus('')
     } finally {
       setBusy(false)
@@ -247,6 +275,7 @@ export const KnowledgeDetailPage: React.FC = () => {
             <p className={styles.subtitle}>
               {t('knowledge.detail_subtitle', '左侧管理资料，右侧提问并查看带页码/偏移的引用。')}
             </p>
+            {storageLine ? <p className={styles.subtitle}>{storageLine}</p> : null}
           </div>
           <div className={styles.actions}>
             <button type="button" className={styles.btn} onClick={() => setImportMode('file')} disabled={busy}>

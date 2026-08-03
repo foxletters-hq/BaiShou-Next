@@ -19,6 +19,13 @@ type NotebookStats = {
   sources: number
   chunks: number
   pendingJobs: number
+  originalBytes: number
+  totalBytes: number
+}
+
+function formatMb(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0'
+  return (bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 1 : 2)
 }
 
 export const KnowledgeListPage: React.FC = () => {
@@ -45,10 +52,18 @@ export const KnowledgeListPage: React.FC = () => {
           next[nb.id] = {
             sources: stats.sources,
             chunks: stats.chunks,
-            pendingJobs: stats.pendingJobs
+            pendingJobs: stats.pendingJobs,
+            originalBytes: stats.originalBytes ?? 0,
+            totalBytes: stats.totalBytes ?? 0
           }
         } catch {
-          next[nb.id] = { sources: 0, chunks: 0, pendingJobs: 0 }
+          next[nb.id] = {
+            sources: 0,
+            chunks: 0,
+            pendingJobs: 0,
+            originalBytes: 0,
+            totalBytes: 0
+          }
         }
       })
     )
@@ -128,6 +143,18 @@ export const KnowledgeListPage: React.FC = () => {
                       ? ` · ${t('knowledge.indexing', '索引中')} ${stats.pendingJobs}`
                       : ''}
                   </p>
+                  {stats ? (
+                    <p className={styles.cardMeta}>
+                      {t(
+                        'knowledge.storage_usage',
+                        '本笔记本 {{total}} MB，其中原文 {{original}} MB',
+                        {
+                          total: formatMb(stats.totalBytes),
+                          original: formatMb(stats.originalBytes)
+                        }
+                      )}
+                    </p>
+                  ) : null}
                   {nb.description ? <p className={styles.cardMeta}>{nb.description}</p> : null}
                 </button>
               )
