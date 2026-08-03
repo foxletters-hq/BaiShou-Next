@@ -31,6 +31,11 @@ export class MessageSearchTool extends AgentTool<typeof messageSearchParams> {
       return 'Error: 请提供搜索关键词。'
     }
 
+    const vaultId = String(context.vaultId ?? '').trim()
+    if (!vaultId) {
+      return 'Error: 缺少工作空间上下文，无法搜索消息。'
+    }
+
     const searcher = context.messageSearcher
     if (!searcher) {
       return '消息搜索服务未配置。'
@@ -39,7 +44,7 @@ export class MessageSearchTool extends AgentTool<typeof messageSearchParams> {
     const limit = args.limit ?? 10
 
     try {
-      const results = await searcher.searchMessages(args.query, limit)
+      const results = await searcher.searchMessages(args.query, limit, vaultId)
 
       if (results.length === 0) {
         return `未找到包含「${args.query}」的历史消息。`

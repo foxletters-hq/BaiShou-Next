@@ -86,7 +86,9 @@ export interface ToolVectorStore {
 export interface ToolMessageSearcher {
   searchMessages(
     query: string,
-    limit: number
+    limit: number,
+    /** 活跃仓库 ID；缺省时由实现方 fail-closed */
+    vaultId?: string
   ): Promise<
     Array<{
       role: string
