@@ -14,8 +14,10 @@ export * from './tools/graph-upsert.tool'
 export * from './rag/hybrid-search.service'
 export * from './rag/embedding.service'
 export * from './rag/embedding.types'
+export * from './rag/embedding-chunk'
 export * from './rag/hybrid-search.types'
 export * from './rag/memory-deduplication.service'
+export * from './rag/knowledge-embedding.storage'
 
 // Providers
 export * from './providers/openai.provider'
