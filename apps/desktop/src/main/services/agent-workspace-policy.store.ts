@@ -7,13 +7,15 @@ import {
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
   cloneBaishouAgentGateConfig,
   cloneWorkspaceToolManagementConfig,
+  inferWorkspacePresets,
+  sortPermissionRulesForLastMatch,
   type AgentWorkspacePolicy,
   type BaishouAgentGateConfig,
   type WorkspaceToolManagementConfig
 } from '@baishou/shared'
 
 interface WorkspacePolicyFile {
-  version: 1
+  version: 1 | 2
   byWorkspaceId: Record<string, AgentWorkspacePolicy>
 }
 
@@ -24,21 +26,59 @@ function storePath(): string {
 }
 
 function emptyStore(): WorkspacePolicyFile {
-  return { version: 1, byWorkspaceId: {} }
+  return { version: 2, byWorkspaceId: {} }
+}
+
+function migrateGateConfigV1ToV2(config: BaishouAgentGateConfig): BaishouAgentGateConfig {
+  const cloned = cloneBaishouAgentGateConfig(config, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
+  if (cloned.permissionRules?.length) {
+    cloned.permissionRules = sortPermissionRulesForLastMatch(cloned.permissionRules)
+  }
+  // 旧 FullTrust 已由 clone 迁成 `*: allow`；反推审批预设
+  if (!cloned.scopePreset || !cloned.approvalPreset) {
+    const inferred = inferWorkspacePresets(cloned)
+    cloned.scopePreset = inferred.scopePreset
+    cloned.approvalPreset = inferred.approvalPreset
+  }
+  return cloned
 }
 
 async function loadStore(): Promise<WorkspacePolicyFile> {
   if (cache) return cache
   try {
-    const raw = await fs.readFile(storePath(), 'utf-8')
+    const file = storePath()
+    const raw = await fs.readFile(file, 'utf-8')
     const parsed = JSON.parse(raw) as WorkspacePolicyFile
-    cache = {
-      version: 1,
-      byWorkspaceId:
-        parsed?.byWorkspaceId && typeof parsed.byWorkspaceId === 'object'
-          ? parsed.byWorkspaceId
-          : {}
+    const byWorkspaceId =
+      parsed?.byWorkspaceId && typeof parsed.byWorkspaceId === 'object'
+        ? parsed.byWorkspaceId
+        : {}
+
+    if (parsed?.version === 2) {
+      cache = { version: 2, byWorkspaceId }
+      return cache
     }
+
+    // v1 → v2：排序规则 + 反推预设，并写 .bak
+    try {
+      await fs.copyFile(file, `${file}.bak`)
+    } catch {
+      // ignore backup failure
+    }
+
+    const migrated: Record<string, AgentWorkspacePolicy> = {}
+    for (const [id, policy] of Object.entries(byWorkspaceId)) {
+      migrated[id] = {
+        ...policy,
+        workspaceId: id,
+        gateConfig: migrateGateConfigV1ToV2(policy.gateConfig),
+        toolManagement: cloneWorkspaceToolManagementConfig(policy.toolManagement),
+        updatedAt: policy.updatedAt ?? new Date().toISOString()
+      }
+    }
+    cache = { version: 2, byWorkspaceId: migrated }
+    await saveStore()
+    return cache
   } catch {
     cache = emptyStore()
   }
@@ -47,6 +87,7 @@ async function loadStore(): Promise<WorkspacePolicyFile> {
 
 async function saveStore(): Promise<void> {
   if (!cache) return
+  cache.version = 2
   await fs.mkdir(path.dirname(storePath()), { recursive: true })
   await fs.writeFile(storePath(), JSON.stringify(cache, null, 2), 'utf-8')
 }

@@ -133,10 +133,6 @@ export const agentApi = {
       ipcRenderer.invoke('agent-gate:notify-asked', request),
     getConfig: (scope?: import('@baishou/shared').AgentGateConfigScope) =>
       ipcRenderer.invoke('agent-gate:get-config', scope),
-    setTrustMode: (
-      trustMode: import('@baishou/shared').AgentGateTrustMode,
-      scope?: import('@baishou/shared').AgentGateConfigScope
-    ) => ipcRenderer.invoke('agent-gate:set-trust-mode', trustMode, scope),
     removeAllowlistEntry: (
       entryId: string,
       scope?: import('@baishou/shared').AgentGateConfigScope

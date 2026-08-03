@@ -3,8 +3,7 @@ import type {
   AgentGateConfigScope,
   AgentGateNotificationPrefs,
   AgentGateReplyInput,
-  AgentGateRequest,
-  AgentGateTrustMode
+  AgentGateRequest
 } from '@baishou/shared'
 import {
   getAgentGateConfig,
@@ -12,7 +11,6 @@ import {
   listPendingAgentGateRequests,
   removeAgentGateAllowlistEntry,
   replyAgentGate,
-  setAgentGateTrustMode,
   registerAgentGateEventBridge
 } from '../services/agent-gate.service'
 import {
@@ -62,13 +60,6 @@ export function registerAgentGateIPC(): void {
   ipcMain.handle('agent-gate:get-config', async (_, scope?: AgentGateConfigScope) => {
     return getScopedAgentGateConfig(normalizeScope(scope))
   })
-
-  ipcMain.handle(
-    'agent-gate:set-trust-mode',
-    async (_, trustMode: AgentGateTrustMode, scope?: AgentGateConfigScope) => {
-      return setAgentGateTrustMode(trustMode, normalizeScope(scope))
-    }
-  )
 
   ipcMain.handle(
     'agent-gate:remove-allowlist-entry',

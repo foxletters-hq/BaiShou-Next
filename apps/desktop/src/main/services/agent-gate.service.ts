@@ -12,13 +12,16 @@ import {
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   cloneBaishouAgentGateConfig,
   type BaishouAgentGateConfig,
-  type AgentGateTrustMode,
   type AgentGateConfigScope,
   type AgentGateAllowlistEntry,
   type AgentGateReplyInput
 } from '@baishou/shared'
 import { settingsManager } from '../ipc/settings.ipc'
 import { getWorkspaceGateConfig, setWorkspaceGateConfig } from './agent-workspace-policy.store'
+import {
+  getWorkspaceAutoAccept,
+  setWorkspaceAutoAccept
+} from './agent-workspace-auto-accept.store'
 
 type GateRuntime = ReturnType<typeof createBaishouAgentGate>
 
@@ -33,6 +36,8 @@ interface ScopedRuntime {
 const sharedEventBus = new BaishouAgentGateEventBus()
 let companionRuntime: ScopedRuntime | null = null
 const workspaceRuntimes = new Map<string, ScopedRuntime>()
+/** 工作区自动接受的进程内缓存（供 gate 同步查询） */
+const workspaceAutoAcceptCache = new Map<string, boolean>()
 /** requestId → scope key，用于 reply 路由 */
 const requestScopeIndex = new Map<string, ScopeKey>()
 let bridgeRegistered = false
@@ -104,7 +109,11 @@ function createScopedRuntime(
     config,
     persistConfig,
     eventBus: sharedEventBus,
-    configScope: scope
+    configScope: scope,
+    isAutoAccept:
+      scope.kind === 'workspace'
+        ? () => workspaceAutoAcceptCache.get(scope.workspaceId) === true
+        : undefined
   })
   return { key, scope, runtime: runtimeRef }
 }
@@ -128,6 +137,9 @@ export async function ensureWorkspaceGateRuntime(workspaceId: string): Promise<G
   const existing = workspaceRuntimes.get(workspaceId)
   if (existing) return existing.runtime
 
+  const enabled = await getWorkspaceAutoAccept(workspaceId)
+  workspaceAutoAcceptCache.set(workspaceId, enabled)
+
   const config = cloneBaishouAgentGateConfig(
     await getWorkspaceGateConfig(workspaceId),
     DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
@@ -136,6 +148,24 @@ export async function ensureWorkspaceGateRuntime(workspaceId: string): Promise<G
   workspaceRuntimes.set(workspaceId, scoped)
   ensureLifecycleBridge()
   return scoped.runtime
+}
+
+export async function getWorkspaceAutoAcceptEnabled(workspaceId: string): Promise<boolean> {
+  if (workspaceAutoAcceptCache.has(workspaceId)) {
+    return workspaceAutoAcceptCache.get(workspaceId) === true
+  }
+  const enabled = await getWorkspaceAutoAccept(workspaceId)
+  workspaceAutoAcceptCache.set(workspaceId, enabled)
+  return enabled
+}
+
+export async function setWorkspaceAutoAcceptEnabled(
+  workspaceId: string,
+  enabled: boolean
+): Promise<boolean> {
+  const next = await setWorkspaceAutoAccept(workspaceId, enabled)
+  workspaceAutoAcceptCache.set(workspaceId, next)
+  return next
 }
 
 /** @deprecated 使用 ensureCompanionGateRuntime */
@@ -181,7 +211,6 @@ export async function patchScopedAgentGateConfig(
       ? await ensureCompanionGateRuntime()
       : await ensureWorkspaceGateRuntime(scope.workspaceId)
   const next = rt.getConfig()
-  if (patch.trustMode !== undefined) next.trustMode = patch.trustMode
   if (Array.isArray(patch.allowlist)) next.allowlist = [...patch.allowlist]
   if (Array.isArray(patch.exclusionList)) next.exclusionList = [...patch.exclusionList]
   if (patch.permissionRules !== undefined) {
@@ -191,22 +220,11 @@ export async function patchScopedAgentGateConfig(
     next.actionRules = patch.actionRules ? { ...patch.actionRules } : undefined
   }
   if (typeof patch.hideDeniedTools === 'boolean') next.hideDeniedTools = patch.hideDeniedTools
-  if (typeof patch.forceAskExternalPath === 'boolean') {
-    next.forceAskExternalPath = patch.forceAskExternalPath
-  }
-  if (
-    patch.externalPathEffect === 'ask' ||
-    patch.externalPathEffect === 'allow' ||
-    patch.externalPathEffect === 'deny'
-  ) {
-    next.externalPathEffect = patch.externalPathEffect
-  }
-  if (Array.isArray(patch.trustedExternalDirs)) {
-    next.trustedExternalDirs = [...patch.trustedExternalDirs]
-  }
   if (typeof patch.repeatAssertAskThreshold === 'number') {
     next.repeatAssertAskThreshold = patch.repeatAssertAskThreshold
   }
+  if (patch.scopePreset !== undefined) next.scopePreset = patch.scopePreset
+  if (patch.approvalPreset !== undefined) next.approvalPreset = patch.approvalPreset
 
   if (scope.kind === 'companion') {
     await persistCompanionConfig(next)
@@ -219,13 +237,6 @@ export async function patchScopedAgentGateConfig(
       ? DEFAULT_BAISHOU_AGENT_GATE_CONFIG
       : DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
   )
-}
-
-export async function setAgentGateTrustMode(
-  trustMode: AgentGateTrustMode,
-  scope: AgentGateConfigScope = { kind: 'companion' }
-): Promise<BaishouAgentGateConfig> {
-  return patchScopedAgentGateConfig(scope, { trustMode })
 }
 
 export async function removeAgentGateAllowlistEntry(

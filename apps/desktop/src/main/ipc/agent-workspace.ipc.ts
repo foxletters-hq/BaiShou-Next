@@ -24,9 +24,11 @@ import {
   getLastActiveWorkspaceId,
   listAgentWorkspaces,
   pickWorkspaceAvatarImage,
+  removeAgentWorkspace,
   setLastActiveWorkspaceId,
   updateAgentWorkspace
 } from '../services/agent-workspace-registry.store'
+import { ensureScratchWorkspace } from '../services/agent-workspace-scratch.service'
 import { getAgentManagers } from './agent-helpers'
 import { getWorkspaceFolderGitService } from '../services/workspace-folder-git.registry'
 import { replaceInWorkspaceFiles, searchWorkspaceFiles } from '@baishou/core-desktop'
@@ -106,6 +108,10 @@ export function registerAgentWorkspaceIPC(): void {
     return listAgentWorkspaces()
   })
 
+  ipcMain.handle('agent-workspace:ensure-scratch-workspace', async () => {
+    return ensureScratchWorkspace()
+  })
+
   ipcMain.handle('agent-workspace:add-workspace', async (_, folderRoot: string) => {
     if (!folderRoot?.trim()) return null
     return addAgentWorkspace(folderRoot)
@@ -121,6 +127,11 @@ export function registerAgentWorkspaceIPC(): void {
     }
   )
 
+  ipcMain.handle('agent-workspace:remove-workspace', async (_, workspaceId: string) => {
+    if (!workspaceId?.trim()) return false
+    return removeAgentWorkspace(workspaceId)
+  })
+
   ipcMain.handle('agent-workspace:get-last-active-workspace-id', async () => {
     return getLastActiveWorkspaceId()
   })
@@ -130,6 +141,22 @@ export function registerAgentWorkspaceIPC(): void {
     async (_, workspaceId: string | null) => {
       await setLastActiveWorkspaceId(workspaceId)
       return true
+    }
+  )
+
+  ipcMain.handle(
+    'agent-workspace:get-auto-accept',
+    async (_, workspaceId: string): Promise<boolean> => {
+      const { getWorkspaceAutoAcceptEnabled } = await import('../services/agent-gate.service')
+      return getWorkspaceAutoAcceptEnabled(workspaceId)
+    }
+  )
+
+  ipcMain.handle(
+    'agent-workspace:set-auto-accept',
+    async (_, workspaceId: string, enabled: boolean): Promise<boolean> => {
+      const { setWorkspaceAutoAcceptEnabled } = await import('../services/agent-gate.service')
+      return setWorkspaceAutoAcceptEnabled(workspaceId, enabled)
     }
   )
 

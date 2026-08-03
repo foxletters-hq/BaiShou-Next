@@ -138,10 +138,6 @@ interface AgentGateAPI {
   getConfig(
     scope?: import('@baishou/shared').AgentGateConfigScope
   ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
-  setTrustMode(
-    trustMode: import('@baishou/shared').AgentGateTrustMode,
-    scope?: import('@baishou/shared').AgentGateConfigScope
-  ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
   removeAllowlistEntry(
     entryId: string,
     scope?: import('@baishou/shared').AgentGateConfigScope
@@ -173,11 +169,13 @@ interface AgentGateAPI {
 interface AgentWorkspaceAPI {
   pickFolder(): Promise<string | null>
   listWorkspaces(): Promise<import('@baishou/shared').AgentWorkspaceEntry[]>
+  ensureScratchWorkspace(): Promise<import('@baishou/shared').AgentWorkspaceEntry>
   addWorkspace(folderRoot: string): Promise<import('@baishou/shared').AgentWorkspaceEntry | null>
   updateWorkspace(
     workspaceId: string,
     patch: import('@baishou/shared').AgentWorkspaceEntryUpdate
   ): Promise<import('@baishou/shared').AgentWorkspaceEntry | null>
+  removeWorkspace(workspaceId: string): Promise<boolean>
   getLastActiveWorkspaceId(): Promise<string | undefined>
   setLastActiveWorkspaceId(workspaceId: string | null): Promise<boolean>
   pickAvatar(): Promise<string | null>
@@ -230,6 +228,8 @@ interface AgentWorkspaceAPI {
     sessionId: string
     userMessageId: string
   }): Promise<{ restored: string[]; deleted: string[]; skipped: string[] }>
+  getAutoAccept(workspaceId: string): Promise<boolean>
+  setAutoAccept(workspaceId: string, enabled: boolean): Promise<boolean>
   git: AgentWorkspaceGitAPI
 }
 

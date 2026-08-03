@@ -56,7 +56,14 @@ let mainWindow: BrowserWindow | null = null
 let isBootstrapping = false
 
 function createWindow(needsOnboarding: boolean): void {
-  // Create the browser window.
+  const isWin = process.platform === 'win32'
+  const isMac = process.platform === 'darwin'
+
+  /**
+   * Win11：勿开 transparent。transparent 会关掉系统圆角，Acrylic 仍按直角矩形铺满，
+   * CSS border-radius / clip-path 裁不到系统材质层，看起来永远是直角。
+   * 正确做法：Acrylic + roundedCorners，HTML 外圈半透露出磨砂。
+   */
   mainWindow = new BrowserWindow({
     width: needsOnboarding ? 860 : 1000,
     height: needsOnboarding ? 580 : 680,
@@ -65,13 +72,39 @@ function createWindow(needsOnboarding: boolean): void {
     show: false,
     frame: false,
     autoHideMenuBar: true,
-    backgroundColor: '#00000000',
+    hasShadow: true,
     icon,
+    ...(isWin
+      ? {
+          // 勿设 transparent / 带 alpha 的 backgroundColor：会关掉系统圆角或盖住 Acrylic
+          transparent: false,
+          roundedCorners: true,
+          backgroundMaterial: 'acrylic' as const
+        }
+      : isMac
+        ? {
+            transparent: true,
+            vibrancy: 'under-window' as const,
+            visualEffectState: 'active' as const,
+            backgroundColor: '#00000000'
+          }
+        : {
+            transparent: false,
+            backgroundColor: '#fafafa'
+          }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
+
+  if (isWin) {
+    try {
+      mainWindow.setBackgroundMaterial('acrylic')
+    } catch {
+      /* Win10 等无 Acrylic：靠 CSS --bg-window-shell / --bg-app */
+    }
+  }
 
   mainWindow.on('ready-to-show', () => {
     markStartup('window.ready-to-show')
