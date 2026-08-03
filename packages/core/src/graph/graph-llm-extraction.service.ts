@@ -96,8 +96,10 @@ export function estimateExtractionCost(
     estimatedTokens,
     estimatedYuanLow: Math.round(k * ESTIMATE_YUAN_PER_1K_LOW * 100) / 100,
     estimatedYuanHigh: Math.round(k * ESTIMATE_YUAN_PER_1K_HIGH * 100) / 100,
-    estimatedMinutesLow: n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_LOW) / 60)),
-    estimatedMinutesHigh: n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_HIGH) / 60))
+    estimatedMinutesLow:
+      n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_LOW) / 60)),
+    estimatedMinutesHigh:
+      n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_HIGH) / 60))
   }
 }
 
@@ -538,11 +540,7 @@ export class GraphLlmExtractionService {
       await this.graphManager.writeRecord(record, { collection: 'nodes' })
     }
     // Retire unsalted legacy entry id in the same vault to avoid duplicate anchors.
-    if (
-      existingEntry &&
-      existingEntry.id === legacyEntryId &&
-      legacyEntryId !== entryId
-    ) {
+    if (existingEntry && existingEntry.id === legacyEntryId && legacyEntryId !== entryId) {
       try {
         await this.graphManager.tombstone(legacyEntryId, { collection: 'nodes' })
       } catch {

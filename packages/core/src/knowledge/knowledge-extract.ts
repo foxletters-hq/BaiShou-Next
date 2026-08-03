@@ -44,8 +44,7 @@ export function classifyExtractQuality(
   }
   const missing = pageCount - textPageCount
   const ratio = textPageCount / pageCount
-  const evidence =
-    missing > 0 ? `${pageCount} 页中有 ${missing} 页没有文本层` : undefined
+  const evidence = missing > 0 ? `${pageCount} 页中有 ${missing} 页没有文本层` : undefined
 
   if (ratio >= OK_TEXT_PAGE_RATIO) return { quality: 'ok', evidence }
   if (ratio >= PARTIAL_TEXT_PAGE_RATIO) return { quality: 'partial', evidence }

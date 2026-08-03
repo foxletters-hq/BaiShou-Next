@@ -4,10 +4,7 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import { embeddingVectorToBytes } from '@baishou/shared'
 import { KnowledgeSearchService } from '../knowledge-search.service'
-import {
-  KnowledgeAskService,
-  resolvePageForOffset
-} from '../knowledge-ask.service'
+import { KnowledgeAskService, resolvePageForOffset } from '../knowledge-ask.service'
 
 function canOpenBetterSqlite3(): boolean {
   try {
@@ -196,7 +193,8 @@ describeSearchDb('KnowledgeSearchService notebook isolation (sqlite)', () => {
         all: (sql, params = []) =>
           sqlite.prepare(sql).all(...params) as Array<Record<string, unknown>>
       },
-      getSourceTitle: async (id) => (id === 'src_a' ? 'alpha.md' : id === 'src_b' ? 'beta.md' : null)
+      getSourceTitle: async (id) =>
+        id === 'src_a' ? 'alpha.md' : id === 'src_b' ? 'beta.md' : null
     })
   }
 

@@ -303,7 +303,11 @@ export class AssistantManagerService {
       if (!shouldApplyDiskAssistantRecord(data.updatedAt, existing.updatedAt)) {
         return
       }
-      await this.repo.update(fileId, pickDefinedAssistantUpdate(data) as UpdateAssistantInput, vaultId)
+      await this.repo.update(
+        fileId,
+        pickDefinedAssistantUpdate(data) as UpdateAssistantInput,
+        vaultId
+      )
     } else {
       await this.repo.create({ ...(data as InsertAssistantInput), vaultId })
     }

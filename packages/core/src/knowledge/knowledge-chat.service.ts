@@ -8,14 +8,8 @@ export interface KnowledgeChatSourceText {
 
 export interface KnowledgeChatDeps {
   /** 读取选中资料的提取正文 */
-  loadSourceTexts: (
-    notebookId: string,
-    sourceIds: string[]
-  ) => Promise<KnowledgeChatSourceText[]>
-  generateAnswer: (input: {
-    question: string
-    contextBlocks: string
-  }) => Promise<string>
+  loadSourceTexts: (notebookId: string, sourceIds: string[]) => Promise<KnowledgeChatSourceText[]>
+  generateAnswer: (input: { question: string; contextBlocks: string }) => Promise<string>
 }
 
 export interface KnowledgeChatOptions {
@@ -84,9 +78,9 @@ export function trimSourcesToBudget(
 export class KnowledgeChatService {
   constructor(private readonly deps: KnowledgeChatDeps) {}
 
-  async chat(opts: KnowledgeChatOptions): Promise<
-    KnowledgeAskResult & { truncated: boolean; mode: 'chat' }
-  > {
+  async chat(
+    opts: KnowledgeChatOptions
+  ): Promise<KnowledgeAskResult & { truncated: boolean; mode: 'chat' }> {
     const notebookId = opts.notebookId?.trim()
     if (!notebookId) throw new Error('knowledge chat requires notebookId')
     const question = opts.question?.trim()
@@ -125,10 +119,7 @@ export class KnowledgeChatService {
     return { answer, citations, hits: [], truncated, mode: 'chat' }
   }
 
-  static buildPrompt(
-    question: string,
-    contextBlocks: string
-  ): { system: string; prompt: string } {
+  static buildPrompt(question: string, contextBlocks: string): { system: string; prompt: string } {
     return {
       system: SYSTEM,
       prompt: `精读材料：\n${contextBlocks || '（无）'}\n\n问题：${question}\n\n请作答：`

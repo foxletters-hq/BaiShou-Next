@@ -22,9 +22,7 @@ export function registerPdfNumPagesProbe(
   pdfNumPagesProbe = fn
 }
 
-export function getPdfNumPagesProbe():
-  | ((absolutePath: string) => Promise<number | null>)
-  | null {
+export function getPdfNumPagesProbe(): ((absolutePath: string) => Promise<number | null>) | null {
   return pdfNumPagesProbe
 }
 

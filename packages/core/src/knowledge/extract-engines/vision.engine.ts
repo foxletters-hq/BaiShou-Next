@@ -10,9 +10,7 @@ function resolveMissingPageNumbers(
   explicit?: number[]
 ): number[] {
   if (explicit?.length) {
-    return [...new Set(explicit)]
-      .filter((p) => p >= 1 && p <= pageCount)
-      .sort((a, b) => a - b)
+    return [...new Set(explicit)].filter((p) => p >= 1 && p <= pageCount).sort((a, b) => a - b)
   }
   const missing: number[] = []
   for (let i = 0; i < pageCount; i++) {
