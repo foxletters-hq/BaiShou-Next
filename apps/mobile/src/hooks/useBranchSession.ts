@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { useNativeToast } from '@baishou/ui/native'
 import { useBaishou } from '../providers/BaishouProvider'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
@@ -21,13 +22,13 @@ export function useBranchSession() {
       }
 
       try {
-        const { sessionManager, snapshotRepo } = services
+        const { sessionManager, snapshotRepo, vaultService } = services
         if (!snapshotRepo) {
           throw new Error(t('agent.service_not_ready', '服务未就绪'))
         }
 
-        const sessions = await sessionManager.findAllSessions(1000)
-        const originalSession = sessions.find((s: any) => s.id === sessionId)
+        // 对齐桌面：按 id 取原会话，勿无 vault 过滤地扫全表
+        const originalSession = await sessionManager.getSessionById(sessionId)
         if (!originalSession) {
           throw new Error(t('agent.sessions.empty', '暂无会话记录...'))
         }
@@ -41,6 +42,12 @@ export function useBranchSession() {
 
         const messagesToCopy = allMessages.slice(0, targetIndex + 1)
 
+        const activeVault = vaultService?.getActiveVault?.()
+        const vaultId =
+          activeVault?.id ||
+          originalSession.vaultId ||
+          deriveLegacyVaultId(activeVault?.name || 'Personal')
+
         const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
         const branchTitle = `${assistantName || originalSession.title || t('agent.sessions.default_title', '新对话')} (${t('agent.chat.branch', '从此处创建分支')})`
 
@@ -50,7 +57,7 @@ export function useBranchSession() {
           assistantId: originalSession.assistantId || undefined,
           providerId: originalSession.providerId || 'default',
           modelId: originalSession.modelId || 'default',
-          vaultId: originalSession.vaultId || 'default'
+          vaultId
         })
 
         const oldToNewMessageId = new Map<string, string>()

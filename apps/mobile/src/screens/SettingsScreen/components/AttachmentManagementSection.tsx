@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import {
   AttachmentManagementView,
   useNativeTheme,
@@ -28,7 +29,16 @@ export const AttachmentManagementSection: React.FC = () => {
 
   const loadSessionAttachments = useCallback(async () => {
     if (!services || !dbReady) return
-    const sessions = await services.sessionManager.findAllSessions(SESSION_FETCH_LIMIT, 0)
+    const activeVault = services.vaultService?.getActiveVault?.()
+    const activeVaultId =
+      activeVault?.id ?? deriveLegacyVaultId(activeVault?.name || 'Personal')
+    const sessions = await services.sessionManager.findAllSessions(
+      SESSION_FETCH_LIMIT,
+      0,
+      undefined,
+      undefined,
+      activeVaultId
+    )
     const activeIds = new Set<string>(sessions.map((s: { id: string }) => s.id))
     const groups = await services.attachmentManager.listSessionGroups(activeIds)
     const titleMap = new Map<string, string | undefined>(

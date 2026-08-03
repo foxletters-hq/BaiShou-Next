@@ -287,13 +287,28 @@ export class MobileDataBootstrapper {
         const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
         const runtime = agentDbRuntimeRef.current
         const vaultName = activeVaultName ?? (await deps.getActiveVaultName?.().catch(() => null))
-        const vaultId = vaultName ? deriveLegacyVaultId(vaultName) : null
+        const vaultId =
+          activeVaultId ?? (vaultName ? deriveLegacyVaultId(vaultName) : null)
         if (runtime?.drizzleDb && vaultId) {
           const emb = await resolveMobileEmbeddingForHydration(deps.settingsManager)
+          // V1.6：传全仓列表，遗留手动记忆才能复制到其它仓（单仓时退化为空操作）
+          const vaults =
+            diskVaultNames.length > 0
+              ? diskVaultNames.map((name) => ({
+                  id: vaultIdByName[name] ?? deriveLegacyVaultId(name),
+                  name
+                }))
+              : [
+                  {
+                    id: vaultId,
+                    name: vaultName ?? vaultId
+                  }
+                ]
           await runMobileDerivedIndexHydration({
             drizzleDb: runtime.drizzleDb,
             vaultId,
             vaultName: vaultName ?? undefined,
+            vaults,
             embeddingProvider: emb.embeddingProvider,
             embeddingModelId: emb.embeddingModelId,
             reason: 'vault-ecosystem-resync'
