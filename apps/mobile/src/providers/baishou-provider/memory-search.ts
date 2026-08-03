@@ -31,7 +31,9 @@ export function createMemorySearch(deps: {
       activeVaultId = ''
     }
     if (!activeVaultId) {
-      const activeVaultName = await pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+      const activeVaultName = await pathService
+        .getActiveVaultNameForContext()
+        .catch(() => 'Personal')
       activeVaultId = deriveLegacyVaultId(activeVaultName)
     }
     const mapResults = (
