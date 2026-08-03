@@ -24,7 +24,7 @@ import {
   getWorkspaceGateConfig,
   getWorkspaceToolManagement
 } from '../services/agent-workspace-policy.store'
-import { fileSystem, pathService, vaultService } from './vault.ipc'
+import { fileSystem, pathService, vaultService, resolveActiveVaultId } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import {
   AIProviderConfig,
@@ -126,13 +126,14 @@ export function getAgentManagers(): AgentManagers {
     }
   )
 
-  const realAssistantRepo = new AssistantRepository(db)
+  const realAssistantRepo = new AssistantRepository(db, () => resolveActiveVaultId())
   const assistantFileService = new AssistantFileService(pathService, fileSystem)
   const attachmentManager = new DesktopAttachmentManagerService(pathService)
   const assistantManager = new AssistantManagerService(
     realAssistantRepo,
     assistantFileService,
-    attachmentManager
+    attachmentManager,
+    () => resolveActiveVaultId()
   )
 
   const realMessageRepo = new MessageRepository(db)

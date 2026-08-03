@@ -10,6 +10,7 @@ vi.mock('drizzle-orm', () => ({
 
 vi.mock('@baishou/database', () => ({
   summariesTable: {
+    vaultId: 'vaultId',
     type: 'type',
     startDate: 'startDate',
     endDate: 'endDate',
@@ -36,7 +37,7 @@ describe('DatabaseAdapter.readSummary', () => {
     const select = vi.fn().mockReturnValue({ from })
     const db = { select }
 
-    const adapter = new DatabaseAdapter({} as any, {} as any, db as any)
+    const adapter = new DatabaseAdapter({} as any, {} as any, db as any, () => 'vlt_test')
     const result = await adapter.readSummary('weekly', '2025-06-21')
 
     expect(select).toHaveBeenCalled()
@@ -49,6 +50,11 @@ describe('DatabaseAdapter.readSummary', () => {
     expect(targetDate.getFullYear()).toBe(2025)
     expect(targetDate.getMonth()).toBe(5)
     expect(targetDate.getDate()).toBe(21)
+  })
+
+  it('returns null when vault_id is missing (fail-closed)', async () => {
+    const adapter = new DatabaseAdapter({} as any, {} as any, { select: vi.fn() } as any)
+    expect(await adapter.readSummary('weekly', '2025-06-21')).toBeNull()
   })
 })
 
@@ -93,7 +99,7 @@ describe('DatabaseAdapter.getAvailableSummaries', () => {
     const select = vi.fn().mockReturnValue({ from })
     const db = { select }
 
-    const adapter = new DatabaseAdapter({} as any, {} as any, db as any)
+    const adapter = new DatabaseAdapter({} as any, {} as any, db as any, () => 'vlt_test')
     const lines = await adapter.getAvailableSummaries('weekly', 5)
 
     expect(lines).toEqual([`- ${formatLocalDate(start)} ~ ${formatLocalDate(end)}`])

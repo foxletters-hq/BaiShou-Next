@@ -381,11 +381,13 @@ function buildPartsForTurn(
 
 async function readAssistantCompressThreshold(
   sessionRepo: SessionRepository,
-  assistantId?: string
+  assistantId?: string,
+  vaultId?: string | null
 ): Promise<number> {
   if (!assistantId) return 0
-  const astRepo = new AssistantRepository(sessionRepo.db)
-  const ast = await astRepo.findById(assistantId)
+  const scoped = String(vaultId ?? '').trim() || null
+  const astRepo = new AssistantRepository(sessionRepo.db, () => scoped)
+  const ast = await astRepo.findById(assistantId, scoped)
   return ast?.compressTokenThreshold ?? 0
 }
 

@@ -67,7 +67,13 @@ async function buildToolExecutionContext(
   const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
   const hsRepo = new SqliteHybridSearchRepository(clientExecutor)
   const msgRepo = new MessageRepository(drizzleDb)
-  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
+  const vaultIdentity = resolveVaultIdentity({
+    vaultId: sessionObj?.vaultId,
+    vaultName: sessionObj?.vaultName,
+    resolveNameById: params.resolveVaultDisplayName,
+    defaultName: 'Personal'
+  })
+  const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb, () => vaultIdentity.id)
 
   let embAdapter: any
   if (params.systemModels?.embeddingProvider && params.systemModels?.embeddingModelId) {
@@ -99,13 +105,6 @@ async function buildToolExecutionContext(
     (params.workspace?.sessionKind === 'workspace'
       ? AgentGateProfileId.Workspace
       : AgentGateProfileId.Companion)
-
-  const vaultIdentity = resolveVaultIdentity({
-    vaultId: sessionObj?.vaultId,
-    vaultName: sessionObj?.vaultName,
-    resolveNameById: params.resolveVaultDisplayName,
-    defaultName: 'Personal'
-  })
 
   return {
     userConfig: mergedUserConfig,

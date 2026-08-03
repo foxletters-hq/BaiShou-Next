@@ -166,10 +166,12 @@ export class AgentSessionService {
       let effectiveSystemPrompt = systemPrompt
       let assistantKind: AssistantKind = 'companion'
       if (sessionObj?.assistantId) {
+        const vaultId = String(sessionObj?.vaultId ?? '').trim() || null
         const astRepo = new AssistantRepository(
-          (sessionRepo as any).db || (sessionRepo as any).database
+          (sessionRepo as any).db || (sessionRepo as any).database,
+          () => vaultId
         )
-        const ast = await astRepo.findById(sessionObj.assistantId)
+        const ast = await astRepo.findById(sessionObj.assistantId, vaultId)
         if (ast) {
           assistantKind = normalizeAssistantKind(ast.assistantKind)
           mergedUserConfig = {
@@ -330,7 +332,7 @@ export class AgentSessionService {
 
       // memory_embeddings 表由 Drizzle ORM 迁移统一管理，不再在此处建表
 
-      const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb)
+      const dbAdapter = new DatabaseAdapter(hsRepo, msgRepo, drizzleDb, () => vaultId)
       let embAdapter: any = undefined
       if (systemModels?.embeddingProvider && systemModels?.embeddingModelId) {
         embAdapter = new EmbeddingAdapter(
