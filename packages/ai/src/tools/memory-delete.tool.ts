@@ -96,7 +96,9 @@ export class MemoryDeleteTool extends AgentTool<typeof memoryDeleteParams> {
         return '嵌入模型未配置或查询嵌入失败。'
       }
 
-      const searchResults = await vectorStore.searchSimilar(queryEmbedding, 5)
+      const searchResults = await vectorStore.searchSimilar(queryEmbedding, 5, {
+        vaultName: context.vaultName
+      })
 
       // 只删除高相关度的（similarity >= 0.5）
       const toDelete = searchResults.filter((r) => 1.0 - r.distance >= 0.5)

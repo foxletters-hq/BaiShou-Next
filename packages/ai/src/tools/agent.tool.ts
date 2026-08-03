@@ -24,6 +24,7 @@ export interface ToolEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
+    vaultName: string
     metadataJson?: string
     sourceCreatedAt?: number
   }): Promise<void>
@@ -47,6 +48,7 @@ export interface VectorSearchResult {
 export interface VectorSearchTimeFilter {
   startMs?: number
   endMs?: number
+  vaultName?: string
 }
 
 export interface ToolVectorStore {
@@ -117,6 +119,7 @@ export interface ToolDeduplicationService {
   checkAndMerge(options: {
     newMemoryContent: string
     sessionId: string
+    vaultName: string
     sourceType?: string
     sourceId?: string
   }): Promise<{

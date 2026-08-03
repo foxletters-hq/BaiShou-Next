@@ -15,6 +15,7 @@ export interface MemoryEmbedSink {
     sourceType: string
     sourceId: string
     groupId: string
+    vaultName: string
     metadataJson?: string
     sourceCreatedAt?: number
   }): Promise<void>
@@ -90,6 +91,7 @@ export class MemorySyncService {
           sourceType: MEMORY_SOURCE_TYPE,
           sourceId: row.id,
           groupId: `memory:${row.vaultName}`,
+          vaultName: row.vaultName,
           metadataJson: buildMemoryMetadataJson(row),
           sourceCreatedAt: row.createdAt
         })
@@ -188,6 +190,7 @@ export class MemorySyncService {
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId: live.id,
         groupId: `memory:${live.vaultName}`,
+        vaultName: live.vaultName,
         metadataJson: buildMemoryMetadataJson(live),
         sourceCreatedAt: live.createdAt
       })

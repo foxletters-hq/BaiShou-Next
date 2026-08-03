@@ -120,7 +120,10 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
 
       let results: ISearchResult[] = []
 
-      const vectorRaw = await vectorStore.searchSimilar(queryEmbedding, maxResults, timeFilter)
+      const vectorRaw = await vectorStore.searchSimilar(queryEmbedding, maxResults, {
+        ...timeFilter,
+        vaultName: context.vaultName
+      })
       const vectorResults: ISearchResult[] = vectorRaw.map((r) => ({
         messageId: r.sourceId,
         sessionId: r.groupId,
@@ -134,7 +137,10 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       pipeline.push(`🔍 向量语义搜索: ${vectorResults.length} 条命中 (最佳 ${bestVecScore})`)
 
       if (mode === 'hybrid' && vectorStore.searchFts) {
-        const ftsRaw = await vectorStore.searchFts(args.query, maxResults, timeFilter)
+        const ftsRaw = await vectorStore.searchFts(args.query, maxResults, {
+          ...timeFilter,
+          vaultName: context.vaultName
+        })
         pipeline.push(`📝 FTS关键词搜索: ${ftsRaw.length} 条命中`)
 
         const ftsResults: ISearchResult[] = ftsRaw.map((r) => ({
