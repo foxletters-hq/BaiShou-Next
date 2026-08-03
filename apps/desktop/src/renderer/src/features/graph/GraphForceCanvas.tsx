@@ -14,6 +14,7 @@ export interface GraphCanvasNode {
   name: string
   nodeType: string
   mentionCount?: number
+  reviewStatus?: string
 }
 
 export interface GraphCanvasEdge {
@@ -21,10 +22,15 @@ export interface GraphCanvasEdge {
   fromId: string
   toId: string
   edgeType: string
+  reviewStatus?: string
 }
 
 type SimNode = SimulationNodeDatum & GraphCanvasNode
-type SimLink = SimulationLinkDatum<SimNode> & { id: string; edgeType: string }
+type SimLink = SimulationLinkDatum<SimNode> & {
+  id: string
+  edgeType: string
+  reviewStatus?: string
+}
 
 const TYPE_COLORS: Record<string, string> = {
   person: '#3b82f6',
@@ -38,6 +44,14 @@ const TYPE_COLORS: Record<string, string> = {
   product: '#8b5cf6',
   food: '#f97316',
   entry: '#94a3b8'
+}
+
+function isRejected(status?: string): boolean {
+  return status === 'rejected'
+}
+
+function isPending(status?: string): boolean {
+  return status === 'pending'
 }
 
 export const GraphForceCanvas: React.FC<{
@@ -79,13 +93,17 @@ export const GraphForceCanvas: React.FC<{
     resize()
     window.addEventListener('resize', resize)
 
-    const simNodes: SimNode[] = nodes.map((n) => ({ ...n }))
+    // Rejected: do not draw (G-D7)
+    const simNodes: SimNode[] = nodes
+      .filter((n) => !isRejected(n.reviewStatus))
+      .map((n) => ({ ...n }))
     const idSet = new Set(simNodes.map((n) => n.id))
     const simLinks: SimLink[] = edges
-      .filter((e) => idSet.has(e.fromId) && idSet.has(e.toId))
+      .filter((e) => !isRejected(e.reviewStatus) && idSet.has(e.fromId) && idSet.has(e.toId))
       .map((e) => ({
         id: e.id,
         edgeType: e.edgeType,
+        reviewStatus: e.reviewStatus,
         source: e.fromId,
         target: e.toId
       }))
@@ -127,27 +145,38 @@ export const GraphForceCanvas: React.FC<{
       ctx.translate(tx, ty)
       ctx.scale(k, k)
 
-      ctx.strokeStyle = 'rgba(100,116,139,0.35)'
       ctx.lineWidth = 1 / k
       for (const link of linksRef.current) {
         const s = link.source as SimNode
         const t = link.target as SimNode
         if (s.x == null || t.x == null) continue
+        const pending = isPending(link.reviewStatus)
+        ctx.strokeStyle = pending ? 'rgba(100,116,139,0.22)' : 'rgba(100,116,139,0.45)'
+        ctx.setLineDash(pending ? [4 / k, 4 / k] : [])
         ctx.beginPath()
         ctx.moveTo(s.x, s.y!)
         ctx.lineTo(t.x, t.y!)
         ctx.stroke()
       }
+      ctx.setLineDash([])
 
       for (const n of nodesRef.current) {
         if (n.x == null || n.y == null) continue
         const r = 6 + Math.min(10, (n.mentionCount ?? 1) * 1.2)
         const highlighted = highlightIds?.has(n.id) || n.id === selectedId
+        const pending = isPending(n.reviewStatus)
+        ctx.globalAlpha = pending ? 0.45 : 1
         ctx.beginPath()
         ctx.fillStyle = TYPE_COLORS[n.nodeType] || '#64748b'
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2)
         ctx.fill()
-        if (highlighted) {
+        if (pending) {
+          ctx.setLineDash([3 / k, 3 / k])
+          ctx.strokeStyle = 'rgba(15,23,42,0.55)'
+          ctx.lineWidth = 1.5 / k
+          ctx.stroke()
+          ctx.setLineDash([])
+        } else if (highlighted) {
           ctx.strokeStyle = '#0f172a'
           ctx.lineWidth = 2 / k
           ctx.stroke()
@@ -155,6 +184,7 @@ export const GraphForceCanvas: React.FC<{
         ctx.fillStyle = '#0f172a'
         ctx.font = `${12 / k}px sans-serif`
         ctx.fillText(n.name.slice(0, 16), n.x + r + 2, n.y + 4)
+        ctx.globalAlpha = 1
       }
       ctx.restore()
     }

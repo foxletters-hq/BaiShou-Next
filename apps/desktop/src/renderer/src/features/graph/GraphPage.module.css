@@ -185,3 +185,100 @@
   word-break: break-word;
   color: var(--text-primary);
 }
+
+.checkLabel {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  padding: 4px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.emptyGuide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+  background: var(--bg-app);
+}
+
+.emptyGuideTitle {
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.emptyGuideBody {
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.emptyGuideHint {
+  font-size: 12px;
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.editInput,
+.editArea,
+.editSelect {
+  width: 100%;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.editArea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.editSelect {
+  width: auto;
+  min-width: 120px;
+  height: 32px;
+}
+
+.hitBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.hitBtnActive {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
