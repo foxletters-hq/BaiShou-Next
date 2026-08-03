@@ -1,8 +1,10 @@
-import { eq, desc, asc } from 'drizzle-orm'
+import { and, eq, desc, asc } from 'drizzle-orm'
 import {
   DEFAULT_ASSISTANT_COMPRESS_KEEP_TURNS,
   DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
-  DEFAULT_ASSISTANT_CONTEXT_WINDOW
+  DEFAULT_ASSISTANT_CONTEXT_WINDOW,
+  deriveLegacyVaultId,
+  isVaultId
 } from '@baishou/shared'
 import { AppDatabase } from '../types'
 import { agentAssistantsTable } from '../schema/agent-assistants'
@@ -10,6 +12,8 @@ import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 
 export interface InsertAssistantInput {
   id: string
+  /** 所属工作空间稳定 ID；省略时由 Repository/Manager 解析活跃仓 */
+  vaultId?: string
   name: string
   emoji?: string
   description?: string
@@ -32,36 +36,66 @@ export interface InsertAssistantInput {
   sortOrder?: number
 }
 
-export type UpdateAssistantInput = Partial<Omit<InsertAssistantInput, 'id'>>
+export type UpdateAssistantInput = Partial<Omit<InsertAssistantInput, 'id' | 'vaultId'>>
+
+export type VaultIdResolver = () => string | null | undefined
+
+function normalizeVaultId(raw: string | null | undefined): string | null {
+  const value = String(raw ?? '').trim()
+  if (!value) return null
+  return isVaultId(value) ? value : deriveLegacyVaultId(value)
+}
 
 export class AssistantRepository {
-  constructor(private readonly db: AppDatabase) {}
+  constructor(
+    private readonly db: AppDatabase,
+    private readonly resolveVaultId?: VaultIdResolver
+  ) {}
 
   private run<T>(fn: () => Promise<T>): Promise<T> {
     return withExpoAgentDatabaseLock(this.db, fn)
   }
 
-  /**
-   * 按排序和创建时间拉取所有助手
-   */
-  async findAll() {
-    return this.run(() =>
-      this.db
-        .select()
-        .from(agentAssistantsTable)
-        .orderBy(asc(agentAssistantsTable.sortOrder), desc(agentAssistantsTable.updatedAt))
-    )
+  private requireVaultId(override?: string | null): string {
+    const id = normalizeVaultId(override) ?? normalizeVaultId(this.resolveVaultId?.())
+    if (!id) {
+      throw new Error('AssistantRepository: vault_id is required')
+    }
+    return id
+  }
+
+  private tryVaultId(override?: string | null): string | null {
+    return normalizeVaultId(override) ?? normalizeVaultId(this.resolveVaultId?.())
   }
 
   /**
-   * 按 ID 查找特定助手
+   * 按排序和更新时间拉取助手；必须带 vault_id（fail-closed）。
    */
-  async findById(id: string) {
+  async findAll(vaultId?: string | null) {
     return this.run(async () => {
+      const scoped = this.tryVaultId(vaultId)
+      if (!scoped) return []
+
+      return this.db
+        .select()
+        .from(agentAssistantsTable)
+        .where(eq(agentAssistantsTable.vaultId, scoped))
+        .orderBy(asc(agentAssistantsTable.sortOrder), desc(agentAssistantsTable.updatedAt))
+    })
+  }
+
+  /**
+   * 按 ID + vault 查找特定助手
+   */
+  async findById(id: string, vaultId?: string | null) {
+    return this.run(async () => {
+      const scoped = this.tryVaultId(vaultId)
+      if (!scoped) return undefined
+
       const result = await this.db
         .select()
         .from(agentAssistantsTable)
-        .where(eq(agentAssistantsTable.id, id))
+        .where(and(eq(agentAssistantsTable.vaultId, scoped), eq(agentAssistantsTable.id, id)))
         .limit(1)
 
       return result[0]
@@ -72,11 +106,13 @@ export class AssistantRepository {
    * 创建新的助手
    */
   async create(input: InsertAssistantInput): Promise<void> {
+    const vaultId = this.requireVaultId(input.vaultId)
     await this.run(() =>
       this.db
         .insert(agentAssistantsTable)
         .values({
           id: input.id,
+          vaultId,
           name: input.name,
           emoji: input.emoji,
           description: input.description,
@@ -101,19 +137,22 @@ export class AssistantRepository {
           createdAt: new Date(),
           updatedAt: new Date()
         })
-        .onConflictDoNothing()
+        .onConflictDoNothing({
+          target: [agentAssistantsTable.vaultId, agentAssistantsTable.id]
+        })
     )
   }
 
   /**
    * 更新某个助手
    */
-  async update(id: string, input: UpdateAssistantInput): Promise<void> {
+  async update(id: string, input: UpdateAssistantInput, vaultId?: string | null): Promise<void> {
     await this.run(async () => {
+      const scoped = this.requireVaultId(vaultId)
       const result = await this.db
         .select()
         .from(agentAssistantsTable)
-        .where(eq(agentAssistantsTable.id, id))
+        .where(and(eq(agentAssistantsTable.vaultId, scoped), eq(agentAssistantsTable.id, id)))
         .limit(1)
       if (!result[0]) return
 
@@ -153,31 +192,35 @@ export class AssistantRepository {
           ...patch,
           updatedAt: new Date()
         })
-        .where(eq(agentAssistantsTable.id, id))
+        .where(and(eq(agentAssistantsTable.vaultId, scoped), eq(agentAssistantsTable.id, id)))
     })
   }
 
   /**
    * 切换助手的置顶状态
    */
-  async togglePin(id: string, isPinned: boolean): Promise<void> {
-    await this.run(() =>
-      this.db
+  async togglePin(id: string, isPinned: boolean, vaultId?: string | null): Promise<void> {
+    await this.run(async () => {
+      const scoped = this.requireVaultId(vaultId)
+      await this.db
         .update(agentAssistantsTable)
         .set({
           isPinned,
           updatedAt: new Date()
         })
-        .where(eq(agentAssistantsTable.id, id))
-    )
+        .where(and(eq(agentAssistantsTable.vaultId, scoped), eq(agentAssistantsTable.id, id)))
+    })
   }
 
   /**
    * 删除指定的助手
    */
-  async delete(id: string): Promise<void> {
-    await this.run(() =>
-      this.db.delete(agentAssistantsTable).where(eq(agentAssistantsTable.id, id))
-    )
+  async delete(id: string, vaultId?: string | null): Promise<void> {
+    await this.run(async () => {
+      const scoped = this.requireVaultId(vaultId)
+      await this.db
+        .delete(agentAssistantsTable)
+        .where(and(eq(agentAssistantsTable.vaultId, scoped), eq(agentAssistantsTable.id, id)))
+    })
   }
 }
