@@ -1005,3 +1005,37 @@
   line-height: 1.25;
   color: var(--color-primary);
 }
+
+/* ── 图谱整理轻提示条 ── */
+.diary-graph-extract-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 32px;
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
+  border-bottom: 1px solid var(--border-muted);
+  flex-shrink: 0;
+}
+
+.diary-graph-extract-banner-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.diary-graph-extract-banner-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.diary-graph-extract-banner-btn:hover {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}

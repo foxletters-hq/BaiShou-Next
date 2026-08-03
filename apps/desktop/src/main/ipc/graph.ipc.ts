@@ -79,13 +79,20 @@ export function registerGraphIPC(): void {
     return graphManager.listPendingIndex()
   })
 
-  ipcMain.handle('graph:extract', async (_e, opts?: { filePaths?: string[] }) => {
+  ipcMain.handle('graph:extract', async (event, opts?: { filePaths?: string[] }) => {
     const vaultName = requireVaultName()
     const service = await buildExtractionService()
     return service.extractDiaries({
       vaultId: requireVaultId(),
       vaultName,
-      filePaths: opts?.filePaths
+      filePaths: opts?.filePaths,
+      onProgress: (p) => {
+        try {
+          event.sender.send('graph:extract-progress', p)
+        } catch {
+          // sender may be gone
+        }
+      }
     })
   })
 

@@ -5,6 +5,20 @@ export const graphApi = {
     listPendingReextract: () => ipcRenderer.invoke('graph:list-pending-reextract'),
     listPendingIndex: () => ipcRenderer.invoke('graph:list-pending-index'),
     extract: (opts?: { filePaths?: string[] }) => ipcRenderer.invoke('graph:extract', opts),
+    onExtractProgress: (
+      callback: (progress: { current: number; total: number; filePath: string }) => void
+    ) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        progress: { current: number; total: number; filePath: string }
+      ) => {
+        callback(progress)
+      }
+      ipcRenderer.on('graph:extract-progress', handler)
+      return () => {
+        ipcRenderer.removeListener('graph:extract-progress', handler)
+      }
+    },
     getGlobalGraph: (opts?: {
       maxNodes?: number
       minMentionCount?: number
