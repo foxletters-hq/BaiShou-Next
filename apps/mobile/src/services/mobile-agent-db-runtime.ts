@@ -71,6 +71,7 @@ export type CreateAgentDbRuntimeOptions = {
   attachmentManager: MobileAttachmentManagerService
   diaryRepoAdapter: unknown
   recovery?: MobileAgentDbRecoveryCoordinator
+  resolveVaultId?: () => string | null | undefined
 }
 
 export type SummaryPipelineServices = {
@@ -88,10 +89,12 @@ export async function createSummaryPipelineServices(options: {
   settingsManager: SettingsManagerService
   diaryRepoAdapter: unknown
   recovery?: MobileAgentDbRecoveryCoordinator
+  resolveVaultId?: () => string | null | undefined
 }): Promise<SummaryPipelineServices> {
   const { drizzleDb, pathService, fileSystem, settingsManager, diaryRepoAdapter } = options
   const recovery = options.recovery ?? mobileAgentDbRecovery
-  const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+  const resolveVaultId = options.resolveVaultId
+  const summaryRepo = new SummaryRepositoryImpl(drizzleDb, resolveVaultId)
   const summaryConfig = (await settingsManager.get<Record<string, unknown>>('summary_config')) || {}
   const customTemplates = resolveSummaryTemplatesForGeneration(summaryConfig) as Record<
     string,
@@ -117,7 +120,8 @@ export async function createSummaryPipelineServices(options: {
     summaryGenerator,
     summaryRepo,
     summaryFileService,
-    recovery
+    recovery,
+    resolveVaultId
   )
   const summaryManager = new SummaryManagerService(
     summaryRepo,
@@ -127,7 +131,7 @@ export async function createSummaryPipelineServices(options: {
   return { summaryManager, summaryGenerator, missingSummaryDetector, summarySyncService }
 }
 
-/** 工作区切换后重建总结管线，并将 SQLite 总结缓存与当前 Vault 磁盘文件对齐 */
+/** 工作区切换后重建总结管线。V1.4 起按 vault_id 共存，切换不再清空重建。 */
 export async function rebindSummaryPipelineForVault(options: {
   drizzleDb: AppDatabase
   pathService: MobileStoragePathService
@@ -136,27 +140,17 @@ export async function rebindSummaryPipelineForVault(options: {
   diaryRepoAdapter: unknown
   activeVaultName?: string | null
   recovery?: MobileAgentDbRecoveryCoordinator
+  resolveVaultId?: () => string | null | undefined
 }): Promise<SummaryPipelineServices> {
-  const pipeline = await createSummaryPipelineServices({
+  return createSummaryPipelineServices({
     drizzleDb: options.drizzleDb,
     pathService: options.pathService,
     fileSystem: options.fileSystem,
     settingsManager: options.settingsManager,
     diaryRepoAdapter: options.diaryRepoAdapter,
-    recovery: options.recovery ?? mobileAgentDbRecovery
+    recovery: options.recovery ?? mobileAgentDbRecovery,
+    resolveVaultId: options.resolveVaultId
   })
-
-  if (options.activeVaultName) {
-    try {
-      await pipeline.summarySyncService.fullScanArchives({
-        activeVaultName: options.activeVaultName
-      })
-    } catch (e) {
-      logger.warn('[SummaryPipeline] fullScanArchives after vault rebind failed:', e as Error)
-    }
-  }
-
-  return pipeline
 }
 
 export async function createAgentDbRuntime(
@@ -167,9 +161,10 @@ export async function createAgentDbRuntime(
   const recovery = options.recovery ?? mobileAgentDbRecovery
 
   const sessionRepo = new SessionRepository(drizzleDb)
-  const assistantRepo = new AssistantRepository(drizzleDb)
+  const resolveVaultId = options.resolveVaultId
+  const assistantRepo = new AssistantRepository(drizzleDb, resolveVaultId)
   const settingsRepo = new SettingsRepository(drizzleDb)
-  const summaryRepo = new SummaryRepositoryImpl(drizzleDb)
+  const summaryRepo = new SummaryRepositoryImpl(drizzleDb, resolveVaultId)
   const profileRepo = new UserProfileRepository(drizzleDb)
   const snapshotRepo = new SnapshotRepository(drizzleDb)
 
@@ -191,7 +186,8 @@ export async function createAgentDbRuntime(
   const assistantManager = new AssistantManagerService(
     assistantRepo,
     assistantFileService,
-    attachmentManager
+    attachmentManager,
+    resolveVaultId
   )
 
   const settingsFileService = new SettingsFileService(pathService, fileSystem)
@@ -204,7 +200,8 @@ export async function createAgentDbRuntime(
       fileSystem,
       settingsManager,
       diaryRepoAdapter,
-      recovery
+      recovery,
+      resolveVaultId
     })
 
   const sqlExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
