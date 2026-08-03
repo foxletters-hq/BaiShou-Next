@@ -1,4 +1,4 @@
-import { buildS3ObjectUrl, buildWebDavFileUrl } from '@baishou/shared'
+import { buildS3ObjectUrl, buildWebDavFileUrl, assertSafeSyncRelPath } from '@baishou/shared'
 import type { IncrementalCloudOpsHost } from './mobile-incremental-cloud-ops.types'
 
 /** S3 重命名：服务端 CopyObject + Delete（字节不出端） */
@@ -7,9 +7,11 @@ export async function renameS3(
   oldRel: string,
   newRel: string
 ): Promise<void> {
+  const oldSafe = assertSafeSyncRelPath(oldRel)
+  const newSafe = assertSafeSyncRelPath(newRel)
   const bucket = host.config.bucket || ''
-  const oldKey = host.basePath() + oldRel
-  const newKey = host.basePath() + newRel
+  const oldKey = host.basePath() + oldSafe
+  const newKey = host.basePath() + newSafe
   const copyUrl = buildS3ObjectUrl({
     endpoint: host.config.endpoint || '',
     bucket,
@@ -29,6 +31,17 @@ export async function renameS3(
   })
   const deleteRes = await host.signAndFetch('DELETE', deleteUrl)
   if (!deleteRes.ok && deleteRes.status !== 404) {
+    // Delete 失败：删新 key 回滚，避免 Copy 留下双份
+    const rollbackUrl = buildS3ObjectUrl({
+      endpoint: host.config.endpoint || '',
+      bucket,
+      objectKey: newKey
+    })
+    try {
+      await host.signAndFetch('DELETE', rollbackUrl)
+    } catch {
+      // best-effort
+    }
     throw new Error(`S3 delete after copy failed: ${deleteRes.status}`)
   }
 }
@@ -39,12 +52,14 @@ export async function renameWebDav(
   oldRel: string,
   newRel: string
 ): Promise<void> {
+  const oldSafe = assertSafeSyncRelPath(oldRel)
+  const newSafe = assertSafeSyncRelPath(newRel)
   const auth = host.webdavAuth()
-  const sourceUrl = host.webdavFileUrl(oldRel)
-  const destUrl = buildWebDavFileUrl(host.webdavConfiguredBaseUrl(), host.basePath(), newRel)
+  const sourceUrl = host.webdavFileUrl(oldSafe)
+  const destUrl = buildWebDavFileUrl(host.webdavConfiguredBaseUrl(), host.basePath(), newSafe)
 
   // 确保目标父目录存在（逐文件 MOVE 时需要）
-  const parentSegments = newRel.split('/').filter(Boolean).slice(0, -1)
+  const parentSegments = newSafe.split('/').filter(Boolean).slice(0, -1)
   if (parentSegments.length > 0) {
     await ensureWebDavParentDirs(host, parentSegments)
   }

@@ -6,6 +6,7 @@ import type { ISqlExecutor } from '@baishou/shared'
  *
  * V1.3 / V2.2：sessions（级联 messages/parts）、memory_embeddings、graph_*、diary_embed_jobs。
  * V1.4：summaries、agent_assistants。
+ * compression_snapshots：无 vault_id，按 session 子查询清理。
  */
 export async function purgeVaultDerivedData(
   db: ISqlExecutor,
@@ -18,6 +19,7 @@ export async function purgeVaultDerivedData(
   diaryEmbedJobs: number
   summaries: number
   assistants: number
+  compressionSnapshots: number
 }> {
   const id = vaultId.trim()
   if (!id) {
@@ -30,6 +32,11 @@ export async function purgeVaultDerivedData(
   }
 
   const sessions = await count(`SELECT count(*) as c FROM agent_sessions WHERE vault_id = ?`, [id])
+  const compressionSnapshots = await count(
+    `SELECT count(*) as c FROM compression_snapshots
+     WHERE session_id IN (SELECT id FROM agent_sessions WHERE vault_id = ?)`,
+    [id]
+  )
   const embeddings = await count(
     `SELECT count(*) as c FROM memory_embeddings WHERE vault_id = ?`,
     [id]
@@ -46,7 +53,12 @@ export async function purgeVaultDerivedData(
     [id]
   )
 
-  // sessions → CASCADE messages / parts（及 FTS 触发器）
+  // 先清压缩快照（依赖 session 子查询），再删 sessions → CASCADE messages / parts
+  await db.execute({
+    sql: `DELETE FROM compression_snapshots
+          WHERE session_id IN (SELECT id FROM agent_sessions WHERE vault_id = ?)`,
+    args: [id]
+  })
   await db.execute({
     sql: `DELETE FROM agent_sessions WHERE vault_id = ?`,
     args: [id]
@@ -83,6 +95,7 @@ export async function purgeVaultDerivedData(
     graphEdges,
     diaryEmbedJobs,
     summaries,
-    assistants
+    assistants,
+    compressionSnapshots
   }
 }

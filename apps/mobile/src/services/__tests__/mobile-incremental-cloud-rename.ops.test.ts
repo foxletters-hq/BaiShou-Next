@@ -71,6 +71,28 @@ describe('mobile-incremental-cloud-rename.ops', () => {
     await expect(renameS3(host, 'a.md', 'b.md')).rejects.toThrow(/S3 copy failed/)
   })
 
+  it('renameS3 rolls back new key when delete after copy fails', async () => {
+    const signAndFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200 }) // copy
+      .mockResolvedValueOnce({ ok: false, status: 503 }) // delete old
+      .mockResolvedValueOnce({ ok: true, status: 204 }) // rollback delete new
+    const host = createHost({ signAndFetch })
+
+    await expect(renameS3(host, 'Personal/a.md', '工作/a.md')).rejects.toThrow(
+      /S3 delete after copy failed/
+    )
+    expect(signAndFetch).toHaveBeenCalledTimes(3)
+    expect(signAndFetch.mock.calls[2]![0]).toBe('DELETE')
+    expect(String(signAndFetch.mock.calls[2]![1])).toContain('%E5%B7%A5%E4%BD%9C/a.md')
+  })
+
+  it('renameS3 rejects path traversal', async () => {
+    const host = createHost({ signAndFetch: vi.fn() })
+    await expect(renameS3(host, '../evil.md', 'b.md')).rejects.toThrow()
+    expect(host.signAndFetch).not.toHaveBeenCalled()
+  })
+
   it('renameWebDav issues MOVE with Destination', async () => {
     const fetchWithAbort = vi
       .fn()
