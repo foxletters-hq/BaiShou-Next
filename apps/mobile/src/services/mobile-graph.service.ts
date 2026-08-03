@@ -80,6 +80,7 @@ export async function mobileListPendingReextract(options: {
 }
 
 export async function mobileExtractDiaries(options: {
+  vaultId: string
   vaultName: string
   drizzleDb: AppDatabase
   shadowRepo: ShadowIndexRepository
@@ -111,6 +112,7 @@ export async function mobileExtractDiaries(options: {
     createDefaultGraphExtractLlm(llmDeps)
   )
   return service.extractDiaries({
+    vaultId: options.vaultId,
     vaultName: options.vaultName,
     filePaths: options.filePaths
   })
@@ -163,6 +165,7 @@ export async function mobileSetEdgeReview(options: {
     {
       id: edge.id,
       schemaVersion: 1,
+      vaultId: edge.vaultId,
       vaultName: options.vaultDisplayName ?? edge.vaultId,
       fromId: edge.fromId,
       toId: edge.toId,

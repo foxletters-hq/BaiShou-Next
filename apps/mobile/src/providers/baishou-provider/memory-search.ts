@@ -1,5 +1,6 @@
 import { EmbeddingAdapter } from '@baishou/ai'
 import { deriveLegacyVaultId, logger } from '@baishou/shared'
+import type { VaultService } from '@baishou/core-mobile'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import type { AIProviderRegistry } from '@baishou/ai'
 import type { MobileStoragePathService } from '../../services/path.service'
@@ -8,8 +9,9 @@ export function createMemorySearch(deps: {
   pathService: MobileStoragePathService
   registry: AIProviderRegistry
   agentDbRuntimeRef: typeof agentDbRuntimeRef
+  vaultService?: VaultService
 }) {
-  const { pathService, registry } = deps
+  const { pathService, registry, vaultService } = deps
   return async (
     query: string,
     options?: { topK?: number; minScore?: number }
@@ -17,8 +19,21 @@ export function createMemorySearch(deps: {
     if (!query.trim()) return []
     const runtime = agentDbRuntimeRef.current
     if (!runtime) return []
-    const activeVaultName = await pathService.getActiveVaultNameForContext().catch(() => 'Personal')
-    const activeVaultId = deriveLegacyVaultId(activeVaultName)
+    let activeVaultId: string
+    try {
+      if (vaultService) {
+        await vaultService.initRegistry()
+        activeVaultId = vaultService.getActiveVault()?.id ?? ''
+      } else {
+        activeVaultId = ''
+      }
+    } catch {
+      activeVaultId = ''
+    }
+    if (!activeVaultId) {
+      const activeVaultName = await pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+      activeVaultId = deriveLegacyVaultId(activeVaultName)
+    }
     const mapResults = (
       rows: Array<{
         chunkText: string

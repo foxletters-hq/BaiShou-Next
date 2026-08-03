@@ -116,7 +116,8 @@ export async function bootstrapMobileSyncLayer(
     },
     assistantManager,
     sessionManager,
-    () => getMobileRawDataSourceManager()
+    () => getMobileRawDataSourceManager(),
+    vaultService
   )
 
   const updaterService = new MobileUpdaterService(settingsManager)
@@ -137,10 +138,11 @@ export async function bootstrapMobileSyncLayer(
     toolRegistry,
     () => {
       const runtime = agentDbRuntimeRef.current
-      return buildMobileMcpToolContext({
-        settingsManager: runtime?.settingsManager ?? settingsManager,
-        pathService,
-        getDiarySearcher,
+        return buildMobileMcpToolContext({
+          settingsManager: runtime?.settingsManager ?? settingsManager,
+          pathService,
+          vaultService,
+          getDiarySearcher,
         drizzleDb: runtime?.drizzleDb ?? drizzleDb,
         webSearchResultFetcher: webFetchContent,
         fetchSearchPage: fetchSearchPageHtml
@@ -149,7 +151,8 @@ export async function bootstrapMobileSyncLayer(
     () =>
       buildMobileMcpToolListContext({
         settingsManager: agentDbRuntimeRef.current?.settingsManager ?? settingsManager,
-        pathService
+        pathService,
+        vaultService
       })
   )
 
@@ -170,7 +173,7 @@ export async function bootstrapMobileSyncLayer(
     current: createMobileRagService(ragServiceDeps)
   }
 
-  const memorySearch = createMemorySearch({ pathService, registry, agentDbRuntimeRef })
+  const memorySearch = createMemorySearch({ pathService, registry, agentDbRuntimeRef, vaultService })
   const agentGateRuntime = createMobileAgentGateRuntime(settingsManager)
   const startAgentChat = createStartAgentChat({
     agentService,
