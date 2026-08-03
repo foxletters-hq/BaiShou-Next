@@ -2,7 +2,8 @@ import type { S3SyncConfig } from '../types/version-control.types'
 import {
   SYNC_CONFIG_FILENAME,
   SYNC_MANIFEST_FILENAME,
-  SYNC_REMOTE_SNAPSHOT_FILENAME
+  SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_REMOTE_VAULTS_FILENAME
 } from '../constants/incremental-sync.constants'
 import { SYNC_STORAGE_ID_FILENAME } from './incremental-sync-storage.util'
 
@@ -61,6 +62,7 @@ export async function migrateLegacyIncrementalSyncConfig(
 export const INCREMENTAL_SYNC_META_RESET_FILENAMES = [
   SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_REMOTE_VAULTS_FILENAME,
   SYNC_STORAGE_ID_FILENAME
 ] as const
 

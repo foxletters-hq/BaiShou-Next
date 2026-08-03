@@ -156,6 +156,7 @@ export {
   SYNC_DIVERGENCE_THRESHOLD_OPTIONS,
   SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_REMOTE_VAULTS_FILENAME,
   SYNC_MANIFEST_VERSION,
   SYNC_CONFIG_FILENAME,
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH,
@@ -192,7 +193,8 @@ export {
   SYNC_LOCAL_DATA_LOSS_RATIO,
   SYNC_LOCAL_VS_ANCESTOR_MIN_RATIO,
   type SyncDeletePropagationDirection,
-  type SyncDeletePropagationBlockReason
+  type SyncDeletePropagationBlockReason,
+  type SyncDeletePropagationGuardOptions
 } from './sync/sync-delete-guard'
 export {
   requiresExplicitDeletePropagationChoice,
@@ -384,6 +386,31 @@ export {
   countVaultRemovedEntries
 } from './sync/migrate-sync-manifest-vault-prefix.util'
 export type { MigrateSyncManifestVaultPrefixResult } from './sync/migrate-sync-manifest-vault-prefix.util'
+export {
+  detectVaultRenameCandidates,
+  collectVaultRenameProtectedPaths,
+  applyVaultRenamePassManifests,
+  simulateVaultRenamePass,
+  executeVaultRenamePass,
+  parseVaultIdToNameMap,
+  parseLastRemoteVaultsSnapshot,
+  serializeLastRemoteVaultsSnapshot,
+  createEmptyLastRemoteVaultsSnapshot,
+  listSyncManifestVaultFilePaths
+} from './sync/sync-vault-rename-pass.util'
+export type {
+  LastRemoteVaultsSnapshot,
+  VaultRenameCandidate,
+  VaultRenamePassResult,
+  VaultRenamePassSuccess,
+  VaultRenamePassFailure,
+  VaultRenameCloudClient
+} from './sync/sync-vault-rename-pass.util'
+export {
+  prepareVaultRenamePassForPlan,
+  prepareVaultRenamePassForSync
+} from './sync/prepare-vault-rename-pass.util'
+export type { PreparedVaultRenamePass } from './sync/prepare-vault-rename-pass.util'
 
 export * from './cache'
 

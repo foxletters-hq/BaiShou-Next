@@ -16,7 +16,9 @@ import {
   SyncDeletePropagationChoiceRequiredError,
   SyncDeletePropagationBlockedError,
   SyncDivergenceConfirmationRequiredError,
-  SyncDivergenceExceededError
+  SyncDivergenceExceededError,
+  prepareVaultRenamePassForPlan,
+  prepareVaultRenamePassForSync
 } from '@baishou/shared'
 import type { IIncrementalSyncService } from './incremental-sync.interface'
 import { threeWayMerge } from './three-way-merge'
@@ -66,7 +68,7 @@ export class ThreeWaySyncService
 
     try {
       const prepared = await this.prepareSyncManifests({ onProgress })
-      const {
+      let {
         localManifest,
         remoteManifest,
         ancestorSnapshot,
@@ -78,13 +80,29 @@ export class ThreeWaySyncService
         highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
       })
 
+      const localVaults = await this.loadLocalVaultIdToNameMap()
+      const lastRemoteVaults = (await this.getLastRemoteVaultsSnapshot()).vaults
+      const renamePass = await prepareVaultRenamePassForSync({
+        localVaults,
+        lastRemoteVaults,
+        remoteManifest,
+        ancestorSnapshot,
+        cloudClient: this.cloudClient,
+        preferDirectoryMove: this.config.target === 'webdav'
+      })
+      remoteManifest = renamePass.remoteManifest
+      ancestorSnapshot = renamePass.ancestorSnapshot
+
       const decisions = resolveSyncMergeDecisions(
         threeWayMerge(localManifest, remoteManifest, ancestorSnapshot),
         localManifest,
         remoteManifest,
         ancestorSnapshot,
         previousLocalManifest,
-        { deletePropagationChoice: runOptions?.deletePropagationChoice }
+        {
+          deletePropagationChoice: runOptions?.deletePropagationChoice,
+          ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+        }
       )
       const total = decisions.length
       let completedCount = 0
@@ -168,6 +186,7 @@ export class ThreeWaySyncService
       await this.saveLocalManifest(finalManifest)
       await this.uploadManifest()
       await this.saveRemoteSnapshot(finalManifest)
+      await this.saveLastRemoteVaultsSnapshot(localVaults)
       onProgress?.({ phase: 'finalizing', current: 1, total: 1 })
       this.invalidatePreparedManifests()
 
@@ -196,8 +215,8 @@ export class ThreeWaySyncService
 
     const {
       localManifest,
-      remoteManifest,
-      ancestorSnapshot,
+      remoteManifest: remoteRaw,
+      ancestorSnapshot: ancestorRaw,
       previousLocalManifest,
       storageHistory
     } = await this.prepareSyncManifests()
@@ -207,7 +226,7 @@ export class ThreeWaySyncService
     let maxDivergencePercent: number | undefined
 
     try {
-      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteManifest, this.config, {
+      assertBidirectionalSyncDivergenceAllowed(localManifest, remoteRaw, this.config, {
         storageHistory,
         highDivergenceConfirmed: runOptions?.highDivergenceConfirmed
       })
@@ -221,12 +240,26 @@ export class ThreeWaySyncService
       }
     }
 
+    const localVaults = await this.loadLocalVaultIdToNameMap()
+    const lastRemoteVaults = (await this.getLastRemoteVaultsSnapshot()).vaults
+    const renamePass = prepareVaultRenamePassForPlan({
+      localVaults,
+      lastRemoteVaults,
+      remoteManifest: remoteRaw,
+      ancestorSnapshot: ancestorRaw
+    })
+    const remoteManifest = renamePass.remoteManifest
+    const ancestorSnapshot = renamePass.ancestorSnapshot
+
     const { decisions, deleteBlock } = buildIncrementalSyncPlanMergeResult(
       localManifest,
       remoteManifest,
       ancestorSnapshot,
       previousLocalManifest,
-      runOptions
+      {
+        ...runOptions,
+        ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+      }
     )
 
     return {
@@ -242,9 +275,10 @@ export class ThreeWaySyncService
         deletePropagationBlocked: deleteBlock != null,
         deletePropagationReason: deleteBlock?.reason,
         blockedDeleteCount: deleteBlock?.deleteCount,
-        blockedDeleteDirection: deleteBlock?.direction
+        blockedDeleteDirection: deleteBlock?.direction,
+        renamedFileCount: renamePass.renamedFileCount
       }),
-      planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteManifest)
+      planReuseBaseline: buildIncrementalSyncPlanReuseBaseline(localManifest, remoteRaw)
     }
   }
 

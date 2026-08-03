@@ -10,6 +10,7 @@ import {
   SYNC_MANIFEST_FILENAME,
   SYNC_MANIFEST_VERSION,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_REMOTE_VAULTS_FILENAME,
   SYNC_STORAGE_ID_FILENAME,
   getIncrementalSyncStorageId,
   resolveIncrementalSyncStorageHistory,
@@ -19,7 +20,12 @@ import {
   reconcileSyncManifestRemovedWithRemoteFiles,
   reconcileAncestorWithRemoteTruth,
   countUnverifiedAncestorEntries,
-  isIncrementalSyncRemoteFileNotFoundError
+  isIncrementalSyncRemoteFileNotFoundError,
+  parseLastRemoteVaultsSnapshot,
+  serializeLastRemoteVaultsSnapshot,
+  parseVaultIdToNameMap,
+  createEmptyLastRemoteVaultsSnapshot,
+  type LastRemoteVaultsSnapshot
 } from '@baishou/shared'
 import { isIncrementalSyncConflictBackupPath, isSqliteRuntimeSyncPath } from '@baishou/shared'
 import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
@@ -350,6 +356,64 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
     await fs.promises.mkdir(metaDir, { recursive: true })
     await fs.promises.writeFile(snapshotPath, JSON.stringify(manifest, null, 2), 'utf8')
     await fs.promises.writeFile(storageIdPath, getIncrementalSyncStorageId(this.config), 'utf8')
+  }
+
+  /** 读取本机 vault_registry.json → id→目录名（rename pass 输入） */
+  protected async loadLocalVaultIdToNameMap(): Promise<Record<string, string>> {
+    const root = await this.getSyncRoot()
+    const registryPath = path.join(root, 'vault_registry.json')
+    try {
+      const raw = await fs.promises.readFile(registryPath, 'utf8')
+      return parseVaultIdToNameMap(JSON.parse(raw))
+    } catch {
+      return {}
+    }
+  }
+
+  protected async getLastRemoteVaultsSnapshot(): Promise<LastRemoteVaultsSnapshot> {
+    await this.loadConfig()
+    const metaDir = await this.getSyncMetaDirectory()
+    const vaultsPath = path.join(metaDir, SYNC_REMOTE_VAULTS_FILENAME)
+    const storageIdPath = path.join(metaDir, SYNC_STORAGE_ID_FILENAME)
+    const empty = createEmptyLastRemoteVaultsSnapshot(0)
+
+    if (!fs.existsSync(vaultsPath)) return empty
+
+    if (fs.existsSync(storageIdPath)) {
+      try {
+        const savedId = (await fs.promises.readFile(storageIdPath, 'utf8')).trim()
+        if (savedId !== getIncrementalSyncStorageId(this.config)) {
+          return empty
+        }
+      } catch {
+        return empty
+      }
+    } else {
+      return empty
+    }
+
+    try {
+      const raw = await fs.promises.readFile(vaultsPath, 'utf8')
+      return parseLastRemoteVaultsSnapshot(JSON.parse(raw))
+    } catch {
+      return empty
+    }
+  }
+
+  /**
+   * 与祖先快照同时提交：写入上次同步时的 id→目录名。
+   * `vaults` 缺省时从本机注册表读取（一致点提交用当前本机映射）。
+   */
+  protected async saveLastRemoteVaultsSnapshot(
+    vaults?: Record<string, string>
+  ): Promise<void> {
+    await this.loadConfig()
+    const metaDir = await this.getSyncMetaDirectory()
+    const vaultsPath = path.join(metaDir, SYNC_REMOTE_VAULTS_FILENAME)
+    const map = vaults ?? (await this.loadLocalVaultIdToNameMap())
+    const snapshot = serializeLastRemoteVaultsSnapshot(map)
+    await fs.promises.mkdir(metaDir, { recursive: true })
+    await fs.promises.writeFile(vaultsPath, JSON.stringify(snapshot, null, 2), 'utf8')
   }
 
   protected async uploadFile(relPath: string): Promise<void> {
