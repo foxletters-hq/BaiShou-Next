@@ -21,6 +21,7 @@ import {
   forgetWorkspaceGateFreshnessToken
 } from '../agent-workspace/workspace-gate-freshness.registry'
 import { createNodeWorkspaceFs } from '../agent-workspace/workspace-fs'
+import { collectExternalDirectoryGlobs } from './agent-gate-workspace-path.util'
 
 function isAgentGateControlError(error: unknown): error is Error {
   return (
@@ -94,16 +95,45 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
       metadata.buildResources?.(args, context),
       extractAgentGateResourcesFromMetadata(builtMetadata)
     )
+    const alwaysPatterns = metadata.buildAlwaysPatterns?.(args, context)
     const gateMetadata = {
       toolName,
       riskLevel: metadata.riskLevel,
       ...(metadata.forceExclusion ? { forceExclusion: true } : {}),
       ...builtMetadata,
       ...(prepared?.metadataPatch ?? {}),
-      ...(resources.length > 0 ? { resources } : {})
+      ...(resources.length > 0 ? { resources } : {}),
+      ...(alwaysPatterns ? { alwaysPatterns } : {})
     }
 
+    const profileId = resolveProfileFromContext(context)
+    const scope = resolveScopeFromContext(context)
+
     try {
+      // G4.2：区外路径先过 external_directory 门，再过能力门
+      if (action !== 'external_directory') {
+        const externalGlobs = collectExternalDirectoryGlobs(resources)
+        for (const glob of externalGlobs) {
+          await gate.assert({
+            sessionId: context.sessionId,
+            vaultName: context.vaultName,
+            kind: AgentGateKind.Tool,
+            action: 'external_directory',
+            title: `访问区外目录 ${glob.replace(/\/\*\*$/, '') || glob}`,
+            description: `该操作触及工作区外路径，需先确认区外目录访问。`,
+            allowCustomInput: true,
+            profileId,
+            scope,
+            metadata: {
+              toolName,
+              riskLevel: metadata.riskLevel,
+              externalDirectory: glob
+            },
+            resources: [{ kind: 'external_path', value: glob }]
+          })
+        }
+      }
+
       await gate.assert({
         sessionId: context.sessionId,
         vaultName: context.vaultName,
@@ -112,8 +142,8 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
         title,
         description: prepared?.description,
         allowCustomInput: true,
-        profileId: resolveProfileFromContext(context),
-        scope: resolveScopeFromContext(context),
+        profileId,
+        scope,
         preview: prepared?.preview,
         metadata: gateMetadata,
         resources: resources.length > 0 ? resources : undefined

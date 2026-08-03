@@ -3,7 +3,7 @@ import {
   type AgentGateResourceRef,
   type AgentGateToolMetadata
 } from '@baishou/shared'
-import { classifyWorkspacePathForGate } from './agent-gate-workspace-path.util'
+import { classifyWorkspacePathForGate, collectExternalDirectoryGlobs } from './agent-gate-workspace-path.util'
 import { scanWorkspaceRunCommand } from '../agent-workspace/workspace-command-scan'
 import {
   prepareContentGatePreview,
@@ -177,6 +177,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       workspacePath: (args as GateArgs).path
     }),
     buildResources: workspacePathResources,
+    buildAlwaysPatterns: () => ['*'],
     prepare: prepareWorkspaceWriteGate
   },
   workspace_patch: {
@@ -191,6 +192,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       workspacePath: (args as GateArgs).path
     }),
     buildResources: workspacePathResources,
+    buildAlwaysPatterns: () => ['*'],
     prepare: prepareWorkspacePatchGate
   },
   workspace_delete: {
@@ -206,6 +208,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       workspacePath: (args as GateArgs).path
     }),
     buildResources: workspacePathResources,
+    buildAlwaysPatterns: () => [],
     prepare: prepareWorkspaceDeleteGate
   },
   workspace_rename: {
@@ -225,6 +228,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       workspacePath: (args as GateArgs).path
     }),
     buildResources: workspaceRenameResources,
+    buildAlwaysPatterns: () => ['*'],
     prepare: prepareWorkspaceRenameGate
   },
   workspace_run: {
@@ -257,7 +261,31 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       }
     },
     buildResources: workspaceRunResources,
+    buildAlwaysPatterns: (args, ctx) => {
+      const command = (args as GateArgs).command
+      const workdir = (args as GateArgs).workdir
+      const folderRoot = workspaceFolderRoot(ctx)
+      if (typeof command !== 'string' || !folderRoot) return []
+      const scan = scanWorkspaceRunCommand({
+        command,
+        workdir: typeof workdir === 'string' ? workdir : undefined,
+        folderRoot
+      })
+      return scan.prefixPattern ? [scan.prefixPattern] : []
+    },
     prepare: async (args, ctx) => prepareWorkspaceRunGate(args, ctx)
+  },
+  external_directory: {
+    action: 'external_directory',
+    riskLevel: AgentGateRiskLevel.Mutating,
+    buildTitle: (args) => {
+      const path = (args as GateArgs).path
+      return typeof path === 'string' && path ? `访问区外目录 ${path}` : '访问区外目录'
+    },
+    buildAlwaysPatterns: (args, ctx) => {
+      const resources = workspacePathResources(args, ctx)
+      return collectExternalDirectoryGlobs(resources)
+    }
   },
   graph_upsert: {
     action: 'graph_upsert',

@@ -20,7 +20,7 @@ export class BaishouAgentGateAllowlistStore implements IAgentGateAllowlistStore 
   ) {}
 
   list(): AgentGateAllowlistEntry[] {
-    return [...this.getConfig().allowlist]
+    return [...(this.getConfig().allowlist ?? [])]
   }
 
   has(action: string, resources?: readonly AgentGateResourceRef[]): boolean {

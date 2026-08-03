@@ -3,8 +3,7 @@ import {
   AgentGateCorrectedError,
   AgentGateKind,
   AgentGateRejectedError,
-  AgentGateReply,
-  AgentGateTrustMode
+  AgentGateReply
 } from '@baishou/shared'
 import { CompanionAskTool } from '../companion-ask.tool'
 import type { ToolContext } from '../agent.tool'
@@ -90,7 +89,6 @@ describe('CompanionAskTool', () => {
   it('resolves selected option through real gate service', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       }
@@ -123,7 +121,6 @@ describe('CompanionAskTool', () => {
   it('returns custom message answer from gate resolution', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       }
