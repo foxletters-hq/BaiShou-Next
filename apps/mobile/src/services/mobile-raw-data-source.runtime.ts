@@ -127,7 +127,8 @@ export async function syncMobileGraphPendingIndex(options: {
 
 export async function runMobileDerivedIndexHydration(options: {
   drizzleDb: AppDatabase
-  vaultName: string
+  vaultId: string
+  vaultName?: string
   embeddingProvider?: IAIProvider | null
   embeddingModelId?: string | null
   reason: string
@@ -154,10 +155,15 @@ export async function runMobileDerivedIndexHydration(options: {
     const chatChunks = await hsRepo.listEmbeddingChunksByType('chat')
     const memoryChunks = await hsRepo.listEmbeddingChunksByType('memory')
     const manualChunks = await hsRepo.listEmbeddingChunksByType('manual')
-    await backfill.backfillFromChunks(chatChunks, options.vaultName)
-    await backfill.backfillFromChunks(memoryChunks, options.vaultName)
-    await backfill.migrateManualAndPatchMetadata(manualChunks, options.vaultName, {
-      normalizeManualToMemory: (params) => hsRepo.normalizeManualToMemory(params),
+    const vaultName = options.vaultName ?? options.vaultId
+    await backfill.backfillFromChunks(chatChunks, vaultName)
+    await backfill.backfillFromChunks(memoryChunks, vaultName)
+    await backfill.migrateManualAndPatchMetadata(manualChunks, vaultName, {
+      normalizeManualToMemory: (params) =>
+        hsRepo.normalizeManualToMemory({
+          vaultId: options.vaultId,
+          sourceIds: 'sourceIds' in params ? params.sourceIds : undefined
+        }),
       updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
         hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
     })
@@ -166,7 +172,7 @@ export async function runMobileDerivedIndexHydration(options: {
         hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
       )
     }
-    await hsRepo.normalizeManualToMemory({ vaultName: options.vaultName })
+    await hsRepo.normalizeManualToMemory({ vaultId: options.vaultId })
 
     if (embeddingAdapter?.isConfigured) {
       const memorySync = new MemorySyncService(runtime.memoryManager, {
