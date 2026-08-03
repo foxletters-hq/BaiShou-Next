@@ -173,7 +173,7 @@ async function collectAllSessionIds(sessionManager: SessionManagerService): Prom
   const pageSize = 500
   let offset = 0
   while (true) {
-    const page = await sessionManager.findAllSessions(pageSize, offset)
+    const page = await sessionManager.findAllSessionsAcrossVaults(pageSize, offset)
     if (page.length === 0) break
     for (const session of page) {
       ids.add(session.id)

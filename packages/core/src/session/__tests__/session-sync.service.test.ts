@@ -21,6 +21,7 @@ describe('SessionSyncService', () => {
 
     mockRepo = {
       findAllSessions: vi.fn().mockResolvedValue([]),
+      findAllSessionsAcrossVaults: vi.fn().mockResolvedValue([]),
       upsertAggregate: vi.fn(),
       deleteSessions: vi.fn()
     } as any
@@ -30,7 +31,7 @@ describe('SessionSyncService', () => {
 
   it('fullScanArchives deletes active-vault ghosts without disk files', async () => {
     mockFileService.listAllSessions.mockResolvedValue([])
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'gone', vaultName: 'Work' },
       { id: 'other', vaultName: 'Personal' }
     ] as any)
@@ -42,7 +43,7 @@ describe('SessionSyncService', () => {
 
   it('fullScanArchives preserves dirty / unflushed session ids', async () => {
     mockFileService.listAllSessions.mockResolvedValue([])
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'mid-chat', vaultName: 'Work' },
       { id: 'stale', vaultName: 'Work' }
     ] as any)
@@ -58,7 +59,7 @@ describe('SessionSyncService', () => {
   it('fullScanArchives skips other vaults even without preserve list', async () => {
     mockFileService.listAllSessions.mockResolvedValue([{ id: 'a' }] as any)
     mockFileService.readSession.mockResolvedValue({ session: { id: 'a' }, messages: [] } as any)
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'a', vaultName: 'Work' },
       { id: 'b', vaultName: 'Personal' }
     ] as any)
@@ -83,7 +84,7 @@ describe('SessionSyncService', () => {
         messages: []
       })
     )
-    mockRepo.findAllSessions.mockResolvedValue([{ id: 'from-work', vaultName: 'Work' }] as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([{ id: 'from-work', vaultName: 'Work' }] as any)
 
     await service.fullScanArchives({
       activeVaultName: 'Work',
@@ -102,7 +103,7 @@ describe('SessionSyncService', () => {
       .fn()
       .mockResolvedValue([{ id: 'kept', fullPath: '/Work/Sessions/kept.json', vaultName: 'Work' }])
     mockFileService.readSession.mockResolvedValue({ session: { id: 'kept' }, messages: [] } as any)
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'kept', vaultName: 'Work' },
       { id: 'ghost-work', vaultName: 'Work' },
       { id: 'other-vault', vaultName: 'Archive' }
@@ -123,7 +124,7 @@ describe('SessionSyncService', () => {
       { id: 'newer', fullPath: '/Work/Sessions/newer.json', vaultName: 'Work' },
       { id: 'missing', fullPath: '/Work/Sessions/missing.json', vaultName: 'Work' }
     ])
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'unchanged', vaultName: 'Work', updatedAt: dbUpdatedAt },
       { id: 'newer', vaultName: 'Work', updatedAt: dbUpdatedAt },
       { id: 'ghost', vaultName: 'Work', updatedAt: dbUpdatedAt }

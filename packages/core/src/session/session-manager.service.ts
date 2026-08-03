@@ -86,9 +86,9 @@ export class SessionManagerService {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string,
-    vaultName?: string
+    vaultId?: string
   ) {
-    return this.findAllSessions(limit, offset, assistantId, searchQuery, vaultName)
+    return this.findAllSessions(limit, offset, assistantId, searchQuery, vaultId)
   }
 
   async deleteSessions(ids: string[]): Promise<void> {
@@ -110,9 +110,19 @@ export class SessionManagerService {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string,
-    vaultName?: string
+    vaultId?: string
   ) {
-    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery, vaultName)
+    return this.sessionRepo.findAllSessions(limit, offset, assistantId, searchQuery, vaultId)
+  }
+
+  /** 跨仓全表（同步 / 迁移专用）；日常列表请传 vaultId */
+  async findAllSessionsAcrossVaults(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
+    searchQuery?: string
+  ) {
+    return this.sessionRepo.findAllSessionsAcrossVaults(limit, offset, assistantId, searchQuery)
   }
 
   async getSessionById(sessionId: string) {
@@ -211,7 +221,7 @@ export class SessionManagerService {
     }
 
     // 全库会话（按伙伴列表可见的全部），不按活跃 vault 过滤
-    const dbSessions = await this.sessionRepo.findAllSessions(-1)
+    const dbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
     const diskSessions =
       diskVaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(diskVaultNames)
@@ -338,7 +348,7 @@ export class SessionManagerService {
       }
     }
 
-    const dbSessions = await this.sessionRepo.findAllSessions(-1)
+    const dbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
     const diskSessions =
       diskVaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(diskVaultNames)
@@ -411,7 +421,7 @@ export class SessionManagerService {
       }
     }
 
-    const afterDb = (await this.sessionRepo.findAllSessions(-1)).length
+    const afterDb = (await this.sessionRepo.findAllSessionsAcrossVaults(-1)).length
     console.warn('[IncrementalSync][SessionHydrate] done', {
       dbCountBefore: dbCount,
       diskCount,

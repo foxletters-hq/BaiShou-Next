@@ -12,8 +12,7 @@ export class TitleGeneratorService {
     sessionId: string,
     cleanTitle: string
   ): Promise<void> {
-    const sessions = await sessionRepo.findAllSessions()
-    const currentSession = sessions.find((s: { id: string }) => s.id === sessionId)
+    const currentSession = await sessionRepo.getSessionById(sessionId)
     if (!currentSession) return
 
     await sessionRepo.upsertSession({

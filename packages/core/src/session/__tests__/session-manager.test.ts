@@ -20,6 +20,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
       togglePin: vi.fn(),
       deleteSessions: vi.fn(),
       findAllSessions: vi.fn(),
+      findAllSessionsAcrossVaults: vi.fn(),
       getMessagesBySession: vi.fn(),
       getSessionAggregate: vi.fn()
     } as any
@@ -118,7 +119,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
   })
 
   it('ensureSessionsFlushedToDisk() flushes missing sessions across vaults for all assistants', async () => {
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'a', vaultId: deriveLegacyVaultId('Personal85'), assistantId: 'default', title: 'A' },
       { id: 'b', vaultId: deriveLegacyVaultId('Personal85'), assistantId: 'default', title: 'B' },
       { id: 'legacy', vaultId: deriveLegacyVaultId('Personal'), assistantId: 'legacy_ast_1', title: 'L' }
@@ -157,7 +158,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
   })
 
   it('ensureSessionsFlushedToDisk({ mode: pending-only }) skips missing-session backfill', async () => {
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'a', vaultId: deriveLegacyVaultId('Personal85'), assistantId: 'default', title: 'A' }
     ] as any)
 
@@ -169,12 +170,12 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
 
     expect(result.flushed).toBe(0)
     expect(result.skippedMissingScan).toBe(true)
-    expect(mockRepo.findAllSessions).not.toHaveBeenCalled()
+    expect(mockRepo.findAllSessionsAcrossVaults).not.toHaveBeenCalled()
     expect(mockFileService.writeSession).not.toHaveBeenCalled()
   })
 
   it('ensureSessionsFlushedToDisk() skips missing-file backfill without target vault', async () => {
-    mockRepo.findAllSessions.mockResolvedValue([{ id: 'a', vaultId: deriveLegacyVaultId('Work') }] as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([{ id: 'a', vaultId: deriveLegacyVaultId('Work') }] as any)
     mockFileService.listAllSessions.mockResolvedValue([])
     mockRepo.getSessionAggregate.mockResolvedValue(aggregateDummy)
 
@@ -185,12 +186,12 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
 
     expect(result.skippedMissingScan).toBe(true)
     expect(result.flushed).toBe(0)
-    expect(mockRepo.findAllSessions).not.toHaveBeenCalled()
+    expect(mockRepo.findAllSessionsAcrossVaults).not.toHaveBeenCalled()
     expect(mockFileService.writeSession).not.toHaveBeenCalled()
   })
 
   it('hydrateSessionsFromDiskIfNeeded() upserts only missing unique session ids', async () => {
-    mockRepo.findAllSessions
+    mockRepo.findAllSessionsAcrossVaults
       .mockResolvedValueOnce([{ id: 'only-db', vaultId: deriveLegacyVaultId('Work') }] as any)
       .mockResolvedValueOnce([
         { id: 'only-db', vaultId: deriveLegacyVaultId('Work') },
@@ -222,7 +223,7 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
   })
 
   it('hydrateSessionsFromDiskIfNeeded() skips when all unique disk ids already in db', async () => {
-    mockRepo.findAllSessions.mockResolvedValue([
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'a', vaultId: deriveLegacyVaultId('Work') },
       { id: 'b', vaultId: deriveLegacyVaultId('Personal') }
     ] as any)
