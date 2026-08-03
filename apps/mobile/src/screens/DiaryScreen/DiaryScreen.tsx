@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, Keyboard } from 'react-native'
+import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, Keyboard, Pressable } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { logger } from '@baishou/shared'
-import { useNativeTheme } from '@baishou/ui/native'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
+import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
@@ -21,10 +22,21 @@ import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
 import { isDiaryEditorRouteActive } from './diary-editor-route.util'
 import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
 import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
+import {
+  consumeDiaryGraphExtractHint,
+  peekDiaryGraphExtractHint,
+  type DiaryGraphExtractHint
+} from './diary-graph-extract-hint'
+import { getAgentDbRuntime } from '../../services/mobile-agent-db-runtime-ref'
+import {
+  mobileExtractDiaries,
+  mobileListPendingReextract
+} from '../../services/mobile-graph.service'
 
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
+  const toast = useNativeToast()
   const {
     services,
     dbReady,
@@ -76,6 +88,10 @@ export const DiaryScreen: React.FC = () => {
   const lastListScrollLogAtRef = useRef(0)
   const isListFocusedRef = useRef(isListFocused)
   isListFocusedRef.current = isListFocused
+  const [pendingGraphCount, setPendingGraphCount] = useState(0)
+  const [entryExtractHint, setEntryExtractHint] = useState<DiaryGraphExtractHint | null>(null)
+  const [graphExtractBusy, setGraphExtractBusy] = useState(false)
+  const [graphExtractProgress, setGraphExtractProgress] = useState('')
   const {
     isSyncing,
     isPlanning,
@@ -267,6 +283,93 @@ export const DiaryScreen: React.FC = () => {
       .catch(() => setTodayEntry(null))
   }, [dbReady, services, storageReady, vaultRevision])
 
+  const refreshPendingGraph = useCallback(async () => {
+    if (!services || !dbReady) return
+    try {
+      const activeVault = services.vaultService.getActiveVault()
+      const vaultName = activeVault?.name || 'Personal'
+      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+      const pending = await mobileListPendingReextract({
+        vaultName,
+        shadowRepo,
+        pathService: services.pathService,
+        fileSystem: services.fileSystem
+      })
+      setPendingGraphCount(pending.length)
+    } catch {
+      setPendingGraphCount(0)
+    }
+  }, [services, dbReady])
+
+  useFocusEffect(
+    useCallback(() => {
+      const hint = peekDiaryGraphExtractHint()
+      setEntryExtractHint(hint)
+      void refreshPendingGraph()
+    }, [refreshPendingGraph])
+  )
+
+  const runGraphExtract = useCallback(
+    async (filePaths?: string[]) => {
+      if (!services || graphExtractBusy) return
+      const runtime = getAgentDbRuntime()
+      if (!runtime?.drizzleDb) return
+      const activeVault = services.vaultService.getActiveVault()
+      const vaultName = activeVault?.name || 'Personal'
+      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+      setGraphExtractBusy(true)
+      setGraphExtractProgress(t('graph.extracting', '正在抽取…'))
+      try {
+        const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+        const result = await mobileExtractDiaries({
+          vaultId,
+          vaultName,
+          drizzleDb: runtime.drizzleDb,
+          shadowRepo,
+          pathService: services.pathService,
+          fileSystem: services.fileSystem,
+          settingsManager: services.settingsManager,
+          filePaths,
+          onProgress: (p) => {
+            setGraphExtractProgress(
+              t('graph.extract_progress', '正在整理 {{current}}/{{total}}', {
+                current: p.current,
+                total: p.total
+              })
+            )
+          }
+        })
+        if (filePaths?.length) {
+          consumeDiaryGraphExtractHint()
+          setEntryExtractHint(null)
+        }
+        if (result.failed > 0) {
+          toast.showError(
+            t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
+              done: result.done,
+              failed: result.failed
+            })
+          )
+        } else {
+          toast.showSuccess(
+            filePaths?.length
+              ? t('graph.extract_this_done', '已记住这篇里的人和事')
+              : t('graph.extract_batch_done', '已整理 {{done}} 篇日记', { done: result.done })
+          )
+        }
+        await refreshPendingGraph()
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        toast.showError(message || t('graph.extract_failed', '整理失败'))
+      } finally {
+        setGraphExtractBusy(false)
+        setGraphExtractProgress('')
+      }
+    },
+    [services, graphExtractBusy, refreshPendingGraph, t, toast]
+  )
+
   const displayEntries = useMemo((): DiaryListEntry[] => {
     if (!entries?.length) return []
     return entries.map((e) => {
@@ -373,6 +476,41 @@ export const DiaryScreen: React.FC = () => {
             isSearchPending={searchPending}
           />
 
+          {(entryExtractHint || pendingGraphCount > 0 || graphExtractBusy) && (
+            <View
+              style={[
+                styles.graphExtractBanner,
+                { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderMuted }
+              ]}
+            >
+              <Text style={[styles.graphExtractText, { color: colors.textSecondary }]} numberOfLines={2}>
+                {graphExtractBusy
+                  ? graphExtractProgress || t('graph.extracting', '正在抽取…')
+                  : entryExtractHint
+                    ? t('graph.extract_this_entry', '让伙伴记住这篇里的人和事')
+                    : t('graph.pending_entries_hint', '有 {{count}} 篇日记还没整理', {
+                        count: pendingGraphCount
+                      })}
+              </Text>
+              {!graphExtractBusy && (
+                <Pressable
+                  onPress={() =>
+                    void runGraphExtract(
+                      entryExtractHint ? [entryExtractHint.filePath] : undefined
+                    )
+                  }
+                  hitSlop={8}
+                >
+                  <Text style={[styles.graphExtractAction, { color: colors.primary }]}>
+                    {entryExtractHint
+                      ? t('graph.extract_remember', '记住')
+                      : t('graph.extract_pending_batch', '开始整理')}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
           <DiaryList
             listRef={listRef}
             onListScroll={handleListScroll}
@@ -452,6 +590,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative'
+  },
+  graphExtractBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  graphExtractText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  graphExtractAction: {
+    fontSize: 13,
+    fontWeight: '600'
   },
   deleteOverlay: {
     flex: 1,

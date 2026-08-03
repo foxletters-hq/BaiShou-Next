@@ -19,6 +19,7 @@ import {
   syncDiaryTagColorRegistry,
   formatLocalDate,
   parseDateStr,
+  deriveLegacyVaultId,
   type DiaryTagColorRegistry,
   type DiaryTemplateConfig
 } from '@baishou/shared'
@@ -36,6 +37,9 @@ import {
 } from '../../services/storage-permission.service'
 import { createDiaryEditorLifecycleHandlers } from './diary-editor-lifecycle.helpers'
 import { useDiaryEditorAttachments, useDiaryEditorExitGuard } from './useDiaryEditorAttachments'
+import { setDiaryGraphExtractHint } from './diary-graph-extract-hint'
+import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
+import { mobileListPendingReextract } from '../../services/mobile-graph.service'
 
 const DIARY_TTS_PLAYBACK_ID = 'diary-editor'
 
@@ -276,6 +280,32 @@ export const DiaryEditorScreen: React.FC = () => {
       setIsDirty(false)
       isDirtyRef.current = false
       dismissEditorKeyboard()
+
+      // G1.a：该篇若尚未整理进图谱，回到列表后显示轻提示
+      try {
+        const dateKey = formatLocalDate(targetDate)
+        const activeVault = services.vaultService.getActiveVault()
+        const vaultName = activeVault?.name || 'Personal'
+        const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+        const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+        const pending = await mobileListPendingReextract({
+          vaultName,
+          shadowRepo,
+          pathService: services.pathService,
+          fileSystem: services.fileSystem
+        })
+        const hit = pending.find(
+          (p) => p.date === dateKey || String(p.filePath || '').includes(dateKey)
+        )
+        if (hit?.filePath) {
+          setDiaryGraphExtractHint({ filePath: hit.filePath, date: dateKey })
+        } else {
+          setDiaryGraphExtractHint(null)
+        }
+      } catch {
+        setDiaryGraphExtractHint(null)
+      }
+
       toast.showSuccess(t('common.saved', '已保存'))
       setSavePhase('leaving')
       await new Promise<void>((resolve) => {

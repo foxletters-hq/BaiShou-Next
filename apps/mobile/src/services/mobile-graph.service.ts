@@ -88,6 +88,7 @@ export async function mobileExtractDiaries(options: {
   fileSystem: IFileSystem
   settingsManager: SettingsManagerService
   filePaths?: string[]
+  onProgress?: (p: { current: number; total: number; filePath: string }) => void
 }) {
   const freshness = ensureMobileGraphFreshnessBound(options)
   const { graphManager } = ensureMobileRawDataRuntime(options)
@@ -114,7 +115,8 @@ export async function mobileExtractDiaries(options: {
   return service.extractDiaries({
     vaultId: options.vaultId,
     vaultName: options.vaultName,
-    filePaths: options.filePaths
+    filePaths: options.filePaths,
+    onProgress: options.onProgress
   })
 }
 
