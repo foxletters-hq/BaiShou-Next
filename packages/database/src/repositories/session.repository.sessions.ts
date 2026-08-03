@@ -73,8 +73,55 @@ export class SessionCrudOps {
     offset: number = 0,
     assistantId?: string,
     searchQuery?: string,
-    vaultId?: string
+    vaultId?: string | null
   ): Promise<AgentSessionRow[]> {
+    const normalizedVaultId = vaultId?.trim()
+      ? resolveInsertVaultId(vaultId.trim())
+      : undefined
+    // 公开列表缺 vaultId → fail-closed（等价 1=0），禁止静默扫全表
+    if (!normalizedVaultId) {
+      console.warn(
+        '[SessionRepo] findAllSessions refused: vaultId is required (fail-closed)'
+      )
+      return []
+    }
+
+    return this.querySessions({
+      limit,
+      offset,
+      assistantId,
+      searchQuery,
+      vaultId: normalizedVaultId
+    })
+  }
+
+  /**
+   * 显式跨仓全表扫描（仅同步 / 迁移 / flush 缺盘补写使用）。
+   * 日常列表请用 findAllSessions(..., vaultId)。
+   */
+  async findAllSessionsAcrossVaults(
+    limit: number = 20,
+    offset: number = 0,
+    assistantId?: string,
+    searchQuery?: string
+  ): Promise<AgentSessionRow[]> {
+    return this.querySessions({
+      limit,
+      offset,
+      assistantId,
+      searchQuery,
+      vaultId: null
+    })
+  }
+
+  private async querySessions(params: {
+    limit: number
+    offset: number
+    assistantId?: string
+    searchQuery?: string
+    vaultId: string | null
+  }): Promise<AgentSessionRow[]> {
+    const { limit, offset, assistantId, searchQuery, vaultId } = params
     let matchedSessionIds: string[] = []
 
     if (searchQuery && searchQuery.trim()) {
@@ -143,11 +190,8 @@ export class SessionCrudOps {
     // 组合过滤条件
     const conditions: any[] = []
 
-    const normalizedVaultId = vaultId?.trim()
-      ? resolveInsertVaultId(vaultId.trim())
-      : undefined
-    if (normalizedVaultId) {
-      conditions.push(eq(agentSessionsTable.vaultId, normalizedVaultId))
+    if (vaultId) {
+      conditions.push(eq(agentSessionsTable.vaultId, vaultId))
     }
 
     const normalizedAssistantId = assistantId?.trim()
@@ -185,9 +229,9 @@ export class SessionCrudOps {
 
     const results = (await finalQuery) as AgentSessionRow[]
     console.log(
-      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, vault=${normalizedVaultId ?? '-'}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
+      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, vault=${vaultId ?? '*'}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
     )
-    if (results.length === 0 && !searchQuery && normalizedAssistantId) {
+    if (results.length === 0 && !searchQuery && normalizedAssistantId && vaultId) {
       const allDocs = await this.db.select().from(agentSessionsTable)
       console.log(`[SessionRepo] WARNING: Returned 0, but total rows in DB: ${allDocs.length}`)
       if (allDocs.length > 0) {

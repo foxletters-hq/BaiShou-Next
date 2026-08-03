@@ -45,6 +45,12 @@ export class SessionRepository {
     return this.run(() => this.crudOps.findAllSessions(...args))
   }
 
+  findAllSessionsAcrossVaults(
+    ...args: Parameters<SessionCrudOps['findAllSessionsAcrossVaults']>
+  ) {
+    return this.run(() => this.crudOps.findAllSessionsAcrossVaults(...args))
+  }
+
   updateSessionTitle(...args: Parameters<SessionCrudOps['updateSessionTitle']>) {
     return this.run(() => this.crudOps.updateSessionTitle(...args))
   }

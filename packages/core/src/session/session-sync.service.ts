@@ -54,7 +54,7 @@ export class SessionSyncService {
       vaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(vaultNames)
         : await this.fileService.listAllSessions()
-    const allDbSessions = await this.sessionRepo.findAllSessions(-1)
+    const allDbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
     const maxBytes = options?.maxSessionJsonReadBytes
 
     console.warn('[SessionSync][FullScan]', {
@@ -112,7 +112,7 @@ export class SessionSyncService {
       vaultNames.length > 0
         ? await this.fileService.listSessionsAcrossVaults(vaultNames)
         : await this.fileService.listAllSessions()
-    const allDbSessions = await this.sessionRepo.findAllSessions(-1)
+    const allDbSessions = await this.sessionRepo.findAllSessionsAcrossVaults(-1)
     const dbById = new Map(allDbSessions.map((s) => [s.id, s]))
     const maxBytes = options?.maxSessionJsonReadBytes
 
