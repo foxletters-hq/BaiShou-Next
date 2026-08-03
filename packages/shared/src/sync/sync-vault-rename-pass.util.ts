@@ -4,6 +4,13 @@ import {
   migrateSyncManifestVaultPrefix,
   rewriteSyncManifestVaultPath
 } from './migrate-sync-manifest-vault-prefix.util'
+import { assertSafeSyncRelPath } from './sync-rel-path.util'
+
+/** 云端已成功完成的单次 rename（用于半失败逆序回滚） */
+export type CompletedVaultRename = {
+  oldPath: string
+  newPath: string
+}
 
 /** `.baishou/last-remote-vaults.json` 格式 */
 export type LastRemoteVaultsSnapshot = {
@@ -35,6 +42,12 @@ export type VaultRenamePassFailure = {
   error?: unknown
   /** 检测到的候选（失败时仍可供诊断 / 删除保护） */
   renames: VaultRenameCandidate[]
+  /**
+   * 失败前已成功的云端 rename（经逆序回滚后应已收敛；若回滚亦失败则仍保留供诊断）。
+   */
+  completedBeforeFailure?: CompletedVaultRename[]
+  /** 逆序回滚是否全部成功（仅 rename_failed 时有意义） */
+  rollbackOk?: boolean
 }
 
 export type VaultRenamePassResult = VaultRenamePassSuccess | VaultRenamePassFailure
@@ -235,35 +248,57 @@ function supportsRenameFile(client: VaultRenameCloudClient | null | undefined): 
 /**
  * 对单个 vault 执行云端路径移动。
  * WebDAV 可先尝试整目录 MOVE；失败再逐文件。
- * 任一文件失败即抛错（由调用方整体放弃）。
+ * 每成功一项立即写入 `completed`（供半失败逆序回滚）。
  */
 async function renameVaultRemoteFiles(
   client: VaultRenameCloudClient,
   candidate: VaultRenameCandidate,
-  preferDirectoryMove: boolean
-): Promise<number> {
+  preferDirectoryMove: boolean,
+  completed: CompletedVaultRename[]
+): Promise<void> {
+  assertSafeSyncRelPath(candidate.oldName)
+  assertSafeSyncRelPath(candidate.newName)
+
   if (preferDirectoryMove) {
     try {
       await client.renameFile(candidate.oldName, candidate.newName)
-      return candidate.remoteFilePaths.length
+      completed.push({ oldPath: candidate.oldName, newPath: candidate.newName })
+      return
     } catch {
       // 整目录 MOVE 不可用时回落逐文件
     }
   }
 
-  let count = 0
   for (const oldPath of candidate.remoteFilePaths) {
     const newPath = rewriteSyncManifestVaultPath(oldPath, candidate.oldName, candidate.newName)
     if (newPath === oldPath) continue
+    assertSafeSyncRelPath(oldPath)
+    assertSafeSyncRelPath(newPath)
     await client.renameFile(oldPath, newPath)
-    count += 1
+    completed.push({ oldPath, newPath })
   }
-  return count
+}
+
+/** 逆序回滚已成功的云端 rename；全部成功返回 true */
+export async function rollbackCompletedVaultRenames(
+  client: VaultRenameCloudClient,
+  completed: readonly CompletedVaultRename[]
+): Promise<boolean> {
+  let allOk = true
+  for (let i = completed.length - 1; i >= 0; i -= 1) {
+    const item = completed[i]!
+    try {
+      await client.renameFile(item.newPath, item.oldPath)
+    } catch {
+      allOk = false
+    }
+  }
+  return allOk
 }
 
 /**
  * V2.5 rename pass：在三方合并前把远端旧前缀文件移到新前缀，并迁移远端/祖先 manifest。
- * 失败则整体放弃（不改写传入的 manifest），由调用方回落 V2.4 朴素路径。
+ * 中途失败时逆序回滚已成功 rename，不改写传入的 manifest，由调用方回落 V2.4 朴素路径。
  */
 export async function executeVaultRenamePass(options: {
   localVaults: Record<string, string>
@@ -289,14 +324,22 @@ export async function executeVaultRenamePass(options: {
 
   const client = options.cloudClient!
   const preferDirectoryMove = options.preferDirectoryMove === true
-  let renamedFileCount = 0
+  const completed: CompletedVaultRename[] = []
 
   try {
     for (const candidate of renames) {
-      renamedFileCount += await renameVaultRemoteFiles(client, candidate, preferDirectoryMove)
+      await renameVaultRemoteFiles(client, candidate, preferDirectoryMove, completed)
     }
   } catch (error) {
-    return { ok: false, reason: 'rename_failed', error, renames }
+    const rollbackOk = await rollbackCompletedVaultRenames(client, completed)
+    return {
+      ok: false,
+      reason: 'rename_failed',
+      error,
+      renames,
+      completedBeforeFailure: [...completed],
+      rollbackOk
+    }
   }
 
   const migrated = applyVaultRenamePassManifests(
@@ -304,6 +347,8 @@ export async function executeVaultRenamePass(options: {
     options.ancestorSnapshot,
     renames
   )
+
+  const renamedFileCount = renames.reduce((n, c) => n + c.remoteFilePaths.length, 0)
 
   return {
     ok: true,

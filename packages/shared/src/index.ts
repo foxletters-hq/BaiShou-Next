@@ -274,6 +274,7 @@ export { classifyIncrementalSyncPaths } from './sync/incremental-sync-path-class
 export type { RemovedManifestEntry } from './types/version-control.types'
 export {
   sessionBelongsToActiveVault,
+  sessionBelongsToActiveVaultId,
   resolveSessionFlushTargetVault
 } from './utils/session-vault.util'
 
@@ -400,6 +401,7 @@ export {
   applyVaultRenamePassManifests,
   simulateVaultRenamePass,
   executeVaultRenamePass,
+  rollbackCompletedVaultRenames,
   parseVaultIdToNameMap,
   parseLastRemoteVaultsSnapshot,
   serializeLastRemoteVaultsSnapshot,
@@ -412,8 +414,13 @@ export type {
   VaultRenamePassResult,
   VaultRenamePassSuccess,
   VaultRenamePassFailure,
-  VaultRenameCloudClient
+  VaultRenameCloudClient,
+  CompletedVaultRename
 } from './sync/sync-vault-rename-pass.util'
+export {
+  assertSafeSyncRelPath,
+  UnsafeSyncRelPathError
+} from './sync/sync-rel-path.util'
 export {
   prepareVaultRenamePassForPlan,
   prepareVaultRenamePassForSync

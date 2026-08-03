@@ -159,6 +159,115 @@ describe('sync-vault-rename-pass', () => {
     expect(ancestor.files['Personal/b.md']).toBeDefined()
   })
 
+  it('云端半迁移失败时逆序回滚已成功 rename', async () => {
+    const files = {
+      'Personal/a.md': entry('h1'),
+      'Personal/b.md': entry('h2'),
+      'Personal/c.md': entry('h3')
+    }
+    const remote = manifest(files)
+    const ancestor = manifest(files)
+    const renameFile = vi
+      .fn()
+      // a 成功
+      .mockResolvedValueOnce(undefined)
+      // b 成功
+      .mockResolvedValueOnce(undefined)
+      // c 失败 → 触发回滚
+      .mockRejectedValueOnce(new Error('network'))
+      // 逆序回滚：b 新→旧、a 新→旧
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+
+    const result = await executeVaultRenamePass({
+      localVaults: { [VAULT_ID]: '工作' },
+      lastRemoteVaults: { [VAULT_ID]: 'Personal' },
+      remoteManifest: remote,
+      ancestorSnapshot: ancestor,
+      cloudClient: { renameFile },
+      preferDirectoryMove: false
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toBe('rename_failed')
+    expect(result.rollbackOk).toBe(true)
+    expect(result.completedBeforeFailure).toEqual([
+      { oldPath: 'Personal/a.md', newPath: '工作/a.md' },
+      { oldPath: 'Personal/b.md', newPath: '工作/b.md' }
+    ])
+    expect(renameFile.mock.calls).toEqual([
+      ['Personal/a.md', '工作/a.md'],
+      ['Personal/b.md', '工作/b.md'],
+      ['Personal/c.md', '工作/c.md'],
+      ['工作/b.md', 'Personal/b.md'],
+      ['工作/a.md', 'Personal/a.md']
+    ])
+    expect(remote.files['Personal/a.md']).toBeDefined()
+    expect(remote.files['工作/a.md']).toBeUndefined()
+  })
+
+  it('半迁移回滚失败时仍返回 rename_failed 并记录 completed', async () => {
+    const files = {
+      'Personal/a.md': entry('h1'),
+      'Personal/b.md': entry('h2')
+    }
+    const renameFile = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('boom'))
+      // 回滚 a 也失败
+      .mockRejectedValueOnce(new Error('rollback boom'))
+
+    const result = await executeVaultRenamePass({
+      localVaults: { [VAULT_ID]: '工作' },
+      lastRemoteVaults: { [VAULT_ID]: 'Personal' },
+      remoteManifest: manifest(files),
+      ancestorSnapshot: manifest(files),
+      cloudClient: { renameFile },
+      preferDirectoryMove: false
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.rollbackOk).toBe(false)
+    expect(result.completedBeforeFailure).toEqual([
+      { oldPath: 'Personal/a.md', newPath: '工作/a.md' }
+    ])
+  })
+
+  it('rejects unsafe relative paths with ..', async () => {
+    const files = { 'Personal/../evil.md': entry('h1') }
+    const renameFile = vi.fn()
+    const result = await executeVaultRenamePass({
+      localVaults: { [VAULT_ID]: '工作' },
+      lastRemoteVaults: { [VAULT_ID]: 'Personal' },
+      remoteManifest: manifest(files),
+      ancestorSnapshot: manifest(files),
+      cloudClient: { renameFile },
+      preferDirectoryMove: false
+    })
+    // `Personal/../evil.md` 不在 vault 前缀下（normalize 后不匹配），无候选
+    // 另测显式危险 newName
+    expect(result.ok).toBe(false)
+
+    const renameFile2 = vi.fn()
+    const safeFiles = { 'Personal/a.md': entry('h1') }
+    // newName 含 ..
+    const bad = await executeVaultRenamePass({
+      localVaults: { [VAULT_ID]: '../hack' },
+      lastRemoteVaults: { [VAULT_ID]: 'Personal' },
+      remoteManifest: manifest(safeFiles),
+      ancestorSnapshot: manifest(safeFiles),
+      cloudClient: { renameFile: renameFile2 },
+      preferDirectoryMove: false
+    })
+    expect(bad.ok).toBe(false)
+    if (bad.ok) return
+    expect(bad.reason).toBe('rename_failed')
+    expect(renameFile2).not.toHaveBeenCalled()
+  })
+
   it('WebDAV preferDirectoryMove uses single directory MOVE when it succeeds', async () => {
     const files = {
       'Personal/a.md': entry('h1'),
