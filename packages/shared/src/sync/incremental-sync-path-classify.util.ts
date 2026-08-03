@@ -9,6 +9,8 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
   memory: boolean
   /** Graph/ nodes|edges JSONL — pending-index → graph_* tables */
   graph: boolean
+  /** Notebooks/ 结构层 + extracted + 原文 — 差集排 knowledge embed job */
+  notebooks: boolean
   sessionRefs: Array<{ vaultName: string; sessionId: string }>
 } {
   let journals = false
@@ -18,6 +20,7 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
   let assistants = false
   let memory = false
   let graph = false
+  let notebooks = false
   const sessionRefs: Array<{ vaultName: string; sessionId: string }> = []
   const seenSession = new Set<string>()
 
@@ -29,6 +32,7 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
     if (/(^|\/)Assistants\//.test(p)) assistants = true
     if (/(^|\/)Memory\//.test(p)) memory = true
     if (/(^|\/)Graph\//.test(p)) graph = true
+    if (/(^|\/)Notebooks\//.test(p)) notebooks = true
 
     const sessionMatch = p.match(/(?:^|\/)([^/]+)\/Sessions\/([^/]+)\.json$/i)
     const vaultName = sessionMatch?.[1]
@@ -43,5 +47,15 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
     }
   }
 
-  return { journals, sessions, summaries, settings, assistants, memory, graph, sessionRefs }
+  return {
+    journals,
+    sessions,
+    summaries,
+    settings,
+    assistants,
+    memory,
+    graph,
+    notebooks,
+    sessionRefs
+  }
 }
