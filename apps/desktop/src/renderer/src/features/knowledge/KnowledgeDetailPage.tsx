@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { KnowledgeShell } from './KnowledgeShell'
@@ -17,6 +17,7 @@ type SourceRow = {
   pageCount?: number | null
   textPageCount?: number | null
   originUrl?: string | null
+  extractEngine?: string | null
 }
 
 type Citation = {
@@ -31,6 +32,7 @@ type Citation = {
 }
 
 type ImportMode = 'file' | 'text' | 'url' | null
+type AskMode = 'ask' | 'chat'
 
 function statusLabel(
   t: (key: string, fallback: string) => string,
@@ -61,6 +63,7 @@ export const KnowledgeDetailPage: React.FC = () => {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [citations, setCitations] = useState<Citation[]>([])
+  const [subQueries, setSubQueries] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
@@ -70,6 +73,23 @@ export const KnowledgeDetailPage: React.FC = () => {
   const [urlValue, setUrlValue] = useState('')
   const [preview, setPreview] = useState<{ title: string; text: string; truncated: boolean } | null>(
     null
+  )
+  const [askMode, setAskMode] = useState<AskMode>('ask')
+  const [multiQuery, setMultiQuery] = useState(false)
+  const [selectedChatIds, setSelectedChatIds] = useState<string[]>([])
+  const [showSettings, setShowSettings] = useState(false)
+  const [engine, setEngine] = useState<'simple' | 'ocr' | 'vision'>('simple')
+  const [ocrLanguage, setOcrLanguage] = useState('chi_sim+eng')
+  const [capLine, setCapLine] = useState('')
+
+  const notes = useMemo(() => sources.filter((s) => s.sourceKind === 'note'), [sources])
+  const materials = useMemo(() => sources.filter((s) => s.sourceKind !== 'note'), [sources])
+  const readyForChat = useMemo(
+    () =>
+      materials.filter(
+        (s) => s.status === 'ready' || s.status === 'partial' || s.status === 'embedding'
+      ),
+    [materials]
   )
 
   const refresh = useCallback(async () => {
@@ -97,28 +117,79 @@ export const KnowledgeDetailPage: React.FC = () => {
     }
   }, [notebookId, t])
 
+  const refreshCaps = useCallback(async () => {
+    try {
+      const [caps, cfg] = await Promise.all([
+        window.api.knowledge.getCapabilities(),
+        window.api.knowledge.getConfig()
+      ])
+      if (cfg.defaultExtractEngine) setEngine(cfg.defaultExtractEngine)
+      if (cfg.ocrLanguage) setOcrLanguage(cfg.ocrLanguage)
+      if (typeof cfg.multiQueryAsk === 'boolean') setMultiQuery(cfg.multiQueryAsk)
+      const parts = [
+        caps.simple.available ? 'simple✓' : 'simple✗',
+        caps.ocr.available
+          ? `ocr✓${caps.ocr.detail ? `（${caps.ocr.detail}）` : ''}`
+          : `ocr✗ ${caps.ocr.reason || ''}`,
+        caps.vision.available
+          ? `vision✓${caps.vision.detail ? `（${caps.vision.detail}）` : ''}`
+          : `vision✗ ${caps.vision.reason || ''}`
+      ]
+      setCapLine(parts.join(' · '))
+    } catch {
+      setCapLine('')
+    }
+  }, [])
+
   useEffect(() => {
     void refresh().catch((e) => setError(String(e?.message || e)))
+    void refreshCaps()
     const timer = window.setInterval(() => {
       void refresh().catch(() => undefined)
     }, 4000)
     return () => window.clearInterval(timer)
-  }, [refresh])
+  }, [refresh, refreshCaps])
 
   const onAsk = async () => {
     const q = question.trim()
     if (!q || !notebookId) return
     setBusy(true)
     setError('')
-    setStatus(t('knowledge.asking', '正在检索并生成回答…'))
+    setSubQueries([])
+    setStatus(
+      askMode === 'chat'
+        ? t('knowledge.chatting', '正在精读所选材料…')
+        : t('knowledge.asking', '正在检索并生成回答…')
+    )
     try {
       const mismatch = await window.api.knowledge.hasModelMismatch?.()
-      if (mismatch) {
-        throw new Error('knowledge-model-mismatch')
+      if (mismatch) throw new Error('knowledge-model-mismatch')
+
+      if (askMode === 'chat') {
+        if (!selectedChatIds.length) {
+          throw new Error(t('knowledge.chat_need_sources', '请先勾选要精读的资料'))
+        }
+        const result = await window.api.knowledge.chat({
+          notebookId,
+          question: q,
+          sourceIds: selectedChatIds
+        })
+        setAnswer(
+          result.truncated
+            ? `${result.answer}\n\n（${t('knowledge.chat_truncated', '材料已按 token 预算裁剪')}）`
+            : result.answer
+        )
+        setCitations(result.citations || [])
+      } else {
+        const result = await window.api.knowledge.ask({
+          notebookId,
+          question: q,
+          multiQuery
+        })
+        setAnswer(result.answer)
+        setCitations(result.citations || [])
+        setSubQueries(result.subQueries || [])
       }
-      const result = await window.api.knowledge.ask({ notebookId, question: q })
-      setAnswer(result.answer)
-      setCitations(result.citations || [])
       setStatus('')
     } catch (e: any) {
       const msg = String(e?.message || e)
@@ -138,6 +209,65 @@ export const KnowledgeDetailPage: React.FC = () => {
     }
   }
 
+  const onSaveNote = async () => {
+    if (!notebookId || !answer.trim() || !question.trim()) return
+    setBusy(true)
+    try {
+      await window.api.knowledge.saveNote({
+        notebookId,
+        question: question.trim(),
+        answer: answer.trim(),
+        citations: citations.map((c) => ({
+          title: c.title,
+          page: c.page,
+          excerpt: c.excerpt
+        }))
+      })
+      await refresh()
+      setStatus(t('knowledge.note_saved', '已保存为 Note，并加入索引队列'))
+    } catch (e: any) {
+      setError(String(e?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onOcrMissing = async (sourceId: string) => {
+    setBusy(true)
+    setError('')
+    try {
+      const result = await window.api.knowledge.ocrMissingPages({
+        sourceId,
+        engine: engine === 'simple' ? 'ocr' : engine
+      })
+      if (result.degradationMessage) setStatus(result.degradationMessage)
+      else setStatus(t('knowledge.ocr_queued', '已对缺失页执行 OCR'))
+      await refresh()
+    } catch (e: any) {
+      setError(String(e?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onSaveSettings = async () => {
+    setBusy(true)
+    try {
+      await window.api.knowledge.setConfig({
+        defaultExtractEngine: engine,
+        ocrLanguage,
+        multiQueryAsk: multiQuery
+      })
+      await refreshCaps()
+      setShowSettings(false)
+      setStatus(t('knowledge.settings_saved', '知识库设置已保存'))
+    } catch (e: any) {
+      setError(String(e?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const onImportFile = async () => {
     if (!notebookId) return
     setBusy(true)
@@ -145,9 +275,7 @@ export const KnowledgeDetailPage: React.FC = () => {
     try {
       const files = await window.api.pickFiles({
         properties: ['openFile', 'multiSelections'],
-        filters: [
-          { name: 'Documents', extensions: ['pdf', 'md', 'txt', 'markdown'] }
-        ]
+        filters: [{ name: 'Documents', extensions: ['pdf', 'md', 'txt', 'markdown'] }]
       })
       for (const file of files || []) {
         await window.api.knowledge.importSource({
@@ -155,7 +283,8 @@ export const KnowledgeDetailPage: React.FC = () => {
           title: file.fileName || 'file',
           kind: 'file',
           absolutePath: file.filePath,
-          fileName: file.fileName
+          fileName: file.fileName,
+          extractEngine: engine
         })
       }
       setImportMode(null)
@@ -259,6 +388,82 @@ export const KnowledgeDetailPage: React.FC = () => {
     }
   }
 
+  const toggleChatSource = (id: string) => {
+    setSelectedChatIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const renderSourceItem = (source: SourceRow) => {
+    const missingPages =
+      source.pageCount != null &&
+      source.textPageCount != null &&
+      source.pageCount > source.textPageCount
+        ? source.pageCount - source.textPageCount
+        : null
+    const needsOcrBtn = source.status === 'needs_ocr' || source.status === 'partial'
+    return (
+      <li key={source.id} className={styles.sourceItem}>
+        <div className={styles.sourceTop}>
+          {askMode === 'chat' && source.sourceKind !== 'note' ? (
+            <label className={styles.chatCheck}>
+              <input
+                type="checkbox"
+                checked={selectedChatIds.includes(source.id)}
+                onChange={() => toggleChatSource(source.id)}
+                disabled={!readyForChat.some((s) => s.id === source.id)}
+              />
+            </label>
+          ) : null}
+          <span className={styles.sourceTitle}>
+            {source.sourceKind === 'note' ? '📝 ' : ''}
+            {source.title}
+          </span>
+          <span className={styles.sourceStatus}>{statusLabel(t, source.status)}</span>
+        </div>
+        {missingPages != null && missingPages > 0 ? (
+          <div className={styles.sourceEvidence}>
+            {t('knowledge.scan_evidence', '{{total}} 页中 {{missing}} 页无文本层', {
+              total: source.pageCount,
+              missing: missingPages
+            })}
+          </div>
+        ) : null}
+        {source.errorMessage ? (
+          <div className={styles.sourceEvidence}>{source.errorMessage}</div>
+        ) : null}
+        {source.originUrl ? (
+          <div className={styles.sourceEvidence}>{source.originUrl}</div>
+        ) : null}
+        <div className={styles.sourceActions}>
+          <button type="button" className={styles.btnGhost} onClick={() => void onPreview(source)}>
+            {t('knowledge.preview_extracted', '预览正文')}
+          </button>
+          {needsOcrBtn ? (
+            <button
+              type="button"
+              className={styles.btn}
+              disabled={busy}
+              onClick={() => void onOcrMissing(source.id)}
+            >
+              {t('knowledge.ocr_missing_pages', '只 OCR 缺失页')}
+            </button>
+          ) : null}
+          {source.status === 'failed' || source.status === 'needs_ocr' ? (
+            <button
+              type="button"
+              className={styles.btn}
+              disabled={busy}
+              onClick={() => void onRetry(source.id)}
+            >
+              {t('knowledge.retry', '重试')}
+            </button>
+          ) : null}
+        </div>
+      </li>
+    )
+  }
+
   return (
     <KnowledgeShell setFolderRoot={setFolderRoot}>
       <div className={styles.mainInner}>
@@ -276,6 +481,11 @@ export const KnowledgeDetailPage: React.FC = () => {
               {t('knowledge.detail_subtitle', '左侧管理资料，右侧提问并查看带页码/偏移的引用。')}
             </p>
             {storageLine ? <p className={styles.subtitle}>{storageLine}</p> : null}
+            {capLine ? (
+              <p className={styles.subtitle}>
+                {t('knowledge.engine_caps', '引擎状态')}：{capLine}
+              </p>
+            ) : null}
           </div>
           <div className={styles.actions}>
             <button type="button" className={styles.btn} onClick={() => setImportMode('file')} disabled={busy}>
@@ -286,6 +496,14 @@ export const KnowledgeDetailPage: React.FC = () => {
             </button>
             <button type="button" className={styles.btn} onClick={() => setImportMode('url')} disabled={busy}>
               {t('knowledge.import_url', '导入 URL')}
+            </button>
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={() => setShowSettings(true)}
+              disabled={busy}
+            >
+              {t('knowledge.settings', '知识库设置')}
             </button>
             <button type="button" className={styles.btnGhost} onClick={() => void onRebuild()} disabled={busy}>
               {t('knowledge.rebuild_index', '重建索引')}
@@ -299,68 +517,53 @@ export const KnowledgeDetailPage: React.FC = () => {
         <div className={styles.detailLayout}>
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>{t('knowledge.sources_panel', '资料')}</h2>
-            {sources.length === 0 ? (
-              <div className={styles.empty}>{t('knowledge.empty_sources', '还没有资料，先导入 PDF / Markdown / URL。')}</div>
+            {materials.length === 0 ? (
+              <div className={styles.empty}>
+                {t('knowledge.empty_sources', '还没有资料，先导入 PDF / Markdown / URL。')}
+              </div>
             ) : (
-              <ul className={styles.sourceList}>
-                {sources.map((source) => {
-                  const missingPages =
-                    source.pageCount != null &&
-                    source.textPageCount != null &&
-                    source.pageCount > source.textPageCount
-                      ? source.pageCount - source.textPageCount
-                      : null
-                  return (
-                    <li key={source.id} className={styles.sourceItem}>
-                      <div className={styles.sourceTop}>
-                        <span className={styles.sourceTitle}>{source.title}</span>
-                        <span className={styles.sourceStatus}>
-                          {statusLabel(t, source.status)}
-                        </span>
-                      </div>
-                      {missingPages != null && missingPages > 0 ? (
-                        <div className={styles.sourceEvidence}>
-                          {t(
-                            'knowledge.scan_evidence',
-                            '{{total}} 页中 {{missing}} 页无文本层',
-                            { total: source.pageCount, missing: missingPages }
-                          )}
-                        </div>
-                      ) : null}
-                      {source.errorMessage ? (
-                        <div className={styles.sourceEvidence}>{source.errorMessage}</div>
-                      ) : null}
-                      {source.originUrl ? (
-                        <div className={styles.sourceEvidence}>{source.originUrl}</div>
-                      ) : null}
-                      <div className={styles.sourceActions}>
-                        <button
-                          type="button"
-                          className={styles.btnGhost}
-                          onClick={() => void onPreview(source)}
-                        >
-                          {t('knowledge.preview_extracted', '预览正文')}
-                        </button>
-                        {source.status === 'failed' || source.status === 'needs_ocr' ? (
-                          <button
-                            type="button"
-                            className={styles.btn}
-                            disabled={busy}
-                            onClick={() => void onRetry(source.id)}
-                          >
-                            {t('knowledge.retry', '重试')}
-                          </button>
-                        ) : null}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+              <ul className={styles.sourceList}>{materials.map(renderSourceItem)}</ul>
             )}
+            {notes.length > 0 ? (
+              <>
+                <h2 className={styles.panelTitle}>{t('knowledge.notes_panel', 'Notes')}</h2>
+                <ul className={styles.sourceList}>{notes.map(renderSourceItem)}</ul>
+              </>
+            ) : null}
           </section>
 
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>{t('knowledge.ask_panel', '提问')}</h2>
+            <div className={styles.modeRow}>
+              <button
+                type="button"
+                className={askMode === 'ask' ? styles.btnPrimary : styles.btnGhost}
+                onClick={() => setAskMode('ask')}
+              >
+                Ask
+              </button>
+              <button
+                type="button"
+                className={askMode === 'chat' ? styles.btnPrimary : styles.btnGhost}
+                onClick={() => setAskMode('chat')}
+              >
+                {t('knowledge.chat_mode', 'Chat 精读')}
+              </button>
+              {askMode === 'ask' ? (
+                <label className={styles.chatCheck}>
+                  <input
+                    type="checkbox"
+                    checked={multiQuery}
+                    onChange={(e) => setMultiQuery(e.target.checked)}
+                  />
+                  {t('knowledge.multi_query', '多子查询（最多 2）')}
+                </label>
+              ) : (
+                <span className={styles.subtitle}>
+                  {t('knowledge.chat_hint', '勾选左侧资料，全文进上下文（有预算裁剪）')}
+                </span>
+              )}
+            </div>
             <div className={styles.askBox}>
               <textarea
                 className={styles.askInput}
@@ -378,9 +581,26 @@ export const KnowledgeDetailPage: React.FC = () => {
                   disabled={busy || !question.trim()}
                   onClick={() => void onAsk()}
                 >
-                  {t('knowledge.ask_submit', '提问')}
+                  {askMode === 'chat'
+                    ? t('knowledge.chat_submit', '精读提问')
+                    : t('knowledge.ask_submit', '提问')}
                 </button>
+                {answer ? (
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    disabled={busy}
+                    onClick={() => void onSaveNote()}
+                  >
+                    {t('knowledge.save_note', '保存为 Note')}
+                  </button>
+                ) : null}
               </div>
+              {subQueries.length > 0 ? (
+                <p className={styles.subtitle}>
+                  {t('knowledge.sub_queries', '子查询')}：{subQueries.join(' · ')}
+                </p>
+              ) : null}
               <div className={styles.answer}>
                 {answer || t('knowledge.ask_empty', '回答会出现在这里，并附带资料引用。')}
               </div>
@@ -413,12 +633,67 @@ export const KnowledgeDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {showSettings ? (
+        <div
+          className={styles.dialogBackdrop}
+          role="presentation"
+          onClick={() => !busy && setShowSettings(false)}
+        >
+          <div className={styles.dialog} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.dialogTitle}>{t('knowledge.settings', '知识库设置')}</h2>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>{t('knowledge.default_engine', '默认提取引擎')}</span>
+              <select
+                className={styles.fieldInput}
+                value={engine}
+                onChange={(e) => setEngine(e.target.value as 'simple' | 'ocr' | 'vision')}
+              >
+                <option value="simple">simple（文本层）</option>
+                <option value="ocr">ocr（tesseract.js）</option>
+                <option value="vision">vision（多模态）</option>
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>{t('knowledge.ocr_language', 'OCR 语言')}</span>
+              <input
+                className={styles.fieldInput}
+                value={ocrLanguage}
+                onChange={(e) => setOcrLanguage(e.target.value)}
+                placeholder="chi_sim+eng"
+              />
+            </label>
+            <p className={styles.subtitle}>{capLine}</p>
+            <div className={styles.dialogActions}>
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => setShowSettings(false)}
+                disabled={busy}
+              >
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => void onSaveSettings()}
+                disabled={busy}
+              >
+                {t('common.save', '保存')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {importMode === 'file' ? (
         <div className={styles.dialogBackdrop} role="presentation" onClick={() => !busy && setImportMode(null)}>
           <div className={styles.dialog} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.dialogTitle}>{t('knowledge.import_file', '导入文件')}</h2>
             <p className={styles.subtitle}>
               {t('knowledge.import_file_hint', '支持 PDF（文本层）、Markdown、纯文本。')}
+            </p>
+            <p className={styles.subtitle}>
+              {t('knowledge.import_engine_hint', '将使用当前默认引擎')}：{engine}
             </p>
             <div className={styles.dialogActions}>
               <button type="button" className={styles.btnGhost} onClick={() => setImportMode(null)} disabled={busy}>

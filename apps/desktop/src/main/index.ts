@@ -449,6 +449,12 @@ app.whenReady().then(async () => {
     const { registerDesktopPdfPageExtractor } =
       await import('./services/register-desktop-pdf-extractor')
     registerDesktopPdfPageExtractor()
+    const { registerDesktopPdfPageBitmapRenderer } =
+      await import('./services/register-desktop-pdf-bitmap-renderer')
+    registerDesktopPdfPageBitmapRenderer()
+    const { registerDesktopVisionPageRecognizer } =
+      await import('./services/register-desktop-vision-ocr')
+    registerDesktopVisionPageRecognizer()
   } catch (e) {
     logger.warn('[Startup] registerDesktopPdfPageExtractor failed:', e as Error)
   }
