@@ -39,6 +39,42 @@ export interface ExtractDiariesResult {
   errors: Array<{ filePath: string; message: string }>
 }
 
+/** Conservative (overestimate) cost/time for first-run graph extraction guide. */
+export interface ExtractionCostEstimate {
+  entryCount: number
+  estimatedTokens: number
+  /** Lower bound yuan (still slightly over true average). */
+  estimatedYuanLow: number
+  estimatedYuanHigh: number
+  estimatedMinutesLow: number
+  estimatedMinutesHigh: number
+}
+
+/** ~600 tokens/entry (in+out), overestimate pricing & latency. */
+const ESTIMATE_TOKENS_PER_ENTRY = 600
+const ESTIMATE_YUAN_PER_1K_LOW = 0.005
+const ESTIMATE_YUAN_PER_1K_HIGH = 0.012
+const ESTIMATE_SECONDS_PER_ENTRY_LOW = 2
+const ESTIMATE_SECONDS_PER_ENTRY_HIGH = 4
+
+/**
+ * Estimate LLM cost/time for extracting `entryCount` diaries.
+ * Numbers are intentionally conservative (prefer overestimate).
+ */
+export function estimateExtractionCost(entryCount: number): ExtractionCostEstimate {
+  const n = Math.max(0, Math.floor(entryCount))
+  const estimatedTokens = n * ESTIMATE_TOKENS_PER_ENTRY
+  const k = estimatedTokens / 1000
+  return {
+    entryCount: n,
+    estimatedTokens,
+    estimatedYuanLow: Math.round(k * ESTIMATE_YUAN_PER_1K_LOW * 100) / 100,
+    estimatedYuanHigh: Math.round(k * ESTIMATE_YUAN_PER_1K_HIGH * 100) / 100,
+    estimatedMinutesLow: Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_LOW) / 60)),
+    estimatedMinutesHigh: Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_HIGH) / 60))
+  }
+}
+
 interface LlmEntity {
   name: string
   type: string
