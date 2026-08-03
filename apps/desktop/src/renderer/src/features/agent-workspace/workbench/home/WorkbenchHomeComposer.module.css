@@ -1,0 +1,55 @@
+.composer {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.inputWrap {
+  width: 100%;
+}
+
+.inputWrap :global([data-desktop-input-bar]) {
+  padding-top: 0;
+  padding-bottom: 4px;
+}
+
+/* 工作空间 / 权限：落在输入框底部延伸条内 */
+.selectors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.metaSelect {
+  width: auto;
+  flex: 0 1 auto;
+}
+
+.customHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.customLink {
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.customLink:hover {
+  text-decoration: underline;
+}
