@@ -273,7 +273,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                         opt.leading && opt.centered ? styles.chooseItemCentered : null,
                         {
                           backgroundColor: pressed ? colors.bgSurfaceNormal : 'transparent',
-                          borderColor: colors.borderSubtle
+                          borderColor: colors.borderControl
                         }
                       ]}
                     >

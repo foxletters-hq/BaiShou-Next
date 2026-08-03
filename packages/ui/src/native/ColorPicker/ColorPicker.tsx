@@ -77,7 +77,12 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ value, onChange, visib
 
             {/* Preview */}
             <View style={styles.previewRow}>
-              <View style={[styles.previewCircle, { backgroundColor: value }]} />
+              <View
+                style={[
+                  styles.previewCircle,
+                  { backgroundColor: value, borderColor: colors.borderControl }
+                ]}
+              />
               <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>{value}</Text>
             </View>
 
@@ -180,8 +185,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)'
+    borderWidth: 2
   },
   previewLabel: {
     fontSize: 15,

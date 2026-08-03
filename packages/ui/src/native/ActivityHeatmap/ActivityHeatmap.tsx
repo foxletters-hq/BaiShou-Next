@@ -150,7 +150,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
         <View style={styles.selectors}>
           {onYearChange && (
             <Pressable
-              style={[styles.yearBtn, { borderColor: colors.borderSubtle }]}
+              style={[styles.yearBtn, { borderColor: colors.borderControl }]}
               onPress={() => setShowYearPicker(true)}
             >
               <Text style={{ color: colors.primary, fontWeight: '600' }}>
@@ -184,7 +184,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                     styles.yearOption,
                     {
                       backgroundColor: y === year ? colors.primary + '20' : colors.bgSurfaceNormal,
-                      borderColor: y === year ? colors.primary : colors.borderSubtle
+                      borderColor: y === year ? colors.primary : colors.borderControl
                     }
                   ]}
                   onPress={() => {

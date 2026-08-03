@@ -13,6 +13,7 @@ interface ThemeColors {
   textSecondary: string
   textTertiary: string
   borderSubtle: string
+  borderControl: string
   error?: string
 }
 
@@ -100,7 +101,7 @@ export const NativeChatBubbleEditActions: React.FC<NativeChatBubbleEditActionsPr
       <TouchableOpacity
         onPress={onCancel}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        style={[styles.editBtn, styles.comfortableEditBtn, { borderColor: colors.borderSubtle }]}
+        style={[styles.editBtn, styles.comfortableEditBtn, { borderColor: colors.borderControl }]}
       >
         <Text
           style={[

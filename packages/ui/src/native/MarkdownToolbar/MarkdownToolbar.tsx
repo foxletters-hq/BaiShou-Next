@@ -126,7 +126,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(onUndo)}
               disabled={!onUndo}
               accessibilityLabel={t('diary.toolbar_undo', '撤销')}
@@ -142,7 +142,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(onRedo)}
               disabled={!onRedo}
               accessibilityLabel={t('diary.toolbar_redo', '重做')}
@@ -158,7 +158,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('**'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_bold', '加粗')}
@@ -177,7 +177,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('*'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_italic', '斜体')}
@@ -197,7 +197,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('~~'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_strikethrough', '删除线')}
@@ -217,7 +217,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onToggleMark?.('`'))}
               disabled={!onToggleMark}
               accessibilityLabel={t('diary.toolbar_code', '行内代码')}
@@ -233,7 +233,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('> '))}
               accessibilityLabel={t('diary.toolbar_quote', '引用')}
             >
@@ -244,7 +244,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('- '))}
               accessibilityLabel={t('diary.toolbar_list', '无序列表')}
             >
@@ -255,7 +255,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('#'))}
               accessibilityLabel={t('diary.toolbar_insert_tag', '插入标签')}
             >
@@ -266,7 +266,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('##### '))}
               accessibilityLabel={t('diary.toolbar_insert_h5', '插入五级标题')}
             >
@@ -277,7 +277,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(() => onInsertText('###### '))}
               accessibilityLabel={t('diary.toolbar_insert_h6', '插入六级标题')}
             >
@@ -288,7 +288,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
           return (
             <ToolbarButton
               key={id}
-              borderColor={colors.borderSubtle}
+              borderColor={colors.borderControl}
               onPress={guardPress(onPickImages)}
               disabled={!onPickImages || pickingImages}
               accessibilityLabel={t('diary.toolbar_insert_image', '插入图片')}
@@ -330,7 +330,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
       items.push(
         <ToolbarButton
           key="settings"
-          borderColor={colors.borderSubtle}
+          borderColor={colors.borderControl}
           onPress={guardPress(() => setSettingsVisible(true))}
           accessibilityLabel={t('diary.toolbar_settings', '工具栏设置')}
         >
@@ -340,7 +340,7 @@ export const MarkdownToolbar: React.FC<MarkdownToolbarProps> = ({
     }
 
     return items
-  }, [colors.borderSubtle, guardPress, iconColor, onToolOrderChange, renderTool, t, toolOrder])
+  }, [colors.borderControl, guardPress, iconColor, onToolOrderChange, renderTool, t, toolOrder])
 
   return (
     <View

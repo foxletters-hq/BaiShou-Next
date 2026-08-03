@@ -49,7 +49,7 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
           styles.triggerBtn,
           {
             backgroundColor: colors.bgSurface,
-            borderColor: colors.borderSubtle
+            borderColor: colors.borderControl
           }
         ]}
         accessibilityRole="button"

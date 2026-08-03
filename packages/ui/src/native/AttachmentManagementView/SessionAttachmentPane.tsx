@@ -63,7 +63,7 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
               styles.actionBtn,
               {
                 backgroundColor: activeTab === 'all' ? colors.primary : 'transparent',
-                borderColor: activeTab === 'all' ? colors.primary : colors.borderSubtle
+                borderColor: activeTab === 'all' ? colors.primary : colors.borderControl
               }
             ]}
             onPress={() => {
@@ -85,7 +85,7 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
               styles.actionBtn,
               {
                 backgroundColor: activeTab === 'orphans' ? colors.primary : 'transparent',
-                borderColor: activeTab === 'orphans' ? colors.primary : colors.borderSubtle
+                borderColor: activeTab === 'orphans' ? colors.primary : colors.borderControl
               }
             ]}
             onPress={() => {
@@ -127,7 +127,7 @@ export const SessionAttachmentPane: React.FC<{ vm: AttachmentManagementViewModel
           )}
           {displayList.length > 0 && (
             <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: colors.borderSubtle }]}
+              style={[styles.actionBtn, { borderColor: colors.borderControl }]}
               onPress={handleSelectAll}
             >
               <CheckSquare
