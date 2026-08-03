@@ -6,11 +6,12 @@ import {
   AGENT_GATE_PROFILE_DEFAULT_RULES,
   AgentGateEffect,
   AgentGateProfileId,
-  AgentGateTrustMode,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   DEFAULT_AGENT_GATE_EXCLUSION_LIST,
   DEFAULT_AGENT_GATE_NOTIFICATION_PREFS,
   DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
+  hasCatchAllAllowRule,
+  setCatchAllAllowRule,
   type AgentGateNotificationPrefs,
   type BaishouAgentGateConfig,
   type AgentGateAllowlistEntry,
@@ -75,13 +76,10 @@ export const AgentGateSettingsSection: React.FC = () => {
 
   const handleTrustToggle = (fullTrust: boolean) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    void persist({
-      ...config,
-      trustMode: fullTrust ? AgentGateTrustMode.FullTrust : AgentGateTrustMode.Manual
-    })
+    void persist(setCatchAllAllowRule(config, fullTrust))
   }
 
-  const handleBoolToggle = (key: 'hideDeniedTools' | 'forceAskExternalPath', value: boolean) => {
+  const handleBoolToggle = (key: 'hideDeniedTools', value: boolean) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
     void persist({
       ...config,
@@ -102,7 +100,7 @@ export const AgentGateSettingsSection: React.FC = () => {
     }
   }
 
-  const isFullTrust = config.trustMode === AgentGateTrustMode.FullTrust
+  const isFullTrust = hasCatchAllAllowRule(config)
   const exclusionList = config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST]
   const threshold =
     config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
@@ -199,25 +197,6 @@ export const AgentGateSettingsSection: React.FC = () => {
           <Switch
             value={config.hideDeniedTools !== false}
             onValueChange={(v) => handleBoolToggle('hideDeniedTools', v)}
-          />
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
-        <View style={styles.row}>
-          <View style={styles.rowText}>
-            <Text style={[styles.label, { color: colors.textPrimary }]}>
-              {t('agent.gate.force_ask_external', '工作区外路径强制确认')}
-            </Text>
-            <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              {t(
-                'agent.gate.force_ask_external_hint',
-                '触及工作区外路径时始终确认，即使完全信任或已始终允许'
-              )}
-            </Text>
-          </View>
-          <Switch
-            value={config.forceAskExternalPath !== false}
-            onValueChange={(v) => handleBoolToggle('forceAskExternalPath', v)}
           />
         </View>
 
