@@ -100,6 +100,7 @@ export function GraphScreen() {
     try {
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
       const result = await mobileExtractDiaries({
+        vaultId,
         vaultName,
         drizzleDb: runtime.drizzleDb,
         shadowRepo,

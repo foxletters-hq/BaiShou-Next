@@ -512,6 +512,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const updated: MemoryRawRecord = {
         id: sourceId,
         schemaVersion: 1,
+        vaultId: existing?.vaultId ?? vaultId,
         vaultName: existing?.vaultName ?? vaultName,
         content: trimmed,
         tags: existing?.tags ?? [],
@@ -564,6 +565,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const record: MemoryRawRecord = {
         id,
         schemaVersion: 1,
+        vaultId,
         vaultName,
         content,
         tags: [],

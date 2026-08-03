@@ -3,7 +3,8 @@ import {
   isAgentStreamAbortError,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
-  logger
+  logger,
+  resolveVaultIdentity
 } from '@baishou/shared'
 import {
   AgentSessionService,
@@ -163,7 +164,10 @@ export function createStartAgentChat(deps: {
           },
           graphReader: new GraphReaderAdapter(async (opts) => {
             const session = await runtime.sessionRepo.getSessionById(sessionId)
-            const vaultName = session?.vaultName || 'Personal'
+            const vaultId = resolveVaultIdentity({
+              vaultId: session?.vaultId,
+              vaultName: session?.vaultName || 'Personal'
+            }).id
             const rag = new GraphRagService(new GraphRepository(runtime.drizzleDb))
             let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
             if (embeddingProvider && embeddingModelId) {
@@ -177,7 +181,7 @@ export function createStartAgentChat(deps: {
               }
             }
             const result = await rag.recallRelations({
-              vaultName,
+              vaultId,
               entity: opts.entity,
               mode: opts.mode,
               embedQuery

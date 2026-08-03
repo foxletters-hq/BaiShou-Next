@@ -11,7 +11,8 @@ import type {
   SettingsManagerService,
   AssistantManagerService,
   SessionManagerService,
-  RawDataSourceManager
+  RawDataSourceManager,
+  VaultService
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import {
@@ -64,7 +65,8 @@ export class MobileIncrementalSyncService {
     onAfterSyncComplete?: () => void,
     private readonly assistantManager?: AssistantManagerService,
     private readonly sessionManager?: SessionManagerService,
-    getRawDataSourceManager?: () => RawDataSourceManager | null
+    getRawDataSourceManager?: () => RawDataSourceManager | null,
+    private readonly vaultService?: VaultService
   ) {
     this.engine = new MobileIncrementalEngine(
       pathService,
@@ -105,6 +107,7 @@ export class MobileIncrementalSyncService {
       settingsManager: this.settingsManager,
       pathService: this.pathService,
       fileSystem: this.fileSystem,
+      vaultService: this.vaultService,
       bootstrapper: this.bootstrapper,
       sessionManager: this.sessionManager,
       reportPostSync: (statusText, current, total) =>

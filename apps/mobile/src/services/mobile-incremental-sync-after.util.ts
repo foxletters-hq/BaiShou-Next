@@ -1,7 +1,8 @@
 import type {
   IFileSystem,
   SettingsManagerService,
-  SessionManagerService
+  SessionManagerService,
+  VaultService
 } from '@baishou/core-mobile'
 import type { IStoragePathService } from '@baishou/core-mobile'
 import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar-reconcile.util'
@@ -15,6 +16,7 @@ export interface MobileIncrementalAfterSyncDeps {
   settingsManager: SettingsManagerService
   pathService: IStoragePathService
   fileSystem: IFileSystem
+  vaultService?: VaultService
   bootstrapper?: MobileDataBootstrapper
   sessionManager?: SessionManagerService
   reportPostSync: (statusText: string, current: number, total: number) => void
@@ -153,7 +155,18 @@ export async function runMobileIncrementalAfterSync(
             ? await pathServiceWithVault.getActiveVaultNameForContext()
             : null
         if (runtime?.drizzleDb && activeVaultName) {
-          const activeVaultId = deriveLegacyVaultId(activeVaultName)
+          let activeVaultId: string | undefined
+          try {
+            if (deps.vaultService) {
+              await deps.vaultService.initRegistry()
+              activeVaultId = deps.vaultService.getActiveVault()?.id
+            }
+          } catch {
+            activeVaultId = undefined
+          }
+          if (!activeVaultId) {
+            activeVaultId = deriveLegacyVaultId(activeVaultName)
+          }
           const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
           await runMobileDerivedIndexHydration({
             drizzleDb: runtime.drizzleDb,

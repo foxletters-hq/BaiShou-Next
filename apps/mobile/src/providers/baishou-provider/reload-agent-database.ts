@@ -156,6 +156,7 @@ export function assignReloadAgentDatabaseHandler(
         return buildMobileMcpToolContext({
           settingsManager: runtime?.settingsManager ?? newRuntime.settingsManager,
           pathService: vaultCtx.pathService,
+          vaultService: vaultCtx.vaultService,
           getDiarySearcher,
           drizzleDb: runtime?.drizzleDb ?? newDrizzleDb,
           webSearchResultFetcher: webFetchContent,
@@ -165,7 +166,8 @@ export function assignReloadAgentDatabaseHandler(
       () =>
         buildMobileMcpToolListContext({
           settingsManager: newRuntime.settingsManager,
-          pathService: vaultCtx.pathService
+          pathService: vaultCtx.pathService,
+          vaultService: vaultCtx.vaultService
         })
     )
     vaultCtx.mobileMcpService = mobileMcpService
@@ -193,7 +195,8 @@ export function assignReloadAgentDatabaseHandler(
       },
       newRuntime.assistantManager,
       newRuntime.sessionManager,
-      () => getMobileRawDataSourceManager()
+      () => getMobileRawDataSourceManager(),
+      vaultCtx.vaultService
     )
 
     if (isMounted()) {

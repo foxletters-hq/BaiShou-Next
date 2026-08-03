@@ -13,14 +13,15 @@ import {
   SqliteHybridSearchRepository,
   createSqlExecutorFromDrizzleDb
 } from '@baishou/database'
-import type { SettingsManagerService } from '@baishou/core-mobile'
-import { logger } from '@baishou/shared'
+import type { SettingsManagerService, VaultService } from '@baishou/core-mobile'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import type { MobileStoragePathService } from './path.service'
 import { buildMobileStreamUserConfig } from './mobile-context-at-message.service'
 
 export interface MobileMcpToolContextDeps {
   settingsManager: SettingsManagerService
   pathService: MobileStoragePathService
+  vaultService?: VaultService
   getDiarySearcher: () => ToolDiarySearcher | undefined
   getAgentGate?: () => IBaishouAgentGate | undefined
   drizzleDb: unknown
@@ -31,7 +32,7 @@ export interface MobileMcpToolContextDeps {
 /** MCP 外部工具调用上下文：绑定当前活跃工作空间，与应用内 Agent 对齐 */
 const MCP_CONTEXT_CACHE_TTL_MS = 5000
 let mobileMcpToolContextCache: {
-  vaultName: string
+  vaultId: string
   context: ToolContext
   expiresAt: number
 } | null = null
@@ -42,26 +43,45 @@ export function invalidateMobileMcpToolContextCache(): void {
 
 /** 仅用于设置页 tools/list 展示：不依赖 Agent 数据库，避免 DB 未就绪时列表失败 */
 export async function buildMobileMcpToolListContext(
-  deps: Pick<MobileMcpToolContextDeps, 'settingsManager' | 'pathService'>
+  deps: Pick<MobileMcpToolContextDeps, 'settingsManager' | 'pathService' | 'vaultService'>
 ): Promise<ToolContext> {
   const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+  const vaultId = await resolveMobileActiveVaultId(deps)
   const userConfig = await buildMobileStreamUserConfig(deps.settingsManager, false)
   return {
     sessionId: MCP_EXTERNAL_SESSION_ID,
+    vaultId,
     vaultName,
     userConfig
   }
+}
+
+async function resolveMobileActiveVaultId(
+  deps: Pick<MobileMcpToolContextDeps, 'pathService' | 'vaultService'>
+): Promise<string> {
+  try {
+    if (deps.vaultService) {
+      await deps.vaultService.initRegistry()
+      const active = deps.vaultService.getActiveVault()
+      if (active?.id) return active.id
+    }
+  } catch {
+    // fallback below
+  }
+  const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+  return deriveLegacyVaultId(vaultName)
 }
 
 export async function buildMobileMcpToolContext(
   deps: MobileMcpToolContextDeps
 ): Promise<ToolContext> {
   const vaultName = await deps.pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+  const vaultId = await resolveMobileActiveVaultId(deps)
   const now = Date.now()
 
   if (
     mobileMcpToolContextCache &&
-    mobileMcpToolContextCache.vaultName === vaultName &&
+    mobileMcpToolContextCache.vaultId === vaultId &&
     mobileMcpToolContextCache.expiresAt > now
   ) {
     return mobileMcpToolContextCache.context
@@ -73,6 +93,7 @@ export async function buildMobileMcpToolContext(
   if (!drizzleDb) {
     return {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
@@ -116,6 +137,7 @@ export async function buildMobileMcpToolContext(
 
     const context = syncMcpToolUserConfig({
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
@@ -133,7 +155,7 @@ export async function buildMobileMcpToolContext(
     })
 
     mobileMcpToolContextCache = {
-      vaultName,
+      vaultId,
       context,
       expiresAt: now + MCP_CONTEXT_CACHE_TTL_MS
     }
@@ -146,6 +168,7 @@ export async function buildMobileMcpToolContext(
     )
     return {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId,
       vaultName,
       userConfig,
       diarySearcher: deps.getDiarySearcher(),
