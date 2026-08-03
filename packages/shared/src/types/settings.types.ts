@@ -96,6 +96,20 @@ export interface RagConfig {
 }
 
 /**
+ * 知识库提取引擎配置（K1.5）
+ */
+export interface KnowledgeConfig {
+  /** 默认提取引擎：simple | ocr | vision */
+  defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+  /** tesseract 语言，如 chi_sim+eng；无语言包时引擎会降级 eng */
+  ocrLanguage?: string
+  /** PDF 渲染 DPI，建议 200–300 */
+  ocrDpi?: number
+  /** Ask 默认开启多子查询（最多 2） */
+  multiQueryAsk?: boolean
+}
+
+/**
  * 网络搜索配置 (Web Search Config)
  */
 export interface WebSearchConfig {
