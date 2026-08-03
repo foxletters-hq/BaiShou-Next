@@ -14,7 +14,10 @@ import {
   summariesTable,
   executeRawSql
 } from '@baishou/database-desktop'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { isBetterSqlite3Available } from './better-sqlite3-available'
+
+const TEST_VAULT_ID = deriveLegacyVaultId('default')
 
 const mockTempDir = path.join(__dirname, '.temp-full-archive-test')
 const mockUserData = path.join(mockTempDir, 'userData')
@@ -69,6 +72,7 @@ describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Ext
 
     await realDbInstance.insert(agentAssistantsTable).values({
       id: 'assistant-123',
+      vaultId: TEST_VAULT_ID,
       name: '超级专属秘书',
       createdAt: new Date('2023-01-01'),
       updatedAt: new Date('2023-01-01')
@@ -77,7 +81,7 @@ describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Ext
     await realDbInstance.insert(agentSessionsTable).values({
       id: 'session-1',
       assistantId: 'assistant-123',
-      vaultName: 'default',
+      vaultId: TEST_VAULT_ID,
       providerId: 'openai',
       modelId: 'gpt-4',
       createdAt: new Date('2023-01-01'),
@@ -102,6 +106,7 @@ describe.skipIf(!isBetterSqlite3Available())('Real Database Full Data Export Ext
     })
 
     await realDbInstance.insert(summariesTable).values({
+      vaultId: TEST_VAULT_ID,
       type: 'weekly',
       startDate: new Date('2023-01-01'),
       endDate: new Date('2023-01-07'),

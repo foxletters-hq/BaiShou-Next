@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { LEGACY_SELECTIVE_MIGRATION_MANIFEST_KEY } from '@baishou/shared'
+import { deriveLegacyVaultId, LEGACY_SELECTIVE_MIGRATION_MANIFEST_KEY } from '@baishou/shared'
 import type { LegacySelectiveMigrationManifest } from '@baishou/shared'
 import { isBetterSqlite3Available } from './better-sqlite3-available'
 import {
@@ -76,8 +76,11 @@ vi.mock('@baishou/database-desktop', () => ({
 vi.mock('../../ipc/vault.ipc', () => ({
   vaultService: {
     vaultExists: (...args: unknown[]) => mockVaultExists(...args),
-    createVault: (...args: unknown[]) => mockCreateVault(...args)
-  }
+    createVault: (...args: unknown[]) => mockCreateVault(...args),
+    getAllVaults: () => []
+  },
+  resolveVaultIdByName: (vaultName: string) =>
+    deriveLegacyVaultId((vaultName || 'Personal').trim() || 'Personal')
 }))
 
 vi.mock('../diary-vault.factory', () => ({
