@@ -101,6 +101,11 @@ export interface IStoragePathService {
   getAttachmentsBaseDirectory(): Promise<string>
 
   /**
+   * 知识库原始资料根目录：`<vault>/Notebooks/`
+   */
+  getNotebooksBaseDirectory(): Promise<string>
+
+  /**
    * 返回专门用于存放全局用户与伙伴头像的统一子目录
    */
   getAvatarsDirectory(): Promise<string>

@@ -323,6 +323,13 @@ export class DesktopStoragePathService implements IStoragePathService {
     return dir
   }
 
+  public async getNotebooksBaseDirectory(): Promise<string> {
+    const activeDir = await this.getActiveVaultDirectory()
+    const dir = path.join(activeDir, 'Notebooks')
+    await fs.mkdir(dir, { recursive: true })
+    return dir
+  }
+
   public async getAvatarsDirectory(): Promise<string> {
     const attDir = await this.getAttachmentsBaseDirectory()
     const dir = path.join(attDir, 'avatars')

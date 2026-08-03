@@ -3,6 +3,7 @@ import {
   MemoryJsonlBackfillService,
   LegacyManualMemoryCopyService,
   MemoryRawManager,
+  NotebookRawManager,
   DerivedFreshnessService,
   MemorySyncService,
   GraphSyncService,
@@ -30,6 +31,7 @@ let runtime: {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  notebookManager: NotebookRawManager
   freshness: DerivedFreshnessService
   versionManager: IVersionManager
 } | null = null
@@ -50,10 +52,15 @@ export function getGraphRawManager(): GraphRawManager {
   return ensureRawDataRuntime().graphManager
 }
 
+export function getNotebookRawManager(): NotebookRawManager {
+  return ensureRawDataRuntime().notebookManager
+}
+
 export function ensureRawDataRuntime(): {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  notebookManager: NotebookRawManager
   freshness: DerivedFreshnessService
   versionManager: IVersionManager
 } {
@@ -68,6 +75,7 @@ export function ensureRawDataRuntime(): {
       manager: created.manager,
       memoryManager: created.memoryManager,
       graphManager: created.graphManager,
+      notebookManager: created.notebookManager,
       freshness: created.freshness,
       versionManager
     }
