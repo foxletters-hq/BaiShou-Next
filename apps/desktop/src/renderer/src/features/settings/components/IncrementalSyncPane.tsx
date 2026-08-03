@@ -13,7 +13,7 @@ export const IncrementalSyncPane: React.FC = () => {
         overflow: 'hidden'
       }}
     >
-      <IncrementalSyncPage embedded />
+      <IncrementalSyncPage />
     </div>
   )
 }

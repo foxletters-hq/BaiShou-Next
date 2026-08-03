@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Cloud, Globe, Settings } from 'lucide-react'
+import { Cloud, Globe } from 'lucide-react'
 import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import {
@@ -264,11 +264,6 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600 }}>
-        <Settings size={14} style={{ marginRight: 6 }} />
-        {t('data_sync.config_section', 'Configuration')}
-      </h3>
-
       <div
         style={{
           display: 'flex',
@@ -279,7 +274,7 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
         }}
       >
         <span style={{ fontSize: '14px', fontWeight: 600 }}>
-          {t('data_sync.incremental_sync', 'File Sync')}
+          {t('data_sync.file_sync_toggle', '文件同步')}
         </span>
         <Switch
           checked={config.enabled === true}

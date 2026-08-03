@@ -12,7 +12,6 @@ import { AssistantPane } from './components/AssistantPane'
 import { RagSettingsPane } from './components/RagSettingsPane'
 import { WebSearchPane } from './components/WebSearchPane'
 import { CompanionChatToolsPane } from './components/CompanionChatToolsPane'
-import { WorkspaceGatePane } from './components/WorkspaceGatePane'
 import { DiaryTemplateSettingsPane } from './components/DiaryTemplateSettingsPane'
 import { SummarySettingsPane } from './components/SummarySettingsPane'
 import { TTSSettingsPane } from './components/TTSSettingsPane'
@@ -35,7 +34,6 @@ const FULL_HEIGHT_SEGMENTS = new Set([
   'rag',
   'web-search',
   'agent-tools',
-  'workspace-gate',
   'summary',
   'git',
   'workspaces',
@@ -207,8 +205,6 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
         return <WebSearchPane settings={settings} />
       case 'agent-tools':
         return <CompanionChatToolsPane settings={settings} />
-      case 'workspace-gate':
-        return <WorkspaceGatePane />
       case 'diary-template':
       case 'diary-ai-writing':
         return <DiaryTemplateSettingsPane />

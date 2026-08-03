@@ -69,7 +69,7 @@
 .legacy-migration-btn {
   padding: 9px 16px;
   border-radius: 10px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 13px;

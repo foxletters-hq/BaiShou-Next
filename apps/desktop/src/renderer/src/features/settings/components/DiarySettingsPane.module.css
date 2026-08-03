@@ -19,12 +19,13 @@
   resize: vertical;
   box-sizing: border-box;
   outline: none;
+  transition: var(--form-field-transition);
 }
 
 .textarea:focus {
   background: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .textareaLarge {
@@ -61,7 +62,7 @@
 .btn {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-secondary);
   font-size: 14px;
@@ -83,7 +84,7 @@
 }
 
 .btnPrimary {
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
 }

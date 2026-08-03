@@ -97,11 +97,11 @@
   margin: 0;
 }
 
-/* 多板块堆叠（门控等试点页） */
+/* 多板块堆叠（门控等试点页）— 略收紧组间距，避免标题与卡片「飘」 */
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   width: 100%;
   box-sizing: border-box;
 }
