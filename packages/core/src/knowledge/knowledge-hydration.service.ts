@@ -95,7 +95,12 @@ export class KnowledgeHydrationService {
           extractedTextHash: extractedHash,
           extractEngine: src.extractEngine ?? 'simple',
           pageCount: src.pageCount ?? null,
-          status: existing?.status === 'ready' && extractedHash ? 'ready' : extractedHash ? 'pending' : 'pending'
+          status:
+            existing?.status === 'ready' && extractedHash
+              ? 'ready'
+              : extractedHash
+                ? 'pending'
+                : 'pending'
         })
         sourcesUpserted += 1
 

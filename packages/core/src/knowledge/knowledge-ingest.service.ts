@@ -4,10 +4,7 @@ import type { KnowledgeRepository } from '@baishou/database/shared'
 import type { NotebookRawManager } from '../raw-data/managers/notebook.raw-manager'
 import type { IFileSystem } from '../fs/file-system.types'
 import { extractSourceContent, type ExtractResult } from './knowledge-extract'
-import {
-  probeExtractEngineCapabilities,
-  resolveExtractEngine
-} from './extract-engine-capabilities'
+import { probeExtractEngineCapabilities, resolveExtractEngine } from './extract-engine-capabilities'
 import { getExtractEngine, type ExtractEngineId } from './extract-engines'
 import * as path from '../fs/path.util'
 
@@ -195,9 +192,7 @@ export class KnowledgeIngestService {
       id: sourceId,
       title: input.title,
       kind: sourceKind,
-      path: relativePath
-        ? relativePath.replace(/\\/g, '/').split('/').slice(-2).join('/')
-        : null,
+      path: relativePath ? relativePath.replace(/\\/g, '/').split('/').slice(-2).join('/') : null,
       contentHash,
       extractEngine,
       createdAt: now,
@@ -228,15 +223,14 @@ export class KnowledgeIngestService {
     const title =
       input.title?.trim() ||
       `问答 · ${input.question.trim().slice(0, 40)}${input.question.trim().length > 40 ? '…' : ''}`
-    const citeBlock =
-      input.citations?.length
-        ? input.citations
-            .map((c, i) => {
-              const loc = c.page != null ? `第 ${c.page} 页` : ''
-              return `${i + 1}. ${c.title}${loc ? `（${loc}）` : ''}${c.excerpt ? `\n   > ${c.excerpt}` : ''}`
-            })
-            .join('\n')
-        : '（无）'
+    const citeBlock = input.citations?.length
+      ? input.citations
+          .map((c, i) => {
+            const loc = c.page != null ? `第 ${c.page} 页` : ''
+            return `${i + 1}. ${c.title}${loc ? `（${loc}）` : ''}${c.excerpt ? `\n   > ${c.excerpt}` : ''}`
+          })
+          .join('\n')
+      : '（无）'
     const markdown = `# ${title}
 
 ## 问题
@@ -263,8 +257,7 @@ ${citeBlock}
     const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
-    const stage =
-      source.status === 'failed' && source.extractedTextHash ? 'embed' : 'extract'
+    const stage = source.status === 'failed' && source.extractedTextHash ? 'embed' : 'extract'
     await this.deps.repo.updateSourceStatus(sourceId, 'pending', { errorMessage: null })
     await this.deps.repo.enqueueIngestJob({
       notebookId: source.notebookId,
@@ -286,7 +279,11 @@ ${citeBlock}
   ): Promise<{ degradationMessage?: string }> {
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
-    if (source.status !== 'needs_ocr' && source.status !== 'partial' && source.status !== 'failed') {
+    if (
+      source.status !== 'needs_ocr' &&
+      source.status !== 'partial' &&
+      source.status !== 'failed'
+    ) {
       // 仍允许强制重跑
     }
 
@@ -374,10 +371,7 @@ ${citeBlock}
     ) {
       const text = await this.deps.fs.readFile(abs, 'utf8')
       result = await extractSourceContent({
-        kind:
-          source.sourceKind === 'text' || source.sourceKind === 'note'
-            ? 'text'
-            : 'file',
+        kind: source.sourceKind === 'text' || source.sourceKind === 'note' ? 'text' : 'file',
         ext:
           source.sourceKind === 'text' || source.sourceKind === 'note'
             ? source.sourceKind === 'note'
@@ -423,9 +417,7 @@ ${citeBlock}
               sourceId
             )
             if (pagesJson?.pages?.length) {
-              existingPageTexts = pagesJson.pages.map((p) =>
-                existing.slice(p.start, p.end)
-              )
+              existingPageTexts = pagesJson.pages.map((p) => existing.slice(p.start, p.end))
             }
           }
         }
@@ -461,8 +453,7 @@ ${citeBlock}
     if (!result.text.trim() || result.quality === 'needs_ocr') {
       await this.deps.repo.updateSourceStatus(sourceId, 'needs_ocr', {
         errorMessage:
-          [result.degradationMessage, result.evidence].filter(Boolean).join('；') ||
-          'needs_ocr',
+          [result.degradationMessage, result.evidence].filter(Boolean).join('；') || 'needs_ocr',
         pageCount: result.pageCount > 0 ? result.pageCount : null,
         textPageCount: result.textPageCount,
         extractEngine: usedEngine
@@ -491,8 +482,7 @@ ${citeBlock}
       pageCount: result.pageCount,
       textPageCount: result.textPageCount,
       extractEngine: usedEngine,
-      errorMessage:
-        [result.degradationMessage, result.evidence].filter(Boolean).join('；') || null
+      errorMessage: [result.degradationMessage, result.evidence].filter(Boolean).join('；') || null
     })
 
     await this.deps.repo.enqueueIngestJob({
@@ -568,8 +558,7 @@ ${citeBlock}
     const pageCount = source.pageCount
     const textPageCount = source.textPageCount
     const isPdfLike =
-      source.sourceKind === 'file' &&
-      (source.relativePath || '').toLowerCase().endsWith('.pdf')
+      source.sourceKind === 'file' && (source.relativePath || '').toLowerCase().endsWith('.pdf')
 
     // 页数未知禁止标 ready（尤其 PDF）
     if (isPdfLike && (pageCount == null || pageCount <= 0)) {
@@ -583,10 +572,7 @@ ${citeBlock}
     }
 
     const stillPartial =
-      pageCount != null &&
-      textPageCount != null &&
-      pageCount > 0 &&
-      textPageCount / pageCount < 0.9
+      pageCount != null && textPageCount != null && pageCount > 0 && textPageCount / pageCount < 0.9
 
     await this.deps.repo.updateSourceStatus(sourceId, stillPartial ? 'partial' : 'ready', {
       errorMessage: stillPartial ? source.errorMessage : null

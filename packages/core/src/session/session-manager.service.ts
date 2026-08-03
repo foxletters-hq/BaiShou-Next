@@ -237,11 +237,7 @@ export class SessionManagerService {
 
     for (const session of missing) {
       // V2.2: DB stores vaultId; disk paths still use vault name — flush to active vault.
-      const targetVault = resolveSessionFlushTargetVault(
-        undefined,
-        activeVaultName,
-        diskVaultNames
-      )
+      const targetVault = resolveSessionFlushTargetVault(undefined, activeVaultName, diskVaultNames)
       if (!targetVault) {
         skippedUnresolvedVault++
         console.warn('[IncrementalSync][SessionFlush] skip-unresolved-vault', {

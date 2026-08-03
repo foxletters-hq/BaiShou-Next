@@ -171,9 +171,7 @@ describe('MemoryJsonlBackfillService manual migration + consistency', () => {
 
     const embedText = vi.fn().mockResolvedValue(undefined)
     const deleteBySource = vi.fn().mockResolvedValue(undefined)
-    const listSourceIdsByType = vi
-      .fn()
-      .mockResolvedValue(['live-indexed', 'orphan-only'])
+    const listSourceIdsByType = vi.fn().mockResolvedValue(['live-indexed', 'orphan-only'])
 
     const sync = new MemorySyncService(memoryManager, {
       embedText,

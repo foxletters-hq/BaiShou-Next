@@ -122,7 +122,12 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
     mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
       { id: 'a', vaultId: deriveLegacyVaultId('Personal85'), assistantId: 'default', title: 'A' },
       { id: 'b', vaultId: deriveLegacyVaultId('Personal85'), assistantId: 'default', title: 'B' },
-      { id: 'legacy', vaultId: deriveLegacyVaultId('Personal'), assistantId: 'legacy_ast_1', title: 'L' }
+      {
+        id: 'legacy',
+        vaultId: deriveLegacyVaultId('Personal'),
+        assistantId: 'legacy_ast_1',
+        title: 'L'
+      }
     ] as any)
     mockFileService.listSessionsAcrossVaults.mockResolvedValue([
       { id: 'a', fullPath: '/Personal85/Sessions/a.json', vaultName: 'Personal85' }
@@ -175,7 +180,9 @@ describe('SessionManagerService (Ghost memory interceptor)', () => {
   })
 
   it('ensureSessionsFlushedToDisk() skips missing-file backfill without target vault', async () => {
-    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([{ id: 'a', vaultId: deriveLegacyVaultId('Work') }] as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'a', vaultId: deriveLegacyVaultId('Work') }
+    ] as any)
     mockFileService.listAllSessions.mockResolvedValue([])
     mockRepo.getSessionAggregate.mockResolvedValue(aggregateDummy)
 
