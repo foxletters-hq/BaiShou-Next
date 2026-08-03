@@ -62,8 +62,8 @@
 
 .searchBox:focus-within {
   background: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .searchInput {
@@ -111,7 +111,7 @@
     var(--bg-surface),
     rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.5)
   );
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border: 1px solid var(--border-control);
   border-radius: 16px;
   padding: 20px;
   display: flex;
@@ -172,7 +172,7 @@
 
 .sessionCard {
   background: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border: 1px solid var(--border-control);
   border-radius: 16px;
   padding: 16px 20px;
   display: flex;
@@ -204,7 +204,7 @@
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  border: 1.5px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border: 1.5px solid var(--border-control);
   margin: 0;
   cursor: pointer;
   display: flex;
@@ -342,14 +342,14 @@
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
 }
 
 .actionBtnOutline {
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
 }
 .actionBtnOutline:hover {
@@ -359,7 +359,7 @@
 
 .actionBtnPrimary {
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   box-shadow: none;
 }

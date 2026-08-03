@@ -82,7 +82,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
             padding: '16px 24px',
             gap: '12px',
             background: 'var(--bg-surface-highlight)',
-            borderTop: '1px solid rgba(148,163,184,0.1)'
+            borderTop: '1px solid var(--border-muted)'
           }}
         >
           <button

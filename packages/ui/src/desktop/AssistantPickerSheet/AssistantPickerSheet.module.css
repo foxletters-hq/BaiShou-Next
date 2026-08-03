@@ -19,7 +19,7 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow:
     0 32px 80px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(var(--color-outline-variant-rgb), 0.4) inset;
+    0 0 0 1px var(--border-card) inset;
   border-radius: 28px;
   width: 85vw;
   max-width: 900px;
@@ -74,8 +74,8 @@
 }
 
 .searchBox:focus-within {
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .searchInput {
@@ -305,7 +305,7 @@
   gap: 8px;
   padding: 10px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   color: var(--text-secondary);
   font-weight: 600;
@@ -316,7 +316,7 @@
 
 .createBtn:hover {
   background: var(--bg-surface-high);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
   color: var(--text-primary);
 }
 
@@ -513,7 +513,7 @@
   margin-top: 0;
   margin-bottom: 0;
   padding: 8px 10px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 10px;
   background: var(--bg-surface);
   color: var(--text-secondary);
@@ -528,9 +528,9 @@
 }
 
 .descriptionInput:focus {
-  border-color: var(--form-field-border, var(--border-control));
+  border-color: var(--form-field-border-focus);
   color: var(--text-primary);
-  box-shadow: none;
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .descriptionInput::placeholder {
@@ -662,12 +662,13 @@
   min-height: 180px;
   resize: vertical;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) inset;
+  transition: var(--form-field-transition);
 }
 
 .promptTextarea:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 /* Metadata Grid inside Memory Tab */
@@ -680,7 +681,7 @@
 
 .metaItem {
   background: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border: 1px solid var(--border-card);
   padding: 16px;
   border-radius: 16px;
   display: flex;
@@ -712,7 +713,7 @@
   padding: 12px 24px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
@@ -734,7 +735,7 @@
 .applyBtnCurrent {
   background: var(--bg-surface);
   color: var(--text-secondary);
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--border-control);
   box-shadow: none;
   cursor: default;
 }
