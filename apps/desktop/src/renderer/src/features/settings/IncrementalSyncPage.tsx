@@ -1,12 +1,13 @@
-import { RefreshCw, HelpCircle } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady } from '@baishou/shared'
 import {
-  Tooltip,
+  HelpTooltip,
   formatSyncProgressStatus,
   IncrementalSyncScopeList,
-  SettingsPageChrome
+  SettingsPageChrome,
+  SyncModeComparisonHelp
 } from '@baishou/ui'
 import { SyncConfigForm } from './components/sync/SyncConfigForm'
 import { useOrchestratedSync } from '../../hooks/useOrchestratedSync'
@@ -14,7 +15,7 @@ import { INCREMENTAL_SYNC_CONFIG_CHANGED_EVENT } from '../../lib/incremental-syn
 import styles from './IncrementalSyncPage.module.css'
 import pane from './components/GeneralSettingsPane.module.css'
 
-export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+export const IncrementalSyncPage: React.FC = () => {
   const { t } = useTranslation()
   const { isSyncing, isPlanning, syncResult, progress, startSync } = useOrchestratedSync()
   const [syncReady, setSyncReady] = useState(false)
@@ -124,18 +125,10 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
     <SettingsPageChrome
       title={t('data_sync.incremental_sync', '增量同步')}
       titleAccessory={
-        <Tooltip content={t('data_sync.incremental_sync_tooltip')}>
-          <span className={styles.helpIcon}>
-            <HelpCircle size={16} />
-          </span>
-        </Tooltip>
+        <HelpTooltip content={t('data_sync.incremental_sync_tooltip')} size={16} />
       }
     >
       <div className={pane.stack}>
-        {embedded ? (
-          <p className={styles.embeddedDesc}>{t('data_sync.incremental_sync_desc')}</p>
-        ) : null}
-
         <div className={pane.stackGroup}>
           <div className={pane.sectionLabelRow}>
             <h3 className={pane.sectionLabel}>{t('data_sync.sync_config_section', '同步配置')}</h3>
@@ -150,10 +143,11 @@ export const IncrementalSyncPage: React.FC<{ embedded?: boolean }> = ({ embedded
         <div className={pane.stackGroup}>
           <div className={pane.sectionLabelRow}>
             <h3 className={pane.sectionLabel}>{t('data_sync.sync_scope_section', '同步范围')}</h3>
+            <SyncModeComparisonHelp context="incremental" />
           </div>
           <section className={pane.cardSection}>
             <div className={styles.sectionBody}>
-              <IncrementalSyncScopeList />
+              <IncrementalSyncScopeList hideTitle />
             </div>
           </section>
         </div>

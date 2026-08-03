@@ -11,7 +11,7 @@
   gap: 12px;
   padding: 16px 20px;
   background-color: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-muted);
   flex-shrink: 0;
 }
 
@@ -48,7 +48,7 @@
   gap: 6px;
   height: 36px;
   padding: 0 14px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 999px;
   background: var(--bg-surface);
   color: var(--text-primary);

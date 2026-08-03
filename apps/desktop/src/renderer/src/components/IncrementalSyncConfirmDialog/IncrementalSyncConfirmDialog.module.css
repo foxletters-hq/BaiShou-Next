@@ -74,7 +74,7 @@
 }
 
 .vaultSection {
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: var(--bg-surface);
 }
@@ -88,7 +88,7 @@
 }
 
 .vaultHeaderWithFiles {
-  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .vaultTitleRow {
@@ -230,7 +230,7 @@
 .btn {
   min-width: 88px;
   padding: 8px 14px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
@@ -255,13 +255,13 @@
 .btnCancel {
   color: var(--text-primary);
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .btnConfirm {
   color: var(--text-primary);
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .btnConfirmDanger {
@@ -322,7 +322,7 @@
 .btnChoice {
   color: var(--text-primary);
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .btnChoice:hover:not(:disabled) {
@@ -333,7 +333,7 @@
 .btnChoiceDanger {
   color: var(--text-on-primary);
   background: var(--color-error);
-  border: 1.5px solid var(--color-error);
+  border: 1px solid var(--color-error);
 }
 
 .btnChoiceDanger:hover:not(:disabled) {
@@ -345,7 +345,7 @@
 .btnChoiceMuted {
   color: var(--text-primary);
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
 }
 
 .btnChoiceMuted:hover:not(:disabled) {

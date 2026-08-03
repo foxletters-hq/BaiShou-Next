@@ -9,7 +9,7 @@
 .input {
   width: 100%;
   padding: 8px 12px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -18,14 +18,14 @@
   box-sizing: border-box;
   outline: none;
   box-shadow: none;
-  transition: none;
+  transition: var(--form-field-transition);
 }
 
 .input:focus,
 .input:focus-visible {
   outline: none;
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
   background: var(--bg-surface);
 }
 
@@ -40,7 +40,7 @@
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -77,7 +77,7 @@
   padding: 0 12px;
   height: 32px;
   border-radius: 8px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-secondary);
   font-size: var(--settings-font-label-size);

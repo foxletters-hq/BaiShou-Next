@@ -15,7 +15,6 @@ import {
   Puzzle,
   RefreshCw,
   Settings,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Volume2,
@@ -112,16 +111,6 @@ export const SettingsShell: React.FC = () => {
         kind: 'item',
         label: t('settings.companion_chat_tools_title', '伙伴对话'),
         icon: <Puzzle size={NAV_ICON_SIZE} />
-      },
-      {
-        kind: 'section',
-        label: t('settings.nav_group_workbench', '工作台')
-      },
-      {
-        id: 18,
-        kind: 'item',
-        label: t('settings.workspace_gate_page_title', '工作台权限'),
-        icon: <ShieldCheck size={NAV_ICON_SIZE} />
       },
       {
         kind: 'section',

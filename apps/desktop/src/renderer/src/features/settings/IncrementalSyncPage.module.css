@@ -5,21 +5,13 @@
   padding: 16px;
 }
 
-.embeddedDesc {
-  margin: 0;
-  padding: 0 4px;
-  font-size: var(--settings-font-meta-size);
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
 .syncButton {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 0 12px;
   height: 32px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -110,17 +102,4 @@
 
 .spinning {
   animation: spin 1s linear infinite;
-}
-
-.helpIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.helpIcon:hover {
-  color: var(--color-primary);
 }
