@@ -20,7 +20,7 @@ import {
   type AppDatabase
 } from '@baishou/database'
 import { AIProviderRegistry, EmbeddingAdapter, type IAIProvider } from '@baishou/ai'
-import { logger, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
+import { logger, MEMORY_EMBED_GROUP_ID, deriveLegacyVaultId } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 
 export async function resolveMobileEmbeddingForHydration(
@@ -327,9 +327,16 @@ export async function runMobileKnowledgeHydration(options: {
     }
 
     const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
+    const vaultId =
+      (await options.pathService.getLocalActiveVaultId?.()) ||
+      deriveLegacyVaultId(
+        (await options.pathService.getActiveVaultNameForContext?.().catch(() => 'Personal')) ||
+          'Personal'
+      )
     const hydration = new KnowledgeHydrationService({
       repo,
       notebookManager,
+      vaultId,
       isEmbeddingConfigured: () => embeddingOk
     })
     const result = await hydration.hydrate()

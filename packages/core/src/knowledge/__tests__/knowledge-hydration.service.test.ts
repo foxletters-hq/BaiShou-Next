@@ -76,6 +76,7 @@ describeHydration('KnowledgeHydrationService', () => {
     const skipped = new KnowledgeHydrationService({
       repo,
       notebookManager,
+      vaultId: 'vault_test',
       isEmbeddingConfigured: () => false
     })
     const skipResult = await skipped.hydrate()
@@ -86,6 +87,7 @@ describeHydration('KnowledgeHydrationService', () => {
     const withEmbed = new KnowledgeHydrationService({
       repo,
       notebookManager,
+      vaultId: 'vault_test',
       isEmbeddingConfigured: () => true
     })
     const result = await withEmbed.hydrate()
@@ -102,7 +104,8 @@ describeHydration('KnowledgeHydrationService', () => {
       chunkText: text,
       embedding: Buffer.from(new Float32Array(4).buffer),
       dimension: 4,
-      modelId: 'mock'
+      modelId: 'mock',
+      vaultId: 'vault_test'
     })
     await repo.updateSourceStatus('src1', 'ready', { extractedTextHash: md5Hex(text) })
     await repo.completeIngestJob(jobs[0]!.id)
@@ -112,14 +115,15 @@ describeHydration('KnowledgeHydrationService', () => {
   })
 
   it('orphan 清理：磁盘已删的 source 从库移除', async () => {
-    await repo.createNotebook({ id: 'nb1', name: '研究' })
+    await repo.createNotebook({ id: 'nb1', name: '研究', vaultId: 'vault_test' })
     await repo.upsertSource({
       id: 'orphan',
       notebookId: 'nb1',
       title: '幽灵',
       sourceKind: 'text',
       contentHash: 'x',
-      status: 'ready'
+      status: 'ready',
+      vaultId: 'vault_test'
     })
     await repo.insertChunk({
       chunkId: 'orphan_0',
@@ -129,7 +133,8 @@ describeHydration('KnowledgeHydrationService', () => {
       chunkText: 'gone',
       embedding: Buffer.from(new Float32Array(2).buffer),
       dimension: 2,
-      modelId: 'mock'
+      modelId: 'mock',
+      vaultId: 'vault_test'
     })
 
     const now = Date.now()
@@ -144,11 +149,45 @@ describeHydration('KnowledgeHydrationService', () => {
     const svc = new KnowledgeHydrationService({
       repo,
       notebookManager,
+      vaultId: 'vault_test',
       isEmbeddingConfigured: () => true
     })
     const result = await svc.hydrate()
     expect(result.orphansCleaned).toBeGreaterThanOrEqual(1)
     expect(await repo.getSource('orphan')).toBeNull()
     expect(await repo.listChunksBySource('orphan')).toEqual([])
+  })
+
+  it('切仓水合不得删他仓 notebook/source', async () => {
+    await repo.createNotebook({ id: 'nb_other', name: '他仓', vaultId: 'vault_other' })
+    await repo.upsertSource({
+      id: 'src_other',
+      notebookId: 'nb_other',
+      title: '他仓资料',
+      sourceKind: 'text',
+      contentHash: 'y',
+      status: 'ready',
+      vaultId: 'vault_other'
+    })
+
+    const now = Date.now()
+    await notebookManager.appendNotebookRecord({
+      id: 'nb_cur',
+      name: '本仓',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+
+    const svc = new KnowledgeHydrationService({
+      repo,
+      notebookManager,
+      vaultId: 'vault_cur',
+      isEmbeddingConfigured: () => true
+    })
+    const result = await svc.hydrate()
+    expect(result.orphansCleaned).toBe(0)
+    expect(await repo.getNotebook('nb_other')).not.toBeNull()
+    expect(await repo.getSource('src_other')).not.toBeNull()
   })
 })
