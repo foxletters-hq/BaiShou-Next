@@ -17,12 +17,11 @@ describe('Agent 3: RAG i18n 验证', () => {
   const zhTW = loadI18n('zh_TW')
 
   it('任务12: rag_disabled_alert 四语言一致更新', () => {
-    expect(zh.settings.rag_disabled_alert).toBe('RAG记忆功能已经关闭了喵~')
-    expect(en.settings.rag_disabled_alert).toContain('RAG memory')
-    // ja 和 zh_TW 已更新为本地化文案
-    expect(ja.settings.rag_disabled_alert).toContain('RAG')
+    expect(zh.settings.rag_disabled_alert).toBe('伙伴记忆功能已经关闭了喵~')
+    expect(en.settings.rag_disabled_alert).toContain('Companion memory')
+    expect(ja.settings.rag_disabled_alert).toContain('コンパニオン記憶')
     expect(ja.settings.rag_disabled_alert).not.toBe(zh.settings.rag_disabled_alert)
-    expect(zhTW.settings.rag_disabled_alert).toContain('RAG')
+    expect(zhTW.settings.rag_disabled_alert).toContain('夥伴記憶')
     expect(zhTW.settings.rag_disabled_alert).toContain('關閉')
   })
 
