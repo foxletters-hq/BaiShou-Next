@@ -4,7 +4,6 @@ import {
   AgentGateKind,
   AgentGateProfileId,
   AgentGateReply,
-  AgentGateTrustMode,
   AgentGateDeniedError,
   AgentGateAlwaysNotAllowedError,
   AgentGateCancelledError,
@@ -29,7 +28,6 @@ const baseAssertInput = {
 describe('BaishouAgentGatePolicyService', () => {
   it('manual 模式默认 ask', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: ['diary_delete'],
       allowlist: []
     }
@@ -41,9 +39,9 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('full_trust 放行非排除动作', () => {
     const config = {
-      trustMode: AgentGateTrustMode.FullTrust,
       exclusionList: ['diary_delete'],
-      allowlist: []
+      allowlist: [],
+      permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
     }
     const allowlist = new BaishouAgentGateAllowlistStore(() => config)
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
@@ -53,9 +51,9 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('排除列表在 full_trust 下仍 ask', () => {
     const config = {
-      trustMode: AgentGateTrustMode.FullTrust,
       exclusionList: ['diary_delete'],
-      allowlist: []
+      allowlist: [],
+      permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
     }
     const allowlist = new BaishouAgentGateAllowlistStore(() => config)
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
@@ -65,7 +63,6 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('forceExclusion 动作在 allowlist 命中时仍 ask', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: [{ id: 'bagal_ws', action: 'workspace_delete', createdAt: 1 }]
     }
@@ -77,7 +74,6 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('allowlist 命中则 allow', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: [{ id: 'bagal_1', action: 'diary_write', createdAt: 1 }]
     }
@@ -89,7 +85,6 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('disabled 工具 deny', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: []
     }
@@ -101,7 +96,6 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('legacy actionRules 仍生效', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: [],
       actionRules: { diary_edit: AgentGateEffect.Allow }
@@ -114,7 +108,6 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('permissionRules 支持路径 pattern', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: [],
       permissionRules: [
@@ -145,10 +138,10 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('permissionRules deny 优先于 full_trust', () => {
     const config = {
-      trustMode: AgentGateTrustMode.FullTrust,
       exclusionList: [],
       allowlist: [],
       permissionRules: [
+        { action: '*', effect: AgentGateEffect.Allow },
         {
           action: 'workspace_write',
           pattern: 'secrets/**',
@@ -169,10 +162,10 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('force exclusion 在 allowlist 与 allow 规则下仍 ask', () => {
     const config = {
-      trustMode: AgentGateTrustMode.FullTrust,
       exclusionList: [],
       allowlist: [{ id: 'bagal_ws', action: 'workspace_delete', createdAt: 1 }],
       permissionRules: [
+        { action: '*', effect: AgentGateEffect.Allow },
         {
           action: 'workspace_delete',
           pattern: '**/*',
@@ -191,33 +184,30 @@ describe('BaishouAgentGatePolicyService', () => {
     ).toBe(AgentGateEffect.Ask)
   })
 
-  it('外路径在 full_trust 与 allowlist 下仍 ask', () => {
+  it('外路径默认走 external_directory 询问', () => {
     const config = {
-      trustMode: AgentGateTrustMode.FullTrust,
       exclusionList: [],
       allowlist: [{ id: 'bagal_1', action: 'workspace_write', createdAt: 1 }],
-      forceAskExternalPath: true
+      permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
     }
     const allowlist = new BaishouAgentGateAllowlistStore(() => config)
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
 
     expect(
       policy.evaluate({
-        action: 'workspace_write',
-        resources: [{ kind: 'external_path', value: 'C:/Outside/secret.txt' }]
+        action: 'external_directory',
+        resources: [{ kind: 'external_path', value: 'C:/Outside/**' }]
       })
     ).toBe(AgentGateEffect.Ask)
   })
 
-  it('外路径可被显式 Allow 规则放行', () => {
+  it('外路径可被 external_directory Allow 规则放行', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: [],
-      forceAskExternalPath: true,
       permissionRules: [
         {
-          action: 'workspace_write',
+          action: 'external_directory',
           pattern: 'C:/Allowed/**',
           effect: AgentGateEffect.Allow
         }
@@ -228,45 +218,42 @@ describe('BaishouAgentGatePolicyService', () => {
 
     expect(
       policy.evaluate({
-        action: 'workspace_write',
-        resources: [{ kind: 'external_path', value: 'C:/Allowed/notes.md' }]
+        action: 'external_directory',
+        resources: [{ kind: 'external_path', value: 'C:/Allowed/**' }]
       })
     ).toBe(AgentGateEffect.Allow)
   })
 
-  it('forceAskExternalPath=false 时外路径可走 full_trust', () => {
+  it('external_directory 整项 Allow 时区外目录放行', () => {
     const config = {
-      trustMode: AgentGateTrustMode.FullTrust,
       exclusionList: [],
       allowlist: [],
-      forceAskExternalPath: false
+      permissionRules: [{ action: 'external_directory', effect: AgentGateEffect.Allow }]
     }
     const allowlist = new BaishouAgentGateAllowlistStore(() => config)
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
 
     expect(
       policy.evaluate({
-        action: 'workspace_write',
-        resources: [{ kind: 'external_path', value: '/tmp/x' }]
+        action: 'external_directory',
+        resources: [{ kind: 'external_path', value: '/tmp/**' }]
       })
     ).toBe(AgentGateEffect.Allow)
   })
 
-  it('externalPathEffect=deny 时外路径拒绝', () => {
+  it('external_directory Deny 时区外目录拒绝', () => {
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: [],
-      externalPathEffect: 'deny' as const,
-      forceAskExternalPath: true
+      permissionRules: [{ action: 'external_directory', effect: AgentGateEffect.Deny }]
     }
     const allowlist = new BaishouAgentGateAllowlistStore(() => config)
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
 
     expect(
       policy.evaluate({
-        action: 'workspace_read',
-        resources: [{ kind: 'external_path', value: 'C:/Outside/a.txt' }]
+        action: 'external_directory',
+        resources: [{ kind: 'external_path', value: 'C:/Outside/**' }]
       })
     ).toBe(AgentGateEffect.Deny)
   })
@@ -295,8 +282,8 @@ describe('BaishouAgentGatePolicyService', () => {
 
     expect(
       policy.evaluate({
-        action: 'workspace_read',
-        resources: [{ kind: 'external_path', value: 'D:/Notes/a.md' }]
+        action: 'external_directory',
+        resources: [{ kind: 'external_path', value: 'D:/Notes/**' }]
       })
     ).toBe(AgentGateEffect.Allow)
 
@@ -309,10 +296,90 @@ describe('BaishouAgentGatePolicyService', () => {
 
     expect(
       policy.evaluate({
-        action: 'workspace_read',
-        resources: [{ kind: 'external_path', value: 'C:/Outside/a.md' }]
+        action: 'external_directory',
+        resources: [{ kind: 'external_path', value: 'C:/Outside/**' }]
       })
     ).toBe(AgentGateEffect.Ask)
+  })
+
+  it('G4 对抗：*: allow 打头时删除 / 命令 / 区外仍为 Ask', () => {
+    const config = {
+      exclusionList: ['workspace_delete'],
+      allowlist: [],
+      permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_delete',
+        resources: [{ kind: 'workspace_path', value: 'src/a.ts' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [{ kind: 'shell_command', value: 'git status' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+
+    // *: allow 的 action-only 规则会匹配 external_directory；
+    // FullTrust 不会放行该 action，但此处 Manual + * Allow 会命中。
+    // 区外安全靠拦截器两道门 + 钳制不够，需显式禁止裸 * 放行 external_directory。
+    // 当前：action-only Allow on * matches external_directory → Allow。
+    // 对抗要求仍为 Ask：在 clamp 中对 external_directory 的 action-only * 放行压回？
+    // 更干净：agentGatePermissionRuleMatches 对 external_directory 禁止 action-only Allow（与 workspace_run 对称）。
+    expect(
+      policy.evaluate({
+        action: 'external_directory',
+        resources: [{ kind: 'external_path', value: 'C:/Outside/**' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+  })
+
+  it('G4 分层：宽泛 Ask 后的具体 Allow 可放行 git status', () => {
+    const config = {
+      exclusionList: ['workspace_delete'],
+      allowlist: [],
+      permissionRules: [
+        { action: 'workspace_run', effect: AgentGateEffect.Ask },
+        {
+          action: 'workspace_run',
+          pattern: 'git status *',
+          effect: AgentGateEffect.Allow
+        }
+      ]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [{ kind: 'shell_command', value: 'git status -s' }]
+      })
+    ).toBe(AgentGateEffect.Allow)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_run',
+        resources: [{ kind: 'shell_command', value: 'rm -rf /' }]
+      })
+    ).toBe(AgentGateEffect.Ask)
+  })
+
+  it('exclusion 上的显式 Deny 不再被吞成 Ask', () => {
+    const config = {
+      exclusionList: ['workspace_delete'],
+      allowlist: [],
+      permissionRules: [{ action: 'workspace_delete', effect: AgentGateEffect.Deny }]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(policy.evaluate({ action: 'workspace_delete' })).toBe(AgentGateEffect.Deny)
   })
 })
 
@@ -320,7 +387,6 @@ describe('BaishouAgentGateService', () => {
   it('assert 在 ask 时挂起，reply once 后继续', async () => {
     const { gate, eventBus } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       }
@@ -352,7 +418,6 @@ describe('BaishouAgentGateService', () => {
     const persist = vi.fn()
     const { gate, getConfig } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       },
@@ -373,7 +438,6 @@ describe('BaishouAgentGateService', () => {
   it('排除动作不能 always', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: ['diary_delete'],
         allowlist: []
       }
@@ -397,7 +461,6 @@ describe('BaishouAgentGateService', () => {
   it('forceExclusion 元数据动作不能 always，即使不在 exclusionList', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       }
@@ -440,7 +503,6 @@ describe('BaishouAgentGateService', () => {
   it('截断预览即使命中 allowlist 也强制 Ask，且拒绝 Always', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: [{ id: 'bagal_write', action: 'workspace_write', createdAt: 1 }]
       }
@@ -516,11 +578,16 @@ describe('BaishouAgentGateService', () => {
 
   it('deny 时不挂起直接失败', async () => {
     const { gate, policy } = createBaishouAgentGate()
-    const evaluate = vi.spyOn(policy, 'evaluate').mockReturnValue(AgentGateEffect.Deny)
+    const evaluateDetailed = vi
+      .spyOn(policy, 'evaluateDetailed')
+      .mockReturnValue({
+        effect: AgentGateEffect.Deny,
+        decisionSource: { layer: 'default', action: 'diary_edit', effect: AgentGateEffect.Deny }
+      })
 
     await expect(gate.assert(baseAssertInput)).rejects.toBeInstanceOf(AgentGateDeniedError)
     expect(gate.listPending()).toHaveLength(0)
-    evaluate.mockRestore()
+    evaluateDetailed.mockRestore()
   })
 
   it('cancelSession 取消挂起', async () => {
@@ -537,9 +604,9 @@ describe('BaishouAgentGateService', () => {
   it('assertWithResolution 在 allow 时直接返回空 requestId', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.FullTrust,
         exclusionList: [],
-        allowlist: []
+        allowlist: [],
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
       }
     })
 
@@ -552,7 +619,6 @@ describe('BaishouAgentGateService', () => {
   it('assertWithResolution 返回选项与自定义消息', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       }
@@ -610,7 +676,6 @@ describe('BaishouAgentGateService', () => {
   it('always 级联放行同 session 同 action 的挂起请求', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       }
@@ -645,7 +710,6 @@ describe('BaishouAgentGateService', () => {
   it('always 不级联放行同 action 的截断预览 pending', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       }
@@ -698,10 +762,8 @@ describe('BaishouAgentGateService', () => {
   it('always 不级联放行同 action 的外路径 pending', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
-        allowlist: [],
-        forceAskExternalPath: true
+        allowlist: []
       }
     })
 
@@ -736,7 +798,6 @@ describe('BaishouAgentGateService', () => {
     const persist = vi.fn().mockRejectedValue(new Error('disk full'))
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       },
@@ -754,10 +815,10 @@ describe('BaishouAgentGateService', () => {
   it('同指纹连续第 3 次即使 full_trust 也强制 ask', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.FullTrust,
         exclusionList: [],
         allowlist: [],
-        repeatAssertAskThreshold: 3
+        repeatAssertAskThreshold: 3,
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
       }
     })
 
@@ -783,10 +844,10 @@ describe('BaishouAgentGateService', () => {
   it('repeatAssertAskThreshold=0 关闭连打强制 ask', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.FullTrust,
         exclusionList: [],
         allowlist: [],
-        repeatAssertAskThreshold: 0
+        repeatAssertAskThreshold: 0,
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
       }
     })
 
@@ -823,9 +884,9 @@ describe('Agent Gate profile + probeEffect', () => {
   it('companion profile denies workspace actions', () => {
     const { policy } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.FullTrust,
         exclusionList: [],
-        allowlist: []
+        allowlist: [],
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
       }
     })
 
@@ -840,9 +901,9 @@ describe('Agent Gate profile + probeEffect', () => {
   it('workspace profile denies diary and graph_upsert', () => {
     const { gate } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.FullTrust,
         exclusionList: [],
-        allowlist: []
+        allowlist: [],
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
       }
     })
 
@@ -871,19 +932,16 @@ describe('scoped gate config isolation', () => {
   it('companion FullTrust allowlist does not affect a separate workspace gate instance', async () => {
     const companion = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.FullTrust,
         exclusionList: [],
         allowlist: [{ id: 'c1', action: 'diary_write', createdAt: 1 }],
-        forceAskExternalPath: true
+        permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
       },
       configScope: { kind: 'companion' }
     })
     const workspace = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: ['workspace_delete'],
-        allowlist: [],
-        forceAskExternalPath: true
+        allowlist: []
       },
       configScope: { kind: 'workspace', workspaceId: 'ws-a' }
     })
@@ -910,7 +968,6 @@ describe('scoped gate config isolation', () => {
     const events: Array<{ type: string; scope?: unknown }> = []
     const { gate, eventBus } = createBaishouAgentGate({
       config: {
-        trustMode: AgentGateTrustMode.Manual,
         exclusionList: [],
         allowlist: []
       },
@@ -946,7 +1003,6 @@ describe('BaishouAgentGateAllowlistStore', () => {
   it('add 重复动作不重复写入，remove 后可 persist', async () => {
     const persist = vi.fn()
     const config = {
-      trustMode: AgentGateTrustMode.Manual,
       exclusionList: [],
       allowlist: [] as { id: string; action: string; createdAt: number }[]
     }

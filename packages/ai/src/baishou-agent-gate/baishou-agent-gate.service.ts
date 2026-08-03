@@ -64,16 +64,19 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   private readonly pending = new Map<string, PendingEntry>()
   private readonly repeatTracker: AgentGateRepeatTracker
   private readonly configScope?: AgentGateConfigScope
+  private readonly isAutoAccept?: () => boolean
 
   constructor(
     private readonly policy: IAgentGatePolicy,
     private readonly allowlistStore: IAgentGateAllowlistStore,
     private readonly eventBus: BaishouAgentGateEventBus,
     repeatTracker?: AgentGateRepeatTracker,
-    configScope?: AgentGateConfigScope
+    configScope?: AgentGateConfigScope,
+    isAutoAccept?: () => boolean
   ) {
     this.repeatTracker = repeatTracker ?? new AgentGateRepeatTracker()
     this.configScope = configScope
+    this.isAutoAccept = isAutoAccept
   }
 
   probeEffect(input: AgentGateEvaluateInput): AgentGateEffect {
@@ -95,21 +98,28 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       threshold
     )
 
-    let effect = this.policy.evaluate({
+    let detailed = this.policy.evaluateDetailed({
       action: input.action,
       toolDisabled: false,
       resources: input.resources,
       metadata: input.metadata,
-      profileId: input.profileId
+      profileId: input.profileId,
+      preview: input.preview,
+      autoAccept: this.isAutoAccept?.() === true
     })
+    let effect = detailed.effect
 
     if (forceRepeatAsk && effect === AgentGateEffect.Allow) {
       effect = AgentGateEffect.Ask
-    }
-
-    // 预览截断/危险命令：禁止被 allowlist 盲放行，必须显式单次确认
-    if (shouldDisableAlwaysForPreview(input.preview) && effect === AgentGateEffect.Allow) {
-      effect = AgentGateEffect.Ask
+      detailed = {
+        ...detailed,
+        effect,
+        decisionSource: {
+          ...detailed.decisionSource,
+          effect,
+          clampedFrom: detailed.decisionSource.clampedFrom ?? AgentGateEffect.Allow
+        }
+      }
     }
 
     if (effect === AgentGateEffect.Deny) {
@@ -127,23 +137,25 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
-    const request = this.createRequest(input, fingerprint)
+    const request = this.createRequest(input, fingerprint, detailed.decisionSource)
     request.repeatCount = this.repeatTracker.getCount(input.sessionId, fingerprint)
     return this.waitForResolution(request, fingerprint, input.resources, input.profileId)
   }
 
   async ask(input: AgentGateAssertInput): Promise<AgentGateRequest> {
     const fingerprint = buildAgentGateAssertFingerprint(input)
-    const effect = this.policy.evaluate({
+    const detailed = this.policy.evaluateDetailed({
       action: input.action,
       toolDisabled: false,
       resources: input.resources,
       metadata: input.metadata,
-      profileId: input.profileId
+      profileId: input.profileId,
+      preview: input.preview,
+      autoAccept: this.isAutoAccept?.() === true
     })
-    const request = this.createRequest(input, fingerprint)
+    const request = this.createRequest(input, fingerprint, detailed.decisionSource)
     request.repeatCount = this.repeatTracker.getCount(input.sessionId, fingerprint)
-    if (effect === AgentGateEffect.Ask) {
+    if (detailed.effect === AgentGateEffect.Ask) {
       request.description =
         request.description ?? '该操作需要用户确认；调用 assert() 后将阻塞直至用户回复。'
     }
@@ -164,13 +176,19 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     )
 
     let alwaysShellPattern: string | null = null
+    const alwaysPatternsFromMeta = Array.isArray(request.metadata?.alwaysPatterns)
+      ? (request.metadata.alwaysPatterns as unknown[]).filter(
+          (item): item is string => typeof item === 'string' && item.trim().length > 0
+        )
+      : undefined
     if (input.reply === AgentGateReply.Always) {
       if (
         shouldDisableAlwaysForPreview(request.preview) ||
         !canPermanentlyAllowAgentGateAction(request.action, {
           exclusionList: this.policy.getConfig().exclusionList,
           metadata: request.metadata,
-          resources: replyResources
+          resources: replyResources,
+          alwaysPatterns: alwaysPatternsFromMeta
         })
       ) {
         throw new AgentGateAlwaysNotAllowedError(request.action)
@@ -179,9 +197,9 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       if (shellResource && !canPermanentlyAllowShellCommand(shellResource.value)) {
         throw new AgentGateAlwaysNotAllowedError(request.action)
       }
-      alwaysShellPattern = shellResource
-        ? resolveCommandPrefixPatternFromCommand(shellResource.value)
-        : null
+      alwaysShellPattern =
+        alwaysPatternsFromMeta?.[0] ??
+        (shellResource ? resolveCommandPrefixPatternFromCommand(shellResource.value) : null)
       if (request.action === 'workspace_run' && !alwaysShellPattern) {
         throw new AgentGateAlwaysNotAllowedError(request.action)
       }
@@ -218,7 +236,11 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       const pathResource = replyResources.find(
         (r) => r.kind === 'workspace_path' || r.kind === 'file_path'
       )
+      const externalResource = replyResources.find((r) => r.kind === 'external_path')
       const pathPattern = pathResource ? pathResource.value.replace(/\\/g, '/') : null
+      const externalPattern =
+        alwaysPatternsFromMeta?.[0] ??
+        (externalResource ? externalResource.value.replace(/\\/g, '/') : null)
       const workspaceFileAction = request.action.startsWith('workspace_')
       this.allowlistStore.add({
         action: request.action,
@@ -226,9 +248,13 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         sourceRequestId: request.id,
         ...(alwaysShellPattern
           ? { pattern: alwaysShellPattern, resourceKind: 'shell_command' as const }
-          : workspaceFileAction && pathPattern && pathResource
-            ? { pattern: pathPattern, resourceKind: pathResource.kind }
-            : {})
+          : request.action === 'external_directory' && externalPattern
+            ? { pattern: externalPattern, resourceKind: 'external_path' as const }
+            : workspaceFileAction && pathPattern && pathResource
+              ? { pattern: pathPattern, resourceKind: pathResource.kind }
+              : alwaysPatternsFromMeta?.[0]
+                ? { pattern: alwaysPatternsFromMeta[0] }
+                : {})
       })
       // Resolve first so tool asserts never hang if persist fails.
       this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
@@ -273,7 +299,11 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
   }
 
-  private createRequest(input: AgentGateAssertInput, fingerprint?: string): AgentGateRequest {
+  private createRequest(
+    input: AgentGateAssertInput,
+    fingerprint?: string,
+    decisionSource?: import('@baishou/shared').AgentGateDecisionSource
+  ): AgentGateRequest {
     return {
       id: createAgentGateRequestId(),
       sessionId: input.sessionId,
@@ -285,7 +315,10 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       description: input.description,
       options: input.options ?? [],
       allowCustomInput: input.allowCustomInput ?? false,
-      metadata: input.metadata ?? {},
+      metadata: {
+        ...(input.metadata ?? {}),
+        ...(decisionSource ? { decisionSource } : {})
+      },
       preview: input.preview,
       scope: input.scope ?? this.configScope,
       fingerprint,
@@ -414,6 +447,8 @@ export interface CreateBaishouAgentGateOptions {
   repeatTracker?: AgentGateRepeatTracker
   /** 写入 allowlist_changed 事件，便于 UI 按场景刷新 */
   configScope?: AgentGateConfigScope
+  /** G4：工作区自动接受（运行时查询，不进配置） */
+  isAutoAccept?: () => boolean
 }
 
 function cloneDefaultConfig(): BaishouAgentGateConfig {
@@ -422,6 +457,12 @@ function cloneDefaultConfig(): BaishouAgentGateConfig {
     exclusionList: [...DEFAULT_BAISHOU_AGENT_GATE_CONFIG.exclusionList],
     allowlist: []
   }
+}
+
+function isBaishouAgentGateConfig(
+  value: CreateBaishouAgentGateOptions | BaishouAgentGateConfig | undefined
+): value is BaishouAgentGateConfig {
+  return !!value && 'exclusionList' in value && !('config' in value) && !('persistConfig' in value)
 }
 
 /** 创建可复用的门控实例（测试与运行时 DI） */
@@ -435,17 +476,19 @@ export function createBaishouAgentGate(
   getConfig: () => BaishouAgentGateConfig
   repeatTracker: AgentGateRepeatTracker
 } {
-  const config =
-    options && 'trustMode' in options ? options : (options?.config ?? cloneDefaultConfig())
+  const config = isBaishouAgentGateConfig(options)
+    ? options
+    : (options?.config ?? cloneDefaultConfig())
 
-  const persistConfig = options && 'trustMode' in options ? undefined : options?.persistConfig
+  const persistConfig = isBaishouAgentGateConfig(options) ? undefined : options?.persistConfig
   const eventBus =
-    (options && 'trustMode' in options ? undefined : options?.eventBus) ??
+    (isBaishouAgentGateConfig(options) ? undefined : options?.eventBus) ??
     new BaishouAgentGateEventBus()
   const repeatTracker =
-    (options && 'trustMode' in options ? undefined : options?.repeatTracker) ??
+    (isBaishouAgentGateConfig(options) ? undefined : options?.repeatTracker) ??
     new AgentGateRepeatTracker()
-  const configScope = options && 'trustMode' in options ? undefined : options?.configScope
+  const configScope = isBaishouAgentGateConfig(options) ? undefined : options?.configScope
+  const isAutoAccept = isBaishouAgentGateConfig(options) ? undefined : options?.isAutoAccept
 
   const getConfig = () => config
   const allowlistStore = new BaishouAgentGateAllowlistStore(getConfig, persistConfig)
@@ -455,7 +498,8 @@ export function createBaishouAgentGate(
     allowlistStore,
     eventBus,
     repeatTracker,
-    configScope
+    configScope,
+    isAutoAccept
   )
 
   return { gate, eventBus, policy, allowlistStore, getConfig, repeatTracker }

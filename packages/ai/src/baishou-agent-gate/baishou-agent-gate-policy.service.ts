@@ -1,51 +1,43 @@
 import {
   AgentGateEffect,
   AgentGateProfileId,
-  AgentGateTrustMode,
-  evaluateAgentGatePermissionRules,
+  CATCH_ALL_ALLOW_RULE,
+  allowlistEntriesToPermissionRules,
+  agentGatePermissionRuleMatches,
+  clampAgentGateEffect,
+  findLastMatchingLayeredRule,
   extractAgentGateResourcesFromMetadata,
   getAgentGateProfileRules,
+  hasCatchAllAllowRule,
   isAgentGateActionForceExcluded,
-  matchesTrustedExternalDirs,
   mergeAgentGateResources,
   resolveAgentGatePermissionRules,
   resolveAgentGateProfileId,
+  type AgentGateDecisionSource,
   type AgentGateEvaluateInput,
   type AgentGatePermissionRule,
-  type AgentGateResourceRef,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
 import type { IAgentGateAllowlistStore } from './baishou-agent-gate-allowlist.store'
 
+export interface AgentGateEvaluateResult {
+  effect: AgentGateEffect
+  decisionSource: AgentGateDecisionSource
+}
+
 export interface IAgentGatePolicy {
   evaluate(input: AgentGateEvaluateInput): AgentGateEffect
+  evaluateDetailed(input: AgentGateEvaluateInput): AgentGateEvaluateResult
   getConfig(): Readonly<BaishouAgentGateConfig>
   isExcluded(action: string): boolean
 }
 
-function hasExternalPath(resources: readonly AgentGateResourceRef[]): boolean {
-  return resources.some((resource) => resource.kind === 'external_path')
-}
-
-function mergeProfileAndUserRules(
-  profileId: AgentGateProfileId,
-  config: BaishouAgentGateConfig
-): AgentGatePermissionRule[] {
-  return [...getAgentGateProfileRules(profileId), ...resolveAgentGatePermissionRules(config)]
-}
-
-function shouldForceAskExternal(
-  config: BaishouAgentGateConfig,
-  resources: readonly AgentGateResourceRef[]
-): boolean {
-  if (config.externalPathEffect === 'deny') return false
-  const forceAskExternal =
-    config.externalPathEffect === 'allow'
-      ? config.forceAskExternalPath === true
-      : config.forceAskExternalPath !== false
-  if (!forceAskExternal) return false
-  // 可信区外目录：仅通过区外门，后续仍走能力矩阵
-  return !matchesTrustedExternalDirs(config, resources)
+function isCatchAllAllowRule(rule: AgentGatePermissionRule): boolean {
+  return (
+    rule.action === CATCH_ALL_ALLOW_RULE.action &&
+    !rule.pattern &&
+    rule.effect === CATCH_ALL_ALLOW_RULE.effect
+  )
 }
 
 export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
@@ -64,8 +56,19 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
   }
 
   evaluate(input: AgentGateEvaluateInput): AgentGateEffect {
+    return this.evaluateDetailed(input).effect
+  }
+
+  evaluateDetailed(input: AgentGateEvaluateInput): AgentGateEvaluateResult {
     if (input.toolDisabled) {
-      return AgentGateEffect.Deny
+      return {
+        effect: AgentGateEffect.Deny,
+        decisionSource: {
+          layer: 'default',
+          action: input.action,
+          effect: AgentGateEffect.Deny
+        }
+      }
     }
 
     const config = this.configProvider()
@@ -74,67 +77,75 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       input.resources,
       extractAgentGateResourcesFromMetadata(input.metadata)
     )
-    if (config.exclusionList.includes(input.action) || forceExcluded) {
-      return AgentGateEffect.Ask
-    }
 
-    // 区外路径：先过区外门（拒绝 / 可信目录放行 / 询问），再走能力矩阵
-    if (hasExternalPath(resources)) {
-      if (config.externalPathEffect === 'deny') {
-        return AgentGateEffect.Deny
-      }
-      if (shouldForceAskExternal(config, resources)) {
-        // 高级：带 pattern 的显式 Allow 仍可在询问门之前放行
-        const permissionRulesEarly =
-          input.profileId != null
-            ? mergeProfileAndUserRules(
-                resolveAgentGateProfileId(input.profileId, AgentGateProfileId.Companion),
-                config
-              )
-            : resolveAgentGatePermissionRules(config)
-        const patternedAllow = evaluateAgentGatePermissionRules({
-          action: input.action,
-          resources,
-          rules: permissionRulesEarly.filter((rule) => !!rule.pattern),
-          forceExcluded
-        })
-        if (patternedAllow === AgentGateEffect.Allow) {
-          return AgentGateEffect.Allow
-        }
-        if (patternedAllow === AgentGateEffect.Deny) {
-          return AgentGateEffect.Deny
-        }
-        return AgentGateEffect.Ask
-      }
-    }
-
-    // Profile rules only when callers bind a scene (interceptor / tool registry).
-    const permissionRules =
+    const profileRules =
       input.profileId != null
-        ? mergeProfileAndUserRules(
-            resolveAgentGateProfileId(input.profileId, AgentGateProfileId.Companion),
-            config
-          )
-        : resolveAgentGatePermissionRules(config)
-    const ruleEffect = evaluateAgentGatePermissionRules({
+        ? [
+            ...getAgentGateProfileRules(
+              resolveAgentGateProfileId(input.profileId, AgentGateProfileId.Companion)
+            )
+          ]
+        : []
+    const userRules = resolveAgentGatePermissionRules(config).filter(
+      (rule) => !isCatchAllAllowRule(rule)
+    )
+    const rememberedRules = allowlistEntriesToPermissionRules(this.allowlistStore.list())
+    const sessionRules = input.autoAccept
+      ? [{ action: '*', effect: AgentGateEffect.Allow }]
+      : []
+
+    const matched = findLastMatchingLayeredRule({
       action: input.action,
       resources,
-      rules: permissionRules,
-      forceExcluded
+      layers: [
+        { kind: 'profile', rules: profileRules },
+        { kind: 'user', rules: userRules },
+        { kind: 'remembered', rules: rememberedRules },
+        { kind: 'session', rules: sessionRules }
+      ]
     })
-    if (ruleEffect != null) {
-      return ruleEffect
-    }
 
-    // Host command execution never rides FullTrust; needs allowlist pattern or Ask.
-    if (config.trustMode === AgentGateTrustMode.FullTrust && input.action !== 'workspace_run') {
-      return AgentGateEffect.Allow
+    let rawEffect = matched?.rule.effect ?? AgentGateEffect.Ask
+    let usedCatchAllFallback = false
+    if (
+      rawEffect === AgentGateEffect.Ask &&
+      hasCatchAllAllowRule(config) &&
+      agentGatePermissionRuleMatches(CATCH_ALL_ALLOW_RULE, input.action, resources)
+    ) {
+      rawEffect = AgentGateEffect.Allow
+      usedCatchAllFallback = true
     }
+    const effect = clampAgentGateEffect(rawEffect, {
+      action: input.action,
+      resources,
+      exclusionList: config.exclusionList,
+      forceExcluded,
+      metadata: input.metadata,
+      preview: input.preview
+    })
 
-    if (this.allowlistStore.has(input.action, resources)) {
-      return AgentGateEffect.Allow
-    }
+    const decisionSource: AgentGateDecisionSource = matched
+      ? {
+          layer: matched.layer,
+          action: matched.rule.action,
+          pattern: matched.rule.pattern,
+          effect,
+          ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
+        }
+      : usedCatchAllFallback
+        ? {
+            layer: 'user',
+            action: '*',
+            effect,
+            ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
+          }
+        : {
+            layer: 'default',
+            action: input.action,
+            effect,
+            ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
+          }
 
-    return AgentGateEffect.Ask
+    return { effect, decisionSource }
   }
 }
