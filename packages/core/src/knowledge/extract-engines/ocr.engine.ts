@@ -1,5 +1,6 @@
 import { analyzePageTexts, extractPdfPageTexts, MIN_TEXT_LAYER_CHARS } from '../knowledge-extract'
-import { getPdfPageBitmapRenderer, probeTesseractJs } from './adapters'
+import { md5Hex } from '../../fs/md5'
+import { getPdfPageBitmapRenderer, probeTesseractJs, resolvePdfNumPages } from './adapters'
 import { getRegisteredSimplePageTexts, rememberSimplePageTexts } from './simple-page-cache'
 import type { ExtractEngine, ExtractEngineContext, EngineExtractResult } from './types'
 
@@ -75,10 +76,25 @@ export const ocrExtractEngine: ExtractEngine = {
       (await extractPdfPageTexts(ctx.absolutePath))
     rememberSimplePageTexts(ctx.absolutePath, existing)
 
-    const pageCount = Math.max(existing.length, 1)
+    // 页数未知：用 renderer/probe 的 numPages；仍未知禁止伪造 1 页后标 ready
+    const pageCount = await resolvePdfNumPages(ctx.absolutePath, existing.length)
+    if (pageCount == null || pageCount <= 0) {
+      return {
+        text: existing.join('\n\n'),
+        pages: { pages: [] },
+        pageCount: 0,
+        textPageCount: 0,
+        quality: 'needs_ocr',
+        evidence: '无法确定 PDF 页数，禁止标 ready',
+        extractEngine: 'ocr',
+        textHash: md5Hex(existing.join('\n\n')),
+        processedPages: []
+      }
+    }
     while (existing.length < pageCount) existing = [...existing, '']
+    if (existing.length > pageCount) existing = existing.slice(0, pageCount)
 
-    const pagesToOcr = resolveMissingPageNumbers(existing, existing.length, ctx.pageNumbers)
+    const pagesToOcr = resolveMissingPageNumbers(existing, pageCount, ctx.pageNumbers)
     if (pagesToOcr.length === 0) {
       return { ...analyzePageTexts(existing), extractEngine: 'ocr', processedPages: [] }
     }

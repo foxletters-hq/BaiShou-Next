@@ -2,11 +2,13 @@ import { KnowledgeReaderAdapter } from '@baishou/ai'
 import { KnowledgeSearchService } from '@baishou/core-desktop'
 import type { ToolKnowledgeReader } from '@baishou/shared'
 import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
-import { getEmbeddingService } from '../ipc/rag.ipc'
+import { getEmbeddingService, getEmbeddingConfig } from '../ipc/rag.ipc'
+import { resolveActiveVaultId } from '../ipc/vault.ipc'
 
 /**
  * Build a ToolKnowledgeReader for companion / workspace chat injection.
  * Returns undefined when knowledge.db is not connected.
+ * Shares Ask 的 model-mismatch 硬闸门。
  */
 export function createDesktopKnowledgeReader(
   embedQuery?: (text: string) => Promise<number[] | null>
@@ -37,6 +39,18 @@ export function createDesktopKnowledgeReader(
     })
 
   return new KnowledgeReaderAdapter(async (opts) => {
+    const embeddingConfig = getEmbeddingConfig()
+    await embeddingConfig.load()
+    const modelId = embeddingConfig.getGlobalEmbeddingModelId()
+    const embeddingService = getEmbeddingService()
+    if (modelId && embeddingService.isConfigured) {
+      const vaultId = resolveActiveVaultId()
+      const mismatch = await repo.countHeterogeneousEmbeddings(modelId, { vaultId })
+      if (mismatch > 0) {
+        throw new Error('knowledge-model-mismatch')
+      }
+    }
+
     const queryVector = await resolveEmbed(opts.query)
     if (!queryVector?.length) {
       throw new Error('embedding-not-configured')
