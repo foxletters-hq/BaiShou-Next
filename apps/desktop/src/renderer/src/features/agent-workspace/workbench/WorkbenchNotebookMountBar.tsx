@@ -81,17 +81,13 @@ export const WorkbenchNotebookMountBar: React.FC<WorkbenchNotebookMountBarProps>
     <div className={styles.bar}>
       <div className={styles.row}>
         <BookOpen size={14} strokeWidth={1.75} aria-hidden className={styles.icon} />
-        <span className={styles.label}>
-          {t('workbench.notebook_mount', '知识库笔记本')}
-        </span>
+        <span className={styles.label}>{t('workbench.notebook_mount', '知识库笔记本')}</span>
         {notebookId ? (
           <span className={styles.mounted} title={notebookId}>
             {notebookName || notebookId}
           </span>
         ) : (
-          <span className={styles.unmounted}>
-            {t('workbench.notebook_not_mounted', '未挂载')}
-          </span>
+          <span className={styles.unmounted}>{t('workbench.notebook_not_mounted', '未挂载')}</span>
         )}
         <div className={styles.actions}>
           <button
@@ -118,7 +114,11 @@ export const WorkbenchNotebookMountBar: React.FC<WorkbenchNotebookMountBarProps>
       </div>
       {error ? <p className={styles.error}>{error}</p> : null}
       {pickerOpen ? (
-        <div className={styles.picker} role="dialog" aria-label={t('workbench.attach_notebook', '挂载笔记本')}>
+        <div
+          className={styles.picker}
+          role="dialog"
+          aria-label={t('workbench.attach_notebook', '挂载笔记本')}
+        >
           <div className={styles.pickerHeader}>
             <span>{t('workbench.pick_notebook', '选择要挂载的笔记本')}</span>
             <button

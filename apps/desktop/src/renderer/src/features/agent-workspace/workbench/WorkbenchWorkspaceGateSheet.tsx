@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Settings, X } from 'lucide-react'
-import {
-  AgentToolsView,
-  Modal,
-  SegmentedControl,
-  type AgentToolsConfig
-} from '@baishou/ui'
+import { AgentToolsView, Modal, SegmentedControl, type AgentToolsConfig } from '@baishou/ui'
 import {
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
   type WorkspaceToolManagementConfig

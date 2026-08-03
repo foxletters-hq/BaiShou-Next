@@ -5,10 +5,7 @@ import { useDialog } from '@baishou/ui'
 import { useAgentWorkspaces } from '../../hooks/useAgentWorkspaces'
 import { SETTINGS_HUB_PREFIX } from '../../../settings/settings-route.util'
 import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
-import {
-  WorkbenchHomeSidebar,
-  type WorkbenchHomeNavId
-} from './WorkbenchHomeSidebar'
+import { WorkbenchHomeSidebar, type WorkbenchHomeNavId } from './WorkbenchHomeSidebar'
 import pageStyles from './WorkbenchHomePage.module.css'
 import styles from './WorkbenchPlaceholderPage.module.css'
 
@@ -17,30 +14,6 @@ interface WorkspaceOutletContext {
 }
 
 export type WorkbenchPlaceholderSection = Exclude<WorkbenchHomeNavId, null | 'home'>
-
-const SECTION_COPY: Record<
-  WorkbenchPlaceholderSection,
-  { titleKey: string; titleDefault: string; descKey: string; descDefault: string }
-> = {
-  knowledge: {
-    titleKey: 'workbench.home_knowledge',
-    titleDefault: '知识库',
-    descKey: 'workbench.placeholder_knowledge_desc',
-    descDefault: '知识库功能即将上线，敬请期待。'
-  },
-  templates: {
-    titleKey: 'workbench.home_templates',
-    titleDefault: '模板',
-    descKey: 'workbench.placeholder_templates_desc',
-    descDefault: '模板功能即将上线，敬请期待。'
-  },
-  projects: {
-    titleKey: 'workbench.home_projects',
-    titleDefault: '项目',
-    descKey: 'workbench.placeholder_projects_desc',
-    descDefault: '项目列表即将上线，敬请期待。'
-  }
-}
 
 export interface WorkbenchPlaceholderPageProps {
   section: WorkbenchPlaceholderSection
@@ -59,8 +32,6 @@ export const WorkbenchPlaceholderPage: React.FC<WorkbenchPlaceholderPageProps> =
     id: string
     displayName: string
   } | null>(null)
-
-  const copy = SECTION_COPY[section]
 
   const handleOpenFolder = useCallback(async () => {
     setCreating(true)
@@ -109,8 +80,20 @@ export const WorkbenchPlaceholderPage: React.FC<WorkbenchPlaceholderPageProps> =
 
       <main className={pageStyles.main}>
         <div className={styles.empty}>
-          <h1 className={styles.title}>{t(copy.titleKey, copy.titleDefault)}</h1>
-          <p className={styles.desc}>{t(copy.descKey, copy.descDefault)}</p>
+          <h1 className={styles.title}>
+            {section === 'knowledge'
+              ? t('workbench.home_knowledge', '知识库')
+              : section === 'templates'
+                ? t('workbench.home_templates', '模板')
+                : t('workbench.home_projects', '项目')}
+          </h1>
+          <p className={styles.desc}>
+            {section === 'knowledge'
+              ? t('workbench.placeholder_knowledge_desc', '知识库功能即将上线，敬请期待。')
+              : section === 'templates'
+                ? t('workbench.placeholder_templates_desc', '模板功能即将上线，敬请期待。')
+                : t('workbench.placeholder_projects_desc', '项目列表即将上线，敬请期待。')}
+          </p>
         </div>
       </main>
 

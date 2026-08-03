@@ -7,16 +7,7 @@ export function getWorkspaceInitialLabel(name: string): string {
   return first ?? '?'
 }
 
-const AVATAR_TONES = [
-  'cyan',
-  'blue',
-  'green',
-  'orange',
-  'pink',
-  'purple',
-  'red',
-  'gray'
-] as const
+const AVATAR_TONES = ['cyan', 'blue', 'green', 'orange', 'pink', 'purple', 'red', 'gray'] as const
 
 export type WorkspaceAvatarTone = (typeof AVATAR_TONES)[number]
 

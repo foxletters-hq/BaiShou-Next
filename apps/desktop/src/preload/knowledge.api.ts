@@ -16,19 +16,14 @@ export const knowledgeApi = {
       extractEngine?: 'simple' | 'ocr' | 'vision'
     }) => ipcRenderer.invoke('knowledge:import-source', input),
     retrySource: (sourceId: string) => ipcRenderer.invoke('knowledge:retry-source', sourceId),
-    rebuildIndex: (notebookId: string) =>
-      ipcRenderer.invoke('knowledge:rebuild-index', notebookId),
+    rebuildIndex: (notebookId: string) => ipcRenderer.invoke('knowledge:rebuild-index', notebookId),
     getStats: (notebookId?: string) => ipcRenderer.invoke('knowledge:get-stats', notebookId),
     hasModelMismatch: () => ipcRenderer.invoke('knowledge:has-model-mismatch'),
     listSources: (notebookId: string) => ipcRenderer.invoke('knowledge:list-sources', notebookId),
     search: (input: { notebookId: string; query: string; topK?: number }) =>
       ipcRenderer.invoke('knowledge:search', input),
-    ask: (input: {
-      notebookId: string
-      question: string
-      topK?: number
-      multiQuery?: boolean
-    }) => ipcRenderer.invoke('knowledge:ask', input),
+    ask: (input: { notebookId: string; question: string; topK?: number; multiQuery?: boolean }) =>
+      ipcRenderer.invoke('knowledge:ask', input),
     chat: (input: {
       notebookId: string
       question: string
@@ -55,10 +50,7 @@ export const knowledgeApi = {
       ocrDpi?: number
       multiQueryAsk?: boolean
     }) => ipcRenderer.invoke('knowledge:set-config', patch),
-    getExtractedPreview: (input: {
-      notebookId: string
-      sourceId: string
-      maxChars?: number
-    }) => ipcRenderer.invoke('knowledge:get-extracted-preview', input)
+    getExtractedPreview: (input: { notebookId: string; sourceId: string; maxChars?: number }) =>
+      ipcRenderer.invoke('knowledge:get-extracted-preview', input)
   }
 }

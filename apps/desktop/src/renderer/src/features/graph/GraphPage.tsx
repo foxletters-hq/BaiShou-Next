@@ -701,7 +701,9 @@ export const GraphPage: React.FC = () => {
                     <div key={e.id} className={styles.item}>
                       <div className={styles.itemMeta}>
                         {e.edgeType}
-                        {e.reviewStatus === 'pending' ? ` · ${t('graph.pending_badge', '待确认')}` : ''}
+                        {e.reviewStatus === 'pending'
+                          ? ` · ${t('graph.pending_badge', '待确认')}`
+                          : ''}
                         {e.sourceExcerpt ? ` · ${e.sourceExcerpt}` : ''}
                       </div>
                       <div className={styles.rowActions}>
