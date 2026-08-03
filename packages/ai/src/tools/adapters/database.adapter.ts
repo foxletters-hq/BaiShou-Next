@@ -76,8 +76,12 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
 
   // --- ToolMessageSearcher 实现 ---
 
-  async searchMessages(query: string, limit: number) {
-    const rows = await this.messageRepo.searchMessagesByKeyword(query, limit)
+  async searchMessages(query: string, limit: number, vaultId?: string) {
+    const scoped = String(vaultId ?? this.tryVaultId() ?? '').trim()
+    // 缺 vaultId → fail-closed，避免跨仓泄漏
+    if (!scoped) return []
+
+    const rows = await this.messageRepo.searchMessagesByKeyword(query, limit, scoped)
 
     return rows.map((r: any) => ({
       role: r.role,

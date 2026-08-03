@@ -27,10 +27,22 @@ describe('MessageSearchTool', () => {
       messageSearcher: searcher
     } as ToolContext)
 
-    expect(searcher.searchMessages).toHaveBeenCalledWith('噩梦', 10)
+    expect(searcher.searchMessages).toHaveBeenCalledWith('噩梦', 10, deriveLegacyVaultId('/tmp'))
     expect(output).toContain(`会话「6月17日更新后」(${localTs})`)
     expect(output).toContain('2025-06-21 01:30')
     expect(output).not.toMatch(/\(2025-06-20\)/)
+  })
+
+  it('fail-closed when context.vaultId is missing', async () => {
+    const searcher = { searchMessages: vi.fn().mockResolvedValue([{ role: 'user', snippet: 'x' }]) }
+    const output = await tool.execute({ query: 'x' }, {
+      sessionId: 's1',
+      vaultId: '',
+      vaultName: '/tmp',
+      messageSearcher: searcher
+    } as ToolContext)
+    expect(output).toContain('缺少工作空间')
+    expect(searcher.searchMessages).not.toHaveBeenCalled()
   })
 
   it('returns error when query is empty', async () => {

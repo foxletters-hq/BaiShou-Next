@@ -73,9 +73,10 @@ describe('DatabaseAdapter.searchMessages', () => {
       ])
     }
 
-    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
     const results = await adapter.searchMessages('噩梦', 10)
 
+    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith('噩梦', 10, 'vlt_test')
     expect(results).toHaveLength(1)
     // 与模型上下文 formatMessageTimestamp 一致：按本地日历日，避免凌晨消息被 UTC 标为前一天
     expect(results[0]!.date).toBe(formatRecallTimestamp(createdAt))
@@ -84,6 +85,29 @@ describe('DatabaseAdapter.searchMessages', () => {
     if (legacyUtcDate !== '2025-06-21') {
       expect(results[0]!.date).not.toContain(legacyUtcDate)
     }
+  })
+
+  it('fail-closed: missing vaultId returns empty without querying', async () => {
+    const messageRepo = {
+      searchMessagesByKeyword: vi.fn().mockResolvedValue([{ role: 'user', content: 'leak' }])
+    }
+    const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any)
+    expect(await adapter.searchMessages('leak', 10)).toEqual([])
+    expect(messageRepo.searchMessagesByKeyword).not.toHaveBeenCalled()
+  })
+
+  it('prefers explicit vaultId argument over resolver', async () => {
+    const messageRepo = {
+      searchMessagesByKeyword: vi.fn().mockResolvedValue([])
+    }
+    const adapter = new DatabaseAdapter(
+      {} as any,
+      messageRepo as any,
+      {} as any,
+      () => 'vlt_resolver'
+    )
+    await adapter.searchMessages('q', 5, 'vlt_explicit')
+    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith('q', 5, 'vlt_explicit')
   })
 })
 

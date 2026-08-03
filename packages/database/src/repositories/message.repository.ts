@@ -4,6 +4,7 @@ import { AgentMessage, AgentPart } from '@baishou/shared'
 import { AppDatabase } from '../types'
 import { agentMessagesTable } from '../schema/agent-messages'
 import { agentPartsTable } from '../schema/agent-parts'
+import { agentSessionsTable } from '../schema/agent-sessions'
 
 export type InsertAgentMessageInput = Omit<AgentMessage, 'createdAt'>
 export type InsertAgentPartInput = Omit<AgentPart, 'createdAt'>
@@ -123,13 +124,21 @@ export class MessageRepository implements AgentMessageRepository {
     }
   }
 
-  async searchMessagesByKeyword(keyword: string, limit: number = 10): Promise<any[]> {
+  /**
+   * 跨会话关键词搜索。必须带 vaultId（fail-closed），JOIN agent_sessions 过滤本仓。
+   */
+  async searchMessagesByKeyword(
+    keyword: string,
+    limit: number = 10,
+    vaultId?: string | null
+  ): Promise<any[]> {
     const trimmed = keyword.trim()
-    if (!trimmed) return []
+    const scopedVaultId = String(vaultId ?? '').trim()
+    if (!trimmed || !scopedVaultId) return []
 
     const [ftsResults, likeResults] = await Promise.all([
-      this.searchMessagesViaFts(trimmed, limit),
-      this.searchMessagesViaLike(trimmed, limit)
+      this.searchMessagesViaFts(trimmed, limit, scopedVaultId),
+      this.searchMessagesViaLike(trimmed, limit, scopedVaultId)
     ])
 
     const seen = new Set<string>()
@@ -167,7 +176,11 @@ export class MessageRepository implements AgentMessageRepository {
     )
   }
 
-  private async searchMessagesViaFts(keyword: string, limit: number): Promise<any[]> {
+  private async searchMessagesViaFts(
+    keyword: string,
+    limit: number,
+    vaultId: string
+  ): Promise<any[]> {
     const cleanedQuery = keyword.replace(/"/g, ' ').trim()
     if (!cleanedQuery) return []
 
@@ -177,7 +190,10 @@ export class MessageRepository implements AgentMessageRepository {
           fts.message_id as message_id,
           snippet(agent_messages_fts, 3, '', '', '...', 160) as snippet
         FROM agent_messages_fts fts
+        INNER JOIN agent_messages m ON m.id = fts.message_id
+        INNER JOIN agent_sessions s ON s.id = m.session_id
         WHERE agent_messages_fts MATCH ${`"${cleanedQuery}"`}
+          AND s.vault_id = ${vaultId}
         ORDER BY rank
         LIMIT ${limit * 3}
       `
@@ -198,10 +214,19 @@ export class MessageRepository implements AgentMessageRepository {
           .select({
             role: agentMessagesTable.role,
             createdAt: agentMessagesTable.createdAt,
-            sessionTitle: sql<string>`(SELECT title FROM agent_sessions WHERE id = ${agentMessagesTable.sessionId})`
+            sessionTitle: agentSessionsTable.title
           })
           .from(agentMessagesTable)
-          .where(eq(agentMessagesTable.id, row.message_id))
+          .innerJoin(
+            agentSessionsTable,
+            eq(agentMessagesTable.sessionId, agentSessionsTable.id)
+          )
+          .where(
+            and(
+              eq(agentMessagesTable.id, row.message_id),
+              eq(agentSessionsTable.vaultId, vaultId)
+            )
+          )
           .limit(1)
 
         if (!messageRow) continue
@@ -222,7 +247,11 @@ export class MessageRepository implements AgentMessageRepository {
     }
   }
 
-  private async searchMessagesViaLike(keyword: string, limit: number): Promise<any[]> {
+  private async searchMessagesViaLike(
+    keyword: string,
+    limit: number,
+    vaultId: string
+  ): Promise<any[]> {
     const pattern = this.escapeLikePattern(keyword)
     const rows = await this.db
       .select({
@@ -231,19 +260,23 @@ export class MessageRepository implements AgentMessageRepository {
         content: agentPartsTable.data,
         partType: agentPartsTable.type,
         createdAt: agentMessagesTable.createdAt,
-        sessionTitle: sql<string>`(SELECT title FROM agent_sessions WHERE id = ${agentMessagesTable.sessionId})`
+        sessionTitle: agentSessionsTable.title
       })
       .from(agentMessagesTable)
       .innerJoin(agentPartsTable, eq(agentMessagesTable.id, agentPartsTable.messageId))
+      .innerJoin(agentSessionsTable, eq(agentMessagesTable.sessionId, agentSessionsTable.id))
       .where(
-        or(
-          and(
-            this.isNonReasoningTextPart(),
-            sql`json_extract(${agentPartsTable.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
-          ),
-          and(
-            eq(agentPartsTable.type, 'attachment'),
-            sql`json_extract(${agentPartsTable.data}, '$.textContent') LIKE ${pattern} ESCAPE '\\'`
+        and(
+          eq(agentSessionsTable.vaultId, vaultId),
+          or(
+            and(
+              this.isNonReasoningTextPart(),
+              sql`json_extract(${agentPartsTable.data}, '$.text') LIKE ${pattern} ESCAPE '\\'`
+            ),
+            and(
+              eq(agentPartsTable.type, 'attachment'),
+              sql`json_extract(${agentPartsTable.data}, '$.textContent') LIKE ${pattern} ESCAPE '\\'`
+            )
           )
         )
       )
