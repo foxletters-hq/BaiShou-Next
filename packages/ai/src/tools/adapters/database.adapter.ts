@@ -20,12 +20,12 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   async searchSimilar(
     queryEmbedding: number[],
     topK: number,
-    timeFilter?: { startMs?: number; endMs?: number; vaultName?: string }
+    timeFilter?: { startMs?: number; endMs?: number; vaultId?: string }
   ): Promise<VectorSearchResult[]> {
     const rows = await this.hybridRepo.queryNativeVector(queryEmbedding, topK, {
       startMs: timeFilter?.startMs,
       endMs: timeFilter?.endMs,
-      vaultName: timeFilter?.vaultName
+      vaultId: timeFilter?.vaultId
     })
     return rows.map((r: any) => ({
       sourceType: r.sourceType || r.source || 'chat',
@@ -52,12 +52,12 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   async searchFts(
     query: string,
     limit: number,
-    timeFilter?: { startMs?: number; endMs?: number; vaultName?: string }
+    timeFilter?: { startMs?: number; endMs?: number; vaultId?: string }
   ) {
     const rows = await this.hybridRepo.queryFTS(query, limit, {
       startMs: timeFilter?.startMs,
       endMs: timeFilter?.endMs,
-      vaultName: timeFilter?.vaultName
+      vaultId: timeFilter?.vaultId
     })
     return rows.map((r: any) => ({
       messageId: r.messageId,

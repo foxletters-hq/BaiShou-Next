@@ -24,7 +24,7 @@ export interface ToolEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
-    vaultName: string
+    vaultId: string
     metadataJson?: string
     sourceCreatedAt?: number
   }): Promise<void>
@@ -48,7 +48,7 @@ export interface VectorSearchResult {
 export interface VectorSearchTimeFilter {
   startMs?: number
   endMs?: number
-  vaultName?: string
+  vaultId?: string
 }
 
 export interface ToolVectorStore {

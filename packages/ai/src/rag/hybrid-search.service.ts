@@ -24,7 +24,7 @@ export class HybridSearchService {
       ? this.storage.queryFTS(opts.queryText, topK, {
           startMs: filter.startMs,
           endMs: filter.endMs,
-          vaultName: filter.vaultName
+          vaultId: filter.vaultId
         })
       : Promise.resolve([])
 
