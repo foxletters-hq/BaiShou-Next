@@ -205,6 +205,25 @@ export class NotebookRawManager implements WholeFileKindManager {
     return this.fs.readFile(file, 'utf8')
   }
 
+  async readPagesJson(
+    notebookId: string,
+    sourceId: string
+  ): Promise<{ pages: Array<{ page: number; start: number; end: number }> } | null> {
+    const base = await this.baseDir()
+    const file = path.join(base, notebookId, 'extracted', `${sourceId}.pages.json`)
+    if (!(await this.fs.exists(file))) return null
+    try {
+      const raw = await this.fs.readFile(file, 'utf8')
+      const parsed = JSON.parse(raw) as {
+        pages?: Array<{ page: number; start: number; end: number }>
+      }
+      if (!Array.isArray(parsed?.pages)) return null
+      return { pages: parsed.pages }
+    } catch {
+      return null
+    }
+  }
+
   async writeExtracted(
     notebookId: string,
     sourceId: string,

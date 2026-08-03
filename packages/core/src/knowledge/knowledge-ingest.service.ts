@@ -86,10 +86,11 @@ export class KnowledgeIngestService {
   async importSource(input: {
     notebookId: string
     title: string
-    kind: 'file' | 'text'
+    kind: 'file' | 'text' | 'url'
     absolutePath?: string
     textContent?: string
     fileName?: string
+    originUrl?: string
   }): Promise<{ sourceId: string }> {
     const notebook = await this.deps.repo.getNotebook(input.notebookId)
     if (!notebook) throw new Error(`notebook not found: ${input.notebookId}`)
@@ -100,6 +101,7 @@ export class KnowledgeIngestService {
     let contentHash = ''
     let byteSize = 0
     const fileName = input.fileName || input.title
+    let originUrl: string | null = input.originUrl ?? null
 
     if (input.kind === 'file') {
       if (!input.absolutePath) throw new Error('import file requires absolutePath')
@@ -117,6 +119,18 @@ export class KnowledgeIngestService {
       } catch {
         byteSize = 0
       }
+    } else if (input.kind === 'url') {
+      const text = input.textContent ?? ''
+      if (!text.trim()) throw new Error('import url requires textContent')
+      if (!originUrl?.trim()) throw new Error('import url requires originUrl')
+      originUrl = originUrl.trim()
+      const safeName = `${sourceId}.md`
+      relativePath = path.join(input.notebookId, 'sources', safeName)
+      const written = await this.deps.notebookManager.writeFile(relativePath, text, {
+        skipVersion: true
+      })
+      contentHash = written.contentHash
+      byteSize = byteLengthUtf8(text)
     } else {
       const text = input.textContent ?? ''
       const safeName = `${sourceId}.txt`
@@ -134,6 +148,7 @@ export class KnowledgeIngestService {
       title: input.title,
       sourceKind: input.kind,
       relativePath,
+      originUrl,
       contentHash,
       status: 'pending',
       byteSize,
