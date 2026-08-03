@@ -13,6 +13,8 @@ export interface MemoryRawRecord {
   updatedAt: number
   deletedAt: number | null
   legacySourceId?: string
+  /** V1.6：遗留手动记忆副本指回原件 JSONL id；有此字段的行不是原件 */
+  derivedFromLegacyId?: string
 }
 
 export const MEMORY_SOURCE_TYPE = 'memory' as const

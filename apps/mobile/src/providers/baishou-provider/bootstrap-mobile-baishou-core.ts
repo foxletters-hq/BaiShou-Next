@@ -367,6 +367,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
           drizzleDb,
           vaultId: activeVault.id,
           vaultName: activeVault.name,
+          vaults: vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name })),
           embeddingProvider: emb.embeddingProvider,
           embeddingModelId: emb.embeddingModelId,
           reason: 'cold-start'
