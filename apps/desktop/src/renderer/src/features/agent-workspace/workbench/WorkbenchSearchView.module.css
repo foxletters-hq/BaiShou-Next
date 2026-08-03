@@ -73,19 +73,20 @@
 .input {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--border-control);
   border-radius: 4px;
   padding: 4px 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.4;
+  transition: var(--form-field-transition);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--border-muted);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .toggles {
@@ -117,7 +118,7 @@
 }
 
 .replaceAllBtn {
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   border-radius: 4px;
@@ -161,18 +162,19 @@
 
 .filterInput {
   width: 100%;
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--border-control);
   border-radius: 4px;
   padding: 4px 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 12px;
+  transition: var(--form-field-transition);
 }
 
 .filterInput:focus {
   outline: none;
-  border-color: var(--border-muted);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .results {
