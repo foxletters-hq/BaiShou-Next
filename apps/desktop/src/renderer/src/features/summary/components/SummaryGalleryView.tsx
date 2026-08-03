@@ -11,17 +11,30 @@ interface Summary {
   startDate: string
   endDate: string
   content: string
+  generatedAt?: string
+  updatedAt?: string
 }
 
 interface SummaryGalleryViewProps {
   summaries: Summary[]
+  /** 轻量刷新画廊列表（勿走 detect-missing 等慢路径） */
+  onRefreshSummaries: () => Promise<void>
+  /** 失败回滚时用的完整刷新 */
   onRefreshData: () => Promise<void>
+  onSummaryDeleted: (id: string) => void
+  onSummaryPatched: (
+    id: string,
+    patch: { content?: string; generatedAt?: string; updatedAt?: string }
+  ) => void
 }
 
 /** 归档画廊视图（GalleryPanel 封装层） */
 export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
   summaries,
-  onRefreshData
+  onRefreshSummaries,
+  onRefreshData,
+  onSummaryDeleted,
+  onSummaryPatched
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -52,11 +65,14 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
     )
   }
 
+  const toIso = (value: unknown) =>
+    value instanceof Date ? value.toISOString() : value != null ? String(value) : undefined
+
   const handleSave = async (id: string, content: string) => {
     const summary = summaries.find((s) => String(s.id) === id)
     if (!summary) return
     try {
-      await window.electron.ipcRenderer.invoke(
+      const updated = await window.electron.ipcRenderer.invoke(
         'summary:update',
         summary.id,
         summary.type,
@@ -64,8 +80,13 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
         new Date(summary.endDate),
         { content }
       )
+      onSummaryPatched(id, {
+        content,
+        generatedAt: toIso(updated?.generatedAt) ?? summary.generatedAt,
+        updatedAt: toIso(updated?.updatedAt) ?? new Date().toISOString()
+      })
       toast.showSuccess(t('common.save_success', '保存成功'))
-      await onRefreshData()
+      void onRefreshSummaries()
     } catch (e) {
       console.error('[SummaryGalleryView] save error:', e)
       toast.showError(t('common.save_failed', '保存失败'))
@@ -85,20 +106,23 @@ export const SummaryGalleryView: React.FC<SummaryGalleryViewProps> = ({
       ).replace('$title', title)
     )
 
-    if (confirmed) {
-      try {
-        await window.electron.ipcRenderer.invoke(
-          'summary:delete',
-          summary.type,
-          new Date(summary.startDate),
-          new Date(summary.endDate)
-        )
-        toast.showSuccess(t('common.delete_success', '已删除'))
-        await onRefreshData()
-      } catch (e) {
-        console.error('[SummaryGalleryView] delete error:', e)
-        toast.showError(t('common.delete_failed', '删除失败'))
-      }
+    if (!confirmed) return
+
+    // 先从列表拿掉，避免等 detect-missing / 全量刷新才消失
+    onSummaryDeleted(id)
+    try {
+      await window.electron.ipcRenderer.invoke(
+        'summary:delete',
+        summary.type,
+        new Date(summary.startDate),
+        new Date(summary.endDate)
+      )
+      toast.showSuccess(t('common.delete_success', '已删除'))
+      void onRefreshSummaries()
+    } catch (e) {
+      console.error('[SummaryGalleryView] delete error:', e)
+      toast.showError(t('common.delete_failed', '删除失败'))
+      await onRefreshData()
     }
   }
 

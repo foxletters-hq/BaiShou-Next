@@ -4,7 +4,7 @@
   grid-template-rows: auto 1fr;
   height: 100%;
   min-height: 0;
-  background: var(--bg-app);
+  background: transparent;
   color: var(--text-primary);
 }
 
@@ -14,7 +14,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 32px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface);
 }
 
@@ -36,6 +36,7 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: inherit;
+  transition: var(--form-field-transition);
 }
 
 .search::placeholder {
@@ -44,15 +45,15 @@
 
 .search:focus {
   outline: none;
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .btn {
   height: 32px;
   padding: 0 12px;
   border-radius: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
@@ -95,7 +96,7 @@
 
 .side {
   min-height: 0;
-  border-left: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-muted);
   background: var(--bg-surface);
   display: flex;
   flex-direction: column;
@@ -106,7 +107,7 @@
   display: flex;
   gap: 4px;
   padding: 10px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface-high, var(--bg-surface));
 }
 

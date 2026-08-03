@@ -12,20 +12,40 @@ function DiaryEditorLoadingSkeleton() {
     <div className="diary-editor-skeleton" aria-busy="true" aria-label="Loading">
       <div className="diary-editor-skeleton-appbar">
         <div className="diary-editor-skeleton-circle" />
-        <div className="diary-editor-skeleton-pill diary-editor-skeleton-pill--title" />
+        <div className="diary-editor-skeleton-appbar-center">
+          <div className="diary-editor-skeleton-pill diary-editor-skeleton-pill--title" />
+        </div>
         <div className="diary-editor-skeleton-pill diary-editor-skeleton-pill--action" />
       </div>
-      <div className="diary-editor-skeleton-meta">
-        <div className="diary-editor-skeleton-pill" />
-        <div className="diary-editor-skeleton-pill" />
-        <div className="diary-editor-skeleton-circle diary-editor-skeleton-circle--sm" />
-      </div>
-      <div className="diary-editor-skeleton-card">
-        <div className="diary-editor-skeleton-line" style={{ width: '28%' }} />
-        <div className="diary-editor-skeleton-line" style={{ width: '62%' }} />
-        <div className="diary-editor-skeleton-line" style={{ width: '88%' }} />
-        <div className="diary-editor-skeleton-line" style={{ width: '74%' }} />
-        <div className="diary-editor-skeleton-line" style={{ width: '46%' }} />
+
+      <div className="diary-editor-skeleton-body">
+        <div className="diary-editor-skeleton-meta">
+          <div className="diary-editor-skeleton-meta-left">
+            <div className="diary-editor-skeleton-pill" />
+            <div className="diary-editor-skeleton-pill" />
+            <div className="diary-editor-skeleton-square" />
+          </div>
+          <div className="diary-editor-skeleton-meta-spacer" />
+          <div className="diary-editor-skeleton-square" />
+        </div>
+
+        <div className="diary-editor-skeleton-content">
+          <div className="diary-editor-skeleton-lines">
+            <div className="diary-editor-skeleton-line" style={{ width: '28%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '62%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '88%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '74%' }} />
+            <div className="diary-editor-skeleton-line" style={{ width: '46%' }} />
+          </div>
+          <div className="diary-editor-skeleton-toolbar">
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+            <div className="diary-editor-skeleton-square diary-editor-skeleton-square--sm" />
+          </div>
+        </div>
       </div>
     </div>
   )

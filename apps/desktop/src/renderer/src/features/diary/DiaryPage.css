@@ -76,8 +76,8 @@
 
 .diary-search-wrapper:focus-within {
   background-color: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .diary-search-icon {
@@ -132,7 +132,7 @@
   padding: 7px 16px;
   background-color: transparent;
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 500;
@@ -234,7 +234,7 @@
   margin: 0 auto;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1080px) {
   .diary-grid-inner {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -829,7 +829,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .diary-filter-title {
@@ -865,7 +865,7 @@
 }
 
 .diary-filter-section + .diary-filter-section {
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-muted);
 }
 
 .diary-filter-section-label {
@@ -914,7 +914,7 @@
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-secondary);
@@ -943,7 +943,7 @@
   justify-content: space-between;
   padding: 8px 0 12px;
   margin-bottom: 4px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 /* ── 底部分页组件 ── */
@@ -953,7 +953,7 @@
   justify-content: space-between;
   padding: 16px 0;
   margin-top: 8px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-muted);
 }
 
 .diary-pagination-info {
@@ -975,7 +975,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-xs);
   background: var(--bg-surface);
   color: var(--text-primary);
