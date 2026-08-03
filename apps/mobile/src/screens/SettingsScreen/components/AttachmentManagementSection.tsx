@@ -30,8 +30,7 @@ export const AttachmentManagementSection: React.FC = () => {
   const loadSessionAttachments = useCallback(async () => {
     if (!services || !dbReady) return
     const activeVault = services.vaultService?.getActiveVault?.()
-    const activeVaultId =
-      activeVault?.id ?? deriveLegacyVaultId(activeVault?.name || 'Personal')
+    const activeVaultId = activeVault?.id ?? deriveLegacyVaultId(activeVault?.name || 'Personal')
     const sessions = await services.sessionManager.findAllSessions(
       SESSION_FETCH_LIMIT,
       0,

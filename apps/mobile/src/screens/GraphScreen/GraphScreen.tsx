@@ -15,11 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Input, useNativeTheme } from '@baishou/ui/native'
 import { deriveLegacyVaultId } from '@baishou/shared'
-import {
-  GRAPH_EDGE_TYPES,
-  ShadowIndexRepository,
-  shadowConnectionManager
-} from '@baishou/database'
+import { GRAPH_EDGE_TYPES, ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import {
@@ -50,9 +46,7 @@ type CostEstimate = {
   estimatedMinutesHigh: number
 }
 
-type PendingItem =
-  | { kind: 'node'; id: string; data: any }
-  | { kind: 'edge'; id: string; data: any }
+type PendingItem = { kind: 'node'; id: string; data: any } | { kind: 'edge'; id: string; data: any }
 
 export function GraphScreen() {
   const { t } = useTranslation()
@@ -103,14 +97,8 @@ export function GraphScreen() {
     () =>
       [
         ['graph', t('graph.tab_graph', '图谱')],
-        [
-          'reextract',
-          `${t('graph.tab_reextract', '待重抽')}(${pending.length})`
-        ],
-        [
-          'pending',
-          `${t('graph.tab_pending', '待确认')}(${pendingItems.length})`
-        ],
+        ['reextract', `${t('graph.tab_reextract', '待重抽')}(${pending.length})`],
+        ['pending', `${t('graph.tab_pending', '待确认')}(${pendingItems.length})`],
         ['search', t('graph.tab_search', '搜索')]
       ] as const,
     [t, pending.length, pendingItems.length]
@@ -183,9 +171,7 @@ export function GraphScreen() {
   }, [graphEdges, displayNodes, approvedOnly])
 
   const showEmptyGuide =
-    !dismissGuide &&
-    displayNodes.length === 0 &&
-    (estimate?.entryCount ?? pending.length) > 0
+    !dismissGuide && displayNodes.length === 0 && (estimate?.entryCount ?? pending.length) > 0
 
   const onSearch = async () => {
     const runtime = getAgentDbRuntime()
@@ -477,7 +463,10 @@ export function GraphScreen() {
               <TextInput
                 value={editName}
                 onChangeText={setEditName}
-                style={[styles.renameInput, { color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+                style={[
+                  styles.renameInput,
+                  { color: colors.textPrimary, borderColor: colors.borderSubtle }
+                ]}
               />
               <Text style={[styles.detailMeta, { color: colors.textSecondary }]}>
                 {selectedNode.nodeType}
@@ -806,7 +795,8 @@ export function GraphScreen() {
               ) : (
                 <>
                   <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                    {t('graph.pending_edge', '关系')} · {item.data.edgeType} · {item.data.confidence}
+                    {t('graph.pending_edge', '关系')} · {item.data.edgeType} ·{' '}
+                    {item.data.confidence}
                   </Text>
                   <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
                     {item.data.sourceExcerpt || item.data.sourceRef || item.data.id}

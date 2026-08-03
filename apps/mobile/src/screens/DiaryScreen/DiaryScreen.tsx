@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, Keyboard, Pressable } from 'react-native'
+import {
+  View,
+  StyleSheet,
+  StatusBar,
+  Modal,
+  Text,
+  TouchableOpacity,
+  Keyboard,
+  Pressable
+} from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
@@ -483,7 +492,10 @@ export const DiaryScreen: React.FC = () => {
                 { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderMuted }
               ]}
             >
-              <Text style={[styles.graphExtractText, { color: colors.textSecondary }]} numberOfLines={2}>
+              <Text
+                style={[styles.graphExtractText, { color: colors.textSecondary }]}
+                numberOfLines={2}
+              >
                 {graphExtractBusy
                   ? graphExtractProgress || t('graph.extracting', '正在抽取…')
                   : entryExtractHint
@@ -495,9 +507,7 @@ export const DiaryScreen: React.FC = () => {
               {!graphExtractBusy && (
                 <Pressable
                   onPress={() =>
-                    void runGraphExtract(
-                      entryExtractHint ? [entryExtractHint.filePath] : undefined
-                    )
+                    void runGraphExtract(entryExtractHint ? [entryExtractHint.filePath] : undefined)
                   }
                   hitSlop={8}
                 >
