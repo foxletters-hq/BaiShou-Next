@@ -94,6 +94,7 @@ export async function mobileExtractDiaries(options: {
   fileSystem: IFileSystem
   settingsManager: SettingsManagerService
   filePaths?: string[]
+  signal?: AbortSignal
   onProgress?: (p: { current: number; total: number; filePath: string }) => void
 }) {
   const freshness = ensureMobileGraphFreshnessBound(options)
@@ -122,6 +123,7 @@ export async function mobileExtractDiaries(options: {
     vaultId: options.vaultId,
     vaultName: options.vaultName,
     filePaths: options.filePaths,
+    signal: options.signal,
     onProgress: options.onProgress
   })
 }
@@ -162,7 +164,20 @@ export async function mobileEstimateExtraction(options: {
   fileSystem: IFileSystem
 }) {
   const pending = await mobileListPendingReextract(options)
-  return estimateExtractionCost(pending.length)
+  const vault = await options.pathService.getActiveVaultPath()
+  const charCounts: number[] = []
+  if (vault) {
+    for (const item of pending) {
+      try {
+        const full = `${vault.replace(/[/\\]+$/, '')}/${item.filePath.replace(/^[/\\]+/, '')}`
+        const text = await options.fileSystem.readFile(full, 'utf8')
+        charCounts.push(typeof text === 'string' ? text.length : 0)
+      } catch {
+        charCounts.push(0)
+      }
+    }
+  }
+  return estimateExtractionCost(pending.length, { charCounts })
 }
 
 async function writeMobileNodeReview(options: {
@@ -180,6 +195,24 @@ async function writeMobileNodeReview(options: {
   }
   const now = Date.now()
   const { graphManager } = ensureMobileRawDataRuntime(options)
+
+  if (options.reviewStatus === 'rejected') {
+    const related = await repo.listEntityTimeline(node.vaultId, options.nodeId, {
+      approvedOnly: false,
+      limit: 500
+    })
+    for (const edge of related.edges) {
+      if (edge.reviewStatus === 'rejected' || edge.deletedAt != null) continue
+      await mobileSetEdgeReviewInner({
+        ...options,
+        edgeId: edge.id,
+        reviewStatus: 'rejected',
+        approvePendingEndpoints: false,
+        skipSync: true
+      })
+    }
+  }
+
   let props: Record<string, unknown> = {}
   try {
     props = JSON.parse(node.propsJson || '{}') as Record<string, unknown>
@@ -210,31 +243,16 @@ async function writeMobileNodeReview(options: {
   )
 }
 
-export async function mobileSetNodeReview(options: {
-  drizzleDb: AppDatabase
-  pathService: IStoragePathService
-  fileSystem: IFileSystem
-  nodeId: string
-  reviewStatus: 'approved' | 'rejected'
-  vaultDisplayName?: string
-  embeddingProvider?: IAIProvider | null
-  embeddingModelId?: string | null
-}) {
-  await writeMobileNodeReview(options)
-  await syncMobileGraphPendingIndex({
-    drizzleDb: options.drizzleDb,
-    embeddingProvider: options.embeddingProvider,
-    embeddingModelId: options.embeddingModelId
-  })
-}
-
-export async function mobileSetEdgeReview(options: {
+/** Internal edge review without recursive node cascade sync. */
+async function mobileSetEdgeReviewInner(options: {
   drizzleDb: AppDatabase
   pathService: IStoragePathService
   fileSystem: IFileSystem
   edgeId: string
   reviewStatus: 'approved' | 'rejected'
   vaultDisplayName?: string
+  approvePendingEndpoints?: boolean
+  skipSync?: boolean
   embeddingProvider?: IAIProvider | null
   embeddingModelId?: string | null
 }) {
@@ -279,9 +297,12 @@ export async function mobileSetEdgeReview(options: {
     { collection: 'edges' }
   )
 
-  if (options.reviewStatus === 'approved') {
+  if (
+    options.reviewStatus === 'approved' &&
+    options.approvePendingEndpoints !== false
+  ) {
     for (const endpointId of [edge.fromId, edge.toId]) {
-      const node = await repo.getNodeById(endpointId)
+      const node = await repo.getNodeById(endpointId, edge.vaultId)
       if (node && node.reviewStatus === 'pending') {
         await writeMobileNodeReview({
           ...options,
@@ -292,10 +313,46 @@ export async function mobileSetEdgeReview(options: {
     }
   }
 
+  if (!options.skipSync) {
+    await syncMobileGraphPendingIndex({
+      drizzleDb: options.drizzleDb,
+      embeddingProvider: options.embeddingProvider,
+      embeddingModelId: options.embeddingModelId
+    })
+  }
+}
+
+export async function mobileSetNodeReview(options: {
+  drizzleDb: AppDatabase
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  nodeId: string
+  reviewStatus: 'approved' | 'rejected'
+  vaultDisplayName?: string
+  embeddingProvider?: IAIProvider | null
+  embeddingModelId?: string | null
+}) {
+  await writeMobileNodeReview(options)
   await syncMobileGraphPendingIndex({
     drizzleDb: options.drizzleDb,
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
+  })
+}
+
+export async function mobileSetEdgeReview(options: {
+  drizzleDb: AppDatabase
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  edgeId: string
+  reviewStatus: 'approved' | 'rejected'
+  vaultDisplayName?: string
+  embeddingProvider?: IAIProvider | null
+  embeddingModelId?: string | null
+}) {
+  await mobileSetEdgeReviewInner({
+    ...options,
+    approvePendingEndpoints: true
   })
 }
 

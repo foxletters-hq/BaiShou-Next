@@ -6,6 +6,7 @@ export const graphApi = {
     listPendingIndex: () => ipcRenderer.invoke('graph:list-pending-index'),
     estimateExtraction: () => ipcRenderer.invoke('graph:estimate-extraction'),
     extract: (opts?: { filePaths?: string[] }) => ipcRenderer.invoke('graph:extract', opts),
+    cancelExtract: () => ipcRenderer.invoke('graph:extract-cancel'),
     onExtractProgress: (
       callback: (progress: { current: number; total: number; filePath: string }) => void
     ) => {

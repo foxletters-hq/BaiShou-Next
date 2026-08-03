@@ -424,8 +424,10 @@ interface GraphAPI {
   extract(opts?: { filePaths?: string[] }): Promise<{
     done: number
     failed: number
+    cancelled?: boolean
     errors: Array<{ filePath: string; message: string }>
   }>
+  cancelExtract(): Promise<{ ok: boolean }>
   onExtractProgress(
     callback: (progress: { current: number; total: number; filePath: string }) => void
   ): () => void
