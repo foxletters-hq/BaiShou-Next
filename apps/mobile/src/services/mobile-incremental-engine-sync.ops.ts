@@ -6,6 +6,7 @@ import {
   getSyncManifestRemovedMap,
   limitExecute,
   normalizeSyncManifest,
+  prepareVaultRenamePassForSync,
   reconcileAncestorWithRemoteTruth,
   resolveSyncMergeDecisions,
   threeWayMerge
@@ -160,7 +161,7 @@ export async function runSyncThreeWay(
     }))
 
   onProgress?.({ phase: 'comparing', current: 0, total: 1 })
-  const remoteManifest =
+  let remoteManifest =
     reusedRemoteManifest ??
     (await worker.getRemoteManifest(client, (current, total, fileName) => {
       onProgress?.({ phase: 'comparing', current, total, fileName })
@@ -183,13 +184,29 @@ export async function runSyncThreeWay(
     .readLocalManifestFile()
     .catch(() => worker.emptyManifest())
 
+  const localVaults = await worker.loadLocalVaultIdToNameMap()
+  const lastRemoteVaults = (await worker.loadLastRemoteVaultsSnapshot(config)).vaults
+  const renamePass = await prepareVaultRenamePassForSync({
+    localVaults,
+    lastRemoteVaults,
+    remoteManifest,
+    ancestorSnapshot,
+    cloudClient: client,
+    preferDirectoryMove: config.target === 'webdav'
+  })
+  remoteManifest = renamePass.remoteManifest
+  ancestorSnapshot = renamePass.ancestorSnapshot
+
   const decisions = resolveSyncMergeDecisions(
     threeWayMerge(localManifest, remoteManifest, ancestorSnapshot),
     localManifest,
     remoteManifest,
     ancestorSnapshot,
     previousLocalManifest,
-    { deletePropagationChoice: runOptions?.deletePropagationChoice }
+    {
+      deletePropagationChoice: runOptions?.deletePropagationChoice,
+      ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+    }
   )
 
   const sortedDecisions = sortSyncDecisionsBySizeAsc(decisions)
@@ -387,6 +404,7 @@ export async function runSyncThreeWay(
     lastFile: sortedDecisions[totalDecisions - 1]?.filePath,
     startedAt: sessionStartedAt
   })
+  await worker.saveLastRemoteVaultsSnapshot(config, localVaults)
   worker.host.setLastConflicts(conflicted)
   await clearIncrementalSyncSession(worker.host.fileSystem, metaDir)
   onProgress?.({ phase: 'finalizing', current: 1, total: 1 })

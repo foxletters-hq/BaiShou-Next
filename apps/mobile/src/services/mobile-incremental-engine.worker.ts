@@ -15,8 +15,14 @@ import {
   reconcileSyncManifestRemovedWithRemoteFiles,
   resolveIncrementalSyncStorageHistory,
   upsertManifestPathEntries,
+  parseLastRemoteVaultsSnapshot,
+  serializeLastRemoteVaultsSnapshot,
+  parseVaultIdToNameMap,
+  createEmptyLastRemoteVaultsSnapshot,
+  type LastRemoteVaultsSnapshot,
   SYNC_MANIFEST_FILENAME,
   SYNC_REMOTE_SNAPSHOT_FILENAME,
+  SYNC_REMOTE_VAULTS_FILENAME,
   SYNC_STORAGE_ID_FILENAME
 } from '@baishou/shared'
 import type { IStoragePathService } from '@baishou/core-mobile'
@@ -144,6 +150,10 @@ export class MobileIncrementalEngineWorker {
 
   snapshotPath(metaDir: string): string {
     return joinPath(metaDir, SYNC_REMOTE_SNAPSHOT_FILENAME)
+  }
+
+  lastRemoteVaultsPath(metaDir: string): string {
+    return joinPath(metaDir, SYNC_REMOTE_VAULTS_FILENAME)
   }
 
   async buildLocalManifest(
@@ -360,6 +370,66 @@ export class MobileIncrementalEngineWorker {
       this.storageIdPath(metaDir),
       getIncrementalSyncStorageId(config)
     )
+  }
+
+  async loadLocalVaultIdToNameMap(): Promise<Record<string, string>> {
+    const syncRoot = await this.syncRoot()
+    const registryPath = joinPath(syncRoot, 'vault_registry.json')
+    try {
+      if (!(await this.host.fileSystem.exists(registryPath))) return {}
+      const raw = await this.host.fileSystem.readFile(registryPath)
+      return parseVaultIdToNameMap(JSON.parse(raw))
+    } catch {
+      return {}
+    }
+  }
+
+  async loadLastRemoteVaultsSnapshot(config: S3SyncConfig): Promise<LastRemoteVaultsSnapshot> {
+    const metaDir = await this.syncMetaDir()
+    const vaultsPath = this.lastRemoteVaultsPath(metaDir)
+    const empty = createEmptyLastRemoteVaultsSnapshot(0)
+    if (!(await this.host.fileSystem.exists(vaultsPath))) return empty
+
+    const storageIdPath = this.storageIdPath(metaDir)
+    if (await this.host.fileSystem.exists(storageIdPath)) {
+      try {
+        const savedId = (await this.host.fileSystem.readFile(storageIdPath)).trim()
+        if (savedId !== getIncrementalSyncStorageId(config)) return empty
+      } catch {
+        return empty
+      }
+    } else {
+      return empty
+    }
+
+    try {
+      return parseLastRemoteVaultsSnapshot(
+        JSON.parse(await this.host.fileSystem.readFile(vaultsPath))
+      )
+    } catch {
+      return empty
+    }
+  }
+
+  async saveLastRemoteVaultsSnapshot(
+    config: S3SyncConfig,
+    vaults?: Record<string, string>
+  ): Promise<void> {
+    const metaDir = await this.syncMetaDir()
+    if (!(await this.host.fileSystem.exists(metaDir))) {
+      await this.host.fileSystem.mkdir(metaDir, { recursive: true })
+    }
+    const map = vaults ?? (await this.loadLocalVaultIdToNameMap())
+    const snapshot = serializeLastRemoteVaultsSnapshot(map)
+    await this.host.fileSystem.writeFile(
+      this.lastRemoteVaultsPath(metaDir),
+      JSON.stringify(snapshot, null, 2)
+    )
+    // storage id 与 ancestor 共用；若尚无则补写
+    const storageIdPath = this.storageIdPath(metaDir)
+    if (!(await this.host.fileSystem.exists(storageIdPath))) {
+      await this.host.fileSystem.writeFile(storageIdPath, getIncrementalSyncStorageId(config))
+    }
   }
 
   /**

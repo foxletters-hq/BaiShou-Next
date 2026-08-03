@@ -8,6 +8,7 @@ import {
   collectManifestVaultScopes,
   countUnverifiedAncestorEntries,
   isSyncDivergenceConfirmationRequiredError,
+  prepareVaultRenamePassForPlan,
   reconcileAncestorWithRemoteTruth,
   type IncrementalSyncPlanPreview
 } from '@baishou/shared'
@@ -262,15 +263,30 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
     const previousLocalManifest = await worker
       .readLocalManifestFile()
       .catch(() => worker.emptyManifest())
+
+    const localVaults = await worker.loadLocalVaultIdToNameMap()
+    const lastRemoteVaults = (await worker.loadLastRemoteVaultsSnapshot(config)).vaults
+    const renamePass = prepareVaultRenamePassForPlan({
+      localVaults,
+      lastRemoteVaults,
+      remoteManifest,
+      ancestorSnapshot
+    })
+    const remoteForMerge = renamePass.remoteManifest
+    const ancestorForMerge = renamePass.ancestorSnapshot
+
     const { decisions, deleteBlock } = buildIncrementalSyncPlanMergeResult(
       localManifest,
-      remoteManifest,
-      ancestorSnapshot,
+      remoteForMerge,
+      ancestorForMerge,
       previousLocalManifest,
-      runOptions
+      {
+        ...runOptions,
+        ignoreDeleteRemotePaths: renamePass.protectedDeleteRemotePaths
+      }
     )
 
-    const manifestVaultScopes = collectManifestVaultScopes(localManifest, remoteManifest)
+    const manifestVaultScopes = collectManifestVaultScopes(localManifest, remoteForMerge)
     const pendingChangeCount = decisions.filter((d) => d.type !== 'skip').length
 
     const metaDir = await worker.syncMetaDir()
@@ -309,7 +325,8 @@ export class MobileIncrementalEngine implements IncrementalEngineHost {
         deletePropagationReason: deleteBlock?.reason,
         blockedDeleteCount: deleteBlock?.deleteCount,
         blockedDeleteDirection: deleteBlock?.direction,
-        extraWarnings
+        extraWarnings,
+        renamedFileCount: renamePass.renamedFileCount
       }),
       interruptedSyncResume,
       planReuseBaseline: {
