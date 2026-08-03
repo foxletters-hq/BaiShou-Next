@@ -122,6 +122,12 @@ export interface UpsertEdgeInput {
   deletedAt?: number | null
 }
 
+/** Shortest path between graph nodes (edges in hop order). */
+export interface GraphPath {
+  nodeIds: string[]
+  edges: GraphEdgeRow[]
+}
+
 function mapNode(row: typeof graphNodesTable.$inferSelect): GraphNodeRow {
   return {
     id: row.id,
@@ -696,6 +702,197 @@ export class GraphRepository {
         )
       )
     return rows.map(mapEdge)
+  }
+
+  async listPendingNodes(vaultId: string): Promise<GraphNodeRow[]> {
+    const rows = await this.database
+      .select()
+      .from(graphNodesTable)
+      .where(
+        and(
+          eq(graphNodesTable.vaultId, vaultId),
+          eq(graphNodesTable.reviewStatus, 'pending'),
+          isNull(graphNodesTable.deletedAt)
+        )
+      )
+    return rows.map(mapNode)
+  }
+
+  /**
+   * Shortest path (BFS) between two nodes, max 2–3 hops.
+   * High-degree hub nodes are not expanded (except as endpoints) to reduce noise.
+   */
+  async findShortestPath(
+    vaultId: string,
+    fromId: string,
+    toId: string,
+    opts?: {
+      maxHops?: 2 | 3
+      approvedOnly?: boolean
+      hubDegreeThreshold?: number
+    }
+  ): Promise<GraphPath | null> {
+    if (fromId === toId) {
+      return { nodeIds: [fromId], edges: [] }
+    }
+    const maxHops = opts?.maxHops ?? 3
+    const approvedOnly = opts?.approvedOnly !== false
+    const hubDegreeThreshold = opts?.hubDegreeThreshold ?? 40
+
+    const edgeRows = (
+      await this.database
+        .select()
+        .from(graphEdgesTable)
+        .where(
+          and(
+            eq(graphEdgesTable.vaultId, vaultId),
+            eq(graphEdgesTable.isCurrent, true),
+            isNull(graphEdgesTable.deletedAt)
+          )
+        )
+    )
+      .map(mapEdge)
+      .filter((e) => {
+        if (!approvedOnly) return e.reviewStatus !== 'rejected'
+        return e.reviewStatus !== 'pending' && e.reviewStatus !== 'rejected'
+      })
+
+    const adj = new Map<string, Array<{ neighbor: string; edge: GraphEdgeRow }>>()
+    const degree = new Map<string, number>()
+    for (const e of edgeRows) {
+      if (!adj.has(e.fromId)) adj.set(e.fromId, [])
+      if (!adj.has(e.toId)) adj.set(e.toId, [])
+      adj.get(e.fromId)!.push({ neighbor: e.toId, edge: e })
+      adj.get(e.toId)!.push({ neighbor: e.fromId, edge: e })
+      degree.set(e.fromId, (degree.get(e.fromId) ?? 0) + 1)
+      degree.set(e.toId, (degree.get(e.toId) ?? 0) + 1)
+    }
+
+    type Prev = { prevId: string; edge: GraphEdgeRow } | null
+    const visited = new Map<string, { hops: number; prev: Prev }>()
+    visited.set(fromId, { hops: 0, prev: null })
+    const queue: string[] = [fromId]
+
+    while (queue.length > 0) {
+      const cur = queue.shift()!
+      const curState = visited.get(cur)!
+      if (cur === toId) break
+      if (curState.hops >= maxHops) continue
+      const isHub =
+        cur !== fromId && cur !== toId && (degree.get(cur) ?? 0) > hubDegreeThreshold
+      if (isHub) continue
+      for (const { neighbor, edge } of adj.get(cur) ?? []) {
+        if (visited.has(neighbor)) continue
+        visited.set(neighbor, { hops: curState.hops + 1, prev: { prevId: cur, edge } })
+        queue.push(neighbor)
+      }
+    }
+
+    if (!visited.has(toId)) return null
+
+    const nodeIds: string[] = []
+    const edges: GraphEdgeRow[] = []
+    let cursor: string | null = toId
+    while (cursor) {
+      nodeIds.push(cursor)
+      const state = visited.get(cursor)
+      if (!state?.prev) break
+      edges.push(state.prev.edge)
+      cursor = state.prev.prevId
+    }
+    nodeIds.reverse()
+    edges.reverse()
+    return { nodeIds, edges }
+  }
+
+  /**
+   * Find shortest paths from `fromId` to up to `limit` nearby nodes within maxHops.
+   */
+  async findPathsFrom(
+    vaultId: string,
+    fromId: string,
+    opts?: {
+      maxHops?: 2 | 3
+      approvedOnly?: boolean
+      limit?: number
+      hubDegreeThreshold?: number
+    }
+  ): Promise<GraphPath[]> {
+    const maxHops = opts?.maxHops ?? 3
+    const limit = opts?.limit ?? 12
+    const approvedOnly = opts?.approvedOnly !== false
+    const hubDegreeThreshold = opts?.hubDegreeThreshold ?? 40
+
+    const edgeRows = (
+      await this.database
+        .select()
+        .from(graphEdgesTable)
+        .where(
+          and(
+            eq(graphEdgesTable.vaultId, vaultId),
+            eq(graphEdgesTable.isCurrent, true),
+            isNull(graphEdgesTable.deletedAt)
+          )
+        )
+    )
+      .map(mapEdge)
+      .filter((e) => {
+        if (!approvedOnly) return e.reviewStatus !== 'rejected'
+        return e.reviewStatus !== 'pending' && e.reviewStatus !== 'rejected'
+      })
+
+    const adj = new Map<string, Array<{ neighbor: string; edge: GraphEdgeRow }>>()
+    const degree = new Map<string, number>()
+    for (const e of edgeRows) {
+      if (!adj.has(e.fromId)) adj.set(e.fromId, [])
+      if (!adj.has(e.toId)) adj.set(e.toId, [])
+      adj.get(e.fromId)!.push({ neighbor: e.toId, edge: e })
+      adj.get(e.toId)!.push({ neighbor: e.fromId, edge: e })
+      degree.set(e.fromId, (degree.get(e.fromId) ?? 0) + 1)
+      degree.set(e.toId, (degree.get(e.toId) ?? 0) + 1)
+    }
+
+    type Prev = { prevId: string; edge: GraphEdgeRow } | null
+    const visited = new Map<string, { hops: number; prev: Prev }>()
+    visited.set(fromId, { hops: 0, prev: null })
+    const queue: string[] = [fromId]
+    const destinations: string[] = []
+
+    while (queue.length > 0) {
+      const cur = queue.shift()!
+      const curState = visited.get(cur)!
+      if (cur !== fromId && curState.hops >= 1) {
+        destinations.push(cur)
+      }
+      if (curState.hops >= maxHops) continue
+      const isHub =
+        cur !== fromId && (degree.get(cur) ?? 0) > hubDegreeThreshold
+      if (isHub) continue
+      for (const { neighbor, edge } of adj.get(cur) ?? []) {
+        if (visited.has(neighbor)) continue
+        visited.set(neighbor, { hops: curState.hops + 1, prev: { prevId: cur, edge } })
+        queue.push(neighbor)
+      }
+    }
+
+    const paths: GraphPath[] = []
+    for (const dest of destinations) {
+      if (paths.length >= limit) break
+      const nodeIds: string[] = []
+      const edges: GraphEdgeRow[] = []
+      let cursor: string | null = dest
+      while (cursor) {
+        nodeIds.push(cursor)
+        const state = visited.get(cursor)
+        if (!state?.prev) break
+        edges.push(state.prev.edge)
+        cursor = state.prev.prevId
+      }
+      nodeIds.reverse()
+      edges.reverse()
+      paths.push({ nodeIds, edges })
+    }
+    return paths
   }
 
   /** Apply a collapsed JSONL node row into SQLite (sync path; forceId). */
