@@ -15,7 +15,11 @@ import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Input, useNativeTheme } from '@baishou/ui/native'
 import { deriveLegacyVaultId } from '@baishou/shared'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
+import {
+  GRAPH_EDGE_TYPES,
+  ShadowIndexRepository,
+  shadowConnectionManager
+} from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import {
@@ -28,6 +32,7 @@ import {
   mobileSetEdgeReview,
   mobileSetNodeReview,
   mobileSoftDeleteGraph,
+  mobileUpsertEdge,
   mobileUpsertNode
 } from '@/src/services/mobile-graph.service'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -71,6 +76,10 @@ export function GraphScreen() {
     reviewStatus?: string
   } | null>(null)
   const [editName, setEditName] = useState('')
+  const [addEdgeQuery, setAddEdgeQuery] = useState('')
+  const [addEdgeHits, setAddEdgeHits] = useState<any[]>([])
+  const [addEdgeToId, setAddEdgeToId] = useState('')
+  const [addEdgeType, setAddEdgeType] = useState<string>(GRAPH_EDGE_TYPES[0] ?? 'relates_to')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
   const [approvedOnly, setApprovedOnly] = useState(false)
@@ -144,7 +153,13 @@ export function GraphScreen() {
   }, [refresh])
 
   useEffect(() => {
-    if (selectedNode) setEditName(selectedNode.name)
+    if (selectedNode) {
+      setEditName(selectedNode.name)
+      setAddEdgeQuery('')
+      setAddEdgeHits([])
+      setAddEdgeToId('')
+      setAddEdgeType('relates_to')
+    }
   }, [selectedNode])
 
   const displayNodes = useMemo(
@@ -317,6 +332,45 @@ export function GraphScreen() {
     )
   }
 
+  const searchAddEdgeTarget = async () => {
+    const runtime = getAgentDbRuntime()
+    const q = addEdgeQuery.trim()
+    if (!runtime?.drizzleDb || !q || !selectedNode) {
+      setAddEdgeHits([])
+      return
+    }
+    const hits = await mobileSearchGraphNodes(runtime.drizzleDb, vaultId, q)
+    setAddEdgeHits((hits || []).filter((h: any) => h.id !== selectedNode.id))
+  }
+
+  const addEdge = async () => {
+    if (!services || !selectedNode || !addEdgeToId) return
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) return
+    setBusy(true)
+    try {
+      await mobileUpsertEdge({
+        drizzleDb: runtime.drizzleDb,
+        pathService: services.pathService,
+        fileSystem: services.fileSystem,
+        vaultId,
+        vaultDisplayName: vaultName,
+        fromId: selectedNode.id,
+        toId: addEdgeToId,
+        edgeType: addEdgeType
+      })
+      setAddEdgeToId('')
+      setAddEdgeQuery('')
+      setAddEdgeHits([])
+      setStatus(t('graph.edge_added', '已添加关系'))
+      await refresh()
+    } catch (e: any) {
+      setStatus(e?.message || String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const listPad = {
     padding: 16,
     paddingBottom: 16 + insets.bottom
@@ -428,6 +482,87 @@ export function GraphScreen() {
                   </Text>
                 </Pressable>
               </View>
+
+              <Text style={[styles.detailMeta, { color: colors.textSecondary, marginTop: 4 }]}>
+                {t('graph.add_edge', '添加关系')}
+              </Text>
+              <View style={styles.addEdgeSearchRow}>
+                <TextInput
+                  value={addEdgeQuery}
+                  onChangeText={setAddEdgeQuery}
+                  placeholder={t('graph.add_edge_search', '搜索目标节点')}
+                  placeholderTextColor={colors.textSecondary}
+                  style={[
+                    styles.renameInput,
+                    { flex: 1, color: colors.textPrimary, borderColor: colors.borderSubtle }
+                  ]}
+                  returnKeyType="search"
+                  onSubmitEditing={() => void searchAddEdgeTarget()}
+                />
+                <Pressable onPress={() => void searchAddEdgeTarget()} hitSlop={8}>
+                  <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                    {t('graph.search', '搜索')}
+                  </Text>
+                </Pressable>
+              </View>
+              <View style={styles.edgeTypeRow}>
+                {GRAPH_EDGE_TYPES.map((et) => {
+                  const active = addEdgeType === et
+                  return (
+                    <Pressable
+                      key={et}
+                      onPress={() => setAddEdgeType(et)}
+                      style={[
+                        styles.edgeTypeChip,
+                        {
+                          backgroundColor: active ? colors.primary : colors.bgSurfaceNormal,
+                          borderColor: active ? colors.primary : colors.borderSubtle
+                        }
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color: active ? '#fff' : colors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: active ? '700' : '500'
+                        }}
+                      >
+                        {et}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
+              <Pressable
+                disabled={busy || !addEdgeToId}
+                onPress={() => void addEdge()}
+                style={{ opacity: busy || !addEdgeToId ? 0.4 : 1 }}
+              >
+                <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                  {t('graph.add_edge_submit', '添加')}
+                </Text>
+              </Pressable>
+              {addEdgeHits.map((h) => {
+                const active = addEdgeToId === h.id
+                return (
+                  <Pressable
+                    key={h.id}
+                    onPress={() => setAddEdgeToId(h.id)}
+                    style={[
+                      styles.hitBtn,
+                      {
+                        backgroundColor: active ? colors.bgSurfaceNormal : 'transparent',
+                        borderColor: active ? colors.primary : colors.borderSubtle
+                      }
+                    ]}
+                  >
+                    <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>
+                      {h.name}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{h.nodeType}</Text>
+                  </Pressable>
+                )
+              })}
             </View>
           ) : null}
           {showEmptyGuide ? (
@@ -786,5 +921,28 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 10,
     flexWrap: 'wrap'
+  },
+  addEdgeSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  edgeTypeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6
+  },
+  edgeTypeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth
+  },
+  hitBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 2
   }
 })
