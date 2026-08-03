@@ -127,12 +127,18 @@ export async function runControlledDiaryBatchEmbedCore(
 
     const vaultScope = await resolveVaultScope(deps)
     const shadowDb = vaultScope.getShadowDb?.() ?? null
-    const vaultNames = options?.vaultName?.trim()
-      ? [options.vaultName.trim()]
-      : await vaultScope.listVaultNames()
+    const vaultEntries = options?.vaultName?.trim()
+      ? [
+          {
+            id: await vaultScope.resolveVaultIdByName(options.vaultName.trim()),
+            name: options.vaultName.trim()
+          }
+        ]
+      : await vaultScope.listVaultEntries()
     const activeVaultName = await vaultScope.resolveActiveVaultName()
 
     type VaultEmbedPlan = {
+      vaultId: string
       vaultName: string
       diariesToEmbed: DiaryMeta[]
       allDiaryIds: number[]
@@ -141,7 +147,8 @@ export async function runControlledDiaryBatchEmbedCore(
     const vaultPlans: VaultEmbedPlan[] = []
     let globalTotal = 0
 
-    for (const vaultName of vaultNames) {
+    for (const vault of vaultEntries) {
+      const { id: vaultId, name: vaultName } = vault
       if (!shadowDb && vaultName !== activeVaultName) {
         logger.warn('[MobileRag] skipping non-active vault batch embed without shadow index', {
           vaultName,
@@ -150,19 +157,20 @@ export async function runControlledDiaryBatchEmbedCore(
       }
       const allDiaries = sortDiariesByDateAsc(
         shadowDb
-          ? await listVaultDiaryMetas(shadowDb, vaultName)
+          ? await listVaultDiaryMetas(shadowDb, vaultId)
           : vaultName === activeVaultName
             ? await deps.diaryService.listAll({ limit: 10000 })
             : []
       )
-      const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultName)
+      const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultId)
       const resolveSourceId = (meta: { id: unknown }) =>
-        buildDiaryEmbeddingSourceId(vaultName, meta.id as number)
+        buildDiaryEmbeddingSourceId(vaultId, meta.id as number)
       const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
         resolveSourceId
       })
       if (diariesToEmbed.length === 0) continue
       vaultPlans.push({
+        vaultId,
         vaultName,
         diariesToEmbed,
         allDiaryIds: allDiaries.map((d) => d.id)
@@ -196,17 +204,17 @@ export async function runControlledDiaryBatchEmbedCore(
     }
 
     for (const plan of vaultPlans) {
-      const { vaultName, diariesToEmbed, allDiaryIds } = plan
+      const { vaultId, vaultName, diariesToEmbed, allDiaryIds } = plan
       await purgeLegacyDiaryEmbeddingsForVault(
         deps.rawSqlClient as RawSqlClient | undefined,
-        vaultName,
+        vaultId,
         allDiaryIds
       )
 
       const diaryById = shadowDb
         ? await loadVaultDiariesForEmbedding(
             shadowDb,
-            vaultName,
+            vaultId,
             diariesToEmbed.map((meta) => meta.id)
           )
         : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))

@@ -27,9 +27,9 @@ export async function enqueueDiaryEmbedJob(job: DiaryEmbedJobKey, error?: string
   await enqueueJob(agentDb, job, error)
 }
 
-export async function deleteDiaryEmbedJob(vaultName: string, diaryId: number): Promise<void> {
+export async function deleteDiaryEmbedJob(vaultId: string, diaryId: number): Promise<void> {
   if (!agentDb) return
-  await deleteJob(agentDb, vaultName, diaryId)
+  await deleteJob(agentDb, vaultId, diaryId)
 }
 
 export async function countDiaryEmbedJobs(): Promise<number> {

@@ -9,6 +9,7 @@ import {
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   buildDiaryEmbeddingTagPrefix,
+  DIARY_EMBED_GROUP_ID,
   type RagConfig
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
@@ -69,7 +70,10 @@ export type ControlledDiaryBatchEmbedResult = {
 function defaultVaultScope(): MobileRagVaultScope {
   return {
     resolveActiveVaultName: async () => 'Personal',
-    listVaultNames: async () => ['Personal']
+    resolveActiveVaultId: async () => 'Personal',
+    resolveVaultIdByName: async (name) => name.trim() || 'Personal',
+    listVaultNames: async () => ['Personal'],
+    listVaultEntries: async () => [{ id: 'Personal', name: 'Personal' }]
   }
 }
 
@@ -77,17 +81,22 @@ export async function resolveVaultScope(deps: MobileRagServiceDeps): Promise<Mob
   return deps.vaultScope ?? defaultVaultScope()
 }
 
-export function vaultNameListFilterSql(vaultName: string): { clause: string; args: string[] } {
+export function vaultIdListFilterSql(vaultId: string): { clause: string; args: string[] } {
   return {
-    clause: `vault_name = ?`,
-    args: [vaultName]
+    clause: `vault_id = ?`,
+    args: [vaultId]
   }
 }
 
-/** @deprecated 使用 vaultNameListFilterSql；保留别名以免旧引用断裂 */
+/** @deprecated 使用 vaultIdListFilterSql */
+export function vaultNameListFilterSql(vaultName: string): { clause: string; args: string[] } {
+  return vaultIdListFilterSql(vaultName)
+}
+
+/** @deprecated 使用 vaultIdListFilterSql */
 export function diaryVaultListFilterSql(vaultGroupId: string): { clause: string; args: string[] } {
   const vaultName = vaultGroupId.startsWith('diary:') ? vaultGroupId.slice(6) : vaultGroupId
-  return vaultNameListFilterSql(vaultName)
+  return vaultIdListFilterSql(vaultName)
 }
 
 function broadcastRagProgress(
@@ -206,7 +215,7 @@ export async function resolveEmbeddingAdapter(
 
 export async function loadEmbeddedDiaryIndex(
   deps: MobileRagServiceDeps,
-  vaultName: string
+  vaultId: string
 ): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
@@ -220,10 +229,9 @@ export async function loadEmbeddedDiaryIndex(
     return { embeddedIds, embeddedUpdatedAtMap }
   }
 
-  const groupId = buildDiaryEmbeddingGroupId(vaultName)
   const result = await client.execute({
-    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND group_id = ?`,
-    args: [groupId]
+    sql: `SELECT source_id as sourceId, metadata_json as metadataJson FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = 'diary' AND group_id = ? AND vault_id = ?`,
+    args: [DIARY_EMBED_GROUP_ID, vaultId]
   })
 
   for (const row of (result.rows || []) as Array<{
@@ -268,10 +276,12 @@ export async function embedDiaryEntry(
   }
 
   const scope = await resolveVaultScope(deps)
-  const resolvedVault = params.vaultName?.trim() || (await scope.resolveActiveVaultName())
-  const sourceId = buildDiaryEmbeddingSourceId(resolvedVault, params.diaryId)
-  const groupId = buildDiaryEmbeddingGroupId(resolvedVault)
-  await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVault, params.diaryId)
+  const resolvedVaultId = params.vaultName?.trim()
+    ? await scope.resolveVaultIdByName(params.vaultName)
+    : await scope.resolveActiveVaultId()
+  const sourceId = buildDiaryEmbeddingSourceId(resolvedVaultId, params.diaryId)
+  const groupId = buildDiaryEmbeddingGroupId()
+  await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVaultId, params.diaryId)
 
   const d = params.date instanceof Date ? params.date : new Date(params.date)
   const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -283,7 +293,7 @@ export async function embedDiaryEntry(
     sourceType: 'diary',
     sourceId,
     groupId,
-    vaultName: resolvedVault,
+    vaultId: resolvedVaultId,
     sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000,
     metadataJson,
     requireSuccess: true as const

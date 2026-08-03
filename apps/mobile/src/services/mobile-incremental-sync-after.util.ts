@@ -8,6 +8,7 @@ import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar
 import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
 import { classifyIncrementalSyncPaths } from './mobile-incremental-sync-path-classify.util'
 import type { MobileIncrementalSyncOutcome } from './mobile-incremental-engine.types'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 
 export interface MobileIncrementalAfterSyncDeps {
@@ -152,9 +153,11 @@ export async function runMobileIncrementalAfterSync(
             ? await pathServiceWithVault.getActiveVaultNameForContext()
             : null
         if (runtime?.drizzleDb && activeVaultName) {
+          const activeVaultId = deriveLegacyVaultId(activeVaultName)
           const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
           await runMobileDerivedIndexHydration({
             drizzleDb: runtime.drizzleDb,
+            vaultId: activeVaultId,
             vaultName: activeVaultName,
             embeddingProvider: emb.embeddingProvider,
             embeddingModelId: emb.embeddingModelId,

@@ -6,7 +6,7 @@ import type {
   SummarySyncService
 } from '@baishou/core-mobile'
 import { ensureDefaultLatteAssistant } from '@baishou/core-mobile'
-import { logger, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY } from '@baishou/shared'
+import { deriveLegacyVaultId, DEFAULT_USER_PROFILE, USER_PROFILE_SETTINGS_KEY, logger } from '@baishou/shared'
 import { resolveMobileBootstrapUiLocale } from '../lib/onboarding-language.util'
 import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
 
@@ -261,11 +261,13 @@ export class MobileDataBootstrapper {
         const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
         const runtime = agentDbRuntimeRef.current
         const vaultName = activeVaultName ?? (await deps.getActiveVaultName?.().catch(() => null))
-        if (runtime?.drizzleDb && vaultName) {
+        const vaultId = vaultName ? deriveLegacyVaultId(vaultName) : null
+        if (runtime?.drizzleDb && vaultId) {
           const emb = await resolveMobileEmbeddingForHydration(deps.settingsManager)
           await runMobileDerivedIndexHydration({
             drizzleDb: runtime.drizzleDb,
-            vaultName,
+            vaultId,
+            vaultName: vaultName ?? undefined,
             embeddingProvider: emb.embeddingProvider,
             embeddingModelId: emb.embeddingModelId,
             reason: 'vault-ecosystem-resync'
