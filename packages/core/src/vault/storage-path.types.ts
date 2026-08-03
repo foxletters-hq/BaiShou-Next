@@ -5,6 +5,18 @@ export interface IStoragePathService {
   getGlobalRegistryDirectory(): Promise<string>
 
   /**
+   * 本机持久化的活跃仓库 id（V2-D6）。
+   * 存于桌面 baishou_settings.json / 移动 AsyncStorage，**不进** vault_registry、不同步。
+   * 未实现时 VaultService 仅回退 lastAccessedAt。
+   */
+  getLocalActiveVaultId?(): Promise<string | null>
+
+  /**
+   * 写入本机活跃仓库 id（切仓时调用）。
+   */
+  setLocalActiveVaultId?(vaultId: string): Promise<void>
+
+  /**
    * 获取当前活跃 Vault 的物理路径
    */
   getActiveVaultPath(): Promise<string | null>

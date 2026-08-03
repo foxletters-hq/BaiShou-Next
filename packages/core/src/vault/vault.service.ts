@@ -23,6 +23,7 @@ import {
   validateVaultName
 } from './vault-name.util'
 import { createRandomVaultId, deriveLegacyVaultId, isVaultId } from './vault-id.util'
+import { pickActiveVault } from './active-vault.util'
 import {
   discoverVaultNames,
   readLegacyVaultRegistry,
@@ -96,6 +97,8 @@ async function discoverLegacyVaultNamesOnDisk(
 
 export class VaultService implements IVaultService {
   private _vaults: VaultInfo[] = []
+  /** 本机活跃仓 id 缓存（与 pathService 本地持久化对齐；不进注册表） */
+  private _activeVaultId: string | null = null
 
   constructor(
     private readonly pathService: IStoragePathService,
@@ -243,6 +246,8 @@ export class VaultService implements IVaultService {
 
     await this.syncRegistryWithDisk()
 
+    await this.hydrateActiveVaultPreference()
+
     const activeVault = this.getActiveVault()
     if (activeVault) {
       await this.fileSystem.mkdir(activeVault.path, { recursive: true })
@@ -255,13 +260,7 @@ export class VaultService implements IVaultService {
   }
 
   public getActiveVault(): VaultInfo | null {
-    if (this._vaults.length === 0) return null
-
-    return (
-      [...this._vaults].sort(
-        (a, b) => b.lastAccessedAt.getTime() - a.lastAccessedAt.getTime()
-      )[0] || null
-    )
+    return pickActiveVault(this._vaults, this._activeVaultId)
   }
 
   public resolveActiveVault(): Pick<VaultInfo, 'id' | 'name'> | null {
@@ -668,14 +667,21 @@ export class VaultService implements IVaultService {
     const rootDir = await this.pathService.getRootDirectory()
     const registryFile = path.join(rootDir, 'vault_registry.json')
 
+    let target: VaultInfo | undefined
     if (existingIndex !== -1) {
       const existing = this._vaults[existingIndex]
       if (existing) {
         existing.lastAccessedAt = new Date()
+        target = existing
       }
     } else {
       this.resolveVaultNameOrThrow(name)
       await this.addNewVault(name, { idMode: 'random' })
+      target = this._vaults[this._vaults.length - 1]
+    }
+
+    if (target) {
+      await this.persistActiveVaultId(target.id)
     }
 
     await this.saveRegistry(registryFile)
@@ -760,6 +766,7 @@ export class VaultService implements IVaultService {
       }
       this._vaults.push(personal)
       await this.writeVaultIdentityMeta(personal)
+      await this.persistActiveVaultId(personal.id)
     }
 
     const registryFile = path.join(rootDir, 'vault_registry.json')
@@ -835,6 +842,36 @@ export class VaultService implements IVaultService {
       createdAt: vault.createdAt.toISOString()
     }
     await this.fileSystem.writeFile(metaPath, JSON.stringify(meta), 'utf8')
+  }
+
+  /**
+   * 冷启动：读本机 activeVaultId；无效则回退 lastAccessedAt 并回写本机偏好。
+   */
+  private async hydrateActiveVaultPreference(): Promise<void> {
+    let preferred: string | null = null
+    try {
+      preferred = (await this.pathService.getLocalActiveVaultId?.()) ?? null
+    } catch {
+      preferred = null
+    }
+    const resolved = pickActiveVault(this._vaults, preferred)
+    if (!resolved) {
+      this._activeVaultId = null
+      return
+    }
+    this._activeVaultId = resolved.id
+    if (preferred !== resolved.id) {
+      await this.persistActiveVaultId(resolved.id)
+    }
+  }
+
+  private async persistActiveVaultId(vaultId: string): Promise<void> {
+    this._activeVaultId = vaultId
+    try {
+      await this.pathService.setLocalActiveVaultId?.(vaultId)
+    } catch {
+      // 本机偏好写失败不阻断切仓；内存态仍生效至下次冷启动
+    }
   }
 
   private async saveRegistry(registryFile: string): Promise<void> {
