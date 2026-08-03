@@ -149,9 +149,7 @@ async function migrateVaultNameToVaultIdInPlace(
     client,
     `SELECT DISTINCT vault_id AS v FROM journals_index WHERE vault_id IS NOT NULL AND vault_id != ''`
   )
-  const names = distinct.rows
-    .map((r) => String((r as { v?: unknown }).v ?? ''))
-    .filter(Boolean)
+  const names = distinct.rows.map((r) => String((r as { v?: unknown }).v ?? '')).filter(Boolean)
   const map = ensureVaultIdsForNames(names, seed)
 
   for (const old of names) {

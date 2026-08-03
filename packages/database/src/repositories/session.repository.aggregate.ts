@@ -12,7 +12,9 @@ function resolveSessionVaultId(session: {
   vault_id?: string | null
   vault_name?: string | null
 }): string {
-  const raw = String(session.vaultId ?? session.vault_id ?? session.vaultName ?? session.vault_name ?? '')
+  const raw = String(
+    session.vaultId ?? session.vault_id ?? session.vaultName ?? session.vault_name ?? ''
+  )
   if (!raw) return deriveLegacyVaultId('default')
   return isVaultId(raw) ? raw : deriveLegacyVaultId(raw)
 }

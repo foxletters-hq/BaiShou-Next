@@ -37,10 +37,9 @@ export async function purgeVaultDerivedData(
      WHERE session_id IN (SELECT id FROM agent_sessions WHERE vault_id = ?)`,
     [id]
   )
-  const embeddings = await count(
-    `SELECT count(*) as c FROM memory_embeddings WHERE vault_id = ?`,
-    [id]
-  )
+  const embeddings = await count(`SELECT count(*) as c FROM memory_embeddings WHERE vault_id = ?`, [
+    id
+  ])
   const graphNodes = await count(`SELECT count(*) as c FROM graph_nodes WHERE vault_id = ?`, [id])
   const graphEdges = await count(`SELECT count(*) as c FROM graph_edges WHERE vault_id = ?`, [id])
   const diaryEmbedJobs = await count(
@@ -48,10 +47,9 @@ export async function purgeVaultDerivedData(
     [id]
   )
   const summaries = await count(`SELECT count(*) as c FROM summaries WHERE vault_id = ?`, [id])
-  const assistants = await count(
-    `SELECT count(*) as c FROM agent_assistants WHERE vault_id = ?`,
-    [id]
-  )
+  const assistants = await count(`SELECT count(*) as c FROM agent_assistants WHERE vault_id = ?`, [
+    id
+  ])
 
   // 先清压缩快照（依赖 session 子查询），再删 sessions → CASCADE messages / parts
   await db.execute({
