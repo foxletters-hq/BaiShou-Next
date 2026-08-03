@@ -496,19 +496,11 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     onChange={(e) => {
                       const scopePreset = e.target.value as AgentGateScopePreset
                       if (scopePreset === 'custom') return
-                      if (
-                        scopePreset !== 'custom' &&
-                        inferredPresets.approvalPreset === 'custom'
-                      ) {
+                      if (inferredPresets.approvalPreset === 'custom') {
                         void saveWorkspacePresets(scopePreset, 'always_ask')
                         return
                       }
-                      void saveWorkspacePresets(
-                        scopePreset,
-                        inferredPresets.approvalPreset === 'custom'
-                          ? 'always_ask'
-                          : inferredPresets.approvalPreset
-                      )
+                      void saveWorkspacePresets(scopePreset, inferredPresets.approvalPreset)
                     }}
                   />
                 </div>
