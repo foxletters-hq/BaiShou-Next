@@ -91,11 +91,9 @@ export function registerSessionIPC() {
 
       const { sessionManager, assistantManager } = getAgentManagers()
 
-      let vaultName = 'Personal'
       let vaultId = resolveActiveVaultId()
       try {
         const active = vaultService.getActiveVault()
-        if (active?.name) vaultName = active.name
         if (active?.id) vaultId = active.id
       } catch (e) {}
 

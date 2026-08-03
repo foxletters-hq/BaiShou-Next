@@ -23,7 +23,7 @@ import {
   getRawDataSourceManager,
   repairMemoryConsistency
 } from '../services/raw-data-source.runtime'
-import { vaultService, resolveActiveVaultId, resolveVaultIdByName } from './vault.ipc'
+import { vaultService, resolveActiveVaultId } from './vault.ipc'
 
 function embeddingInstantMs(value: unknown): number | undefined {
   if (value instanceof Date) return value.getTime()

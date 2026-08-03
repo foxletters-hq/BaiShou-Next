@@ -18,7 +18,7 @@ import {
   resolveStreamDialogueSelection
 } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
-import { vaultService, resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
+import { resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
 import { searchService } from '../services/search.service'
 import {
   cancelAllAgentGateSessions,

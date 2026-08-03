@@ -6,7 +6,7 @@ import type { SessionRepository } from '@baishou/database-desktop'
 import { AssistantRepository } from '@baishou/database-desktop'
 import type { SessionManagerService } from '@baishou/core-desktop'
 import type { InsertPartInput } from '@baishou/database-desktop'
-import { pathService } from '../ipc/vault.ipc'
+import { resolveActiveVaultId } from '../ipc/vault.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
 
 export const COMPRESSION_TEST_ROUND_COUNT = 15
@@ -400,20 +400,14 @@ export async function insertCompressionTestSession(deps: {
 }): Promise<CompressionTestSessionResult> {
   const { sessionManager, sessionRepo, assistantId, providerId, modelId } = deps
 
-  let vaultName = 'default'
-  try {
-    const activeVaultPath = await pathService.getActiveVaultPath()
-    if (activeVaultPath) vaultName = activeVaultPath
-  } catch {
-    /* use default */
-  }
+  const vaultId = resolveActiveVaultId()
 
   const sessionId = generateUUID()
   const title = `压缩测试 ${new Date().toLocaleString('zh-CN', { hour12: false })}`
 
   await sessionManager.upsertSession({
     id: sessionId,
-    vaultName,
+    vaultId,
     providerId,
     modelId,
     assistantId,
