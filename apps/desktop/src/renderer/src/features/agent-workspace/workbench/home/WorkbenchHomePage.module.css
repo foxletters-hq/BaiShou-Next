@@ -1,0 +1,40 @@
+.page {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: var(--bg-app);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: transparent;
+}
+
+.mainInner {
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding: 40px 28px 56px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+@media (max-width: 720px) {
+  .page {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .mainInner {
+    padding: 24px 16px 40px;
+  }
+}

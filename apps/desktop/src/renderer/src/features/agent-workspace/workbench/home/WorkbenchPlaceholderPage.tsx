@@ -1,0 +1,127 @@
+import React, { useCallback, useState } from 'react'
+import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { useDialog } from '@baishou/ui'
+import { useAgentWorkspaces } from '../../hooks/useAgentWorkspaces'
+import { SETTINGS_HUB_PREFIX } from '../../../settings/settings-route.util'
+import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
+import {
+  WorkbenchHomeSidebar,
+  type WorkbenchHomeNavId
+} from './WorkbenchHomeSidebar'
+import pageStyles from './WorkbenchHomePage.module.css'
+import styles from './WorkbenchPlaceholderPage.module.css'
+
+interface WorkspaceOutletContext {
+  setFolderRoot: (path: string | null) => void
+}
+
+export type WorkbenchPlaceholderSection = Exclude<WorkbenchHomeNavId, null | 'home'>
+
+const SECTION_COPY: Record<
+  WorkbenchPlaceholderSection,
+  { titleKey: string; titleDefault: string; descKey: string; descDefault: string }
+> = {
+  knowledge: {
+    titleKey: 'workbench.home_knowledge',
+    titleDefault: '知识库',
+    descKey: 'workbench.placeholder_knowledge_desc',
+    descDefault: '知识库功能即将上线，敬请期待。'
+  },
+  templates: {
+    titleKey: 'workbench.home_templates',
+    titleDefault: '模板',
+    descKey: 'workbench.placeholder_templates_desc',
+    descDefault: '模板功能即将上线，敬请期待。'
+  },
+  projects: {
+    titleKey: 'workbench.home_projects',
+    titleDefault: '项目',
+    descKey: 'workbench.placeholder_projects_desc',
+    descDefault: '项目列表即将上线，敬请期待。'
+  }
+}
+
+export interface WorkbenchPlaceholderPageProps {
+  section: WorkbenchPlaceholderSection
+}
+
+/** 工作台侧栏二级页占位：正式功能落地前先跳到空白页 */
+export const WorkbenchPlaceholderPage: React.FC<WorkbenchPlaceholderPageProps> = ({ section }) => {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const dialog = useDialog()
+  const { setFolderRoot } = useOutletContext<WorkspaceOutletContext>()
+  const { addWorkspaceFromPicker, ensureScratchWorkspace, refresh } = useAgentWorkspaces()
+  const [creating, setCreating] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsWorkspace, setSettingsWorkspace] = useState<{
+    id: string
+    displayName: string
+  } | null>(null)
+
+  const copy = SECTION_COPY[section]
+
+  const handleOpenFolder = useCallback(async () => {
+    setCreating(true)
+    try {
+      const entry = await addWorkspaceFromPicker()
+      if (!entry) return
+      setFolderRoot(entry.folderRoot)
+      navigate(`/agent-workspace/open/${entry.id}`)
+    } catch (error) {
+      console.error('[WorkbenchPlaceholderPage] add workspace failed:', error)
+      await dialog.alert(
+        error instanceof Error
+          ? error.message
+          : t('agent_workspace.add_workspace_failed', '添加工作区失败，请重启应用后重试'),
+        t('workbench.home_new_project', '新建项目')
+      )
+    } finally {
+      setCreating(false)
+    }
+  }, [addWorkspaceFromPicker, dialog, navigate, setFolderRoot, t])
+
+  const handleOpenSettings = useCallback(async () => {
+    try {
+      const scratch = await ensureScratchWorkspace()
+      await refresh()
+      setSettingsWorkspace({ id: scratch.id, displayName: scratch.displayName })
+      setSettingsOpen(true)
+    } catch (error) {
+      console.error('[WorkbenchPlaceholderPage] ensure scratch for settings failed:', error)
+      navigate(`${SETTINGS_HUB_PREFIX}/general`)
+    }
+  }, [ensureScratchWorkspace, navigate, refresh])
+
+  return (
+    <div className={pageStyles.page}>
+      <WorkbenchHomeSidebar
+        activeNav={section}
+        onNewProject={() => void handleOpenFolder()}
+        onOpenHome={() => navigate('/agent-workspace')}
+        onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
+        onOpenTemplates={() => navigate('/agent-workspace/templates')}
+        onOpenProjects={() => navigate('/agent-workspace/projects')}
+        onOpenSettings={() => void handleOpenSettings()}
+        creating={creating}
+      />
+
+      <main className={pageStyles.main}>
+        <div className={styles.empty}>
+          <h1 className={styles.title}>{t(copy.titleKey, copy.titleDefault)}</h1>
+          <p className={styles.desc}>{t(copy.descKey, copy.descDefault)}</p>
+        </div>
+      </main>
+
+      {settingsWorkspace ? (
+        <WorkbenchWorkspaceGateSheet
+          open={settingsOpen}
+          workspaceId={settingsWorkspace.id}
+          workspaceName={settingsWorkspace.displayName}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
+    </div>
+  )
+}
