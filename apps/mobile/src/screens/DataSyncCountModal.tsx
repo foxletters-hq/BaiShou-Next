@@ -127,7 +127,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
                     styles.chip,
                     {
                       backgroundColor: active ? colors.primary : colors.bgSurfaceNormal,
-                      borderColor: active ? colors.primary : colors.borderSubtle
+                      borderColor: active ? colors.primary : colors.borderControl
                     }
                   ]}
                   onPress={() => onChangeCount(val)}
@@ -150,7 +150,7 @@ export const DataSyncCountModal: React.FC<DataSyncCountModalProps> = ({
 
           <View style={styles.footer}>
             <TouchableOpacity
-              style={[styles.footerBtn, { borderColor: colors.borderSubtle }]}
+              style={[styles.footerBtn, { borderColor: colors.borderControl }]}
               onPress={onClose}
             >
               <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>

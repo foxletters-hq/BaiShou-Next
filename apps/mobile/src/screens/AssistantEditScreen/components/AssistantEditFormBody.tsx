@@ -138,7 +138,7 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
 
         {!providerId ? (
           <TouchableOpacity
-            style={[styles.outlinedBtn, { borderColor: colors.borderSubtle }]}
+            style={[styles.outlinedBtn, { borderColor: colors.borderControl }]}
             onPress={() => void openModelSwitcher()}
           >
             <Plus size={18} color={colors.textPrimary} strokeWidth={2} />
