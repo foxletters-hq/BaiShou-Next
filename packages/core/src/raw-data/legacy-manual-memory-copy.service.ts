@@ -20,10 +20,7 @@ export interface LegacyManualMemoryCopyOptions {
    * 某仓库写入副本后回调（通常跑 MemorySyncService.syncPendingIndex 排队/触发嵌入）。
    * 未配置嵌入时可不传。
    */
-  afterWrite?: (
-    vault: LegacyManualMemoryVaultRef,
-    manager: MemoryRawManager
-  ) => Promise<void>
+  afterWrite?: (vault: LegacyManualMemoryVaultRef, manager: MemoryRawManager) => Promise<void>
   newId?: () => string
 }
 

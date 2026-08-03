@@ -54,9 +54,7 @@ describe('LegacyManualMemoryCopyService (V1.6)', () => {
     expect(isLegacyManualMemoryOriginal(base)).toBe(true)
     expect(isLegacyManualMemoryOriginal({ ...base, sourceSessionId: 'sess' })).toBe(false)
     expect(isLegacyManualMemoryOriginal({ ...base, legacySourceId: undefined })).toBe(false)
-    expect(
-      isLegacyManualMemoryOriginal({ ...base, derivedFromLegacyId: 'manual_1' })
-    ).toBe(false)
+    expect(isLegacyManualMemoryOriginal({ ...base, derivedFromLegacyId: 'manual_1' })).toBe(false)
     expect(isLegacyManualMemoryOriginal({ ...base, deletedAt: 9 })).toBe(false)
   })
 

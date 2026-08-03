@@ -84,7 +84,9 @@ describe('SessionSyncService', () => {
         messages: []
       })
     )
-    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([{ id: 'from-work', vaultName: 'Work' }] as any)
+    mockRepo.findAllSessionsAcrossVaults.mockResolvedValue([
+      { id: 'from-work', vaultName: 'Work' }
+    ] as any)
 
     await service.fullScanArchives({
       activeVaultName: 'Work',

@@ -159,8 +159,6 @@ describe('graph review vaultId preservation', () => {
         vaultId: deriveLegacyVaultId(displayName)
       })
     )
-    expect(applyRawNode).not.toHaveBeenCalledWith(
-      expect.objectContaining({ vaultId: randomId })
-    )
+    expect(applyRawNode).not.toHaveBeenCalledWith(expect.objectContaining({ vaultId: randomId }))
   })
 })

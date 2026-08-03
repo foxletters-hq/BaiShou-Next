@@ -1,8 +1,4 @@
-import {
-  MEMORY_SOURCE_TYPE,
-  buildMemoryMetadataJson,
-  type MemoryRawRecord
-} from '@baishou/shared'
+import { MEMORY_SOURCE_TYPE, buildMemoryMetadataJson, type MemoryRawRecord } from '@baishou/shared'
 import type { MemoryRawManager } from './managers/memory.raw-manager'
 
 export interface LegacyEmbeddingChunk {
@@ -17,16 +13,9 @@ export type MemoryBackfillMode = 'legacy' | 'manual'
 
 export interface MemoryBackfillNormalizeSink {
   /** UPDATE source_type / group_id without touching embeddings. Returns affected source ids. */
-  normalizeManualToMemory(params: {
-    vaultName: string
-    sourceIds: string[]
-  }): Promise<number>
+  normalizeManualToMemory(params: { vaultName: string; sourceIds: string[] }): Promise<number>
   /** Patch metadata_json for an existing source without re-embedding. */
-  updateMetadataBySource?(
-    sourceType: string,
-    sourceId: string,
-    metadataJson: string
-  ): Promise<void>
+  updateMetadataBySource?(sourceType: string, sourceId: string, metadataJson: string): Promise<void>
 }
 
 /**
@@ -113,9 +102,7 @@ export class MemoryJsonlBackfillService {
       ...new Set(chunks.map((c) => c.sourceId).filter((id): id is string => Boolean(id)))
     ]
     const normalized =
-      sourceIds.length > 0
-        ? await sink.normalizeManualToMemory({ vaultName, sourceIds })
-        : 0
+      sourceIds.length > 0 ? await sink.normalizeManualToMemory({ vaultName, sourceIds }) : 0
 
     let metadataPatched = 0
     if (sink.updateMetadataBySource) {
@@ -145,11 +132,7 @@ export class MemoryJsonlBackfillService {
       )) as MemoryRawRecord[]
       for (const row of rows) {
         if (!row?.id || row.deletedAt != null) continue
-        await updateMetadataBySource(
-          MEMORY_SOURCE_TYPE,
-          row.id,
-          buildMemoryMetadataJson(row)
-        )
+        await updateMetadataBySource(MEMORY_SOURCE_TYPE, row.id, buildMemoryMetadataJson(row))
         patched += 1
       }
     }
