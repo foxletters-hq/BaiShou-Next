@@ -16,7 +16,7 @@ describe('fetchUrlAsMarkdown', () => {
           url: 'https://example.com/page',
           headers: { get: () => 'text/html; charset=utf-8' },
           text: async () => html
-        }) as Response
+        }) as unknown as Response
     })
 
     expect(result.title).toBe('Hello Doc')
@@ -35,7 +35,7 @@ describe('fetchUrlAsMarkdown', () => {
           url: 'https://example.com/empty',
           headers: { get: () => 'text/html' },
           text: async () => '<html><body><script>x</script></body></html>'
-        }) as Response
+        }) as unknown as Response
     })
     expect(result.markdown).toBe(EMPTY_WEB_PAGE_MESSAGE)
   })
@@ -50,7 +50,7 @@ describe('fetchUrlAsMarkdown', () => {
             statusText: 'Not Found',
             headers: { get: () => null },
             text: async () => ''
-          }) as Response
+          }) as unknown as Response
       })
     ).rejects.toThrow(/404/)
   })
