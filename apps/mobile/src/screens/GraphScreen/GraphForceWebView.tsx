@@ -7,6 +7,7 @@ export interface GraphForceNode {
   name: string
   nodeType: string
   mentionCount?: number
+  reviewStatus?: string
 }
 
 export interface GraphForceEdge {
@@ -14,6 +15,7 @@ export interface GraphForceEdge {
   fromId: string
   toId: string
   edgeType: string
+  reviewStatus?: string
 }
 
 function buildHtml(nodes: GraphForceNode[], edges: GraphForceEdge[]): string {
@@ -32,7 +34,7 @@ function buildHtml(nodes: GraphForceNode[], edges: GraphForceEdge[]): string {
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="hint">拖动画布 · 点节点查看</div>
+<div id="hint">虚线=待确认 · 拖动画布 · 点节点</div>
 <script>
 const DATA = ${payload};
 const TYPE_COLORS = {
@@ -44,15 +46,16 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let dpr = window.devicePixelRatio || 1;
 let W = 0, H = 0;
-const nodes = DATA.nodes.map((n,i)=>({
+const rawNodes = (DATA.nodes||[]).filter(n=>n.reviewStatus!=='rejected');
+const nodes = rawNodes.map((n,i)=>({
   ...n,
   x: Math.cos(i)*120 + 200,
   y: Math.sin(i)*120 + 200,
   vx:0, vy:0
 }));
 const idIndex = new Map(nodes.map((n,i)=>[n.id,i]));
-const links = DATA.edges
-  .filter(e=>idIndex.has(e.fromId)&&idIndex.has(e.toId))
+const links = (DATA.edges||[])
+  .filter(e=>e.reviewStatus!=='rejected' && idIndex.has(e.fromId)&&idIndex.has(e.toId))
   .map(e=>({...e, a:idIndex.get(e.fromId), b:idIndex.get(e.toId)}));
 let transform = {x:0,y:0,k:1};
 let pan = null;
@@ -103,21 +106,34 @@ function draw(){
   ctx.save();
   ctx.translate(transform.x, transform.y);
   ctx.scale(transform.k, transform.k);
-  ctx.strokeStyle='rgba(148,163,184,0.35)';
   ctx.lineWidth=1/transform.k;
   for(const l of links){
     const a=nodes[l.a], b=nodes[l.b];
+    const pending = l.reviewStatus==='pending';
+    ctx.strokeStyle = pending ? 'rgba(148,163,184,0.22)' : 'rgba(148,163,184,0.45)';
+    ctx.setLineDash(pending ? [4/transform.k, 4/transform.k] : []);
     ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
   }
+  ctx.setLineDash([]);
   for(const n of nodes){
     const r=8+Math.min(10,(n.mentionCount||1)*1.2);
+    const pending = n.reviewStatus==='pending';
+    ctx.globalAlpha = pending ? 0.45 : 1;
     ctx.beginPath();
     ctx.fillStyle=TYPE_COLORS[n.nodeType]||'#94a3b8';
     ctx.arc(n.x,n.y,r,0,Math.PI*2);
     ctx.fill();
+    if(pending){
+      ctx.setLineDash([3/transform.k,3/transform.k]);
+      ctx.strokeStyle='rgba(226,232,240,0.6)';
+      ctx.lineWidth=1.5/transform.k;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.fillStyle='#e2e8f0';
     ctx.font='11px system-ui';
     ctx.fillText(n.name.slice(0,16), n.x+r+3, n.y+4);
+    ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
@@ -147,7 +163,7 @@ canvas.addEventListener('touchstart', (ev)=>{
   const n=hitNode(p.x,p.y);
   if(n){
     dragNode=n.id;
-    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({type:'select', id:n.id, name:n.name, nodeType:n.nodeType}));
+    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({type:'select', id:n.id, name:n.name, nodeType:n.nodeType, reviewStatus:n.reviewStatus||'approved'}));
   } else {
     pan={x:t.clientX-transform.x, y:t.clientY-transform.y};
   }
@@ -172,7 +188,12 @@ canvas.addEventListener('touchend', ()=>{ dragNode=null; pan=null; });
 export const GraphForceWebView: React.FC<{
   nodes: GraphForceNode[]
   edges: GraphForceEdge[]
-  onSelectNode?: (node: { id: string; name: string; nodeType: string }) => void
+  onSelectNode?: (node: {
+    id: string
+    name: string
+    nodeType: string
+    reviewStatus?: string
+  }) => void
 }> = ({ nodes, edges, onSelectNode }) => {
   const html = useMemo(() => buildHtml(nodes, edges), [nodes, edges])
   const webRef = useRef<WebView>(null)
@@ -184,6 +205,7 @@ export const GraphForceWebView: React.FC<{
         id?: string
         name?: string
         nodeType?: string
+        reviewStatus?: string
       }
       if (
         data.type === 'select' &&
@@ -197,7 +219,8 @@ export const GraphForceWebView: React.FC<{
         onSelectNode?.({
           id: data.id,
           name: data.name.slice(0, 200),
-          nodeType: data.nodeType.slice(0, 64)
+          nodeType: data.nodeType.slice(0, 64),
+          reviewStatus: data.reviewStatus
         })
       }
     } catch {
