@@ -128,6 +128,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         const record: GraphNodeRawRecord = {
           id,
           schemaVersion: 1,
+          vaultId: context.vaultId,
           vaultName: context.vaultName,
           nodeType,
           name,
@@ -167,6 +168,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
         const record: GraphEdgeRawRecord = {
           id,
           schemaVersion: 1,
+          vaultId: context.vaultId,
           vaultName: context.vaultName,
           fromId,
           toId,

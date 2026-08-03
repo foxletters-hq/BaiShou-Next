@@ -18,7 +18,8 @@ import {
   normalizeAssistantKind,
   isAutoInjectCurrentTimeEnabled,
   isAgentStreamAbortError,
-  type AssistantKind
+  type AssistantKind,
+  resolveVaultIdentity
 } from '@baishou/shared'
 import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
 
@@ -94,7 +95,8 @@ export class AgentSessionService {
       syncGraphPendingIndex,
       graphReader,
       diarySearcher,
-      workspace: workspaceInput
+      workspace: workspaceInput,
+      resolveVaultDisplayName
     } = options
 
     let sessionAgentGate: IBaishouAgentGate | undefined
@@ -194,7 +196,14 @@ export class AgentSessionService {
       const configRecentCount =
         typeof mergedUserConfig['recentCount'] === 'number' ? mergedUserConfig['recentCount'] : 30
 
-      const vaultName = sessionObj?.vaultName || 'default'
+      const vaultIdentity = resolveVaultIdentity({
+        vaultId: sessionObj?.vaultId,
+        vaultName: sessionObj?.vaultName,
+        resolveNameById: resolveVaultDisplayName,
+        defaultName: 'Personal'
+      })
+      const vaultId = vaultIdentity.id
+      const vaultName = vaultIdentity.name
       const saveDiaryBeforeCompression = async (messages: MessageWithParts[]) => {
         await runCompressionSaveDiaryLifecycle({
           agentGate: sessionAgentGate,
@@ -399,7 +408,8 @@ export class AgentSessionService {
       const enabledTools = toolRegistry.getEnabledToolsAsVercel({
         userConfig: mergedUserConfig,
         sessionId,
-        vaultName: sessionObj?.vaultName || 'default',
+        vaultId,
+        vaultName,
         embeddingService: embAdapter,
         vectorStore: dbAdapter,
         messageSearcher: dbAdapter,
@@ -418,7 +428,7 @@ export class AgentSessionService {
       } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0])
 
       const builtSystemPrompt = SystemPromptBuilder.build({
-        vaultName: sessionObj?.vaultName || 'default',
+        vaultName,
         tools: enabledTools as any,
         customPersona: effectiveSystemPrompt,
         assistantKind,

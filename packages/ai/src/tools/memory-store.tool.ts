@@ -9,7 +9,6 @@ import {
   MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   buildMemoryMetadataJson,
-  deriveLegacyVaultId,
   type MemoryRawRecord,
   type ToolRawDataSourceManager
 } from '@baishou/shared'
@@ -88,14 +87,14 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
       : []
 
     try {
-      // V2.3: ToolContext will pass vault id directly
-      const vaultId = deriveLegacyVaultId(context.vaultName)
+      const vaultId = context.vaultId
       let contentToStore = fullContent
 
       if (context.deduplicationService) {
         const dedupResult = await context.deduplicationService.checkAndMerge({
           newMemoryContent: fullContent,
           sessionId: context.sessionId,
+          vaultId,
           vaultName: context.vaultName
         })
 
@@ -143,6 +142,7 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
       const record: MemoryRawRecord = {
         id,
         schemaVersion: 1,
+        vaultId,
         vaultName: context.vaultName,
         content: contentToStore,
         tags,
