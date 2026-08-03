@@ -4,17 +4,17 @@
  */
 :where(
   input:not(
-      [type='checkbox'],
-      [type='radio'],
-      [type='range'],
-      [type='button'],
-      [type='submit'],
-      [type='reset'],
-      [type='file'],
-      [type='color'],
-      [type='hidden'],
-      [type='image']
-    ),
+    [type='checkbox'],
+    [type='radio'],
+    [type='range'],
+    [type='button'],
+    [type='submit'],
+    [type='reset'],
+    [type='file'],
+    [type='color'],
+    [type='hidden'],
+    [type='image']
+  ),
   textarea,
   select
 ) {

@@ -66,8 +66,9 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                   {t('settings.rag_source_manual', '手动')}
                 </span>
               )}
-              {!e.isManual && e.sourceSessionId && (
-                onOpenSourceSession ? (
+              {!e.isManual &&
+                e.sourceSessionId &&
+                (onOpenSourceSession ? (
                   <button
                     type="button"
                     className={styles.memorySessionLink}
@@ -79,8 +80,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                   <span className={styles.memoryMetaBadge}>
                     {t('settings.rag_source_partner', '伙伴')}
                   </span>
-                )
-              )}
+                ))}
               {e.tags && e.tags.length > 0 && (
                 <span className={styles.memoryTags}>
                   {e.tags.map((tag) => (
@@ -99,7 +99,8 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                 <>
                   <span>·</span>
                   <span>
-                    {t('settings.rag_updated_at', '修改')} {formatDate({ ...e, createdAt: e.memoryUpdatedAt })}
+                    {t('settings.rag_updated_at', '修改')}{' '}
+                    {formatDate({ ...e, createdAt: e.memoryUpdatedAt })}
                   </span>
                 </>
               )}
