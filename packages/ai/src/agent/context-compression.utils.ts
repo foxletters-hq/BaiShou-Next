@@ -730,12 +730,13 @@ export async function resolveSessionCompressionConfig(
 ): Promise<SessionCompressionConfig> {
   try {
     const session = await sessionRepo.getSessionById?.(sessionId)
-    const astRepo = new AssistantRepository(sessionRepo.db)
+    const vaultId = String(session?.vaultId ?? '').trim() || null
+    const astRepo = new AssistantRepository(sessionRepo.db, () => vaultId)
 
     const linkedAssistantId = session?.assistantId?.trim()
-    let ast = linkedAssistantId ? await astRepo.findById(linkedAssistantId) : null
+    let ast = linkedAssistantId ? await astRepo.findById(linkedAssistantId, vaultId) : null
     if (!ast) {
-      ast = await astRepo.findById(DEFAULT_LATTE_ASSISTANT_ID)
+      ast = await astRepo.findById(DEFAULT_LATTE_ASSISTANT_ID, vaultId)
     }
 
     const modelContextWindow = getModelContextWindow(

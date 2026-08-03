@@ -11,6 +11,7 @@ import { ensureDefaultLatteAssistant } from '@baishou/core-desktop'
 import { isUsingExternalVaultDirectory, logger, resolveBootstrapUiLocale } from '@baishou/shared'
 
 import { pathService, vaultService } from '../ipc/vault.ipc'
+import { resolveActiveVaultId } from '../ipc/vault.ipc'
 import { fileSystem } from './node-file-system'
 import { getAgentManagers } from '../ipc/agent.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
@@ -36,13 +37,29 @@ import { markStartup, startupElapsedMs, traceStartupStep } from '../startup-trac
 export class GlobalDataBootstrapper {
   private tryGetSummaryBootstrapper() {
     const db = connectionManager.getDb()
-    const summaryRepo = new SummaryRepositoryImpl(db)
+    const summaryRepo = new SummaryRepositoryImpl(db, () => resolveActiveVaultId())
     const summaryFileService = new SummaryFileService(
       pathService,
       fileSystem,
       getRawDataSourceManager()
     )
-    return new SummarySyncService(null, null, summaryRepo, summaryFileService)
+    return new SummarySyncService(
+      null,
+      null,
+      summaryRepo,
+      summaryFileService,
+      () => resolveActiveVaultId()
+    )
+  }
+
+  private buildVaultIdByName(): Record<string, string> {
+    const map: Record<string, string> = {}
+    for (const v of vaultService.getAllVaults()) {
+      if (v.name?.trim() && v.id?.trim()) {
+        map[v.name.trim()] = v.id.trim()
+      }
+    }
+    return map
   }
 
   /**
@@ -155,15 +172,30 @@ export class GlobalDataBootstrapper {
 
       // 2–5. 其余层与日记扫描并行，缩短冷启动等待
       const activeVault = vaultService.getActiveVault()
-      const summaryResyncOptions = {
-        ...(activeVault ? { activeVaultName: activeVault.name } : {}),
-        ...(mode === 'reconcile' ? { skipUnchangedByMtime: true } : {})
-      }
       const syncRoot = await pathService.getRootDirectory()
       const diskVaultNames = await listDiskVaultFolderNames(fileSystem, syncRoot)
+      const vaultIdByName = this.buildVaultIdByName()
+      const summaryResyncOptions = {
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName,
+        ...(mode === 'reconcile' ? { skipUnchangedByMtime: true } : {})
+      }
       const sessionResyncOptions = {
-        ...(activeVault ? { activeVaultName: activeVault.name } : {}),
-        diskVaultNames
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName
+      }
+      const assistantResyncOptions = {
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName
       }
       const summaryScan = timed(
         mode === 'reconcile' ? 'summary.fullScanArchives.reconcile' : 'summary.fullScanArchives',
@@ -171,7 +203,7 @@ export class GlobalDataBootstrapper {
       )
       const assistantScan = timed(
         'assistant.fullResyncFromDisks',
-        assistantManager.fullResyncFromDisks()
+        assistantManager.fullResyncFromDisks(assistantResyncOptions)
       )
       const sessionScan = timed(
         mode === 'reconcile' ? 'session.reconcileFromDisks' : 'session.fullResyncFromDisks',
@@ -250,9 +282,13 @@ export class GlobalDataBootstrapper {
       const activeVault = vaultService.getActiveVault()
       const syncRoot = await pathService.getRootDirectory()
       const diskVaultNames = await listDiskVaultFolderNames(fileSystem, syncRoot)
+      const vaultIdByName = this.buildVaultIdByName()
       const resyncOptions = {
-        ...(activeVault ? { activeVaultName: activeVault.name } : {}),
-        diskVaultNames
+        ...(activeVault
+          ? { activeVaultName: activeVault.name, activeVaultId: activeVault.id }
+          : {}),
+        diskVaultNames,
+        vaultIdByName
       }
 
       const tasks: Promise<unknown>[] = []
@@ -265,11 +301,9 @@ export class GlobalDataBootstrapper {
       }
       if (options.summaries) {
         tasks.push(
-          summaryScout
-            .fullScanArchives(activeVault ? { activeVaultName: activeVault.name } : undefined)
-            .catch((e) => {
-              logger.warn('[Bootstrapper] selective summary scan failed:', e as Error)
-            })
+          summaryScout.fullScanArchives(resyncOptions).catch((e) => {
+            logger.warn('[Bootstrapper] selective summary scan failed:', e as Error)
+          })
         )
       }
       if (options.assistants) {

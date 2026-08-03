@@ -12,8 +12,15 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   constructor(
     private hybridRepo: SqliteHybridSearchRepository,
     private messageRepo: MessageRepository,
-    private db: AppDatabase
+    private db: AppDatabase,
+    /** 活跃仓库 ID；总结查询 fail-closed */
+    private resolveVaultId?: () => string | null | undefined
   ) {}
+
+  private tryVaultId(): string | null {
+    const id = String(this.resolveVaultId?.() ?? '').trim()
+    return id || null
+  }
 
   // --- ToolVectorStore 实现 ---
 
@@ -70,7 +77,6 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   // --- ToolMessageSearcher 实现 ---
 
   async searchMessages(query: string, limit: number) {
-    // 调用 MessageRepository 的全文模糊查询寻找跨越历史的回忆
     const rows = await this.messageRepo.searchMessagesByKeyword(query, limit)
 
     return rows.map((r: any) => ({
@@ -91,13 +97,20 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     generatedAt: string
     endDateIso: string
   } | null> {
+    const vaultId = this.tryVaultId()
+    if (!vaultId) return null
+
     const datePart = startDateIso.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
     const targetDate = datePart ? parseDateStr(datePart) : new Date(startDateIso)
     const rows = await this.db
       .select()
       .from(summariesTable)
       .where(
-        and(eq(summariesTable.type as any, type as any), eq(summariesTable.startDate, targetDate))
+        and(
+          eq(summariesTable.vaultId, vaultId),
+          eq(summariesTable.type as any, type as any),
+          eq(summariesTable.startDate, targetDate)
+        )
       )
       .limit(1)
 
@@ -111,10 +124,15 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
   }
 
   async getAvailableSummaries(type: string, limit: number = 5): Promise<string[]> {
+    const vaultId = this.tryVaultId()
+    if (!vaultId) return []
+
     const rows = await this.db
       .select({ start: summariesTable.startDate, end: summariesTable.endDate })
       .from(summariesTable)
-      .where(eq(summariesTable.type as any, type as any))
+      .where(
+        and(eq(summariesTable.vaultId, vaultId), eq(summariesTable.type as any, type as any))
+      )
       .orderBy(desc(summariesTable.startDate))
       .limit(limit)
 
