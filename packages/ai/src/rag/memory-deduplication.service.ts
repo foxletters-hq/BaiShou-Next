@@ -16,7 +16,7 @@ import type {
   ToolVectorStore,
   ToolDeduplicationService
 } from '../tools/agent.tool'
-import { logger, formatLocalDateTime, deriveLegacyVaultId } from '@baishou/shared'
+import { logger, formatLocalDateTime } from '@baishou/shared'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
 
 /** 相似度 > 此值视为精确重复 */
@@ -61,7 +61,8 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
   async checkAndMerge(options: {
     newMemoryContent: string
     sessionId: string
-    vaultName: string
+    vaultId: string
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -77,7 +78,8 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
   private async _doCheckAndMerge(options: {
     newMemoryContent: string
     sessionId: string
-    vaultName: string
+    vaultId: string
+    vaultName?: string
     sourceType?: string
     sourceId?: string
   }): Promise<DeduplicationResult> {
@@ -91,8 +93,7 @@ export class MemoryDeduplicationServiceImpl implements ToolDeduplicationService 
 
     // 2. 检索最相似的 TOP_K 条记忆
     const rawResults = await this.vectorStore.searchSimilar(queryVector, TOP_K, {
-      // V2.3: ToolContext will pass vault id directly
-      vaultId: deriveLegacyVaultId(options.vaultName)
+      vaultId: options.vaultId
     })
     if (rawResults.length === 0) {
       return { action: 'stored', removedIds: [], highestSimilarity: 0 }

@@ -8,7 +8,7 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSearchTimeFilter } from './agent.tool'
-import { deriveLegacyVaultId, formatStoredTimestamp } from '@baishou/shared'
+import { formatStoredTimestamp } from '@baishou/shared'
 import { HybridSearchUtils } from '../rag/hybrid-search'
 import type { ISearchResult } from '../rag/hybrid-search.types'
 import {
@@ -119,8 +119,7 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
       }
 
       let results: ISearchResult[] = []
-      // V2.3: ToolContext will pass vault id directly
-      const vaultId = deriveLegacyVaultId(context.vaultName)
+      const vaultId = context.vaultId
 
       const vectorRaw = await vectorStore.searchSimilar(queryEmbedding, maxResults, {
         ...timeFilter,

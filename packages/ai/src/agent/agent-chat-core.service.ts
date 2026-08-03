@@ -53,6 +53,7 @@ export class AgentChatCoreService {
     syncGraphPendingIndex?: () => Promise<void>
     graphReader?: import('@baishou/shared').ToolGraphReader
     workspace?: import('./agent-session.types').StreamChatOptions['workspace']
+    resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
   }) {
     const claim = claimAgentStreamSession(params.sessionId)
 
@@ -86,6 +87,7 @@ export class AgentChatCoreService {
           syncGraphPendingIndex: params.syncGraphPendingIndex,
           graphReader: params.graphReader,
           workspace: params.workspace,
+          resolveVaultDisplayName: params.resolveVaultDisplayName,
           abortSignal: claim.signal,
           streamClaimGeneration: claim.generation,
           flushSessionToDisk: params.flushSessionToDisk

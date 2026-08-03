@@ -1,6 +1,7 @@
 import {
   AgentGateProfileId,
   isAutoInjectCurrentTimeEnabled,
+  resolveVaultIdentity,
   type AgentSessionKind
 } from '@baishou/shared'
 import {
@@ -21,7 +22,9 @@ import { resolveSessionAssistantContext } from './session-assistant-context.util
 export interface AgentToolsContextParams {
   sessionId: string
   sessionRepo: {
-    getSessionById?: (id: string) => Promise<{ vaultName?: string; assistantId?: string } | null>
+    getSessionById?: (
+      id: string
+    ) => Promise<{ vaultId?: string; vaultName?: string; assistantId?: string } | null>
     db?: unknown
     database?: unknown
   }
@@ -44,6 +47,7 @@ export interface AgentToolsContextParams {
   /** Optional Gate instance so hideDeniedTools / profile match streamChat filtering */
   agentGate?: IBaishouAgentGate
   gateProfile?: AgentGateProfileId
+  resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
   workspace?: {
     folderRoot?: string
     sessionKind?: AgentSessionKind
@@ -96,10 +100,18 @@ async function buildToolExecutionContext(
       ? AgentGateProfileId.Workspace
       : AgentGateProfileId.Companion)
 
+  const vaultIdentity = resolveVaultIdentity({
+    vaultId: sessionObj?.vaultId,
+    vaultName: sessionObj?.vaultName,
+    resolveNameById: params.resolveVaultDisplayName,
+    defaultName: 'Personal'
+  })
+
   return {
     userConfig: mergedUserConfig,
     sessionId: params.sessionId,
-    vaultName: sessionObj?.vaultName || 'default',
+    vaultId: vaultIdentity.id,
+    vaultName: vaultIdentity.name,
     embeddingService: embAdapter,
     vectorStore: dbAdapter,
     messageSearcher: dbAdapter,
@@ -148,7 +160,12 @@ export async function buildSystemPromptForSession(
     typeof params.userConfig?.locale === 'string' ? params.userConfig.locale : undefined
 
   return SystemPromptBuilder.build({
-    vaultName: sessionObj?.vaultName || 'default',
+    vaultName: resolveVaultIdentity({
+      vaultId: sessionObj?.vaultId,
+      vaultName: sessionObj?.vaultName,
+      resolveNameById: params.resolveVaultDisplayName,
+      defaultName: 'Personal'
+    }).name,
     tools: enabledTools as any,
     customPersona: effectiveSystemPrompt,
     assistantKind,
