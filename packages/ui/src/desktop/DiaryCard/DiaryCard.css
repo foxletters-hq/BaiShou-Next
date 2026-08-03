@@ -2,7 +2,7 @@
   background: var(--bg-surface);
   border-radius: 24px;
   padding: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border-control);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -127,7 +127,7 @@
 
 .actions-divider {
   height: 1px;
-  background-color: var(--border-color, rgba(148, 163, 184, 0.3));
+  background-color: var(--bg-surface-normal);
   margin-bottom: 12px;
 }
 
@@ -165,7 +165,7 @@
   padding: 8px 12px;
   background: var(--bg-surface-high);
   border-radius: 8px;
-  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
+  border: 1px solid var(--border-control);
 }
 
 .diary-card-media-icon {

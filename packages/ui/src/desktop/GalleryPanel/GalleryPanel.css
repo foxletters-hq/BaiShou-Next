@@ -6,51 +6,15 @@
   min-height: 0;
 }
 
-/* 标签栏 */
-.gallery-tabs-container {
-  display: flex;
-  gap: 8px;
-  background: var(--bg-surface);
-  padding: 6px;
-  border-radius: 12px 12px 0 0;
-  width: fit-content;
-  margin-bottom: 0;
-  border: 1px solid var(--border-subtle);
-  border-bottom: none;
-}
-
-.gallery-tab-btn {
-  background: transparent;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.gallery-tab-btn:hover {
-  background: rgba(var(--color-primary-rgb), 0.08);
-  color: var(--text-primary);
-}
-
-.gallery-tab-btn.active {
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  font-weight: 500;
-  box-shadow: none;
-}
-
-/* 双栏布局 */
+/* 双栏布局 — 与顶栏白底连成一张卡 */
 .gallery-layout {
   display: flex;
   flex: 1;
   min-height: 0;
   gap: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: 0 12px 12px 12px;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -209,6 +173,15 @@
   color: var(--text-secondary);
 }
 
+/* 生成于 / 保存于：次要信息，对齐移动端 tertiary */
+.gallery-detail-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 .gallery-detail-actions {
   display: flex;
   gap: 8px;
@@ -216,7 +189,7 @@
 
 .gallery-action-btn {
   background: transparent;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   width: 36px;
   height: 36px;
@@ -395,47 +368,62 @@
   }
 }
 
-/* 头部筛选区域与年份选择下拉框 */
+/* 头部：周月季年 + 年份筛选，整行白底，衔接下方总结卡 */
 .gallery-header-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 0;
+  align-items: center;
+  gap: 12px;
   width: 100%;
+  margin-bottom: 0;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-muted);
+  border-radius: 12px 12px 0 0;
 }
 
 .gallery-filter-container {
   position: relative;
-  margin-bottom: 6px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .gallery-year-select-trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  background: var(--bg-surface);
+  gap: 6px;
+  background: transparent;
   color: var(--text-primary);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
-  padding: 8px 14px;
-  border-radius: 10px;
+  border: 1px solid var(--border-control);
+  padding: 0 10px;
+  height: 28px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
-  min-width: 110px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 96px;
+  box-shadow: none;
+  box-sizing: border-box;
+  transition:
+    background-color var(--duration-fast) var(--ease-out-cubic),
+    border-color var(--duration-fast) var(--ease-out-cubic),
+    color var(--duration-fast) var(--ease-out-cubic);
 }
 
 .gallery-year-select-trigger:hover {
-  background: rgba(var(--color-primary-rgb), 0.06);
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-  color: var(--color-primary);
+  background: var(--bg-app);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .gallery-year-select-trigger.open {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.15);
+  border-color: var(--border-strong);
+  background: var(--bg-app);
+  box-shadow: none;
 }
 
 .gallery-select-chevron {
@@ -533,7 +521,7 @@
   width: 100%;
   padding: 10px;
   border-radius: 8px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface-lowest);
   color: var(--text-secondary);
   font-size: 14px;
@@ -577,7 +565,7 @@
 .gallery-year-modal-grid-item {
   padding: 10px 0;
   border-radius: 8px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface-lowest);
   color: var(--text-secondary);
   font-size: 13px;

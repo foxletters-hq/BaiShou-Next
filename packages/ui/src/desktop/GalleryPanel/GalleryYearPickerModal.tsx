@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronDown } from 'lucide-react'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import type { SummaryTab } from './gallery-panel.utils'
 import { SUMMARY_TABS } from './gallery-panel.utils'
 
@@ -121,21 +122,20 @@ export const GalleryTabsHeader: React.FC<GalleryTabsHeaderProps> = ({
 
   return (
     <div className="gallery-header-row">
-      <div className="gallery-tabs-container">
-        {SUMMARY_TABS.map((tab) => (
-          <button
-            key={tab}
-            className={`gallery-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => onTabChange(tab)}
-          >
-            {t(`summary.tab_${tab}`, tab)}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        value={activeTab}
+        options={SUMMARY_TABS.map((tab) => ({
+          value: tab,
+          label: t(`summary.tab_${tab}`, tab)
+        }))}
+        onChange={onTabChange}
+        aria-label={t('summary.gallery_period_tabs', '总结周期')}
+      />
 
       {availableYears.length > 0 && (
         <div className="gallery-filter-container">
           <button
+            type="button"
             className={`gallery-year-select-trigger ${isYearPickerOpen ? 'open' : ''}`}
             onClick={onOpenYearPicker}
           >

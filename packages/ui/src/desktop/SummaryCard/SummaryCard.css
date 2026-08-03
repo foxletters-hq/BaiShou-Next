@@ -97,7 +97,7 @@
 
 .actions-divider {
   height: 1px;
-  background-color: var(--border-color, rgba(148, 163, 184, 0.3));
+  background-color: var(--bg-surface-normal);
   margin-bottom: 12px;
 }
 

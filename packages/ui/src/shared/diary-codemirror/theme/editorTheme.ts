@@ -167,25 +167,25 @@ export const editorTheme = EditorView.baseTheme({
     width: '100%',
     maxWidth: '100%',
     boxSizing: 'border-box',
-    borderLeft: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
-    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    borderLeft: '1.5px solid var(--cm-table-border, var(--border-strong))',
+    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong))',
     paddingLeft: '2px',
     paddingRight: '2px'
   },
   '.cm-table-line-first': {
-    borderTop: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    borderTop: '1.5px solid var(--cm-table-border, var(--border-strong))',
     borderTopLeftRadius: '8px',
     borderTopRightRadius: '8px',
     marginTop: '8px'
   },
   '.cm-table-line-last': {
-    borderBottom: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.22)))',
+    borderBottom: '1.5px solid var(--cm-table-border, var(--border-strong))',
     borderBottomLeftRadius: '8px',
     borderBottomRightRadius: '8px',
     marginBottom: '8px'
   },
   '.cm-table-line:not(.cm-table-line-last)': {
-    borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.14)))'
+    borderBottom: '1px solid var(--cm-table-border, var(--border-strong))'
   },
   '.cm-table-line-active': {
     backgroundColor: 'transparent'
@@ -205,7 +205,7 @@ export const editorTheme = EditorView.baseTheme({
     minWidth: '0',
     padding: '4px 10px',
     boxSizing: 'border-box',
-    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.18)))',
+    borderRight: '1.5px solid var(--cm-table-border, var(--border-strong))',
     wordBreak: 'break-word',
     whiteSpace: 'normal'
   },
@@ -371,7 +371,7 @@ export const editorTheme = EditorView.baseTheme({
     gridColumn: '2',
     gridRow: '1',
     minWidth: '0',
-    border: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.16)))',
+    border: '1px solid var(--cm-table-border, var(--border-strong))',
     borderRadius: '0',
     overflow: 'hidden',
     backgroundColor: 'var(--bg-editor, transparent)'
@@ -387,8 +387,8 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-table-block:not(.cm-table-block--desktop) .cm-table-preview th, .cm-table-block:not(.cm-table-block--desktop) .cm-table-preview td':
     {
-      borderRight: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.12)))',
-      borderBottom: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.1)))',
+      borderRight: '1px solid var(--cm-table-border, var(--border-strong))',
+      borderBottom: '1px solid var(--cm-table-border, var(--border-strong))',
       padding: '10px 12px',
       verticalAlign: 'top',
       wordBreak: 'break-word',
@@ -554,7 +554,7 @@ export const editorTheme = EditorView.baseTheme({
     justifyContent: 'center',
     boxSizing: 'border-box',
     borderRadius: '6px',
-    border: '1px solid var(--cm-table-border, var(--border-strong, rgba(0, 0, 0, 0.14)))',
+    border: '1px solid var(--cm-table-border, var(--border-strong))',
     background: 'transparent',
     color: 'var(--text-tertiary, rgba(0, 0, 0, 0.35))',
     fontSize: '16px',
@@ -654,7 +654,7 @@ export const editorTheme = EditorView.baseTheme({
     right: '0',
     borderRadius: '20px 20px 0 0',
     background: 'var(--bg-surface)',
-    borderTop: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.08))',
+    borderTop: '1px solid var(--border-subtle)',
     boxShadow: '0 -16px 48px rgba(0, 0, 0, 0.2)',
     overflow: 'hidden',
     display: 'flex',
@@ -666,7 +666,7 @@ export const editorTheme = EditorView.baseTheme({
     width: '36px',
     height: '4px',
     borderRadius: '999px',
-    background: 'var(--border-subtle, rgba(0, 0, 0, 0.2))',
+    background: 'var(--border-subtle)',
     margin: '8px auto 2px',
     flexShrink: '0'
   },
@@ -692,7 +692,7 @@ export const editorTheme = EditorView.baseTheme({
     overflow: 'hidden',
     background: 'var(--bg-surface-normal)',
     border: 'none',
-    boxShadow: 'inset 0 0 0 1px var(--border-subtle, rgba(0, 0, 0, 0.06))'
+    boxShadow: 'inset 0 0 0 1px var(--border-subtle)'
   },
   '.cm-table-sheet-group--destructive': {
     marginTop: '2px'
@@ -704,7 +704,7 @@ export const editorTheme = EditorView.baseTheme({
     minHeight: '52px',
     textAlign: 'left',
     border: 'none',
-    borderBottom: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.06))',
+    borderBottom: '1px solid var(--border-subtle)',
     background: 'transparent',
     color: 'var(--text-primary)',
     fontSize: '16px',
@@ -837,7 +837,7 @@ export const editorTheme = EditorView.baseTheme({
     width: '100%',
     height: '0',
     margin: '14px 0',
-    borderTop: '1px solid var(--border-control, #e5e5e5)',
+    borderTop: '1px solid var(--border-control)',
     verticalAlign: 'middle',
     pointerEvents: 'none',
     boxSizing: 'border-box'
@@ -956,7 +956,7 @@ export const editorTheme = EditorView.baseTheme({
   },
   '.cm-tooltip.tbl-menu-tooltip .tbl-menu': {
     backgroundColor: 'var(--bg-surface-raised)',
-    border: '1px solid var(--border-muted, rgba(0, 0, 0, 0.08))',
+    border: '1px solid var(--border-muted)',
     boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.12))',
     borderRadius: 'var(--radius-sm, 8px)',
     zIndex: String(DIARY_EDITOR_OVERLAY_Z.tableMenu)

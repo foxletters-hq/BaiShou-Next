@@ -79,7 +79,7 @@
   padding: 6px 8px;
   border-radius: 14px;
   background: var(--bg-surface, rgba(255, 255, 255, 0.96));
-  border: 1px solid var(--border-subtle, rgba(15, 23, 42, 0.08));
+  border: 1px solid var(--border-subtle);
   box-shadow:
     0 10px 40px rgba(15, 23, 42, 0.12),
     0 2px 8px rgba(15, 23, 42, 0.06);
@@ -89,7 +89,7 @@
 
 :global(body[data-theme='dark']) .image-preview-controls {
   background: var(--bg-surface-raised, rgba(30, 30, 30, 0.94));
-  border-color: var(--border-muted, rgba(255, 255, 255, 0.1));
+  border-color: var(--border-muted);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
@@ -97,12 +97,12 @@
   width: 1px;
   height: 22px;
   margin: 0 4px;
-  background: var(--border-subtle, rgba(15, 23, 42, 0.1));
+  background: var(--border-subtle);
   flex-shrink: 0;
 }
 
 :global(body[data-theme='dark']) .image-preview-controls-divider {
-  background: var(--border-muted, rgba(255, 255, 255, 0.12));
+  background: var(--border-muted);
 }
 
 .image-preview-controls button {

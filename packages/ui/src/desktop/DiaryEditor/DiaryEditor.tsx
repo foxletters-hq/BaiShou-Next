@@ -300,7 +300,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           >
             {savePhase === 'saving' || savePhase === 'leaving' ? (
               <span className="de-save-loading">
-                <span className="de-spinner" />
+                <Loader2 className="de-save-spinner" size={14} aria-hidden />
                 {t('common.saving', '保存中...')}
               </span>
             ) : (

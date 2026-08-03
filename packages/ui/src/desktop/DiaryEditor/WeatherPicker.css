@@ -13,7 +13,7 @@
   min-height: 38px;
   padding: 0 14px;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   color: var(--text-secondary);
   font-size: 13px;
@@ -69,7 +69,7 @@
 
 .wp-trigger-selected {
   color: var(--text-primary);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
 }
 
 .wp-trigger-label {
