@@ -66,7 +66,8 @@ export class SessionCrudOps {
     limit: number = 20,
     offset: number = 0,
     assistantId?: string,
-    searchQuery?: string
+    searchQuery?: string,
+    vaultName?: string
   ): Promise<AgentSessionRow[]> {
     let matchedSessionIds: string[] = []
 
@@ -136,6 +137,11 @@ export class SessionCrudOps {
     // 组合过滤条件
     const conditions: any[] = []
 
+    const normalizedVaultName = vaultName?.trim()
+    if (normalizedVaultName) {
+      conditions.push(eq(agentSessionsTable.vaultName, normalizedVaultName))
+    }
+
     const normalizedAssistantId = assistantId?.trim()
     if (normalizedAssistantId) {
       conditions.push(eq(agentSessionsTable.assistantId, normalizedAssistantId))
@@ -171,7 +177,7 @@ export class SessionCrudOps {
 
     const results = (await finalQuery) as AgentSessionRow[]
     console.log(
-      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
+      `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, vault=${normalizedVaultName ?? '-'}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
     )
     if (results.length === 0 && !searchQuery && normalizedAssistantId) {
       const allDocs = await this.db.select().from(agentSessionsTable)
