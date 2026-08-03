@@ -55,7 +55,7 @@ import type { DomainMutationEvent } from '@baishou/shared/cache'
 import { i18n, isRagMemoryEnabled, resolveAppLanguage } from '@baishou/shared'
 import { ensureUiFontForLanguage } from './styles/fonts'
 import { TitleBar } from './components/TitleBar'
-import { NetworkProvider } from './providers/NetworkProvider'
+import { NetworkProvider, NetworkOfflineBanner } from './providers/NetworkProvider'
 import { IncrementalSyncConfirmHost } from './components/IncrementalSyncConfirmDialog/IncrementalSyncConfirmHost'
 import { useZoom } from './hooks/useZoom'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
@@ -424,6 +424,7 @@ export function App() {
       <NetworkProvider>
         <DialogProvider>
           <ToastProvider />
+          <NetworkOfflineBanner />
           <RestoreBlockingOverlay visible={archiveImporting} />
           <GlobalErrorHandler />
           <DesktopLegacyMigrationPrompt />
