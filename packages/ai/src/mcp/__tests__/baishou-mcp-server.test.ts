@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { z } from 'zod'
 import { ToolRegistry } from '../../tools/tool-registry'
 import {
@@ -13,6 +14,7 @@ import { MCP_EXTERNAL_SESSION_ID } from '../../tools/mcp-tool.util'
 
 const baseContext: ToolContext = {
   sessionId: MCP_EXTERNAL_SESSION_ID,
+  vaultId: deriveLegacyVaultId('Personal'),
   vaultName: 'Personal',
   userConfig: {
     ragEnabled: true,
@@ -36,6 +38,7 @@ describe('baishou-mcp-server', () => {
   it('returns empty tool schemas when registry is missing', () => {
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {}
     }
@@ -46,6 +49,7 @@ describe('baishou-mcp-server', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -66,6 +70,7 @@ describe('baishou-mcp-server', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -117,6 +122,7 @@ describe('baishou-mcp-server', () => {
     const registry = new ToolRegistry()
     const context: ToolContext = {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {
         ragEnabled: true,
@@ -204,6 +210,7 @@ describe('baishou-mcp-server', () => {
 
     const tools = buildBaishouMcpToolSchemas(registry, {
       sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {}
     })
@@ -220,6 +227,7 @@ describe('baishou-mcp-server', () => {
         undefined,
         async () => ({
           sessionId: MCP_EXTERNAL_SESSION_ID,
+          vaultId: deriveLegacyVaultId('Personal'),
           vaultName: 'Personal',
           userConfig: {}
         }),
@@ -244,6 +252,7 @@ describe('baishou-mcp-server', () => {
       registry,
       async () => ({
         sessionId: MCP_EXTERNAL_SESSION_ID,
+        vaultId: deriveLegacyVaultId('Personal'),
         vaultName: 'Personal',
         userConfig: {}
       }),

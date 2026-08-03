@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { AgentGateEffect, AgentGateProfileId } from '@baishou/shared'
 import { ToolRegistry } from '../tools/tool-registry'
 import { AgentTool, ToolContext } from '../tools/agent.tool'
@@ -33,6 +34,7 @@ describe('ToolRegistry', () => {
 
     const mockCtx: ToolContext = {
       sessionId: 'test-session',
+      vaultId: deriveLegacyVaultId('default'),
       vaultName: 'default'
     }
     const toolMap = registry.getEnabledToolsAsVercel(mockCtx)
@@ -60,6 +62,7 @@ describe('ToolRegistry', () => {
 
     const ctx: ToolContext = {
       sessionId: 's1',
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       agentGate: gate,
       gateProfile: AgentGateProfileId.Companion,
@@ -81,6 +84,7 @@ describe('ToolRegistry', () => {
     const registry = new ToolRegistry()
     const ctx: ToolContext = {
       sessionId: 'ws-session',
+      vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       userConfig: {
         disabledToolIds: ['workspace_run', 'diary_write']

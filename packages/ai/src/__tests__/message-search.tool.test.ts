@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { formatRecallTimestamp } from '@baishou/shared'
+import { deriveLegacyVaultId, formatRecallTimestamp } from '@baishou/shared'
 import { MessageSearchTool } from '../tools/message-search.tool'
 import type { ToolContext } from '../tools/agent.tool'
 
@@ -22,6 +22,7 @@ describe('MessageSearchTool', () => {
 
     const output = await tool.execute({ query: '噩梦' }, {
       sessionId: 's1',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       messageSearcher: searcher
     } as ToolContext)
@@ -35,6 +36,7 @@ describe('MessageSearchTool', () => {
   it('returns error when query is empty', async () => {
     const output = await tool.execute({ query: '   ' }, {
       sessionId: 's1',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       messageSearcher: {} as any
     } as ToolContext)
@@ -44,6 +46,7 @@ describe('MessageSearchTool', () => {
   it('returns empty message when no hits', async () => {
     const output = await tool.execute({ query: '不存在的关键词' }, {
       sessionId: 's1',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       messageSearcher: { searchMessages: vi.fn().mockResolvedValue([]) }
     } as ToolContext)
