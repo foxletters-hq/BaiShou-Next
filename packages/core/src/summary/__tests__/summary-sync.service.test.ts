@@ -44,7 +44,8 @@ describe('SummarySyncService', () => {
       mockDetector as any,
       mockGenerator as any,
       mockSummaryRepo as any,
-      mockFileService as any
+      mockFileService as any,
+      () => 'vault_test_main'
     )
 
     const callbacks = {
