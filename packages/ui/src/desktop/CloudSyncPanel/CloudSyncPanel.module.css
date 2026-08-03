@@ -230,7 +230,7 @@
 
 .btnOutlined {
   background: transparent;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
 }
 
@@ -241,7 +241,7 @@
 
 .btnFilled {
   background: transparent;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
 }
 
@@ -252,7 +252,7 @@
 
 .btnDangerFilled {
   background: transparent;
-  border: 1.5px solid var(--color-error);
+  border: 1px solid var(--color-error);
   color: var(--color-error);
 }
 
@@ -360,7 +360,7 @@
   align-items: center;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -439,7 +439,7 @@
 
 .btnSave {
   background: transparent;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   padding: 0 12px;
   height: 32px;
@@ -486,19 +486,19 @@
   display: flex;
   align-items: center;
   background: var(--form-field-bg, var(--bg-surface));
-  border: 1.5px solid var(--form-field-border, var(--border-control));
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 8px;
   padding: 0 10px;
   height: 32px;
-  transition: border-color 0.15s ease;
+  transition: var(--form-field-transition);
   color: var(--text-primary);
   box-sizing: border-box;
 }
 
 .inputPill:focus-within {
-  border-color: var(--form-field-border, var(--border-control));
+  border-color: var(--form-field-border-focus);
   background: var(--form-field-bg, var(--bg-surface));
-  box-shadow: none;
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .inputPill input {
@@ -589,7 +589,7 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   cursor: pointer;
   position: relative;
@@ -836,17 +836,4 @@
 /* 视觉样式见 theme/range-slider.css */
 .smSlider {
   width: 100%;
-}
-
-.helpIconWrapper {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color 0.2s var(--ease-in-out);
-}
-
-.helpIconWrapper:hover {
-  color: var(--color-primary);
 }

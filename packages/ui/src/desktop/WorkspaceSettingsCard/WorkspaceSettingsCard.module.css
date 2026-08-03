@@ -1,5 +1,5 @@
 .workspaceCurrentBlock {
-  border: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  border: 1px solid var(--border-card);
   border-radius: 16px;
   padding: 12px;
   margin-bottom: 8px;
@@ -38,7 +38,7 @@
 
 .workspaceManageButton {
   flex-shrink: 0;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 999px;
   padding: 8px 14px;
   background: var(--bg-surface);
@@ -77,7 +77,7 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 16px;
-  border: 1px solid var(--color-outline-variant, rgba(208, 208, 208, 0.5));
+  border: 1px solid var(--border-card);
   background: transparent;
   cursor: pointer;
   text-align: left;

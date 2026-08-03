@@ -3,7 +3,6 @@ import {
   Archive,
   CheckSquare,
   CloudUpload,
-  HelpCircle,
   Loader2,
   RefreshCw,
   Settings,
@@ -11,7 +10,7 @@ import {
 } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
 import { SegmentedControl } from '../shared/SegmentedControl'
-import { Tooltip } from '../Tooltip/Tooltip'
+import { HelpTooltip } from '../HelpTooltip'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 
 export interface CloudSyncHeaderActionsProps {
@@ -91,11 +90,7 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
         <div className={styles.titleArea}>
           <div className={styles.titleBlock}>
             <span className={styles.titleLabel}>{titleLabel}</span>
-            <Tooltip content={helpContent}>
-              <span className={styles.helpIconWrapper}>
-                <HelpCircle size={16} className={styles.helpIcon} />
-              </span>
-            </Tooltip>
+            <HelpTooltip content={helpContent} size={16} />
             {activeTab === 'cloud' && (
               <span className={styles.targetBadge}>{config.target.toUpperCase()}</span>
             )}

@@ -61,15 +61,15 @@
   font-size: 14px;
   outline: none;
   transition:
-    border-color 0.2s,
+    border-color var(--duration-normal) var(--ease-out-cubic),
     background 0.2s;
   box-sizing: border-box;
 }
 
 .gmp-input:focus {
-  border-color: var(--form-field-border, var(--border-control));
+  border-color: var(--form-field-border-focus);
   background: var(--form-field-bg, var(--bg-surface));
-  box-shadow: none;
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .gmp-switch {
@@ -123,7 +123,7 @@
 
 .gmp-btn {
   padding: 8px 16px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -152,7 +152,7 @@
 
 .gmp-btn-small {
   padding: 4px 10px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 6px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -170,7 +170,7 @@
 
 .gmp-btn-tiny {
   padding: 2px 8px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 4px;
   background: var(--bg-surface-normal);
   color: var(--text-secondary);

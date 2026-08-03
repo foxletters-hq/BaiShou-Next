@@ -1,41 +1,48 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import './GitManagementPage.css'
-import seg from '../shared/SegmentedControl.module.css'
 import type { GitManagementPageProps } from './git-management.types'
 import { useGitManagementPage } from './useGitManagementPage'
 import { GitConfigTab } from './GitConfigTab'
 import { GitVersionTab } from './GitVersionTab'
 import { SettingsPageChrome } from '../shared/SettingsPageChrome'
+import { SegmentedControl } from '../shared/SegmentedControl'
 
 export const GitManagementPage: React.FC<GitManagementPageProps> = (props) => {
   const vm = useGitManagementPage(props)
+
+  const tabOptions = useMemo(
+    () =>
+      [
+        {
+          value: 'config' as const,
+          label: vm.t('version_control.git_settings', 'Git 设置')
+        },
+        {
+          value: 'version' as const,
+          label: vm.t('version_control.version_control', '版本控制')
+        }
+      ] as const,
+    [vm.t]
+  )
 
   return (
     <SettingsPageChrome title={vm.t('version_control.title', '版本控制')} layout="stack">
       <div className="git-management-page">
         <div className="gmp-header">
-          <div className={seg.group}>
-            <button
-              type="button"
-              className={`${seg.btn} ${vm.tab === 'config' ? seg.btnActive : ''}`}
-              onClick={() => vm.setTab('config')}
-            >
-              {vm.t('version_control.git_settings', 'Git 设置')}
-            </button>
-            <button
-              type="button"
-              className={`${seg.btn} ${vm.tab === 'version' ? seg.btnActive : ''}`}
-              onClick={() => {
-                vm.setTab('version')
+          <SegmentedControl
+            value={vm.tab}
+            options={tabOptions}
+            aria-label={vm.t('version_control.title', '版本控制')}
+            onChange={(next) => {
+              vm.setTab(next)
+              if (next === 'version') {
                 vm.handleLoadHistory()
                 vm.handleRefreshStatus()
                 vm.handleLoadRecentPulls()
-              }}
-            >
-              {vm.t('version_control.version_control', '版本控制')}
-            </button>
-          </div>
+              }
+            }}
+          />
         </div>
 
         <AnimatePresence mode="wait">

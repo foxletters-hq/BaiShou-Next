@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, HelpCircle, Loader2, Upload } from 'lucide-react'
+import { Download, Loader2, Upload } from 'lucide-react'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { Tooltip } from '../Tooltip/Tooltip'
+import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import { formatExportErrorMessage } from '../archive-export.util'
 import styles from './CloudSyncPanel.module.css'
@@ -80,16 +81,13 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
         <span className={styles.localArchiveLabel}>
           {t('settings.local_archive_backup', '本地全量备份')}
         </span>
-        <Tooltip
+        <HelpTooltip
+          size={16}
           content={t(
             'settings.local_archive_backup_desc',
             '导出或导入包含全部数据的 ZIP 文件，适合换机或离线备份'
           )}
-        >
-          <span className={styles.helpIconWrapper}>
-            <HelpCircle size={16} className={styles.helpIcon} />
-          </span>
-        </Tooltip>
+        />
         <Tooltip content={t('settings.export_desc', '将所有数据导出为 ZIP 压缩包')}>
           <button
             type="button"
