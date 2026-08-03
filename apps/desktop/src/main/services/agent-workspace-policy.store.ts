@@ -50,9 +50,7 @@ async function loadStore(): Promise<WorkspacePolicyFile> {
     const raw = await fs.readFile(file, 'utf-8')
     const parsed = JSON.parse(raw) as WorkspacePolicyFile
     const byWorkspaceId =
-      parsed?.byWorkspaceId && typeof parsed.byWorkspaceId === 'object'
-        ? parsed.byWorkspaceId
-        : {}
+      parsed?.byWorkspaceId && typeof parsed.byWorkspaceId === 'object' ? parsed.byWorkspaceId : {}
 
     if (parsed?.version === 2) {
       cache = { version: 2, byWorkspaceId }

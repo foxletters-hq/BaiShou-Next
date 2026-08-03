@@ -160,9 +160,7 @@ export async function removeAgentWorkspace(workspaceId: string): Promise<boolean
 
   const removedKey = normalizeWorkspaceFolderKey(entry.folderRoot)
   registry.workspaces = registry.workspaces.filter((item) => item.id !== workspaceId)
-  registry.removedFolderKeys = [
-    ...new Set([...(registry.removedFolderKeys ?? []), removedKey])
-  ]
+  registry.removedFolderKeys = [...new Set([...(registry.removedFolderKeys ?? []), removedKey])]
   if (registry.lastActiveWorkspaceId === workspaceId) {
     registry.lastActiveWorkspaceId = undefined
   }

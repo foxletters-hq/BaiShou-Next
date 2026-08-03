@@ -1,7 +1,18 @@
 import i18n from 'i18next'
 import { ipcMain, BrowserWindow } from 'electron'
-import { VaultService, VaultNameExistsError, VaultInvalidNameError, VaultNotFoundError, VaultRenameFilesystemError } from '@baishou/core-desktop'
-import { ShadowIndexRepository, shadowConnectionManager, connectionManager, knowledgeConnectionManager } from '@baishou/database-desktop'
+import {
+  VaultService,
+  VaultNameExistsError,
+  VaultInvalidNameError,
+  VaultNotFoundError,
+  VaultRenameFilesystemError
+} from '@baishou/core-desktop'
+import {
+  ShadowIndexRepository,
+  shadowConnectionManager,
+  connectionManager,
+  knowledgeConnectionManager
+} from '@baishou/database-desktop'
 import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
 import { traceStartupStep } from '../startup-trace.util'
@@ -76,9 +87,7 @@ export async function connectKnowledgeDb(): Promise<void> {
     const root = await pathService.getRootDirectory()
     await knowledgeConnectionManager.connect(root)
     const vec = knowledgeConnectionManager.getVecVersion()
-    logger.info(
-      `[VaultIPC] 知识库已连接: ${root}/knowledge.db vec_version=${vec ?? 'unavailable'}`
-    )
+    logger.info(`[VaultIPC] 知识库已连接: ${root}/knowledge.db vec_version=${vec ?? 'unavailable'}`)
   })
 }
 
@@ -247,9 +256,8 @@ export function registerVaultIPC() {
     const vaultId = resolveVaultIdByName(vaultName)
     // 先清 agent.db 派生数据，再清 knowledge / shadow / 删目录（中途失败可重试，避免幽灵索引）
     if (connectionManager.isConnected()) {
-      const { createSqlExecutorFromDrizzleDb, purgeVaultDerivedData } = await import(
-        '@baishou/database-desktop'
-      )
+      const { createSqlExecutorFromDrizzleDb, purgeVaultDerivedData } =
+        await import('@baishou/database-desktop')
       const counts = await purgeVaultDerivedData(
         createSqlExecutorFromDrizzleDb(connectionManager.getDb()),
         vaultId
@@ -300,9 +308,7 @@ export function registerVaultIPC() {
     const before = vaultService
       .getAllVaults()
       .find((v) => v.id === oldNameOrId || v.name === oldNameOrId)
-    const wasActive = Boolean(
-      before && vaultService.getActiveVault()?.id === before.id
-    )
+    const wasActive = Boolean(before && vaultService.getActiveVault()?.id === before.id)
 
     if (wasActive) {
       try {

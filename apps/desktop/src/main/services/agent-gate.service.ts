@@ -18,10 +18,7 @@ import {
 } from '@baishou/shared'
 import { settingsManager } from '../ipc/settings.ipc'
 import { getWorkspaceGateConfig, setWorkspaceGateConfig } from './agent-workspace-policy.store'
-import {
-  getWorkspaceAutoAccept,
-  setWorkspaceAutoAccept
-} from './agent-workspace-auto-accept.store'
+import { getWorkspaceAutoAccept, setWorkspaceAutoAccept } from './agent-workspace-auto-accept.store'
 
 type GateRuntime = ReturnType<typeof createBaishouAgentGate>
 

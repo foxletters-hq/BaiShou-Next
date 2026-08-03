@@ -62,10 +62,9 @@ export function registerDesktopPdfPageBitmapRenderer(): void {
     }).promise
 
     const total = doc.numPages
-    const targets =
-      pageNumbers?.length
-        ? pageNumbers.filter((p) => p >= 1 && p <= total)
-        : Array.from({ length: total }, (_, i) => i + 1)
+    const targets = pageNumbers?.length
+      ? pageNumbers.filter((p) => p >= 1 && p <= total)
+      : Array.from({ length: total }, (_, i) => i + 1)
 
     const scale = Math.max(1, (dpi || 250) / 72)
     const out: Array<{ page: number; pngBase64: string; width: number; height: number }> = []
