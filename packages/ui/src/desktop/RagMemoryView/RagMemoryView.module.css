@@ -747,6 +747,130 @@ input:checked + .slider:before {
   word-break: break-word;
 }
 
+.consistencySection {
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 16px;
+}
+
+.consistencyToggle {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.consistencyToggle:hover {
+  color: var(--text-primary);
+}
+
+.consistencyPanel {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-card);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consistencyToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.consistencyStatus {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.consistencyMessage {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.consistencyMissingHint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.consistencyMissingList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  margin-bottom: 10px;
+}
+
+.consistencyMissingItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.consistencyMissingText {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.btnDangerOutlined {
+  background: transparent;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+}
+
+.memoryEntryMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.memoryMetaBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: var(--bg-surface-high);
+  color: var(--text-secondary);
+}
+
+.memorySessionLink {
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.memoryTags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.memoryTag {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.25);
+}
+
 .embedHintAction {
   padding: 6px 14px;
   font-size: 13px;

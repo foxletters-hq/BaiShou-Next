@@ -19,6 +19,7 @@ interface RagMemoryEntriesListProps {
   totalPages: number
   onEditEntry?: (entry: RagEntry) => Promise<void>
   onDeleteEntry?: (id: string) => Promise<void>
+  onOpenSourceSession?: (sessionId: string) => void
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
 }
@@ -36,6 +37,7 @@ export const RagMemoryEntriesList: React.FC<RagMemoryEntriesListProps> = ({
   totalPages,
   onEditEntry,
   onDeleteEntry,
+  onOpenSourceSession,
   onPageChange,
   onPageSizeChange
 }) => {
@@ -50,6 +52,7 @@ export const RagMemoryEntriesList: React.FC<RagMemoryEntriesListProps> = ({
         setActiveMenuId={setActiveMenuId}
         onEditEntry={onEditEntry}
         onDeleteEntry={onDeleteEntry}
+        onOpenSourceSession={onOpenSourceSession}
         formatDate={formatDate}
       />
       {showPagination && (

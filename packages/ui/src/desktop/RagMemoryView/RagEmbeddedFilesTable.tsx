@@ -11,6 +11,7 @@ interface RagEmbeddedFilesTableProps {
   setActiveMenuId: (id: string | null) => void
   onEditEntry?: (entry: RagEntry) => void
   onDeleteEntry?: (id: string) => void
+  onOpenSourceSession?: (sessionId: string) => void
   formatDate: (entry: RagEntry) => string
 }
 
@@ -24,6 +25,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
   setActiveMenuId,
   onEditEntry,
   onDeleteEntry,
+  onOpenSourceSession,
   formatDate
 }) => {
   const { t } = useTranslation()
@@ -58,10 +60,49 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
           </div>
           <div className={styles.memoryEntryContentBlock}>
             <div className={styles.memoryEntryText}>{e.text}</div>
+            <div className={styles.memoryEntryMetaRow}>
+              {e.isManual && (
+                <span className={styles.memoryMetaBadge}>
+                  {t('settings.rag_source_manual', '手动')}
+                </span>
+              )}
+              {!e.isManual && e.sourceSessionId && (
+                onOpenSourceSession ? (
+                  <button
+                    type="button"
+                    className={styles.memorySessionLink}
+                    onClick={() => onOpenSourceSession(e.sourceSessionId!)}
+                  >
+                    {t('settings.rag_source_session', '来源会话')}
+                  </button>
+                ) : (
+                  <span className={styles.memoryMetaBadge}>
+                    {t('settings.rag_source_partner', '伙伴')}
+                  </span>
+                )
+              )}
+              {e.tags && e.tags.length > 0 && (
+                <span className={styles.memoryTags}>
+                  {e.tags.map((tag) => (
+                    <span key={tag} className={styles.memoryTag}>
+                      {tag}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
             <div className={styles.memoryEntryFooter}>
               <span>{e.modelId}</span>
               <span>·</span>
               <span>{formatDate(e)}</span>
+              {e.memoryUpdatedAt != null && e.memoryUpdatedAt !== e.memoryCreatedAt && (
+                <>
+                  <span>·</span>
+                  <span>
+                    {t('settings.rag_updated_at', '修改')} {formatDate({ ...e, createdAt: e.memoryUpdatedAt })}
+                  </span>
+                </>
+              )}
               {e.similarity !== undefined && (
                 <>
                   <span>·</span>
