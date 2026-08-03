@@ -7,6 +7,7 @@ import {
   SETTINGS_DOMAIN_FILE_NAMES,
   groupSettingsByDomainFile
 } from './settings-domain.util'
+import { migrateVaultSettingsToGlobal } from './settings-global-migrate.util'
 
 /** 稳定键序序列化，避免 SQLite flush 与磁盘 JSON 仅因键顺序不同而反复改写 */
 function sortKeysDeep(value: unknown): unknown {
@@ -29,15 +30,51 @@ export function stringifySettingsDomainJson(settingsMap: Record<string, unknown>
 
 export class SettingsFileService {
   private writeLock: Promise<void> = Promise.resolve()
+  private globalMigratePromise: Promise<void> | null = null
 
   constructor(
     private readonly pathProvider: IStoragePathService,
     private readonly fileSystem: IFileSystem
   ) {}
 
+  private async ensureGlobalSettingsMigrated(): Promise<void> {
+    if (!this.globalMigratePromise) {
+      this.globalMigratePromise = (async () => {
+        const [rootDirectory, globalSettingsDirectory, activeVaultPath] = await Promise.all([
+          this.pathProvider.getRootDirectory(),
+          this.pathProvider.getGlobalSettingsDirectory(),
+          this.pathProvider.getActiveVaultPath()
+        ])
+        const result = await migrateVaultSettingsToGlobal({
+          fileSystem: this.fileSystem,
+          rootDirectory,
+          globalSettingsDirectory,
+          activeVaultPath
+        })
+        if (
+          result.movedFromActive ||
+          result.retiredSettingsDirCount > 0 ||
+          result.retiredLegacyFileCount > 0
+        ) {
+          console.info(
+            `[SettingsFileService] V1.5 settings migrated to storage root` +
+              ` (moved=${result.movedFromActive},` +
+              ` retiredDirs=${result.retiredSettingsDirCount},` +
+              ` retiredLegacy=${result.retiredLegacyFileCount})`
+          )
+        }
+      })().catch((err) => {
+        // 允许下次读写重试
+        this.globalMigratePromise = null
+        throw err
+      })
+    }
+    await this.globalMigratePromise
+  }
+
   private async getSettingsDirectory(): Promise<string> {
-    const sysDir = await this.pathProvider.getActiveVaultSettingsDirectory()
-    return path.join(sysDir, 'settings')
+    await this.ensureGlobalSettingsMigrated()
+    return this.pathProvider.getGlobalSettingsDirectory()
   }
 
   private async writeJsonAtomic(

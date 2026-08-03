@@ -37,6 +37,10 @@ export class MigrationTargetStoragePathService implements IStoragePathService {
     return this.getVaultSystemDirectory(this.activeVaultName)
   }
 
+  async getGlobalSettingsDirectory(): Promise<string> {
+    return path.join(this.workspaceRoot, '.baishou', 'settings')
+  }
+
   async getGlobalShadowIndexDirectory(): Promise<string> {
     return path.join(await this.getGlobalRegistryDirectory(), 'shadow_index')
   }
