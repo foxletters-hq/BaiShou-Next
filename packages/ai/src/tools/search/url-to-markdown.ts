@@ -1,5 +1,6 @@
 import { HtmlToMarkdownConverter } from './html-to-markdown'
 import { EMPTY_WEB_PAGE_MESSAGE } from './web-content.util'
+import { assertSafePublicHttpUrl } from '@baishou/shared'
 
 export interface FetchUrlAsMarkdownResult {
   markdown: string
@@ -14,6 +15,8 @@ export interface FetchUrlAsMarkdownOptions {
   headers?: Record<string, string>
   /** 超时毫秒；默认 30s */
   timeoutMs?: number
+  /** 跳过私网/SSRF 检查（仅测试） */
+  skipSafeUrlCheck?: boolean
 }
 
 function extractTitle(html: string): string {
@@ -35,6 +38,10 @@ export async function fetchUrlAsMarkdown(
   const trimmed = url?.trim()
   if (!trimmed) {
     throw new Error('url is required')
+  }
+
+  if (!options?.skipSafeUrlCheck) {
+    assertSafePublicHttpUrl(trimmed)
   }
 
   const fetchImpl = options?.fetchImpl ?? fetch
@@ -65,6 +72,11 @@ export async function fetchUrlAsMarkdown(
       typeof (response as { url?: string }).url === 'string'
         ? (response as { url: string }).url
         : trimmed
+
+    // 重定向后再次校验，防止跳进私网
+    if (!options?.skipSafeUrlCheck && finalUrl !== trimmed) {
+      assertSafePublicHttpUrl(finalUrl)
+    }
 
     let markdown: string
     let title = ''
