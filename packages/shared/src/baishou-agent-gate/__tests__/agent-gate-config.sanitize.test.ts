@@ -33,26 +33,44 @@ describe('sanitizeBaishouAgentGateConfigPatch', () => {
     expect(patch.allowlist?.[0]?.pattern).toBe('git status *')
   })
 
-  it('keeps trust mode and safety toggles', () => {
+  it('migrates legacy FullTrust to catch-all allow rule and keeps safety toggles', () => {
     const patch = sanitizeBaishouAgentGateConfigPatch({
       trustMode: AgentGateTrustMode.FullTrust,
       hideDeniedTools: false,
-      forceAskExternalPath: true,
       repeatAssertAskThreshold: 5
-    })
-    expect(patch.trustMode).toBe(AgentGateTrustMode.FullTrust)
+    } as never)
+    expect(patch.permissionRules).toEqual(
+      expect.arrayContaining([{ action: '*', effect: AgentGateEffect.Allow }])
+    )
+    expect((patch as { trustMode?: unknown }).trustMode).toBeUndefined()
     expect(patch.hideDeniedTools).toBe(false)
-    expect(patch.forceAskExternalPath).toBe(true)
     expect(patch.repeatAssertAskThreshold).toBe(5)
   })
 
-  it('sanitizes external path effect and trusted dirs', () => {
+  it('migrates legacy external fields into external_directory rules', () => {
     const patch = sanitizeBaishouAgentGateConfigPatch({
       externalPathEffect: 'deny',
       trustedExternalDirs: [' D:/Notes ', '*', 'C:/Safe']
-    })
-    expect(patch.externalPathEffect).toBe('deny')
-    expect(patch.forceAskExternalPath).toBe(true)
-    expect(patch.trustedExternalDirs).toEqual(['D:/Notes', 'C:/Safe'])
+    } as never)
+    expect(
+      patch.permissionRules?.some(
+        (rule) => rule.action === 'external_directory' && rule.effect === AgentGateEffect.Deny
+      )
+    ).toBe(true)
+  })
+
+  it('migrates trusted dirs into patterned Allow rules', () => {
+    const patch = sanitizeBaishouAgentGateConfigPatch({
+      externalPathEffect: 'allow',
+      trustedExternalDirs: ['D:/Notes']
+    } as never)
+    expect(
+      patch.permissionRules?.some(
+        (rule) =>
+          rule.action === 'external_directory' &&
+          rule.pattern === 'D:/Notes/**' &&
+          rule.effect === AgentGateEffect.Allow
+      )
+    ).toBe(true)
   })
 })

@@ -4,10 +4,14 @@ import {
   agentGateActionPatternMatch,
   agentGateGlobMatch,
   agentGateResourcePatternMatch,
+  allowlistEntriesToPermissionRules,
   combineAgentGateRuleEffects,
   evaluateAgentGatePermissionRules,
+  evaluateLayeredRules,
   resolveAgentGatePermissionRules
 } from '../agent-gate-ruleset.util'
+import { clampAgentGateEffect } from '../agent-gate-clamp.util'
+import { AgentGateRiskLevel } from '../agent-gate.enums'
 
 describe('agent-gate-ruleset.util', () => {
   describe('agentGateGlobMatch', () => {
@@ -145,6 +149,131 @@ describe('agent-gate-ruleset.util', () => {
           { kind: 'workspace_path', value: 'src/foo.ts' }
         ])
       ).toBe(true)
+    })
+  })
+
+  describe('evaluateLayeredRules', () => {
+    it('last matching rule wins (specific Allow after broad Ask)', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_run',
+          resources: [{ kind: 'shell_command', value: 'git status -s' }],
+          layers: [
+            [
+              { action: 'workspace_run', effect: AgentGateEffect.Ask },
+              {
+                action: 'workspace_run',
+                pattern: 'git status *',
+                effect: AgentGateEffect.Allow
+              }
+            ]
+          ]
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
+
+    it('reversed order keeps broad Ask when it is last', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_run',
+          resources: [{ kind: 'shell_command', value: 'git status -s' }],
+          layers: [
+            [
+              {
+                action: 'workspace_run',
+                pattern: 'git status *',
+                effect: AgentGateEffect.Allow
+              },
+              { action: 'workspace_run', effect: AgentGateEffect.Ask }
+            ]
+          ]
+        })
+      ).toBe(AgentGateEffect.Ask)
+    })
+
+    it('later layer overrides earlier layer', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_write',
+          resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+          layers: [
+            [{ action: 'workspace_write', effect: AgentGateEffect.Ask }],
+            [{ action: 'workspace_write', effect: AgentGateEffect.Allow }]
+          ]
+        })
+      ).toBe(AgentGateEffect.Allow)
+    })
+
+    it('returns undefined when nothing matches', () => {
+      expect(
+        evaluateLayeredRules({
+          action: 'workspace_write',
+          layers: [[{ action: 'diary_*', effect: AgentGateEffect.Allow }]]
+        })
+      ).toBeUndefined()
+    })
+  })
+
+  describe('allowlistEntriesToPermissionRules', () => {
+    it('maps entries to Allow rules', () => {
+      expect(
+        allowlistEntriesToPermissionRules([
+          { action: 'diary_write' },
+          { action: 'workspace_run', pattern: 'git status *' }
+        ])
+      ).toEqual([
+        { action: 'diary_write', effect: AgentGateEffect.Allow },
+        {
+          action: 'workspace_run',
+          pattern: 'git status *',
+          effect: AgentGateEffect.Allow
+        }
+      ])
+    })
+  })
+
+  describe('clampAgentGateEffect', () => {
+    it('downgrades Allow to Ask for exclusion list', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_delete',
+          exclusionList: ['workspace_delete']
+        })
+      ).toBe(AgentGateEffect.Ask)
+    })
+
+    it('preserves Deny on excluded actions', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Deny, {
+          action: 'workspace_delete',
+          exclusionList: ['workspace_delete']
+        })
+      ).toBe(AgentGateEffect.Deny)
+    })
+
+    it('downgrades Allow for destructive risk', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_delete',
+          riskLevel: AgentGateRiskLevel.Destructive
+        })
+      ).toBe(AgentGateEffect.Ask)
+    })
+
+    it('downgrades Allow for truncated preview', () => {
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_write',
+          preview: {
+            type: 'file_change',
+            path: 'a.ts',
+            kind: 'modify',
+            additions: 1,
+            deletions: 0,
+            truncated: true
+          }
+        })
+      ).toBe(AgentGateEffect.Ask)
     })
   })
 })
