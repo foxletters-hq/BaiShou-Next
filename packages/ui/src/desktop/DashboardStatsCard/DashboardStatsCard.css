@@ -2,7 +2,7 @@
   padding: 20px;
   background: var(--bg-surface);
   border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.5); /* outlineVariant */
+  border: 1px solid var(--border-control);
   display: flex;
   flex-direction: column;
 }

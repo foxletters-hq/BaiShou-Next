@@ -138,7 +138,7 @@
 
 .listFooter {
   padding: 12px;
-  border-top: 1px solid var(--color-outline-variant);
+  border-top: 1px solid var(--border-muted);
   margin-top: 8px;
 }
 
@@ -330,8 +330,8 @@
 
 .textFieldWithIcon:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .passwordInputContainer {
@@ -420,7 +420,7 @@
   padding: 0 12px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   font-size: var(--settings-font-label-size);
   font-weight: var(--settings-font-label-weight);
@@ -467,8 +467,8 @@
 
 .modelSearchInput:focus {
   outline: none;
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .modelSearchInput::placeholder {
@@ -492,7 +492,7 @@
 }
 
 .modelLineItemDivider {
-  border-bottom: 1px solid var(--color-outline-variant);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .modelLineItemLeft {
@@ -570,7 +570,7 @@
   font-size: 13px;
   font-weight: 500;
   font-family: inherit;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -672,7 +672,7 @@ input:checked + .slider:before {
   background: var(--bg-surface);
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-card);
   overflow: visible;
   display: flex;
   flex-direction: column;
@@ -753,7 +753,7 @@ input:checked + .slider:before {
   width: 100%;
   padding: 10px 12px;
   background: transparent;
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
@@ -764,8 +764,8 @@ input:checked + .slider:before {
 .addModalInput:focus,
 .addModalSelect:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .addModalFooter {
@@ -795,7 +795,7 @@ input:checked + .slider:before {
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -820,7 +820,7 @@ input:checked + .slider:before {
   width: 100%;
   padding: 10px 12px;
   background: transparent;
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--form-field-border, var(--border-control));
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
@@ -848,7 +848,7 @@ input:checked + .slider:before {
   max-height: 240px;
   overflow-y: auto;
   background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-card);
   border-radius: 8px;
   box-shadow:
     0 10px 30px rgba(0, 0, 0, 0.1),
@@ -945,8 +945,8 @@ input:checked + .slider:before {
 
 .testSearchInputWrapper:focus-within {
   background-color: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .testSearchIcon {
@@ -1145,7 +1145,7 @@ input:checked + .slider:before {
   width: 460px;
   max-width: 90vw;
   background: var(--bg-surface);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-card);
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   display: flex;

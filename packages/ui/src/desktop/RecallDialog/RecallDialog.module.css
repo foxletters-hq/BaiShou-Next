@@ -36,7 +36,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb), 0.4);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .headerTitle {
@@ -94,8 +94,8 @@
 }
 
 .searchBox:focus-within {
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .searchInput {
@@ -127,8 +127,8 @@
 }
 
 .ragSearchInner:focus-within {
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .ragSearchIcon {
@@ -219,7 +219,7 @@
   gap: 16px;
   padding: 16px;
   background: var(--bg-surface);
-  border: 1px solid rgba(var(--color-outline-variant-rgb), 0.5);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -243,7 +243,7 @@
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  border: 2px solid rgba(var(--color-outline-variant-rgb), 0.8);
+  border: 2px solid var(--border-control);
   flex-shrink: 0;
   transition: all 0.2s;
   background: var(--bg-surface);
@@ -302,7 +302,7 @@
 /* Footer Injection Area */
 .footer {
   padding: 10px 24px;
-  border-top: 1px solid rgba(var(--color-outline-variant-rgb), 0.4);
+  border-top: 1px solid var(--border-muted);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -332,7 +332,7 @@
   padding: 6px 14px;
   background: var(--bg-surface);
   color: var(--text-primary) !important;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -465,5 +465,5 @@
   align-items: center;
   padding: 12px 24px;
   background: rgba(var(--bg-surface-lowest-rgb, 248, 250, 252), 0.95);
-  border-top: 1px solid rgba(var(--color-outline-variant-rgb, 226, 232, 240), 0.2);
+  border-top: 1px solid var(--border-subtle);
 }

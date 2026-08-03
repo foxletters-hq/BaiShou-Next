@@ -46,7 +46,7 @@
   max-width: 360px;
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-app);
   color: var(--text-primary);
   font-size: var(--settings-font-row-size);
@@ -107,21 +107,21 @@
 .lookbackInput {
   width: 64px;
   padding: 4px 8px;
-  border: 1.5px solid var(--form-field-border, var(--border-control));
+  border: 1px solid var(--form-field-border);
   border-radius: 8px;
   font-size: var(--settings-font-row-size, 14px);
   font-weight: var(--settings-font-section-weight, 600);
   color: var(--text-primary);
   text-align: center;
-  background: var(--form-field-bg, var(--bg-surface));
+  background: var(--form-field-bg);
   transition: border-color var(--duration-fast, 0.15s) ease;
   box-sizing: border-box;
 }
 
 .lookbackInput:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .lookbackSliderBlock {
@@ -159,10 +159,7 @@
   box-sizing: border-box;
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid var(--color-outline-variant);
-  background: transparent;
-  color: var(--text-primary);
-  font-size: var(--settings-font-desc-size);
+  border: 1px solid var(--form-field-border, var(--border-control));
   line-height: 1.5;
   resize: vertical;
   font-family: inherit;
@@ -172,8 +169,8 @@
 
 .systemPromptArea:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .systemPromptArea::placeholder {
@@ -188,8 +185,7 @@
   max-width: 420px;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid var(--color-outline-variant);
-  background: var(--bg-app);
+  border: 1px solid var(--border-card);
   cursor: pointer;
   text-align: left;
   color: inherit;
@@ -311,7 +307,7 @@
 }
 
 .langChip {
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--settings-font-meta-size);
@@ -358,7 +354,7 @@
 
 .resetBtn {
   background: transparent;
-  border: 1px solid var(--border-muted);
+  border: 1px solid var(--border-control);
   color: var(--text-tertiary);
   font-size: var(--settings-font-desc-size);
   padding: 8px 20px;
@@ -376,7 +372,7 @@
 .saveBtn {
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   font-size: var(--settings-font-desc-size);
   padding: 8px 28px;
   border-radius: 8px;

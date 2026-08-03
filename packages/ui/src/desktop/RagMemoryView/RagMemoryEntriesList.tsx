@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination } from '../Pagination/index'
+import { PageSizeSelector } from '../PageSizeSelector'
 import { RagEmbeddedFilesTable } from './RagEmbeddedFilesTable'
 import type { RagEntry } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
@@ -60,17 +61,12 @@ export const RagMemoryEntriesList: React.FC<RagMemoryEntriesListProps> = ({
             )}
           </div>
           <div className={styles.paginationControls}>
-            <select
-              className={styles.pageSizeSelect}
+            <PageSizeSelector
               value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            >
-              {[10, 20, 30, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size} {t('settings.rag_per_page', '条/页')}
-                </option>
-              ))}
-            </select>
+              options={[10, 20, 30, 50, 100]}
+              onChange={onPageSizeChange}
+              label={t('settings.rag_per_page', '条/页')}
+            />
             <Pagination
               current={currentPage}
               total={totalPages}
