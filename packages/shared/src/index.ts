@@ -69,6 +69,7 @@ export {
 export * from './utils/s3-list.util'
 export * from './utils/s3-url'
 export * from './utils/cloud-sync-config.util'
+export * from './utils/safe-fetch-url.util'
 export {
   isIncrementalSyncReady,
   getRootIncrementalSyncConfigPath,
