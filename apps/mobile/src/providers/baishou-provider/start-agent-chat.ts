@@ -228,7 +228,8 @@ export function createStartAgentChat(deps: {
                   edgeType: e.edgeType,
                   sourceRef: e.sourceRef,
                   sourceExcerpt: e.sourceExcerpt
-                }))
+                })),
+                edgeDirections: p.edgeDirections
               }))
             }
           }),

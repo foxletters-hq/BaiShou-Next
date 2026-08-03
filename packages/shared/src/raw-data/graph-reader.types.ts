@@ -11,6 +11,8 @@ export interface ToolGraphPath {
     sourceRef?: string | null
     sourceExcerpt?: string
   }>
+  /** Parallel to edges: undirected BFS may walk reverse of stored from→to. */
+  edgeDirections?: Array<'forward' | 'reverse'>
 }
 
 export interface ToolGraphRagResult {

@@ -176,7 +176,8 @@ export class AgentChatService {
                 edgeType: e.edgeType,
                 sourceRef: e.sourceRef,
                 sourceExcerpt: e.sourceExcerpt
-              }))
+              })),
+              edgeDirections: p.edgeDirections
             }))
           }
         })

@@ -104,8 +104,16 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
               .map((p, i) => {
                 const chain = p.nodeNames.join(' → ')
                 const excerpts = p.edges
-                  .map((e) => {
-                    const label = e.edgeType
+                  .map((e, ei) => {
+                    const dir = p.edgeDirections?.[ei] ?? 'forward'
+                    const fromName =
+                      result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
+                    const toName =
+                      result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
+                    const label =
+                      dir === 'reverse'
+                        ? `${toName} ←${e.edgeType}— ${fromName}`
+                        : `${fromName} —${e.edgeType}→ ${toName}`
                     const ex = e.sourceExcerpt
                       ? `「${e.sourceExcerpt.slice(0, 80)}」`
                       : e.sourceRef
