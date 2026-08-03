@@ -8,11 +8,12 @@ export const knowledgeApi = {
     importSource: (input: {
       notebookId: string
       title: string
-      kind: 'file' | 'text' | 'url'
+      kind: 'file' | 'text' | 'url' | 'note'
       absolutePath?: string
       textContent?: string
       fileName?: string
       originUrl?: string
+      extractEngine?: 'simple' | 'ocr' | 'vision'
     }) => ipcRenderer.invoke('knowledge:import-source', input),
     retrySource: (sourceId: string) => ipcRenderer.invoke('knowledge:retry-source', sourceId),
     rebuildIndex: (notebookId: string) =>
@@ -22,8 +23,38 @@ export const knowledgeApi = {
     listSources: (notebookId: string) => ipcRenderer.invoke('knowledge:list-sources', notebookId),
     search: (input: { notebookId: string; query: string; topK?: number }) =>
       ipcRenderer.invoke('knowledge:search', input),
-    ask: (input: { notebookId: string; question: string; topK?: number }) =>
-      ipcRenderer.invoke('knowledge:ask', input),
+    ask: (input: {
+      notebookId: string
+      question: string
+      topK?: number
+      multiQuery?: boolean
+    }) => ipcRenderer.invoke('knowledge:ask', input),
+    chat: (input: {
+      notebookId: string
+      question: string
+      sourceIds: string[]
+      maxContextChars?: number
+    }) => ipcRenderer.invoke('knowledge:chat', input),
+    saveNote: (input: {
+      notebookId: string
+      title?: string
+      question: string
+      answer: string
+      citations?: Array<{ title: string; page?: number; excerpt?: string }>
+    }) => ipcRenderer.invoke('knowledge:save-note', input),
+    ocrMissingPages: (input: {
+      sourceId: string
+      engine?: 'simple' | 'ocr' | 'vision'
+      pageNumbers?: number[]
+    }) => ipcRenderer.invoke('knowledge:ocr-missing-pages', input),
+    getCapabilities: () => ipcRenderer.invoke('knowledge:get-capabilities'),
+    getConfig: () => ipcRenderer.invoke('knowledge:get-config'),
+    setConfig: (patch: {
+      defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+      ocrLanguage?: string
+      ocrDpi?: number
+      multiQueryAsk?: boolean
+    }) => ipcRenderer.invoke('knowledge:set-config', patch),
     getExtractedPreview: (input: {
       notebookId: string
       sourceId: string

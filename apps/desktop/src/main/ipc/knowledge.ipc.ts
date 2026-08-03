@@ -3,24 +3,58 @@ import path from 'path'
 import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
 import {
   KnowledgeAskService,
+  KnowledgeChatService,
   KnowledgeIngestService,
-  KnowledgeSearchService
+  KnowledgeSearchService,
+  probeExtractEngineCapabilities,
+  type ExtractEngineId
 } from '@baishou/core-desktop'
 import { KnowledgeEmbeddingStorage, fetchUrlAsMarkdown } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import {
+  isVisionModel,
+  logger,
+  type GlobalModelsConfig,
+  type KnowledgeConfig,
+  type AIProviderConfig
+} from '@baishou/shared'
 import { getNotebookRawManager } from '../services/raw-data-source.runtime'
 import { fileSystem } from '../services/node-file-system'
 import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest-jobs.consumer'
 import { getEmbeddingService } from './rag.ipc'
 import { buildSummaryAiClient } from './summary-ai-client'
 import { settingsManager } from './settings.ipc'
-import type { GlobalModelsConfig } from '@baishou/shared'
+
+const DEFAULT_KNOWLEDGE_CONFIG: KnowledgeConfig = {
+  defaultExtractEngine: 'simple',
+  ocrLanguage: 'chi_sim+eng',
+  ocrDpi: 250,
+  multiQueryAsk: false
+}
 
 function requireKnowledgeRepo(): KnowledgeRepository {
   if (!knowledgeConnectionManager.isConnected()) {
     throw new Error('knowledge db not connected')
   }
   return new KnowledgeRepository(knowledgeConnectionManager.getDb())
+}
+
+async function loadKnowledgeConfig(): Promise<KnowledgeConfig> {
+  const raw = (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
+  return { ...DEFAULT_KNOWLEDGE_CONFIG, ...raw }
+}
+
+async function resolveVisionConfigured(): Promise<{
+  configured: boolean
+  modelId: string | null
+}> {
+  const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+  const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+  const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId || null
+  const providerId = globalModels?.globalDialogueProviderId
+  const provider = providers.find((p) => p.id === providerId) || providers.find((p) => p.isEnabled)
+  if (!modelId) return { configured: false, modelId: null }
+  const ok = isVisionModel(modelId, provider?.type || provider?.id)
+  return { configured: ok, modelId }
 }
 
 function buildIngestService(): KnowledgeIngestService {
@@ -32,6 +66,17 @@ function buildIngestService(): KnowledgeIngestService {
     repo,
     notebookManager,
     fs: fileSystem,
+    getExtractConfig: async () => {
+      const cfg = await loadKnowledgeConfig()
+      const vision = await resolveVisionConfigured()
+      return {
+        defaultEngine: cfg.defaultExtractEngine,
+        ocrLanguage: cfg.ocrLanguage,
+        ocrDpi: cfg.ocrDpi,
+        visionModelConfigured: vision.configured,
+        visionModelId: vision.modelId
+      }
+    },
     insertChunk: async (params) => {
       await storage.insertEmbedding({
         id: params.chunkId,
@@ -98,9 +143,36 @@ function buildAskService(): KnowledgeAskService {
     },
     generateAnswer: async ({ question, contextBlocks }) => {
       const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-      const modelId = globalModels?.globalChatModelId || globalModels?.globalSummaryModelId
+      const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
       if (!modelId) throw new Error('No chat/summary model configured')
       const { system, prompt } = KnowledgeAskService.buildPrompt(question, contextBlocks)
+      return summaryClient.generateContent(prompt, modelId, { system })
+    }
+  })
+}
+
+function buildChatService(): KnowledgeChatService {
+  const repo = requireKnowledgeRepo()
+  const notebookManager = getNotebookRawManager()
+  const summaryClient = buildSummaryAiClient()
+
+  return new KnowledgeChatService({
+    loadSourceTexts: async (notebookId, sourceIds) => {
+      const out: Array<{ sourceId: string; title: string; text: string }> = []
+      for (const id of sourceIds) {
+        const row = await repo.getSource(id)
+        if (!row || row.notebookId !== notebookId) continue
+        const text = await notebookManager.readExtractedText(notebookId, id)
+        if (!text?.trim()) continue
+        out.push({ sourceId: id, title: row.title, text })
+      }
+      return out
+    },
+    generateAnswer: async ({ question, contextBlocks }) => {
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
+      if (!modelId) throw new Error('No chat/summary model configured')
+      const { system, prompt } = KnowledgeChatService.buildPrompt(question, contextBlocks)
       return summaryClient.generateContent(prompt, modelId, { system })
     }
   })
@@ -127,14 +199,16 @@ export function registerKnowledgeIPC(): void {
       input: {
         notebookId: string
         title: string
-        kind: 'file' | 'text' | 'url'
+        kind: 'file' | 'text' | 'url' | 'note'
         absolutePath?: string
         textContent?: string
         fileName?: string
         originUrl?: string
+        extractEngine?: ExtractEngineId
       }
     ) => {
       const svc = getKnowledgeIngestService()
+      const cfg = await loadKnowledgeConfig()
       let payload = { ...input }
 
       if (input.kind === 'url') {
@@ -156,6 +230,7 @@ export function registerKnowledgeIPC(): void {
 
       const result = await svc.importSource({
         ...payload,
+        extractEngine: input.extractEngine || cfg.defaultExtractEngine || 'simple',
         fileName:
           payload.fileName ||
           (payload.absolutePath ? path.basename(payload.absolutePath) : payload.title)
@@ -224,7 +299,10 @@ export function registerKnowledgeIPC(): void {
 
   ipcMain.handle(
     'knowledge:ask',
-    async (_e, input: { notebookId: string; question: string; topK?: number }) => {
+    async (
+      _e,
+      input: { notebookId: string; question: string; topK?: number; multiQuery?: boolean }
+    ) => {
       const repo = requireKnowledgeRepo()
       const embeddingService = getEmbeddingService()
       const { getEmbeddingConfig } = await import('./rag.ipc')
@@ -237,10 +315,89 @@ export function registerKnowledgeIPC(): void {
           throw new Error('knowledge-model-mismatch')
         }
       }
+      const cfg = await loadKnowledgeConfig()
       const ask = buildAskService()
-      return ask.ask(input)
+      return ask.ask({
+        ...input,
+        multiQuery: input.multiQuery ?? cfg.multiQueryAsk ?? false
+      })
     }
   )
+
+  ipcMain.handle(
+    'knowledge:chat',
+    async (
+      _e,
+      input: {
+        notebookId: string
+        question: string
+        sourceIds: string[]
+        maxContextChars?: number
+      }
+    ) => {
+      const chat = buildChatService()
+      return chat.chat(input)
+    }
+  )
+
+  ipcMain.handle(
+    'knowledge:save-note',
+    async (
+      _e,
+      input: {
+        notebookId: string
+        title?: string
+        question: string
+        answer: string
+        citations?: Array<{ title: string; page?: number; excerpt?: string }>
+      }
+    ) => {
+      const svc = getKnowledgeIngestService()
+      const result = await svc.saveAskAsNote(input)
+      scheduleConsumeKnowledgeIngestJobs('after-save-note')
+      return result
+    }
+  )
+
+  ipcMain.handle(
+    'knowledge:ocr-missing-pages',
+    async (
+      _e,
+      input: {
+        sourceId: string
+        engine?: ExtractEngineId
+        pageNumbers?: number[]
+      }
+    ) => {
+      const svc = getKnowledgeIngestService()
+      const result = await svc.ocrMissingPages(input.sourceId, {
+        engine: input.engine,
+        pageNumbers: input.pageNumbers
+      })
+      scheduleConsumeKnowledgeIngestJobs('after-ocr')
+      return result
+    }
+  )
+
+  ipcMain.handle('knowledge:get-capabilities', async () => {
+    const cfg = await loadKnowledgeConfig()
+    const vision = await resolveVisionConfigured()
+    return probeExtractEngineCapabilities({
+      visionModelConfigured: vision.configured,
+      visionModelId: vision.modelId,
+      ocrLanguage: cfg.ocrLanguage
+    })
+  })
+
+  ipcMain.handle('knowledge:get-config', async () => loadKnowledgeConfig())
+
+  ipcMain.handle('knowledge:set-config', async (_e, patch: KnowledgeConfig) => {
+    const current = await loadKnowledgeConfig()
+    const next = { ...current, ...patch }
+    await settingsManager.set('knowledge_config', next)
+    resetKnowledgeIngestService()
+    return next
+  })
 
   ipcMain.handle(
     'knowledge:get-extracted-preview',

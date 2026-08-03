@@ -477,11 +477,12 @@ interface KnowledgeAPI {
   importSource(input: {
     notebookId: string
     title: string
-    kind: 'file' | 'text' | 'url'
+    kind: 'file' | 'text' | 'url' | 'note'
     absolutePath?: string
     textContent?: string
     fileName?: string
     originUrl?: string
+    extractEngine?: 'simple' | 'ocr' | 'vision'
   }): Promise<{ sourceId: string }>
   retrySource(sourceId: string): Promise<{ ok: boolean }>
   rebuildIndex(notebookId: string): Promise<{ ok: boolean }>
@@ -504,6 +505,7 @@ interface KnowledgeAPI {
     notebookId: string
     question: string
     topK?: number
+    multiQuery?: boolean
   }): Promise<{
     answer: string
     citations: Array<{
@@ -519,7 +521,57 @@ interface KnowledgeAPI {
       source: string
     }>
     hits: unknown[]
+    subQueries?: string[]
   }>
+  chat(input: {
+    notebookId: string
+    question: string
+    sourceIds: string[]
+    maxContextChars?: number
+  }): Promise<{
+    answer: string
+    citations: Array<{
+      sourceId: string
+      title: string
+      chunkId: string
+      chunkIndex: number
+      excerpt: string
+      score: number
+      source: string
+    }>
+    truncated: boolean
+    mode: 'chat'
+  }>
+  saveNote(input: {
+    notebookId: string
+    title?: string
+    question: string
+    answer: string
+    citations?: Array<{ title: string; page?: number; excerpt?: string }>
+  }): Promise<{ sourceId: string }>
+  ocrMissingPages(input: {
+    sourceId: string
+    engine?: 'simple' | 'ocr' | 'vision'
+    pageNumbers?: number[]
+  }): Promise<{ degradationMessage?: string }>
+  getCapabilities(): Promise<{
+    simple: { available: boolean; reason?: string; detail?: string }
+    ocr: { available: boolean; reason?: string; detail?: string }
+    vision: { available: boolean; reason?: string; detail?: string }
+    recommended: 'simple' | 'ocr' | 'vision'
+  }>
+  getConfig(): Promise<{
+    defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+    ocrLanguage?: string
+    ocrDpi?: number
+    multiQueryAsk?: boolean
+  }>
+  setConfig(patch: {
+    defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+    ocrLanguage?: string
+    ocrDpi?: number
+    multiQueryAsk?: boolean
+  }): Promise<unknown>
   getExtractedPreview(input: {
     notebookId: string
     sourceId: string
