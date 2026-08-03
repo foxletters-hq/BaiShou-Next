@@ -2,6 +2,8 @@
   display: flex;
   width: 100%;
   height: 100%;
-  background-color: var(--bg-surface);
+  min-height: 0;
   box-sizing: border-box;
+  /* 浮层卡已在 MainLayout；此处只填满 */
+  background: transparent;
 }

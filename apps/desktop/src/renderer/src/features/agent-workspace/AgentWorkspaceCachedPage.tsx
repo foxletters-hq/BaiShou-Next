@@ -2,6 +2,8 @@ import React, { useContext, useMemo, useRef } from 'react'
 import { Routes, Route, useLocation, type Location } from 'react-router-dom'
 import { AgentWorkspaceLayout } from './AgentWorkspaceLayout'
 import { AgentWorkspaceScreen } from './AgentWorkspaceScreen'
+import { WorkbenchHomePage } from './workbench/WorkbenchHomePage'
+import { WorkbenchPlaceholderPage } from './workbench/home/WorkbenchPlaceholderPage'
 import { MainPageCacheActiveContext } from '../../layouts/MainPageCache'
 
 function parseFrozenLocation(pathWithSearch: string): Pick<Location, 'pathname' | 'search'> {
@@ -17,6 +19,7 @@ function parseFrozenLocation(pathWithSearch: string): Pick<Location, 'pathname' 
 
 /**
  * Agent 工作区保活壳：离开 /agent-workspace 时冻结路由位置。
+ * index = 目录首页；open/:workspaceId = 工作台；:sessionId = 工作台+会话
  */
 export const AgentWorkspaceCachedPage: React.FC = () => {
   const location = useLocation()
@@ -40,7 +43,11 @@ export const AgentWorkspaceCachedPage: React.FC = () => {
   return (
     <Routes location={routesLocation}>
       <Route path="/agent-workspace" element={<AgentWorkspaceLayout />}>
-        <Route index element={<AgentWorkspaceScreen />} />
+        <Route index element={<WorkbenchHomePage />} />
+        <Route path="knowledge" element={<WorkbenchPlaceholderPage section="knowledge" />} />
+        <Route path="templates" element={<WorkbenchPlaceholderPage section="templates" />} />
+        <Route path="projects" element={<WorkbenchPlaceholderPage section="projects" />} />
+        <Route path="open/:workspaceId" element={<AgentWorkspaceScreen />} />
         <Route path=":sessionId" element={<AgentWorkspaceScreen />} />
       </Route>
     </Routes>

@@ -32,6 +32,7 @@ export interface WorkbenchShellProps {
   onOpenFolder: () => void
   onSelectWorkspace: (workspaceId: string) => void
   onChangeWorkspaceAvatar?: (workspaceId: string) => void
+  onBackToHome: () => void
   onNewSession: () => void
   onSelectSession: (sessionId: string) => void
   onDeleteSession: (sessionId: string) => void
@@ -66,6 +67,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   onOpenFolder,
   onSelectWorkspace,
   onChangeWorkspaceAvatar,
+  onBackToHome,
   onNewSession,
   onSelectSession,
   onDeleteSession,
@@ -196,6 +198,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
         onSelectWorkspace={onSelectWorkspace}
         onOpenFolder={onOpenFolder}
         onChangeAvatar={onChangeWorkspaceAvatar}
+        onBackToHome={onBackToHome}
       />
       <div className={styles.editorLayout}>
         {showSidePane ? (
