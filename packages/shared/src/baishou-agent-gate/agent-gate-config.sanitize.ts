@@ -94,7 +94,11 @@ function sanitizePermissionRules(raw: unknown): AgentGatePermissionRule[] | unde
     }))
     .filter((rule) => {
       if (!rule.action) return false
-      if (rule.action === 'workspace_run' && rule.effect === AgentGateEffect.Allow && !rule.pattern) {
+      if (
+        rule.action === 'workspace_run' &&
+        rule.effect === AgentGateEffect.Allow &&
+        !rule.pattern
+      ) {
         return false
       }
       // bare catch-alls only; path prefixes like D:/Notes/** are fine

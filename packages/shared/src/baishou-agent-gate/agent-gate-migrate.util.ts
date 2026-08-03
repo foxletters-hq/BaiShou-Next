@@ -79,9 +79,7 @@ export function migrateLegacyExternalPathFields(
     : undefined
   const legacyEffect = config.externalPathEffect
   const hasLegacy =
-    legacyDirs != null ||
-    legacyEffect != null ||
-    typeof config.forceAskExternalPath === 'boolean'
+    legacyDirs != null || legacyEffect != null || typeof config.forceAskExternalPath === 'boolean'
 
   const {
     forceAskExternalPath: _f,

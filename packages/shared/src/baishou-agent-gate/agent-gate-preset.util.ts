@@ -11,7 +11,10 @@ import {
   hasCatchAllAllowRule,
   setCatchAllAllowRule
 } from './agent-gate-migrate.util'
-import { applyCapabilityStateToConfig, capabilityStateFromConfig } from './agent-gate-capability.util'
+import {
+  applyCapabilityStateToConfig,
+  capabilityStateFromConfig
+} from './agent-gate-capability.util'
 
 export type { AgentGateScopePreset, AgentGateApprovalPreset }
 
@@ -63,11 +66,7 @@ export function applyWorkspacePresetsToConfig(
 
   const effects = {
     browse: AgentGateEffect.Allow,
-    edit: readonly
-      ? AgentGateEffect.Deny
-      : alwaysAsk
-        ? AgentGateEffect.Ask
-        : AgentGateEffect.Allow,
+    edit: readonly ? AgentGateEffect.Deny : alwaysAsk ? AgentGateEffect.Ask : AgentGateEffect.Allow,
     delete: AgentGateEffect.Ask,
     command: readonly ? AgentGateEffect.Deny : AgentGateEffect.Ask,
     external: externalEffect,
@@ -100,9 +99,7 @@ export function inferWorkspacePresets(
   const storedScope =
     config.scopePreset && config.scopePreset !== 'custom' ? config.scopePreset : undefined
   const storedApproval =
-    config.approvalPreset && config.approvalPreset !== 'custom'
-      ? config.approvalPreset
-      : undefined
+    config.approvalPreset && config.approvalPreset !== 'custom' ? config.approvalPreset : undefined
 
   // 任一维仍有明确预设时优先信任落盘标签，避免规则反推把「含可信目录」漂成 custom
   if (storedScope && storedApproval) {

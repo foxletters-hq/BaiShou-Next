@@ -40,10 +40,7 @@ export function canPermanentlyAllowAgentGateAction(
     const hasBareCatchAll = patterns.some(
       (pattern) => pattern === '*' || pattern === '**' || pattern === '**/*' || pattern === '* *'
     )
-    if (
-      hasBareCatchAll &&
-      (action === 'workspace_run' || action === 'external_directory')
-    ) {
+    if (hasBareCatchAll && (action === 'workspace_run' || action === 'external_directory')) {
       return false
     }
     if (action === 'workspace_run') {
