@@ -25,23 +25,40 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 22px;
   box-sizing: border-box;
   overflow: hidden;
+  /* 圆角展开可慢；聚焦描边用极短过渡，避免无过渡时悬停态下边框不重绘 */
   transition:
     border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    border-color 0.2s,
-    background-color 0.2s;
+    border-color 80ms linear,
+    background-color 80ms linear;
 }
 
-.composerShell:focus-within {
-  border-color: var(--border-control);
+.composerShell:focus-within,
+.composerShell:focus-within:hover,
+.composerShell:focus-within:active {
+  /* 完整 border 简写，避免只改 border-color 时悬停未重绘 */
+  border: 1px solid var(--form-field-border-focus);
   background-color: var(--bg-surface);
+  box-shadow: var(--form-field-focus-ring);
 }
 
-.composerShellExpanded {
-  border-radius: 18px;
+/* 底部有延伸区时允许下拉溢出；否则裁切以贴合圆角 */
+.composerShellWithFooter {
+  overflow: visible;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 36px;
+  padding: 4px 12px 8px;
+  border-top: 1px solid var(--border-muted);
+  box-sizing: border-box;
 }
 
 .toolbarWrapper {
@@ -269,7 +286,7 @@
 
 /* Input Card — 外框由 .composerShell 承担，此处只负责内边距与布局 */
 .inputCard {
-  position: relative; /* Ensure absolute positioning context is preserved */
+  position: relative;
   background-color: transparent;
   border-radius: 0;
   border: none;
@@ -277,31 +294,9 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  transition:
-    max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    padding 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    background-color 0.2s;
-}
-
-.inputCardAnimating {
-  transition:
-    height 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    border-radius 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    padding 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    background-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-  min-height: 0 !important; /* Allow the container to animate below 180px, avoiding the jump-expansion */
-  position: relative; /* Ensure absolute positioning context is preserved during animation */
-  overflow: hidden; /* Prevent text overflow during collapse/expand transition */
 }
 
 .inputCard:focus-within {
-  background-color: transparent;
-  box-shadow: none;
-}
-
-.inputCard:focus-within:active,
-.inputCard:active:focus-within {
   background-color: transparent;
 }
 
@@ -322,26 +317,46 @@
   width: 100%;
   margin-top: 8px;
   flex-shrink: 0;
-  height: 36px;
+  height: 32px;
 }
 
 .appMenuBtn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
   border-radius: 50%;
-  background: transparent;
+  background: var(--bg-surface-normal);
   border: none;
+  box-sizing: border-box;
   cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 20px;
-  display: flex;
+  color: var(--text-primary);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  line-height: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.appMenuBtn svg {
+  display: block;
+  flex-shrink: 0;
+  /* 加号在圆内占比更大，略收边距感 */
+  width: 22px;
+  height: 22px;
 }
 
 .appMenuBtn:hover {
-  background-color: rgba(var(--text-secondary-rgb), 0.05);
+  background-color: var(--bg-surface-highest);
+  color: var(--text-primary);
+}
+
+.appMenuBtnActive {
+  background-color: var(--bg-surface-highest);
+  color: var(--text-primary);
 }
 
 .inputWrapper {
@@ -355,21 +370,41 @@
 .textarea {
   width: 100%;
   /* border-box 下 min-height 含 padding；需留给 line-height 足够内容区，避免 placeholder 被裁切 */
-  min-height: 36px;
-  max-height: 144px;
+  min-height: var(--input-bar-textarea-min-height, 36px);
+  /* 8 行：line-height 22px × 8 + 上下 padding 14px */
+  max-height: 190px;
   background: transparent;
   border: none;
   resize: none;
   outline: none;
+  overflow-y: auto;
   font-family: var(--font-family, sans-serif);
   font-size: 14px;
   font-weight: 400;
   color: var(--text-primary);
   padding: 7px 6px;
   line-height: 22px;
-  transition:
-    padding-top 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
-    padding-right 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.7) transparent;
+}
+
+.textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.textarea::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.textarea::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.65);
+  border-radius: 999px;
+}
+
+.textarea::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.9);
 }
 
 .textarea::placeholder {
@@ -380,21 +415,46 @@
 }
 
 .sendBtnWrapper {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
 }
 
-.actionBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
+.bottomRight {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.bottomTrailing {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.actionBtn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  border: none;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  line-height: 0;
   transition: transform 0.1s ease-in-out;
+}
+
+.actionBtn svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .actionBtn:active {
@@ -404,9 +464,9 @@
 .sendBtn {
   background-color: transparent;
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   box-shadow: none;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .sendBtn:hover:not(:disabled) {
@@ -460,95 +520,3 @@
   font-weight: 500;
   line-height: 1.3;
 }
-
-/* Expanded states and animations */
-.constrainedBoxExpanded {
-  max-width: 1200px;
-}
-
-.inputCardExpanded {
-  background-color: transparent;
-  min-height: 180px;
-  height: 180px; /* Initial height when expanded */
-  padding: 10px 14px;
-}
-
-.inputCardExpanded .inputWrapper {
-  min-height: 0;
-  height: 100%;
-}
-
-.textareaExpanded {
-  height: 100%;
-  min-height: 0;
-  max-height: none !important;
-  resize: none; /* Parent container handles vertical resizing */
-  overflow-y: auto;
-  padding-top: 2px; /* Minimize top padding so typing cursor is close to top border */
-  padding-right: 48px; /* Leave space for top-right resize handle */
-}
-
-.expandToggleBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-
-.expandToggleBtn:hover {
-  background-color: rgba(var(--text-secondary-rgb), 0.05);
-  color: var(--text-primary);
-}
-
-/* Custom Resize Handle in the Top-Right */
-.resizeHandle {
-  position: absolute;
-  top: 0px;
-  right: 44px; /* Placed to the left of the collapse button (which is 36px wide + 8px margin = 44px) */
-  width: 36px;
-  height: 36px;
-  cursor: ns-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-}
-
-.resizeHandle:hover {
-  background-color: rgba(var(--text-secondary-rgb), 0.05);
-}
-
-.resizeHandleIcon {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.resizeHandleIcon span {
-  display: block;
-  width: 12px;
-  height: 1.5px;
-  background-color: var(--text-tertiary);
-  border-radius: 1px;
-}
-
-/* 顶行和底行在展开态及动画态下的刚性物理隔离 */
-.inputCardExpanded .topRow,
-.inputCardAnimating .topRow {
-  height: calc(100% - 44px); /* 减去 bottomRow 高度 36px 和 margin-top 8px */
-  flex: none;
-  overflow: hidden; /* 动画及展开期间强行裁切溢出 */
-}
-
-/* bottomRow 不再使用绝对定位，始终保持常规文档流，以防状态切换瞬间宽度计算冲突导致溢出 */

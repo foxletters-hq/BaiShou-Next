@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { MockChatAttachment } from '@baishou/shared'
 import type { PromptShortcut } from '../PromptShortcutSheet'
 import type { ComposerDraftStorage, ComposerOnSend } from '../../shared/composer-draft'
@@ -22,6 +23,16 @@ export interface InputBarProps {
   onToggleSearchMode?: () => void
   ttsMode?: 'always' | 'manual'
   onToggleTtsMode?: () => void
+  /** 覆盖默认输入框占位文案 */
+  placeholder?: string
+  /** 底部右侧发送按钮左侧的附加控件（如模型选择） */
+  bottomTrailing?: ReactNode
+  /** 输入外壳底部延伸区（如工作台工作空间 / 权限选择） */
+  footer?: ReactNode
+  /** 发送按钮内纸飞机图标尺寸；按钮外框尺寸不变（默认 15） */
+  sendIconSize?: number
+  /** 文本区最少显示行数（默认 1；工作台首页可用 3） */
+  minRows?: number
 }
 
 export interface InputBarRef {

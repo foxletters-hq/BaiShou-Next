@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useImperativeHandle, useCallback, useMemo } from 'react'
+import { useState, useRef, useImperativeHandle, useMemo } from 'react'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
 import { useInputBarExpand } from './useInputBarExpand'
 import { useInputBarAttachments } from './useInputBarAttachments'
@@ -30,7 +30,12 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     searchMode = true,
     onToggleSearchMode,
     ttsMode = 'manual',
-    onToggleTtsMode
+    onToggleTtsMode,
+    placeholder,
+    bottomTrailing,
+    footer,
+    sendIconSize,
+    minRows = 1
   } = props
 
   const { t, i18n } = useTranslation()
@@ -44,68 +49,15 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     setText,
     draftSyncSuspended: isSending
   })
-  const [showToolbar, setShowToolbar] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('baishou_toolbar_open') === 'true'
-    }
-    return false
-  })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const toolbarViewportRef = useRef<HTMLDivElement>(null)
-  const [toolbarOverflow, setToolbarOverflow] = useState(false)
-  const [toolbarCanScrollLeft, setToolbarCanScrollLeft] = useState(false)
-  const [toolbarCanScrollRight, setToolbarCanScrollRight] = useState(false)
 
-  const expand = useInputBarExpand(textareaRef, text)
+  useInputBarExpand(textareaRef, text, minRows)
   const attachmentHandlers = useInputBarAttachments(setAttachments)
   const localizedShortcuts = useMemo(() => {
     if (!shortcuts?.length) return undefined
     return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
   }, [shortcuts, t, i18n.language])
   const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
-
-  const updateToolbarScrollState = useCallback(() => {
-    const el = toolbarViewportRef.current
-    if (!el) {
-      setToolbarOverflow(false)
-      setToolbarCanScrollLeft(false)
-      setToolbarCanScrollRight(false)
-      return
-    }
-    const { scrollLeft, scrollWidth, clientWidth } = el
-    const overflow = scrollWidth - clientWidth > 4
-    setToolbarOverflow(overflow)
-    setToolbarCanScrollLeft(overflow && scrollLeft > 4)
-    setToolbarCanScrollRight(overflow && scrollLeft < scrollWidth - clientWidth - 4)
-  }, [])
-
-  const scrollToolbar = (direction: -1 | 1) => {
-    toolbarViewportRef.current?.scrollBy({ left: direction * 180, behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    if (!showToolbar) return
-    const sync = () => updateToolbarScrollState()
-    let disposed = false
-    let resizeObserver: ResizeObserver | undefined
-    let viewportEl: HTMLDivElement | null = null
-    const attach = () => {
-      viewportEl = toolbarViewportRef.current
-      if (!viewportEl || disposed) return
-      sync()
-      viewportEl.addEventListener('scroll', sync, { passive: true })
-      resizeObserver = new ResizeObserver(sync)
-      resizeObserver.observe(viewportEl)
-    }
-    attach()
-    const retryId = window.setTimeout(attach, 240)
-    return () => {
-      disposed = true
-      window.clearTimeout(retryId)
-      if (viewportEl) viewportEl.removeEventListener('scroll', sync)
-      resizeObserver?.disconnect()
-    }
-  }, [showToolbar, updateToolbarScrollState])
 
   useImperativeHandle(ref, () => ({
     insertText: (newText) => {
@@ -133,7 +85,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     setText('')
     setAttachments([])
     if (textareaRef.current) {
-      textareaRef.current.style.height = expand.isExpanded ? '100%' : 'auto'
+      textareaRef.current.style.height = 'auto'
     }
 
     setIsSending(true)
@@ -186,19 +138,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     setText,
     attachments,
     setAttachments,
-    showToolbar,
-    setShowToolbar,
     textareaRef,
-    toolbarViewportRef,
-    toolbarOverflow,
-    toolbarCanScrollLeft,
-    toolbarCanScrollRight,
-    updateToolbarScrollState,
-    scrollToolbar,
-    isExpanded: expand.isExpanded,
-    isAnimating: expand.isAnimating,
-    handleMouseDown: expand.handleMouseDown,
-    toggleExpand: expand.toggleExpand,
     handleSend,
     handleKeyDown,
     fileInputRef: attachmentHandlers.fileInputRef,
@@ -223,6 +163,11 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     onOpenTools,
     searchMode,
     ttsMode,
-    onToggleTtsMode
+    onToggleTtsMode,
+    placeholder,
+    bottomTrailing,
+    footer,
+    sendIconSize,
+    minRows
   }
 }
