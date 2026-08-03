@@ -10,6 +10,8 @@ export interface ContextMenuItem {
   onClick: () => void
   disabled?: boolean
   divider?: boolean
+  /** 为 true 时点击后不关闭菜单（适合开关类项） */
+  keepOpen?: boolean
 }
 
 interface ContextMenuProps {
@@ -111,7 +113,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     onClick={() => {
                       if (!item.disabled) {
                         item.onClick()
-                        handleClose()
+                        if (!item.keepOpen) handleClose()
                       }
                     }}
                     disabled={item.disabled}

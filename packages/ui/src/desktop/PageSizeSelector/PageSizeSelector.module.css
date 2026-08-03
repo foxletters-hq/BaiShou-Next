@@ -1,28 +1,35 @@
 .wrapper {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   font-family: var(--font-family);
+  line-height: 1;
 }
 
 .triggerBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-radius: 10px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   box-shadow: none;
 }
 
 .triggerBtn:hover {
   background: var(--bg-surface-high);
-  border-color: var(--border-control);
+  border-color: var(--border-strong);
 }
 
 .pageSizeValue {
@@ -33,10 +40,6 @@
 .pageSizeUnit {
   color: var(--text-secondary);
   font-weight: 400;
-}
-
-.icon {
-  opacity: 0.6;
 }
 
 /* Dropdown Popover */
@@ -52,13 +55,14 @@
 .dropdownContent {
   position: fixed;
   background: var(--bg-surface);
-  border-radius: 14px;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.12),
-    0 0 0 1px var(--border-subtle);
+  border-radius: 12px;
+  border: 1px solid var(--border-card);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   padding: 8px;
   z-index: 10000;
   min-width: 160px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .optionsGrid {
@@ -68,20 +72,22 @@
 }
 
 .optionBtn {
-  padding: 10px 0;
-  border-radius: 10px;
+  padding: 8px 0;
+  border-radius: 8px;
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
   text-align: center;
 }
 
 .optionBtn:hover {
-  background: rgba(var(--color-primary-rgb), 0.1);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
 }
 
@@ -101,7 +107,7 @@
 .footer {
   display: flex;
   justify-content: center;
-  padding: 4px 0 2px;
+  padding: 2px 0;
 }
 
 .footerText {

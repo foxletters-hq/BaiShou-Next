@@ -1,7 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import './ContextMenu.css'
-import { applyFixedContextMenuLayout } from './context-menu-placement.util'
+import {
+  applyFixedContextMenuLayout,
+  type ContextMenuBounds
+} from './context-menu-placement.util'
 import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 import type { ContextMenuItem } from './ContextMenu'
 
@@ -16,6 +19,8 @@ export interface AnchoredContextMenuProps {
   menuClassName?: string
   itemClassName?: string
   dividerClassName?: string
+  /** 可选安全区；从输入框内打开时应用 getContextMenuBoundsForAnchor */
+  bounds?: ContextMenuBounds
 }
 
 /**
@@ -31,23 +36,33 @@ export function AnchoredContextMenu({
   menuZIndex = DIARY_EDITOR_OVERLAY_Z.menu,
   menuClassName = 'context-menu',
   itemClassName = 'context-menu-item',
-  dividerClassName = 'context-menu-divider'
+  dividerClassName = 'context-menu-divider',
+  bounds
 }: AnchoredContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
     if (menuRef.current) {
-      applyFixedContextMenuLayout(menuRef.current, x, y)
+      applyFixedContextMenuLayout(menuRef.current, x, y, bounds)
     }
-  }, [x, y, items])
+  }, [x, y, items, bounds])
 
   useEffect(() => {
     const handleClose = () => onClose()
-    window.addEventListener('click', handleClose)
-    window.addEventListener('contextmenu', handleClose)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    // 延后绑定，避免打开菜单的同一次 click 立刻把菜单关掉
+    const timer = window.setTimeout(() => {
+      window.addEventListener('click', handleClose)
+      window.addEventListener('contextmenu', handleClose)
+      window.addEventListener('keydown', handleKeyDown)
+    }, 0)
     return () => {
+      window.clearTimeout(timer)
       window.removeEventListener('click', handleClose)
       window.removeEventListener('contextmenu', handleClose)
+      window.removeEventListener('keydown', handleKeyDown)
     }
   }, [onClose])
 
@@ -90,7 +105,7 @@ export function AnchoredContextMenu({
               onClick={() => {
                 if (item.disabled) return
                 item.onClick()
-                onClose()
+                if (!item.keepOpen) onClose()
               }}
             >
               {item.icon && <span className="context-menu-icon">{item.icon}</span>}

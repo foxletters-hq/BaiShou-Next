@@ -3,7 +3,7 @@
  * 用法：class 加上 bs-outline-btn；或在模块 CSS 中复用下方属性值。
  *
  * 标准：
- *   border: 1.5px solid var(--border-control)
+ *   border: 1px solid var(--border-control)
  *   background: var(--bg-surface) | transparent
  *   color: var(--text-primary)
  *   hover → background: var(--bg-surface-high); border-color: var(--border-strong)
@@ -15,7 +15,7 @@
   justify-content: center;
   gap: 6px;
   box-sizing: border-box;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);

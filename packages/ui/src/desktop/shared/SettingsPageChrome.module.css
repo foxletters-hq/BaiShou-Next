@@ -3,6 +3,7 @@
   flex-direction: column;
   height: 100%;
   width: 100%;
+  /* 规范灰底 --bg-app，白卡浮在上面 */
   background: var(--bg-app);
   overflow: hidden;
   box-sizing: border-box;

@@ -11,7 +11,7 @@
   padding: 7px 12px;
   border-radius: var(--radius-md);
   background: transparent;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
   /* 原生 button 默认系统字体，须显式指定，否则与「写日记」等控件字面不一致 */
   font-family: var(--font-family);
@@ -192,7 +192,7 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   transition:

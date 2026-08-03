@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, SelectHTMLAttributes } from 'react'
+import React, { useState, useRef, useEffect, SelectHTMLAttributes, type ReactNode } from 'react'
 import styles from './Select.module.css'
 
 export interface SelectOption {
@@ -16,6 +16,9 @@ export interface SelectProps extends Omit<
   error?: string
   placeholder?: string
   size?: 'medium' | 'small'
+  /** 默认表单样式；ghost 为轻量文字触发（工作台元信息条） */
+  variant?: 'default' | 'ghost'
+  leading?: ReactNode
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -27,12 +30,15 @@ export const Select: React.FC<SelectProps> = ({
   disabled,
   placeholder,
   size = 'medium',
+  variant = 'default',
+  leading,
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const selectedOption = options.find((opt) => opt.value === value) || options[0]
+  const selectedOption = options.find((opt) => opt.value === value)
+  const displayLabel = selectedOption?.label || placeholder || ''
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,7 +75,7 @@ export const Select: React.FC<SelectProps> = ({
 
   return (
     <div
-      className={`${styles.container} ${className} ${disabled ? styles.disabled : ''} ${size === 'small' ? styles.sizeSmall : ''}`.trim()}
+      className={`${styles.container} ${className} ${disabled ? styles.disabled : ''} ${size === 'small' ? styles.sizeSmall : ''} ${variant === 'ghost' ? styles.variantGhost : ''}`.trim()}
       ref={containerRef}
     >
       <div className={styles.wrapper}>
@@ -79,9 +85,8 @@ export const Select: React.FC<SelectProps> = ({
           role="button"
           tabIndex={disabled ? -1 : 0}
         >
-          <span className={styles.valueText}>
-            {selectedOption ? selectedOption.label : placeholder || ''}
-          </span>
+          {leading ? <span className={styles.leading}>{leading}</span> : null}
+          <span className={styles.valueText}>{displayLabel}</span>
           <div className={`${styles.icon} ${isOpen ? styles.rotated : ''}`}>
             <svg
               width="10"

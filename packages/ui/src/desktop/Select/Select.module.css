@@ -31,7 +31,7 @@
   box-sizing: border-box;
   outline: none;
   cursor: pointer;
-  transition: all var(--duration-fast) ease;
+  transition: var(--form-field-transition);
   user-select: none;
 }
 
@@ -43,8 +43,8 @@
 .trigger:focus-visible,
 .isOpen {
   background-color: var(--form-field-bg, var(--bg-surface));
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .valueText {
@@ -72,7 +72,7 @@
   left: 0;
   width: 100%;
   background-color: var(--bg-surface-raised);
-  border: 1px solid var(--color-outline-variant);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   z-index: 100;
@@ -172,4 +172,76 @@
 .sizeSmall .optionItem {
   padding: 6px 10px;
   font-size: 13px;
+}
+
+.leading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.variantGhost {
+  width: auto;
+  gap: 0;
+}
+
+.variantGhost .wrapper {
+  width: auto;
+}
+
+.variantGhost .trigger {
+  justify-content: flex-start;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+  max-width: min(280px, 48vw);
+  padding: 4px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none;
+  transition: var(--form-field-transition);
+}
+
+.variantGhost .trigger:hover,
+.variantGhost .isOpen {
+  background: var(--bg-surface-high);
+  border: none;
+  box-shadow: none;
+  color: var(--text-primary);
+}
+
+.variantGhost .trigger:focus-visible {
+  background: var(--bg-surface-high);
+  border: none;
+  box-shadow: var(--form-field-focus-ring);
+  color: var(--text-primary);
+}
+
+.variantGhost .valueText {
+  color: inherit;
+}
+
+.variantGhost .leading {
+  color: inherit;
+}
+
+.variantGhost .icon {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.variantGhost .rotated {
+  color: inherit;
+  opacity: 1;
+}
+
+.variantGhost .dropdown {
+  width: max(200px, 100%);
+  min-width: 200px;
 }

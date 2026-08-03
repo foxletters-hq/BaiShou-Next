@@ -4,12 +4,12 @@
   border-radius: 12px;
   padding: 8px 12px;
   font-family: var(--font-family-main);
-  transition: border-color var(--animation-micro);
+  transition: var(--form-field-transition);
 }
 
 .container:focus-within {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .tagsArea {
