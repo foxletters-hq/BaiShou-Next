@@ -69,7 +69,9 @@ export const agentWorkspaceApi = {
     assistantId?: string
     title?: string
   }): Promise<string> => ipcRenderer.invoke('agent-workspace:create-session', params),
-  getBinding: (sessionId: string): Promise<{
+  getBinding: (
+    sessionId: string
+  ): Promise<{
     sessionId: string
     folderRoot: string
     notebookId?: string

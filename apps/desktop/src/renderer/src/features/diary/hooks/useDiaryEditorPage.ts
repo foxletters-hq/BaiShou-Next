@@ -402,9 +402,7 @@ export function useDiaryEditorPage() {
                           })
                         )
                       } else {
-                        toast.showSuccess(
-                          t('graph.extract_this_done', '已记住这篇里的人和事')
-                        )
+                        toast.showSuccess(t('graph.extract_this_done', '已记住这篇里的人和事'))
                       }
                     } catch (err: unknown) {
                       const message = err instanceof Error ? err.message : String(err)

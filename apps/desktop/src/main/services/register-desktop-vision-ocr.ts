@@ -1,4 +1,5 @@
 import { generateText } from 'ai'
+import i18n from 'i18next'
 import { AIProviderRegistry } from '@baishou/ai'
 import {
   isVisionModel,
@@ -22,12 +23,18 @@ export function registerDesktopVisionPageRecognizer(): void {
     const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
     const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
-    const providerId = globalModels?.globalDialogueProviderId || globalModels?.globalSummaryProviderId
+    const providerId =
+      globalModels?.globalDialogueProviderId || globalModels?.globalSummaryProviderId
     const providerConfig =
       providers.find((p) => p.id === providerId) || providers.find((p) => p.isEnabled)
 
     if (!modelId || !providerConfig) {
-      throw new Error('未配置对话模型，无法使用视觉 OCR')
+      throw new Error(
+        i18n.t(
+          'auto.apps.desktop.src.main.services.register.desktop.vision.ocr.no_model',
+          '未配置对话模型，无法使用视觉 OCR'
+        )
+      )
     }
     if (!isVisionModel(modelId, providerConfig.type || providerConfig.id)) {
       throw new Error(`当前对话模型不是多模态视觉模型：${modelId}`)

@@ -1,9 +1,6 @@
 import { createRequire } from 'node:module'
 import fs from 'node:fs'
-import {
-  registerPdfNumPagesProbe,
-  registerPdfPageExtractor
-} from '@baishou/core-desktop'
+import { registerPdfNumPagesProbe, registerPdfPageExtractor } from '@baishou/core-desktop'
 
 const nodeRequire = createRequire(import.meta.url)
 
@@ -46,7 +43,10 @@ export function registerDesktopPdfPageExtractor(): void {
           for (const item of textContent.items ?? []) {
             if (item && typeof item.str === 'string') strings.push(item.str)
           }
-          const pageText = strings.join(' ').replace(/[ \t]+/g, ' ').trim()
+          const pageText = strings
+            .join(' ')
+            .replace(/[ \t]+/g, ' ')
+            .trim()
           pageTexts.push(pageText)
           return pageText
         } catch {
