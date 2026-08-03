@@ -94,6 +94,7 @@ export class AgentSessionService {
       rawDataSourceManager,
       syncGraphPendingIndex,
       graphReader,
+      knowledgeReader,
       diarySearcher,
       workspace: workspaceInput,
       resolveVaultDisplayName
@@ -426,6 +427,7 @@ export class AgentSessionService {
         rawDataSourceManager,
         syncGraphPendingIndex,
         graphReader,
+        knowledgeReader,
         workspace: workspaceOptions
       } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0])
 

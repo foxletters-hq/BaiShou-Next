@@ -52,6 +52,7 @@ export class AgentChatCoreService {
     rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
     syncGraphPendingIndex?: () => Promise<void>
     graphReader?: import('@baishou/shared').ToolGraphReader
+    knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
     workspace?: import('./agent-session.types').StreamChatOptions['workspace']
     resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
   }) {
@@ -86,6 +87,7 @@ export class AgentChatCoreService {
           rawDataSourceManager: params.rawDataSourceManager,
           syncGraphPendingIndex: params.syncGraphPendingIndex,
           graphReader: params.graphReader,
+          knowledgeReader: params.knowledgeReader,
           workspace: params.workspace,
           resolveVaultDisplayName: params.resolveVaultDisplayName,
           abortSignal: claim.signal,

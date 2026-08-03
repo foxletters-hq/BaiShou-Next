@@ -63,6 +63,8 @@ export interface StreamChatOptions {
   syncGraphPendingIndex?: () => Promise<void>
   /** Read-only GraphRAG for recall_relations */
   graphReader?: import('@baishou/shared').ToolGraphReader
+  /** Read-only knowledge notebook search for knowledge_search */
+  knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
   /**
    * 解析 vaultId → 显示名（供 prompt / Gate）。
    * 宿主有 registry 时应注入；缺省时退回 vaultId 或 'Personal'。
@@ -72,6 +74,8 @@ export interface StreamChatOptions {
   workspace?: {
     folderRoot: string
     sessionKind?: AgentSessionKind
+    /** 工作台挂载的知识库笔记本（检索作用域） */
+    notebookId?: string
     fs?: WorkspaceFsAdapter
     roundCheckpointService?: AgentRoundCheckpointService
     roundCheckpointId?: string

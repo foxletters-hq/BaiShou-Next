@@ -201,12 +201,16 @@ export interface ToolContext {
   syncGraphPendingIndex?: () => Promise<void>
   /** Read-only GraphRAG for recall_relations */
   graphReader?: import('@baishou/shared').ToolGraphReader
+  /** Read-only knowledge notebook search for knowledge_search */
+  knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
   /** Agent workspace session context (folder sandbox + round checkpoints) */
   workspace?: {
     folderRoot: string
     sessionKind?: AgentSessionKind
     /** 工作区策略作用域 ID（可选；用于 Gate scope） */
     workspaceId?: string
+    /** 工作台挂载的知识库笔记本（检索作用域，非 folderRoot） */
+    notebookId?: string
     fs?: WorkspaceFsAdapter
     roundCheckpointService?: AgentRoundCheckpointService
     roundCheckpointId?: string
