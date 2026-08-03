@@ -5,6 +5,8 @@ import {
   mapMigrationBackupRow,
   assertMigrationBackupRow,
   inferVaultNameFromEmbeddingRefs,
+  deriveLegacyVaultId,
+  isVaultId,
   type EmbeddingMigrationRollbackConfig
 } from '@baishou/shared'
 import type { IEmbeddingConfig, IEmbeddingStorage, MigrationProgress } from './embedding.types'
@@ -34,6 +36,26 @@ export type MigrationLifecycle = {
 type BackupChunkRow = Record<string, unknown>
 
 const BACKUP_TABLE_MISSING = 'migration_backup_table_missing'
+
+function resolveMigrationVaultId(chunk: {
+  groupId: string
+  sourceType: string
+  sourceId: string
+  vaultName?: string | null
+}): string {
+  const raw = chunk.vaultName?.trim()
+  if (raw) {
+    return isVaultId(raw) ? raw : deriveLegacyVaultId(raw)
+  }
+  const inferred = inferVaultNameFromEmbeddingRefs({
+    groupId: chunk.groupId,
+    sourceType: chunk.sourceType,
+    sourceId: chunk.sourceId,
+    vaultName: chunk.vaultName
+  })
+  if (!inferred) return ''
+  return isVaultId(inferred) ? inferred : deriveLegacyVaultId(inferred)
+}
 
 function getAbortGenerator(
   deps: EmbeddingMigrationDeps,
@@ -423,15 +445,15 @@ async function* reEmbedFromBackup(
             value: chunk.chunkText
           })
 
-          const vaultName = inferVaultNameFromEmbeddingRefs({
+          const vaultId = resolveMigrationVaultId({
             groupId: chunk.groupId,
             sourceType: chunk.sourceType,
             sourceId: chunk.sourceId,
             vaultName: chunk.vaultName
           })
-          if (!vaultName) {
+          if (!vaultId) {
             throw new Error(
-              `migrate chunk ${chunk.embeddingId}: cannot infer vaultName (groupId=${chunk.groupId})`
+              `migrate chunk ${chunk.embeddingId}: cannot infer vaultId (groupId=${chunk.groupId})`
             )
           }
 
@@ -440,7 +462,7 @@ async function* reEmbedFromBackup(
             sourceType: chunk.sourceType,
             sourceId: chunk.sourceId,
             groupId: chunk.groupId,
-            vaultName,
+            vaultId,
             chunkIndex: chunk.chunkIndex,
             chunkText: chunk.chunkText,
             metadataJson: chunk.metadataJson,

@@ -8,7 +8,12 @@
  */
 
 import { z } from 'zod'
-import { formatLocalDate, MEMORY_SOURCE_TYPE, type ToolRawDataSourceManager } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  formatLocalDate,
+  MEMORY_SOURCE_TYPE,
+  type ToolRawDataSourceManager
+} from '@baishou/shared'
 import { AgentTool } from './agent.tool'
 import type { ToolContext, VectorSearchResult } from './agent.tool'
 
@@ -97,7 +102,8 @@ export class MemoryDeleteTool extends AgentTool<typeof memoryDeleteParams> {
       }
 
       const searchResults = await vectorStore.searchSimilar(queryEmbedding, 5, {
-        vaultName: context.vaultName
+        // V2.3: ToolContext will pass vault id directly
+        vaultId: deriveLegacyVaultId(context.vaultName)
       })
 
       // 只删除高相关度的（similarity >= 0.5）

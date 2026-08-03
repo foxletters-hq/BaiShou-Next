@@ -1,7 +1,7 @@
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid'
 import { embed } from 'ai'
-import { formatAiApiCallError, logger } from '@baishou/shared'
+import { formatAiApiCallError, deriveLegacyVaultId, isVaultId, logger } from '@baishou/shared'
 
 import {
   IEmbeddingConfig,
@@ -76,9 +76,11 @@ export class EmbeddingService {
     messageId: string
     sessionId: string
     content: string
-    vaultName: string
+    vaultId: string
   }): Promise<void> {
     if (!this.isConfigured || !params.content.trim()) return
+    const vaultId = params.vaultId.trim()
+    if (!vaultId) return
 
     try {
       const modelId = this.config.getGlobalEmbeddingModelId()
@@ -106,7 +108,7 @@ export class EmbeddingService {
             sourceType: 'chat',
             sourceId: params.messageId,
             groupId: params.sessionId,
-            vaultName: params.vaultName,
+            vaultId,
             chunkIndex: chunk.index,
             chunkText: chunk.text,
             embedding: this.normalize(embedding),
@@ -147,10 +149,11 @@ export class EmbeddingService {
     if (!provider) return
 
     const aiModel = provider.getEmbeddingModel(modelId)
-    const vaultName = String(params.entry.vault_name ?? params.entry.vaultName ?? '').trim()
-    if (!vaultName) {
-      throw new Error('updateMemoryChunk: entry.vault_name is required')
+    const rawVault = String(params.entry.vault_id ?? params.entry.vaultId ?? params.entry.vault_name ?? params.entry.vaultName ?? '').trim()
+    if (!rawVault) {
+      throw new Error('updateMemoryChunk: entry vault_id is required')
     }
+    const vaultId = isVaultId(rawVault) ? rawVault : deriveLegacyVaultId(rawVault)
 
     await this.retryEmbed(async () => {
       const { embedding } = await embed({
@@ -163,7 +166,7 @@ export class EmbeddingService {
         sourceType: params.entry.source_type,
         sourceId: params.entry.source_id,
         groupId: params.entry.group_id,
-        vaultName,
+        vaultId,
         chunkIndex: params.entry.chunk_index,
         chunkText: params.newText,
         metadataJson: params.entry.metadata_json || '{}',
@@ -186,7 +189,7 @@ export class EmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
-    vaultName: string
+    vaultId: string
     metadataJson?: string
     sourceCreatedAt?: number
     chunkPrefix?: string
@@ -194,8 +197,9 @@ export class EmbeddingService {
     skipIndexPrep?: boolean
   }): Promise<void> {
     if (!this.isConfigured || !params.text.trim()) return
-    if (!params.vaultName.trim()) {
-      throw new Error('embedText: vaultName is required')
+    const vaultId = params.vaultId.trim()
+    if (!vaultId) {
+      throw new Error('embedText: vaultId is required')
     }
 
     try {
@@ -232,7 +236,7 @@ export class EmbeddingService {
               sourceType: params.sourceType,
               sourceId: params.sourceId,
               groupId: params.groupId,
-              vaultName: params.vaultName,
+              vaultId,
               chunkIndex: chunk.index,
               chunkText: embeddingInput,
               metadataJson: params.metadataJson || '{}',
@@ -265,7 +269,7 @@ export class EmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
-    vaultName: string
+    vaultId: string
     metadataJson?: string
     sourceCreatedAt?: number
     chunkPrefix?: string
@@ -279,7 +283,7 @@ export class EmbeddingService {
     messageId: string
     sessionId: string
     content: string
-    vaultName: string
+    vaultId: string
   }): Promise<void> {
     await this.db.deleteEmbeddingsBySource('chat', params.messageId)
     await this.embedMessage(params)

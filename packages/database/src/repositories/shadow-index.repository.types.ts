@@ -3,7 +3,7 @@
  */
 export interface ShadowJournalRecord {
   id: number
-  vaultName: string
+  vaultId: string
   filePath: string
   date: string
   createdAt: string
@@ -34,7 +34,7 @@ export interface ShadowSyncFingerprint {
 export interface UpsertShadowIndexPayload {
   id?: number
   /** 可选；未提供时由 Repository 构造参数注入 */
-  vaultName?: string
+  vaultId?: string
   filePath: string
   date: string
   createdAt: string

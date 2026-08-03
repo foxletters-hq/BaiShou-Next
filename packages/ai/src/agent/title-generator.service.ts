@@ -19,7 +19,7 @@ export class TitleGeneratorService {
     await sessionRepo.upsertSession({
       id: sessionId,
       title: cleanTitle,
-      vaultName: currentSession.vaultName,
+      vaultId: currentSession.vaultId,
       assistantId: currentSession.assistantId || undefined,
       providerId: currentSession.providerId,
       modelId: currentSession.modelId
