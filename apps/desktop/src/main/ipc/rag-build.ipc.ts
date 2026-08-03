@@ -1,9 +1,6 @@
 import { ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import type {
-  EmbeddingMigrationRollbackConfig,
-  MemoryRawRecord
-} from '@baishou/shared'
+import type { EmbeddingMigrationRollbackConfig, MemoryRawRecord } from '@baishou/shared'
 import { getAppDb, setAppDbResetBlocker } from '../db'
 import { sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'

@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import i18n from 'i18next'
 import {
   ContextAtMessageService,
   ContextCompressorService,
@@ -65,7 +66,12 @@ export function registerMessageIPC() {
       const session = await realSessionRepo.getSessionById(sessionId)
       const activeVaultId = resolveActiveVaultId()
       if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
-        throw new Error('无权访问其他工作空间的会话')
+        throw new Error(
+          i18n.t(
+            'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
+            '无权访问其他工作空间的会话'
+          )
+        )
       }
 
       const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
@@ -152,7 +158,12 @@ export function registerMessageIPC() {
     const session = await realSessionRepo.getSessionById(sessionId)
     const activeVaultId = resolveActiveVaultId()
     if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
-      throw new Error('无权访问其他工作空间的会话')
+      throw new Error(
+        i18n.t(
+          'auto.apps.desktop.src.main.ipc.agent.session.ipc.cross_vault',
+          '无权访问其他工作空间的会话'
+        )
+      )
     }
     const ids = await realSessionRepo.listMessageIdsFromMessageAndFollowing(sessionId, messageId)
     const parts = ids.length > 0 ? await realSessionRepo.getPartsByMessageIds(ids) : []

@@ -45,7 +45,9 @@ async function clearDiaryEmbedFailureIfSet(): Promise<void> {
 function resolveVaultId(explicit?: string): string {
   if (explicit?.trim()) {
     const trimmed = explicit.trim()
-    const fromRegistry = vaultService.getAllVaults().find((v) => v.id === trimmed || v.name === trimmed)
+    const fromRegistry = vaultService
+      .getAllVaults()
+      .find((v) => v.id === trimmed || v.name === trimmed)
     return fromRegistry?.id ?? resolveVaultIdByName(trimmed)
   }
   return resolveActiveVaultId()

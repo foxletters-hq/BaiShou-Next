@@ -238,7 +238,7 @@ export function registerKnowledgeIPC(): void {
         if (!originUrl) throw new Error('import url requires originUrl')
         const fetched = await fetchUrlAsMarkdown(originUrl)
         if (!fetched.markdown?.trim()) {
-          throw new Error('URL 内容为空或无法解析')
+          throw new Error('URL content empty or could not be parsed')
         }
         payload = {
           ...input,
@@ -301,10 +301,7 @@ export function registerKnowledgeIPC(): void {
 
   ipcMain.handle(
     'knowledge:search',
-    async (
-      _e,
-      input: { notebookId: string; query: string; topK?: number }
-    ) => {
+    async (_e, input: { notebookId: string; query: string; topK?: number }) => {
       const repo = requireKnowledgeRepo()
       await assertKnowledgeModelMatch(repo)
       const embeddingService = getEmbeddingService()

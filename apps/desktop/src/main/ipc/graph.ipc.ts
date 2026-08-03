@@ -15,7 +15,13 @@ import {
   GRAPH_NODE_TYPES
 } from '@baishou/database-desktop'
 import { logger, resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
-import { fileSystem, pathService, vaultService, resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
+import {
+  fileSystem,
+  pathService,
+  vaultService,
+  resolveActiveVaultId,
+  resolveVaultNameById
+} from './vault.ipc'
 import {
   ensureRawDataRuntime,
   getDerivedFreshness,
@@ -264,10 +270,7 @@ export function registerGraphIPC(): void {
 
   ipcMain.handle(
     'graph:find-paths',
-    async (
-      _e,
-      opts: { fromId: string; toId: string; maxHops?: 2 | 3 }
-    ) => {
+    async (_e, opts: { fromId: string; toId: string; maxHops?: 2 | 3 }) => {
       const repo = requireGraphRepo()
       const path = await repo.findShortestPath(requireVaultId(), opts.fromId, opts.toId, {
         maxHops: opts.maxHops ?? 3,

@@ -23,7 +23,12 @@ import {
   resolveSummaryTemplatesForGeneration
 } from '@baishou/shared'
 import { SummaryQueueService } from '../services/summary-queue.service'
-import { pathService, vaultService, getActiveVaultShadowRepo, resolveActiveVaultId } from './vault.ipc'
+import {
+  pathService,
+  vaultService,
+  getActiveVaultShadowRepo,
+  resolveActiveVaultId
+} from './vault.ipc'
 import { fileSystem } from '../services/node-file-system'
 import { CreateSummaryInput, UpdateSummaryInput, SummaryType } from '@baishou/shared'
 import { buildSummaryAiClient } from './summary-ai-client'
@@ -58,12 +63,8 @@ export function getSummaryManager() {
   const db = connectionManager.getDb()
   const summaryRepo = new SummaryRepositoryImpl(db, () => resolveActiveVaultId())
   const fileSync = new SummaryFileService(pathService, fileSystem, getRawDataSourceManager())
-  const summarySync = new SummarySyncService(
-    null,
-    null,
-    summaryRepo,
-    fileSync,
-    () => resolveActiveVaultId()
+  const summarySync = new SummarySyncService(null, null, summaryRepo, fileSync, () =>
+    resolveActiveVaultId()
   )
   return new SummaryManagerService(summaryRepo, fileSync, summarySync)
 }

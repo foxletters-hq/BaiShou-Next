@@ -44,11 +44,11 @@ function enrichEntryFromMetadata(base: {
   const meta = parseMemoryMetadataJson(base.metadataJson)
   const isMemoryLike = base.sourceType === MEMORY_SOURCE_TYPE || base.sourceType === 'manual'
   const sourceSessionId = isMemoryLike
-    ? (meta.sourceSessionId !== undefined
-        ? meta.sourceSessionId
-        : base.sourceType === 'manual'
-          ? null
-          : undefined)
+    ? meta.sourceSessionId !== undefined
+      ? meta.sourceSessionId
+      : base.sourceType === 'manual'
+        ? null
+        : undefined
     : undefined
   const isManual =
     base.sourceType === 'manual' ||
@@ -178,8 +178,9 @@ export function registerRagQueryIPC() {
                     text: r.chunkText,
                     modelId: config.getGlobalEmbeddingModelId() || 'unknown',
                     createdAt:
-                      timestampToMillis(typeof r.createdAt === 'number' ? r.createdAt : undefined) ??
-                      Date.now(),
+                      timestampToMillis(
+                        typeof r.createdAt === 'number' ? r.createdAt : undefined
+                      ) ?? Date.now(),
                     sourceType: r.sourceType,
                     similarity: r.score,
                     sourceId: metaRow?.sourceId,
@@ -348,8 +349,7 @@ export function registerRagQueryIPC() {
     }
 
     const now = Date.now()
-    const vaultName =
-      existing?.vaultName ?? vaultService.getActiveVault()?.name ?? 'Personal'
+    const vaultName = existing?.vaultName ?? vaultService.getActiveVault()?.name ?? 'Personal'
     const vaultId = existing?.vaultId ?? resolveActiveVaultId()
     const createdAt = existing?.createdAt ?? createdAtMs ?? now
     const updated: MemoryRawRecord = {
