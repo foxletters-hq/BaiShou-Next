@@ -1,17 +1,28 @@
 import { ipcMain } from 'electron'
 import { shardMonthFromInstant } from '@baishou/core-desktop'
-import { memoryEmbeddingsTable, SqliteHybridSearchRepository } from '@baishou/database-desktop'
+import {
+  createSqlExecutorFromDrizzleDb,
+  memoryEmbeddingsTable,
+  SqliteHybridSearchRepository
+} from '@baishou/database-desktop'
 import { getAppDb } from '../db'
 import { eq, desc, like, sql, or, and, ne } from 'drizzle-orm'
 import {
   buildDiaryEmbeddingGroupId,
+  buildMemoryMetadataJson,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
   MEMORY_SOURCE_TYPE,
+  parseMemoryMetadataJson,
   timestampToMillis,
   type MemoryRawRecord
 } from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
-import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
+import {
+  checkMemoryConsistency,
+  getMemoryRawManager,
+  getRawDataSourceManager,
+  repairMemoryConsistency
+} from '../services/raw-data-source.runtime'
 import { vaultService } from './vault.ipc'
 
 function embeddingInstantMs(value: unknown): number | undefined {
@@ -24,6 +35,71 @@ function vaultNameFromGroupId(groupId: string | null | undefined): string | unde
   if (!groupId?.startsWith('memory:')) return undefined
   const name = groupId.slice('memory:'.length).trim()
   return name || undefined
+}
+
+function enrichEntryFromMetadata(base: {
+  embeddingId: string
+  text: string
+  modelId: string
+  createdAt: number
+  sourceType?: string
+  similarity?: number
+  sourceId?: string | null
+  metadataJson?: string | null
+}) {
+  const meta = parseMemoryMetadataJson(base.metadataJson)
+  const isMemoryLike = base.sourceType === MEMORY_SOURCE_TYPE || base.sourceType === 'manual'
+  const sourceSessionId = isMemoryLike
+    ? (meta.sourceSessionId !== undefined
+        ? meta.sourceSessionId
+        : base.sourceType === 'manual'
+          ? null
+          : undefined)
+    : undefined
+  const isManual =
+    base.sourceType === 'manual' ||
+    (base.sourceType === MEMORY_SOURCE_TYPE && meta.sourceSessionId === null)
+  return {
+    embeddingId: base.embeddingId,
+    text: base.text,
+    modelId: base.modelId,
+    createdAt: meta.createdAt ?? base.createdAt,
+    sourceType: base.sourceType,
+    similarity: base.similarity,
+    sourceId: base.sourceId ?? undefined,
+    tags: meta.tags ?? [],
+    sourceSessionId,
+    memoryCreatedAt: meta.createdAt,
+    memoryUpdatedAt: meta.updatedAt,
+    isManual
+  }
+}
+
+async function loadMetadataByEmbeddingIds(
+  embeddingIds: string[]
+): Promise<Map<string, { sourceId: string; metadataJson: string | null }>> {
+  const map = new Map<string, { sourceId: string; metadataJson: string | null }>()
+  if (embeddingIds.length === 0) return map
+  const db = getAppDb()
+  for (const embeddingId of embeddingIds) {
+    const rows = await db
+      .select({
+        embeddingId: memoryEmbeddingsTable.embeddingId,
+        sourceId: memoryEmbeddingsTable.sourceId,
+        metadataJson: memoryEmbeddingsTable.metadataJson
+      })
+      .from(memoryEmbeddingsTable)
+      .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
+      .limit(1)
+    const row = rows[0]
+    if (row) {
+      map.set(row.embeddingId, {
+        sourceId: row.sourceId,
+        metadataJson: row.metadataJson
+      })
+    }
+  }
+  return map
 }
 
 /** 分页列表：优先 source_created_at（日记 date），兼容秒/毫秒混用 */
@@ -103,16 +179,25 @@ export function registerRagQueryIPC() {
                   (r) => r.sourceType !== 'diary' || r.sessionId === vaultDiaryGroupId
                 )
 
-                const entries = scopedResults.map((r) => ({
-                  embeddingId: r.messageId, // ISearchResult では messageId に embeddingId が入っている
-                  text: r.chunkText,
-                  modelId: config.getGlobalEmbeddingModelId() || 'unknown',
-                  createdAt:
-                    timestampToMillis(typeof r.createdAt === 'number' ? r.createdAt : undefined) ??
-                    Date.now(),
-                  sourceType: r.sourceType,
-                  similarity: r.score // コサイン类似度が score に入っている
-                }))
+                const metaMap = await loadMetadataByEmbeddingIds(
+                  scopedResults.map((r) => r.messageId).filter(Boolean)
+                )
+
+                const entries = scopedResults.map((r) => {
+                  const metaRow = metaMap.get(r.messageId)
+                  return enrichEntryFromMetadata({
+                    embeddingId: r.messageId,
+                    text: r.chunkText,
+                    modelId: config.getGlobalEmbeddingModelId() || 'unknown',
+                    createdAt:
+                      timestampToMillis(typeof r.createdAt === 'number' ? r.createdAt : undefined) ??
+                      Date.now(),
+                    sourceType: r.sourceType,
+                    similarity: r.score,
+                    sourceId: metaRow?.sourceId,
+                    metadataJson: metaRow?.metadataJson
+                  })
+                })
 
                 if (params.withTotal) {
                   return {
@@ -141,6 +226,8 @@ export function registerRagQueryIPC() {
           text: memoryEmbeddingsTable.chunkText,
           modelId: memoryEmbeddingsTable.modelId,
           sourceType: memoryEmbeddingsTable.sourceType,
+          sourceId: memoryEmbeddingsTable.sourceId,
+          metadataJson: memoryEmbeddingsTable.metadataJson,
           sortMillis: embeddingSortMillis
         })
         .from(memoryEmbeddingsTable)
@@ -154,13 +241,17 @@ export function registerRagQueryIPC() {
         .limit(params.limit || 10)
         .offset(params.offset || 0)
 
-      const entries = results.map((r) => ({
-        embeddingId: r.embeddingId,
-        text: r.text,
-        modelId: r.modelId,
-        createdAt: timestampToMillis(Number(r.sortMillis)) ?? Date.now(),
-        sourceType: r.sourceType
-      }))
+      const entries = results.map((r) =>
+        enrichEntryFromMetadata({
+          embeddingId: r.embeddingId,
+          text: r.text,
+          modelId: r.modelId,
+          createdAt: timestampToMillis(Number(r.sortMillis)) ?? Date.now(),
+          sourceType: r.sourceType,
+          sourceId: r.sourceId,
+          metadataJson: r.metadataJson
+        })
+      )
 
       if (params.withTotal) {
         let total = 0
@@ -293,6 +384,7 @@ export function registerRagQueryIPC() {
       sourceType: MEMORY_SOURCE_TYPE,
       sourceId: updated.id,
       groupId: `memory:${vaultName}`,
+      metadataJson: buildMemoryMetadataJson(updated),
       sourceCreatedAt: createdAt
     })
     if (record.sourceType === 'manual') {
@@ -302,4 +394,46 @@ export function registerRagQueryIPC() {
     await memoryMgr.commitIndexed(written.relativePath, written.contentHash)
     return true
   })
+
+  ipcMain.handle('rag:check-consistency', async () => {
+    const hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(getAppDb()))
+    const vaultName = vaultService.getActiveVault()?.name
+    return checkMemoryConsistency({ hsRepo, vaultName })
+  })
+
+  ipcMain.handle(
+    'rag:repair-consistency',
+    async (
+      _,
+      params: {
+        confirmDeleteIds?: string[]
+        restoreIds?: string[]
+        cleanOrphans?: boolean
+      }
+    ) => {
+      const hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(getAppDb()))
+      const vaultName = vaultService.getActiveVault()?.name
+      let embeddingAdapter = null as import('@baishou/ai').EmbeddingAdapter | null
+      if (params.restoreIds && params.restoreIds.length > 0) {
+        try {
+          const { resolveEmbeddingSystemModels } = await import('./agent-helpers')
+          const { EmbeddingAdapter } = await import('@baishou/ai')
+          const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
+          if (embeddingProvider && embeddingModelId) {
+            embeddingAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
+          }
+        } catch {
+          // restore will fail clearly below if adapter missing
+        }
+      }
+      return repairMemoryConsistency({
+        hsRepo,
+        embeddingAdapter,
+        vaultName,
+        confirmDeleteIds: params.confirmDeleteIds,
+        restoreIds: params.restoreIds,
+        cleanOrphans: params.cleanOrphans
+      })
+    }
+  )
 }

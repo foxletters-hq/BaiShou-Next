@@ -1,6 +1,9 @@
 import { ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import type { EmbeddingMigrationRollbackConfig, MemoryRawRecord } from '@baishou/shared'
+import type {
+  EmbeddingMigrationRollbackConfig,
+  MemoryRawRecord
+} from '@baishou/shared'
 import { getAppDb, setAppDbResetBlocker } from '../db'
 import { sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
@@ -12,6 +15,7 @@ import { countDiaryEmbeddingsForVault } from '../services/diary-embedding.util'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
 import { runControlledDiaryBatchEmbed } from '../services/controlled-diary-batch-embed.service'
 import {
+  buildMemoryMetadataJson,
   buildMigrationStreamResult,
   clearRagDiaryEmbedFailure,
   hasRagDiaryEmbedFailure,
@@ -298,6 +302,7 @@ export function registerRagBuildIPC() {
       sourceType: MEMORY_SOURCE_TYPE,
       sourceId: id,
       groupId: `memory:${vaultName}`,
+      metadataJson: buildMemoryMetadataJson(record),
       sourceCreatedAt: now
     })
     const memoryMgr = rawManager.getMemoryManager()

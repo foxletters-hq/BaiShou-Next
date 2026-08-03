@@ -9,7 +9,9 @@ import {
   type RawDataSourceManager,
   type MemoryRawManager,
   type GraphRawManager,
-  type DerivedFreshnessService
+  type DerivedFreshnessService,
+  type MemoryConsistencyReport,
+  type MemoryConsistencyRepairResult
 } from '@baishou/core-desktop'
 import {
   connectionManager,
@@ -120,7 +122,7 @@ export async function syncMemoryPendingIndex(options: {
   const sync = new MemorySyncService(memoryManager, {
     embedText: (opts) => embeddingAdapter.embedText(opts),
     deleteBySource: (sourceType, sourceId) => hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-    listSourceIdsByType: (sourceType) => hsRepo.listSourceIdsByType(sourceType)
+    listSourceIdsByType: (sourceType, groupId) => hsRepo.listSourceIdsByType(sourceType, groupId)
   })
   return sync.syncPendingIndex()
 }
@@ -128,17 +130,82 @@ export async function syncMemoryPendingIndex(options: {
 export async function backfillMemoryJsonlFromEmbeddings(options: {
   hsRepo: SqliteHybridSearchRepository
   vaultName: string
-}): Promise<{ written: number; skipped: number }> {
+}): Promise<{ written: number; skipped: number; normalized: number; metadataPatched: number }> {
   const { memoryManager } = ensureRawDataRuntime()
   const service = new MemoryJsonlBackfillService(memoryManager)
   const chatChunks = await options.hsRepo.listEmbeddingChunksByType('chat')
   const memoryChunks = await options.hsRepo.listEmbeddingChunksByType('memory')
+  const manualChunks = await options.hsRepo.listEmbeddingChunksByType('manual')
   const r1 = await service.backfillFromChunks(chatChunks, options.vaultName)
   const r2 = await service.backfillFromChunks(memoryChunks, options.vaultName)
-  return {
-    written: r1.written + r2.written,
-    skipped: r1.skipped + r2.skipped
+  const manual = await service.migrateManualAndPatchMetadata(manualChunks, options.vaultName, {
+    normalizeManualToMemory: (params) => options.hsRepo.normalizeManualToMemory(params),
+    updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
+      options.hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
+  })
+  // Also patch metadata for chat/memory backfilled rows (and any pre-existing JSONL)
+  // when migrateManual ran with empty manual set — ensure patch still runs once.
+  let metadataPatched = manual.metadataPatched
+  if (manualChunks.length === 0) {
+    metadataPatched = await service.patchMetadataFromJsonl((sourceType, sourceId, metadataJson) =>
+      options.hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
+    )
   }
+  // Catch any remaining manual rows (e.g. empty chunk text skipped from JSONL write)
+  const leftoverNormalized = await options.hsRepo.normalizeManualToMemory({
+    vaultName: options.vaultName
+  })
+  return {
+    written: r1.written + r2.written + manual.written,
+    skipped: r1.skipped + r2.skipped + manual.skipped,
+    normalized: manual.normalized + leftoverNormalized,
+    metadataPatched
+  }
+}
+
+export async function checkMemoryConsistency(options: {
+  hsRepo: SqliteHybridSearchRepository
+  vaultName?: string
+}): Promise<MemoryConsistencyReport> {
+  const { memoryManager } = ensureRawDataRuntime()
+  const sync = new MemorySyncService(memoryManager, {
+    embedText: async () => undefined,
+    deleteBySource: (sourceType, sourceId) =>
+      options.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
+    listSourceIdsByType: (sourceType, groupId) =>
+      options.hsRepo.listSourceIdsByType(sourceType, groupId)
+  })
+  return sync.checkConsistency({ vaultName: options.vaultName })
+}
+
+export async function repairMemoryConsistency(options: {
+  hsRepo: SqliteHybridSearchRepository
+  embeddingAdapter?: EmbeddingAdapter | null
+  vaultName?: string
+  confirmDeleteIds?: string[]
+  restoreIds?: string[]
+  cleanOrphans?: boolean
+}): Promise<MemoryConsistencyRepairResult> {
+  const { memoryManager } = ensureRawDataRuntime()
+  const embeddingAdapter = options.embeddingAdapter
+  const sync = new MemorySyncService(memoryManager, {
+    embedText: async (opts) => {
+      if (!embeddingAdapter?.isConfigured) {
+        throw new Error('Embedding adapter not configured')
+      }
+      await embeddingAdapter.embedText(opts)
+    },
+    deleteBySource: (sourceType, sourceId) =>
+      options.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
+    listSourceIdsByType: (sourceType, groupId) =>
+      options.hsRepo.listSourceIdsByType(sourceType, groupId)
+  })
+  return sync.repairConsistency({
+    confirmDeleteIds: options.confirmDeleteIds,
+    restoreIds: options.restoreIds,
+    cleanOrphans: options.cleanOrphans,
+    vaultName: options.vaultName
+  })
 }
 
 export async function syncGraphPendingIndexWithDeps(options: {
@@ -219,7 +286,7 @@ export async function runDerivedIndexHydration(reason: string): Promise<void> {
     const graph = await syncGraphPendingIndexWithDeps({ graphRepo, embeddingAdapter })
 
     logger.info(
-      `[RawData] derived hydration done (${reason}): backfill=${backfill.written}/${backfill.skipped} memoryShards=${memory.shards} graphShards=${graph.shards}`
+      `[RawData] derived hydration done (${reason}): backfill=${backfill.written}/${backfill.skipped} normalized=${backfill.normalized} meta=${backfill.metadataPatched} memoryShards=${memory.shards} graphShards=${graph.shards}`
     )
   } catch (e) {
     logger.warn(`[RawData] derived hydration failed (${reason}):`, e as Error)
