@@ -26,7 +26,7 @@
 .sidebar {
   width: 200px;
   background-color: var(--bg-surface-low);
-  border-right: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
 }
@@ -184,7 +184,7 @@
   justify-content: center;
   padding: 10px 0;
   background: transparent;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border: 1px solid var(--border-control);
   border-radius: 10px;
   cursor: pointer;
   color: var(--text-primary);
@@ -285,7 +285,7 @@
 .tabsWrapper {
   display: flex;
   margin: 0 24px;
-  border-bottom: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .tabItem {
@@ -330,7 +330,7 @@
   height: 120px;
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border: 1px solid var(--border-control);
   background-color: var(--bg-surface-low);
   font-family: inherit;
   font-size: 13px;
@@ -343,7 +343,7 @@
 .modelSettingBox {
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.5);
+  border: 1px solid var(--border-control);
   background-color: var(--bg-surface-high);
   display: flex;
   flex-direction: column;
@@ -365,7 +365,7 @@
 
 .detailFooter {
   padding: 16px;
-  border-top: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.3);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .selectBtn {

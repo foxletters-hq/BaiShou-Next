@@ -5,7 +5,7 @@
   padding: 20px 24px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  border: 1px solid var(--border-muted);
   transition: all 0.3s;
 }
 

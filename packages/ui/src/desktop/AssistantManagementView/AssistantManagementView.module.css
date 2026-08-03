@@ -69,7 +69,7 @@
 
 .card {
   background-color: var(--bg-surface);
-  border: 1px solid rgba(128, 128, 128, 0.2);
+  border: 1px solid var(--border-control);
   border-radius: 12px;
   padding: 16px;
   display: flex;

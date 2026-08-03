@@ -124,7 +124,7 @@
 
 .btnOutlined {
   background: transparent;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   color: var(--text-primary);
 }
 
@@ -199,7 +199,7 @@
   height: 32px;
   padding: 0 14px;
   border-radius: 16px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: transparent;
   color: var(--text-primary);
   font-size: var(--settings-font-label-size, 13px);
@@ -244,7 +244,7 @@
   width: 18px;
   height: 18px;
   border-radius: 4px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   cursor: pointer;
   position: relative;
@@ -581,7 +581,7 @@
   gap: 6px;
   padding: 4px 12px;
   border-radius: 16px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   height: 32px;
   box-sizing: border-box;
@@ -610,7 +610,7 @@
   gap: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   padding: 4px 12px;
   border-radius: 16px;
   font-size: var(--settings-font-label-size, 13px);
@@ -820,7 +820,7 @@
 
 .diaryHoverActionBtn {
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 6px;
   width: 28px;
   height: 28px;
