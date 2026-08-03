@@ -465,10 +465,11 @@ interface KnowledgeAPI {
   importSource(input: {
     notebookId: string
     title: string
-    kind: 'file' | 'text'
+    kind: 'file' | 'text' | 'url'
     absolutePath?: string
     textContent?: string
     fileName?: string
+    originUrl?: string
   }): Promise<{ sourceId: string }>
   retrySource(sourceId: string): Promise<{ ok: boolean }>
   rebuildIndex(notebookId: string): Promise<{ ok: boolean }>
@@ -479,6 +480,36 @@ interface KnowledgeAPI {
     pendingJobs: number
   }>
   listSources(notebookId: string): Promise<unknown[]>
+  search(input: {
+    notebookId: string
+    query: string
+    topK?: number
+  }): Promise<unknown[]>
+  ask(input: {
+    notebookId: string
+    question: string
+    topK?: number
+  }): Promise<{
+    answer: string
+    citations: Array<{
+      sourceId: string
+      title: string
+      chunkId: string
+      chunkIndex: number
+      excerpt: string
+      offset?: number
+      len?: number
+      page?: number
+      score: number
+      source: string
+    }>
+    hits: unknown[]
+  }>
+  getExtractedPreview(input: {
+    notebookId: string
+    sourceId: string
+    maxChars?: number
+  }): Promise<{ text: string | null; truncated: boolean }>
 }
 
 interface AppAPI {
