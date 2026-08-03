@@ -1,12 +1,13 @@
 import { ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
-import type { EmbeddingMigrationRollbackConfig } from '@baishou/shared'
+import type { EmbeddingMigrationRollbackConfig, MemoryRawRecord } from '@baishou/shared'
 import { getAppDb, setAppDbResetBlocker } from '../db'
 import { sql } from 'drizzle-orm'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import { DesktopEmbeddingStorage } from './rag.storage'
 import { settingsManager } from './settings.ipc'
 import { vaultService } from './vault.ipc'
+import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
 import { countDiaryEmbeddingsForVault } from '../services/diary-embedding.util'
 import { getEmbeddingMigrationStateService } from '../services/embedding-migration-state.service'
 import { runControlledDiaryBatchEmbed } from '../services/controlled-diary-batch-embed.service'
@@ -15,12 +16,37 @@ import {
   clearRagDiaryEmbedFailure,
   hasRagDiaryEmbedFailure,
   logger,
+  MEMORY_SOURCE_TYPE,
   RAG_MIGRATION_STATUS,
   toSerializableAiError,
   type RagConfig,
   type RagMigrationStatusKey,
   type RagMigrationStreamResult
 } from '@baishou/shared'
+
+function newMemoryId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `mem_${Date.now()}_${Math.random().toString(16).slice(2)}`
+}
+
+/** Rewrite every Memory shard as a collapsed tombstone set so clear-all cannot revive. */
+async function tombstoneAllMemoryShards(): Promise<void> {
+  const memoryMgr = getMemoryRawManager()
+  const now = Date.now()
+  for (const shard of await memoryMgr.listShards()) {
+    const rows = await memoryMgr.readCollapsedShard(shard.shardMonth)
+    if (rows.length === 0) continue
+    const tombstones = rows.map((row) => ({
+      ...row,
+      updatedAt: row.deletedAt != null ? row.updatedAt : now,
+      deletedAt: row.deletedAt ?? now
+    }))
+    const content = `${tombstones.map((row) => JSON.stringify(row)).join('\n')}\n`
+    await memoryMgr.replaceShardContent(shard.shardMonth, content)
+  }
+}
 
 async function restoreInterruptedMigration(): Promise<number> {
   const config = getEmbeddingConfig()
@@ -167,6 +193,7 @@ export function registerRagBuildIPC() {
 
   ipcMain.handle('rag:clear-all', async () => {
     await config.load()
+    await tombstoneAllMemoryShards()
     const { DesktopEmbeddingStorage } = await import('./rag.storage')
     const storage = new DesktopEmbeddingStorage()
     await storage.clearEmbeddings()
@@ -248,13 +275,35 @@ export function registerRagBuildIPC() {
     await config.load()
     if (!text || !text.trim()) return false
 
+    const now = Date.now()
+    const id = newMemoryId()
+    const vaultName = vaultService.getActiveVault()?.name ?? 'Personal'
+    const content = text.trim()
+    const record: MemoryRawRecord = {
+      id,
+      schemaVersion: 1,
+      vaultName,
+      content,
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    }
+
+    const rawManager = getRawDataSourceManager()
+    const written = await rawManager.writeRecord('memory', record)
     await embeddingService.embedText({
-      text,
-      sourceType: 'manual',
-      sourceId: `manual_${Date.now()}`,
-      groupId: 'manual',
-      sourceCreatedAt: Date.now()
+      text: content,
+      sourceType: MEMORY_SOURCE_TYPE,
+      sourceId: id,
+      groupId: `memory:${vaultName}`,
+      sourceCreatedAt: now
     })
+    const memoryMgr = rawManager.getMemoryManager()
+    if (memoryMgr) {
+      await memoryMgr.commitIndexed(written.relativePath, written.contentHash)
+    }
     return true
   })
 

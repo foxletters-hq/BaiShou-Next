@@ -6,6 +6,7 @@ import { NodeFileSystem } from '../../fs/node-file-system'
 import { DerivedFreshnessService } from '../derived-freshness.service'
 import { MemoryRawManager } from '../managers/memory.raw-manager'
 import { MemorySyncService } from '../memory-sync.service'
+import { shardMonthFromInstant } from '../raw-data-month.util'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 
 describe('MemorySyncService', () => {
@@ -99,5 +100,100 @@ describe('MemorySyncService', () => {
     expect(listSourceIdsByType).toHaveBeenCalledWith('memory', 'memory:Personal')
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
     expect(deleteBySource).not.toHaveBeenCalledWith('memory', 'live')
+  })
+
+  it('tombstoned memory does not revive after syncPendingIndex', async () => {
+    const now = Date.now()
+    await memoryManager.writeRecord({
+      id: 'keep',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'stay',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+    await memoryManager.writeRecord({
+      id: 'gone',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'forget me',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+
+    const embedText = vi.fn().mockResolvedValue(undefined)
+    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const listSourceIdsByType = vi.fn().mockResolvedValue(['keep', 'gone'])
+    const sync = new MemorySyncService(memoryManager, {
+      embedText,
+      deleteBySource,
+      listSourceIdsByType
+    })
+    await sync.syncPendingIndex()
+
+    await memoryManager.tombstone('gone', { shardMonth: shardMonthFromInstant(now) })
+    // Simulate management-page delete already dropping derived rows for `gone`
+    listSourceIdsByType.mockResolvedValue(['keep'])
+    embedText.mockClear()
+    deleteBySource.mockClear()
+
+    await sync.syncPendingIndex()
+
+    expect(embedText).not.toHaveBeenCalledWith(expect.objectContaining({ sourceId: 'gone' }))
+    expect(deleteBySource).toHaveBeenCalledWith('memory', 'gone')
+    expect(embedText).not.toHaveBeenCalledWith(expect.objectContaining({ text: 'forget me' }))
+  })
+
+  it('edited memory content wins after syncPendingIndex rebuild', async () => {
+    const now = Date.now()
+    await memoryManager.writeRecord({
+      id: 'm1',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'old content',
+      tags: ['tag'],
+      sourceSessionId: 'sess-1',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+
+    const embedText = vi.fn().mockResolvedValue(undefined)
+    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const listSourceIdsByType = vi.fn().mockResolvedValue(['m1'])
+    const sync = new MemorySyncService(memoryManager, {
+      embedText,
+      deleteBySource,
+      listSourceIdsByType
+    })
+    await sync.syncPendingIndex()
+
+    await memoryManager.writeRecord({
+      id: 'm1',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'new content',
+      tags: ['tag'],
+      sourceSessionId: 'sess-1',
+      createdAt: now,
+      updatedAt: now + 1000,
+      deletedAt: null
+    })
+    embedText.mockClear()
+
+    await sync.syncPendingIndex()
+
+    expect(embedText).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'm1', text: 'new content' })
+    )
+    expect(embedText).not.toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'm1', text: 'old content' })
+    )
   })
 })
