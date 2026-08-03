@@ -22,12 +22,10 @@ export function createMobileAgentGateRuntime(settingsManager: GateSettingsManage
 
   const persistBaishouAgentGateConfig = async (config: BaishouAgentGateConfig) => {
     Object.assign(agentGateConfig, {
-      trustMode: config.trustMode,
       exclusionList: [...(config.exclusionList ?? [])],
       allowlist: [...(config.allowlist ?? [])],
       actionRules: config.actionRules ? { ...config.actionRules } : undefined,
       permissionRules: config.permissionRules?.map((rule) => ({ ...rule })),
-      forceAskExternalPath: config.forceAskExternalPath,
       repeatAssertAskThreshold: config.repeatAssertAskThreshold,
       hideDeniedTools: config.hideDeniedTools
     })
