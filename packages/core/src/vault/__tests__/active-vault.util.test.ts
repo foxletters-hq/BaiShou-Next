@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  pickActiveVault,
-  pickActiveVaultNameFromRegistryEntries
-} from '../active-vault.util'
+import { pickActiveVault, pickActiveVaultNameFromRegistryEntries } from '../active-vault.util'
 
 describe('pickActiveVault', () => {
   const vaults = [

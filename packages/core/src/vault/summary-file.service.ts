@@ -250,7 +250,9 @@ export class SummaryFileService {
    * 列出指定工作区 Archives/ 下的总结（跨仓冷启动水合用）。
    * 仅扫仓内 Archives，不含活跃仓外部总结目录映射。
    */
-  async listSummariesForVault(vaultName: string): Promise<
+  async listSummariesForVault(
+    vaultName: string
+  ): Promise<
     { type: SummaryType; startDate: Date; endDate: Date; fullPath: string; vaultName: string }[]
   > {
     const name = vaultName.trim()

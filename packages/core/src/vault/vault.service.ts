@@ -493,10 +493,7 @@ export class VaultService implements IVaultService {
     return this.estimateBytesForVault(vault, vault.name)
   }
 
-  private assertVaultNameAvailable(
-    name: string,
-    options?: { excludeVaultId?: string }
-  ): void {
+  private assertVaultNameAvailable(name: string, options?: { excludeVaultId?: string }): void {
     const candidates = this._vaults
       .filter((v) => !options?.excludeVaultId || v.id !== options.excludeVaultId)
       .map((v) => v.name)
@@ -550,8 +547,7 @@ export class VaultService implements IVaultService {
 
     const samePathDifferentCase =
       normalizeVaultNameForCompare(path.basename(oldPath)) ===
-        normalizeVaultNameForCompare(path.basename(newPath)) &&
-      oldNorm !== newNorm
+        normalizeVaultNameForCompare(path.basename(newPath)) && oldNorm !== newNorm
 
     if (samePathDifferentCase) {
       const rootDir = path.dirname(oldPath)
@@ -572,7 +568,10 @@ export class VaultService implements IVaultService {
     await this.fileSystem.rename(oldPath, newPath)
   }
 
-  private async estimateBytesForVault(vault: VaultInfo, vaultNameForPrefix: string): Promise<number> {
+  private async estimateBytesForVault(
+    vault: VaultInfo,
+    vaultNameForPrefix: string
+  ): Promise<number> {
     const fromManifest = await this.readLocalManifestVaultBytes(vaultNameForPrefix)
     if (fromManifest > 0) return fromManifest
     return this.sumDirectoryBytes(vault.path)
@@ -803,8 +802,7 @@ export class VaultService implements IVaultService {
 
     // 路径尚不存在时不写 vault.json（避免改名自愈前在旧路径建幽灵目录）
     if (pathExists) {
-      const needsMetaWrite =
-        !meta || meta.id !== vault.id || meta.displayName !== vault.name
+      const needsMetaWrite = !meta || meta.id !== vault.id || meta.displayName !== vault.name
       if (needsMetaWrite) {
         await this.writeVaultIdentityMeta(vault)
       }
