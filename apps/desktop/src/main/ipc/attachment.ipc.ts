@@ -10,6 +10,7 @@ import {
   refreshDesktopAttachmentPathRemapper,
   resolveAttachmentInputPath
 } from './attachment-path-cache'
+import { resolveActiveVaultId } from './vault.ipc'
 
 export function registerAttachmentIPC() {
   const pathService = new DesktopStoragePathService()
@@ -19,8 +20,15 @@ export function registerAttachmentIPC() {
   ipcMain.handle('attachment:listAll', async () => {
     const db = connectionManager.getDb()
     const sessionRepo = new SessionRepository(db)
-    // 尽量拉取所有的会话以供标题映射
-    const sessions = await sessionRepo.findAllSessions(5000)
+    // 仅活跃仓会话，供标题映射（V1.7 对齐隔离）
+    const activeVaultId = resolveActiveVaultId()
+    const sessions = await sessionRepo.findAllSessions(
+      5000,
+      0,
+      undefined,
+      undefined,
+      activeVaultId
+    )
     const activeSessionIds = new Set<string>(sessions.map((s) => s.id))
 
     const groups = await attachmentManager.listSessionGroups(activeSessionIds)
