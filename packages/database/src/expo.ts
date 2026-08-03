@@ -50,6 +50,8 @@ export * from './migration-context'
 export * from './sqlite-corruption.util'
 export * from './expo-agent-db.lock'
 export * from './expo-agent-db.recovery'
+export * from './expo-shadow-index.connection.manager'
+export * from './expo-knowledge.connection.manager'
 
 export type ExpoDatabaseInstallResult = {
   expoDb: ExpoSqliteDatabase

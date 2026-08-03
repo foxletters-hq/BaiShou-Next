@@ -50,6 +50,7 @@ export async function runMobileIncrementalAfterSync(
         assistants: cls.assistants,
         memory: cls.memory,
         graph: cls.graph,
+        notebooks: cls.notebooks,
         sessionRefCount: cls.sessionRefs.length
       }
     })
@@ -62,7 +63,8 @@ export async function runMobileIncrementalAfterSync(
       cls.settings ||
       cls.assistants ||
       cls.memory ||
-      cls.graph
+      cls.graph ||
+      cls.notebooks
 
     let step = 0
     const needsSessionHydrate = cls.sessions || cls.sessionRefs.length > 0
@@ -183,6 +185,24 @@ export async function runMobileIncrementalAfterSync(
         }
       } catch (e: unknown) {
         console.warn('[IncrementalSync][PostSync] derived hydration failed:', e)
+      }
+    }
+
+    if (cls.notebooks) {
+      try {
+        const { runMobileKnowledgeHydration } = await import('./mobile-raw-data-source.runtime')
+        const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
+        const runtime = agentDbRuntimeRef.current
+        if (runtime?.settingsManager) {
+          await runMobileKnowledgeHydration({
+            reason: 'incremental-sync-notebooks',
+            pathService: deps.pathService,
+            fileSystem: deps.fileSystem,
+            settingsManager: runtime.settingsManager
+          })
+        }
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync][PostSync] knowledge hydration failed:', e)
       }
     }
 

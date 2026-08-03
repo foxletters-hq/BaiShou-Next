@@ -3,6 +3,7 @@ import {
   MemoryJsonlBackfillService,
   LegacyManualMemoryCopyService,
   MemoryRawManager,
+  NotebookRawManager,
   DerivedFreshnessService,
   MemorySyncService,
   GraphSyncService,
@@ -51,6 +52,7 @@ let runtime: {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  notebookManager: NotebookRawManager
   freshness: DerivedFreshnessService
   pathService: IStoragePathService
   fileSystem: IFileSystem
@@ -63,6 +65,7 @@ export function ensureMobileRawDataRuntime(options: {
   manager: RawDataSourceManager
   memoryManager: MemoryRawManager
   graphManager: GraphRawManager
+  notebookManager: NotebookRawManager
   freshness: DerivedFreshnessService
 } {
   if (runtime && runtime.pathService === options.pathService) {
@@ -78,6 +81,7 @@ export function ensureMobileRawDataRuntime(options: {
     manager: created.manager,
     memoryManager: created.memoryManager,
     graphManager: created.graphManager,
+    notebookManager: created.notebookManager,
     freshness: created.freshness,
     pathService: options.pathService,
     fileSystem: options.fileSystem
@@ -99,6 +103,10 @@ export function getMobileRawDataSourceManager(): RawDataSourceManager | null {
 
 export function getMobileMemoryRawManager(): MemoryRawManager | null {
   return runtime?.memoryManager ?? null
+}
+
+export function getMobileNotebookRawManager(): NotebookRawManager | null {
+  return runtime?.notebookManager ?? null
 }
 
 export function resetMobileRawDataRuntime(): void {
@@ -276,5 +284,61 @@ export async function runMobileDerivedIndexHydration(options: {
     )
   } catch (e) {
     logger.warn(`[RawData] mobile derived hydration failed (${options.reason}):`, e as Error)
+  }
+}
+
+/** K1.4：同步后 Notebooks/ 差集 → knowledge.db embed jobs（消费端本地重嵌） */
+export async function runMobileKnowledgeHydration(options: {
+  reason: string
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  settingsManager: SettingsManagerService
+}): Promise<void> {
+  try {
+    const { expoKnowledgeConnectionManager, KnowledgeRepository } = await import(
+      '@baishou/database/expo'
+    )
+    if (!expoKnowledgeConnectionManager.isConnected()) {
+      const root = await options.pathService.getRootDirectory()
+      await options.fileSystem.mkdir(root, { recursive: true })
+      await expoKnowledgeConnectionManager.connect(root)
+    }
+    if (!expoKnowledgeConnectionManager.isConnected()) {
+      logger.warn(`[KnowledgeHydration] skip (${options.reason}): knowledge db not connected`)
+      return
+    }
+
+    const { KnowledgeHydrationService } = await import('@baishou/core-mobile')
+    const emb = await resolveMobileEmbeddingForHydration(options.settingsManager)
+    const embeddingOk = Boolean(emb.embeddingProvider && emb.embeddingModelId)
+
+    ensureMobileRawDataRuntime({
+      pathService: options.pathService,
+      fileSystem: options.fileSystem
+    })
+    const notebookManager = getMobileNotebookRawManager()
+    if (!notebookManager) {
+      logger.warn(`[KnowledgeHydration] skip (${options.reason}): no notebook manager`)
+      return
+    }
+
+    const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
+    const hydration = new KnowledgeHydrationService({
+      repo,
+      notebookManager,
+      isEmbeddingConfigured: () => embeddingOk
+    })
+    const result = await hydration.hydrate()
+
+    if (result.embedJobsEnqueued > 0 && embeddingOk) {
+      const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
+        './mobile-knowledge-ingest-jobs.consumer'
+      )
+      scheduleConsumeMobileKnowledgeIngestJobs(options.reason)
+    }
+
+    logger.info(`[KnowledgeHydration] mobile done (${options.reason})`, result)
+  } catch (e) {
+    logger.warn(`[KnowledgeHydration] mobile failed (${options.reason}):`, e as Error)
   }
 }
