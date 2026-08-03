@@ -2,9 +2,9 @@
   margin: 0;
   padding: 8px 0;
   border-radius: 0 0 8px 8px;
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  border: 1px solid var(--border-subtle);
   border-top: none;
-  background: var(--bg-code, rgba(0, 0, 0, 0.02));
+  background: var(--bg-code);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   line-height: 1.45;

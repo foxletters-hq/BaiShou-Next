@@ -5,7 +5,7 @@
   height: 100%;
   background-color: var(--bg-surface-low);
   overflow: hidden;
-  border-right: 1px solid rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);
+  border-right: 1px solid var(--border-muted);
 }
 
 .header {
@@ -60,8 +60,8 @@
 
 .searchBox:focus-within {
   background-color: var(--bg-surface);
-  border-color: var(--border-control);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .searchIcon {

@@ -37,7 +37,7 @@
 
 .textarea {
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   padding: 12px 14px;
   color: var(--text-primary);
@@ -51,8 +51,8 @@
 }
 
 .textarea:focus {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
   outline: none;
 }
 
@@ -61,7 +61,7 @@
   flex-direction: column;
   gap: 12px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(148, 163, 184, 0.05);
+  border: 1px solid var(--border-subtle);
   padding: 16px;
   border-radius: 12px;
 }
