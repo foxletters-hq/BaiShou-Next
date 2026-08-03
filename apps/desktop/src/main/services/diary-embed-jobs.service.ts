@@ -20,8 +20,8 @@ export async function enqueueDiaryEmbedJob(job: DiaryEmbedJobKey, error?: string
   return enqueueJob(db(), job, error)
 }
 
-export async function deleteDiaryEmbedJob(vaultName: string, diaryId: number): Promise<void> {
-  return deleteJob(db(), vaultName, diaryId)
+export async function deleteDiaryEmbedJob(vaultId: string, diaryId: number): Promise<void> {
+  return deleteJob(db(), vaultId, diaryId)
 }
 
 export async function countDiaryEmbedJobs(): Promise<number> {

@@ -10,6 +10,7 @@ import { eq, desc, like, sql, and } from 'drizzle-orm'
 import {
   buildMemoryMetadataJson,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
+  MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   parseMemoryMetadataJson,
   timestampToMillis,
@@ -22,18 +23,12 @@ import {
   getRawDataSourceManager,
   repairMemoryConsistency
 } from '../services/raw-data-source.runtime'
-import { vaultService } from './vault.ipc'
+import { vaultService, resolveActiveVaultId, resolveVaultIdByName } from './vault.ipc'
 
 function embeddingInstantMs(value: unknown): number | undefined {
   if (value instanceof Date) return value.getTime()
   if (typeof value === 'number') return timestampToMillis(value)
   return undefined
-}
-
-function vaultNameFromGroupId(groupId: string | null | undefined): string | undefined {
-  if (!groupId?.startsWith('memory:')) return undefined
-  const name = groupId.slice('memory:'.length).trim()
-  return name || undefined
 }
 
 function enrichEntryFromMetadata(base: {
@@ -122,8 +117,8 @@ export function registerRagQueryIPC() {
     ) => {
       await config.load()
       const db = getAppDb()
-      const activeVaultName = vaultService.getActiveVault()?.name ?? 'Personal'
-      const vaultScopeFilter = eq(memoryEmbeddingsTable.vaultName, activeVaultName)
+      const activeVaultId = resolveActiveVaultId()
+      const vaultScopeFilter = eq(memoryEmbeddingsTable.vaultId, activeVaultId)
 
       // ── 语义检索分支（Semantic Search Mode） ──
       if (params.mode === 'semantic' && params.keyword && params.keyword.trim() !== '') {
@@ -169,7 +164,7 @@ export function registerRagQueryIPC() {
                 const hybridRepo = new SqliteHybridSearchRepository(mockClient as any)
                 const limit = params.limit || 30
                 const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit, {
-                  vaultName: activeVaultName
+                  vaultId: activeVaultId
                 })
 
                 const metaMap = await loadMetadataByEmbeddingIds(
@@ -326,7 +321,7 @@ export function registerRagQueryIPC() {
           source_type: record.sourceType,
           source_id: record.sourceId,
           group_id: record.groupId,
-          vault_name: record.vaultName,
+          vault_id: record.vaultId,
           chunk_index: record.chunkIndex,
           metadata_json: record.metadataJson
         },
@@ -354,10 +349,8 @@ export function registerRagQueryIPC() {
 
     const now = Date.now()
     const vaultName =
-      existing?.vaultName ??
-      vaultNameFromGroupId(record.groupId) ??
-      vaultService.getActiveVault()?.name ??
-      'Personal'
+      existing?.vaultName ?? vaultService.getActiveVault()?.name ?? 'Personal'
+    const vaultId = resolveVaultIdByName(vaultName)
     const createdAt = existing?.createdAt ?? createdAtMs ?? now
     const updated: MemoryRawRecord = {
       id: record.sourceId,
@@ -377,8 +370,8 @@ export function registerRagQueryIPC() {
       text: newText,
       sourceType: MEMORY_SOURCE_TYPE,
       sourceId: updated.id,
-      groupId: `memory:${vaultName}`,
-      vaultName,
+      groupId: MEMORY_EMBED_GROUP_ID,
+      vaultId,
       metadataJson: buildMemoryMetadataJson(updated),
       sourceCreatedAt: createdAt
     })
@@ -392,8 +385,8 @@ export function registerRagQueryIPC() {
 
   ipcMain.handle('rag:check-consistency', async () => {
     const hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(getAppDb()))
-    const vaultName = vaultService.getActiveVault()?.name
-    return checkMemoryConsistency({ hsRepo, vaultName })
+    const vaultId = resolveActiveVaultId()
+    return checkMemoryConsistency({ hsRepo, vaultId })
   })
 
   ipcMain.handle(
@@ -407,7 +400,7 @@ export function registerRagQueryIPC() {
       }
     ) => {
       const hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(getAppDb()))
-      const vaultName = vaultService.getActiveVault()?.name
+      const vaultId = resolveActiveVaultId()
       let embeddingAdapter = null as import('@baishou/ai').EmbeddingAdapter | null
       if (params.restoreIds && params.restoreIds.length > 0) {
         try {
@@ -424,7 +417,7 @@ export function registerRagQueryIPC() {
       return repairMemoryConsistency({
         hsRepo,
         embeddingAdapter,
-        vaultName,
+        vaultId,
         confirmDeleteIds: params.confirmDeleteIds,
         restoreIds: params.restoreIds,
         cleanOrphans: params.cleanOrphans

@@ -6,7 +6,7 @@ import { pathService } from './vault.ipc'
 import { settingsManager } from './settings.ipc'
 import { GlobalModelsConfig, logger } from '@baishou/shared'
 import { copyBranchCompressionSnapshots } from '@baishou/ai'
-import { vaultService } from './vault.ipc'
+import { vaultService, resolveActiveVaultId, resolveVaultIdByName } from './vault.ipc'
 
 export function registerSessionIPC() {
   // ==========================================
@@ -22,16 +22,16 @@ export function registerSessionIPC() {
       searchQuery?: string
     ) => {
       const { sessionManager } = getAgentManagers()
-      const activeVaultName = vaultService.getActiveVault()?.name || 'Personal'
+      const activeVaultId = resolveActiveVaultId()
       logger.info(
-        `[IPC] agent:get-sessions - vault=${activeVaultName}, astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
+        `[IPC] agent:get-sessions - vaultId=${activeVaultId}, astId=${assistantId}, limit=${limit}, offset=${offset}, query=${searchQuery}`
       )
       const results = await sessionManager.findAllSessions(
         limit,
         offset,
         assistantId,
         searchQuery,
-        activeVaultName
+        activeVaultId
       )
       logger.info(`[IPC] agent:get-sessions - found ${results.length} sessions`)
       return results
@@ -65,9 +65,11 @@ export function registerSessionIPC() {
       const { sessionManager, assistantManager } = getAgentManagers()
 
       let vaultName = 'Personal'
+      let vaultId = resolveActiveVaultId()
       try {
         const active = vaultService.getActiveVault()
         if (active?.name) vaultName = active.name
+        if (active?.id) vaultId = active.id
       } catch (e) {}
 
       let providerId =
@@ -105,7 +107,7 @@ export function registerSessionIPC() {
       logger.info(`[IPC] agent:create-session - using id=${newId}, assistantId=${safeAssistantId}`)
       await sessionManager.upsertSession({
         id: newId,
-        vaultName,
+        vaultId,
         providerId,
         modelId,
         assistantId: safeAssistantId || undefined,
@@ -186,8 +188,8 @@ export function registerSessionIPC() {
           ? String(assistantId).trim()
           : ''
     if (!normalized) return []
-    const activeVaultName = vaultService.getActiveVault()?.name || 'Personal'
-    return sessionManager.findAllSessions(-1, 0, normalized, undefined, activeVaultName)
+    const activeVaultId = resolveActiveVaultId()
+    return sessionManager.findAllSessions(-1, 0, normalized, undefined, activeVaultId)
   })
 
   // 对话分支：从指定消息位置复制一个新会话
@@ -224,12 +226,10 @@ export function registerSessionIPC() {
       const messagesToCopy = allMessages.slice(0, targetIndex + 1)
 
       // 5. 创建新会话
-      let vaultName = 'default'
+      let vaultId = resolveActiveVaultId()
       try {
-        const activeVaultPath = await pathService.getActiveVaultPath()
-        if (activeVaultPath) {
-          vaultName = activeVaultPath
-        }
+        const active = vaultService.getActiveVault()
+        if (active?.id) vaultId = active.id
       } catch (e) {}
 
       const newSessionId = `branch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
@@ -241,7 +241,7 @@ export function registerSessionIPC() {
 
       await sessionManager.upsertSession({
         id: newSessionId,
-        vaultName,
+        vaultId,
         providerId: originalSession.providerId,
         modelId: originalSession.modelId,
         assistantId: originalSession.assistantId || undefined,

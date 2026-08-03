@@ -11,7 +11,7 @@ import {
   countDiaryEmbedJobs,
   failDiaryEmbedJob
 } from './diary-embed-jobs.service'
-
+import { vaultService } from '../ipc/vault.ipc'
 let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null
 
 /**
@@ -65,7 +65,11 @@ export async function consumeDiaryEmbedJobs(options?: {
 
     for (const job of jobs) {
       try {
-        const diaryManager = await getDiaryManagerForVault(job.vaultName)
+        const vaultName =
+          vaultService.getAllVaults().find((v) => v.id === job.vaultId)?.name ??
+          vaultService.getActiveVault()?.name ??
+          'Personal'
+        const diaryManager = await getDiaryManagerForVault(vaultName)
         const diaryMap = await diaryManager.findByIdsForEmbedding([job.diaryId])
         const diary = diaryMap.get(job.diaryId)
         if (!diary?.id || !diary.content?.trim()) {
@@ -91,7 +95,7 @@ export async function consumeDiaryEmbedJobs(options?: {
               : diary.updatedAt != null
                 ? new Date(diary.updatedAt)
                 : new Date(),
-          vaultName: job.vaultName
+          vaultName: job.vaultId
         })
 
         if (ok) {
