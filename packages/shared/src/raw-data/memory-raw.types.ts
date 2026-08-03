@@ -14,6 +14,48 @@ export interface MemoryRawRecord {
 
 export const MEMORY_SOURCE_TYPE = 'memory' as const
 
+/** Redundant fields stored in memory_embeddings.metadata_json for management-page display. */
+export interface MemoryEmbeddingMeta {
+  tags: string[]
+  sourceSessionId: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export function buildMemoryMetadataJson(
+  record: Pick<MemoryRawRecord, 'tags' | 'sourceSessionId' | 'createdAt' | 'updatedAt'>
+): string {
+  const meta: MemoryEmbeddingMeta = {
+    tags: Array.isArray(record.tags) ? record.tags : [],
+    sourceSessionId: record.sourceSessionId ?? null,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt
+  }
+  return JSON.stringify(meta)
+}
+
+export function parseMemoryMetadataJson(
+  raw: string | null | undefined
+): Partial<MemoryEmbeddingMeta> {
+  if (!raw || raw === '{}') return {}
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const tags = Array.isArray(parsed.tags)
+      ? parsed.tags.filter((t): t is string => typeof t === 'string')
+      : undefined
+    return {
+      ...(tags ? { tags } : {}),
+      ...(parsed.sourceSessionId === null || typeof parsed.sourceSessionId === 'string'
+        ? { sourceSessionId: parsed.sourceSessionId as string | null }
+        : {}),
+      ...(typeof parsed.createdAt === 'number' ? { createdAt: parsed.createdAt } : {}),
+      ...(typeof parsed.updatedAt === 'number' ? { updatedAt: parsed.updatedAt } : {})
+    }
+  } catch {
+    return {}
+  }
+}
+
 /** Minimal facade used by AI tools (implemented by core RawDataSourceManager). */
 export interface ToolRawDataSourceManager {
   writeRecord(
