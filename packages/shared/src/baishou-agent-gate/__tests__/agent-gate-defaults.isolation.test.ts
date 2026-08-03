@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AgentGateEffect, AgentGateTrustMode } from '../agent-gate.enums'
+import { AgentGateEffect } from '../agent-gate.enums'
 import {
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
@@ -9,10 +9,11 @@ import {
   applyCapabilityStateToConfig,
   capabilityStateFromConfig
 } from '../agent-gate-capability.util'
+import { hasCatchAllAllowRule } from '../agent-gate-migrate.util'
 
 describe('workspace vs companion gate defaults', () => {
   it('uses safe Manual defaults for workspace and empty allowlist', () => {
-    expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.trustMode).toBe(AgentGateTrustMode.Manual)
+    expect(hasCatchAllAllowRule(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)).toBe(false)
     expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.allowlist).toEqual([])
     expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.exclusionList).toContain('workspace_delete')
     expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.exclusionList).not.toContain('diary_delete')
@@ -21,7 +22,7 @@ describe('workspace vs companion gate defaults', () => {
   it('does not copy companion FullTrust into workspace clone defaults', () => {
     const companion = cloneBaishouAgentGateConfig({
       ...DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
-      trustMode: AgentGateTrustMode.FullTrust,
+      permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }],
       allowlist: [
         {
           id: 'bagal_1',
@@ -31,8 +32,8 @@ describe('workspace vs companion gate defaults', () => {
       ]
     })
     const workspace = cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
-    expect(companion.trustMode).toBe(AgentGateTrustMode.FullTrust)
-    expect(workspace.trustMode).toBe(AgentGateTrustMode.Manual)
+    expect(hasCatchAllAllowRule(companion)).toBe(true)
+    expect(hasCatchAllAllowRule(workspace)).toBe(false)
     expect(workspace.allowlist).toEqual([])
   })
 
