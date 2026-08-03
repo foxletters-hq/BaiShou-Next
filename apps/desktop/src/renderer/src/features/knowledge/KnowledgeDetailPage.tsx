@@ -34,21 +34,25 @@ type Citation = {
 type ImportMode = 'file' | 'text' | 'url' | null
 type AskMode = 'ask' | 'chat'
 
-function statusLabel(
-  t: (key: string, fallback: string) => string,
-  status: string
-): string {
-  const map: Record<string, [string, string]> = {
-    pending: ['knowledge.status_pending', '等待中'],
-    extracting: ['knowledge.status_extracting', '提取中'],
-    needs_ocr: ['knowledge.status_needs_ocr', '需 OCR'],
-    partial: ['knowledge.status_partial', '部分文本'],
-    embedding: ['knowledge.status_embedding', '索引中'],
-    ready: ['knowledge.status_ready', '就绪'],
-    failed: ['knowledge.status_failed', '失败']
+function statusLabel(t: (key: string, fallback: string) => string, status: string): string {
+  switch (status) {
+    case 'pending':
+      return t('knowledge.status_pending', '等待中')
+    case 'extracting':
+      return t('knowledge.status_extracting', '提取中')
+    case 'needs_ocr':
+      return t('knowledge.status_needs_ocr', '需 OCR')
+    case 'partial':
+      return t('knowledge.status_partial', '部分文本')
+    case 'embedding':
+      return t('knowledge.status_embedding', '索引中')
+    case 'ready':
+      return t('knowledge.status_ready', '就绪')
+    case 'failed':
+      return t('knowledge.status_failed', '失败')
+    default:
+      return status
   }
-  const entry = map[status]
-  return entry ? t(entry[0], entry[1]) : status
 }
 
 export const KnowledgeDetailPage: React.FC = () => {
@@ -71,9 +75,11 @@ export const KnowledgeDetailPage: React.FC = () => {
   const [pasteTitle, setPasteTitle] = useState('')
   const [pasteText, setPasteText] = useState('')
   const [urlValue, setUrlValue] = useState('')
-  const [preview, setPreview] = useState<{ title: string; text: string; truncated: boolean } | null>(
-    null
-  )
+  const [preview, setPreview] = useState<{
+    title: string
+    text: string
+    truncated: boolean
+  } | null>(null)
   const [askMode, setAskMode] = useState<AskMode>('ask')
   const [multiQuery, setMultiQuery] = useState(false)
   const [selectedChatIds, setSelectedChatIds] = useState<string[]>([])
@@ -389,9 +395,7 @@ export const KnowledgeDetailPage: React.FC = () => {
   }
 
   const toggleChatSource = (id: string) => {
-    setSelectedChatIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
+    setSelectedChatIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   const renderSourceItem = (source: SourceRow) => {
@@ -432,9 +436,7 @@ export const KnowledgeDetailPage: React.FC = () => {
         {source.errorMessage ? (
           <div className={styles.sourceEvidence}>{source.errorMessage}</div>
         ) : null}
-        {source.originUrl ? (
-          <div className={styles.sourceEvidence}>{source.originUrl}</div>
-        ) : null}
+        {source.originUrl ? <div className={styles.sourceEvidence}>{source.originUrl}</div> : null}
         <div className={styles.sourceActions}>
           <button type="button" className={styles.btnGhost} onClick={() => void onPreview(source)}>
             {t('knowledge.preview_extracted', '预览正文')}
@@ -488,13 +490,28 @@ export const KnowledgeDetailPage: React.FC = () => {
             ) : null}
           </div>
           <div className={styles.actions}>
-            <button type="button" className={styles.btn} onClick={() => setImportMode('file')} disabled={busy}>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => setImportMode('file')}
+              disabled={busy}
+            >
               {t('knowledge.import_file', '导入文件')}
             </button>
-            <button type="button" className={styles.btn} onClick={() => setImportMode('text')} disabled={busy}>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => setImportMode('text')}
+              disabled={busy}
+            >
               {t('knowledge.import_text', '粘贴文本')}
             </button>
-            <button type="button" className={styles.btn} onClick={() => setImportMode('url')} disabled={busy}>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => setImportMode('url')}
+              disabled={busy}
+            >
               {t('knowledge.import_url', '导入 URL')}
             </button>
             <button
@@ -505,7 +522,12 @@ export const KnowledgeDetailPage: React.FC = () => {
             >
               {t('knowledge.settings', '知识库设置')}
             </button>
-            <button type="button" className={styles.btnGhost} onClick={() => void onRebuild()} disabled={busy}>
+            <button
+              type="button"
+              className={styles.btnGhost}
+              onClick={() => void onRebuild()}
+              disabled={busy}
+            >
               {t('knowledge.rebuild_index', '重建索引')}
             </button>
           </div>
@@ -569,10 +591,7 @@ export const KnowledgeDetailPage: React.FC = () => {
                 className={styles.askInput}
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder={t(
-                  'knowledge.ask_placeholder',
-                  '例如：这几篇里对齐的主要分歧是什么？'
-                )}
+                placeholder={t('knowledge.ask_placeholder', '例如：这几篇里对齐的主要分歧是什么？')}
               />
               <div className={styles.actions}>
                 <button
@@ -639,18 +658,25 @@ export const KnowledgeDetailPage: React.FC = () => {
           role="presentation"
           onClick={() => !busy && setShowSettings(false)}
         >
-          <div className={styles.dialog} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className={styles.dialogTitle}>{t('knowledge.settings', '知识库设置')}</h2>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>{t('knowledge.default_engine', '默认提取引擎')}</span>
+              <span className={styles.fieldLabel}>
+                {t('knowledge.default_engine', '默认提取引擎')}
+              </span>
               <select
                 className={styles.fieldInput}
                 value={engine}
                 onChange={(e) => setEngine(e.target.value as 'simple' | 'ocr' | 'vision')}
               >
-                <option value="simple">simple（文本层）</option>
-                <option value="ocr">ocr（tesseract.js）</option>
-                <option value="vision">vision（多模态）</option>
+                <option value="simple">{t('knowledge.engine_simple', 'simple（文本层）')}</option>
+                <option value="ocr">{t('knowledge.engine_ocr', 'ocr（tesseract.js）')}</option>
+                <option value="vision">{t('knowledge.engine_vision', 'vision（多模态）')}</option>
               </select>
             </label>
             <label className={styles.field}>
@@ -686,8 +712,17 @@ export const KnowledgeDetailPage: React.FC = () => {
       ) : null}
 
       {importMode === 'file' ? (
-        <div className={styles.dialogBackdrop} role="presentation" onClick={() => !busy && setImportMode(null)}>
-          <div className={styles.dialog} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+        <div
+          className={styles.dialogBackdrop}
+          role="presentation"
+          onClick={() => !busy && setImportMode(null)}
+        >
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className={styles.dialogTitle}>{t('knowledge.import_file', '导入文件')}</h2>
             <p className={styles.subtitle}>
               {t('knowledge.import_file_hint', '支持 PDF（文本层）、Markdown、纯文本。')}
@@ -696,10 +731,20 @@ export const KnowledgeDetailPage: React.FC = () => {
               {t('knowledge.import_engine_hint', '将使用当前默认引擎')}：{engine}
             </p>
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.btnGhost} onClick={() => setImportMode(null)} disabled={busy}>
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => setImportMode(null)}
+                disabled={busy}
+              >
                 {t('common.cancel', '取消')}
               </button>
-              <button type="button" className={styles.btnPrimary} onClick={() => void onImportFile()} disabled={busy}>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => void onImportFile()}
+                disabled={busy}
+              >
                 {t('knowledge.choose_files', '选择文件')}
               </button>
             </div>
@@ -708,8 +753,17 @@ export const KnowledgeDetailPage: React.FC = () => {
       ) : null}
 
       {importMode === 'text' ? (
-        <div className={styles.dialogBackdrop} role="presentation" onClick={() => !busy && setImportMode(null)}>
-          <div className={styles.dialog} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+        <div
+          className={styles.dialogBackdrop}
+          role="presentation"
+          onClick={() => !busy && setImportMode(null)}
+        >
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className={styles.dialogTitle}>{t('knowledge.import_text', '粘贴文本')}</h2>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>{t('knowledge.source_title', '标题')}</span>
@@ -728,7 +782,12 @@ export const KnowledgeDetailPage: React.FC = () => {
               />
             </label>
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.btnGhost} onClick={() => setImportMode(null)} disabled={busy}>
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => setImportMode(null)}
+                disabled={busy}
+              >
                 {t('common.cancel', '取消')}
               </button>
               <button
@@ -745,8 +804,17 @@ export const KnowledgeDetailPage: React.FC = () => {
       ) : null}
 
       {importMode === 'url' ? (
-        <div className={styles.dialogBackdrop} role="presentation" onClick={() => !busy && setImportMode(null)}>
-          <div className={styles.dialog} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+        <div
+          className={styles.dialogBackdrop}
+          role="presentation"
+          onClick={() => !busy && setImportMode(null)}
+        >
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className={styles.dialogTitle}>{t('knowledge.import_url', '导入 URL')}</h2>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>URL</span>
@@ -759,7 +827,12 @@ export const KnowledgeDetailPage: React.FC = () => {
               />
             </label>
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.btnGhost} onClick={() => setImportMode(null)} disabled={busy}>
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => setImportMode(null)}
+                disabled={busy}
+              >
                 {t('common.cancel', '取消')}
               </button>
               <button
@@ -777,12 +850,19 @@ export const KnowledgeDetailPage: React.FC = () => {
 
       {preview ? (
         <div className={styles.dialogBackdrop} role="presentation" onClick={() => setPreview(null)}>
-          <div className={styles.dialog} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+          <div
+            className={styles.dialog}
+            role="dialog"
+            aria-modal
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className={styles.dialogTitle}>
               {t('knowledge.preview_title', '提取正文预览')} · {preview.title}
             </h2>
             {preview.truncated ? (
-              <p className={styles.subtitle}>{t('knowledge.preview_truncated', '内容已截断显示')}</p>
+              <p className={styles.subtitle}>
+                {t('knowledge.preview_truncated', '内容已截断显示')}
+              </p>
             ) : null}
             <div className={styles.previewBox}>{preview.text}</div>
             <div className={styles.dialogActions}>

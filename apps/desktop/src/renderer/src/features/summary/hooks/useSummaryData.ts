@@ -185,9 +185,7 @@ export function useSummaryData(selectedYear: number) {
         updatedAt?: string
       }
     ) => {
-      setSummaries((prev) =>
-        prev.map((s) => (String(s.id) === id ? { ...s, ...patch } : s))
-      )
+      setSummaries((prev) => prev.map((s) => (String(s.id) === id ? { ...s, ...patch } : s)))
     },
     []
   )
