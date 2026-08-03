@@ -69,8 +69,19 @@ export const agentWorkspaceApi = {
     assistantId?: string
     title?: string
   }): Promise<string> => ipcRenderer.invoke('agent-workspace:create-session', params),
-  getBinding: (sessionId: string): Promise<{ sessionId: string; folderRoot: string } | null> =>
-    ipcRenderer.invoke('agent-workspace:get-binding', sessionId),
+  getBinding: (sessionId: string): Promise<{
+    sessionId: string
+    folderRoot: string
+    notebookId?: string
+  } | null> => ipcRenderer.invoke('agent-workspace:get-binding', sessionId),
+  attachNotebook: (params: {
+    sessionId: string
+    notebookId: string | null
+  }): Promise<{
+    sessionId: string
+    folderRoot: string
+    notebookId?: string
+  } | null> => ipcRenderer.invoke('agent-workspace:attach-notebook', params),
   listSessions: (): Promise<AgentWorkspaceSessionListItem[]> =>
     ipcRenderer.invoke('agent-workspace:list-sessions'),
   deleteSession: (sessionId: string): Promise<{ success: boolean }> =>

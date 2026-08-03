@@ -11,6 +11,7 @@ import { AgentWorkspaceChatBar } from '../components/AgentWorkspaceChatBar'
 import { AgentWorkspaceMessageList } from '../components/AgentWorkspaceMessageList'
 import { WorkbenchAgentChangesSummary } from './WorkbenchAgentChangesSummary'
 import { WorkbenchSessionView } from './WorkbenchSessionView'
+import { WorkbenchNotebookMountBar } from './WorkbenchNotebookMountBar'
 import { workspaceEntryMatchesFolder } from '../utils/workspace-display.util'
 import styles from './WorkbenchAgentPanel.module.css'
 
@@ -167,6 +168,8 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
               <span className={styles.currentSessionName}>{currentSessionTitle}</span>
             </div>
           ) : null}
+
+          {!sessionsViewActive ? <WorkbenchNotebookMountBar sessionId={sessionId} /> : null}
 
           <AgentWorkspaceChatBar
             currentAssistant={chrome.currentAssistant}
