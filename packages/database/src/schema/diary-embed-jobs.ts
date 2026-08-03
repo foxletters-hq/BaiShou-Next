@@ -8,7 +8,7 @@ export const diaryEmbedJobsTable = sqliteTable(
   'diary_embed_jobs',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    vaultName: text('vault_name').notNull(),
+    vaultId: text('vault_id').notNull(),
     diaryId: integer('diary_id').notNull(),
     contentHash: text('content_hash').notNull(),
     /** pending | running | failed */
@@ -20,7 +20,7 @@ export const diaryEmbedJobsTable = sqliteTable(
     createdAt: integer('created_at').notNull()
   },
   (t) => ({
-    vaultDiaryUniq: uniqueIndex('diary_embed_jobs_vault_diary_unique').on(t.vaultName, t.diaryId),
+    vaultDiaryUniq: uniqueIndex('diary_embed_jobs_vault_id_diary_unique').on(t.vaultId, t.diaryId),
     statusRetryIdx: index('diary_embed_jobs_status_retry_idx').on(t.status, t.nextRetryAt)
   })
 )
