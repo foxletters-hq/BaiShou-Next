@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { ToolRegistry } from '../tools/tool-registry'
 import { CurrentTimeTool } from '../tools/current-time.tool'
 import { DiaryReadTool } from '../tools/diary-read.tool'
@@ -58,6 +59,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp'
     })
 
@@ -80,6 +82,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       userConfig: {
         disabledToolIds: ['web_search', 'url_read']
@@ -96,6 +99,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
     const registry = new ToolRegistry()
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       userConfig: {
         disabledToolIds: ['current_time', 'web_search']
@@ -111,6 +115,7 @@ describe('ToolRegistry — Full Tool Suite', () => {
 
     const vercelTools = registry.getEnabledToolsAsVercel({
       sessionId: 'test',
+      vaultId: deriveLegacyVaultId('/tmp'),
       vaultName: '/tmp',
       userConfig: {
         ragEnabled: false

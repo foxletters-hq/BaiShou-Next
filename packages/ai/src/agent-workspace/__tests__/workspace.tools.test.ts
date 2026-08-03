@@ -10,7 +10,7 @@ import {
   WorkspaceWriteTool
 } from '../workspace.tools'
 import { resolveAgentGateToolMetadata } from '../../baishou-agent-gate/agent-gate-tool-metadata'
-import { AgentGateRiskLevel } from '@baishou/shared'
+import { AgentGateRiskLevel, deriveLegacyVaultId } from '@baishou/shared'
 // @ts-ignore - Node built-in, available at runtime
 import { resolve, sep } from 'node:path'
 
@@ -76,6 +76,7 @@ function workspaceContext(
 ): ToolContext {
   return {
     sessionId: 'sess-workspace',
+    vaultId: deriveLegacyVaultId('Personal'),
     vaultName: 'Personal',
     workspace: {
       folderRoot: ROOT,
@@ -208,7 +209,11 @@ describe('workspace tools', () => {
   it('requires workspace configuration', async () => {
     const result = await new WorkspaceReadTool().execute(
       { path: 'README.md' },
-      { sessionId: 'sess', vaultName: 'Personal' }
+      {
+        sessionId: 'sess',
+        vaultId: deriveLegacyVaultId('Personal'),
+        vaultName: 'Personal'
+      }
     )
     expect(result).toContain('Workspace is not configured')
   })

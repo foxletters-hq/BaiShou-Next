@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { AgentGateKind, AgentGateRiskLevel, type AgentGateToolMetadata } from '@baishou/shared'
 import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate-tool.interceptor'
 import type { ToolContext } from '../../tools/agent.tool'
@@ -7,6 +8,7 @@ import type { IBaishouAgentGate } from '../baishou-agent-gate.service'
 describe('wrapVercelToolExecuteWithAgentGate prepare', () => {
   const baseContext: ToolContext = {
     sessionId: 'sess_1',
+    vaultId: deriveLegacyVaultId('Personal'),
     vaultName: 'Personal'
   }
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import {
   AgentGateKind,
   AgentGateProfileId,
@@ -18,6 +19,7 @@ const metadata: AgentGateToolMetadata = {
 
 const baseContext: ToolContext = {
   sessionId: 'sess_1',
+  vaultId: deriveLegacyVaultId('Personal'),
   vaultName: 'Personal'
 }
 

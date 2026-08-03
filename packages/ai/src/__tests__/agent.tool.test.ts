@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { AgentTool, ToolContext } from '../tools/agent.tool'
 import { z } from 'zod'
 
@@ -25,6 +26,7 @@ describe('AgentTool', () => {
     const weatherTool = new MockWeatherTool()
     const mockContext: ToolContext = {
       sessionId: 's1',
+      vaultId: deriveLegacyVaultId('main-vault'),
       vaultName: 'main-vault'
     }
 
