@@ -117,7 +117,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           />
         </View>
 
-        <View style={[styles.row, styles.col, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
+        <View
+          style={[styles.row, styles.col, styles.rowBorder, { borderTopColor: colors.borderMuted }]}
+        >
           <Text style={[styles.label, { color: colors.textSecondary }]}>
             {t('settings.mcp_endpoint', '连接地址')}
           </Text>
@@ -143,7 +145,14 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         </View>
 
         {config.mcpAuthToken ? (
-          <View style={[styles.row, styles.col, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
+          <View
+            style={[
+              styles.row,
+              styles.col,
+              styles.rowBorder,
+              { borderTopColor: colors.borderMuted }
+            ]}
+          >
             <Text style={[styles.label, { color: colors.textSecondary }]}>
               {t('settings.mcp_auth_token', '访问令牌')}
             </Text>

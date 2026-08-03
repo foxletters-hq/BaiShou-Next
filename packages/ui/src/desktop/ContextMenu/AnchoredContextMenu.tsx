@@ -1,10 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import './ContextMenu.css'
-import {
-  applyFixedContextMenuLayout,
-  type ContextMenuBounds
-} from './context-menu-placement.util'
+import { applyFixedContextMenuLayout, type ContextMenuBounds } from './context-menu-placement.util'
 import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 import type { ContextMenuItem } from './ContextMenu'
 

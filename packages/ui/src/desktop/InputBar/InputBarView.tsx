@@ -119,9 +119,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
 
     items.push({
       icon: searchMode ? <Check size={15} /> : <Globe size={15} />,
-      label: searchMode
-        ? t('settings.web_search_mode_tool')
-        : t('settings.web_search_mode_off'),
+      label: searchMode ? t('settings.web_search_mode_tool') : t('settings.web_search_mode_off'),
       onClick: toggleSearchMode,
       keepOpen: true
     })

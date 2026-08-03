@@ -128,9 +128,13 @@ export const RagMemoryConsistencySection: React.FC<RagMemoryConsistencySectionPr
                     try {
                       const result = await onRepairConsistency({ cleanOrphans: true })
                       setMessage(
-                        t('settings.rag_consistency_orphans_cleaned', '已清理 {{count}} 条孤儿索引', {
-                          count: result.orphansCleaned
-                        })
+                        t(
+                          'settings.rag_consistency_orphans_cleaned',
+                          '已清理 {{count}} 条孤儿索引',
+                          {
+                            count: result.orphansCleaned
+                          }
+                        )
                       )
                       await runCheck()
                     } finally {
