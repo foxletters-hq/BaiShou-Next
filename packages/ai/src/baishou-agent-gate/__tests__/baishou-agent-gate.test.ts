@@ -578,12 +578,10 @@ describe('BaishouAgentGateService', () => {
 
   it('deny 时不挂起直接失败', async () => {
     const { gate, policy } = createBaishouAgentGate()
-    const evaluateDetailed = vi
-      .spyOn(policy, 'evaluateDetailed')
-      .mockReturnValue({
-        effect: AgentGateEffect.Deny,
-        decisionSource: { layer: 'default', action: 'diary_edit', effect: AgentGateEffect.Deny }
-      })
+    const evaluateDetailed = vi.spyOn(policy, 'evaluateDetailed').mockReturnValue({
+      effect: AgentGateEffect.Deny,
+      decisionSource: { layer: 'default', action: 'diary_edit', effect: AgentGateEffect.Deny }
+    })
 
     await expect(gate.assert(baseAssertInput)).rejects.toBeInstanceOf(AgentGateDeniedError)
     expect(gate.listPending()).toHaveLength(0)

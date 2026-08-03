@@ -38,18 +38,22 @@ describe('ToolRegistry workspace session', () => {
     const names = enabled.map((tool) => tool.name)
     expect(names).not.toContain('graph_upsert')
     expect(names).not.toContain('recall_relations')
-    expect(registry.isToolEnabled('graph_upsert', {
-      sessionId: 'ws-session',
-      vaultId: deriveLegacyVaultId('Personal'),
-      vaultName: 'Personal',
-      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
-    })).toBe(false)
-    expect(registry.isToolEnabled('recall_relations', {
-      sessionId: 'ws-session',
-      vaultId: deriveLegacyVaultId('Personal'),
-      vaultName: 'Personal',
-      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
-    })).toBe(false)
+    expect(
+      registry.isToolEnabled('graph_upsert', {
+        sessionId: 'ws-session',
+        vaultId: deriveLegacyVaultId('Personal'),
+        vaultName: 'Personal',
+        workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
+      })
+    ).toBe(false)
+    expect(
+      registry.isToolEnabled('recall_relations', {
+        sessionId: 'ws-session',
+        vaultId: deriveLegacyVaultId('Personal'),
+        vaultName: 'Personal',
+        workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
+      })
+    ).toBe(false)
   })
 
   it('exposes knowledge_search in workspace sessions (K1.3 whitelist)', () => {
@@ -61,12 +65,14 @@ describe('ToolRegistry workspace session', () => {
     })
     const names = enabled.map((tool) => tool.name)
     expect(names).toContain('knowledge_search')
-    expect(registry.isToolEnabled('knowledge_search', {
-      sessionId: 'ws-session',
-      vaultId: deriveLegacyVaultId('Personal'),
-      vaultName: 'Personal',
-      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
-    })).toBe(true)
+    expect(
+      registry.isToolEnabled('knowledge_search', {
+        sessionId: 'ws-session',
+        vaultId: deriveLegacyVaultId('Personal'),
+        vaultName: 'Personal',
+        workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
+      })
+    ).toBe(true)
   })
 
   it('keeps knowledge_search available for companion sessions', () => {

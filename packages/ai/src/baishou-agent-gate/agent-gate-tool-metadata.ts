@@ -3,7 +3,10 @@ import {
   type AgentGateResourceRef,
   type AgentGateToolMetadata
 } from '@baishou/shared'
-import { classifyWorkspacePathForGate, collectExternalDirectoryGlobs } from './agent-gate-workspace-path.util'
+import {
+  classifyWorkspacePathForGate,
+  collectExternalDirectoryGlobs
+} from './agent-gate-workspace-path.util'
 import { scanWorkspaceRunCommand } from '../agent-workspace/workspace-command-scan'
 import {
   prepareContentGatePreview,
@@ -347,8 +350,12 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         detailLines: [
           typeof summary === 'string' ? `摘要：${summary.slice(0, 200)}` : null,
           `实体 ${entityCount} · 关系 ${edgeCount}`,
-          entityNames.length ? `实体：${entityNames.join('、')}${entityCount > entityNames.length ? '…' : ''}` : null,
-          edgeTypes.length ? `关系：${edgeTypes.join('、')}${edgeCount > edgeTypes.length ? '…' : ''}` : null
+          entityNames.length
+            ? `实体：${entityNames.join('、')}${entityCount > entityNames.length ? '…' : ''}`
+            : null,
+          edgeTypes.length
+            ? `关系：${edgeTypes.join('、')}${edgeCount > edgeTypes.length ? '…' : ''}`
+            : null
         ].filter((line): line is string => Boolean(line))
       })
     }

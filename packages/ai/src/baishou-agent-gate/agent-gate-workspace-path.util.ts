@@ -61,7 +61,9 @@ export function externalPathToDirectoryGlob(pathValue: string): string {
     if (normalized.endsWith('/**') || normalized.endsWith('/*')) {
       return normalized.replace(/\/\*$/, '/**')
     }
-    return normalized.includes('/') ? `${normalized.replace(/\/[^/]*$/, '')}/**` : `${normalized}/**`
+    return normalized.includes('/')
+      ? `${normalized.replace(/\/[^/]*$/, '')}/**`
+      : `${normalized}/**`
   }
 
   const lastSeg = normalized.split('/').pop() ?? ''
@@ -90,4 +92,3 @@ export function collectExternalDirectoryGlobs(
   }
   return globs
 }
-
