@@ -1,10 +1,11 @@
 # 仓库身份 V2：稳定 ID 与重命名
 
-> 版本：v0.1（设计稿，未开工）
+> 版本：v0.2
 > 日期：2026-08-04
 > 一句话：工作空间（Vault）**没有 ID**，身份就是名字字符串——名字同时充当磁盘目录名、数据库外键、向量分组前缀和同步路径首段。本方案引入稳定 ID，把内部引用全部迁过去，从而让「重命名」成为可能。
 > 前置：[仓库隔离V1-数据面隔离方案.md](./仓库隔离V1-数据面隔离方案.md)（V1.0–V1.3 已落地）
 > 时序：**插在 V1.4 之前**——V1.4 要给 `summaries` / `agent_assistants` 加仓库列，先定下 ID 就能让它们直接用 `vault_id`，省掉一次二次迁移。
+> **实现进度：V2.0–V2.3 已落地**（历史坑 / 稳定 ID / 六表迁 `vault_id` / 传递层），未发布；**V2.4–V2.5（重命名）未开工**，依赖 S1.0
 
 ---
 
@@ -354,13 +355,13 @@ export function sanitizeVaultDirectoryName(vaultName: string): string {
 
 | 阶段 | 内容 | 验收 | 独立提交 |
 | --- | --- | --- | --- |
-| **V2.0** | 修 §六 三个历史坑 | 单测覆盖 off-by-one、大小写、sanitize 撞名 | 是 |
-| **V2.1** | `VaultInfo` / 注册表 / `vault.json` 落地 ID；三级来源与回写；`vault.json` 纳入同步 | 升级后每个仓库都有 ID；删掉注册表 id 字段后能从 `vault.json` 恢复 | 是 |
-| **V2.2** | 六张表 `vault_name` → `vault_id` + 回填；`source_id` 前缀换 ID；停写 `group_id` 仓库名 | 回填后无空值；A/B 隔离测试仍通过 | 是（**风险最高**） |
-| **V2.3** | 传递层迁 ID（IPC、`ToolContext`、path service、前端 scope key）；展示层保留名字 | 全链路 typecheck 通过；prompt 里仍是人类可读名 | 是 |
+| **V2.0** | 修 §六 三个历史坑 | 单测覆盖 off-by-one、大小写、sanitize 撞名 | **已落地** |
+| **V2.1** | `VaultInfo` / 注册表 / `vault.json` 落地 ID；三级来源与回写；`vault.json` 纳入同步 | 升级后每个仓库都有 ID；删掉注册表 id 字段后能从 `vault.json` 恢复 | **已落地** |
+| **V2.2** | 六张表 `vault_name` → `vault_id` + 回填；`source_id` 前缀换 ID；停写 `group_id` 仓库名 | 回填后无空值；A/B 隔离测试仍通过 | **已落地** |
+| **V2.3** | 传递层迁 ID（IPC、`ToolContext`、path service、前端 scope key）；展示层保留名字 | 全链路 typecheck 通过；prompt 里仍是人类可读名 | **已落地** |
 | —— | **回到 V1.4 / V1.5 / V1.6 / V1.7**，新增列直接用 `vault_id` | 见 V1 方案 | —— |
-| **V2.4** | 重命名功能（朴素同步路径）+ 改名前字节量提示 | 改名后数据不丢；提示显示正确的 MB 数 | 是 |
-| **V2.5** | 同步 rename pass（服务端移动）+ 移动端补 `renameFile` | 改名后同步计划为空；失败能回落 | 是 |
+| **V2.4** | 重命名功能（朴素同步路径）+ 改名前字节量提示 | 改名后数据不丢；提示显示正确的 MB 数 | 未开工 |
+| **V2.5** | 同步 rename pass（服务端移动）+ 移动端补 `renameFile` | 改名后同步计划为空；失败能回落 | 未开工 |
 
 **V2.4 依赖 S1.0（同步计划字节统计）先落地。**
 
