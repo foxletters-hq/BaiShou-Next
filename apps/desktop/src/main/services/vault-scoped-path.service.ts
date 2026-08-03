@@ -16,6 +16,14 @@ export class VaultScopedStoragePathService implements IStoragePathService {
     return this.base.getGlobalRegistryDirectory()
   }
 
+  getLocalActiveVaultId(): Promise<string | null> {
+    return this.base.getLocalActiveVaultId()
+  }
+
+  setLocalActiveVaultId(vaultId: string): Promise<void> {
+    return this.base.setLocalActiveVaultId(vaultId)
+  }
+
   getActiveVaultPath(): Promise<string | null> {
     return this.base.getVaultDirectory(this.vaultName)
   }

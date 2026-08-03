@@ -8,7 +8,8 @@ import {
   readVaultExternalPaths,
   resolveJournalsBaseDirectory,
   resolveSummariesBaseDirectory,
-  patchVaultExternalPaths
+  patchVaultExternalPaths,
+  pickActiveVaultNameFromRegistryEntries
 } from '@baishou/core/shared'
 import { logger } from '@baishou/shared'
 import { fileSystem } from './node-file-system'
@@ -32,24 +33,55 @@ export class DesktopStoragePathService implements IStoragePathService {
     return path.join(app.getPath('userData'), 'baishou_settings.json')
   }
 
-  public async getCustomRootPath(): Promise<string | null> {
+  private async readSettingsJson(): Promise<Record<string, unknown>> {
     try {
       const data = await fs.readFile(this.getSettingsFile(), 'utf-8')
-      const settings = JSON.parse(data)
-      return settings.custom_storage_root || null
+      const parsed = JSON.parse(data)
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {}
+    } catch {
+      return {}
+    }
+  }
+
+  private async writeSettingsJson(settings: Record<string, unknown>): Promise<void> {
+    await fs.writeFile(this.getSettingsFile(), JSON.stringify(settings, null, 2), 'utf-8')
+  }
+
+  public async getCustomRootPath(): Promise<string | null> {
+    try {
+      const settings = await this.readSettingsJson()
+      const root = settings.custom_storage_root
+      return typeof root === 'string' ? root : null
     } catch {
       return null
     }
   }
 
   public async updateRootDirectory(newPath: string): Promise<void> {
-    let settings: any = {}
-    try {
-      const data = await fs.readFile(this.getSettingsFile(), 'utf-8')
-      settings = JSON.parse(data)
-    } catch {}
+    const settings = await this.readSettingsJson()
     settings.custom_storage_root = newPath
-    await fs.writeFile(this.getSettingsFile(), JSON.stringify(settings, null, 2), 'utf-8')
+    await this.writeSettingsJson(settings)
+  }
+
+  /** V2-D6：本机活跃仓 id（baishou_settings.json，不进同步） */
+  public async getLocalActiveVaultId(): Promise<string | null> {
+    try {
+      const settings = await this.readSettingsJson()
+      const id = settings.active_vault_id
+      return typeof id === 'string' && id.trim() ? id.trim() : null
+    } catch {
+      return null
+    }
+  }
+
+  public async setLocalActiveVaultId(vaultId: string): Promise<void> {
+    const trimmed = vaultId.trim()
+    if (!trimmed) return
+    const settings = await this.readSettingsJson()
+    settings.active_vault_id = trimmed
+    await this.writeSettingsJson(settings)
   }
 
   public async getRootDirectory(): Promise<string> {
@@ -119,12 +151,9 @@ export class DesktopStoragePathService implements IStoragePathService {
       const registryFile = path.join(rootDir, 'vault_registry.json')
       const data = await fs.readFile(registryFile, 'utf-8')
       const vaults = JSON.parse(data)
-      if (vaults.length === 0) return 'Personal'
-      const active = vaults.sort(
-        (a: any, b: any) =>
-          new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime()
-      )[0]
-      return active?.name || 'Personal'
+      if (!Array.isArray(vaults) || vaults.length === 0) return 'Personal'
+      const preferredId = await this.getLocalActiveVaultId()
+      return pickActiveVaultNameFromRegistryEntries(vaults, preferredId) || 'Personal'
     } catch {
       return 'Personal'
     }
