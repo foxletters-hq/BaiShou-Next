@@ -18,7 +18,7 @@ import {
   resolveStreamDialogueSelection
 } from './agent-helpers'
 import { settingsManager } from './settings.ipc'
-import { vaultService } from './vault.ipc'
+import { vaultService, resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
 import { searchService } from '../services/search.service'
 import {
   cancelAllAgentGateSessions,
@@ -127,9 +127,9 @@ export class AgentChatService {
     const graphReader = connectionManager.isConnected()
       ? new GraphReaderAdapter(async (opts) => {
           const rag = new GraphRagService(new GraphRepository(connectionManager.getDb()))
-          const vaultName = vaultService.getActiveVault()?.name || 'Personal'
+          const vaultId = resolveActiveVaultId()
           const result = await rag.recallRelations({
-            vaultName,
+            vaultId,
             entity: opts.entity,
             mode: opts.mode,
             embedQuery
@@ -198,7 +198,8 @@ export class AgentChatService {
       diarySearcher: createDiarySearcher(),
       webSearchResultFetcher: createWebSearchResultFetcher(),
       fetchSearchPage: createFetchSearchPage(),
-      flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId)
+      flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId),
+      resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId)
     })
   }
 

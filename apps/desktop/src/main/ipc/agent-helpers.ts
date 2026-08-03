@@ -45,7 +45,8 @@ import {
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   type BaishouAgentGateConfig,
   requireResolvedDialogueModel,
-  type ResolvedDialogueModel
+  type ResolvedDialogueModel,
+  deriveLegacyVaultId
 } from '@baishou/shared'
 
 import { searchService } from '../services/search.service'
@@ -456,7 +457,7 @@ export async function buildStreamConfig(
 /** MCP 外部工具调用上下文：绑定当前活跃工作空间，与应用内 Agent 对齐 */
 const MCP_CONTEXT_CACHE_TTL_MS = 5000
 let mcpToolContextCache: {
-  vaultName: string
+  vaultId: string
   context: ToolContext
   expiresAt: number
 } | null = null
@@ -468,11 +469,12 @@ export function invalidateMcpToolContextCache(): void {
 export async function buildMcpToolContext(): Promise<ToolContext> {
   const activeVault = vaultService.getActiveVault()
   const vaultName = activeVault?.name || 'Personal'
+  const vaultId = activeVault?.id || deriveLegacyVaultId(vaultName)
   const now = Date.now()
 
   if (
     mcpToolContextCache &&
-    mcpToolContextCache.vaultName === vaultName &&
+    mcpToolContextCache.vaultId === vaultId &&
     mcpToolContextCache.expiresAt > now
   ) {
     return mcpToolContextCache.context
@@ -523,6 +525,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
 
   const context = syncMcpToolUserConfig({
     sessionId: MCP_EXTERNAL_SESSION_ID,
+    vaultId: activeVault?.id || deriveLegacyVaultId(vaultName),
     vaultName,
     userConfig: scopedUserConfig,
     diarySearcher: createDiarySearcher(),
@@ -544,7 +547,7 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
   }
 
   mcpToolContextCache = {
-    vaultName,
+    vaultId,
     context,
     expiresAt: now + MCP_CONTEXT_CACHE_TTL_MS
   }

@@ -34,6 +34,12 @@ class FixedVaultServiceStub implements IVaultService {
     }
   }
 
+  resolveActiveVault(): Pick<VaultInfo, 'id' | 'name'> | null {
+    const active = this.getActiveVault()
+    if (!active) return null
+    return { id: active.id, name: active.name }
+  }
+
   getAllVaults(): VaultInfo[] {
     return vaultService.getAllVaults()
   }

@@ -83,6 +83,7 @@ export function registerGraphIPC(): void {
     const vaultName = requireVaultName()
     const service = await buildExtractionService()
     return service.extractDiaries({
+      vaultId: requireVaultId(),
       vaultName,
       filePaths: opts?.filePaths
     })
