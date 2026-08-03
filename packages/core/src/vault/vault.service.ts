@@ -9,7 +9,12 @@ import {
   VaultNameExistsError,
   VaultNotFoundError
 } from './vault.errors'
-import { sanitizeVaultDirectoryName, validateVaultName } from './vault-name.util'
+import {
+  findConflictingVaultName,
+  normalizeVaultNameForCompare,
+  sanitizeVaultDirectoryName,
+  validateVaultName
+} from './vault-name.util'
 import {
   discoverVaultNames,
   readLegacyVaultRegistry,
@@ -243,7 +248,31 @@ export class VaultService implements IVaultService {
   public vaultExists(vaultName: string): boolean {
     const result = validateVaultName(vaultName)
     if (!result.ok) return false
-    return this._vaults.some((v) => v.name === result.name)
+    return (
+      findConflictingVaultName(
+        result.name,
+        this._vaults.map((v) => v.name)
+      ) !== null
+    )
+  }
+
+  /** 注册表内是否已有大小写或目录名冲突（存量检测用） */
+  public findRegistryNameConflicts(): Array<{
+    left: string
+    right: string
+    kind: 'case' | 'directory'
+  }> {
+    const conflicts: Array<{ left: string; right: string; kind: 'case' | 'directory' }> = []
+    const names = this._vaults.map((v) => v.name)
+    for (let i = 0; i < names.length; i++) {
+      const left = names[i]
+      if (!left) continue
+      const hit = findConflictingVaultName(left, names.slice(i + 1))
+      if (hit && hit.kind !== 'exact') {
+        conflicts.push({ left, right: hit.existing, kind: hit.kind })
+      }
+    }
+    return conflicts
   }
 
   public async syncRegistryWithDisk(): Promise<string[]> {
@@ -258,10 +287,13 @@ export class VaultService implements IVaultService {
   }
 
   private vaultMatchesDiskFolder(vault: VaultInfo, diskFolderName: string): boolean {
-    if (vault.name === diskFolderName) return true
-    if (sanitizeVaultDirectoryName(vault.name) === diskFolderName) return true
+    const diskNorm = normalizeVaultNameForCompare(diskFolderName)
+    if (normalizeVaultNameForCompare(vault.name) === diskNorm) return true
+    if (normalizeVaultNameForCompare(sanitizeVaultDirectoryName(vault.name)) === diskNorm) {
+      return true
+    }
     const pathBase = normalizeRegistryPath(vault.path).split('/').pop()
-    return pathBase === diskFolderName
+    return pathBase !== undefined && normalizeVaultNameForCompare(pathBase) === diskNorm
   }
 
   public async ensureVaultsRegistered(vaultNames: Iterable<string>): Promise<string[]> {
@@ -273,7 +305,15 @@ export class VaultService implements IVaultService {
       const result = validateVaultName(rawName)
       if (!result.ok) continue
       const name = result.name
-      if (this._vaults.some((v) => v.name === name)) continue
+      // 大小写 / 消毒目录撞名一律视为已覆盖，避免二次登记共用同一磁盘目录
+      if (
+        findConflictingVaultName(
+          name,
+          this._vaults.map((v) => v.name)
+        )
+      ) {
+        continue
+      }
 
       await this.addNewVault(name, { touchAccess: false })
       added.push(name)
@@ -325,12 +365,23 @@ export class VaultService implements IVaultService {
 
   public async createVault(vaultName: string): Promise<void> {
     const name = this.resolveVaultNameOrThrow(vaultName)
-    if (this._vaults.some((v) => v.name === name)) {
-      throw new VaultNameExistsError(name)
-    }
+    this.assertVaultNameAvailable(name)
     await this.addNewVault(name)
     const rootDir = await this.pathService.getRootDirectory()
     await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
+  }
+
+  private assertVaultNameAvailable(name: string): void {
+    const conflict = findConflictingVaultName(
+      name,
+      this._vaults.map((v) => v.name)
+    )
+    if (conflict) {
+      throw new VaultNameExistsError(name, {
+        conflictingName: conflict.existing,
+        conflictKind: conflict.kind
+      })
+    }
   }
 
   public async switchVault(vaultName: string): Promise<void> {
@@ -339,7 +390,13 @@ export class VaultService implements IVaultService {
       throw new VaultInvalidNameError(vaultName, result.reason)
     }
     const name = result.name
-    const existingIndex = this._vaults.findIndex((v) => v.name === name)
+    const conflict = findConflictingVaultName(
+      name,
+      this._vaults.map((v) => v.name)
+    )
+    const existingIndex = conflict
+      ? this._vaults.findIndex((v) => v.name === conflict.existing)
+      : -1
     const rootDir = await this.pathService.getRootDirectory()
     const registryFile = path.join(rootDir, 'vault_registry.json')
 

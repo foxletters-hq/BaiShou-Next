@@ -177,4 +177,68 @@ describe('VaultService Integration', () => {
     expect(service.vaultExists('C__Users_Desktop_OldVault')).toBe(false)
     expect(service.vaultExists('Personal')).toBe(true)
   })
+
+  it('createVault rejects case-insensitive duplicate names', async () => {
+    await service.initRegistry()
+    await service.createVault('Work')
+    await expect(service.createVault('work')).rejects.toMatchObject({
+      name: 'VaultNameExistsError',
+      conflictKind: 'case',
+      conflictingName: 'Work'
+    })
+    expect(service.getAllVaults().filter((v) => /work/i.test(v.name))).toHaveLength(1)
+  })
+
+  it('createVault rejects names that collide after directory sanitize', async () => {
+    await service.initRegistry()
+    // 直接注入历史非法名（当前 validate 已禁止新建此类名字）
+    ;(service as any)._vaults.push({
+      name: 'a:b',
+      path: path.join(tempDir, 'a_b'),
+      createdAt: new Date(),
+      lastAccessedAt: new Date(0)
+    })
+    await expect(service.createVault('a_b')).rejects.toMatchObject({
+      name: 'VaultNameExistsError',
+      conflictKind: 'directory',
+      conflictingName: 'a:b'
+    })
+  })
+
+  it('switchVault with different casing activates existing vault instead of creating', async () => {
+    await service.initRegistry()
+    await service.createVault('Work')
+    await service.switchVault('work')
+    expect(service.getActiveVault()?.name).toBe('Work')
+    expect(service.getAllVaults().filter((v) => /work/i.test(v.name))).toHaveLength(1)
+  })
+
+  it('ensureVaultsRegistered skips case-colliding remote names', async () => {
+    await service.initRegistry()
+    await service.createVault('Work')
+    const added = await service.ensureVaultsRegistered(['work'])
+    expect(added).toEqual([])
+    expect(service.vaultExists('work')).toBe(true)
+    expect(service.getAllVaults().filter((v) => /work/i.test(v.name))).toHaveLength(1)
+  })
+
+  it('findRegistryNameConflicts reports existing case collisions', async () => {
+    await service.initRegistry()
+    ;(service as any)._vaults.push(
+      {
+        name: 'Work',
+        path: path.join(tempDir, 'Work'),
+        createdAt: new Date(),
+        lastAccessedAt: new Date(0)
+      },
+      {
+        name: 'work',
+        path: path.join(tempDir, 'work'),
+        createdAt: new Date(),
+        lastAccessedAt: new Date(0)
+      }
+    )
+    const conflicts = service.findRegistryNameConflicts()
+    expect(conflicts.some((c) => c.kind === 'case')).toBe(true)
+  })
 })
