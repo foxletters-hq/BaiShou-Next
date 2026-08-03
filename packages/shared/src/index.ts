@@ -374,6 +374,13 @@ export {
   isRegistryVaultOnDisk,
   INCREMENTAL_SYNC_GLOBAL_SCOPE
 } from './sync/incremental-sync-plan.util'
+export {
+  DEFAULT_SYNC_TRAFFIC_PROMPT_ENABLED,
+  DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB,
+  DEFAULT_SYNC_TRAFFIC_THRESHOLD_BYTES,
+  shouldWarnCellularSyncTraffic,
+  syncTrafficThresholdMbToBytes
+} from './sync/sync-traffic-guard.util'
 export type {
   IncrementalSyncBoundaryHint,
   IncrementalSyncBoundaryHintKey
