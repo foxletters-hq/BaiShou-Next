@@ -1197,6 +1197,7 @@
     "plan_stat_delete_local": "delete local {{count}}",
     "plan_stat_delete_remote": "delete remote {{count}}",
     "plan_stat_conflict": "conflict {{count}}",
+    "plan_traffic_summary": "Download {{download}} · Upload {{upload}}",
     "plan_boundary_disk_only": "On disk but not in registry",
     "plan_boundary_registry_only": "In registry but missing on disk",
     "plan_warning_unknown_vault_paths": "These vaults have file changes but are not in your local registry: {{paths}}. Create matching vaults in Settings → Workspaces, or confirm these folders should sync.",

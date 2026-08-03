@@ -1215,6 +1215,7 @@
     "plan_stat_delete_local": "刪本機 {{count}}",
     "plan_stat_delete_remote": "刪雲端 {{count}}",
     "plan_stat_conflict": "衝突 {{count}}",
+    "plan_traffic_summary": "下載 {{download}} · 上傳 {{upload}}",
     "plan_boundary_disk_only": "磁碟上有但未註冊的工作區",
     "plan_boundary_registry_only": "已註冊但磁碟缺失的工作區",
     "plan_warning_unknown_vault_paths": "以下工作區有檔案變更，但未在本機註冊表中：{{paths}}。可在「系統設定 → 工作區管理」中建立同名工作區，或確認這些目錄是否應參與同步。",

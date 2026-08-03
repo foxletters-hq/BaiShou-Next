@@ -15,6 +15,7 @@ import {
   requiresExplicitDeletePropagationChoice,
   getDeletePropagationChoiceTitleKey,
   getDeletePropagationChoiceDescKey,
+  formatIncrementalSyncPlanBytes,
   type SyncDeletePropagationChoice
 } from '@baishou/shared'
 import styles from './IncrementalSyncConfirmDialog.module.css'
@@ -194,6 +195,13 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
           {t('data_sync.plan_confirm_desc', {
             count: preview.changeCount,
             activeVault: preview.activeVaultName ?? t('workspace.no_active', '未选择工作空间')
+          })}
+        </p>
+        <p className={styles.trafficSummary}>
+          {t('data_sync.plan_traffic_summary', {
+            download: formatIncrementalSyncPlanBytes(preview.totalDownloadBytes),
+            upload: formatIncrementalSyncPlanBytes(preview.totalUploadBytes),
+            defaultValue: '下载 {{download}} · 上传 {{upload}}'
           })}
         </p>
 

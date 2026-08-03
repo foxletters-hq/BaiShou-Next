@@ -1228,6 +1228,7 @@
     "plan_stat_delete_local": "删本地 {{count}}",
     "plan_stat_delete_remote": "删云端 {{count}}",
     "plan_stat_conflict": "冲突 {{count}}",
+    "plan_traffic_summary": "下载 {{download}} · 上传 {{upload}}",
     "plan_boundary_disk_only": "磁盘上有但未注册的工作区",
     "plan_boundary_registry_only": "已注册但磁盘缺失的工作区",
     "plan_warning_unknown_vault_paths": "以下工作区有文件变更，但未在本地注册表中：{{paths}}。可在「系统设置 → 工作区管理」中创建同名工作区，或确认这些目录是否应参与同步。",
