@@ -7,7 +7,7 @@
   align-items: center;
   padding: 12px 0;
   gap: 10px;
-  border-right: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-muted);
   background: var(--bg-surface);
   box-sizing: border-box;
 }

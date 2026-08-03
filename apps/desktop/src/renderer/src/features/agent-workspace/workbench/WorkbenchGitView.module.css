@@ -37,7 +37,7 @@
 }
 
 .initBtn {
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);

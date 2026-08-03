@@ -687,11 +687,12 @@
   font-family: inherit;
   resize: vertical;
   outline: none;
+  transition: var(--form-field-transition);
 }
 
 .commitMessage:focus {
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
   outline: none;
 }
 
@@ -708,7 +709,7 @@
   gap: 4px;
   height: 28px;
   padding: 0 12px;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   border-radius: 6px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -853,7 +854,7 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  border: 1.5px solid var(--border-control);
+  border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
   transition:

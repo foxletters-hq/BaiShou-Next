@@ -1,5 +1,5 @@
 .root {
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-muted);
   padding: 10px 12px;
   max-height: 220px;
   overflow: auto;
@@ -9,7 +9,7 @@
   padding: 12px;
   font-size: 12px;
   color: var(--text-secondary);
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-muted);
 }
 
 .header {

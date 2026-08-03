@@ -34,6 +34,7 @@
   font-size: 13px;
   font-family: inherit;
   box-sizing: border-box;
+  transition: var(--form-field-transition);
 }
 
 .searchInput::placeholder {
@@ -42,8 +43,8 @@
 
 .searchInput:focus {
   outline: none;
-  border-color: var(--border-muted);
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .currentBlock {
@@ -215,10 +216,11 @@
   color: var(--text-primary);
   font-size: 13px;
   font-family: inherit;
+  transition: var(--form-field-transition);
 }
 
 .editInput:focus {
   outline: none;
-  border-color: var(--form-field-border, var(--border-control));
-  box-shadow: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
