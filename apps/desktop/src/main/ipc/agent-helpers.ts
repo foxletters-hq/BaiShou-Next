@@ -541,7 +541,9 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
     rawDataSourceManager: (
       await import('../services/raw-data-source.runtime')
     ).getRawDataSourceManager(),
-    knowledgeReader: (await import('../services/desktop-knowledge-reader')).createDesktopKnowledgeReader(
+    knowledgeReader: (
+      await import('../services/desktop-knowledge-reader')
+    ).createDesktopKnowledgeReader(
       embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
     )
   })
