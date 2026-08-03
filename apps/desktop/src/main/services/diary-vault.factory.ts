@@ -40,6 +40,14 @@ class FixedVaultServiceStub implements IVaultService {
     return vaultService.vaultExists(vaultName)
   }
 
+  findRegistryNameConflicts(): Array<{
+    left: string
+    right: string
+    kind: 'case' | 'directory'
+  }> {
+    return vaultService.findRegistryNameConflicts()
+  }
+
   createVault(vaultName: string): Promise<void> {
     return vaultService.createVault(vaultName)
   }

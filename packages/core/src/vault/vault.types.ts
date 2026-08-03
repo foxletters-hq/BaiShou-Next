@@ -18,8 +18,17 @@ export interface IVaultService {
   /** 获取所有注册的 Vault 列表 */
   getAllVaults(): VaultInfo[]
 
-  /** 名称是否已在注册表中 */
+  /** 名称是否已在注册表中（大小写 / 目录名冲突也算存在） */
   vaultExists(vaultName: string): boolean
+
+  /**
+   * 检测注册表内已有的大小写或消毒目录冲突（存量诊断）
+   */
+  findRegistryNameConflicts(): Array<{
+    left: string
+    right: string
+    kind: 'case' | 'directory'
+  }>
 
   /**
    * 创建新工作空间（名称已存在或非法时抛错，不会切换至已有空间）

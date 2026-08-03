@@ -16,11 +16,26 @@ export class VaultActiveDeleteError extends Error {
 
 export class VaultNameExistsError extends Error {
   readonly vaultName: string
+  readonly conflictingName?: string
+  readonly conflictKind?: 'exact' | 'case' | 'directory'
 
-  constructor(vaultName: string) {
-    super(`Vault with name "${vaultName}" already exists.`)
+  constructor(
+    vaultName: string,
+    options?: { conflictingName?: string; conflictKind?: 'exact' | 'case' | 'directory' }
+  ) {
+    const conflictingName = options?.conflictingName
+    const conflictKind = options?.conflictKind
+    let message = `Vault with name "${vaultName}" already exists.`
+    if (conflictKind === 'case' && conflictingName) {
+      message = `Vault name "${vaultName}" conflicts with existing vault "${conflictingName}" (case-insensitive).`
+    } else if (conflictKind === 'directory' && conflictingName) {
+      message = `Vault name "${vaultName}" would use the same directory as existing vault "${conflictingName}".`
+    }
+    super(message)
     this.name = 'VaultNameExistsError'
     this.vaultName = vaultName
+    this.conflictingName = conflictingName
+    this.conflictKind = conflictKind
   }
 }
 
