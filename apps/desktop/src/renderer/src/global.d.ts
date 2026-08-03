@@ -219,10 +219,7 @@ interface AgentWorkspaceAPI {
     folderRoot: string
     notebookId?: string
   } | null>
-  attachNotebook(params: {
-    sessionId: string
-    notebookId: string | null
-  }): Promise<{
+  attachNotebook(params: { sessionId: string; notebookId: string | null }): Promise<{
     sessionId: string
     folderRoot: string
     notebookId?: string
@@ -474,7 +471,10 @@ interface GraphAPI {
 }
 
 interface KnowledgeAPI {
-  createNotebook(input: { name: string; description?: string }): Promise<{ id: string; name: string }>
+  createNotebook(input: {
+    name: string
+    description?: string
+  }): Promise<{ id: string; name: string }>
   listNotebooks(): Promise<unknown[]>
   importSource(input: {
     notebookId: string
@@ -498,11 +498,7 @@ interface KnowledgeAPI {
   }>
   hasModelMismatch(): Promise<boolean>
   listSources(notebookId: string): Promise<unknown[]>
-  search(input: {
-    notebookId: string
-    query: string
-    topK?: number
-  }): Promise<unknown[]>
+  search(input: { notebookId: string; query: string; topK?: number }): Promise<unknown[]>
   ask(input: {
     notebookId: string
     question: string
