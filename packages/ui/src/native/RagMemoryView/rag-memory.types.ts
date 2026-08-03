@@ -34,6 +34,12 @@ export interface RagEntry {
   createdAt: number
   sourceType?: string
   similarity?: number
+  sourceId?: string
+  tags?: string[]
+  sourceSessionId?: string | null
+  memoryCreatedAt?: number
+  memoryUpdatedAt?: number
+  isManual?: boolean
 }
 
 export const RAG_DEFAULT_PAGE_SIZE = 10
