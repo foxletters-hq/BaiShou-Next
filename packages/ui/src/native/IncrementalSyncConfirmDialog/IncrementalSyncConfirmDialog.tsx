@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   useWindowDimensions,
-  type ViewStyle,
   type TextStyle
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -35,8 +34,12 @@ export interface IncrementalSyncConfirmDialogProps {
   preview: IncrementalSyncPlanPreview | null
   confirmEligibleAtMs: number | null
   isConfirming?: boolean
+  /** 蜂窝且超阈值时显示警告与「等 Wi-Fi」按钮；桌面恒 false */
+  showCellularTrafficWarning?: boolean
   onConfirm: (choice?: SyncDeletePropagationChoice) => void
   onCancel: () => void
+  /** 「等 Wi-Fi 再同步」：取消当前同步并记 pending */
+  onWaitForWifi?: () => void
 }
 
 function actionTagStyle(action: IncrementalSyncPlanItem['action']): TextStyle {
@@ -355,16 +358,20 @@ type PlanConfirmFooterProps = {
   preview: IncrementalSyncPlanPreview
   confirmEligibleAtMs: number | null
   isConfirming: boolean
+  showCellularTrafficWarning: boolean
   onConfirm: (choice?: SyncDeletePropagationChoice) => void
   onCancel: () => void
+  onWaitForWifi?: () => void
 }
 
 const PlanConfirmFooter = memo(function PlanConfirmFooter({
   preview,
   confirmEligibleAtMs,
   isConfirming,
+  showCellularTrafficWarning,
   onConfirm,
-  onCancel
+  onCancel,
+  onWaitForWifi
 }: PlanConfirmFooterProps) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -393,8 +400,10 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
         defaultValue: '确认同步 ({{seconds}})'
       })
     }
-    return t('data_sync.plan_confirm_sync', '确认同步')
-  }, [confirmReady, isConfirming, needsSyncConfirm, secondsLeft, t])
+    return showCellularTrafficWarning
+      ? t('data_sync.plan_continue_sync', '继续同步')
+      : t('data_sync.plan_confirm_sync', '确认同步')
+  }, [confirmReady, isConfirming, needsSyncConfirm, secondsLeft, showCellularTrafficWarning, t])
 
   const choiceDisabled =
     (needsSyncConfirm && !confirmReady) || isConfirming || activeDeleteChoice != null
@@ -448,6 +457,38 @@ const PlanConfirmFooter = memo(function PlanConfirmFooter({
     )
   }
 
+  if (showCellularTrafficWarning && needsSyncConfirm) {
+    return (
+      <View style={[styles.deleteChoiceFooter, { borderTopColor: colors.borderSubtle }]}>
+        <Button
+          variant="primary"
+          onPress={() => onConfirm()}
+          disabled={choiceDisabled}
+          isLoading={isConfirming}
+          style={styles.fullWidthButton}
+        >
+          {primaryButtonLabel}
+        </Button>
+        <Button
+          variant="outline"
+          onPress={() => onWaitForWifi?.()}
+          disabled={choiceDisabled || !onWaitForWifi}
+          style={styles.fullWidthButton}
+        >
+          {t('data_sync.plan_wait_for_wifi', '等 Wi-Fi 再同步')}
+        </Button>
+        <Button
+          variant="outline"
+          onPress={onCancel}
+          disabled={choiceDisabled}
+          style={styles.fullWidthButton}
+        >
+          {t('common.cancel', '取消')}
+        </Button>
+      </View>
+    )
+  }
+
   return (
     <View style={[styles.actionsRow, { borderTopColor: colors.borderSubtle }]}>
       <Button variant="outline" onPress={onCancel} style={styles.actionButton}>
@@ -471,8 +512,10 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
   preview,
   confirmEligibleAtMs,
   isConfirming = false,
+  showCellularTrafficWarning = false,
   onConfirm,
-  onCancel
+  onCancel,
+  onWaitForWifi
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -480,6 +523,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
   const dialogHeight = Math.min(Math.floor(windowHeight * 0.82), windowHeight - 32)
 
   if (!visible || !preview) return null
+
+  const totalTrafficBytes =
+    Math.max(0, preview.totalUploadBytes || 0) + Math.max(0, preview.totalDownloadBytes || 0)
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -525,6 +571,15 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                     })}`
                   : ''}
               </Text>
+              {showCellularTrafficWarning ? (
+                <Text style={[styles.cellularWarning, { color: colors.warning }]}>
+                  {t('data_sync.plan_traffic_cellular_warning', {
+                    size: formatIncrementalSyncPlanBytes(totalTrafficBytes),
+                    defaultValue:
+                      '正在使用移动数据，本次约需 {{size}}。首次全量同步通常更大，属一次性传输。'
+                  })}
+                </Text>
+              ) : null}
             </View>
 
             <PlanScrollContent preview={preview} />
@@ -533,8 +588,10 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
               preview={preview}
               confirmEligibleAtMs={confirmEligibleAtMs}
               isConfirming={isConfirming}
+              showCellularTrafficWarning={showCellularTrafficWarning}
               onConfirm={onConfirm}
               onCancel={onCancel}
+              onWaitForWifi={onWaitForWifi}
             />
           </View>
         </View>
@@ -581,6 +638,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     lineHeight: 20
+  },
+  cellularWarning: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)'
   },
   warningItem: {
     fontSize: 12,
