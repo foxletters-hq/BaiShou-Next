@@ -1,5 +1,5 @@
 import { EmbeddingAdapter } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
 import type { AIProviderRegistry } from '@baishou/ai'
 import type { MobileStoragePathService } from '../../services/path.service'
@@ -17,7 +17,8 @@ export function createMemorySearch(deps: {
     if (!query.trim()) return []
     const runtime = agentDbRuntimeRef.current
     if (!runtime) return []
-    const activeVault = await pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+    const activeVaultName = await pathService.getActiveVaultNameForContext().catch(() => 'Personal')
+    const activeVaultId = deriveLegacyVaultId(activeVaultName)
     const mapResults = (
       rows: Array<{
         chunkText: string
@@ -41,7 +42,7 @@ export function createMemorySearch(deps: {
       if (!embeddingProviderId || !embeddingModelId) {
         logger.warn('[MemorySearch] 嵌入模型未配置，降级为 FTS 搜索')
         const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
-          vaultName: activeVault
+          vaultId: activeVaultId
         })
         return mapResults(ftsResults)
       }
@@ -50,7 +51,7 @@ export function createMemorySearch(deps: {
       if (!embeddingProviderConfig) {
         logger.warn('[MemorySearch] 嵌入供应商配置未找到，降级为 FTS 搜索')
         const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
-          vaultName: activeVault
+          vaultId: activeVaultId
         })
         return mapResults(ftsResults)
       }
@@ -63,7 +64,7 @@ export function createMemorySearch(deps: {
       if (!queryVector) {
         logger.warn('[MemorySearch] 查询向量生成失败，降级为 FTS 搜索')
         const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
-          vaultName: activeVault
+          vaultId: activeVaultId
         })
         return mapResults(ftsResults)
       }
@@ -77,14 +78,14 @@ export function createMemorySearch(deps: {
         queryText: query,
         topK,
         similarityThreshold: minScore,
-        filter: { vaultName: activeVault }
+        filter: { vaultId: activeVaultId }
       })
 
       return mapResults(results)
     } catch (e) {
       logger.error('[MemorySearch] RAG 搜索失败，降级为 FTS:', e as Error)
       const ftsResults = await runtime.hsRepo.queryFTS(query, options?.topK ?? 20, {
-        vaultName: activeVault
+        vaultId: activeVaultId
       })
       return mapResults(ftsResults)
     }

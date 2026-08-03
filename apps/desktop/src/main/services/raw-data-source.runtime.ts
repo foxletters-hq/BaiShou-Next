@@ -20,8 +20,8 @@ import {
   SqliteHybridSearchRepository
 } from '@baishou/database-desktop'
 import { EmbeddingAdapter } from '@baishou/ai'
-import { logger } from '@baishou/shared'
-import { fileSystem, getActiveVaultShadowRepo, pathService, vaultService } from '../ipc/vault.ipc'
+import { logger, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
+import { fileSystem, getActiveVaultShadowRepo, pathService, vaultService, resolveVaultIdByName } from '../ipc/vault.ipc'
 
 let runtime: {
   manager: RawDataSourceManager
@@ -110,6 +110,48 @@ export function resetRawDataRuntime(): void {
   runtime = null
 }
 
+function createMemoryEmbedSink(
+  hsRepo: SqliteHybridSearchRepository,
+  embeddingAdapter?: EmbeddingAdapter | null
+) {
+  return {
+    embedText: async (opts: {
+      text: string
+      sourceType: string
+      sourceId: string
+      groupId: string
+      vaultName: string
+      metadataJson?: string
+      sourceCreatedAt?: number
+    }) => {
+      if (!embeddingAdapter?.isConfigured) {
+        throw new Error('Embedding adapter not configured')
+      }
+      const vaultId = resolveVaultIdByName(opts.vaultName)
+      await embeddingAdapter.embedText({
+        ...opts,
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId
+      })
+    },
+    deleteBySource: (sourceType: string, sourceId: string) =>
+      hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
+    listSourceIdsByType: (sourceType: string, groupId?: string) => {
+      if (typeof groupId === 'string' && groupId.startsWith('memory:')) {
+        const vaultName = groupId.slice('memory:'.length)
+        return hsRepo.listSourceIdsByType(sourceType, {
+          groupId: MEMORY_EMBED_GROUP_ID,
+          vaultId: resolveVaultIdByName(vaultName)
+        })
+      }
+      return hsRepo.listSourceIdsByType(sourceType, {
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId: groupId ? resolveVaultIdByName(groupId) : undefined
+      })
+    }
+  }
+}
+
 export async function syncMemoryPendingIndex(options: {
   hsRepo: SqliteHybridSearchRepository
   embeddingAdapter?: EmbeddingAdapter | null
@@ -119,26 +161,22 @@ export async function syncMemoryPendingIndex(options: {
   if (!embeddingAdapter?.isConfigured) {
     return { shards: 0, upserted: 0, deleted: 0 }
   }
-  const sync = new MemorySyncService(memoryManager, {
-    embedText: (opts) => embeddingAdapter.embedText(opts),
-    deleteBySource: (sourceType, sourceId) => hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-    listSourceIdsByType: (sourceType, groupId) => hsRepo.listSourceIdsByType(sourceType, groupId)
-  })
+  const sync = new MemorySyncService(memoryManager, createMemoryEmbedSink(hsRepo, embeddingAdapter))
   return sync.syncPendingIndex()
 }
 
 export async function backfillMemoryJsonlFromEmbeddings(options: {
   hsRepo: SqliteHybridSearchRepository
-  vaultName: string
+  vaultId: string
 }): Promise<{ written: number; skipped: number; normalized: number; metadataPatched: number }> {
   const { memoryManager } = ensureRawDataRuntime()
   const service = new MemoryJsonlBackfillService(memoryManager)
   const chatChunks = await options.hsRepo.listEmbeddingChunksByType('chat')
   const memoryChunks = await options.hsRepo.listEmbeddingChunksByType('memory')
   const manualChunks = await options.hsRepo.listEmbeddingChunksByType('manual')
-  const r1 = await service.backfillFromChunks(chatChunks, options.vaultName)
-  const r2 = await service.backfillFromChunks(memoryChunks, options.vaultName)
-  const manual = await service.migrateManualAndPatchMetadata(manualChunks, options.vaultName, {
+  const r1 = await service.backfillFromChunks(chatChunks, options.vaultId)
+  const r2 = await service.backfillFromChunks(memoryChunks, options.vaultId)
+  const manual = await service.migrateManualAndPatchMetadata(manualChunks, options.vaultId, {
     normalizeManualToMemory: (params) => options.hsRepo.normalizeManualToMemory(params),
     updateMetadataBySource: (sourceType, sourceId, metadataJson) =>
       options.hsRepo.updateMetadataBySource(sourceType, sourceId, metadataJson)
@@ -153,7 +191,7 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
   }
   // Catch any remaining manual rows (e.g. empty chunk text skipped from JSONL write)
   const leftoverNormalized = await options.hsRepo.normalizeManualToMemory({
-    vaultName: options.vaultName
+    vaultId: options.vaultId
   })
   return {
     written: r1.written + r2.written + manual.written,
@@ -165,46 +203,40 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
 
 export async function checkMemoryConsistency(options: {
   hsRepo: SqliteHybridSearchRepository
-  vaultName?: string
+  vaultId?: string
 }): Promise<MemoryConsistencyReport> {
   const { memoryManager } = ensureRawDataRuntime()
-  const sync = new MemorySyncService(memoryManager, {
-    embedText: async () => undefined,
-    deleteBySource: (sourceType, sourceId) =>
-      options.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-    listSourceIdsByType: (sourceType, groupId) =>
-      options.hsRepo.listSourceIdsByType(sourceType, groupId)
-  })
-  return sync.checkConsistency({ vaultName: options.vaultName })
+  const sync = new MemorySyncService(memoryManager, createMemoryEmbedSink(options.hsRepo))
+  const activeVault = vaultService.getActiveVault()
+  const vaultName =
+    activeVault?.name ??
+    (options.vaultId ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name : undefined)
+  return sync.checkConsistency({ vaultName: vaultName ?? options.vaultId })
 }
 
 export async function repairMemoryConsistency(options: {
   hsRepo: SqliteHybridSearchRepository
   embeddingAdapter?: EmbeddingAdapter | null
-  vaultName?: string
+  vaultId?: string
   confirmDeleteIds?: string[]
   restoreIds?: string[]
   cleanOrphans?: boolean
 }): Promise<MemoryConsistencyRepairResult> {
   const { memoryManager } = ensureRawDataRuntime()
   const embeddingAdapter = options.embeddingAdapter
-  const sync = new MemorySyncService(memoryManager, {
-    embedText: async (opts) => {
-      if (!embeddingAdapter?.isConfigured) {
-        throw new Error('Embedding adapter not configured')
-      }
-      await embeddingAdapter.embedText(opts)
-    },
-    deleteBySource: (sourceType, sourceId) =>
-      options.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
-    listSourceIdsByType: (sourceType, groupId) =>
-      options.hsRepo.listSourceIdsByType(sourceType, groupId)
-  })
+  const sync = new MemorySyncService(
+    memoryManager,
+    createMemoryEmbedSink(options.hsRepo, embeddingAdapter)
+  )
+  const activeVault = vaultService.getActiveVault()
+  const vaultName =
+    activeVault?.name ??
+    (options.vaultId ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name : undefined)
   return sync.repairConsistency({
     confirmDeleteIds: options.confirmDeleteIds,
     restoreIds: options.restoreIds,
     cleanOrphans: options.cleanOrphans,
-    vaultName: options.vaultName
+    vaultName: vaultName ?? options.vaultId
   })
 }
 
@@ -280,7 +312,7 @@ export async function runDerivedIndexHydration(reason: string): Promise<void> {
 
     const backfill = await backfillMemoryJsonlFromEmbeddings({
       hsRepo,
-      vaultName: activeVault.name
+      vaultId: activeVault.id
     })
     const memory = await syncMemoryPendingIndex({ hsRepo, embeddingAdapter })
     const graph = await syncGraphPendingIndexWithDeps({ graphRepo, embeddingAdapter })

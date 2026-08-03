@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Input, useNativeTheme } from '@baishou/ui/native'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
@@ -43,7 +44,9 @@ export function GraphScreen() {
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
 
-  const vaultName = services?.vaultService.getActiveVault()?.name || 'Personal'
+  const activeVault = services?.vaultService.getActiveVault()
+  const vaultName = activeVault?.name || 'Personal'
+  const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
 
   const tabItems = useMemo(
     () =>
@@ -60,7 +63,7 @@ export function GraphScreen() {
     if (!services || !dbReady) return
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
-    const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
+    const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
     setPending(
       await mobileListPendingReextract({
         vaultName,
@@ -69,11 +72,11 @@ export function GraphScreen() {
         fileSystem: services.fileSystem
       })
     )
-    setPendingEdges(await mobileListPendingEdges(runtime.drizzleDb, vaultName))
-    const graph = await mobileLoadGlobalGraph(runtime.drizzleDb, vaultName, 120)
+    setPendingEdges(await mobileListPendingEdges(runtime.drizzleDb, vaultId))
+    const graph = await mobileLoadGlobalGraph(runtime.drizzleDb, vaultId, 120)
     setGraphNodes(graph.nodes)
     setGraphEdges(graph.edges)
-  }, [services, dbReady, vaultName])
+  }, [services, dbReady, vaultName, vaultId])
 
   useEffect(() => {
     void refresh().catch((e) => setStatus(String(e?.message || e)))
@@ -85,7 +88,7 @@ export function GraphScreen() {
       setHits([])
       return
     }
-    setHits(await mobileSearchGraphNodes(runtime.drizzleDb, vaultName, query.trim()))
+    setHits(await mobileSearchGraphNodes(runtime.drizzleDb, vaultId, query.trim()))
   }
 
   const runExtract = async (filePaths?: string[]) => {
@@ -95,7 +98,7 @@ export function GraphScreen() {
     setBusy(true)
     setStatus(t('graph.extracting', '抽取中…'))
     try {
-      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultName)
+      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
       const result = await mobileExtractDiaries({
         vaultName,
         drizzleDb: runtime.drizzleDb,
@@ -128,7 +131,8 @@ export function GraphScreen() {
       pathService: services.pathService,
       fileSystem: services.fileSystem,
       edgeId,
-      reviewStatus
+      reviewStatus,
+      vaultDisplayName: vaultName
     })
     await refresh()
   }

@@ -365,6 +365,7 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
         const emb = await resolveMobileEmbeddingForHydration(settingsManager)
         await runMobileDerivedIndexHydration({
           drizzleDb,
+          vaultId: activeVault.id,
           vaultName: activeVault.name,
           embeddingProvider: emb.embeddingProvider,
           embeddingModelId: emb.embeddingModelId,

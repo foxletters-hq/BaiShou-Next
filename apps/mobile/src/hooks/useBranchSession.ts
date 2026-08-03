@@ -50,8 +50,8 @@ export function useBranchSession() {
           assistantId: originalSession.assistantId || undefined,
           providerId: originalSession.providerId || 'default',
           modelId: originalSession.modelId || 'default',
-          vaultName: originalSession.vaultName || 'default'
-        } as any)
+          vaultId: originalSession.vaultId || 'default'
+        })
 
         const oldToNewMessageId = new Map<string, string>()
         for (let i = 0; i < messagesToCopy.length; i++) {
