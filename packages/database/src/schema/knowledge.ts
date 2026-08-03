@@ -12,21 +12,29 @@ const sqliteVecBlob = customType<{ data: Buffer; driverData: Buffer }>({
   }
 })
 
-/** 笔记本：主题容器 */
-export const notebooksTable = sqliteTable('notebooks', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description').notNull().default(''),
-  archived: integer('archived').notNull().default(0),
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull()
-})
+/** 笔记本：主题容器（按 vault_id 多仓隔离） */
+export const notebooksTable = sqliteTable(
+  'notebooks',
+  {
+    id: text('id').primaryKey(),
+    vaultId: text('vault_id').notNull().default(''),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    archived: integer('archived').notNull().default(0),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull()
+  },
+  (t) => ({
+    vaultIdx: index('idx_notebooks_vault').on(t.vaultId)
+  })
+)
 
 /** 资料：不可变原材料 */
 export const knowledgeSourcesTable = sqliteTable(
   'knowledge_sources',
   {
     id: text('id').primaryKey(),
+    vaultId: text('vault_id').notNull().default(''),
     notebookId: text('notebook_id').notNull(),
     title: text('title').notNull(),
     sourceKind: text('source_kind').notNull(),
@@ -44,7 +52,8 @@ export const knowledgeSourcesTable = sqliteTable(
     updatedAt: integer('updated_at').notNull()
   },
   (t) => ({
-    notebookIdx: index('idx_knowledge_sources_notebook').on(t.notebookId)
+    notebookIdx: index('idx_knowledge_sources_notebook').on(t.notebookId),
+    vaultIdx: index('idx_knowledge_sources_vault').on(t.vaultId)
   })
 )
 
@@ -54,6 +63,7 @@ export const knowledgeChunksTable = sqliteTable(
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
     chunkId: text('chunk_id').notNull().unique(),
+    vaultId: text('vault_id').notNull().default(''),
     notebookId: text('notebook_id').notNull(),
     sourceId: text('source_id').notNull(),
     chunkIndex: integer('chunk_index').notNull(),
@@ -66,7 +76,8 @@ export const knowledgeChunksTable = sqliteTable(
   },
   (t) => ({
     notebookIdx: index('idx_knowledge_chunks_notebook').on(t.notebookId),
-    sourceIdx: index('idx_knowledge_chunks_source').on(t.sourceId)
+    sourceIdx: index('idx_knowledge_chunks_source').on(t.sourceId),
+    vaultIdx: index('idx_knowledge_chunks_vault').on(t.vaultId)
   })
 )
 
@@ -75,6 +86,7 @@ export const knowledgeIngestJobsTable = sqliteTable(
   'knowledge_ingest_jobs',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
+    vaultId: text('vault_id').notNull().default(''),
     notebookId: text('notebook_id').notNull(),
     sourceId: text('source_id').notNull(),
     stage: text('stage').notNull(),

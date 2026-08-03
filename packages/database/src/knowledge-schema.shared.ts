@@ -4,12 +4,17 @@ import { executeRawSql } from './raw-sql.executor'
 /** 与 Agent 库同解析规则：存储根下 `knowledge.db` */
 export const KNOWLEDGE_DB_FILENAME = 'knowledge.db'
 
-/** Schema 版本：1 = 初版四表 + FTS5 + 摄入 job */
-export const KNOWLEDGE_SCHEMA_VERSION = 1
+/**
+ * Schema 版本：
+ * 1 = 初版四表 + FTS5 + 摄入 job
+ * 2 = notebooks/sources/chunks/jobs 加 vault_id（多仓隔离）
+ */
+export const KNOWLEDGE_SCHEMA_VERSION = 2
 
 export const KNOWLEDGE_NOTEBOOKS_SQL = `
   CREATE TABLE IF NOT EXISTS notebooks (
     id            TEXT PRIMARY KEY,
+    vault_id      TEXT NOT NULL DEFAULT '',
     name          TEXT NOT NULL,
     description   TEXT NOT NULL DEFAULT '',
     archived      INTEGER NOT NULL DEFAULT 0,
@@ -21,6 +26,7 @@ export const KNOWLEDGE_NOTEBOOKS_SQL = `
 export const KNOWLEDGE_SOURCES_SQL = `
   CREATE TABLE IF NOT EXISTS knowledge_sources (
     id                  TEXT PRIMARY KEY,
+    vault_id            TEXT NOT NULL DEFAULT '',
     notebook_id         TEXT NOT NULL,
     title               TEXT NOT NULL,
     source_kind         TEXT NOT NULL,
@@ -44,10 +50,16 @@ export const KNOWLEDGE_SOURCES_NOTEBOOK_IDX_SQL = `
   ON knowledge_sources(notebook_id)
 `
 
+export const KNOWLEDGE_SOURCES_VAULT_IDX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_knowledge_sources_vault
+  ON knowledge_sources(vault_id)
+`
+
 export const KNOWLEDGE_CHUNKS_SQL = `
   CREATE TABLE IF NOT EXISTS knowledge_chunks (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     chunk_id      TEXT NOT NULL UNIQUE,
+    vault_id      TEXT NOT NULL DEFAULT '',
     notebook_id   TEXT NOT NULL,
     source_id     TEXT NOT NULL,
     chunk_index   INTEGER NOT NULL,
@@ -68,6 +80,16 @@ export const KNOWLEDGE_CHUNKS_NOTEBOOK_IDX_SQL = `
 export const KNOWLEDGE_CHUNKS_SOURCE_IDX_SQL = `
   CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_source
   ON knowledge_chunks(source_id)
+`
+
+export const KNOWLEDGE_CHUNKS_VAULT_IDX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_vault
+  ON knowledge_chunks(vault_id)
+`
+
+export const KNOWLEDGE_NOTEBOOKS_VAULT_IDX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_notebooks_vault
+  ON notebooks(vault_id)
 `
 
 export const KNOWLEDGE_CHUNKS_FTS5_SQL = `
@@ -100,6 +122,7 @@ END`
 export const KNOWLEDGE_INGEST_JOBS_SQL = `
   CREATE TABLE IF NOT EXISTS knowledge_ingest_jobs (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    vault_id      TEXT NOT NULL DEFAULT '',
     notebook_id   TEXT NOT NULL,
     source_id     TEXT NOT NULL,
     stage         TEXT NOT NULL,
@@ -117,6 +140,31 @@ async function getUserVersion(client: unknown): Promise<number> {
   const res = await executeRawSql(client, 'PRAGMA user_version')
   const row = res.rows[0] as { user_version?: number } | undefined
   return Number(row?.user_version ?? 0)
+}
+
+async function tableHasColumn(
+  client: unknown,
+  table: string,
+  column: string
+): Promise<boolean> {
+  const res = await executeRawSql(client, `PRAGMA table_info(${table})`)
+  return res.rows.some((r) => {
+    const name = String((r as { name?: unknown }).name ?? '')
+    return name === column
+  })
+}
+
+async function ensureVaultIdColumn(
+  client: unknown,
+  table: string,
+  logPrefix: string
+): Promise<void> {
+  if (await tableHasColumn(client, table, 'vault_id')) return
+  await executeRawSql(
+    client,
+    `ALTER TABLE ${table} ADD COLUMN vault_id TEXT NOT NULL DEFAULT ''`
+  )
+  logger.info(`${logPrefix} ${table}.vault_id 已补齐`)
 }
 
 async function createKnowledgeFts(client: unknown, logPrefix: string): Promise<void> {
@@ -147,6 +195,15 @@ export async function ensureKnowledgeSchema(
   await executeRawSql(client, KNOWLEDGE_CHUNKS_SOURCE_IDX_SQL)
   await createKnowledgeFts(client, logPrefix)
   await executeRawSql(client, KNOWLEDGE_INGEST_JOBS_SQL)
+
+  // v2：存量库补 vault_id（新建表 SQL 已含列；旧库靠 ALTER）
+  await ensureVaultIdColumn(client, 'notebooks', logPrefix)
+  await ensureVaultIdColumn(client, 'knowledge_sources', logPrefix)
+  await ensureVaultIdColumn(client, 'knowledge_chunks', logPrefix)
+  await ensureVaultIdColumn(client, 'knowledge_ingest_jobs', logPrefix)
+  await executeRawSql(client, KNOWLEDGE_NOTEBOOKS_VAULT_IDX_SQL)
+  await executeRawSql(client, KNOWLEDGE_SOURCES_VAULT_IDX_SQL)
+  await executeRawSql(client, KNOWLEDGE_CHUNKS_VAULT_IDX_SQL)
 
   const version = await getUserVersion(client)
   if (version < KNOWLEDGE_SCHEMA_VERSION) {

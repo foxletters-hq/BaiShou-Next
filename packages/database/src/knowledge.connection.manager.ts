@@ -47,7 +47,7 @@ export class KnowledgeConnectionManager {
       const message = e instanceof Error ? e.message : String(e)
       logger.error(`[KnowledgeDB] 数据库初始化失败: ${message}`)
       this._disconnect()
-      await this._deleteDbFiles(dbPath)
+      await this._quarantineThenDelete(dbPath)
 
       try {
         await this._initDatabase(dbPath)
@@ -115,6 +115,24 @@ export class KnowledgeConnectionManager {
       await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)))
     }
     return false
+  }
+
+  /** 损坏时先隔离改名，再删重建；避免直接 unlink 丢证据 */
+  private async _quarantineThenDelete(dbPath: string): Promise<void> {
+    const stamp = Date.now()
+    const files = [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]
+    for (const file of files) {
+      if (!fs.existsSync(file)) continue
+      const dest = `${file}.corrupted.${stamp}`
+      try {
+        fs.renameSync(file, dest)
+        logger.warn(`[KnowledgeDB] 已隔离损坏文件: ${file} → ${dest}`)
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e)
+        logger.warn(`[KnowledgeDB] 隔离改名失败，回退删除: ${file}`, message)
+      }
+    }
+    await this._deleteDbFiles(dbPath)
   }
 
   private loadSqliteVec(sqlite: Database.Database): string | null {

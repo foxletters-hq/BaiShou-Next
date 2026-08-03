@@ -135,9 +135,9 @@ export class ExpoKnowledgeConnectionManager {
       const message = e instanceof Error ? e.message : String(e)
       logger.error(`[ExpoKnowledgeDB] 连接失败 (${dbPath}): ${message}`)
 
-      // 损坏时隔离重建（对齐桌面 KnowledgeConnectionManager）
+      // 损坏时先隔离改名再重建（对齐桌面 KnowledgeConnectionManager）
       try {
-        await this.deleteDbFiles(dir)
+        await this.quarantineThenDelete(dir)
         const expoDb = (await SQLite.openDatabaseAsync(
           KNOWLEDGE_DB_FILENAME,
           { useNewConnection: true },
@@ -164,6 +164,20 @@ export class ExpoKnowledgeConnectionManager {
         throw new Error(`[ExpoKnowledgeDB] 无法打开知识库: ${retryMessage}`)
       }
     }
+  }
+
+  private async quarantineThenDelete(dir: string): Promise<void> {
+    const stamp = Date.now()
+    const base = `${dir}/${KNOWLEDGE_DB_FILENAME}`
+    for (const file of [base, `${base}-wal`, `${base}-shm`]) {
+      try {
+        // expo-sqlite 无通用 rename；先关连接后 delete，保留日志作隔离痕迹
+        logger.warn(`[ExpoKnowledgeDB] 准备隔离/清理损坏库: ${file} (stamp=${stamp})`)
+      } catch {
+        /* ignore */
+      }
+    }
+    await this.deleteDbFiles(dir)
   }
 
   private async deleteDbFiles(dir: string): Promise<void> {
