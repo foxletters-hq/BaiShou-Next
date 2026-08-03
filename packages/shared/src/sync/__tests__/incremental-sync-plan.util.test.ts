@@ -29,6 +29,27 @@ describe('incremental-sync-plan.util', () => {
   it('resolveIncrementalSyncVaultScope maps nested paths to vault name', () => {
     expect(resolveIncrementalSyncVaultScope('Personal/Journals/2024/01/a.md')).toBe('Personal')
     expect(resolveIncrementalSyncVaultScope('vault_registry.json')).toBe('__root__')
+    expect(resolveIncrementalSyncVaultScope('.baishou/settings/ai_providers.json')).toBe('global')
+    expect(resolveIncrementalSyncVaultScope('.baishou/settings/user_profile.json')).toBe('global')
+    expect(resolveIncrementalSyncVaultScope('Personal/.baishou/settings/theme.json')).toBe(
+      'Personal'
+    )
+  })
+
+  it('buildIncrementalSyncPlanPreview groups root settings under global scope', () => {
+    const preview = buildIncrementalSyncPlanPreview({
+      decisions: [
+        decision('.baishou/settings/app_preferences.json', 'upload', { size: 100 }),
+        decision('Personal/Journals/a.md', 'download', { size: 200 })
+      ],
+      registeredVaults: ['Personal'],
+      diskVaultNames: ['Personal'],
+      activeVaultName: 'Personal'
+    })
+    expect(preview.vaultSummaries.map((s) => s.vaultName).sort()).toEqual(['Personal', 'global'])
+    expect(preview.boundaryIssues.unknownVaultPaths).toEqual([])
+    const global = preview.vaultSummaries.find((s) => s.vaultName === 'global')
+    expect(global).toMatchObject({ upload: 1, uploadBytes: 100, downloadBytes: 0 })
   })
 
   it('buildIncrementalSyncBoundaryIssues detects registry/disk mismatch', () => {

@@ -8,11 +8,28 @@ import type { SyncManifest } from '../types/version-control.types'
 import type { MergeDecision } from './three-way-merge'
 
 const ROOT_SCOPE = '__root__'
+/** 存储根下 `.baishou/settings/`（主题 / 语言 / AI 等全局设置） */
+export const INCREMENTAL_SYNC_GLOBAL_SCOPE = 'global' as const
 const UNKNOWN_SCOPE = '__unknown__'
 const ROOT_FILES = new Set(['vault_registry.json'])
+const GLOBAL_SETTINGS_PREFIX = '.baishou/settings/'
+
+function isNonVaultSyncScope(scope: string): boolean {
+  return (
+    scope === ROOT_SCOPE ||
+    scope === INCREMENTAL_SYNC_GLOBAL_SCOPE ||
+    scope === UNKNOWN_SCOPE
+  )
+}
 
 export function resolveIncrementalSyncVaultScope(filePath: string): string {
   const normalized = filePath.replace(/\\/g, '/')
+  if (
+    normalized === '.baishou/settings' ||
+    normalized.startsWith(GLOBAL_SETTINGS_PREFIX)
+  ) {
+    return INCREMENTAL_SYNC_GLOBAL_SCOPE
+  }
   if (ROOT_FILES.has(normalized)) return ROOT_SCOPE
   const slash = normalized.indexOf('/')
   if (slash === -1) return ROOT_SCOPE
@@ -31,7 +48,7 @@ export function isRegistryVaultOnDisk(
   return diskVaultNames.some((diskName) => targets.has(diskName.trim().toLocaleLowerCase()))
 }
 
-/** 汇总 manifest 中出现的工作区作用域（不含 __root__ / __unknown__） */
+/** 汇总 manifest 中出现的工作区作用域（不含 __root__ / global / __unknown__） */
 export function collectManifestVaultScopes(
   ...manifests: Array<Pick<SyncManifest, 'files'>>
 ): Set<string> {
@@ -39,7 +56,7 @@ export function collectManifestVaultScopes(
   for (const manifest of manifests) {
     for (const filePath of Object.keys(manifest.files)) {
       const scope = resolveIncrementalSyncVaultScope(filePath)
-      if (scope !== ROOT_SCOPE && scope !== UNKNOWN_SCOPE) {
+      if (!isNonVaultSyncScope(scope)) {
         scopes.add(scope)
       }
     }
@@ -57,7 +74,7 @@ export function buildIncrementalSyncBoundaryIssues(options: {
   const planVaultScopes = new Set(
     options.planItems
       .map((item) => item.vaultScope)
-      .filter((scope) => scope !== ROOT_SCOPE && scope !== UNKNOWN_SCOPE)
+      .filter((scope) => !isNonVaultSyncScope(scope))
   )
 
   const unknownVaultPaths = [...planVaultScopes].filter((scope) => !registered.has(scope))

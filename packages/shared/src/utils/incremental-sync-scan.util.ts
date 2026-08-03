@@ -53,8 +53,11 @@ function isBaishouSettingsTree(rel: string): boolean {
   )
 }
 
-/** 存储根下的 `.baishou/`（manifest、sync-log），不参与文件扫描 */
-function isRootSyncMetaDirectory(rel: string, entryName: string): boolean {
+/**
+ * 存储根下的 `.baishou/`：允许下降以扫描 `.baishou/settings/`（global scope），
+ * 其它子树（manifest、sync-log）仍由后续规则排除。
+ */
+function isRootBaishouDirectory(rel: string, entryName: string): boolean {
   return entryName === '.baishou' && (rel === '.baishou' || rel === '')
 }
 
@@ -80,8 +83,9 @@ export function shouldScanIncrementalSyncDirectory(
     return false
   }
 
-  if (isRootSyncMetaDirectory(rel, entryName)) {
-    return false
+  // V1.5：根级 `.baishou` 需可扫，否则 `.baishou/settings/` 进不了 manifest
+  if (isRootBaishouDirectory(rel, entryName)) {
+    return true
   }
 
   if (isBaishouSettingsTree(rel)) {

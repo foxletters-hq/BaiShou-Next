@@ -58,6 +58,16 @@ describe('incremental-sync-scan.util', () => {
     expect(shouldScanIncrementalSyncDirectory('sync-log', 'Personal/.baishou/sync-log')).toBe(false)
   })
 
+  it('scans root .baishou/settings for global scope while excluding sync metadata', () => {
+    expect(shouldScanIncrementalSyncDirectory('.baishou', '.baishou')).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('settings', '.baishou/settings')).toBe(true)
+    expect(
+      shouldIncludeIncrementalSyncFile('ai_providers.json', '.baishou/settings/ai_providers.json')
+    ).toBe(true)
+    expect(shouldScanIncrementalSyncDirectory('sync-log', '.baishou/sync-log')).toBe(false)
+    expect(shouldIncludeIncrementalSyncFile('manifest.json', '.baishou/manifest.json')).toBe(false)
+  })
+
   it('excludes device-local external_paths.json from incremental sync', () => {
     expect(
       shouldIncludeIncrementalSyncFile(
@@ -101,8 +111,8 @@ describe('incremental-sync-scan.util', () => {
     ).toBe(true)
   })
 
-  it('excludes root .baishou sync metadata and other dot directories', () => {
-    expect(shouldScanIncrementalSyncDirectory('.baishou', '.baishou')).toBe(false)
+  it('excludes other root dot directories; root .baishou is scannable for settings', () => {
+    expect(shouldScanIncrementalSyncDirectory('.baishou', '.baishou')).toBe(true)
     expect(shouldScanIncrementalSyncDirectory('sync-log', '.baishou/sync-log')).toBe(false)
     expect(shouldScanIncrementalSyncDirectory('.versions', '.versions')).toBe(false)
     expect(shouldScanIncrementalSyncDirectory('node_modules', 'node_modules')).toBe(false)
