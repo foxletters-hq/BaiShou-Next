@@ -51,6 +51,7 @@ export interface AgentToolsContextParams {
   workspace?: {
     folderRoot?: string
     sessionKind?: AgentSessionKind
+    notebookId?: string
   }
 }
 
@@ -124,7 +125,8 @@ async function buildToolExecutionContext(
     workspace: params.workspace?.folderRoot
       ? {
           folderRoot: params.workspace.folderRoot,
-          sessionKind: params.workspace.sessionKind
+          sessionKind: params.workspace.sessionKind,
+          notebookId: params.workspace.notebookId
         }
       : undefined
   }
