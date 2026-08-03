@@ -4,6 +4,7 @@ import { Platform } from 'react-native'
 import {
   ensureExpoAgentDatabaseInstalled,
   verifyExpoAgentDatabaseIntegrity,
+  expoKnowledgeConnectionManager,
   type ExpoSqliteDatabase
 } from '@baishou/database/expo'
 import {
@@ -120,6 +121,26 @@ export async function bootstrapMobileBaishouCore(ctx: MobileBaishouInitContext):
       logger.warn(
         '[BaishouProvider] sqlite-vec not active; vector search uses JS fallback. Rebuild with pnpm dev:mobile:clear if needed.',
         sqliteVecLoadReason
+      )
+    }
+
+    // 1b. 连接独立 knowledge.db（第二连接单独 loadSqliteVec）
+    try {
+      const knowledgeDbDir = await pathService.getRootDirectory()
+      await fileSystem.mkdir(knowledgeDbDir, { recursive: true })
+      await expoKnowledgeConnectionManager.connect(knowledgeDbDir)
+      if (expoKnowledgeConnectionManager.isSqliteVecLoaded()) {
+        logger.info('[BaishouProvider] Native sqlite-vec active on knowledge database.')
+      } else {
+        logger.warn(
+          '[BaishouProvider] knowledge db sqlite-vec not active:',
+          expoKnowledgeConnectionManager.getSqliteVecLoadReason()
+        )
+      }
+    } catch (knowledgeDbError) {
+      logger.warn(
+        '[BaishouProvider] knowledge db connect failed (Ask/检索将不可用):',
+        knowledgeDbError as Error
       )
     }
 
