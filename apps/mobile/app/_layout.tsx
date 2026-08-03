@@ -15,7 +15,7 @@ import { getSystemLanguage, resolveAppUiLanguage } from '@/src/lib/device-locale
 import { useNativeTheme, DialogProvider, ToastProvider } from '@baishou/ui/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { BaishouProvider, useBaishou } from '@/src/providers/BaishouProvider'
-import { NetworkProvider } from '@/src/providers/NetworkProvider'
+import { NetworkProvider, NetworkOfflineBanner } from '@/src/providers/NetworkProvider'
 import { IncrementalSyncProvider } from '@/src/providers/IncrementalSyncProvider'
 import { useDiaryEmbedFailureToast } from '@/src/hooks/useDiaryEmbedFailureToast'
 import { useLegacyUpgradeRagToast } from '@/src/hooks/useLegacyUpgradeRagToast'
@@ -157,6 +157,7 @@ export default function RootLayout() {
                     <IncrementalSyncProvider>
                       <LegacyMigrationPrompt />
                       <AppContent />
+                      <NetworkOfflineBanner />
                     </IncrementalSyncProvider>
                   </DialogProvider>
                 </ToastProvider>
