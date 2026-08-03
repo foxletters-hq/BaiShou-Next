@@ -248,6 +248,13 @@ export class MobileStoragePathService implements IStoragePathService {
     return this.getVaultSystemDirectory(name)
   }
 
+  public async getGlobalSettingsDirectory(): Promise<string> {
+    const root = await this.getRootDirectory()
+    const baishouDir = `${root}/.baishou`
+    await this.ensureDir(baishouDir)
+    return `${baishouDir}/settings`
+  }
+
   public async getExternalJournalsDirectory(vaultName?: string): Promise<string | null> {
     const name = vaultName ?? (await this.getActiveVaultName())
     const sysDir = await this.getVaultSystemDirectory(name)

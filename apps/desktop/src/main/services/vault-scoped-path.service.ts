@@ -32,6 +32,10 @@ export class VaultScopedStoragePathService implements IStoragePathService {
     return this.base.getVaultSystemDirectory(this.vaultName)
   }
 
+  getGlobalSettingsDirectory(): Promise<string> {
+    return this.base.getGlobalSettingsDirectory()
+  }
+
   getGlobalShadowIndexDirectory(): Promise<string> {
     return this.base.getGlobalShadowIndexDirectory()
   }

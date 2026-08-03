@@ -20,9 +20,15 @@ export interface IStoragePathService {
   getVaultSystemDirectory(vaultName: string): Promise<string>
 
   /**
-   * 当前活跃 Vault 的 .baishou 目录（settings.json 等）
+   * 当前活跃 Vault 的 .baishou 目录（仓内元数据；历史上也曾存放 settings）
    */
   getActiveVaultSettingsDirectory(): Promise<string>
+
+  /**
+   * 全局应用设置目录（存储根下 `.baishou/settings/`，不随工作空间切换）
+   * 不强制创建 settings 子目录本身，由写入方 mkdir。
+   */
+  getGlobalSettingsDirectory(): Promise<string>
 
   /**
    * 获取全局 Shadow DB 目录（单库 shadow_index_v2.db，所有 Vault 共用）

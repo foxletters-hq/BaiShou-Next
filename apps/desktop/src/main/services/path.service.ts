@@ -100,6 +100,13 @@ export class DesktopStoragePathService implements IStoragePathService {
     return this.getVaultSystemDirectory(await this.getActiveVaultName())
   }
 
+  public async getGlobalSettingsDirectory(): Promise<string> {
+    const root = await this.getRootDirectory()
+    const baishouDir = path.join(root, '.baishou')
+    await fs.mkdir(baishouDir, { recursive: true })
+    return path.join(baishouDir, 'settings')
+  }
+
   public async getGlobalShadowIndexDirectory(): Promise<string> {
     const dir = path.join(app.getPath('userData'), 'shadow_index')
     await fs.mkdir(dir, { recursive: true })
