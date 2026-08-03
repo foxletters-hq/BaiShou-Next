@@ -108,4 +108,42 @@ describe('MemoryDeleteTool', () => {
     expect(tombstone).not.toHaveBeenCalled()
     expect(deleteBySource).toHaveBeenCalledWith('chat', 'msg-2')
   })
+
+  it('fail-closed: tombstone IO failure does not delete vectors', async () => {
+    const tombstone = vi.fn().mockRejectedValue(new Error('ENOSPC'))
+    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const context: ToolContext = {
+      sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      embeddingService: {
+        isConfigured: true,
+        embedQuery: vi.fn().mockResolvedValue([0.1, 0.2]),
+        embedText: vi.fn()
+      },
+      vectorStore: {
+        searchSimilar: vi.fn().mockResolvedValue([
+          {
+            sourceType: MEMORY_SOURCE_TYPE,
+            sourceId: 'mem-io',
+            groupId: 'memory',
+            chunkText: 'should remain',
+            distance: 0.05,
+            createdAt: Date.parse('2026-08-01T12:00:00Z')
+          }
+        ]),
+        deleteBySource
+      },
+      rawDataSourceManager: {
+        writeRecord: vi.fn(),
+        tombstone
+      }
+    }
+
+    const result = await tool.execute({ query: 'remain' }, context)
+
+    expect(result).toMatch(/Failed to delete|ENOSPC/)
+    expect(tombstone).toHaveBeenCalled()
+    expect(deleteBySource).not.toHaveBeenCalled()
+  })
 })
