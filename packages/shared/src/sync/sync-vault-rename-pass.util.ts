@@ -57,7 +57,10 @@ export type VaultRenameCloudClient = {
 }
 
 function normalizeName(name: string): string {
-  return name.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').trim()
+  return name
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '')
+    .trim()
 }
 
 /** 列出 manifest 中属于某 vault 前缀的文件路径 */
@@ -79,7 +82,8 @@ export function parseVaultIdToNameMap(registryJson: unknown): Record<string, str
   if (!Array.isArray(registryJson)) return out
   for (const item of registryJson) {
     if (!item || typeof item !== 'object') continue
-    const id = typeof (item as { id?: unknown }).id === 'string' ? (item as { id: string }).id.trim() : ''
+    const id =
+      typeof (item as { id?: unknown }).id === 'string' ? (item as { id: string }).id.trim() : ''
     const name =
       typeof (item as { name?: unknown }).name === 'string'
         ? normalizeName((item as { name: string }).name)
@@ -113,7 +117,8 @@ export function parseLastRemoteVaultsSnapshot(raw: unknown): LastRemoteVaultsSna
   }
   return {
     version: 1,
-    updatedAt: typeof obj.updatedAt === 'number' && Number.isFinite(obj.updatedAt) ? obj.updatedAt : 0,
+    updatedAt:
+      typeof obj.updatedAt === 'number' && Number.isFinite(obj.updatedAt) ? obj.updatedAt : 0,
     vaults
   }
 }

@@ -8,11 +8,12 @@
 export const DEFAULT_SYNC_TRAFFIC_PROMPT_ENABLED = true
 /** 默认阈值 50 MB */
 export const DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB = 50
-export const DEFAULT_SYNC_TRAFFIC_THRESHOLD_BYTES =
-  DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB * 1024 * 1024
+export const DEFAULT_SYNC_TRAFFIC_THRESHOLD_BYTES = DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB * 1024 * 1024
 
 export function syncTrafficThresholdMbToBytes(thresholdMb: number): number {
-  const mb = Number.isFinite(thresholdMb) ? Math.max(0, thresholdMb) : DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB
+  const mb = Number.isFinite(thresholdMb)
+    ? Math.max(0, thresholdMb)
+    : DEFAULT_SYNC_TRAFFIC_THRESHOLD_MB
   return Math.floor(mb * 1024 * 1024)
 }
 

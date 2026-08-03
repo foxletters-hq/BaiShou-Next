@@ -1,4 +1,8 @@
-import type { ManifestEntry, RemovedManifestEntry, SyncManifest } from '../types/version-control.types'
+import type {
+  ManifestEntry,
+  RemovedManifestEntry,
+  SyncManifest
+} from '../types/version-control.types'
 
 function normalizeRelPath(filePath: string): string {
   return filePath.replace(/\\/g, '/')

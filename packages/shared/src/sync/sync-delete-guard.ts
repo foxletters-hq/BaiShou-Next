@@ -254,14 +254,7 @@ export function assertBidirectionalDeletePropagationAllowed(
   previousLocal?: SyncManifest,
   options?: SyncDeletePropagationGuardOptions
 ): void {
-  assertDeleteRemotePropagationAllowed(
-    decisions,
-    local,
-    remote,
-    ancestor,
-    previousLocal,
-    options
-  )
+  assertDeleteRemotePropagationAllowed(decisions, local, remote, ancestor, previousLocal, options)
   assertDeleteLocalPropagationAllowed(decisions, local, remote, ancestor)
 }
 

@@ -125,7 +125,9 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
       shouldRequireIncrementalSyncReconfirmAfterReplan(
         false,
         preview(),
-        preview({ items: [{ action: 'download', filePath: 'b.md', vaultScope: 'Personal', sizeBytes: 0 }] }),
+        preview({
+          items: [{ action: 'download', filePath: 'b.md', vaultScope: 'Personal', sizeBytes: 0 }]
+        }),
         false
       )
     ).toBe(false)
@@ -197,7 +199,9 @@ describe('shouldRequireIncrementalSyncReconfirmAfterReplan', () => {
       items: [{ action: 'upload', filePath: 'a.md', vaultScope: 'Personal', sizeBytes: 0 }]
     })
     const fresh = preview({
-      items: [{ action: 'delete-remote', filePath: 'gone.md', vaultScope: 'Personal', sizeBytes: 0 }]
+      items: [
+        { action: 'delete-remote', filePath: 'gone.md', vaultScope: 'Personal', sizeBytes: 0 }
+      ]
     })
     expect(shouldRequireIncrementalSyncReconfirmAfterReplan(true, stale, fresh, true)).toBe(false)
   })

@@ -15,19 +15,12 @@ const ROOT_FILES = new Set(['vault_registry.json'])
 const GLOBAL_SETTINGS_PREFIX = '.baishou/settings/'
 
 function isNonVaultSyncScope(scope: string): boolean {
-  return (
-    scope === ROOT_SCOPE ||
-    scope === INCREMENTAL_SYNC_GLOBAL_SCOPE ||
-    scope === UNKNOWN_SCOPE
-  )
+  return scope === ROOT_SCOPE || scope === INCREMENTAL_SYNC_GLOBAL_SCOPE || scope === UNKNOWN_SCOPE
 }
 
 export function resolveIncrementalSyncVaultScope(filePath: string): string {
   const normalized = filePath.replace(/\\/g, '/')
-  if (
-    normalized === '.baishou/settings' ||
-    normalized.startsWith(GLOBAL_SETTINGS_PREFIX)
-  ) {
+  if (normalized === '.baishou/settings' || normalized.startsWith(GLOBAL_SETTINGS_PREFIX)) {
     return INCREMENTAL_SYNC_GLOBAL_SCOPE
   }
   if (ROOT_FILES.has(normalized)) return ROOT_SCOPE
@@ -72,9 +65,7 @@ export function buildIncrementalSyncBoundaryIssues(options: {
 }): IncrementalSyncBoundaryIssues {
   const registered = new Set(options.registeredVaults)
   const planVaultScopes = new Set(
-    options.planItems
-      .map((item) => item.vaultScope)
-      .filter((scope) => !isNonVaultSyncScope(scope))
+    options.planItems.map((item) => item.vaultScope).filter((scope) => !isNonVaultSyncScope(scope))
   )
 
   const unknownVaultPaths = [...planVaultScopes].filter((scope) => !registered.has(scope))
@@ -147,10 +138,9 @@ function normalizeSizeBytes(size: number | undefined): number {
  * 将计划项字节归入上传/下载。
  * 删除不产生传输；冲突按 direction 归类；无 direction 的冲突不计流量。
  */
-export function resolveIncrementalSyncTransferBytes(item: Pick<
-  IncrementalSyncPlanItem,
-  'action' | 'sizeBytes' | 'direction'
->): { uploadBytes: number; downloadBytes: number } {
+export function resolveIncrementalSyncTransferBytes(
+  item: Pick<IncrementalSyncPlanItem, 'action' | 'sizeBytes' | 'direction'>
+): { uploadBytes: number; downloadBytes: number } {
   const sizeBytes = normalizeSizeBytes(item.sizeBytes)
   switch (item.action) {
     case 'upload':

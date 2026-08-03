@@ -83,11 +83,7 @@ describe('sync-vault-rename-pass', () => {
     expect(simulated.applied).toBe(true)
     expect(simulated.renamedFileCount).toBe(2)
 
-    const decisions = threeWayMerge(
-      local,
-      simulated.remoteManifest,
-      simulated.ancestorSnapshot
-    )
+    const decisions = threeWayMerge(local, simulated.remoteManifest, simulated.ancestorSnapshot)
     const pending = decisions.filter((d) => d.type !== 'skip')
     expect(pending).toEqual([])
   })
@@ -318,9 +314,7 @@ describe('sync-vault-rename-pass', () => {
     )
     // 本地已全部在新前缀；对删除护栏而言 local 非空但没有旧路径
     const local = manifest(
-      Object.fromEntries(
-        Array.from({ length: 20 }, (_, i) => [`工作/f${i}.md`, entry(`h${i}`)])
-      )
+      Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`工作/f${i}.md`, entry(`h${i}`)]))
     )
     const remote = manifest(remoteFiles)
     const ancestor = remote

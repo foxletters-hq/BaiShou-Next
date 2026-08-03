@@ -28,11 +28,11 @@ describe('migrateSyncManifestVaultPrefix', () => {
       vault_registry: { hash: 'r', size: 3, lastModified: 3 }
     })
 
-    const { manifest: next, migratedKeyCount, vaultFileBytes } = migrateSyncManifestVaultPrefix(
-      input,
-      'Personal',
-      '工作'
-    )
+    const {
+      manifest: next,
+      migratedKeyCount,
+      vaultFileBytes
+    } = migrateSyncManifestVaultPrefix(input, 'Personal', '工作')
 
     expect(migratedKeyCount).toBe(2)
     expect(vaultFileBytes).toBe(52)
