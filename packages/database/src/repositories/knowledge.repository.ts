@@ -213,10 +213,7 @@ export class KnowledgeRepository {
     if (patch && 'pageCount' in patch) set.pageCount = patch.pageCount
     if (patch && 'textPageCount' in patch) set.textPageCount = patch.textPageCount
     if (patch && 'extractEngine' in patch) set.extractEngine = patch.extractEngine
-    await this.db
-      .update(knowledgeSourcesTable)
-      .set(set)
-      .where(eq(knowledgeSourcesTable.id, id))
+    await this.db.update(knowledgeSourcesTable).set(set).where(eq(knowledgeSourcesTable.id, id))
   }
 
   // ── chunks ─────────────────────────────────────────────
@@ -268,9 +265,7 @@ export class KnowledgeRepository {
   }
 
   async deleteChunksBySource(sourceId: string): Promise<void> {
-    await this.db
-      .delete(knowledgeChunksTable)
-      .where(eq(knowledgeChunksTable.sourceId, sourceId))
+    await this.db.delete(knowledgeChunksTable).where(eq(knowledgeChunksTable.sourceId, sourceId))
   }
 
   async deleteChunksByNotebook(notebookId: string): Promise<void> {
@@ -329,9 +324,7 @@ export class KnowledgeRepository {
         .select({ id: knowledgeSourcesTable.id })
         .from(knowledgeSourcesTable)
         .where(eq(knowledgeSourcesTable.vaultId, vaultId))
-      return [
-        ...new Set([...chunkRows.map((r) => r.sourceId), ...sourceRows.map((r) => r.id)])
-      ]
+      return [...new Set([...chunkRows.map((r) => r.sourceId), ...sourceRows.map((r) => r.id)])]
     }
 
     const chunkRows = await this.db
@@ -412,7 +405,10 @@ export class KnowledgeRepository {
     }
 
     const notebooks = await countWhere(() =>
-      this.db.select({ c: sql<number>`count(*)` }).from(notebooksTable).where(eq(notebooksTable.vaultId, id))
+      this.db
+        .select({ c: sql<number>`count(*)` })
+        .from(notebooksTable)
+        .where(eq(notebooksTable.vaultId, id))
     )
     const sources = await countWhere(() =>
       this.db
@@ -433,9 +429,7 @@ export class KnowledgeRepository {
         .where(eq(knowledgeIngestJobsTable.vaultId, id))
     )
 
-    await this.db
-      .delete(knowledgeIngestJobsTable)
-      .where(eq(knowledgeIngestJobsTable.vaultId, id))
+    await this.db.delete(knowledgeIngestJobsTable).where(eq(knowledgeIngestJobsTable.vaultId, id))
     await this.db.delete(knowledgeChunksTable).where(eq(knowledgeChunksTable.vaultId, id))
     await this.db.delete(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.vaultId, id))
     await this.db.delete(notebooksTable).where(eq(notebooksTable.vaultId, id))
@@ -581,11 +575,7 @@ export class KnowledgeRepository {
     await this.db.delete(knowledgeIngestJobsTable).where(eq(knowledgeIngestJobsTable.id, id))
   }
 
-  async failIngestJob(
-    id: number,
-    error: string,
-    options?: { backoffMs?: number }
-  ): Promise<void> {
+  async failIngestJob(id: number, error: string, options?: { backoffMs?: number }): Promise<void> {
     const backoffMs = options?.backoffMs ?? 60_000
     const now = Date.now()
     await this.db
@@ -599,7 +589,10 @@ export class KnowledgeRepository {
       .where(eq(knowledgeIngestJobsTable.id, id))
   }
 
-  async getStats(notebookId?: string, vaultId?: string): Promise<{
+  async getStats(
+    notebookId?: string,
+    vaultId?: string
+  ): Promise<{
     notebooks: number
     sources: number
     chunks: number

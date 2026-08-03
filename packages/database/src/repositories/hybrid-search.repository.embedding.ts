@@ -1,4 +1,9 @@
-import { embeddingVectorToBytes, logger, mapMigrationBackupRow, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
+import {
+  embeddingVectorToBytes,
+  logger,
+  mapMigrationBackupRow,
+  MEMORY_EMBED_GROUP_ID
+} from '@baishou/shared'
 import type { ISqlExecutor, EmbeddingSnapshotMeta } from '@baishou/shared'
 import {
   HYBRID_SEARCH_BACKUP_TABLE,

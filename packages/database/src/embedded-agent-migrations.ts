@@ -6,15 +6,15 @@ import type { EmbeddedMigrations } from './migration.service'
  */
 export const EMBEDDED_AGENT_MIGRATIONS: EmbeddedMigrations = {
   journal: {
-    "version": "7",
-    "dialect": "sqlite",
-    "entries": [
+    version: '7',
+    dialect: 'sqlite',
+    entries: [
       {
-        "idx": 0,
-        "version": "6",
-        "when": 1781510528245,
-        "tag": "0000_agent_schema",
-        "breakpoints": true
+        idx: 0,
+        version: '6',
+        when: 1781510528245,
+        tag: '0000_agent_schema',
+        breakpoints: true
       }
     ]
   },

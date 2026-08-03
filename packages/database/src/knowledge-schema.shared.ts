@@ -142,11 +142,7 @@ async function getUserVersion(client: unknown): Promise<number> {
   return Number(row?.user_version ?? 0)
 }
 
-async function tableHasColumn(
-  client: unknown,
-  table: string,
-  column: string
-): Promise<boolean> {
+async function tableHasColumn(client: unknown, table: string, column: string): Promise<boolean> {
   const res = await executeRawSql(client, `PRAGMA table_info(${table})`)
   return res.rows.some((r) => {
     const name = String((r as { name?: unknown }).name ?? '')
@@ -160,10 +156,7 @@ async function ensureVaultIdColumn(
   logPrefix: string
 ): Promise<void> {
   if (await tableHasColumn(client, table, 'vault_id')) return
-  await executeRawSql(
-    client,
-    `ALTER TABLE ${table} ADD COLUMN vault_id TEXT NOT NULL DEFAULT ''`
-  )
+  await executeRawSql(client, `ALTER TABLE ${table} ADD COLUMN vault_id TEXT NOT NULL DEFAULT ''`)
   logger.info(`${logPrefix} ${table}.vault_id 已补齐`)
 }
 

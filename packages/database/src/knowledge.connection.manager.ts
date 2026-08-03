@@ -5,10 +5,7 @@ import * as fs from 'fs'
 import { logger } from '@baishou/shared'
 
 import type { AppDatabase } from './types'
-import {
-  KNOWLEDGE_DB_FILENAME,
-  ensureKnowledgeSchema
-} from './knowledge-schema.shared'
+import { KNOWLEDGE_DB_FILENAME, ensureKnowledgeSchema } from './knowledge-schema.shared'
 
 /**
  * 知识库连接管理器（桌面 better-sqlite3 + sqlite-vec）

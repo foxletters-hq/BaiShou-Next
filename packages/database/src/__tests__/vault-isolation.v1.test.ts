@@ -731,10 +731,7 @@ describe('vault isolation V2.2 (vault_id)', () => {
       `SELECT embedding_id, vault_id, source_id FROM memory_embeddings ORDER BY embedding_id`
     )
     const byId = Object.fromEntries(
-      rows.rows.map((r) => [
-        String(r.embedding_id),
-        { vaultId: r.vault_id, sourceId: r.source_id }
-      ])
+      rows.rows.map((r) => [String(r.embedding_id), { vaultId: r.vault_id, sourceId: r.source_id }])
     )
     expect(byId.m1?.vaultId).toBe(VAULT_PERSONAL)
     expect(byId.d1?.vaultId).toBe(VAULT_PERSONAL)
