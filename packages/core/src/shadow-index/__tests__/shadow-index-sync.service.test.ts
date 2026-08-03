@@ -145,6 +145,13 @@ describe('ShadowIndexSyncService', () => {
       getAllVaults: () => [vault],
       switchVault: async () => {},
       deleteVault: async () => {},
+      renameVault: async () => ({
+        id: vault.id,
+        oldName: vault.name,
+        newName: vault.name,
+        estimatedUploadBytes: 0
+      }),
+      estimateVaultLocalSyncBytes: async () => 0,
       vaultExists: () => true,
       findRegistryNameConflicts: () => [],
       createVault: async () => {},

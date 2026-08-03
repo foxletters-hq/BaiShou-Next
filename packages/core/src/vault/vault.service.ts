@@ -2,6 +2,7 @@ import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import {
   IVaultService,
+  RenameVaultResult,
   VAULT_IDENTITY_META_FILENAME,
   VaultIdentityMeta,
   VaultInfo
@@ -12,7 +13,8 @@ import {
   VaultDeleteFilesystemError,
   VaultInvalidNameError,
   VaultNameExistsError,
-  VaultNotFoundError
+  VaultNotFoundError,
+  VaultRenameFilesystemError
 } from './vault.errors'
 import {
   findConflictingVaultName,
@@ -27,6 +29,13 @@ import {
   writeNextVaultRegistry
 } from '../migration/legacy-migration.shared'
 import { listDiskVaultFolderNames } from './vault-disk.util'
+import {
+  SYNC_MANIFEST_FILENAME,
+  SYNC_MANIFEST_VERSION,
+  migrateSyncManifestVaultPrefix,
+  sumVaultFileBytes,
+  type SyncManifest
+} from '@baishou/shared'
 
 function parseRegistryTimestamp(value: unknown, fallback: Date): Date {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -445,17 +454,202 @@ export class VaultService implements IVaultService {
     await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
   }
 
-  private assertVaultNameAvailable(name: string): void {
-    const conflict = findConflictingVaultName(
-      name,
-      this._vaults.map((v) => v.name)
-    )
+  public async renameVault(oldNameOrId: string, newName: string): Promise<RenameVaultResult> {
+    const vault = this.resolveVaultOrThrow(oldNameOrId)
+    const nextName = this.resolveVaultNameOrThrow(newName)
+    const oldName = vault.name
+
+    if (oldName === nextName) {
+      const estimatedUploadBytes = await this.estimateVaultLocalSyncBytes(vault.id)
+      return { id: vault.id, oldName, newName: nextName, estimatedUploadBytes }
+    }
+
+    this.assertVaultNameAvailable(nextName, { excludeVaultId: vault.id })
+
+    const rootDir = await this.pathService.getRootDirectory()
+    const oldDirName = sanitizeVaultDirectoryName(oldName)
+    const newDirName = sanitizeVaultDirectoryName(nextName)
+    const oldPath = path.join(rootDir, oldDirName)
+    const newPath = path.join(rootDir, newDirName)
+
+    const estimatedUploadBytes = await this.estimateBytesForVault(vault, oldName)
+
+    try {
+      await this.renameVaultDirectoryOnDisk(oldPath, newPath, vault.id)
+    } catch (error) {
+      throw new VaultRenameFilesystemError(oldName, nextName, error)
+    }
+
+    vault.name = nextName
+    vault.path = newPath
+    await this.writeVaultIdentityMeta(vault)
+    await this.migrateLocalSyncManifestVaultPrefix(oldName, nextName)
+    await this.saveRegistry(path.join(rootDir, 'vault_registry.json'))
+
+    return { id: vault.id, oldName, newName: nextName, estimatedUploadBytes }
+  }
+
+  public async estimateVaultLocalSyncBytes(vaultNameOrId: string): Promise<number> {
+    const vault = this.resolveVaultOrThrow(vaultNameOrId)
+    return this.estimateBytesForVault(vault, vault.name)
+  }
+
+  private assertVaultNameAvailable(
+    name: string,
+    options?: { excludeVaultId?: string }
+  ): void {
+    const candidates = this._vaults
+      .filter((v) => !options?.excludeVaultId || v.id !== options.excludeVaultId)
+      .map((v) => v.name)
+    const conflict = findConflictingVaultName(name, candidates)
     if (conflict) {
       throw new VaultNameExistsError(name, {
         conflictingName: conflict.existing,
         conflictKind: conflict.kind
       })
     }
+  }
+
+  private resolveVaultOrThrow(nameOrId: string): VaultInfo {
+    const trimmed = typeof nameOrId === 'string' ? nameOrId.trim() : ''
+    if (!trimmed) throw new VaultNotFoundError(nameOrId)
+
+    if (isVaultId(trimmed)) {
+      const byId = this._vaults.find((v) => v.id === trimmed)
+      if (byId) return byId
+      throw new VaultNotFoundError(trimmed)
+    }
+
+    const byExact = this._vaults.find((v) => v.name === trimmed)
+    if (byExact) return byExact
+
+    const byCase = this._vaults.find(
+      (v) => normalizeVaultNameForCompare(v.name) === normalizeVaultNameForCompare(trimmed)
+    )
+    if (byCase) return byCase
+
+    throw new VaultNotFoundError(trimmed)
+  }
+
+  private async renameVaultDirectoryOnDisk(
+    oldPath: string,
+    newPath: string,
+    vaultId: string
+  ): Promise<void> {
+    const oldNorm = normalizeRegistryPath(oldPath)
+    const newNorm = normalizeRegistryPath(newPath)
+    if (oldNorm === newNorm) return
+
+    const oldExists = await this.fileSystem.exists(oldPath)
+    if (!oldExists) {
+      // 目录可能已由中断改名落到新路径；若新路径存在则视为已完成
+      if (await this.fileSystem.exists(newPath)) return
+      throw Object.assign(new Error(`Source vault directory missing: ${oldPath}`), {
+        code: 'ENOENT'
+      })
+    }
+
+    const samePathDifferentCase =
+      normalizeVaultNameForCompare(path.basename(oldPath)) ===
+        normalizeVaultNameForCompare(path.basename(newPath)) &&
+      oldNorm !== newNorm
+
+    if (samePathDifferentCase) {
+      const rootDir = path.dirname(oldPath)
+      const tempPath = path.join(rootDir, `.rename-tmp-${vaultId}`)
+      if (await this.fileSystem.exists(tempPath)) {
+        await this.fileSystem.rm(tempPath, { recursive: true, force: true })
+      }
+      await this.fileSystem.rename(oldPath, tempPath)
+      await this.fileSystem.rename(tempPath, newPath)
+      return
+    }
+
+    if (await this.fileSystem.exists(newPath)) {
+      throw Object.assign(new Error(`Target vault directory already exists: ${newPath}`), {
+        code: 'EEXIST'
+      })
+    }
+    await this.fileSystem.rename(oldPath, newPath)
+  }
+
+  private async estimateBytesForVault(vault: VaultInfo, vaultNameForPrefix: string): Promise<number> {
+    const fromManifest = await this.readLocalManifestVaultBytes(vaultNameForPrefix)
+    if (fromManifest > 0) return fromManifest
+    return this.sumDirectoryBytes(vault.path)
+  }
+
+  private async readLocalManifestVaultBytes(vaultName: string): Promise<number> {
+    const manifest = await this.readLocalSyncManifest()
+    if (!manifest) return 0
+    return sumVaultFileBytes(manifest.files, vaultName)
+  }
+
+  private async migrateLocalSyncManifestVaultPrefix(
+    oldVaultName: string,
+    newVaultName: string
+  ): Promise<void> {
+    const rootDir = await this.pathService.getRootDirectory()
+    const manifestPath = path.join(rootDir, '.baishou', SYNC_MANIFEST_FILENAME)
+    const raw = await this.readLocalSyncManifest()
+    if (!raw) return
+
+    const { manifest, migratedKeyCount } = migrateSyncManifestVaultPrefix(
+      raw,
+      oldVaultName,
+      newVaultName
+    )
+    if (migratedKeyCount === 0 && oldVaultName === newVaultName) return
+
+    await this.fileSystem.mkdir(path.dirname(manifestPath), { recursive: true })
+    await this.fileSystem.writeFile(manifestPath, JSON.stringify(manifest), 'utf8')
+  }
+
+  private async readLocalSyncManifest(): Promise<SyncManifest | null> {
+    const rootDir = await this.pathService.getRootDirectory()
+    const manifestPath = path.join(rootDir, '.baishou', SYNC_MANIFEST_FILENAME)
+    try {
+      const content = await this.fileSystem.readFile(manifestPath, 'utf8')
+      const parsed = JSON.parse(content) as SyncManifest
+      if (!parsed || typeof parsed !== 'object' || !parsed.files) {
+        return {
+          version: SYNC_MANIFEST_VERSION,
+          updatedAt: Date.now(),
+          deviceId: '',
+          files: {}
+        }
+      }
+      return parsed
+    } catch (e: any) {
+      if (e?.code === 'ENOENT') return null
+      return null
+    }
+  }
+
+  private async sumDirectoryBytes(dirPath: string): Promise<number> {
+    if (!(await this.fileSystem.exists(dirPath))) return 0
+    let total = 0
+    const walk = async (current: string): Promise<void> => {
+      let names: string[]
+      try {
+        names = await this.fileSystem.readdir(current)
+      } catch {
+        return
+      }
+      for (const name of names) {
+        const full = path.join(current, name)
+        const stat = await this.fileSystem.stat(full).catch(() => null)
+        if (!stat) continue
+        if (stat.isDirectory) {
+          await walk(full)
+        } else if (stat.isFile) {
+          const size = typeof stat.size === 'number' && Number.isFinite(stat.size) ? stat.size : 0
+          if (size > 0) total += size
+        }
+      }
+    }
+    await walk(dirPath)
+    return total
   }
 
   public async switchVault(vaultName: string): Promise<void> {
