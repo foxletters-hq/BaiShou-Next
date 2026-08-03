@@ -411,6 +411,159 @@ describe('vault isolation V2.2 (vault_id)', () => {
     expect(String(byId.g2!.s).startsWith('vlt_')).toBe(true)
   })
 
+  it('5b) §9 switch to B: session/assistant lists are B; A rows remain in DB', async () => {
+    await db.execute({
+      sql: `INSERT INTO agent_sessions (id, title, vault_id) VALUES (?, ?, ?)`,
+      args: ['sA', 'Session A', VAULT_A]
+    })
+    await db.execute({
+      sql: `INSERT INTO agent_sessions (id, title, vault_id) VALUES (?, ?, ?)`,
+      args: ['sB', 'Session B', VAULT_B]
+    })
+    await db.execute({
+      sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'Ast A')`,
+      args: [VAULT_A]
+    })
+    await db.execute({
+      sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'Ast B')`,
+      args: [VAULT_B]
+    })
+    await db.execute({
+      sql: `INSERT INTO summaries (vault_id, type, start_date, end_date, content, generated_at)
+            VALUES (?, 'monthly', 1, 2, 'sumA', 1)`,
+      args: [VAULT_A]
+    })
+    await db.execute({
+      sql: `INSERT INTO summaries (vault_id, type, start_date, end_date, content, generated_at)
+            VALUES (?, 'monthly', 1, 2, 'sumB', 1)`,
+      args: [VAULT_B]
+    })
+
+    // 模拟切到 B：列表只看 B
+    const sessionsB = await db.execute({
+      sql: `SELECT id FROM agent_sessions WHERE vault_id = ?`,
+      args: [VAULT_B]
+    })
+    expect(sessionsB.rows.map((r) => r.id)).toEqual(['sB'])
+    const assistantsB = await db.execute({
+      sql: `SELECT name FROM agent_assistants WHERE vault_id = ?`,
+      args: [VAULT_B]
+    })
+    expect(assistantsB.rows.map((r) => r.name)).toEqual(['Ast B'])
+    const summariesB = await db.execute({
+      sql: `SELECT content FROM summaries WHERE vault_id = ?`,
+      args: [VAULT_B]
+    })
+    expect(summariesB.rows.map((r) => r.content)).toEqual(['sumB'])
+
+    // A 的行仍在库（废除切换重建）
+    const assistantsA = await db.execute({
+      sql: `SELECT name FROM agent_assistants WHERE vault_id = ?`,
+      args: [VAULT_A]
+    })
+    expect(assistantsA.rows.map((r) => r.name)).toEqual(['Ast A'])
+    const sessionsA = await db.execute({
+      sql: `SELECT id FROM agent_sessions WHERE vault_id = ?`,
+      args: [VAULT_A]
+    })
+    expect(sessionsA.rows.map((r) => r.id)).toEqual(['sA'])
+  })
+
+  it('5c) §9 delete B: no vault_id=B anywhere; A intact', async () => {
+    await db.execute({
+      sql: `INSERT INTO agent_sessions (id, title, vault_id) VALUES ('sA', 'A', ?), ('sB', 'B', ?)`,
+      args: [VAULT_A, VAULT_B]
+    })
+    await repo.insertEmbedding({
+      id: 'eA',
+      sourceType: 'memory',
+      sourceId: 'mA',
+      groupId: 'memory',
+      vaultId: VAULT_A,
+      chunkIndex: 0,
+      chunkText: 'keep A',
+      embedding: vec(0.1),
+      modelId: 'm'
+    })
+    await repo.insertEmbedding({
+      id: 'eB',
+      sourceType: 'memory',
+      sourceId: 'mB',
+      groupId: 'memory',
+      vaultId: VAULT_B,
+      chunkIndex: 0,
+      chunkText: 'drop B',
+      embedding: vec(0.2),
+      modelId: 'm'
+    })
+    await db.execute({
+      sql: `INSERT INTO graph_nodes (id, vault_id, node_type, name) VALUES ('nA', ?, 'person', 'Ann'), ('nB', ?, 'person', 'Bob')`,
+      args: [VAULT_A, VAULT_B]
+    })
+    await db.execute({
+      sql: `INSERT INTO summaries (vault_id, type, start_date, end_date, content, generated_at)
+            VALUES (?, 'monthly', 1, 2, 'A', 1), (?, 'monthly', 1, 2, 'B', 1)`,
+      args: [VAULT_A, VAULT_B]
+    })
+    await db.execute({
+      sql: `INSERT INTO agent_assistants (id, vault_id, name) VALUES ('default', ?, 'A'), ('default', ?, 'B')`,
+      args: [VAULT_A, VAULT_B]
+    })
+    await db.execute({
+      sql: `INSERT INTO diary_embed_jobs (vault_id, diary_id, content_hash, updated_at, created_at)
+            VALUES (?, 1, 'hA', 1, 1), (?, 2, 'hB', 1, 1)`,
+      args: [VAULT_A, VAULT_B]
+    })
+
+    await purgeVaultDerivedData(exec, VAULT_B)
+
+    for (const table of [
+      'agent_sessions',
+      'memory_embeddings',
+      'graph_nodes',
+      'summaries',
+      'agent_assistants',
+      'diary_embed_jobs'
+    ]) {
+      const left = await db.execute({
+        sql: `SELECT count(*) as c FROM ${table} WHERE vault_id = ?`,
+        args: [VAULT_B]
+      })
+      expect(Number(left.rows[0]?.c), table).toBe(0)
+    }
+
+    expect(
+      Number(
+        (
+          await db.execute({
+            sql: `SELECT count(*) as c FROM agent_sessions WHERE vault_id = ?`,
+            args: [VAULT_A]
+          })
+        ).rows[0]?.c
+      )
+    ).toBe(1)
+    expect(
+      Number(
+        (
+          await db.execute({
+            sql: `SELECT count(*) as c FROM memory_embeddings WHERE vault_id = ?`,
+            args: [VAULT_A]
+          })
+        ).rows[0]?.c
+      )
+    ).toBe(1)
+    expect(
+      Number(
+        (
+          await db.execute({
+            sql: `SELECT count(*) as c FROM agent_assistants WHERE vault_id = ?`,
+            args: [VAULT_A]
+          })
+        ).rows[0]?.c
+      )
+    ).toBe(1)
+  })
+
   it('6) V1 vault_name backfill then V2.2 name→id + diary source_id rewrite', async () => {
     // 模拟旧库：仍用 vault_name 列
     await db.execute(`DROP TABLE IF EXISTS agent_sessions`)
@@ -495,6 +648,13 @@ describe('vault isolation V2.2 (vault_id)', () => {
     expect(first.diaryFromSourceId).toBe(1)
     expect(first.chatFromSessionJoin).toBe(1)
     expect(first.legacyManualUnscoped).toBe(1)
+
+    // V1.0 回填幂等：连跑第二次应无新候选
+    const secondNameBackfill = await backfillMemoryEmbeddingsVaultName(sqlExec)
+    expect(secondNameBackfill.memoryFromGroupId).toBe(0)
+    expect(secondNameBackfill.diaryFromGroupId).toBe(0)
+    expect(secondNameBackfill.diaryFromSourceId).toBe(0)
+    expect(secondNameBackfill.chatFromSessionJoin).toBe(0)
 
     const afterFirst = await countEmptyVaultEmbeddingsByBucket(sqlExec)
     expect(afterFirst.legacyManualEmpty).toBe(1)
