@@ -88,6 +88,16 @@ export interface BaishouContextValue {
     vaultFileWatcher: VaultFileWatcherService
     switchVault: (vaultName: string) => Promise<void>
     deleteVault: (vaultName: string) => Promise<void>
+    renameVault: (
+      oldNameOrId: string,
+      newName: string
+    ) => Promise<{
+      id: string
+      oldName: string
+      newName: string
+      estimatedUploadBytes: number
+    }>
+    estimateVaultRenameBytes: (vaultNameOrId: string) => Promise<number>
     createDemoVault: () => Promise<{ vaultName: string; diaryCount: number; summaryCount: number }>
     memorySearch: (
       query: string,

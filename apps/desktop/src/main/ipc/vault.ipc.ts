@@ -1,6 +1,6 @@
 import i18n from 'i18next'
 import { ipcMain, BrowserWindow } from 'electron'
-import { VaultService, VaultNameExistsError, VaultInvalidNameError } from '@baishou/core-desktop'
+import { VaultService, VaultNameExistsError, VaultInvalidNameError, VaultNotFoundError, VaultRenameFilesystemError } from '@baishou/core-desktop'
 import { ShadowIndexRepository, shadowConnectionManager, connectionManager } from '@baishou/database-desktop'
 import { deriveLegacyVaultId, logger } from '@baishou/shared'
 import { DesktopStoragePathService } from '../services/path.service'
@@ -262,5 +262,117 @@ export function registerVaultIPC() {
       throw e
     }
     return switchVaultFast(newName)
+  })
+
+  ipcMain.handle('vault:estimateRenameBytes', async (_, vaultNameOrId: string) => {
+    return vaultService.estimateVaultLocalSyncBytes(vaultNameOrId)
+  })
+
+  ipcMain.handle('vault:rename', async (_, oldNameOrId: string, newName: string) => {
+    const before = vaultService
+      .getAllVaults()
+      .find((v) => v.id === oldNameOrId || v.name === oldNameOrId)
+    const wasActive = Boolean(
+      before && vaultService.getActiveVault()?.id === before.id
+    )
+
+    if (wasActive) {
+      try {
+        const { getAgentManagers, invalidateAgentManagers } = await import('./agent-helpers')
+        await getAgentManagers().sessionManager.flushPendingDiskWrites()
+        invalidateAgentManagers()
+      } catch (e) {
+        logger.warn('[Vault] flush/invalidate agent managers before rename failed:', e as Error)
+      }
+    }
+
+    let result
+    try {
+      result = await vaultService.renameVault(oldNameOrId, newName)
+    } catch (e) {
+      if (e instanceof VaultNameExistsError) {
+        const err = new Error('VAULT_NAME_EXISTS')
+        ;(err as Error & { code: string; vaultName: string }).code = 'VAULT_NAME_EXISTS'
+        ;(err as Error & { vaultName: string }).vaultName = e.vaultName
+        throw err
+      }
+      if (e instanceof VaultInvalidNameError) {
+        const err = new Error('VAULT_INVALID_NAME')
+        ;(err as Error & { code: string; reason: string }).code = 'VAULT_INVALID_NAME'
+        ;(err as Error & { reason: string }).reason = e.reason
+        throw err
+      }
+      if (e instanceof VaultNotFoundError) {
+        const err = new Error('VAULT_NOT_FOUND')
+        ;(err as Error & { code: string }).code = 'VAULT_NOT_FOUND'
+        throw err
+      }
+      if (e instanceof VaultRenameFilesystemError) {
+        const err = new Error('VAULT_RENAME_FAILED')
+        ;(err as Error & { code: string }).code = 'VAULT_RENAME_FAILED'
+        throw err
+      }
+      throw e
+    }
+
+    resetSyncService()
+    notifyVaultRegistryUpdated()
+
+    if (wasActive) {
+      try {
+        const { resetAgentGateRuntimes } = await import('../services/agent-gate.service')
+        resetAgentGateRuntimes(`vault-rename:${result.newName}`)
+      } catch (e) {
+        logger.warn('[Vault] reset agent gate runtimes after rename failed:', e as Error)
+      }
+      try {
+        const { resetRawDataRuntime } = await import('../services/raw-data-source.runtime')
+        resetRawDataRuntime()
+      } catch (e) {
+        logger.warn('[Vault] reset raw data runtime after rename failed:', e as Error)
+      }
+      try {
+        const { emitVaultSwitchMutation } = await import('../cache/desktop-main-cache-coordinator')
+        emitVaultSwitchMutation(result.id, 'vault-rename')
+      } catch {
+        // ignore
+      }
+      try {
+        const { rebindSummaryCacheForActiveVault } = await import('./summary.ipc')
+        await rebindSummaryCacheForActiveVault()
+      } catch (e) {
+        logger.warn('[Vault] rebind summary cache after rename failed:', e as Error)
+      }
+      try {
+        const { resetSharedShadowSync } = await import('../services/shadow-sync.registry')
+        resetSharedShadowSync()
+      } catch {
+        // ignore
+      }
+      try {
+        const { globalBootstrapper } = await import('../services/bootstrapper.service')
+        await globalBootstrapper.activateVaultRuntime()
+      } catch (e) {
+        logger.warn('[Vault] activate vault runtime after rename failed:', e as Error)
+      }
+      try {
+        const { resetAttachmentAllowedRootsCache, refreshDesktopAttachmentPathRemapper } =
+          await import('./attachment-path-cache')
+        resetAttachmentAllowedRootsCache()
+        const { DesktopStoragePathService } = await import('../services/path.service')
+        await refreshDesktopAttachmentPathRemapper(new DesktopStoragePathService())
+      } catch (e) {
+        logger.warn('[Vault] refresh attachment remapper after rename failed:', e as Error)
+      }
+      resetGitService()
+      try {
+        const { scheduleVaultEcosystemResync } = await import('../services/vault-resync.service')
+        scheduleVaultEcosystemResync(`vault-rename:${result.newName}`)
+      } catch {
+        // ignore
+      }
+    }
+
+    return result
   })
 }

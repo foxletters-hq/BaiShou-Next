@@ -10,6 +10,7 @@ import {
   Pagination,
   type VaultInfo
 } from '@baishou/ui/native'
+import { formatIncrementalSyncPlanBytes } from '@baishou/shared'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -55,6 +56,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
       const active = await services.vaultService.getActiveVault()
       setVaults(
         allVaults.map((v) => ({
+          id: v.id,
           name: v.name,
           path: v.path,
           createdAt: v.createdAt,
@@ -64,6 +66,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
       setActiveVault(
         active
           ? {
+              id: active.id,
               name: active.name,
               path: active.path,
               createdAt: active.createdAt,
@@ -130,6 +133,57 @@ export const WorkspaceManagementScreen: React.FC = () => {
     }
   }
 
+  const handleRename = async (vault: VaultInfo) => {
+    if (!services?.renameVault) return
+    const name = await dialog.prompt(
+      t('workspace.rename_prompt', '将「{{name}}」重命名为：', { name: vault.name }),
+      vault.name
+    )
+    if (name === null) return
+    const next = name.trim()
+    if (!next) {
+      toast.showWarning(
+        t('workspace.name_invalid', '工作空间名称不能包含特殊字符，且不能以点号结尾。')
+      )
+      return
+    }
+    if (next === vault.name) return
+    const conflict = vaults.some(
+      (v) => v.name !== vault.name && v.name.toLowerCase() === next.toLowerCase()
+    )
+    if (conflict) {
+      toast.showWarning(t('workspace.name_exists', '已经有同名工作空间啦，换一个名字试试。'))
+      return
+    }
+
+    let bytesLabel = t('workspace.rename_bytes_unknown', '该工作空间的全部文件')
+    try {
+      const bytes = await services.estimateVaultRenameBytes?.(vault.id || vault.name)
+      if (typeof bytes === 'number' && bytes > 0) {
+        bytesLabel = formatIncrementalSyncPlanBytes(bytes)
+      }
+    } catch {
+      // keep fallback
+    }
+
+    const confirmed = await dialog.confirm(
+      t(
+        'workspace.rename_confirm',
+        '确定将「{{oldName}}」重命名为「{{newName}}」吗？\n\n下次同步将按朴素路径重新上传约 {{bytes}}（旧路径删除 + 新路径上传）。其它设备同步前请先完成本机同步。',
+        { oldName: vault.name, newName: next, bytes: bytesLabel }
+      )
+    )
+    if (!confirmed) return
+
+    try {
+      await services.renameVault(vault.id || vault.name, next)
+      await loadVaults()
+      toast.showSuccess(t('workspace.rename_success', '已重命名'))
+    } catch {
+      toast.showError(t('workspace.rename_failed', '重命名失败'))
+    }
+  }
+
   const handleDelete = async (vaultName: string) => {
     const input = await dialog.prompt(
       t('workspace.delete_confirm_input', '请输入工作区名称 "{{name}}" 以确认删除：', {
@@ -193,7 +247,7 @@ export const WorkspaceManagementScreen: React.FC = () => {
           const isActive = activeVault?.name === vault.name
           return (
             <View
-              key={vault.name}
+              key={vault.id || vault.name}
               style={[
                 styles.flatCard,
                 styles.vaultCard,
@@ -211,24 +265,31 @@ export const WorkspaceManagementScreen: React.FC = () => {
                   })}
                 </Text>
               </View>
-              {isActive ? (
-                <Text style={[styles.badge, { color: colors.primary }]}>
-                  {t('workspace.current_short', '当前')}
-                </Text>
-              ) : (
-                <View style={styles.actions}>
+              <View style={styles.actions}>
+                {isActive ? (
+                  <Text style={[styles.badge, { color: colors.primary }]}>
+                    {t('workspace.current_short', '当前')}
+                  </Text>
+                ) : (
                   <Pressable onPress={() => void handleSwitch(vault.name)}>
                     <Text style={[styles.action, { color: colors.primary }]}>
                       {t('workspace.switch', '切换')}
                     </Text>
                   </Pressable>
+                )}
+                <Pressable onPress={() => void handleRename(vault)}>
+                  <Text style={[styles.action, { color: colors.primary }]}>
+                    {t('workspace.rename', '重命名')}
+                  </Text>
+                </Pressable>
+                {!isActive ? (
                   <Pressable onPress={() => void handleDelete(vault.name)}>
                     <Text style={[styles.action, { color: colors.error }]}>
                       {t('workspace.delete', '删除')}
                     </Text>
                   </Pressable>
-                </View>
-              )}
+                ) : null}
+              </View>
             </View>
           )
         })}
@@ -326,7 +387,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 12
+    flexWrap: 'wrap',
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'flex-end'
   },
   action: {
     fontSize: 14,

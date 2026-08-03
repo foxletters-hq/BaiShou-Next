@@ -255,7 +255,19 @@ export async function finalizeVaultRuntimeHandlers(
                 summaryGenerator: summaryPipeline.summaryGenerator,
                 missingSummaryDetector: summaryPipeline.missingSummaryDetector,
                 switchVault: state.switchVault as (vaultName: string) => Promise<void>,
-                deleteVault: state.deleteVault as (vaultName: string) => Promise<void>
+                deleteVault: state.deleteVault as (vaultName: string) => Promise<void>,
+                renameVault: state.renameVault as (
+                  oldNameOrId: string,
+                  newName: string
+                ) => Promise<{
+                  id: string
+                  oldName: string
+                  newName: string
+                  estimatedUploadBytes: number
+                }>,
+                estimateVaultRenameBytes: state.estimateVaultRenameBytes as (
+                  vaultNameOrId: string
+                ) => Promise<number>
               }
             : prev.services
         }))
@@ -286,6 +298,145 @@ export async function finalizeVaultRuntimeHandlers(
         vaultRevision: prev.vaultRevision + 1
       }))
     }
+  }
+
+  state.estimateVaultRenameBytes = async (vaultNameOrId: string) => {
+    return vaultService.estimateVaultLocalSyncBytes(vaultNameOrId)
+  }
+
+  state.renameVault = async (oldNameOrId: string, newName: string) => {
+    const before =
+      vaultService.getAllVaults().find((v) => v.id === oldNameOrId || v.name === oldNameOrId) ??
+      null
+    const wasActive = Boolean(before && vaultService.getActiveVault()?.id === before.id)
+
+    const result = await vaultService.renameVault(oldNameOrId, newName)
+
+    if (wasActive) {
+      if (isMounted()) {
+        ctx.setValue((prev) => ({ ...prev, vaultSwitching: true }))
+      }
+      try {
+        // 活跃仓路径已变：清空 stack，强制 switchVaultRuntime 重建（避免同名 early-return）
+        refs.diaryStackRef.current = null
+        setMobileDiaryEmbeddingDeps(null)
+
+        const stack = await switchVaultRuntime(result.newName, {
+          pathService,
+          vaultService,
+          fileSystem,
+          bootstrapDeps,
+          watcherDeps,
+          currentStack: undefined,
+          callbacks: {
+            onStackInvalidated: () => {
+              refs.diaryStackRef.current = null
+              setMobileDiaryEmbeddingDeps(null)
+            },
+            onStackReady: (readyStack: VaultBoundDiaryStack) => {
+              refs.diaryStackRef.current = readyStack
+              const nextRagDeps = attachMobileRagVaultScope(
+                {
+                  settingsManager,
+                  diaryService: readyStack.diaryService,
+                  hsRepo,
+                  hybridSearchService,
+                  registry,
+                  rawSqlClient: sqlExecutor
+                },
+                pathService,
+                vaultService
+              )
+              setMobileDiaryEmbeddingDeps(nextRagDeps, {
+                agentDb: agentDbRuntimeRef.current?.drizzleDb ?? null
+              })
+              ragServiceRef.current = createMobileRagService(nextRagDeps)
+            },
+            onResyncComplete: () => {
+              if (!isMounted()) return
+              ctx.setValue((prev) => ({
+                ...prev,
+                vaultRevision: prev.vaultRevision + 1
+              }))
+            }
+          }
+        })
+
+        const runtime = agentDbRuntimeRef.current
+        if (runtime && stack && isMounted()) {
+          const activeVaultName = vaultService.getActiveVault()?.name ?? null
+          const summaryPipeline = await rebindSummaryPipelineForVault({
+            drizzleDb: runtime.drizzleDb,
+            pathService,
+            fileSystem,
+            settingsManager,
+            diaryRepoAdapter: stack.diaryRepoAdapter,
+            activeVaultName
+          })
+          bootstrapDeps.summarySyncService = summaryPipeline.summarySyncService
+          watcherDeps.summarySyncService = summaryPipeline.summarySyncService
+          registerVaultBootstrapDeps(stack, bootstrapDeps)
+          agentDbRuntimeRef.current = {
+            ...runtime,
+            summaryManager: summaryPipeline.summaryManager,
+            summaryGenerator: summaryPipeline.summaryGenerator,
+            missingSummaryDetector: summaryPipeline.missingSummaryDetector,
+            summarySyncService: summaryPipeline.summarySyncService
+          }
+          ctx.setValue((prev) => ({
+            ...prev,
+            vaultRevision: prev.vaultRevision + 1,
+            services: prev.services
+              ? {
+                  ...prev.services,
+                  ragService: ragServiceRef.current,
+                  summaryManager: summaryPipeline.summaryManager,
+                  summaryGenerator: summaryPipeline.summaryGenerator,
+                  missingSummaryDetector: summaryPipeline.missingSummaryDetector,
+                  switchVault: state.switchVault as (vaultName: string) => Promise<void>,
+                  deleteVault: state.deleteVault as (vaultName: string) => Promise<void>,
+                  renameVault: state.renameVault as (
+                    oldNameOrId: string,
+                    newName: string
+                  ) => Promise<{
+                    id: string
+                    oldName: string
+                    newName: string
+                    estimatedUploadBytes: number
+                  }>,
+                  estimateVaultRenameBytes: state.estimateVaultRenameBytes as (
+                    vaultNameOrId: string
+                  ) => Promise<number>
+                }
+              : prev.services
+          }))
+        }
+
+        emitVaultSwitchMutation(result.newName)
+        await refreshMobileAttachmentPathRemapper(() => pathService.getRootDirectory()).catch(
+          (e) => {
+            logger.warn(
+              '[BaishouProvider] Failed to refresh attachment path remapper after rename:',
+              e as Error
+            )
+          }
+        )
+      } catch (e) {
+        logger.error('[BaishouProvider] renameVault rebind failed:', e as Error)
+        throw e
+      } finally {
+        if (isMounted()) {
+          ctx.setValue((prev) => ({ ...prev, vaultSwitching: false }))
+        }
+      }
+    } else if (isMounted()) {
+      ctx.setValue((prev) => ({
+        ...prev,
+        vaultRevision: prev.vaultRevision + 1
+      }))
+    }
+
+    return result
   }
 
   state.createDemoVault = async () => {

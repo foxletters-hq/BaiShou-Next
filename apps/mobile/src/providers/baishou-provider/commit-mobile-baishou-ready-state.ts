@@ -55,6 +55,8 @@ export async function commitMobileBaishouReadyState(
   const legacyMigrationSourcePendingDeletion = s.legacyMigrationSourcePendingDeletion
   const switchVault = s.switchVault
   const deleteVault = s.deleteVault
+  const renameVault = s.renameVault
+  const estimateVaultRenameBytes = s.estimateVaultRenameBytes
   const createDemoVault = s.createDemoVault
   const ragServiceRef = s.ragServiceRef
   const mobileMcpService = s.mobileMcpService
@@ -159,6 +161,8 @@ export async function commitMobileBaishouReadyState(
         vaultFileWatcher,
         switchVault,
         deleteVault,
+        renameVault,
+        estimateVaultRenameBytes,
         createDemoVault,
         memorySearch,
         mobileMcpService,
