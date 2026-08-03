@@ -30,6 +30,13 @@ export interface KnowledgeChatOptions {
 }
 
 const DEFAULT_MAX_CHARS = 24_000
+const MIN_CONTEXT_CHARS = 1_000
+const MAX_CONTEXT_CHARS = 100_000
+
+export function clampKnowledgeChatContextChars(value?: number): number {
+  if (value == null || !Number.isFinite(value)) return DEFAULT_MAX_CHARS
+  return Math.min(MAX_CONTEXT_CHARS, Math.max(MIN_CONTEXT_CHARS, Math.floor(value)))
+}
 
 const SYSTEM = `你是知识库精读助手。用户已手选材料全文放入上下文（非检索）。
 只根据提供的材料回答；材料不足时明确说明。可用 [1]、[2] 标注资料编号。`
@@ -97,7 +104,7 @@ export class KnowledgeChatService {
       }
     }
 
-    const maxChars = opts.maxContextChars ?? DEFAULT_MAX_CHARS
+    const maxChars = clampKnowledgeChatContextChars(opts.maxContextChars)
     const { blocks, truncated } = trimSourcesToBudget(sources, maxChars)
 
     const answer = await this.deps.generateAnswer({

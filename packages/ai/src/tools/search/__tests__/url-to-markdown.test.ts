@@ -54,4 +54,22 @@ describe('fetchUrlAsMarkdown', () => {
       })
     ).rejects.toThrow(/404/)
   })
+
+  it('拦截私网 URL（SSRF）', async () => {
+    await expect(
+      fetchUrlAsMarkdown('http://127.0.0.1/secret', {
+        fetchImpl: async () => {
+          throw new Error('should not fetch')
+        }
+      })
+    ).rejects.toThrow(/private|local/i)
+
+    await expect(
+      fetchUrlAsMarkdown('http://192.168.1.1/', {
+        fetchImpl: async () => {
+          throw new Error('should not fetch')
+        }
+      })
+    ).rejects.toThrow(/private|local/i)
+  })
 })

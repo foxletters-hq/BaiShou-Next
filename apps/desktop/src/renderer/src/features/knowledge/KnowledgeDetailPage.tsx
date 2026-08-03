@@ -162,7 +162,7 @@ export const KnowledgeDetailPage: React.FC = () => {
         : t('knowledge.asking', '正在检索并生成回答…')
     )
     try {
-      const mismatch = await window.api.knowledge.hasModelMismatch?.()
+      const mismatch = askMode === 'ask' ? await window.api.knowledge.hasModelMismatch?.() : false
       if (mismatch) throw new Error('knowledge-model-mismatch')
 
       if (askMode === 'chat') {
