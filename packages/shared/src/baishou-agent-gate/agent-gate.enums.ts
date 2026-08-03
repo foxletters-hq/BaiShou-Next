@@ -1,4 +1,7 @@
-/** 用户级信任模式 */
+/**
+ * @deprecated G4 已删除 trustMode；读盘时由 migrateLegacyTrustMode 转为 `*: allow`。
+ * 保留枚举值供迁移与旧测试兼容，勿再写入新配置。
+ */
 export enum AgentGateTrustMode {
   Manual = 'manual',
   FullTrust = 'full_trust'

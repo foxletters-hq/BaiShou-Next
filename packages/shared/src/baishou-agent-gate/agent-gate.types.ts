@@ -4,8 +4,7 @@ import type {
   AgentGateProfileId,
   AgentGateReply,
   AgentGateRequestStatus,
-  AgentGateRiskLevel,
-  AgentGateTrustMode
+  AgentGateRiskLevel
 } from './agent-gate.enums'
 import type { AgentGatePreview } from './agent-gate-preview.types'
 
@@ -45,28 +44,25 @@ export interface AgentGatePermissionRule {
   effect: AgentGateEffect
 }
 
-/** 区外路径默认策略（可信目录 Allow 规则仍优先匹配） */
-export type AgentGateExternalPathEffect = 'ask' | 'allow' | 'deny'
+/** G4：活动范围预设（工作台 UI） */
+export type AgentGateScopePreset = 'readonly' | 'workspace_write' | 'with_trusted_dirs' | 'custom'
+
+/** G4：审批时机预设（工作台 UI） */
+export type AgentGateApprovalPreset = 'always_ask' | 'dangerous_only' | 'never_ask' | 'custom'
 
 export interface BaishouAgentGateConfig {
-  trustMode: AgentGateTrustMode
   exclusionList: string[]
+  /**
+   * 记忆层（G4 设计稿中的 remembered）。
+   * 运行时字段名仍为 allowlist，便于兼容已有 IPC / 存储。
+   */
   allowlist: AgentGateAllowlistEntry[]
+  /** @deprecated legacy；求值时并入 permissionRules */
   actionRules?: Partial<Record<string, AgentGateEffect>>
-  /** Explicit wildcard rules; actionRules are derived into rules at evaluation time */
+  /**
+   * 有序规则表（G4 设计稿中的 rules）；顺序即优先级（最后匹配赢）。
+   */
   permissionRules?: AgentGatePermissionRule[]
-  /**
-   * When true (default), resources with kind `external_path` force Ask
-   * after permission rules, overriding FullTrust and action allowlist.
-   */
-  forceAskExternalPath?: boolean
-  /**
-   * 区外路径默认效果。`deny` 直接拒绝；`allow` 不强制询问；
-   * `ask`（默认）在规则未命中时询问。可信目录通过 permissionRules pattern Allow 表达。
-   */
-  externalPathEffect?: AgentGateExternalPathEffect
-  /** 工作台可信区外目录（供设置页往返；规则侧同步为 Allow pattern） */
-  trustedExternalDirs?: string[]
   /**
    * Consecutive same-fingerprint asserts in one session that force Ask.
    * Default 3; set 0 to disable.
@@ -77,6 +73,38 @@ export interface BaishouAgentGateConfig {
    * are omitted from the model tool list.
    */
   hideDeniedTools?: boolean
+  /** G4：活动范围预设（工作台 UI）；custom 表示用户改过细项 */
+  scopePreset?: AgentGateScopePreset
+  /** G4：审批时机预设（工作台 UI） */
+  approvalPreset?: AgentGateApprovalPreset
+}
+
+/**
+ * G4 工作区门控策略 v2 视图。
+ * 落盘仍使用 AgentWorkspacePolicy.gateConfig（BaishouAgentGateConfig），
+ * rules ↔ permissionRules、remembered ↔ allowlist。
+ */
+export interface WorkspaceGatePolicyV2 {
+  version: 2
+  scopePreset: AgentGateScopePreset
+  approvalPreset: AgentGateApprovalPreset
+  rules: AgentGatePermissionRule[]
+  remembered: AgentGateAllowlistEntry[]
+  exclusionList: string[]
+  hideDeniedTools: boolean
+  repeatAssertAskThreshold: number
+}
+
+/** 分层求值命中来源（写入权限卡 metadata，供 UI 展示） */
+export type AgentGateDecisionLayer = 'profile' | 'user' | 'remembered' | 'session' | 'default'
+
+export interface AgentGateDecisionSource {
+  layer: AgentGateDecisionLayer
+  action: string
+  pattern?: string
+  effect: AgentGateEffect
+  /** 钳制前效果；有值表示被红线从 Allow 压回 Ask */
+  clampedFrom?: AgentGateEffect
 }
 
 /** 伙伴（Vault）或单个工作区的门控作用域 */
@@ -144,10 +172,13 @@ export interface AgentGateEvaluateInput {
   toolDisabled?: boolean
   /** Optional resource targets for pattern-based rules */
   resources?: AgentGateResourceRef[]
+  preview?: AgentGatePreview
   /** Gate request metadata (forceExclusion, legacy path fields, etc.) */
   metadata?: Record<string, unknown>
   /** Scene profile for default rule matrix */
   profileId?: AgentGateProfileId
+  /** G4：工作区自动接受时注入会话层 Allow */
+  autoAccept?: boolean
 }
 
 export interface AgentGateAssertInput {
@@ -201,6 +232,11 @@ export interface AgentGateToolMetadata {
   buildTitle?: (args: unknown, ctx: unknown) => string
   buildMetadata?: (args: unknown, ctx: unknown) => Record<string, unknown>
   buildResources?: (args: unknown, ctx: unknown) => AgentGateResourceRef[]
+  /**
+   * 用户点「始终允许」时要记住的 pattern；缺省为 ['*']（整项放行）。
+   * 返回空数组表示不允许 Always。
+   */
+  buildAlwaysPatterns?: (args: unknown, ctx: unknown) => string[]
   /**
    * 异步预执行准备：生成 UI 预览；校验状态留在闭包。
    * 返回 null 表示无法准备（如 patch 无匹配）——拦截器应直接失败，不弹权限卡。

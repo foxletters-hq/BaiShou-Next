@@ -1,9 +1,14 @@
-import { AgentGateEffect, AgentGateProfileId, AgentGateTrustMode } from './agent-gate.enums'
+import { AgentGateEffect, AgentGateProfileId } from './agent-gate.enums'
 import type {
   AgentGatePermissionRule,
   BaishouAgentGateConfig,
+  WorkspaceGatePolicyV2,
   WorkspaceToolManagementConfig
 } from './agent-gate.types'
+import {
+  migrateLegacyExternalPathFields,
+  migrateLegacyTrustMode
+} from './agent-gate-migrate.util'
 
 export const DEFAULT_AGENT_GATE_EXCLUSION_LIST = [
   'diary_delete',
@@ -31,7 +36,7 @@ export const AGENT_GATE_CORRECTED_FEEDBACK_PREFIX = '[用户纠正]'
 
 /**
  * Scene default rules (stacked under user permissionRules).
- * Strongest matching effect wins (Deny > Ask > Allow).
+ * Layered evaluation: later rules win (findLast).
  */
 export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
   AgentGateProfileId,
@@ -42,7 +47,7 @@ export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
     { action: 'diary_*', effect: AgentGateEffect.Deny },
     { action: 'memory_*', effect: AgentGateEffect.Deny },
     { action: 'graph_upsert', effect: AgentGateEffect.Deny },
-    // G3.2: in-workspace read-only tools default Allow (external_path still Ask later)
+    // G3.2: in-workspace read-only tools default Allow (external_directory still Ask later)
     { action: 'workspace_list', effect: AgentGateEffect.Allow },
     { action: 'workspace_read', effect: AgentGateEffect.Allow }
   ]
@@ -50,12 +55,8 @@ export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
 
 /** 伙伴会话默认门控（Vault 级；旧配置迁移到此） */
 export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
-  trustMode: AgentGateTrustMode.Manual,
   exclusionList: [...DEFAULT_AGENT_GATE_EXCLUSION_LIST],
   allowlist: [],
-  forceAskExternalPath: true,
-  externalPathEffect: 'ask',
-  trustedExternalDirs: [],
   repeatAssertAskThreshold: DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   hideDeniedTools: true
 }
@@ -65,14 +66,12 @@ export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
  * 故意不继承旧全局 FullTrust，避免扩散到所有项目。
  */
 export const DEFAULT_WORKSPACE_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
-  trustMode: AgentGateTrustMode.Manual,
   exclusionList: [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST],
   allowlist: [],
-  forceAskExternalPath: true,
-  externalPathEffect: 'ask',
-  trustedExternalDirs: [],
   repeatAssertAskThreshold: DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
-  hideDeniedTools: true
+  hideDeniedTools: true,
+  scopePreset: 'workspace_write',
+  approvalPreset: 'always_ask'
 }
 
 /** 工作区工具开关默认：全部开启（由运行时硬过滤决定可见工具集） */
@@ -93,17 +92,54 @@ export function cloneBaishouAgentGateConfig(
   }
   if (!source) return base
 
-  return {
-    trustMode: source.trustMode ?? base.trustMode,
+  const merged: BaishouAgentGateConfig = {
     exclusionList: [...(source.exclusionList ?? base.exclusionList)],
     allowlist: (source.allowlist ?? []).map((entry) => ({ ...entry })),
     actionRules: source.actionRules ? { ...source.actionRules } : undefined,
     permissionRules: source.permissionRules?.map((rule) => ({ ...rule })),
-    forceAskExternalPath: source.forceAskExternalPath ?? base.forceAskExternalPath,
-    externalPathEffect: source.externalPathEffect ?? base.externalPathEffect,
-    trustedExternalDirs: [...(source.trustedExternalDirs ?? base.trustedExternalDirs ?? [])],
     repeatAssertAskThreshold: source.repeatAssertAskThreshold ?? base.repeatAssertAskThreshold,
-    hideDeniedTools: source.hideDeniedTools ?? base.hideDeniedTools
+    hideDeniedTools: source.hideDeniedTools ?? base.hideDeniedTools,
+    scopePreset: source.scopePreset ?? base.scopePreset,
+    approvalPreset: source.approvalPreset ?? base.approvalPreset
+  }
+
+  // 兼容磁盘上仍带旧区外字段 / trustMode 的配置
+  return migrateLegacyTrustMode(
+    migrateLegacyExternalPathFields({
+      ...merged,
+      ...(source as BaishouAgentGateConfig & {
+        trustMode?: string
+        forceAskExternalPath?: boolean
+        externalPathEffect?: 'ask' | 'allow' | 'deny'
+        trustedExternalDirs?: string[]
+      })
+    })
+  )
+}
+
+export function toWorkspaceGatePolicyV2(config: BaishouAgentGateConfig): WorkspaceGatePolicyV2 {
+  return {
+    version: 2,
+    scopePreset: config.scopePreset ?? 'custom',
+    approvalPreset: config.approvalPreset ?? 'custom',
+    rules: (config.permissionRules ?? []).map((rule) => ({ ...rule })),
+    remembered: (config.allowlist ?? []).map((entry) => ({ ...entry })),
+    exclusionList: [...config.exclusionList],
+    hideDeniedTools: config.hideDeniedTools !== false,
+    repeatAssertAskThreshold:
+      config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
+  }
+}
+
+export function fromWorkspaceGatePolicyV2(policy: WorkspaceGatePolicyV2): BaishouAgentGateConfig {
+  return {
+    exclusionList: [...policy.exclusionList],
+    allowlist: policy.remembered.map((entry) => ({ ...entry })),
+    permissionRules: policy.rules.map((rule) => ({ ...rule })),
+    hideDeniedTools: policy.hideDeniedTools,
+    repeatAssertAskThreshold: policy.repeatAssertAskThreshold,
+    scopePreset: policy.scopePreset,
+    approvalPreset: policy.approvalPreset
   }
 }
 
