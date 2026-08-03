@@ -406,18 +406,32 @@ export class KnowledgeRepository {
     const id = vaultId.trim()
     if (!id) throw new Error('deleteAllForVault: vaultId is required')
 
-    const count = async (
-      table: typeof notebooksTable | typeof knowledgeSourcesTable | typeof knowledgeChunksTable | typeof knowledgeIngestJobsTable,
-      col: typeof notebooksTable.vaultId
-    ) => {
-      const rows = await this.db.select({ c: sql<number>`count(*)` }).from(table).where(eq(col, id))
+    const countWhere = async (run: () => Promise<Array<{ c: number }>>): Promise<number> => {
+      const rows = await run()
       return Number(rows[0]?.c ?? 0)
     }
 
-    const notebooks = await count(notebooksTable, notebooksTable.vaultId)
-    const sources = await count(knowledgeSourcesTable, knowledgeSourcesTable.vaultId)
-    const chunks = await count(knowledgeChunksTable, knowledgeChunksTable.vaultId)
-    const jobs = await count(knowledgeIngestJobsTable, knowledgeIngestJobsTable.vaultId)
+    const notebooks = await countWhere(() =>
+      this.db.select({ c: sql<number>`count(*)` }).from(notebooksTable).where(eq(notebooksTable.vaultId, id))
+    )
+    const sources = await countWhere(() =>
+      this.db
+        .select({ c: sql<number>`count(*)` })
+        .from(knowledgeSourcesTable)
+        .where(eq(knowledgeSourcesTable.vaultId, id))
+    )
+    const chunks = await countWhere(() =>
+      this.db
+        .select({ c: sql<number>`count(*)` })
+        .from(knowledgeChunksTable)
+        .where(eq(knowledgeChunksTable.vaultId, id))
+    )
+    const jobs = await countWhere(() =>
+      this.db
+        .select({ c: sql<number>`count(*)` })
+        .from(knowledgeIngestJobsTable)
+        .where(eq(knowledgeIngestJobsTable.vaultId, id))
+    )
 
     await this.db
       .delete(knowledgeIngestJobsTable)

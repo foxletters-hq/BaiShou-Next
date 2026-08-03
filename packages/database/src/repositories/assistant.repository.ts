@@ -38,7 +38,7 @@ export interface InsertAssistantInput {
 
 export type UpdateAssistantInput = Partial<Omit<InsertAssistantInput, 'id' | 'vaultId'>>
 
-export type VaultIdResolver = () => string | null | undefined
+type VaultIdResolver = () => string | null | undefined
 
 function normalizeVaultId(raw: string | null | undefined): string | null {
   const value = String(raw ?? '').trim()

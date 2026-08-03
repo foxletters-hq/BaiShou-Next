@@ -13,7 +13,7 @@ import { eq, and, gte, sql } from 'drizzle-orm'
 import { AppDatabase } from '../types'
 import { withExpoAgentDatabaseLock } from '../expo-agent-db.lock'
 
-export type VaultIdResolver = () => string | null | undefined
+type VaultIdResolver = () => string | null | undefined
 
 function normalizeVaultId(raw: string | null | undefined): string | null {
   const value = String(raw ?? '').trim()

@@ -92,9 +92,21 @@ export class ExpoKnowledgeConnectionManager {
       this._vecLoadReason = vecLoad.reason
       if (vecLoad.loaded) {
         try {
-          const row = await expoDb.getFirstAsync<{ v?: string }>('SELECT vec_version() AS v')
+          type ExpoSqliteProbe = ExpoSqliteDatabase & {
+            getFirstAsync?: <T>(sql: string) => Promise<T | null>
+            getAllAsync?: (sql: string) => Promise<Array<{ v?: string }>>
+          }
+          const probe = expoDb as ExpoSqliteProbe
+          let version: string | undefined
+          if (typeof probe.getFirstAsync === 'function') {
+            const row = await probe.getFirstAsync<{ v?: string }>('SELECT vec_version() AS v')
+            version = row?.v
+          } else if (typeof probe.getAllAsync === 'function') {
+            const rows = await probe.getAllAsync('SELECT vec_version() AS v')
+            version = rows[0]?.v
+          }
           logger.info(
-            `[ExpoKnowledgeDB] sqlite-vec 已加载，vec_version()=${row?.v ?? 'loaded'}`
+            `[ExpoKnowledgeDB] sqlite-vec 已加载，vec_version()=${version ?? 'loaded'}`
           )
         } catch (e) {
           logger.warn('[ExpoKnowledgeDB] vec_version() 探测失败:', e as Error)
