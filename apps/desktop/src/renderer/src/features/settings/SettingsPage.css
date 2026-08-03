@@ -69,7 +69,9 @@
   justify-content: center;
   color: var(--text-secondary);
   border-radius: 8px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
   margin-right: 0;
   flex-shrink: 0;
   padding: 0;
