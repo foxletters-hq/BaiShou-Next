@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { fetchUrlAsMarkdown } from './search/url-to-markdown'
 import {
   EMPTY_WEB_PAGE_MESSAGE,
-  htmlToPlainText,
   limitWebPlainText
 } from './search/web-content.util'
 import { resolveWebSearchLimits } from './search/web-search-config.util'
@@ -34,11 +34,8 @@ export class UrlReadTool extends AgentTool<typeof urlReadParams> {
       if (context.webSearchResultFetcher) {
         plainText = await context.webSearchResultFetcher(args.url)
       } else {
-        const response = await fetch(args.url)
-        if (!response.ok) {
-          return `Failed to fetch URL: HTTP status ${response.status} - ${response.statusText}`
-        }
-        plainText = htmlToPlainText(await response.text())
+        const fetched = await fetchUrlAsMarkdown(args.url)
+        plainText = fetched.markdown
       }
 
       if (!plainText || plainText === EMPTY_WEB_PAGE_MESSAGE) {
