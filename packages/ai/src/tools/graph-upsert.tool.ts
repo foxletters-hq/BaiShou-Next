@@ -1,6 +1,7 @@
 /**
  * GraphUpsertTool — write entity/relation proposals into Graph JSONL via RawDataSourceManager.
- * Gate Ask is required before execute; origin=ai, reviewStatus=pending by default.
+ * Gate Ask (or Allow rule) is required before execute; origin=ai, reviewStatus=approved
+ * because Gate confirmation is the review (G-D3).
  */
 
 import { z } from 'zod'
@@ -69,10 +70,11 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
   readonly name = 'graph_upsert'
 
   readonly description =
-    'Propose writing people/places/events and their relations into the user memory graph. ' +
-    'Always requires explicit user confirmation. ' +
-    'Use after storing relevant memory or when the user asks to record relationships. ' +
-    'Do not invent sources: include source_ref when the proposal comes from a diary or memory.'
+    'Record people, places, events and their relations into the user memory graph. ' +
+    'Call this when the user asks you to remember a relationship, or after you learn a clear ' +
+    'connection worth keeping (e.g. who went where, who knows whom). ' +
+    'Requires user confirmation via Gate. Do not invent sources: include source_ref when the ' +
+    'proposal comes from a diary or memory.'
 
   readonly parameters = graphUpsertParams
 
@@ -147,7 +149,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
-          reviewStatus: 'pending'
+          reviewStatus: 'approved'
         }
         await rawManager.writeRecord('graph', record, { collection: 'nodes' })
         nameToId.set(name.toLowerCase(), id)
@@ -189,7 +191,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
               ? Math.max(0, Math.min(100, Math.round(obj.confidence)))
               : 70,
           origin: 'ai',
-          reviewStatus: 'pending',
+          reviewStatus: 'approved',
           shardMonth,
           createdAt: now,
           updatedAt: now,
@@ -208,12 +210,12 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
       }
 
       return [
-        `已写入图谱提案（待确认）：节点 ${nodesWritten}，边 ${edgesWritten}。`,
-        `提案摘要: ${summary}`,
+        `已写入图谱：节点 ${nodesWritten}，边 ${edgesWritten}（已生效，可被回忆检索）。`,
+        `摘要: ${summary}`,
         sourceRef ? `来源: ${sourceRef}` : null,
         context.syncGraphPendingIndex
-          ? '记录已落盘到 Graph/ JSONL（reviewStatus=pending），并已尝试灌入本地索引。'
-          : '记录已落盘到 Graph/ JSONL（reviewStatus=pending）；派生索引将在同步后灌入。'
+          ? '记录已落盘到 Graph/ JSONL（reviewStatus=approved），并已尝试灌入本地索引。'
+          : '记录已落盘到 Graph/ JSONL（reviewStatus=approved）；派生索引将在同步后灌入。'
       ]
         .filter(Boolean)
         .join('\n')

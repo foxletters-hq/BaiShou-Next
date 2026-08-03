@@ -20,9 +20,14 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
   readonly name = 'recall_relations'
 
   readonly description =
-    'Recall people/places/events and their relations from the user memory graph. ' +
-    'Use for explaining connections or timelines grounded in diary sourceRef excerpts. ' +
-    'Read-only; does not modify the graph.'
+    'Recall how people, places, and events in the user\'s life connect to each other.\n\n' +
+    'Call this when:\n' +
+    '- the user refers to a past event, person, or place assuming you already know it\n' +
+    '  ("那家店", "上次和他一起", "毕业旅行的时候")\n' +
+    '- you want to mention a connection between two things the user has told you about\n' +
+    '- the user asks why/how two things are related\n\n' +
+    'Returns relation paths with excerpts from the original diary entries, so you can ' +
+    'say where you know it from. Read-only; does not modify the graph.'
 
   readonly parameters = params
 
@@ -43,14 +48,21 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
     if (!entity) return '请提供 entity（实体名）。'
     const reader = context.graphReader
     if (!reader) {
-      return '图谱读取器未就绪。请先在图管理页抽取日记，或检查 Vault / 索引是否已灌入。'
+      return (
+        'The memory graph is not available yet. Do not call this tool again in this conversation. ' +
+        'Continue without graph context; the user can organize diary relations from the diary list later.'
+      )
     }
 
     const mode = args.mode ?? 'network'
     try {
       const result = await reader.recallRelations({ entity, mode })
       if (!result.anchors.length) {
-        return `未找到与「${entity}」相关的图谱实体。可先在图管理页梳理待重抽日记。`
+        return (
+          `No graph entity found for「${entity}」. Do not retry this tool for the same entity in this conversation. ` +
+          'If relations are needed, the user can organize people and events from diary entries ' +
+          '(save hint or diary list "尚未整理"); continue the chat without inventing connections.'
+        )
       }
 
       const anchorLines = result.anchors
@@ -77,8 +89,11 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
         edgeLines || '(无边)',
         `节点 ${result.nodes.length} · 边 ${edgeSource.length}`
       ].join('\n')
-    } catch (e) {
-      return `回忆关系失败: ${e instanceof Error ? e.message : String(e)}`
+    } catch {
+      return (
+        'The memory graph could not be read right now. Do not call this tool again in this conversation. ' +
+        'Continue without graph context.'
+      )
     }
   }
 }
