@@ -47,10 +47,7 @@ export async function fetchUrlAsMarkdown(
   const fetchImpl = options?.fetchImpl ?? fetch
   const timeoutMs = options?.timeoutMs ?? 30_000
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
-  const timer =
-    controller && timeoutMs > 0
-      ? setTimeout(() => controller.abort(), timeoutMs)
-      : null
+  const timer = controller && timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null
 
   try {
     const response = await fetchImpl(trimmed, {

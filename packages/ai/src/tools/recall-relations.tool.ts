@@ -24,7 +24,7 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
   readonly name = 'recall_relations'
 
   readonly description =
-    'Recall how people, places, and events in the user\'s life connect to each other.\n\n' +
+    "Recall how people, places, and events in the user's life connect to each other.\n\n" +
     'Call this when:\n' +
     '- the user refers to a past event, person, or place assuming you already know it\n' +
     '  ("那家店", "上次和他一起", "毕业旅行的时候")\n' +

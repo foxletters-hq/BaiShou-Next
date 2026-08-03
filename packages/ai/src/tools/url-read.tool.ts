@@ -2,10 +2,7 @@ import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
 import { fetchUrlAsMarkdown } from './search/url-to-markdown'
-import {
-  EMPTY_WEB_PAGE_MESSAGE,
-  limitWebPlainText
-} from './search/web-content.util'
+import { EMPTY_WEB_PAGE_MESSAGE, limitWebPlainText } from './search/web-content.util'
 import { resolveWebSearchLimits } from './search/web-search-config.util'
 
 const urlReadParams = z.object({
