@@ -21,9 +21,11 @@ import {
   mobileAskKnowledge,
   mobileGetKnowledgeStats,
   mobileHasKnowledgeModelMismatch,
+  mobileImportSource,
   mobileListNotebooks,
   mobileListSources,
-  mobileRebuildKnowledgeIndex
+  mobileRebuildKnowledgeIndex,
+  mobileSaveAskAsNote
 } from '@/src/services/mobile-knowledge.service'
 import { scheduleConsumeMobileKnowledgeIngestJobs } from '@/src/services/mobile-knowledge-ingest-jobs.consumer'
 
@@ -87,6 +89,10 @@ export function KnowledgeScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [modelMismatch, setModelMismatch] = useState(false)
+  const [pasteTitle, setPasteTitle] = useState('')
+  const [pasteText, setPasteText] = useState('')
+  const [urlValue, setUrlValue] = useState('')
+  const [showImport, setShowImport] = useState<'text' | 'url' | null>(null)
 
   const refreshList = useCallback(async () => {
     const list = (await mobileListNotebooks()) as NotebookRow[]
@@ -215,6 +221,77 @@ export function KnowledgeScreen() {
     }
   }
 
+  const onImportText = async () => {
+    if (!selectedId || !pasteText.trim()) return
+    setBusy(true)
+    setError('')
+    try {
+      await mobileImportSource({
+        notebookId: selectedId,
+        title: pasteTitle.trim() || t('knowledge.pasted_text', '粘贴文本'),
+        kind: 'text',
+        textContent: pasteText
+      })
+      setPasteTitle('')
+      setPasteText('')
+      setShowImport(null)
+      await refreshDetail(selectedId)
+      await refreshList()
+      Alert.alert(t('knowledge.import_queued', '已加入摄入队列'))
+    } catch (e) {
+      setError(String((e as Error)?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onImportUrl = async () => {
+    const originUrl = urlValue.trim()
+    if (!selectedId || !originUrl) return
+    setBusy(true)
+    setError('')
+    try {
+      await mobileImportSource({
+        notebookId: selectedId,
+        title: '',
+        kind: 'url',
+        originUrl
+      })
+      setUrlValue('')
+      setShowImport(null)
+      await refreshDetail(selectedId)
+      await refreshList()
+      Alert.alert(t('knowledge.import_queued', '已加入摄入队列'))
+    } catch (e) {
+      setError(String((e as Error)?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onSaveNote = async () => {
+    if (!selectedId || !answer.trim() || !question.trim()) return
+    setBusy(true)
+    try {
+      await mobileSaveAskAsNote({
+        notebookId: selectedId,
+        question: question.trim(),
+        answer: answer.trim(),
+        citations: citations.map((c) => ({
+          title: c.title,
+          page: c.page,
+          excerpt: c.excerpt
+        }))
+      })
+      await refreshDetail(selectedId)
+      Alert.alert(t('knowledge.note_saved', '已保存为 Note，并加入索引队列'))
+    } catch (e) {
+      setError(String((e as Error)?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const selected = notebooks.find((n) => n.id === selectedId)
   const selectedStats = selectedId ? statsById[selectedId] : null
 
@@ -285,12 +362,102 @@ export function KnowledgeScreen() {
             </View>
           ) : null}
 
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <Pressable
+              style={[styles.btn, { backgroundColor: colors.primary, paddingHorizontal: 12 }]}
+              disabled={busy}
+              onPress={() => setShowImport('text')}
+            >
+              <Text style={styles.btnText}>{t('knowledge.import_text', '粘贴文本')}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.btn, { backgroundColor: colors.primary, paddingHorizontal: 12 }]}
+              disabled={busy}
+              onPress={() => setShowImport('url')}
+            >
+              <Text style={styles.btnText}>{t('knowledge.import_url', '导入 URL')}</Text>
+            </Pressable>
+          </View>
+
+          {showImport === 'text' ? (
+            <View style={{ marginBottom: 16 }}>
+              <TextInput
+                value={pasteTitle}
+                onChangeText={setPasteTitle}
+                placeholder={t('knowledge.source_title', '标题')}
+                placeholderTextColor={colors.textSecondary}
+                style={[
+                  styles.input,
+                  {
+                    minHeight: 40,
+                    color: colors.textPrimary,
+                    borderColor: colors.borderSubtle,
+                    backgroundColor: colors.bgSurface
+                  }
+                ]}
+              />
+              <TextInput
+                value={pasteText}
+                onChangeText={setPasteText}
+                placeholder={t('knowledge.source_body', '正文')}
+                placeholderTextColor={colors.textSecondary}
+                style={[
+                  styles.input,
+                  {
+                    color: colors.textPrimary,
+                    borderColor: colors.borderSubtle,
+                    backgroundColor: colors.bgSurface
+                  }
+                ]}
+                multiline
+              />
+              <Pressable
+                style={[styles.btn, { backgroundColor: colors.primary }]}
+                disabled={busy || !pasteText.trim()}
+                onPress={() => void onImportText()}
+              >
+                <Text style={styles.btnText}>{t('knowledge.import_submit', '导入')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {showImport === 'url' ? (
+            <View style={{ marginBottom: 16 }}>
+              <TextInput
+                value={urlValue}
+                onChangeText={setUrlValue}
+                placeholder="https://"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                style={[
+                  styles.input,
+                  {
+                    minHeight: 40,
+                    color: colors.textPrimary,
+                    borderColor: colors.borderSubtle,
+                    backgroundColor: colors.bgSurface
+                  }
+                ]}
+              />
+              <Pressable
+                style={[styles.btn, { backgroundColor: colors.primary }]}
+                disabled={busy || !urlValue.trim()}
+                onPress={() => void onImportUrl()}
+              >
+                <Text style={styles.btnText}>{t('knowledge.import_submit', '导入')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <Text style={[styles.section, { color: colors.textPrimary }]}>
             {t('knowledge.sources', '资料')}
           </Text>
           {sources.length === 0 ? (
             <Text style={{ color: colors.textSecondary }}>
-              {t('knowledge.empty_sources_mobile', '暂无资料。请在桌面端导入后同步到本机。')}
+              {t(
+                'knowledge.empty_sources_mobile',
+                '暂无资料。可粘贴文本 / 导入 URL，或在桌面端导入后同步。'
+              )}
             </Text>
           ) : (
             sources.map((s) => (
@@ -349,6 +516,13 @@ export function KnowledgeScreen() {
                 {t('knowledge.answer', '回答')}
               </Text>
               <Text style={{ color: colors.textPrimary, lineHeight: 22 }}>{answer}</Text>
+              <Pressable
+                style={[styles.btn, { backgroundColor: colors.primary, marginTop: 10 }]}
+                disabled={busy}
+                onPress={() => void onSaveNote()}
+              >
+                <Text style={styles.btnText}>{t('knowledge.save_note', '保存为 Note')}</Text>
+              </Pressable>
               {citations.length > 0 ? (
                 <View style={{ marginTop: 12 }}>
                   <Text style={[styles.section, { color: colors.textPrimary }]}>

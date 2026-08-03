@@ -10,6 +10,7 @@ import {
   AgentSessionService,
   EmbeddingAdapter,
   GraphReaderAdapter,
+  KnowledgeReaderAdapter,
   type IBaishouAgentGate,
   type StreamChatCallbacks
 } from '@baishou/ai'
@@ -230,6 +231,14 @@ export function createStartAgentChat(deps: {
                 }))
               }))
             }
+          }),
+          knowledgeReader: new KnowledgeReaderAdapter(async (opts) => {
+            const { mobileSearchKnowledge } = await import('../../services/mobile-knowledge.service')
+            return mobileSearchKnowledge({
+              query: opts.query,
+              notebookId: opts.notebookId,
+              limit: opts.limit
+            })
           })
         },
         callbacks

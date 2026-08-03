@@ -154,7 +154,7 @@ export async function mobileAskKnowledge(input: {
     },
     generateAnswer: async ({ question, contextBlocks }) => {
       const globalModels = await runtime.settingsManager.get<GlobalModelsConfig>('global_models')
-      const modelId = globalModels?.globalChatModelId || globalModels?.globalSummaryModelId
+      const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
       if (!modelId) throw new Error('No chat/summary model configured')
       const { system, prompt } = KnowledgeAskService.buildPrompt(question, contextBlocks)
       return summaryClient.generateContent(prompt, modelId, { system })
@@ -174,4 +174,171 @@ export async function mobileAskKnowledge(input: {
     logger.warn('[MobileKnowledge] ask failed:', e as Error)
     throw e
   }
+}
+
+async function buildMobileIngestService() {
+  const runtime = agentDbRuntimeRef.current
+  if (!runtime?.settingsManager || !runtime.pathService) {
+    throw new Error('runtime not ready')
+  }
+  if (!expoKnowledgeConnectionManager.isConnected()) {
+    throw new Error('knowledge db not connected')
+  }
+
+  const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+  const fileSystem = createMobileFileSystem()
+  ensureMobileRawDataRuntime({
+    pathService: runtime.pathService,
+    fileSystem
+  })
+  const notebookManager = getMobileNotebookRawManager()
+  if (!notebookManager) throw new Error('notebook manager unavailable')
+
+  const repo = requireRepo()
+  const { KnowledgeEmbeddingStorage } = await import('@baishou/ai')
+  const { KnowledgeIngestService } = await import('@baishou/core-mobile')
+  const storage = new KnowledgeEmbeddingStorage(() => repo)
+
+  return new KnowledgeIngestService({
+    repo,
+    notebookManager,
+    fs: fileSystem,
+    embedding:
+      emb.embeddingProvider && emb.embeddingModelId
+        ? {
+            isConfigured: true,
+            getModelId: () => emb.embeddingModelId!,
+            getProviderInstance: async () => emb.embeddingProvider!
+          }
+        : undefined,
+    insertChunk: async (params) => {
+      await storage.insertEmbedding({
+        id: params.chunkId,
+        sourceType: 'knowledge',
+        sourceId: params.sourceId,
+        groupId: params.notebookId,
+        vaultId: 'knowledge',
+        chunkIndex: params.chunkIndex,
+        chunkText: params.chunkText,
+        metadataJson: params.metadataJson,
+        embedding: params.embedding,
+        modelId: params.modelId
+      })
+    },
+    deleteChunksBySource: (id) => repo.deleteChunksBySource(id)
+  })
+}
+
+/** K1.5：移动端粘贴文本 / URL 入库 */
+export async function mobileImportSource(input: {
+  notebookId: string
+  title: string
+  kind: 'text' | 'url'
+  textContent?: string
+  originUrl?: string
+}): Promise<{ sourceId: string }> {
+  const { fetchUrlAsMarkdown } = await import('@baishou/ai')
+  let payload = { ...input }
+
+  if (input.kind === 'url') {
+    const originUrl = (input.originUrl || input.textContent || '').trim()
+    if (!originUrl) throw new Error('import url requires originUrl')
+    const fetched = await fetchUrlAsMarkdown(originUrl)
+    if (!fetched.markdown?.trim()) throw new Error('URL 内容为空或无法解析')
+    payload = {
+      ...input,
+      kind: 'url',
+      originUrl: fetched.finalUrl || originUrl,
+      title: input.title?.trim() || fetched.title || originUrl,
+      textContent: fetched.markdown
+    }
+  }
+
+  const svc = await buildMobileIngestService()
+  const result = await svc.importSource({
+    notebookId: payload.notebookId,
+    title: payload.title,
+    kind: payload.kind,
+    textContent: payload.textContent,
+    originUrl: payload.originUrl
+  })
+
+  const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
+    './mobile-knowledge-ingest-jobs.consumer'
+  )
+  scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-import')
+  return result
+}
+
+export async function mobileSaveAskAsNote(input: {
+  notebookId: string
+  question: string
+  answer: string
+  citations?: Array<{ title: string; page?: number; excerpt?: string }>
+}): Promise<{ sourceId: string }> {
+  const svc = await buildMobileIngestService()
+  const result = await svc.saveAskAsNote(input)
+  const { scheduleConsumeMobileKnowledgeIngestJobs } = await import(
+    './mobile-knowledge-ingest-jobs.consumer'
+  )
+  scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-save-note')
+  return result
+}
+
+/** 供 Agent knowledge_search 工具注入 */
+export async function mobileSearchKnowledge(opts: {
+  query: string
+  notebookId: string
+  limit?: number
+}): Promise<
+  Array<{
+    chunkId: string
+    sourceId: string
+    notebookId: string
+    chunkIndex: number
+    chunkText: string
+    score: number
+    title?: string
+    offset?: number
+    len?: number
+  }>
+> {
+  const runtime = agentDbRuntimeRef.current
+  if (!runtime?.settingsManager) throw new Error('runtime not ready')
+  if (!expoKnowledgeConnectionManager.isConnected()) {
+    throw new Error('knowledge db not connected')
+  }
+  const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+  if (!emb.embeddingProvider || !emb.embeddingModelId) {
+    throw new Error('embedding-not-configured')
+  }
+  const repo = requireRepo()
+  const expoDb = expoKnowledgeConnectionManager.getExpoDb()
+  const search = new KnowledgeSearchService({
+    sql: createKnowledgeSqlExecutor(expoDb),
+    getSourceTitle: async (sourceId) => {
+      const row = await repo.getSource(sourceId)
+      return row?.title ?? null
+    }
+  })
+  const { embed } = await import('ai')
+  const model = emb.embeddingProvider.getEmbeddingModel(emb.embeddingModelId) as never
+  const { embedding } = await embed({ model, value: opts.query })
+  const hits = await search.search({
+    notebookId: opts.notebookId,
+    query: opts.query,
+    queryVector: Array.from(embedding),
+    topK: opts.limit
+  })
+  return hits.map((h) => ({
+    chunkId: h.chunkId,
+    sourceId: h.sourceId,
+    notebookId: h.notebookId,
+    chunkIndex: h.chunkIndex,
+    chunkText: h.chunkText,
+    score: h.score,
+    title: h.title,
+    offset: h.offset,
+    len: h.len
+  }))
 }
