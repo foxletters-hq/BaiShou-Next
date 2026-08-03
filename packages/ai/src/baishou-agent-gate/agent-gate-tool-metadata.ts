@@ -16,6 +16,22 @@ import {
 
 type GateArgs = Record<string, unknown>
 
+/** LLM tools sometimes pass entities/edges as JSON strings — parse before counting. */
+function coerceJsonArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    try {
+      const parsed = JSON.parse(trimmed) as unknown
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 function diaryDateTitle(prefix: string, args: unknown): string {
   const date = (args as GateArgs).date
   return typeof date === 'string' && date ? `${prefix} ${date}` : prefix
@@ -304,17 +320,35 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
     },
     prepare: async (args) => {
       const summary = (args as GateArgs).summary
-      const entities = (args as GateArgs).entities
-      const edges = (args as GateArgs).edges
-      const entityCount = Array.isArray(entities) ? entities.length : 0
-      const edgeCount = Array.isArray(edges) ? edges.length : 0
+      const entities = coerceJsonArray((args as GateArgs).entities)
+      const edges = coerceJsonArray((args as GateArgs).edges)
+      const entityCount = entities.length
+      const edgeCount = edges.length
+      const entityNames = entities
+        .slice(0, 6)
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null
+          const name = (item as GateArgs).name
+          return typeof name === 'string' ? name.trim() : null
+        })
+        .filter((n): n is string => Boolean(n))
+      const edgeTypes = edges
+        .slice(0, 6)
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null
+          const t = (item as GateArgs).type ?? (item as GateArgs).edgeType
+          return typeof t === 'string' ? t.trim() : null
+        })
+        .filter((t): t is string => Boolean(t))
       return prepareContentGatePreview({
         subject: '写入记忆图谱',
         summary: typeof summary === 'string' ? summary.slice(0, 160) : undefined,
         counts: { entities: entityCount, edges: edgeCount },
         detailLines: [
           typeof summary === 'string' ? `摘要：${summary.slice(0, 200)}` : null,
-          `实体 ${entityCount} · 关系 ${edgeCount}`
+          `实体 ${entityCount} · 关系 ${edgeCount}`,
+          entityNames.length ? `实体：${entityNames.join('、')}${entityCount > entityNames.length ? '…' : ''}` : null,
+          edgeTypes.length ? `关系：${edgeTypes.join('、')}${edgeCount > edgeTypes.length ? '…' : ''}` : null
         ].filter((line): line is string => Boolean(line))
       })
     }

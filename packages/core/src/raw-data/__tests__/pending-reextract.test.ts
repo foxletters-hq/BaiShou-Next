@@ -102,6 +102,13 @@ describe('graph extract helpers', () => {
     expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-a[0-9a-f]{3}-[0-9a-f]{12}$/)
   })
 
+  it('entry node id is vault-salted when vaultId provided', () => {
+    const path = 'Journals/2026-07-01.md'
+    expect(entryNodeIdForFilePath(path, 'vlt_aaaaaaaaaaaaaaaa')).not.toBe(
+      entryNodeIdForFilePath(path)
+    )
+  })
+
   it('extractFirstJsonObject handles fences and trailing braces', () => {
     const raw = '```json\n{"entities":[],"edges":[]}\n```\n{extra}'
     const json = extractFirstJsonObject(raw)

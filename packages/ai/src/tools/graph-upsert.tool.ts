@@ -184,7 +184,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           isCurrent: true,
           sourceKind,
           sourceRef,
-          sourceExcerpt: typeof obj.excerpt === 'string' ? obj.excerpt : summary,
+          sourceExcerpt: typeof obj.excerpt === 'string' ? obj.excerpt : '',
           sourceContentHash: null,
           confidence:
             typeof obj.confidence === 'number'
