@@ -106,10 +106,20 @@ export async function consumeMobileKnowledgeIngestJobs(options?: {
       try {
         // 移动端是消费端：优先 embed；若误排了 extract 则跳过并标失败提示
         if (job.stage === 'extract') {
-          await repo.failIngestJob(job.id, 'mobile-is-read-only-skip-extract', {
-            backoffMs: 24 * 60 * 60_000
-          })
-          failed++
+          // K1.5：text/url/note/md 可在移动端 extract；PDF 跳过（无 OCR）
+          const source = await repo.getSource(job.sourceId)
+          const rel = source?.relativePath || ''
+          const isPdf = /\.pdf$/i.test(rel) || /\.pdf$/i.test(source?.title || '')
+          if (isPdf) {
+            await repo.failIngestJob(job.id, 'mobile-skip-pdf-extract', {
+              backoffMs: 24 * 60 * 60_000
+            })
+            failed++
+            continue
+          }
+          await svc.processExtractJob(job.sourceId)
+          await repo.completeIngestJob(job.id)
+          processed++
           continue
         }
         await svc.processEmbedJob(job.sourceId)
