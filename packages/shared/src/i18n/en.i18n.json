@@ -3107,5 +3107,17 @@
     "scene_more_p2": "Turn my ideas into an actionable plan",
     "scene_more_p3": "Ask me three key questions before we start",
     "back_to_home": "All folders"
+  },
+  "graph": {
+    "extract_this_entry": "Let your companion remember the people and events in this entry",
+    "extract_this_done": "Remembered the people and events in this entry",
+    "pending_entries_hint": "{{count}} diary entries not organized yet",
+    "extract_pending_batch": "Organize now",
+    "extract_remember": "Remember",
+    "extracting": "Extracting…",
+    "extract_progress": "Organizing {{current}}/{{total}}",
+    "extract_failed": "Organization failed",
+    "extract_batch_done": "Organized {{done}} entries",
+    "extract_batch_result": "Done {{done}}, failed {{failed}}"
   }
 }

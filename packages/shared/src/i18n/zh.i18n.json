@@ -3176,5 +3176,17 @@
     "scene_more_p2": "把我的想法整理成可执行的行动方案",
     "scene_more_p3": "先问我三个关键问题，再开始动手",
     "back_to_home": "全部工作目录"
+  },
+  "graph": {
+    "extract_this_entry": "让伙伴记住这篇里的人和事",
+    "extract_this_done": "已记住这篇里的人和事",
+    "pending_entries_hint": "有 {{count}} 篇日记还没整理",
+    "extract_pending_batch": "开始整理",
+    "extract_remember": "记住",
+    "extracting": "正在抽取…",
+    "extract_progress": "正在整理 {{current}}/{{total}}",
+    "extract_failed": "整理失败",
+    "extract_batch_done": "已整理 {{done}} 篇日记",
+    "extract_batch_result": "完成 {{done}}，失败 {{failed}}"
   }
 }

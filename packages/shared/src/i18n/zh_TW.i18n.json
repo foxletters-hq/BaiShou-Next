@@ -3140,5 +3140,17 @@
     "scene_more_p2": "把我的想法整理成可執行的行動方案",
     "scene_more_p3": "先問我三個關鍵問題，再開始動手",
     "back_to_home": "全部工作目錄"
+  },
+  "graph": {
+    "extract_this_entry": "讓夥伴記住這篇裡的人和事",
+    "extract_this_done": "已記住這篇裡的人和事",
+    "pending_entries_hint": "有 {{count}} 篇日記還沒整理",
+    "extract_pending_batch": "開始整理",
+    "extract_remember": "記住",
+    "extracting": "正在抽取…",
+    "extract_progress": "正在整理 {{current}}/{{total}}",
+    "extract_failed": "整理失敗",
+    "extract_batch_done": "已整理 {{done}} 篇日記",
+    "extract_batch_result": "完成 {{done}}，失敗 {{failed}}"
   }
 }
