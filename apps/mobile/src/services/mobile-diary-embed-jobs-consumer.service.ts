@@ -15,7 +15,7 @@ import {
   getMobileDiaryEmbeddingCallback,
   getMobileDiaryEmbeddingDeps
 } from './mobile-diary-embedding.service'
-import { resolveEmbeddingAdapter, resolveVaultScope } from './mobile-rag-core.helpers'
+import { resolveEmbeddingAdapter, resolveVaultScope, type MobileRagServiceDeps } from './mobile-rag-core.helpers'
 import { loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
 
 let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null
@@ -81,7 +81,7 @@ export async function consumeDiaryEmbedJobs(options?: {
     for (const job of jobs) {
       try {
         const diaryById = shadowDb
-          ? await loadVaultDiariesForEmbedding(shadowDb, job.vaultName, [job.diaryId])
+          ? await loadVaultDiariesForEmbedding(shadowDb, job.vaultId, [job.diaryId])
           : await deps.diaryService.findByIdsForEmbedding([job.diaryId])
 
         const diary = diaryById.get(job.diaryId)
@@ -110,7 +110,7 @@ export async function consumeDiaryEmbedJobs(options?: {
           tags,
           date: dateStr,
           updatedAt,
-          vaultName: job.vaultName
+          vaultName: job.vaultId
         })
 
         if (ok) {

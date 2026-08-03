@@ -1,6 +1,6 @@
 import {
-  buildDiaryEmbeddingGroupId,
   buildDiaryEmbeddingSourceId,
+  DIARY_EMBED_GROUP_ID,
   isLegacyDiaryEmbeddingSourceId,
   LEGACY_DIARY_EMBED_GROUP_IDS
 } from '@baishou/shared'
@@ -19,10 +19,10 @@ function legacyGroupPlaceholders(): string {
 /** 删除旧版 numeric sourceId 与新版 scoped sourceId，避免重复向量残留 */
 export async function deleteDiaryEmbeddingAliases(
   hsRepo: SqliteHybridSearchRepository,
-  vaultName: string,
+  vaultId: string,
   diaryId: number | string
 ): Promise<void> {
-  const scoped = buildDiaryEmbeddingSourceId(vaultName, diaryId)
+  const scoped = buildDiaryEmbeddingSourceId(vaultId, diaryId)
   const legacy = String(diaryId)
   await hsRepo.deleteEmbeddingsBySource('diary', scoped)
   if (legacy !== scoped && isLegacyDiaryEmbeddingSourceId(legacy)) {
@@ -33,7 +33,7 @@ export async function deleteDiaryEmbeddingAliases(
 /** 批量嵌入前：清理本工作空间在旧 groupId 下的 legacy 向量 */
 export async function purgeLegacyDiaryEmbeddingsForVault(
   rawClient: RawSqlClient | undefined,
-  vaultName: string,
+  vaultId: string,
   diaryIds: Array<number | string>
 ): Promise<number> {
   const numericIds = diaryIds
@@ -71,14 +71,13 @@ export async function purgeAllLegacyDiaryEmbeddings(
 
 export async function countDiaryEmbeddingsForVault(
   rawClient: RawSqlClient | undefined,
-  vaultName: string
+  vaultId: string
 ): Promise<number> {
   if (!rawClient?.execute) return 0
-  const groupId = buildDiaryEmbeddingGroupId(vaultName)
   const result = await rawClient.execute({
     sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE}
-          WHERE source_type = 'diary' AND group_id = ?`,
-    args: [groupId]
+          WHERE source_type = 'diary' AND group_id = ? AND vault_id = ?`,
+    args: [DIARY_EMBED_GROUP_ID, vaultId]
   })
   const row = result.rows?.[0] as Record<string, number> | undefined
   return Number(row?.count ?? 0)

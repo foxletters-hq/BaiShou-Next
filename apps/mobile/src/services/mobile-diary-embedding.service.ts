@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto'
 import type { IEmbeddingCallback } from '@baishou/core-mobile'
 import {
+  deriveLegacyVaultId,
   formatAiApiCallError,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
@@ -17,7 +18,7 @@ import {
   deleteDiaryEmbedJob,
   enqueueDiaryEmbedJob
 } from './mobile-diary-embed-jobs.service'
-import { resolveEmbeddingAdapter } from './mobile-rag-core.helpers'
+import { resolveEmbeddingAdapter, resolveVaultScope } from './mobile-rag-core.helpers'
 
 const failureListeners = new Set<(message?: string) => void>()
 let embeddingDeps: MobileRagServiceDeps | null = null
@@ -61,13 +62,19 @@ async function md5Hex(content: string): Promise<string> {
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.MD5, content)
 }
 
-async function resolveVaultName(explicit?: string): Promise<string> {
+async function resolveVaultId(explicit?: string): Promise<string> {
   const deps = embeddingDeps
-  if (explicit?.trim()) return explicit.trim()
-  if (deps?.vaultScope) {
-    return deps.vaultScope.resolveActiveVaultName()
+  if (explicit?.trim()) {
+    const trimmed = explicit.trim()
+    if (deps?.vaultScope) {
+      return deps.vaultScope.resolveVaultIdByName(trimmed)
+    }
+    return deriveLegacyVaultId(trimmed)
   }
-  return 'Personal'
+  if (deps?.vaultScope) {
+    return deps.vaultScope.resolveActiveVaultId()
+  }
+  return deriveLegacyVaultId('Personal')
 }
 
 const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
@@ -75,7 +82,7 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
     const deps = embeddingDeps
     if (!deps) return false
 
-    const vaultName = await resolveVaultName(params.vaultName)
+    const vaultId = await resolveVaultId(params.vaultName)
     const contentHash = await md5Hex(params.content)
 
     try {
@@ -84,7 +91,7 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
 
       if (!isRagMemoryEnabled(ragConfig) || !adapter) {
         await enqueueDiaryEmbedJob({
-          vaultName,
+          vaultId,
           diaryId: params.diaryId,
           contentHash
         })
@@ -97,9 +104,9 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
         tags: params.tags,
         date: params.date,
         updatedAt: params.updatedAt,
-        vaultName
+        vaultName: params.vaultName
       })
-      await deleteDiaryEmbedJob(vaultName, params.diaryId)
+      await deleteDiaryEmbedJob(vaultId, params.diaryId)
       const ragConfigAfter = await loadRagConfig(deps.settingsManager)
       if (hasRagDiaryEmbedFailure(ragConfigAfter)) {
         await deps.settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfigAfter))
@@ -109,7 +116,7 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
       logger.warn('[MobileDiaryEmbed] RAG 嵌入失败', e as Error)
       await enqueueDiaryEmbedJob(
         {
-          vaultName,
+          vaultId,
           diaryId: params.diaryId,
           contentHash
         },
@@ -125,9 +132,9 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
   },
 
   async enqueueDiaryEmbed(params) {
-    const vaultName = await resolveVaultName(params.vaultName)
+    const vaultId = await resolveVaultId(params.vaultName)
     await enqueueDiaryEmbedJob({
-      vaultName,
+      vaultId,
       diaryId: params.diaryId,
       contentHash: params.contentHash
     })
@@ -138,10 +145,10 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
     if (!deps) return
     await deps.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId)
     if (sourceType === 'diary' && sourceId.includes('#')) {
-      const [vaultName, idPart] = sourceId.split('#')
+      const [vaultId, idPart] = sourceId.split('#')
       const diaryId = Number(idPart)
-      if (vaultName && Number.isFinite(diaryId)) {
-        await deleteDiaryEmbedJob(vaultName, diaryId)
+      if (vaultId && Number.isFinite(diaryId)) {
+        await deleteDiaryEmbedJob(vaultId, diaryId)
       }
     }
   }

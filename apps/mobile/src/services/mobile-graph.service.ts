@@ -118,22 +118,22 @@ export async function mobileExtractDiaries(options: {
 
 export async function mobileSearchGraphNodes(
   drizzleDb: AppDatabase,
-  vaultName: string,
+  vaultId: string,
   query: string
 ) {
-  return new GraphRepository(drizzleDb).searchNodesByName(vaultName, query, { limit: 30 })
+  return new GraphRepository(drizzleDb).searchNodesByName(vaultId, query, { limit: 30 })
 }
 
 export async function mobileLoadGlobalGraph(
   drizzleDb: AppDatabase,
-  vaultName: string,
+  vaultId: string,
   maxNodes = 120
 ) {
-  return new GraphRepository(drizzleDb).getGlobalGraph({ vaultName, maxNodes })
+  return new GraphRepository(drizzleDb).getGlobalGraph({ vaultId, maxNodes })
 }
 
-export async function mobileListPendingEdges(drizzleDb: AppDatabase, vaultName: string) {
-  return new GraphRepository(drizzleDb).listPendingEdges(vaultName)
+export async function mobileListPendingEdges(drizzleDb: AppDatabase, vaultId: string) {
+  return new GraphRepository(drizzleDb).listPendingEdges(vaultId)
 }
 
 export async function mobileSetEdgeReview(options: {
@@ -142,6 +142,7 @@ export async function mobileSetEdgeReview(options: {
   fileSystem: IFileSystem
   edgeId: string
   reviewStatus: 'approved' | 'rejected'
+  vaultDisplayName?: string
   embeddingProvider?: IAIProvider | null
   embeddingModelId?: string | null
 }) {
@@ -162,7 +163,7 @@ export async function mobileSetEdgeReview(options: {
     {
       id: edge.id,
       schemaVersion: 1,
-      vaultName: edge.vaultName,
+      vaultName: options.vaultDisplayName ?? edge.vaultId,
       fromId: edge.fromId,
       toId: edge.toId,
       edgeType: edge.edgeType,

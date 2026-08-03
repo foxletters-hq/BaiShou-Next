@@ -4,6 +4,7 @@ import {
   EMBEDDING_SOURCE_SORT_ORDER_SQL,
   buildMemoryMetadataJson,
   logger,
+  MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   parseMemoryMetadataJson,
   SEMANTIC_SEARCH_TIMEOUT_MS,
@@ -15,7 +16,7 @@ import { MobileRagAbortError, mobileRagOperationControl } from './mobile-rag-ope
 import { countDiaryEmbeddingsForVault } from './mobile-diary-embedding.util'
 import {
   chainRagProgressCallback,
-  vaultNameListFilterSql,
+  vaultIdListFilterSql,
   resolveEmbeddingAdapter,
   resolveVaultScope,
   type MobileRagServiceDeps,
@@ -173,6 +174,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     }> {
       const vaultScope = await resolveVaultScope(deps)
       const activeVaultName = await vaultScope.resolveActiveVaultName()
+      const activeVaultId = await vaultScope.resolveActiveVaultId()
       const globalModels = (await deps.settingsManager.get<any>('global_models')) || {}
       const rawClient = deps.rawSqlClient as RawSqlClient | undefined
       let totalCount = 0
@@ -193,7 +195,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         totalCount = ragConfig.totalEmbeddings || 0
       }
 
-      const diaryCountForVault = await countDiaryEmbeddingsForVault(rawClient, activeVaultName)
+      const diaryCountForVault = await countDiaryEmbeddingsForVault(rawClient, activeVaultId)
 
       let currentDimension = globalModels.globalEmbeddingDimension || 0
       try {
@@ -310,8 +312,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const limit = params.limit ?? 10
       const offset = params.offset ?? 0
       const vaultScope = await resolveVaultScope(deps)
-      const activeVaultName = await vaultScope.resolveActiveVaultName()
-      const scopeFilter = vaultNameListFilterSql(activeVaultName)
+      const activeVaultId = await vaultScope.resolveActiveVaultId()
+      const scopeFilter = vaultIdListFilterSql(activeVaultId)
 
       if (params.mode === 'semantic' && params.keyword?.trim()) {
         const keyword = params.keyword.trim()
@@ -330,7 +332,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
               const results = await deps.hsRepo.queryNativeVector(vector, fetchLimit, {
                 threshold: params.minSimilarity,
                 sourceType: params.sourceType,
-                vaultName: activeVaultName
+                vaultId: activeVaultId
               })
               const entriesRaw = results.map((r) => ({
                 embeddingId: r.messageId,
@@ -367,7 +369,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const keyword = params.keyword?.trim()
       if (keyword) {
         const fts = await deps.hsRepo.queryFTS(keyword, limit + offset, {
-          vaultName: activeVaultName
+          vaultId: activeVaultId
         })
         const page = fts.slice(offset, offset + limit)
         const metaMap = await loadMetadataMap(
@@ -447,7 +449,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       }
 
       const rowRes = await client.execute({
-        sql: `SELECT source_type, source_id, group_id, vault_name, chunk_index, metadata_json, source_created_at FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ? LIMIT 1`,
+        sql: `SELECT source_type, source_id, group_id, vault_id, chunk_index, metadata_json, source_created_at FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ? LIMIT 1`,
         args: [embeddingId]
       })
       const row = rowRes.rows?.[0] as Record<string, unknown> | undefined
@@ -466,22 +468,23 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
       if (sourceType !== MEMORY_SOURCE_TYPE && sourceType !== 'manual') {
         const vaultScope = await resolveVaultScope(deps)
-        const vaultName =
-          String((row as { vault_name?: unknown }).vault_name ?? '').trim() ||
-          (await vaultScope.resolveActiveVaultName())
+        const vaultId =
+          String((row as { vault_id?: unknown }).vault_id ?? '').trim() ||
+          (await vaultScope.resolveActiveVaultId())
         await deps.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId)
         await adapter.embedText({
           text: trimmed,
           sourceType,
           sourceId,
           groupId: String(row.group_id || 'manual_edit'),
-          vaultName
+          vaultId
         })
         return
       }
 
       const vaultScope = await resolveVaultScope(deps)
       const vaultName = await vaultScope.resolveActiveVaultName()
+      const vaultId = await vaultScope.resolveActiveVaultId()
       const rawManager = getMobileRawDataSourceManager()
       const memoryMgr = getMobileMemoryRawManager()
       const createdAtRaw = row.source_created_at
@@ -530,8 +533,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         text: trimmed,
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId,
-        groupId: `memory:${updated.vaultName}`,
-        vaultName: updated.vaultName,
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId,
         metadataJson: buildMemoryMetadataJson(updated),
         sourceCreatedAt: createdAt
       })
@@ -554,6 +557,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       }
       const vaultScope = await resolveVaultScope(deps)
       const vaultName = await vaultScope.resolveActiveVaultName()
+      const vaultId = await vaultScope.resolveActiveVaultId()
       const now = Date.now()
       const id = newMemoryId()
       const content = text.trim()
@@ -573,8 +577,8 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         text: content,
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId: id,
-        groupId: `memory:${vaultName}`,
-        vaultName,
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId,
         metadataJson: buildMemoryMetadataJson(record),
         sourceCreatedAt: now
       })
