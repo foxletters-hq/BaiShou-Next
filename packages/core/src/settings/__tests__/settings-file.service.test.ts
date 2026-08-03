@@ -272,4 +272,50 @@ describe('SettingsFileService', () => {
       )
     })
   })
+
+  describe('V1.5 / V1.7 settings stay at storage root across vault switches', () => {
+    it('read/write always use global settings dir even when active vault path changes', async () => {
+      let activeVault = '/storage-root/VaultA'
+      vi.mocked(mockPathProvider.getActiveVaultPath).mockImplementation(async () => activeVault)
+
+      await service.writeAllSettings({ theme: 'dark', language: 'zh' })
+      expect(mockFileSystem.mkdir).toHaveBeenCalledWith(globalSettingsDir, { recursive: true })
+      expect(mockFileSystem.writeFile).toHaveBeenCalledWith(
+        tmpPath(globalSettingsDir, 'app_preferences.json'),
+        expect.any(String),
+        'utf8'
+      )
+
+      // 切换到 VaultB：设置目录仍是根级，不会落到 VaultB/.baishou/settings
+      activeVault = '/storage-root/VaultB'
+      vi.mocked(mockFileSystem.writeFile).mockClear()
+      vi.mocked(mockFileSystem.mkdir).mockClear()
+      vi.mocked(mockFileSystem.readdir).mockImplementation(async (dir: string) => {
+        if (dir === rootDir) return []
+        if (dir === globalSettingsDir) return ['app_preferences.json']
+        const err = new Error('ENOENT') as NodeJS.ErrnoException
+        err.code = 'ENOENT'
+        throw err
+      })
+      vi.mocked(mockFileSystem.readFile).mockResolvedValue(
+        JSON.stringify({ theme: 'dark', language: 'zh' }, null, 2)
+      )
+
+      const afterSwitch = await service.readAllSettings()
+      expect(afterSwitch).toEqual({ theme: 'dark', language: 'zh' })
+      expect(mockPathProvider.getGlobalSettingsDirectory).toHaveBeenCalled()
+      expect(mockFileSystem.readdir).toHaveBeenCalledWith(globalSettingsDir)
+
+      await service.writeAllSettings({ theme: 'light', language: 'zh' })
+      expect(mockFileSystem.writeFile).toHaveBeenCalledWith(
+        tmpPath(globalSettingsDir, 'app_preferences.json'),
+        JSON.stringify({ language: 'zh', theme: 'light' }, null, 2),
+        'utf8'
+      )
+      // 未写入任何 vault 内路径
+      const writePaths = vi.mocked(mockFileSystem.writeFile).mock.calls.map((c) => String(c[0]))
+      expect(writePaths.every((p) => p.startsWith(globalSettingsDir))).toBe(true)
+      expect(writePaths.some((p) => p.includes('VaultB'))).toBe(false)
+    })
+  })
 })
