@@ -40,7 +40,8 @@ describe('MemoryStoreTool', () => {
 
     expect(mockDedup.checkAndMerge).toHaveBeenCalledWith({
       newMemoryContent: 'Test deduplication',
-      sessionId: 'sess-1'
+      sessionId: 'sess-1',
+      vaultName: 'default'
     })
     expect(result).toContain('[MemoryDeduplication Intercept]')
     expect(result).toContain('0.950')

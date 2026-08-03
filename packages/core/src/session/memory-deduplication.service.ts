@@ -11,7 +11,7 @@
  * 原始实现：lib/agent/rag/memory_deduplication_service.dart (412 行)
  */
 
-import { formatLocalDateTime } from '@baishou/shared'
+import { formatLocalDateTime, deriveLegacyVaultId } from '@baishou/shared'
 
 // ─── 类型定义 ──────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ export interface DeduplicationEmbeddingService {
     sourceType: string
     sourceId: string
     groupId: string
-    vaultName: string
+    vaultId: string
   }): Promise<void>
 }
 
@@ -53,7 +53,7 @@ export interface DeduplicationVectorStore {
   searchSimilar(
     queryEmbedding: number[],
     topK: number,
-    filter?: { vaultName?: string }
+    filter?: { vaultId?: string }
   ): Promise<
     Array<{
       embeddingId: string
@@ -129,11 +129,13 @@ export class MemoryDeduplicationService {
       return { action: 'stored', removedIds: [], highestSimilarity: 0 }
     }
 
+    const vaultId = deriveLegacyVaultId(options.vaultName)
+
     // 2. 在向量数据库中做 top-K 相似度检索
     const candidates = await this.vectorStore.searchSimilar(
       queryVec,
       MemoryDeduplicationService.TOP_K,
-      { vaultName: options.vaultName }
+      { vaultId }
     )
     if (candidates.length === 0) {
       return { action: 'stored', removedIds: [], highestSimilarity: 0 }
@@ -266,7 +268,7 @@ ${params.newMemoryContent}
             sourceType,
             sourceId: params.sourceId ?? `mem_${Date.now()}`,
             groupId: params.sessionId,
-            vaultName: params.vaultName
+            vaultId: deriveLegacyVaultId(params.vaultName)
           })
 
           return {

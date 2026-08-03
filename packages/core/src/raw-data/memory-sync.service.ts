@@ -1,4 +1,5 @@
 import {
+  MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   buildMemoryMetadataJson,
   type MemoryRawRecord
@@ -6,6 +7,7 @@ import {
 import type { MemoryRawManager } from './managers/memory.raw-manager'
 import { collapseJsonlById } from './stores/monthly-jsonl.store'
 import { shardMonthFromInstant } from './raw-data-month.util'
+import { resolveVaultIdForDb } from '../vault/vault-id.util'
 
 export { MEMORY_SOURCE_TYPE }
 
@@ -15,12 +17,15 @@ export interface MemoryEmbedSink {
     sourceType: string
     sourceId: string
     groupId: string
-    vaultName: string
+    vaultId: string
     metadataJson?: string
     sourceCreatedAt?: number
   }): Promise<void>
   deleteBySource?(sourceType: string, sourceId: string): Promise<void>
-  listSourceIdsByType?(sourceType: string, groupId?: string): Promise<string[]>
+  listSourceIdsByType?(
+    sourceType: string,
+    options?: { groupId?: string; vaultId?: string }
+  ): Promise<string[]>
 }
 
 export interface MemoryConsistencyMissingItem {
@@ -90,8 +95,8 @@ export class MemorySyncService {
           text: row.content,
           sourceType: MEMORY_SOURCE_TYPE,
           sourceId: row.id,
-          groupId: `memory:${row.vaultName}`,
-          vaultName: row.vaultName,
+          groupId: MEMORY_EMBED_GROUP_ID,
+          vaultId: resolveVaultIdForDb(row.vaultName),
           metadataJson: buildMemoryMetadataJson(row),
           sourceCreatedAt: row.createdAt
         })
@@ -131,8 +136,11 @@ export class MemorySyncService {
 
     for (const vault of vaults) {
       const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
-      const groupId = `memory:${vault}`
-      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, groupId)
+      const vaultId = resolveVaultIdForDb(vault)
+      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, {
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId
+      })
       const dbSet = new Set(dbIds)
       vectorCount += dbIds.length
       for (const id of dbIds) {
@@ -189,8 +197,8 @@ export class MemorySyncService {
         text: live.content,
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId: live.id,
-        groupId: `memory:${live.vaultName}`,
-        vaultName: live.vaultName,
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId: resolveVaultIdForDb(live.vaultName),
         metadataJson: buildMemoryMetadataJson(live),
         sourceCreatedAt: live.createdAt
       })
@@ -213,8 +221,11 @@ export class MemorySyncService {
 
     for (const vault of vaults) {
       const liveIds = liveIdsByVault.get(vault) ?? new Set<string>()
-      const groupId = `memory:${vault}`
-      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, groupId)
+      const vaultId = resolveVaultIdForDb(vault)
+      const dbIds = await this.sink.listSourceIdsByType(MEMORY_SOURCE_TYPE, {
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId
+      })
       for (const id of dbIds) {
         if (!liveIds.has(id)) {
           await this.sink.deleteBySource(MEMORY_SOURCE_TYPE, id)

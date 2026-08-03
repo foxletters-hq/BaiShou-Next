@@ -6,8 +6,10 @@
 
 import { z } from 'zod'
 import {
+  MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   buildMemoryMetadataJson,
+  deriveLegacyVaultId,
   type MemoryRawRecord,
   type ToolRawDataSourceManager
 } from '@baishou/shared'
@@ -86,6 +88,8 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
       : []
 
     try {
+      // V2.3: ToolContext will pass vault id directly
+      const vaultId = deriveLegacyVaultId(context.vaultName)
       let contentToStore = fullContent
 
       if (context.deduplicationService) {
@@ -118,7 +122,7 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
         const embArray = await embeddingService.embedQuery(fullContent)
         if (embArray) {
           const similarCount = await context.vectorStore.searchSimilar(embArray, 1, {
-            vaultName: context.vaultName
+            vaultId
           })
           const threshold =
             (context.userConfig?.['memory_dedup_threshold'] as number | undefined) ?? 0.9
@@ -154,8 +158,8 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
         text: contentToStore,
         sourceType: MEMORY_SOURCE_TYPE,
         sourceId: id,
-        groupId: `memory:${context.vaultName}`,
-        vaultName: context.vaultName,
+        groupId: MEMORY_EMBED_GROUP_ID,
+        vaultId,
         metadataJson: buildMemoryMetadataJson(record),
         sourceCreatedAt: now
       })

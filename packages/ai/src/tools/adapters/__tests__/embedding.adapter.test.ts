@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { deriveLegacyVaultId } from '@baishou/shared'
 import { EmbeddingAdapter } from '../embedding.adapter'
 import type { IAIProvider } from '../../../providers/provider.interface'
 import type { SqliteHybridSearchRepository } from '@baishou/database'
@@ -39,7 +40,7 @@ describe('EmbeddingAdapter', () => {
         sourceType: 'diary',
         sourceId: '1',
         groupId: 'batch',
-        vaultName: 'Personal',
+        vaultId: deriveLegacyVaultId('Personal'),
         requireSuccess: true
       })
     ).rejects.toThrow(/Embedding API returned no vectors/)
@@ -61,7 +62,7 @@ describe('EmbeddingAdapter', () => {
         sourceType: 'diary',
         sourceId: '2',
         groupId: 'batch',
-        vaultName: 'Personal',
+        vaultId: deriveLegacyVaultId('Personal'),
         requireSuccess: true
       })
     ).rejects.toThrow(/incomplete vectors/)
@@ -75,7 +76,7 @@ describe('EmbeddingAdapter', () => {
       sourceType: 'diary',
       sourceId: '3',
       groupId: 'batch',
-      vaultName: 'Personal',
+      vaultId: deriveLegacyVaultId('Personal'),
       requireSuccess: true
     })
 
