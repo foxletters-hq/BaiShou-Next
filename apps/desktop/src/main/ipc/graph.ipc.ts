@@ -3,6 +3,7 @@ import {
   GraphLlmExtractionService,
   GraphSyncService,
   createDefaultGraphExtractLlm,
+  estimateExtractionCost,
   type GraphEdgeRawRecord,
   type GraphNodeRawRecord
 } from '@baishou/core-desktop'
@@ -68,6 +69,88 @@ function newId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
+function parseProps(propsJson: string | null | undefined): Record<string, unknown> {
+  try {
+    return JSON.parse(propsJson || '{}') as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
+async function writeNodeReview(
+  nodeId: string,
+  reviewStatus: 'approved' | 'rejected'
+): Promise<void> {
+  const repo = requireGraphRepo()
+  const node = await repo.getNodeById(nodeId)
+  if (!node) throw new Error(`Node not found: ${nodeId}`)
+  const now = Date.now()
+  const record: GraphNodeRawRecord = {
+    id: node.id,
+    schemaVersion: 1,
+    vaultName: resolveVaultNameById(node.vaultId),
+    nodeType: node.nodeType,
+    name: node.name,
+    aliases: node.aliases,
+    summary: node.summary,
+    props: parseProps(node.propsJson),
+    mentionCount: node.mentionCount,
+    firstSeenAt: node.firstSeenAt ?? now,
+    lastSeenAt: node.lastSeenAt ?? now,
+    origin: node.origin as 'ai' | 'user',
+    createdAt: node.createdAt,
+    updatedAt: now,
+    deletedAt: reviewStatus === 'rejected' ? now : node.deletedAt,
+    reviewStatus
+  }
+  await getGraphRawManager().writeRecord(record, { collection: 'nodes' })
+}
+
+async function writeEdgeReview(
+  edgeId: string,
+  reviewStatus: 'approved' | 'rejected',
+  opts?: { approvePendingEndpoints?: boolean }
+): Promise<void> {
+  const repo = requireGraphRepo()
+  const edge = await repo.getEdgeById(edgeId)
+  if (!edge) throw new Error(`Edge not found: ${edgeId}`)
+  const now = Date.now()
+  const record: GraphEdgeRawRecord = {
+    id: edge.id,
+    schemaVersion: 1,
+    vaultName: resolveVaultNameById(edge.vaultId),
+    fromId: edge.fromId,
+    toId: edge.toId,
+    edgeType: edge.edgeType,
+    props: parseProps(edge.propsJson),
+    validFrom: edge.validFrom,
+    validTo: edge.validTo,
+    isCurrent: reviewStatus === 'rejected' ? false : edge.isCurrent,
+    sourceKind: edge.sourceKind,
+    sourceRef: edge.sourceRef,
+    sourceExcerpt: edge.sourceExcerpt,
+    sourceContentHash: edge.sourceContentHash,
+    confidence: edge.confidence,
+    origin: edge.origin as 'ai' | 'user',
+    reviewStatus,
+    shardMonth: edge.shardMonth,
+    createdAt: edge.createdAt,
+    updatedAt: now,
+    deletedAt: reviewStatus === 'rejected' ? now : edge.deletedAt
+  }
+  await getGraphRawManager().writeRecord(record, { collection: 'edges' })
+
+  // Approving an edge must also approve pending endpoints so Agent can see them.
+  if (reviewStatus === 'approved' && opts?.approvePendingEndpoints !== false) {
+    for (const endpointId of [edge.fromId, edge.toId]) {
+      const node = await repo.getNodeById(endpointId)
+      if (node && node.reviewStatus === 'pending') {
+        await writeNodeReview(endpointId, 'approved')
+      }
+    }
+  }
+}
+
 export function registerGraphIPC(): void {
   ipcMain.handle('graph:list-pending-reextract', async () => {
     ensureRawDataRuntime()
@@ -77,6 +160,12 @@ export function registerGraphIPC(): void {
   ipcMain.handle('graph:list-pending-index', async () => {
     const { graphManager } = ensureRawDataRuntime()
     return graphManager.listPendingIndex()
+  })
+
+  ipcMain.handle('graph:estimate-extraction', async () => {
+    ensureRawDataRuntime()
+    const pending = await getDerivedFreshness().listPendingReextract()
+    return estimateExtractionCost(pending.length)
   })
 
   ipcMain.handle('graph:extract', async (event, opts?: { filePaths?: string[] }) => {
@@ -122,6 +211,21 @@ export function registerGraphIPC(): void {
   })
 
   ipcMain.handle(
+    'graph:find-paths',
+    async (
+      _e,
+      opts: { fromId: string; toId: string; maxHops?: 2 | 3 }
+    ) => {
+      const repo = requireGraphRepo()
+      const path = await repo.findShortestPath(requireVaultId(), opts.fromId, opts.toId, {
+        maxHops: opts.maxHops ?? 3,
+        approvedOnly: true
+      })
+      return path
+    }
+  )
+
+  ipcMain.handle(
     'graph:search',
     async (_e, opts: { query: string; nodeTypes?: string[]; limit?: number }) => {
       const repo = requireGraphRepo()
@@ -137,43 +241,29 @@ export function registerGraphIPC(): void {
     return repo.listPendingEdges(requireVaultId())
   })
 
+  ipcMain.handle('graph:list-pending', async () => {
+    const repo = requireGraphRepo()
+    const vaultId = requireVaultId()
+    const [nodes, edges] = await Promise.all([
+      repo.listPendingNodes(vaultId),
+      repo.listPendingEdges(vaultId)
+    ])
+    return { nodes, edges }
+  })
+
   ipcMain.handle(
     'graph:set-edge-review',
     async (_e, opts: { edgeId: string; reviewStatus: 'approved' | 'rejected' }) => {
-      const repo = requireGraphRepo()
-      const edge = await repo.getEdgeById(opts.edgeId)
-      if (!edge) throw new Error(`Edge not found: ${opts.edgeId}`)
-      const now = Date.now()
-      const record: GraphEdgeRawRecord = {
-        id: edge.id,
-        schemaVersion: 1,
-        vaultName: resolveVaultNameById(edge.vaultId),
-        fromId: edge.fromId,
-        toId: edge.toId,
-        edgeType: edge.edgeType,
-        props: (() => {
-          try {
-            return JSON.parse(edge.propsJson || '{}') as Record<string, unknown>
-          } catch {
-            return {}
-          }
-        })(),
-        validFrom: edge.validFrom,
-        validTo: edge.validTo,
-        isCurrent: opts.reviewStatus === 'rejected' ? false : edge.isCurrent,
-        sourceKind: edge.sourceKind,
-        sourceRef: edge.sourceRef,
-        sourceExcerpt: edge.sourceExcerpt,
-        sourceContentHash: edge.sourceContentHash,
-        confidence: edge.confidence,
-        origin: edge.origin as 'ai' | 'user',
-        reviewStatus: opts.reviewStatus,
-        shardMonth: edge.shardMonth,
-        createdAt: edge.createdAt,
-        updatedAt: now,
-        deletedAt: opts.reviewStatus === 'rejected' ? now : edge.deletedAt
-      }
-      await getGraphRawManager().writeRecord(record, { collection: 'edges' })
+      await writeEdgeReview(opts.edgeId, opts.reviewStatus, { approvePendingEndpoints: true })
+      await syncGraphPendingIndex()
+      return { ok: true }
+    }
+  )
+
+  ipcMain.handle(
+    'graph:set-node-review',
+    async (_e, opts: { nodeId: string; reviewStatus: 'approved' | 'rejected' }) => {
+      await writeNodeReview(opts.nodeId, opts.reviewStatus)
       await syncGraphPendingIndex()
       return { ok: true }
     }
@@ -206,19 +296,12 @@ export function registerGraphIPC(): void {
         name,
         aliases,
         summary: input.summary ?? existing?.summary ?? '',
-        props: (() => {
-          try {
-            return existing
-              ? (JSON.parse(existing.propsJson || '{}') as Record<string, unknown>)
-              : {}
-          } catch {
-            return {}
-          }
-        })(),
+        props: existing ? parseProps(existing.propsJson) : {},
         mentionCount: existing?.mentionCount ?? 1,
         firstSeenAt: existing?.firstSeenAt ?? now,
         lastSeenAt: now,
-        origin: (existing?.origin as 'ai' | 'user') || 'user',
+        // User edits always set origin=user so re-extract will not supersede them.
+        origin: 'user',
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         deletedAt: null,

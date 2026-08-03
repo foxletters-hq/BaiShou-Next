@@ -401,6 +401,14 @@ interface GraphAPI {
     }>
   >
   listPendingIndex(): Promise<unknown[]>
+  estimateExtraction(): Promise<{
+    entryCount: number
+    estimatedTokens: number
+    estimatedYuanLow: number
+    estimatedYuanHigh: number
+    estimatedMinutesLow: number
+    estimatedMinutesHigh: number
+  }>
   extract(opts?: { filePaths?: string[] }): Promise<{
     done: number
     failed: number
@@ -415,10 +423,20 @@ interface GraphAPI {
     nodeTypes?: string[]
   }): Promise<{ nodes: any[]; edges: any[] }>
   getView(opts: { centerNodeId: string; depth?: 1 | 2 }): Promise<{ nodes: any[]; edges: any[] }>
+  findPaths(opts: {
+    fromId: string
+    toId: string
+    maxHops?: 2 | 3
+  }): Promise<{ nodeIds: string[]; edges: any[] } | null>
   search(opts: { query: string; nodeTypes?: string[]; limit?: number }): Promise<any[]>
   listPendingEdges(): Promise<any[]>
+  listPending(): Promise<{ nodes: any[]; edges: any[] }>
   setEdgeReview(opts: {
     edgeId: string
+    reviewStatus: 'approved' | 'rejected'
+  }): Promise<{ ok: boolean }>
+  setNodeReview(opts: {
+    nodeId: string
     reviewStatus: 'approved' | 'rejected'
   }): Promise<{ ok: boolean }>
   upsertNode(input: {
