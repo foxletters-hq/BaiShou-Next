@@ -24,7 +24,7 @@ export const RagMemoryHeader: React.FC<RagMemoryHeaderProps> = ({
   return (
     <div className={styles.headerRow}>
       <div className={styles.titleInfo}>
-        <h2 className={styles.title}>{t('agent.rag.title', 'RAG 记忆管理')}</h2>
+        <h2 className={styles.title}>{t('agent.rag.title', '伙伴记忆管理')}</h2>
         <HelpTooltip
           content={t(
             'settings.tooltip_rag_management',

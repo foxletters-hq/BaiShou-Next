@@ -187,7 +187,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
         case 'embedding':
           return t(
             'settings.tooltip_embedding_model',
-            '它会在 AI 执行记忆存储（存储到 RAG 记忆中）的时候使用的模型。一旦日记发生变动，AI 也会用这个模型帮我们保存向量记忆。向量记忆相比于直接搜索的优点就是，它可以根据语义来进行近似搜索。'
+            '它会在 AI 执行记忆存储（存储到伙伴记忆中）的时候使用的模型。一旦日记发生变动，AI 也会用这个模型帮我们保存向量记忆。向量记忆相比于直接搜索的优点就是，它可以根据语义来进行近似搜索。'
           )
         default:
           return ''
