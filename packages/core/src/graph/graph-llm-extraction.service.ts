@@ -31,11 +31,14 @@ export interface ExtractDiariesOptions {
   /** Empty = all pending-reextract */
   filePaths?: string[]
   onProgress?: (p: { current: number; total: number; filePath: string }) => void
+  /** Cancel mid-batch: already-written diaries stay committed; remaining stay pending. */
+  signal?: AbortSignal
 }
 
 export interface ExtractDiariesResult {
   done: number
   failed: number
+  cancelled?: boolean
   errors: Array<{ filePath: string; message: string }>
 }
 
@@ -50,28 +53,51 @@ export interface ExtractionCostEstimate {
   estimatedMinutesHigh: number
 }
 
-/** ~600 tokens/entry (in+out), overestimate pricing & latency. */
-const ESTIMATE_TOKENS_PER_ENTRY = 600
+/** Floor tokens/entry when char length unknown. */
+const ESTIMATE_TOKENS_FLOOR = 600
+/** Upper-bound multiplier so UI prefers overestimate. */
+const ESTIMATE_OVERESTIMATE = 1.25
 const ESTIMATE_YUAN_PER_1K_LOW = 0.005
 const ESTIMATE_YUAN_PER_1K_HIGH = 0.012
 const ESTIMATE_SECONDS_PER_ENTRY_LOW = 2
 const ESTIMATE_SECONDS_PER_ENTRY_HIGH = 4
 
+/** Per-diary token estimate from character count (prefer overestimate). */
+export function estimateTokensForDiaryChars(chars: number): number {
+  const n = Math.max(0, Math.floor(chars))
+  return Math.max(ESTIMATE_TOKENS_FLOOR, Math.ceil(n / 2))
+}
+
 /**
- * Estimate LLM cost/time for extracting `entryCount` diaries.
- * Numbers are intentionally conservative (prefer overestimate).
+ * Estimate LLM cost/time for extracting diaries.
+ * Prefer passing `charCounts` (per pending file); without them falls back to floor × entryCount.
  */
-export function estimateExtractionCost(entryCount: number): ExtractionCostEstimate {
+export function estimateExtractionCost(
+  entryCount: number,
+  opts?: { charCounts?: number[] }
+): ExtractionCostEstimate {
   const n = Math.max(0, Math.floor(entryCount))
-  const estimatedTokens = n * ESTIMATE_TOKENS_PER_ENTRY
+  const counts = opts?.charCounts
+  let rawTokens = 0
+  if (counts && counts.length > 0) {
+    const limited = counts.slice(0, n || counts.length)
+    for (const c of limited) rawTokens += estimateTokensForDiaryChars(c)
+    // If entryCount > provided counts, pad with floor
+    if (n > limited.length) {
+      rawTokens += (n - limited.length) * ESTIMATE_TOKENS_FLOOR
+    }
+  } else {
+    rawTokens = n * ESTIMATE_TOKENS_FLOOR
+  }
+  const estimatedTokens = Math.ceil(rawTokens * ESTIMATE_OVERESTIMATE)
   const k = estimatedTokens / 1000
   return {
     entryCount: n,
     estimatedTokens,
     estimatedYuanLow: Math.round(k * ESTIMATE_YUAN_PER_1K_LOW * 100) / 100,
     estimatedYuanHigh: Math.round(k * ESTIMATE_YUAN_PER_1K_HIGH * 100) / 100,
-    estimatedMinutesLow: Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_LOW) / 60)),
-    estimatedMinutesHigh: Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_HIGH) / 60))
+    estimatedMinutesLow: n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_LOW) / 60)),
+    estimatedMinutesHigh: n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_HIGH) / 60))
   }
 }
 
@@ -107,10 +133,16 @@ function newId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
-/** Stable entry node id from diary path (uuid-shaped hex). */
-export function entryNodeIdForFilePath(filePath: string): string {
-  const hex = md5Hex(normalizeFilePath(filePath))
+/** Stable entry node id from diary path (uuid-shaped hex). Salt with vaultId to avoid cross-vault collisions. */
+export function entryNodeIdForFilePath(filePath: string, vaultId?: string): string {
+  const salt = vaultId?.trim() ? `${vaultId.trim()}\0` : ''
+  const hex = md5Hex(salt + normalizeFilePath(filePath))
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+}
+
+/** Pre-vault-salt entry id (compat dual-lookup for old extracts). */
+export function legacyEntryNodeIdForFilePath(filePath: string): string {
+  return entryNodeIdForFilePath(filePath)
 }
 
 function clampNodeType(raw: string): string {
@@ -290,9 +322,14 @@ export class GraphLlmExtractionService {
 
     let done = 0
     let failed = 0
+    let cancelled = false
     const errors: Array<{ filePath: string; message: string }> = []
 
     for (let i = 0; i < targets.length; i++) {
+      if (opts.signal?.aborted) {
+        cancelled = true
+        break
+      }
       const target = targets[i]!
       opts.onProgress?.({
         current: i + 1,
@@ -303,6 +340,10 @@ export class GraphLlmExtractionService {
         await this.extractOne(opts.vaultId, opts.vaultName, target.filePath, target.contentHash)
         done += 1
       } catch (e) {
+        if (opts.signal?.aborted) {
+          cancelled = true
+          break
+        }
         failed += 1
         const message = e instanceof Error ? e.message : String(e)
         errors.push({ filePath: target.filePath, message })
@@ -310,7 +351,7 @@ export class GraphLlmExtractionService {
       }
     }
 
-    return { done, failed, errors }
+    return { done, failed, cancelled: cancelled || undefined, errors }
   }
 
   private async resolveAbsolutePath(filePath: string): Promise<string> {
@@ -383,10 +424,14 @@ export class GraphLlmExtractionService {
     const nodeRecords: GraphNodeRawRecord[] = []
     const edgeRecords: GraphEdgeRawRecord[] = []
 
-    // Structural entry anchor — preserve historical counters when re-extracting
-    const entryId = entryNodeIdForFilePath(filePath)
+    // Structural entry anchor — vault-salted id; dual-lookup legacy unsalted id for counters
+    const entryId = entryNodeIdForFilePath(filePath, vaultId)
+    const legacyEntryId = legacyEntryNodeIdForFilePath(filePath)
     const entryName = dateStr || '日记'
-    const existingEntry = await this.repo.getNodeById(entryId)
+    let existingEntry = await this.repo.getNodeById(entryId, vaultId)
+    if (!existingEntry && legacyEntryId !== entryId) {
+      existingEntry = await this.repo.getNodeById(legacyEntryId, vaultId)
+    }
     nodeRecords.push({
       id: entryId,
       schemaVersion: 1,
@@ -491,6 +536,18 @@ export class GraphLlmExtractionService {
     // so a mid-flight failure does not leave the diary without current AI edges.
     for (const record of nodeRecords) {
       await this.graphManager.writeRecord(record, { collection: 'nodes' })
+    }
+    // Retire unsalted legacy entry id in the same vault to avoid duplicate anchors.
+    if (
+      existingEntry &&
+      existingEntry.id === legacyEntryId &&
+      legacyEntryId !== entryId
+    ) {
+      try {
+        await this.graphManager.tombstone(legacyEntryId, { collection: 'nodes' })
+      } catch {
+        // Legacy may already be absent on disk; SQLite sweep will catch orphans.
+      }
     }
     const newEdgeIds = new Set<string>()
     for (const record of edgeRecords) {

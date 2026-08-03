@@ -126,6 +126,11 @@ export interface UpsertEdgeInput {
 export interface GraphPath {
   nodeIds: string[]
   edges: GraphEdgeRow[]
+  /**
+   * Parallel to `edges`: whether each hop followed the stored edge direction
+   * (`fromId→toId`) or walked it in reverse (`toId→fromId`) during undirected BFS.
+   */
+  edgeDirections?: Array<'forward' | 'reverse'>
 }
 
 function mapNode(row: typeof graphNodesTable.$inferSelect): GraphNodeRow {
@@ -525,7 +530,13 @@ export class GraphRepository {
       await this.database
         .select()
         .from(graphNodesTable)
-        .where(and(inArray(graphNodesTable.id, ids), isNull(graphNodesTable.deletedAt)))
+        .where(
+          and(
+            eq(graphNodesTable.vaultId, vaultId),
+            inArray(graphNodesTable.id, ids),
+            isNull(graphNodesTable.deletedAt)
+          )
+        )
     ).map(mapNode)
     if (approvedOnly) {
       nodes = nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
@@ -573,7 +584,13 @@ export class GraphRepository {
       await this.database
         .select()
         .from(graphNodesTable)
-        .where(and(inArray(graphNodesTable.id, [...idSet]), isNull(graphNodesTable.deletedAt)))
+        .where(
+          and(
+            eq(graphNodesTable.vaultId, vaultId),
+            inArray(graphNodesTable.id, [...idSet]),
+            isNull(graphNodesTable.deletedAt)
+          )
+        )
     ).map(mapNode)
     if (approvedOnly) {
       nodes = nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
@@ -622,20 +639,24 @@ export class GraphRepository {
     return { nodes, edges }
   }
 
-  async getNodeById(id: string): Promise<GraphNodeRow | null> {
+  async getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null> {
+    const conditions = [eq(graphNodesTable.id, id), isNull(graphNodesTable.deletedAt)]
+    if (vaultId) conditions.push(eq(graphNodesTable.vaultId, vaultId))
     const rows = await this.database
       .select()
       .from(graphNodesTable)
-      .where(and(eq(graphNodesTable.id, id), isNull(graphNodesTable.deletedAt)))
+      .where(and(...conditions))
       .limit(1)
     return rows[0] ? mapNode(rows[0]) : null
   }
 
-  async getEdgeById(id: string): Promise<GraphEdgeRow | null> {
+  async getEdgeById(id: string, vaultId?: string): Promise<GraphEdgeRow | null> {
+    const conditions = [eq(graphEdgesTable.id, id), isNull(graphEdgesTable.deletedAt)]
+    if (vaultId) conditions.push(eq(graphEdgesTable.vaultId, vaultId))
     const rows = await this.database
       .select()
       .from(graphEdgesTable)
-      .where(and(eq(graphEdgesTable.id, id), isNull(graphEdgesTable.deletedAt)))
+      .where(and(...conditions))
       .limit(1)
     return rows[0] ? mapEdge(rows[0]) : null
   }
@@ -768,7 +789,7 @@ export class GraphRepository {
       degree.set(e.toId, (degree.get(e.toId) ?? 0) + 1)
     }
 
-    type Prev = { prevId: string; edge: GraphEdgeRow } | null
+    type Prev = { prevId: string; edge: GraphEdgeRow; direction: 'forward' | 'reverse' } | null
     const visited = new Map<string, { hops: number; prev: Prev }>()
     visited.set(fromId, { hops: 0, prev: null })
     const queue: string[] = [fromId]
@@ -783,7 +804,12 @@ export class GraphRepository {
       if (isHub) continue
       for (const { neighbor, edge } of adj.get(cur) ?? []) {
         if (visited.has(neighbor)) continue
-        visited.set(neighbor, { hops: curState.hops + 1, prev: { prevId: cur, edge } })
+        const direction: 'forward' | 'reverse' =
+          edge.fromId === cur && edge.toId === neighbor ? 'forward' : 'reverse'
+        visited.set(neighbor, {
+          hops: curState.hops + 1,
+          prev: { prevId: cur, edge, direction }
+        })
         queue.push(neighbor)
       }
     }
@@ -792,17 +818,20 @@ export class GraphRepository {
 
     const nodeIds: string[] = []
     const edges: GraphEdgeRow[] = []
+    const edgeDirections: Array<'forward' | 'reverse'> = []
     let cursor: string | null = toId
     while (cursor) {
       nodeIds.push(cursor)
       const state = visited.get(cursor)
       if (!state?.prev) break
       edges.push(state.prev.edge)
+      edgeDirections.push(state.prev.direction)
       cursor = state.prev.prevId
     }
     nodeIds.reverse()
     edges.reverse()
-    return { nodeIds, edges }
+    edgeDirections.reverse()
+    return { nodeIds, edges, edgeDirections }
   }
 
   /**
@@ -852,7 +881,7 @@ export class GraphRepository {
       degree.set(e.toId, (degree.get(e.toId) ?? 0) + 1)
     }
 
-    type Prev = { prevId: string; edge: GraphEdgeRow } | null
+    type Prev = { prevId: string; edge: GraphEdgeRow; direction: 'forward' | 'reverse' } | null
     const visited = new Map<string, { hops: number; prev: Prev }>()
     visited.set(fromId, { hops: 0, prev: null })
     const queue: string[] = [fromId]
@@ -870,7 +899,12 @@ export class GraphRepository {
       if (isHub) continue
       for (const { neighbor, edge } of adj.get(cur) ?? []) {
         if (visited.has(neighbor)) continue
-        visited.set(neighbor, { hops: curState.hops + 1, prev: { prevId: cur, edge } })
+        const direction: 'forward' | 'reverse' =
+          edge.fromId === cur && edge.toId === neighbor ? 'forward' : 'reverse'
+        visited.set(neighbor, {
+          hops: curState.hops + 1,
+          prev: { prevId: cur, edge, direction }
+        })
         queue.push(neighbor)
       }
     }
@@ -880,17 +914,20 @@ export class GraphRepository {
       if (paths.length >= limit) break
       const nodeIds: string[] = []
       const edges: GraphEdgeRow[] = []
+      const edgeDirections: Array<'forward' | 'reverse'> = []
       let cursor: string | null = dest
       while (cursor) {
         nodeIds.push(cursor)
         const state = visited.get(cursor)
         if (!state?.prev) break
         edges.push(state.prev.edge)
+        edgeDirections.push(state.prev.direction)
         cursor = state.prev.prevId
       }
       nodeIds.reverse()
       edges.reverse()
-      paths.push({ nodeIds, edges })
+      edgeDirections.reverse()
+      paths.push({ nodeIds, edges, edgeDirections })
     }
     return paths
   }

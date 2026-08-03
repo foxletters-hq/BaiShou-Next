@@ -4,6 +4,8 @@ export interface GraphRagPath {
   nodeIds: string[]
   nodeNames: string[]
   edges: GraphEdgeRow[]
+  /** Parallel to edges — undirected BFS may walk an edge reverse of storage. */
+  edgeDirections?: Array<'forward' | 'reverse'>
 }
 
 export interface GraphRagResult {
@@ -75,7 +77,7 @@ export class GraphRagService {
           approvedOnly: true
         })
         if (found) {
-          paths.push(await this.hydratePath(found, nodeMap))
+          paths.push(await this.hydratePath(opts.vaultId, found, nodeMap))
           for (const e of found.edges) edgeMap.set(e.id, e)
         }
       }
@@ -90,7 +92,7 @@ export class GraphRagService {
               approvedOnly: true
             })
             if (found) {
-              paths.push(await this.hydratePath(found, nodeMap))
+              paths.push(await this.hydratePath(opts.vaultId, found, nodeMap))
               for (const e of found.edges) edgeMap.set(e.id, e)
             }
             if (paths.length >= 6) break
@@ -106,7 +108,7 @@ export class GraphRagService {
         limit: 12
       })
       for (const found of foundPaths) {
-        paths.push(await this.hydratePath(found, nodeMap))
+        paths.push(await this.hydratePath(opts.vaultId, found, nodeMap))
         for (const e of found.edges) edgeMap.set(e.id, e)
       }
     }
@@ -120,12 +122,13 @@ export class GraphRagService {
   }
 
   private async hydratePath(
+    vaultId: string,
     path: GraphPath,
     nodeMap: Map<string, GraphNodeRow>
   ): Promise<GraphRagPath> {
     const missing = path.nodeIds.filter((id) => !nodeMap.has(id))
     for (const id of missing) {
-      const node = await this.repo.getNodeById(id)
+      const node = await this.repo.getNodeById(id, vaultId)
       if (node && node.reviewStatus !== 'pending' && node.reviewStatus !== 'rejected') {
         nodeMap.set(node.id, node)
       }
@@ -134,7 +137,8 @@ export class GraphRagService {
     return {
       nodeIds: path.nodeIds,
       nodeNames,
-      edges: path.edges
+      edges: path.edges,
+      edgeDirections: path.edgeDirections
     }
   }
 
