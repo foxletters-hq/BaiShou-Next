@@ -216,6 +216,18 @@ export function createStartAgentChat(deps: {
                 name: n.name,
                 nodeType: n.nodeType,
                 summary: n.summary
+              })),
+              paths: (result.paths ?? []).map((p) => ({
+                nodeIds: p.nodeIds,
+                nodeNames: p.nodeNames,
+                edges: p.edges.map((e) => ({
+                  id: e.id,
+                  fromId: e.fromId,
+                  toId: e.toId,
+                  edgeType: e.edgeType,
+                  sourceRef: e.sourceRef,
+                  sourceExcerpt: e.sourceExcerpt
+                }))
               }))
             }
           })

@@ -9,11 +9,15 @@ import type { ToolContext } from './agent.tool'
 const params = z.object({
   entity: z
     .string()
-    .describe('Person, place, topic, or other entity name to recall relations for.'),
+    .describe(
+      'Person, place, topic, or compound query (e.g. "小明和杭州") to recall relation paths for.'
+    ),
   mode: z
     .enum(['network', 'timeline'])
     .optional()
-    .describe('network = 1–2 hop neighborhood; timeline = relations ordered by validFrom.')
+    .describe(
+      'network = shortest relation paths (2–3 hops) with diary excerpts; timeline = relations ordered by validFrom.'
+    )
 })
 
 export class RecallRelationsTool extends AgentTool<typeof params> {
@@ -70,24 +74,57 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
         .map((a) => `- ${a.name} (${a.nodeType})${a.summary ? `: ${a.summary}` : ''}`)
         .join('\n')
 
-      const edgeSource = mode === 'timeline' ? result.timeline || result.subgraph : result.subgraph
-      const edgeLines = edgeSource
-        .slice(0, 24)
-        .map((e) => {
-          const from = result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
-          const to = result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
-          const src = e.sourceRef ? ` [来源:${e.sourceRef}]` : ''
-          const excerpt = e.sourceExcerpt ? ` 「${e.sourceExcerpt.slice(0, 80)}」` : ''
-          return `- ${from} —${e.edgeType}→ ${to}${src}${excerpt}`
-        })
-        .join('\n')
+      if (mode === 'timeline') {
+        const edgeSource = result.timeline || result.subgraph
+        const edgeLines = edgeSource
+          .slice(0, 24)
+          .map((e) => {
+            const from = result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
+            const to = result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
+            const src = e.sourceRef ? ` [来源:${e.sourceRef}]` : ''
+            const excerpt = e.sourceExcerpt ? ` 「${e.sourceExcerpt.slice(0, 80)}」` : ''
+            return `- ${from} —${e.edgeType}→ ${to}${src}${excerpt}`
+          })
+          .join('\n')
+
+        return [
+          `## 锚点`,
+          anchorLines,
+          `## 关系时间线`,
+          edgeLines || '(无边)',
+          `节点 ${result.nodes.length} · 边 ${edgeSource.length}`
+        ].join('\n')
+      }
+
+      const paths = result.paths ?? []
+      const pathLines =
+        paths.length > 0
+          ? paths
+              .slice(0, 12)
+              .map((p, i) => {
+                const chain = p.nodeNames.join(' → ')
+                const excerpts = p.edges
+                  .map((e) => {
+                    const label = e.edgeType
+                    const ex = e.sourceExcerpt
+                      ? `「${e.sourceExcerpt.slice(0, 80)}」`
+                      : e.sourceRef
+                        ? `[${e.sourceRef}]`
+                        : ''
+                    return `  · ${label}${ex ? ` ${ex}` : ''}`
+                  })
+                  .join('\n')
+                return `${i + 1}. ${chain}\n${excerpts || '  · (无摘录)'}`
+              })
+              .join('\n')
+          : '(未找到连接路径)'
 
       return [
         `## 锚点`,
         anchorLines,
-        mode === 'timeline' ? `## 关系时间线` : `## 邻域关系`,
-        edgeLines || '(无边)',
-        `节点 ${result.nodes.length} · 边 ${edgeSource.length}`
+        `## 关系路径（最短，≤3 跳）`,
+        pathLines,
+        `路径 ${paths.length} · 节点 ${result.nodes.length}`
       ].join('\n')
     } catch {
       return (
