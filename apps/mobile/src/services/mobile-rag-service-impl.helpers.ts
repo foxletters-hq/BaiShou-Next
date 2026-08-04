@@ -628,7 +628,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
         const { deleteDiaryEmbeddingAliases } = await import('./mobile-diary-embedding.util')
         const { enqueueDiaryEmbedJob } = await import('./mobile-diary-embed-jobs.service')
-        const vaultScope = resolveVaultScope(deps)
+        const vaultScope = await resolveVaultScope(deps)
         const parsed = parseDiaryEmbeddingSourceId(sourceId)
         const vaultId =
           parsed?.vaultId?.trim() || (await vaultScope.resolveActiveVaultId())
