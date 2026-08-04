@@ -1368,7 +1368,9 @@
     "month_suffix": "月",
     "jump_to_page": "移動",
     "pagination_info": "全 $total 件、$page / $pages ページ",
-    "per_page": "件/ページ"
+    "per_page": "件/ページ",
+    "status_pending_extract": "抽出待ち：{{count}}件",
+    "status_pending_embed": "埋め込み待ち：{{count}}件"
   },
   "summary": {
     "shared_memory_tooltip": "選択された回数範囲（月）に基づき、年、四半期、月、週ごとに手帳と要約を自動的に集約およびフィルタリングし、AI検索用のクリーンなコンテキストを生成します。",
@@ -2954,7 +2956,12 @@
     "add_edge_search": "対象ノードを検索",
     "add_edge_submit": "追加",
     "edge_added": "関係を追加しました",
-    "node_not_found": "ノードが見つかりません"
+    "node_not_found": "ノードが見つかりません",
+    "self_name_title": "自称を設定",
+    "self_name_desc": "関係グラフの抽出には、日記の「私」が誰かを知る必要があります。グラフに表示したい名前を入力してください。",
+    "self_name_placeholder": "例：太郎",
+    "self_name_confirm": "確認して続ける",
+    "self_name_required": "抽出の前にグラフの自称を設定してください"
   },
   "knowledge": {
     "title": "ナレッジベース",

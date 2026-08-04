@@ -1451,7 +1451,9 @@
     "month_suffix": "",
     "jump_to_page": "Go to",
     "pagination_info": "$total items, page $page / $pages",
-    "per_page": "/ page"
+    "per_page": "/ page",
+    "status_pending_extract": "Pending extract: {{count}}",
+    "status_pending_embed": "Pending embed: {{count}}"
   },
   "summary": {
     "shared_memory_tooltip": "Aggregates and filters diaries and summaries by year, quarter, month, and week based on the selected lookback range (months), generating a clean context for AI retrieval.",
@@ -3158,7 +3160,12 @@
     "add_edge_search": "Search target node",
     "add_edge_submit": "Add",
     "edge_added": "Relation added",
-    "node_not_found": "Node not found"
+    "node_not_found": "Node not found",
+    "self_name_title": "Set your name in the graph",
+    "self_name_desc": "Graph extraction needs to know who “I” refers to in your diaries. Enter the name you want to appear in the relationship graph.",
+    "self_name_placeholder": "e.g. Alex",
+    "self_name_confirm": "Confirm and continue",
+    "self_name_required": "Set your graph self-name before extracting"
   },
   "knowledge": {
     "title": "Knowledge",

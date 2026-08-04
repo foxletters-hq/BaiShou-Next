@@ -1482,7 +1482,9 @@
     "month_suffix": "月",
     "jump_to_page": "跳轉",
     "pagination_info": "共 $total 條，第 $page / $pages 頁",
-    "per_page": "條/頁"
+    "per_page": "條/頁",
+    "status_pending_extract": "待抽取：{{count}}個",
+    "status_pending_embed": "待嵌入：{{count}}個"
   },
   "summary": {
     "shared_memory_tooltip": "根據所選的回溯範圍（月），按年度、季度、月度和周度自動聚合並過濾日記與總結，生成純淨的上下文片段供 AI 檢索。",
@@ -3204,7 +3206,12 @@
     "add_edge_search": "搜尋目標節點",
     "add_edge_submit": "新增",
     "edge_added": "已新增關係",
-    "node_not_found": "節點不存在"
+    "node_not_found": "節點不存在",
+    "self_name_title": "設定你的自稱",
+    "self_name_desc": "圖譜抽取需要知道日記裡的「我」是誰。請填寫你希望出現在關係圖譜中的名字。",
+    "self_name_placeholder": "例如：小明",
+    "self_name_confirm": "確認並繼續",
+    "self_name_required": "請先設定圖譜自稱後再抽取"
   },
   "knowledge": {
     "title": "知識庫",

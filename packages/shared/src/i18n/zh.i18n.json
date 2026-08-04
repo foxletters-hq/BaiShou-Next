@@ -1495,7 +1495,9 @@
     "month_suffix": "月",
     "jump_to_page": "跳转",
     "pagination_info": "共 $total 条，第 $page / $pages 页",
-    "per_page": "条/页"
+    "per_page": "条/页",
+    "status_pending_extract": "待抽取：{{count}}个",
+    "status_pending_embed": "待嵌入：{{count}}个"
   },
   "summary": {
     "shared_memory_tooltip": "根据所选的回溯范围（月），按年度、季度、月度和周度自动聚合并过滤日记与总结，生成纯净的上下文片段供 AI 检索。",
@@ -3241,7 +3243,12 @@
     "add_edge_search": "搜索目标节点",
     "add_edge_submit": "添加",
     "edge_added": "已添加关系",
-    "node_not_found": "节点不存在"
+    "node_not_found": "节点不存在",
+    "self_name_title": "设置你的自称",
+    "self_name_desc": "图谱抽取需要知道日记里的「我」是谁。请填写你希望出现在关系图谱中的名字。",
+    "self_name_placeholder": "例如：小明",
+    "self_name_confirm": "确认并继续",
+    "self_name_required": "请先设置图谱自称后再抽取"
   },
   "knowledge": {
     "title": "知识库",
