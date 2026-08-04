@@ -107,6 +107,8 @@ interface SettingsAPI {
     config: import('@baishou/shared').BaishouAgentGateConfig,
     scope?: import('@baishou/shared').AgentGateConfigScope
   ): Promise<import('@baishou/shared').BaishouAgentGateConfig>
+  getGraphSelfNameConfigured(): Promise<boolean>
+  setGraphSelfNameConfigured(configured: boolean): Promise<boolean>
   getWorkspaceToolManagement(
     workspaceId: string
   ): Promise<import('@baishou/shared').WorkspaceToolManagementConfig>

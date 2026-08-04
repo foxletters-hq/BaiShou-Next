@@ -50,6 +50,11 @@ export const settingsApi = {
     setSearchModeEnabled: (enabled: boolean) =>
       ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
 
+    getGraphSelfNameConfigured: () =>
+      ipcRenderer.invoke('settings:get-graph-self-name-configured'),
+    setGraphSelfNameConfigured: (configured: boolean) =>
+      ipcRenderer.invoke('settings:set-graph-self-name-configured', configured),
+
     getMcpServerConfig: () => ipcRenderer.invoke('settings:get-mcp-server-config'),
     getMcpLanIp: (): Promise<string | null> => ipcRenderer.invoke('settings:get-mcp-lan-ip'),
     setMcpServerConfig: (config: any) =>
