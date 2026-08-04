@@ -45,9 +45,20 @@ describe('diary-status-bar.util', () => {
       ).toBe(false)
     })
 
-    it('hasGraphModelConfigured follows resolveGlobalGraphModelIds modelId', () => {
-      expect(hasGraphModelConfigured({ globalDialogueModelId: 'gpt-4o' })).toBe(true)
-      expect(hasGraphModelConfigured({})).toBe(true) // falls back to deepseek-chat
+    it('hasGraphModelConfigured requires explicit dialogue provider+model', () => {
+      expect(
+        hasGraphModelConfigured({
+          globalDialogueProviderId: 'openai',
+          globalDialogueModelId: 'gpt-4o'
+        })
+      ).toBe(true)
+      expect(hasGraphModelConfigured({})).toBe(false)
+      expect(
+        hasGraphModelConfigured({
+          globalDialogueProviderId: 'openai',
+          globalDialogueModelId: 'off'
+        })
+      ).toBe(false)
     })
 
     it('isRagEmbedFeatureConfigured requires rag + embedding ids', () => {

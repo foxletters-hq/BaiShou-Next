@@ -87,3 +87,52 @@ export async function countDiaryEmbeddingsForVault(vaultId: string): Promise<num
     )
   return Number(rows[0]?.count ?? 0)
 }
+
+/**
+ * 当前活跃仓「待嵌入」日记篇数（未索引或内容已更新）。
+ * 日记底栏用此语义，而不是仅统计 embed jobs 队列。
+ */
+export async function countUnindexedDiariesForActiveVault(): Promise<number> {
+  const { vaultService, resolveActiveVaultId } = await import('../ipc/vault.ipc')
+  const { getDiaryManagerForVault } = await import('./diary-vault.factory')
+  const {
+    buildDiaryEmbeddingSourceId,
+    filterUnindexedDiaries
+  } = await import('@baishou/shared')
+
+  const vault = vaultService.getActiveVault()
+  if (!vault) return 0
+  const vaultId = resolveActiveVaultId()
+  const diaryManager = await getDiaryManagerForVault(vault.name)
+  const diaries = await diaryManager.listAll({ limit: 10000 })
+  if (diaries.length === 0) return 0
+
+  const db = getAppDb()
+  const existingRows = await db
+    .select({
+      sourceId: memoryEmbeddingsTable.sourceId,
+      maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`
+    })
+    .from(memoryEmbeddingsTable)
+    .where(
+      and(
+        eq(memoryEmbeddingsTable.sourceType, 'diary'),
+        eq(memoryEmbeddingsTable.groupId, DIARY_EMBED_GROUP_ID),
+        eq(memoryEmbeddingsTable.vaultId, vaultId)
+      )
+    )
+    .groupBy(memoryEmbeddingsTable.sourceId)
+
+  const embeddedIds = new Set(existingRows.map((row) => row.sourceId))
+  const embeddedUpdatedAtMap = new Map<string, number>()
+  for (const row of existingRows) {
+    if (row.sourceId && Number.isFinite(row.maxUpdatedAt)) {
+      embeddedUpdatedAtMap.set(row.sourceId, Number(row.maxUpdatedAt))
+    }
+  }
+
+  const unindexed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
+    resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string)
+  })
+  return unindexed.length
+}

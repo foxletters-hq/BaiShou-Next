@@ -298,6 +298,41 @@ export function registerRagQueryIPC() {
       return true
     }
 
+    if (sourceType === 'diary') {
+      const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
+      const { deleteDiaryEmbeddingAliases } = await import('../services/diary-embedding.util')
+      const { enqueueDiaryEmbedJob } = await import('../services/diary-embed-jobs.service')
+      const { BrowserWindow } = await import('electron')
+
+      const parsed = parseDiaryEmbeddingSourceId(sourceId)
+      const vaultId =
+        parsed?.vaultId?.trim() ||
+        String(record.vaultId ?? '').trim() ||
+        resolveActiveVaultId()
+      const diaryIdRaw = parsed?.diaryId ?? sourceId
+      const diaryId = Number(diaryIdRaw)
+      if (Number.isFinite(diaryId)) {
+        await deleteDiaryEmbeddingAliases(vaultId, diaryId)
+        await enqueueDiaryEmbedJob({
+          vaultId,
+          diaryId,
+          contentHash: `reembed-after-delete-${Date.now()}`
+        })
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send('diary:sync-event', {
+            type: 'embed-pending-changed',
+            diaryId,
+            vaultId
+          })
+        }
+      } else {
+        await db
+          .delete(memoryEmbeddingsTable)
+          .where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
+      }
+      return true
+    }
+
     await db.delete(memoryEmbeddingsTable).where(eq(memoryEmbeddingsTable.embeddingId, embeddingId))
     return true
   })

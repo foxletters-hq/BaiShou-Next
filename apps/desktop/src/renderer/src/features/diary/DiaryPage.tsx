@@ -107,17 +107,29 @@ export const DiaryPage: React.FC = () => {
 
   const refreshStatusBar = useCallback(async () => {
     try {
-      const [pending, embedCount, globalModels, ragConfig, selfNameFlag, profile] =
+      const ragApi = (
+        window.api as {
+          rag?: {
+            getUnindexedDiaryCount?: () => Promise<number>
+            getEmbedJobsPendingCount?: () => Promise<number>
+          }
+          profile?: { getProfile?: () => Promise<{ nickname?: string } | null> }
+        }
+      ).rag
+      const profileApi = (window.api as { profile?: { getProfile?: () => Promise<any> } }).profile
+      const [pending, unindexedCount, globalModels, ragConfig, selfNameFlag, profile] =
         await Promise.all([
           window.api.graph.listPendingReextract().catch(() => []),
-          (window.api as any).rag?.getEmbedJobsPendingCount?.().catch(() => 0) ?? 0,
+          (ragApi?.getUnindexedDiaryCount?.() ?? ragApi?.getEmbedJobsPendingCount?.() ?? Promise.resolve(0)).catch(
+            () => 0
+          ),
           window.api.settings.getGlobalModels().catch(() => null),
-          (window.api.settings as any).getRagConfig?.().catch(() => null) as Promise<RagConfig | null>,
+          window.api.settings.getRagConfig().catch(() => null) as Promise<RagConfig | null>,
           window.api.settings.getGraphSelfNameConfigured().catch(() => false),
-          (window.api as any).profile?.getProfile?.().catch(() => null)
+          profileApi?.getProfile?.().catch(() => null) ?? Promise.resolve(null)
         ])
       setPendingGraphCount(Array.isArray(pending) ? pending.length : 0)
-      setPendingEmbedCount(typeof embedCount === 'number' ? embedCount : 0)
+      setPendingEmbedCount(typeof unindexedCount === 'number' ? unindexedCount : 0)
       const selfConfigured = isGraphSelfNameConfigured(selfNameFlag, profile?.nickname)
       setGraphConfigured(
         isGraphFeatureConfigured({
@@ -144,12 +156,32 @@ export const DiaryPage: React.FC = () => {
   }, [refreshStatusBar])
 
   useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshStatusBar()
+    }
+    const onFocus = () => void refreshStatusBar()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [refreshStatusBar])
+
+  useEffect(() => {
     const api = (window as any).api
     if (!api?.diary?.onSyncEvent) return
 
     const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
       if (event?.type === 'saved') {
         gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+      }
+      if (
+        event?.type === 'saved' ||
+        event?.type === 'embed-pending-changed' ||
+        event?.type === 'embed-failed' ||
+        event?.type === 'embed-failure-cleared'
+      ) {
         void refreshStatusBar()
       }
     })

@@ -1,7 +1,6 @@
 import { DEFAULT_USER_PROFILE } from '../constants/user-profile.constants'
 import type { GlobalModelsConfig, RagConfig } from '../types/settings.types'
 import { isConfiguredDialogueModelId, isConfiguredProviderId } from './agent-dialogue-model.util'
-import { resolveGlobalGraphModelIds } from './global-graph-model.util'
 import { isRagMemoryEnabled } from './rag-embed-failure.util'
 
 /** 默认昵称不算已配置自称 */
@@ -24,12 +23,14 @@ export function isGraphSelfNameConfigured(
   return !isDefaultGraphSelfName(name)
 }
 
-/** resolveGlobalGraphModelIds 是否给出可用 modelId */
+/** 对话/图谱模型是否已显式配置（不含 resolve 时的 deepseek-chat 回落） */
 export function hasGraphModelConfigured(
   models: Partial<GlobalModelsConfig> | null | undefined
 ): boolean {
-  const { modelId } = resolveGlobalGraphModelIds(models)
-  return Boolean(modelId?.trim())
+  return (
+    isConfiguredProviderId(models?.globalDialogueProviderId) &&
+    isConfiguredDialogueModelId(models?.globalDialogueModelId)
+  )
 }
 
 export function isGraphFeatureConfigured(opts: {
