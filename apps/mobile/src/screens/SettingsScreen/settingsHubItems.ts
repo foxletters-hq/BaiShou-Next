@@ -46,18 +46,6 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'ai-models' }
       },
       {
-        id: 'assistants',
-        titleKey: 'agent.assistant.settings_entry',
-        icon: 'assistants',
-        route: { type: 'stack', pathname: '/settings/assistants' }
-      },
-      {
-        id: 'rag',
-        titleKey: 'agent.rag.title',
-        icon: 'rag',
-        route: { type: 'section', section: 'rag' }
-      },
-      {
         id: 'web-search',
         titleKey: 'agent.tools.web_search',
         icon: 'web-search',
@@ -70,22 +58,39 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'mcp' }
       },
       {
+        id: 'tts',
+        titleKey: 'settings.tts_settings',
+        icon: 'tts',
+        route: { type: 'stack', pathname: '/settings/tts' }
+      }
+    ]
+  },
+  {
+    titleKey: 'settings.nav_group_companion',
+    items: [
+      {
+        id: 'assistants',
+        titleKey: 'agent.assistant.settings_entry',
+        icon: 'assistants',
+        route: { type: 'stack', pathname: '/settings/assistants' }
+      },
+      {
         id: 'agent-tools',
         titleKey: 'settings.companion_chat_tools_title',
         icon: 'agent-tools',
         route: { type: 'stack', pathname: '/settings/agent-tools' }
       },
       {
+        id: 'rag',
+        titleKey: 'agent.rag.title',
+        icon: 'rag',
+        route: { type: 'section', section: 'rag' }
+      },
+      {
         id: 'agent-gate',
         titleKey: 'agent.gate.settings_title',
         icon: 'agent-gate',
         route: { type: 'section', section: 'agent-gate' }
-      },
-      {
-        id: 'tts',
-        titleKey: 'settings.tts_settings',
-        icon: 'tts',
-        route: { type: 'stack', pathname: '/settings/tts' }
       }
     ]
   },
