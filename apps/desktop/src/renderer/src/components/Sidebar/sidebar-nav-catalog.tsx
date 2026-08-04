@@ -130,7 +130,13 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L101',
       'AI 与模型'
     ),
-    itemIds: ['ai-services', 'ai-models', 'tts', 'assistants']
+    itemIds: ['ai-services', 'ai-models', 'tts']
+  },
+  {
+    key: 'settings-companion',
+    labelKey: 'settings.nav_group_companion',
+    defaultLabel: i18n.t('settings.nav_group_companion', '伙伴'),
+    itemIds: ['assistants', 'agent-tools', 'rag']
   },
   {
     key: 'memory',
@@ -139,7 +145,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'auto.apps.desktop.src.renderer.src.components.Sidebar.sidebar.nav.catalog.L107',
       '记忆与工具'
     ),
-    itemIds: ['rag', 'web-search', 'agent-tools']
+    itemIds: ['web-search']
   },
   {
     key: 'sync',

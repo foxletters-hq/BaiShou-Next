@@ -113,6 +113,12 @@ export const SettingsShell: React.FC = () => {
         icon: <Puzzle size={NAV_ICON_SIZE} />
       },
       {
+        id: 4,
+        kind: 'item',
+        label: t('agent.rag.title', '伙伴记忆管理'),
+        icon: <Database size={NAV_ICON_SIZE} />
+      },
+      {
         kind: 'section',
         label: t('settings.nav_group_capabilities', '能力与集成')
       },
@@ -127,12 +133,6 @@ export const SettingsShell: React.FC = () => {
         kind: 'item',
         label: t('agent.tools.web_search', '网络搜索'),
         icon: <Globe size={NAV_ICON_SIZE} />
-      },
-      {
-        id: 4,
-        kind: 'item',
-        label: t('agent.rag.title', '伙伴记忆管理'),
-        icon: <Database size={NAV_ICON_SIZE} />
       },
       {
         kind: 'section',
