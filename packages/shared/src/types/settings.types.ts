@@ -282,4 +282,6 @@ export interface DevicePreferences {
   s3_path?: string
   mcp_server_enabled?: boolean
   mcp_server_port?: number
+  /** 图谱抽取自称是否已由用户确认（默认昵称不算） */
+  graph_self_name_configured?: boolean
 }
