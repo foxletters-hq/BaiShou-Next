@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { GRAPH_SELF_NAME_REQUIRED_ERROR } from '@baishou/shared'
+import { useDialog } from '@baishou/ui'
+import { ensureDesktopGraphSelfName } from '../diary/utils/ensure-graph-self-name'
 import { GraphForceCanvas } from './GraphForceCanvas'
 import styles from './GraphPage.module.css'
 
@@ -18,6 +21,7 @@ type CostEstimate = {
 export const GraphPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const dialog = useDialog()
   const [nodes, setNodes] = useState<any[]>([])
   const [edges, setEdges] = useState<any[]>([])
   const [query, setQuery] = useState('')
@@ -130,6 +134,11 @@ export const GraphPage: React.FC = () => {
   }
 
   const runExtract = async (filePaths?: string[]) => {
+    const selfName = await ensureDesktopGraphSelfName({ prompt: dialog.prompt, t })
+    if (!selfName) {
+      setStatus(t('graph.self_name_required', '请先设置图谱自称后再抽取'))
+      return
+    }
     setBusy(true)
     setStatus(t('graph.extracting', '正在抽取…'))
     setDismissGuide(true)
@@ -168,7 +177,12 @@ export const GraphPage: React.FC = () => {
       }
       await refresh()
     } catch (e: any) {
-      setStatus(e?.message || String(e))
+      const message = e?.message || String(e)
+      setStatus(
+        message === GRAPH_SELF_NAME_REQUIRED_ERROR
+          ? t('graph.self_name_required', '请先设置图谱自称后再抽取')
+          : message
+      )
     } finally {
       setBusy(false)
     }
