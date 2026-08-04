@@ -13,8 +13,8 @@ import {
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Input, useNativeTheme } from '@baishou/ui/native'
-import { deriveLegacyVaultId } from '@baishou/shared'
+import { Input, useNativeTheme, useDialog, useNativeToast } from '@baishou/ui/native'
+import { deriveLegacyVaultId, GRAPH_SELF_NAME_REQUIRED_ERROR } from '@baishou/shared'
 import { GRAPH_EDGE_TYPES, ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
@@ -31,6 +31,7 @@ import {
   mobileUpsertEdge,
   mobileUpsertNode
 } from '@/src/services/mobile-graph.service'
+import { ensureMobileGraphSelfName } from '../DiaryScreen/ensure-graph-self-name'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { GraphForceWebView } from './GraphForceWebView'
@@ -51,6 +52,8 @@ type PendingItem = { kind: 'node'; id: string; data: any } | { kind: 'edge'; id:
 export function GraphScreen() {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const dialog = useDialog()
+  const toast = useNativeToast()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const chrome = getStackScreenChrome(colors)
@@ -186,6 +189,16 @@ export function GraphScreen() {
     if (!services) return
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
+    const selfName = await ensureMobileGraphSelfName({
+      settingsManager: services.settingsManager,
+      prompt: dialog.prompt,
+      t
+    })
+    if (!selfName) {
+      setStatus(t('graph.self_name_required', '请先设置图谱自称后再抽取'))
+      toast.showError(t('graph.self_name_required', '请先设置图谱自称后再抽取'))
+      return
+    }
     extractAbortRef.current?.abort()
     const ac = new AbortController()
     extractAbortRef.current = ac
@@ -237,7 +250,12 @@ export function GraphScreen() {
       }
       await refresh()
     } catch (e: any) {
-      setStatus(e?.message || String(e))
+      const message = e?.message || String(e)
+      setStatus(
+        message === GRAPH_SELF_NAME_REQUIRED_ERROR
+          ? t('graph.self_name_required', '请先设置图谱自称后再抽取')
+          : message
+      )
     } finally {
       if (extractAbortRef.current === ac) extractAbortRef.current = null
       setBusy(false)

@@ -6,8 +6,7 @@ import {
   Modal,
   Text,
   TouchableOpacity,
-  Keyboard,
-  Pressable
+  Keyboard
 } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
@@ -31,16 +30,20 @@ import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
 import { isDiaryEditorRouteActive } from './diary-editor-route.util'
 import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
 import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
+import { mobileListPendingReextract } from '../../services/mobile-graph.service'
+import { getDiaryEmbedJobsPendingCount } from '../../services/mobile-diary-embed-jobs-consumer.service'
 import {
-  consumeDiaryGraphExtractHint,
-  peekDiaryGraphExtractHint,
-  type DiaryGraphExtractHint
-} from './diary-graph-extract-hint'
-import { getAgentDbRuntime } from '../../services/mobile-agent-db-runtime-ref'
-import {
-  mobileExtractDiaries,
-  mobileListPendingReextract
-} from '../../services/mobile-graph.service'
+  hasGraphModelConfigured,
+  isGraphFeatureConfigured,
+  isGraphSelfNameConfigured,
+  isRagEmbedFeatureConfigured,
+  shouldShowPendingEmbed,
+  shouldShowPendingExtract,
+  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
+  getUserProfileFromSettings,
+  type GlobalModelsConfig,
+  type RagConfig
+} from '@baishou/shared'
 
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -98,9 +101,9 @@ export const DiaryScreen: React.FC = () => {
   const isListFocusedRef = useRef(isListFocused)
   isListFocusedRef.current = isListFocused
   const [pendingGraphCount, setPendingGraphCount] = useState(0)
-  const [entryExtractHint, setEntryExtractHint] = useState<DiaryGraphExtractHint | null>(null)
-  const [graphExtractBusy, setGraphExtractBusy] = useState(false)
-  const [graphExtractProgress, setGraphExtractProgress] = useState('')
+  const [pendingEmbedCount, setPendingEmbedCount] = useState(0)
+  const [graphConfigured, setGraphConfigured] = useState(false)
+  const [ragConfigured, setRagConfigured] = useState(false)
   const {
     isSyncing,
     isPlanning,
@@ -292,91 +295,54 @@ export const DiaryScreen: React.FC = () => {
       .catch(() => setTodayEntry(null))
   }, [dbReady, services, storageReady, vaultRevision])
 
-  const refreshPendingGraph = useCallback(async () => {
+  const refreshStatusBar = useCallback(async () => {
     if (!services || !dbReady) return
     try {
       const activeVault = services.vaultService.getActiveVault()
       const vaultName = activeVault?.name || 'Personal'
       const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
-      const pending = await mobileListPendingReextract({
-        vaultName,
-        shadowRepo,
-        pathService: services.pathService,
-        fileSystem: services.fileSystem
-      })
+      const [pending, embedCount, globalModels, ragConfig, selfNameFlag, profile] =
+        await Promise.all([
+          mobileListPendingReextract({
+            vaultName,
+            shadowRepo,
+            pathService: services.pathService,
+            fileSystem: services.fileSystem
+          }),
+          getDiaryEmbedJobsPendingCount().catch(() => 0),
+          services.settingsManager.get<GlobalModelsConfig>('global_models'),
+          services.settingsManager.get<RagConfig>('rag_config'),
+          services.settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY),
+          getUserProfileFromSettings(services.settingsManager)
+        ])
       setPendingGraphCount(pending.length)
+      setPendingEmbedCount(embedCount)
+      const selfConfigured = isGraphSelfNameConfigured(selfNameFlag === true, profile.nickname)
+      setGraphConfigured(
+        isGraphFeatureConfigured({
+          selfNameConfigured: selfConfigured,
+          hasGraphModel: hasGraphModelConfigured(globalModels)
+        })
+      )
+      setRagConfigured(
+        isRagEmbedFeatureConfigured({
+          ragConfig,
+          globalModels
+        })
+      )
     } catch {
       setPendingGraphCount(0)
+      setPendingEmbedCount(0)
+      setGraphConfigured(false)
+      setRagConfigured(false)
     }
   }, [services, dbReady])
 
   useFocusEffect(
     useCallback(() => {
-      const hint = peekDiaryGraphExtractHint()
-      setEntryExtractHint(hint)
-      void refreshPendingGraph()
-    }, [refreshPendingGraph])
-  )
-
-  const runGraphExtract = useCallback(
-    async (filePaths?: string[]) => {
-      if (!services || graphExtractBusy) return
-      const runtime = getAgentDbRuntime()
-      if (!runtime?.drizzleDb) return
-      const activeVault = services.vaultService.getActiveVault()
-      const vaultName = activeVault?.name || 'Personal'
-      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
-      setGraphExtractBusy(true)
-      setGraphExtractProgress(t('graph.extracting', '正在抽取…'))
-      try {
-        const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
-        const result = await mobileExtractDiaries({
-          vaultId,
-          vaultName,
-          drizzleDb: runtime.drizzleDb,
-          shadowRepo,
-          pathService: services.pathService,
-          fileSystem: services.fileSystem,
-          settingsManager: services.settingsManager,
-          filePaths,
-          onProgress: (p) => {
-            setGraphExtractProgress(
-              t('graph.extract_progress', '正在整理 {{current}}/{{total}}', {
-                current: p.current,
-                total: p.total
-              })
-            )
-          }
-        })
-        if (filePaths?.length) {
-          consumeDiaryGraphExtractHint()
-          setEntryExtractHint(null)
-        }
-        if (result.failed > 0) {
-          toast.showError(
-            t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
-              done: result.done,
-              failed: result.failed
-            })
-          )
-        } else {
-          toast.showSuccess(
-            filePaths?.length
-              ? t('graph.extract_this_done', '已记住这篇里的人和事')
-              : t('graph.extract_batch_done', '已整理 {{done}} 篇日记', { done: result.done })
-          )
-        }
-        await refreshPendingGraph()
-      } catch (e) {
-        const message = e instanceof Error ? e.message : String(e)
-        toast.showError(message || t('graph.extract_failed', '整理失败'))
-      } finally {
-        setGraphExtractBusy(false)
-        setGraphExtractProgress('')
-      }
-    },
-    [services, graphExtractBusy, refreshPendingGraph, t, toast]
+      void refreshStatusBar()
+    }, [refreshStatusBar])
   )
 
   const displayEntries = useMemo((): DiaryListEntry[] => {
@@ -485,42 +451,6 @@ export const DiaryScreen: React.FC = () => {
             isSearchPending={searchPending}
           />
 
-          {(entryExtractHint || pendingGraphCount > 0 || graphExtractBusy) && (
-            <View
-              style={[
-                styles.graphExtractBanner,
-                { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderMuted }
-              ]}
-            >
-              <Text
-                style={[styles.graphExtractText, { color: colors.textSecondary }]}
-                numberOfLines={2}
-              >
-                {graphExtractBusy
-                  ? graphExtractProgress || t('graph.extracting', '正在抽取…')
-                  : entryExtractHint
-                    ? t('graph.extract_this_entry', '让伙伴记住这篇里的人和事')
-                    : t('graph.pending_entries_hint', '有 {{count}} 篇日记还没整理', {
-                        count: pendingGraphCount
-                      })}
-              </Text>
-              {!graphExtractBusy && (
-                <Pressable
-                  onPress={() =>
-                    void runGraphExtract(entryExtractHint ? [entryExtractHint.filePath] : undefined)
-                  }
-                  hitSlop={8}
-                >
-                  <Text style={[styles.graphExtractAction, { color: colors.primary }]}>
-                    {entryExtractHint
-                      ? t('graph.extract_remember', '记住')
-                      : t('graph.extract_pending_batch', '开始整理')}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          )}
-
           <DiaryList
             listRef={listRef}
             onListScroll={handleListScroll}
@@ -545,6 +475,31 @@ export const DiaryScreen: React.FC = () => {
             showStoragePermission={needsFullFileAccess}
             onRequestStoragePermission={handleRequestStoragePermission}
           />
+
+          <View
+            style={[
+              styles.statusBar,
+              { borderTopColor: colors.borderMuted, backgroundColor: colors.bgApp }
+            ]}
+          >
+            {shouldShowPendingExtract({
+              graphConfigured,
+              count: pendingGraphCount
+            }) ? (
+              <Text style={[styles.statusItem, { color: colors.textSecondary }]}>
+                {t('diary.status_pending_extract', '待抽取：{{count}}个', {
+                  count: pendingGraphCount
+                })}
+              </Text>
+            ) : null}
+            {shouldShowPendingEmbed({ ragConfigured, count: pendingEmbedCount }) ? (
+              <Text style={[styles.statusItem, { color: colors.textSecondary }]}>
+                {t('diary.status_pending_embed', '待嵌入：{{count}}个', {
+                  count: pendingEmbedCount
+                })}
+              </Text>
+            ) : null}
+          </View>
 
           <DiaryFab todayEntry={todayEntry} onEditToday={handleEditToday} onAddNew={handleAddNew} />
         </View>
@@ -601,23 +556,18 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative'
   },
-  graphExtractBanner: {
+  statusBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 12,
+    minHeight: 24,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    paddingVertical: 4,
+    borderTopWidth: StyleSheet.hairlineWidth
   },
-  graphExtractText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18
-  },
-  graphExtractAction: {
-    fontSize: 13,
-    fontWeight: '600'
+  statusItem: {
+    fontSize: 11,
+    lineHeight: 16
   },
   deleteOverlay: {
     flex: 1,
