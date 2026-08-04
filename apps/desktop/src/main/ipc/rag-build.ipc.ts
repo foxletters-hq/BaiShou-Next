@@ -191,6 +191,9 @@ export function registerRagBuildIPC() {
     const storage = new DesktopEmbeddingStorage()
     await storage.clearEmbeddings()
     await config.setGlobalEmbeddingDimension(0)
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('diary:sync-event', { type: 'embed-pending-changed' })
+    }
     return true
   })
 
@@ -201,6 +204,9 @@ export function registerRagBuildIPC() {
     const storage = new DesktopEmbeddingStorage()
     await storage.clearEmbeddings()
     await config.setGlobalEmbeddingDimension(0)
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('diary:sync-event', { type: 'embed-pending-changed' })
+    }
     return true
   })
 
@@ -272,6 +278,13 @@ export function registerRagBuildIPC() {
     const { getDiaryEmbedJobsPendingCount } =
       await import('../services/diary-embed-jobs-consumer.service')
     return getDiaryEmbedJobsPendingCount()
+  })
+
+  /** 当前活跃仓待嵌入日记篇数（底栏「待嵌入」用） */
+  ipcMain.handle('rag:unindexed-diary-count', async () => {
+    const { countUnindexedDiariesForActiveVault } =
+      await import('../services/diary-embedding.util')
+    return countUnindexedDiariesForActiveVault()
   })
 
   ipcMain.handle('rag:add-manual-memory', async (_, text: string) => {

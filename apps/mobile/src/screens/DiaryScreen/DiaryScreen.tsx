@@ -310,14 +310,17 @@ export const DiaryScreen: React.FC = () => {
             pathService: services.pathService,
             fileSystem: services.fileSystem
           }),
-          getDiaryEmbedJobsPendingCount().catch(() => 0),
+          (
+            services.ragService as { getUnindexedDiaryCount?: () => Promise<number> }
+          ).getUnindexedDiaryCount?.().catch(() => getDiaryEmbedJobsPendingCount()) ??
+            getDiaryEmbedJobsPendingCount().catch(() => 0),
           services.settingsManager.get<GlobalModelsConfig>('global_models'),
           services.settingsManager.get<RagConfig>('rag_config'),
           services.settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY),
           getUserProfileFromSettings(services.settingsManager)
         ])
       setPendingGraphCount(pending.length)
-      setPendingEmbedCount(embedCount)
+      setPendingEmbedCount(typeof embedCount === 'number' ? embedCount : 0)
       const selfConfigured = isGraphSelfNameConfigured(selfNameFlag === true, profile.nickname)
       setGraphConfigured(
         isGraphFeatureConfigured({

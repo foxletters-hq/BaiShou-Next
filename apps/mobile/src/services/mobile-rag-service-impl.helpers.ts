@@ -624,6 +624,32 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         return
       }
 
+      if (sourceType === 'diary') {
+        const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
+        const { deleteDiaryEmbeddingAliases } = await import('./mobile-diary-embedding.util')
+        const { enqueueDiaryEmbedJob } = await import('./mobile-diary-embed-jobs.service')
+        const vaultScope = resolveVaultScope(deps)
+        const parsed = parseDiaryEmbeddingSourceId(sourceId)
+        const vaultId =
+          parsed?.vaultId?.trim() || (await vaultScope.resolveActiveVaultId())
+        const diaryIdRaw = parsed?.diaryId ?? sourceId
+        const diaryId = Number(diaryIdRaw)
+        if (Number.isFinite(diaryId)) {
+          await deleteDiaryEmbeddingAliases(deps.hsRepo, vaultId, diaryId)
+          await enqueueDiaryEmbedJob({
+            vaultId,
+            diaryId,
+            contentHash: `reembed-after-delete-${Date.now()}`
+          })
+        } else {
+          await client.execute({
+            sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
+            args: [embeddingId]
+          })
+        }
+        return
+      }
+
       await client.execute({
         sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
         args: [embeddingId]
@@ -640,6 +666,11 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const ragConfig = (await deps.settingsManager.get<any>('rag_config')) || {}
       ragConfig.totalEmbeddings = 0
       await deps.settingsManager.set('rag_config', ragConfig)
+    },
+
+    async getUnindexedDiaryCount(): Promise<number> {
+      const { countUnindexedDiariesForActiveVault } = await import('./mobile-unindexed-diary-count')
+      return countUnindexedDiariesForActiveVault(deps)
     }
   }
 
