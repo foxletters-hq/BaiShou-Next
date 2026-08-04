@@ -943,7 +943,6 @@
   justify-content: space-between;
   padding: 8px 0 12px;
   margin-bottom: 4px;
-  border-bottom: 1px solid var(--border-muted);
 }
 
 /* ── 底部分页组件 ── */
@@ -953,7 +952,6 @@
   justify-content: space-between;
   padding: 16px 0;
   margin-top: 8px;
-  border-top: 1px solid var(--border-muted);
 }
 
 .diary-pagination-info {
@@ -1006,36 +1004,38 @@
   color: var(--color-primary);
 }
 
-/* ── 图谱整理轻提示条 ── */
-.diary-graph-extract-banner {
+/* ── 日记列表常驻底栏 ── */
+.diary-status-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 32px;
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface));
-  border-bottom: 1px solid var(--border-muted);
-  flex-shrink: 0;
-}
-
-.diary-graph-extract-banner-text {
-  font-size: 13px;
+  gap: 10px;
+  height: 24px;
+  padding: 0 16px;
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-app);
+  font-size: 11px;
   color: var(--text-secondary);
-  line-height: 1.4;
+  flex-shrink: 0;
 }
 
-.diary-graph-extract-banner-btn {
-  flex-shrink: 0;
+.diary-status-bar-item {
+  white-space: nowrap;
+}
+
+.diary-status-bar-item--action {
   border: none;
   background: transparent;
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 500;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 0;
 }
 
-.diary-graph-extract-banner-btn:hover {
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+.diary-status-bar-item--action:hover {
+  color: var(--text-primary);
+}
+
+.diary-status-bar-spacer {
+  flex: 1;
 }

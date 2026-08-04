@@ -3,11 +3,19 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
+  hasGraphModelConfigured,
+  isGraphFeatureConfigured,
+  isGraphSelfNameConfigured,
+  isRagEmbedFeatureConfigured,
   normalizeWeatherId,
   normalizeMoodIdForFilter,
   normalizeDiaryTags,
+  shouldShowPendingEmbed,
+  shouldShowPendingExtract,
   type WeatherId,
-  type MoodId
+  type MoodId,
+  type GlobalModelsConfig,
+  type RagConfig
 } from '@baishou/shared'
 import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
@@ -16,7 +24,8 @@ import type { DiaryEntry } from './DiaryCard'
 import { useToast } from '@baishou/ui'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryGrid } from './components/DiaryGrid'
-import { DiaryGraphExtractBanner } from './components/DiaryGraphExtractBanner'
+import { DiaryStatusBar } from './components/DiaryStatusBar'
+import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
@@ -92,21 +101,47 @@ export const DiaryPage: React.FC = () => {
   const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
   const gridScrollRef = useRef<HTMLDivElement>(null)
   const [pendingGraphCount, setPendingGraphCount] = useState(0)
-  const [graphExtractBusy, setGraphExtractBusy] = useState(false)
-  const [graphExtractProgress, setGraphExtractProgress] = useState('')
+  const [pendingEmbedCount, setPendingEmbedCount] = useState(0)
+  const [graphConfigured, setGraphConfigured] = useState(false)
+  const [ragConfigured, setRagConfigured] = useState(false)
 
-  const refreshPendingGraph = useCallback(async () => {
+  const refreshStatusBar = useCallback(async () => {
     try {
-      const pending = await window.api.graph.listPendingReextract()
-      setPendingGraphCount(pending.length)
+      const [pending, embedCount, globalModels, ragConfig, selfNameFlag, profile] =
+        await Promise.all([
+          window.api.graph.listPendingReextract().catch(() => []),
+          (window.api as any).rag?.getEmbedJobsPendingCount?.().catch(() => 0) ?? 0,
+          window.api.settings.getGlobalModels().catch(() => null),
+          (window.api.settings as any).getRagConfig?.().catch(() => null) as Promise<RagConfig | null>,
+          window.api.settings.getGraphSelfNameConfigured().catch(() => false),
+          (window.api as any).profile?.getProfile?.().catch(() => null)
+        ])
+      setPendingGraphCount(Array.isArray(pending) ? pending.length : 0)
+      setPendingEmbedCount(typeof embedCount === 'number' ? embedCount : 0)
+      const selfConfigured = isGraphSelfNameConfigured(selfNameFlag, profile?.nickname)
+      setGraphConfigured(
+        isGraphFeatureConfigured({
+          selfNameConfigured: selfConfigured,
+          hasGraphModel: hasGraphModelConfigured(globalModels as GlobalModelsConfig | null)
+        })
+      )
+      setRagConfigured(
+        isRagEmbedFeatureConfigured({
+          ragConfig: ragConfig as RagConfig | null,
+          globalModels: globalModels as GlobalModelsConfig | null
+        })
+      )
     } catch {
       setPendingGraphCount(0)
+      setPendingEmbedCount(0)
+      setGraphConfigured(false)
+      setRagConfigured(false)
     }
   }, [])
 
   useEffect(() => {
-    void refreshPendingGraph()
-  }, [refreshPendingGraph])
+    void refreshStatusBar()
+  }, [refreshStatusBar])
 
   useEffect(() => {
     const api = (window as any).api
@@ -115,51 +150,14 @@ export const DiaryPage: React.FC = () => {
     const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
       if (event?.type === 'saved') {
         gridScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
-        void refreshPendingGraph()
+        void refreshStatusBar()
       }
     })
 
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [refreshPendingGraph])
-
-  const handleBatchGraphExtract = useCallback(async () => {
-    if (graphExtractBusy || pendingGraphCount <= 0) return
-    setGraphExtractBusy(true)
-    setGraphExtractProgress(t('graph.extracting', '正在抽取…'))
-    const unsubscribe = window.api.graph.onExtractProgress?.((p) => {
-      setGraphExtractProgress(
-        t('graph.extract_progress', '正在整理 {{current}}/{{total}}', {
-          current: p.current,
-          total: p.total
-        })
-      )
-    })
-    try {
-      const result = await window.api.graph.extract()
-      if (result.failed > 0) {
-        toast.showError(
-          t('graph.extract_batch_result', '完成 {{done}}，失败 {{failed}}', {
-            done: result.done,
-            failed: result.failed
-          })
-        )
-      } else {
-        toast.showSuccess(
-          t('graph.extract_batch_done', '已整理 {{done}} 篇日记', { done: result.done })
-        )
-      }
-      await refreshPendingGraph()
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e)
-      toast.showError(message || t('graph.extract_failed', '整理失败'))
-    } finally {
-      unsubscribe?.()
-      setGraphExtractBusy(false)
-      setGraphExtractProgress('')
-    }
-  }, [graphExtractBusy, pendingGraphCount, refreshPendingGraph, t, toast])
+  }, [refreshStatusBar])
 
   // sessionStorage 同步
   useEffect(() => {
@@ -303,6 +301,15 @@ export const DiaryPage: React.FC = () => {
     )
   }, [entries])
 
+  const showPendingExtract = shouldShowPendingExtract({
+    graphConfigured,
+    count: pendingGraphCount
+  })
+  const showPendingEmbed = shouldShowPendingEmbed({
+    ragConfigured,
+    count: pendingEmbedCount
+  })
+
   return (
     <motion.div
       className="diary-page-container"
@@ -327,13 +334,6 @@ export const DiaryPage: React.FC = () => {
         onAddNew={handleAddNew}
       />
 
-      <DiaryGraphExtractBanner
-        pendingCount={pendingGraphCount}
-        busy={graphExtractBusy}
-        progressLabel={graphExtractProgress}
-        onExtract={() => void handleBatchGraphExtract()}
-      />
-
       <DiaryGrid
         scrollRef={gridScrollRef}
         entries={displayEntries}
@@ -349,6 +349,15 @@ export const DiaryPage: React.FC = () => {
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
         onViewAll={() => setSelectedMonth(null)}
+      />
+
+      <DiaryStatusBar
+        showPendingExtract={showPendingExtract}
+        pendingExtractCount={pendingGraphCount}
+        showPendingEmbed={showPendingEmbed}
+        pendingEmbedCount={pendingEmbedCount}
+        onPendingExtractClick={() => navigate('/graph')}
+        onPendingEmbedClick={() => navigate(`${SETTINGS_HUB_PREFIX}/rag`)}
       />
 
       {/* 删除确认弹窗 */}
