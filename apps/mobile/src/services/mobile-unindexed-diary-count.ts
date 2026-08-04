@@ -13,7 +13,7 @@ import {
 export async function countUnindexedDiariesForActiveVault(
   deps: MobileRagServiceDeps
 ): Promise<number> {
-  const vaultScope = resolveVaultScope(deps)
+  const vaultScope = await resolveVaultScope(deps)
   const vaultId = await vaultScope.resolveActiveVaultId()
   const diaries = (await deps.diaryService.listAll({ limit: 10000 })) as DiaryMeta[]
   if (!diaries.length) return 0
