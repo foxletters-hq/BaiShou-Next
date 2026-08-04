@@ -12,9 +12,17 @@ import {
   connectionManager,
   GraphRepository,
   GRAPH_EDGE_TYPES,
-  GRAPH_NODE_TYPES
+  GRAPH_NODE_TYPES,
+  UserProfileRepository
 } from '@baishou/database-desktop'
-import { logger, resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
+import {
+  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
+  GRAPH_SELF_NAME_REQUIRED_ERROR,
+  logger,
+  resolveGlobalGraphModelIds,
+  resolveGraphExtractSelfName,
+  type GlobalModelsConfig
+} from '@baishou/shared'
 import {
   fileSystem,
   pathService,
@@ -180,6 +188,20 @@ async function writeEdgeReview(
   }
 }
 
+async function resolveExtractSelfName(): Promise<string> {
+  const { settingsManager } = await import('./settings.ipc')
+  const flag = await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
+  if (!connectionManager.isConnected()) {
+    throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)
+  }
+  const profile = await new UserProfileRepository(connectionManager.getDb()).getProfile()
+  const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
+  if (!selfName) {
+    throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)
+  }
+  return selfName
+}
+
 export function registerGraphIPC(): void {
   ipcMain.handle('graph:list-pending-reextract', async () => {
     ensureRawDataRuntime()
@@ -220,6 +242,7 @@ export function registerGraphIPC(): void {
 
   ipcMain.handle('graph:extract', async (event, opts?: { filePaths?: string[] }) => {
     const vaultName = requireVaultName()
+    const selfName = await resolveExtractSelfName()
     const service = await buildExtractionService()
     extractAbort?.abort()
     extractAbort = new AbortController()
@@ -228,6 +251,7 @@ export function registerGraphIPC(): void {
       return await service.extractDiaries({
         vaultId: requireVaultId(),
         vaultName,
+        selfName,
         filePaths: opts?.filePaths,
         signal,
         onProgress: (p) => {

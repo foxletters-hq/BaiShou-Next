@@ -3,7 +3,7 @@ import {
   LEGACY_UPGRADE_RAG_NOTICE_COUNT_KEY,
   LEGACY_UPGRADE_RAG_PENDING_KEY
 } from '@baishou/core/shared'
-import { resolveWebSearchEnabled } from '@baishou/shared'
+import { GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, resolveWebSearchEnabled } from '@baishou/shared'
 import { settingsManager } from './settings.ipc'
 
 /**
@@ -136,6 +136,15 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-search-mode-enabled', async (_, enabled: boolean) => {
     await settingsManager.set('search_mode_enabled', enabled)
+    return true
+  })
+
+  ipcMain.handle('settings:get-graph-self-name-configured', async () => {
+    return (await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)) === true
+  })
+
+  ipcMain.handle('settings:set-graph-self-name-configured', async (_, configured: boolean) => {
+    await settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, configured === true)
     return true
   })
 
