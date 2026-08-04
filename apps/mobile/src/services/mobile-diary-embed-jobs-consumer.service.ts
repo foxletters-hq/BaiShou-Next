@@ -139,6 +139,10 @@ export async function consumeDiaryEmbedJobs(options?: {
   return consumeInFlight
 }
 
+export async function getDiaryEmbedJobsPendingCount(): Promise<number> {
+  return countDiaryEmbedJobs()
+}
+
 export function scheduleConsumeDiaryEmbedJobs(reason: string): void {
   void consumeDiaryEmbedJobs({ reason }).catch((e) => {
     logger.warn('[MobileDiaryEmbedJobs] consume failed', {

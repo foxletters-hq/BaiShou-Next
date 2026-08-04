@@ -17,7 +17,14 @@ import {
 } from '@baishou/database'
 import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
-import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
+import {
+  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
+  GRAPH_SELF_NAME_REQUIRED_ERROR,
+  getUserProfileFromSettings,
+  resolveGlobalGraphModelIds,
+  resolveGraphExtractSelfName,
+  type GlobalModelsConfig
+} from '@baishou/shared'
 import i18n from 'i18next'
 import {
   ensureMobileRawDataRuntime,
@@ -108,6 +115,12 @@ export async function mobileExtractDiaries(options: {
       )
     )
   }
+  const flag = await options.settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
+  const profile = await getUserProfileFromSettings(options.settingsManager)
+  const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
+  if (!selfName) {
+    throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)
+  }
   const repo = new GraphRepository(options.drizzleDb)
   const graphSync = new GraphSyncService(graphManager, repo, null)
   const service = new GraphLlmExtractionService(
@@ -122,6 +135,7 @@ export async function mobileExtractDiaries(options: {
   return service.extractDiaries({
     vaultId: options.vaultId,
     vaultName: options.vaultName,
+    selfName,
     filePaths: options.filePaths,
     signal: options.signal,
     onProgress: options.onProgress
