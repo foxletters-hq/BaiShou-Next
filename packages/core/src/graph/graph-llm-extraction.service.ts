@@ -2,7 +2,7 @@ import { generateText } from 'ai'
 import { GRAPH_EDGE_TYPES, GRAPH_NODE_TYPES, type GraphRepository } from '@baishou/database'
 import type { IAIProvider } from '@baishou/ai'
 import { wrapLanguageModelWithMiddlewares } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import { logger, GRAPH_SELF_NAME_REQUIRED_ERROR } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
 import { md5Hex } from '../fs/md5'
 import * as path from '../fs/path.util'
@@ -28,6 +28,11 @@ export interface ExtractDiariesOptions {
   vaultId: string
   /** 写入 JSONL 的显示名快照 */
   vaultName: string
+  /**
+   * 日记第一人称/作者自称（须已由用户确认；空则拒绝抽取）。
+   * 禁止使用「日记的主人」等占位称呼。
+   */
+  selfName: string
   /** Empty = all pending-reextract */
   filePaths?: string[]
   onProgress?: (p: { current: number; total: number; filePath: string }) => void
@@ -243,15 +248,17 @@ function shardMonthFromDate(dateStr: string | null, now: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function buildExtractPrompt(
+export function buildExtractPrompt(
   diaryText: string,
-  dateStr: string | null
+  dateStr: string | null,
+  selfName: string
 ): {
   system: string
   user: string
 } {
   const nodeTypes = GRAPH_NODE_TYPES.join(', ')
   const edgeTypes = GRAPH_EDGE_TYPES.join(', ')
+  const author = selfName.trim()
   return {
     system: '你是日记关系图谱抽取器。只输出严格 JSON，不要 markdown 代码块，不要额外解释。',
     user: `从以下日记中抽取实体与关系。
@@ -263,6 +270,7 @@ function buildExtractPrompt(
 4. 实体 name 用日记中的称呼；可填 aliases
 5. edges.from / edges.to 使用实体 name（或 entry 锚点名）
 6. 每篇日记都有一个结构性锚点 entry（name 用日期或「日记」），实体应尽量连到 entry（mentions / participates_in / evokes 等）
+7. 日记中的第一人称「我」以及作者本人，统一使用自称「${author}」作为 person 实体名；禁止使用「日记的主人」「作者」「用户」等占位称呼
 
 ## 日记日期
 ${dateStr || '未知'}
@@ -317,6 +325,11 @@ export class GraphLlmExtractionService {
   ) {}
 
   async extractDiaries(opts: ExtractDiariesOptions): Promise<ExtractDiariesResult> {
+    const selfName = opts.selfName?.trim()
+    if (!selfName) {
+      throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)
+    }
+
     const pending = await this.freshness.listPendingReextract()
     const wanted = new Set((opts.filePaths ?? []).map(normalizeFilePath).filter(Boolean))
     const targets =
@@ -339,7 +352,13 @@ export class GraphLlmExtractionService {
         filePath: target.filePath
       })
       try {
-        await this.extractOne(opts.vaultId, opts.vaultName, target.filePath, target.contentHash)
+        await this.extractOne(
+          opts.vaultId,
+          opts.vaultName,
+          target.filePath,
+          target.contentHash,
+          selfName
+        )
         done += 1
       } catch (e) {
         if (opts.signal?.aborted) {
@@ -402,14 +421,15 @@ export class GraphLlmExtractionService {
     vaultId: string,
     vaultName: string,
     filePath: string,
-    contentHash: string
+    contentHash: string,
+    selfName: string
   ): Promise<void> {
     const abs = await this.resolveAbsolutePath(filePath)
     const raw = await this.fs.readFile(abs, 'utf8')
     const actualHash = md5Hex(raw)
     const hash = actualHash || contentHash
     const dateStr = dateFromFilePath(filePath)
-    const prompt = buildExtractPrompt(raw, dateStr)
+    const prompt = buildExtractPrompt(raw, dateStr, selfName)
     const text = await this.llm(prompt)
     if (!text) {
       throw new Error('LLM returned empty response')
