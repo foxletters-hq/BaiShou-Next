@@ -4,6 +4,7 @@ import {
   formatLanReceivedBackupContent,
   buildLanServiceName,
   getLanDeviceDedupKey,
+  isVirtualLanInterfaceName,
   pickBestLanIpv4,
   removeDiscoveredLanDevice,
   resolveDiscoveredLanIpv4,
@@ -72,6 +73,18 @@ describe('lan-discovery.util', () => {
 
   it('picks best lan ipv4', () => {
     expect(pickBestLanIpv4(['127.0.0.1', '192.168.1.8', '8.8.8.8'])).toBe('192.168.1.8')
+  })
+
+  it('prefers 192.168 over docker-like 172.x private ranges', () => {
+    expect(pickBestLanIpv4(['172.19.0.1', '192.168.1.42', '10.0.0.5'])).toBe('192.168.1.42')
+    expect(pickBestLanIpv4(['172.19.0.1', '10.0.0.5'])).toBe('10.0.0.5')
+  })
+
+  it('detects virtual lan interface names', () => {
+    expect(isVirtualLanInterfaceName('vEthernet (WSL)')).toBe(true)
+    expect(isVirtualLanInterfaceName('docker0')).toBe(true)
+    expect(isVirtualLanInterfaceName('WLAN')).toBe(false)
+    expect(isVirtualLanInterfaceName('以太网')).toBe(false)
   })
 
   it('formats received backup content size placeholder', () => {

@@ -7,9 +7,14 @@ function createMcpAuthToken(): string {
   return `mcp_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`
 }
 
-/** 启用 MCP 时确保存在访问令牌（用于 LAN / 本地鉴权） */
+/** 是否启用 MCP 访问令牌鉴权（默认关闭） */
+export function isMcpAuthEnabled(config: Pick<McpServerConfig, 'mcpAuthEnabled'>): boolean {
+  return config.mcpAuthEnabled === true
+}
+
+/** 鉴权开启且 MCP 启用时确保存在访问令牌 */
 export function ensureMcpAuthToken(config: McpServerConfig): McpServerConfig {
-  if (!config.mcpEnabled) return config
+  if (!config.mcpEnabled || !isMcpAuthEnabled(config)) return config
   if (config.mcpAuthToken?.trim()) return config
   return { ...config, mcpAuthToken: createMcpAuthToken() }
 }
@@ -23,6 +28,7 @@ export function isMcpRequestAuthorized(
   config: McpServerConfig,
   authorizationHeader: string | undefined
 ): boolean {
+  if (!isMcpAuthEnabled(config)) return true
   const token = config.mcpAuthToken?.trim()
   if (!token) return true
   return authorizationHeader === `Bearer ${token}`

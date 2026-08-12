@@ -45,18 +45,51 @@ export function isExcludedLanIpv4(ip: string): boolean {
   return false
 }
 
+/** Docker / WSL / Hyper-V / VPN 等虚拟网卡，不宜作为对外 MCP / 局域网展示地址 */
+export function isVirtualLanInterfaceName(name: string): boolean {
+  const lower = name.toLowerCase()
+  return [
+    'docker',
+    'veth',
+    'br-',
+    'wsl',
+    'hyper-v',
+    'vethernet',
+    'vmware',
+    'virtualbox',
+    'vbox',
+    'clash',
+    'meta',
+    'tun',
+    'wintun',
+    'wireguard',
+    'tailscale',
+    'vpn',
+    'virtual',
+    'npcap',
+    'loopback'
+  ].some((keyword) => lower.includes(keyword))
+}
+
 export function pickBestLanIpv4(candidates: string[]): string | null {
   const unique = Array.from(new Set(candidates.map((ip) => ip.trim()).filter(Boolean)))
   if (unique.length === 0) return null
 
   const score = (ip: string) => {
     if (isExcludedLanIpv4(ip)) return -100
+    if (!isIpv4(ip)) return -50
+    const octets = ip.split('.').map(Number)
+    const a = octets[0]
+    const b = octets[1]
+    // 家用/常见 Wi-Fi 优先；172.16/12 常被 Docker、WSL、Hyper-V 占用
+    if (a === 192 && b === 168) return 130
+    if (a === 10) return 120
+    if (a === 172 && b !== undefined && b >= 16 && b <= 31) return 90
     if (isPrivateLanIpv4(ip)) return 100
-    if (isIpv4(ip)) return 10
-    return -50
+    return 10
   }
 
-  const sorted = [...unique].sort((a, b) => score(b) - score(a))
+  const sorted = [...unique].sort((a, b) => score(b) - score(a) || a.localeCompare(b))
   return sorted.find((ip) => score(ip) > -50) ?? sorted[0] ?? null
 }
 

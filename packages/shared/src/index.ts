@@ -121,6 +121,7 @@ export {
   getLanDeviceHostKey,
   isExcludedLanIpv4,
   isPrivateLanIpv4,
+  isVirtualLanInterfaceName,
   lanDevicesEquivalent,
   parseLanTxtIpv4,
   pickBestLanIpv4,
