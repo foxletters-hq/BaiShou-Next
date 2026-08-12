@@ -143,6 +143,12 @@
   color: var(--text-secondary, var(--color-on-surface-variant));
 }
 
+.authToggleRow {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  min-height: auto;
+}
+
 .copyBtn {
   flex-shrink: 0;
   display: flex;

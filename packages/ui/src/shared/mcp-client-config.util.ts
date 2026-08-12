@@ -1,5 +1,11 @@
-/** Cursor / MCP 客户端 mcp.json 配置示例（Streamable HTTP + Bearer 令牌） */
-export function buildMcpClientJsonExample(endpointUrl: string, authToken?: string): string {
+export type McpClientJsonTransport = 'streamableHttp' | 'sse'
+
+/** Cursor / MCP 客户端 mcp.json 配置示例 */
+export function buildMcpClientJsonExample(
+  endpointUrl: string,
+  authToken?: string,
+  _transport: McpClientJsonTransport = 'streamableHttp'
+): string {
   const headersBlock = authToken?.trim()
     ? `,
       "headers": {
