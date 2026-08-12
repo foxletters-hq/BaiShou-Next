@@ -123,11 +123,13 @@ export {
   isPrivateLanIpv4,
   isVirtualLanInterfaceName,
   lanDevicesEquivalent,
+  normalizeLanDeviceType,
   parseLanTxtIpv4,
   pickBestLanIpv4,
   removeDiscoveredLanDevice,
   resolveDiscoveredLanIpv4,
   upsertDiscoveredLanDevice,
+  type LanDeviceType,
   type LanDiscoveredDeviceLike
 } from './utils/lan-discovery.util'
 export { resolveInstallInstanceId } from './utils/install-instance-id.util'

@@ -5,6 +5,7 @@ import {
   buildLanServiceName,
   getLanDeviceDedupKey,
   isVirtualLanInterfaceName,
+  normalizeLanDeviceType,
   pickBestLanIpv4,
   removeDiscoveredLanDevice,
   resolveDiscoveredLanIpv4,
@@ -92,5 +93,15 @@ describe('lan-discovery.util', () => {
     expect(
       formatLanReceivedBackupContent('来自局域网设备的数据 ($size MB)。', 2.5 * 1024 * 1024)
     ).toBe('来自局域网设备的数据 (2.50 MB)。')
+  })
+
+  it('normalizes lan device type from txt, id prefix, and nickname', () => {
+    expect(normalizeLanDeviceType({ txt: { device_type: 'mobile' } })).toBe('mobile')
+    expect(normalizeLanDeviceType({ txt: { dtype: 'desktop' } })).toBe('desktop')
+    expect(normalizeLanDeviceType({ deviceId: 'mobile-abc' })).toBe('mobile')
+    expect(normalizeLanDeviceType({ deviceId: 'desktop-xyz' })).toBe('desktop')
+    expect(normalizeLanDeviceType({ nickname: 'BaishouMob' })).toBe('mobile')
+    expect(normalizeLanDeviceType({ nickname: 'AnsonPC' })).toBe('desktop')
+    expect(normalizeLanDeviceType({ deviceType: 'other', nickname: '客厅平板' })).toBe('other')
   })
 })

@@ -4,6 +4,8 @@ export const LAN_DISCOVERY_RESCAN_MS = 30_000
 /** 桌面端 bonjour browser.update() 主动 re-query 间隔（Windows 被动发现 Android 很慢） */
 export const LAN_DISCOVERY_REQUERY_MS = 5_000
 
+export type LanDeviceType = 'mobile' | 'desktop' | 'other'
+
 export interface LanDiscoveredDeviceLike {
   deviceId?: string
   nickname: string
@@ -11,6 +13,71 @@ export interface LanDiscoveredDeviceLike {
   port: number
   deviceType?: string
   rawServiceId: string
+}
+
+function readLanTxtValue(
+  records: Record<string, unknown> | null | undefined,
+  ...keys: string[]
+): string {
+  if (!records) return ''
+  for (const key of keys) {
+    const raw = records[key]
+    if (raw == null) continue
+    // bonjour-service 偶发给出 Buffer；String(buffer) 可用，需排除空对象
+    const value = typeof raw === 'string' ? raw : String(raw)
+    const trimmed = value.trim()
+    if (trimmed && trimmed !== '[object Object]') return trimmed
+  }
+  return ''
+}
+
+/**
+ * 从 TXT / deviceId 前缀 / 昵称推断设备类型。
+ * TXT 未解析完或跨栈丢失时，避免把手机误判成桌面。
+ */
+export function normalizeLanDeviceType(options: {
+  txt?: Record<string, unknown> | null
+  deviceId?: string
+  nickname?: string
+  deviceType?: string
+}): LanDeviceType {
+  const candidates = [
+    String(options.deviceType ?? '').trim(),
+    readLanTxtValue(options.txt, 'device_type', 'deviceType', 'dtype')
+  ]
+  for (const raw of candidates) {
+    const value = raw.toLowerCase()
+    if (value === 'mobile' || value === 'desktop') return value
+  }
+
+  const deviceId = String(
+    options.deviceId ?? readLanTxtValue(options.txt, 'device_id', 'deviceId')
+  )
+    .trim()
+    .toLowerCase()
+  if (deviceId.startsWith('mobile-')) return 'mobile'
+  if (deviceId.startsWith('desktop-')) return 'desktop'
+
+  const nickname = String(
+    options.nickname ?? readLanTxtValue(options.txt, 'nickname')
+  ).toLowerCase()
+  if (
+    nickname.includes('baishoumob') ||
+    nickname.includes('iphone') ||
+    nickname.includes('android') ||
+    /\bphone\b/.test(nickname)
+  ) {
+    return 'mobile'
+  }
+  if (
+    nickname.includes('macbook') ||
+    nickname.includes('desktop') ||
+    nickname.includes('pc')
+  ) {
+    return 'desktop'
+  }
+
+  return 'other'
 }
 
 function isIpv4(ip: string): boolean {

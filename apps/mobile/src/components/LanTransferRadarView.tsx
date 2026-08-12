@@ -12,7 +12,7 @@ import type { LucideIcon } from 'lucide-react-native'
 import { Monitor, Radar, Smartphone, TabletSmartphone } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import type { DiscoveredDevice } from '@baishou/core-mobile'
-import { getLanDeviceDedupKey } from '@baishou/shared'
+import { getLanDeviceDedupKey, normalizeLanDeviceType } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 
 type ThemeColors = ReturnType<typeof useNativeTheme>['colors']
@@ -40,15 +40,13 @@ export interface LanTransferRadarViewProps {
 }
 
 function deviceIcon(device: DiscoveredDevice): LucideIcon {
-  if (device.deviceType === 'mobile') return Smartphone
-  if (device.deviceType === 'desktop') return Monitor
-  const name = device.nickname.toLowerCase()
-  if (name.includes('iphone') || name.includes('phone') || name.includes('android')) {
-    return Smartphone
-  }
-  if (name.includes('macbook') || name.includes('desktop') || name.includes('pc')) {
-    return Monitor
-  }
+  const deviceType = normalizeLanDeviceType({
+    deviceType: device.deviceType,
+    deviceId: device.deviceId,
+    nickname: device.nickname
+  })
+  if (deviceType === 'mobile') return Smartphone
+  if (deviceType === 'desktop') return Monitor
   return TabletSmartphone
 }
 

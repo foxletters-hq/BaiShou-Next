@@ -11,6 +11,7 @@ import {
   getLanDeviceDedupKey,
   isPrivateLanIpv4,
   lanDevicesEquivalent,
+  normalizeLanDeviceType,
   pickBestLanIpv4,
   resolveDiscoveredLanIpv4
 } from '@baishou/shared'
@@ -19,10 +20,13 @@ import * as BaishouServer from 'expo-baishou-server'
 import { ensureLanDiscoveryPermissions } from './lan-discovery-permission.service'
 import { stripFileScheme } from './android-external-fs'
 
-/** 发布走 DNSSD，满足 Android 15+ 16KB 页面对齐要求 */
-const ANDROID_PUBLISH_MDNS_IMPL = ImplType.DNSSD
-/** 发现走 NSD，避免与 DNSSD 发布共用同一嵌入式 mDNS 实例导致 native 崩溃 */
-const ANDROID_DISCOVERY_MDNS_IMPL = ImplType.NSD
+/**
+ * Android mDNS：发布与发现分栈，避免嵌入式 DNSSD 同时注册+浏览崩溃。
+ * - 发现走 DNSSD：嵌入式 mDNSResponder 对 Windows Bonjour 桌面端更稳
+ * - 发布走 NSD：系统栈广播，桌面/其他手机更容易看见本机
+ */
+const ANDROID_PUBLISH_MDNS_IMPL = ImplType.NSD
+const ANDROID_DISCOVERY_MDNS_IMPL = ImplType.DNSSD
 const ANDROID_MDNS_SETTLE_MS = 150
 
 export class MobileLanSyncService implements ILanSyncService {
@@ -60,20 +64,27 @@ export class MobileLanSyncService implements ILanSyncService {
 
     const handleService = (service: any) => {
       if (!this.deviceFoundCb) return
+      if (!service || typeof service !== 'object' || !service.name) return
       if (this.publishedServiceName && service.name === this.publishedServiceName) return
 
       try {
-        const records = service.txt || {}
+        const records = (service.txt || {}) as Record<string, unknown>
+        const deviceId = String(records.device_id ?? records.deviceId ?? '').trim()
+        const nickname = String(records.nickname ?? service.name ?? '').trim() || service.name
         const device: DiscoveredDevice = {
-          deviceId: String(records.device_id ?? records.deviceId ?? '').trim(),
-          nickname: records.nickname || service.name,
+          deviceId,
+          nickname,
           ip: resolveDiscoveredLanIpv4({
             txt: records,
             addresses: service.addresses,
             host: service.host
           }),
           port: service.port,
-          deviceType: records.device_type || 'other',
+          deviceType: normalizeLanDeviceType({
+            txt: records,
+            deviceId,
+            nickname
+          }),
           rawServiceId: service.name
         }
 
@@ -84,7 +95,7 @@ export class MobileLanSyncService implements ILanSyncService {
       }
     }
 
-    this.zeroconf.on('found', handleService)
+    // found 只带服务名字符串，真正可用字段在 resolved
     this.zeroconf.on('resolved', handleService)
 
     this.zeroconf.on('remove', (serviceName: string) => {
@@ -238,6 +249,8 @@ export class MobileLanSyncService implements ILanSyncService {
         nickname: safeNickname,
         ip,
         device_type: 'mobile',
+        // 短键兼容 Android NSD「建议 ≤9 字符」；解析端两者都认
+        dtype: 'mobile',
         device_id: this.lanDeviceId
       }
       if (impl) {
@@ -336,6 +349,13 @@ export class MobileLanSyncService implements ILanSyncService {
       this.serviceNameToDedupKey.clear()
       this.discoveryActive = true
       this.scanLanServices()
+      // 对齐桌面端：启动后再主动扫一次，提高首次发现 Windows Bonjour 的成功率
+      setTimeout(() => {
+        void this.enqueueMdns(() => {
+          if (!this.discoveryActive) return
+          this.scanLanServices()
+        })
+      }, 800)
 
       if (this.rescanTimer) clearInterval(this.rescanTimer)
       this.rescanTimer = setInterval(() => {
