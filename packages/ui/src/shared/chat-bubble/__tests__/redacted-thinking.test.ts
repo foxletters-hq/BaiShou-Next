@@ -53,4 +53,14 @@ describe('parseRedactedThinking', () => {
     expect(result.cleanReasoning).toBe('the milestone still matters.')
     expect(result.cleanContent).toBe('明白，先按照这个方案推进第一阶段。')
   })
+
+  it('does not swallow body after unclosed think open tag into reasoning', () => {
+    const open = '<' + 'think>'
+    const content = `${open}\n半截思考\n正式回答应该在正文`
+    const result = parseRedactedThinking(content, '')
+
+    expect(result.cleanReasoning).toBe('')
+    expect(result.cleanContent).toContain('正式回答应该在正文')
+    expect(result.cleanContent).not.toContain(open)
+  })
 })

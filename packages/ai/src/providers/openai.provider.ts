@@ -3,6 +3,7 @@ import { LanguageModel, EmbeddingModel, generateText } from 'ai'
 import {
   AiProviderModel,
   isChatModelForConnectionTest,
+  mergeZhipuKnownEmbeddingModels,
   resolveProviderBaseUrl
 } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
@@ -18,8 +19,10 @@ import { extractApiErrorMessage, formatModelNotAvailableMessage } from './provid
 
 const DEEPSEEK_THINK_OPEN = '<' + 'redacted_thinking>'
 const DEEPSEEK_THINK_CLOSE = '<' + '/redacted_thinking>'
+const DEEPSEEK_THINK_ALT_OPEN = '<' + 'think>'
+const DEEPSEEK_THINK_ALT_CLOSE = '<' + '/think>'
 
-/** 将 assistant 正文中的 redacted_thinking 块提取为 reasoning_content，并从 content 中移除 */
+/** 将 assistant 正文中的思考块提取为 reasoning_content，并从 content 中移除 */
 export function applyDeepSeekReasoningFields(msg: {
   role?: string
   content?: unknown
@@ -30,33 +33,40 @@ export function applyDeepSeekReasoningFields(msg: {
     return
   }
 
-  const hasToolCalls = Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0
-
   if (typeof msg.content === 'string' && msg.content) {
-    const thinkMatch = msg.content.match(
-      new RegExp(`${DEEPSEEK_THINK_OPEN}\\s*([\\s\\S]*?)\\s*${DEEPSEEK_THINK_CLOSE}`)
-    )
-    if (thinkMatch) {
-      const reasoningContent = thinkMatch[1]?.trim() ?? ''
-      msg.content = msg.content
-        .replace(new RegExp(`${DEEPSEEK_THINK_OPEN}[\\s\\S]*?${DEEPSEEK_THINK_CLOSE}\\s*`, 'g'), '')
-        .trim()
-      if (reasoningContent) {
-        msg.reasoning_content = reasoningContent
+    const patterns: Array<{ open: string; close: string }> = [
+      { open: DEEPSEEK_THINK_OPEN, close: DEEPSEEK_THINK_CLOSE },
+      { open: DEEPSEEK_THINK_ALT_OPEN, close: DEEPSEEK_THINK_ALT_CLOSE }
+    ]
+    for (const { open, close } of patterns) {
+      const thinkMatch = msg.content.match(
+        new RegExp(`${escapeRegExp(open)}\\s*([\\s\\S]*?)\\s*${escapeRegExp(close)}`)
+      )
+      if (thinkMatch) {
+        const reasoningContent = thinkMatch[1]?.trim() ?? ''
+        msg.content = msg.content
+          .replace(new RegExp(`${escapeRegExp(open)}[\\s\\S]*?${escapeRegExp(close)}\\s*`, 'g'), '')
+          .trim()
+        if (reasoningContent && msg.reasoning_content == null) {
+          msg.reasoning_content = reasoningContent
+        }
+        break
       }
     }
   }
 
-  // DeepSeek thinking 模式：含 tool_calls 的 assistant 消息必须在后续请求中回传 reasoning_content
-  // 参见 https://api-docs.deepseek.com/guides/thinking_mode#tool-calls
-  if (hasToolCalls && msg.reasoning_content == null) {
+  // DeepSeek：所有 assistant 消息都需回传 reasoning_content（可为空）
+  if (msg.reasoning_content == null) {
     msg.reasoning_content = ''
   }
 
-  // DeepSeek 不接受 content: null；纯 tool-call 消息应使用空字符串
   if (msg.content === null || msg.content === undefined) {
     msg.content = ''
   }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 /**
@@ -176,7 +186,11 @@ export class OpenAIAdaptedProvider implements IAIProvider {
       }
       const data = await response.json()
       if (data && data.data && Array.isArray(data.data)) {
-        return data.data.map((m: any) => m.id)
+        const remoteIds = data.data.map((m: any) => m.id as string)
+        if (this.config.type.toLowerCase() === 'zhipu') {
+          return mergeZhipuKnownEmbeddingModels(remoteIds)
+        }
+        return remoteIds
       }
       throw new Error(`Invalid response format from API. Expected data array.`)
     } catch (e: any) {

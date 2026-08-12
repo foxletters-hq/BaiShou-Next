@@ -6,19 +6,35 @@ const CLOSE = '<' + '/redacted_thinking>'
 
 describe('applyDeepSeekReasoningFields', () => {
   it('extracts reasoning_content and strips think tags from assistant content', () => {
-    const msg: {
-      role: string
-      content: string
-      reasoning_content?: string
-    } = {
+    const msg: { role: string; content: string; reasoning_content?: string } = {
       role: 'assistant',
       content: `${OPEN}\n推理过程\n${CLOSE}\n正式回复`
     }
-
     applyDeepSeekReasoningFields(msg)
-
     expect(msg.reasoning_content).toBe('推理过程')
     expect(msg.content).toBe('正式回复')
+  })
+
+  it('adds empty reasoning_content for plain assistant messages', () => {
+    const msg: { role: string; content: string; reasoning_content?: string } = {
+      role: 'assistant',
+      content: 'hello'
+    }
+    applyDeepSeekReasoningFields(msg)
+    expect(msg.reasoning_content).toBe('')
+    expect(msg.content).toBe('hello')
+  })
+
+  it('extracts think tags as well as redacted_thinking', () => {
+    const open = '<' + 'think>'
+    const close = '<' + '/think>'
+    const msg: { role: string; content: string; reasoning_content?: string } = {
+      role: 'assistant',
+      content: `${open}\n推理\n${close}\n正文`
+    }
+    applyDeepSeekReasoningFields(msg)
+    expect(msg.reasoning_content).toBe('推理')
+    expect(msg.content).toBe('正文')
   })
 
   it('sets content to empty string when only think tags remain (tool-call messages)', () => {
