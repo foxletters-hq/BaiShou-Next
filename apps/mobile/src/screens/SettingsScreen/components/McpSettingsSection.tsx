@@ -19,6 +19,7 @@ export const McpSettingsSection: React.FC = () => {
   const {
     config,
     mcpEndpointUrl,
+    mcpSseEndpointUrl,
     applying,
     isRunning,
     activePort,
@@ -42,6 +43,15 @@ export const McpSettingsSection: React.FC = () => {
   const handleCopyEndpoint = async () => {
     try {
       await Clipboard.setStringAsync(mcpEndpointUrl)
+      toast.showSuccess(t('common.copied'))
+    } catch {
+      toast.showError(t('common.copy_failed'))
+    }
+  }
+
+  const handleCopySseEndpoint = async () => {
+    try {
+      await Clipboard.setStringAsync(mcpSseEndpointUrl)
       toast.showSuccess(t('common.copied'))
     } catch {
       toast.showError(t('common.copy_failed'))
@@ -75,11 +85,13 @@ export const McpSettingsSection: React.FC = () => {
       <McpSettingsCard
         config={config}
         mcpEndpointUrl={mcpEndpointUrl}
+        mcpSseEndpointUrl={mcpSseEndpointUrl}
         applying={applying}
         isRunning={isRunning}
         activePort={activePort}
         onChange={(next) => void persistConfig(next)}
         onCopyEndpoint={() => void handleCopyEndpoint()}
+        onCopySseEndpoint={() => void handleCopySseEndpoint()}
         onCopyToken={() => void handleCopyToken()}
         onRefreshToken={handleRefreshToken}
       />

@@ -6,6 +6,7 @@ type ServerEvents = {
   onMcpHttpRequest: (event: {
     requestId: string
     method: string
+    path: string
     headers: Record<string, string>
     body: string
   }) => void
@@ -298,6 +299,7 @@ export function onMcpHttpRequest(
   listener: (event: {
     requestId: string
     method: string
+    path: string
     headers: Record<string, string>
     body: string
   }) => void

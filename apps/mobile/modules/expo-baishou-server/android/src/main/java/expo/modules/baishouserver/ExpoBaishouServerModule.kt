@@ -61,6 +61,7 @@ private data class ActiveMcpStream(
 
 internal data class McpHttpRequest(
     val method: String,
+    val path: String,
     val headers: Map<String, String>,
     val body: String
 )
@@ -200,11 +201,17 @@ internal class BaishouHttpServer(
         return try {
             val method = session.method.name
             val headers = collectHeaders(session)
+            val queryString = session.queryParameterString?.takeIf { it.isNotBlank() }
+            val path = if (queryString != null) {
+                "${session.uri}?$queryString"
+            } else {
+                session.uri
+            }
             val body = when (session.method) {
                 Method.POST -> readRequestBody(session)
                 else -> ""
             }
-            dispatchMcpRequest(McpHttpRequest(method, headers, body))
+            dispatchMcpRequest(McpHttpRequest(method, path, headers, body))
         } catch (e: Exception) {
             e.printStackTrace()
             corsResponse(
@@ -261,11 +268,16 @@ internal class BaishouHttpServer(
     }
 
     override fun serve(session: IHTTPSession): Response {
-        if (session.uri == "/mcp" || session.uri == "/mcp/") {
+        val uri = session.uri ?: ""
+        if (
+            uri == "/mcp" || uri == "/mcp/" ||
+            uri == "/sse" || uri == "/sse/" ||
+            uri == "/message" || uri.startsWith("/message?")
+        ) {
             return handleMcp(session)
         }
 
-        if (session.method == Method.GET && session.uri == "/info") {
+        if (session.method == Method.GET && uri == "/info") {
             return newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\"}")
         }
 
@@ -389,6 +401,7 @@ class ExpoBaishouServerModule : Module() {
             mapOf(
                 "requestId" to requestId,
                 "method" to request.method,
+                "path" to request.path,
                 "headers" to request.headers,
                 "body" to request.body
             )
