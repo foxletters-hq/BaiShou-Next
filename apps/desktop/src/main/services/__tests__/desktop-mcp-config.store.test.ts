@@ -29,7 +29,7 @@ describe('desktop-mcp-config.store', () => {
     fspMock.writeFile.mockResolvedValue(undefined)
   })
 
-  it('reads config from userData file and persists auth token when MCP is enabled', async () => {
+  it('reads config from userData without auto-generating token when auth is off', async () => {
     const config = { mcpEnabled: true, mcpPort: 31004 }
     fspMock.readFile.mockResolvedValue(JSON.stringify(config))
 
@@ -37,9 +37,19 @@ describe('desktop-mcp-config.store', () => {
     const result = await getDesktopMcpServerConfig()
     expect(result.mcpEnabled).toBe(true)
     expect(result.mcpPort).toBe(31004)
+    expect(result.mcpAuthToken).toBeUndefined()
+    expect(fspMock.writeFile).not.toHaveBeenCalled()
+  }, 20000)
+
+  it('persists auth token when MCP auth is enabled without one', async () => {
+    const config = { mcpEnabled: true, mcpPort: 31004, mcpAuthEnabled: true }
+    fspMock.readFile.mockResolvedValue(JSON.stringify(config))
+
+    const { getDesktopMcpServerConfig } = await import('../desktop-mcp-config.store')
+    const result = await getDesktopMcpServerConfig()
     expect(result.mcpAuthToken).toBeTruthy()
     expect(fspMock.writeFile).toHaveBeenCalled()
-  })
+  }, 20000)
 
   it('uses dev default port when no local file exists on dev build', async () => {
     isDesktopDevBuildMock.mockReturnValue(true)

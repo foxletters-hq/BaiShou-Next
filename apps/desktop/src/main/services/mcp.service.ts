@@ -109,7 +109,8 @@ export class McpService {
         return
       }
 
-      await session.transport.handlePostMessage(req, res)
+      // express.json() 已消费 body 流；必须把 parsed body 传给 SDK，否则会 400 stream is not readable
+      await session.transport.handlePostMessage(req, res, req.body)
     })
   }
 
@@ -232,7 +233,7 @@ export class McpService {
       try {
         this.httpServer = this.app.listen(port, '0.0.0.0', () => {
           this.isRunning = true
-          logger.info(`[McpService] Server started on http://0.0.0.0:${port}/mcp`)
+          logger.info(`[McpService] Server started on http://0.0.0.0:${port}/mcp (SSE /sse)`)
           resolve()
         })
       } catch (e) {
