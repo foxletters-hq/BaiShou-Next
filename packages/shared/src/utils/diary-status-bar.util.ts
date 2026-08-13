@@ -1,6 +1,6 @@
 import { DEFAULT_USER_PROFILE } from '../constants/user-profile.constants'
 import type { GlobalModelsConfig, RagConfig } from '../types/settings.types'
-import { isConfiguredDialogueModelId, isConfiguredProviderId } from './agent-dialogue-model.util'
+import { isConfiguredDialogueModelId } from './agent-dialogue-model.util'
 import { isRagMemoryEnabled } from './rag-embed-failure.util'
 
 /** 默认昵称不算已配置自称 */
@@ -23,14 +23,14 @@ export function isGraphSelfNameConfigured(
   return !isDefaultGraphSelfName(name)
 }
 
-/** 对话/图谱模型是否已显式配置（不含 resolve 时的 deepseek-chat 回落） */
+/**
+ * 对话模型是否足以驱动图谱抽取。
+ * 只要显式配置了 modelId（非 off/unknown）即可；provider 可缺省由运行时解析。
+ */
 export function hasGraphModelConfigured(
   models: Partial<GlobalModelsConfig> | null | undefined
 ): boolean {
-  return (
-    isConfiguredProviderId(models?.globalDialogueProviderId) &&
-    isConfiguredDialogueModelId(models?.globalDialogueModelId)
-  )
+  return isConfiguredDialogueModelId(models?.globalDialogueModelId)
 }
 
 export function isGraphFeatureConfigured(opts: {
@@ -40,15 +40,22 @@ export function isGraphFeatureConfigured(opts: {
   return opts.selfNameConfigured && opts.hasGraphModel
 }
 
-/** 待嵌入能力：RAG 记忆开启且 embedding 供应商+模型已配置 */
+/**
+ * 底栏「待抽取」就绪：仅要求对话模型已配。
+ * 自称未配时仍显示数量，点击进图谱页再引导填写。
+ */
+export function isGraphStatusBarReady(opts: { hasGraphModel: boolean }): boolean {
+  return opts.hasGraphModel
+}
+
+/** 待嵌入底栏：伙伴记忆开启即可展示（无嵌入模型时仍可引导去设置） */
 export function isRagEmbedFeatureConfigured(opts: {
   ragConfig?: Pick<RagConfig, 'ragEnabled'> | null
+  /** @deprecated 底栏展示不再要求嵌入模型已配；保留参数兼容调用方 */
   globalModels?: Partial<GlobalModelsConfig> | null
 }): boolean {
-  if (!isRagMemoryEnabled(opts.ragConfig)) return false
-  const providerId = opts.globalModels?.globalEmbeddingProviderId
-  const modelId = opts.globalModels?.globalEmbeddingModelId
-  return isConfiguredProviderId(providerId) && isConfiguredDialogueModelId(modelId)
+  void opts.globalModels
+  return isRagMemoryEnabled(opts.ragConfig)
 }
 
 export function shouldShowPendingExtract(opts: {
