@@ -2,11 +2,7 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import { JSONRPCMessageSchema } from '@modelcontextprotocol/sdk/types.js'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import {
-  createBaishouMcpServer,
-  type ToolRegistry,
-  type ToolContext
-} from '@baishou/ai'
+import { createBaishouMcpServer, type ToolRegistry, type ToolContext } from '@baishou/ai'
 import { logger } from '@baishou/shared'
 import * as ExpoCrypto from 'expo-crypto'
 import * as BaishouServer from 'expo-baishou-server'

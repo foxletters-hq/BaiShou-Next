@@ -335,7 +335,8 @@ export function useDiaryData(
       } catch (err) {
         if (requestId !== loadRequestIdRef.current) return
         logger.error('获取日记列表失败', err instanceof Error ? err : String(err))
-        toastRef.current.showError(tRef.current('diary.load_list_failed', '加载日记列表失败'))
+        const t = tRef.current
+        toastRef.current.showError(t('diary.load_list_failed', '加载日记列表失败'))
         if (browseChanged || !hasCachedRows) {
           setEntries(reuseEmptyDiaryEntries)
           setTotalCount((prev) => (prev === 0 ? prev : 0))

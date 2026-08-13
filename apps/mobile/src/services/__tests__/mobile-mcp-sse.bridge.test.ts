@@ -25,7 +25,9 @@ describe('mobile-mcp-sse.util', () => {
   })
 
   it('builds endpoint and message SSE frames', () => {
-    expect(buildSseEndpointEvent('sid-1')).toBe('event: endpoint\ndata: /message?sessionId=sid-1\n\n')
+    expect(buildSseEndpointEvent('sid-1')).toBe(
+      'event: endpoint\ndata: /message?sessionId=sid-1\n\n'
+    )
     expect(buildSseMessageEvent({ jsonrpc: '2.0', id: 1, result: {} })).toBe(
       'event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{}}\n\n'
     )
