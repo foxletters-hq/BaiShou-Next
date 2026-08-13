@@ -8,6 +8,7 @@
   overflow: hidden;
   box-sizing: border-box;
   background: var(--bg-app);
+  font-family: inherit;
 }
 
 .main {
@@ -21,11 +22,13 @@
 .mainInner {
   width: min(820px, 100%);
   margin: 0 auto;
-  padding: 40px 28px 56px;
+  padding: 40px 28px;
   box-sizing: border-box;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  justify-content: center;
 }
 
 @media (max-width: 720px) {
