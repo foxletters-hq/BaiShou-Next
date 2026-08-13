@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Cropper from 'react-easy-crop'
+import { withAppContentOverlay } from '../overlay'
 import { getCroppedImg } from './cropImage'
 import styles from './AvatarCropModal.module.css'
 
@@ -37,7 +38,7 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
   }
 
   const modalRender = (
-    <div className={styles.modalOverlay}>
+    <div className={withAppContentOverlay(styles.modalOverlay)}>
       <div className={styles.modalContent}>
         <div className={styles.cropperContainer}>
           <Cropper

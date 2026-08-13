@@ -210,3 +210,121 @@
   background: var(--color-primary-light, rgba(var(--color-primary-rgb), 0.22));
   border-color: var(--color-primary);
 }
+
+/* 字体大小：离散刻度滑条（对齐常规设置示意） */
+.font-size-row {
+  margin-top: 8px;
+}
+
+.font-size-slider {
+  position: relative;
+  padding: 10px 2px 0;
+}
+
+/* 提高选择器优先级，覆盖 theme/range-slider.css 的主色填充轨 */
+input[type='range'].font-size-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  margin: 0;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background: var(--border-muted);
+  background-image: none;
+  background-size: auto;
+}
+
+input[type='range'].font-size-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border-muted);
+}
+
+input[type='range'].font-size-range::-moz-range-track {
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border-muted);
+}
+
+input[type='range'].font-size-range::-moz-range-progress {
+  background: transparent;
+}
+
+input[type='range'].font-size-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  position: relative;
+  z-index: 2;
+  transition: box-shadow 0.2s;
+}
+
+input[type='range'].font-size-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+input[type='range'].font-size-range::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 6px rgba(0, 0, 0, 0.06);
+}
+
+input[type='range'].font-size-range::-webkit-slider-thumb:active {
+  box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.08);
+}
+
+.font-size-ticks {
+  pointer-events: none;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 10px;
+  height: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1;
+}
+
+.font-size-tick {
+  width: 1px;
+  height: 8px;
+  background: var(--border-control, var(--border-muted));
+  opacity: 0.9;
+}
+
+/* 与滑块拇指中心对齐：左右各留 8px（半拇指宽），标签绝对定位到对应刻度 */
+.font-size-labels {
+  position: relative;
+  height: 22px;
+  margin-top: 10px;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.font-size-label {
+  position: absolute;
+  top: 50%;
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.font-size-label.active {
+  color: var(--text-primary);
+  font-weight: 500;
+}
