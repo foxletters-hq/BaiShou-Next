@@ -124,6 +124,12 @@ export function normalizeDiskAssistantRecord(
   }
   delete data.compress_system_prompt
 
+  if (data.custom_system_prompt != null && data.customSystemPrompt == null) {
+    data.customSystemPrompt =
+      typeof data.custom_system_prompt === 'string' ? data.custom_system_prompt : null
+  }
+  delete data.custom_system_prompt
+
   if (data.assistantKind != null) {
     data.assistantKind = normalizeAssistantKind(String(data.assistantKind)) as AssistantKind
   }

@@ -49,6 +49,7 @@ export * from './session/session-disk-persistence.service'
 export * from './assistant/assistant-file.service'
 export * from './assistant/assistant-manager.service'
 export * from './assistant/ensure-default-latte-assistant'
+export * from './assistant/ensure-system-latte-assistant'
 
 export * from './settings/settings-file.service'
 export * from './settings/settings-manager.service'

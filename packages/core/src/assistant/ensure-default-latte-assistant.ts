@@ -1,12 +1,13 @@
 import {
-  DEFAULT_LATTE_ASSISTANT_ID,
-  getDefaultLatteAssistantSeed,
+  SYSTEM_LATTE_ASSISTANT_ID,
+  getSystemLatteAssistantSeed,
   isAssistantCustomAvatar,
   isFactoryLatteAssistantSystemPrompt,
   LEGACY_DEFAULT_ASSISTANT_NAMES,
   normalizePersistedAvatarPath
 } from '@baishou/shared'
 import type { AssistantManagerService } from './assistant-manager.service'
+import { ensureSystemLatteAssistant } from './ensure-system-latte-assistant'
 
 function isLegacyDefaultAssistantName(name: string): boolean {
   return (LEGACY_DEFAULT_ASSISTANT_NAMES as readonly string[]).includes(name)
@@ -28,7 +29,7 @@ function shouldTreatAsFactoryLatteAssistant(input: {
 }
 
 function factoryLatteSeedMatchesAssistant(
-  seed: ReturnType<typeof getDefaultLatteAssistantSeed>,
+  seed: ReturnType<typeof getSystemLatteAssistantSeed>,
   assistant: {
     name: string
     description?: string | null
@@ -44,61 +45,27 @@ function factoryLatteSeedMatchesAssistant(
   )
 }
 
-function resolveDefaultAssistantId(existingIds: Set<string>): string {
-  if (!existingIds.has(DEFAULT_LATTE_ASSISTANT_ID)) return DEFAULT_LATTE_ASSISTANT_ID
-  return `latte-${Date.now()}`
-}
-
 /**
- * 确保当前工作区存在内置默认伙伴 Latte：
- * - 无伙伴时创建
- * - 有伙伴但无 isDefault 时补建
- * - 仍为出厂/旧版默认伙伴时，无损升级为当前 Latte
+ * 工作区伙伴 bootstrap：仅确保系统 Latte（id=latte）存在。
+ * 不创建、不改写旧的 id=default 或其他已有伙伴。
  */
 export async function ensureDefaultLatteAssistant(
   assistantManager: AssistantManagerService,
   locale?: string
 ): Promise<void> {
-  const seed = getDefaultLatteAssistantSeed(locale)
-  const assistants = await assistantManager.findAll()
-
-  if (assistants.length === 0) {
-    await assistantManager.create({ id: DEFAULT_LATTE_ASSISTANT_ID, ...seed })
-    return
-  }
-
-  const hasDefault = assistants.some((a) => a.isDefault)
-  if (!hasDefault) {
-    const id = resolveDefaultAssistantId(new Set(assistants.map((a) => a.id)))
-    await assistantManager.create({ id, ...seed })
-    return
-  }
-
-  const legacyDefault = assistants.find(
-    (a) =>
-      a.id === DEFAULT_LATTE_ASSISTANT_ID &&
-      a.isDefault &&
-      shouldTreatAsFactoryLatteAssistant({ name: a.name, systemPrompt: a.systemPrompt })
-  )
-  if (legacyDefault && !factoryLatteSeedMatchesAssistant(seed, legacyDefault)) {
-    await assistantManager.update(legacyDefault.id, {
-      name: seed.name,
-      description: seed.description,
-      ...(hasCustomAssistantAvatar(legacyDefault.avatarPath)
-        ? {}
-        : { avatarPath: seed.avatarPath }),
-      systemPrompt: seed.systemPrompt
-    })
-  }
+  await ensureSystemLatteAssistant(assistantManager, locale)
 }
 
-/** 用户切换 UI 语言时，将出厂 Latte 的提示词与描述同步到对应语言 */
+/**
+ * 用户切换 UI 语言时，若系统 Latte 仍为出厂人设，则同步名称/描述/人设提示词。
+ * 不改写 customSystemPrompt，也不碰旧 id=default。
+ */
 export async function syncDefaultLatteAssistantLocale(
   assistantManager: AssistantManagerService,
   locale?: string
 ): Promise<void> {
-  const assistant = await assistantManager.findById(DEFAULT_LATTE_ASSISTANT_ID)
-  if (!assistant?.isDefault) return
+  const assistant = await assistantManager.findById(SYSTEM_LATTE_ASSISTANT_ID)
+  if (!assistant) return
 
   if (
     !shouldTreatAsFactoryLatteAssistant({
@@ -109,11 +76,11 @@ export async function syncDefaultLatteAssistantLocale(
     return
   }
 
-  const seed = getDefaultLatteAssistantSeed(locale)
+  const seed = getSystemLatteAssistantSeed(locale)
   if (factoryLatteSeedMatchesAssistant(seed, assistant)) {
     return
   }
-  await assistantManager.update(DEFAULT_LATTE_ASSISTANT_ID, {
+  await assistantManager.update(SYSTEM_LATTE_ASSISTANT_ID, {
     name: seed.name,
     description: seed.description,
     ...(hasCustomAssistantAvatar(assistant.avatarPath) ? {} : { avatarPath: seed.avatarPath }),
