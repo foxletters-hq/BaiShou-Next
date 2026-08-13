@@ -114,7 +114,9 @@ function getDefaultAgentBehavior(): AgentBehaviorConfig {
     companionTruncateTokens: 4000,
     agentPersona: '',
     agentGuidelines: '',
-    pinnedAssistantIds: []
+    pinnedAssistantIds: [],
+    restoreLastSessionOnReturn: true,
+    reasoningEffortDefault: 'auto'
   }
 }
 
@@ -240,8 +242,17 @@ export function normalizeSettingsConfigKey(
           ...((raw as GlobalModelsConfig | null) || {})
         })
       }
-    case 'agentBehavior':
-      return { agentBehavior: (raw as AgentBehaviorConfig | null) || getDefaultAgentBehavior() }
+    case 'agentBehavior': {
+      const behavior = raw as AgentBehaviorConfig | null
+      const defaults = getDefaultAgentBehavior()
+      return {
+        agentBehavior: {
+          ...defaults,
+          ...(behavior || {}),
+          restoreLastSessionOnReturn: behavior?.restoreLastSessionOnReturn !== false
+        }
+      }
+    }
     case 'ragConfig':
       return { ragConfig: (raw as RagConfig | null) || getDefaultRagConfig() }
     case 'webSearchConfig':

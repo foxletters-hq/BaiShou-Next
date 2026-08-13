@@ -2,7 +2,9 @@ import { create } from 'zustand'
 import { persist, devtools } from 'zustand/middleware'
 import {
   i18n,
+  normalizeUiFontSizeLevel,
   resolveAppUiLanguageFromSystemLocale,
+  UI_FONT_SIZE_LEVEL_DEFAULT,
   withSummaryPromptLocaleFromUi,
   type AIProviderConfig,
   type GlobalModelsConfig,
@@ -217,6 +219,8 @@ export interface SettingsState {
   useGlassmorphism: boolean
   locale: string
   themeColor: string
+  /** 阅读字号档位：0=小 … 1=默认 … 5=大 */
+  fontSizeLevel: number
 
   // --- Domain Config Blocks ---
   providers: AIProviderConfig[]
@@ -242,6 +246,7 @@ export interface SettingsActions {
   toggleGlassmorphism: (enabled: boolean) => void
   setLocale: (locale: string) => void
   setThemeColor: (color: string) => void
+  setFontSizeLevel: (level: number) => void
 
   // AI 设定异步操作
   loadConfig: (options?: { force?: boolean }) => Promise<void>
@@ -286,6 +291,7 @@ export const useSettingsStore = create<SettingsStore>()(
         useGlassmorphism: true,
         locale: 'zh',
         themeColor: '#5BA8F5',
+        fontSizeLevel: UI_FONT_SIZE_LEVEL_DEFAULT,
 
         providers: [],
         globalModels: null,
@@ -307,6 +313,7 @@ export const useSettingsStore = create<SettingsStore>()(
         setThemeMode: (themeMode) => set({ themeMode }),
         toggleGlassmorphism: (useGlassmorphism) => set({ useGlassmorphism }),
         setThemeColor: (themeColor) => set({ themeColor }),
+        setFontSizeLevel: (level) => set({ fontSizeLevel: normalizeUiFontSizeLevel(level) }),
         setLocale: (locale) => {
           set({ locale })
           const resolvedUi =
@@ -589,12 +596,24 @@ export const useSettingsStore = create<SettingsStore>()(
     ),
     {
       name: 'baishou-ui-settings-storage',
+      version: 1,
       partialize: (state) => ({
         themeMode: state.themeMode,
         useGlassmorphism: state.useGlassmorphism,
         locale: state.locale,
-        themeColor: state.themeColor
-      })
+        themeColor: state.themeColor,
+        fontSizeLevel: normalizeUiFontSizeLevel(state.fontSizeLevel)
+      }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<SettingsState>
+        return {
+          ...current,
+          ...p,
+          fontSizeLevel: normalizeUiFontSizeLevel(
+            p.fontSizeLevel !== undefined ? p.fontSizeLevel : current.fontSizeLevel
+          )
+        }
+      }
     }
   )
 )

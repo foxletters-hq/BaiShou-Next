@@ -39,6 +39,7 @@ describe('useSettingsStore', () => {
       themeMode: 'system',
       useGlassmorphism: true,
       locale: 'zh',
+      fontSizeLevel: 1,
       providers: [],
       globalModels: null,
       agentBehavior: null,
@@ -60,6 +61,17 @@ describe('useSettingsStore', () => {
     expect(state.providers).toEqual([])
     expect(state.ragConfig).toBeNull()
     expect(state.isLoading).toBe(false)
+  })
+
+  it('setFontSizeLevel normalizes and keeps the level in UI preference state', () => {
+    useSettingsStore.getState().setFontSizeLevel(4)
+    expect(useSettingsStore.getState().fontSizeLevel).toBe(4)
+
+    useSettingsStore.getState().setFontSizeLevel(99)
+    expect(useSettingsStore.getState().fontSizeLevel).toBe(5)
+
+    useSettingsStore.getState().setFontSizeLevel(-3)
+    expect(useSettingsStore.getState().fontSizeLevel).toBe(0)
   })
 
   it('should load all domain configs when loadConfig is called explicitly', async () => {
