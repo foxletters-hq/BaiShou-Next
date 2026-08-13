@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import {
   resolveAlwaysAllowPrefixHint,
-  resolveAlwaysDisabledReason,
-  formatDecisionSourceLine,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -70,7 +68,6 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
   const [diffExpanded, setDiffExpanded] = useState(false)
   const [alwaysConfirm, setAlwaysConfirm] = useState(false)
-  const [techOpen, setTechOpen] = useState(false)
 
   useEffect(() => {
     setShowFeedback(false)
@@ -78,7 +75,6 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
     setSelectedOptionId(null)
     setDiffExpanded(false)
     setAlwaysConfirm(false)
-    setTechOpen(false)
   }, [request?.id])
 
   useEffect(() => {
@@ -102,15 +98,20 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
-  const alwaysDisabledReason = resolveAlwaysDisabledReason(request)
   const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
-  const decisionSourceLine = formatDecisionSourceLine(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
-  const showActionMeta = request.kind === AgentGateKind.Tool
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
   const repeatHint = humanizeRepeatHint(request)
   const scopeLabel = resolveScopeLabel(request)
   const preview = request.preview
+  const questionText = request.title?.trim() || ''
+  const descriptionText = request.description?.trim() || ''
+  const numberedOptionsText =
+    proactiveOptions && request.options.length > 0
+      ? request.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
+      : null
+  const descriptionIsOptionsDump =
+    Boolean(numberedOptionsText) && descriptionText === numberedOptionsText
   const cascadeHint =
     sameActionCount > 1
       ? t('agent_gate.cascade_hint', '此决定将影响本会话中另外 {{count}} 个相同操作', {
@@ -163,26 +164,38 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
         {queueLabel ? <p className={styles.queueLabel}>{queueLabel}</p> : null}
       </div>
 
-      {request.description ? (
-        <p className={styles.description}>{request.description}</p>
-      ) : request.title ? (
-        <p className={styles.description}>{request.title}</p>
+      {preview ? (
+        questionText ? (
+          <p className={styles.description}>{questionText}</p>
+        ) : null
+      ) : proactiveOptions ? (
+        questionText ? (
+          <p className={styles.description}>{questionText}</p>
+        ) : (
+          <p className={styles.description}>
+            {t('agent_gate.proactive_desc', '伙伴想向你确认一个问题。')}
+          </p>
+        )
+      ) : descriptionText && !descriptionIsOptionsDump ? (
+        <p className={styles.description}>{descriptionText}</p>
+      ) : questionText ? (
+        <p className={styles.description}>{questionText}</p>
       ) : (
         <p className={styles.description}>
-          {request.kind === AgentGateKind.Proactive
-            ? t('agent_gate.proactive_desc', '伙伴想向你确认一个问题。')
-            : request.kind === AgentGateKind.Lifecycle
-              ? t('agent_gate.lifecycle_desc', '会话即将进入自动处理流程，需要你确认。')
-              : t('agent_gate.dock_desc', '需要你确认后才能继续执行。')}
+          {request.kind === AgentGateKind.Lifecycle
+            ? t('agent_gate.lifecycle_desc', '会话即将进入自动处理流程，需要你确认。')
+            : t('agent_gate.dock_desc', '需要你确认后才能继续执行。')}
         </p>
       )}
+      {!preview &&
+      proactiveOptions &&
+      descriptionText &&
+      !descriptionIsOptionsDump &&
+      descriptionText !== questionText ? (
+        <p className={styles.hint}>{descriptionText}</p>
+      ) : null}
 
       {repeatHint ? <p className={styles.hint}>{repeatHint}</p> : null}
-      {decisionSourceLine ? (
-        <p className={styles.meta}>
-          {t('agent_gate.decision_source', '来源：{{source}}', { source: decisionSourceLine })}
-        </p>
-      ) : null}
       {cascadeHint ? <p className={styles.hint}>{cascadeHint}</p> : null}
 
       {preview?.type === 'file_change' ? (
@@ -192,8 +205,12 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
               {formatFileChangeKindLabel(preview.kind)} · {preview.path}
               {preview.previousPath ? ` ← ${preview.previousPath}` : ''}
             </span>
-            <span className={styles.additions}>+{preview.additions}</span>
-            <span className={styles.deletions}>-{preview.deletions}</span>
+            {preview.additions > 0 ? (
+              <span className={styles.additions}>+{preview.additions}</span>
+            ) : null}
+            {preview.deletions > 0 ? (
+              <span className={styles.deletions}>-{preview.deletions}</span>
+            ) : null}
             {preview.truncated ? <span>{t('agent_gate.diff_truncated', '预览已截断')}</span> : null}
           </div>
           {preview.diff ? (
@@ -234,8 +251,15 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
 
       {preview?.type === 'content' ? (
         <div className={styles.previewBlock}>
-          <p className={styles.description}>{preview.subject}</p>
-          {preview.summary ? <p className={styles.meta}>{preview.summary}</p> : null}
+          {preview.subject && preview.subject !== questionText ? (
+            <p className={styles.description}>{preview.subject}</p>
+          ) : null}
+          {preview.summary &&
+          !preview.detailLines?.some(
+            (line) => line.includes(preview.summary!) || line.endsWith(preview.summary!)
+          ) ? (
+            <p className={styles.meta}>{preview.summary}</p>
+          ) : null}
           {preview.detailLines?.map((line) => (
             <p key={line} className={styles.meta}>
               {line}
@@ -243,30 +267,6 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
           ))}
         </div>
       ) : null}
-
-      <details
-        className={styles.techDetails}
-        open={techOpen}
-        onToggle={(e) => setTechOpen((e.target as HTMLDetailsElement).open)}
-      >
-        <summary>{t('agent_gate.tech_details', '技术详情')}</summary>
-        <div className={styles.techDetailsBody}>
-          {showActionMeta ? (
-            <p className={styles.meta}>
-              {t('agent_gate.dock_action', '操作：{{action}}', { action: request.action })}
-            </p>
-          ) : null}
-          {request.fingerprint ? (
-            <p className={styles.meta}>
-              {t('agent_gate.fingerprint_meta', '指纹 {{fp}} · 连打 {{count}}', {
-                fp: request.fingerprint.slice(0, 10),
-                count: request.repeatCount ?? 1
-              })}
-            </p>
-          ) : null}
-          <p className={styles.meta}>{scopeLabel}</p>
-        </div>
-      </details>
 
       {alwaysConfirm ? (
         <div className={styles.confirmPanel}>
@@ -403,22 +403,10 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
               className={`${styles.btn} ${styles.btnSecondary}`}
               disabled={isReplying}
               onClick={() => setAlwaysConfirm(true)}
-              aria-label={
-                alwaysPrefixHint
-                  ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
-                      pattern: alwaysPrefixHint
-                    })
-                  : t('agent_gate.always', '始终允许')
-              }
+              aria-label={t('agent_gate.always', '始终允许')}
             >
-              {alwaysPrefixHint
-                ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
-                    pattern: alwaysPrefixHint
-                  })
-                : t('agent_gate.always', '始终允许')}
+              {t('agent_gate.always', '始终允许')}
             </button>
-          ) : alwaysDisabledReason ? (
-            <span className={styles.meta}>{alwaysDisabledReason}</span>
           ) : null}
           <button
             type="button"

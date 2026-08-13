@@ -54,6 +54,13 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+  /* 程序化 focus 标题仅用于无障碍落焦，不要系统默认黄框 */
+  outline: none;
+}
+
+.title:focus,
+.title:focus-visible {
+  outline: none;
 }
 
 .queueLabel {
@@ -104,6 +111,7 @@
   border: 1px solid var(--border-subtle);
   padding: 10px 12px;
   background: var(--bg-surface-variant);
+  margin-bottom: 2px;
 }
 
 .previewStats {
@@ -199,6 +207,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-top: 6px;
 }
 
 .option {
@@ -213,11 +222,24 @@
   background: transparent;
   cursor: pointer;
   color: var(--text-primary);
+  outline: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.option:focus-visible {
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .optionSelected {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-color: var(--border-strong, var(--form-field-border-focus));
+  background: var(--bg-surface-high);
+}
+
+.optionSelected:focus-visible {
+  border-color: var(--border-strong, var(--form-field-border-focus));
 }
 
 .optionLabel {
@@ -230,6 +252,7 @@
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .btn {
@@ -241,9 +264,15 @@
   cursor: pointer;
   background: var(--bg-surface);
   color: var(--text-primary);
+  outline: none;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
+}
+
+.btn:focus,
+.btn:focus-visible {
+  outline: none;
 }
 
 .btn:disabled {
@@ -290,12 +319,24 @@
   min-height: 72px;
   resize: vertical;
   border-radius: 10px;
-  border: 1px solid var(--border-control);
+  border: 1px solid var(--form-field-border, var(--border-control));
   padding: 10px 12px;
   font-size: 13px;
   font-family: inherit;
-  background: var(--bg-surface);
+  background: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
+  outline: none;
+  transition: var(--form-field-transition);
+}
+
+.feedbackInput:focus,
+.feedbackInput:focus-visible {
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
+}
+
+.feedbackInput::placeholder {
+  color: var(--text-tertiary, var(--text-secondary));
 }
 
 .feedbackActions {
@@ -310,6 +351,6 @@
   gap: 8px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface-high);
 }

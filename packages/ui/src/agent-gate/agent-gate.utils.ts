@@ -24,7 +24,10 @@ export function resolveRequestGateResources(request: AgentGateRequest): AgentGat
 function resolveAlwaysPatternsFromRequest(request: AgentGateRequest): string[] | undefined {
   const raw = request.metadata?.alwaysPatterns
   if (!Array.isArray(raw)) return undefined
-  return raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  const filtered = raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  // 历史实现用空数组禁止 Always；删除已允许始终允许，空数组按「未声明」处理
+  if (filtered.length === 0 && request.action === 'workspace_delete') return undefined
+  return filtered
 }
 
 export function canAlwaysAllowForRequest(request: AgentGateRequest): boolean {

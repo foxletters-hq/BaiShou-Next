@@ -15,9 +15,8 @@ export interface AgentToolChainSectionProps {
   invocations?: MockToolInvocation[]
   completedTools?: AgentToolChainStreamingTool[]
   activeToolName?: string | null
-  /** 流式场景：自动展开进行中的工具节点 */
   isStreaming?: boolean
-  /** 流式场景：自动展开已有内容的工具节点 */
+  /** 是否默认展开有内容的工具节点（默认否） */
   defaultExpanded?: boolean
 }
 
@@ -25,7 +24,7 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
   invocations = [],
   completedTools = [],
   activeToolName = null,
-  isStreaming = false,
+  isStreaming: _isStreaming = false,
   defaultExpanded = false
 }) => {
   const { isDark } = useTheme()
@@ -57,9 +56,7 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
           <AgentToolThinkItem
             key={model.key}
             model={model}
-            autoExpand={
-              (isStreaming && model.status === 'loading') || (defaultExpanded && model.hasContent)
-            }
+            autoExpand={defaultExpanded && model.hasContent}
           />
         ))}
       </div>
