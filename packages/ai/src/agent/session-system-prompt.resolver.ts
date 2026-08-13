@@ -29,9 +29,11 @@ export interface AgentToolsContextParams {
     database?: unknown
   }
   assistantRepo?: {
-    findById: (
-      id: string
-    ) => Promise<{ systemPrompt?: string | null; assistantKind?: string | null } | null>
+    findById: (id: string) => Promise<{
+      systemPrompt?: string | null
+      customSystemPrompt?: string | null
+      assistantKind?: string | null
+    } | null>
   }
   userConfig: Record<string, unknown>
   provider: IAIProvider
@@ -44,6 +46,7 @@ export interface AgentToolsContextParams {
   diarySearcher?: unknown
   webSearchResultFetcher?: unknown
   fetchSearchPage?: unknown
+  skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
   /** Optional Gate instance so hideDeniedTools / profile match streamChat filtering */
   agentGate?: IBaishouAgentGate
   gateProfile?: AgentGateProfileId
@@ -120,6 +123,7 @@ async function buildToolExecutionContext(
     diarySearcher: params.diarySearcher as any,
     webSearchResultFetcher: params.webSearchResultFetcher as any,
     fetchSearchPage: params.fetchSearchPage as any,
+    skillsWriter: params.skillsWriter,
     agentGate: params.agentGate,
     gateProfile,
     workspace: params.workspace?.folderRoot

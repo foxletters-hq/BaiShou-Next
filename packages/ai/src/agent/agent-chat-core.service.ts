@@ -53,15 +53,19 @@ export class AgentChatCoreService {
     syncGraphPendingIndex?: () => Promise<void>
     graphReader?: import('@baishou/shared').ToolGraphReader
     knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
+    skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
     workspace?: import('./agent-session.types').StreamChatOptions['workspace']
     resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
-  }) {
+    skillsCatalog?: import('./agent-session.types').StreamChatOptions['skillsCatalog']
+    maxSteps?: number
+    sessionRuntimeV2?: boolean
+  }): Promise<{ aborted: boolean }> {
     const claim = claimAgentStreamSession(params.sessionId)
 
     try {
       if (claim.signal.aborted) {
         params.emitter.sendFinish(params.sessionId, { success: true })
-        return
+        return { aborted: true }
       }
 
       await agentService.streamChat(
@@ -88,8 +92,12 @@ export class AgentChatCoreService {
           syncGraphPendingIndex: params.syncGraphPendingIndex,
           graphReader: params.graphReader,
           knowledgeReader: params.knowledgeReader,
+          skillsWriter: params.skillsWriter,
           workspace: params.workspace,
           resolveVaultDisplayName: params.resolveVaultDisplayName,
+          skillsCatalog: params.skillsCatalog,
+          maxSteps: params.maxSteps,
+          sessionRuntimeV2: params.sessionRuntimeV2,
           abortSignal: claim.signal,
           streamClaimGeneration: claim.generation,
           flushSessionToDisk: params.flushSessionToDisk
@@ -97,10 +105,10 @@ export class AgentChatCoreService {
         {
           onTextDelta: (chunk) => params.emitter.sendChunk(params.sessionId, chunk),
           onReasoningDelta: (chunk) => params.emitter.sendReasoningChunk(params.sessionId, chunk),
-          onToolCallStart: (name, argsObj) =>
-            params.emitter.sendToolStart(params.sessionId, name, argsObj),
-          onToolCallResult: (name, result) =>
-            params.emitter.sendToolResult(params.sessionId, name, result),
+          onToolCallStart: (name, argsObj, toolCallId) =>
+            params.emitter.sendToolStart(params.sessionId, name, argsObj, toolCallId),
+          onToolCallResult: (name, result, toolCallId) =>
+            params.emitter.sendToolResult(params.sessionId, name, result, toolCallId),
           onError: (err) => {
             if (isAgentStreamAbortError(err)) {
               params.emitter.sendFinish(params.sessionId, { success: true })
@@ -112,6 +120,12 @@ export class AgentChatCoreService {
             params.emitter.sendFinish(params.sessionId, { success: true, ...result })
         }
       )
+      return { aborted: claim.signal.aborted }
+    } catch (error) {
+      if (isAgentStreamAbortError(error) || claim.signal.aborted) {
+        return { aborted: true }
+      }
+      throw error
     } finally {
       releaseAgentStreamSession(params.sessionId, claim.generation)
     }
