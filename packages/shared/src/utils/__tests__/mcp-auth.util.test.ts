@@ -56,9 +56,9 @@ describe('mcp-auth.util', () => {
 
   it('treats missing mcpAuthEnabled as disabled', () => {
     expect(isMcpAuthEnabled({})).toBe(false)
-    expect(isMcpRequestAuthorized({ mcpEnabled: true, mcpPort: 31004, mcpAuthToken: 'x' }, undefined)).toBe(
-      true
-    )
+    expect(
+      isMcpRequestAuthorized({ mcpEnabled: true, mcpPort: 31004, mcpAuthToken: 'x' }, undefined)
+    ).toBe(true)
   })
 
   it('refreshMcpAuthToken replaces existing token', () => {

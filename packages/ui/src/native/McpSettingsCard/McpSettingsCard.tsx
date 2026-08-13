@@ -260,7 +260,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             '将下方配置粘贴到 mcpServers 中（优先使用 /mcp；兼容客户端可用 /sse），保存后重启 Cursor 或刷新 MCP 列表。'
           )}
         </Text>
-        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 4 }}>
+        <Text
+          style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 4 }}
+        >
           {t('settings.mcp_help_example_streamable', '推荐（Streamable HTTP /mcp）')}
         </Text>
         <Text
@@ -276,7 +278,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
         >
           {buildMcpClientJsonExample(mcpEndpointUrl, authTokenForUi, 'streamableHttp')}
         </Text>
-        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 4 }}>
+        <Text
+          style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 4 }}
+        >
           {t('settings.mcp_help_example_sse', '兼容（SSE /sse）')}
         </Text>
         <Text

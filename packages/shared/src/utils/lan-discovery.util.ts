@@ -50,9 +50,7 @@ export function normalizeLanDeviceType(options: {
     if (value === 'mobile' || value === 'desktop') return value
   }
 
-  const deviceId = String(
-    options.deviceId ?? readLanTxtValue(options.txt, 'device_id', 'deviceId')
-  )
+  const deviceId = String(options.deviceId ?? readLanTxtValue(options.txt, 'device_id', 'deviceId'))
     .trim()
     .toLowerCase()
   if (deviceId.startsWith('mobile-')) return 'mobile'
@@ -69,11 +67,7 @@ export function normalizeLanDeviceType(options: {
   ) {
     return 'mobile'
   }
-  if (
-    nickname.includes('macbook') ||
-    nickname.includes('desktop') ||
-    nickname.includes('pc')
-  ) {
+  if (nickname.includes('macbook') || nickname.includes('desktop') || nickname.includes('pc')) {
     return 'desktop'
   }
 

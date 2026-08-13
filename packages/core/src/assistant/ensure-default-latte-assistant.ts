@@ -80,9 +80,7 @@ export async function syncDefaultLatteAssistantLocale(
   const seed = getDefaultLatteAssistantSeed(locale)
   const nextName = seed.name
   const nextDescription = seed.description
-  const nextAvatar = hasCustomAssistantAvatar(assistant.avatarPath)
-    ? undefined
-    : seed.avatarPath
+  const nextAvatar = hasCustomAssistantAvatar(assistant.avatarPath) ? undefined : seed.avatarPath
 
   if (
     assistant.name === nextName &&

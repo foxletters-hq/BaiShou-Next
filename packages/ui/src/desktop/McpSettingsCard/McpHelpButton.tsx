@@ -59,7 +59,9 @@ export const McpHelpButton: React.FC<McpHelpButtonProps> = ({
             )}
           </p>
           <div className={styles.urlLine}>
-            <span className={styles.urlLabel}>{t('settings.mcp_url_label', '连接地址（推荐）')}</span>
+            <span className={styles.urlLabel}>
+              {t('settings.mcp_url_label', '连接地址（推荐）')}
+            </span>
             <code className={styles.urlCode}>{mcpUrl}</code>
           </div>
           <div className={styles.urlLine}>
