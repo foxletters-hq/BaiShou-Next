@@ -94,9 +94,39 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
     }
   }, [folderRoot, loadPath])
 
+  /** AI 写盘后的静默刷新：只重拉已展开目录，不闪「加载中」、不拆掉当前树 */
+  const softRefreshExpanded = useCallback(async () => {
+    if (!folderRoot) return
+    try {
+      const paths = [...expandedPaths]
+      await Promise.all(paths.map((path) => loadPath(path)))
+    } catch {
+      /* 保留现有节点，避免把侧栏刷空 */
+    }
+  }, [expandedPaths, folderRoot, loadPath])
+
   useEffect(() => {
     void refreshRoot()
   }, [refreshRoot])
+
+  // AI 写盘 / 回滚后刷新树（与聊天 refresh 解耦）
+  useEffect(() => {
+    if (!folderRoot) return
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const onTreeRefresh = () => {
+      if (timer) clearTimeout(timer)
+      // 流结束可能连发多次；合并为一次静默刷新，避免侧栏抖动
+      timer = setTimeout(() => {
+        timer = null
+        void softRefreshExpanded()
+      }, 100)
+    }
+    window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+    return () => {
+      if (timer) clearTimeout(timer)
+      window.removeEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+    }
+  }, [folderRoot, softRefreshExpanded])
 
   const toggleExpanded = useCallback(
     (relativePath: string) => {
@@ -158,6 +188,7 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
       getChildren,
       selectPath,
       refreshRoot,
+      softRefreshExpanded,
       refreshPath,
       loadDirectory,
       ensureExpanded: (relativePath: string) => {
@@ -180,6 +211,7 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
       loadingRoot,
       refreshPath,
       refreshRoot,
+      softRefreshExpanded,
       rootChildren,
       rootError,
       selectPath,

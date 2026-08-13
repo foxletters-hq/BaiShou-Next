@@ -9,7 +9,7 @@
 .placeholder {
   margin: 0;
   padding: 16px 12px;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -24,14 +24,14 @@
 
 .initTitle {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .initHint {
   margin: 0 0 14px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -41,7 +41,7 @@
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   padding: 8px 12px;
   cursor: pointer;

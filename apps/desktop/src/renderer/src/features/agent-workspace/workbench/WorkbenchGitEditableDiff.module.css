@@ -16,7 +16,7 @@
 
 .headerCell {
   padding: 6px 12px;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -36,8 +36,8 @@
 .pane {
   min-height: 0;
   overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-lg);
   line-height: 1.55;
 }
 
@@ -102,7 +102,7 @@
 
 .emptyOriginal {
   padding: 24px 16px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   font-style: italic;
   font-family: inherit;
@@ -110,7 +110,7 @@
 
 .hint {
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   border-top: 1px solid var(--border-muted);
   background: var(--bg-app);
