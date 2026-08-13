@@ -1,6 +1,10 @@
 import './ContextMenu.css'
 export * from './ContextMenu'
+export * from './ContextMenuItemList'
 export * from './GlobalInputContextMenu'
 export * from './AnchoredContextMenu'
 export * from './EditorContextMenuHost'
 export * from './editor-context-menu-icons'
+export { getContextMenuBoundsForAnchor } from './context-menu-placement.util'
+export type { ContextMenuBounds } from './context-menu-placement.util'
+

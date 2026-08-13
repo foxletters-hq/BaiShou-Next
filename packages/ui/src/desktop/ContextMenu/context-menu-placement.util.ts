@@ -81,12 +81,21 @@ export function getContextMenuBoundsForAnchor(
   return getDefaultContextMenuBounds(viewportWidth, viewportHeight, bottomInset)
 }
 
+export type ResolveContextMenuPositionOptions = {
+  /**
+   * 将 anchorY 视为菜单底边目标（紧贴锚点上方）。
+   * 用于输入框加号等需要向上展开、避免盖住输入区的场景。
+   */
+  preferAbove?: boolean
+}
+
 export function resolveContextMenuPosition(
   anchorX: number,
   anchorY: number,
   menuWidth: number,
   menuHeight: number,
-  bounds: ContextMenuBounds
+  bounds: ContextMenuBounds,
+  options?: ResolveContextMenuPositionOptions
 ): { x: number; y: number } {
   const minX = bounds.left
   const maxX = Math.max(bounds.left, bounds.right - menuWidth)
@@ -100,7 +109,17 @@ export function resolveContextMenuPosition(
   x = Math.min(maxX, Math.max(minX, x))
 
   let y = anchorY
-  if (y + menuHeight > bounds.bottom) {
+  if (options?.preferAbove) {
+    // anchorY = 期望的菜单底边；优先整块放在上方
+    const aboveTop = anchorY - menuHeight
+    if (aboveTop >= bounds.top) {
+      y = aboveTop
+    } else {
+      // 上方不够时退到下方，从 anchorY + gap 起算
+      const belowTop = anchorY + CONTEXT_MENU_GAP
+      y = belowTop + menuHeight <= bounds.bottom ? belowTop : maxY
+    }
+  } else if (y + menuHeight > bounds.bottom) {
     const aboveY = anchorY - menuHeight
     y = aboveY >= bounds.top ? aboveY : maxY
   }
@@ -113,10 +132,18 @@ export function applyFixedContextMenuLayout(
   menuEl: HTMLElement,
   anchorX: number,
   anchorY: number,
-  bounds: ContextMenuBounds = getDefaultContextMenuBounds()
+  bounds: ContextMenuBounds = getDefaultContextMenuBounds(),
+  options?: ResolveContextMenuPositionOptions
 ): void {
   const rect = menuEl.getBoundingClientRect()
-  const { x, y } = resolveContextMenuPosition(anchorX, anchorY, rect.width, rect.height, bounds)
+  const { x, y } = resolveContextMenuPosition(
+    anchorX,
+    anchorY,
+    rect.width,
+    rect.height,
+    bounds,
+    options
+  )
 
   menuEl.style.left = `${x}px`
   menuEl.style.top = `${y}px`

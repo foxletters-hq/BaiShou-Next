@@ -1,9 +1,10 @@
-import React, { useEffect, useLayoutEffect, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import './ContextMenu.css'
 import { applyFixedContextMenuLayout, type ContextMenuBounds } from './context-menu-placement.util'
 import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
 import type { ContextMenuItem } from './ContextMenu'
+import { ContextMenuItemList } from './ContextMenuItemList'
 
 export interface AnchoredContextMenuProps {
   x: number
@@ -18,6 +19,8 @@ export interface AnchoredContextMenuProps {
   dividerClassName?: string
   /** 可选安全区；从输入框内打开时应用 getContextMenuBoundsForAnchor */
   bounds?: ContextMenuBounds
+  /** 将 y 视为菜单底边，优先在锚点上方展开（避免盖住输入框） */
+  preferAbove?: boolean
 }
 
 /**
@@ -34,27 +37,28 @@ export function AnchoredContextMenu({
   menuClassName = 'context-menu',
   itemClassName = 'context-menu-item',
   dividerClassName = 'context-menu-divider',
-  bounds
+  bounds,
+  preferAbove = false
 }: AnchoredContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const [placed, setPlaced] = useState(false)
 
   useLayoutEffect(() => {
-    if (menuRef.current) {
-      applyFixedContextMenuLayout(menuRef.current, x, y, bounds)
-    }
-  }, [x, y, items, bounds])
+    if (!menuRef.current) return
+    applyFixedContextMenuLayout(menuRef.current, x, y, bounds, { preferAbove })
+    setPlaced(true)
+  }, [x, y, items, bounds, preferAbove])
 
   useEffect(() => {
     const handleClose = () => onClose()
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
-    // 延后绑定，避免打开菜单的同一次 click 立刻把菜单关掉
     const timer = window.setTimeout(() => {
       window.addEventListener('click', handleClose)
-      window.addEventListener('contextmenu', handleClose)
-      window.addEventListener('keydown', handleKeyDown)
     }, 0)
+    window.addEventListener('contextmenu', handleClose)
+    window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.clearTimeout(timer)
       window.removeEventListener('click', handleClose)
@@ -79,7 +83,7 @@ export function AnchoredContextMenu({
       />
       <div
         ref={menuRef}
-        className={menuClassName}
+        className={`${menuClassName}${placed ? ' context-menu-ready' : ' context-menu-pending'}`}
         style={{
           position: 'fixed',
           zIndex: menuZIndex,
@@ -89,27 +93,12 @@ export function AnchoredContextMenu({
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {items.map((item, index) => {
-          if (item.divider) {
-            return <div key={`sep-${index}`} className={dividerClassName} />
-          }
-
-          return (
-            <button
-              key={`item-${index}-${item.label}`}
-              className={`${itemClassName}${item.disabled ? ' disabled' : ''}`}
-              disabled={item.disabled}
-              onClick={() => {
-                if (item.disabled) return
-                item.onClick()
-                if (!item.keepOpen) onClose()
-              }}
-            >
-              {item.icon && <span className="context-menu-icon">{item.icon}</span>}
-              <span className="context-menu-label">{item.label}</span>
-            </button>
-          )
-        })}
+        <ContextMenuItemList
+          items={items}
+          onClose={onClose}
+          itemClassName={itemClassName}
+          dividerClassName={dividerClassName}
+        />
       </div>
     </>,
     document.body
