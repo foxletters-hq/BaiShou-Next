@@ -44,10 +44,53 @@ async function loadStore(): Promise<WorkspaceSessionStoreFile> {
   return cache
 }
 
+const PERSIST_DEBOUNCE_MS = 75
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+let persistChain: Promise<void> = Promise.resolve()
+let dirty = false
+
+function writeStoreNow(): Promise<void> {
+  persistChain = persistChain
+    .then(async () => {
+      if (!cache || !dirty) return
+      dirty = false
+      const file = storePath()
+      await fs.mkdir(path.dirname(file), { recursive: true })
+      // 不缩进：整份存档每次都要重新序列化，缩进会让搬运的字节数直接翻倍
+      await fs.writeFile(file, JSON.stringify(cache), 'utf-8')
+    })
+    .catch((error) => {
+      logger.warn(
+        '[WorkspaceSessionStore] persist failed:',
+        error instanceof Error ? error.message : String(error)
+      )
+    })
+  return persistChain
+}
+
+/**
+ * 安排一次写盘。
+ *
+ * 一轮对话至少触发两次整份存档的序列化，逐次同步写会把主进程卡在 JSON.stringify 上，
+ * 表现为 UI 与 IPC 卡顿。这里合并短时间内的多次变更，读取始终走内存缓存，因此不影响一致性。
+ */
 async function saveStore(): Promise<void> {
-  if (!cache) return
-  await fs.mkdir(path.dirname(storePath()), { recursive: true })
-  await fs.writeFile(storePath(), JSON.stringify(cache, null, 2), 'utf-8')
+  dirty = true
+  if (persistTimer != null) return
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    void writeStoreNow()
+  }, PERSIST_DEBOUNCE_MS)
+}
+
+/** 进程退出前调用，确保 debounce 中的变更落盘 */
+export async function flushWorkspaceSessionStore(): Promise<void> {
+  if (persistTimer != null) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
+  await writeStoreNow()
 }
 
 export async function bindWorkspaceSession(sessionId: string, folderRoot: string): Promise<void> {
@@ -139,6 +182,61 @@ export async function getWorkspaceCheckpointForUserMessage(
   const checkpointId = binding.checkpointsByUserMessageId[userMessageId]
   if (!checkpointId) return null
   return store.checkpoints[checkpointId] ?? null
+}
+
+/** 删除指定 user 消息对应的 checkpoint（回滚截断后清理映射与正文） */
+export async function removeWorkspaceCheckpointsForUserMessages(
+  sessionId: string,
+  userMessageIds: string[]
+): Promise<void> {
+  if (userMessageIds.length === 0) return
+  const store = await loadStore()
+  const binding = store.bindings[sessionId]
+  if (!binding) return
+
+  for (const userMessageId of userMessageIds) {
+    const checkpointId = binding.checkpointsByUserMessageId[userMessageId]
+    if (checkpointId) {
+      delete store.checkpoints[checkpointId]
+      delete binding.checkpointsByUserMessageId[userMessageId]
+    }
+  }
+  binding.updatedAt = new Date().toISOString()
+  await saveStore()
+}
+
+function sameFolder(a: string, b: string): boolean {
+  return a.replace(/\\/g, '/').toLowerCase() === b.replace(/\\/g, '/').toLowerCase()
+}
+
+/** 还有多少会话绑定着这个文件夹——影子仓库按文件夹共享，清理前必须先问这个 */
+export async function countWorkspaceSessionsForFolder(folderRoot: string): Promise<number> {
+  const store = await loadStore()
+  return Object.values(store.bindings).filter((binding) =>
+    sameFolder(binding.folderRoot, folderRoot)
+  ).length
+}
+
+/**
+ * 这个文件夹下所有还能被回滚到的 tree oid。
+ *
+ * 影子仓库回收对象时要靠它划定「还有用」的边界：漏掉一个，对应轮次的正文就被 gc 抹掉了，
+ * 所以这里按文件夹取全量，而不是只看当前会话。
+ */
+export async function listWorkspaceCheckpointTreeOids(folderRoot: string): Promise<string[]> {
+  const store = await loadStore()
+  const oids = new Set<string>()
+
+  for (const binding of Object.values(store.bindings)) {
+    if (!sameFolder(binding.folderRoot, folderRoot)) continue
+    for (const checkpointId of Object.values(binding.checkpointsByUserMessageId)) {
+      const checkpoint = store.checkpoints[checkpointId]
+      if (checkpoint?.startTreeOid) oids.add(checkpoint.startTreeOid)
+      if (checkpoint?.endTreeOid) oids.add(checkpoint.endTreeOid)
+    }
+  }
+
+  return [...oids]
 }
 
 export async function removeWorkspaceSession(sessionId: string): Promise<void> {
