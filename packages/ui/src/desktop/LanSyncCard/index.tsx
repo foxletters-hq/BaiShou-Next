@@ -235,6 +235,18 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
   }, [isActive])
 
   const handleSend = async (device: DiscoveredDevice) => {
+    const confirmed = await dialog.confirm(
+      t(
+        'lan_transfer.send_confirm_content',
+        '将生成全量备份并发送给该设备。对方导入后会覆盖其本地数据；日记 RAG 记忆不会随包生效，需在对方设备的「设置 → RAG 记忆」重新全量扫描嵌入。'
+      ),
+      t('lan_transfer.send_confirm_title', '发送数据给 $nickname?').replace(
+        '$nickname',
+        device.nickname
+      )
+    )
+    if (!confirmed) return
+
     const deviceKey = getLanDeviceDedupKey(device)
     markDeviceSeen(device)
     setSendingTo(deviceKey)
