@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type Dispatch, type SetStateAction } from 'react'
+import { useState, useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react'
 import { useAgentStore } from '@baishou/store'
 
 import {
@@ -7,6 +7,7 @@ import {
   type AgentStreamRefs,
   type ToolCallInfo
 } from './useAgentStream-types'
+import { reuseEmptyAgentList } from './useAgentStream.util'
 
 interface UseAgentStreamBridgeOptions {
   refs: AgentStreamRefs
@@ -128,6 +129,14 @@ export function useAgentStreamBridge({
     resetCompressionDisplayBuffers()
   }, [resetCompressionDisplayBuffers])
 
+  const clearCompletedTools = useCallback(() => {
+    setCompletedTools(reuseEmptyAgentList)
+  }, [setCompletedTools])
+
+  const clearPendingEmojis = useCallback(() => {
+    setPendingEmojis(reuseEmptyAgentList)
+  }, [setPendingEmojis])
+
   const stopStreamingUiImmediately = useCallback(() => {
     if (streamBridgeReleaseTimerRef.current) {
       clearTimeout(streamBridgeReleaseTimerRef.current)
@@ -151,7 +160,7 @@ export function useAgentStreamBridge({
     setLoading(false)
     activeToolRef.current = null
     setActiveTool(null)
-    setCompletedTools([])
+    clearCompletedTools()
     resetCompressionBuffers()
     setCompressionText('')
     setCompressionReasoning('')
@@ -159,7 +168,7 @@ export function useAgentStreamBridge({
     clearStreamingDisplayBuffers()
     activeToolRef.current = null
     setActiveTool(null)
-    setCompletedTools([])
+    clearCompletedTools()
   }, [
     streamBridgeReleaseTimerRef,
     streamPresentationLingerTimerRef,
@@ -171,7 +180,7 @@ export function useAgentStreamBridge({
     setLoading,
     activeToolRef,
     setActiveTool,
-    setCompletedTools,
+    clearCompletedTools,
     resetCompressionBuffers,
     setCompressionText,
     setCompressionReasoning,
@@ -183,14 +192,14 @@ export function useAgentStreamBridge({
     clearStreamingDisplayBuffers()
     activeToolRef.current = null
     setActiveTool(null)
-    setCompletedTools([])
-    setPendingEmojis([])
+    clearCompletedTools()
+    clearPendingEmojis()
   }, [
     clearStreamingDisplayBuffers,
     activeToolRef,
     setActiveTool,
-    setCompletedTools,
-    setPendingEmojis
+    clearCompletedTools,
+    clearPendingEmojis
   ])
 
   const releaseStreamBridge = useCallback(() => {
@@ -282,7 +291,7 @@ export function useAgentStreamBridge({
         setIsStreaming(true)
       }
       resetStreamingBuffers()
-      setPendingEmojis([])
+      clearPendingEmojis()
     },
     [
       finishStreamPassRef,
@@ -290,30 +299,54 @@ export function useAgentStreamBridge({
       isStreamingRef,
       setIsStreaming,
       resetStreamingBuffers,
-      setPendingEmojis
+      clearPendingEmojis
     ]
   )
 
-  return {
-    isStreamBridgeActive,
-    streamPresentationLinger,
-    hasStreamOutput,
-    isActiveSession,
-    clearStreamingDisplayBuffers,
-    flushStreamingDisplayBuffers,
-    appendStreamingTextDelta,
-    appendStreamingReasoningDelta,
-    resetCompressionDisplayBuffers,
-    flushCompressionDisplayBuffers,
-    appendCompressionTextDelta,
-    appendCompressionReasoningDelta,
-    resetCompressionBuffers,
-    stopStreamingUiImmediately,
-    resetStreamingBuffers,
-    releaseStreamBridge,
-    beginStreamBridgeHandoff,
-    handleToolCallStart,
-    handleToolCallResult,
-    interruptActiveStream
-  }
+  return useMemo(
+    () => ({
+      isStreamBridgeActive,
+      streamPresentationLinger,
+      hasStreamOutput,
+      isActiveSession,
+      clearStreamingDisplayBuffers,
+      flushStreamingDisplayBuffers,
+      appendStreamingTextDelta,
+      appendStreamingReasoningDelta,
+      resetCompressionDisplayBuffers,
+      flushCompressionDisplayBuffers,
+      appendCompressionTextDelta,
+      appendCompressionReasoningDelta,
+      resetCompressionBuffers,
+      stopStreamingUiImmediately,
+      resetStreamingBuffers,
+      releaseStreamBridge,
+      beginStreamBridgeHandoff,
+      handleToolCallStart,
+      handleToolCallResult,
+      interruptActiveStream
+    }),
+    [
+      isStreamBridgeActive,
+      streamPresentationLinger,
+      hasStreamOutput,
+      isActiveSession,
+      clearStreamingDisplayBuffers,
+      flushStreamingDisplayBuffers,
+      appendStreamingTextDelta,
+      appendStreamingReasoningDelta,
+      resetCompressionDisplayBuffers,
+      flushCompressionDisplayBuffers,
+      appendCompressionTextDelta,
+      appendCompressionReasoningDelta,
+      resetCompressionBuffers,
+      stopStreamingUiImmediately,
+      resetStreamingBuffers,
+      releaseStreamBridge,
+      beginStreamBridgeHandoff,
+      handleToolCallStart,
+      handleToolCallResult,
+      interruptActiveStream
+    ]
+  )
 }
