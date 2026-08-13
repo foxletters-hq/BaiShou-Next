@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react'
-import { DiaryEditor } from '@baishou/ui'
+import { DiaryEditor, withAppContentOverlay } from '@baishou/ui'
 import './DiaryEditorPage.css'
 import { useDiaryEditorPage } from './hooks/useDiaryEditorPage'
 import { useTts } from '../agent/hooks/useTts'
@@ -108,7 +108,7 @@ export const DiaryEditorPage: React.FC = () => {
 
       {editor.showExitConfirm && (
         <div
-          className="diary-delete-modal-overlay"
+          className={withAppContentOverlay('diary-delete-modal-overlay')}
           onClick={() => editor.setShowExitConfirm(false)}
         >
           <div className="diary-delete-modal" onClick={(e) => e.stopPropagation()}>

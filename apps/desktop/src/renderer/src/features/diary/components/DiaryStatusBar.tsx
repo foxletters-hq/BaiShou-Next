@@ -23,7 +23,6 @@ export const DiaryStatusBar: React.FC<DiaryStatusBarProps> = ({
   interactive = true
 }) => {
   const { t } = useTranslation()
-  const hasItems = showPendingExtract || showPendingEmbed
 
   return (
     <div className="diary-status-bar" role="status">
@@ -65,7 +64,6 @@ export const DiaryStatusBar: React.FC<DiaryStatusBarProps> = ({
           </span>
         )
       ) : null}
-      {!hasItems ? <span className="diary-status-bar-spacer" /> : null}
     </div>
   )
 }

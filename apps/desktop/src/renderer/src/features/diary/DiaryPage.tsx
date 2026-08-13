@@ -3,9 +3,6 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  hasGraphModelConfigured,
-  isGraphFeatureConfigured,
-  isGraphSelfNameConfigured,
   isRagEmbedFeatureConfigured,
   normalizeWeatherId,
   normalizeMoodIdForFilter,
@@ -21,7 +18,7 @@ import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
 import { useStorageIndexing } from './hooks/useStorageIndexing'
 import type { DiaryEntry } from './DiaryCard'
-import { useToast } from '@baishou/ui'
+import { useToast, withAppContentOverlay } from '@baishou/ui'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryGrid } from './components/DiaryGrid'
 import { DiaryStatusBar } from './components/DiaryStatusBar'
@@ -113,30 +110,21 @@ export const DiaryPage: React.FC = () => {
             getUnindexedDiaryCount?: () => Promise<number>
             getEmbedJobsPendingCount?: () => Promise<number>
           }
-          profile?: { getProfile?: () => Promise<{ nickname?: string } | null> }
         }
       ).rag
-      const profileApi = (window.api as { profile?: { getProfile?: () => Promise<any> } }).profile
-      const [pending, unindexedCount, globalModels, ragConfig, selfNameFlag, profile] =
-        await Promise.all([
+      const [pending, unindexedCount, globalModels, ragConfig] = await Promise.all([
           window.api.graph.listPendingReextract().catch(() => []),
-          (ragApi?.getUnindexedDiaryCount?.() ?? ragApi?.getEmbedJobsPendingCount?.() ?? Promise.resolve(0)).catch(
-            () => 0
-          ),
+          (ragApi?.getUnindexedDiaryCount?.() ??
+            ragApi?.getEmbedJobsPendingCount?.() ??
+            Promise.resolve(0)
+          ).catch(() => 0),
           window.api.settings.getGlobalModels().catch(() => null),
-          window.api.settings.getRagConfig().catch(() => null) as Promise<RagConfig | null>,
-          window.api.settings.getGraphSelfNameConfigured().catch(() => false),
-          profileApi?.getProfile?.().catch(() => null) ?? Promise.resolve(null)
+          window.api.settings.getRagConfig().catch(() => null) as Promise<RagConfig | null>
         ])
       setPendingGraphCount(Array.isArray(pending) ? pending.length : 0)
       setPendingEmbedCount(typeof unindexedCount === 'number' ? unindexedCount : 0)
-      const selfConfigured = isGraphSelfNameConfigured(selfNameFlag, profile?.nickname)
-      setGraphConfigured(
-        isGraphFeatureConfigured({
-          selfNameConfigured: selfConfigured,
-          hasGraphModel: hasGraphModelConfigured(globalModels as GlobalModelsConfig | null)
-        })
-      )
+      // 有待办就显示：模型/自称缺失时由目标页引导配置，避免底栏长期空白
+      setGraphConfigured(true)
       setRagConfigured(
         isRagEmbedFeatureConfigured({
           ragConfig: ragConfig as RagConfig | null,
@@ -394,7 +382,10 @@ export const DiaryPage: React.FC = () => {
 
       {/* 删除确认弹窗 */}
       {deletingId !== null && (
-        <div className="diary-delete-modal-overlay" onClick={() => setDeletingId(null)}>
+        <div
+          className={withAppContentOverlay('diary-delete-modal-overlay')}
+          onClick={() => setDeletingId(null)}
+        >
           <div className="diary-delete-modal" onClick={(e) => e.stopPropagation()}>
             <div className="dd-modal-title">{t('common.confirm_delete', '确认删除')}</div>
             <div className="dd-modal-content">

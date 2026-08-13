@@ -16,8 +16,9 @@ import {
   mergeDiaryTags,
   type DiaryTemplateConfig
 } from '@baishou/shared'
-import { useToast, useDialog } from '@baishou/ui'
+import { useToast } from '@baishou/ui'
 import { ensureDesktopGraphSelfName } from '../utils/ensure-graph-self-name'
+import { graphQueueExtract } from '../../graph/graph-extract-queue.api'
 
 type DiaryEditorInitialState = {
   content: string
@@ -38,7 +39,6 @@ export function useDiaryEditorPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const dialog = useDialog()
 
   const isAppendMode = searchParams.get('append') === '1'
 
@@ -395,27 +395,18 @@ export function useDiaryEditorPage() {
                   e.stopPropagation()
                   void (async () => {
                     try {
-                      const selfName = await ensureDesktopGraphSelfName({
-                        prompt: dialog.prompt,
-                        t
-                      })
+                      const selfName = await ensureDesktopGraphSelfName()
                       if (!selfName) {
                         toast.showError(
-                          t('graph.self_name_required', '请先设置图谱自称后再抽取')
+                          t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取')
                         )
+                        navigate('/graph')
                         return
                       }
-                      toast.showInfo(t('graph.extracting', '正在抽取…'), { duration: 0 })
-                      const result = await window.api.graph.extract({ filePaths: [extractPath] })
-                      if (result.failed > 0) {
-                        toast.showError(
-                          t('graph.extract_failed', '整理失败（{{failed}}）', {
-                            failed: result.failed
-                          })
-                        )
-                      } else {
-                        toast.showSuccess(t('graph.extract_this_done', '已记住这篇里的人和事'))
-                      }
+                      await graphQueueExtract({ filePaths: [extractPath] })
+                      toast.showSuccess(
+                        t('graph.extract_queued_one', '已加入后台整理队列，可继续写日记')
+                      )
                     } catch (err: unknown) {
                       const message = err instanceof Error ? err.message : String(err)
                       toast.showError(message || t('graph.extract_failed', '整理失败'))
