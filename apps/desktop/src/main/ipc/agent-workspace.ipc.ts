@@ -10,18 +10,23 @@ import type {
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
 import {
+  admitWorkspaceInput,
+  cancelWorkspacePendingInput,
   createWorkspaceAgentSession,
+  listWorkspacePendingInputs,
+  previewWorkspaceRollback,
+  removeWorkspaceSessionWithCheckpoints,
   rollbackWorkspaceRound,
   runWorkspaceStreamChat
 } from '../services/agent-workspace-chat.service'
 import {
   attachWorkspaceNotebook,
   getWorkspaceSessionBinding,
-  listWorkspaceSessions,
-  removeWorkspaceSession
+  listWorkspaceSessions
 } from '../services/agent-workspace-session.store'
 import {
   addAgentWorkspace,
+  getAgentWorkspaceById,
   getLastActiveWorkspaceId,
   listAgentWorkspaces,
   pickWorkspaceAvatarImage,
@@ -29,10 +34,16 @@ import {
   setLastActiveWorkspaceId,
   updateAgentWorkspace
 } from '../services/agent-workspace-registry.store'
+import { cleanupUnusedWorkspaceShadowGit } from '../services/workspace-shadow-git.provider'
 import { ensureScratchWorkspace } from '../services/agent-workspace-scratch.service'
 import { getAgentManagers } from './agent-helpers'
 import { getWorkspaceFolderGitService } from '../services/workspace-folder-git.registry'
 import { replaceInWorkspaceFiles, searchWorkspaceFiles } from '@baishou/core-desktop'
+import {
+  copyWorkspaceEntry,
+  importExternalPaths,
+  moveWorkspaceEntry
+} from '../services/agent-workspace-fs-transfer'
 
 function stripUtf8Bom(text: string): string {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
@@ -130,7 +141,18 @@ export function registerAgentWorkspaceIPC(): void {
 
   ipcMain.handle('agent-workspace:remove-workspace', async (_, workspaceId: string) => {
     if (!workspaceId?.trim()) return false
-    return removeAgentWorkspace(workspaceId)
+    const entry = await getAgentWorkspaceById(workspaceId)
+    const removed = await removeAgentWorkspace(workspaceId)
+    if (removed && entry?.folderRoot) {
+      // 会话还在就只是从列表里移除，影子仓库要留着，否则那些会话再也回滚不了
+      void cleanupUnusedWorkspaceShadowGit(entry.folderRoot).catch((error: unknown) => {
+        logger.warn(
+          '[AgentWorkspaceIPC] shadow git cleanup failed:',
+          error instanceof Error ? error.message : String(error)
+        )
+      })
+    }
+    return removed
   })
 
   ipcMain.handle('agent-workspace:get-last-active-workspace-id', async () => {
@@ -279,6 +301,45 @@ export function registerAgentWorkspaceIPC(): void {
   )
 
   ipcMain.handle(
+    'agent-workspace:move-entry',
+    async (_event, rootPath: string, fromRelative: string, toParentRelative: string) => {
+      return moveWorkspaceEntry({
+        resolveWithinRoot,
+        rootPath,
+        fromRelative,
+        toParentRelative: toParentRelative ?? ''
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'agent-workspace:copy-entry',
+    async (_event, rootPath: string, fromRelative: string, toParentRelative: string) => {
+      return copyWorkspaceEntry({
+        resolveWithinRoot,
+        rootPath,
+        fromRelative,
+        toParentRelative: toParentRelative ?? ''
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'agent-workspace:import-external-paths',
+    async (_event, rootPath: string, toParentRelative: string, absolutePaths: string[]) => {
+      if (!Array.isArray(absolutePaths) || absolutePaths.length === 0) {
+        return { imported: [] as string[] }
+      }
+      return importExternalPaths({
+        resolveWithinRoot,
+        rootPath,
+        toParentRelative: toParentRelative ?? '',
+        absolutePaths
+      })
+    }
+  )
+
+  ipcMain.handle(
     'agent-workspace:search-files',
     async (_event, rootPath: string, options: import('@baishou/shared').WorkspaceSearchOptions) => {
       if (!rootPath?.trim()) {
@@ -306,14 +367,23 @@ export function registerAgentWorkspaceIPC(): void {
     'agent-workspace:create-session',
     async (
       _,
-      params: { id?: string; folderRoot: string; assistantId?: string; title?: string }
+      params: {
+        id?: string
+        folderRoot: string
+        assistantId?: string
+        title?: string
+        providerId?: string
+        modelId?: string
+      }
     ) => {
       const sessionId = params.id || crypto.randomUUID()
       return createWorkspaceAgentSession({
         id: sessionId,
         folderRoot: params.folderRoot,
         assistantId: params.assistantId,
-        title: params.title
+        title: params.title,
+        providerId: params.providerId,
+        modelId: params.modelId
       })
     }
   )
@@ -367,7 +437,7 @@ export function registerAgentWorkspaceIPC(): void {
     if (!sessionId?.trim()) {
       return { success: false }
     }
-    await removeWorkspaceSession(sessionId)
+    await removeWorkspaceSessionWithCheckpoints(sessionId)
     try {
       const { sessionManager } = getAgentManagers()
       await sessionManager.deleteSessions([sessionId])
@@ -390,6 +460,8 @@ export function registerAgentWorkspaceIPC(): void {
         userMessageId?: string
         providerId?: string
         modelId?: string
+        reasoningEffort?: string
+        searchMode?: boolean
       }
     ) => {
       try {
@@ -400,6 +472,8 @@ export function registerAgentWorkspaceIPC(): void {
           userMessageId: params.userMessageId,
           providerId: params.providerId,
           modelId: params.modelId,
+          reasoningEffort: params.reasoningEffort,
+          searchMode: params.searchMode,
           skipUserMessageRecording: Boolean(params.userMessageId)
         })
         const { sessionManager } = getAgentManagers()
@@ -415,8 +489,59 @@ export function registerAgentWorkspaceIPC(): void {
   )
 
   ipcMain.handle(
-    'agent-workspace:rollback-round',
+    'agent-workspace:admit',
+    async (
+      event,
+      params: {
+        sessionId: string
+        text: string
+        delivery?: 'steer' | 'queue'
+        userMessageId?: string
+        providerId?: string
+        modelId?: string
+        reasoningEffort?: string
+        searchMode?: boolean
+      }
+    ) => {
+      return admitWorkspaceInput({
+        event,
+        sessionId: params.sessionId,
+        text: params.text,
+        delivery: params.delivery,
+        userMessageId: params.userMessageId,
+        providerId: params.providerId,
+        modelId: params.modelId,
+        reasoningEffort: params.reasoningEffort,
+        searchMode: params.searchMode
+      })
+    }
+  )
+
+  ipcMain.handle('agent-workspace:list-pending-inputs', async (_, sessionId: string) =>
+    listWorkspacePendingInputs(sessionId)
+  )
+
+  ipcMain.handle('agent-workspace:cancel-pending-input', async (_, inputId: string) =>
+    cancelWorkspacePendingInput(inputId)
+  )
+
+  ipcMain.handle(
+    'agent-workspace:preview-rollback',
     async (_, params: { sessionId: string; userMessageId: string }) => {
+      return previewWorkspaceRollback(params)
+    }
+  )
+
+  ipcMain.handle(
+    'agent-workspace:rollback-round',
+    async (
+      _,
+      params: {
+        sessionId: string
+        userMessageId: string
+        scope?: import('@baishou/shared').WorkspaceRollbackScope
+      }
+    ) => {
       return rollbackWorkspaceRound(params)
     }
   )

@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron'
+import { ipcRenderer, webUtils } from 'electron'
 import type {
   AgentWorkspaceDirEntry,
   AgentWorkspaceEntry,
@@ -53,6 +53,30 @@ export const agentWorkspaceApi = {
     nextName: string
   ): Promise<{ relativePath: string }> =>
     ipcRenderer.invoke('agent-workspace:rename-entry', rootPath, relativePath, nextName),
+  moveEntry: (
+    rootPath: string,
+    fromRelative: string,
+    toParentRelative: string
+  ): Promise<{ relativePath: string }> =>
+    ipcRenderer.invoke('agent-workspace:move-entry', rootPath, fromRelative, toParentRelative),
+  copyEntry: (
+    rootPath: string,
+    fromRelative: string,
+    toParentRelative: string
+  ): Promise<{ relativePath: string }> =>
+    ipcRenderer.invoke('agent-workspace:copy-entry', rootPath, fromRelative, toParentRelative),
+  importExternalPaths: (
+    rootPath: string,
+    toParentRelative: string,
+    absolutePaths: string[]
+  ): Promise<{ imported: string[] }> =>
+    ipcRenderer.invoke(
+      'agent-workspace:import-external-paths',
+      rootPath,
+      toParentRelative,
+      absolutePaths
+    ),
+  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   searchFiles: (
     rootPath: string,
     options: import('@baishou/shared').WorkspaceSearchOptions
@@ -68,6 +92,8 @@ export const agentWorkspaceApi = {
     folderRoot: string
     assistantId?: string
     title?: string
+    providerId?: string
+    modelId?: string
   }): Promise<string> => ipcRenderer.invoke('agent-workspace:create-session', params),
   getBinding: (
     sessionId: string
@@ -94,10 +120,40 @@ export const agentWorkspaceApi = {
     userMessageId?: string
     providerId?: string
     modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
   }): Promise<boolean> => ipcRenderer.invoke('agent-workspace:chat', params),
+  admit: (params: {
+    sessionId: string
+    text: string
+    delivery?: 'steer' | 'queue'
+    userMessageId?: string
+    providerId?: string
+    modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
+  }): Promise<{
+    input: import('@baishou/shared').SessionInputRecord
+    started: boolean
+    queued: boolean
+  }> => ipcRenderer.invoke('agent-workspace:admit', params),
+  listPendingInputs: (
+    sessionId: string
+  ): Promise<import('@baishou/shared').SessionInputRecord[]> =>
+    ipcRenderer.invoke('agent-workspace:list-pending-inputs', sessionId),
+  cancelPendingInput: (
+    inputId: string
+  ): Promise<import('@baishou/shared').SessionInputRecord | null> =>
+    ipcRenderer.invoke('agent-workspace:cancel-pending-input', inputId),
+  previewRollback: (params: {
+    sessionId: string
+    userMessageId: string
+  }): Promise<import('@baishou/shared').WorkspaceRollbackPreview> =>
+    ipcRenderer.invoke('agent-workspace:preview-rollback', params),
   rollbackRound: (params: {
     sessionId: string
     userMessageId: string
+    scope?: import('@baishou/shared').WorkspaceRollbackScope
   }): Promise<{ restored: string[]; deleted: string[]; skipped: string[] }> =>
     ipcRenderer.invoke('agent-workspace:rollback-round', params),
   git: {
