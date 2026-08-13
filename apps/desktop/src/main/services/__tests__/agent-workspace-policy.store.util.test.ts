@@ -24,7 +24,7 @@ describe('workspace policy defaults (migration safety)', () => {
     expect(hasCatchAllAllowRule(companionLike)).toBe(true)
     expect(hasCatchAllAllowRule(workspaceFresh)).toBe(false)
     expect(workspaceFresh.allowlist).toEqual([])
-    expect(workspaceFresh.exclusionList).toEqual(['workspace_delete'])
+    expect(workspaceFresh.exclusionList).toEqual([])
   })
 
   it('migrates legacy trustMode full_trust to catch-all allow', () => {

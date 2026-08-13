@@ -21,6 +21,10 @@ export function getActiveWorkspaceStreamSessionId(): string | null {
   return activeWorkspaceStreamSessionIds[activeWorkspaceStreamSessionIds.length - 1] ?? null
 }
 
+export function isWorkspaceSessionStreaming(sessionId: string): boolean {
+  return activeWorkspaceStreamSessionIds.includes(sessionId)
+}
+
 /** MCP / shared tool context: bind folder when a workspace stream is active. */
 export async function resolveActiveWorkspaceToolContext(): Promise<
   | {

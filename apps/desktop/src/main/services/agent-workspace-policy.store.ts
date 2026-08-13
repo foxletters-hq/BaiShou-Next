@@ -7,12 +7,14 @@ import {
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
   cloneBaishouAgentGateConfig,
   cloneWorkspaceToolManagementConfig,
-  inferWorkspacePresets,
-  sortPermissionRulesForLastMatch,
   type AgentWorkspacePolicy,
   type BaishouAgentGateConfig,
   type WorkspaceToolManagementConfig
 } from '@baishou/shared'
+import {
+  getGlobalWorkspaceGateConfig,
+  setGlobalWorkspaceGateConfig
+} from './workspace-agent-gate.store'
 
 interface WorkspacePolicyFile {
   version: 1 | 2
@@ -29,20 +31,6 @@ function emptyStore(): WorkspacePolicyFile {
   return { version: 2, byWorkspaceId: {} }
 }
 
-function migrateGateConfigV1ToV2(config: BaishouAgentGateConfig): BaishouAgentGateConfig {
-  const cloned = cloneBaishouAgentGateConfig(config, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
-  if (cloned.permissionRules?.length) {
-    cloned.permissionRules = sortPermissionRulesForLastMatch(cloned.permissionRules)
-  }
-  // 旧 FullTrust 已由 clone 迁成 `*: allow`；反推审批预设
-  if (!cloned.scopePreset || !cloned.approvalPreset) {
-    const inferred = inferWorkspacePresets(cloned)
-    cloned.scopePreset = inferred.scopePreset
-    cloned.approvalPreset = inferred.approvalPreset
-  }
-  return cloned
-}
-
 async function loadStore(): Promise<WorkspacePolicyFile> {
   if (cache) return cache
   try {
@@ -51,31 +39,17 @@ async function loadStore(): Promise<WorkspacePolicyFile> {
     const parsed = JSON.parse(raw) as WorkspacePolicyFile
     const byWorkspaceId =
       parsed?.byWorkspaceId && typeof parsed.byWorkspaceId === 'object' ? parsed.byWorkspaceId : {}
-
-    if (parsed?.version === 2) {
-      cache = { version: 2, byWorkspaceId }
-      return cache
-    }
-
-    // v1 → v2：排序规则 + 反推预设，并写 .bak
-    try {
-      await fs.copyFile(file, `${file}.bak`)
-    } catch {
-      // ignore backup failure
-    }
-
-    const migrated: Record<string, AgentWorkspacePolicy> = {}
+    // 旧 per-workspace gateConfig 直接丢弃，只保留 toolManagement
+    const normalized: Record<string, AgentWorkspacePolicy> = {}
     for (const [id, policy] of Object.entries(byWorkspaceId)) {
-      migrated[id] = {
-        ...policy,
+      normalized[id] = {
         workspaceId: id,
-        gateConfig: migrateGateConfigV1ToV2(policy.gateConfig),
-        toolManagement: cloneWorkspaceToolManagementConfig(policy.toolManagement),
-        updatedAt: policy.updatedAt ?? new Date().toISOString()
+        gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+        toolManagement: cloneWorkspaceToolManagementConfig(policy?.toolManagement),
+        updatedAt: policy?.updatedAt ?? new Date().toISOString()
       }
     }
-    cache = { version: 2, byWorkspaceId: migrated }
-    await saveStore()
+    cache = { version: 2, byWorkspaceId: normalized }
     return cache
   } catch {
     cache = emptyStore()
@@ -106,20 +80,24 @@ function normalizePolicy(
   if (!raw) return buildDefaultPolicy(workspaceId)
   return {
     workspaceId,
-    gateConfig: cloneBaishouAgentGateConfig(raw.gateConfig, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+    // gate 已全局化；磁盘上的 per-workspace gateConfig 忽略
+    gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
     toolManagement: cloneWorkspaceToolManagementConfig(raw.toolManagement),
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString()
   }
 }
 
-/** 读取工作区策略；不存在时返回安全默认值（不自动落盘） */
+/** 读取工作区策略；gate 返回占位默认（真实 gate 走 getWorkspaceGateConfig → 全局） */
 export async function getWorkspacePolicy(workspaceId: string): Promise<AgentWorkspacePolicy> {
   const store = await loadStore()
   return normalizePolicy(workspaceId, store.byWorkspaceId[workspaceId])
 }
 
-export async function getWorkspaceGateConfig(workspaceId: string): Promise<BaishouAgentGateConfig> {
-  return (await getWorkspacePolicy(workspaceId)).gateConfig
+/** 工作台门控：全局一份（workspaceId 仅保留 API 兼容） */
+export async function getWorkspaceGateConfig(
+  _workspaceId?: string
+): Promise<BaishouAgentGateConfig> {
+  return getGlobalWorkspaceGateConfig()
 }
 
 export async function getWorkspaceToolManagement(
@@ -135,13 +113,14 @@ export async function setWorkspacePolicy(
     toolManagement?: WorkspaceToolManagementConfig
   }
 ): Promise<AgentWorkspacePolicy> {
+  if (patch.gateConfig) {
+    await setGlobalWorkspaceGateConfig(patch.gateConfig)
+  }
   const store = await loadStore()
   const current = normalizePolicy(workspaceId, store.byWorkspaceId[workspaceId])
   const next: AgentWorkspacePolicy = {
     workspaceId,
-    gateConfig: patch.gateConfig
-      ? cloneBaishouAgentGateConfig(patch.gateConfig, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
-      : current.gateConfig,
+    gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
     toolManagement: patch.toolManagement
       ? cloneWorkspaceToolManagementConfig(patch.toolManagement)
       : current.toolManagement,
@@ -149,14 +128,18 @@ export async function setWorkspacePolicy(
   }
   store.byWorkspaceId[workspaceId] = next
   await saveStore()
+  // 对外仍返回当前全局 gate，避免调用方读到空占位
+  if (patch.gateConfig) {
+    next.gateConfig = await getGlobalWorkspaceGateConfig()
+  }
   return next
 }
 
 export async function setWorkspaceGateConfig(
-  workspaceId: string,
+  _workspaceId: string | undefined,
   gateConfig: BaishouAgentGateConfig
 ): Promise<BaishouAgentGateConfig> {
-  return (await setWorkspacePolicy(workspaceId, { gateConfig })).gateConfig
+  return setGlobalWorkspaceGateConfig(gateConfig)
 }
 
 export async function setWorkspaceToolManagement(
