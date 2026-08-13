@@ -34,7 +34,14 @@ export function summarizePreviewForHistory(preview: AgentGatePreview | undefined
     const cmd = preview.command.length > 80 ? `${preview.command.slice(0, 79)}…` : preview.command
     return `命令 ${cmd}`
   }
-  return preview.summary ? `${preview.subject}：${preview.summary}` : preview.subject
+  // content：优先 detailLines，避免与 title/subject 重复
+  if (preview.detailLines && preview.detailLines.length > 0) {
+    return preview.detailLines.slice(0, 3).join(' · ')
+  }
+  if (preview.summary && preview.summary !== preview.subject) {
+    return preview.summary
+  }
+  return null
 }
 
 export function humanizeRepeatHint(request: AgentGateRequest): string | null {

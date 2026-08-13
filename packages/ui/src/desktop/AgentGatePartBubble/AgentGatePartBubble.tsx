@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentGateReply, type AgentGatePartData, type AgentGateRequest } from '@baishou/shared'
-import { formatDecisionSourceLine, resolveAlwaysAllowPrefixHint } from '../../agent-gate'
+import { resolveAlwaysAllowPrefixHint } from '../../agent-gate'
 import { summarizePreviewForHistory } from '../../agent-gate/agent-gate-preview-copy'
 import styles from './AgentGatePartBubble.module.css'
 
@@ -50,10 +50,15 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
   const resolved = Boolean(resolution)
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)
   const alwaysScopeHint = resolveAlwaysAllowPrefixHint(request)
-  const decisionSourceLine = formatDecisionSourceLine(request)
   const showPendingScopeHint = !resolved && alwaysScopeHint
   const showResolvedAlwaysScope = resolution?.reply === AgentGateReply.Always && alwaysScopeHint
   const previewSummary = summarizePreviewForHistory(request.preview)
+  const numberedOptionsText =
+    request.options.length > 0
+      ? request.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
+      : null
+  const descriptionIsOptionsDump =
+    Boolean(request.description) && request.description?.trim() === numberedOptionsText
 
   return (
     <div
@@ -69,17 +74,19 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
       <div className={styles.title}>
         {resolved ? request.title : t('agent_gate.dock_title', '需要确认')}
       </div>
-      {previewSummary ? <div className={styles.description}>{previewSummary}</div> : null}
-      {!previewSummary && request.description ? (
+      {previewSummary && previewSummary !== request.title ? (
+        <div className={styles.description}>{previewSummary}</div>
+      ) : null}
+      {!previewSummary && !resolved && request.title ? (
+        <div className={styles.description}>{request.title}</div>
+      ) : null}
+      {!request.preview &&
+      request.description &&
+      !descriptionIsOptionsDump &&
+      request.description !== request.title &&
+      !request.description.startsWith(`${request.title}：`) &&
+      !request.description.startsWith(`${request.title}:`) ? (
         <div className={styles.description}>{request.description}</div>
-      ) : null}
-      {!resolved && !previewSummary && request.title && request.title !== request.description ? (
-        <div className={styles.meta}>{request.title}</div>
-      ) : null}
-      {!resolved && decisionSourceLine ? (
-        <div className={styles.meta}>
-          {t('agent_gate.decision_source', '来源：{{source}}', { source: decisionSourceLine })}
-        </div>
       ) : null}
       {showPendingScopeHint ? (
         <div className={styles.scopeHint}>
