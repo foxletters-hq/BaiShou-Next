@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
+import { useParams, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { toast } from '@baishou/ui'
 import type { InputBarRef } from '@baishou/ui'
 import type { AgentOutletContext } from '../agent-outlet-context'
@@ -30,12 +30,42 @@ import {
   isAgentStreamAbortError
 } from '@baishou/shared'
 
+/** 尚未落库的草稿会话路由（/chat、/chat/new-session、首页临时 new-<ts>） */
+function isDraftChatSessionId(sessionId: string | undefined): boolean {
+  if (!sessionId) return true
+  if (sessionId === 'new-session') return true
+  return /^new-\d+$/.test(sessionId)
+}
+
+type SendMeta = {
+  displayText?: string
+  skillRefs?: Array<{ command: string; content: string }>
+}
+
+function consumeChatInitMeta(draftSessionId: string): SendMeta | null {
+  try {
+    const key = `baishou:chat-init-meta:${draftSessionId}`
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    sessionStorage.removeItem(key)
+    const parsed = JSON.parse(raw) as SendMeta & { text?: string }
+    if (!parsed || typeof parsed !== 'object') return null
+    return {
+      displayText: parsed.displayText,
+      skillRefs: parsed.skillRefs
+    }
+  } catch {
+    return null
+  }
+}
+
 /**
  * 封装 Agent 聊天页面的全部业务状态流转、时序哨兵以及大模型对话控制逻辑的自定义控制器 Hook。
  */
 export function useAgentChatFlow() {
   const { t, i18n } = useTranslation()
   const { sessionId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { sessions, loadSessions } = useOutletContext<AgentOutletContext>() || { sessions: [] }
 
@@ -240,7 +270,11 @@ export function useAgentChatFlow() {
   const handleSend = async (
     text: string,
     attachments?: any[],
-    search?: boolean
+    search?: boolean,
+    meta?: {
+      displayText?: string
+      skillRefs?: Array<{ command: string; content: string }>
+    }
   ): Promise<boolean> => {
     let targetSessionId = sessionId
     if (search !== undefined) {
@@ -255,15 +289,22 @@ export function useAgentChatFlow() {
       return false
     }
 
+    const displayText = meta?.displayText?.trim() || text
+    const skillRefs = meta?.skillRefs
+    const needsNewSession = isDraftChatSessionId(sessionId)
+
     try {
-      if (!targetSessionId) {
-        targetSessionId = (await createSession(text)) ?? undefined
+      if (needsNewSession) {
+        targetSessionId = (await createSession(displayText)) ?? undefined
         if (!targetSessionId) {
           throw new Error(t('agent.error.create_session_failed', '创建会话失败'))
         }
       }
 
-      const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments)
+      const saveResult = await stream.saveUserMessage(targetSessionId, text, attachments, {
+        displayText,
+        skillRefs
+      })
       if ('error' in saveResult) {
         throw new Error(saveResult.error)
       }
@@ -272,15 +313,16 @@ export function useAgentChatFlow() {
       if (saveResult.userMessageId) {
         chat.appendSentUserMessage({
           id: saveResult.userMessageId,
-          content: text,
-          attachments: savedAttachments
+          content: displayText,
+          attachments: savedAttachments,
+          skillRefs
         })
         if (savedAttachments?.length) {
           chat.ensureMessageAttachments(saveResult.userMessageId, savedAttachments)
         }
       }
 
-      const wasNewSession = !sessionId
+      const wasNewSession = needsNewSession
       chat.setStreamSessionId(targetSessionId)
       scroll.beginFollowIfAtBottom()
 
@@ -326,6 +368,42 @@ export function useAgentChatFlow() {
       return false
     }
   }
+
+  const handleSendRef = useRef(handleSend)
+  handleSendRef.current = handleSend
+  const initConsumedRef = useRef(false)
+
+  useEffect(() => {
+    const raw = searchParams.get('init')
+    if (!raw?.trim() || initConsumedRef.current) return
+    if (!isDraftChatSessionId(sessionId)) return
+    if (stream.isStreaming) return
+    if (
+      !isConfiguredProviderId(model.currentProviderId) ||
+      !isConfiguredDialogueModelId(model.currentModelId)
+    ) {
+      return
+    }
+
+    initConsumedRef.current = true
+    const meta = sessionId ? consumeChatInitMeta(sessionId) : null
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('init')
+        return next
+      },
+      { replace: true }
+    )
+    void handleSendRef.current(raw, undefined, undefined, meta ?? undefined)
+  }, [
+    searchParams,
+    sessionId,
+    stream.isStreaming,
+    model.currentProviderId,
+    model.currentModelId,
+    setSearchParams
+  ])
 
   const handleStop = () => {
     stream.stopChat()

@@ -1,10 +1,20 @@
 .modal {
   width: min(640px, calc(100vw - 48px)) !important;
-  max-height: 88vh !important;
+  max-height: min(88vh, 720px) !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  padding-bottom: 16px !important;
+  padding-bottom: 20px !important;
+  box-sizing: border-box !important;
+}
+
+/* Modal 把 children 包在 .body 里，需参与纵向 flex，避免底部操作栏被裁切 */
+.modal > div:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .content {
@@ -92,9 +102,9 @@
 }
 
 .listWrap {
-  flex: 1;
-  min-height: 360px;
-  max-height: min(68vh, 640px);
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -113,23 +123,21 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  padding: 4px 2px 0;
+  padding: 4px 2px 2px;
 }
 
-.selectAllBtn,
-.batchDeleteBtn {
+.selectAllBtn {
   border: none;
   background: transparent;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: 8px;
-  transition: background-color 0.15s ease;
-}
-
-.selectAllBtn {
   color: var(--text-secondary);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .selectAllBtn:hover {
@@ -138,16 +146,26 @@
 }
 
 .batchDeleteBtn {
-  color: var(--color-error);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background-color: var(--color-error);
+  color: var(--text-on-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease, filter 0.15s ease;
 }
 
 .batchDeleteBtn:hover:not(:disabled) {
-  background: rgba(var(--color-error-rgb), 0.08);
+  filter: brightness(0.96);
 }
 
 .batchDeleteBtn:disabled {
-  opacity: 0.4;
+  background-color: rgba(148, 163, 184, 0.22);
+  color: var(--text-secondary);
   cursor: not-allowed;
+  filter: none;
 }
 
 .spacer {

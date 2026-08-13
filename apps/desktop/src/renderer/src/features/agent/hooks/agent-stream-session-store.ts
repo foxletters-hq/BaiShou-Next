@@ -1,19 +1,26 @@
 import {
+  appendTimelineReasoning,
+  appendTimelineText,
+  appendTimelineToolStart,
+  completeTimelineTool,
   createStreamingTextDisplayBuffer,
   isAgentStreamAbortError,
   type AgentGateRequest,
+  type AgentStreamTimelineItem,
   type StreamingTextDisplayBuffer
 } from '@baishou/shared'
 export interface SessionStreamState {
   text: string
   reasoning: string
+  /** 按发生顺序的 reasoning / tool / text 片段（流式时间线） */
+  timeline: AgentStreamTimelineItem[]
   isStreaming: boolean
   isCompressing: boolean
   compressionPhase: 'auto' | 'manual'
   compressionText: string
   compressionReasoning: string
   compressionTriggerMessageId: string | null
-  activeTool: { name: string; args: any } | null
+  activeTool: { name: string; args: any; callId?: string } | null
   completedTools: ToolExecution[]
   pendingEmojis: PendingEmoji[]
   error: string | null
@@ -27,6 +34,7 @@ export interface ToolExecution {
   name: string
   startTime: number
   durationMs: number
+  callId?: string
 }
 
 export interface PendingEmoji {
@@ -147,6 +155,7 @@ export function clearStreamBridgeState(state: SessionStreamState): void {
   state.isBridgeActive = false
   state.text = ''
   state.reasoning = ''
+  state.timeline = []
   state.completedTools = []
   state.activeTool = null
   state.activeToolStartTime = undefined
@@ -174,7 +183,9 @@ export function finishStreamingSession(sessionId: string): void {
     state.isStreaming = false
     state.isCompressing = false
     state.activeTool = null
-    const hasContent = Boolean(state.text.trim() || state.reasoning.trim())
+    const hasContent = Boolean(
+      state.text.trim() || state.reasoning.trim() || state.timeline.length > 0
+    )
     if (!state.isBridgeActive) {
       state.isBridgeActive = hasContent
     }
@@ -186,6 +197,7 @@ export function getOrCreateSessionState(sessionId: string): SessionStreamState {
     sessionStates[sessionId] = {
       text: '',
       reasoning: '',
+      timeline: [],
       isStreaming: false,
       isCompressing: false,
       compressionPhase: 'auto',
@@ -200,6 +212,9 @@ export function getOrCreateSessionState(sessionId: string): SessionStreamState {
       pendingAgentGate: null,
       isAgentGateReplying: false
     }
+  }
+  if (!Array.isArray(sessionStates[sessionId].timeline)) {
+    sessionStates[sessionId].timeline = []
   }
   return sessionStates[sessionId]
 }
@@ -252,14 +267,30 @@ function registerGlobalStreamIpcListeners(): () => void {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId || userStoppedSessions.has(sId)) return
-    ensureStreamTextDisplayBuffer(sId).push(chunk ?? '')
+    const delta = chunk ?? ''
+    updateSessionState(
+      sId,
+      (state) => {
+        appendTimelineText(state.timeline, delta)
+      },
+      { notify: false }
+    )
+    ensureStreamTextDisplayBuffer(sId).push(delta)
   }
 
   const onReasoningChunk = (_: unknown, payload: any) => {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     const chunk = typeof payload === 'object' ? payload?.chunk : payload
     if (!sId || userStoppedSessions.has(sId)) return
-    ensureStreamReasoningDisplayBuffer(sId).push(chunk ?? '')
+    const delta = chunk ?? ''
+    updateSessionState(
+      sId,
+      (state) => {
+        appendTimelineReasoning(state.timeline, delta)
+      },
+      { notify: false }
+    )
+    ensureStreamReasoningDisplayBuffer(sId).push(delta)
   }
 
   const onToolStart = (_: unknown, payload: any) => {
@@ -267,6 +298,10 @@ function registerGlobalStreamIpcListeners(): () => void {
     if (!sId || userStoppedSessions.has(sId)) return
     const name = typeof payload === 'object' ? payload?.name : payload?.name
     const args = typeof payload === 'object' ? payload?.args : payload?.args
+    const toolCallId =
+      typeof payload === 'object' && typeof payload?.toolCallId === 'string'
+        ? payload.toolCallId
+        : `tool-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     // emoji_send 工具：即时将表情包加入 pendingEmojis（在流式文本之前显示）
     if (name === 'emoji_send') {
       const emojiId =
@@ -290,8 +325,15 @@ function registerGlobalStreamIpcListeners(): () => void {
       return
     }
     updateSessionState(sId, (state) => {
-      state.activeToolStartTime = Date.now()
-      state.activeTool = { name, args }
+      const start = Date.now()
+      state.activeToolStartTime = start
+      state.activeTool = { name, args, callId: toolCallId }
+      appendTimelineToolStart(state.timeline, {
+        callId: toolCallId,
+        name,
+        args,
+        startTime: start
+      })
     })
   }
 
@@ -299,13 +341,19 @@ function registerGlobalStreamIpcListeners(): () => void {
     const sId = typeof payload === 'object' ? payload?.sessionId : null
     if (!sId || userStoppedSessions.has(sId)) return
     const name = typeof payload === 'object' ? payload?.name : payload?.name
+    const toolCallId =
+      typeof payload === 'object' && typeof payload?.toolCallId === 'string'
+        ? payload.toolCallId
+        : undefined
+    const result = typeof payload === 'object' ? payload?.result : undefined
     // emoji_send 工具不在流式阶段显示工具卡片（表情包已作为 pendingEmojis 即时显示）
     if (name === 'emoji_send') return
     updateSessionState(sId, (state) => {
       const start = state.activeToolStartTime || Date.now()
       const durationMs = Date.now() - start
-      state.completedTools.push({ name, startTime: start, durationMs })
+      state.completedTools.push({ name, startTime: start, durationMs, callId: toolCallId })
       state.activeTool = null
+      completeTimelineTool(state.timeline, { callId: toolCallId, name, result })
     })
   }
 
@@ -323,7 +371,9 @@ function registerGlobalStreamIpcListeners(): () => void {
     updateSessionState(sId, (state) => {
       state.isStreaming = false
       // 用户取消后不要因残留 buffer 重新点亮 bridge
-      state.isBridgeActive = userStopped ? false : Boolean(fullText.trim() || fullReasoning.trim())
+      state.isBridgeActive = userStopped
+        ? false
+        : Boolean(fullText.trim() || fullReasoning.trim() || state.timeline.length > 0)
       if (!userStopped && payload?.error && !isAgentStreamAbortError(payload.error)) {
         state.error = payload.error
       } else {

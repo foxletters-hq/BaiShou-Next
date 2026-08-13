@@ -86,6 +86,16 @@
   box-sizing: border-box;
 }
 
+/* 聊天顶栏紧凑态：与右侧 iconBtn / 计费器同高（继承 --chrome-chip-height） */
+.compact .currentAssistantCard {
+  height: var(--chrome-chip-height, 36px);
+  min-height: var(--chrome-chip-height, 36px);
+  max-height: var(--chrome-chip-height, 36px);
+  padding: 0 10px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 .currentAssistantCard:hover {
   background: var(--bg-surface-high);
   border-color: var(--border-control);
@@ -115,7 +125,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .assistantName {
@@ -125,6 +136,25 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 聊天顶栏紧凑态：字号与侧栏伙伴名一致 */
+.compact .assistantName {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.compact .assistantNameRow {
+  flex-wrap: nowrap;
+}
+
+.compact .assistantInfo {
+  margin-left: 8px;
+}
+
+.compact .unfoldIcon {
+  width: 14px;
+  height: 14px;
 }
 
 .assistantDesc {
