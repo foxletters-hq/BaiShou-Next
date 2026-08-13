@@ -60,7 +60,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(var(--color-primary-rgb), 0.12);
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
 }
 
@@ -72,7 +72,7 @@
 }
 
 .assistantName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -80,7 +80,7 @@
 }
 
 .chevron {
-  font-size: 9px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
@@ -92,7 +92,7 @@
   padding: 0 10px;
   border-radius: 10px;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
 }
 
 .right .chip {
@@ -139,12 +139,27 @@
 }
 
 .modelName {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 500;
+  line-height: 1.45;
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding-bottom: 1px;
+}
+
+.modelEffort {
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-bottom: 1px;
 }
 
 .changesPanelBtn {

@@ -6,4 +6,6 @@
   box-sizing: border-box;
   /* 浮层卡已在 MainLayout；此处只填满 */
   background: transparent;
+  /* 字体 / 字号走全局 SSOT：--font-family + --ui-fs-* */
+  font-family: var(--font-family-main, var(--font-family));
 }

@@ -4,7 +4,7 @@
   height: 100%;
   background: transparent;
   overflow: hidden;
-  font-family: var(--font-family-main, inherit);
+  font-family: inherit;
 }
 
 .main {
@@ -47,7 +47,7 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
@@ -69,7 +69,7 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   font-family: inherit;
   transition:
@@ -83,7 +83,7 @@
 }
 
 .addWorkspaceBtnIcon {
-  font-size: 20px;
+  font-size: var(--ui-fs-xl);
   font-weight: 400;
   line-height: 1;
 }
@@ -106,13 +106,13 @@
 }
 
 .streamingHint {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
 .error {
   color: #cf222e;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
 }
 
 .inputArea {
@@ -127,7 +127,7 @@
   border-radius: 8px;
   background: var(--bg-surface-high);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.5;
 }
 

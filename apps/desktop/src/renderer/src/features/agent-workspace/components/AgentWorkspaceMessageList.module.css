@@ -1,76 +1,152 @@
+.scrollWrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollBottomBtn {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--border-control, var(--border-muted));
+  background: var(--bg-surface, #fff);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.08));
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.scrollBottomBtn:hover {
+  background: var(--bg-surface-high, var(--bg-surface));
+  color: var(--text-primary);
+  border-color: var(--border-strong, var(--border-control));
+}
+
 .list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px 20px;
-  overflow-y: auto;
-  flex: 1;
-  font-family: var(--font-family-main, inherit);
-}
-
-.userRow,
-.assistantRow {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.userHeader {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.userBubble {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--bg-surface-high);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.userBubble p {
-  margin: 0;
-}
-
-.assistantBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.assistantBubble {
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--bg-surface);
-  white-space: pre-wrap;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.assistantReasoning {
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--bg-app, rgba(0, 0, 0, 0.03));
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-.rollbackBtn {
-  flex-shrink: 0;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
-  background: transparent;
-  cursor: pointer;
-  font-size: 12px;
+  gap: 22px;
+  padding: 16px 14px 12px;
+  margin-top: auto;
+  width: 100%;
+  box-sizing: border-box;
   font-family: inherit;
 }
 
+.empty {
+  margin: 0 auto;
+  padding: 12px 12px 28px;
+  max-width: 22rem;
+  text-align: center;
+  font-size: var(--ui-fs-sm, 12px);
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+
+/* 单轮 / 单段：线性时间线上的一块 */
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.userTurn {
+  align-items: flex-start;
+}
+
+.assistantTurn {
+  align-items: stretch;
+}
+
+/* 用户发言锚点：浅底圆角，不是对聊气泡体系 */
+.userAnchor {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--bg-surface-high, var(--bg-surface));
+  color: var(--text-primary);
+  /* 与 AgentMarkdown 正文字号一致 */
+  font-size: var(--ui-fs-lg);
+  line-height: 1.6;
+  width: fit-content;
+  max-width: min(92%, 48ch);
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.userAnchor p {
+  margin: 0;
+}
+
+.turnActions {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+}
+
+.userTurn .turnActions {
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.assistantTurn .turnActions {
+  justify-content: flex-start;
+  /* MessageActionBar 自身在 .chat-bubble-container:hover 下显现 */
+}
+
+.userEditWrap {
+  width: 100%;
+  max-width: min(92%, 52ch);
+}
+
+.turnDimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.rollbackBtn {
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: var(--ui-fs-sm);
+  font-family: inherit;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+
+.userTurn:hover .rollbackBtn,
+.userTurn:focus-within .rollbackBtn {
+  opacity: 1;
+}
+
 .rollbackBtn:hover {
+  color: var(--text-secondary);
   background: var(--bg-surface-high);
 }
 
@@ -80,13 +156,58 @@
   border: 1px solid rgba(244, 67, 54, 0.35);
   background: rgba(244, 67, 54, 0.08);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
+}
+
+.streamError {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(244, 67, 54, 0.08);
+  color: rgba(244, 67, 54, 0.95);
+  font-size: var(--ui-fs-md);
+  line-height: 1.45;
 }
 
 .streamToolErrors {
-  margin: 4px 0 0;
+  margin: 0;
   padding-left: 18px;
   color: rgba(244, 67, 54, 0.95);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
+}
+
+.bouncingDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  animation: workspaceDotBounce 1.2s infinite ease-in-out;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes workspaceDotBounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
 }
