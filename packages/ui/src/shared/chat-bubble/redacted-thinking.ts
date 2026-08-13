@@ -97,20 +97,16 @@ function extractClosedThinkingBlocks(content: string, reasoning: string) {
 }
 
 function extractUnclosedThinkingBlocks(content: string, reasoning: string) {
+  // Phase-2：未闭合开标签不得把后续正文吞进 reasoning。
+  // 仅剥掉残留开标签，正文留在 content；流式未闭合时由 reasoning 通道承载思考。
   let cleanContent = content
-  let cleanReasoning = reasoning
 
   for (const openTag of UNCLOSED_THINK_OPEN_TAGS) {
     if (!cleanContent.includes(openTag)) continue
-    const parts = cleanContent.split(openTag)
-    cleanContent = parts[0] || ''
-    const unclosed = parts.slice(1).join(openTag)
-    if (unclosed) {
-      cleanReasoning += (cleanReasoning ? '\n' : '') + unclosed.trim()
-    }
+    cleanContent = cleanContent.split(openTag).join('')
   }
 
-  return { cleanContent, cleanReasoning }
+  return { cleanContent, cleanReasoning: reasoning }
 }
 
 /** 从 AI 正文中剥离 think 标签并脱壳元数据，与 desktop/native ChatBubble 共用 */

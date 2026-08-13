@@ -10,9 +10,24 @@ export interface ComposerDraftStorage {
 
 export type ComposerSendResult = boolean | Promise<boolean>
 
+/** 发送时附带的展示元数据：气泡显示 /command，模型仍用展开后的 text */
+export type ComposerSendSkillRef = {
+  command: string
+  content: string
+}
+
+export type ComposerSendMeta = {
+  /** 含 `/command` 的展示文案 */
+  displayText?: string
+  skillRefs?: ComposerSendSkillRef[]
+  /** 忙时投递：插入当前 / 排队 */
+  delivery?: 'steer' | 'queue'
+}
+
 /** onSend 返回 false 时保留输入框内容与草稿 */
 export type ComposerOnSend = (
   text: string,
   attachments?: unknown[],
-  searchMode?: boolean
+  searchMode?: boolean,
+  meta?: ComposerSendMeta
 ) => ComposerSendResult
