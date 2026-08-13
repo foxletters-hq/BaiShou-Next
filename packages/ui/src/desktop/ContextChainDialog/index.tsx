@@ -1,5 +1,6 @@
 import React from 'react'
 import { ListTree } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ContextChainDialog.module.css'
 import { MockChatMessage } from '@baishou/shared'
 import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
@@ -102,7 +103,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
   ]
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={withAppContentOverlay(styles.overlay)} onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleRow}>

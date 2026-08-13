@@ -110,7 +110,7 @@
 
 /* RAG-style search bar for vector recall tab */
 .ragSearchBar {
-  padding: 0 24px 12px;
+  padding: 12px 24px 12px;
 }
 
 .ragSearchInner {

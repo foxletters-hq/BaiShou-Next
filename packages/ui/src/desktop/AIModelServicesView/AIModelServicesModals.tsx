@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { withAppContentOverlay } from '../overlay'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import { resolveProviderTypeLabel } from './ai-model-services.constants'
@@ -46,7 +47,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
       {isAddModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={styles.addModalOverlay}>
+          <div className={withAppContentOverlay(styles.addModalOverlay)}>
             <div className={styles.addModalContent}>
               <div className={styles.addModalHeader}>
                 {t('agent.provider.add_title', '新增 AI 供应商')}
@@ -133,7 +134,7 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
       {isTestModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={styles.testModalOverlay}>
+          <div className={withAppContentOverlay(styles.testModalOverlay)}>
             <div className={styles.testModalContent}>
               <div className={styles.addModalHeader}>
                 <h3>{t('ai_config.test_connection_title', '选择测试模型')}</h3>

@@ -3,6 +3,7 @@ import React from 'react'
 import { ListTree } from 'lucide-react'
 import type { MockChatMessage } from '@baishou/shared'
 import { CONTEXT_CHAIN_HEADER_ICON_SIZE } from '../../shared/icons/icon-sizes'
+import { withAppContentOverlay } from '../overlay'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { ContextChainCompressionHelpButton } from './ContextChainCompressionHelpButton'
 import {
@@ -236,7 +237,9 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
   return (
     <>
       <div
-        className={`${panelStyles.backdrop} ${transition.active ? panelStyles.backdropActive : ''}`}
+        className={withAppContentOverlay(
+          `${panelStyles.backdrop} ${transition.active ? panelStyles.backdropActive : ''}`
+        )}
         onClick={onClose}
         aria-hidden
       />

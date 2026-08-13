@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, X, Check, ArrowUpCircle, BookOpen, Loader2, Copy } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './RecallDialog.module.css'
-import seg from '../shared/SegmentedControl.module.css'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/DashboardSharedMemoryCard'
 import { toast } from '../Toast/useToast'
 import { Pagination } from '../Pagination/index'
@@ -107,33 +108,22 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
 
   return (
     <>
-      <div className={styles.overlay}>
+      <div className={withAppContentOverlay(styles.overlay)}>
         <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
           <div className={styles.header}>
-            <div className={seg.group}>
-              <button
-                type="button"
-                className={`${seg.btn} ${activeTab === 'diary' ? seg.btnActive : ''}`}
-                onClick={() => {
-                  setActiveTab('diary')
-                  setSelectedIds(new Set())
-                  setSearchQuery('')
-                }}
-              >
-                {t('recall.tab_diary', '日记档案')}
-              </button>
-              <button
-                type="button"
-                className={`${seg.btn} ${activeTab === 'memory' ? seg.btnActive : ''}`}
-                onClick={() => {
-                  setActiveTab('memory')
-                  setSelectedIds(new Set())
-                  setSearchQuery('')
-                }}
-              >
-                {t('recall.tab_memory', '向量记忆')}
-              </button>
-            </div>
+            <SegmentedControl
+              value={activeTab}
+              aria-label={t('recall.tabs', '回忆类型')}
+              onChange={(tab) => {
+                setActiveTab(tab)
+                setSelectedIds(new Set())
+                setSearchQuery('')
+              }}
+              options={[
+                { value: 'diary', label: t('recall.tab_diary', '日记档案') },
+                { value: 'memory', label: t('recall.tab_memory', '向量记忆') }
+              ]}
+            />
             <button className={styles.closeBtn} onClick={onClose}>
               <X size={16} strokeWidth={3} />
             </button>
@@ -155,22 +145,18 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <div className={`${seg.group} ${seg.groupInline}`}>
-                  <button
-                    type="button"
-                    className={`${seg.btn} ${searchMode === 'semantic' ? seg.btnActive : ''}`}
-                    onClick={() => searchMode !== 'semantic' && onToggleSearchMode?.()}
-                  >
-                    {t('recall.search_semantic', '语义搜索')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${seg.btn} ${searchMode === 'text' ? seg.btnActive : ''}`}
-                    onClick={() => searchMode !== 'text' && onToggleSearchMode?.()}
-                  >
-                    {t('recall.search_text', '文本搜索')}
-                  </button>
-                </div>
+                <SegmentedControl
+                  inline
+                  value={searchMode}
+                  aria-label={t('recall.search_mode', '搜索模式')}
+                  onChange={(mode) => {
+                    if (mode !== searchMode) onToggleSearchMode?.()
+                  }}
+                  options={[
+                    { value: 'semantic', label: t('recall.search_semantic', '语义搜索') },
+                    { value: 'text', label: t('recall.search_text', '文本搜索') }
+                  ]}
+                />
                 {searchQuery && (
                   <div className={styles.ragSearchClear} onClick={() => setSearchQuery('')}>
                     <X size={16} />

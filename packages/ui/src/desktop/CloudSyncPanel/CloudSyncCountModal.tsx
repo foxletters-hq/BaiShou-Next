@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import React from 'react'
 import { Archive } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 
@@ -20,7 +21,7 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
   } = vm
 
   return (
-    <div className={styles.modalOverlay} onClick={() => setShowCountModal(false)}>
+    <div className={withAppContentOverlay(styles.modalOverlay)} onClick={() => setShowCountModal(false)}>
       <div className={styles.countModal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.countModalHeader}>
           <div
