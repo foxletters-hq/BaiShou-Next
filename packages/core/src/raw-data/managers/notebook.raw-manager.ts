@@ -241,7 +241,11 @@ export class NotebookRawManager implements WholeFileKindManager {
 
   async absolutePath(relativePath: string): Promise<string> {
     const base = await this.baseDir()
-    return path.join(base, relativePath)
+    const abs = path.resolve(base, relativePath)
+    if (!path.isPathInside(base, abs)) {
+      throw new Error(`path escapes notebooks root: ${relativePath}`)
+    }
+    return abs
   }
 
   private async maybeBackup(abs: string, nextHash: string): Promise<void> {

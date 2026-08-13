@@ -47,7 +47,11 @@ export interface ExtractEngineContext {
   existingPageTexts?: string[]
   language?: string
   dpi?: number
+  /** OCR / vision 并发页数（1–3，默认 1） */
+  concurrency?: number
   onProgress?: (info: { page: number; total: number }) => void
+  /** 取消提取时中断 */
+  signal?: AbortSignal
 }
 
 export interface ExtractEngine {

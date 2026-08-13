@@ -18,8 +18,17 @@ export interface KnowledgeExtractConfig {
   defaultEngine?: ExtractEngineId
   ocrLanguage?: string
   ocrDpi?: number
+  /** OCR / vision 并发页数（1–3） */
+  ocrConcurrency?: number
   visionModelConfigured?: boolean
   visionModelId?: string | null
+}
+
+export interface KnowledgeExtractProgress {
+  sourceId: string
+  page: number
+  total: number
+  phase?: 'ocr' | 'vision' | 'render'
 }
 
 export interface KnowledgeIngestDeps {
@@ -31,6 +40,8 @@ export interface KnowledgeIngestDeps {
   embedding?: KnowledgeIngestEmbeddingConfig
   /** 提取引擎偏好；可每次 process 时覆盖 */
   getExtractConfig?: () => Promise<KnowledgeExtractConfig> | KnowledgeExtractConfig
+  /** OCR / vision 逐页进度（可选） */
+  onExtractProgress?: (info: KnowledgeExtractProgress) => void
   insertChunk: (params: {
     chunkId: string
     notebookId: string
@@ -45,6 +56,106 @@ export interface KnowledgeIngestDeps {
   deleteChunksBySource: (sourceId: string) => Promise<void>
   /** 可选：真实网络嵌入；缺省时用 insertChunk 传入的向量由调用方 mock */
   embedText?: (text: string, modelId: string) => Promise<number[]>
+}
+
+/** 入队 OCR 时暂存的页码覆盖（consumer 无 payload 时用） */
+const pendingExtractOverrides = new Map<
+  string,
+  { pageNumbers?: number[]; onlyMissingPages?: boolean; forceEngine?: ExtractEngineId }
+>()
+
+/** 进行中的提取取消控制器 */
+const extractAbortControllers = new Map<string, AbortController>()
+
+/**
+ * claim 之后、AbortController 注册之前的保护窗。
+ * recoverStale 不得清掉这些 source，否则会与正在启动的 extract 竞态。
+ */
+const extractLiveGuards = new Set<string>()
+
+/** consumer claim 到 extract job 后立刻调用；process 结束在 finally 中解除 */
+export function markExtractJobLive(sourceId: string): void {
+  extractLiveGuards.add(sourceId)
+}
+
+export function unmarkExtractJobLive(sourceId: string): void {
+  extractLiveGuards.delete(sourceId)
+}
+
+function isExtractProtected(sourceId: string): boolean {
+  return (
+    extractAbortControllers.has(sourceId) ||
+    extractLiveGuards.has(sourceId) ||
+    pendingExtractOverrides.has(sourceId)
+  )
+}
+
+function endExtractAbort(sourceId: string, controller?: AbortController): void {
+  const cur = extractAbortControllers.get(sourceId)
+  if (!controller || cur === controller) {
+    extractAbortControllers.delete(sourceId)
+  }
+}
+
+function requestExtractAbort(sourceId: string): void {
+  pendingExtractOverrides.delete(sourceId)
+  const cur = extractAbortControllers.get(sourceId)
+  if (cur) cur.abort()
+}
+
+function isExtractCancelled(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('knowledge-extract-cancelled')
+}
+
+function throwIfExtractAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new Error('knowledge-extract-cancelled')
+}
+
+async function revertIfExtractAborted(
+  repo: KnowledgeRepository,
+  sourceId: string,
+  signal?: AbortSignal
+): Promise<void> {
+  if (!signal?.aborted) return
+  const latest = await repo.getSource(sourceId)
+  if (latest) {
+    const status = resolveStatusAfterCancel(latest)
+    await repo.updateSourceStatus(sourceId, status, {
+      errorMessage: status === 'failed' ? 'cancelled' : null
+    })
+  }
+  await repo.deleteIngestJobsForSource(sourceId)
+  throw new Error('knowledge-extract-cancelled')
+}
+
+function resolveStatusAfterCancel(source: {
+  extractedTextHash?: string | null
+  pageCount?: number | null
+  textPageCount?: number | null
+  extractEngine?: string | null
+}): 'needs_ocr' | 'partial' | 'failed' {
+  if (
+    source.extractedTextHash &&
+    source.pageCount != null &&
+    source.textPageCount != null &&
+    source.textPageCount > 0 &&
+    source.textPageCount < source.pageCount
+  ) {
+    return 'partial'
+  }
+  if (source.extractedTextHash && (source.textPageCount ?? 0) > 0) {
+    return 'partial'
+  }
+  const engine = source.extractEngine
+  if (engine === 'ocr' || engine === 'vision') {
+    return 'needs_ocr'
+  }
+  // 曾探测到页数但尚无文本：更像 OCR 欠账，而不是普通导入取消
+  if (source.pageCount != null && source.pageCount > 0 && (source.textPageCount ?? 0) === 0) {
+    return 'needs_ocr'
+  }
+  return 'failed'
 }
 
 function newId(prefix: string): string {
@@ -269,6 +380,7 @@ ${citeBlock}
 
   /**
    * 对 needs_ocr / partial 资料只 OCR 缺失页（或整份）。
+   * 入队后立即返回，由 ingest consumer 异步执行，避免卡死主进程。
    */
   async ocrMissingPages(
     sourceId: string,
@@ -276,28 +388,104 @@ ${citeBlock}
       engine?: ExtractEngineId
       pageNumbers?: number[]
     }
-  ): Promise<{ degradationMessage?: string }> {
+  ): Promise<{ queued: true }> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
-    if (
-      source.status !== 'needs_ocr' &&
-      source.status !== 'partial' &&
-      source.status !== 'failed'
-    ) {
-      // 仍允许强制重跑
-    }
 
     const engine = options?.engine ?? 'ocr'
     await this.deps.repo.updateSourceStatus(sourceId, 'pending', {
       errorMessage: null,
       extractEngine: engine
     })
-    const result = await this.processExtractJob(sourceId, {
+    pendingExtractOverrides.set(sourceId, {
       forceEngine: engine,
       pageNumbers: options?.pageNumbers,
       onlyMissingPages: !options?.pageNumbers?.length
     })
-    return { degradationMessage: result.degradationMessage }
+    await this.deps.repo.enqueueIngestJob({
+      notebookId: source.notebookId,
+      sourceId,
+      stage: 'extract',
+      vaultId: source.vaultId?.trim() || vaultId
+    })
+    return { queued: true }
+  }
+
+  /**
+   * 取消排队中或进行中的提取 / OCR。
+   */
+  async cancelExtract(sourceId: string): Promise<{ cancelled: true; status: string }> {
+    requestExtractAbort(sourceId)
+    const source = await this.deps.repo.getSource(sourceId)
+    if (!source) throw new Error(`source not found: ${sourceId}`)
+
+    await this.deps.repo.deleteIngestJobsForSource(sourceId)
+    if (source.status === 'embedding') {
+      await this.deps.repo.updateSourceStatus(sourceId, 'failed', {
+        errorMessage: 'cancelled'
+      })
+      return { cancelled: true, status: 'failed' }
+    }
+    const status = resolveStatusAfterCancel(source)
+    await this.deps.repo.updateSourceStatus(sourceId, status, {
+      errorMessage: status === 'failed' ? 'cancelled' : null
+    })
+    return { cancelled: true, status }
+  }
+
+  /**
+   * 进程重启后恢复：清掉上次崩溃遗留的 extracting / running extract，避免 UI 永久卡住。
+   * 本进程正在跑或刚 claim 的提取（AbortController / live guard / pending override）不会被清掉。
+   * embed 的孤儿 running 改回 pending 以便续跑。
+   */
+  async recoverStaleIngestState(): Promise<{
+    resetSources: number
+    reclaimedEmbedJobs: number
+    droppedExtractJobs: number
+  }> {
+    let resetSources = 0
+    let droppedExtractJobs = 0
+    let reclaimedEmbedJobs = 0
+
+    const running = await this.deps.repo.listIngestJobsByStatus('running')
+    for (const job of running) {
+      if (job.stage === 'extract') {
+        if (isExtractProtected(job.sourceId)) continue
+        await this.deps.repo.deleteIngestJobsForSource(job.sourceId, 'extract')
+        droppedExtractJobs += 1
+        const source = await this.deps.repo.getSource(job.sourceId)
+        if (source && (source.status === 'extracting' || source.status === 'pending')) {
+          await this.deps.repo.updateSourceStatus(source.id, resolveStatusAfterCancel(source), {
+            errorMessage: null
+          })
+          resetSources += 1
+        }
+        continue
+      }
+
+      if (job.stage === 'embed') {
+        await this.deps.repo.enqueueIngestJob({
+          notebookId: job.notebookId,
+          sourceId: job.sourceId,
+          stage: 'embed',
+          vaultId: job.vaultId
+        })
+        reclaimedEmbedJobs += 1
+      }
+    }
+
+    const extracting = await this.deps.repo.listSourcesByStatus('extracting')
+    for (const source of extracting) {
+      if (isExtractProtected(source.id)) continue
+      await this.deps.repo.deleteIngestJobsForSource(source.id, 'extract')
+      await this.deps.repo.updateSourceStatus(source.id, resolveStatusAfterCancel(source), {
+        errorMessage: null
+      })
+      resetSources += 1
+    }
+
+    return { resetSources, reclaimedEmbedJobs, droppedExtractJobs }
   }
 
   async rebuildIndex(notebookId: string): Promise<void> {
@@ -324,20 +512,45 @@ ${citeBlock}
       onlyMissingPages?: boolean
     }
   ): Promise<ExtractResult> {
-    const vaultId = requireVaultId(this.deps.getVaultId)
-    const source = await this.deps.repo.getSource(sourceId)
-    if (!source) throw new Error(`source not found: ${sourceId}`)
-
-    await this.deps.repo.updateSourceStatus(sourceId, 'extracting')
+    // 先于任何 await 注册，避免 recoverStale 与 getSource 窗口竞态
+    const abort = new AbortController()
+    extractAbortControllers.set(sourceId, abort)
 
     try {
-      return await this.runExtract(sourceId, source, vaultId, override)
+      const vaultId = requireVaultId(this.deps.getVaultId)
+      const source = await this.deps.repo.getSource(sourceId)
+      if (!source) throw new Error(`source not found: ${sourceId}`)
+
+      const queued = pendingExtractOverrides.get(sourceId)
+      if (queued) pendingExtractOverrides.delete(sourceId)
+      const mergedOverride = {
+        forceEngine: override?.forceEngine ?? queued?.forceEngine,
+        pageNumbers: override?.pageNumbers ?? queued?.pageNumbers,
+        onlyMissingPages: override?.onlyMissingPages ?? queued?.onlyMissingPages
+      }
+
+      throwIfExtractAborted(abort.signal)
+      await this.deps.repo.updateSourceStatus(sourceId, 'extracting')
+
+      return await this.runExtract(sourceId, source, vaultId, mergedOverride, abort.signal)
     } catch (e: unknown) {
+      if (isExtractCancelled(e)) {
+        const latest = await this.deps.repo.getSource(sourceId)
+        if (latest) {
+          const status = resolveStatusAfterCancel(latest)
+          await this.deps.repo.updateSourceStatus(sourceId, status, {
+            errorMessage: status === 'failed' ? 'cancelled' : null
+          })
+        }
+        throw e
+      }
       const message = e instanceof Error ? e.message : String(e)
       await this.deps.repo.updateSourceStatus(sourceId, 'failed', {
         errorMessage: message.slice(0, 500)
       })
       throw e
+    } finally {
+      endExtractAbort(sourceId, abort)
     }
   }
 
@@ -349,7 +562,8 @@ ${citeBlock}
       forceEngine?: ExtractEngineId
       pageNumbers?: number[]
       onlyMissingPages?: boolean
-    }
+    },
+    signal?: AbortSignal
   ): Promise<ExtractResult> {
     if (!source) throw new Error(`source not found: ${sourceId}`)
     const rel = source.relativePath
@@ -406,7 +620,12 @@ ${citeBlock}
       } else {
         const engine = getExtractEngine(resolved.engine)
         let existingPageTexts: string[] | undefined
-        if (override?.onlyMissingPages || override?.pageNumbers?.length) {
+        const shouldMergeExisting =
+          override?.onlyMissingPages ||
+          Boolean(override?.pageNumbers?.length) ||
+          resolved.engine === 'ocr' ||
+          resolved.engine === 'vision'
+        if (shouldMergeExisting) {
           const existing = await this.deps.notebookManager.readExtractedText(
             source.notebookId,
             sourceId
@@ -421,12 +640,24 @@ ${citeBlock}
             }
           }
         }
+        const phase = resolved.engine === 'vision' ? 'vision' : 'ocr'
         const engineResult = await engine.extract({
           absolutePath: abs,
           pageNumbers: override?.pageNumbers,
           existingPageTexts,
           language: cfg.ocrLanguage,
-          dpi: cfg.ocrDpi
+          dpi: cfg.ocrDpi,
+          concurrency: cfg.ocrConcurrency,
+          signal,
+          onProgress: (info) => {
+            if (signal?.aborted) throw new Error('knowledge-extract-cancelled')
+            this.deps.onExtractProgress?.({
+              sourceId,
+              page: info.page,
+              total: info.total,
+              phase
+            })
+          }
         })
         result = {
           ...engineResult,
@@ -450,6 +681,9 @@ ${citeBlock}
       }
     }
 
+    // 取消可能发生在提取算完之后、写库之前：禁止成功路径覆盖取消态
+    throwIfExtractAborted(signal)
+
     if (!result.text.trim() || result.quality === 'needs_ocr') {
       await this.deps.repo.updateSourceStatus(sourceId, 'needs_ocr', {
         errorMessage:
@@ -458,6 +692,7 @@ ${citeBlock}
         textPageCount: result.textPageCount,
         extractEngine: usedEngine
       })
+      await revertIfExtractAborted(this.deps.repo, sourceId, signal)
       if (result.text.trim()) {
         await this.deps.notebookManager.writeExtracted(
           source.notebookId,
@@ -465,6 +700,7 @@ ${citeBlock}
           result.text,
           result.pages
         )
+        await revertIfExtractAborted(this.deps.repo, sourceId, signal)
       }
       return result
     }
@@ -475,6 +711,7 @@ ${citeBlock}
       result.text,
       result.pages
     )
+    await revertIfExtractAborted(this.deps.repo, sourceId, signal)
 
     const nextStatus = result.quality === 'partial' ? 'partial' : 'embedding'
     await this.deps.repo.updateSourceStatus(sourceId, nextStatus, {
@@ -484,6 +721,7 @@ ${citeBlock}
       extractEngine: usedEngine,
       errorMessage: [result.degradationMessage, result.evidence].filter(Boolean).join('；') || null
     })
+    await revertIfExtractAborted(this.deps.repo, sourceId, signal)
 
     await this.deps.repo.enqueueIngestJob({
       notebookId: source.notebookId,
@@ -491,6 +729,7 @@ ${citeBlock}
       stage: 'embed',
       vaultId: source.vaultId?.trim() || vaultId
     })
+    await revertIfExtractAborted(this.deps.repo, sourceId, signal)
 
     return result
   }
