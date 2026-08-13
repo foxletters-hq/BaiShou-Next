@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { motion } from 'framer-motion'
+import { MoreHorizontal, Plus } from 'lucide-react'
 import { KnowledgeShell } from './KnowledgeShell'
+import { KnowledgeDialog } from './KnowledgeDialog'
+import { getNotebookCardAppearance, type NotebookCardTone } from './notebook-card-appearance'
 import styles from './KnowledgePage.module.css'
 
 interface WorkspaceOutletContext {
@@ -13,6 +17,7 @@ type NotebookRow = {
   name: string
   description?: string
   updatedAt?: number
+  createdAt?: number
 }
 
 type NotebookStats = {
@@ -23,13 +28,32 @@ type NotebookStats = {
   totalBytes: number
 }
 
-function formatMb(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0'
-  return (bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 1 : 2)
+const TONE_CLASS: Record<NotebookCardTone, string> = {
+  lavender: styles.toneLavender,
+  cream: styles.toneCream,
+  peach: styles.tonePeach,
+  mint: styles.toneMint,
+  sky: styles.toneSky,
+  rose: styles.toneRose,
+  lilac: styles.toneLilac,
+  sand: styles.toneSand
+}
+
+function formatNotebookDate(ts: number | undefined, locale: string): string {
+  if (!ts || !Number.isFinite(ts)) return ''
+  try {
+    return new Date(ts).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  } catch {
+    return new Date(ts).toLocaleDateString()
+  }
 }
 
 export const KnowledgeListPage: React.FC = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { setFolderRoot } = useOutletContext<WorkspaceOutletContext>()
   const [notebooks, setNotebooks] = useState<NotebookRow[]>([])
@@ -43,10 +67,13 @@ export const KnowledgeListPage: React.FC = () => {
   const refresh = useCallback(async () => {
     setError('')
     const list = (await window.api.knowledge.listNotebooks()) as NotebookRow[]
-    setNotebooks(list || [])
+    const sorted = [...(list || [])].sort(
+      (a, b) => (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0)
+    )
+    setNotebooks(sorted)
     const next: Record<string, NotebookStats> = {}
     await Promise.all(
-      (list || []).map(async (nb) => {
+      sorted.map(async (nb) => {
         try {
           const stats = await window.api.knowledge.getStats(nb.id)
           next[nb.id] = {
@@ -96,132 +123,122 @@ export const KnowledgeListPage: React.FC = () => {
     }
   }
 
+  const locale = i18n.language || 'zh-CN'
+
   return (
     <KnowledgeShell setFolderRoot={setFolderRoot}>
-      <div className={styles.mainInner}>
-        <div className={styles.header}>
-          <div className={styles.titleBlock}>
-            <h1 className={styles.title}>{t('knowledge.title', '知识库')}</h1>
-            <p className={styles.subtitle}>
-              {t(
-                'knowledge.list_subtitle',
-                '按主题隔离的向量笔记本：导入资料，提问并获得带引用的回答。'
-              )}
-            </p>
-          </div>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={() => setShowCreate(true)}
-              disabled={busy}
-            >
-              {t('knowledge.new_notebook', '新建笔记本')}
-            </button>
-          </div>
+      <motion.div
+        className={`${styles.mainInner} ${styles.listMainInner}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
+        <div className={styles.listSectionHead}>
+          <h1 className={styles.listSectionTitle}>
+            {t('knowledge.recent_notebooks', '最近打开过的笔记本')}
+          </h1>
         </div>
 
         {error ? <p className={styles.errorLine}>{error}</p> : null}
 
-        {notebooks.length === 0 ? (
-          <div className={styles.empty}>
-            {t('knowledge.empty_notebooks', '还没有笔记本，先新建一个主题容器。')}
-          </div>
-        ) : (
-          <div className={styles.grid}>
-            {notebooks.map((nb) => {
-              const stats = statsById[nb.id]
-              return (
-                <button
-                  key={nb.id}
-                  type="button"
-                  className={styles.card}
-                  onClick={() => navigate(`/agent-workspace/knowledge/${nb.id}`)}
-                >
-                  <h2 className={styles.cardTitle}>{nb.name}</h2>
-                  <p className={styles.cardMeta}>
-                    {t('knowledge.notebook_meta', '{{sources}} 份资料 · {{chunks}} 片段', {
-                      sources: stats?.sources ?? '…',
-                      chunks: stats?.chunks ?? '…'
-                    })}
+        <div className={styles.listGrid}>
+          <button
+            type="button"
+            className={styles.createCard}
+            onClick={() => setShowCreate(true)}
+            disabled={busy}
+          >
+            <span className={styles.createCardIcon} aria-hidden>
+              <Plus size={22} strokeWidth={2.25} />
+            </span>
+            <span className={styles.createCardLabel}>
+              {t('knowledge.new_notebook', '新建笔记本')}
+            </span>
+          </button>
+
+          {notebooks.map((nb) => {
+            const appearance = getNotebookCardAppearance(nb.id)
+            const stats = statsById[nb.id]
+            const dateLabel = formatNotebookDate(nb.updatedAt ?? nb.createdAt, locale)
+            const sourcesLabel = t('knowledge.source_count', '{{count}} 个来源', {
+              count: stats?.sources ?? '…'
+            })
+            const meta = [dateLabel, sourcesLabel].filter(Boolean).join(' · ')
+
+            return (
+              <button
+                key={nb.id}
+                type="button"
+                className={`${styles.notebookCard} ${TONE_CLASS[appearance.tone]}`}
+                onClick={() => navigate(`/agent-workspace/knowledge/${nb.id}`)}
+              >
+                <div className={styles.notebookCardTop}>
+                  <span className={styles.notebookCardEmoji} aria-hidden>
+                    {appearance.icon}
+                  </span>
+                  <span className={styles.notebookCardMenu} aria-hidden>
+                    <MoreHorizontal size={16} strokeWidth={2} />
+                  </span>
+                </div>
+                <div>
+                  <h2 className={styles.notebookCardTitle}>{nb.name}</h2>
+                  <p className={styles.notebookCardMeta}>
+                    {meta}
                     {stats && stats.pendingJobs > 0
                       ? ` · ${t('knowledge.indexing', '索引中')} ${stats.pendingJobs}`
                       : ''}
                   </p>
-                  {stats ? (
-                    <p className={styles.cardMeta}>
-                      {t(
-                        'knowledge.storage_usage',
-                        '本笔记本 {{total}} MB，其中原文 {{original}} MB',
-                        {
-                          total: formatMb(stats.totalBytes),
-                          original: formatMb(stats.originalBytes)
-                        }
-                      )}
-                    </p>
-                  ) : null}
-                  {nb.description ? <p className={styles.cardMeta}>{nb.description}</p> : null}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {showCreate ? (
-        <div
-          className={styles.dialogBackdrop}
-          role="presentation"
-          onClick={() => !busy && setShowCreate(false)}
-        >
-          <div
-            className={styles.dialog}
-            role="dialog"
-            aria-modal
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className={styles.dialogTitle}>{t('knowledge.new_notebook', '新建笔记本')}</h2>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>{t('knowledge.notebook_name', '名称')}</span>
-              <input
-                className={styles.fieldInput}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('knowledge.notebook_name_placeholder', '例如：AI 安全研究')}
-                autoFocus
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>
-                {t('knowledge.notebook_desc', '描述（可选）')}
-              </span>
-              <textarea
-                className={styles.fieldTextarea}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </label>
-            <div className={styles.dialogActions}>
-              <button
-                type="button"
-                className={styles.btnGhost}
-                onClick={() => setShowCreate(false)}
-                disabled={busy}
-              >
-                {t('common.cancel', '取消')}
+                </div>
               </button>
-              <button
-                type="button"
-                className={styles.btnPrimary}
-                onClick={() => void onCreate()}
-                disabled={busy || !name.trim()}
-              >
-                {t('knowledge.create_action', '创建')}
-              </button>
-            </div>
-          </div>
+            )
+          })}
         </div>
-      ) : null}
+      </motion.div>
+
+      <KnowledgeDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        closeDisabled={busy}
+        title={t('knowledge.new_notebook', '新建笔记本')}
+        aria-label={t('knowledge.new_notebook', '新建笔记本')}
+      >
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>{t('knowledge.notebook_name', '名称')}</span>
+          <input
+            className={styles.fieldInput}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('knowledge.notebook_name_placeholder', '例如：AI 安全研究')}
+            autoFocus
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>{t('knowledge.notebook_desc', '描述（可选）')}</span>
+          <textarea
+            className={styles.fieldTextarea}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        <div className={styles.dialogActions}>
+          <button
+            type="button"
+            className={styles.btnGhost}
+            onClick={() => setShowCreate(false)}
+            disabled={busy}
+          >
+            {t('common.cancel', '取消')}
+          </button>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            onClick={() => void onCreate()}
+            disabled={busy || !name.trim()}
+          >
+            {t('knowledge.create_action', '创建')}
+          </button>
+        </div>
+      </KnowledgeDialog>
     </KnowledgeShell>
   )
 }
