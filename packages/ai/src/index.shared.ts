@@ -26,6 +26,7 @@ export * from './rag/knowledge-embedding.storage'
 export * from './providers/openai.provider'
 export * from './providers/opencodego/opencodego.model-protocol'
 export * from './providers/opencodego/opencodego.provider'
+export * from './providers/reasoning'
 
 // Tools
 export * from './tools/agent.tool'
@@ -120,6 +121,7 @@ export { AgentChatCoreService } from './agent/agent-chat-core.service'
 export {
   claimAgentStreamSession,
   isAgentStreamSessionClaimActive,
+  isAgentStreamSessionBusy,
   releaseAgentStreamSession,
   abortAgentStreamSession,
   abortAllAgentStreamSessions
@@ -128,3 +130,4 @@ export { AgentChatActionCoreRunner } from './agent/agent-chat-action-core.runner
 export type { ActionDeps, StreamRunConfig } from './agent/actions/base.action'
 export * from './baishou-agent-gate'
 export * from './agent-workspace'
+export * from './session-runtime'
