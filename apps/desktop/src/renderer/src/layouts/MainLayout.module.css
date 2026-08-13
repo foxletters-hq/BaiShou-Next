@@ -8,7 +8,7 @@
   color: var(--text-primary);
   box-sizing: border-box;
   /* 顶栏已含标签上下留白；内容卡紧贴顶栏底，左右下留边 */
-  padding: 0 8px 8px;
+  padding: 0 var(--app-content-inset-inline, 8px) var(--app-content-inset-bottom, 8px);
 }
 
 .mainContent {
@@ -17,7 +17,8 @@
   overflow: hidden;
   min-height: 0;
   min-width: 0;
-  border-radius: 12px;
+  position: relative;
+  border-radius: var(--app-content-radius, 12px);
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   box-shadow: var(--shadow-sm);

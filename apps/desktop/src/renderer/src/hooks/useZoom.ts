@@ -1,83 +1,113 @@
-import { useEffect, useRef } from 'react'
-
-const STORAGE_KEY = 'baishou-zoom-factor-v2'
-const MIN_ZOOM = 0.5
-const MAX_ZOOM = 2.0
-const STEP = 0.1
-/** 默认略小于 100%，接近 Ctrl+- 一次后的密度（日记卡片 / 设置页） */
-const DEFAULT_ZOOM = 0.9
-
-function getSavedZoom(): number {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const val = parseFloat(saved)
-      if (!isNaN(val) && val >= MIN_ZOOM && val <= MAX_ZOOM) return val
-    }
-  } catch {}
-  return DEFAULT_ZOOM
-}
+import { useEffect, useState } from 'react'
+import {
+  normalizeUiFontSizeLevel,
+  UI_FONT_SIZE_LEVEL_DEFAULT,
+  UI_FONT_SIZE_LEVEL_MAX,
+  UI_FONT_SIZE_LEVEL_MIN,
+  uiPageZoomFromLevel
+} from '@baishou/shared'
+import { useSettingsStore } from '@baishou/store'
 
 function isApiReady(): boolean {
   return !!(window as any)?.api?.zoom?.setFactor
 }
 
-function applyZoom(factor: number) {
+function applyPageZoom(factor: number) {
   if (!isApiReady()) return
-
-  const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(factor * 100) / 100))
+  const clamped = Math.min(2, Math.max(0.5, Math.round(factor * 100) / 100))
   ;(window as any).api.zoom.setFactor(clamped)
-  try {
-    localStorage.setItem(STORAGE_KEY, String(clamped))
-  } catch {}
 }
 
+function hasUiSettingsHydrated(): boolean {
+  try {
+    return useSettingsStore.persist?.hasHydrated?.() ?? true
+  } catch {
+    return true
+  }
+}
+
+/**
+ * 整页缩放：与常规设置「字体大小」同一数据源（fontSizeLevel，zustand persist）。
+ * Ctrl +/- / 0 按档位调节；不会用快捷键时拖设置滑条即可。
+ * 等 UI 偏好水合完成后再套 zoom，避免启动时先用默认档盖掉已保存值。
+ */
 export function useZoom() {
-  const initializedRef = useRef(false)
+  const fontSizeLevel = useSettingsStore((s) => s.fontSizeLevel)
+  const [hydrated, setHydrated] = useState(hasUiSettingsHydrated)
 
   useEffect(() => {
-    let retryTimer: ReturnType<typeof setInterval>
+    if (hydrated) return
+    const persistApi = useSettingsStore.persist
+    if (!persistApi?.onFinishHydration) {
+      setHydrated(true)
+      return
+    }
+    if (persistApi.hasHydrated?.()) {
+      setHydrated(true)
+      return
+    }
+    return persistApi.onFinishHydration(() => {
+      setHydrated(true)
+    })
+  }, [hydrated])
 
-    const tryInit = () => {
-      if (isApiReady()) {
-        applyZoom(getSavedZoom())
-        initializedRef.current = true
-        clearInterval(retryTimer)
-      }
+  useEffect(() => {
+    if (!hydrated) return
+
+    let retryTimer: ReturnType<typeof setInterval> | undefined
+    const level = normalizeUiFontSizeLevel(fontSizeLevel)
+
+    const tryApply = () => {
+      if (!isApiReady()) return false
+      applyPageZoom(uiPageZoomFromLevel(level))
+      return true
     }
 
-    tryInit()
-    if (!initializedRef.current) {
-      retryTimer = setInterval(tryInit, 100)
+    if (!tryApply()) {
+      retryTimer = setInterval(() => {
+        if (tryApply() && retryTimer) clearInterval(retryTimer)
+      }, 100)
     }
 
+    return () => {
+      if (retryTimer) clearInterval(retryTimer)
+    }
+  }, [fontSizeLevel, hydrated])
+
+  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!e.ctrlKey && !e.metaKey) return
 
+      const store = useSettingsStore.getState()
+      const current = normalizeUiFontSizeLevel(store.fontSizeLevel)
+
       if (e.key === '=' || e.key === '+') {
         e.preventDefault()
-        applyZoom(getSavedZoom() + STEP)
+        if (current < UI_FONT_SIZE_LEVEL_MAX) {
+          store.setFontSizeLevel(current + 1)
+        }
       } else if (e.key === '-') {
         e.preventDefault()
-        applyZoom(getSavedZoom() - STEP)
+        if (current > UI_FONT_SIZE_LEVEL_MIN) {
+          store.setFontSizeLevel(current - 1)
+        }
       } else if (e.key === '0') {
         e.preventDefault()
-        applyZoom(DEFAULT_ZOOM)
+        store.setFontSizeLevel(UI_FONT_SIZE_LEVEL_DEFAULT)
       }
     }
 
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return
+      // 触控板捏合在 Chromium 里会合成 ctrl+wheel；这里只拦住默认缩放，
+      // 避免双指滑动时误改整页大小。刻意缩放请用设置滑条或 Ctrl +/- / 0。
       e.preventDefault()
-      const delta = e.deltaY > 0 ? -STEP : STEP
-      applyZoom(getSavedZoom() + delta)
     }
 
     window.addEventListener('keydown', onKeyDown, { passive: false })
     window.addEventListener('wheel', onWheel, { passive: false })
 
     return () => {
-      clearInterval(retryTimer)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('wheel', onWheel)
     }

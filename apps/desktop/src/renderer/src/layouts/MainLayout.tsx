@@ -53,7 +53,7 @@ export const MainLayout: React.FC = () => {
 
   return (
     <div className={styles.appContainer}>
-      <div className={styles.mainContent}>
+      <div className={styles.mainContent} data-baishou-main-card>
         <Sidebar />
         <div className={styles.pageContent}>
           <MainPageCache
