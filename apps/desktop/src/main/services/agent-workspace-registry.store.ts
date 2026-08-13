@@ -88,6 +88,13 @@ async function syncFromSessionBindings(
   return merged
 }
 
+export async function getAgentWorkspaceById(
+  workspaceId: string
+): Promise<AgentWorkspaceEntry | null> {
+  const registry = await loadRegistry()
+  return registry.workspaces.find((item) => item.id === workspaceId) ?? null
+}
+
 export async function listAgentWorkspaces(): Promise<AgentWorkspaceEntry[]> {
   const registry = await loadRegistry()
   const merged = await syncFromSessionBindings(registry, [...registry.workspaces])
@@ -142,24 +149,29 @@ export async function updateAgentWorkspace(
   if (patch.kind !== undefined) {
     entry.kind = patch.kind
   }
-  entry.updatedAt = new Date().toISOString()
+  if (patch.pinnedAt !== undefined) {
+    entry.pinnedAt = patch.pinnedAt
+  }
+  // 仅改置顶状态时不刷新 updatedAt，避免打乱「最近」排序
+  if (patch.displayName !== undefined || patch.avatarPath !== undefined || patch.kind !== undefined) {
+    entry.updatedAt = new Date().toISOString()
+  }
   await saveRegistry()
   return entry
 }
 
-/** 从列表移除工作目录（不删除磁盘文件，也不删除会话数据） */
+/** 从列表移除工作目录（不删除磁盘文件/会话；稿纸也可移除，下次 ensureScratch 会重建） */
 export async function removeAgentWorkspace(workspaceId: string): Promise<boolean> {
   const registry = await loadRegistry()
   const entry = registry.workspaces.find((item) => item.id === workspaceId)
-  if (!entry) return false
-
-  // 内置「稿纸」不可从列表永久移除；ensureScratchWorkspace 可随时重建
-  if (entry.kind === 'scratch') {
-    return false
+  if (!entry) {
+    // 已不在注册表：视为成功（兼容前端幽灵残留）
+    return true
   }
 
   const removedKey = normalizeWorkspaceFolderKey(entry.folderRoot)
   registry.workspaces = registry.workspaces.filter((item) => item.id !== workspaceId)
+  // 记入 removedFolderKeys，避免会话绑定立刻把目录加回列表；稿纸在下次 ensureScratch 时会清掉该 key
   registry.removedFolderKeys = [...new Set([...(registry.removedFolderKeys ?? []), removedKey])]
   if (registry.lastActiveWorkspaceId === workspaceId) {
     registry.lastActiveWorkspaceId = undefined

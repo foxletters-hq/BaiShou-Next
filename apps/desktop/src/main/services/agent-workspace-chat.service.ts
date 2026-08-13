@@ -1,18 +1,30 @@
 import {
   AgentChatCoreService,
   AgentRoundCheckpointService,
-  createNodeWorkspaceFs
+  createNodeWorkspaceFs,
+  emitAgentSessionRuntime,
+  getSharedSessionInbox,
+  reconcileCompressionStateAfterTruncate,
+  runCascadeThenTruncateSteps,
+  waitForStreamIdleThenForceClear
 } from '@baishou/ai'
 import {
   logger,
+  type AgentRoundCheckpoint,
   type BaishouAgentGateConfig,
   buildAgentDialogueSelectionState,
+  isAgentStreamAbortError,
   resolveDialogueModelSelection,
   toStorageDialogueIds,
-  type GlobalModelsConfig
+  type GlobalModelsConfig,
+  type SessionInputDelivery,
+  type SessionInputRecord,
+  type WorkspaceRollbackPreview,
+  type WorkspaceRollbackScope
 } from '@baishou/shared'
 import type { IpcMainInvokeEvent } from 'electron'
 import i18n from 'i18next'
+import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
 import { ElectronStreamEmitter } from '../ipc/electron-stream-emitter'
 import {
   buildStreamConfig,
@@ -26,46 +38,157 @@ import {
 } from '../ipc/agent-helpers'
 import { settingsManager } from '../ipc/settings.ipc'
 import { getWorkspaceAgentGate } from './agent-gate.service'
+import { createDesktopSkillsWriter } from './desktop-skills-writer'
+import { listAgentSkillsCatalog } from './agent-skills.service'
+import { getWorkspaceFolderGitService } from './workspace-folder-git.registry'
 import {
   bindWorkspaceSession,
   getWorkspaceCheckpointForUserMessage,
   getWorkspaceSessionBinding,
   loadSessionCheckpointsIntoService,
+  removeWorkspaceCheckpointsForUserMessages,
+  removeWorkspaceSession,
   saveWorkspaceCheckpoint,
   touchWorkspaceSession,
   updateWorkspaceSessionSelection
 } from './agent-workspace-session.store'
 import { resolveOrCreateWorkspaceIdByFolder } from './agent-workspace-registry.store'
 import {
+  cleanupUnusedWorkspaceShadowGit,
+  getWorkspaceSnapshotStore
+} from './workspace-shadow-git.provider'
+import {
   getWorkspaceGateConfig,
   getWorkspaceToolManagement,
   setWorkspaceGateConfig
 } from './agent-workspace-policy.store'
 import {
+  isWorkspaceSessionStreaming,
   pushActiveWorkspaceStreamSessionId,
   removeActiveWorkspaceStreamSessionId
 } from './agent-workspace-tool-context'
 import { createDesktopKnowledgeReader } from './desktop-knowledge-reader'
 import { AgentChatService } from '../ipc/AgentChatService'
+import { resolveActiveVaultId } from '../ipc/vault.ipc'
+import { drainSessionInbox } from './session-inbox-drain'
+import { initDesktopSessionInboxStore } from './session-inbox.store'
 
-const checkpointService = new AgentRoundCheckpointService(createNodeWorkspaceFs())
+const checkpointService = new AgentRoundCheckpointService(
+  createNodeWorkspaceFs(),
+  getWorkspaceSnapshotStore()
+)
+
+/**
+ * 轮次收尾：再拍一张快照并落盘。
+ *
+ * 收尾快照与开始那张做 diff，就能看出本轮到底改了什么——包括终端命令这类
+ * 不经过写工具、因而没有归因记录的改动。快照失败只影响回滚能力，不该打断对话。
+ */
+async function finalizeRoundCheckpoint(checkpointId: string, folderRoot: string): Promise<void> {
+  try {
+    await checkpointService.captureRoundEnd(checkpointId, folderRoot)
+  } catch (error) {
+    logger.warn(
+      `[WorkspaceChat] round end snapshot failed checkpoint=${checkpointId}:`,
+      error instanceof Error ? error.message : String(error)
+    )
+  }
+
+  try {
+    const updated = checkpointService.getCheckpoint(checkpointId)
+    if (updated) await saveWorkspaceCheckpoint(updated)
+  } catch (error) {
+    logger.warn(
+      `[WorkspaceChat] persist round checkpoint failed checkpoint=${checkpointId}:`,
+      error instanceof Error ? error.message : String(error)
+    )
+  }
+}
+
+const STREAM_IDLE_POLL_MS = 50
+const STREAM_IDLE_MAX_WAIT_MS = 2000
+
+async function waitForWorkspaceSessionStreamIdle(sessionId: string): Promise<void> {
+  const { forcedClear, waitedMs } = await waitForStreamIdleThenForceClear({
+    sessionId,
+    isStreaming: isWorkspaceSessionStreaming,
+    forceClear: removeActiveWorkspaceStreamSessionId,
+    pollMs: STREAM_IDLE_POLL_MS,
+    maxWaitMs: STREAM_IDLE_MAX_WAIT_MS
+  })
+  if (forcedClear) {
+    logger.warn(
+      `[WorkspaceChat] stream idle wait timed out after ${waitedMs}ms; force-cleared streaming marker session=${sessionId}`
+    )
+  }
+}
+
+async function clearWorkspaceSessionPendingInputs(sessionId: string): Promise<void> {
+  await initDesktopSessionInboxStore()
+  const cancelled = getSharedSessionInbox().cancelAllPending(sessionId)
+  for (const input of cancelled) {
+    const userMessageId = input.userMessageId?.trim()
+    if (!userMessageId) continue
+    try {
+      await deleteWorkspaceQueuedUserMessage(sessionId, userMessageId)
+    } catch (error) {
+      logger.warn(
+        `[WorkspaceChat] rollback clear pending failed to delete orphan user message session=${sessionId} userMessage=${userMessageId}:`,
+        error instanceof Error ? error.message : String(error)
+      )
+    }
+  }
+}
+
+type WorkspaceGitMetaLight = {
+  isGitRepo: boolean
+  gitBranch?: string | null
+  gitChangesCount?: number | null
+}
+
+const GIT_META_TTL_MS = 10_000
+const gitMetaCache = new Map<string, { expiresAt: number; value: WorkspaceGitMetaLight }>()
+
+/** 轻量 git 元数据：分支名用 rev-parse；变更数用 status length；短 TTL 复用 */
+async function resolveWorkspaceGitMetaLight(folderRoot: string): Promise<WorkspaceGitMetaLight> {
+  const cached = gitMetaCache.get(folderRoot)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value
+  }
+
+  const git = getWorkspaceFolderGitService(folderRoot)
+  const initialized = await git.isInitialized()
+  let value: WorkspaceGitMetaLight = { isGitRepo: false }
+  if (initialized) {
+    const [branch, status] = await Promise.all([
+      git.getCurrentBranchName().catch(() => null),
+      git.getStatus().catch(() => null)
+    ])
+    const changesCount = status
+      ? status.staged.length + status.unstaged.length + status.untracked.length
+      : null
+    value = {
+      isGitRepo: true,
+      gitBranch: branch,
+      gitChangesCount: changesCount
+    }
+  }
+
+  gitMetaCache.set(folderRoot, { expiresAt: Date.now() + GIT_META_TTL_MS, value })
+  return value
+}
 
 export async function createWorkspaceAgentSession(params: {
   id: string
   folderRoot: string
   assistantId?: string
   title?: string
+  providerId?: string
+  modelId?: string
 }): Promise<string> {
   const { sessionManager, assistantManager } = getAgentManagers()
 
-  let vaultName = 'Personal'
-  try {
-    const { vaultService } = await import('../ipc/vault.ipc')
-    const active = vaultService.getActiveVault()
-    if (active?.name) vaultName = active.name
-  } catch {
-    /* use default */
-  }
+  const vaultId = resolveActiveVaultId()
 
   let assistantProviderId: string | undefined
   let assistantModelId: string | undefined
@@ -81,6 +204,8 @@ export async function createWorkspaceAgentSession(params: {
   const resolved = resolveDialogueModelSelection({
     assistantProviderId,
     assistantModelId,
+    requestedProviderId: params.providerId,
+    requestedModelId: params.modelId,
     globalDialogueProviderId: globalModels?.globalDialogueProviderId,
     globalDialogueModelId: globalModels?.globalDialogueModelId
   })
@@ -88,12 +213,16 @@ export async function createWorkspaceAgentSession(params: {
 
   await sessionManager.upsertSession({
     id: params.id,
-    vaultName,
+    vaultId,
     providerId: storageIds.providerId,
     modelId: storageIds.modelId,
     assistantId: params.assistantId,
     title: params.title || i18n.t('agent_workspace.default_session_title', '工作区对话')
-  } as never)
+  })
+
+  // 冲突更新路径也要对齐活跃仓，避免历史错误 vault_id 导致读消息被拒
+  const { realSessionRepo } = getAgentManagers()
+  await realSessionRepo.updateSessionVaultId(params.id, vaultId)
 
   await bindWorkspaceSession(params.id, params.folderRoot)
   await updateWorkspaceSessionSelection(
@@ -114,8 +243,12 @@ export async function runWorkspaceStreamChat(params: {
   userMessageId?: string
   providerId?: string
   modelId?: string
+  reasoningEffort?: string
+  searchMode?: boolean
   skipUserMessageRecording?: boolean
-}): Promise<void> {
+  /** 内部 drain 循环调用时跳过 finally 再入队，避免与锁冲突 */
+  skipInboxDrain?: boolean
+}): Promise<void | 'aborted'> {
   const binding = await getWorkspaceSessionBinding(params.sessionId)
   if (!binding?.folderRoot) {
     throw new Error('Workspace folder is not configured for this session')
@@ -135,9 +268,14 @@ export async function runWorkspaceStreamChat(params: {
   const { provider, systemModels, userConfig } = await buildStreamConfig(
     resolved.providerId,
     resolved.modelId,
-    false,
+    params.searchMode,
     assistantContextWindow
   )
+
+  const mergedUserConfig =
+    params.reasoningEffort && params.reasoningEffort !== 'auto'
+      ? { ...(userConfig as Record<string, unknown>), reasoningEffort: params.reasoningEffort }
+      : userConfig
 
   const [workspaceGateConfig, workspaceTools] = await Promise.all([
     getWorkspaceGateConfig(workspaceId),
@@ -146,17 +284,26 @@ export async function runWorkspaceStreamChat(params: {
 
   pushActiveWorkspaceStreamSessionId(params.sessionId)
   invalidateMcpToolContextCache()
+  /** 正常结束才 drain；Stop/abort 不排空 inbox；drain 内层调用跳过 */
+  let shouldDrainInbox = !params.skipInboxDrain
+  let roundCheckpointId: string | undefined
   try {
-    let roundCheckpointId: string | undefined
     if (params.userMessageId) {
-      const checkpoint = await checkpointService.capturePaths({
-        sessionId: params.sessionId,
-        userMessageId: params.userMessageId,
-        folderRoot,
-        paths: []
-      })
-      roundCheckpointId = checkpoint.id
-      await saveWorkspaceCheckpoint(checkpoint)
+      try {
+        const checkpoint = await checkpointService.capturePaths({
+          sessionId: params.sessionId,
+          userMessageId: params.userMessageId,
+          folderRoot,
+          paths: []
+        })
+        roundCheckpointId = checkpoint.id
+        await saveWorkspaceCheckpoint(checkpoint)
+      } catch (error) {
+        logger.warn(
+          `[WorkspaceChat] round start snapshot failed; this round will not be rollbackable session=${params.sessionId}:`,
+          error instanceof Error ? error.message : String(error)
+        )
+      }
     }
 
     const emitter = new ElectronStreamEmitter(params.event)
@@ -164,7 +311,25 @@ export async function runWorkspaceStreamChat(params: {
     const knowledgeReader = createDesktopKnowledgeReader()
     const notebookId = binding.notebookId?.trim() || undefined
 
-    await AgentChatCoreService.runStreamChat({
+    let gitMeta: {
+      isGitRepo: boolean
+      gitBranch?: string | null
+      gitChangesCount?: number | null
+    } = { isGitRepo: false }
+    try {
+      gitMeta = await resolveWorkspaceGitMetaLight(folderRoot)
+    } catch {
+      gitMeta = { isGitRepo: false }
+    }
+
+    let skillsCatalog: Array<{ name: string; description?: string }> | undefined
+    try {
+      skillsCatalog = await listAgentSkillsCatalog()
+    } catch {
+      skillsCatalog = undefined
+    }
+
+    const streamResult = await AgentChatCoreService.runStreamChat({
       emitter,
       sessionId: params.sessionId,
       userText: params.userText,
@@ -173,20 +338,18 @@ export async function runWorkspaceStreamChat(params: {
       modelId: resolved.modelId,
       systemModels,
       userConfig: {
-        ...userConfig,
+        ...mergedUserConfig,
         // 工作区使用独立工具开关与门控配置，不共享伙伴 Vault 配置
         disabledToolIds: workspaceTools.disabledToolIds,
         baishou_agent_gate_config: workspaceGateConfig,
-        workspaceId,
-        workspaceSystemHint: notebookId
-          ? `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。已挂载知识库笔记本 notebookId=${notebookId}，可用 knowledge_search 检索资料。`
-          : `当前工作文件夹根路径：${folderRoot}。仅使用 workspace_* 工具读写该目录内文件。尚未挂载知识库笔记本；knowledge_search 需先挂载（不可用 notebookId 绕过）。`
+        workspaceId
       },
       skipUserMessageRecording: params.skipUserMessageRecording,
       realSessionRepo,
       realSnapshotRepo,
       toolRegistry,
       diarySearcher: createDiarySearcher(),
+      skillsWriter: createDesktopSkillsWriter(),
       webSearchResultFetcher: createWebSearchResultFetcher(),
       fetchSearchPage: createFetchSearchPage(),
       agentGate,
@@ -194,15 +357,34 @@ export async function runWorkspaceStreamChat(params: {
         await setWorkspaceGateConfig(workspaceId, config)
       },
       knowledgeReader,
+      skillsCatalog,
       workspace: {
         folderRoot,
         sessionKind: 'workspace',
         notebookId,
+        workspaceId,
+        env: {
+          platform: process.platform,
+          isGitRepo: gitMeta.isGitRepo,
+          gitBranch: gitMeta.gitBranch,
+          gitChangesCount: gitMeta.gitChangesCount
+        },
         fs: createNodeWorkspaceFs(),
         roundCheckpointService: checkpointService,
         roundCheckpointId
       }
     })
+
+    if (streamResult.aborted) {
+      shouldDrainInbox = false
+      emitAgentSessionRuntime({
+        type: 'session.idle',
+        sessionId: params.sessionId,
+        timestamp: Date.now()
+      })
+      return 'aborted'
+    }
+
     await touchWorkspaceSession(params.sessionId)
     const session = await realSessionRepo.getSessionById(params.sessionId)
     await updateWorkspaceSessionSelection(
@@ -212,43 +394,351 @@ export async function runWorkspaceStreamChat(params: {
         resolved
       })
     )
+  } catch (error) {
+    if (isAgentStreamAbortError(error)) {
+      shouldDrainInbox = false
+      emitAgentSessionRuntime({
+        type: 'session.idle',
+        sessionId: params.sessionId,
+        timestamp: Date.now()
+      })
+      return 'aborted'
+    }
+    throw error
   } finally {
+    // 正常结束、用户中断、异常退出都要收尾：三条路径的磁盘状态同样需要能回滚
+    if (roundCheckpointId) {
+      await finalizeRoundCheckpoint(roundCheckpointId, folderRoot)
+    }
     removeActiveWorkspaceStreamSessionId(params.sessionId)
     invalidateMcpToolContextCache()
+    // 仅正常结束 / 非用户 abort 时排空 inbox；Stop 后保留 pending 供稍后继续
+    if (shouldDrainInbox) {
+      void drainWorkspaceInbox(params.event, params.sessionId)
+    }
   }
 }
 
-export async function rollbackWorkspaceRound(params: {
+interface WorkspaceRollbackContext {
+  folderRoot: string
+  followingIds: string[]
+  userMessageIds: string[]
+  checkpoints: AgentRoundCheckpoint[]
+}
+
+/** 收集「从这条用户消息起，往后所有轮次」的检查点，回滚与回滚预览共用 */
+async function collectWorkspaceRollbackContext(params: {
   sessionId: string
   userMessageId: string
-}): Promise<{ restored: string[]; deleted: string[]; skipped: string[] }> {
+  persist: boolean
+}): Promise<WorkspaceRollbackContext> {
   const binding = await getWorkspaceSessionBinding(params.sessionId)
   if (!binding?.folderRoot) {
     throw new Error('Workspace session binding not found')
   }
 
-  let checkpoint = await getWorkspaceCheckpointForUserMessage(
+  const memoryCheckpointsByUserMessageId = new Map(
+    checkpointService
+      .getCheckpointsForSession(params.sessionId)
+      .map((checkpoint) => [checkpoint.userMessageId, checkpoint] as const)
+  )
+
+  await loadSessionCheckpointsIntoService(params.sessionId, checkpointService)
+
+  const { realSessionRepo } = getAgentManagers()
+  const followingIds = await realSessionRepo.listMessageIdsFromMessageAndFollowing(
     params.sessionId,
     params.userMessageId
   )
-  if (!checkpoint) {
-    await loadSessionCheckpointsIntoService(params.sessionId, checkpointService)
-    checkpoint = await getWorkspaceCheckpointForUserMessage(params.sessionId, params.userMessageId)
-  }
-  if (!checkpoint) {
-    throw new Error('Round checkpoint not found')
+  const followingMeta = (
+    await Promise.all(
+      followingIds.map(async (id) => {
+        const msg = await realSessionRepo.getMessageById(id)
+        if (!msg) return null
+        return {
+          id: String(msg.id),
+          role: String(msg.role),
+          orderIndex: Number(msg.orderIndex ?? 0)
+        }
+      })
+    )
+  ).filter((row): row is { id: string; role: string; orderIndex: number } => Boolean(row))
+
+  followingMeta.sort((a, b) => a.orderIndex - b.orderIndex)
+  const userMessageIds = followingMeta.filter((row) => row.role === 'user').map((row) => row.id)
+
+  const checkpoints: AgentRoundCheckpoint[] = []
+  for (const userMessageId of userMessageIds) {
+    // 进程内的版本永远不会比落盘版本旧：归因路径是流式累积的，轮次收尾才写盘，
+    // 而用户可能在收尾完成之前就点了回滚
+    const checkpoint =
+      memoryCheckpointsByUserMessageId.get(userMessageId) ??
+      (await getWorkspaceCheckpointForUserMessage(params.sessionId, userMessageId))
+    if (!checkpoint) continue
+
+    checkpointService.restoreCheckpoint(checkpoint)
+    if (params.persist) await saveWorkspaceCheckpoint(checkpoint)
+    checkpoints.push(checkpoint)
   }
 
-  const result = await checkpointService.rollback(checkpoint.id, binding.folderRoot)
-  await saveWorkspaceCheckpoint(checkpoint)
+  return { folderRoot: binding.folderRoot, followingIds, userMessageIds, checkpoints }
+}
+
+/**
+ * 列出回滚将要触及的文件。
+ *
+ * `attributedPaths` 是 AI 写工具明确碰过的路径；`changedPaths` 是这几轮里工作树
+ * 实际发生的全部变化，两者之差意味着有改动不是写工具造成的——可能来自终端命令，
+ * 也可能是用户同期在别的编辑器里手改的，因此要交给用户决定是否一并还原。
+ */
+export async function previewWorkspaceRollback(params: {
+  sessionId: string
+  userMessageId: string
+}): Promise<WorkspaceRollbackPreview> {
+  const context = await collectWorkspaceRollbackContext({ ...params, persist: false })
+
+  const attributed = new Set<string>()
+  const changed = new Set<string>()
+  let diffAvailable = false
+
+  for (const checkpoint of context.checkpoints) {
+    for (const path of checkpointService.listRollbackPaths(checkpoint)) attributed.add(path)
+
+    const roundChanges = await checkpointService
+      .listRoundChangedPaths(checkpoint, context.folderRoot)
+      .catch(() => null)
+    if (!roundChanges) continue
+    diffAvailable = true
+    for (const path of roundChanges) changed.add(path)
+  }
+
+  const attributedPaths = [...attributed].sort()
+  const extraPaths = diffAvailable
+    ? [...changed].filter((path) => !attributed.has(path)).sort()
+    : []
+
+  return {
+    snapshotKind: context.checkpoints[0]?.snapshotKind ?? 'inline',
+    rounds: context.checkpoints.length,
+    attributedPaths,
+    extraPaths,
+    changedPathsAvailable: diffAvailable
+  }
+}
+
+/** 把「全集」范围拆回每一轮，让级联回滚逐轮使用各自的路径集合 */
+async function resolveFullScopePaths(
+  context: WorkspaceRollbackContext
+): Promise<Map<string, string[]>> {
+  const byCheckpointId = new Map<string, string[]>()
+  for (const checkpoint of context.checkpoints) {
+    const paths = new Set(checkpointService.listRollbackPaths(checkpoint))
+    const roundChanges = await checkpointService
+      .listRoundChangedPaths(checkpoint, context.folderRoot)
+      .catch(() => null)
+    for (const path of roundChanges ?? []) paths.add(path)
+    byCheckpointId.set(checkpoint.id, [...paths])
+  }
+  return byCheckpointId
+}
+
+export async function rollbackWorkspaceRound(params: {
+  sessionId: string
+  userMessageId: string
+  /** attributed=只撤 AI 写工具碰过的；all=连同终端命令与外部改动一起撤 */
+  scope?: WorkspaceRollbackScope
+}): Promise<{ restored: string[]; deleted: string[]; skipped: string[] }> {
+  AgentChatService.stopStream(params.sessionId)
+  await waitForWorkspaceSessionStreamIdle(params.sessionId)
+
+  const context = await collectWorkspaceRollbackContext({ ...params, persist: true })
+  const { folderRoot, followingIds, userMessageIds, checkpoints } = context
+
+  const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
+    getAgentManagers()
+
+  const fullScopePaths = params.scope === 'all' ? await resolveFullScopePaths(context) : null
+
+  const result = await runCascadeThenTruncateSteps({
+    cascadeRollback: async () =>
+      checkpoints.length > 0
+        ? checkpointService.cascadeRollback(checkpoints, folderRoot, {
+            pathsFor: fullScopePaths
+              ? (checkpoint) => fullScopePaths.get(checkpoint.id) ?? []
+              : undefined
+          })
+        : { restored: [] as string[], deleted: [] as string[], skipped: [] as string[] },
+    truncateMessages: async () => {
+      const parts =
+        followingIds.length > 0 ? await realSessionRepo.getPartsByMessageIds(followingIds) : []
+      await realSessionRepo.deleteMessageAndFollowing(params.sessionId, params.userMessageId)
+      await reconcileCompressionStateAfterTruncate(
+        realSessionRepo,
+        realSnapshotRepo,
+        params.sessionId
+      )
+      await cleanupAttachmentsForParts(attachmentManager, params.sessionId, parts)
+      await sessionManager.flushSessionToDisk(params.sessionId)
+      await clearWorkspaceSessionPendingInputs(params.sessionId)
+    },
+    removeCheckpoints: async () => {
+      await removeWorkspaceCheckpointsForUserMessages(params.sessionId, userMessageIds)
+      checkpointService.removeCheckpointsForUserMessages(params.sessionId, userMessageIds)
+    }
+  })
   await touchWorkspaceSession(params.sessionId)
   logger.info(
     `[WorkspaceChat] rollback session=${params.sessionId} userMessage=${params.userMessageId}`,
-    { ...result }
+    {
+      ...result,
+      messagesRemoved: followingIds.length,
+      checkpointsApplied: checkpoints.length,
+      cascade: checkpoints.length > 1,
+      scope: params.scope ?? 'attributed'
+    }
   )
   return result
 }
 
+/**
+ * 删除工作台会话，连同它在内存与磁盘上的检查点。
+ *
+ * 只删磁盘记录是不够的：进程内的检查点表不会跟着消失，会一直占着内存到重启。
+ * 影子仓库按文件夹共享，只有最后一个会话也走了才能删，否则会连累其他会话的回滚能力。
+ */
+export async function removeWorkspaceSessionWithCheckpoints(sessionId: string): Promise<void> {
+  const binding = await getWorkspaceSessionBinding(sessionId)
+  const userMessageIds = binding ? Object.keys(binding.checkpointsByUserMessageId) : []
+
+  await removeWorkspaceSession(sessionId)
+  checkpointService.removeCheckpointsForUserMessages(sessionId, userMessageIds)
+
+  const folderRoot = binding?.folderRoot
+  if (!folderRoot) return
+  await cleanupUnusedWorkspaceShadowGit(folderRoot).catch(() => {})
+}
+
 export function getWorkspaceCheckpointService(): AgentRoundCheckpointService {
   return checkpointService
+}
+
+async function drainWorkspaceInbox(event: IpcMainInvokeEvent, sessionId: string): Promise<void> {
+  await drainSessionInbox({
+    sessionId,
+    isBusy: isWorkspaceSessionStreaming,
+    logLabel: 'WorkspaceChat',
+    runPromoted: async (promoted) => {
+      const payload = (promoted.payload ?? {}) as {
+        providerId?: string
+        modelId?: string
+        reasoningEffort?: string
+        searchMode?: boolean
+      }
+      const result = await runWorkspaceStreamChat({
+        event,
+        sessionId,
+        userText: promoted.text,
+        userMessageId: promoted.userMessageId,
+        providerId: payload.providerId,
+        modelId: payload.modelId,
+        reasoningEffort: payload.reasoningEffort,
+        searchMode: payload.searchMode,
+        skipUserMessageRecording: Boolean(promoted.userMessageId),
+        skipInboxDrain: true
+      })
+      return result === 'aborted' ? 'aborted' : 'ok'
+    }
+  })
+}
+
+export async function admitWorkspaceInput(params: {
+  event: IpcMainInvokeEvent
+  sessionId: string
+  text: string
+  delivery?: SessionInputDelivery
+  userMessageId?: string
+  providerId?: string
+  modelId?: string
+  reasoningEffort?: string
+  searchMode?: boolean
+}): Promise<{
+  input: SessionInputRecord
+  started: boolean
+  queued: boolean
+}> {
+  await initDesktopSessionInboxStore()
+  const inbox = getSharedSessionInbox()
+  const delivery: SessionInputDelivery = params.delivery === 'steer' ? 'steer' : 'queue'
+  const input = inbox.admit({
+    sessionId: params.sessionId,
+    text: params.text,
+    delivery,
+    userMessageId: params.userMessageId,
+    payload: {
+      providerId: params.providerId,
+      modelId: params.modelId,
+      reasoningEffort: params.reasoningEffort,
+      searchMode: params.searchMode
+    }
+  })
+  emitAgentSessionRuntime({
+    type: 'session.input_queued',
+    sessionId: params.sessionId,
+    inputId: input.id,
+    delivery,
+    timestamp: Date.now()
+  })
+
+  const busy = isWorkspaceSessionStreaming(params.sessionId)
+  if (busy) {
+    return { input, started: false, queued: true }
+  }
+
+  // idle：立即 promote 并跑
+  void drainWorkspaceInbox(params.event, params.sessionId)
+  return { input, started: true, queued: false }
+}
+
+export async function listWorkspacePendingInputs(
+  sessionId: string
+): Promise<SessionInputRecord[]> {
+  await initDesktopSessionInboxStore()
+  return getSharedSessionInbox().listPending(sessionId)
+}
+
+async function deleteWorkspaceQueuedUserMessage(
+  sessionId: string,
+  userMessageId: string
+): Promise<void> {
+  const { realSessionRepo, realSnapshotRepo, sessionManager, attachmentManager } =
+    getAgentManagers()
+  const ids = await realSessionRepo.listMessageIdsFromMessageAndFollowing(sessionId, userMessageId)
+  const parts = ids.length > 0 ? await realSessionRepo.getPartsByMessageIds(ids) : []
+  await realSessionRepo.deleteMessageAndFollowing(sessionId, userMessageId)
+  await reconcileCompressionStateAfterTruncate(realSessionRepo, realSnapshotRepo, sessionId)
+  await cleanupAttachmentsForParts(attachmentManager, sessionId, parts)
+  await sessionManager.flushSessionToDisk(sessionId)
+  await touchWorkspaceSession(sessionId)
+}
+
+/** 取消 pending：更新 inbox，并删除排队时预落库的孤儿用户消息 */
+export async function cancelWorkspacePendingInput(
+  inputId: string
+): Promise<SessionInputRecord | null> {
+  await initDesktopSessionInboxStore()
+  const cancelled = getSharedSessionInbox().cancelInput(inputId)
+  if (!cancelled) return null
+
+  const userMessageId = cancelled.userMessageId?.trim()
+  if (userMessageId) {
+    try {
+      await deleteWorkspaceQueuedUserMessage(cancelled.sessionId, userMessageId)
+    } catch (error) {
+      logger.warn(
+        `[WorkspaceChat] cancel pending failed to delete orphan user message session=${cancelled.sessionId} userMessage=${userMessageId}:`,
+        error instanceof Error ? error.message : String(error)
+      )
+    }
+  }
+  return cancelled
 }

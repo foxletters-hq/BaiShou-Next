@@ -14,6 +14,9 @@ function pickPreferredWorkspaceEntry(
 ): AgentWorkspaceEntry {
   if (left.avatarPath && !right.avatarPath) return left
   if (right.avatarPath && !left.avatarPath) return right
+  const leftPinned = Boolean(left.pinnedAt)
+  const rightPinned = Boolean(right.pinnedAt)
+  if (leftPinned !== rightPinned) return leftPinned ? left : right
   if (left.updatedAt !== right.updatedAt) {
     return left.updatedAt.localeCompare(right.updatedAt) >= 0 ? left : right
   }
