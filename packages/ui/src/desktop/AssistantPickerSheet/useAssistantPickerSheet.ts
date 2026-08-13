@@ -8,10 +8,13 @@ import {
   normalizeEmojiToolConfig,
   parseAssistantEmojiGroupIds,
   serializeAssistantEmojiGroupIds,
+  SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE,
+  isSystemLatteAssistantId,
   type EmojiGroup,
   type EmojiToolConfig
 } from '@baishou/shared'
 import { useDialog } from '../Dialog'
+import { useToast } from '../Toast/useToast'
 import type { AssistantInfo, AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 
 const normalizeAssistantId = (id: unknown): string | null =>
@@ -46,6 +49,7 @@ export function useAssistantPickerSheet({
 }: AssistantPickerSheetProps) {
   const { t, i18n } = useTranslation()
   const { prompt } = useDialog()
+  const toast = useToast()
   const [searchQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(() => {
     const currentId = normalizeAssistantId(currentAssistantId)
@@ -252,8 +256,29 @@ export function useAssistantPickerSheet({
 
   const confirmDelete = async () => {
     if (deleteTargetId === null) return
+    if (isSystemLatteAssistantId(deleteTargetId)) {
+      toast.showError(
+        t('agent.assistant.system_latte_cannot_delete', '官方 Latte 为系统伙伴，无法删除')
+      )
+      setDeleteTargetId(null)
+      return
+    }
     if (typeof window !== 'undefined' && (window as any).electron) {
-      await (window as any).electron.ipcRenderer.invoke('agent:delete-assistant', deleteTargetId)
+      const result = await (window as any).electron.ipcRenderer.invoke(
+        'agent:delete-assistant',
+        deleteTargetId
+      )
+      if (result && result.success === false) {
+        if (result.errorCode === SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE) {
+          toast.showError(
+            t('agent.assistant.system_latte_cannot_delete', '官方 Latte 为系统伙伴，无法删除')
+          )
+        } else {
+          toast.showError(t('common.errors.delete_failed', '删除失败'))
+        }
+        setDeleteTargetId(null)
+        return
+      }
       onRefreshAssistants?.()
       if (deleteTargetId === selectedId && assistants.length > 0) {
         setSelectedId(assistants.find((a) => a.id !== deleteTargetId)?.id || null)

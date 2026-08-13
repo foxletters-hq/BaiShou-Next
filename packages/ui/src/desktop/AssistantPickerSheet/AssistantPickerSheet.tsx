@@ -1,6 +1,7 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { ModelSwitcherPopup } from '../ModelSwitcherPopup'
+import { withAppContentOverlay } from '../overlay'
 import styles from './AssistantPickerSheet.module.css'
 import type { AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 import { useAssistantPickerSheet } from './useAssistantPickerSheet'
@@ -15,7 +16,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = (props)
   if (!isOpen) return null
 
   return createPortal(
-    <div className={styles.overlay}>
+    <div className={withAppContentOverlay(styles.overlay)}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <AssistantPickerSidebar
           vm={vm}

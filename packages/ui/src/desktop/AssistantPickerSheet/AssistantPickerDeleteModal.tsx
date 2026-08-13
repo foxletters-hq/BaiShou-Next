@@ -1,5 +1,6 @@
 import React from 'react'
 import { Trash2 } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import type { AssistantPickerSheetViewModel } from './useAssistantPickerSheet'
 
 export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetViewModel }) {
@@ -8,6 +9,7 @@ export function AssistantPickerDeleteModal({ vm }: { vm: AssistantPickerSheetVie
 
   return (
     <div
+      className={withAppContentOverlay()}
       style={{
         position: 'fixed',
         inset: 0,
