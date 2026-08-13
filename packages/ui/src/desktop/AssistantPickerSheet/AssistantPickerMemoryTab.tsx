@@ -35,8 +35,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           gap: 8
         }}
       >
-        <History size={16} color="var(--color-primary)" />
-        <h3 className={styles.sectionTitle} style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+        <History size={14} color="var(--color-primary)" />
+        <h3 className={styles.sectionTitle}>
           {t('agent.assistant.context_window_label', 'Context Turns')}
         </h3>
         <HelpTooltip
@@ -133,8 +133,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
           gap: 8
         }}
       >
-        <Minimize2 size={16} color="var(--color-primary)" />
-        <h3 className={styles.sectionTitle} style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+        <Minimize2 size={14} color="var(--color-primary)" />
+        <h3 className={styles.sectionTitle}>
           {t('agent.assistant.compress_label', 'Auto Compress')}
         </h3>
         <HelpTooltip
@@ -315,7 +315,7 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
             </div>
             <textarea
               className={styles.promptTextarea}
-              rows={8}
+              rows={6}
               value={editingCompressSystemPrompt}
               onChange={(e) => setEditingCompressSystemPrompt(e.target.value)}
               spellCheck={false}
@@ -324,7 +324,8 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
-                marginTop: 8
+                marginTop: 12,
+                paddingBottom: 4
               }}
             >
               <button

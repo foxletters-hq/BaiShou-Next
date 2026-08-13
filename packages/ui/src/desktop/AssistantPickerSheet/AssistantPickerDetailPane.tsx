@@ -64,7 +64,7 @@ export function AssistantPickerDetailPane({
           <div className={styles.detailHeader}>
             <AssistantAvatarPicker
               avatarPath={avatarPath}
-              previewSize={60}
+              previewSize={44}
               fullWidth={false}
               onSelectBuiltin={handleSelectBuiltin}
               onUploadImage={handleUploadImage}
@@ -75,12 +75,13 @@ export function AssistantPickerDetailPane({
                 title={t('agent.assistant.click_to_rename', 'Click to rename')}
                 className={styles.detailName}
               >
-                {activeAssistant.name} <Edit2 size={16} color="var(--text-secondary)" />
+                {activeAssistant.name}{' '}
+                <Edit2 size={13} strokeWidth={2} className={styles.detailNameEditIcon} />
               </h2>
             </div>
           </div>
 
-          <div className={styles.tabsRow} style={{ justifyContent: 'center', gap: 48 }}>
+          <div className={styles.tabsRow}>
             <button
               type="button"
               className={`${styles.tab} ${activeTab === 'prompt' ? styles.tabActive : ''}`}
@@ -122,7 +123,7 @@ export function AssistantPickerDetailPane({
                 onClose()
               }}
             >
-              <CheckSquare size={18} />{' '}
+              <CheckSquare size={15} />{' '}
               {String(activeAssistant.id) === String(currentAssistantId)
                 ? t('agent.assistant.current_partner', 'Current Companion')
                 : t('agent.chat.select_partner', 'Select Companion')}
