@@ -12,6 +12,8 @@ export interface UseChatScrollParams {
   streamingReasoning: string
   isStreaming: boolean
   activeTool: { name: string; args: any } | null
+  /** 额外流式信号（如 timeline 长度），变化时在跟随模式下贴底 */
+  streamFollowKey?: string | number
 }
 
 export interface UseChatScrollResult {
@@ -78,7 +80,15 @@ function smoothScrollToBottom(
  * 退出 following：向上滚轮一次、滚动离开底部区域
  */
 export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult {
-  const { sessionId, messages, streamingText, streamingReasoning, isStreaming, activeTool } = params
+  const {
+    sessionId,
+    messages,
+    streamingText,
+    streamingReasoning,
+    isStreaming,
+    activeTool,
+    streamFollowKey
+  } = params
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const followModeRef = useRef<ScrollFollowMode>('following')
@@ -230,7 +240,7 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
       streamFollowRafRef.current = null
       jumpToBottomInstant()
     })
-  }, [isStreaming, streamingText, streamingReasoning, jumpToBottomInstant])
+  }, [isStreaming, streamingText, streamingReasoning, streamFollowKey, jumpToBottomInstant])
 
   useEffect(() => {
     return () => {

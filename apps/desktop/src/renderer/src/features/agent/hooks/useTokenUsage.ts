@@ -27,7 +27,8 @@ const EMPTY_USAGE: TokenUsage = {
 /**
  * Token 用量追踪 Hook
  *
- * 职责：通过 IPC 获取当前会话的 Token 用量统计；流结束后由事件触发刷新，避免随 isStreaming 反复查询。
+ * 职责：通过 IPC 获取当前会话的 Token 用量统计；
+ * 流结束（assistant-message-usage）或会话汇总变更时刷新，避免随 isStreaming 反复查询。
  */
 export function useTokenUsage(
   sessionId: string | undefined,
@@ -74,8 +75,10 @@ export function useTokenUsage(
     }
 
     window.addEventListener('baishou:session-token-usage-changed', onUsageChanged)
+    window.addEventListener('baishou:assistant-message-usage', onUsageChanged)
     return () => {
       window.removeEventListener('baishou:session-token-usage-changed', onUsageChanged)
+      window.removeEventListener('baishou:assistant-message-usage', onUsageChanged)
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = undefined
