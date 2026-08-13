@@ -381,6 +381,7 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               timestamp: msg.createdAt || new Date(),
               toolInvocations: msg.toolInvocations,
               attachments: bubbleAttachments,
+              skillRefs: msg.skillRefs,
               inputTokens: msg.inputTokens,
               outputTokens: msg.outputTokens,
               cacheReadInputTokens: msg.cacheReadInputTokens,

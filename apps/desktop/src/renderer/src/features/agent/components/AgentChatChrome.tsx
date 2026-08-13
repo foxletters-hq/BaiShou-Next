@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageSquareText, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { AgentAssistant } from './AgentSidebar'
 import { CurrentAssistantSlot } from './AgentSidebarHeader'
 import styles from './AgentChatChrome.module.css'
@@ -10,9 +10,14 @@ export interface AgentChatChromeProps {
   onShowPicker?: () => void
   onAssistantSwitched: (assistant: AgentAssistant) => void
   onNewSession: () => void
-  onOpenSessions: () => void
+  onOpenSessions?: () => void
   /** 模型切换、用量等（与会话按钮同一顶栏） */
   trailingControls?: React.ReactNode
+  /**
+   * full: 整条顶栏（含左侧伙伴）
+   * floatingActions: 右上角用量 + 新对话（有对话后；历史在输入栏伙伴旁）
+   */
+  variant?: 'full' | 'floatingActions'
 }
 
 export const AgentChatChrome: React.FC<AgentChatChromeProps> = ({
@@ -20,10 +25,33 @@ export const AgentChatChrome: React.FC<AgentChatChromeProps> = ({
   onShowPicker,
   onAssistantSwitched,
   onNewSession,
-  onOpenSessions,
-  trailingControls
+  trailingControls,
+  variant = 'full'
 }) => {
   const { t } = useTranslation()
+
+  const newSessionBtn = (
+    <button
+      type="button"
+      className={styles.iconBtn}
+      title={t('agent.sessions.new_chat', '新对话')}
+      aria-label={t('agent.sessions.new_chat', '新对话')}
+      onClick={onNewSession}
+    >
+      <Plus size={18} />
+    </button>
+  )
+
+  const actions = (
+    <>
+      {trailingControls}
+      {newSessionBtn}
+    </>
+  )
+
+  if (variant === 'floatingActions') {
+    return <div className={styles.floatingActions}>{actions}</div>
+  }
 
   return (
     <div className={styles.chrome}>
@@ -37,27 +65,7 @@ export const AgentChatChrome: React.FC<AgentChatChromeProps> = ({
         />
       </div>
 
-      <div className={styles.right}>
-        {trailingControls}
-        <button
-          type="button"
-          className={styles.iconBtn}
-          title={t('agent.sidebar.recent_chats', '最近对话')}
-          aria-label={t('agent.sidebar.recent_chats', '最近对话')}
-          onClick={onOpenSessions}
-        >
-          <MessageSquareText size={18} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${styles.iconBtnPrimary}`}
-          title={t('agent.sessions.new_chat', '新对话')}
-          aria-label={t('agent.sessions.new_chat', '新对话')}
-          onClick={onNewSession}
-        >
-          <Plus size={18} />
-        </button>
-      </div>
+      <div className={styles.right}>{actions}</div>
     </div>
   )
 }

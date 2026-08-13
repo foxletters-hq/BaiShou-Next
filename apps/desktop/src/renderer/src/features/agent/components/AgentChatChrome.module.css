@@ -8,8 +8,21 @@
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface);
   z-index: 20;
-  /* 与右侧加号 / 会话 iconBtn（36px）对齐 */
+  /* 伙伴选择器 / 计费器 / 右侧按钮统一高度 */
   --chrome-chip-height: 36px;
+}
+
+/* 有对话后：仅右上角浮层按钮，不占整条顶栏 */
+.floatingActions {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  --chrome-chip-height: 36px;
+  pointer-events: auto;
 }
 
 :global(body[data-theme='dark']) .chrome {
@@ -33,6 +46,7 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  height: var(--chrome-chip-height);
 }
 
 .trailing {
@@ -40,56 +54,64 @@
   align-items: center;
   gap: 8px;
   margin-right: 4px;
+  height: 100%;
 }
 
-/* TokenBadge 等自带纵向 padding，强制与加号同高 */
+/* TokenBadge：强制与加号同高，压过 TokenBadge.container 默认 padding */
 .trailing .chip {
-  height: var(--chrome-chip-height);
-  min-height: var(--chrome-chip-height);
-  box-sizing: border-box;
-  padding-top: 0;
-  padding-bottom: 0;
+  height: var(--chrome-chip-height) !important;
+  min-height: var(--chrome-chip-height) !important;
+  max-height: var(--chrome-chip-height) !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1;
+  overflow: hidden;
+  background: #fff !important;
+}
+
+:global(body[data-theme='dark']) .trailing .chip {
+  background: var(--bg-surface) !important;
 }
 
 .iconBtn {
-  width: 36px;
-  height: 36px;
+  width: var(--chrome-chip-height);
+  height: var(--chrome-chip-height);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-control);
   border-radius: 10px;
-  background: var(--bg-surface);
-  color: var(--text-secondary);
+  background: #fff;
+  color: var(--text-primary);
   cursor: pointer;
   transition:
     background-color 0.15s,
     border-color 0.15s,
     color 0.15s;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  /* lucide 全局 1em：用 font-size 控制图标，避免被外层字号放大 */
+  font-size: 18px;
+  padding: 0;
 }
 
 .iconBtn:hover {
-  background: var(--bg-surface-high, rgba(var(--text-primary-rgb), 0.04));
+  background: #fff;
   border-color: var(--border-control);
   color: var(--text-primary);
 }
 
-.iconBtnPrimary {
-  color: var(--color-primary);
-  border-color: rgba(var(--color-primary-rgb), 0.28);
-  background: rgba(var(--color-primary-rgb), 0.08);
+:global(body[data-theme='dark']) .iconBtn,
+:global(body[data-theme='dark']) .iconBtn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
-.iconBtnPrimary:hover {
-  background: rgba(var(--color-primary-rgb), 0.14);
-  border-color: rgba(var(--color-primary-rgb), 0.4);
-  color: var(--color-primary);
-}
-
-/* 与右侧加号 / 会话 iconBtn 同高 */
 .chip {
   height: var(--chrome-chip-height);
   min-height: var(--chrome-chip-height);
+  max-height: var(--chrome-chip-height);
   box-sizing: border-box;
   padding: 0 12px;
   display: inline-flex;
@@ -136,11 +158,26 @@
 .modelName {
   font-size: 12px;
   font-weight: 500;
+  line-height: 1.45;
   color: var(--text-primary);
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding-bottom: 1px;
+}
+
+.modelEffort {
+  font-size: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-bottom: 1px;
 }
 
 .chevron {
@@ -164,8 +201,55 @@
   border-color: var(--border-control);
 }
 
+/* 工作台 meta 行右侧：与伙伴/工作区/权限 chip 同高同风格 */
+.modelSwitcherInMeta {
+  height: 28px;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 4px 6px;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+
+.modelSwitcherInMeta:hover {
+  background-color: var(--bg-surface-high);
+  border-color: transparent;
+  color: var(--text-primary);
+}
+
+.modelSwitcherInMeta .modelName {
+  max-width: min(220px, 40vw);
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.modelSwitcherInMeta .modelEffort {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.modelSwitcherInMeta .chevron {
+  font-size: 10px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.modelSwitcherInMeta .modelProviderIcon,
+.modelSwitcherInMeta .modelProviderIcon img {
+  width: 15px;
+  height: 15px;
+}
+
 .modelSwitcherInComposer .modelName {
   max-width: min(160px, 28vw);
+  font-size: 12px;
+}
+
+.modelSwitcherInComposer .modelEffort {
   font-size: 12px;
 }
 
@@ -173,4 +257,13 @@
 .modelSwitcherInComposer .modelProviderIcon img {
   width: 16px;
   height: 16px;
+}
+
+/* 输入框内仅显示供应商 icon */
+.modelSwitcherIconOnly {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
 }

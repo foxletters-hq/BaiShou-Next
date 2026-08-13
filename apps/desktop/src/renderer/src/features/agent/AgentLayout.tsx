@@ -32,6 +32,9 @@ export const AgentLayout: React.FC = () => {
 
   const { assistants, fetchAssistants, isLoading: isAssistantsLoading } = useAssistantStore()
   const { loadConfig } = useSettingsStore()
+  const agentBehavior = useSettingsStore((s) => s.agentBehavior)
+  const configHydrated = useSettingsStore((s) => s.configHydrated)
+  const restoreLastSessionOnReturn = agentBehavior?.restoreLastSessionOnReturn !== false
   const { loadProfile } = useUserProfileStore()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -123,6 +126,15 @@ export const AgentLayout: React.FC = () => {
       return
     }
 
+    // 等设置水合后再决定是否恢复，避免默认 true 抢先打开上次对话
+    if (!configHydrated) return
+
+    // 设置关闭时不自动打开上次对话
+    if (!restoreLastSessionOnReturn) {
+      restoredNavigationRef.current = true
+      return
+    }
+
     const vaultKey = getDesktopVaultScopeKey()
     const saved = readAgentNavigationSnapshot(vaultKey)
     if (!saved?.sessionId && !saved?.assistantId) {
@@ -162,7 +174,14 @@ export const AgentLayout: React.FC = () => {
       if (shouldAbortNavigationRestore(restoreIntentAtStart)) return
       navigate(buildAgentChatNavigationPath(saved), { replace: true })
     })()
-  }, [sessionId, urlAssistantId, navigate, isAgentPageActive])
+  }, [
+    sessionId,
+    urlAssistantId,
+    navigate,
+    isAgentPageActive,
+    configHydrated,
+    restoreLastSessionOnReturn
+  ])
 
   useEffect(() => {
     if (!isAgentPageActive) return
@@ -300,7 +319,6 @@ export const AgentLayout: React.FC = () => {
 
   const handleAssistantSwitched = async (assistant: AgentAssistant) => {
     const astId = String(assistant.id)
-    const switchIntentAtStart = bumpNavigationIntent()
     resolvedAssistantIdRef.current = astId
     restoredNavigationRef.current = true
     setStandaloneSessionDoc(null)
@@ -312,29 +330,9 @@ export const AgentLayout: React.FC = () => {
     useAgentNavigationStore.getState().setContext(vaultKey, snapshot)
     writeAgentNavigationSnapshot(vaultKey, snapshot)
 
-    // 立即离开旧会话，避免切换过程中仍渲染上一页消息
+    // 切到该伙伴的空态草稿，不自动进入其最近会话（历史由用户主动打开）
     navigate(buildAgentChatNavigationPath(snapshot), { replace: true })
     void loadSessions(true, astId)
-
-    if (typeof window !== 'undefined' && window.electron) {
-      try {
-        const sessionsList = await window.electron.ipcRenderer.invoke(
-          'agent:list-sessions-by-assistant',
-          astId
-        )
-        if (shouldAbortNavigationRestore(switchIntentAtStart)) return
-        if (sessionsList && sessionsList.length > 0) {
-          const sorted = sessionsList.sort(
-            (a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )
-          navigate(buildAgentChatNavigationPath({ assistantId: astId, sessionId: sorted[0].id }), {
-            replace: true
-          })
-        }
-      } catch (e) {
-        console.error('[AgentLayout] Failed to switch to existing session', e)
-      }
-    }
   }
 
   const handleDelete = async (id: string) => {

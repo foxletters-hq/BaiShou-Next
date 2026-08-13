@@ -24,8 +24,28 @@ export const AgentHomePage: React.FC = () => {
     void loadShortcuts()
   }, [loadShortcuts])
 
-  const handleSend = (text: string) => {
+  const handleSend = (
+    text: string,
+    _attachments?: unknown[],
+    _searchMode?: boolean,
+    meta?: {
+      displayText?: string
+      skillRefs?: Array<{ command: string; content: string }>
+    }
+  ) => {
     const newId = `new-${Date.now()}`
+    try {
+      sessionStorage.setItem(
+        `baishou:chat-init-meta:${newId}`,
+        JSON.stringify({
+          text,
+          displayText: meta?.displayText,
+          skillRefs: meta?.skillRefs
+        })
+      )
+    } catch {
+      // ignore
+    }
     navigate(`/chat/${newId}?init=${encodeURIComponent(text)}`)
     return true
   }
