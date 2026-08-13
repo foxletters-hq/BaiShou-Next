@@ -5,7 +5,7 @@ import {
   type AgentGateFileChangePreview,
   type AgentGatePrepareResult
 } from '@baishou/shared'
-import { buildUnifiedDiffWithLimit, computeLineDiffStats } from './file-change.part-builder'
+import { buildUnifiedDiffWithLimit, countContentLines } from './file-change.part-builder'
 import {
   createNodeWorkspaceFs,
   hashWorkspaceContent,
@@ -88,9 +88,9 @@ function buildFilePreview(input: {
     input.kind === 'rename'
       ? { additions: 0, deletions: 0 }
       : input.kind === 'create'
-        ? { additions: computeLineDiffStats('', input.after).additions, deletions: 0 }
+        ? { additions: countContentLines(input.after), deletions: 0 }
         : input.kind === 'delete'
-          ? { additions: 0, deletions: computeLineDiffStats(input.before, '').deletions }
+          ? { additions: 0, deletions: countContentLines(input.before) }
           : { additions, deletions }
 
   return {
@@ -253,7 +253,10 @@ export async function prepareWorkspaceDeleteGate(
   if (!existed) {
     throw new WorkspaceGatePrepareError(`File not found: ${relativePath}`)
   }
-  const beforeContent = (await fs.readFile(absolutePath)) ?? ''
+  const beforeContent = await fs.readFile(absolutePath)
+  if (beforeContent == null) {
+    throw new WorkspaceGatePrepareError(`Unable to read file: ${relativePath}`)
+  }
   const sourceHash = hashWorkspaceContent(beforeContent)
   const preview = buildFilePreview({
     path: relativePath,
@@ -395,9 +398,9 @@ export function prepareContentGatePreview(input: {
     detailLines: input.detailLines,
     counts: input.counts
   }
+  // 外层 description 与 preview 块易重复；卡片用 title + preview 即可
   return {
-    preview,
-    description: input.summary ? `${input.subject}：${input.summary}` : input.subject
+    preview
   }
 }
 

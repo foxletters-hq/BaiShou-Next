@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 // @ts-ignore - Node built-in
 import { resolve } from 'node:path'
 import {
+  prepareWorkspaceDeleteGate,
   prepareWorkspacePatchGate,
   prepareWorkspaceWriteGate,
   WorkspaceGateStaleError
@@ -66,6 +67,24 @@ describe('workspace-gate-preview', () => {
     expect(prepared!.preview.diff).toContain('-line2')
     expect(prepared!.preview.diff).toContain('+line2-changed')
     expect(prepared!.preview.diff).toContain(' line1')
+  })
+
+  it('prepares delete preview with line deletion counts', async () => {
+    const fs = createMemoryFs()
+    await fs.writeFile(resolve(ROOT, 'notes.md'), 'a\nb\nc\n')
+    const prepared = await prepareWorkspaceDeleteGate(
+      { path: 'notes.md' },
+      { sessionId: SESSION, workspace: { folderRoot: ROOT, fs } }
+    )
+
+    expect(prepared).not.toBeNull()
+    expect(prepared!.preview.type).toBe('file_change')
+    if (prepared!.preview.type !== 'file_change') return
+    expect(prepared!.preview.kind).toBe('delete')
+    expect(prepared!.preview.additions).toBe(0)
+    expect(prepared!.preview.deletions).toBe(3)
+    expect(prepared!.preview.diff).toContain('-a')
+    expect(prepared!.description).toContain('-3')
   })
 
   it('returns null for patch when old_text is missing (no ask card)', async () => {
