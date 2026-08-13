@@ -1,0 +1,243 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--border-control));
+}
+
+.trigger:focus-visible {
+  outline: none;
+  border-color: var(--form-field-border-focus, var(--color-primary));
+  box-shadow: var(
+    --form-field-focus-ring,
+    0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent)
+  );
+}
+
+.trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.triggerError {
+  border-color: var(--color-danger, #c2410c);
+}
+
+.triggerValue {
+  color: var(--text-primary);
+}
+
+.triggerPlaceholder {
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.chevron {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.modal {
+  min-width: 360px;
+  max-width: min(400px, calc(100% - 48px));
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--bg-surface-highest, var(--border-subtle));
+  color: var(--text-primary);
+  border-radius: var(--radius-xl, 20px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  animation: birthdayModalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 挂到主内容圆角卡内：只虚化卡片，不动 TitleBar / 窗外圈 */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
+  backdrop-filter: var(--blur-overlay, blur(4px));
+  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
+  border-radius: inherit;
+  animation: birthdayOverlayIn var(--duration-fast, 0.15s) ease-out;
+}
+
+@keyframes birthdayOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes birthdayModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.cancelBtn,
+.confirmBtn {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.cancelBtn {
+  color: var(--text-secondary);
+}
+
+.cancelBtn:hover {
+  background: var(--bg-surface-high);
+}
+
+.confirmBtn {
+  color: var(--color-primary);
+}
+
+.confirmBtn:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.headerTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-muted);
+}
+
+.columns {
+  display: flex;
+  height: 240px;
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-subtle);
+  min-width: 0;
+  height: 240px;
+}
+
+.column:last-child {
+  border-right: none;
+}
+
+.colLabel {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 8px 0;
+  height: 29px;
+  box-sizing: border-box;
+  background: var(--bg-surface-low, var(--bg-surface));
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.colScroll {
+  height: 211px;
+  overflow-y: auto;
+  min-height: 0;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+
+.colScroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 固定留白：使首尾项（含今天/当前年）也能滚到正中 */
+.colPad {
+  height: 85px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.colItem,
+.colItemSelected {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 40px;
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.colItem:hover {
+  background: transparent;
+}
+
+.colItemSelected {
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.colItemSelected:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
