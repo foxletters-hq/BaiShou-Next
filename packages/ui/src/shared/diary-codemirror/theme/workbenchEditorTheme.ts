@@ -8,13 +8,12 @@ export const workbenchEditorTheme = EditorView.baseTheme({
   '&.workbench-cm-editor .cm-editor': {
     height: '100%',
     backgroundColor: 'transparent',
-    fontSize: '16px',
-    lineHeight: '1.7'
+    fontSize: 'var(--ui-fs-xl, var(--content-font-size-lg, 16px))',
+    lineHeight: '1.5'
   },
   '&.workbench-cm-editor .cm-scroller': {
     overflow: 'auto',
-    fontFamily:
-      "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif",
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
     background: 'var(--bg-surface)'
   },
   '&.workbench-cm-editor .cm-content': {
@@ -28,6 +27,17 @@ export const workbenchEditorTheme = EditorView.baseTheme({
   },
   '&.workbench-cm-editor .cm-line': {
     padding: '0'
+  },
+  '&.workbench-cm-editor .cm-line.cm-rendered-blockquote': {
+    borderLeft: '3px solid var(--color-primary, #5ba8f5)',
+    /* 必须用完整 padding 盖过上方 .cm-line { padding: 0 }，否则竖线贴字 */
+    padding: '0 0 0 12px',
+    color: 'var(--text-secondary)'
+  },
+  '&.workbench-cm-editor .cm-line.cm-rendered-blockquote-content': {
+    borderLeft: '3px solid var(--color-primary, #5ba8f5)',
+    padding: '0 0 0 12px',
+    color: 'var(--text-secondary)'
   },
   '&.workbench-cm-editor .cm-activeLine': {
     backgroundColor: 'color-mix(in srgb, var(--color-primary, #5ba8f5) 6%, transparent) !important'
@@ -94,12 +104,10 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     cursor: 'pointer'
   },
   '&.workbench-cm-editor .cm-blockquote': {
-    borderLeft: '3px solid var(--border-control)',
-    paddingLeft: '1em',
     color: 'var(--text-secondary)'
   },
   '&.workbench-cm-editor .cm-code': {
-    fontFamily: "ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, monospace",
+    fontFamily: 'var(--font-family-mono)',
     backgroundColor: 'var(--bg-surface-low)',
     padding: '0.1em 0.35em',
     borderRadius: '4px',

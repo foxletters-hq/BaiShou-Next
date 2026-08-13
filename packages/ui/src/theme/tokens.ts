@@ -1,5 +1,8 @@
 export const sharedTokens = {
+  /** Noto Sans SC = 思源黑体简体 */
   fontFamily: "'Noto Sans SC', 'Noto Sans', system-ui, sans-serif",
+  /** 等宽；CJK 需在 CSS 栈末追加 var(--font-family) */
+  fontFamilyMono: "'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace",
   radius: {
     sm: 4,
     md: 12,
@@ -23,6 +26,17 @@ export const sharedTokens = {
     normal: 250
   }
 }
+
+/**
+ * 全局 UI 字号四档（与 css-variables.css `--ui-fs-*` 对齐）
+ * lg/xl 在 CSS 中挂到 `--content-font-size*` 以跟随用户缩放；此处给固定基准值。
+ */
+export const uiTypography = {
+  sm: 12,
+  md: 13,
+  lg: 14,
+  xl: 16
+} as const
 
 /**
  * 设置页字号/字重阶梯（与 css-variables.css `--settings-font-*` 对齐）

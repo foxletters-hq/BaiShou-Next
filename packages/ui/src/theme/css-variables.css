@@ -7,6 +7,8 @@
  */
 @import './range-slider.css';
 @import './form-field.css';
+@import './menu-popup.css';
+@import './app-chrome.css';
 @import '../desktop/shared/outline-button.css';
 :root {
   /* ========================================================= */
@@ -22,8 +24,8 @@
   /* Backgrounds — 见主题规范 §3.1 */
   --bg-app: #fafafa; /* 壳 / 侧栏下画布 / 页面内容区画布（衬白卡） */
   --bg-surface: #ffffff; /* 主工作区、页面顶栏、列表底（实色） */
-  --bg-surface-raised: #ffffff; /* 卡片 / 下拉 / 抬起块 */
-  --bg-surface-highest: #e8eaed; /* 模态 / Popover */
+  --bg-surface-raised: #ffffff; /* 卡片 / 抬起块（锚定菜单勿用，见 --menu-popup-*） */
+  --bg-surface-highest: #e8eaed; /* 居中 Modal / Dialog（锚定菜单勿用） */
   --bg-surface-high: #f0f2f5; /* 悬停 */
   --bg-surface-normal: #eaecef; /* 内凹次级区、分段轨道 */
   /* 存量兼容（新代码优先用上表） */
@@ -73,9 +75,24 @@
   --color-success-rgb: 16, 185, 129;
   --color-error-rgb: 239, 68, 68;
 
-  /* Typography — UI 统一 Noto Sans；按 html[lang] 切换 CJK 区域字形 */
+  /* Typography — UI 统一 Noto Sans SC（= 思源黑体简体）；按 html[lang] 切换 CJK 区域字形 */
   --font-family: 'Noto Sans SC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace;
+  /* 等宽优先；CJK 回退到 --font-family，避免 Diff/代码中文落到系统雅黑 */
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, var(--font-family);
+  /* 用户可调阅读字号（常规设置「字体大小」）；勿用于设置页 chrome token */
+  --ui-font-scale: 1;
+  --content-font-size: calc(14px * var(--ui-font-scale));
+  --content-font-size-md: calc(15px * var(--ui-font-scale));
+  --content-font-size-lg: calc(16px * var(--ui-font-scale));
+
+  /*
+   * 全局 UI 字号（四档 SSOT）— 工作台 / 伙伴 / chrome 新代码必须用此阶梯
+   * 设置页继续用 --settings-font-*（§3.6）；详见 2-UI-Theme-Rule.md §3.3a
+   */
+  --ui-fs-sm: 12px; /* hint、路径、角标、Diff 正文 */
+  --ui-fs-md: 13px; /* 列表、树、工具条、表单标签 */
+  --ui-fs-lg: var(--content-font-size); /* 说明、对话、一般正文 */
+  --ui-fs-xl: var(--content-font-size-lg); /* 区块 / 页内标题 */
 
   /* Settings page chrome — 页面标题顶栏统一高度；内容区与顶栏间距 */
   --settings-page-header-height: 64px;
@@ -116,13 +133,26 @@
   /* 表单输入框 — 白底 + 可见描边（禁止用 --bg-surface-low/normal 作输入底） */
   --form-field-bg: var(--bg-surface);
   --form-field-border: var(--border-control);
-  /* 聚焦：灰色加深描边（比 --border-strong 更明显），无外圈光晕；变色用 --form-field-transition */
-  --form-field-border-focus: rgba(0, 0, 0, 0.32);
+  /* 聚焦：浅灰加深（约 0.18），勿再用 0.32 级重描边；无外圈光晕 */
+  --form-field-border-focus: rgba(0, 0, 0, 0.18);
   --form-field-focus-ring: none;
   --form-field-transition:
     border-color var(--duration-normal) var(--ease-out-cubic),
     box-shadow var(--duration-normal) var(--ease-out-cubic),
     background-color var(--duration-normal) var(--ease-out-cubic);
+
+  /*
+   * 锚定菜单 / 下拉弹层（SSOT，对齐 ContextMenu / 工作台选择工作空间菜单）
+   * 居中 Modal / Dialog 不走这套，见 Modal 组件。
+   */
+  --menu-popup-bg: var(--bg-surface);
+  --menu-popup-border: var(--border-muted);
+  --menu-popup-radius: 8px;
+  --menu-popup-shadow: var(--shadow-md);
+  --menu-popup-padding: 4px;
+  --menu-popup-item-radius: 5px;
+  --menu-popup-item-hover-bg: var(--bg-surface-high);
+  --menu-popup-item-selected-bg: var(--bg-surface-high);
 
   /* Radii */
   --radius-xs: 4px;
@@ -131,6 +161,15 @@
   --radius-lg: 16px;
   --radius-xl: 24px;
   --radius-full: 9999px;
+
+  /*
+   * 桌面壳层几何（TitleBar + 主内容圆角卡）
+   * 全屏 portal 遮罩应裁到内容卡，勿盖住顶栏；见 .baishou-app-content-overlay
+   */
+  --app-titlebar-height: 52px;
+  --app-content-inset-inline: 8px;
+  --app-content-inset-bottom: 8px;
+  --app-content-radius: var(--radius-md);
 
   /* Spacing */
   --spacing-xs: 4px;
@@ -225,8 +264,8 @@
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.8);
   --shadow-glow: 0 0 16px rgba(0, 0, 0, 0.35);
 
-  /* 表单聚焦：深色用更亮的灰描边，无光晕 */
-  --form-field-border-focus: rgba(255, 255, 255, 0.42);
+  /* 表单聚焦：深色浅灰加深（约 0.24），勿再用 0.42 级重描边 */
+  --form-field-border-focus: rgba(255, 255, 255, 0.24);
   --form-field-focus-ring: none;
 }
 
