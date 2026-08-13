@@ -200,11 +200,11 @@
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-control);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
-  padding: 6px;
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  border-radius: var(--menu-popup-radius, 8px);
+  padding: var(--menu-popup-padding, 4px);
   min-width: 150px;
   z-index: 100;
   display: flex;
@@ -221,13 +221,13 @@
   color: var(--text-primary);
   font-size: 13px;
   text-align: left;
-  border-radius: 8px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .dropdownItem:hover {
-  background: rgba(var(--color-primary-rgb), 0.08);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .dangerText {

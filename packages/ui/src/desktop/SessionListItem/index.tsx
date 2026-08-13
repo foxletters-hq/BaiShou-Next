@@ -70,7 +70,10 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
 
   return (
     <div className={styles.itemWrapper}>
-      <div className={`${styles.container} ${isSelected ? styles.selected : ''}`} onClick={onTap}>
+      <div
+        className={`${styles.container} ${isSelected ? styles.selected : ''} ${isMultiSelect && isChecked ? styles.checked : ''}`}
+        onClick={onTap}
+      >
         <div className={styles.headerRow}>
           <div className={styles.titleArea}>
             {isMultiSelect && (

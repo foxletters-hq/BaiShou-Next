@@ -104,6 +104,11 @@ export const StreamingBubble: React.FC<StreamingBubbleProps> = ({
                     <AgentMarkdownRenderer content={cleanText} isStreaming={isTextStreaming} />
                   )}
                 </div>
+                {isTextStreaming && !hasText && !isReasoning && !activeToolName ? (
+                  <div className={styles.dotsWrap}>
+                    <BouncingDotsIndicator />
+                  </div>
+                ) : null}
               </>
             ) : (
               <div className={styles.dotsWrap}>

@@ -3,7 +3,7 @@
   color: var(--text-primary);
   font-family: var(--font-family);
   line-height: 1.6;
-  font-size: 14px;
+  font-size: var(--content-font-size, 14px);
   word-break: break-word;
 }
 

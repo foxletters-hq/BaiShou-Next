@@ -3,12 +3,12 @@
 .ancillary:global(.x-markdown) {
   width: fit-content !important;
   max-width: 100%;
-  font-size: 15px;
+  font-size: var(--content-font-size-md, 15px);
   line-height: 1.6;
 }
 
 .ancillary:global(.x-markdown) {
-  font-size: 14px;
+  font-size: var(--content-font-size, 14px);
   line-height: 1.7;
 }
 
@@ -17,7 +17,7 @@
   max-width: 100%;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 14px;
+  font-size: var(--content-font-size, 14px);
   line-height: 1.6;
   color: var(--text-primary);
 }
