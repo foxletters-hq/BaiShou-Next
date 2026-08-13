@@ -66,6 +66,11 @@ export function abortAllAgentStreamSessions(): void {
   pendingStopSessionIds.clear()
 }
 
+/** 会话是否仍有活跃 stream claim（用于 admit / drain 忙闲判断） */
+export function isAgentStreamSessionBusy(sessionId: string): boolean {
+  return sessionClaims.has(sessionId)
+}
+
 /** 测试专用：重置全局状态 */
 export function resetAgentStreamSessionGuardForTests(): void {
   abortAllAgentStreamSessions()

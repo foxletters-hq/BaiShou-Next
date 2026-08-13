@@ -16,12 +16,17 @@ import {
   logger,
   mergeDisabledToolIds,
   normalizeAssistantKind,
+  buildEffectiveAssistantSystemPrompt,
   isAutoInjectCurrentTimeEnabled,
   isAgentStreamAbortError,
+  normalizeReasoningEffortSetting,
   type AssistantKind,
+  type ReasoningEffortSetting,
   resolveVaultIdentity
 } from '@baishou/shared'
 import { resolveEffectiveProviderType } from '../providers/opencodego/opencodego.model-protocol'
+import { buildDefaultReasoningOptions } from '../providers/reasoning'
+import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-thinking-inject'
 
 // --- 新挂载的智慧引擎组件 ---
 import { ContextWindowBuilder } from './context-window.builder'
@@ -46,7 +51,10 @@ import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.serv
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
 import { messageHasImageAttachments } from './attachment-content.builder'
-import { isAgentStreamSessionClaimActive } from './stream-session-guard'
+import {
+  abortAgentStreamSession,
+  isAgentStreamSessionClaimActive
+} from './stream-session-guard'
 import { buildToolCallRepairHandler } from './tool-call-repair.util'
 import { resolveSessionAgentGate } from '../baishou-agent-gate/baishou-agent-gate-session.util'
 import { runCompressionSaveDiaryLifecycle } from '../baishou-agent-gate/compression-save-diary.lifecycle'
@@ -60,6 +68,16 @@ import {
   bridgeStreamChunkToRuntimeEvents,
   createSessionRuntimeBridgeState
 } from './session-runtime-event'
+import {
+  prepareSystemPromptWithEpoch,
+  replaceEpochBaselineAfterCompression
+} from '../session-runtime/context-epoch'
+import { attachDoomLoopObserver, resolveSessionRuntimeProfile } from '../session-runtime'
+import {
+  emitTurnFinished,
+  emitTurnStarted,
+  needsProviderTurnContinuation
+} from '../session-runtime/turn'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -96,8 +114,12 @@ export class AgentSessionService {
       graphReader,
       knowledgeReader,
       diarySearcher,
+      skillsWriter,
       workspace: workspaceInput,
-      resolveVaultDisplayName
+      resolveVaultDisplayName,
+      skillsCatalog,
+      maxSteps: maxStepsOption,
+      sessionRuntimeV2: sessionRuntimeV2Option
     } = options
 
     let sessionAgentGate: IBaishouAgentGate | undefined
@@ -112,6 +134,18 @@ export class AgentSessionService {
           }
         }
       : undefined
+    const runtimeProfile = resolveSessionRuntimeProfile({
+      sessionKind: workspaceOptions?.sessionKind,
+      userConfig,
+      options: {
+        sessionRuntimeV2: sessionRuntimeV2Option,
+        maxSteps: maxStepsOption
+      }
+    })
+    const enableRuntimeV2 = runtimeProfile.sessionRuntimeV2 === true
+    const effectiveMaxSteps = runtimeProfile.maxSteps ?? 10
+    const interruptOnGateReject = runtimeProfile.interruptOnGateReject === true
+    const doomLoopThreshold = runtimeProfile.doomLoopThreshold ?? 3
     const unsubGateBuffer = onAgentGateLifecycle((event) => {
       if (event.type === 'agent_gate.allowlist_changed') return
       if (event.type === 'agent_gate.asked' && event.request.sessionId !== sessionId) return
@@ -184,8 +218,12 @@ export class AgentSessionService {
               assistantKind
             )
           }
-          if (ast.systemPrompt) {
-            effectiveSystemPrompt = ast.systemPrompt
+          const combined = buildEffectiveAssistantSystemPrompt(
+            ast.systemPrompt,
+            ast.customSystemPrompt
+          )
+          if (combined) {
+            effectiveSystemPrompt = combined
           }
         }
       }
@@ -284,6 +322,9 @@ export class AgentSessionService {
               })
               sessionMessages = await loadSessionMessages()
               snapshotForWindow = await snapshotRepo.getLatestSnapshot(sessionId)
+              // 压缩发生在 full system builder 之前：replace('') 清空 baseline/sources 并 bump
+              // baselineSeq；下次 prepare 因 baseline 空而 strip(full) 重建，并已发 epoch_replaced
+              replaceEpochBaselineAfterCompression(sessionId, '')
             }
           }
         }
@@ -395,6 +436,8 @@ export class AgentSessionService {
             await ContextCompressorService.runPrune(sessionRepo, sessionId, allForPrune, {
               flushSessionToDisk
             })
+            // 工具触发压缩后同样 replace，保证下次 prepare 重建完整 baseline
+            replaceEpochBaselineAfterCompression(sessionId, '')
           }
           const phaseLabel =
             phase === 'upstream'
@@ -428,7 +471,9 @@ export class AgentSessionService {
         syncGraphPendingIndex,
         graphReader,
         knowledgeReader,
-        workspace: workspaceOptions
+        skillsWriter,
+        workspace: workspaceOptions,
+        interruptOnGateReject
       } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0])
 
       const builtSystemPrompt = SystemPromptBuilder.build({
@@ -452,7 +497,19 @@ export class AgentSessionService {
             ? (mergedUserConfig['locale'] as string)
             : typeof userConfig?.['locale'] === 'string'
               ? (userConfig['locale'] as string)
-              : undefined
+              : undefined,
+        workspaceEnv:
+          workspaceOptions?.sessionKind === 'workspace' && workspaceOptions.folderRoot
+            ? {
+                folderRoot: workspaceOptions.folderRoot,
+                platform: workspaceOptions.env?.platform ?? process.platform,
+                isGitRepo: workspaceOptions.env?.isGitRepo,
+                gitBranch: workspaceOptions.env?.gitBranch,
+                gitChangesCount: workspaceOptions.env?.gitChangesCount,
+                notebookId: workspaceOptions.notebookId
+              }
+            : undefined,
+        skillsCatalog
       })
 
       // 4. 调用 Vercel streamText
@@ -492,6 +549,15 @@ export class AgentSessionService {
         }
       }
 
+      // v2：仅在各 turn 内 prepare（命中 epoch 缓存近零成本）；非 v2：此处准备一次
+      let systemForModel = ''
+      if (!enableRuntimeV2) {
+        systemForModel = prepareSystemPromptWithEpoch({
+          sessionId,
+          fullSystemPrompt: builtSystemPrompt
+        }).systemPrompt
+      }
+
       runtimeRecorder.record({
         type: 'session.prompt_admitted',
         sessionId,
@@ -508,23 +574,48 @@ export class AgentSessionService {
         baseUrl: provider.config?.baseUrl
       }
 
-      const streamResult = await streamText({
-        model,
-        messages: messagesForModel,
-        system: buildCachedSystemForStream(builtSystemPrompt, cachingCtx),
-        tools: enabledTools,
-        stopWhen: stepCountIs(10),
-        abortSignal,
-        experimental_repairToolCall: buildToolCallRepairHandler(),
-        ...(hasSegmenter && cjkSegmenter
-          ? { experimental_transform: smoothStream({ chunking: cjkSegmenter }) }
-          : {})
-      } as any)
+      const reasoningEffortSetting = normalizeReasoningEffortSetting(
+        mergedUserConfig?.['reasoningEffort'] ?? mergedUserConfig?.['reasoningEffortDefault']
+      ) as ReasoningEffortSetting
+      const budgetRaw = mergedUserConfig?.['reasoningBudgetTokens']
+      const budgetTokens =
+        typeof budgetRaw === 'number'
+          ? budgetRaw
+          : typeof budgetRaw === 'string' && budgetRaw.trim()
+            ? Number(budgetRaw)
+            : undefined
+      const builtReasoning = buildDefaultReasoningOptions({
+        modelId,
+        providerType: effectiveProviderType,
+        baseUrl: provider.config?.baseUrl,
+        effort: reasoningEffortSetting,
+        budgetTokens,
+        hasTools: Boolean(enabledTools && Object.keys(enabledTools).length > 0)
+      })
 
-      // 5. 使用统一的 StreamChunkAdapter 消费流
       const accumulator = new StreamAccumulator()
+      let doomTripped = false
+      const doomObserver = attachDoomLoopObserver({
+        sessionId,
+        threshold: doomLoopThreshold,
+        onTripped: () => {
+          doomTripped = true
+          // 尽快打断当前 claim 流，避免本 turn 继续跑完工具循环
+          abortAgentStreamSession(sessionId)
+        }
+      })
+      let lastFinishReason = 'unknown'
+      let turnToolCalls = 0
+
       const adapter = new StreamChunkAdapter(accumulator, {
         onChunk: (chunk) => {
+          if (chunk.type === ChunkType.TOOL_CALL) {
+            turnToolCalls += 1
+            doomObserver.observe(chunk.toolName, chunk.input)
+          }
+          if (chunk.type === ChunkType.STEP_FINISH) {
+            lastFinishReason = chunk.finishReason || lastFinishReason
+          }
           this.dispatchChunkToCallbacks(chunk, callbacks)
           const runtimeEvents = bridgeStreamChunkToRuntimeEvents(
             sessionId,
@@ -541,8 +632,96 @@ export class AgentSessionService {
         }
       })
 
-      let streamError = (await adapter.consumeStream(streamResult)).error
-      const userAborted = Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError)
+      const runOneStream = async (
+        messages: typeof messagesForModel,
+        maxStepsThisTurn: number,
+        systemPromptThisTurn: string
+      ) =>
+        runWithOpenAiThinkingInjectAsync(builtReasoning.openAiThinkingInject, async () =>
+          streamText({
+            model,
+            messages,
+            system: buildCachedSystemForStream(systemPromptThisTurn, cachingCtx),
+            tools: enabledTools,
+            stopWhen: stepCountIs(maxStepsThisTurn),
+            abortSignal,
+            experimental_repairToolCall: buildToolCallRepairHandler(),
+            ...(builtReasoning.providerOptions
+              ? { providerOptions: builtReasoning.providerOptions }
+              : {}),
+            ...(hasSegmenter && cjkSegmenter
+              ? { experimental_transform: smoothStream({ chunking: cjkSegmenter }) }
+              : {})
+          } as any)
+        )
+
+      let streamResult: Awaited<ReturnType<typeof runOneStream>>
+      let streamError: unknown = null
+
+      if (enableRuntimeV2) {
+        // 起始浅拷贝一次；后续 turn 就地 push，避免每 turn 全量拷贝
+        let turnMessages = [...messagesForModel] as any[]
+        streamResult = undefined as any
+        for (let turnIndex = 0; turnIndex < effectiveMaxSteps; turnIndex++) {
+          if (abortSignal?.aborted || doomTripped) break
+          // turn 边界再 reconcile（压缩后 / 环境变更），本 turn 必须用 prepare 返回的 systemPrompt
+          const turned = prepareSystemPromptWithEpoch({
+            sessionId,
+            fullSystemPrompt: builtSystemPrompt
+          })
+          systemForModel = turned.systemPrompt
+          emitTurnStarted(sessionId, turnIndex)
+          turnToolCalls = 0
+          lastFinishReason = 'unknown'
+          const turnStream = await runOneStream(turnMessages, 1, turned.systemPrompt)
+          streamResult = turnStream
+          const consumed = await adapter.consumeStream(turnStream)
+          if (consumed.error) streamError = consumed.error
+          const continueNeeded = needsProviderTurnContinuation({
+            finishReason: lastFinishReason,
+            hadToolCalls: turnToolCalls > 0,
+            turnIndex,
+            maxSteps: effectiveMaxSteps,
+            aborted: Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError),
+            doomLoopTripped: doomTripped
+          })
+          emitTurnFinished(sessionId, turnIndex, {
+            finishReason: lastFinishReason,
+            needsContinuation: continueNeeded
+          })
+          if (!continueNeeded || doomTripped || abortSignal?.aborted || streamError) break
+          try {
+            const response = await turnStream.response
+            const nextMessages = (response as { messages?: unknown[] } | undefined)?.messages
+            if (Array.isArray(nextMessages) && nextMessages.length > 0) {
+              // 续跑可就地追加，避免每 turn 全量拷贝
+              turnMessages.push(...(nextMessages as any[]))
+            } else {
+              break
+            }
+          } catch {
+            break
+          }
+        }
+        if (!streamResult) {
+          if (!systemForModel) {
+            systemForModel = prepareSystemPromptWithEpoch({
+              sessionId,
+              fullSystemPrompt: builtSystemPrompt
+            }).systemPrompt
+          }
+          streamResult = await runOneStream(messagesForModel, 1, systemForModel)
+          streamError = (await adapter.consumeStream(streamResult)).error
+        }
+      } else {
+        streamResult = await runOneStream(messagesForModel, effectiveMaxSteps, systemForModel)
+        streamError = (await adapter.consumeStream(streamResult)).error
+      }
+
+      // doom-loop 自触发 abort 时 abortSignal 也会 aborted，不可伪装成普通用户取消
+      const streamAborted =
+        Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError)
+      const userAborted = streamAborted && !doomTripped
 
       // 记录性能指标
       const metrics = adapter.getMetrics()
@@ -555,8 +734,10 @@ export class AgentSessionService {
         Boolean(accumulator.reasoning.trim()) ||
         accumulator.toolCalls.length > 0
 
-      // 用户主动取消：不要误报「模型未返回任何内容」
-      if (userAborted) {
+      // 用户主动取消 / doom-loop：不要误报「模型未返回任何内容」
+      if (doomTripped) {
+        streamError = new Error('检测到工具调用死循环，已中断本轮')
+      } else if (userAborted) {
         streamError = isAgentStreamAbortError(streamError)
           ? streamError
           : new DOMException('The operation was aborted', 'AbortError')
@@ -564,8 +745,11 @@ export class AgentSessionService {
         streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
       }
 
-      if (streamError && !userAborted) {
-        logger.warn('[AgentSessionService] Stream encountered a fatal error:', streamError)
+      if (streamError && !userAborted && !doomTripped) {
+        logger.warn(
+          '[AgentSessionService] Stream encountered a fatal error:',
+          streamError instanceof Error ? streamError.message : String(streamError)
+        )
       }
 
       // 6. 落盘（被更新的重试取代时跳过，避免重复 assistant 消息）
@@ -580,17 +764,36 @@ export class AgentSessionService {
         return
       }
 
-      // 用户主动取消：不落盘 partial assistant，避免 UI 取消后内容又刷回来
-      if (userAborted) {
-        logger.info(`[AgentSessionService] Skip persist for session ${sessionId}: user aborted`)
-        callbacks?.onFinish?.({
-          messageId: undefined,
-          inputTokens: 0,
-          outputTokens: 0,
-          cacheReadInputTokens: 0,
-          cacheWriteInputTokens: 0,
-          costMicros: 0
-        })
+      // 用户主动取消 / doom-loop：不落盘 partial assistant
+      if (userAborted || doomTripped) {
+        logger.info(
+          `[AgentSessionService] Skip persist for session ${sessionId}: ${
+            doomTripped ? 'doom-loop' : 'user aborted'
+          }`
+        )
+        if (doomTripped) {
+          const doomErr =
+            streamError instanceof Error
+              ? streamError
+              : new Error('检测到工具调用死循环，已中断本轮')
+          runtimeRecorder.record({
+            type: 'session.stream_finished',
+            sessionId,
+            success: false,
+            error: doomErr.message,
+            timestamp: Date.now()
+          })
+          callbacks?.onError?.(doomErr)
+        } else {
+          callbacks?.onFinish?.({
+            messageId: undefined,
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheWriteInputTokens: 0,
+            costMicros: 0
+          })
+        }
         return
       }
 
@@ -625,14 +828,16 @@ export class AgentSessionService {
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
       if (streamError && !isAgentStreamAbortError(streamError) && !abortSignal?.aborted) {
+        const errObj =
+          streamError instanceof Error ? streamError : new Error(String(streamError))
         runtimeRecorder.record({
           type: 'session.stream_finished',
           sessionId,
           success: false,
-          error: streamError.message,
+          error: errObj.message,
           timestamp: Date.now()
         })
-        callbacks?.onError?.(streamError)
+        callbacks?.onError?.(errObj)
       } else if (!streamError) {
         runtimeRecorder.record({
           type: 'session.stream_finished',
@@ -722,10 +927,10 @@ export class AgentSessionService {
         callbacks.onReasoningDelta?.(chunk.text)
         break
       case ChunkType.TOOL_CALL:
-        callbacks.onToolCallStart?.(chunk.toolName, chunk.input)
+        callbacks.onToolCallStart?.(chunk.toolName, chunk.input, chunk.toolCallId)
         break
       case ChunkType.TOOL_RESULT:
-        callbacks.onToolCallResult?.(chunk.toolName, chunk.output)
+        callbacks.onToolCallResult?.(chunk.toolName, chunk.output, chunk.toolCallId)
         break
       case ChunkType.ERROR:
         break

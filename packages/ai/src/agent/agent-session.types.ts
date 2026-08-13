@@ -76,18 +76,34 @@ export interface StreamChatOptions {
     sessionKind?: AgentSessionKind
     /** 工作台挂载的知识库笔记本（检索作用域） */
     notebookId?: string
+    /** 工作区身份，供 Gate scope / 观测 */
+    workspaceId?: string
+    /** 注入 system <workspace_env> 的元数据 */
+    env?: {
+      platform?: string
+      isGitRepo?: boolean
+      gitBranch?: string | null
+      gitChangesCount?: number | null
+    }
     fs?: WorkspaceFsAdapter
     roundCheckpointService?: AgentRoundCheckpointService
     roundCheckpointId?: string
     onFileChange?: (change: FileChangePartData) => void
   }
+  /** Skills 目录（名+描述），注入 system <skills_catalog> */
+  skillsCatalog?: Array<{ name: string; description?: string }>
+  skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
+  /** 覆盖默认 maxSteps（SDK 内或多 turn 外环）；未传时由 resolveSessionRuntimeProfile 从 userConfig 解析 */
+  maxSteps?: number
+  /** 覆盖 Session Runtime v2；未传时按 sessionKind + userConfig 解析（workspace 默认开） */
+  sessionRuntimeV2?: boolean
 }
 
 export interface StreamChatCallbacks {
   onTextDelta?: (text: string) => void
   onReasoningDelta?: (text: string) => void
-  onToolCallStart?: (toolName: string, args: unknown) => void
-  onToolCallResult?: (toolName: string, result: unknown) => void
+  onToolCallStart?: (toolName: string, args: unknown, toolCallId?: string) => void
+  onToolCallResult?: (toolName: string, result: unknown, toolCallId?: string) => void
   onError?: (error: Error) => void
   onFinish?: (result?: {
     messageId?: string

@@ -19,6 +19,19 @@ export interface StreamTokenUsage {
   cacheWriteInputTokens: number
 }
 
+/** 流式时间线片段：按发生顺序保留 reasoning / tool / text */
+export type StreamTimelineItem =
+  | { kind: 'reasoning'; text: string }
+  | { kind: 'text'; text: string }
+  | {
+      kind: 'tool'
+      callId: string
+      name: string
+      arguments: string
+      result?: unknown
+      status: 'running' | 'completed' | 'failed'
+    }
+
 function readNumber(value: unknown): number {
   const n = Number(value)
   return Number.isFinite(n) && n > 0 ? n : 0
@@ -61,35 +74,58 @@ function extractCacheUsageFromRecord(
 }
 
 export class StreamAccumulator {
-  private _textBuffer: string = ''
-  private _reasoningBuffer: string = ''
+  private _timeline: StreamTimelineItem[] = []
 
   private _inputTokens: number = 0
   private _outputTokens: number = 0
   private _cacheReadInputTokens: number = 0
   private _cacheWriteInputTokens: number = 0
 
-  private _toolCalls: Map<string, ToolCallSnapshot> = new Map()
-  private _toolResults: Map<string, ToolResultSnapshot> = new Map()
+  get timeline(): readonly StreamTimelineItem[] {
+    return this._timeline
+  }
 
   get text(): string {
-    return this._textBuffer
+    return this._timeline
+      .filter((item): item is Extract<StreamTimelineItem, { kind: 'text' }> => item.kind === 'text')
+      .map((item) => item.text)
+      .join('')
   }
 
   get sanitizedText(): string {
-    return sanitizeAssistantGeneratedText(this._textBuffer)
+    return sanitizeAssistantGeneratedText(this.text)
   }
 
   get reasoning(): string {
-    return this._reasoningBuffer
+    return this._timeline
+      .filter(
+        (item): item is Extract<StreamTimelineItem, { kind: 'reasoning' }> =>
+          item.kind === 'reasoning'
+      )
+      .map((item) => item.text)
+      .join('\n')
   }
 
   get toolCalls(): ToolCallSnapshot[] {
-    return Array.from(this._toolCalls.values())
+    return this._timeline
+      .filter((item): item is Extract<StreamTimelineItem, { kind: 'tool' }> => item.kind === 'tool')
+      .map((item) => ({
+        callId: item.callId,
+        name: item.name,
+        arguments: item.arguments
+      }))
   }
 
   get toolResults(): ToolResultSnapshot[] {
-    return Array.from(this._toolResults.values())
+    return this._timeline
+      .filter(
+        (item): item is Extract<StreamTimelineItem, { kind: 'tool' }> =>
+          item.kind === 'tool' && item.result !== undefined
+      )
+      .map((item) => ({
+        callId: item.callId,
+        result: item.result
+      }))
   }
 
   get usage(): StreamTokenUsage {
@@ -101,24 +137,20 @@ export class StreamAccumulator {
     }
   }
 
-  add(part: TextStreamPart<any>): void {
+  add(part: FullStreamPart<any>): void {
     const p = part as Record<string, unknown>
     switch (p.type) {
       case 'text-delta': {
-        if (p.textDelta) {
-          this._textBuffer += String(p.textDelta)
-        } else if (p.text) {
-          this._textBuffer += String(p.text)
-        }
+        const delta =
+          p.textDelta != null ? String(p.textDelta) : p.text != null ? String(p.text) : ''
+        if (delta) this.appendText(delta)
         break
       }
 
       case 'reasoning-delta': {
-        if (p.textDelta) {
-          this._reasoningBuffer += String(p.textDelta)
-        } else if (p.text) {
-          this._reasoningBuffer += String(p.text)
-        }
+        const delta =
+          p.textDelta != null ? String(p.textDelta) : p.text != null ? String(p.text) : ''
+        if (delta) this.appendReasoning(delta)
         break
       }
 
@@ -131,23 +163,29 @@ export class StreamAccumulator {
           const inputArgs =
             typeof p.input === 'string' ? p.input : JSON.stringify(p.input ?? rawInput ?? {})
 
-          this._toolCalls.set(String(p.toolCallId), {
+          this._timeline.push({
+            kind: 'tool',
             callId: String(p.toolCallId),
             name: toolName,
-            arguments: inputArgs
+            arguments: inputArgs,
+            status: 'running'
           })
         }
         break
       }
 
       case 'tool-result': {
-        if (p.toolCallId && this._toolCalls.has(String(p.toolCallId))) {
-          const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
-          const res = p.output ?? p.result ?? raw
-          this._toolResults.set(String(p.toolCallId), {
-            callId: String(p.toolCallId),
-            result: res
-          })
+        if (p.toolCallId) {
+          const callId = String(p.toolCallId)
+          const tool = this._timeline.find(
+            (item): item is Extract<StreamTimelineItem, { kind: 'tool' }> =>
+              item.kind === 'tool' && item.callId === callId
+          )
+          if (tool) {
+            const raw = (p.providerMetadata as Record<string, unknown> | undefined)?.raw
+            tool.result = p.output ?? p.result ?? raw
+            tool.status = 'completed'
+          }
         }
         break
       }
@@ -186,6 +224,24 @@ export class StreamAccumulator {
         break
       }
     }
+  }
+
+  private appendReasoning(delta: string): void {
+    const last = this._timeline[this._timeline.length - 1]
+    if (last?.kind === 'reasoning') {
+      last.text += delta
+      return
+    }
+    this._timeline.push({ kind: 'reasoning', text: delta })
+  }
+
+  private appendText(delta: string): void {
+    const last = this._timeline[this._timeline.length - 1]
+    if (last?.kind === 'text') {
+      last.text += delta
+      return
+    }
+    this._timeline.push({ kind: 'text', text: delta })
   }
 
   private ingestUsage(
