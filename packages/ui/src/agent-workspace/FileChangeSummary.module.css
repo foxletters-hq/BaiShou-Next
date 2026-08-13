@@ -8,7 +8,8 @@
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
+  font-family: var(--font-family);
   text-align: left;
   cursor: pointer;
   transition: background-color 0.15s;
@@ -22,20 +23,9 @@
   cursor: default;
 }
 
-.chevron {
-  display: inline-block;
-  font-size: 10px;
-  color: var(--text-secondary);
-  transition: transform 0.15s;
-}
-
-.chevron[data-expanded='true'] {
-  transform: rotate(90deg);
-}
-
 .kind {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--bg-muted);
@@ -48,13 +38,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: inherit;
 }
 
 .stats {
   flex-shrink: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-family: inherit;
+  font-size: var(--ui-fs-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .stats :global(.add) {

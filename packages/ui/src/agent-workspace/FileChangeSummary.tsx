@@ -29,9 +29,6 @@ export const FileChangeSummary: React.FC<FileChangeSummaryProps> = ({
       aria-expanded={expanded}
       disabled={!onToggle}
     >
-      <span className={styles.chevron} data-expanded={expanded ? 'true' : 'false'} aria-hidden>
-        ▶
-      </span>
       <span className={styles.kind}>{fileChangeKindLabel(t, data.kind)}</span>
       <span className={styles.path} title={data.path}>
         {fileName}

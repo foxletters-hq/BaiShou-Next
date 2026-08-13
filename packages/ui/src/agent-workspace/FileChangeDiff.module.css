@@ -5,16 +5,57 @@
   border: 1px solid var(--border-subtle);
   border-top: none;
   background: var(--bg-code);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.45;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-lg);
+  line-height: 1.5;
   overflow: auto;
   max-height: 320px;
 }
 
-.diff > div {
-  padding: 0 10px;
+.row {
+  display: grid;
+  grid-template-columns: 3px 40px 40px 14px minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 1.45em;
+}
+
+.row > .hunkText {
+  grid-column: 1 / -1;
+  padding: 2px 10px;
   white-space: pre;
+}
+
+.gutterBar {
+  width: 3px;
+  background: transparent;
+}
+
+.add .gutterBar {
+  background: rgba(46, 160, 67, 0.85);
+}
+
+.del .gutterBar {
+  background: rgba(248, 81, 73, 0.85);
+}
+
+.lineNum {
+  padding: 0 6px;
+  text-align: right;
+  color: var(--text-tertiary, var(--text-secondary));
+  user-select: none;
+  opacity: 0.75;
+}
+
+.marker {
+  text-align: center;
+  user-select: none;
+  opacity: 0.7;
+}
+
+.lineText {
+  padding-right: 10px;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .add {
@@ -22,9 +63,17 @@
   color: var(--text-primary);
 }
 
+.add .marker {
+  color: rgb(46, 160, 67);
+}
+
 .del {
   background: rgba(248, 81, 73, 0.12);
   color: var(--text-primary);
+}
+
+.del .marker {
+  color: rgb(248, 81, 73);
 }
 
 .hunk {
@@ -41,4 +90,5 @@
   color: var(--text-secondary);
   font-style: italic;
   font-family: inherit;
+  display: block;
 }
