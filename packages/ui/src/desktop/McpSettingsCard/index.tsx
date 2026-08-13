@@ -5,15 +5,18 @@ import {
   isSettingsInlineHelpTarget,
   settingsInlineHelpHostProps
 } from '../shared/settingsInlineHelpBlock'
+import { withAppContentOverlay } from '../overlay'
 import styles from './McpSettingsCard.module.css'
 import { McpHelpButton } from './McpHelpButton'
-import { buildMcpUrl } from './mcp-url'
+import { buildMcpSseUrl, buildMcpUrl } from './mcp-url'
 import { useToast } from '../Toast/useToast'
 import { Cable, ChevronDown, Copy, RefreshCw } from 'lucide-react'
+import { isMcpAuthEnabled } from '@baishou/shared'
 
 export interface McpServerConfig {
   mcpEnabled: boolean
   mcpPort: number
+  mcpAuthEnabled?: boolean
   mcpAuthToken?: string
 }
 
@@ -45,12 +48,15 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
 
   const endpointHost = lanHost?.trim() || '127.0.0.1'
   const mcpUrl = buildMcpUrl(config.mcpPort, endpointHost)
+  const mcpSseUrl = buildMcpSseUrl(config.mcpPort, endpointHost)
   const localhostUrl = lanHost ? buildMcpUrl(config.mcpPort, '127.0.0.1') : null
+  const localhostSseUrl = lanHost ? buildMcpSseUrl(config.mcpPort, '127.0.0.1') : null
+  const authEnabled = isMcpAuthEnabled(config)
 
-  const handleCopyEndpoint = async (e: React.MouseEvent) => {
+  const handleCopyEndpoint = async (e: React.MouseEvent, url: string) => {
     e.stopPropagation()
     try {
-      await navigator.clipboard.writeText(mcpUrl)
+      await navigator.clipboard.writeText(url)
       toast.showSuccess(t('common.copied', '已复制到剪贴板'))
     } catch {
       toast.showError(t('common.copy_failed', '复制失败'))
@@ -68,6 +74,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
             <McpHelpButton
               size={16}
               mcpPort={config.mcpPort}
+              mcpAuthEnabled={authEnabled}
               mcpAuthToken={config.mcpAuthToken}
               lanHost={lanHost}
             />
@@ -115,7 +122,10 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
   }
 
   const refreshConfirmDialog = showRefreshConfirm ? (
-    <div className={styles.confirmOverlay} onClick={() => setShowRefreshConfirm(false)}>
+    <div
+      className={withAppContentOverlay(styles.confirmOverlay)}
+      onClick={() => setShowRefreshConfirm(false)}
+    >
       <div className={styles.confirmBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.confirmTitle}>
           {t('settings.mcp_refresh_token_title', '刷新访问令牌')}
@@ -168,8 +178,23 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
         <button
           type="button"
           className={styles.copyBtn}
-          onClick={handleCopyEndpoint}
+          onClick={(e) => void handleCopyEndpoint(e, mcpUrl)}
           aria-label={t('settings.mcp_copy_url', '复制 MCP 地址')}
+          title={t('common.copy', '复制')}
+        >
+          <Copy size={18} />
+        </button>
+      </div>
+      <div className={styles.endpointRow}>
+        <span className={styles.endpointLabel}>
+          {t('settings.mcp_sse_label', '连接地址（SSE）')}
+        </span>
+        <span className={styles.endpointUrl}>{mcpSseUrl}</span>
+        <button
+          type="button"
+          className={styles.copyBtn}
+          onClick={(e) => void handleCopyEndpoint(e, mcpSseUrl)}
+          aria-label={t('settings.mcp_copy_sse_url', '复制 SSE 地址')}
           title={t('common.copy', '复制')}
         >
           <Copy size={18} />
@@ -182,10 +207,32 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           </span>
           <span className={`${styles.endpointUrl} ${styles.endpointUrlSecondary}`}>
             {localhostUrl}
+            {localhostSseUrl ? ` · ${localhostSseUrl}` : null}
           </span>
         </div>
       ) : null}
-      {config.mcpAuthToken ? (
+      <div className={`settings-list-tile settings-list-tile-noclick ${styles.authToggleRow}`}>
+        <div className="settings-list-tile-content">
+          <span className="settings-list-tile-title">
+            {t('settings.mcp_auth_enable', '启用鉴权')}
+          </span>
+          <span className="settings-list-tile-subtitle">
+            {t(
+              'settings.mcp_auth_enable_desc',
+              '关闭后无需访问令牌即可连接（仅建议在受信局域网使用）'
+            )}
+          </span>
+        </div>
+        <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={authEnabled}
+            onChange={(e) => onChange({ ...config, mcpAuthEnabled: e.target.checked })}
+          />
+          <span className="settings-switch-slider" />
+        </label>
+      </div>
+      {authEnabled && config.mcpAuthToken ? (
         <div className={styles.endpointRow}>
           <span className={styles.endpointLabel}>{t('settings.mcp_auth_token', '访问令牌')}</span>
           <span className={styles.endpointUrl}>{config.mcpAuthToken}</span>
@@ -257,6 +304,7 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
               <McpHelpButton
                 size={16}
                 mcpPort={config.mcpPort}
+                mcpAuthEnabled={authEnabled}
                 mcpAuthToken={config.mcpAuthToken}
                 lanHost={lanHost}
               />
