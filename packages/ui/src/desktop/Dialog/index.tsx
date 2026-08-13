@@ -9,9 +9,11 @@ import React, {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
-import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
 import styles from './Dialog.module.css'
+
+/** 须高于业务 Modal（如会话历史 1300），避免确认框被压在下层 */
+const DIALOG_Z_INDEX = 3200
 
 export interface ChooseOption {
   label: string
@@ -21,8 +23,18 @@ export interface ChooseOption {
   centered?: boolean
 }
 
+export interface ConfirmWithDontAskAgainResult {
+  confirmed: boolean
+  dontAskAgain: boolean
+}
+
 export interface DialogContextState {
   confirm: (message: ReactNode, title?: string) => Promise<boolean>
+  confirmWithDontAskAgain: (
+    message: ReactNode,
+    title?: string,
+    dontAskAgainLabel?: string
+  ) => Promise<ConfirmWithDontAskAgainResult>
   prompt: (
     message: ReactNode,
     defaultValue?: string,
@@ -40,7 +52,7 @@ export interface DialogContextState {
 
 const DialogContext = createContext<DialogContextState | null>(null)
 
-type DialogType = 'alert' | 'confirm' | 'prompt' | 'choose'
+type DialogType = 'alert' | 'confirm' | 'confirmDontAsk' | 'prompt' | 'choose'
 
 interface DialogState {
   isOpen: boolean
@@ -50,6 +62,7 @@ interface DialogState {
   defaultValue?: string
   isMultiline?: boolean
   chooseOptions?: ChooseOption[]
+  dontAskAgainLabel?: string
   resolve?: (value: any) => void
 }
 
@@ -62,6 +75,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   })
 
   const [promptValue, setPromptValue] = useState('')
+  const [dontAskAgain, setDontAskAgain] = useState(false)
 
   const closeDialog = useCallback((returnValue?: any) => {
     setState((prev) => {
@@ -75,7 +89,9 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (!prev.isOpen) return prev
       if (prev.resolve) {
         if (prev.type === 'prompt' || prev.type === 'choose') prev.resolve(null)
-        else if (prev.type === 'confirm') prev.resolve(false)
+        else if (prev.type === 'confirmDontAsk') {
+          prev.resolve({ confirmed: false, dontAskAgain: false })
+        } else if (prev.type === 'confirm') prev.resolve(false)
         else prev.resolve(undefined)
       }
       return { ...prev, isOpen: false }
@@ -86,7 +102,10 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setState((prev) => {
       if (!prev.isOpen && !prev.resolve) return prev
       if (prev.resolve) {
-        prev.resolve(prev.type === 'prompt' || prev.type === 'choose' ? null : false)
+        if (prev.type === 'prompt' || prev.type === 'choose') prev.resolve(null)
+        else if (prev.type === 'confirmDontAsk') {
+          prev.resolve({ confirmed: false, dontAskAgain: false })
+        } else prev.resolve(false)
       }
       return { ...prev, isOpen: false, resolve: undefined }
     })
@@ -95,16 +114,20 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     return () => {
       if (state.isOpen && state.resolve) {
-        state.resolve(
-          state.type === 'prompt' || state.type === 'choose'
-            ? null
-            : state.type === 'confirm'
-              ? false
-              : undefined
-        )
+        if (state.type === 'prompt' || state.type === 'choose') state.resolve(null)
+        else if (state.type === 'confirmDontAsk') {
+          state.resolve({ confirmed: false, dontAskAgain: false })
+        } else if (state.type === 'confirm') state.resolve(false)
+        else state.resolve(undefined)
       }
     }
   }, [state.isOpen, state.resolve, state.type])
+
+  useEffect(() => {
+    if (state.isOpen && state.type === 'confirmDontAsk') {
+      setDontAskAgain(false)
+    }
+  }, [state.isOpen, state.type])
 
   const alert = useCallback((message: ReactNode, title?: string): Promise<void> => {
     return new Promise((resolve) => {
@@ -117,6 +140,27 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setState({ isOpen: true, type: 'confirm', message, title, resolve })
     })
   }, [])
+
+  const confirmWithDontAskAgain = useCallback(
+    (
+      message: ReactNode,
+      title?: string,
+      dontAskAgainLabel?: string
+    ): Promise<ConfirmWithDontAskAgainResult> => {
+      return new Promise((resolve) => {
+        setDontAskAgain(false)
+        setState({
+          isOpen: true,
+          type: 'confirmDontAsk',
+          message,
+          title,
+          dontAskAgainLabel,
+          resolve
+        })
+      })
+    },
+    []
+  )
 
   const choose = useCallback(
     (
@@ -161,25 +205,57 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     []
   )
 
-  const showTitle = state.type !== 'prompt' && state.type !== 'confirm' ? state.title : undefined
-
   const dialogApi = useMemo(
-    () => ({ alert, confirm, prompt, choose, closeAll }),
-    [alert, confirm, prompt, choose, closeAll]
+    () => ({ alert, confirm, confirmWithDontAskAgain, prompt, choose, closeAll }),
+    [alert, confirm, confirmWithDontAskAgain, prompt, choose, closeAll]
   )
+
+  const inlineTitle =
+    (state.type === 'confirm' ||
+      state.type === 'confirmDontAsk' ||
+      state.type === 'prompt' ||
+      state.type === 'alert') &&
+    state.title
+      ? state.title
+      : undefined
+
+  const modalTitle = state.type === 'choose' ? state.title : undefined
 
   return (
     <DialogContext.Provider value={dialogApi}>
       {children}
       {state.isOpen && (
-        <Modal isOpen={state.isOpen} onClose={dismissDialog} title={showTitle} zIndex={1100}>
+        <Modal
+          isOpen={state.isOpen}
+          onClose={dismissDialog}
+          title={modalTitle}
+          zIndex={DIALOG_Z_INDEX}
+        >
           <div className={styles.dialogContent}>
+            {inlineTitle ? <div className={styles.title}>{inlineTitle}</div> : null}
+
             {state.type !== 'choose' ? <div className={styles.message}>{state.message}</div> : null}
 
             {state.type === 'choose' &&
             typeof state.message === 'string' &&
             state.message.trim().length > 0 ? (
               <div className={styles.message}>{state.message}</div>
+            ) : null}
+
+            {state.type === 'confirmDontAsk' ? (
+              <button
+                type="button"
+                className={`${styles.checkboxRow} ${dontAskAgain ? styles.checkboxRowChecked : ''}`}
+                onClick={() => setDontAskAgain((v) => !v)}
+                aria-pressed={dontAskAgain}
+              >
+                <span className={styles.checkboxBox} aria-hidden>
+                  {dontAskAgain ? <span className={styles.checkboxTick} /> : null}
+                </span>
+                <span className={styles.checkboxLabel}>
+                  {state.dontAskAgainLabel || t('common.dont_ask_again', '不再提示')}
+                </span>
+              </button>
             ) : null}
 
             {state.type === 'prompt' &&
@@ -197,10 +273,10 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     border: '1px solid var(--form-field-border, var(--border-control))',
                     background: 'var(--form-field-bg, var(--bg-surface))',
                     color: 'var(--text-primary)',
-                    marginTop: '16px',
                     fontFamily: 'inherit',
                     resize: 'vertical',
-                    outline: 'none'
+                    outline: 'none',
+                    boxSizing: 'border-box'
                   }}
                 />
               ) : (
@@ -244,30 +320,48 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               </div>
             ) : null}
 
-            {state.type === 'choose' ? (
-              <div className={styles.actions}>
-                <Button variant="text" onClick={() => closeDialog(null)}>
+            <div className={styles.actions}>
+              {state.type === 'choose' ? (
+                <button type="button" className={styles.cancelBtn} onClick={() => closeDialog(null)}>
                   {t('common.cancel', '取消')}
-                </Button>
-              </div>
-            ) : (
-              <div className={styles.actions}>
-                {state.type !== 'alert' && (
-                  <Button
-                    variant="text"
-                    onClick={() => closeDialog(state.type === 'prompt' ? null : false)}
+                </button>
+              ) : (
+                <>
+                  {state.type !== 'alert' ? (
+                    <button
+                      type="button"
+                      className={styles.cancelBtn}
+                      onClick={() =>
+                        closeDialog(
+                          state.type === 'prompt'
+                            ? null
+                            : state.type === 'confirmDontAsk'
+                              ? { confirmed: false, dontAskAgain: false }
+                              : false
+                        )
+                      }
+                    >
+                      {t('common.cancel', '取消')}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={styles.confirmBtn}
+                    onClick={() =>
+                      closeDialog(
+                        state.type === 'prompt'
+                          ? promptValue
+                          : state.type === 'confirmDontAsk'
+                            ? { confirmed: true, dontAskAgain }
+                            : true
+                      )
+                    }
                   >
-                    {t('common.cancel', '取消')}
-                  </Button>
-                )}
-                <Button
-                  variant="elevated"
-                  onClick={() => closeDialog(state.type === 'prompt' ? promptValue : true)}
-                >
-                  {t('common.confirm', '确定')}
-                </Button>
-              </div>
-            )}
+                    {t('common.confirm', '确定')}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </Modal>
       )}

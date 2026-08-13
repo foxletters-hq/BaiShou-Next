@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ModelSwitcherPopup.module.css'
 import { useTranslation } from 'react-i18next'
 import { getProviderIcon } from '../../utils/provider-icons'
@@ -72,7 +73,7 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={withAppContentOverlay(styles.overlay)} onClick={onClose} />
       <div className={styles.dialog}>
         {/* Header */}
         <div className={styles.header}>

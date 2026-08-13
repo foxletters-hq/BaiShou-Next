@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { withAppContentOverlay } from '../overlay'
 import styles from './SessionManagementPage.module.css'
 
 interface ConfirmDialogProps {
@@ -24,7 +25,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   const { t } = useTranslation()
   if (!isOpen) return null
   return (
-    <div className={styles.dialogOverlay} onClick={onCancel}>
+    <div className={withAppContentOverlay(styles.dialogOverlay)} onClick={onCancel}>
       <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.dialogTitle}>{title}</div>
         <div className={styles.dialogText}>{message}</div>

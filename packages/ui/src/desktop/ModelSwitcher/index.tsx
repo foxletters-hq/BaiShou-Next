@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ModelSwitcher.module.css'
 import { MockAiProviderModel } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
@@ -74,7 +75,7 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={withAppContentOverlay(styles.overlay)} onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={styles.header}>

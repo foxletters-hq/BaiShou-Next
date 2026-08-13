@@ -2,6 +2,7 @@ import React, { useEffect, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
+import { withAppContentOverlay } from '../overlay'
 import type { GitRollbackAllContext } from '@baishou/shared'
 
 export type GitDestructiveConfirmRequest =
@@ -125,7 +126,7 @@ export const GitDestructiveConfirmDialog: React.FC<GitDestructiveConfirmDialogPr
   })()
 
   return createPortal(
-    <div className="gmp-confirm-overlay" onClick={isConfirming ? undefined : onCancel}>
+    <div className={withAppContentOverlay('gmp-confirm-overlay')} onClick={isConfirming ? undefined : onCancel}>
       <div
         className="gmp-confirm-dialog"
         onClick={(e) => e.stopPropagation()}
