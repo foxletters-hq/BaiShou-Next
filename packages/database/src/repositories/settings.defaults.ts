@@ -240,7 +240,9 @@ export const DEFAULT_AGENT_BEHAVIOR: AgentBehaviorConfig = {
   companionTruncateTokens: 4000,
   agentPersona: '你是 AI 伙伴，帮助用户回顾日记和生活记录。',
   agentGuidelines: '可在设置中补充其他行为准则；日记查阅与编辑规范已由系统内置。',
-  pinnedAssistantIds: []
+  pinnedAssistantIds: [],
+  restoreLastSessionOnReturn: true,
+  reasoningEffortDefault: 'auto'
 }
 
 export const DEFAULT_RAG_CONFIG: RagConfig = {
@@ -289,7 +291,8 @@ export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
 
 export const DEFAULT_MCP_SERVER_CONFIG: McpServerConfig = {
   mcpEnabled: false,
-  mcpPort: 31004
+  mcpPort: 31004,
+  mcpAuthEnabled: true
 }
 
 export const DEFAULT_HOTKEY_CONFIG: HotkeyConfig = {

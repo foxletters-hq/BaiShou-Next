@@ -186,9 +186,14 @@ export class SettingsRepository {
     return {
       agentContextWindowSize:
         raw.agentContextWindowSize ?? DEFAULT_AGENT_BEHAVIOR.agentContextWindowSize,
+      companionCompressTokens:
+        raw.companionCompressTokens ?? DEFAULT_AGENT_BEHAVIOR.companionCompressTokens,
+      companionTruncateTokens:
+        raw.companionTruncateTokens ?? DEFAULT_AGENT_BEHAVIOR.companionTruncateTokens,
       agentPersona: raw.agentPersona ?? DEFAULT_AGENT_BEHAVIOR.agentPersona,
       agentGuidelines: raw.agentGuidelines ?? DEFAULT_AGENT_BEHAVIOR.agentGuidelines,
-      pinnedAssistantIds: raw.pinnedAssistantIds ?? DEFAULT_AGENT_BEHAVIOR.pinnedAssistantIds
+      pinnedAssistantIds: raw.pinnedAssistantIds ?? DEFAULT_AGENT_BEHAVIOR.pinnedAssistantIds,
+      restoreLastSessionOnReturn: raw.restoreLastSessionOnReturn !== false
     }
   }
   async setAgentBehaviorConfig(config: AgentBehaviorConfig): Promise<void> {
