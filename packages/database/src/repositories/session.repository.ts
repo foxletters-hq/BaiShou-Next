@@ -53,6 +53,10 @@ export class SessionRepository {
     return this.run(() => this.crudOps.updateSessionTitle(...args))
   }
 
+  updateSessionVaultId(...args: Parameters<SessionCrudOps['updateSessionVaultId']>) {
+    return this.run(() => this.crudOps.updateSessionVaultId(...args))
+  }
+
   updateSessionDialogueModel(...args: Parameters<SessionCrudOps['updateSessionDialogueModel']>) {
     return this.run(() => this.crudOps.updateSessionDialogueModel(...args))
   }

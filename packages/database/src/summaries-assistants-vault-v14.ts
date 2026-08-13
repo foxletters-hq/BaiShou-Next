@@ -112,6 +112,7 @@ export async function ensureAssistantsVaultIsolation(exec: SqlExec): Promise<{
       compress_model_context_window INTEGER,
       compress_preserve_recent_tokens INTEGER,
       compress_system_prompt TEXT,
+      custom_system_prompt TEXT,
       assistant_kind TEXT NOT NULL DEFAULT 'companion',
       emoji_group_id TEXT,
       emoji_enabled INTEGER NOT NULL DEFAULT 0,
@@ -146,6 +147,9 @@ export async function ensureAssistantsVaultIsolation(exec: SqlExec): Promise<{
   const selectCompressPrompt = freshCols.has('compress_system_prompt')
     ? 'compress_system_prompt'
     : 'NULL AS compress_system_prompt'
+  const selectCustomPrompt = freshCols.has('custom_system_prompt')
+    ? 'custom_system_prompt'
+    : 'NULL AS custom_system_prompt'
   const selectKind = freshCols.has('assistant_kind')
     ? 'assistant_kind'
     : `'companion' AS assistant_kind`
@@ -155,14 +159,14 @@ export async function ensureAssistantsVaultIsolation(exec: SqlExec): Promise<{
       id, vault_id, name, emoji, description, avatar_path, system_prompt,
       is_default, is_pinned, context_window, provider_id, model_id,
       compress_token_threshold, compress_keep_turns, compress_model_context_window,
-      compress_preserve_recent_tokens, compress_system_prompt, assistant_kind,
+      compress_preserve_recent_tokens, compress_system_prompt, custom_system_prompt, assistant_kind,
       emoji_group_id, emoji_enabled, emoji_group_ids, sort_order, created_at, updated_at
     )
     SELECT
       id, vault_id, name, emoji, description, avatar_path, system_prompt,
       is_default, is_pinned, context_window, provider_id, model_id,
       ${selectCompressThreshold}, ${selectCompressKeep}, ${selectCompressCtx},
-      ${selectCompressPreserve}, ${selectCompressPrompt}, ${selectKind},
+      ${selectCompressPreserve}, ${selectCompressPrompt}, ${selectCustomPrompt}, ${selectKind},
       ${selectEmojiGroupId}, ${selectEmojiEnabled}, ${selectEmojiGroupIds},
       sort_order, created_at, updated_at
     FROM agent_assistants

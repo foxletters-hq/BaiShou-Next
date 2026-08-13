@@ -19,6 +19,7 @@ export interface InsertAssistantInput {
   description?: string
   avatarPath?: string
   systemPrompt?: string
+  customSystemPrompt?: string | null
   isDefault?: boolean
   isPinned?: boolean
   contextWindow?: number
@@ -118,6 +119,7 @@ export class AssistantRepository {
           description: input.description,
           avatarPath: input.avatarPath,
           systemPrompt: input.systemPrompt,
+          customSystemPrompt: input.customSystemPrompt ?? null,
           isDefault: input.isDefault ?? false,
           isPinned: input.isPinned ?? false,
           contextWindow: input.contextWindow ?? DEFAULT_ASSISTANT_CONTEXT_WINDOW,
@@ -162,6 +164,9 @@ export class AssistantRepository {
       if (input.description !== undefined) patch.description = input.description
       if (input.avatarPath !== undefined) patch.avatarPath = input.avatarPath
       if (input.systemPrompt !== undefined) patch.systemPrompt = input.systemPrompt
+      if (input.customSystemPrompt !== undefined) {
+        patch.customSystemPrompt = input.customSystemPrompt
+      }
       if (input.isDefault !== undefined) patch.isDefault = input.isDefault
       if (input.isPinned !== undefined) patch.isPinned = input.isPinned
       if (input.contextWindow !== undefined) patch.contextWindow = input.contextWindow

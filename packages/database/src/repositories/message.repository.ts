@@ -1,6 +1,6 @@
 import { eq, desc, asc, and, or, sql, inArray } from 'drizzle-orm'
 import { AgentMessageRepository } from './agent.repository'
-import { AgentMessage, AgentPart } from '@baishou/shared'
+import { AgentMessage, AgentPart, sortAgentMessageParts } from '@baishou/shared'
 import { AppDatabase } from '../types'
 import { agentMessagesTable } from '../schema/agent-messages'
 import { agentPartsTable } from '../schema/agent-parts'
@@ -62,10 +62,29 @@ export class MessageRepository implements AgentMessageRepository {
       .where(inArray(agentPartsTable.messageId, messageIds))
       .orderBy(asc(agentPartsTable.createdAt))
 
-    return rows.map((r) => ({
+    const mapped = rows.map((r) => ({
       ...r,
       type: r.type as AgentPart['type']
     }))
+    // 按 messageId 分组后再按 seq / 类型兜底排序，避免同秒 createdAt 打乱时间线
+    const byMessage = new Map<string, typeof mapped>()
+    for (const part of mapped) {
+      const bucket = byMessage.get(part.messageId)
+      if (bucket) bucket.push(part)
+      else byMessage.set(part.messageId, [part])
+    }
+    const ordered: typeof mapped = []
+    const seen = new Set<string>()
+    for (const id of messageIds) {
+      const bucket = byMessage.get(id)
+      if (!bucket) continue
+      seen.add(id)
+      ordered.push(...sortAgentMessageParts(bucket))
+    }
+    for (const [id, bucket] of byMessage) {
+      if (!seen.has(id)) ordered.push(...sortAgentMessageParts(bucket))
+    }
+    return ordered
   }
 
   async create(input: InsertAgentMessageInput): Promise<AgentMessage> {
