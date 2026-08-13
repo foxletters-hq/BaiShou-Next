@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import path from 'path'
 import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
 import {
@@ -7,7 +7,8 @@ import {
   KnowledgeIngestService,
   KnowledgeSearchService,
   probeExtractEngineCapabilities,
-  type ExtractEngineId
+  type ExtractEngineId,
+  type KnowledgeExtractProgress
 } from '@baishou/core-desktop'
 import { KnowledgeEmbeddingStorage, fetchUrlAsMarkdown } from '@baishou/ai'
 import {
@@ -29,6 +30,7 @@ const DEFAULT_KNOWLEDGE_CONFIG: KnowledgeConfig = {
   defaultExtractEngine: 'simple',
   ocrLanguage: 'chi_sim+eng',
   ocrDpi: 250,
+  ocrConcurrency: 1,
   multiQueryAsk: false
 }
 
@@ -67,15 +69,39 @@ async function loadKnowledgeConfig(): Promise<KnowledgeConfig> {
 async function resolveVisionConfigured(): Promise<{
   configured: boolean
   modelId: string | null
+  providerId: string | null
 }> {
+  const cfg = await loadKnowledgeConfig()
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
   const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
-  const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId || null
-  const providerId = globalModels?.globalDialogueProviderId
-  const provider = providers.find((p) => p.id === providerId) || providers.find((p) => p.isEnabled)
-  if (!modelId) return { configured: false, modelId: null }
+
+  const modelId =
+    cfg.visionModelId ||
+    globalModels?.globalDialogueModelId ||
+    globalModels?.globalSummaryModelId ||
+    null
+  const providerId =
+    cfg.visionProviderId ||
+    globalModels?.globalDialogueProviderId ||
+    globalModels?.globalSummaryProviderId ||
+    null
+  const provider =
+    (providerId ? providers.find((p) => p.id === providerId) : undefined) ||
+    providers.find((p) => p.isEnabled)
+  if (!modelId) return { configured: false, modelId: null, providerId: null }
   const ok = isVisionModel(modelId, provider?.type || provider?.id)
-  return { configured: ok, modelId }
+  return { configured: ok, modelId, providerId: provider?.id ?? providerId }
+}
+
+function broadcastKnowledgeOcrProgress(info: KnowledgeExtractProgress): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.isDestroyed()) continue
+    try {
+      win.webContents.send('knowledge:ocr-progress', info)
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function buildIngestService(): KnowledgeIngestService {
@@ -88,6 +114,7 @@ function buildIngestService(): KnowledgeIngestService {
     notebookManager,
     fs: fileSystem,
     getVaultId: () => requireActiveVaultId(),
+    onExtractProgress: broadcastKnowledgeOcrProgress,
     getExtractConfig: async () => {
       const cfg = await loadKnowledgeConfig()
       const vision = await resolveVisionConfigured()
@@ -95,6 +122,7 @@ function buildIngestService(): KnowledgeIngestService {
         defaultEngine: cfg.defaultExtractEngine,
         ocrLanguage: cfg.ocrLanguage,
         ocrDpi: cfg.ocrDpi,
+        ocrConcurrency: cfg.ocrConcurrency,
         visionModelConfigured: vision.configured,
         visionModelId: vision.modelId
       }
@@ -392,6 +420,94 @@ export function registerKnowledgeIPC(): void {
       })
       scheduleConsumeKnowledgeIngestJobs('after-ocr')
       return result
+    }
+  )
+
+  ipcMain.handle('knowledge:cancel-extract', async (_e, sourceId: string) => {
+    const svc = getKnowledgeIngestService()
+    const result = await svc.cancelExtract(sourceId)
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (win.isDestroyed()) continue
+      try {
+        win.webContents.send('knowledge:ocr-progress', {
+          sourceId,
+          page: 0,
+          total: 0,
+          phase: 'ocr'
+        })
+      } catch {
+        /* ignore */
+      }
+    }
+    return result
+  })
+
+  ipcMain.handle('knowledge:recover-stale', async () => {
+    const svc = getKnowledgeIngestService()
+    const result = await svc.recoverStaleIngestState()
+    scheduleConsumeKnowledgeIngestJobs('recover')
+    return result
+  })
+
+  ipcMain.handle(
+    'knowledge:get-source-file',
+    async (_e, input: { sourceId: string }) => {
+      const repo = requireKnowledgeRepo()
+      const source = await repo.getSource(input.sourceId)
+      if (!source) throw new Error(`source not found: ${input.sourceId}`)
+
+      const notebookManager = getNotebookRawManager()
+      const fileNameFromPath = source.relativePath
+        ? path.basename(source.relativePath)
+        : source.title
+      const ext = path.extname(fileNameFromPath || '').toLowerCase()
+
+      if (!source.relativePath) {
+        return {
+          kind: 'unsupported' as const,
+          fileName: source.title,
+          localUrl: null as string | null,
+          textContent: null as string | null,
+          originUrl: source.originUrl ?? null
+        }
+      }
+
+      const abs = await notebookManager.absolutePath(source.relativePath)
+      const localUrl = `local:///${abs.replace(/\\/g, '/')}`
+      const isTextLike =
+        source.sourceKind === 'text' ||
+        source.sourceKind === 'note' ||
+        source.sourceKind === 'url' ||
+        ['.md', '.txt', '.markdown'].includes(ext)
+
+      if (ext === '.pdf') {
+        return {
+          kind: 'pdf' as const,
+          fileName: fileNameFromPath || source.title,
+          localUrl,
+          textContent: null as string | null,
+          originUrl: source.originUrl ?? null
+        }
+      }
+
+      if (isTextLike) {
+        const textContent = await fileSystem.readFile(abs, 'utf8')
+        return {
+          kind: (source.sourceKind === 'url' ? 'url' : 'text') as 'url' | 'text',
+          fileName: fileNameFromPath || source.title,
+          localUrl,
+          textContent,
+          originUrl: source.originUrl ?? null
+        }
+      }
+
+      return {
+        kind: 'unsupported' as const,
+        fileName: fileNameFromPath || source.title,
+        localUrl,
+        textContent: null as string | null,
+        originUrl: source.originUrl ?? null
+      }
     }
   )
 

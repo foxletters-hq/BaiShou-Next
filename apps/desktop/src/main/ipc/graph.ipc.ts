@@ -37,6 +37,7 @@ import {
   syncGraphPendingIndex
 } from '../services/raw-data-source.runtime'
 import { getActiveProvider } from './agent-helpers'
+import { GraphExtractQueueService } from '../services/graph-extract-queue.service'
 
 function requireVaultName(): string {
   return vaultService.getActiveVault()?.name || 'Personal'
@@ -232,38 +233,70 @@ export function registerGraphIPC(): void {
     return estimateExtractionCost(pending.length, { charCounts })
   })
 
-  // Active extract abort controller (single in-flight batch).
-  let extractAbort: AbortController | null = null
-
-  ipcMain.handle('graph:extract-cancel', async () => {
-    extractAbort?.abort()
-    return { ok: true }
-  })
-
-  ipcMain.handle('graph:extract', async (event, opts?: { filePaths?: string[] }) => {
+  // Background extract queue (leave Graph page OK; restart loses in-flight).
+  const extractQueue = GraphExtractQueueService.getInstance()
+  extractQueue.setRunner(async ({ filePath, signal }) => {
     const vaultName = requireVaultName()
     const selfName = await resolveExtractSelfName()
     const service = await buildExtractionService()
-    extractAbort?.abort()
-    extractAbort = new AbortController()
-    const signal = extractAbort.signal
-    try {
-      return await service.extractDiaries({
-        vaultId: requireVaultId(),
-        vaultName,
-        selfName,
-        filePaths: opts?.filePaths,
-        signal,
-        onProgress: (p) => {
-          try {
-            event.sender.send('graph:extract-progress', p)
-          } catch {
-            // sender may be gone
-          }
-        }
-      })
-    } finally {
-      if (extractAbort?.signal === signal) extractAbort = null
+    return service.extractDiaries({
+      vaultId: requireVaultId(),
+      vaultName,
+      selfName,
+      filePaths: [filePath],
+      signal
+    })
+  })
+
+  ipcMain.handle('graph:get-queue-state', async () => extractQueue.getQueueState())
+
+  ipcMain.handle('graph:stop-extract', async () => {
+    extractQueue.stop()
+    return { ok: true }
+  })
+
+  // Alias for older clients
+  ipcMain.handle('graph:extract-cancel', async () => {
+    extractQueue.stop()
+    return { ok: true }
+  })
+
+  ipcMain.handle('graph:queue-extract', async (_e, opts?: { filePaths?: string[] }) => {
+    await resolveExtractSelfName()
+    const pending = await getDerivedFreshness().listPendingReextract()
+    const wanted = opts?.filePaths?.length
+      ? opts.filePaths
+      : pending.map((p) => p.filePath)
+    const byPath = new Map(pending.map((p) => [p.filePath, p]))
+    const items = wanted.map((filePath) => {
+      const hit = byPath.get(filePath)
+      return { filePath, date: hit?.date }
+    })
+    const queued = extractQueue.enqueue(items)
+    return { queued, totalPending: items.length }
+  })
+
+  /**
+   * Backward-compatible: enqueue and return immediately (no longer blocks until batch done).
+   * Prefer graph:queue-extract + graph:queue-progress.
+   */
+  ipcMain.handle('graph:extract', async (_e, opts?: { filePaths?: string[] }) => {
+    await resolveExtractSelfName()
+    const pending = await getDerivedFreshness().listPendingReextract()
+    const wanted = opts?.filePaths?.length
+      ? opts.filePaths
+      : pending.map((p) => p.filePath)
+    const byPath = new Map(pending.map((p) => [p.filePath, p]))
+    const items = wanted.map((filePath) => {
+      const hit = byPath.get(filePath)
+      return { filePath, date: hit?.date }
+    })
+    const queued = extractQueue.enqueue(items)
+    return {
+      done: 0,
+      failed: 0,
+      queued,
+      errors: [] as Array<{ filePath: string; message: string }>
     }
   })
 
@@ -275,6 +308,7 @@ export function registerGraphIPC(): void {
         maxNodes?: number
         minMentionCount?: number
         nodeTypes?: string[]
+        monthRange?: { startMonth: string; endMonth: string }
       }
     ) => {
       const repo = requireGraphRepo()
@@ -282,15 +316,20 @@ export function registerGraphIPC(): void {
         vaultId: requireVaultId(),
         maxNodes: opts?.maxNodes ?? 200,
         minMentionCount: opts?.minMentionCount ?? 0,
-        nodeTypes: opts?.nodeTypes
+        nodeTypes: opts?.nodeTypes,
+        monthRange: opts?.monthRange
       })
     }
   )
 
-  ipcMain.handle('graph:get-view', async (_e, opts: { centerNodeId: string; depth?: 1 | 2 }) => {
-    const repo = requireGraphRepo()
-    return repo.traverse(requireVaultId(), opts.centerNodeId, opts.depth ?? 2)
-  })
+  ipcMain.handle(
+    'graph:get-view',
+    async (_e, opts: { centerNodeId: string; depth?: 1 | 2 | 3 }) => {
+      const repo = requireGraphRepo()
+      const depth = opts.depth === 3 ? 3 : opts.depth === 1 ? 1 : 2
+      return repo.traverse(requireVaultId(), opts.centerNodeId, depth)
+    }
+  )
 
   ipcMain.handle(
     'graph:find-paths',
@@ -451,6 +490,10 @@ export function registerGraphIPC(): void {
       collection: opts.kind === 'node' ? 'nodes' : 'edges'
     })
     await syncGraphPendingIndex()
+    // Ensure SQLite view drops the row even if pending-index sync races.
+    const repo = requireGraphRepo()
+    if (opts.kind === 'node') await repo.softDeleteNode(opts.id)
+    else await repo.softDeleteEdge(opts.id)
     return { ok: true }
   })
 
