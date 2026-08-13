@@ -28,6 +28,9 @@ export function resolveOpenCodeGoWireProtocol(modelId: string): OpenCodeGoWirePr
  */
 export function resolveEffectiveProviderType(providerType: string, modelId?: string): string {
   if (providerType === ProviderType.OpenCodeGo && modelId?.trim()) {
+    const id = modelId.trim().toLowerCase()
+    // DeepSeek 需走 reasoning_content 回传中间件（与直连 deepseek 一致）
+    if (id.includes('deepseek')) return 'deepseek'
     return resolveOpenCodeGoWireProtocol(modelId)
   }
   return providerType

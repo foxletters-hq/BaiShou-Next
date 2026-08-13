@@ -32,6 +32,7 @@ describe('resolveEffectiveProviderType', () => {
   it('resolves opencodego to wire protocol per model', () => {
     expect(resolveEffectiveProviderType('opencodego', 'kimi-k2.7-code')).toBe('openai')
     expect(resolveEffectiveProviderType('opencodego', 'minimax-m2.7')).toBe('anthropic')
+    expect(resolveEffectiveProviderType('opencodego', 'deepseek-v4-flash')).toBe('deepseek')
   })
 
   it('keeps opencodego when model id is missing', () => {

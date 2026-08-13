@@ -69,7 +69,7 @@ describe('OpenCodeGoAdaptedProvider', () => {
       expect(generateText).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: 'test',
-          maxOutputTokens: 1
+          maxOutputTokens: 16
         })
       )
     })

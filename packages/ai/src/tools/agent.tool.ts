@@ -205,6 +205,15 @@ export interface ToolContext {
   graphReader?: import('@baishou/shared').ToolGraphReader
   /** Read-only knowledge notebook search for knowledge_search */
   knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
+  /** 软件级 Skill 落盘（AI/skills） */
+  skillsWriter?: {
+    writeSkill(input: {
+      name: string
+      description: string
+      content: string
+      previousName?: string
+    }): Promise<{ name: string; description: string; location: string }>
+  }
   /** Agent workspace session context (folder sandbox + round checkpoints) */
   workspace?: {
     folderRoot: string
@@ -218,6 +227,8 @@ export interface ToolContext {
     roundCheckpointId?: string
     onFileChange?: (change: FileChangePartData) => void
   }
+  /** Gate 拒绝时中断本轮 Drain（不伪装 tool error 续跑） */
+  interruptOnGateReject?: boolean
 }
 
 /**
