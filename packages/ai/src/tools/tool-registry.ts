@@ -26,11 +26,18 @@ import { CompanionAskTool } from './companion-ask.tool'
 import { GraphUpsertTool } from './graph-upsert.tool'
 import { RecallRelationsTool } from './recall-relations.tool'
 import { KnowledgeSearchTool } from './knowledge-search.tool'
+import { SkillWriteTool } from './skill-write.tool'
 import { WORKSPACE_TOOL_IDS, createWorkspaceTools } from '../agent-workspace/workspace.tools'
 
 const INTERNAL_ONLY_TOOL_IDS = new Set(['compress_context_upstream', 'compress_context_downstream'])
 const WORKSPACE_ONLY_TOOL_IDS = new Set<string>(WORKSPACE_TOOL_IDS)
-const WORKSPACE_SESSION_UTILITY_TOOL_IDS = new Set(['companion_ask', 'current_time'])
+const WORKSPACE_SESSION_UTILITY_TOOL_IDS = new Set([
+  'companion_ask',
+  'current_time',
+  'skill_write',
+  'web_search',
+  'url_read'
+])
 /** Read-only knowledge tools allowed in workspace sessions (D7 / K1.3) */
 const KNOWLEDGE_TOOL_IDS = new Set(['knowledge_search'])
 
@@ -129,6 +136,7 @@ export class ToolRegistry {
       new GraphUpsertTool(),
       new RecallRelationsTool(),
       new KnowledgeSearchTool(),
+      new SkillWriteTool(),
       ...createWorkspaceTools()
     ])
   }

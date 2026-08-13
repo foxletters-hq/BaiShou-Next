@@ -61,11 +61,6 @@ export class CompanionAskTool extends AgentTool<typeof companionAskParams> {
         label
       })) ?? []
 
-    const description =
-      args.options && args.options.length > 0
-        ? args.options.map((option, index) => `${index + 1}. ${option}`).join('\n')
-        : undefined
-
     try {
       const resolution = await gate.assertWithResolution({
         sessionId: context.sessionId,
@@ -73,7 +68,6 @@ export class CompanionAskTool extends AgentTool<typeof companionAskParams> {
         kind: AgentGateKind.Proactive,
         action: 'companion_ask',
         title: args.question,
-        description,
         options,
         allowCustomInput: args.allow_custom_input ?? true
       })

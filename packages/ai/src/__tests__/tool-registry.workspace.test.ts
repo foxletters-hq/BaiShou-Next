@@ -84,4 +84,29 @@ describe('ToolRegistry workspace session', () => {
     const names = enabled.map((tool) => tool.name)
     expect(names).toContain('knowledge_search')
   })
+
+  it('exposes web_search in workspace sessions when web_search_enabled', () => {
+    const enabled = registry.getEnabledToolsRaw({
+      sessionId: 'ws-session',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' },
+      userConfig: { web_search_enabled: true }
+    })
+    const names = enabled.map((tool) => tool.name)
+    expect(names).toContain('web_search')
+    expect(names).toContain('url_read')
+  })
+
+  it('hides web_search in workspace sessions when web_search_enabled is off', () => {
+    const enabled = registry.getEnabledToolsRaw({
+      sessionId: 'ws-session',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' },
+      userConfig: { web_search_enabled: false }
+    })
+    const names = enabled.map((tool) => tool.name)
+    expect(names).not.toContain('web_search')
+  })
 })

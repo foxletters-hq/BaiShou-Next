@@ -50,7 +50,6 @@ describe('CompanionAskTool', () => {
         kind: AgentGateKind.Proactive,
         action: 'companion_ask',
         title: '选哪个？',
-        description: '1. A\n2. B',
         allowCustomInput: false,
         options: [
           { id: '0', label: 'A' },
