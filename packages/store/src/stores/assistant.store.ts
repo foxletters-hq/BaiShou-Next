@@ -93,7 +93,11 @@ export const useAssistantStore = createStore<AssistantState & AssistantActions>(
     deleteAssistant: async (id) => {
       try {
         if (typeof window !== 'undefined' && (window as any).api) {
-          await (window as any).api.deleteAssistant(id)
+          const result = await (window as any).api.deleteAssistant(id)
+          if (result && result.success === false) {
+            set({ error: result.errorCode || 'delete_failed' })
+            return
+          }
           const data = await (window as any).api.getAssistants()
           set({ assistants: data })
         }
