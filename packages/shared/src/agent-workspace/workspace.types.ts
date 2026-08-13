@@ -82,6 +82,8 @@ export interface AgentWorkspaceEntry {
   avatarPath?: string | null
   /** 缺省视为 folder；scratch 为内置临时「稿纸」工作区 */
   kind?: AgentWorkspaceKind
+  /** 置顶时间；有值表示侧栏「最近项目」置顶 */
+  pinnedAt?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -90,4 +92,6 @@ export interface AgentWorkspaceEntryUpdate {
   displayName?: string
   avatarPath?: string | null
   kind?: AgentWorkspaceKind
+  /** 传 null 取消置顶 */
+  pinnedAt?: string | null
 }
