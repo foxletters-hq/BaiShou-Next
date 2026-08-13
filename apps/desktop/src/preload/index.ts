@@ -5,7 +5,7 @@ import { settingsApi } from './settings.api'
 import { syncApi } from './sync.api'
 import { agentApi } from './agent.api'
 import { systemApi } from './system.api'
-import { shortcutsApi } from './shortcuts.api'
+import { shortcutsApi, skillsApi } from './skills.api'
 import { legacyMigrationApi } from './legacy-migration.api'
 import { cacheApi } from './cache.api'
 import { agentWorkspaceApi } from './agent-workspace.api'
@@ -55,7 +55,8 @@ export const api = {
   ...graphApi,
   ...knowledgeApi,
   agentWorkspace: agentWorkspaceApi,
-  shortcuts: shortcutsApi
+  shortcuts: shortcutsApi,
+  skills: skillsApi
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -34,7 +34,7 @@ import { registerGraphIPC } from './ipc/graph.ipc'
 import { registerKnowledgeIPC } from './ipc/knowledge.ipc'
 import { registerUpdaterIPC } from './ipc/updater.ipc'
 import { registerShellIPC } from './ipc/shell.ipc'
-import { registerShortcutIPC } from './ipc/shortcut.ipc'
+import { registerSkillIPC } from './ipc/skill.ipc'
 import {
   installDatabaseSchema,
   SettingsRepository,
@@ -417,9 +417,14 @@ app.whenReady().then(async () => {
   registerSettingsIPC()
 
   // 2.5 提前注册所有业务级 IPC，防止渲染进程在窗口创建后立刻调用时 handler 尚未注册
-  await traceStartupStep('registerBusinessIpc', () => {
+  await traceStartupStep('registerBusinessIpc', async () => {
+    const { initDesktopSessionInboxStore } = await import('./services/session-inbox.store')
+    await initDesktopSessionInboxStore()
     registerAgentIPC()
     registerCompressionEventBridge()
+    const { registerSessionRuntimeEventBridge } =
+      await import('./services/session-runtime-event.service')
+    registerSessionRuntimeEventBridge()
     registerVaultIPC()
     registerArchiveIPC()
     registerLanIPC()
@@ -441,7 +446,7 @@ app.whenReady().then(async () => {
     registerKnowledgeIPC()
     registerUpdaterIPC()
     registerShellIPC()
-    registerShortcutIPC()
+    registerSkillIPC()
   })
 
   // 注册桌面 PDF 按页抽取器（知识库摄入）
@@ -481,6 +486,12 @@ app.on('will-quit', () => {
   const { globalShortcut } = require('electron')
   globalShortcut.unregisterAll()
   void import('./services/mcp-runtime').then(({ shutdownMcpServer }) => shutdownMcpServer())
+  void import('./services/session-inbox.store').then(({ flushDesktopSessionInboxStore }) =>
+    flushDesktopSessionInboxStore()
+  )
+  void import('./services/agent-workspace-session.store').then(({ flushWorkspaceSessionStore }) =>
+    flushWorkspaceSessionStore()
+  )
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

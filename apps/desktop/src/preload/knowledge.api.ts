@@ -1,5 +1,20 @@
 import { ipcRenderer } from 'electron'
 
+export type KnowledgeSourceFilePreview = {
+  kind: 'pdf' | 'text' | 'url' | 'unsupported'
+  fileName: string
+  localUrl: string | null
+  textContent: string | null
+  originUrl: string | null
+}
+
+export type KnowledgeOcrProgress = {
+  sourceId: string
+  page: number
+  total: number
+  phase?: 'ocr' | 'vision' | 'render'
+}
+
 export const knowledgeApi = {
   knowledge: {
     createNotebook: (input: { name: string; description?: string }) =>
@@ -41,16 +56,41 @@ export const knowledgeApi = {
       sourceId: string
       engine?: 'simple' | 'ocr' | 'vision'
       pageNumbers?: number[]
-    }) => ipcRenderer.invoke('knowledge:ocr-missing-pages', input),
+    }) => ipcRenderer.invoke('knowledge:ocr-missing-pages', input) as Promise<{ queued: true }>,
+    cancelExtract: (sourceId: string) =>
+      ipcRenderer.invoke('knowledge:cancel-extract', sourceId) as Promise<{
+        cancelled: true
+        status: string
+      }>,
+    recoverStale: () =>
+      ipcRenderer.invoke('knowledge:recover-stale') as Promise<{
+        resetSources: number
+        reclaimedEmbedJobs: number
+        droppedExtractJobs: number
+      }>,
     getCapabilities: () => ipcRenderer.invoke('knowledge:get-capabilities'),
     getConfig: () => ipcRenderer.invoke('knowledge:get-config'),
     setConfig: (patch: {
       defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
       ocrLanguage?: string
       ocrDpi?: number
+      ocrConcurrency?: number
       multiQueryAsk?: boolean
+      visionProviderId?: string | null
+      visionModelId?: string | null
     }) => ipcRenderer.invoke('knowledge:set-config', patch),
     getExtractedPreview: (input: { notebookId: string; sourceId: string; maxChars?: number }) =>
-      ipcRenderer.invoke('knowledge:get-extracted-preview', input)
+      ipcRenderer.invoke('knowledge:get-extracted-preview', input),
+    getSourceFile: (input: { sourceId: string }) =>
+      ipcRenderer.invoke('knowledge:get-source-file', input) as Promise<KnowledgeSourceFilePreview>,
+    onOcrProgress: (callback: (progress: KnowledgeOcrProgress) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: KnowledgeOcrProgress) => {
+        callback(progress)
+      }
+      ipcRenderer.on('knowledge:ocr-progress', handler)
+      return () => {
+        ipcRenderer.removeListener('knowledge:ocr-progress', handler)
+      }
+    }
   }
 }

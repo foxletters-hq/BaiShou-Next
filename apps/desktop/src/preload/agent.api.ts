@@ -102,13 +102,21 @@ export const agentApi = {
   createAssistant: (input: any) => ipcRenderer.invoke('agent:create-assistant', input),
   updateAssistant: (id: string, input: any) =>
     ipcRenderer.invoke('agent:update-assistant', id, input),
-  deleteAssistant: (id: string) => ipcRenderer.invoke('agent:delete-assistant', id),
+  deleteAssistant: (id: string) =>
+    ipcRenderer.invoke('agent:delete-assistant', id) as Promise<
+      { success: true } | { success: false; errorCode: string }
+    >,
   reorderAssistants: (orderedIds: string[]) =>
     ipcRenderer.invoke('agent:reorder-assistants', orderedIds),
   syncDefaultLatteLocale: (locale?: string) =>
     ipcRenderer.invoke('agent:sync-default-latte-locale', locale),
   ensureDefaultLatteAssistant: (locale?: string) =>
     ipcRenderer.invoke('agent:ensure-default-latte-assistant', locale),
+  ensureSystemLatteAssistant: (locale?: string) =>
+    ipcRenderer.invoke('agent:ensure-system-latte-assistant', locale) as Promise<{
+      created: boolean
+      assistantId: string
+    }>,
 
   agentGate: {
     reply: (input: {
