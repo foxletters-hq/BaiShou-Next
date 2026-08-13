@@ -76,7 +76,7 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.header}>{t('shortcut.title', '快捷指令')}</div>
+      <div className={styles.header}>{t('shortcut.title', 'Skill')}</div>
       <div className={styles.listArea} ref={listRef}>
         {paginatedShortcuts.map((rawShortcut, i) => {
           const globalIndex = startIdx + i

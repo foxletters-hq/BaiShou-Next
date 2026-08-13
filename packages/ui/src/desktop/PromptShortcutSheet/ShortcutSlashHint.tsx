@@ -8,24 +8,11 @@ export const ShortcutSlashHint: React.FC<{ className?: string; style?: React.CSS
   const { t } = useTranslation()
 
   return (
-    <div
-      className={className}
-      style={{
-        margin: 0,
-        padding: '10px 14px',
-        borderRadius: 10,
-        fontSize: 12,
-        lineHeight: 1.55,
-        color: 'var(--text-secondary)',
-        background: 'rgba(var(--color-primary-rgb), 0.08)',
-        border: '1px solid rgba(var(--color-primary-rgb), 0.18)',
-        ...style
-      }}
-    >
+    <p className={className} style={style}>
       {t(
-        'shortcut.input_slash_hint',
-        '在空输入框输入 / 可快速匹配快捷指令；继续输入可过滤，按回车或点击条目即可插入正文。'
+        'shortcut.manager_panel_hint',
+        '浏览、编辑或删除已有 Skill。也可从加号菜单选择「创建 Skill」，由 AI 引导完成。空输入框输入 / 可快速匹配并插入。'
       )}
-    </div>
+    </p>
   )
 }

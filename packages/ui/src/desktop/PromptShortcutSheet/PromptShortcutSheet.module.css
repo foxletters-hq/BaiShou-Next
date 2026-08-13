@@ -4,12 +4,10 @@
   left: 0;
   width: 320px;
   max-height: 280px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-control);
-  box-shadow:
-    0 -8px 32px rgba(0, 0, 0, 0.1),
-    0 0 0 1px rgba(var(--color-primary-rgb), 0.1) inset;
-  border-radius: 16px;
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  border-radius: var(--menu-popup-radius, 8px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -53,20 +51,20 @@
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   cursor: pointer;
-  transition: all 0.1s;
+  transition: background-color 0.1s;
   background: transparent;
   border: 1px solid transparent;
 }
 
 .item:hover {
-  background: rgba(var(--color-primary-rgb), 0.05);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .itemSelected {
-  background: rgba(var(--color-primary-rgb), 0.1);
-  border-color: rgba(var(--color-primary-rgb), 0.3);
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
+  border-color: transparent;
 }
 
 .itemIcon {
