@@ -1,10 +1,51 @@
 import { useState, useMemo } from 'react'
-import { findShortcutCommandConflict } from '@baishou/shared'
+import {
+  CREATE_SKILL_SLASH_COMMAND,
+  findShortcutCommandConflict,
+  getCreateSkillGuidePrompt
+} from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../Toast/useToast'
 import type { PromptShortcut } from './index'
 
 export const PAGE_SIZE_OPTIONS = [5, 10, 15, 20, 25, 30] as const
+
+/** 管理列表置顶的「创建 Skill」虚拟项 */
+export const CREATE_SKILL_MANAGER_ID = '__create-skill__'
+
+export function isProtectedSkill(shortcut: {
+  id?: string
+  command?: string
+  name?: string
+}): boolean {
+  const id = (shortcut.id || '').trim()
+  const command = (shortcut.command || shortcut.name || '').trim().replace(/^\//, '')
+  return (
+    id === CREATE_SKILL_MANAGER_ID ||
+    id === CREATE_SKILL_SLASH_COMMAND ||
+    command === CREATE_SKILL_SLASH_COMMAND
+  )
+}
+
+/** @deprecated 使用 isProtectedSkill；仅 create-skill 不可删 */
+export const isDefaultShortcut = (id: string) =>
+  id === CREATE_SKILL_MANAGER_ID || id === CREATE_SKILL_SLASH_COMMAND
+
+function buildManagerList(
+  shortcuts: PromptShortcut[],
+  t: (key: string, fallback: string) => string
+): PromptShortcut[] {
+  const createItem: PromptShortcut = {
+    id: CREATE_SKILL_MANAGER_ID,
+    command: CREATE_SKILL_SLASH_COMMAND,
+    name: t('shortcut.create_skill', '创建 Skill'),
+    description: t('shortcut.create_skill_desc', '创建可复用的 Agent Skill'),
+    content: getCreateSkillGuidePrompt(t),
+    tag: t('shortcut.create_skill', '创建 Skill')
+  }
+  const rest = shortcuts.filter((item) => !isProtectedSkill(item))
+  return [createItem, ...rest]
+}
 
 export function useShortcutManagerDialog(
   shortcuts: PromptShortcut[],
@@ -21,11 +62,13 @@ export function useShortcutManagerDialog(
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(5)
 
-  const totalPages = Math.max(1, Math.ceil(shortcuts.length / pageSize))
+  const managerShortcuts = useMemo(() => buildManagerList(shortcuts, t), [shortcuts, t])
+
+  const totalPages = Math.max(1, Math.ceil(managerShortcuts.length / pageSize))
   const paginatedShortcuts = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize
-    return shortcuts.slice(startIndex, startIndex + pageSize)
-  }, [shortcuts, currentPage, pageSize])
+    return managerShortcuts.slice(startIndex, startIndex + pageSize)
+  }, [managerShortcuts, currentPage, pageSize])
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page)
@@ -37,6 +80,7 @@ export function useShortcutManagerDialog(
   }
 
   const handleEdit = (item: PromptShortcut) => {
+    if (isProtectedSkill(item)) return
     setEditingItem(item)
     setDraftId(item.id)
     setDraftName(item.name || item.tag || '')
@@ -68,8 +112,13 @@ export function useShortcutManagerDialog(
         'shortcut'
     }
 
+    if (isProtectedSkill(newItem)) {
+      toast.showError(t('shortcut.reserved_command', '该名称已保留，请换一个 Skill 名称'))
+      return
+    }
+
     if (findShortcutCommandConflict(shortcuts, newItem, isNew ? undefined : newItem.id)) {
-      toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
+      toast.showError(t('shortcut.duplicate_command', '已存在相同名称的 Skill，请换一个名称'))
       return
     }
 
@@ -82,8 +131,12 @@ export function useShortcutManagerDialog(
       setEditingItem(null)
     } catch (error) {
       const message = error instanceof Error ? error.message : ''
-      if (message === 'DUPLICATE_SHORTCUT_COMMAND') {
-        toast.showError(t('shortcut.duplicate_command', '已存在相同快捷短语的指令，请换一个短语'))
+      if (
+        message === 'DUPLICATE_SHORTCUT_COMMAND' ||
+        message === 'DUPLICATE_SKILL_NAME' ||
+        message.includes('DUPLICATE_SKILL_NAME')
+      ) {
+        toast.showError(t('shortcut.duplicate_command', '已存在相同名称的 Skill，请换一个名称'))
         return
       }
       throw error
@@ -103,6 +156,7 @@ export function useShortcutManagerDialog(
     currentPage,
     pageSize,
     totalPages,
+    managerShortcuts,
     paginatedShortcuts,
     handlePageChange,
     handlePageSizeChange,
@@ -112,5 +166,3 @@ export function useShortcutManagerDialog(
     clearEditing
   }
 }
-
-export const isDefaultShortcut = (id: string) => id.startsWith('default-')
