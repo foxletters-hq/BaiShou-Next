@@ -29,7 +29,7 @@
   border-radius: 8px;
   margin-right: 16px;
   overflow: hidden;
-  background-color: var(--color-primary-container);
+  background-color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -40,6 +40,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
 }
 
 .brandText {
@@ -50,14 +51,14 @@
 }
 
 .brandName {
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   font-weight: 700;
   letter-spacing: -0.5px;
   color: var(--text-primary);
 }
 
 .brandSlogan {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   margin-top: 2px;
@@ -87,7 +88,7 @@
   border: 1px solid var(--border-control);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   display: flex;
@@ -184,7 +185,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: var(--ui-fs-xl);
   color: var(--text-secondary);
 }
 
@@ -194,9 +195,332 @@
 }
 
 .navLabel {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
+}
+
+/* 最近项目：可折叠分组，风格贴近「任务 (N) ⌄」列表 */
+.recentSection {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.recentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  box-sizing: border-box;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.recentHeader:hover {
+  background-color: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.recentHeader.selected {
+  color: var(--color-primary);
+}
+
+.recentHeaderLabel {
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  line-height: 1.25;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentChevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary, var(--text-secondary));
+  transition: transform 0.15s ease;
+  transform: rotate(-90deg);
+}
+
+.recentChevronOpen {
+  transform: rotate(0deg);
+}
+
+.recentList {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.recentTreeItem {
+  min-width: 0;
+}
+
+.recentItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 3px 6px 3px 6px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  transition: background-color 0.15s ease;
+}
+
+.recentItem:hover,
+.recentItemExpanded {
+  background-color: var(--bg-surface-high);
+}
+
+.recentItemPinned .recentName {
+  font-weight: 600;
+}
+
+.recentOpen {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 4px 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.projectChevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary, var(--text-secondary));
+  transition: transform 0.15s ease;
+  transform: rotate(-90deg);
+}
+
+.projectChevronOpen {
+  transform: rotate(0deg);
+}
+
+.projectFolderIcon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.recentPinBadge {
+  flex-shrink: 0;
+  color: var(--color-primary);
+  opacity: 0.9;
+}
+
+.sessionList {
+  list-style: none;
+  margin: 0;
+  padding: 1px 0 6px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sessionItem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  border-radius: 7px;
+  transition: background-color 0.12s ease;
+}
+
+.sessionItem:hover {
+  background-color: var(--bg-surface-high);
+}
+
+.sessionOpen {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  border-radius: 7px;
+}
+
+.sessionTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  font-weight: 400;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.sessionItem:hover .sessionTitle {
+  color: var(--text-primary);
+}
+
+.sessionTime {
+  flex-shrink: 0;
+  font-size: var(--ui-fs-sm);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--text-tertiary, var(--text-secondary));
+  min-width: 2em;
+  text-align: right;
+}
+
+.sessionDeleteBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-right: 2px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-tertiary, var(--text-secondary));
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sessionItem:hover .sessionDeleteBtn,
+.sessionItem:focus-within .sessionDeleteBtn {
+  display: inline-flex;
+}
+
+.sessionDeleteBtn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.sessionEmpty {
+  margin: 0;
+  padding: 4px 8px 6px;
+  font-size: var(--ui-fs-sm);
+  line-height: 1.35;
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.sessionMore {
+  display: block;
+  width: 100%;
+  margin: 1px 0 0;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-tertiary, var(--text-secondary));
+  font-family: inherit;
+  font-size: var(--ui-fs-sm);
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sessionMore:hover {
+  background-color: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.recentName {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentActions {
+  display: none;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.recentItem:hover .recentActions,
+.recentItem:focus-within .recentActions {
+  display: flex;
+}
+
+.recentActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary, var(--text-secondary));
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.recentActionBtn:hover:not(:disabled) {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.recentActionBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.recentActionBtnActive {
+  color: var(--color-primary);
+}
+
+.recentTime {
+  flex-shrink: 0;
+  font-size: var(--ui-fs-sm);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--text-tertiary, var(--text-secondary));
+  padding-right: 6px;
+  min-width: 2.5em;
+  text-align: right;
+}
+
+.recentEmpty {
+  margin: 0;
+  padding: 6px 16px 8px;
+  font-size: var(--ui-fs-sm);
+  line-height: 1.4;
+  color: var(--text-tertiary, var(--text-secondary));
 }
 
 .dividerWrapper {

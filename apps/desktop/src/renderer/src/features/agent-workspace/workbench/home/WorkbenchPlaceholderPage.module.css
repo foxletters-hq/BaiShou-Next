@@ -13,7 +13,7 @@
 
 .title {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--ui-fs-xl);
   font-weight: 650;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -22,7 +22,7 @@
 .desc {
   margin: 0;
   max-width: 360px;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 400;
   line-height: 1.5;
   color: var(--text-secondary);
