@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { withAppContentOverlay } from '../overlay'
 import styles from './EmojiPickerDialog.module.css'
 
 const COMMON_EMOJIS = [
@@ -30,7 +31,7 @@ export const EmojiPickerDialog: React.FC<EmojiPickerDialogProps> = ({ onSelect, 
   const { t } = useTranslation()
   return (
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={withAppContentOverlay(styles.overlay)} onClick={onClose} />
       <div className={styles.dialog}>
         <div className={styles.header}>
           <span className={styles.title}>{t('emojiPicker.respondToMessage', '回应此消息')}</span>

@@ -11,10 +11,10 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: var(--bg-surface);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--border-control);
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border-radius: var(--menu-popup-radius, 8px);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
   padding: 12px;
   z-index: 1001;
   width: 240px;
@@ -22,7 +22,7 @@
 }
 
 [data-theme='dark'] .dialog {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
 }
 
 .header {
