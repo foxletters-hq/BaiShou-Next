@@ -1,4 +1,5 @@
 import type { AgentSessionKind } from './workspace.types'
+import type { AgentSessionRuntimeControlEvent } from './session-runtime-control.types'
 
 /** Token usage snapshot attached to step / stream finish events */
 export interface SessionRuntimeTokenUsage {
@@ -23,13 +24,22 @@ export interface SessionStepStartedEvent {
   timestamp: number
 }
 
+/** 控制面工具 IO 摘要：避免经 IPC 广播完整大 payload */
+export interface SessionRuntimeToolPayloadSummary {
+  /** 截断预览，最多 200 字符 */
+  preview: string
+  truncated: boolean
+  charLength: number
+  byteLength?: number
+}
+
 export interface SessionToolStartedEvent {
   type: 'session.tool_started'
   sessionId: string
   stepIndex: number
   toolCallId: string
   toolName: string
-  input: unknown
+  input: SessionRuntimeToolPayloadSummary
   timestamp: number
 }
 
@@ -39,7 +49,7 @@ export interface SessionToolCompletedEvent {
   stepIndex: number
   toolCallId: string
   toolName: string
-  output: unknown
+  output: SessionRuntimeToolPayloadSummary
   timestamp: number
 }
 
@@ -97,5 +107,6 @@ export type AgentSessionRuntimeEvent =
   | SessionStepFailedEvent
   | SessionInterruptedEvent
   | SessionStreamFinishedEvent
+  | AgentSessionRuntimeControlEvent
 
 export type AgentSessionRuntimeListener = (event: AgentSessionRuntimeEvent) => void
