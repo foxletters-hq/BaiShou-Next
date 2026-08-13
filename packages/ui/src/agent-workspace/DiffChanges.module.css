@@ -2,9 +2,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-family-mono, ui-monospace, monospace);
+  font-family: var(--font-family);
 }
 
 .add {

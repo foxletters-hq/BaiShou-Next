@@ -5,16 +5,17 @@
   border: 1px solid var(--border-subtle);
   border-top: none;
   background: var(--bg-code);
-  font-size: 12px;
+  font-size: var(--ui-fs-lg);
   line-height: 1.5;
   overflow: auto;
   max-height: 200px;
   white-space: pre-wrap;
   word-break: break-word;
+  font-family: var(--font-family);
 }
 
 .preview code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-family-mono);
 }
 
 .empty {

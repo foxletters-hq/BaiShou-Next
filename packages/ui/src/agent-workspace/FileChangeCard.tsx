@@ -22,9 +22,11 @@ export const FileChangeCard: React.FC<FileChangeCardProps> = ({
 
   const handleToggle = () => {
     setLevel((prev) => {
-      if (prev === 'collapsed') return 'preview'
-      if (prev === 'preview') return data.diff ? 'diff' : 'collapsed'
-      return 'collapsed'
+      if (prev !== 'collapsed') return 'collapsed'
+      // 有 diff 时一次展开到行级 diff，避免「先预览再点一次」
+      if (data.diff?.trim()) return 'diff'
+      if (data.preview?.trim()) return 'preview'
+      return 'diff'
     })
   }
 
