@@ -4,7 +4,7 @@ import { AgentChatActionRunner } from './AgentChatActionRunner'
 
 export function registerChatIPC() {
   // ==========================================
-  // API: AI对话 (流式流式输出)
+  // API: AI对话 (流式输出)
   // ==========================================
   ipcMain.handle(
     'agent:chat',
@@ -18,11 +18,41 @@ export function registerChatIPC() {
         attachments?: any[]
         searchMode?: boolean
         userMsgId?: string
+        reasoningEffort?: string
       }
     ) => {
-      return AgentChatService.chat(event, args)
+      const result = await AgentChatService.chat(event, args)
+      // 渲染侧仍期望 boolean；abort 视为成功结束（不 drain 已在 service 内处理）
+      return result !== false
     }
   )
+
+  // ==========================================
+  // API: Session Runtime admit（默认 queue；idle 时 drain）
+  // ==========================================
+  ipcMain.handle(
+    'agent:admit',
+    async (
+      event,
+      args: {
+        sessionId: string
+        text: string
+        delivery?: 'steer' | 'queue'
+        userMessageId?: string
+        providerId?: string
+        modelId?: string
+        reasoningEffort?: string
+        searchMode?: boolean
+        attachments?: unknown[]
+      }
+    ) => {
+      return AgentChatService.admit(event, args)
+    }
+  )
+
+  ipcMain.handle('agent:list-pending-inputs', async (_event, sessionId: string) => {
+    return AgentChatService.listPendingInputs(sessionId)
+  })
 
   // ==========================================
   // API: 重新生成回复
