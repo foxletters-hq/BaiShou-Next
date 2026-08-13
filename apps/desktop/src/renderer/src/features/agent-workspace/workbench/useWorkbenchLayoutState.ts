@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 export type WorkbenchSideView = 'files' | 'search' | 'git'
 
@@ -68,10 +68,13 @@ function persistLayout(scopeKey: string, state: WorkbenchLayoutState): void {
 export function useWorkbenchLayoutState(scopeKey: string | null) {
   const key = scopeKey || '__default__'
   const [layout, setLayout] = useState<WorkbenchLayoutState>(() => loadLayout(key))
+  const [loadedKey, setLoadedKey] = useState(key)
 
-  useEffect(() => {
+  // key 变化时在渲染期同步加载，避免 useEffect 晚一拍导致宽度闪烁
+  if (loadedKey !== key) {
+    setLoadedKey(key)
     setLayout(loadLayout(key))
-  }, [key])
+  }
 
   const update = useCallback(
     (patch: Partial<WorkbenchLayoutState>) => {
