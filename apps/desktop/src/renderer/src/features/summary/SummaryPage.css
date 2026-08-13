@@ -185,20 +185,20 @@
   top: 100%;
   left: 0;
   margin-top: 4px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-muted);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, 8px);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 100;
   min-width: 108px;
-  padding: 4px;
+  padding: var(--menu-popup-padding, 4px);
 }
 
 .concurrency-option {
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   background: transparent;
   color: var(--text-primary);
   font-weight: 400;
@@ -206,13 +206,13 @@
 }
 
 .concurrency-option:hover {
-  background: var(--bg-surface-high);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .concurrency-option.active {
-  background: var(--bg-surface-high);
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* 缺失项计数 */

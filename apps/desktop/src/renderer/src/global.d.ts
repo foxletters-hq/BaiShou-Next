@@ -61,6 +61,7 @@ interface DiaryAPI {
   search(query: string, options?: { limit?: number; offset?: number }): Promise<unknown>
   count(): Promise<number>
   onSyncEvent(callback: (event: unknown) => void): () => void
+  getAttachmentDir?(dateStr: string): Promise<string>
 }
 
 interface SummaryAPI {
@@ -202,6 +203,22 @@ interface AgentWorkspaceAPI {
     relativePath: string,
     nextName: string
   ): Promise<{ relativePath: string }>
+  moveEntry(
+    rootPath: string,
+    fromRelative: string,
+    toParentRelative: string
+  ): Promise<{ relativePath: string }>
+  copyEntry(
+    rootPath: string,
+    fromRelative: string,
+    toParentRelative: string
+  ): Promise<{ relativePath: string }>
+  importExternalPaths(
+    rootPath: string,
+    toParentRelative: string,
+    absolutePaths: string[]
+  ): Promise<{ imported: string[] }>
+  getPathForFile(file: File): string
   searchFiles(
     rootPath: string,
     options: import('@baishou/shared').WorkspaceSearchOptions
@@ -234,10 +251,35 @@ interface AgentWorkspaceAPI {
     userMessageId?: string
     providerId?: string
     modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
   }): Promise<boolean>
+  admit(params: {
+    sessionId: string
+    text: string
+    delivery?: 'steer' | 'queue'
+    userMessageId?: string
+    providerId?: string
+    modelId?: string
+    reasoningEffort?: string
+    searchMode?: boolean
+  }): Promise<{
+    input: import('@baishou/shared').SessionInputRecord
+    started: boolean
+    queued: boolean
+  }>
+  listPendingInputs(sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]>
+  cancelPendingInput(
+    inputId: string
+  ): Promise<import('@baishou/shared').SessionInputRecord | null>
+  previewRollback(params: {
+    sessionId: string
+    userMessageId: string
+  }): Promise<import('@baishou/shared').WorkspaceRollbackPreview>
   rollbackRound(params: {
     sessionId: string
     userMessageId: string
+    scope?: import('@baishou/shared').WorkspaceRollbackScope
   }): Promise<{ restored: string[]; deleted: string[]; skipped: string[] }>
   getAutoAccept(workspaceId: string): Promise<boolean>
   setAutoAccept(workspaceId: string, enabled: boolean): Promise<boolean>
@@ -415,18 +457,53 @@ interface GraphAPI {
   estimateExtraction(): Promise<{
     entryCount: number
     estimatedTokens: number
-    estimatedYuanLow: number
-    estimatedYuanHigh: number
+    estimatedUsdLow: number
+    estimatedUsdHigh: number
     estimatedMinutesLow: number
     estimatedMinutesHigh: number
   }>
   extract(opts?: { filePaths?: string[] }): Promise<{
     done: number
     failed: number
+    queued?: number
     cancelled?: boolean
     errors: Array<{ filePath: string; message: string }>
   }>
+  queueExtract(opts?: { filePaths?: string[] }): Promise<{ queued: number; totalPending: number }>
+  getQueueState(): Promise<{
+    items: Array<{
+      id: string
+      filePath: string
+      date?: string
+      progress: number
+      status: 'pending' | 'running' | 'completed' | 'error'
+      error?: string
+    }>
+    activeCount: number
+    pendingCount: number
+    runningCount: number
+    completedCount: number
+    errorCount: number
+  }>
+  stopExtract(): Promise<{ ok: boolean }>
   cancelExtract(): Promise<{ ok: boolean }>
+  onQueueProgress(
+    callback: (state: {
+      items: Array<{
+        id: string
+        filePath: string
+        date?: string
+        progress: number
+        status: 'pending' | 'running' | 'completed' | 'error'
+        error?: string
+      }>
+      activeCount: number
+      pendingCount: number
+      runningCount: number
+      completedCount: number
+      errorCount: number
+    }) => void
+  ): () => void
   onExtractProgress(
     callback: (progress: { current: number; total: number; filePath: string }) => void
   ): () => void
@@ -434,8 +511,9 @@ interface GraphAPI {
     maxNodes?: number
     minMentionCount?: number
     nodeTypes?: string[]
+    monthRange?: { startMonth: string; endMonth: string }
   }): Promise<{ nodes: any[]; edges: any[] }>
-  getView(opts: { centerNodeId: string; depth?: 1 | 2 }): Promise<{ nodes: any[]; edges: any[] }>
+  getView(opts: { centerNodeId: string; depth?: 1 | 2 | 3 }): Promise<{ nodes: any[]; edges: any[] }>
   findPaths(opts: {
     fromId: string
     toId: string
@@ -553,7 +631,13 @@ interface KnowledgeAPI {
     sourceId: string
     engine?: 'simple' | 'ocr' | 'vision'
     pageNumbers?: number[]
-  }): Promise<{ degradationMessage?: string }>
+  }): Promise<{ queued: true }>
+  cancelExtract(sourceId: string): Promise<{ cancelled: true; status: string }>
+  recoverStale(): Promise<{
+    resetSources: number
+    reclaimedEmbedJobs: number
+    droppedExtractJobs: number
+  }>
   getCapabilities(): Promise<{
     simple: { available: boolean; reason?: string; detail?: string }
     ocr: { available: boolean; reason?: string; detail?: string }
@@ -564,19 +648,40 @@ interface KnowledgeAPI {
     defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
     ocrLanguage?: string
     ocrDpi?: number
+    ocrConcurrency?: number
     multiQueryAsk?: boolean
+    visionProviderId?: string | null
+    visionModelId?: string | null
   }>
   setConfig(patch: {
     defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
     ocrLanguage?: string
     ocrDpi?: number
+    ocrConcurrency?: number
     multiQueryAsk?: boolean
+    visionProviderId?: string | null
+    visionModelId?: string | null
   }): Promise<unknown>
   getExtractedPreview(input: {
     notebookId: string
     sourceId: string
     maxChars?: number
   }): Promise<{ text: string | null; truncated: boolean }>
+  getSourceFile(input: { sourceId: string }): Promise<{
+    kind: 'pdf' | 'text' | 'url' | 'unsupported'
+    fileName: string
+    localUrl: string | null
+    textContent: string | null
+    originUrl: string | null
+  }>
+  onOcrProgress(
+    callback: (progress: {
+      sourceId: string
+      page: number
+      total: number
+      phase?: 'ocr' | 'vision' | 'render'
+    }) => void
+  ): () => void
 }
 
 interface AppAPI {
@@ -595,7 +700,10 @@ interface AppAPI {
   storage: StorageAPI
   tts: TtsAPI
   pickFiles(options?: PickFilesOptions): Promise<PickedFile[]>
+  getAssistants(): Promise<unknown[]>
+  updateAssistant(id: string, input: Record<string, unknown>): Promise<void>
   ensureDefaultLatteAssistant(locale?: string): Promise<void>
+  ensureSystemLatteAssistant(locale?: string): Promise<{ created: boolean; assistantId: string }>
   syncDefaultLatteLocale(locale?: string): Promise<void>
   agentGate: AgentGateAPI
   agentWorkspace: AgentWorkspaceAPI
