@@ -63,6 +63,8 @@ export interface GlobalModelsConfig {
   monthlySummarySource: 'weeklies' | 'diaries' // 月报：'weeklies' 仅本月周记；'diaries' 本月周记 + 本月日记
 }
 
+import type { ReasoningEffortSetting } from '../utils/reasoning-effort'
+
 /**
  * Agent 行为与陪伴模式配置
  */
@@ -73,6 +75,13 @@ export interface AgentBehaviorConfig {
   agentPersona: string // Agent 角色人设描述
   agentGuidelines: string // Agent 行为准则
   pinnedAssistantIds: string[] // 侧边栏置顶助手列表 (最多 3 个)
+  /** 返回伙伴页时是否默认打开上次对话（默认 true） */
+  restoreLastSessionOnReturn?: boolean
+  /**
+   * 默认思考强度。auto = 不显式传 effort（OpenAI 系约 medium）。
+   * 对话页可临时覆盖并写入 userConfig.reasoningEffort。
+   */
+  reasoningEffortDefault?: ReasoningEffortSetting
 }
 
 /**
@@ -105,8 +114,13 @@ export interface KnowledgeConfig {
   ocrLanguage?: string
   /** PDF 渲染 DPI，建议 200–300 */
   ocrDpi?: number
+  /** OCR / vision 同时处理的页数（1–3，默认 1） */
+  ocrConcurrency?: number
   /** Ask 默认开启多子查询（最多 2） */
   multiQueryAsk?: boolean
+  /** 视觉提取专用多模态模型（优先于全局对话模型） */
+  visionProviderId?: string | null
+  visionModelId?: string | null
 }
 
 /**
@@ -215,7 +229,12 @@ export interface EmojiItem {
 export interface McpServerConfig {
   mcpEnabled: boolean // MCP Server 是否启用（默认关闭）
   mcpPort: number // MCP Server 端口（默认 31004）
-  /** 可选访问令牌；启用 MCP 时若为空会自动生成，外部客户端需在 Authorization 头携带 */
+  /**
+   * 是否启用 Bearer 鉴权（默认 true）。
+   * 关闭后不强制生成令牌，请求无需 Authorization。
+   */
+  mcpAuthEnabled?: boolean
+  /** 可选访问令牌；鉴权开启且为空时会自动生成，外部客户端需在 Authorization 头携带 */
   mcpAuthToken?: string
 }
 

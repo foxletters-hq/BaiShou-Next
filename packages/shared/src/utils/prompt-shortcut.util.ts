@@ -108,7 +108,13 @@ export function localizePromptShortcut<T extends ShortcutLike>(
   shortcut: T,
   labels: LocalizedShortcutLabels
 ): T {
-  if (shortcut.id === 'default-translate') {
+  const command = getShortcutCommand(shortcut).toLowerCase()
+  const isTranslate =
+    shortcut.id === 'default-translate' || command === 'translate' || shortcut.id === 'translate'
+  const isSummarize =
+    shortcut.id === 'default-summarize' || command === 'summarize' || shortcut.id === 'summarize'
+
+  if (isTranslate) {
     return {
       ...shortcut,
       name: labels.translateName,
@@ -116,7 +122,7 @@ export function localizePromptShortcut<T extends ShortcutLike>(
       command: shortcut.command || 'translate'
     }
   }
-  if (shortcut.id === 'default-summarize') {
+  if (isSummarize) {
     return {
       ...shortcut,
       name: labels.summarizeName,
