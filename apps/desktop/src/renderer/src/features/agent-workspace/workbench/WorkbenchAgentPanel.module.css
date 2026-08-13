@@ -47,19 +47,29 @@
 }
 
 .headerTitle {
-  font-size: 11px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  flex-shrink: 0;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .headerActions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex-shrink: 0;
+  min-width: 0;
+}
+
+.headerTokenBadge {
+  --chrome-chip-height: 28px;
+  max-width: 120px;
+  overflow: hidden;
 }
 
 .headerIconBtn {
@@ -99,14 +109,14 @@
 }
 
 .currentSessionLabel {
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .currentSessionName {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -118,8 +128,9 @@
 .chatBody {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-app);
 }
 
@@ -132,14 +143,15 @@
 
 .hint {
   margin: 0;
-  font-size: 13px;
+  padding: 16px 14px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .inputArea {
   flex-shrink: 0;
-  padding: 0 12px 12px;
+  padding: 0 10px 8px;
   background: var(--bg-app);
 }
 
@@ -149,5 +161,129 @@
   border-radius: 8px;
   background: var(--bg-surface-normal);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
+}
+
+/* 与工作台首页 composer meta 行一致 */
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.metaLeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.metaTrailing {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: min(300px, 62%);
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(220px, 100%);
+  min-width: 0;
+  height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.metaChip:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.metaChipLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistantAvatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--color-primary-rgb), 0.12);
+}
+
+.assistantAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.runtimeQueueBar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px 0;
+}
+
+.pendingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pendingItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.pendingText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pendingCancel {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: var(--ui-fs-sm);
+  padding: 0 4px;
+}
+
+.pendingCancel:hover {
+  color: var(--text-primary);
 }
