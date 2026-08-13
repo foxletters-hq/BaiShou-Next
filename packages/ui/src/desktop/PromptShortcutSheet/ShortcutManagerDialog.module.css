@@ -1,0 +1,360 @@
+/* Skill 管理弹窗 — 对齐工作台设置弹窗的简约居中面板 */
+
+.overlay {
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  box-sizing: border-box;
+}
+
+.modal {
+  padding: 0 !important;
+  width: min(640px, 92vw) !important;
+  min-width: min(480px, 92vw) !important;
+  max-height: min(720px, calc(100vh - 80px)) !important;
+  height: auto !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--border-card, var(--border-muted)) !important;
+  background: var(--bg-surface) !important;
+  box-shadow: var(--shadow-md, 0 12px 40px rgba(0, 0, 0, 0.12)) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-family-main, var(--font-family, inherit)) !important;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(640px, calc(100vh - 120px));
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-family-main, var(--font-family, inherit));
+}
+
+.header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.headerIcon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.headerBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.headerBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.body::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
+  border-radius: 4px;
+}
+
+.hint {
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* ── 列表 ── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-muted);
+  background: transparent;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--bg-surface-high);
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.command {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconBtn:hover {
+  background: var(--bg-surface-lowest, var(--bg-surface));
+  color: var(--text-primary);
+}
+
+.iconBtnDanger:hover {
+  color: var(--color-error, #d32f2f);
+  background: color-mix(in srgb, var(--color-error, #d32f2f) 10%, transparent);
+}
+
+.empty {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.paginationBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-muted);
+}
+
+.paginationInfo {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── 编辑表单 ── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.fieldInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.fieldInput:focus {
+  border-color: var(--border-focus, var(--color-primary));
+}
+
+.fieldTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+  font-size: 13px;
+  font-family: inherit;
+  min-height: 160px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.fieldTextarea:focus {
+  border-color: var(--border-focus, var(--color-primary));
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  justify-content: flex-end;
+}
+
+.btnGhost {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-muted);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btnGhost:hover {
+  background: var(--bg-surface-high);
+}
+
+.btnPrimary {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnPrimary:not(:disabled):hover {
+  filter: brightness(1.05);
+}
