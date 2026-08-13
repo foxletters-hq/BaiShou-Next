@@ -100,11 +100,11 @@
   min-width: 100%;
   width: max-content;
   z-index: 50;
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 6px;
-  box-shadow: var(--shadow-lg);
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, 8px);
+  padding: var(--menu-popup-padding, 4px);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   animation: wp-slide-in 0.25s var(--ease-out-cubic) both;
   overflow: hidden;
 }
@@ -121,7 +121,7 @@
   min-height: 38px;
   padding: 0 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
@@ -131,7 +131,7 @@
 }
 
 .wp-option:hover {
-  background: var(--bg-surface-high);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
   color: var(--text-primary);
 }
 
@@ -140,13 +140,13 @@
 }
 
 .wp-option-selected {
-  background: var(--color-primary-light);
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .wp-option-selected:hover {
-  background: var(--color-primary-light);
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
   color: var(--text-primary);
 }
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './DatetimePickerSheet.module.css'
 import { useTranslation } from 'react-i18next'
 
@@ -24,7 +25,7 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
 
   return (
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={withAppContentOverlay(styles.overlay)} onClick={onClose} />
       <div className={styles.sheet}>
         <div className={styles.handleBar} />
         <div className={styles.header}>

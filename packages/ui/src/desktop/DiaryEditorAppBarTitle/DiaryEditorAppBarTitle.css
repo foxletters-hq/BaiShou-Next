@@ -37,10 +37,10 @@
   left: 50%;
   transform: translateX(-50%);
   margin-top: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-muted);
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, 8px);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   width: 320px;
   z-index: 1000;
   display: flex;
@@ -141,13 +141,13 @@
 }
 
 .dp-col-item:hover {
-  background-color: var(--bg-surface-high);
+  background-color: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .dp-col-item.selected {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-primary);
-  background-color: rgba(var(--color-primary-rgb), 0.08);
+  background-color: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
 }
 
 .dp-quick-actions {

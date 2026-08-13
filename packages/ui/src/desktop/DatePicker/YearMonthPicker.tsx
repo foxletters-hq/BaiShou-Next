@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { smoothScrollToCenter } from '../../utils/scroll'
 import { getPickerYearRange } from '../../utils/date'
+import { withAppContentOverlay } from '../overlay'
 import styles from './YearMonthPicker.module.css'
 
 export interface YearMonthPickerProps {
@@ -122,7 +123,7 @@ export const YearMonthPicker: React.FC<YearMonthPickerProps> = ({
           <AnimatePresence>
             {isOpen && (
               <motion.div
-                className={styles.modalOverlay}
+                className={withAppContentOverlay(styles.modalOverlay)}
                 ref={overlayRef}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
