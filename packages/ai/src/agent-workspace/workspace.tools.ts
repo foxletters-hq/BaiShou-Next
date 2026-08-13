@@ -44,7 +44,14 @@ function resolveRelativePath(
   return { relativePath, absolutePath, folderRoot, fs, roundCheckpointId }
 }
 
-async function capturePathIfNeeded(
+/**
+ * 上报一条即将被本工具改写的路径。
+ *
+ * 影子 Git 快照在轮次开始时已经收下整棵工作树，这里上报的是归因信息：
+ * 哪些改动确实出自 AI。回滚据此收敛范围，不去动用户同期在别处的手改。
+ * 快照降级为纯文本实现时，这一步还承担着趁写盘前读走正文的职责。
+ */
+async function noteAgentTouchedPath(
   context: ToolContext,
   folderRoot: string,
   relativePath: string
@@ -204,7 +211,7 @@ export class WorkspaceWriteTool extends AgentTool<typeof workspaceWriteParams> {
         context,
         args.path
       )
-      await capturePathIfNeeded(context, folderRoot, relativePath)
+      await noteAgentTouchedPath(context, folderRoot, relativePath)
 
       const existed = await fs.exists(absolutePath)
       const beforeContent = existed ? await fs.readFile(absolutePath) : null
@@ -264,7 +271,7 @@ export class WorkspacePatchTool extends AgentTool<typeof workspacePatchParams> {
         return `Error: File not found: ${relativePath}`
       }
 
-      await capturePathIfNeeded(context, folderRoot, relativePath)
+      await noteAgentTouchedPath(context, folderRoot, relativePath)
 
       const beforeContent = await fs.readFile(absolutePath)
       if (beforeContent == null) {
@@ -334,7 +341,7 @@ export class WorkspaceDeleteTool extends AgentTool<typeof workspaceDeleteParams>
         return `Error: File not found: ${relativePath}`
       }
 
-      await capturePathIfNeeded(context, folderRoot, relativePath)
+      await noteAgentTouchedPath(context, folderRoot, relativePath)
 
       const beforeContent = await fs.readFile(absolutePath)
       await fs.deleteFile(absolutePath)
@@ -397,8 +404,8 @@ export class WorkspaceRenameTool extends AgentTool<typeof workspaceRenameParams>
         return `Error: Destination already exists: ${toRel}`
       }
 
-      await capturePathIfNeeded(context, from.folderRoot, from.relativePath)
-      await capturePathIfNeeded(context, from.folderRoot, toRel)
+      await noteAgentTouchedPath(context, from.folderRoot, from.relativePath)
+      await noteAgentTouchedPath(context, from.folderRoot, toRel)
 
       const beforeContent = await from.fs.readFile(from.absolutePath)
       await from.fs.rename(from.absolutePath, toAbs)
