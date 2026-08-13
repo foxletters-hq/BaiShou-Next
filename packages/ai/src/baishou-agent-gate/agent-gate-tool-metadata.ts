@@ -98,7 +98,6 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       const date = (args as GateArgs).date
       return prepareContentGatePreview({
         subject: diaryDateTitle('创建日记', args),
-        summary: typeof date === 'string' ? `日期 ${date}` : undefined,
         detailLines: typeof date === 'string' ? [`日期：${date}`] : undefined
       })
     }
@@ -116,10 +115,6 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       const mode = (args as GateArgs).mode
       return prepareContentGatePreview({
         subject: diaryDateTitle('编辑日记', args),
-        summary:
-          typeof date === 'string'
-            ? `日期 ${date}${typeof mode === 'string' ? ` · ${mode}` : ''}`
-            : undefined,
         detailLines: [
           typeof date === 'string' ? `日期：${date}` : null,
           typeof mode === 'string' ? `模式：${mode}` : null
@@ -137,8 +132,8 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       const date = (args as GateArgs).date
       return prepareContentGatePreview({
         subject: diaryDateTitle('删除日记', args),
-        summary: typeof date === 'string' ? `将删除 ${date} 的日记` : '将删除日记',
-        detailLines: typeof date === 'string' ? [`日期：${date}`] : undefined
+        detailLines:
+          typeof date === 'string' ? [`日期：${date}`, '将永久删除该日日记'] : ['将永久删除日记']
       })
     }
   },
@@ -157,8 +152,31 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         typeof (args as GateArgs).content === 'string' ? String((args as GateArgs).content) : ''
       return prepareContentGatePreview({
         subject: '存储长期记忆',
-        summary: content.slice(0, 160) || undefined,
         detailLines: content ? [content.slice(0, 400)] : undefined
+      })
+    }
+  },
+  skill_write: {
+    action: 'skill_write',
+    riskLevel: AgentGateRiskLevel.Mutating,
+    buildTitle: (args) => {
+      const name = (args as GateArgs).name
+      return typeof name === 'string' && name ? `保存 Skill ${name}` : '保存 Skill'
+    },
+    buildMetadata: (args) => ({
+      name: (args as GateArgs).name,
+      description: (args as GateArgs).description
+    }),
+    prepare: async (args) => {
+      const name = (args as GateArgs).name
+      const description = (args as GateArgs).description
+      return prepareContentGatePreview({
+        subject: typeof name === 'string' && name ? `保存 Skill ${name}` : '保存 Skill',
+        detailLines: [
+          typeof name === 'string' ? `名称：${name}` : null,
+          typeof description === 'string' ? `说明：${description}` : null,
+          typeof name === 'string' ? `路径：AI/skills/${name}/SKILL.md` : null
+        ].filter((line): line is string => Boolean(line))
       })
     }
   },
@@ -176,7 +194,6 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       const messageId = (args as GateArgs).message_id
       return prepareContentGatePreview({
         subject: '删除记忆',
-        summary: typeof query === 'string' ? query.slice(0, 120) : undefined,
         detailLines: [
           typeof query === 'string' ? `查询：${query}` : null,
           typeof messageId === 'string' ? `消息：${messageId}` : null
@@ -217,7 +234,6 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
   workspace_delete: {
     action: 'workspace_delete',
     riskLevel: AgentGateRiskLevel.Destructive,
-    forceExclusion: true,
     buildTitle: (args) => {
       const path = (args as GateArgs).path
       return typeof path === 'string' && path ? `删除文件 ${path}` : '删除工作区文件'
@@ -227,7 +243,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
       workspacePath: (args as GateArgs).path
     }),
     buildResources: workspacePathResources,
-    buildAlwaysPatterns: () => [],
+    buildAlwaysPatterns: () => ['*'],
     prepare: prepareWorkspaceDeleteGate
   },
   workspace_rename: {
@@ -345,7 +361,6 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         .filter((t): t is string => Boolean(t))
       return prepareContentGatePreview({
         subject: '写入记忆图谱',
-        summary: typeof summary === 'string' ? summary.slice(0, 160) : undefined,
         counts: { entities: entityCount, edges: edgeCount },
         detailLines: [
           typeof summary === 'string' ? `摘要：${summary.slice(0, 200)}` : null,

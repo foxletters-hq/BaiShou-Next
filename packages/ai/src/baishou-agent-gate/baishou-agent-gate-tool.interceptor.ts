@@ -151,6 +151,10 @@ export function wrapVercelToolExecuteWithAgentGate<TArgs>(
     } catch (error) {
       releaseFreshness()
       if (isAgentGateControlError(error)) {
+        // 用户拒绝：可选中断整轮；策略 Deny 仍回传字符串给模型（不过激中断）
+        if (context.interruptOnGateReject && error instanceof AgentGateRejectedError) {
+          throw error
+        }
         return error.message
       }
       throw error

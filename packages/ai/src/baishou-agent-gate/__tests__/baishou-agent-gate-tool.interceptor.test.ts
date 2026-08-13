@@ -3,6 +3,7 @@ import { deriveLegacyVaultId } from '@baishou/shared'
 import {
   AgentGateKind,
   AgentGateProfileId,
+  AgentGateDeniedError,
   AgentGateRejectedError,
   AgentGateRiskLevel,
   type AgentGateToolMetadata
@@ -78,6 +79,40 @@ describe('wrapVercelToolExecuteWithAgentGate', () => {
 
     const result = await wrapped({ date: '2026-01-01' })
     expect(result).toContain('拒绝')
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('throws on reject when interruptOnGateReject is enabled', async () => {
+    const rejected = new AgentGateRejectedError()
+    const gate = {
+      assert: vi.fn().mockRejectedValue(rejected)
+    } as unknown as IBaishouAgentGate
+    const execute = vi.fn()
+    const wrapped = wrapVercelToolExecuteWithAgentGate(
+      'diary_write',
+      metadata,
+      { ...baseContext, agentGate: gate, interruptOnGateReject: true },
+      execute
+    )
+
+    await expect(wrapped({ date: '2026-01-01' })).rejects.toBe(rejected)
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('returns deny message string when interruptOnGateReject is enabled', async () => {
+    const denied = new AgentGateDeniedError('diary_write')
+    const gate = {
+      assert: vi.fn().mockRejectedValue(denied)
+    } as unknown as IBaishouAgentGate
+    const execute = vi.fn()
+    const wrapped = wrapVercelToolExecuteWithAgentGate(
+      'diary_write',
+      metadata,
+      { ...baseContext, agentGate: gate, interruptOnGateReject: true },
+      execute
+    )
+
+    await expect(wrapped({ date: '2026-01-01' })).resolves.toBe(denied.message)
     expect(execute).not.toHaveBeenCalled()
   })
 

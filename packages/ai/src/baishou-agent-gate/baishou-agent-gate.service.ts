@@ -26,7 +26,8 @@ import {
   type AgentGateRequest,
   type AgentGateResolution,
   type AgentGateResourceRef,
-  type BaishouAgentGateConfig
+  type BaishouAgentGateConfig,
+  i18n
 } from '@baishou/shared'
 import { BaishouAgentGateEventBus } from './baishou-agent-gate-event-bus'
 import {
@@ -38,6 +39,16 @@ import {
   type IAgentGateAllowlistStore
 } from './baishou-agent-gate-allowlist.store'
 import { AgentGateRepeatTracker } from './baishou-agent-gate-repeat.tracker'
+import type { AgentGateRiskClassifier } from './agent-gate-risk-classifier.types'
+
+/** 常规读写跳过二次审核；命令等 Allow 项才调模型 */
+const AUTO_REVIEW_SKIP_ACTIONS = new Set([
+  'workspace_list',
+  'workspace_read',
+  'workspace_write',
+  'workspace_patch',
+  'workspace_rename'
+])
 
 export interface IBaishouAgentGate {
   assert(input: AgentGateAssertInput): Promise<void>
@@ -65,6 +76,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   private readonly repeatTracker: AgentGateRepeatTracker
   private readonly configScope?: AgentGateConfigScope
   private readonly isAutoAccept?: () => boolean
+  private readonly riskClassifier?: AgentGateRiskClassifier
 
   constructor(
     private readonly policy: IAgentGatePolicy,
@@ -72,11 +84,13 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     private readonly eventBus: BaishouAgentGateEventBus,
     repeatTracker?: AgentGateRepeatTracker,
     configScope?: AgentGateConfigScope,
-    isAutoAccept?: () => boolean
+    isAutoAccept?: () => boolean,
+    riskClassifier?: AgentGateRiskClassifier
   ) {
     this.repeatTracker = repeatTracker ?? new AgentGateRepeatTracker()
     this.configScope = configScope
     this.isAutoAccept = isAutoAccept
+    this.riskClassifier = riskClassifier
   }
 
   probeEffect(input: AgentGateEvaluateInput): AgentGateEffect {
@@ -88,23 +102,24 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   }
 
   async assertWithResolution(input: AgentGateAssertInput): Promise<AgentGateResolution> {
-    const fingerprint = buildAgentGateAssertFingerprint(input)
+    let assertInput = input
+    const fingerprint = buildAgentGateAssertFingerprint(assertInput)
     const threshold =
       this.policy.getConfig().repeatAssertAskThreshold ??
       DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
     const forceRepeatAsk = this.repeatTracker.shouldForceAsk(
-      input.sessionId,
+      assertInput.sessionId,
       fingerprint,
       threshold
     )
 
     let detailed = this.policy.evaluateDetailed({
-      action: input.action,
+      action: assertInput.action,
       toolDisabled: false,
-      resources: input.resources,
-      metadata: input.metadata,
-      profileId: input.profileId,
-      preview: input.preview,
+      resources: assertInput.resources,
+      metadata: assertInput.metadata,
+      profileId: assertInput.profileId,
+      preview: assertInput.preview,
       autoAccept: this.isAutoAccept?.() === true
     })
     let effect = detailed.effect
@@ -123,11 +138,80 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
 
     if (effect === AgentGateEffect.Deny) {
-      throw new AgentGateDeniedError(input.action)
+      throw new AgentGateDeniedError(assertInput.action)
     }
 
     // Count only non-deny asserts (Allow / Ask) toward repeat protection.
-    this.repeatTracker.record(input.sessionId, fingerprint)
+    this.repeatTracker.record(assertInput.sessionId, fingerprint)
+
+    // auto_review：规则已 Allow 且非黑名单时，再交给模型判断是否仍需人工确认
+    if (
+      effect === AgentGateEffect.Allow &&
+      this.policy.getConfig().securityMode === 'auto_review' &&
+      this.isAutoAccept?.() !== true &&
+      this.riskClassifier &&
+      !AUTO_REVIEW_SKIP_ACTIONS.has(assertInput.action)
+    ) {
+      try {
+        const classified = await this.riskClassifier({
+          action: assertInput.action,
+          title: assertInput.title,
+          description: assertInput.description,
+          preview: assertInput.preview,
+          resources: assertInput.resources,
+          sessionId: assertInput.sessionId
+        })
+        if (classified.verdict === 'ask') {
+          effect = AgentGateEffect.Ask
+          detailed = {
+            ...detailed,
+            effect,
+            decisionSource: {
+              layer: 'session',
+              action: 'auto_review',
+              effect: AgentGateEffect.Ask,
+              clampedFrom: AgentGateEffect.Allow
+            }
+          }
+          if (classified.reason?.trim()) {
+            assertInput = {
+              ...assertInput,
+              description: classified.reason.trim(),
+              metadata: {
+                ...(assertInput.metadata ?? {}),
+                autoReviewReason: classified.reason.trim()
+              }
+            }
+          }
+        }
+      } catch {
+        // fail-closed：分类失败一律升为 Ask
+        effect = AgentGateEffect.Ask
+        detailed = {
+          ...detailed,
+          effect,
+          decisionSource: {
+            layer: 'session',
+            action: 'auto_review',
+            effect: AgentGateEffect.Ask,
+            clampedFrom: AgentGateEffect.Allow
+          }
+        }
+        assertInput = {
+          ...assertInput,
+          description:
+            assertInput.description ??
+            i18n.t(
+              'settings.agent_gate_auto_review_incomplete',
+              '自动审核未能完成，已改为需要你确认。'
+            ),
+          metadata: {
+            ...(assertInput.metadata ?? {}),
+            autoReviewReason: 'classifier_failed'
+          }
+        }
+      }
+    }
 
     if (effect === AgentGateEffect.Allow) {
       return {
@@ -137,9 +221,14 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
-    const request = this.createRequest(input, fingerprint, detailed.decisionSource)
-    request.repeatCount = this.repeatTracker.getCount(input.sessionId, fingerprint)
-    return this.waitForResolution(request, fingerprint, input.resources, input.profileId)
+    const request = this.createRequest(assertInput, fingerprint, detailed.decisionSource)
+    request.repeatCount = this.repeatTracker.getCount(assertInput.sessionId, fingerprint)
+    return this.waitForResolution(
+      request,
+      fingerprint,
+      assertInput.resources,
+      assertInput.profileId
+    )
   }
 
   async ask(input: AgentGateAssertInput): Promise<AgentGateRequest> {
@@ -449,6 +538,8 @@ export interface CreateBaishouAgentGateOptions {
   configScope?: AgentGateConfigScope
   /** G4：工作区自动接受（运行时查询，不进配置） */
   isAutoAccept?: () => boolean
+  /** G5：auto_review 模式下的模型风险分类（可选） */
+  riskClassifier?: AgentGateRiskClassifier
 }
 
 function cloneDefaultConfig(): BaishouAgentGateConfig {
@@ -489,6 +580,7 @@ export function createBaishouAgentGate(
     new AgentGateRepeatTracker()
   const configScope = isBaishouAgentGateConfig(options) ? undefined : options?.configScope
   const isAutoAccept = isBaishouAgentGateConfig(options) ? undefined : options?.isAutoAccept
+  const riskClassifier = isBaishouAgentGateConfig(options) ? undefined : options?.riskClassifier
 
   const getConfig = () => config
   const allowlistStore = new BaishouAgentGateAllowlistStore(getConfig, persistConfig)
@@ -499,7 +591,8 @@ export function createBaishouAgentGate(
     eventBus,
     repeatTracker,
     configScope,
-    isAutoAccept
+    isAutoAccept,
+    riskClassifier
   )
 
   return { gate, eventBus, policy, allowlistStore, getConfig, repeatTracker }
