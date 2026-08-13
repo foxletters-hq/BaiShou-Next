@@ -17,6 +17,7 @@ import {
   Settings,
   SlidersHorizontal,
   Sparkles,
+  Coffee,
   Volume2,
   Wifi
 } from 'lucide-react'
@@ -105,6 +106,12 @@ export const SettingsShell: React.FC = () => {
         kind: 'item',
         label: t('agent.assistant.settings_entry', '伙伴管理'),
         icon: <GraduationCap size={NAV_ICON_SIZE} />
+      },
+      {
+        id: 18,
+        kind: 'item',
+        label: t('settings.latte_settings_title', 'Latte'),
+        icon: <Coffee size={NAV_ICON_SIZE} />
       },
       {
         id: 6,

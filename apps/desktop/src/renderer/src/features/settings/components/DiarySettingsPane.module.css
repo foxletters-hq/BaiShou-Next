@@ -56,7 +56,17 @@
 .actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 10px;
+  margin-top: 4px;
+  padding: 0 2px 8px;
+}
+
+.varsHint {
+  margin: 4px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .btn {
@@ -92,4 +102,43 @@
 .btnPrimary:hover:not(:disabled) {
   background: var(--bg-surface-high);
   border-color: var(--border-strong);
+}
+
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-base) 55%, transparent);
+}
+
+.confirmBox {
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+.confirmTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.confirmText {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }

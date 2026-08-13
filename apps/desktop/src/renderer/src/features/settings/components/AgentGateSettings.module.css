@@ -220,3 +220,23 @@
   color: var(--color-primary);
   background: var(--color-primary-light);
 }
+
+.subpageBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--settings-font-section-size);
+  font-weight: var(--settings-font-section-weight);
+  font-family: var(--font-family);
+  cursor: pointer;
+  text-align: left;
+}
+
+.subpageBack:hover {
+  color: var(--color-primary);
+}

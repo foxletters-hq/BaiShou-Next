@@ -189,7 +189,7 @@ export const LegacyMigrationPane: React.FC = () => {
       <SettingsPageChrome
         title={t('version_migration.title', '版本迁移')}
         scrollClassName="legacy-migration-scroll"
-        trailing={
+        titleAccessory={
           <HelpTooltip
             size={14}
             content={t(
