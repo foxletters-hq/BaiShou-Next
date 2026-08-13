@@ -1,0 +1,177 @@
+.root {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: var(--bg-app);
+}
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 18%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 80% 80%, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent 65%);
+}
+
+.panel {
+  position: relative;
+  width: min(440px, 100%);
+  min-height: 280px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.body {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.input {
+  height: 40px;
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--form-field-border-focus, var(--color-primary));
+  box-shadow: var(--form-field-focus-ring, 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent));
+}
+
+.genderRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.genderChip,
+.genderChipActive {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.genderChipActive {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--bg-surface));
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.error {
+  font-size: 12px;
+  color: var(--color-danger, #c2410c);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* 与回忆面板 `.sm-btn` / UI Button elevated 一致：描边、无实心底 */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-control);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.cta:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
+.cta:disabled,
+.secondary:disabled,
+.genderChip:disabled,
+.genderChipActive:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.actions .cta {
+  flex: 1;
+}
