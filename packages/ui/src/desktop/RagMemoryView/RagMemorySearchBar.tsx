@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './RagMemoryView.module.css'
-import seg from '../shared/SegmentedControl.module.css'
+import { SegmentedControl } from '../shared/SegmentedControl'
 import { Search, X } from 'lucide-react'
 
 interface RagMemorySearchBarProps {
@@ -37,22 +37,18 @@ export const RagMemorySearchBar: React.FC<RagMemorySearchBarProps> = ({
         value={searchQuery}
         onChange={onSearch}
       />
-      <div className={`${seg.group} ${seg.groupInline}`}>
-        <button
-          type="button"
-          className={`${seg.btn} ${searchMode === 'semantic' ? seg.btnActive : ''}`}
-          onClick={() => searchMode !== 'semantic' && onToggleSearchMode()}
-        >
-          {t('settings.rag_search_semantic', '语义搜索')}
-        </button>
-        <button
-          type="button"
-          className={`${seg.btn} ${searchMode === 'text' ? seg.btnActive : ''}`}
-          onClick={() => searchMode !== 'text' && onToggleSearchMode()}
-        >
-          {t('settings.rag_search_text', '文本搜索')}
-        </button>
-      </div>
+      <SegmentedControl
+        inline
+        value={searchMode}
+        aria-label={t('settings.rag_search_mode', '搜索模式')}
+        onChange={(mode) => {
+          if (mode !== searchMode) onToggleSearchMode()
+        }}
+        options={[
+          { value: 'semantic', label: t('settings.rag_search_semantic', '语义搜索') },
+          { value: 'text', label: t('settings.rag_search_text', '文本搜索') }
+        ]}
+      />
       {searchQuery && (
         <div className={styles.clearSearchOuter} onClick={onClearSearch}>
           <X size={18} />

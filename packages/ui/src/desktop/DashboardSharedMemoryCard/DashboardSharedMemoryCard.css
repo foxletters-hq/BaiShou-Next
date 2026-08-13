@@ -64,6 +64,15 @@
   text-align: center;
   background: var(--bg-surface-lowest);
   transition: all 0.2s;
+  /* 去掉浏览器 number 微调箭头，数值本身居中显示 */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.sm-number-input::-webkit-outer-spin-button,
+.sm-number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .sm-number-input:focus {

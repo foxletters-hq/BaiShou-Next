@@ -15,7 +15,7 @@ export function TTSProviderSettingsForm({ vm }: { vm: TTSProviderSettingsViewMod
   return (
     <SettingsPageChrome
       title={t('tts.settings.title', 'TTS 语音合成设置')}
-      trailing={
+      titleAccessory={
         <HelpTooltip
           size={14}
           content={t(
