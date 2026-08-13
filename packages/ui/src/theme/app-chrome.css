@@ -1,0 +1,16 @@
+/**
+ * 桌面壳层遮罩工具类（全局，非 CSS Module）
+ *
+ * Portal 到 document.body 的全屏遮罩默认应挂上此类，
+ * 使 backdrop-filter 只虚化主内容圆角卡，不透过透明 TitleBar。
+ * 全窗沉浸（如大图预览）不要挂此类。
+ */
+.baishou-app-content-overlay {
+  top: var(--app-titlebar-height, 52px) !important;
+  left: var(--app-content-inset-inline, 8px) !important;
+  right: var(--app-content-inset-inline, 8px) !important;
+  bottom: var(--app-content-inset-bottom, 8px) !important;
+  border-radius: var(--app-content-radius, 12px) !important;
+  overflow: hidden;
+  box-sizing: border-box;
+}

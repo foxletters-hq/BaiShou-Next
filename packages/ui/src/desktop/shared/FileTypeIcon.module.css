@@ -1,0 +1,35 @@
+.fileTypeIcon {
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconImage {
+  color: var(--color-success, #3d9a6a);
+}
+
+.iconVideo {
+  color: #9b59b6;
+}
+
+.iconPdf {
+  color: var(--color-error, #e25c5c);
+}
+
+.iconText {
+  color: var(--color-primary, #3b6fd4);
+}
+
+.iconCode {
+  color: var(--color-primary, #3b6fd4);
+}
+
+.iconArchive {
+  color: var(--color-warning, #d4a017);
+}
+
+.iconAudio {
+  color: #e67e22;
+}
