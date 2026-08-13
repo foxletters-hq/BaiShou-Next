@@ -31,6 +31,36 @@ export type DiaryFilterState = {
   pageSize: number
 }
 
+export type DiaryFilterPatch = Partial<
+  Pick<
+    DiaryFilterState,
+    | 'searchQuery'
+    | 'selectedMonth'
+    | 'filterWeathers'
+    | 'filterMoods'
+    | 'filterFavorite'
+    | 'currentPage'
+    | 'pageSize'
+  >
+>
+
+function sameFilterValue(prev: unknown, next: unknown): boolean {
+  if (Array.isArray(prev) && Array.isArray(next)) {
+    return prev.length === next.length && prev.every((item, index) => item === next[index])
+  }
+  return prev === next
+}
+
+/** 筛选未变化时返回原对象，避免无意义 setState 触发重渲染 */
+export function applyDiaryFilterPatch(
+  prev: DiaryFilterState,
+  patch: DiaryFilterPatch
+): DiaryFilterState {
+  const keys = Object.keys(patch) as (keyof DiaryFilterPatch)[]
+  if (keys.every((key) => sameFilterValue(prev[key], patch[key]))) return prev
+  return { ...prev, ...patch }
+}
+
 /** 将月份筛选持久化为本地 YYYY-MM，避免 toISOString 的时区偏移 */
 export function formatSavedMonth(month: Date | null): string {
   if (!month) return 'all'

@@ -2,25 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { logger } from '@baishou/shared'
 import {
+  applyDiaryFilterPatch,
   createDefaultDiaryFilterState,
   DIARY_FILTER_STORAGE_KEYS,
   formatSavedMonth,
   prefetchDiaryFilterState,
-  type DiaryFilterState
+  type DiaryFilterPatch
 } from '../diary-filter-state.util'
-
-type DiaryFilterPatch = Partial<
-  Pick<
-    DiaryFilterState,
-    | 'searchQuery'
-    | 'selectedMonth'
-    | 'filterWeathers'
-    | 'filterMoods'
-    | 'filterFavorite'
-    | 'currentPage'
-    | 'pageSize'
-  >
->
 
 export function useDiaryFilterState(_dbReady: boolean) {
   const [state, setState] = useState(() => createDefaultDiaryFilterState(false))
@@ -45,7 +33,7 @@ export function useDiaryFilterState(_dbReady: boolean) {
   }, [state.restored])
 
   const patchFilter = useCallback((patch: DiaryFilterPatch) => {
-    setState((prev) => ({ ...prev, ...patch }))
+    setState((prev) => applyDiaryFilterPatch(prev, patch))
   }, [])
 
   const setSearchQuery = useCallback(

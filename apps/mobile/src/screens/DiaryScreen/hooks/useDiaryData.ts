@@ -10,7 +10,7 @@ import {
 } from '@baishou/shared/cache'
 import { useNativeToast } from '@baishou/ui/native'
 import { shouldDiaryListLoadSilently } from '../diary-list-load.util'
-import { diaryListEntriesUnchanged } from '../diary-list-entries.util'
+import { diaryListEntriesUnchanged, reuseEmptyDiaryEntries } from '../diary-list-entries.util'
 import { applyDiaryListSavedPatch } from '../diary-list-saved-patch.util'
 
 export interface DiaryPageQuery {
@@ -180,8 +180,6 @@ export function useDiaryData(
     [query, debouncedSearchTerm]
   )
 
-  const listFilter = useMemo(() => buildListFilter(effectiveQuery), [effectiveQuery])
-  const countFilter = useMemo(() => buildCountFilter(effectiveQuery), [effectiveQuery])
   const browseMonthKey = effectiveQuery.selectedMonth?.getTime() ?? 0
   const searchFilterKey = useMemo(
     () => searchFilterCacheKey(buildSearchFilter(effectiveQuery)),
@@ -195,20 +193,31 @@ export function useDiaryData(
   )
   const prevBrowseIdentityRef = useRef<string | null>(null)
   const browseChangedRef = useRef(false)
+  const lastLoadedCacheVersionRef = useRef(diaryListCacheVersion)
+  const toastRef = useRef(toast)
+  toastRef.current = toast
+  const tRef = useRef(t)
+  tRef.current = t
+  const isScreenFocusedRef = useRef(isScreenFocused)
+  isScreenFocusedRef.current = isScreenFocused
+  const browseIdentityRef = useRef(browseIdentity)
+  browseIdentityRef.current = browseIdentity
+  const diaryListCacheVersionRef = useRef(diaryListCacheVersion)
+  diaryListCacheVersionRef.current = diaryListCacheVersion
 
   useEffect(() => {
     if (prevBrowseIdentityRef.current === browseIdentity) return
     prevBrowseIdentityRef.current = browseIdentity
     loadRequestIdRef.current += 1
     browseChangedRef.current = true
-    setEntries([])
-    setTotalCount(0)
+    setEntries(reuseEmptyDiaryEntries)
+    setTotalCount((prev) => (prev === 0 ? prev : 0))
   }, [browseIdentity])
 
   const loadEntries = useCallback(
     async (options: LoadDiaryEntriesOptions = {}) => {
       if (!diaryService) {
-        setLoading(false)
+        setLoading((prev) => (prev ? false : prev))
         return
       }
 
@@ -224,8 +233,8 @@ export function useDiaryData(
           browseChanged,
           hasCachedRows,
           cachedCount: entriesRef.current.length,
-          isScreenFocused,
-          browseIdentity
+          isScreenFocused: isScreenFocusedRef.current,
+          browseIdentity: browseIdentityRef.current
         })
       }
       if (!silent) {
@@ -326,14 +335,14 @@ export function useDiaryData(
       } catch (err) {
         if (requestId !== loadRequestIdRef.current) return
         logger.error('获取日记列表失败', err instanceof Error ? err : String(err))
-        toast.showError(t('diary.load_list_failed', '加载日记列表失败'))
+        toastRef.current.showError(tRef.current('diary.load_list_failed', '加载日记列表失败'))
         if (browseChanged || !hasCachedRows) {
-          setEntries([])
-          setTotalCount(0)
+          setEntries(reuseEmptyDiaryEntries)
+          setTotalCount((prev) => (prev === 0 ? prev : 0))
         }
       } finally {
         if (requestId === loadRequestIdRef.current) {
-          lastLoadedCacheVersionRef.current = diaryListCacheVersion
+          lastLoadedCacheVersionRef.current = diaryListCacheVersionRef.current
           setLoading(false)
           if (__DEV__) {
             console.log('[useDiaryData] loadEntries:done', {
@@ -344,13 +353,22 @@ export function useDiaryData(
         }
       }
     },
-    [diaryService, t, toast, isScreenFocused, browseIdentity, diaryListCacheVersion]
+    [diaryService]
   )
 
   const prevScreenFocusedRef = useRef(isScreenFocused)
-  const lastLoadedCacheVersionRef = useRef(diaryListCacheVersion)
-  const listFilterDep = debouncedSearchTerm ? 0 : listFilter
-  const countFilterDep = debouncedSearchTerm ? 0 : countFilter
+
+  useEffect(() => {
+    if (ready && diaryService) return
+    if (__DEV__) {
+      console.log('[useDiaryData] effect:reset', { ready, hasService: !!diaryService })
+    }
+    loadRequestIdRef.current += 1
+    setEntries(reuseEmptyDiaryEntries)
+    setTotalCount((prev) => (prev === 0 ? prev : 0))
+    setLoading((prev) => (prev ? false : prev))
+    lastLoadedCacheVersionRef.current = diaryListCacheVersionRef.current
+  }, [ready, diaryService])
 
   useEffect(() => {
     const wasFocused = prevScreenFocusedRef.current
@@ -358,14 +376,6 @@ export function useDiaryData(
     prevScreenFocusedRef.current = isScreenFocused
 
     if (!ready || !diaryService) {
-      if (__DEV__) {
-        console.log('[useDiaryData] effect:reset', { ready, hasService: !!diaryService })
-      }
-      loadRequestIdRef.current += 1
-      setEntries([])
-      setTotalCount(0)
-      setLoading(false)
-      lastLoadedCacheVersionRef.current = diaryListCacheVersion
       return
     }
 
@@ -417,9 +427,7 @@ export function useDiaryData(
     vaultRevision,
     ecosystemResyncEpoch,
     diaryListCacheVersion,
-    isScreenFocused,
-    listFilterDep,
-    countFilterDep
+    isScreenFocused
   ])
 
   const isSearchPending = rawSearchTerm !== debouncedSearchTerm
