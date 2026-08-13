@@ -659,12 +659,16 @@
 }
 
 /* ── 删除确认弹窗 ── */
+/* 勿设 width/height:100%，否则会压过 .baishou-app-content-overlay 的 inset，圆角外溢 */
 .diary-delete-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: var(--app-titlebar-height, 52px);
+  left: var(--app-content-inset-inline, 8px);
+  right: var(--app-content-inset-inline, 8px);
+  bottom: var(--app-content-inset-bottom, 8px);
+  border-radius: var(--app-content-radius, 12px);
+  overflow: hidden;
+  box-sizing: border-box;
   background-color: var(--bg-overlay);
   backdrop-filter: var(--blur-overlay);
   -webkit-backdrop-filter: var(--blur-overlay);
@@ -1004,10 +1008,11 @@
   color: var(--color-primary);
 }
 
-/* ── 日记列表常驻底栏 ── */
+/* ── 日记列表常驻底栏（右下角：待抽取 / 待嵌入） ── */
 .diary-status-bar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   height: 24px;
   padding: 0 16px;
@@ -1034,8 +1039,4 @@
 
 .diary-status-bar-item--action:hover {
   color: var(--text-primary);
-}
-
-.diary-status-bar-spacer {
-  flex: 1;
 }
