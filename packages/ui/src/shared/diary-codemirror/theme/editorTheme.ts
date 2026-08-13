@@ -5,8 +5,8 @@ import { IMAGE_SIZE_CONFIG } from '../utils/image-utils'
 export const editorTheme = EditorView.baseTheme({
   '.cm-editor': {
     height: '100%',
-    fontSize: '16px',
-    lineHeight: '24px',
+    fontSize: 'var(--content-font-size-lg, 16px)',
+    lineHeight: '1.5',
     backgroundColor: 'var(--bg-surface)'
   },
   '.cm-editor.cm-focused': {
@@ -102,13 +102,19 @@ export const editorTheme = EditorView.baseTheme({
 
   '.cm-rendered-blockquote-content': {
     borderLeft: '3px solid var(--color-primary)',
-    paddingLeft: '0.75rem',
+    padding: '0 0 0 12px',
+    color: 'var(--text-secondary)'
+  },
+
+  '.cm-line.cm-rendered-blockquote': {
+    borderLeft: '3px solid var(--color-primary)',
+    padding: '0 0 0 12px',
     color: 'var(--text-secondary)'
   },
 
   '.cm-rendered-blockquote': {
     borderLeft: '3px solid var(--color-primary)',
-    paddingLeft: '0.75rem',
+    padding: '0 0 0 12px',
     color: 'var(--text-secondary)'
   },
 
