@@ -173,7 +173,15 @@ export async function buildMobileStreamUserConfig(
       assistantEmojiPrefs
     ),
     locale,
-    baishou_agent_gate_config
+    baishou_agent_gate_config,
+    reasoningEffort:
+      typeof behaviorConfig?.reasoningEffortDefault === 'string'
+        ? behaviorConfig.reasoningEffortDefault
+        : 'auto',
+    reasoningEffortDefault:
+      typeof behaviorConfig?.reasoningEffortDefault === 'string'
+        ? behaviorConfig.reasoningEffortDefault
+        : 'auto'
   }
 }
 

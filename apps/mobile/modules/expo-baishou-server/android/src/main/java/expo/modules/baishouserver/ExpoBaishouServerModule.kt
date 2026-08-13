@@ -61,6 +61,8 @@ private data class ActiveMcpStream(
 
 internal data class McpHttpRequest(
     val method: String,
+    /** 含 query 的路径，如 `/mcp`、`/sse`、`/message?sessionId=...` */
+    val path: String,
     val headers: Map<String, String>,
     val body: String
 )
@@ -188,6 +190,28 @@ internal class BaishouHttpServer(
         return if (totalRead > 0) String(buffer, 0, totalRead) else ""
     }
 
+    private fun buildMcpPath(session: IHTTPSession): String {
+        val uri = session.uri ?: "/"
+        val query = session.queryParameterString
+        if (!query.isNullOrEmpty()) return "$uri?$query"
+        val parms = session.parms
+        if (!parms.isNullOrEmpty()) {
+            val rebuilt = parms.entries.joinToString("&") { "${it.key}=${it.value}" }
+            if (rebuilt.isNotEmpty()) return "$uri?$rebuilt"
+        }
+        return uri
+    }
+
+    private fun isMcpRoute(uri: String?): Boolean {
+        if (uri.isNullOrEmpty()) return false
+        return uri == "/mcp" ||
+            uri == "/mcp/" ||
+            uri == "/sse" ||
+            uri == "/sse/" ||
+            uri == "/message" ||
+            uri.startsWith("/message?")
+    }
+
     private fun handleMcp(session: IHTTPSession): Response {
         if (session.method == Method.OPTIONS) {
             return corsResponse(Response.Status.OK, MIME_PLAINTEXT, "")
@@ -199,12 +223,13 @@ internal class BaishouHttpServer(
 
         return try {
             val method = session.method.name
+            val path = buildMcpPath(session)
             val headers = collectHeaders(session)
             val body = when (session.method) {
                 Method.POST -> readRequestBody(session)
                 else -> ""
             }
-            dispatchMcpRequest(McpHttpRequest(method, headers, body))
+            dispatchMcpRequest(McpHttpRequest(method, path, headers, body))
         } catch (e: Exception) {
             e.printStackTrace()
             corsResponse(
@@ -261,7 +286,7 @@ internal class BaishouHttpServer(
     }
 
     override fun serve(session: IHTTPSession): Response {
-        if (session.uri == "/mcp" || session.uri == "/mcp/") {
+        if (isMcpRoute(session.uri)) {
             return handleMcp(session)
         }
 
@@ -389,6 +414,7 @@ class ExpoBaishouServerModule : Module() {
             mapOf(
                 "requestId" to requestId,
                 "method" to request.method,
+                "path" to request.path,
                 "headers" to request.headers,
                 "body" to request.body
             )

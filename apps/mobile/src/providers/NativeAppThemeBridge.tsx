@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { NativeThemeProvider, useNativeTheme, type ThemeModePreference } from '@baishou/ui/native'
+import {
+  normalizeUiFontSizeLevel,
+  uiFontSizeScaleFromLevel,
+  UI_FONT_SIZE_LEVEL_DEFAULT
+} from '@baishou/shared'
 import { subscribeThemeRefresh } from '../lib/theme-events'
 import { useBaishou } from './BaishouProvider'
 
@@ -11,12 +16,13 @@ function ThemedRootShell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * 从设置读取 themeMode / seedColor，与桌面 Appearance 设置联动。
+ * 从设置读取 themeMode / seedColor / fontSizeLevel，与桌面 Appearance 设置联动。
  */
 export function NativeAppThemeBridge({ children }: { children: React.ReactNode }) {
   const { dbReady, services } = useBaishou()
   const [themeMode, setThemeMode] = useState<ThemeModePreference>('system')
   const [seedColor, setSeedColor] = useState<string | undefined>()
+  const [contentFontScale, setContentFontScale] = useState(1)
 
   const loadThemeFromSettings = useCallback(async () => {
     if (!services) return
@@ -30,6 +36,11 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
       if (typeof settings.seedColor === 'string' && settings.seedColor) {
         setSeedColor(settings.seedColor)
       }
+      const level =
+        settings.fontSizeLevel === undefined
+          ? UI_FONT_SIZE_LEVEL_DEFAULT
+          : normalizeUiFontSizeLevel(settings.fontSizeLevel)
+      setContentFontScale(uiFontSizeScaleFromLevel(level))
     } catch {
       // ignore
     }
@@ -48,7 +59,11 @@ export function NativeAppThemeBridge({ children }: { children: React.ReactNode }
   }, [dbReady, services, loadThemeFromSettings])
 
   return (
-    <NativeThemeProvider themeMode={themeMode} seedColor={seedColor}>
+    <NativeThemeProvider
+      themeMode={themeMode}
+      seedColor={seedColor}
+      contentFontScale={contentFontScale}
+    >
       <ThemedRootShell>{children}</ThemedRootShell>
     </NativeThemeProvider>
   )

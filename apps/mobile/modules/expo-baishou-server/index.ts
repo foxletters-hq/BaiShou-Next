@@ -6,6 +6,8 @@ type ServerEvents = {
   onMcpHttpRequest: (event: {
     requestId: string
     method: string
+    /** 含 query 的路径；旧版原生可能缺失，默认按 /mcp */
+    path?: string
     headers: Record<string, string>
     body: string
   }) => void
@@ -298,6 +300,7 @@ export function onMcpHttpRequest(
   listener: (event: {
     requestId: string
     method: string
+    path?: string
     headers: Record<string, string>
     body: string
   }) => void
