@@ -15,7 +15,7 @@
 
 .title {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -78,7 +78,7 @@
   padding: 4px 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.4;
   transition: var(--form-field-transition);
 }
@@ -123,7 +123,7 @@
   color: var(--text-primary);
   border-radius: 4px;
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -146,7 +146,7 @@
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px 0;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .filterToggle:hover {
@@ -167,7 +167,7 @@
   padding: 4px 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   transition: var(--form-field-transition);
 }
 
@@ -188,7 +188,7 @@
 .summary {
   margin: 0;
   padding: 8px 6px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .hint {
@@ -228,7 +228,7 @@
   padding: 4px 6px;
   border-radius: 4px;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
 }
 
 .fileHeader:hover {
@@ -251,7 +251,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
 }
 
 .fileCount {
@@ -261,7 +261,7 @@
   border-radius: 10px;
   background: var(--bg-surface-normal);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   line-height: 18px;
   text-align: center;
 }
@@ -286,7 +286,7 @@
 
 .lineNo {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -297,8 +297,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 12px;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-sm);
   line-height: 1.5;
   color: var(--text-primary);
 }

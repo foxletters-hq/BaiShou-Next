@@ -18,7 +18,7 @@ export interface WorkbenchWorkspaceGateSheetProps {
 
 type WorkbenchSettingsTab = 'permissions' | 'tools'
 
-/** 工作台设置：当前工作区的权限与工具（居中弹窗） */
+/** 工作台设置：全局 Agent 安全模式与工具（居中弹窗） */
 export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetProps> = ({
   open,
   workspaceId,
@@ -28,23 +28,30 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
   const { t } = useTranslation()
   const [tab, setTab] = useState<WorkbenchSettingsTab>('permissions')
   const [toolsSubpageActive, setToolsSubpageActive] = useState(false)
+  const [permissionsSubpageActive, setPermissionsSubpageActive] = useState(false)
   const [workspaceTools, setWorkspaceTools] = useState<WorkspaceToolManagementConfig>(
     DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG
   )
 
+  const subpageActive = toolsSubpageActive || permissionsSubpageActive
+
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Escape') return
+      // 权限/工具子页由子组件先处理返回；此处勿关弹窗
+      if (toolsSubpageActive || permissionsSubpageActive) return
+      onClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  }, [open, onClose, toolsSubpageActive, permissionsSubpageActive])
 
   useEffect(() => {
     if (!open) {
       setTab('permissions')
       setToolsSubpageActive(false)
+      setPermissionsSubpageActive(false)
     }
   }, [open])
 
@@ -79,7 +86,7 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
     }
   }
 
-  const title = t('workbench.settings_title', '工作台设置 · {{name}}', { name: workspaceName })
+  const title = t('workbench.settings_title', '工作台设置')
 
   return (
     <Modal
@@ -107,7 +114,7 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
           </button>
         </header>
 
-        {toolsSubpageActive ? null : (
+        {subpageActive ? null : (
           <div className={styles.tabs}>
             <SegmentedControl
               value={tab}
@@ -132,6 +139,7 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
               key={workspaceId}
               scene="workspace"
               scope={{ kind: 'workspace', workspaceId }}
+              onSubpageActiveChange={setPermissionsSubpageActive}
             />
           ) : (
             <AgentToolsView

@@ -18,14 +18,14 @@
 
 .title {
   margin: 0 0 10px;
-  font-size: 20px;
+  font-size: var(--ui-fs-xl);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .desc {
   margin: 0 0 20px;
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -36,7 +36,7 @@
   padding: 10px 20px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   cursor: pointer;
   transition:
