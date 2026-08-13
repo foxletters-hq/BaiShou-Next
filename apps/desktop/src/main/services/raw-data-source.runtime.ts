@@ -101,7 +101,10 @@ export function ensureRawDataRuntime(): {
 }
 
 export function getDerivedFreshness(): DerivedFreshnessService {
-  return ensureRawDataRuntime().freshness
+  const { freshness } = ensureRawDataRuntime()
+  // 冷启动时 vault 可能尚未就绪导致首次 bind 跳过；每次取用时再尝试绑定
+  rebindPendingReextractCollaborators()
+  return freshness
 }
 
 /** Re-bind extract collaborators after vault switch (shadow repo changes). */

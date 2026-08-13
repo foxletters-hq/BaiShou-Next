@@ -6,7 +6,8 @@ import {
   logger,
   prepareProviderConfigForRuntime,
   type AIProviderConfig,
-  type GlobalModelsConfig
+  type GlobalModelsConfig,
+  type KnowledgeConfig
 } from '@baishou/shared'
 import { registerVisionPageRecognizer } from '@baishou/core-desktop'
 import { settingsManager } from '../ipc/settings.ipc'
@@ -15,29 +16,37 @@ const OCR_PROMPT = `请识别这张 PDF 页面图片中的全部文字，按原�
 不要解释、不要翻译、不要添加页眉说明。若几乎无字，输出空行即可。`
 
 /**
- * 注册视觉 OCR：复用全局对话模型（须为多模态）。
+ * 注册视觉 OCR：优先知识库专用多模态模型，否则回退全局对话/总结模型。
  */
 export function registerDesktopVisionPageRecognizer(): void {
   registerVisionPageRecognizer(async ({ pngBase64, page }) => {
+    const knowledgeConfig =
+      (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
     const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
-    const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
+    const modelId =
+      knowledgeConfig.visionModelId ||
+      globalModels?.globalDialogueModelId ||
+      globalModels?.globalSummaryModelId
     const providerId =
-      globalModels?.globalDialogueProviderId || globalModels?.globalSummaryProviderId
+      knowledgeConfig.visionProviderId ||
+      globalModels?.globalDialogueProviderId ||
+      globalModels?.globalSummaryProviderId
     const providerConfig =
-      providers.find((p) => p.id === providerId) || providers.find((p) => p.isEnabled)
+      (providerId ? providers.find((p) => p.id === providerId) : undefined) ||
+      providers.find((p) => p.isEnabled)
 
     if (!modelId || !providerConfig) {
       throw new Error(
         i18n.t(
           'auto.apps.desktop.src.main.services.register.desktop.vision.ocr.no_model',
-          '未配置对话模型，无法使用视觉 OCR'
+          '未配置多模态模型，无法使用视觉提取'
         )
       )
     }
     if (!isVisionModel(modelId, providerConfig.type || providerConfig.id)) {
-      throw new Error(`当前对话模型不是多模态视觉模型：${modelId}`)
+      throw new Error(`当前模型不是多模态视觉模型：${modelId}`)
     }
 
     const registry = AIProviderRegistry.getInstance()
