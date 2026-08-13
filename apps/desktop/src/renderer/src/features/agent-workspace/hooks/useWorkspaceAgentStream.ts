@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useAgentStream,
@@ -26,6 +26,8 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
     options?: {
       assistantId?: string
       title?: string
+      displayText?: string
+      skillRefs?: Array<{ command: string; content: string }>
     }
   ) => Promise<StartWorkspaceChatResult>
   runWorkspaceChatStream: (
@@ -35,6 +37,8 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
     options?: {
       providerId?: string
       modelId?: string
+      reasoningEffort?: string
+      searchMode?: boolean
     }
   ) => Promise<void>
   /** @deprecated 使用 prepareWorkspaceTurn + runWorkspaceChatStream */
@@ -51,8 +55,13 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
   ) => Promise<string | null>
   rollbackRound: (
     sessionId: string,
-    userMessageId: string
+    userMessageId: string,
+    scope?: import('@baishou/shared').WorkspaceRollbackScope
   ) => Promise<{ restored: string[]; deleted: string[]; skipped: string[] }>
+  previewRollback: (
+    sessionId: string,
+    userMessageId: string
+  ) => Promise<import('@baishou/shared').WorkspaceRollbackPreview>
 }
 
 export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentStreamResult {
@@ -85,6 +94,53 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
     setFailedTools([])
   }, [stream.isStreaming])
 
+  // drain / promote 开流时同步 UI 流式态（idle admit 的 started 也会 beginStreaming；此处覆盖排队后的下一轮）
+  useEffect(() => {
+    if (!sessionId || typeof window === 'undefined' || !window.electron?.ipcRenderer?.on) return
+
+    const onRuntimeEvent = (_: unknown, event: { type?: string; sessionId?: string }) => {
+      if (event?.type !== 'session.promoted' || event.sessionId !== sessionId) return
+      stream.beginStreaming(sessionId)
+      window.dispatchEvent(
+        new CustomEvent('baishou:workspace-pending-inputs-changed', {
+          detail: { sessionId }
+        })
+      )
+    }
+
+    const unsubscribe = window.electron.ipcRenderer.on(
+      'agent:session-runtime-event',
+      onRuntimeEvent
+    )
+    return () => {
+      unsubscribe?.()
+    }
+  }, [sessionId, stream.beginStreaming])
+
+  // admit+drain 路径不再走 runWorkspaceChatStream finally；流结束后补刷新
+  const wasStreamingRef = useRef(stream.isStreaming)
+  useEffect(() => {
+    if (wasStreamingRef.current && !stream.isStreaming && sessionId) {
+      window.dispatchEvent(
+        new CustomEvent('baishou:workspace-messages-changed', {
+          detail: { sessionId }
+        })
+      )
+      window.dispatchEvent(
+        new CustomEvent('baishou:workspace-tree-refresh', {
+          detail: { sessionId }
+        })
+      )
+      window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
+      window.dispatchEvent(
+        new CustomEvent('baishou:workspace-pending-inputs-changed', {
+          detail: { sessionId }
+        })
+      )
+    }
+    wasStreamingRef.current = stream.isStreaming
+  }, [sessionId, stream.isStreaming])
+
   const prepareWorkspaceTurn = useCallback(
     async (
       targetSessionId: string | undefined,
@@ -93,10 +149,14 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
       options?: {
         assistantId?: string
         title?: string
+        displayText?: string
+        skillRefs?: Array<{ command: string; content: string }>
       }
     ): Promise<StartWorkspaceChatResult> => {
       let activeSessionId = targetSessionId
       let createdNew = false
+
+      const titleSeed = (options?.displayText || text).trim()
 
       if (!activeSessionId || activeSessionId === 'new-session') {
         const newId = crypto.randomUUID()
@@ -106,7 +166,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
           assistantId: options?.assistantId,
           title:
             options?.title ||
-            text.trim().substring(0, 10) ||
+            titleSeed.substring(0, 10) ||
             t('agent_workspace.default_session_title', '工作区对话')
         })
         activeSessionId = newId
@@ -114,7 +174,10 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
         window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
       }
 
-      const saved = await stream.saveUserMessage(activeSessionId, text)
+      const saved = await stream.saveUserMessage(activeSessionId, text, undefined, {
+        displayText: options?.displayText,
+        skillRefs: options?.skillRefs
+      })
       if ('error' in saved) {
         throw new Error(saved.error)
       }
@@ -142,6 +205,8 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
       options?: {
         providerId?: string
         modelId?: string
+        reasoningEffort?: string
+        searchMode?: boolean
       }
     ): Promise<void> => {
       setFailedTools([])
@@ -152,7 +217,9 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
           text,
           userMessageId,
           providerId: options?.providerId,
-          modelId: options?.modelId
+          modelId: options?.modelId,
+          reasoningEffort: options?.reasoningEffort,
+          searchMode: options?.searchMode
         })
       } finally {
         finishStreamingSession(activeSessionId)
@@ -160,6 +227,11 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
 
       window.dispatchEvent(
         new CustomEvent('baishou:workspace-messages-changed', {
+          detail: { sessionId: activeSessionId }
+        })
+      )
+      window.dispatchEvent(
+        new CustomEvent('baishou:workspace-tree-refresh', {
           detail: { sessionId: activeSessionId }
         })
       )
@@ -189,19 +261,36 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
     [prepareWorkspaceTurn, runWorkspaceChatStream]
   )
 
-  const rollbackRound = useCallback(async (sid: string, userMessageId: string) => {
-    const result = await window.api.agentWorkspace.rollbackRound({ sessionId: sid, userMessageId })
-    window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
-    window.dispatchEvent(
-      new CustomEvent('baishou:workspace-messages-changed', {
-        detail: { sessionId: sid }
+  const previewRollback = useCallback(
+    (sid: string, userMessageId: string) =>
+      window.api.agentWorkspace.previewRollback({ sessionId: sid, userMessageId }),
+    []
+  )
+
+  const rollbackRound = useCallback(
+    async (
+      sid: string,
+      userMessageId: string,
+      scope?: import('@baishou/shared').WorkspaceRollbackScope
+    ) => {
+      const result = await window.api.agentWorkspace.rollbackRound({
+        sessionId: sid,
+        userMessageId,
+        scope
       })
-    )
-    window.dispatchEvent(
-      new CustomEvent('baishou:workspace-tree-refresh', { detail: { sessionId: sid } })
-    )
-    return result
-  }, [])
+      window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
+      window.dispatchEvent(
+        new CustomEvent('baishou:workspace-messages-changed', {
+          detail: { sessionId: sid }
+        })
+      )
+      window.dispatchEvent(
+        new CustomEvent('baishou:workspace-tree-refresh', { detail: { sessionId: sid } })
+      )
+      return result
+    },
+    []
+  )
 
   return {
     ...stream,
@@ -209,6 +298,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
     prepareWorkspaceTurn,
     runWorkspaceChatStream,
     startWorkspaceChat,
-    rollbackRound
+    rollbackRound,
+    previewRollback
   }
 }

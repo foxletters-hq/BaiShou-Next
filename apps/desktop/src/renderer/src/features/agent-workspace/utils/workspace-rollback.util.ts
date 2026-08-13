@@ -1,3 +1,5 @@
+import type { WorkspaceRollbackPreview } from '@baishou/shared'
+
 export interface WorkspaceRollbackResult {
   restored: string[]
   deleted: string[]
@@ -25,6 +27,59 @@ function formatPathSection(
     lines.push(`  · ${moreLabel(paths.length - MAX_PATH_LINES)}`)
   }
   return [label, ...lines]
+}
+
+export interface WorkspaceRollbackPreviewCopy {
+  /** AI 写工具改过、必定会被还原的文件 */
+  fileLines: string[]
+  /** 同期变化但不是写工具造成的文件：终端命令的产物，或用户自己的编辑 */
+  extraLines: string[]
+  /** 存在无法归因的改动时，必须让用户先选范围再回滚 */
+  needsScopeChoice: boolean
+  cascadeNote: string | null
+  /** 没有任何文件会被改动，只会删掉对话 */
+  isEmpty: boolean
+}
+
+/** 把回滚预览转成确认框要展示的文案片段 */
+export function buildWorkspaceRollbackPreviewCopy(
+  preview: WorkspaceRollbackPreview,
+  t: TranslateFn
+): WorkspaceRollbackPreviewCopy {
+  const more = (count: number) =>
+    t('round_rollback.more_files', '另有 {{count}} 个文件…', { count })
+
+  const fileLines = formatPathSection(
+    t('round_rollback.preview_files_label', '将还原以下文件：'),
+    preview.attributedPaths,
+    more
+  )
+
+  const extraLines =
+    preview.extraPaths.length > 0
+      ? formatPathSection(
+          t(
+            'round_rollback.preview_extra_label',
+            '另有 {{count}} 个文件在这期间变化，可能来自终端命令或你自己的编辑：',
+            { count: preview.extraPaths.length }
+          ),
+          preview.extraPaths,
+          more
+        )
+      : []
+
+  return {
+    fileLines,
+    extraLines,
+    needsScopeChoice: preview.extraPaths.length > 0,
+    cascadeNote:
+      preview.rounds > 1
+        ? t('round_rollback.preview_cascade', '将连同之后的 {{count}} 轮一起撤销。', {
+            count: preview.rounds - 1
+          })
+        : null,
+    isEmpty: preview.attributedPaths.length === 0 && preview.extraPaths.length === 0
+  }
 }
 
 /** 将回滚 API 结果格式化为简短摘要（用于 toast / 对话框） */
