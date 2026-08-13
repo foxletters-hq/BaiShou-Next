@@ -15,12 +15,13 @@
     "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@ai-sdk/anthropic": "^3.0.66",
     "@ai-sdk/google": "^3.0.58",
     "@ai-sdk/openai": "^3.0.50",
+    "@ai-sdk/openai-compatible": "^3.0.28",
     "@baishou/database": "workspace:*",
     "@baishou/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "ai": "^6.0.146",
     "pdf-parse": "^1.1.1",
     "tiktoken": "^1.0.22",
