@@ -193,6 +193,13 @@
   margin-bottom: 8px;
 }
 
+.fieldHint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
 .fieldLabelGroup {
   display: inline-flex;
   align-items: center;

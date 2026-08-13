@@ -10,6 +10,8 @@ import {
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToWindowEdges } from '@dnd-kit/modifiers'
 import { Plus, Sparkles, Trash2, Search } from 'lucide-react'
+import { isSystemLatteAssistantId } from '@baishou/shared'
+import { withAppContentOverlay } from '../overlay'
 import styles from './AssistantManagementPage.module.css'
 import { AssistantListRow, AssistantSortableListItem } from './AssistantSortableListItem'
 import { useAssistantManagementPage } from './useAssistantManagementPage'
@@ -58,10 +60,13 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
   const vm = useAssistantManagementPage(assistants, pinnedIds, searchQuery, onReorder)
 
   const handleConfirmDelete = () => {
-    if (deleteTargetId) {
-      onDelete(deleteTargetId)
+    if (!deleteTargetId) return
+    if (isSystemLatteAssistantId(deleteTargetId)) {
       setDeleteTargetId(null)
+      return
     }
+    onDelete(deleteTargetId)
+    setDeleteTargetId(null)
   }
 
   useEffect(() => {
@@ -79,7 +84,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       assistant={assistant}
       isPinned={pinnedIds.has(assistant.id)}
       onEdit={onEdit}
-      onDelete={setDeleteTargetId}
+      onDelete={isSystemLatteAssistantId(assistant.id) ? undefined : setDeleteTargetId}
     />
   )
 
@@ -183,7 +188,7 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       {deleteTargetId !== null &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={styles.dialogOverlay} onClick={() => setDeleteTargetId(null)}>
+          <div className={withAppContentOverlay(styles.dialogOverlay)} onClick={() => setDeleteTargetId(null)}>
             <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
               <div className={styles.dialogHeaderIcon}>
                 <Trash2 size={32} color="var(--color-error)" />

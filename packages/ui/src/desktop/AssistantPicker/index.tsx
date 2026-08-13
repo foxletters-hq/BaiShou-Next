@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../Button/Button'
 import { AssistantKindBadge } from '../AssistantKindBadge'
+import { withAppContentOverlay } from '../overlay'
 import styles from './AssistantPicker.module.css'
 import { MockAgentAssistant } from '@baishou/shared'
 
@@ -47,7 +48,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={withAppContentOverlay(styles.overlay)} onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         {/* Left Sidebar */}
         <div className={styles.sidebar}>

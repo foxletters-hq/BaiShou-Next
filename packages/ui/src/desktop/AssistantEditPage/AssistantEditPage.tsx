@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import type { AssistantEditPageProps } from './assistant-edit.types'
-import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH } from '@baishou/shared'
+import { DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH, isSystemLatteAssistantId } from '@baishou/shared'
 import { useAssistantEditPage } from './useAssistantEditPage'
 import { AssistantEditAppBar } from './AssistantEditAppBar'
 import { AssistantEditAvatarSection } from './AssistantEditAvatarSection'
@@ -46,12 +46,15 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
           </section>
 
           <section className={styles.sectionCard}>
-            <AssistantKindTabBar
-              activeKind={form.assistantKind}
-              onKindChange={form.handleKindChange}
-            />
-
-            <div className={styles.spacer16} />
+            {!isSystemLatteAssistantId(assistant?.id) ? (
+              <>
+                <AssistantKindTabBar
+                  activeKind={form.assistantKind}
+                  onKindChange={form.handleKindChange}
+                />
+                <div className={styles.spacer16} />
+              </>
+            ) : null}
 
             <h3 className={styles.sectionTitle}>
               {t('agent.assistant.partner_info_label', '伙伴信息')}
@@ -94,6 +97,14 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
               minHeight={140}
               maxHeight={520}
             />
+            {form.isEditing && isSystemLatteAssistantId(assistant?.id) ? (
+              <p className={styles.fieldHint}>
+                {t(
+                  'settings.latte_edit_hint',
+                  '人设与自定义提示词也可在「设置 → Latte」中管理'
+                )}
+              </p>
+            ) : null}
 
             {form.globalEmojiEnabled ? (
               <>

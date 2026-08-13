@@ -7,6 +7,7 @@ import {
   DEFAULT_ASSISTANT_KIND,
   DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH,
   isAssistantCustomAvatar,
+  isSystemLatteAssistantId,
   normalizeAssistantAvatarPath,
   normalizeAssistantKind,
   normalizeEmojiToolConfig,
@@ -58,8 +59,10 @@ export function useAssistantEditPage({
   const [name, setName] = useState(assistant?.name ?? '')
   const [description, setDescription] = useState(assistant?.description ?? '')
   const [systemPrompt, setSystemPrompt] = useState(assistant?.systemPrompt ?? '')
-  const [assistantKind, setAssistantKind] = useState<AssistantKind>(
-    normalizeAssistantKind(assistant?.assistantKind ?? DEFAULT_ASSISTANT_KIND)
+  const [assistantKind, setAssistantKind] = useState<AssistantKind>(() =>
+    isSystemLatteAssistantId(assistant?.id)
+      ? 'companion'
+      : normalizeAssistantKind(assistant?.assistantKind ?? DEFAULT_ASSISTANT_KIND)
   )
   const [contextWindow, setContextWindow] = useState(
     assistant?.contextWindow ?? DEFAULT_ASSISTANT_CONTEXT_WINDOW
@@ -107,7 +110,11 @@ export function useAssistantEditPage({
     setAvatarPath(
       normalizeAssistantAvatarPath(assistant.avatarPath) || DEFAULT_BUILTIN_ASSISTANT_AVATAR_PATH
     )
-    setAssistantKind(normalizeAssistantKind(assistant.assistantKind))
+    setAssistantKind(
+      isSystemLatteAssistantId(assistant.id)
+        ? 'companion'
+        : normalizeAssistantKind(assistant.assistantKind)
+    )
     setEmojiEnabled(assistant.emojiEnabled === true)
     setSelectedEmojiGroupIds(resolveFormEmojiGroupIds(assistant))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally hydrate only on id change
@@ -199,7 +206,7 @@ export function useAssistantEditPage({
         compressTokenThreshold: isCompressDisabled ? 0 : Math.round(compressThreshold),
         compressKeepTurns: Math.round(compressKeepTurns),
         avatarPath: normalizeAssistantAvatarPath(avatarPath),
-        assistantKind,
+        assistantKind: isSystemLatteAssistantId(assistant?.id) ? 'companion' : assistantKind,
         ...buildEmojiPersistFields(selectedEmojiGroupIds, emojiEnabled)
       })
     } catch (e) {

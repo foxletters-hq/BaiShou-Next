@@ -3,6 +3,8 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+  line-height: 0;
 }
 
 .rootFullWidth {
