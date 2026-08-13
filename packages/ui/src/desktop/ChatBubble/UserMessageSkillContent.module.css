@@ -1,0 +1,193 @@
+.skillCite {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #b8860b;
+  font: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  vertical-align: baseline;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.skillCite:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.skillCite:focus-visible {
+  outline: 2px solid color-mix(in srgb, #b8860b 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.previewOverlay {
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  box-sizing: border-box;
+}
+
+.previewModal {
+  padding: 0 !important;
+  width: min(560px, 92vw) !important;
+  min-width: min(420px, 92vw) !important;
+  max-height: min(720px, calc(100vh - 80px)) !important;
+  height: auto !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--border-card, var(--border-muted)) !important;
+  background: var(--bg-surface) !important;
+  box-shadow: var(--shadow-md, 0 12px 40px rgba(0, 0, 0, 0.12)) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-family-main, var(--font-family, inherit)) !important;
+}
+
+/* Modal 把 children 包在 .body 里，需参与纵向 flex */
+.previewModal > div:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(640px, calc(100vh - 120px));
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-family-main, var(--font-family, inherit));
+}
+
+.previewHeader {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border-muted);
+  font-family: var(--font-family-main, var(--font-family, inherit));
+}
+
+.previewHeaderIcon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.previewTitle {
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.previewCommandChip {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 40%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #b8860b 35%, transparent);
+  background: color-mix(in srgb, #b8860b 10%, transparent);
+  color: #b8860b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.previewHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.previewHeaderBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+}
+
+.previewHeaderBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.previewClose {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.previewClose:hover {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.previewBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 18px 18px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  text-align: left;
+  font-family: var(--font-family-main, var(--font-family, inherit));
+}
+
+.previewBody::-webkit-scrollbar {
+  width: 6px;
+}
+
+.previewBody::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--text-primary-rgb), 0.14);
+  border-radius: 4px;
+}
+
+.previewEmpty {
+  margin: 0;
+  color: var(--text-secondary, var(--text-muted));
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: inherit;
+}
