@@ -251,13 +251,20 @@ describe('agent-gate-ruleset.util', () => {
       ).toBe(AgentGateEffect.Deny)
     })
 
-    it('downgrades Allow for destructive risk', () => {
+    it('downgrades Allow for destructive risk unless explicitAllow', () => {
       expect(
         clampAgentGateEffect(AgentGateEffect.Allow, {
           action: 'workspace_delete',
           riskLevel: AgentGateRiskLevel.Destructive
         })
       ).toBe(AgentGateEffect.Ask)
+      expect(
+        clampAgentGateEffect(AgentGateEffect.Allow, {
+          action: 'workspace_delete',
+          riskLevel: AgentGateRiskLevel.Destructive,
+          explicitAllow: true
+        })
+      ).toBe(AgentGateEffect.Allow)
     })
 
     it('downgrades Allow for truncated preview', () => {
