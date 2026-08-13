@@ -176,6 +176,7 @@ export function useChatMessageMutations(refs: ChatMessageMutationRefs) {
       id: string
       content: string
       attachments?: MockChatAttachment[]
+      skillRefs?: Array<{ command: string; content: string }>
       createdAt?: Date
     }) => {
       if (messageCacheRef.current.some((m) => m.id === payload.id)) return
@@ -185,11 +186,13 @@ export function useChatMessageMutations(refs: ChatMessageMutationRefs) {
         0
       )
       const createdAt = payload.createdAt ?? new Date()
+      const skillRefs = payload.skillRefs?.length ? payload.skillRefs : undefined
       const msg = {
         id: payload.id,
         role: 'user',
         content: payload.content,
         attachments: payload.attachments,
+        skillRefs,
         orderIndex: maxOrder + 1,
         createdAt,
         parts: payload.content
@@ -198,7 +201,10 @@ export function useChatMessageMutations(refs: ChatMessageMutationRefs) {
                 id: `${payload.id}-text`,
                 messageId: payload.id,
                 type: 'text',
-                data: { text: payload.content }
+                data: {
+                  text: payload.content,
+                  ...(skillRefs ? { displayText: payload.content, skillRefs } : {})
+                }
               }
             ]
           : []

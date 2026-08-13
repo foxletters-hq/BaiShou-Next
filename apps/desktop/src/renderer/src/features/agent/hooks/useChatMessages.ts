@@ -46,6 +46,7 @@ export interface UseChatMessagesResult {
     id: string
     content: string
     attachments?: MockChatAttachment[]
+    skillRefs?: Array<{ command: string; content: string }>
     createdAt?: Date
   }) => void
   optimisticRemove: (optimisticId: string) => void
