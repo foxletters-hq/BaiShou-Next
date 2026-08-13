@@ -7,6 +7,15 @@
   padding: 0;
 }
 
+/*
+ * 去掉 Chromium/Electron 系统默认焦点框（Windows 上常为黄框）。
+ * 组件若用更高优先级选择器自设 outline（如 .btn:focus-visible），仍会生效。
+ */
+:focus,
+:focus-visible {
+  outline: none;
+}
+
 body {
   overflow: hidden; /* Hide scrollbars for the main app container */
   -webkit-font-smoothing: antialiased;

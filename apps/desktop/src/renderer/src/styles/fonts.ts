@@ -1,9 +1,11 @@
 /**
- * 桌面 UI 字体：首屏只同步拉丁 400，CJK 字重空闲后再拉，减轻 Ctrl+Shift+R 冷启动。
+ * 桌面 UI 字体：拉丁 400 + 简中 400 同步首屏；其余字重空闲后再拉。
+ * Noto Sans SC = 思源黑体简体。
  */
 import '@fontsource/noto-sans/latin-400.css'
+import '@fontsource/noto-sans-sc/chinese-simplified-400.css'
 
-const loadedRegional = new Set<string>()
+const loadedRegional = new Set<string>(['sc-400'])
 
 function scheduleIdle(task: () => void): void {
   const ric = (
@@ -18,15 +20,14 @@ function scheduleIdle(task: () => void): void {
   window.setTimeout(task, 200)
 }
 
-/** 简中 / 加粗拉丁：空闲加载，避免挡住首屏 */
+/** 加粗拉丁 / 简中 500–600：空闲加载，避免挡住首屏 */
 function ensureDefaultUiFonts(): void {
-  if (loadedRegional.has('sc-base')) return
-  loadedRegional.add('sc-base')
+  if (loadedRegional.has('sc-weights')) return
+  loadedRegional.add('sc-weights')
   scheduleIdle(() => {
     void Promise.all([
       import('@fontsource/noto-sans/latin-500.css'),
       import('@fontsource/noto-sans/latin-600.css'),
-      import('@fontsource/noto-sans-sc/chinese-simplified-400.css'),
       import('@fontsource/noto-sans-sc/chinese-simplified-500.css'),
       import('@fontsource/noto-sans-sc/chinese-simplified-600.css')
     ])

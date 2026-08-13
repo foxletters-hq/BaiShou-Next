@@ -1,5 +1,5 @@
 .titleBar {
-  --titlebar-height: 52px;
+  --titlebar-height: var(--app-titlebar-height, 52px);
   --tab-height: 36px;
   height: var(--titlebar-height);
   background: transparent;
@@ -216,20 +216,20 @@
   top: 100%;
   right: 0;
   margin-top: 4px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, 8px);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 10;
   min-width: 150px;
-  padding: 4px;
+  padding: var(--menu-popup-padding, 4px);
   -webkit-app-region: no-drag;
 }
 
 .vaultMenuItem {
   padding: 8px 12px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -243,13 +243,13 @@
 }
 
 .vaultMenuItem:hover {
-  background: rgba(var(--text-primary-rgb), 0.05);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .vaultMenuItemActive {
   color: var(--text-primary);
-  background: var(--bg-surface-high);
-  font-weight: 500;
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
+  font-weight: 400;
 }
 
 .vaultMenuPlaceholder {

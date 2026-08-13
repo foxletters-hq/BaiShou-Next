@@ -10,6 +10,7 @@ import {
   Database,
   Globe,
   GraduationCap,
+  Coffee,
   History,
   Library,
   MessageCircle,
@@ -54,6 +55,7 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'ai-services',
   'ai-models',
   'assistants',
+  'latte',
   'rag',
   'web-search',
   'agent-tools',
@@ -136,7 +138,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
     key: 'settings-companion',
     labelKey: 'settings.nav_group_companion',
     defaultLabel: i18n.t('settings.nav_group_companion', '伙伴'),
-    itemIds: ['assistants', 'agent-tools', 'rag']
+    itemIds: ['assistants', 'latte', 'agent-tools', 'rag']
   },
   {
     key: 'memory',
@@ -170,6 +172,7 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   'ai-services': `${SETTINGS_HUB_PREFIX}/ai-services`,
   'ai-models': `${SETTINGS_HUB_PREFIX}/ai-models`,
   assistants: `${SETTINGS_HUB_PREFIX}/assistants`,
+  latte: `${SETTINGS_HUB_PREFIX}/latte`,
   rag: `${SETTINGS_HUB_PREFIX}/rag`,
   'web-search': `${SETTINGS_HUB_PREFIX}/web-search`,
   'agent-tools': `${SETTINGS_HUB_PREFIX}/agent-tools`,
@@ -241,6 +244,11 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       icon: icon(<GraduationCap />),
       label: t('agent.assistant.settings_entry', '伙伴管理'),
       path: `${SETTINGS_HUB_PREFIX}/assistants`
+    },
+    latte: {
+      icon: icon(<Coffee />),
+      label: t('settings.latte_settings_title', 'Latte'),
+      path: `${SETTINGS_HUB_PREFIX}/latte`
     },
     rag: {
       icon: icon(<Database />),

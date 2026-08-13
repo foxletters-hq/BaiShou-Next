@@ -7,7 +7,7 @@
   position: relative;
   /* 半透色罩叠在系统 Acrylic 上；圆角由 Win11 roundedCorners 负责 */
   background-color: var(--bg-window-shell);
-  padding-top: 52px;
+  padding-top: var(--app-titlebar-height, 52px);
   box-sizing: border-box;
 }
 

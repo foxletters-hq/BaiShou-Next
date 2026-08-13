@@ -6,7 +6,7 @@
   flex-direction: column;
   box-sizing: border-box;
   background: transparent;
-  padding: 0 8px 8px;
+  padding: 0 var(--app-content-inset-inline, 8px) var(--app-content-inset-bottom, 8px);
 }
 
 /* 关闭/退出中：后代即便写了 pointer-events:auto（如 settings-pane-body--visible）也不能命中 */
@@ -22,7 +22,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: var(--app-content-radius, 12px);
   background: var(--bg-surface);
   border: 1px solid var(--border-card);
   box-shadow: var(--shadow-sm);
