@@ -305,7 +305,7 @@ function buildPreview(
   return trimmed.length <= maxLength ? trimmed : `${trimmed.slice(0, maxLength)}…`
 }
 
-function countContentLines(content: string): number {
+export function countContentLines(content: string): number {
   return splitLines(content).length
 }
 
