@@ -8,7 +8,9 @@ import {
   isAssistantCustomAvatar,
   extractAvatarsRelativeKey,
   deriveLegacyVaultId,
-  isVaultId
+  isVaultId,
+  isSystemLatteAssistantId,
+  SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE
 } from '@baishou/shared'
 import { AssistantFileService } from './assistant-file.service'
 import { emitDomainMutation } from '../events'
@@ -188,6 +190,9 @@ export class AssistantManagerService {
   }
 
   async delete(id: string): Promise<void> {
+    if (isSystemLatteAssistantId(id)) {
+      throw new Error(SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE)
+    }
     const vaultId = this.requireVaultId()
     const previous = await this.repo.findById(id, vaultId)
     const previousAvatar = previous?.avatarPath ?? null
@@ -264,6 +269,7 @@ export class AssistantManagerService {
       description: input.description ?? null,
       avatarPath: toPersistedAssistantAvatarPath(input.avatarPath ?? null),
       systemPrompt: input.systemPrompt ?? null,
+      customSystemPrompt: input.customSystemPrompt ?? null,
       isDefault: input.isDefault ?? false,
       isPinned: input.isPinned ?? false,
       contextWindow: input.contextWindow ?? null,

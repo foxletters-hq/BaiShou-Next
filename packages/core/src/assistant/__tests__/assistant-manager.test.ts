@@ -218,4 +218,10 @@ describe('AssistantManagerService (SSOT Enforcer)', () => {
     expect(mockRepo.delete).toHaveBeenCalledWith('ast-personal', VAULT_PERSONAL)
     expect(mockRepo.delete).not.toHaveBeenCalledWith('ast-work', vaultWork)
   })
+
+  it('delete() refuses system Latte id', async () => {
+    await expect(manager.delete('latte')).rejects.toThrow('SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE')
+    expect(mockRepo.delete).not.toHaveBeenCalled()
+    expect(mockFileService.deleteAssistant).not.toHaveBeenCalled()
+  })
 })

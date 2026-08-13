@@ -23,6 +23,7 @@ export {
   getAuthenticatedUrl
 } from './sync/git-sync.helpers'
 export * from './sync/git-binary.registry'
+export * from './sync/run-bundled-git'
 export * from './sync/incremental-sync.interface'
 export * from './sync/version-manager.interface'
 export * from './sync/version-manager.service'
