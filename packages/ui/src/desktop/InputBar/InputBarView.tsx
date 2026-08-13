@@ -1,8 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import styles from './InputBar.module.css'
 import { motion } from 'framer-motion'
 import type { useInputBar } from './useInputBar'
-import { PromptShortcutSheet } from '../PromptShortcutSheet'
 import { AnchoredContextMenu } from '../ContextMenu/AnchoredContextMenu'
 import type { ContextMenuItem } from '../ContextMenu/ContextMenu'
 import {
@@ -10,28 +9,81 @@ import {
   type ContextMenuBounds
 } from '../ContextMenu/context-menu-placement.util'
 import { getInputBarTextareaMinHeight } from './useInputBarExpand'
+import { InputBarSkillEditor } from './InputBarSkillEditor'
+import { SkillSlashPicker } from './SkillSlashPicker'
 import {
   BookOpen,
   Check,
-  FileText,
-  Folder,
   Globe,
   LayoutGrid,
   Paperclip,
   Plus,
   Send,
+  Settings2,
+  Sparkles,
   Square,
   Volume2,
-  X,
-  Zap
+  X
 } from 'lucide-react'
+import { getFileTypeIcon } from '../shared/FileTypeIcon'
+import { getShortcutCommand } from '@baishou/shared'
 
 type InputBarViewModel = ReturnType<typeof useInputBar>
 
-type PlusMenuState = {
+type MenuAnchorState = {
   x: number
   y: number
   bounds: ContextMenuBounds
+}
+
+function buildSkillMenuItems(options: {
+  t: InputBarViewModel['t']
+  localizedShortcuts: InputBarViewModel['localizedShortcuts']
+  handlePromptShortcut: () => void
+  armCreateSkillChip: () => void
+  applyShortcut: InputBarViewModel['applyShortcut']
+}): ContextMenuItem[] {
+  const { t, localizedShortcuts, handlePromptShortcut, armCreateSkillChip, applyShortcut } = options
+
+  const items: ContextMenuItem[] = [
+    {
+      icon: <Settings2 size={15} />,
+      label: t('shortcut.manager_title', 'Skill 管理'),
+      onClick: handlePromptShortcut
+    },
+    { label: '', onClick: () => undefined, divider: true },
+    {
+      icon: <Plus size={15} />,
+      label: t('shortcut.create_skill', '创建 Skill'),
+      onClick: armCreateSkillChip
+    },
+    { label: '', onClick: () => undefined, divider: true }
+  ]
+
+  if (localizedShortcuts.length > 0) {
+    items.push({
+      label: t('shortcut.existing_skills', '现存 Skill'),
+      disabled: true,
+      onClick: () => undefined
+    })
+    for (const skill of localizedShortcuts) {
+      const command = getShortcutCommand(skill)
+      const displayName = skill.name?.trim()
+      items.push({
+        icon: <Sparkles size={15} />,
+        label: displayName ? `${displayName}` : `/${command}`,
+        onClick: () => applyShortcut(skill)
+      })
+    }
+  } else {
+    items.push({
+      label: t('shortcut.no_skills_yet', '暂无 Skill'),
+      disabled: true,
+      onClick: () => undefined
+    })
+  }
+
+  return items
 }
 
 export function InputBarView({ vm }: { vm: InputBarViewModel }) {
@@ -40,21 +92,29 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     text,
     attachments,
     setAttachments,
-    textareaRef,
+    editorRef,
+    composerSyncKey,
+    composerSyncHtml,
+    handleComposerSnapshot,
     handleSend,
     handleKeyDown,
     fileInputRef,
     handlePickFiles,
     handleNativeWebFileChange,
     handlePaste,
-    handleTextChange,
-    shortcutModeActive,
-    filteredShortcuts,
-    shortcutSelectedIndex,
+    skillPickerOpen,
+    closeSkillPicker,
+    slashPickerEntries,
+    skillPickerIndex,
+    setSkillPickerIndex,
     applyShortcut,
+    armCreateSkillChip,
+    skillRefs,
     toggleSearchMode,
     handlePromptShortcut,
+    localizedShortcuts,
     isLoading,
+    allowSendWhileLoading = false,
     isSending,
     onStop,
     onRecall,
@@ -62,22 +122,24 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     searchMode,
     ttsMode,
     onToggleTtsMode,
+    onOpenNotebookMount,
     bottomTrailing,
     footer,
     sendIconSize = 15,
-    minRows = 1
+    minRows = 1,
+    isMultiline = false
   } = vm
 
   const textareaMinHeight = getInputBarTextareaMinHeight(minRows)
+  const inputWrapperRef = useRef<HTMLDivElement>(null)
 
-  const [plusMenu, setPlusMenu] = useState<PlusMenuState | null>(null)
+  const [plusMenu, setPlusMenu] = useState<MenuAnchorState | null>(null)
   const plusMenuOpen = plusMenu != null
 
   const closePlusMenu = useCallback(() => setPlusMenu(null), [])
 
   const openPlusMenu = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
-    // currentTarget 在事件回调返回后会被清空，必须在 setState updater 外同步读取
     const anchor = e.currentTarget
     const rect = anchor.getBoundingClientRect()
     const bounds = getContextMenuBoundsForAnchor(anchor)
@@ -85,13 +147,39 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
       prev
         ? null
         : {
-            // 相对加号略向右；y 预留间距，向上翻转时菜单底边不贴按钮
             x: rect.left + 10,
-            y: rect.top - 8,
+            y: rect.top - 14,
             bounds
           }
     )
+    requestAnimationFrame(() => anchor.blur())
   }, [])
+
+  const skillSubmenuItems = useMemo(
+    () =>
+      buildSkillMenuItems({
+        t,
+        localizedShortcuts,
+        handlePromptShortcut,
+        armCreateSkillChip,
+        applyShortcut
+      }),
+    [t, localizedShortcuts, handlePromptShortcut, armCreateSkillChip, applyShortcut]
+  )
+
+  const slashPickerItems = useMemo(
+    () =>
+      slashPickerEntries.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        description: entry.description,
+        onSelect: () => {
+          if (entry.kind === 'create') armCreateSkillChip()
+          else if (entry.skill) applyShortcut(entry.skill)
+        }
+      })),
+    [slashPickerEntries, armCreateSkillChip, applyShortcut]
+  )
 
   const plusMenuItems = useMemo((): ContextMenuItem[] => {
     const items: ContextMenuItem[] = [
@@ -101,11 +189,19 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
         onClick: handlePickFiles
       },
       {
-        icon: <Zap size={15} />,
-        label: t('input.shortcut_command', '快捷指令'),
-        onClick: handlePromptShortcut
+        icon: <Sparkles size={15} />,
+        label: t('input.shortcut_command', 'Skill'),
+        children: skillSubmenuItems
       }
     ]
+
+    if (onOpenNotebookMount) {
+      items.push({
+        icon: <BookOpen size={15} />,
+        label: t('workbench.notebook_mount', '知识库笔记本'),
+        onClick: onOpenNotebookMount
+      })
+    }
 
     if (onRecall) {
       items.push({
@@ -148,7 +244,8 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
   }, [
     t,
     handlePickFiles,
-    handlePromptShortcut,
+    skillSubmenuItems,
+    onOpenNotebookMount,
     onRecall,
     searchMode,
     toggleSearchMode,
@@ -156,6 +253,14 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     onToggleTtsMode,
     onOpenTools
   ])
+
+  const placeholder =
+    skillRefs.length > 0
+      ? t('shortcut.skill_ref_placeholder', '补充说明（可选）…')
+      : (vm.placeholder ??
+        t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line'))
+
+  const canSend = Boolean(text.trim() || attachments.length > 0 || skillRefs.length > 0)
 
   return (
     <div
@@ -175,14 +280,15 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
         style={{ display: 'none' }}
       />
       <div className={styles.constrainedBox}>
-        <PromptShortcutSheet
-          isOpen={shortcutModeActive}
-          shortcuts={filteredShortcuts}
-          selectedIndex={shortcutSelectedIndex}
-          compact
-          onSelect={applyShortcut}
-        />
-        {/* Attachments Preview */}
+        {skillPickerOpen && slashPickerItems.length > 0 ? (
+          <SkillSlashPicker
+            items={slashPickerItems}
+            selectedIndex={skillPickerIndex}
+            onSelectIndex={setSkillPickerIndex}
+            onClose={closeSkillPicker}
+          />
+        ) : null}
+
         {attachments.length > 0 && (
           <div className={styles.attachmentList}>
             {attachments.map((att) => (
@@ -201,9 +307,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   />
                 ) : (
                   <div className={styles.attFileBox}>
-                    <span className={styles.attFileIcon}>
-                      {att.isPdf || att.isText ? <FileText size={18} /> : <Folder size={18} />}
-                    </span>
+                    <span className={styles.attFileIcon}>{getFileTypeIcon(att.fileName, 18)}</span>
                     <div className={styles.attFileMeta}>
                       <span className={styles.attFileName}>{att.fileName}</span>
                       <span className={styles.attFileSize}>
@@ -211,7 +315,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                           ? att.fileSize < 1024 * 1024
                             ? `${(att.fileSize / 1024).toFixed(1)} KB`
                             : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`
-                          : '124 KB'}
+                          : ''}
                       </span>
                     </div>
                   </div>
@@ -231,25 +335,9 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
           className={`${styles.composerShell}${footer ? ` ${styles.composerShellWithFooter}` : ''}`}
         >
           <div className={styles.inputCard}>
-            <div className={styles.topRow}>
-              <div className={styles.inputWrapper}>
-                <textarea
-                  ref={textareaRef}
-                  rows={minRows}
-                  className={styles.textarea}
-                  placeholder={
-                    vm.placeholder ??
-                    t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line')
-                  }
-                  value={text}
-                  onChange={handleTextChange}
-                  onKeyDown={handleKeyDown}
-                  onPaste={handlePaste}
-                />
-              </div>
-            </div>
-
-            <div className={styles.bottomRow}>
+            <div
+              className={`${styles.composerRow}${isMultiline ? ` ${styles.composerRowStacked}` : ''}`}
+            >
               <button
                 className={`${styles.appMenuBtn} ${plusMenuOpen ? styles.appMenuBtnActive : ''}`}
                 onClick={openPlusMenu}
@@ -258,8 +346,22 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                 aria-expanded={plusMenuOpen}
                 title={t('input.open_actions', '更多操作')}
               >
-                <Plus size={22} strokeWidth={1.75} />
+                <Plus size={16} strokeWidth={2} />
               </button>
+
+              <div className={styles.inputWrapper} ref={inputWrapperRef}>
+                <InputBarSkillEditor
+                  editorRef={editorRef}
+                  syncKey={composerSyncKey}
+                  syncHtml={composerSyncHtml}
+                  syncPlainText={text}
+                  placeholder={placeholder}
+                  minRows={minRows}
+                  onSnapshot={handleComposerSnapshot}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                />
+              </div>
 
               <div className={styles.bottomRight}>
                 {bottomTrailing ? (
@@ -267,19 +369,33 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                 ) : null}
                 <div className={styles.sendBtnWrapper}>
                   {isLoading ? (
-                    <motion.button
-                      className={`${styles.actionBtn} ${styles.stopBtn}`}
-                      onClick={onStop}
-                      type="button"
-                      whileTap={{ scale: 0.92 }}
-                    >
-                      <Square size={14} />
-                    </motion.button>
+                    <>
+                      <motion.button
+                        className={`${styles.actionBtn} ${styles.stopBtn}`}
+                        onClick={onStop}
+                        type="button"
+                        whileTap={{ scale: 0.92 }}
+                      >
+                        <Square size={14} />
+                      </motion.button>
+                      {allowSendWhileLoading ? (
+                        <motion.button
+                          className={`${styles.actionBtn} ${styles.sendBtn} ${!canSend ? styles.sendBtnDisabled : ''}`}
+                          onClick={handleSend}
+                          disabled={isSending || !canSend}
+                          type="button"
+                          whileTap={{ scale: 0.92 }}
+                          title="Queue / steer while running"
+                        >
+                          <Send size={sendIconSize} />
+                        </motion.button>
+                      ) : null}
+                    </>
                   ) : (
                     <motion.button
-                      className={`${styles.actionBtn} ${styles.sendBtn} ${!text.trim() && attachments.length === 0 ? styles.sendBtnDisabled : ''}`}
+                      className={`${styles.actionBtn} ${styles.sendBtn} ${!canSend ? styles.sendBtnDisabled : ''}`}
                       onClick={handleSend}
-                      disabled={isSending || (!text.trim() && attachments.length === 0)}
+                      disabled={isSending || !canSend}
                       type="button"
                       whileTap={{ scale: 0.92 }}
                     >
@@ -301,6 +417,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
           items={plusMenuItems}
           onClose={closePlusMenu}
           bounds={plusMenu.bounds}
+          preferAbove
         />
       )}
     </div>

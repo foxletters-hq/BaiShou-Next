@@ -1,5 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 
+function findScrollParent(el: HTMLElement): HTMLElement | null {
+  let node: HTMLElement | null = el.parentElement
+  while (node) {
+    const { overflowY } = getComputedStyle(node)
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
+      return node
+    }
+    node = node.parentElement
+  }
+  return null
+}
+
 export function useChatBubbleEdit(
   messageContent: string,
   isUser: boolean,
@@ -11,11 +23,18 @@ export function useChatBubbleEdit(
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      const ta = textareaRef.current
-      ta.focus()
-      ta.setSelectionRange(ta.value.length, ta.value.length)
-      ta.scrollTop = ta.scrollHeight
+    if (!isEditing || !textareaRef.current) return
+    const ta = textareaRef.current
+    const scrollParent = findScrollParent(ta)
+    const savedScrollTop = scrollParent?.scrollTop
+
+    // focus / setSelectionRange 默认可能滚屏，把编辑框甩到视口底部
+    ta.focus({ preventScroll: true })
+    ta.setSelectionRange(ta.value.length, ta.value.length)
+    ta.scrollTop = ta.scrollHeight
+
+    if (scrollParent != null && savedScrollTop != null) {
+      scrollParent.scrollTop = savedScrollTop
     }
   }, [isEditing])
 

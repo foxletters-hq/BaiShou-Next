@@ -15,6 +15,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
   transition: max-width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
@@ -221,26 +222,33 @@
 }
 
 .attFileBox {
-  padding: 8px 12px;
+  padding: 8px 28px 8px 10px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
   min-width: 140px;
-  max-width: 200px;
+  max-width: 220px;
   height: 100%;
   box-sizing: border-box;
-  padding-right: 28px; /* Make space for remove btn */
 }
 
 .attFileIcon {
-  font-size: 18px;
-  color: var(--text-secondary);
-  margin-bottom: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--bg-surface);
 }
 
 .attFileMeta {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .attFileName {
@@ -290,7 +298,7 @@
   background-color: transparent;
   border-radius: 0;
   border: none;
-  padding: 10px 14px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -298,6 +306,37 @@
 
 .inputCard:focus-within {
   background-color: transparent;
+}
+
+/* 单行：加号 / 输入 / 发送同一排；多行：输入在上、按钮整行在下 */
+.composerRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.composerRowStacked {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.composerRowStacked .inputWrapper {
+  order: -1;
+  flex: 1 1 100%;
+  width: 100%;
+  align-self: stretch;
+}
+
+.composerRowStacked .appMenuBtn,
+.composerRowStacked .bottomRight {
+  margin-top: 8px;
+}
+
+.composerRowStacked .bottomRight {
+  margin-left: auto;
 }
 
 .topRow {
@@ -326,8 +365,8 @@
   padding: 0;
   margin: 0;
   border-radius: 50%;
-  background: var(--bg-surface-normal);
-  border: none;
+  background: transparent;
+  border: 1px solid var(--border-control);
   box-sizing: border-box;
   cursor: pointer;
   color: var(--text-primary);
@@ -336,54 +375,169 @@
   justify-content: center;
   flex-shrink: 0;
   line-height: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background-color 0.15s ease,
+    border-color 0.15s ease,
     color 0.15s ease;
 }
 
 .appMenuBtn svg {
   display: block;
   flex-shrink: 0;
-  /* 加号在圆内占比更大，略收边距感 */
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
 }
 
 .appMenuBtn:hover {
-  background-color: var(--bg-surface-highest);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
   color: var(--text-primary);
 }
 
+.appMenuBtn:focus,
+.appMenuBtn:focus-visible,
+.appMenuBtn:active {
+  outline: none;
+  box-shadow: none;
+}
+
 .appMenuBtnActive {
-  background-color: var(--bg-surface-highest);
+  background-color: var(--bg-surface-high);
+  border-color: var(--border-strong);
   color: var(--text-primary);
 }
 
 .inputWrapper {
   flex: 1;
-  min-height: 36px;
+  min-width: 0;
+  min-height: 32px;
   display: flex;
   align-items: center;
   align-self: stretch;
 }
 
+.skillEditorWrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.skillEditor {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 禁止粘贴/IME 残留的内联底色盖在普通文字上（Skill 芯片除外） */
+.skillEditor :where(span, font, mark, b, i, u, strong, em, a):not([data-skill-chip]):not([data-skill-ref]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  font-weight: inherit !important;
+}
+
+.skillEditorWrap[data-empty='true'] .skillEditor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-tertiary);
+  font-weight: 400;
+  line-height: 22px;
+  pointer-events: none;
+}
+
+/* `/` Skill 选择浮层：名称 + 描述，键盘可上下选择 */
+.skillSlashPicker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-width: min(560px, 100%);
+  max-height: 280px;
+  margin-bottom: 8px;
+  padding: 6px;
+  overflow-y: auto;
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: 10px;
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+}
+
+.skillSlashItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.skillSlashItemSelected,
+.skillSlashItem:hover {
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
+}
+
+.skillSlashIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+
+.skillSlashName {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.skillSlashDesc {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .textarea {
   width: 100%;
   /* border-box 下 min-height 含 padding；需留给 line-height 足够内容区，避免 placeholder 被裁切 */
-  min-height: var(--input-bar-textarea-min-height, 36px);
-  /* 8 行：line-height 22px × 8 + 上下 padding 14px */
-  max-height: 190px;
+  min-height: var(--input-bar-textarea-min-height, 32px);
+  /* 8 行：line-height 22px × 8 + 上下 padding 10px */
+  max-height: 186px;
   background: transparent;
   border: none;
   resize: none;
   outline: none;
-  overflow-y: auto;
+  /* 未达最大行数时隐藏滚动条，由 JS 在顶满后切到 auto */
+  overflow-y: hidden;
   font-family: var(--font-family, sans-serif);
-  font-size: 14px;
+  font-size: var(--content-font-size, 14px);
   font-weight: 400;
   color: var(--text-primary);
-  padding: 7px 6px;
-  line-height: 22px;
+  padding: 5px 4px;
+  line-height: calc(22px * var(--ui-font-scale, 1));
   box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.7) transparent;
@@ -415,9 +569,12 @@
 }
 
 .sendBtnWrapper {
-  width: 32px;
+  min-width: 32px;
   height: 32px;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .bottomRight {
@@ -426,7 +583,8 @@
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
-  flex-shrink: 1;
+  flex-shrink: 0;
+  align-self: flex-end;
 }
 
 .bottomTrailing {
@@ -449,7 +607,14 @@
   align-items: center;
   justify-content: center;
   line-height: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.1s ease-in-out;
+}
+
+.actionBtn:focus,
+.actionBtn:focus-visible {
+  outline: none;
 }
 
 .actionBtn svg {
@@ -519,4 +684,56 @@
   color: #d97706;
   font-weight: 500;
   line-height: 1.3;
+}
+
+.slashCommandChip {
+  background: transparent;
+  border-color: color-mix(in srgb, #c4a35a 45%, var(--border-card));
+  height: 36px;
+  padding-right: 28px;
+}
+
+.slashCommandInner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 100%;
+}
+
+.slashCommandIcon {
+  color: #b0893d;
+  flex-shrink: 0;
+}
+
+.slashCommandText {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a67c2d;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+/* Skill 引用：金色内联 /command，无描边胶囊 */
+.skillRefChip {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #b8860b;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: inherit;
+  vertical-align: baseline;
+  user-select: none;
+  cursor: default;
+}
+
+.skillRefText {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: 0;
+  white-space: nowrap;
 }

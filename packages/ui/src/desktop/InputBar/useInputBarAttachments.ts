@@ -80,10 +80,18 @@ export function useInputBarAttachments(
   const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
       const imageFiles = collectClipboardImageFiles(e.clipboardData)
-      if (!imageFiles.length) return
+      if (imageFiles.length) {
+        e.preventDefault()
+        await addAttachments(imageFiles)
+        return
+      }
 
+      // contenteditable 默认粘贴 HTML，会带入底色/字号；统一为纯文本
       e.preventDefault()
-      await addAttachments(imageFiles)
+      const text = e.clipboardData.getData('text/plain')
+      if (text) {
+        document.execCommand('insertText', false, text)
+      }
     },
     [addAttachments]
   )
