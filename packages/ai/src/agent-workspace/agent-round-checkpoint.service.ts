@@ -1,15 +1,21 @@
 import { randomUUID } from 'node:crypto'
-import type { AgentRoundCheckpoint, AgentRoundCheckpointFileEntry } from '@baishou/shared'
+import type { AgentRoundCheckpoint } from '@baishou/shared'
+import { normalizeWorkspaceRelativePath, toWorkspaceRelativePath } from './workspace-path.sandbox'
+import { createNodeWorkspaceFs, type WorkspaceFsAdapter } from './workspace-fs'
+import { createInlineSnapshotStore } from './inline-snapshot.store'
 import {
-  normalizeWorkspaceRelativePath,
-  resolveWorkspacePath,
-  toWorkspaceRelativePath
-} from './workspace-path.sandbox'
+  applyRoundEndHandle,
+  applyRoundStartHandle,
+  noteTouchedPath,
+  resolveRollbackPaths,
+  toRoundEndHandle,
+  toRoundStartHandle
+} from './checkpoint-snapshot.mapper'
 import {
-  createNodeWorkspaceFs,
-  hashWorkspaceContent,
-  type WorkspaceFsAdapter
-} from './workspace-fs'
+  emptyRestoreResult,
+  type WorkspaceSnapshotRestoreResult,
+  type WorkspaceSnapshotStore
+} from './workspace-snapshot-store'
 
 export interface CaptureCheckpointInput {
   sessionId: string
@@ -18,85 +24,119 @@ export interface CaptureCheckpointInput {
   paths: string[]
 }
 
-export interface RollbackResult {
-  restored: string[]
-  deleted: string[]
-  skipped: string[]
-}
+export type RollbackResult = WorkspaceSnapshotRestoreResult
 
 export class AgentRoundCheckpointService {
   private readonly checkpoints = new Map<string, AgentRoundCheckpoint>()
+  private readonly store: WorkspaceSnapshotStore
 
-  constructor(private readonly fs: WorkspaceFsAdapter = createNodeWorkspaceFs()) {}
+  constructor(
+    fs: WorkspaceFsAdapter = createNodeWorkspaceFs(),
+    store?: WorkspaceSnapshotStore
+  ) {
+    this.store = store ?? createInlineSnapshotStore(fs)
+  }
 
   createSnapshot(input: CaptureCheckpointInput): Promise<AgentRoundCheckpoint> {
     return this.capturePaths(input)
   }
 
   async capturePaths(input: CaptureCheckpointInput): Promise<AgentRoundCheckpoint> {
-    const uniquePaths = [
-      ...new Set(input.paths.map((path) => normalizeWorkspaceRelativePath(path)))
-    ]
-    const files: AgentRoundCheckpointFileEntry[] = []
-
-    for (const relPath of uniquePaths) {
-      const absolutePath = resolveWorkspacePath(input.folderRoot, relPath)
-      const existed = await this.fs.exists(absolutePath)
-      const beforeContent = existed ? await this.fs.readFile(absolutePath) : null
-
-      files.push({
-        path: relPath,
-        existed,
-        beforeContent: beforeContent ?? undefined,
-        beforeHash: beforeContent != null ? hashWorkspaceContent(beforeContent) : undefined
-      })
-    }
+    const handle = await this.store.capture({
+      folderRoot: input.folderRoot,
+      paths: input.paths
+    })
 
     const checkpoint: AgentRoundCheckpoint = {
       id: randomUUID(),
       sessionId: input.sessionId,
       userMessageId: input.userMessageId,
       createdAt: new Date().toISOString(),
-      files
+      files: []
     }
+    applyRoundStartHandle(checkpoint, handle)
 
     this.checkpoints.set(checkpoint.id, checkpoint)
     return checkpoint
   }
 
-  async rollback(checkpointId: string, folderRoot: string): Promise<RollbackResult> {
+  /**
+   * 轮次结束时再拍一张。
+   * 与开始那张做 diff 就能得到本轮的全部改动，包括终端命令这类没有经过写工具的改动。
+   */
+  async captureRoundEnd(
+    checkpointId: string,
+    folderRoot: string
+  ): Promise<AgentRoundCheckpoint | undefined> {
+    const checkpoint = this.checkpoints.get(checkpointId)
+    if (!checkpoint) return undefined
+
+    const handle = await this.store.capture({ folderRoot, paths: [] })
+    return applyRoundEndHandle(checkpoint, handle)
+  }
+
+  /** 回滚该轮默认会处理的路径：AI 归因路径，加上快照自己能列举的部分 */
+  listRollbackPaths(checkpoint: AgentRoundCheckpoint): string[] {
+    const handle = toRoundStartHandle(checkpoint)
+    return resolveRollbackPaths(checkpoint, this.store.listPaths(handle))
+  }
+
+  /** 本轮实际变化的全部路径；快照实现算不出来时返回 null */
+  async listRoundChangedPaths(
+    checkpoint: AgentRoundCheckpoint,
+    folderRoot: string
+  ): Promise<string[] | null> {
+    const from = toRoundStartHandle(checkpoint)
+    const to = toRoundEndHandle(checkpoint)
+    if (!to) return null
+    return this.store.diffPaths({ folderRoot, from, to })
+  }
+
+  async rollback(
+    checkpointId: string,
+    folderRoot: string,
+    options: { paths?: string[] } = {}
+  ): Promise<RollbackResult> {
     const checkpoint = this.checkpoints.get(checkpointId)
     if (!checkpoint) {
       throw new Error(`Checkpoint not found: ${checkpointId}`)
     }
 
-    const restored: string[] = []
-    const deleted: string[] = []
-    const skipped: string[] = []
+    const handle = toRoundStartHandle(checkpoint)
+    const paths = options.paths ?? resolveRollbackPaths(checkpoint, this.store.listPaths(handle))
+    if (paths.length === 0) return emptyRestoreResult()
 
-    for (const entry of checkpoint.files) {
-      const absolutePath = resolveWorkspacePath(folderRoot, entry.path)
-      const existsNow = await this.fs.exists(absolutePath)
+    return this.store.restore({ folderRoot, handle, paths })
+  }
 
-      if (entry.existed) {
-        if (entry.beforeContent == null) {
-          skipped.push(entry.path)
-          continue
-        }
-        await this.fs.writeFile(absolutePath, entry.beforeContent)
-        restored.push(entry.path)
-        continue
-      }
+  /**
+   * 按时间正序传入多轮 checkpoint，从后往前依次 restore，
+   * 使磁盘收敛到最早一轮写盘前（回滚中间轮时一并撤销后续轮改动）。
+   */
+  async cascadeRollback(
+    checkpointsChronological: AgentRoundCheckpoint[],
+    folderRoot: string,
+    options: { pathsFor?: (checkpoint: AgentRoundCheckpoint) => string[] } = {}
+  ): Promise<RollbackResult> {
+    const merged: RollbackResult = emptyRestoreResult()
+    const lastAction = new Map<string, 'restored' | 'deleted' | 'skipped'>()
 
-      if (existsNow) {
-        await this.fs.deleteFile(absolutePath)
-        deleted.push(entry.path)
-      } else {
-        skipped.push(entry.path)
+    for (const checkpoint of [...checkpointsChronological].reverse()) {
+      this.restoreCheckpoint(checkpoint)
+      const result = await this.rollback(checkpoint.id, folderRoot, {
+        paths: options.pathsFor?.(checkpoint)
+      })
+      for (const path of result.restored) lastAction.set(path, 'restored')
+      for (const path of result.deleted) lastAction.set(path, 'deleted')
+      for (const path of result.skipped) {
+        if (!lastAction.has(path)) lastAction.set(path, 'skipped')
       }
     }
 
-    return { restored, deleted, skipped }
+    for (const [path, action] of lastAction) {
+      merged[action].push(path)
+    }
+    return merged
   }
 
   getCheckpoint(id: string): AgentRoundCheckpoint | undefined {
@@ -107,7 +147,12 @@ export class AgentRoundCheckpointService {
     return [...this.checkpoints.values()].filter((checkpoint) => checkpoint.sessionId === sessionId)
   }
 
-  /** Record a path touched during a round so rollback can restore pre-round state. */
+  /**
+   * 记录一条本轮被写工具触碰的路径。
+   *
+   * 对影子 Git 快照这只是归因：正文早已在轮次开始的 tree 里，这里记的是「哪些改动确实是 AI 做的」，
+   * 好让回滚不去动用户同期在别处的手改。对 inline 快照则必须趁写盘前把正文读走。
+   */
   async ensurePathCaptured(
     checkpointId: string,
     folderRoot: string,
@@ -117,20 +162,16 @@ export class AgentRoundCheckpointService {
     if (!checkpoint) return
 
     const relPath = normalizeWorkspaceRelativePath(relativePath)
-    if (checkpoint.files.some((entry) => entry.path === relPath)) {
-      return
-    }
+    if (!relPath) return
 
-    const absolutePath = resolveWorkspacePath(folderRoot, relPath)
-    const existed = await this.fs.exists(absolutePath)
-    const beforeContent = existed ? await this.fs.readFile(absolutePath) : null
+    noteTouchedPath(checkpoint, relPath)
 
-    checkpoint.files.push({
-      path: relPath,
-      existed,
-      beforeContent: beforeContent ?? undefined,
-      beforeHash: beforeContent != null ? hashWorkspaceContent(beforeContent) : undefined
+    const next = await this.store.extend({
+      folderRoot,
+      handle: toRoundStartHandle(checkpoint),
+      relativePath: relPath
     })
+    if (next.kind === 'inline') checkpoint.files = next.files
   }
 
   toWorkspaceRelative(folderRoot: string, absolutePath: string): string {
@@ -140,5 +181,22 @@ export class AgentRoundCheckpointService {
   /** 从持久化存储恢复检查点（桌面工作区会话） */
   restoreCheckpoint(checkpoint: AgentRoundCheckpoint): void {
     this.checkpoints.set(checkpoint.id, checkpoint)
+  }
+
+  removeCheckpoint(id: string): boolean {
+    return this.checkpoints.delete(id)
+  }
+
+  removeCheckpointsForUserMessages(sessionId: string, userMessageIds: string[]): string[] {
+    if (userMessageIds.length === 0) return []
+    const targetUserMessageIds = new Set(userMessageIds)
+    const removed: string[] = []
+    for (const [id, checkpoint] of this.checkpoints) {
+      if (checkpoint.sessionId === sessionId && targetUserMessageIds.has(checkpoint.userMessageId)) {
+        this.checkpoints.delete(id)
+        removed.push(id)
+      }
+    }
+    return removed
   }
 }
