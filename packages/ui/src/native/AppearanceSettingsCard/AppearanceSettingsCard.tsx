@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Palette } from 'lucide-react-native'
-import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
+import {
+  APP_UI_LANGUAGE_ORDER,
+  normalizeUiFontSizeLevel,
+  UI_FONT_SIZE_LEVEL_DEFAULT,
+  UI_FONT_SIZE_LEVEL_MAX,
+  UI_FONT_SIZE_LEVEL_MIN,
+  UI_FONT_SIZE_SCALES
+} from '@baishou/shared'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { useNativeTheme } from '../theme'
 import type { AppearanceSettingsProps } from './appearance-settings.types'
@@ -10,15 +17,23 @@ import { appearanceSettingsStyles as styles } from './appearance-settings.styles
 import { AppearanceSettingsColorModal } from './AppearanceSettingsColorModal'
 import { CustomThemeColorDot } from './CustomThemeColorDot'
 import { SettingsExpansionTile } from '../settings/SettingsExpansionTile'
+import { NativeSlider } from '../Slider'
 import { DEFAULT_STROKE_WIDTH, NAV_ICON_SIZE } from '../../shared/icons/icon-sizes'
+
+const FONT_SIZE_TICKS = Array.from(
+  { length: UI_FONT_SIZE_LEVEL_MAX - UI_FONT_SIZE_LEVEL_MIN + 1 },
+  (_, i) => i + UI_FONT_SIZE_LEVEL_MIN
+)
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   themeMode,
   seedColor,
   language,
+  fontSizeLevel = UI_FONT_SIZE_LEVEL_DEFAULT,
   onThemeModeChange,
   onSeedColorChange,
   onLanguageChange,
+  onFontSizeLevelChange,
   embedded = false,
   isLast = false
 }) => {
@@ -27,6 +42,8 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   const [showColorModal, setShowColorModal] = useState(false)
   /** 点击后立刻切选中态，避免等父组件异步回写期间框停在旧项 */
   const [selectedLanguage, setSelectedLanguage] = useState(language)
+  const resolvedFontSizeLevel = normalizeUiFontSizeLevel(fontSizeLevel)
+  const [draftFontSizeLevel, setDraftFontSizeLevel] = useState(resolvedFontSizeLevel)
 
   useEffect(() => {
     console.log('[AppearanceLang] card:prop', {
@@ -35,6 +52,10 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
     })
     setSelectedLanguage(language)
   }, [language])
+
+  useEffect(() => {
+    setDraftFontSizeLevel(resolvedFontSizeLevel)
+  }, [resolvedFontSizeLevel])
 
   const languageOptions = useMemo(
     () => [
@@ -67,6 +88,19 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
   const openColorPicker = () => {
     setShowColorModal(true)
+  }
+
+  const fontSizeLabelForTick = (level: number) => {
+    if (level === UI_FONT_SIZE_LEVEL_MIN) return t('settings.font_size_small', '小')
+    if (level === UI_FONT_SIZE_LEVEL_DEFAULT) return t('settings.font_size_default', '默认')
+    if (level === UI_FONT_SIZE_LEVEL_MAX) return t('settings.font_size_large', '大')
+    return ''
+  }
+
+  const fontSizeTickLeftPct = (level: number) => {
+    const span = UI_FONT_SIZE_LEVEL_MAX - UI_FONT_SIZE_LEVEL_MIN
+    if (span <= 0) return '0%'
+    return `${((level - UI_FONT_SIZE_LEVEL_MIN) / span) * 100}%`
   }
 
   const content = (
@@ -181,6 +215,81 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
           )
         })}
       </View>
+
+      {onFontSizeLevelChange ? (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+          <View style={styles.fontSizeBlock}>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>
+              {t('settings.font_size', '字体大小')}
+            </Text>
+            <View style={styles.fontSizeSliderWrap}>
+              <NativeSlider
+                value={draftFontSizeLevel}
+                minValue={UI_FONT_SIZE_LEVEL_MIN}
+                maxValue={UI_FONT_SIZE_LEVEL_MAX}
+                step={1}
+                commitOnChangeEnd
+                onChange={(next) => setDraftFontSizeLevel(normalizeUiFontSizeLevel(next))}
+                onChangeEnd={(next) => {
+                  const level = normalizeUiFontSizeLevel(next)
+                  setDraftFontSizeLevel(level)
+                  onFontSizeLevelChange(level)
+                }}
+              />
+            </View>
+            <View style={styles.fontSizeTicks} pointerEvents="none">
+              {FONT_SIZE_TICKS.map((level) => (
+                <View
+                  key={level}
+                  style={[
+                    styles.fontSizeTick,
+                    {
+                      left: fontSizeTickLeftPct(level),
+                      backgroundColor: colors.borderMuted
+                    }
+                  ]}
+                />
+              ))}
+            </View>
+            <View style={styles.fontSizeLabels} pointerEvents="none">
+              {FONT_SIZE_TICKS.filter((level) => fontSizeLabelForTick(level)).map((level) => {
+                const scale = UI_FONT_SIZE_SCALES[level] ?? 1
+                const isFirst = level === UI_FONT_SIZE_LEVEL_MIN
+                const isLast = level === UI_FONT_SIZE_LEVEL_MAX
+                const labelWidth = 48
+                return (
+                  <View
+                    key={level}
+                    style={[
+                      styles.fontSizeLabel,
+                      {
+                        left: fontSizeTickLeftPct(level),
+                        width: labelWidth,
+                        marginLeft: isFirst ? 0 : isLast ? -labelWidth : -labelWidth / 2,
+                        alignItems: isFirst ? 'flex-start' : isLast ? 'flex-end' : 'center'
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        fontSize: Math.round(12 * scale),
+                        color:
+                          level === draftFontSizeLevel
+                            ? colors.textPrimary
+                            : colors.textSecondary,
+                        fontWeight: level === draftFontSizeLevel ? '500' : '400'
+                      }}
+                    >
+                      {fontSizeLabelForTick(level)}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+        </>
+      ) : null}
 
       <AppearanceSettingsColorModal
         visible={showColorModal}

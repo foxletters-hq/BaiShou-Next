@@ -11,13 +11,11 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
-import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
+import { AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import {
   resolveAlwaysAllowPrefixHint,
-  resolveAlwaysDisabledReason,
-  formatDecisionSourceLine,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -56,7 +54,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
   const [diffExpanded, setDiffExpanded] = useState(false)
   const [alwaysConfirm, setAlwaysConfirm] = useState(false)
-  const [techOpen, setTechOpen] = useState(false)
 
   useEffect(() => {
     setShowFeedback(false)
@@ -64,7 +61,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
     setSelectedOptionId(null)
     setDiffExpanded(false)
     setAlwaysConfirm(false)
-    setTechOpen(false)
   }, [request?.id])
 
   const handleReply = useCallback(
@@ -79,15 +75,18 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
-  const alwaysDisabledReason = resolveAlwaysDisabledReason(request)
   const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
-  const decisionSourceLine = formatDecisionSourceLine(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
-  const showActionMeta = request.kind === AgentGateKind.Tool
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
   const repeatHint = humanizeRepeatHint(request)
   const scopeLabel = resolveScopeLabel(request)
   const preview = request.preview
+  const numberedOptionsText =
+    proactiveOptions && request.options.length > 0
+      ? request.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
+      : null
+  const descriptionIsOptionsDump =
+    Boolean(request.description) && request.description?.trim() === numberedOptionsText
   const cascadeHint =
     sameActionCount > 1
       ? t('agent_gate.cascade_hint', '此决定将影响本会话中另外 {{count}} 个相同操作', {
@@ -157,20 +156,13 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>
               {request.title}
             </Text>
-            {request.description ? (
+            {!preview && request.description && !descriptionIsOptionsDump ? (
               <Text style={[styles.description, { color: colors.textSecondary }]}>
                 {request.description}
               </Text>
             ) : null}
             {repeatHint ? (
               <Text style={[styles.hint, { color: colors.textSecondary }]}>{repeatHint}</Text>
-            ) : null}
-            {decisionSourceLine ? (
-              <Text style={[styles.hint, { color: colors.textTertiary }]}>
-                {t('agent_gate.decision_source', '来源：{{source}}', {
-                  source: decisionSourceLine
-                })}
-              </Text>
             ) : null}
             {cascadeHint ? (
               <Text style={[styles.hint, { color: colors.textSecondary }]}>{cascadeHint}</Text>
@@ -188,9 +180,13 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   {preview.previousPath ? ` ← ${preview.previousPath}` : ''}
                 </Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                  <Text style={{ color: '#15803d', fontWeight: '600' }}>+{preview.additions}</Text>
-                  {'  '}
-                  <Text style={{ color: '#b91c1c', fontWeight: '600' }}>-{preview.deletions}</Text>
+                  {preview.additions > 0 ? (
+                    <Text style={{ color: '#15803d', fontWeight: '600' }}>+{preview.additions}</Text>
+                  ) : null}
+                  {preview.additions > 0 && preview.deletions > 0 ? '  ' : null}
+                  {preview.deletions > 0 ? (
+                    <Text style={{ color: '#b91c1c', fontWeight: '600' }}>-{preview.deletions}</Text>
+                  ) : null}
                   {preview.truncated ? `  ${t('agent_gate.diff_truncated', '预览已截断')}` : ''}
                 </Text>
                 {preview.diff ? (
@@ -239,8 +235,13 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   { borderColor: colors.borderMuted, backgroundColor: colors.bgApp }
                 ]}
               >
-                <Text style={{ color: colors.textPrimary }}>{preview.subject}</Text>
-                {preview.summary ? (
+                {preview.subject && preview.subject !== request.title ? (
+                  <Text style={{ color: colors.textPrimary }}>{preview.subject}</Text>
+                ) : null}
+                {preview.summary &&
+                !preview.detailLines?.some(
+                  (line) => line.includes(preview.summary!) || line.endsWith(preview.summary!)
+                ) ? (
                   <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                     {preview.summary}
                   </Text>
@@ -251,34 +252,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                   </Text>
                 ))}
               </View>
-            ) : null}
-
-            <Pressable onPress={() => setTechOpen((v) => !v)}>
-              <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
-                {techOpen
-                  ? t('agent_gate.hide_tech_details', '收起技术详情')
-                  : t('agent_gate.tech_details', '技术详情')}
-              </Text>
-            </Pressable>
-            {techOpen ? (
-              <>
-                {showActionMeta ? (
-                  <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
-                    {t('agent_gate.dock_action', '操作：{{action}}', { action: request.action })}
-                  </Text>
-                ) : null}
-                {request.fingerprint ? (
-                  <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
-                    {t('agent_gate.fingerprint_meta', '指纹 {{fp}} · 连打 {{count}}', {
-                      fp: request.fingerprint.slice(0, 10),
-                      count: request.repeatCount ?? 1
-                    })}
-                  </Text>
-                ) : null}
-                <Text style={[styles.actionMeta, { color: colors.textTertiary }]}>
-                  {scopeLabel}
-                </Text>
-              </>
             ) : null}
 
             {alwaysConfirm ? (
@@ -463,24 +436,10 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                     onPress={() => setAlwaysConfirm(true)}
                     disabled={isReplying}
                     style={styles.actionButton}
-                    accessibilityLabel={
-                      alwaysPrefixHint
-                        ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
-                            pattern: alwaysPrefixHint
-                          })
-                        : t('agent_gate.always', '始终允许')
-                    }
+                    accessibilityLabel={t('agent_gate.always', '始终允许')}
                   >
-                    {alwaysPrefixHint
-                      ? t('agent_gate.always_with_pattern', '始终允许 {{pattern}}', {
-                          pattern: alwaysPrefixHint
-                        })
-                      : t('agent_gate.always', '始终允许')}
+                    {t('agent_gate.always', '始终允许')}
                   </Button>
-                ) : alwaysDisabledReason ? (
-                  <Text style={[styles.actionMeta, { color: colors.textSecondary }]}>
-                    {alwaysDisabledReason}
-                  </Text>
                 ) : null}
                 <Button
                   variant="primary"

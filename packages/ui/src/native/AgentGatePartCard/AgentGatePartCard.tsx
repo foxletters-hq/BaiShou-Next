@@ -36,6 +36,17 @@ export const AgentGatePartCard: React.FC<AgentGatePartCardProps> = ({ data }) =>
   const { request, resolution } = data
   const resolved = Boolean(resolution)
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)
+  const description = request.description?.trim() || ''
+  const showDescription =
+    Boolean(description) &&
+    description !== request.title &&
+    !description.startsWith(`${request.title}：`) &&
+    !description.startsWith(`${request.title}:`) &&
+    !(
+      request.options.length > 0 &&
+      description ===
+        request.options.map((option, index) => `${index + 1}. ${option.label}`).join('\n')
+    )
 
   return (
     <View
@@ -53,10 +64,8 @@ export const AgentGatePartCard: React.FC<AgentGatePartCardProps> = ({ data }) =>
           : t('agent_gate.pending_badge', '待确认')}
       </Text>
       <Text style={[styles.title, { color: colors.textPrimary }]}>{request.title}</Text>
-      {request.description ? (
-        <Text style={[styles.description, { color: colors.textSecondary }]}>
-          {request.description}
-        </Text>
+      {showDescription ? (
+        <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
       ) : null}
       {resolved ? (
         <Text style={[styles.meta, { color: colors.textTertiary }]}>
