@@ -24,6 +24,10 @@ import { stripFileScheme } from './android-external-fs'
  * Android mDNS：发布与发现分栈，避免嵌入式 DNSSD 同时注册+浏览崩溃。
  * - 发现走 DNSSD：嵌入式 mDNSResponder 对 Windows Bonjour 桌面端更稳
  * - 发布走 NSD：系统栈广播，桌面/其他手机更容易看见本机
+ *
+ * DNSSD 的 scan() 会先 stop 再启 nativeLoop；stop 会 post nativeExit(5s)。
+ * 周期 rescan 会和这条延迟退出抢跑，libjdns_sd_embedded 会 SIGSEGV。
+ * DNSSD browse 本身是长连接，启动后保持即可，不要反复 stop/scan。
  */
 const ANDROID_PUBLISH_MDNS_IMPL = ImplType.NSD
 const ANDROID_DISCOVERY_MDNS_IMPL = ImplType.DNSSD
@@ -146,6 +150,11 @@ export class MobileLanSyncService implements ILanSyncService {
     } else {
       this.zeroconf.scan('baishou', 'tcp', 'local.')
     }
+  }
+
+  /** 嵌入式 DNSSD 不可 stop+scan 热重启；NSD / iOS 仍可周期全量扫 */
+  private shouldRestartDiscoveryScan() {
+    return this.getAndroidDiscoveryImpl() !== ImplType.DNSSD
   }
 
   private emitDevice(device: DiscoveredDevice) {
@@ -349,7 +358,9 @@ export class MobileLanSyncService implements ILanSyncService {
       this.serviceNameToDedupKey.clear()
       this.discoveryActive = true
       this.scanLanServices()
-      // 对齐桌面端：启动后再主动扫一次，提高首次发现 Windows Bonjour 的成功率
+      if (!this.shouldRestartDiscoveryScan()) return
+
+      // NSD / iOS：启动后再主动扫一次，并周期全量 rescan
       setTimeout(() => {
         void this.enqueueMdns(() => {
           if (!this.discoveryActive) return
