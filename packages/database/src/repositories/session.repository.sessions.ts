@@ -39,6 +39,7 @@ export class SessionCrudOps {
         target: [agentSessionsTable.id],
         set: {
           title: input.title,
+          vaultId: vaultId,
           updatedAt: new Date(),
           ...(input.assistantId ? { assistantId: input.assistantId } : {}),
           ...(input.providerId ? { providerId } : {}),
@@ -242,6 +243,14 @@ export class SessionCrudOps {
       }
     }
     return results
+  }
+
+  async updateSessionVaultId(sessionId: string, vaultId: string): Promise<void> {
+    const normalized = resolveInsertVaultId(vaultId)
+    await this.db
+      .update(agentSessionsTable)
+      .set({ vaultId: normalized, updatedAt: new Date() })
+      .where(eq(agentSessionsTable.id, sessionId))
   }
 
   async updateSessionTitle(sessionId: string, title: string): Promise<void> {
