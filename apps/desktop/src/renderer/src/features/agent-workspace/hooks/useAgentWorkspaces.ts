@@ -16,7 +16,8 @@ function upsertWorkspaceEntry(
   const index = list.findIndex((item) => normalizeFolderKey(item.folderRoot) === key)
   if (index < 0) return [entry, ...list]
   const next = [...list]
-  next[index] = { ...next[index], ...entry, id: next[index].id }
+  // 以服务端条目为准（含 id），避免本地残留旧 id 导致后续移除失败
+  next[index] = { ...next[index], ...entry }
   return next
 }
 
@@ -47,7 +48,8 @@ export function useAgentWorkspaces() {
       ])
       if (!Array.isArray(list)) return
 
-      setWorkspaces((prev) => (list.length === 0 && prev.length > 0 ? prev : list))
+      // 以主进程列表为准；空列表也要同步，否则会残留已删除的「幽灵」项目
+      setWorkspaces(list)
       setLastActiveWorkspaceId(
         typeof lastActiveId === 'string' && list.some((entry) => entry.id === lastActiveId)
           ? lastActiveId
@@ -134,8 +136,8 @@ export function useAgentWorkspaces() {
           )
         )
       }
-      const removed = await remove(workspaceId)
-      if (!removed) return false
+      await remove(workspaceId)
+      // 主进程已无此条目时也清掉前端可能残留的幽灵项
       setWorkspaces((prev) => prev.filter((item) => item.id !== workspaceId))
       setActiveWorkspaceId((prev) => (prev === workspaceId ? null : prev))
       setLastActiveWorkspaceId((prev) => (prev === workspaceId ? null : prev))
@@ -149,6 +151,17 @@ export function useAgentWorkspaces() {
     const avatarPath = await window.api?.agentWorkspace?.pickAvatar?.()
     if (!avatarPath) return null
     const updated = await window.api?.agentWorkspace?.updateWorkspace?.(workspaceId, { avatarPath })
+    if (updated) {
+      setWorkspaces((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      notifyAgentWorkspacesChanged()
+    }
+    return updated
+  }, [])
+
+  const setWorkspacePinned = useCallback(async (workspaceId: string, pinned: boolean) => {
+    const updated = await window.api?.agentWorkspace?.updateWorkspace?.(workspaceId, {
+      pinnedAt: pinned ? new Date().toISOString() : null
+    })
     if (updated) {
       setWorkspaces((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
       notifyAgentWorkspacesChanged()
@@ -186,6 +199,7 @@ export function useAgentWorkspaces() {
     registerWorkspaceFolder,
     removeWorkspace,
     updateWorkspaceAvatar,
+    setWorkspacePinned,
     ensureScratchWorkspace,
     refresh
   }

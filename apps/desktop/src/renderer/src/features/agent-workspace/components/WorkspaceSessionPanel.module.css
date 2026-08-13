@@ -7,7 +7,7 @@
   border-right: 1px solid var(--border-muted);
   background: var(--bg-surface);
   overflow: hidden;
-  font-family: var(--font-family-main, inherit);
+  font-family: inherit;
 }
 
 .header {
@@ -18,7 +18,7 @@
 
 .workspaceName {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   overflow: hidden;
@@ -28,7 +28,7 @@
 
 .workspacePath {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -46,7 +46,7 @@
   border-radius: 10px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   font-family: inherit;
   padding: 9px 12px;
@@ -76,7 +76,7 @@
 .placeholder {
   margin: 0;
   padding: 12px 8px;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -115,7 +115,7 @@
 
 .sessionTitle {
   width: 100%;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -124,7 +124,7 @@
 
 .sessionMeta {
   width: 100%;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
@@ -136,7 +136,7 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--ui-fs-xl);
   line-height: 1;
   font-family: inherit;
   opacity: 0;
