@@ -147,4 +147,41 @@ describe('SystemPromptBuilder', () => {
     }
     expect(prompt).toContain('Name: Alice')
   })
+
+  it('injects workspace_env for workspace sessions and keeps companion clean', () => {
+    const workspacePrompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32',
+        isGitRepo: true,
+        gitBranch: 'main',
+        gitChangesCount: 2,
+        notebookId: 'nb-1'
+      }
+    })
+    expect(workspacePrompt).toContain('<workspace_env>')
+    expect(workspacePrompt).toContain('Working directory: D:/proj')
+    expect(workspacePrompt).toContain('Is git repo: yes')
+    expect(workspacePrompt).toContain('Git branch: main')
+    expect(workspacePrompt).toContain('notebookId: nb-1')
+
+    const companionPrompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {}
+    })
+    expect(companionPrompt).not.toContain('<workspace_env>')
+    expect(companionPrompt).not.toContain('D:/proj')
+  })
+
+  it('injects skills_catalog when provided', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {},
+      skillsCatalog: [{ name: 'summarize', description: 'Summarize text' }]
+    })
+    expect(prompt).toContain('<skills_catalog>')
+    expect(prompt).toContain('summarize: Summarize text')
+  })
 })

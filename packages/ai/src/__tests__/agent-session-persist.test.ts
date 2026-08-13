@@ -48,6 +48,7 @@ describe('persistResult token estimation', () => {
       }
 
       const accumulator = {
+        timeline: [],
         text: 'AI response text',
         reasoning: '',
         toolCalls: [],
@@ -123,6 +124,7 @@ describe('persistResult token estimation', () => {
     }
 
     const accumulator = {
+      timeline: [],
       text: 'cached reply',
       reasoning: '',
       toolCalls: [],
@@ -189,6 +191,7 @@ describe('persistResult token estimation', () => {
     }
 
     const accumulator = {
+      timeline: [],
       text: 'new reply',
       reasoning: '',
       toolCalls: [],
@@ -243,6 +246,7 @@ describe('persistResult token estimation', () => {
     }
 
     const accumulator = {
+      timeline: [],
       text: 'search summary',
       reasoning: '',
       toolCalls: [{ callId: 'call_1', name: 'web_search', arguments: '{"q":"news"}' }],
@@ -295,6 +299,7 @@ describe('persistResult token estimation', () => {
       rawUserText: 'update readme',
       streamResult: { usage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }) } as any,
       accumulator: {
+        timeline: [],
         text: 'done',
         reasoning: '',
         toolCalls: [],

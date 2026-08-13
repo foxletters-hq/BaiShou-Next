@@ -6,6 +6,9 @@ import {
   type AssistantKind
 } from '@baishou/shared'
 import { buildToolUsageGuidelines } from './tool-usage-guidelines.util'
+import { buildWorkspaceEnvLines, type WorkspaceEnvInfo } from './workspace-env.util'
+
+export type { WorkspaceEnvInfo }
 
 export interface SystemPromptBuilderOptions {
   vaultName: string
@@ -21,6 +24,10 @@ export interface SystemPromptBuilderOptions {
   injectCurrentTime?: boolean
   /** App UI 语言，用于用户可见固定话术（如联网未开提示） */
   locale?: string
+  /** 工作台会话环境（仅 workspace profile 注入） */
+  workspaceEnv?: WorkspaceEnvInfo
+  /** Skills 目录（仅名+描述，正文不灌入） */
+  skillsCatalog?: Array<{ name: string; description?: string }>
 }
 
 function pushSection(buffer: string[], tag: string, lines: string[]): void {
@@ -52,7 +59,8 @@ function resolveLocale(locale?: string): string | undefined {
  * 构建带有当前环境、输出协议、生效工具以及自定义教条的最终提示词。
  *
  * 固定分区顺序：
- * persona → output_protocol → runtime_context → context_encoding(条件) →
+ * persona → output_protocol → runtime_context → workspace_env(条件) →
+ * skills_catalog(条件) → context_encoding(条件) →
  * user_identity → assistant_capabilities → available_tools →
  * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines
  */
@@ -67,7 +75,9 @@ export class SystemPromptBuilder {
       diaryAiWritingPrompt,
       assistantKind = 'companion',
       injectCurrentTime = true,
-      locale
+      locale,
+      workspaceEnv,
+      skillsCatalog
     } = options
 
     const buffer: string[] = []
@@ -100,6 +110,23 @@ export class SystemPromptBuilder {
     runtimeLines.push(`[Current Vault / Workspace]: ${vaultName}`)
     runtimeLines.push(`[Partner type]: ${assistantKind === 'work' ? 'work' : 'companion'}`)
     pushSection(buffer, 'runtime_context', runtimeLines)
+
+    // 3b. workspace_env（工作台）
+    if (workspaceEnv?.folderRoot) {
+      pushSection(buffer, 'workspace_env', buildWorkspaceEnvLines(workspaceEnv))
+    }
+
+    // 3c. skills_catalog
+    if (skillsCatalog && skillsCatalog.length > 0) {
+      const skillLines = [
+        'Available skills (name + description only; load full body via skill tools or user attachment when needed):',
+        ...skillsCatalog.map((s) => {
+          const desc = s.description?.trim() || 'No description'
+          return `- ${s.name}: ${desc}`
+        })
+      ]
+      pushSection(buffer, 'skills_catalog', skillLines)
+    }
 
     // 4. context_encoding（仅在会给历史加壳时）
     if (injectCurrentTime) {

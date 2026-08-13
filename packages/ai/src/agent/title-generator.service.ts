@@ -3,6 +3,8 @@ import { IAIProvider } from '../providers/provider.interface'
 import { SessionRepository } from '@baishou/database'
 import { deriveSessionTitleFromUserText, logger } from '@baishou/shared'
 import { wrapLanguageModelWithMiddlewares } from '../middleware/middleware-factory'
+import { buildSmallTaskReasoningOptions } from '../providers/reasoning'
+import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-thinking-inject'
 
 export class TitleGeneratorService {
   static onTitleUpdated?: (sessionId: string, newTitle: string) => Promise<void> | void
@@ -72,13 +74,24 @@ export class TitleGeneratorService {
         baseUrl: provider.config?.baseUrl
       })
 
-      // 请求产生名字
-      // 我们用无系统的生成，只基于短句
-      const { text } = await generateText({
-        model,
-        prompt: `请根据用户的这句话，为这段对话起一个极为简短、直指主题的名称。\n要求：\n1. 不能超过 15 个字符\n2. 不能使用类似“对话名称：”这样的前置说明，直接输出最终的名字字符串\n用户的首句话为：\n"""\n${userTrivialText}\n"""\n请输出标题：`,
-        temperature: 0.1 // 主打严谨摘要而不是创造力
+      const builtReasoning = buildSmallTaskReasoningOptions({
+        modelId,
+        providerType: provider.config?.type || 'openai',
+        baseUrl: provider.config?.baseUrl
       })
+
+      const { text } = await runWithOpenAiThinkingInjectAsync(
+        builtReasoning.openAiThinkingInject,
+        async () =>
+          generateText({
+            model,
+            prompt: `请根据用户的这句话，为这段对话起一个极为简短、直指主题的名称。\n要求：\n1. 不能超过 15 个字符\n2. 不能使用类似“对话名称：”这样的前置说明，直接输出最终的名字字符串\n用户的首句话为：\n"""\n${userTrivialText}\n"""\n请输出标题：`,
+            temperature: 0.1, // 主打严谨摘要而不是创造力
+            ...(builtReasoning.providerOptions
+              ? { providerOptions: builtReasoning.providerOptions }
+              : {})
+          })
+      )
 
       const cleanTitle = text.trim()
       if (!cleanTitle) return

@@ -1,4 +1,9 @@
-import { mergeDisabledToolIds, normalizeAssistantKind, type AssistantKind } from '@baishou/shared'
+import {
+  mergeDisabledToolIds,
+  normalizeAssistantKind,
+  buildEffectiveAssistantSystemPrompt,
+  type AssistantKind
+} from '@baishou/shared'
 
 export interface SessionAssistantContext {
   effectiveSystemPrompt?: string
@@ -12,9 +17,11 @@ export async function resolveSessionAssistantContext(params: {
     getSessionById?: (id: string) => Promise<{ assistantId?: string } | null>
   }
   assistantRepo?: {
-    findById: (
-      id: string
-    ) => Promise<{ systemPrompt?: string | null; assistantKind?: string | null } | null>
+    findById: (id: string) => Promise<{
+      systemPrompt?: string | null
+      customSystemPrompt?: string | null
+      assistantKind?: string | null
+    } | null>
   }
   userConfig: Record<string, unknown>
 }): Promise<SessionAssistantContext> {
@@ -26,8 +33,12 @@ export async function resolveSessionAssistantContext(params: {
   if (sessionObj?.assistantId && params.assistantRepo) {
     const ast = await params.assistantRepo.findById(sessionObj.assistantId)
     assistantKind = normalizeAssistantKind(ast?.assistantKind)
-    if (ast?.systemPrompt) {
-      effectiveSystemPrompt = ast.systemPrompt
+    const combined = buildEffectiveAssistantSystemPrompt(
+      ast?.systemPrompt,
+      ast?.customSystemPrompt
+    )
+    if (combined) {
+      effectiveSystemPrompt = combined
     }
     mergedUserConfig = {
       ...params.userConfig,

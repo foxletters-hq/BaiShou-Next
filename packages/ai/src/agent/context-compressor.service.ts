@@ -11,6 +11,8 @@ import {
   adaptCompressionSystemPrompt
 } from '@baishou/shared'
 import { logger } from '@baishou/shared'
+import { buildSmallTaskReasoningOptions } from '../providers/reasoning'
+import { runWithOpenAiThinkingInjectAsync } from '../providers/reasoning/openai-thinking-inject'
 import { MessageWithParts } from './message.adapter'
 import {
   estimateContextTokensForTrigger,
@@ -465,17 +467,30 @@ export class ContextCompressorService {
 
     const messages: ModelMessage[] = [{ role: 'user', content: userContent }]
 
-    const streamResult = streamText({
-      model,
-      system: buildCachedSystemForStream(systemBase, {
-        providerType,
-        modelId,
-        sessionId
-      }),
-      messages,
-      temperature: 0.1,
-      abortSignal
+    const builtReasoning = buildSmallTaskReasoningOptions({
+      modelId,
+      providerType,
+      baseUrl: provider.config?.baseUrl
     })
+
+    const streamResult = await runWithOpenAiThinkingInjectAsync(
+      builtReasoning.openAiThinkingInject,
+      async () =>
+        streamText({
+          model,
+          system: buildCachedSystemForStream(systemBase, {
+            providerType,
+            modelId,
+            sessionId
+          }),
+          messages,
+          temperature: 0.1,
+          abortSignal,
+          ...(builtReasoning.providerOptions
+            ? { providerOptions: builtReasoning.providerOptions }
+            : {})
+        })
+    )
 
     let streamed: Awaited<ReturnType<typeof consumeCompressionModelStream>>
     try {
