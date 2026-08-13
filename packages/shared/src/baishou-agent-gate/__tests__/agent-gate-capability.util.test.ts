@@ -12,7 +12,7 @@ import {
 import { cloneBaishouAgentGateConfig } from '../agent-gate.defaults'
 
 describe('agent-gate-capability.util', () => {
-  it('workspace defaults: browse allow, edit/command/external ask, delete locked ask', () => {
+  it('workspace defaults: browse allow, edit/command/external/delete ask', () => {
     const config = cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
     const state = capabilityStateFromConfig(config, 'workspace')
     expect(state.effects.browse).toBe(AgentGateEffect.Allow)
@@ -51,19 +51,34 @@ describe('agent-gate-capability.util', () => {
     expect(state.effects.edit).toBe(AgentGateEffect.Allow)
   })
 
-  it('keeps delete locked to ask even when patch requests allow', () => {
+  it('allows delete capability to be set to allow', () => {
     const config = cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)
     const next = applyCapabilityToConfig(config, 'workspace', {
       capabilityId: 'delete',
       effect: AgentGateEffect.Allow
     })
-    expect(capabilityStateFromConfig(next, 'workspace').effects.delete).toBe(AgentGateEffect.Ask)
-    expect(next.exclusionList).toContain('workspace_delete')
+    expect(capabilityStateFromConfig(next, 'workspace').effects.delete).toBe(AgentGateEffect.Allow)
+    expect(next.exclusionList).not.toContain('workspace_delete')
     expect(
       next.permissionRules?.some(
         (rule) => rule.action === 'workspace_delete' && rule.effect === AgentGateEffect.Allow
       )
-    ).toBe(false)
+    ).toBe(true)
+  })
+
+  it('strips legacy workspace_delete from exclusion list on rebuild', () => {
+    const config = cloneBaishouAgentGateConfig(
+      {
+        ...DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+        exclusionList: ['workspace_delete']
+      },
+      DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
+    )
+    const next = applyCapabilityToConfig(config, 'workspace', {
+      capabilityId: 'browse',
+      effect: AgentGateEffect.Allow
+    })
+    expect(next.exclusionList).not.toContain('workspace_delete')
   })
 
   it('does not emit whole-action allow for command', () => {

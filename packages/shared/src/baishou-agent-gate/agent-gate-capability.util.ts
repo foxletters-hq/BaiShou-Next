@@ -52,7 +52,7 @@ const WORKSPACE_COMMAND_ACTIONS = ['workspace_run'] as const
 export const WORKSPACE_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'browse', actions: WORKSPACE_BROWSE_ACTIONS },
   { id: 'edit', actions: WORKSPACE_EDIT_ACTIONS },
-  { id: 'delete', actions: WORKSPACE_DELETE_ACTIONS, lockedToAsk: true },
+  { id: 'delete', actions: WORKSPACE_DELETE_ACTIONS },
   { id: 'command', actions: WORKSPACE_COMMAND_ACTIONS, disallowAllow: true },
   { id: 'external', actions: [EXTERNAL_DIRECTORY_ACTION], external: true }
 ]
@@ -170,7 +170,7 @@ export function capabilityStateFromConfig(
   if (scene === 'workspace') {
     effects.browse = effectForActions(config, WORKSPACE_BROWSE_ACTIONS, AgentGateEffect.Allow)
     effects.edit = effectForActions(config, WORKSPACE_EDIT_ACTIONS, AgentGateEffect.Ask)
-    effects.delete = AgentGateEffect.Ask
+    effects.delete = effectForActions(config, WORKSPACE_DELETE_ACTIONS, AgentGateEffect.Ask)
     effects.command = effectForActions(config, WORKSPACE_COMMAND_ACTIONS, AgentGateEffect.Ask)
     effects.external = effectForExternalDirectory(config)
   } else {
@@ -288,12 +288,14 @@ function rebuildManagedRules(
     const exclusion = new Set(
       config.exclusionList ?? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST]
     )
-    exclusion.add('workspace_delete')
+    // 历史配置可能仍带 workspace_delete；删除已支持「始终允许」，加载时剥掉
+    exclusion.delete('workspace_delete')
     next.exclusionList = [...exclusion]
   } else {
     const exclusion = new Set(config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST])
     exclusion.add('diary_delete')
     exclusion.add('memory_delete')
+    exclusion.delete('workspace_delete')
     next.exclusionList = [...exclusion]
   }
 

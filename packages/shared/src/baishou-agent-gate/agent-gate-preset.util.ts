@@ -1,75 +1,43 @@
 import { AgentGateEffect } from './agent-gate.enums'
 import type {
-  AgentGateApprovalPreset,
-  AgentGatePermissionRule,
-  AgentGateScopePreset,
+  AgentWorkspaceSecurityMode,
   BaishouAgentGateConfig
 } from './agent-gate.types'
 import {
   CATCH_ALL_ALLOW_RULE,
-  EXTERNAL_DIRECTORY_ACTION,
   hasCatchAllAllowRule,
   setCatchAllAllowRule
 } from './agent-gate-migrate.util'
+import { applyCapabilityStateToConfig } from './agent-gate-capability.util'
 import {
-  applyCapabilityStateToConfig,
-  capabilityStateFromConfig
-} from './agent-gate-capability.util'
+  DEFAULT_WORKSPACE_COMMAND_BLACKLIST,
+  isDangerousShellCommand
+} from './agent-gate-shell-match.util'
 
-export type { AgentGateScopePreset, AgentGateApprovalPreset }
+export type { AgentWorkspaceSecurityMode }
 
-export interface WorkspaceGatePresets {
-  scopePreset: AgentGateScopePreset
-  approvalPreset: AgentGateApprovalPreset
-}
-
-function normalizeTrustedDir(dir: string): string | null {
-  const trimmed = dir.trim().replace(/\\/g, '/')
-  if (!trimmed) return null
-  if (trimmed === '*' || trimmed === '**' || trimmed === '**/*') return null
-  if (!trimmed.includes('*')) return `${trimmed.replace(/\/+$/, '')}/**`
-  return trimmed
-}
+/** @deprecated 保留导出供旧测试/兼容路径 */
+export type { AgentGateScopePreset, AgentGateApprovalPreset } from './agent-gate.types'
 
 /**
- * 将两维预设展开为能力矩阵状态，再交给 capability 编译器写回 permissionRules。
- * trustedDirs 仅在 scope=with_trusted_dirs 时使用。
+ * 将工作台安全模式展开为 permissionRules。
+ * - full_access：`*: allow` 垫底（黑名单仍钳制）
+ * - auto_review：常规编辑直接允许；命令在策略层按 Allow 初评后再经模型审核（sanitize 禁止裸 workspace_run Allow）
+ * - allow_list：编辑/命令默认询问，仅 allowlist 放行
  */
-export function applyWorkspacePresetsToConfig(
+export function applyWorkspaceSecurityModeToConfig(
   config: BaishouAgentGateConfig,
-  presets: WorkspaceGatePresets,
-  trustedDirs: readonly string[] = []
+  mode: AgentWorkspaceSecurityMode
 ): BaishouAgentGateConfig {
-  if (presets.scopePreset === 'custom' || presets.approvalPreset === 'custom') {
-    return {
-      ...config,
-      scopePreset: presets.scopePreset,
-      approvalPreset: presets.approvalPreset
-    }
-  }
-
-  const dirs =
-    presets.scopePreset === 'with_trusted_dirs'
-      ? trustedDirs.map(normalizeTrustedDir).filter((item): item is string => !!item)
-      : []
-
-  const readonly = presets.scopePreset === 'readonly'
-  const alwaysAsk = presets.approvalPreset === 'always_ask'
-  const neverAsk = presets.approvalPreset === 'never_ask'
-  // 含可信目录但尚未登记目录：区外保持默认 Ask，不要写裸 Allow（否则反推会漂成 custom）
-  const externalEffect =
-    presets.scopePreset === 'with_trusted_dirs'
-      ? dirs.length > 0
-        ? AgentGateEffect.Allow
-        : AgentGateEffect.Ask
-      : AgentGateEffect.Deny
+  const allowList = mode === 'allow_list'
+  const fullAccess = mode === 'full_access'
 
   const effects = {
     browse: AgentGateEffect.Allow,
-    edit: readonly ? AgentGateEffect.Deny : alwaysAsk ? AgentGateEffect.Ask : AgentGateEffect.Allow,
+    edit: allowList ? AgentGateEffect.Ask : AgentGateEffect.Allow,
     delete: AgentGateEffect.Ask,
-    command: readonly ? AgentGateEffect.Deny : AgentGateEffect.Ask,
-    external: externalEffect,
+    command: AgentGateEffect.Ask,
+    external: AgentGateEffect.Ask,
     diary_write: AgentGateEffect.Ask,
     diary_delete: AgentGateEffect.Ask,
     memory_store: AgentGateEffect.Ask,
@@ -78,114 +46,133 @@ export function applyWorkspacePresetsToConfig(
 
   let next = applyCapabilityStateToConfig(config, 'workspace', {
     effects,
-    trustedExternalDirs: dirs
+    trustedExternalDirs: []
   })
 
-  // never_ask：追加 `*: allow` 垫底（红线仍由钳制层压回 Ask）
-  next = setCatchAllAllowRule(next, neverAsk)
+  next = setCatchAllAllowRule(next, fullAccess)
+
+  const commandBlacklist =
+    next.commandBlacklist && next.commandBlacklist.length > 0
+      ? [...next.commandBlacklist]
+      : [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST]
 
   return {
     ...next,
-    scopePreset: presets.scopePreset,
-    approvalPreset: presets.approvalPreset
+    securityMode: mode,
+    commandBlacklist,
+    // 清理旧二维标签，避免 UI 误读
+    scopePreset: undefined,
+    approvalPreset: undefined
   }
 }
 
-/** 从现有配置反推预设；无法精确匹配则 custom */
-export function inferWorkspacePresets(
-  config: BaishouAgentGateConfig
-): WorkspaceGatePresets & { trustedExternalDirs: string[] } {
-  const state = capabilityStateFromConfig(config, 'workspace')
-  const storedScope =
-    config.scopePreset && config.scopePreset !== 'custom' ? config.scopePreset : undefined
-  const storedApproval =
-    config.approvalPreset && config.approvalPreset !== 'custom' ? config.approvalPreset : undefined
-
-  // 任一维仍有明确预设时优先信任落盘标签，避免规则反推把「含可信目录」漂成 custom
-  if (storedScope && storedApproval) {
-    return {
-      scopePreset: storedScope,
-      approvalPreset: storedApproval,
-      trustedExternalDirs: state.trustedExternalDirs
-    }
+/** 从配置读取安全模式；缺省 auto_review */
+export function resolveWorkspaceSecurityMode(
+  config: BaishouAgentGateConfig | null | undefined
+): AgentWorkspaceSecurityMode {
+  const mode = config?.securityMode
+  if (mode === 'full_access' || mode === 'auto_review' || mode === 'allow_list') {
+    return mode
   }
-
-  const hasTrusted = state.trustedExternalDirs.length > 0
-  const externalDeny = state.effects.external === AgentGateEffect.Deny
-  const externalAllow = state.effects.external === AgentGateEffect.Allow
-  const editDeny = state.effects.edit === AgentGateEffect.Deny
-  const editAllow = state.effects.edit === AgentGateEffect.Allow
-  const commandDeny = state.effects.command === AgentGateEffect.Deny
-  const catchAll = hasCatchAllAllowRule(config)
-
-  let scopePreset: AgentGateScopePreset = storedScope ?? 'custom'
-  if (!storedScope) {
-    if (editDeny && commandDeny && externalDeny) {
-      scopePreset = 'readonly'
-    } else if (hasTrusted || (externalAllow && !externalDeny)) {
-      // 有可信目录，或（兼容旧数据）裸 external Allow → 含可信目录
-      scopePreset = 'with_trusted_dirs'
-    } else if (externalDeny && !editDeny) {
-      scopePreset = 'workspace_write'
-    }
+  // 兼容旧 approvalPreset（仅在 securityMode 缺失时）
+  if (config?.approvalPreset === 'never_ask' || hasCatchAllAllowRule(config ?? {})) {
+    return 'full_access'
   }
-
-  let approvalPreset: AgentGateApprovalPreset = storedApproval ?? 'custom'
-  if (!storedApproval) {
-    if (scopePreset === 'readonly') {
-      approvalPreset = 'always_ask'
-    } else if (catchAll || editAllow) {
-      approvalPreset = catchAll ? 'never_ask' : 'dangerous_only'
-    } else if (state.effects.edit === AgentGateEffect.Ask) {
-      approvalPreset = 'always_ask'
-    }
+  if (config?.approvalPreset === 'dangerous_only') {
+    return 'auto_review'
   }
+  if (config?.approvalPreset === 'always_ask') {
+    return 'allow_list'
+  }
+  // 兼容：无 securityMode 时用编辑规则推断
+  const rules = config?.permissionRules ?? []
+  const editActions = ['workspace_write', 'workspace_patch', 'workspace_rename'] as const
+  const editAllowed = editActions.every((action) =>
+    rules.some(
+      (rule) =>
+        rule.action === action && !rule.pattern && rule.effect === AgentGateEffect.Allow
+    )
+  )
+  if (editAllowed) return 'auto_review'
+  return 'auto_review'
+}
 
-  const managedActions = new Set([
-    'workspace_list',
-    'workspace_read',
-    'workspace_write',
-    'workspace_patch',
-    'workspace_rename',
-    'workspace_delete',
-    'workspace_run',
-    EXTERNAL_DIRECTORY_ACTION,
-    CATCH_ALL_ALLOW_RULE.action
-  ])
-  const extra = (config.permissionRules ?? []).some((rule) => {
-    if (rule.action === '*' && !rule.pattern) return false
-    if (!managedActions.has(rule.action) && rule.action !== '*') return true
-    if (rule.pattern && rule.action !== EXTERNAL_DIRECTORY_ACTION) return true
-    return false
+/**
+ * 命令是否命中黑名单（用户配置模式 + 内置危险命令检测）。
+ */
+export function matchesCommandBlacklist(
+  command: string,
+  blacklist: readonly string[] | undefined
+): boolean {
+  const normalized = command.replace(/\s+/g, ' ').trim()
+  if (!normalized) return false
+  if (isDangerousShellCommand(normalized)) return true
+
+  const patterns = blacklist?.length ? blacklist : DEFAULT_WORKSPACE_COMMAND_BLACKLIST
+  const haystack = normalized.toLowerCase()
+  return patterns.some((raw) => {
+    const pattern = raw.trim().toLowerCase()
+    if (!pattern) return false
+    if (!pattern.includes('*')) {
+      return haystack.includes(pattern)
+    }
+    // 简单 glob：`*` → .*
+    const escaped = pattern
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+    try {
+      return new RegExp(escaped, 'i').test(normalized)
+    } catch {
+      return haystack.includes(pattern.replace(/\*/g, ''))
+    }
   })
-  if (extra && !storedScope && !storedApproval) {
-    return {
-      scopePreset: 'custom',
-      approvalPreset: 'custom',
-      trustedExternalDirs: state.trustedExternalDirs
-    }
-  }
+}
 
+/** @deprecated 使用 applyWorkspaceSecurityModeToConfig */
+export function applyWorkspacePresetsToConfig(
+  config: BaishouAgentGateConfig,
+  presets: { scopePreset: string; approvalPreset: string },
+  _trustedDirs: readonly string[] = []
+): BaishouAgentGateConfig {
+  const mode =
+    presets.approvalPreset === 'never_ask'
+      ? 'full_access'
+      : presets.approvalPreset === 'always_ask'
+        ? 'allow_list'
+        : 'auto_review'
+  return applyWorkspaceSecurityModeToConfig(config, mode)
+}
+
+/** @deprecated 使用 resolveWorkspaceSecurityMode */
+export function inferWorkspacePresets(config: BaishouAgentGateConfig): {
+  scopePreset: 'workspace_write' | 'custom'
+  approvalPreset: 'always_ask' | 'dangerous_only' | 'never_ask' | 'custom'
+  trustedExternalDirs: string[]
+} {
+  const mode = resolveWorkspaceSecurityMode(config)
   return {
-    scopePreset,
-    approvalPreset,
-    trustedExternalDirs: state.trustedExternalDirs
+    scopePreset: 'workspace_write',
+    approvalPreset:
+      mode === 'full_access'
+        ? 'never_ask'
+        : mode === 'allow_list'
+          ? 'always_ask'
+          : 'dangerous_only',
+    trustedExternalDirs: []
   }
 }
 
-/** 用户改了细项后把预设推到 custom */
+/** @deprecated */
 export function markWorkspacePresetsCustom(config: BaishouAgentGateConfig): BaishouAgentGateConfig {
-  return {
-    ...config,
-    scopePreset: 'custom',
-    approvalPreset: 'custom'
-  }
+  return { ...config }
 }
 
-/** 稳定排序：无 pattern 在前、有 pattern 在后（迁移到最后匹配赢时保持等价） */
-export function sortPermissionRulesForLastMatch(
-  rules: readonly AgentGatePermissionRule[]
-): AgentGatePermissionRule[] {
+export { CATCH_ALL_ALLOW_RULE } from './agent-gate-migrate.util'
+
+/** 稳定排序：无 pattern 在前、有 pattern 在后 */
+export function sortPermissionRulesForLastMatch<T extends { pattern?: string }>(
+  rules: readonly T[]
+): T[] {
   return [...rules].sort((a, b) => {
     const ap = a.pattern ? 1 : 0
     const bp = b.pattern ? 1 : 0

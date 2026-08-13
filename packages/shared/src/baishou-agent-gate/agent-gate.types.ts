@@ -44,11 +44,19 @@ export interface AgentGatePermissionRule {
   effect: AgentGateEffect
 }
 
-/** G4：活动范围预设（工作台 UI） */
+/** @deprecated G4 二维预设；工作台已改为 AgentWorkspaceSecurityMode */
 export type AgentGateScopePreset = 'readonly' | 'workspace_write' | 'with_trusted_dirs' | 'custom'
 
-/** G4：审批时机预设（工作台 UI） */
+/** @deprecated G4 二维预设；工作台已改为 AgentWorkspaceSecurityMode */
 export type AgentGateApprovalPreset = 'always_ask' | 'dangerous_only' | 'never_ask' | 'custom'
+
+/**
+ * 工作台全局安全模式（不再按工作区配置）。
+ * - full_access：尽量自动过，黑名单 / 危险命令仍钳制为 Ask
+ * - auto_review：常规编辑直接过；命令经模型快速审核，黑名单仍强制问
+ * - allow_list：默认询问，仅白名单（allowlist）自动放行
+ */
+export type AgentWorkspaceSecurityMode = 'full_access' | 'auto_review' | 'allow_list'
 
 export interface BaishouAgentGateConfig {
   exclusionList: string[]
@@ -73,24 +81,32 @@ export interface BaishouAgentGateConfig {
    * are omitted from the model tool list.
    */
   hideDeniedTools?: boolean
-  /** G4：活动范围预设（工作台 UI）；custom 表示用户改过细项 */
+  /** @deprecated 工作台已改用 securityMode */
   scopePreset?: AgentGateScopePreset
-  /** G4：审批时机预设（工作台 UI） */
+  /** @deprecated 工作台已改用 securityMode */
   approvalPreset?: AgentGateApprovalPreset
+  /** 工作台全局安全模式 */
+  securityMode?: AgentWorkspaceSecurityMode
+  /**
+   * 命令黑名单：命中的 shell 命令强制 Ask，且不可 Always。
+   * 条目为子串/简单通配（`*`），大小写不敏感；与内置危险命令检测叠加。
+   */
+  commandBlacklist?: string[]
 }
 
 /**
- * G4 工作区门控策略 v2 视图。
- * 落盘仍使用 AgentWorkspacePolicy.gateConfig（BaishouAgentGateConfig），
- * rules ↔ permissionRules、remembered ↔ allowlist。
+ * G4 工作区门控策略 v2 视图（legacy 兼容）。
+ * 新存储使用 securityMode + BaishouAgentGateConfig。
  */
 export interface WorkspaceGatePolicyV2 {
   version: 2
   scopePreset: AgentGateScopePreset
   approvalPreset: AgentGateApprovalPreset
+  securityMode?: AgentWorkspaceSecurityMode
   rules: AgentGatePermissionRule[]
   remembered: AgentGateAllowlistEntry[]
   exclusionList: string[]
+  commandBlacklist?: string[]
   hideDeniedTools: boolean
   repeatAssertAskThreshold: number
 }
@@ -118,9 +134,10 @@ export interface WorkspaceToolManagementConfig {
   customConfigs: Record<string, Record<string, unknown>>
 }
 
-/** 按 workspaceId 持久化的工作区策略（权限 + 工具） */
+/** 按 workspaceId 持久化的工作区策略（工具仍按工作区；gate 已全局化，落盘字段可忽略） */
 export interface AgentWorkspacePolicy {
   workspaceId: string
+  /** @deprecated 工作台 gate 已改为全局配置；读路径忽略此字段 */
   gateConfig: BaishouAgentGateConfig
   toolManagement: WorkspaceToolManagementConfig
   updatedAt: string
