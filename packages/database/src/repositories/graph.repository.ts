@@ -6,6 +6,7 @@ import {
   type GraphNodeType
 } from '../schema/graph'
 import type { AppDatabase } from '../types'
+import { isGraphEdgeInMonthRange } from '@baishou/shared'
 
 const VECTOR_REUSE_DISTANCE = 0.15
 
@@ -490,14 +491,16 @@ export class GraphRepository {
   async traverse(
     vaultId: string,
     centerId: string,
-    depth: 1 | 2,
+    depth: 1 | 2 | 3,
     opts?: { approvedOnly?: boolean }
   ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
     const approvedOnly = opts?.approvedOnly === true
+    const hops = Math.min(3, Math.max(1, Math.floor(depth))) as 1 | 2 | 3
     const nodeIds = new Set<string>([centerId])
+    const edgeIds = new Set<string>()
     const edgeRows: GraphEdgeRow[] = []
     let frontier = [centerId]
-    for (let d = 0; d < depth; d++) {
+    for (let d = 0; d < hops; d++) {
       if (frontier.length === 0) break
       const edges = await this.database
         .select()
@@ -514,7 +517,10 @@ export class GraphRepository {
       for (const e of edges) {
         if (approvedOnly && e.reviewStatus === 'pending') continue
         if (approvedOnly && e.reviewStatus === 'rejected') continue
-        edgeRows.push(mapEdge(e))
+        if (!edgeIds.has(e.id)) {
+          edgeIds.add(e.id)
+          edgeRows.push(mapEdge(e))
+        }
         for (const id of [e.fromId, e.toId]) {
           if (!nodeIds.has(id)) {
             nodeIds.add(id)
@@ -603,9 +609,67 @@ export class GraphRepository {
     maxNodes?: number
     minMentionCount?: number
     nodeTypes?: Array<GraphNodeType | string>
+    /** Inclusive YYYY-MM range; when set, graph is built from edges in that window. */
+    monthRange?: { startMonth: string; endMonth: string }
   }): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
     const maxNodes = opts.maxNodes ?? 200
     const minMention = opts.minMentionCount ?? 0
+    const startMonth = opts.monthRange?.startMonth
+    const endMonth = opts.monthRange?.endMonth
+    const useMonthRange =
+      typeof startMonth === 'string' &&
+      /^\d{4}-\d{2}$/.test(startMonth) &&
+      typeof endMonth === 'string' &&
+      /^\d{4}-\d{2}$/.test(endMonth)
+
+    if (useMonthRange) {
+      const from = startMonth! <= endMonth! ? startMonth! : endMonth!
+      const to = startMonth! <= endMonth! ? endMonth! : startMonth!
+      const range = { startMonth: from, endMonth: to }
+      // Load all live edges then resolve month via shardMonth / sourceRef / createdAt.
+      // Many legacy rows have empty shardMonth; SQL-only filter would miss or over-include.
+      const edgeRows = await this.database
+        .select()
+        .from(graphEdgesTable)
+        .where(
+          and(
+            eq(graphEdgesTable.vaultId, opts.vaultId),
+            eq(graphEdgesTable.isCurrent, true),
+            isNull(graphEdgesTable.deletedAt)
+          )
+        )
+      const edgesAll = edgeRows.map(mapEdge).filter((e) => isGraphEdgeInMonthRange(e, range))
+      const endpointIds = new Set<string>()
+      for (const e of edgesAll) {
+        endpointIds.add(e.fromId)
+        endpointIds.add(e.toId)
+      }
+      if (endpointIds.size === 0) return { nodes: [], edges: [] }
+
+      let nodes = (
+        await this.database
+          .select()
+          .from(graphNodesTable)
+          .where(
+            and(
+              eq(graphNodesTable.vaultId, opts.vaultId),
+              isNull(graphNodesTable.deletedAt),
+              inArray(graphNodesTable.id, [...endpointIds])
+            )
+          )
+          .orderBy(desc(graphNodesTable.mentionCount))
+          .limit(maxNodes)
+      ).map(mapNode)
+      if (minMention > 0) nodes = nodes.filter((n) => n.mentionCount >= minMention)
+      if (opts.nodeTypes?.length) {
+        const allow = new Set(opts.nodeTypes)
+        nodes = nodes.filter((n) => allow.has(n.nodeType))
+      }
+      const idSet = new Set(nodes.map((n) => n.id))
+      const edges = edgesAll.filter((e) => idSet.has(e.fromId) && idSet.has(e.toId))
+      return { nodes, edges }
+    }
+
     let nodes = (
       await this.database
         .select()

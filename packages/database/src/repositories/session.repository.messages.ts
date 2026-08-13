@@ -45,15 +45,17 @@ export class SessionMessageOps {
           .run()
 
         if (parts.length > 0) {
+          // integer timestamp 存秒；按 part 下标递增，避免同秒导致 ORDER BY createdAt 失序
+          const baseSec = Math.floor(Date.now() / 1000)
           tx.insert(partsTbl)
             .values(
-              parts.map((p) => ({
+              parts.map((p, index) => ({
                 id: p.id,
                 messageId: p.messageId,
                 sessionId: p.sessionId,
                 type: p.type,
                 data: p.data,
-                createdAt: new Date()
+                createdAt: new Date((baseSec + index) * 1000)
               }))
             )
             .run()
@@ -86,14 +88,15 @@ export class SessionMessageOps {
           .onConflictDoNothing()
 
         if (parts.length > 0) {
+          const baseSec = Math.floor(Date.now() / 1000)
           await tx.insert(partsTbl).values(
-            parts.map((p) => ({
+            parts.map((p, index) => ({
               id: p.id,
               messageId: p.messageId,
               sessionId: p.sessionId,
               type: p.type,
               data: p.data,
-              createdAt: new Date()
+              createdAt: new Date((baseSec + index) * 1000)
             }))
           )
         }
@@ -130,6 +133,35 @@ export class SessionMessageOps {
       const bucket = partsByMessageId.get(part.messageId)
       if (bucket) bucket.push(part)
       else partsByMessageId.set(part.messageId, [part])
+    }
+
+    for (const [, bucket] of partsByMessageId) {
+      bucket.sort((a, b) => {
+        const readSeq = (data: unknown): number => {
+          const obj =
+            typeof data === 'string'
+              ? (() => {
+                  try {
+                    return JSON.parse(data) as { seq?: unknown }
+                  } catch {
+                    return null
+                  }
+                })()
+              : (data as { seq?: unknown } | null)
+          const seq = Number(obj?.seq)
+          return Number.isFinite(seq) ? seq : Number.NaN
+        }
+        const seqA = readSeq(a.data)
+        const seqB = readSeq(b.data)
+        const hasSeqA = Number.isFinite(seqA)
+        const hasSeqB = Number.isFinite(seqB)
+        if (hasSeqA && hasSeqB && seqA !== seqB) return seqA - seqB
+        if (hasSeqA !== hasSeqB) return hasSeqA ? -1 : 1
+        const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : Number(a.createdAt || 0)
+        const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : Number(b.createdAt || 0)
+        if (timeA !== timeB) return timeA - timeB
+        return String(a.id).localeCompare(String(b.id))
+      })
     }
 
     return rawMessages.map((msg) => ({

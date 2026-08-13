@@ -19,6 +19,8 @@ export const agentAssistantsTable = sqliteTable(
     description: text('description').default(''),
     avatarPath: text('avatar_path'),
     systemPrompt: text('system_prompt').default(''),
+    /** 自定义提示词（接在人设 systemPrompt 之后；系统 Latte 等使用） */
+    customSystemPrompt: text('custom_system_prompt'),
     isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
     isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
     /** 发送给模型的历史消息条数；-1 表示不限制 */

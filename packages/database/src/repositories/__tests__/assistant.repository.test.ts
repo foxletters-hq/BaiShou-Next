@@ -40,6 +40,7 @@ describe('AssistantRepository', () => {
         compress_model_context_window INTEGER,
         compress_preserve_recent_tokens INTEGER,
         compress_system_prompt TEXT,
+        custom_system_prompt TEXT,
         assistant_kind TEXT NOT NULL DEFAULT 'companion',
         emoji_group_id TEXT,
         emoji_enabled INTEGER NOT NULL DEFAULT 0,

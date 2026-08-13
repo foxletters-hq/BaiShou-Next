@@ -168,6 +168,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
   },
   {
     table: 'agent_assistants',
+    column: 'custom_system_prompt',
+    ddl: `ALTER TABLE agent_assistants ADD COLUMN custom_system_prompt TEXT`
+  },
+  {
+    table: 'agent_assistants',
     column: 'assistant_kind',
     ddl: `ALTER TABLE agent_assistants ADD COLUMN assistant_kind TEXT NOT NULL DEFAULT 'companion'`
   },

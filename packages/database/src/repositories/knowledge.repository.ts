@@ -575,6 +575,69 @@ export class KnowledgeRepository {
     await this.db.delete(knowledgeIngestJobsTable).where(eq(knowledgeIngestJobsTable.id, id))
   }
 
+  /** 进程崩溃后：running 任务改回 pending，便于重新领取 */
+  async reclaimRunningIngestJobs(): Promise<number> {
+    const now = Date.now()
+    const rows = await this.db
+      .select({ id: knowledgeIngestJobsTable.id })
+      .from(knowledgeIngestJobsTable)
+      .where(eq(knowledgeIngestJobsTable.status, 'running'))
+    for (const row of rows) {
+      await this.db
+        .update(knowledgeIngestJobsTable)
+        .set({
+          status: 'pending',
+          nextRetryAt: null,
+          updatedAt: now
+        })
+        .where(eq(knowledgeIngestJobsTable.id, row.id))
+    }
+    return rows.length
+  }
+
+  async listIngestJobsByStatus(status: KnowledgeIngestJobStatus): Promise<KnowledgeIngestJobRow[]> {
+    return this.db
+      .select()
+      .from(knowledgeIngestJobsTable)
+      .where(eq(knowledgeIngestJobsTable.status, status))
+  }
+
+  async listSourcesByStatus(status: KnowledgeSourceStatus | string): Promise<KnowledgeSourceRow[]> {
+    return this.db
+      .select()
+      .from(knowledgeSourcesTable)
+      .where(eq(knowledgeSourcesTable.status, status))
+  }
+
+  async deleteIngestJobsForSource(
+    sourceId: string,
+    stage?: KnowledgeIngestStage
+  ): Promise<number> {
+    const before = await this.db
+      .select({ id: knowledgeIngestJobsTable.id })
+      .from(knowledgeIngestJobsTable)
+      .where(
+        stage
+          ? and(
+              eq(knowledgeIngestJobsTable.sourceId, sourceId),
+              eq(knowledgeIngestJobsTable.stage, stage)
+            )
+          : eq(knowledgeIngestJobsTable.sourceId, sourceId)
+      )
+    if (before.length === 0) return 0
+    await this.db
+      .delete(knowledgeIngestJobsTable)
+      .where(
+        stage
+          ? and(
+              eq(knowledgeIngestJobsTable.sourceId, sourceId),
+              eq(knowledgeIngestJobsTable.stage, stage)
+            )
+          : eq(knowledgeIngestJobsTable.sourceId, sourceId)
+      )
+    return before.length
+  }
+
   async failIngestJob(id: number, error: string, options?: { backoffMs?: number }): Promise<void> {
     const backoffMs = options?.backoffMs ?? 60_000
     const now = Date.now()
