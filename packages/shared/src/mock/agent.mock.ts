@@ -17,6 +17,11 @@ export type MockToolInvocation = {
   result?: any
 }
 
+export type MockChatSkillCite = {
+  command: string
+  content: string
+}
+
 export type MockChatMessage = {
   id: string
   sessionId: string
@@ -27,6 +32,8 @@ export type MockChatMessage = {
   toolName?: string
   toolCallId?: string
   attachments?: MockChatAttachment[]
+  /** 用户消息中的 Skill 引用快照（气泡点击预览） */
+  skillRefs?: MockChatSkillCite[]
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number

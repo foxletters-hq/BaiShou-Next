@@ -60,5 +60,7 @@ describe('latte-assistant-prompt.defaults', () => {
   it('returns localized default prompt', () => {
     expect(getDefaultLatteAssistantSystemPrompt('en').startsWith('You are Latte.')).toBe(true)
     expect(getDefaultLatteAssistantSystemPrompt('zh').includes('你是 Latte')).toBe(true)
+    expect(getDefaultLatteAssistantSystemPrompt('zh').includes('## 爱好')).toBe(true)
+    expect(getDefaultLatteAssistantSystemPrompt('zh').includes('## 典型台词')).toBe(true)
   })
 })

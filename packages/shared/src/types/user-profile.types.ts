@@ -3,6 +3,10 @@
  */
 export interface UserProfile {
   nickname: string // 昵称
+  /** 生日 YYYY-MM-DD；图谱唤醒时收集 */
+  birthday?: string | null
+  /** 性别；图谱唤醒时收集 */
+  gender?: UserGender | null
   avatarPath: string | null // 头像文件绝对或相对路径
   avatarFileMissing?: boolean // 头像文件不存在标记（运行时检测，不持久化）
   chatBackgroundPath?: string | null // 聊天背景图相对路径（如 backgrounds/xxx.jpg）
@@ -12,6 +16,9 @@ export interface UserProfile {
   personas: Record<string, Persona> // 所有身份卡字典（键为 personaId）
   recentPersonaIds?: string[] // 最近使用的身份卡 ID 列表（用于快速切换）
 }
+
+/** 用户性别（图谱唤醒 / 身份资料） */
+export type UserGender = 'male' | 'female' | 'other' | 'unspecified'
 
 /**
  * 独立身份卡与对应的事实集

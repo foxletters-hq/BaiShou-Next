@@ -82,6 +82,8 @@ export const AgentAssistantSchema = z.object({
   description: z.string().optional().nullable(),
   avatarPath: z.string().optional().nullable(),
   systemPrompt: z.string().optional().nullable(),
+  /** 自定义提示词，接在人设 systemPrompt 之后 */
+  customSystemPrompt: z.string().optional().nullable(),
   isDefault: z.boolean().default(false),
   contextWindow: z
     .number()

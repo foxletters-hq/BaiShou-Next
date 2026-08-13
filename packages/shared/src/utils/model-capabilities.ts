@@ -99,6 +99,26 @@ const IMAGE_ENHANCEMENT_MODELS = [
 const IMAGE_ENHANCEMENT_MODELS_REGEX = new RegExp(IMAGE_ENHANCEMENT_MODELS.join('|'), 'i')
 
 /**
+ * 是否为 OpenAI 系「推理模型」（走 chat/completions 时默认带 reasoning_effort）。
+ * 与 @ai-sdk/openai 的 getOpenAILanguageModelCapabilities 判定对齐：
+ * o1 / o3 / o4-mini / gpt-5*（不含 gpt-5-chat* / gpt-5.x-chat*）。
+ *
+ * 此类模型在 `/v1/chat/completions` 上若同时带 function tools，必须显式
+ * `reasoning_effort: 'none'`，或改用 `/v1/responses`。
+ */
+export function isOpenAiStyleReasoningModel(modelId: string): boolean {
+  if (!modelId) return false
+  const id = normalizeModelBaseId(modelId)
+  if (!id) return false
+  if (id.startsWith('o1')) return true
+  if (id.startsWith('o3')) return true
+  if (id.startsWith('o4-mini')) return true
+  // 排除 gpt-5-chat / gpt-5.1-chat-latest 等非推理 chat 变体
+  if (id.startsWith('gpt-5') && !/^gpt-5(?:\.\d+(?:\.\d+)*)?-chat/.test(id)) return true
+  return false
+}
+
+/**
  * 判断模型是否支持图片识别（多模态视觉输入）
  *
  * 优先级：手工覆盖 → 模型名（快照 + 正则）；不按供应商否定，避免硅基流动等路径式 id 误判。
