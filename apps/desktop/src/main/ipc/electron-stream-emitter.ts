@@ -18,14 +18,18 @@ export class ElectronStreamEmitter implements IStreamEmitter {
     this.event.sender.send('agent:reasoning-chunk', { sessionId, chunk })
   }
 
-  sendToolStart(sessionId: string, name: string, args: unknown) {
-    logger.info(`[ElectronStreamEmitter] sendToolStart - sessionId=${sessionId}, name=${name}`)
-    this.event.sender.send('agent:tool-start', { sessionId, name, args })
+  sendToolStart(sessionId: string, name: string, args: unknown, toolCallId?: string) {
+    logger.info(
+      `[ElectronStreamEmitter] sendToolStart - sessionId=${sessionId}, name=${name}, callId=${toolCallId ?? ''}`
+    )
+    this.event.sender.send('agent:tool-start', { sessionId, name, args, toolCallId })
   }
 
-  sendToolResult(sessionId: string, name: string, result: unknown) {
-    logger.info(`[ElectronStreamEmitter] sendToolResult - sessionId=${sessionId}, name=${name}`)
-    this.event.sender.send('agent:tool-result', { sessionId, name, result })
+  sendToolResult(sessionId: string, name: string, result: unknown, toolCallId?: string) {
+    logger.info(
+      `[ElectronStreamEmitter] sendToolResult - sessionId=${sessionId}, name=${name}, callId=${toolCallId ?? ''}`
+    )
+    this.event.sender.send('agent:tool-result', { sessionId, name, result, toolCallId })
   }
 
   sendFinish(sessionId: string, payload: StreamFinishPayload) {

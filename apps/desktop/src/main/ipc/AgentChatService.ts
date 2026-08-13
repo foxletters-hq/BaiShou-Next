@@ -4,9 +4,16 @@ import {
   isAgentStreamAbortError,
   type AssistantEmojiPrefs,
   BAISHOU_AGENT_GATE_CONFIG_KEY,
-  type BaishouAgentGateConfig
+  type BaishouAgentGateConfig,
+  type SessionInputDelivery,
+  type SessionInputRecord
 } from '@baishou/shared'
-import { AgentChatCoreService } from '@baishou/ai'
+import {
+  AgentChatCoreService,
+  emitAgentSessionRuntime,
+  getSharedSessionInbox,
+  isAgentStreamSessionBusy
+} from '@baishou/ai'
 import { ElectronStreamEmitter } from './electron-stream-emitter'
 import {
   getAgentManagers,
@@ -26,6 +33,43 @@ import {
   getAgentGate
 } from '../services/agent-gate.service'
 import { createDesktopKnowledgeReader } from '../services/desktop-knowledge-reader'
+import { createDesktopSkillsWriter } from '../services/desktop-skills-writer'
+import { drainSessionInbox } from '../services/session-inbox-drain'
+import { initDesktopSessionInboxStore } from '../services/session-inbox.store'
+
+async function drainCompanionInbox(
+  event: Electron.IpcMainInvokeEvent,
+  sessionId: string
+): Promise<void> {
+  await initDesktopSessionInboxStore()
+  await drainSessionInbox({
+    sessionId,
+    isBusy: isAgentStreamSessionBusy,
+    logLabel: 'CompanionChat',
+    runPromoted: async (promoted) => {
+      const payload = (promoted.payload ?? {}) as {
+        providerId?: string
+        modelId?: string
+        reasoningEffort?: string
+        searchMode?: boolean
+        attachments?: unknown[]
+      }
+      // skipInboxDrain：由本循环继续排空；若用户 Stop/abort 则中断整条 drain
+      const chatResult = await AgentChatService.chat(event, {
+        sessionId,
+        text: promoted.text,
+        userMsgId: promoted.userMessageId,
+        providerId: payload.providerId,
+        modelId: payload.modelId,
+        reasoningEffort: payload.reasoningEffort,
+        searchMode: payload.searchMode,
+        attachments: payload.attachments,
+        skipInboxDrain: true
+      })
+      return chatResult === 'aborted' ? 'aborted' : 'ok'
+    }
+  })
+}
 
 export class AgentChatService {
   public static stopStream(sessionId?: string) {
@@ -189,7 +233,15 @@ export class AgentChatService {
     const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')
     await refreshDesktopAttachmentPathRemapper(new DesktopStoragePathService())
 
-    await AgentChatCoreService.runStreamChat({
+    let skillsCatalog: Array<{ name: string; description?: string }> | undefined
+    try {
+      const { listAgentSkillsCatalog } = await import('../services/agent-skills.service')
+      skillsCatalog = await listAgentSkillsCatalog()
+    } catch {
+      skillsCatalog = undefined
+    }
+
+    return AgentChatCoreService.runStreamChat({
       emitter,
       sessionId: params.sessionId,
       userText: params.userText,
@@ -213,10 +265,12 @@ export class AgentChatService {
       realSnapshotRepo,
       toolRegistry,
       diarySearcher: createDiarySearcher(),
+      skillsWriter: createDesktopSkillsWriter(),
       webSearchResultFetcher: createWebSearchResultFetcher(),
       fetchSearchPage: createFetchSearchPage(),
       flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId),
-      resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId)
+      resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId),
+      skillsCatalog
     })
   }
 
@@ -230,9 +284,14 @@ export class AgentChatService {
       attachments?: unknown[]
       searchMode?: boolean
       userMsgId?: string
+      reasoningEffort?: string
+      /** 内部 drain 循环调用时跳过 finally 再入队，避免与锁冲突 */
+      skipInboxDrain?: boolean
     }
-  ) {
+  ): Promise<boolean | 'aborted'> {
     const { sessionManager } = getAgentManagers()
+    /** 正常结束才 drain；Stop/abort 不排空 inbox */
+    let shouldDrainInbox = false
     try {
       const prefs = await this.getAssistantSessionPrefs(args.sessionId)
       const resolved = await resolveStreamDialogueSelection({
@@ -248,7 +307,12 @@ export class AgentChatService {
         prefs.assistantEmojiPrefs
       )
 
-      await this.runStreamChat({
+      const mergedUserConfig =
+        args.reasoningEffort && args.reasoningEffort !== 'auto'
+          ? { ...(userConfig as Record<string, unknown>), reasoningEffort: args.reasoningEffort }
+          : userConfig
+
+      const streamResult = await this.runStreamChat({
         event,
         sessionId: args.sessionId,
         userText: args.text,
@@ -256,7 +320,7 @@ export class AgentChatService {
         provider,
         modelId: resolved.modelId,
         systemModels,
-        userConfig,
+        userConfig: mergedUserConfig,
         attachments: args.attachments,
         skipUserMessageRecording: Boolean(args.userMsgId)
       })
@@ -266,6 +330,11 @@ export class AgentChatService {
       } catch (e: any) {
         logger.error('Agent IPC persistence SSOT Error', e)
       }
+
+      if (streamResult?.aborted) {
+        return 'aborted'
+      }
+      shouldDrainInbox = !args.skipInboxDrain
       return true
     } catch (error: any) {
       if (isAgentStreamAbortError(error)) {
@@ -276,7 +345,7 @@ export class AgentChatService {
           logger.error('Agent IPC persistence SSOT Error after abort', e)
         }
         event.sender.send('agent:stream-finish', { sessionId: args.sessionId, success: true })
-        return true
+        return 'aborted'
       }
       logger.error('Agent IPC stream error:', error)
       event.sender.send('agent:stream-finish', {
@@ -286,6 +355,61 @@ export class AgentChatService {
       return false
     } finally {
       AgentChatCoreService.resetAbortController()
+      if (shouldDrainInbox) {
+        void drainCompanionInbox(event, args.sessionId)
+      }
     }
+  }
+
+  public static async admit(
+    event: Electron.IpcMainInvokeEvent,
+    args: {
+      sessionId: string
+      text: string
+      delivery?: SessionInputDelivery
+      userMessageId?: string
+      providerId?: string
+      modelId?: string
+      reasoningEffort?: string
+      searchMode?: boolean
+      attachments?: unknown[]
+    }
+  ): Promise<{ input: SessionInputRecord; started: boolean; queued: boolean }> {
+    await initDesktopSessionInboxStore()
+    const inbox = getSharedSessionInbox()
+    const delivery: SessionInputDelivery = args.delivery === 'steer' ? 'steer' : 'queue'
+    const input = inbox.admit({
+      sessionId: args.sessionId,
+      text: args.text,
+      delivery,
+      userMessageId: args.userMessageId,
+      payload: {
+        providerId: args.providerId,
+        modelId: args.modelId,
+        reasoningEffort: args.reasoningEffort,
+        searchMode: args.searchMode,
+        attachments: args.attachments
+      }
+    })
+    emitAgentSessionRuntime({
+      type: 'session.input_queued',
+      sessionId: args.sessionId,
+      inputId: input.id,
+      delivery,
+      timestamp: Date.now()
+    })
+
+    const busy = isAgentStreamSessionBusy(args.sessionId)
+    if (busy) {
+      return { input, started: false, queued: true }
+    }
+
+    void drainCompanionInbox(event, args.sessionId)
+    return { input, started: true, queued: false }
+  }
+
+  public static async listPendingInputs(sessionId: string): Promise<SessionInputRecord[]> {
+    await initDesktopSessionInboxStore()
+    return getSharedSessionInbox().listPending(sessionId)
   }
 }

@@ -63,7 +63,16 @@ export function registerAttachmentIPC() {
   // ==========================================
   ipcMain.handle(
     'agent:save-user-message',
-    async (_, args: { sessionId: string; text: string; attachments?: any[] }) => {
+    async (
+      _,
+      args: {
+        sessionId: string
+        text: string
+        attachments?: any[]
+        displayText?: string
+        skillRefs?: Array<{ command: string; content: string }>
+      }
+    ) => {
       try {
         const managers = getAgentManagers()
         const existingSession = await managers.realSessionRepo.getSessionById(args.sessionId)
@@ -226,13 +235,37 @@ export function registerAttachmentIPC() {
         const userOrderIndex = lastOrder + 1
         const userMsgId = crypto.randomUUID()
 
+        const skillRefs = Array.isArray(args.skillRefs)
+          ? args.skillRefs
+              .map((ref) => ({
+                command: String(ref?.command ?? '')
+                  .trim()
+                  .replace(/^\//, ''),
+                content: typeof ref?.content === 'string' ? ref.content : ''
+              }))
+              .filter((ref) => Boolean(ref.command))
+          : []
+        const rawDisplay =
+          typeof args.displayText === 'string' && args.displayText.trim()
+            ? args.displayText
+            : undefined
+        const displayText =
+          rawDisplay &&
+          (skillRefs.length > 0 || rawDisplay.trim() !== String(args.text ?? '').trim())
+            ? rawDisplay
+            : undefined
+
         const initialParts: any[] = [
           {
             id: crypto.randomUUID(),
             messageId: userMsgId,
             sessionId: args.sessionId,
             type: 'text',
-            data: { text: args.text }
+            data: {
+              text: args.text,
+              ...(displayText ? { displayText } : {}),
+              ...(skillRefs.length > 0 ? { skillRefs } : {})
+            }
           }
         ]
 

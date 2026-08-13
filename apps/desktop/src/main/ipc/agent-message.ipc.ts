@@ -36,13 +36,28 @@ export function registerMessageIPC() {
       includeParts: boolean = false
     ) => {
       const { realMessageRepo, realSessionRepo } = getAgentManagers()
-      const session = await realSessionRepo.getSessionById(sessionId)
+      let session = await realSessionRepo.getSessionById(sessionId)
       const activeVaultId = resolveActiveVaultId()
-      if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
-        logger.warn(
-          `[IPC] agent:get-messages denied cross-vault: session=${sessionId} active=${activeVaultId}`
-        )
+      if (!session) {
+        logger.warn(`[IPC] agent:get-messages missing session=${sessionId}`)
         return []
+      }
+      if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+        // 工作区会话曾写入错误 vault_id（缺省 derive('default')）；有绑定时自愈后放行
+        const { getWorkspaceSessionBinding } = await import(
+          '../services/agent-workspace-session.store'
+        )
+        const binding = await getWorkspaceSessionBinding(sessionId)
+        if (binding && activeVaultId) {
+          await realSessionRepo.updateSessionVaultId(sessionId, activeVaultId)
+          session = await realSessionRepo.getSessionById(sessionId)
+        }
+        if (!session || !sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
+          logger.warn(
+            `[IPC] agent:get-messages denied cross-vault: session=${sessionId} active=${activeVaultId}`
+          )
+          return []
+        }
       }
       const rows = await realMessageRepo.findBySessionId(sessionId, limit, offset)
       if (rows.length === 0) return []
