@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AgentPart } from '@baishou/shared'
+import { clearStreamBridgeForSession } from '../../agent/hooks/agent-stream-session-store'
 
 export interface WorkspaceChatMessage {
   id: string
@@ -7,6 +8,7 @@ export interface WorkspaceChatMessage {
   content?: string
   reasoning?: string
   parts?: AgentPart[]
+  skillRefs?: Array<{ command: string; content: string }>
   createdAt?: Date | string
 }
 
@@ -45,10 +47,11 @@ export function useWorkspaceChatMessages(params: {
       const sid = overrideSessionId ?? sessionId
       if (!sid || sid === 'new-session') {
         setMessages([])
-        return
+        return false
       }
       const rows = await fetchWorkspaceMessages(sid)
       setMessages(rows)
+      return true
     },
     [sessionId]
   )
@@ -64,8 +67,12 @@ export function useWorkspaceChatMessages(params: {
   useEffect(() => {
     const onChanged = (event: Event) => {
       const detail = (event as CustomEvent<{ sessionId?: string }>).detail
-      if (!detail?.sessionId || detail.sessionId !== sessionId) return
-      void refresh()
+      const eventSid = detail?.sessionId
+      if (!eventSid) return
+      const matchesRoute = Boolean(sessionId && eventSid === sessionId)
+      const matchesStream = streamSessionIdRef.current === eventSid
+      if (!matchesRoute && !matchesStream) return
+      void refresh(eventSid)
     }
     window.addEventListener('baishou:workspace-messages-changed', onChanged)
     window.addEventListener('baishou:assistant-message-usage', onChanged)
@@ -76,21 +83,27 @@ export function useWorkspaceChatMessages(params: {
   }, [refresh, sessionId])
 
   useEffect(() => {
-    if (prevStreamingRef.current && !isStreaming && sessionId) {
-      if (streamSessionIdRef.current === sessionId && (streamingText || streamingReasoning)) {
-        setPendingAssistantMsg({
-          id: `pending-${Date.now()}`,
-          content: streamingText,
-          reasoning: streamingReasoning || undefined
-        })
-      }
+    if (prevStreamingRef.current && !isStreaming) {
+      const sid = streamSessionIdRef.current || sessionId
+      if (sid && sid !== 'new-session') {
+        if (streamingText || streamingReasoning) {
+          setPendingAssistantMsg({
+            id: `pending-${Date.now()}`,
+            content: streamingText,
+            reasoning: streamingReasoning || undefined
+          })
+        }
 
-      const sync = async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100))
-        await refresh()
-        setPendingAssistantMsg(null)
+        const sync = async () => {
+          await new Promise((resolve) => setTimeout(resolve, 120))
+          const ok = await refresh(sid)
+          if (ok) {
+            clearStreamBridgeForSession(sid)
+            setPendingAssistantMsg(null)
+          }
+        }
+        void sync()
       }
-      void sync()
     }
     prevStreamingRef.current = isStreaming
   }, [isStreaming, sessionId, streamingReasoning, streamingText, refresh])

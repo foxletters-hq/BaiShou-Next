@@ -52,7 +52,7 @@
   overflow: hidden;
   flex-shrink: 0;
   padding: 0;
-  font-size: 17px;
+  font-size: var(--ui-fs-xl);
   font-weight: 500;
   font-family: inherit;
   transition:

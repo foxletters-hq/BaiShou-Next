@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { SetURLSearchParams } from 'react-router-dom'
 import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
+import { consumeWorkspaceInitMeta } from '../utils/workspace-init-meta.util'
 
 /**
  * 消费首页带来的 ?init= 首条消息：只发送一次，并在模型未就绪时等待。
@@ -15,7 +16,15 @@ export function useWorkspaceInitMessage(params: {
   currentProviderId: string | null | undefined
   currentModelId: string | null | undefined
   setShowModelSwitcher: (open: boolean) => void
-  onSend: (text: string) => void | Promise<void>
+  onSend: (
+    text: string,
+    attachments?: unknown[],
+    searchMode?: boolean,
+    meta?: {
+      displayText?: string
+      skillRefs?: Array<{ command: string; content: string }>
+    }
+  ) => void | Promise<void>
 }): void {
   const {
     searchParams,
@@ -56,7 +65,16 @@ export function useWorkspaceInitMessage(params: {
       },
       { replace: true }
     )
-    void onSendRef.current(raw)
+
+    const stash = consumeWorkspaceInitMeta(sessionId)
+    const meta =
+      stash?.displayText || stash?.skillRefs?.length
+        ? {
+            displayText: stash.displayText,
+            skillRefs: stash.skillRefs
+          }
+        : undefined
+    void onSendRef.current(raw, undefined, undefined, meta)
   }, [
     activeFolderRoot,
     currentModelId,
