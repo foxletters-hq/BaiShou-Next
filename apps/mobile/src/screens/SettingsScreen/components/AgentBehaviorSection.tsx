@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNativeTheme, useNativeToast, useDialog, Input, Button } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import type { AgentBehaviorConfig } from '@baishou/shared'
+import { formatReasoningEffortLabel } from '@baishou/shared'
 import { DEFAULT_AGENT_BEHAVIOR } from '@baishou/database'
 
 export const AgentBehaviorSection: React.FC = () => {
@@ -121,6 +122,36 @@ export const AgentBehaviorSection: React.FC = () => {
 
       <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
         <Text style={[styles.label, { color: colors.textPrimary }]}>
+          {t('agent.reasoning.effort_label', '思考强度')}
+        </Text>
+        <Text style={[styles.hint, { color: colors.textTertiary }]}>
+          {t(
+            'agent.reasoning.effort_hint',
+            '控制推理模型思考深度。Default 表示使用模型默认档位。'
+          )}
+        </Text>
+        <View style={styles.effortRow}>
+          {(
+            ['auto', 'none', 'low', 'medium', 'high', 'xhigh', 'max'] as const
+          ).map((opt) => {
+            const selected =
+              (config.reasoningEffortDefault ?? 'auto') === opt
+            return (
+              <Button
+                key={opt}
+                variant={selected ? 'primary' : 'secondary'}
+                onPress={() => updateConfig({ reasoningEffortDefault: opt })}
+                style={styles.effortChip}
+              >
+                {formatReasoningEffortLabel(opt)}
+              </Button>
+            )
+          })}
+        </View>
+      </View>
+
+      <View style={[styles.card, { backgroundColor: colors.bgSurfaceHighest }]}>
+        <Text style={[styles.label, { color: colors.textPrimary }]}>
           {t('settings.agent_persona')}
         </Text>
         <Text style={[styles.hint, { color: colors.textTertiary }]}>
@@ -202,5 +233,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 8
+  },
+  effortRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  effortChip: {
+    marginBottom: 4
   }
 })

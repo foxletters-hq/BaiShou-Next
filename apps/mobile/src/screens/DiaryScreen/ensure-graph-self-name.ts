@@ -1,53 +1,52 @@
 import {
+  applyGraphAwakenToProfile,
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   getUserProfileFromSettings,
-  isDefaultGraphSelfName,
-  isGraphSelfNameConfigured,
+  isGraphAwakenProfileComplete,
   saveUserProfileToSettings,
+  type UserGender,
+  type UserProfile,
   type UserProfileSettingsStore
 } from '@baishou/shared'
 
-type PromptFn = (
-  message: React.ReactNode,
-  defaultValue?: string,
-  title?: string,
-  isMultiline?: boolean
-) => Promise<string | null>
+export type GraphAwakenProfileFields = {
+  nickname: string
+  birthday: string
+  gender: UserGender
+}
 
-/**
- * 移动端抽取前确保自称已确认。
- * @returns 自称；取消或无效则 null
- */
+export async function loadMobileGraphAwakenSelfName(
+  settingsManager: Pick<UserProfileSettingsStore, 'get' | 'set'>
+): Promise<{
+  ready: boolean
+  selfName: string | null
+  profile: UserProfile
+  flag: boolean
+}> {
+  const flag =
+    (await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)) === true
+  const profile = await getUserProfileFromSettings(settingsManager)
+  if (isGraphAwakenProfileComplete(flag, profile)) {
+    return { ready: true, selfName: profile.nickname.trim(), profile, flag }
+  }
+  return { ready: false, selfName: null, profile, flag }
+}
+
+export async function saveMobileGraphAwakenProfile(
+  settingsManager: Pick<UserProfileSettingsStore, 'get' | 'set'>,
+  fields: GraphAwakenProfileFields
+): Promise<string> {
+  const current = await getUserProfileFromSettings(settingsManager)
+  const next = applyGraphAwakenToProfile(current, fields)
+  await saveUserProfileToSettings(settingsManager, next)
+  await settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, true)
+  return next.nickname.trim()
+}
+
+/** 抽取前检查唤醒状态（不再弹窗） */
 export async function ensureMobileGraphSelfName(opts: {
   settingsManager: Pick<UserProfileSettingsStore, 'get' | 'set'>
-  prompt: PromptFn
-  t: (key: string, fallback: string) => string
 }): Promise<string | null> {
-  const flag =
-    (await opts.settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)) === true
-  const profile = await getUserProfileFromSettings(opts.settingsManager)
-  if (isGraphSelfNameConfigured(flag, profile.nickname)) {
-    return profile.nickname.trim()
-  }
-
-  const initial = isDefaultGraphSelfName(profile.nickname) ? '' : profile.nickname.trim()
-  const input = await opts.prompt(
-    opts.t(
-      'graph.self_name_desc',
-      '图谱抽取需要知道日记里的「我」是谁。请填写你希望出现在关系图谱中的名字。'
-    ),
-    initial,
-    opts.t('graph.self_name_title', '设置你的自称')
-  )
-  const name = input?.trim() ?? ''
-  if (!name || isDefaultGraphSelfName(name)) {
-    return null
-  }
-
-  await saveUserProfileToSettings(opts.settingsManager, {
-    ...profile,
-    nickname: name
-  })
-  await opts.settingsManager.set(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY, true)
-  return name
+  const { ready, selfName } = await loadMobileGraphAwakenSelfName(opts.settingsManager)
+  return ready ? selfName : null
 }

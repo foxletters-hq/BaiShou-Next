@@ -153,9 +153,25 @@ export async function mobileSearchGraphNodes(
 export async function mobileLoadGlobalGraph(
   drizzleDb: AppDatabase,
   vaultId: string,
-  maxNodes = 120
+  maxNodes = 120,
+  monthRange?: { startMonth: string; endMonth: string }
 ) {
-  return new GraphRepository(drizzleDb).getGlobalGraph({ vaultId, maxNodes })
+  return new GraphRepository(drizzleDb).getGlobalGraph({ vaultId, maxNodes, monthRange })
+}
+
+/** Aligns with desktop `graph:get-node`. */
+export async function mobileGetNode(drizzleDb: AppDatabase, vaultId: string, id: string) {
+  return new GraphRepository(drizzleDb).getNodeById(id, vaultId)
+}
+
+/** Aligns with desktop `graph:get-view` → `GraphRepository.traverse`. */
+export async function mobileGetView(
+  drizzleDb: AppDatabase,
+  vaultId: string,
+  opts: { centerNodeId: string; depth?: 1 | 2 | 3 }
+) {
+  const depth = opts.depth === 3 ? 3 : opts.depth === 1 ? 1 : 2
+  return new GraphRepository(drizzleDb).traverse(vaultId, opts.centerNodeId, depth)
 }
 
 export async function mobileListPendingEdges(drizzleDb: AppDatabase, vaultId: string) {
@@ -507,6 +523,9 @@ export async function mobileSoftDeleteGraph(options: {
     embeddingProvider: options.embeddingProvider,
     embeddingModelId: options.embeddingModelId
   })
+  const repo = new GraphRepository(options.drizzleDb)
+  if (options.kind === 'node') await repo.softDeleteNode(options.id)
+  else await repo.softDeleteEdge(options.id)
 }
 
 export function createMobileGraphRag(drizzleDb: AppDatabase): GraphRagService {

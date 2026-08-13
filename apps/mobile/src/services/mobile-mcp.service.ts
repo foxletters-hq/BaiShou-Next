@@ -9,7 +9,8 @@ import { MobileMcpSdkBridge } from './mobile-mcp-sdk.bridge'
 
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
-  mcpPort: 31004
+  mcpPort: 31004,
+  mcpAuthEnabled: true
 }
 
 export class MobileMcpService {
@@ -93,7 +94,8 @@ export class MobileMcpService {
     await this.sdkBridge.closeAllSessions()
 
     const port = config.mcpPort || DEFAULT_MCP_CONFIG.mcpPort
-    const authToken = config.mcpAuthToken?.trim() || undefined
+    const authToken =
+      config.mcpAuthEnabled === false ? undefined : config.mcpAuthToken?.trim() || undefined
     const boundPort = BaishouServer.startMcpServer(port, authToken)
     if (boundPort <= 0) {
       throw new Error(`Failed to start MCP HTTP server on port ${port}`)
@@ -102,12 +104,18 @@ export class MobileMcpService {
     this.sdkBridge.setActivePort(boundPort)
 
     this.mcpListenerSub = BaishouServer.onMcpHttpRequest((event) => {
-      void this.handleMcpHttpRequest(event.requestId, event.method, event.headers, event.body)
+      void this.handleMcpHttpRequest(
+        event.requestId,
+        event.method,
+        event.headers,
+        event.body,
+        event.path
+      )
     })
 
     this.isRunning = true
     this.activePort = boundPort
-    logger.info(`[MobileMcpService] Server started on port ${boundPort}`)
+    logger.info(`[MobileMcpService] Server started on port ${boundPort} (/mcp + /sse)`)
   }
 
   private teardownListener(): void {
@@ -121,7 +129,8 @@ export class MobileMcpService {
     requestId: string,
     method: string,
     headers: Record<string, string>,
-    body: string
+    body: string,
+    path?: string
   ): Promise<void> {
     try {
       const config = await this.getConfig()
@@ -138,7 +147,7 @@ export class MobileMcpService {
         return
       }
 
-      await this.sdkBridge.handleHttpRequest(requestId, method, headers, body)
+      await this.sdkBridge.handleHttpRequest(requestId, method, headers, body, path ?? '/mcp')
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
       logger.error('[MobileMcpService] MCP request failed', e as Error)
