@@ -94,7 +94,7 @@ export const DiaryTemplateSettingsPane: React.FC = () => {
     >
       <SettingsPageChrome
         title={t('settings.diary_template_title', '日记格式')}
-        trailing={
+        titleAccessory={
           <HelpTooltip
             size={14}
             content={t(
@@ -241,39 +241,30 @@ export const DiaryTemplateSettingsPane: React.FC = () => {
             </section>
           </div>
 
-          <div className={pane.stackGroup}>
-            <div className={pane.sectionLabelRow}>
-              <h3 className={pane.sectionLabel}>{t('common.actions', '操作')}</h3>
-              <HelpTooltip
-                size={14}
-                content={t(
-                  'settings.diary_template_vars_hint',
-                  '可用变量：{time} 当前时间 (HH:mm)，{date} 日期 (yyyy-MM-dd)，{datetime} 完整日期时间 (yyyy-MM-dd HH:mm)'
-                )}
-              />
-            </div>
-            <section className={pane.cardSection}>
-              <div className={styles.sectionBody}>
-                <div className={styles.actions}>
-                  <button
-                    type="button"
-                    className={styles.btn}
-                    onClick={() => void handleReset()}
-                    disabled={!hydrated || saving}
-                  >
-                    {t('common.reset', '重置')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.btnPrimary}`}
-                    onClick={() => void handleSave()}
-                    disabled={!canSave}
-                  >
-                    {saving ? t('common.saving', '保存中…') : t('common.save', '保存')}
-                  </button>
-                </div>
-              </div>
-            </section>
+          <p className={styles.varsHint}>
+            {t(
+              'settings.diary_template_vars_hint',
+              '可用变量：{time} 当前时间 (HH:mm)，{date} 日期 (yyyy-MM-dd)，{datetime} 完整日期时间 (yyyy-MM-dd HH:mm)'
+            )}
+          </p>
+
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => void handleReset()}
+              disabled={!hydrated || saving}
+            >
+              {t('common.reset', '重置')}
+            </button>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={() => void handleSave()}
+              disabled={!canSave}
+            >
+              {saving ? t('common.saving', '保存中…') : t('common.save', '保存')}
+            </button>
           </div>
         </div>
       </SettingsPageChrome>

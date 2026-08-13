@@ -6,35 +6,36 @@ import {
   AgentGateEffect,
   AgentGateProfileId,
   applyCapabilityStateToConfig,
-  applyWorkspacePresetsToConfig,
+  applyWorkspaceSecurityModeToConfig,
   capabilityStateFromConfig,
   DEFAULT_AGENT_GATE_EXCLUSION_LIST,
   DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST,
+  DEFAULT_WORKSPACE_COMMAND_BLACKLIST,
   getGateCapabilitiesForScene,
-  inferWorkspacePresets,
-  markWorkspacePresetsCustom,
+  resolveWorkspaceSecurityMode,
   type AgentGateAllowlistEntry,
-  type AgentGateApprovalPreset,
   type AgentGateCapabilityEffect,
   type AgentGateCapabilityId,
   type AgentGateConfigScope,
   type AgentGateNotificationPrefs,
   type AgentGatePermissionRule,
-  type AgentGateScopePreset,
   type AgentToolScene,
+  type AgentWorkspaceSecurityMode,
   type BaishouAgentGateConfig,
   DEFAULT_AGENT_GATE_NOTIFICATION_PREFS
 } from '@baishou/shared'
 import { HelpTooltip, SegmentedControl, Select } from '@baishou/ui'
-import { ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
 import pane from './GeneralSettingsPane.module.css'
 import styles from './AgentGateSettings.module.css'
+import { WorkspaceGatePermissionsPanel } from './WorkspaceGatePermissionsPanel'
 
 export interface BaishouAgentGateSettingsSectionProps {
   scene?: AgentToolScene
   scope?: AgentGateConfigScope
+  onSubpageActiveChange?: (active: boolean) => void
 }
 
 function scopesMatch(a?: AgentGateConfigScope, b?: AgentGateConfigScope): boolean {
@@ -79,7 +80,7 @@ function capabilityHint(id: AgentGateCapabilityId, t: Translate): string {
     case 'edit':
       return t('settings.agent_gate_cap_edit_hint', '写入、补丁与重命名')
     case 'delete':
-      return t('settings.agent_gate_cap_delete_hint', '删除始终需要确认，不可改为允许或拒绝')
+      return t('settings.agent_gate_cap_delete_hint', '删除工作区内文件；可设为允许、询问或拒绝')
     case 'command':
       return t(
         'settings.agent_gate_cap_command_hint',
@@ -103,7 +104,8 @@ function capabilityHint(id: AgentGateCapabilityId, t: Translate): string {
 
 export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsSectionProps> = ({
   scene = 'companion',
-  scope = { kind: 'companion' }
+  scope = { kind: 'companion' },
+  onSubpageActiveChange
 }) => {
   const { t } = useTranslation()
   const [config, setConfig] = useState<BaishouAgentGateConfig | null>(null)
@@ -209,10 +211,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
       >,
       trustedExternalDirs: trustedExternalDirs ?? current.trustedExternalDirs
     }
-    let nextConfig = applyCapabilityStateToConfig(config, scene, nextState)
-    if (scene === 'workspace') {
-      nextConfig = markWorkspacePresetsCustom(nextConfig)
-    }
+    const nextConfig = applyCapabilityStateToConfig(config, scene, nextState)
     // 先本地更新，滑块立刻滑动；失败再回滚
     setConfig(nextConfig)
     setSaving(true)
@@ -227,26 +226,17 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
     }
   }
 
-  const saveWorkspacePresets = async (
-    scopePreset: AgentGateScopePreset,
-    approvalPreset: AgentGateApprovalPreset,
-    trustedDirs?: string[]
-  ) => {
+  const saveSecurityMode = async (mode: AgentWorkspaceSecurityMode) => {
     if (!config || scene !== 'workspace') return
     const prev = config
-    const currentTrusted = capabilityStateFromConfig(config, 'workspace').trustedExternalDirs
-    const nextConfig = applyWorkspacePresetsToConfig(
-      config,
-      { scopePreset, approvalPreset },
-      trustedDirs ?? currentTrusted
-    )
+    const nextConfig = applyWorkspaceSecurityModeToConfig(config, mode)
     setConfig(nextConfig)
     setSaving(true)
     try {
       const saved = await window.api.settings.setBaishouAgentGateConfig(nextConfig, scope)
       setConfig(saved)
     } catch (error) {
-      console.error('[BaishouAgentGateSettings] save presets failed:', error)
+      console.error('[BaishouAgentGateSettings] save security mode failed:', error)
       setConfig(prev)
     } finally {
       setSaving(false)
@@ -260,7 +250,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
           <div className={pane.sectionLabelRow}>
             <h3 className={pane.sectionLabel}>
               {scene === 'workspace'
-                ? t('settings.agent_gate_matrix_title', '能力权限')
+                ? t('settings.agent_security_mode', 'Agent 安全模式')
                 : t('settings.agent_gate_title', '伙伴操作门控')}
             </h3>
           </div>
@@ -276,62 +266,28 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
 
   if (!config) return null
 
+  if (scene === 'workspace') {
+    return (
+      <WorkspaceGatePermissionsPanel
+        config={config}
+        saving={saving}
+        notificationPrefs={notificationPrefs}
+        onSaveSecurityMode={saveSecurityMode}
+        onRemoveAllowlistEntry={removeAllowlistEntry}
+        onUpdateNotificationPrefs={updateNotificationPrefs}
+        onSubpageActiveChange={onSubpageActiveChange}
+      />
+    )
+  }
+
   const capabilityState = capabilityStateFromConfig(config, scene)
-  const inferredPresets =
-    scene === 'workspace'
-      ? inferWorkspacePresets(config)
-      : {
-          scopePreset: 'custom' as const,
-          approvalPreset: 'custom' as const,
-          trustedExternalDirs: [] as string[]
-        }
-  const isCustomPresets =
-    inferredPresets.scopePreset === 'custom' || inferredPresets.approvalPreset === 'custom'
-  const customMatrixExpanded = showCustomMatrix || isCustomPresets
-  const scopeSelectOptions = [
-    {
-      value: 'readonly',
-      label: t('settings.agent_gate_scope_readonly', '只读')
-    },
-    {
-      value: 'workspace_write',
-      label: t('settings.agent_gate_scope_workspace_write', '工作区内可写')
-    },
-    {
-      value: 'with_trusted_dirs',
-      label: t('settings.agent_gate_scope_trusted', '含可信目录')
-    },
-    ...(inferredPresets.scopePreset === 'custom'
-      ? [
-          {
-            value: 'custom',
-            label: t('settings.agent_gate_preset_custom', '自定义')
-          }
-        ]
-      : [])
-  ]
-  const approvalSelectOptions = [
-    {
-      value: 'always_ask',
-      label: t('settings.agent_gate_approval_always_ask', '每步都问')
-    },
-    {
-      value: 'dangerous_only',
-      label: t('settings.agent_gate_approval_dangerous', '仅危险操作问')
-    },
-    {
-      value: 'never_ask',
-      label: t('settings.agent_gate_approval_never', '不问（自动接受）')
-    },
-    ...(inferredPresets.approvalPreset === 'custom'
-      ? [
-          {
-            value: 'custom',
-            label: t('settings.agent_gate_preset_custom', '自定义')
-          }
-        ]
-      : [])
-  ]
+  const securityMode =
+    scene === 'workspace' ? resolveWorkspaceSecurityMode(config) : 'auto_review'
+  const customMatrixExpanded = showCustomMatrix
+  const commandBlacklist =
+    config.commandBlacklist && config.commandBlacklist.length > 0
+      ? config.commandBlacklist
+      : [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST]
   const defaultExclusion =
     scene === 'workspace'
       ? [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST]
@@ -413,29 +369,11 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
       return
     }
     const nextDirs = [...capabilityState.trustedExternalDirs, dir]
-    const save =
-      scene === 'workspace' && !isCustomPresets
-        ? saveWorkspacePresets(
-            inferredPresets.scopePreset,
-            inferredPresets.approvalPreset === 'custom'
-              ? 'always_ask'
-              : inferredPresets.approvalPreset,
-            nextDirs
-          )
-        : saveCapabilityState({}, nextDirs)
-    void save.then(() => setTrustedDirDraft(''))
+    void saveCapabilityState({}, nextDirs).then(() => setTrustedDirDraft(''))
   }
 
   const removeTrustedDir = (dir: string) => {
     const nextDirs = capabilityState.trustedExternalDirs.filter((item) => item !== dir)
-    if (scene === 'workspace' && !isCustomPresets) {
-      void saveWorkspacePresets(
-        inferredPresets.scopePreset,
-        inferredPresets.approvalPreset === 'custom' ? 'always_ask' : inferredPresets.approvalPreset,
-        nextDirs
-      )
-      return
-    }
     void saveCapabilityState({}, nextDirs)
   }
 
@@ -460,7 +398,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
               scene === 'workspace'
                 ? t(
                     'settings.workspace_gate_desc',
-                    '仅约束当前工作区内模型调用的工具；你本人在工作台中的编辑、删除与 Git 操作不受影响。'
+                    '全局统一约束工作台 Agent 的工具调用；你本人在工作台中的编辑、删除与 Git 操作不受影响。'
                   )
                 : t(
                     'settings.agent_gate_desc',
@@ -473,171 +411,115 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
           <div className={`${pane.cardBody} ${styles.paddedBody}`}>
             {scene === 'workspace' ? (
               <>
-                <div className={styles.matrixRow}>
-                  <div className={styles.matrixText}>
-                    <div className={styles.matrixTitle}>
-                      {t('settings.agent_gate_scope_preset', '活动范围')}
-                    </div>
-                    <div className={styles.matrixHint}>
-                      {t('settings.agent_gate_scope_preset_hint', 'AI 在这个工作区能碰到多大范围')}
-                    </div>
+                <div className={styles.subBlock}>
+                  <div className={styles.sectionLabel}>
+                    {t('settings.agent_security_mode', 'Agent 安全模式')}
                   </div>
-                  <Select
-                    className={styles.presetSelect}
-                    size="small"
-                    disabled={saving}
-                    value={inferredPresets.scopePreset}
-                    options={scopeSelectOptions}
-                    onChange={(e) => {
-                      const scopePreset = e.target.value as AgentGateScopePreset
-                      if (scopePreset === 'custom') return
-                      if (inferredPresets.approvalPreset === 'custom') {
-                        void saveWorkspacePresets(scopePreset, 'always_ask')
-                        return
+                  <p className={styles.emptyHint}>
+                    {t(
+                      'settings.agent_security_mode_hint',
+                      '全局统一，对所有工作区生效。三档都带黑名单；危险命令（如 rm -rf）默认需确认。'
+                    )}
+                  </p>
+                  {(
+                    [
+                      {
+                        value: 'full_access' as const,
+                        title: t('settings.agent_security_full_access', '完全访问'),
+                        hint: t(
+                          'settings.agent_security_full_access_hint',
+                          '尽量自动执行；黑名单与危险命令仍会询问。'
+                        )
+                      },
+                      {
+                        value: 'auto_review' as const,
+                        title: t('settings.agent_security_auto_review', '自动审核'),
+                        hint: t(
+                          'settings.agent_security_auto_review_hint',
+                          '常规编辑直接通过；命令先经模型快速审核，黑名单与审核失败仍会问你。'
+                        )
+                      },
+                      {
+                        value: 'allow_list' as const,
+                        title: t('settings.agent_security_allow_list', '白名单'),
+                        hint: t(
+                          'settings.agent_security_allow_list_hint',
+                          '默认全部询问；只有你点过「始终允许」的操作才会自动放行。'
+                        )
                       }
-                      void saveWorkspacePresets(scopePreset, inferredPresets.approvalPreset)
-                    }}
-                  />
+                    ] as const
+                  ).map((mode) => (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      className="settings-list-tile"
+                      disabled={saving}
+                      aria-pressed={securityMode === mode.value}
+                      onClick={() => void saveSecurityMode(mode.value)}
+                      style={
+                        securityMode === mode.value
+                          ? { background: 'var(--bg-surface-high)' }
+                          : undefined
+                      }
+                    >
+                      <div className="settings-list-tile-content">
+                        <span className="settings-list-tile-title">{mode.title}</span>
+                        <span className="settings-list-tile-subtitle">{mode.hint}</span>
+                      </div>
+                      {securityMode === mode.value ? (
+                        <Check size={16} aria-hidden style={{ flexShrink: 0, opacity: 0.85 }} />
+                      ) : null}
+                    </button>
+                  ))}
                 </div>
                 <div className={pane.divider} />
-                <div className={styles.matrixRow}>
-                  <div className={styles.matrixText}>
-                    <div className={styles.matrixTitle}>
-                      {t('settings.agent_gate_approval_preset', '审批时机')}
-                    </div>
-                    <div className={styles.matrixHint}>
-                      {t('settings.agent_gate_approval_preset_hint', '什么时候需要你确认')}
-                    </div>
+                <div className={styles.subBlock}>
+                  <div className={styles.sectionLabel}>
+                    {t('settings.agent_gate_command_blacklist_title', '命令黑名单')}
                   </div>
-                  <Select
-                    className={styles.presetSelect}
-                    size="small"
-                    disabled={saving || inferredPresets.scopePreset === 'readonly'}
-                    value={
-                      inferredPresets.scopePreset === 'readonly'
-                        ? 'always_ask'
-                        : inferredPresets.approvalPreset
-                    }
-                    options={approvalSelectOptions}
-                    onChange={(e) => {
-                      const approvalPreset = e.target.value as AgentGateApprovalPreset
-                      if (approvalPreset === 'custom') return
-                      const scopePreset =
-                        inferredPresets.scopePreset === 'custom'
-                          ? 'workspace_write'
-                          : inferredPresets.scopePreset
-                      void saveWorkspacePresets(scopePreset, approvalPreset)
-                    }}
-                  />
-                </div>
-                {inferredPresets.scopePreset === 'with_trusted_dirs' ||
-                (isCustomPresets &&
-                  (capabilityState.effects.external === AgentGateEffect.Allow ||
-                    capabilityState.trustedExternalDirs.length > 0)) ? (
-                  <>
-                    <div className={pane.divider} />
-                    <div className={styles.subBlock}>
-                      <div className={styles.sectionLabel}>
-                        {t('settings.agent_gate_trusted_dirs_title', '可信区外目录')}
-                      </div>
-                      <p className={styles.emptyHint}>
-                        {t(
-                          'settings.agent_gate_trusted_dirs_hint',
-                          '匹配这些目录的区外路径可通过区外门，再按读取/编辑等能力决定；未匹配仍询问或拒绝。'
-                        )}
-                      </p>
-                      {capabilityState.trustedExternalDirs.length === 0 ? (
-                        <p className={styles.emptyHint}>
-                          {t('settings.agent_gate_trusted_dirs_empty', '暂无可信目录')}
-                        </p>
-                      ) : (
-                        capabilityState.trustedExternalDirs.map((dir) => (
-                          <div key={dir} className="settings-list-tile settings-list-tile-noclick">
-                            <div className="settings-list-tile-content">
-                              <span className="settings-list-tile-title settings-monospace">
-                                {dir}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="settings-text-btn"
-                              disabled={saving}
-                              onClick={() => removeTrustedDir(dir)}
-                            >
-                              {t('common.remove', '移除')}
-                            </button>
-                          </div>
-                        ))
-                      )}
-                      <div className={styles.formRow}>
-                        <input
-                          className={styles.textInput}
-                          value={trustedDirDraft}
-                          onChange={(e) => setTrustedDirDraft(e.target.value)}
-                          placeholder={t(
-                            'settings.agent_gate_trusted_dirs_placeholder',
-                            '例如 D:/Notes 或 ~/projects/personal/**'
-                          )}
-                          disabled={saving}
-                        />
-                        <button
-                          type="button"
-                          className="settings-text-btn"
-                          disabled={saving}
-                          onClick={addTrustedDir}
-                        >
-                          {t('common.add', '添加')}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : null}
-                <div className={pane.divider} />
-                {isCustomPresets ? (
-                  <div className={styles.disclosureStatic}>
-                    <div className={styles.matrixText}>
-                      <div className={styles.matrixTitle}>
-                        {t('settings.agent_gate_custom_title', '自定义规则')}
-                        <span className={styles.inlineBadge}>
-                          {t('settings.agent_gate_preset_custom', '自定义')}
+                  <p className={styles.emptyHint}>
+                    {t(
+                      'settings.agent_gate_command_blacklist_hint',
+                      '命中的 shell 命令强制询问，且不可「始终允许」。默认包含 rm -rf 等危险模式。'
+                    )}
+                  </p>
+                  {commandBlacklist.map((pattern) => (
+                    <div key={pattern} className="settings-list-tile settings-list-tile-noclick">
+                      <div className="settings-list-tile-content">
+                        <span className="settings-list-tile-title settings-monospace">
+                          {pattern}
                         </span>
                       </div>
-                      <div className={styles.matrixHint}>
-                        {t(
-                          'settings.agent_gate_custom_active_hint',
-                          '细项已改动，预设显示为自定义；选回上方预设将覆盖这些规则'
-                        )}
-                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="settings-list-tile"
-                    aria-expanded={customMatrixExpanded}
-                    onClick={() => setShowCustomMatrix((v) => !v)}
-                  >
-                    <div className="settings-list-tile-content">
-                      <span className="settings-list-tile-title">
-                        {t('settings.agent_gate_custom_title', '自定义规则')}
-                      </span>
-                      <span className="settings-list-tile-subtitle">
-                        {t(
-                          'settings.agent_gate_custom_hint',
-                          '按能力调整允许 / 询问 / 拒绝；改动后上方预设变为自定义'
-                        )}
-                      </span>
-                    </div>
-                    <span
-                      className={`settings-expansion-toggle ${
-                        customMatrixExpanded ? 'is-open' : ''
-                      }`}
-                      aria-hidden
-                    >
-                      <ChevronDown className="settings-expansion-arrow" size={16} />
+                  ))}
+                </div>
+                <div className={pane.divider} />
+                <button
+                  type="button"
+                  className="settings-list-tile"
+                  aria-expanded={customMatrixExpanded}
+                  onClick={() => setShowCustomMatrix((v) => !v)}
+                >
+                  <div className="settings-list-tile-content">
+                    <span className="settings-list-tile-title">
+                      {t('settings.agent_gate_custom_title', '自定义规则')}
                     </span>
-                  </button>
-                )}
+                    <span className="settings-list-tile-subtitle">
+                      {t(
+                        'settings.agent_gate_custom_hint',
+                        '按能力微调允许 / 询问 / 拒绝；切换上方安全模式会覆盖这些规则'
+                      )}
+                    </span>
+                  </div>
+                  <span
+                    className={`settings-expansion-toggle ${
+                      customMatrixExpanded ? 'is-open' : ''
+                    }`}
+                    aria-hidden
+                  >
+                    <ChevronDown className="settings-expansion-arrow" size={16} />
+                  </span>
+                </button>
               </>
             ) : null}
 
@@ -678,7 +560,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                         />
                       </div>
 
-                      {cap.id === 'external' && scene === 'workspace' && isCustomPresets ? (
+                      {cap.id === 'external' && scene === 'workspace' ? (
                         <div className={styles.subBlock}>
                           <div className={styles.sectionLabel}>
                             {t('settings.agent_gate_trusted_dirs_title', '可信区外目录')}

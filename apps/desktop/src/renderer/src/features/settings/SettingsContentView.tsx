@@ -23,6 +23,7 @@ import { GitSettingsPane } from './components/GitSettingsPane'
 import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
 import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
 import { LegacyMigrationPane } from './components/LegacyMigrationPane'
+import { LatteSettingsPane } from './components/LatteSettingsPane'
 
 const FULL_HEIGHT_SEGMENTS = new Set([
   'general',
@@ -43,7 +44,8 @@ const FULL_HEIGHT_SEGMENTS = new Set([
   'attachments',
   'diary-template',
   'diary-ai-writing',
-  'legacy-migration'
+  'legacy-migration',
+  'latte'
 ])
 
 interface SettingsContentViewProps {
@@ -199,6 +201,8 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
         return <AiGlobalModelsPane settings={settings} />
       case 'assistants':
         return <AssistantPane settings={settings} />
+      case 'latte':
+        return <LatteSettingsPane />
       case 'rag':
         return <RagSettingsPane settings={settings} />
       case 'web-search':

@@ -190,9 +190,11 @@ export const GeneralSettingsPane: React.FC<{ settings: any }> = ({ settings }) =
                     themeMode={settings.themeMode}
                     seedColor={settings.themeColor || '#5BA8F5'}
                     language={settings.locale}
+                    fontSizeLevel={settings.fontSizeLevel}
                     onThemeModeChange={settings.setThemeMode}
                     onSeedColorChange={settings.setThemeColor}
                     onLanguageChange={settings.setLocale}
+                    onFontSizeLevelChange={settings.setFontSizeLevel}
                   />
                   <div className={styles.divider} />
                   <ChatBackgroundSettingsCard
