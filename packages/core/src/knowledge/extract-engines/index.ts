@@ -4,6 +4,7 @@ export * from './simple.engine'
 export * from './ocr.engine'
 export * from './vision.engine'
 export * from './simple-page-cache'
+export * from './pool.util'
 
 import { simpleExtractEngine } from './simple.engine'
 import { ocrExtractEngine } from './ocr.engine'

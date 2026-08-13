@@ -2,6 +2,7 @@ import { analyzePageTexts, extractPdfPageTexts, MIN_TEXT_LAYER_CHARS } from '../
 import { md5Hex } from '../../fs/md5'
 import { getPdfPageBitmapRenderer, getVisionPageRecognizer, resolvePdfNumPages } from './adapters'
 import { getRegisteredSimplePageTexts, rememberSimplePageTexts } from './simple-page-cache'
+import { clampOcrConcurrency, runPool, yieldEventLoop } from './pool.util'
 import type { ExtractEngine, ExtractEngineContext, EngineExtractResult } from './types'
 
 function resolveMissingPageNumbers(
@@ -25,6 +26,7 @@ function resolveMissingPageNumbers(
 
 /**
  * vision：复用已配置的多模态模型逐页识别（平台注入 recognizer）。
+ * 支持 1–3 页并发；渲染由平台侧串行化。
  */
 export const visionExtractEngine: ExtractEngine = {
   id: 'vision',
@@ -62,29 +64,45 @@ export const visionExtractEngine: ExtractEngine = {
     if (existing.length > pageCount) existing = existing.slice(0, pageCount)
 
     const pagesToOcr = resolveMissingPageNumbers(existing, pageCount, ctx.pageNumbers)
-    const bitmaps = await renderer({
-      absolutePath: ctx.absolutePath,
-      pageNumbers: pagesToOcr.length ? pagesToOcr : undefined,
-      dpi: ctx.dpi ?? 200
-    })
+    if (pagesToOcr.length === 0) {
+      return { ...analyzePageTexts(existing), extractEngine: 'vision', processedPages: [] }
+    }
 
-    if (!bitmaps.length) {
+    const concurrency = clampOcrConcurrency(ctx.concurrency)
+    const merged = [...existing]
+    const processed: number[] = []
+    let completed = 0
+    ctx.onProgress?.({ page: 0, total: pagesToOcr.length })
+
+    await runPool(
+      pagesToOcr,
+      concurrency,
+      async (pageNum) => {
+        if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
+        const bitmaps = await renderer({
+          absolutePath: ctx.absolutePath,
+          pageNumbers: [pageNum],
+          dpi: ctx.dpi ?? 200
+        })
+        if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
+        const bmp = bitmaps[0]
+        if (!bmp) return
+        const text = (await recognizer({ pngBase64: bmp.pngBase64, page: bmp.page })).trim()
+        while (merged.length < bmp.page) merged.push('')
+        merged[bmp.page - 1] = text
+        processed.push(bmp.page)
+        completed += 1
+        ctx.onProgress?.({ page: completed, total: pagesToOcr.length })
+        await yieldEventLoop()
+      },
+      ctx.signal
+    )
+
+    if (!processed.length) {
       throw new Error('视觉 OCR：未能渲染任何页')
     }
 
-    const maxPage = Math.max(...bitmaps.map((b) => b.page), pageCount)
-    const merged = [...existing]
-    while (merged.length < maxPage) merged.push('')
-
-    const processed: number[] = []
-    for (let i = 0; i < bitmaps.length; i++) {
-      const bmp = bitmaps[i]!
-      ctx.onProgress?.({ page: i + 1, total: bitmaps.length })
-      const text = (await recognizer({ pngBase64: bmp.pngBase64, page: bmp.page })).trim()
-      merged[bmp.page - 1] = text
-      processed.push(bmp.page)
-    }
-
+    processed.sort((a, b) => a - b)
     rememberSimplePageTexts(ctx.absolutePath, merged.slice(0, pageCount))
     return {
       ...analyzePageTexts(merged.slice(0, pageCount)),

@@ -170,4 +170,85 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     expect(text1).toBe('content-a')
     expect(text2).toBe('content-b')
   })
+
+  it('取消普通导入 → failed，取消 OCR 排队 → needs_ocr', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '取消本' })
+
+    const { sourceId: textId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '普通导入待提取'
+    })
+    const cancelledImport = await svc.cancelExtract(textId)
+    expect(cancelledImport.status).toBe('failed')
+    const textSource = await knowledgeRepo.getSource(textId)
+    expect(textSource?.status).toBe('failed')
+    expect(textSource?.errorMessage).toBe('cancelled')
+
+    const { sourceId: ocrId } = await svc.importSource({
+      notebookId,
+      title: 'ocr-target',
+      kind: 'text',
+      textContent: '占位'
+    })
+    await knowledgeRepo.updateSourceStatus(ocrId, 'needs_ocr', {
+      pageCount: 3,
+      textPageCount: 0,
+      extractEngine: 'simple',
+      errorMessage: null
+    })
+    await svc.ocrMissingPages(ocrId, { engine: 'ocr' })
+    const queued = await knowledgeRepo.getSource(ocrId)
+    expect(queued?.status).toBe('pending')
+    expect(queued?.extractEngine).toBe('ocr')
+
+    const cancelledOcr = await svc.cancelExtract(ocrId)
+    expect(cancelledOcr.status).toBe('needs_ocr')
+    const after = await knowledgeRepo.getSource(ocrId)
+    expect(after?.status).toBe('needs_ocr')
+  })
+
+  it('recoverStale 跳过 live guard 保护的 extract', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const {
+      markExtractJobLive,
+      unmarkExtractJobLive
+    } = await import('../knowledge-ingest.service')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '恢复本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'stale',
+      kind: 'text',
+      textContent: 'x'
+    })
+    await knowledgeRepo.updateSourceStatus(sourceId, 'extracting')
+    await knowledgeRepo.enqueueIngestJob({
+      notebookId,
+      sourceId,
+      stage: 'extract',
+      vaultId: 'vault_test'
+    })
+    const claimed = await knowledgeRepo.claimIngestJobs(1)
+    expect(claimed).toHaveLength(1)
+
+    markExtractJobLive(sourceId)
+    try {
+      const protectedRecover = await svc.recoverStaleIngestState()
+      expect(protectedRecover.droppedExtractJobs).toBe(0)
+      expect(protectedRecover.resetSources).toBe(0)
+      const still = await knowledgeRepo.getSource(sourceId)
+      expect(still?.status).toBe('extracting')
+    } finally {
+      unmarkExtractJobLive(sourceId)
+    }
+
+    const cleared = await svc.recoverStaleIngestState()
+    expect(cleared.droppedExtractJobs + cleared.resetSources).toBeGreaterThan(0)
+    const after = await knowledgeRepo.getSource(sourceId)
+    expect(after?.status).toBe('failed')
+  })
 })

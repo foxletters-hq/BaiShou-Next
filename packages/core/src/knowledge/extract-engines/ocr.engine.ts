@@ -2,6 +2,7 @@ import { analyzePageTexts, extractPdfPageTexts, MIN_TEXT_LAYER_CHARS } from '../
 import { md5Hex } from '../../fs/md5'
 import { getPdfPageBitmapRenderer, probeTesseractJs, resolvePdfNumPages } from './adapters'
 import { getRegisteredSimplePageTexts, rememberSimplePageTexts } from './simple-page-cache'
+import { clampOcrConcurrency, runPool, yieldEventLoop } from './pool.util'
 import type { ExtractEngine, ExtractEngineContext, EngineExtractResult } from './types'
 
 type TesseractWorker = {
@@ -55,7 +56,7 @@ function resolveMissingPageNumbers(
 
 /**
  * ocr：tesseract.js（动态 import）+ 平台注入的 PDF 位图渲染。
- * partial / needs_ocr 可只处理缺失页。
+ * 支持 1–3 页并发；每并发槽位独立 worker，渲染由平台侧串行化。
  */
 export const ocrExtractEngine: ExtractEngine = {
   id: 'ocr',
@@ -101,39 +102,60 @@ export const ocrExtractEngine: ExtractEngine = {
 
     const dpi = ctx.dpi ?? 250
     const lang = ctx.language || 'chi_sim+eng'
-    const bitmaps = await renderer({
-      absolutePath: ctx.absolutePath,
-      pageNumbers: pagesToOcr,
-      dpi
-    })
+    const concurrency = clampOcrConcurrency(ctx.concurrency)
 
-    let worker: TesseractWorker | null = null
+    const workers: TesseractWorker[] = []
     const merged = [...existing]
     const processed: number[] = []
+    let completed = 0
+    ctx.onProgress?.({ page: 0, total: pagesToOcr.length })
 
     try {
-      worker = await createTesseractWorker(lang)
-      for (let i = 0; i < bitmaps.length; i++) {
-        const bmp = bitmaps[i]!
-        ctx.onProgress?.({ page: i + 1, total: bitmaps.length })
-        const imageDataUrl = `data:image/png;base64,${bmp.pngBase64}`
-        const { data } = await worker.recognize(imageDataUrl)
-        const text = (data.text || '').trim()
-        const idx = bmp.page - 1
-        while (merged.length <= idx) merged.push('')
-        merged[idx] = text
-        processed.push(bmp.page)
+      for (let i = 0; i < concurrency; i++) {
+        workers.push(await createTesseractWorker(lang))
       }
+
+      await runPool(
+        pagesToOcr,
+        concurrency,
+        async (pageNum, workerIndex) => {
+          if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
+          const worker = workers[workerIndex]
+          if (!worker) return
+          const bitmaps = await renderer({
+            absolutePath: ctx.absolutePath,
+            pageNumbers: [pageNum],
+            dpi
+          })
+          if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
+          const bmp = bitmaps[0]
+          if (!bmp) return
+          const imageDataUrl = `data:image/png;base64,${bmp.pngBase64}`
+          const { data } = await worker.recognize(imageDataUrl)
+          const text = (data.text || '').trim()
+          const idx = bmp.page - 1
+          while (merged.length <= idx) merged.push('')
+          merged[idx] = text
+          processed.push(bmp.page)
+          completed += 1
+          ctx.onProgress?.({ page: completed, total: pagesToOcr.length })
+          await yieldEventLoop()
+        },
+        ctx.signal
+      )
     } finally {
-      if (worker) {
-        try {
-          await worker.terminate()
-        } catch {
-          /* ignore */
-        }
-      }
+      await Promise.all(
+        workers.map(async (worker) => {
+          try {
+            await worker.terminate()
+          } catch {
+            /* ignore */
+          }
+        })
+      )
     }
 
+    processed.sort((a, b) => a - b)
     rememberSimplePageTexts(ctx.absolutePath, merged)
     return {
       ...analyzePageTexts(merged),

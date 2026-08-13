@@ -66,4 +66,13 @@ describe('NotebookRawManager binary safety', () => {
     const roundtrip = await fs.readFile(dest)
     expect(Buffer.compare(Buffer.from(bytes), roundtrip)).toBe(0)
   })
+
+  it('absolutePath 拒绝跳出 Notebooks 根目录', async () => {
+    await expect(manager.absolutePath('../outside.txt')).rejects.toThrow(/escapes notebooks root/)
+    await expect(manager.absolutePath('nb1/../../outside.txt')).rejects.toThrow(
+      /escapes notebooks root/
+    )
+    const ok = await manager.absolutePath('nb1/sources/a.pdf')
+    expect(ok.replace(/\\/g, '/')).toContain('/Notebooks/nb1/sources/a.pdf')
+  })
 })
