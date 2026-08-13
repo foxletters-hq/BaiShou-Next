@@ -5,6 +5,7 @@
   overflow: hidden;
   background: transparent;
   color: var(--text-primary);
+  font-family: inherit;
 }
 
 .editorLayout {

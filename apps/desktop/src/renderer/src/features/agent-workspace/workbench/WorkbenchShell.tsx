@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentWorkspaceEntry,
   AgentWorkspaceSessionListItem,
   WorkspaceChangeEntry
 } from '@baishou/shared'
-import { WorkbenchRail } from './WorkbenchRail'
 import { WorkbenchSidePane } from './WorkbenchSidePane'
 import { WorkbenchMainPane, type WorkbenchMainPaneHandle } from './WorkbenchMainPane'
 import { WorkbenchAgentPanel, type WorkbenchAgentPanelProps } from './WorkbenchAgentPanel'
@@ -23,15 +22,11 @@ export interface WorkbenchShellProps {
   folderRoot: string | null
   layoutScopeKey: string | null
   workspace: AgentWorkspaceEntry | null
-  workspaces: AgentWorkspaceEntry[]
-  activeWorkspaceId?: string | null
   sessions: AgentWorkspaceSessionListItem[]
   loadingSessions?: boolean
   activeSessionId?: string
   changes: WorkspaceChangeEntry[]
   onOpenFolder: () => void
-  onSelectWorkspace: (workspaceId: string) => void
-  onChangeWorkspaceAvatar?: (workspaceId: string) => void
   onBackToHome: () => void
   onNewSession: () => void
   onSelectSession: (sessionId: string) => void
@@ -45,6 +40,7 @@ export interface WorkbenchShellProps {
     | 'loadingSessions'
     | 'changes'
     | 'onSelectChange'
+    | 'onReviewAll'
     | 'sessionsViewActive'
     | 'onToggleSessionsView'
     | 'onNewSession'
@@ -58,15 +54,11 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   folderRoot,
   layoutScopeKey,
   workspace,
-  workspaces,
-  activeWorkspaceId,
   sessions,
   loadingSessions,
   activeSessionId: _activeSessionId,
   changes,
   onOpenFolder,
-  onSelectWorkspace,
-  onChangeWorkspaceAvatar,
   onBackToHome,
   onNewSession,
   onSelectSession,
@@ -85,8 +77,9 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   } = useWorkbenchLayoutState(layoutScopeKey)
   const mainPaneRef = useRef<WorkbenchMainPaneHandle>(null)
 
-  const [liveSideWidth, setLiveSideWidth] = useState(layout.sidePaneWidth)
-  const [liveAgentWidth, setLiveAgentWidth] = useState(layout.agentPanelWidth)
+  /** 拖拽中临时宽度；非拖拽时直接用 layout，避免持久化宽度晚一拍闪烁 */
+  const [dragSideWidth, setDragSideWidth] = useState<number | null>(null)
+  const [dragAgentWidth, setDragAgentWidth] = useState<number | null>(null)
   const [agentSessionsOpen, setAgentSessionsOpen] = useState(false)
   const [gitChangesCount, setGitChangesCount] = useState(0)
   const [gitBranchMeta, setGitBranchMeta] = useState<{
@@ -94,18 +87,13 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
     ahead: number
     behind: number
   }>({ ahead: 0, behind: 0 })
+
+  const liveSideWidth = dragSideWidth ?? layout.sidePaneWidth
+  const liveAgentWidth = dragAgentWidth ?? layout.agentPanelWidth
   const sideWidthRef = useRef(liveSideWidth)
   const agentWidthRef = useRef(liveAgentWidth)
-
-  useEffect(() => {
-    setLiveSideWidth(layout.sidePaneWidth)
-    sideWidthRef.current = layout.sidePaneWidth
-  }, [layout.sidePaneWidth])
-
-  useEffect(() => {
-    setLiveAgentWidth(layout.agentPanelWidth)
-    agentWidthRef.current = layout.agentPanelWidth
-  }, [layout.agentPanelWidth])
+  sideWidthRef.current = liveSideWidth
+  agentWidthRef.current = liveAgentWidth
 
   const handleOpenFile = (relativePath: string, options?: { line?: number; column?: number }) => {
     mainPaneRef.current?.openFile(relativePath, options)
@@ -113,6 +101,10 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
 
   const handleSelectChange = (change: WorkspaceChangeEntry) => {
     mainPaneRef.current?.openDiff(change)
+  }
+
+  const handleReviewAll = (reviewChanges: WorkspaceChangeEntry[]) => {
+    mainPaneRef.current?.openDiffs(reviewChanges)
   }
 
   const handleOpenGitDiff = (
@@ -131,18 +123,16 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
 
   const commitSideWidth = useCallback(
     (width: number) => {
-      setLiveSideWidth(width)
-      sideWidthRef.current = width
       setSidePaneWidth(width)
+      setDragSideWidth(null)
     },
     [setSidePaneWidth]
   )
 
   const commitAgentWidth = useCallback(
     (width: number) => {
-      setLiveAgentWidth(width)
-      agentWidthRef.current = width
       setAgentPanelWidth(width)
+      setDragAgentWidth(null)
     },
     [setAgentPanelWidth]
   )
@@ -152,7 +142,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
     max: MAX_SIDE_WIDTH,
     getWidth: () => sideWidthRef.current,
     onResize: (width) => {
-      setLiveSideWidth(width)
+      setDragSideWidth(width)
       sideWidthRef.current = width
     },
     onCommit: commitSideWidth
@@ -164,7 +154,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
     invertDelta: true,
     getWidth: () => agentWidthRef.current,
     onResize: (width) => {
-      setLiveAgentWidth(width)
+      setDragAgentWidth(width)
       agentWidthRef.current = width
     },
     onCommit: commitAgentWidth
@@ -192,14 +182,6 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
 
   return (
     <div className={styles.shell}>
-      <WorkbenchRail
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        onSelectWorkspace={onSelectWorkspace}
-        onOpenFolder={onOpenFolder}
-        onChangeAvatar={onChangeWorkspaceAvatar}
-        onBackToHome={onBackToHome}
-      />
       <div className={styles.editorLayout}>
         {showSidePane ? (
           <>
@@ -213,6 +195,9 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               width={liveSideWidth}
               changesCount={gitChangesCount}
               onGitChangesCountChange={setGitChangesCount}
+              onBackToHome={onBackToHome}
+              workspaceId={workspace?.id}
+              workspaceName={workspace?.displayName}
             />
             <WorkbenchResizeSash
               ariaLabel={t('workbench.resize_side_pane', '调整左侧边栏宽度')}
@@ -252,6 +237,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               loadingSessions={loadingSessions}
               changes={changes}
               onSelectChange={handleSelectChange}
+              onReviewAll={handleReviewAll}
               sessionsViewActive={agentSessionsOpen}
               onToggleSessionsView={handleToggleSessionsView}
               onNewSession={handleAgentNewSession}

@@ -83,11 +83,6 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   }, [defaultTitle, query, sessions, workspace])
 
-  const activeSession = useMemo(
-    () => workspaceSessions.find((session) => session.sessionId === activeSessionId) ?? null,
-    [activeSessionId, workspaceSessions]
-  )
-
   const groupedSessions = useMemo(() => groupSessionsByTime(workspaceSessions), [workspaceSessions])
 
   const startEditing = useCallback(
@@ -139,15 +134,6 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
           />
         </div>
       </div>
-
-      {activeSession ? (
-        <div className={styles.currentBlock}>
-          <span className={styles.currentLabel}>{t('workbench.current_session', '当前会话')}</span>
-          <span className={styles.currentTitle}>
-            {sessionDisplayTitle(activeSession, defaultTitle)}
-          </span>
-        </div>
-      ) : null}
 
       <div className={styles.list}>
         {loadingSessions && workspaceSessions.length === 0 ? (

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
 import { basenameFromPath } from '@baishou/ui'
 
-export type WorkbenchTabKind = 'welcome' | 'markdown' | 'text' | 'diff' | 'git-diff'
+export type WorkbenchTabKind = 'markdown' | 'text' | 'diff' | 'git-diff'
 
 export interface WorkbenchTab {
   id: string
@@ -44,14 +44,16 @@ function nextTabId(): string {
   return `tab-${Date.now()}-${tabCounter}`
 }
 
+function diffTabId(changeId: string): string {
+  return `diff:${changeId}`
+}
+
 export function useWorkbenchTabs(folderRoot: string | null) {
-  const [tabs, setTabs] = useState<WorkbenchTab[]>([
-    { id: 'welcome', kind: 'welcome', title: 'Welcome' }
-  ])
-  const [activeTabId, setActiveTabId] = useState<string>('welcome')
+  const [tabs, setTabs] = useState<WorkbenchTab[]>([])
+  const [activeTabId, setActiveTabId] = useState<string | null>(null)
 
   const activeTab = useMemo(
-    () => tabs.find((tab) => tab.id === activeTabId) ?? tabs[0],
+    () => (activeTabId ? tabs.find((tab) => tab.id === activeTabId) : undefined) ?? tabs[0],
     [activeTabId, tabs]
   )
 
@@ -86,7 +88,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
         scrollToColumn: options?.column
       }
 
-      setTabs((prev) => [...prev.filter((tab) => tab.kind !== 'welcome'), placeholder])
+      setTabs((prev) => [...prev, placeholder])
       setActiveTabId(id)
 
       try {
@@ -120,23 +122,55 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     [folderRoot, tabs]
   )
 
+  const openDiffs = useCallback((changes: WorkspaceChangeEntry[]) => {
+    if (changes.length === 0) return
+
+    const focusId = diffTabId(changes[changes.length - 1]!.id)
+
+    setTabs((prev) => {
+      let next = prev
+      let changed = false
+      for (const change of changes) {
+        const id = diffTabId(change.id)
+        const existingIndex = next.findIndex((tab) => tab.id === id)
+        if (existingIndex >= 0) {
+          const existing = next[existingIndex]!
+          if (existing.change !== change) {
+            if (!changed) {
+              next = [...next]
+              changed = true
+            }
+            next[existingIndex] = {
+              ...existing,
+              change,
+              relativePath: change.path,
+              title: `Δ ${basenameFromPath(change.path)}`
+            }
+          }
+          continue
+        }
+        if (!changed) {
+          next = [...next]
+          changed = true
+        }
+        next.push({
+          id,
+          kind: 'diff',
+          title: `Δ ${basenameFromPath(change.path)}`,
+          change,
+          relativePath: change.path
+        })
+      }
+      return changed ? next : prev
+    })
+    setActiveTabId(focusId)
+  }, [])
+
   const openDiff = useCallback(
     (change: WorkspaceChangeEntry) => {
-      const existing = tabs.find((tab) => tab.kind === 'diff' && tab.change?.id === change.id)
-      if (existing) {
-        setActiveTabId(existing.id)
-        return
-      }
-
-      const id = nextTabId()
-      const title = `Δ ${basenameFromPath(change.path)}`
-      setTabs((prev) => [
-        ...prev.filter((tab) => tab.kind !== 'welcome'),
-        { id, kind: 'diff', title, change, relativePath: change.path }
-      ])
-      setActiveTabId(id)
+      openDiffs([change])
     },
-    [tabs]
+    [openDiffs]
   )
 
   const openGitDiff = useCallback(
@@ -164,7 +198,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
           loading: true
         }
 
-        setTabs((prev) => [...prev.filter((tab) => tab.kind !== 'welcome'), placeholder])
+        setTabs((prev) => [...prev, placeholder])
         setActiveTabId(id)
 
         try {
@@ -218,7 +252,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
         loading: true
       }
 
-      setTabs((prev) => [...prev.filter((tab) => tab.kind !== 'welcome'), placeholder])
+      setTabs((prev) => [...prev, placeholder])
       setActiveTabId(id)
 
       try {
@@ -249,29 +283,35 @@ export function useWorkbenchTabs(folderRoot: string | null) {
 
   const closeTab = useCallback(
     (tabId: string) => {
-      setTabs((prev) => {
-        const next = prev.filter((tab) => tab.id !== tabId)
-        if (next.length === 0) {
-          return [{ id: 'welcome', kind: 'welcome', title: 'Welcome' }]
-        }
-        return next
-      })
+      setTabs((prev) => prev.filter((tab) => tab.id !== tabId))
       setActiveTabId((current) => {
         if (current !== tabId) return current
         const remaining = tabs.filter((tab) => tab.id !== tabId)
-        return remaining[remaining.length - 1]?.id ?? 'welcome'
+        return remaining[remaining.length - 1]?.id ?? null
       })
     },
     [tabs]
   )
+
+  const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return
+    setTabs((prev) => {
+      if (fromIndex >= prev.length || toIndex >= prev.length) return prev
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      if (!moved) return prev
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+  }, [])
 
   const updateTabContent = useCallback((tabId: string, content: string) => {
     setTabs((prev) => prev.map((tab) => (tab.id === tabId ? { ...tab, content } : tab)))
   }, [])
 
   const resetTabs = useCallback(() => {
-    setTabs([{ id: 'welcome', kind: 'welcome', title: 'Welcome' }])
-    setActiveTabId('welcome')
+    setTabs([])
+    setActiveTabId(null)
   }, [])
 
   const clearTabScrollTarget = useCallback((tabId: string) => {
@@ -289,8 +329,10 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     setActiveTabId,
     openFile,
     openDiff,
+    openDiffs,
     openGitDiff,
     closeTab,
+    reorderTabs,
     updateTabContent,
     clearTabScrollTarget,
     resetTabs

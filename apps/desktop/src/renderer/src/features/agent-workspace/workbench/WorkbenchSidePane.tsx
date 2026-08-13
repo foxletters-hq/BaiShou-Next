@@ -1,11 +1,18 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Folder, Search, GitBranch } from 'lucide-react'
+import { ArrowLeft, Folder, Search, GitBranch, Settings } from 'lucide-react'
 import type { WorkbenchSideView } from './useWorkbenchLayoutState'
 import { WorkbenchFileExplorer } from './WorkbenchFileExplorer'
 import { WorkbenchSearchView } from './WorkbenchSearchView'
 import { WorkbenchGitView } from './WorkbenchGitView'
 import { useWorkbenchGitPanel } from './useWorkbenchGitPanel'
+import { WorkbenchWorkspaceGateSheet } from './WorkbenchWorkspaceGateSheet'
+import {
+  locationToReturnPath,
+  rememberSettingsReturnPath
+} from '../../settings/settings-navigation.util'
+import { prefetchSettingsEntry } from '../../../lib/prefetch-settings-entry'
 import styles from './WorkbenchSidePane.module.css'
 
 const ICON_SIZE = 18
@@ -21,6 +28,9 @@ export interface WorkbenchSidePaneProps {
   width: number
   changesCount?: number
   onGitChangesCountChange?: (count: number) => void
+  onBackToHome: () => void
+  workspaceId?: string | null
+  workspaceName?: string | null
 }
 
 export const WorkbenchSidePane: React.FC<WorkbenchSidePaneProps> = ({
@@ -32,14 +42,43 @@ export const WorkbenchSidePane: React.FC<WorkbenchSidePaneProps> = ({
   onGitMetaChange,
   width,
   changesCount = 0,
-  onGitChangesCountChange
+  onGitChangesCountChange,
+  onBackToHome,
+  workspaceId,
+  workspaceName
 }) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
   const gitPanelProps = useWorkbenchGitPanel(folderRoot)
+  const [gateSettingsOpen, setGateSettingsOpen] = useState(false)
+
+  useEffect(() => {
+    setGateSettingsOpen(false)
+  }, [workspaceId])
+
+  const handleOpenSystemSettings = () => {
+    rememberSettingsReturnPath(locationToReturnPath(location))
+    navigate('/settings/general')
+  }
+
+  const handleOpenWorkbenchSettings = () => {
+    if (!workspaceId) return
+    setGateSettingsOpen(true)
+  }
 
   return (
     <aside className={styles.pane} style={{ width }}>
       <div className={styles.viewTabs} role="tablist">
+        <button
+          type="button"
+          className={styles.viewTab}
+          title={t('workbench.back_to_home', '全部工作目录')}
+          aria-label={t('workbench.back_to_home', '全部工作目录')}
+          onClick={onBackToHome}
+        >
+          <ArrowLeft size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+        </button>
         <button
           type="button"
           role="tab"
@@ -90,6 +129,44 @@ export const WorkbenchSidePane: React.FC<WorkbenchSidePaneProps> = ({
           />
         ) : null}
       </div>
+
+      <div className={styles.footer}>
+        <div className={styles.divider} />
+        <div className={styles.fixedNav}>
+          <button
+            type="button"
+            className={styles.navItem}
+            disabled={!workspaceId}
+            onClick={handleOpenWorkbenchSettings}
+          >
+            <span className={styles.navIcon} aria-hidden>
+              <Settings size={18} />
+            </span>
+            <span className={styles.navLabel}>{t('workbench.settings', '工作台设置')}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.navItem}
+            onMouseEnter={prefetchSettingsEntry}
+            onFocus={prefetchSettingsEntry}
+            onClick={handleOpenSystemSettings}
+          >
+            <span className={styles.navIcon} aria-hidden>
+              <Settings size={18} />
+            </span>
+            <span className={styles.navLabel}>{t('settings.title', '系统设置')}</span>
+          </button>
+        </div>
+      </div>
+
+      {workspaceId ? (
+        <WorkbenchWorkspaceGateSheet
+          open={gateSettingsOpen}
+          workspaceId={workspaceId}
+          workspaceName={workspaceName || t('workbench.settings', '工作台设置')}
+          onClose={() => setGateSettingsOpen(false)}
+        />
+      ) : null}
     </aside>
   )
 }

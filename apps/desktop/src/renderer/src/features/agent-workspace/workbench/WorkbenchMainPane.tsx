@@ -1,17 +1,30 @@
-import React, { useImperativeHandle, forwardRef, useCallback, useRef } from 'react'
+import React, { useImperativeHandle, forwardRef, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { X, PanelLeft, PanelRight } from 'lucide-react'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
-import { FileChangeDiff, GitDiffViewer } from '@baishou/ui'
+import { GitDiffViewer, getFileTypeIcon } from '@baishou/ui'
 import { WorkbenchEmptyState } from './WorkbenchEmptyState'
 import { WorkbenchLivePreviewEditor } from './WorkbenchLivePreviewEditor'
 import { WorkbenchGitEditableDiff } from './WorkbenchGitEditableDiff'
+import { WorkbenchFileChangeDiffPane } from './WorkbenchFileChangeDiffPane'
 import { useWorkbenchTabs } from './useWorkbenchTabs'
+import { useWorkbenchIdleCaption } from '../utils/workbench-idle-caption'
+import workbenchMascot from './assets/workbench-mascot.png'
 import styles from './WorkbenchMainPane.module.css'
+
+function splitRelativePath(relativePath: string): string[] {
+  return relativePath.split(/[/\\]/).filter(Boolean)
+}
+
+function tabIconName(tab: { title: string; relativePath?: string }): string {
+  return tab.relativePath || tab.title
+}
 
 export interface WorkbenchMainPaneHandle {
   openFile: (relativePath: string, options?: { line?: number; column?: number }) => void
   openDiff: (change: WorkspaceChangeEntry) => void
+  openDiffs: (changes: WorkspaceChangeEntry[]) => void
   openGitDiff: (filePath: string, options?: { staged?: boolean; commitHash?: string }) => void
 }
 
@@ -49,6 +62,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
     ref
   ) {
     const { t } = useTranslation()
+    const idleCaption = useWorkbenchIdleCaption()
     const tabsState = useWorkbenchTabs(folderRoot)
     const {
       tabs,
@@ -56,6 +70,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       activeTabId,
       setActiveTabId,
       closeTab,
+      reorderTabs,
       updateTabContent,
       clearTabScrollTarget
     } = tabsState
@@ -84,11 +99,26 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       [closeTab]
     )
 
+    const handleTabDragEnd = useCallback(
+      (result: DropResult) => {
+        if (!result.destination) return
+        if (result.source.index === result.destination.index) return
+        reorderTabs(result.source.index, result.destination.index)
+      },
+      [reorderTabs]
+    )
+
+    const breadcrumbSegments = useMemo(() => {
+      if (!activeTab?.relativePath) return null
+      return splitRelativePath(activeTab.relativePath)
+    }, [activeTab?.relativePath])
+
     useImperativeHandle(
       ref,
       () => ({
         openFile: (relativePath, options) => void tabsState.openFile(relativePath, options),
         openDiff: (change) => tabsState.openDiff(change),
+        openDiffs: (changes) => tabsState.openDiffs(changes),
         openGitDiff: (filePath, options) => void tabsState.openGitDiff(filePath, options)
       }),
       [tabsState]
@@ -113,33 +143,56 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
             </button>
           </div>
 
-          <div className={styles.tabScroll}>
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''}`}
-                onMouseDown={(event) => handleTabMouseDown(event, tab.id, tab.kind !== 'welcome')}
-              >
-                <button
-                  type="button"
-                  className={styles.tabLabel}
-                  onClick={() => setActiveTabId(tab.id)}
+          <DragDropContext onDragEnd={handleTabDragEnd}>
+            <Droppable droppableId="workbench-tabs" direction="horizontal">
+              {(droppableProvided) => (
+                <div
+                  className={styles.tabScroll}
+                  ref={droppableProvided.innerRef}
+                  {...droppableProvided.droppableProps}
                 >
-                  {tab.title}
-                </button>
-                {tab.kind !== 'welcome' ? (
-                  <button
-                    type="button"
-                    className={styles.tabClose}
-                    onClick={() => closeTab(tab.id)}
-                    aria-label={t('common.close', '关闭')}
-                  >
-                    <X size={14} strokeWidth={2} />
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
+                  {tabs.map((tab, index) => (
+                    <Draggable key={tab.id} draggableId={tab.id} index={index}>
+                      {(draggableProvided, snapshot) => (
+                        <div
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
+                          {...draggableProvided.dragHandleProps}
+                          style={{
+                            ...draggableProvided.draggableProps.style,
+                            ...draggableProvided.dragHandleProps?.style,
+                            cursor: 'default'
+                          }}
+                          className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''} ${snapshot.isDragging ? styles.tabDragging : ''}`}
+                          onMouseDown={(event) => handleTabMouseDown(event, tab.id, true)}
+                          onClick={() => setActiveTabId(tab.id)}
+                          title={tab.relativePath || tab.title}
+                        >
+                          <span className={styles.tabIcon} aria-hidden>
+                            {getFileTypeIcon(tabIconName(tab), 16)}
+                          </span>
+                          <span className={styles.tabLabel}>{tab.title}</span>
+                          <button
+                            type="button"
+                            className={styles.tabClose}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              closeTab(tab.id)
+                            }}
+                            aria-label={t('common.close', '关闭')}
+                          >
+                            <X size={14} strokeWidth={2} />
+                          </button>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {droppableProvided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
 
           <div className={styles.tabBarTrailing}>
             <button
@@ -154,15 +207,41 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
           </div>
         </div>
 
+        {breadcrumbSegments && breadcrumbSegments.length > 0 ? (
+          <nav className={styles.breadcrumb} aria-label={t('workbench.breadcrumb', '文件路径')}>
+            <div className={styles.breadcrumbInner}>
+              {breadcrumbSegments.map((segment, index) => {
+                const isLast = index === breadcrumbSegments.length - 1
+                return (
+                  <React.Fragment key={`${index}-${segment}`}>
+                    {index > 0 ? <span className={styles.breadcrumbSep}>›</span> : null}
+                    <span
+                      className={`${styles.breadcrumbSeg} ${isLast ? styles.breadcrumbCurrent : ''}`}
+                    >
+                      {isLast ? (
+                        <span className={styles.breadcrumbIcon} aria-hidden>
+                          {getFileTypeIcon(segment, 14)}
+                        </span>
+                      ) : null}
+                      {segment}
+                    </span>
+                  </React.Fragment>
+                )
+              })}
+            </div>
+          </nav>
+        ) : null}
+
         <div className={styles.content}>
-          {!activeTab || activeTab.kind === 'welcome' ? (
-            <div className={styles.welcome}>
-              <p>
-                {t(
-                  'agent_workspace.select_session_hint',
-                  '选择左侧文件或会话，或在右侧 Agent 面板开始对话。'
-                )}
-              </p>
+          {!activeTab ? (
+            <div className={styles.idleHero}>
+              <img
+                src={workbenchMascot}
+                alt=""
+                className={styles.idleMascot}
+                draggable={false}
+              />
+              <p className={styles.idleCaption}>{idleCaption}</p>
             </div>
           ) : activeTab.loading ? (
             <p className={styles.status}>{t('workbench.loading_file', '正在加载文件…')}</p>
@@ -210,10 +289,17 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
               </div>
             </div>
           ) : activeTab.kind === 'diff' && activeTab.change ? (
-            <div className={styles.diffWrap}>
-              <div className={styles.diffHeader}>{activeTab.change.path}</div>
-              <FileChangeDiff data={activeTab.change.data} className={styles.diffBody} />
-            </div>
+            <WorkbenchFileChangeDiffPane
+              folderRoot={folderRoot}
+              change={activeTab.change}
+              onModifiedChange={
+                activeTab.change.path
+                  ? (content) => {
+                      handleContentChange(activeTab.id, content, activeTab.change!.path)
+                    }
+                  : undefined
+              }
+            />
           ) : activeTab.kind === 'markdown' && activeTab.relativePath ? (
             <WorkbenchLivePreviewEditor
               documentId={activeTab.id}

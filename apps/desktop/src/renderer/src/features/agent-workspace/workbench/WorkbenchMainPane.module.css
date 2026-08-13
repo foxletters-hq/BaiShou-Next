@@ -11,10 +11,11 @@
   display: flex;
   align-items: stretch;
   gap: 0;
-  min-height: 36px;
+  height: 35px;
+  min-height: 35px;
   padding: 0;
   border-bottom: 1px solid var(--border-muted);
-  background: var(--bg-surface);
+  background: var(--bg-app);
   overflow: hidden;
 }
 
@@ -23,20 +24,14 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  padding: 0 4px;
-  border-right: 1px solid var(--border-muted);
-}
-
-.tabBarTrailing {
-  border-right: none;
-  border-left: 1px solid var(--border-muted);
+  padding: 0 2px;
 }
 
 .layoutBtn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -60,56 +55,182 @@
   min-width: 0;
   display: flex;
   align-items: stretch;
-  gap: 1px;
-  padding: 6px 8px 0;
+  gap: 0;
+  padding: 0;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabScroll::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 0;
   max-width: 200px;
-  border-radius: 6px 6px 0 0;
-  background: var(--bg-surface-normal);
-  border: 1px solid transparent;
-  border-bottom: none;
-  margin-bottom: -1px;
+  min-width: 80px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 0 0 10px;
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--border-muted);
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.tab:hover {
+  background: color-mix(in srgb, var(--bg-surface) 70%, var(--bg-app));
 }
 
 .tabActive {
   background: var(--bg-surface);
-  border-color: var(--border-muted);
-  border-bottom-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.tabActive::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-primary);
+  pointer-events: none;
+}
+
+.tabIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  color: inherit;
+}
+
+.tabIcon :global(svg) {
+  width: 16px;
+  height: 16px;
 }
 
 .tabLabel {
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 7px 10px;
-  font-size: 12px;
+  color: inherit;
+  min-width: 0;
+  flex: 1;
+  font-size: var(--ui-fs-md);
+  font-weight: 400;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.tabActive .tabLabel {
-  color: var(--text-primary);
+  pointer-events: none;
 }
 
 .tabClose {
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: inherit;
   cursor: pointer;
-  padding: 4px 6px 4px 0;
+  padding: 0;
+  margin: 0 4px 0 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.tab:hover .tabClose,
+.tabActive .tabClose {
+  opacity: 0.7;
 }
 
 .tabClose:hover {
+  opacity: 1;
+  background: var(--bg-surface-high);
   color: var(--text-primary);
+}
+
+.tabDragging {
+  opacity: 0.92;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  z-index: 20;
+  background: var(--bg-surface);
+  cursor: default;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.breadcrumbInner {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--ui-fs-sm);
+  line-height: 22px;
+  color: var(--text-tertiary, var(--text-secondary));
+}
+
+.breadcrumbSeg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumbSep {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 4px;
+  flex-shrink: 0;
+  opacity: 0.55;
+  font-size: var(--ui-fs-sm);
+}
+
+.breadcrumbIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.breadcrumbIcon :global(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.breadcrumbCurrent {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .content {
@@ -119,12 +240,43 @@
   background: var(--bg-surface);
 }
 
-.welcome,
+.idleHero {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: var(--bg-surface);
+  user-select: none;
+}
+
+.idleMascot {
+  width: min(180px, 34vw);
+  height: auto;
+  display: block;
+  object-fit: contain;
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+.idleCaption {
+  margin: 0;
+  max-width: min(360px, 80%);
+  text-align: center;
+  font-size: var(--ui-fs-lg);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 .status,
 .error {
   padding: 24px;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   background: var(--bg-surface);
   height: 100%;
 }
@@ -144,8 +296,8 @@
 
 .diffHeader {
   padding: 10px 16px;
-  font-size: 12px;
-  font-family: var(--font-family-mono, ui-monospace, monospace);
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family-mono);
   border-bottom: 1px solid var(--border-control);
   color: var(--text-secondary);
   background: var(--bg-app);
@@ -169,7 +321,7 @@
 
 .previewHint {
   margin: 0 0 12px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
@@ -177,7 +329,7 @@
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.6;
 }
 
@@ -189,7 +341,7 @@
   padding: 0 10px;
   border-top: 1px solid var(--border-muted);
   background: var(--bg-app);
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
