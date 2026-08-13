@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdAutoAwesome, MdDifference } from 'react-icons/md'
 import {
@@ -26,7 +26,8 @@ export interface AgentWorkspaceChatBarProps {
   outputTokens: number
   costMicros: number
   onAssistantClick: () => void
-  onModelClick: () => void
+  onModelClick: (anchorRect?: DOMRect | null) => void
+  effortSuffix?: string | null
   onCostClick: () => void
   changesPanelCollapsed?: boolean
   onToggleChangesPanel?: () => void
@@ -42,12 +43,14 @@ export const AgentWorkspaceChatBar: React.FC<AgentWorkspaceChatBarProps> = ({
   costMicros,
   onAssistantClick,
   onModelClick,
+  effortSuffix,
   onCostClick,
   changesPanelCollapsed = true,
   onToggleChangesPanel
 }) => {
   const { t } = useTranslation()
   const { isDark } = useTheme()
+  const modelBtnRef = useRef<HTMLButtonElement>(null)
 
   const providerIconUrl = useMemo(() => {
     if (!isConfiguredProviderId(currentProviderId)) return undefined
@@ -87,14 +90,16 @@ export const AgentWorkspaceChatBar: React.FC<AgentWorkspaceChatBarProps> = ({
 
       <div className={styles.right}>
         <button
+          ref={modelBtnRef}
           type="button"
           className={`${styles.modelSwitcherTrigger} ${styles.chip}`}
-          onClick={onModelClick}
+          onClick={() => onModelClick(modelBtnRef.current?.getBoundingClientRect() ?? null)}
         >
           <span className={styles.modelProviderIcon} aria-hidden>
             {providerIconUrl ? <img src={providerIconUrl} alt="" /> : <MdAutoAwesome size={16} />}
           </span>
           <span className={styles.modelName}>{displayModelName}</span>
+          {effortSuffix ? <span className={styles.modelEffort}>{effortSuffix}</span> : null}
           <span className={styles.chevron}>▼</span>
         </button>
         <TokenBadge
@@ -118,7 +123,7 @@ export const AgentWorkspaceChatBar: React.FC<AgentWorkspaceChatBarProps> = ({
             }
             aria-pressed={!changesPanelCollapsed}
           >
-            <MdDifference size={16} aria-hidden />
+            <MdDifference size={16} />
           </button>
         ) : null}
       </div>
