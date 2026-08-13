@@ -94,6 +94,26 @@ const DANGEROUS_SHELL_PATTERNS: RegExp[] = [
   /\bcmd\s+(\/c|\/k)\b/i
 ]
 
+/**
+ * 工作台默认命令黑名单（展示 + 子串匹配；与 DANGEROUS_SHELL_PATTERNS 叠加）。
+ * 含 rm -rf / 递归删除 / 格式化等。
+ */
+export const DEFAULT_WORKSPACE_COMMAND_BLACKLIST = [
+  'rm -rf',
+  'rm -fr',
+  'rm --recursive',
+  'del /s',
+  'rd /s',
+  'rmdir /s',
+  'Remove-Item -Recurse',
+  'format ',
+  'mkfs',
+  'diskpart',
+  'shutdown',
+  'reg delete',
+  'dd if='
+] as const
+
 const SHELL_OPERATOR_RE = /(?:&&|\|\||[|;`]|\$\()/
 
 /**

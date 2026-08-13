@@ -6,19 +6,18 @@ import type {
   WorkspaceToolManagementConfig
 } from './agent-gate.types'
 import { migrateLegacyExternalPathFields, migrateLegacyTrustMode } from './agent-gate-migrate.util'
+import { DEFAULT_WORKSPACE_COMMAND_BLACKLIST } from './agent-gate-shell-match.util'
 
-export const DEFAULT_AGENT_GATE_EXCLUSION_LIST = [
-  'diary_delete',
-  'memory_delete',
-  'workspace_delete'
-] as const
+export const DEFAULT_AGENT_GATE_EXCLUSION_LIST = ['diary_delete', 'memory_delete'] as const
 
-/** 工作区场景默认始终需确认的操作（不含日记/记忆删除） */
-export const DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST = ['workspace_delete'] as const
+/** 工作区场景默认不可「始终允许」的操作（删除可始终允许，故默认为空） */
+export const DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST = [] as const
 
 export const AGENT_GATE_REQUEST_ID_PREFIX = 'bag_'
 export const AGENT_GATE_ALLOWLIST_ENTRY_ID_PREFIX = 'bagal_'
 export const BAISHOU_AGENT_GATE_CONFIG_KEY = 'baishou_agent_gate_config'
+/** 工作台全局门控（不再按 workspaceId 拆分） */
+export const BAISHOU_WORKSPACE_AGENT_GATE_CONFIG_KEY = 'baishou_workspace_agent_gate_config'
 
 /** userData 下工作区策略文件名（非 Vault settings） */
 export const AGENT_WORKSPACE_POLICY_STORE_FILE = 'agent-workspace-policy.json'
@@ -59,16 +58,16 @@ export const DEFAULT_BAISHOU_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
 }
 
 /**
- * 工作区默认门控：逐项确认、空 allowlist。
- * 故意不继承旧全局 FullTrust，避免扩散到所有项目。
+ * 工作区默认门控：auto_review + 默认命令黑名单。
+ * 具体 permissionRules 由 applyWorkspaceSecurityModeToConfig 在写入时展开。
  */
 export const DEFAULT_WORKSPACE_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
   exclusionList: [...DEFAULT_WORKSPACE_AGENT_GATE_EXCLUSION_LIST],
   allowlist: [],
+  commandBlacklist: [...DEFAULT_WORKSPACE_COMMAND_BLACKLIST],
   repeatAssertAskThreshold: DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   hideDeniedTools: true,
-  scopePreset: 'workspace_write',
-  approvalPreset: 'always_ask'
+  securityMode: 'auto_review'
 }
 
 /** 工作区工具开关默认：全部开启（由运行时硬过滤决定可见工具集） */
@@ -97,7 +96,11 @@ export function cloneBaishouAgentGateConfig(
     repeatAssertAskThreshold: source.repeatAssertAskThreshold ?? base.repeatAssertAskThreshold,
     hideDeniedTools: source.hideDeniedTools ?? base.hideDeniedTools,
     scopePreset: source.scopePreset ?? base.scopePreset,
-    approvalPreset: source.approvalPreset ?? base.approvalPreset
+    approvalPreset: source.approvalPreset ?? base.approvalPreset,
+    securityMode: source.securityMode ?? base.securityMode,
+    commandBlacklist: [
+      ...(source.commandBlacklist ?? base.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)
+    ]
   }
 
   // 兼容磁盘上仍带旧区外字段 / trustMode 的配置
@@ -117,11 +120,13 @@ export function cloneBaishouAgentGateConfig(
 export function toWorkspaceGatePolicyV2(config: BaishouAgentGateConfig): WorkspaceGatePolicyV2 {
   return {
     version: 2,
-    scopePreset: config.scopePreset ?? 'custom',
-    approvalPreset: config.approvalPreset ?? 'custom',
+    scopePreset: config.scopePreset ?? 'workspace_write',
+    approvalPreset: config.approvalPreset ?? 'dangerous_only',
+    securityMode: config.securityMode ?? 'auto_review',
     rules: (config.permissionRules ?? []).map((rule) => ({ ...rule })),
     remembered: (config.allowlist ?? []).map((entry) => ({ ...entry })),
     exclusionList: [...config.exclusionList],
+    commandBlacklist: [...(config.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)],
     hideDeniedTools: config.hideDeniedTools !== false,
     repeatAssertAskThreshold:
       config.repeatAssertAskThreshold ?? DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD
@@ -136,7 +141,11 @@ export function fromWorkspaceGatePolicyV2(policy: WorkspaceGatePolicyV2): Baisho
     hideDeniedTools: policy.hideDeniedTools,
     repeatAssertAskThreshold: policy.repeatAssertAskThreshold,
     scopePreset: policy.scopePreset,
-    approvalPreset: policy.approvalPreset
+    approvalPreset: policy.approvalPreset,
+    securityMode: policy.securityMode,
+    commandBlacklist: [
+      ...(policy.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)
+    ]
   }
 }
 

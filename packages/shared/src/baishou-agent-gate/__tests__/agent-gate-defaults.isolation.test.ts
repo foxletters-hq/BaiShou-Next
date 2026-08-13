@@ -15,7 +15,7 @@ describe('workspace vs companion gate defaults', () => {
   it('uses safe Manual defaults for workspace and empty allowlist', () => {
     expect(hasCatchAllAllowRule(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG)).toBe(false)
     expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.allowlist).toEqual([])
-    expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.exclusionList).toContain('workspace_delete')
+    expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.exclusionList).not.toContain('workspace_delete')
     expect(DEFAULT_WORKSPACE_AGENT_GATE_CONFIG.exclusionList).not.toContain('diary_delete')
   })
 

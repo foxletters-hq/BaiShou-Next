@@ -158,6 +158,18 @@ export function sanitizeBaishouAgentGateConfigPatch(
       next.approvalPreset = config.approvalPreset as BaishouAgentGateConfig['approvalPreset']
     }
   }
+  if (config.securityMode !== undefined) {
+    const allowed = new Set(['full_access', 'auto_review', 'allow_list'])
+    if (typeof config.securityMode === 'string' && allowed.has(config.securityMode)) {
+      next.securityMode = config.securityMode as BaishouAgentGateConfig['securityMode']
+    }
+  }
+  if (Array.isArray(config.commandBlacklist)) {
+    next.commandBlacklist = config.commandBlacklist
+      .filter((item: unknown): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
 
   // 旧 trustMode → `*: allow`
   const legacyTrust = (config as { trustMode?: string }).trustMode
