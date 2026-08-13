@@ -282,17 +282,21 @@ export async function persistResult(params: PersistResultParams): Promise<{
   // ==========================================
   if (!streamError) {
     void (async () => {
-      await new Promise((r) => setTimeout(r, 500))
-      if (userOrderIndex <= 2) {
-        const { TitleGeneratorService } = await import('./title-generator.service')
-        await TitleGeneratorService.maybeUpdateSessionTitle({
-          sessionRepo,
-          sessionId,
-          userText: rawUserText,
-          namingModelConfigured: params.namingModelConfigured,
-          namingProvider: params.namingProvider,
-          namingModelId: params.namingModelId
-        })
+      try {
+        await new Promise((r) => setTimeout(r, 500))
+        if (userOrderIndex <= 2) {
+          const { TitleGeneratorService } = await import('./title-generator.service')
+          await TitleGeneratorService.maybeUpdateSessionTitle({
+            sessionRepo,
+            sessionId,
+            userText: rawUserText,
+            namingModelConfigured: params.namingModelConfigured,
+            namingProvider: params.namingProvider,
+            namingModelId: params.namingModelId
+          })
+        }
+      } catch (e: unknown) {
+        logger.warn('[Persist Result] background title update failed:', e as Error)
       }
     })()
   }

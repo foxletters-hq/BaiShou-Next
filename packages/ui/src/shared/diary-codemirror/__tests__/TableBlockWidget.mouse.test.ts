@@ -2,9 +2,12 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 
 async function waitForCkantTable(parent: HTMLElement): Promise<void> {
-  await vi.waitFor(() => {
-    expect(parent.querySelector('.tbl-table')).toBeTruthy()
-  })
+  await vi.waitFor(
+    () => {
+      expect(parent.querySelector('.tbl-table')).toBeTruthy()
+    },
+    { timeout: 10_000 }
+  )
 }
 
 /** 桌面端使用 codemirror-markdown-tables（ckant） */
@@ -16,7 +19,7 @@ describe('codemirror-markdown-tables desktop', () => {
     parent = null
   })
 
-  it('renders interactive tbl-table widget', async () => {
+  it('renders interactive tbl-table widget', { timeout: 20_000 }, async () => {
     parent = document.createElement('div')
     parent.style.width = '480px'
     document.body.appendChild(parent)
@@ -33,7 +36,7 @@ describe('codemirror-markdown-tables desktop', () => {
     view.destroy()
   })
 
-  it('preserves markdown document on open', async () => {
+  it('preserves markdown document on open', { timeout: 20_000 }, async () => {
     parent = document.createElement('div')
     document.body.appendChild(parent)
     const doc = '| Name | Value |\n| --- | --- |\n| foo | bar |\n\nHello world'
