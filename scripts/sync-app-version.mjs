@@ -106,7 +106,9 @@ function syncMobile() {
 
 let stale = false
 try {
-  stale = syncDesktop() || syncMobile()
+  const desktopChanged = syncDesktop()
+  const mobileChanged = syncMobile()
+  stale = desktopChanged || mobileChanged
 } catch (e) {
   console.error(`[sync-app-version] ${e.message}`)
   process.exit(1)
