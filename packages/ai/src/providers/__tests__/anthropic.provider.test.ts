@@ -65,7 +65,7 @@ describe('AnthropicAdaptedProvider', () => {
       expect(generateText).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: 'test',
-          maxOutputTokens: 1
+          maxOutputTokens: 16
         })
       )
     })

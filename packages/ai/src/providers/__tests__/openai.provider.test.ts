@@ -1,15 +1,17 @@
 import { describe, it, expect, vi } from 'vitest'
 import { OpenAIAdaptedProvider } from '../openai.provider'
 import { ProviderType, createAiProvider } from '@baishou/shared'
-// 模拟 @ai-sdk/openai
 import * as openaiSdk from '@ai-sdk/openai'
+import * as openaiCompatibleSdk from '@ai-sdk/openai-compatible'
 
 vi.mock('@ai-sdk/openai', () => {
   const dummyModel = {}
   const dummyEmbedModel = {}
   const chatFn = vi.fn().mockReturnValue(dummyModel)
+  const responsesFn = vi.fn().mockReturnValue(dummyModel)
   const mockProvider = {
     chat: chatFn,
+    responses: responsesFn,
     textEmbeddingModel: vi.fn().mockReturnValue(dummyEmbedModel)
   }
 
@@ -18,8 +20,22 @@ vi.mock('@ai-sdk/openai', () => {
   }
 })
 
+vi.mock('@ai-sdk/openai-compatible', () => {
+  const dummyModel = {}
+  const dummyEmbedModel = {}
+  const chatModelFn = vi.fn().mockReturnValue(dummyModel)
+  const mockProvider = {
+    chatModel: chatModelFn,
+    textEmbeddingModel: vi.fn().mockReturnValue(dummyEmbedModel)
+  }
+
+  return {
+    createOpenAICompatible: vi.fn().mockReturnValue(mockProvider)
+  }
+})
+
 describe('OpenAIAdaptedProvider', () => {
-  it('should initialize with correct custom baseURL and API key', () => {
+  it('should use openai-compatible for DeepSeek chat', () => {
     const config = createAiProvider({
       id: ProviderType.DeepSeek,
       name: 'DeepSeek',
@@ -31,19 +47,20 @@ describe('OpenAIAdaptedProvider', () => {
     const provider = new OpenAIAdaptedProvider(config)
     expect(provider.config.id).toBe(ProviderType.DeepSeek)
 
-    // 触发 SDK 创建以验证参数
     provider.getLanguageModel()
 
-    expect(openaiSdk.createOpenAI).toHaveBeenCalledWith(
+    expect(openaiCompatibleSdk.createOpenAICompatible).toHaveBeenCalledWith(
       expect.objectContaining({
+        name: 'openaiCompatible',
         apiKey: 'test-key',
         baseURL: 'https://api.deepseek.com/v1',
         fetch: expect.any(Function)
       })
     )
+    expect(openaiSdk.createOpenAI).not.toHaveBeenCalled()
   })
 
-  it('should fallback to default parameters when executing getLanguageModel', () => {
+  it('should use chat for non-reasoning models on official OpenAI', () => {
     const config = createAiProvider({
       id: ProviderType.OpenAI,
       name: 'OpenAI',
@@ -54,8 +71,22 @@ describe('OpenAIAdaptedProvider', () => {
     const provider = new OpenAIAdaptedProvider(config)
     const model = provider.getLanguageModel()
     expect(model).toBeDefined()
-    // 验证 chat 方法以正确的模型 ID 被调用
-    const mockProvider = vi.mocked(openaiSdk.createOpenAI).mock.results[0]!.value
+    const mockProvider = vi.mocked(openaiSdk.createOpenAI).mock.results.at(-1)!.value
     expect(mockProvider.chat).toHaveBeenCalledWith('gpt-4o')
+  })
+
+  it('should use responses for OpenAI-style reasoning models', () => {
+    vi.mocked(openaiSdk.createOpenAI).mockClear()
+    const config = createAiProvider({
+      id: ProviderType.OpenAI,
+      name: 'OpenAI',
+      type: ProviderType.OpenAI,
+      defaultDialogueModel: 'gpt-5.6-sol'
+    })
+
+    const provider = new OpenAIAdaptedProvider(config)
+    provider.getLanguageModel('gpt-5.6-sol')
+    const mockProvider = vi.mocked(openaiSdk.createOpenAI).mock.results.at(-1)!.value
+    expect(mockProvider.responses).toHaveBeenCalledWith('gpt-5.6-sol')
   })
 })

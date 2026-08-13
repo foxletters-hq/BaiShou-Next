@@ -1,9 +1,13 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { LanguageModel, EmbeddingModel, generateText } from 'ai'
+import { LanguageModel, EmbeddingModel } from 'ai'
 import { AiProviderModel } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
 import { assertAsciiApiKey, createSanitizedFetch, sanitizeApiKeyForHttp } from './fetch-header.util'
+import {
+  probeProviderConnection,
+  wrapConnectionTestError
+} from './provider-connection-test.util'
 
 export class AnthropicAdaptedProvider implements IAIProvider {
   public config: AiProviderModel
@@ -45,20 +49,14 @@ export class AnthropicAdaptedProvider implements IAIProvider {
     assertAsciiApiKey(getRotatedApiKey(this.config) || this.config.apiKey)
 
     try {
-      const abortController = new AbortController()
-      const timeoutId = setTimeout(() => abortController.abort('Connection timeout'), 15000)
-
-      await generateText({
+      await probeProviderConnection({
         model: this.getLanguageModel(modelToTest),
-        prompt: 'test',
-        maxOutputTokens: 1,
-        abortSignal: abortController.signal
+        modelId: modelToTest,
+        providerType: this.config.type,
+        baseUrl: this.config.baseUrl
       })
-
-      clearTimeout(timeoutId)
-    } catch (e: any) {
-      console.error(`Test connection error for ${this.config.name}:`, e)
-      throw new Error(`Connection test failed: ${e.message || 'Unknown network error'}`)
+    } catch (e: unknown) {
+      throw wrapConnectionTestError(this.config.name, e)
     }
   }
 }
