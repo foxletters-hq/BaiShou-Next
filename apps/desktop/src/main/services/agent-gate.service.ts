@@ -19,6 +19,7 @@ import {
 import { settingsManager } from '../ipc/settings.ipc'
 import { getWorkspaceGateConfig, setWorkspaceGateConfig } from './agent-workspace-policy.store'
 import { getWorkspaceAutoAccept, setWorkspaceAutoAccept } from './agent-workspace-auto-accept.store'
+import { classifyWorkspaceGateRisk } from './workspace-gate-risk-classifier'
 
 type GateRuntime = ReturnType<typeof createBaishouAgentGate>
 
@@ -60,10 +61,24 @@ async function persistCompanionConfig(config: BaishouAgentGateConfig): Promise<v
 }
 
 async function persistWorkspaceConfig(
-  workspaceId: string,
+  _workspaceId: string,
   config: BaishouAgentGateConfig
 ): Promise<void> {
-  await setWorkspaceGateConfig(workspaceId, config)
+  const saved = await setWorkspaceGateConfig(undefined, config)
+  // 全局配置：同步到所有已创建的工作区 runtime
+  for (const scoped of workspaceRuntimes.values()) {
+    const current = scoped.runtime.getConfig()
+    current.allowlist = saved.allowlist.map((e) => ({ ...e }))
+    current.exclusionList = [...saved.exclusionList]
+    current.permissionRules = saved.permissionRules?.map((r) => ({ ...r }))
+    current.actionRules = saved.actionRules ? { ...saved.actionRules } : undefined
+    current.hideDeniedTools = saved.hideDeniedTools
+    current.repeatAssertAskThreshold = saved.repeatAssertAskThreshold
+    current.securityMode = saved.securityMode
+    current.commandBlacklist = saved.commandBlacklist ? [...saved.commandBlacklist] : undefined
+    current.scopePreset = saved.scopePreset
+    current.approvalPreset = saved.approvalPreset
+  }
 }
 
 function allScopedRuntimes(): ScopedRuntime[] {
@@ -110,7 +125,8 @@ function createScopedRuntime(
     isAutoAccept:
       scope.kind === 'workspace'
         ? () => workspaceAutoAcceptCache.get(scope.workspaceId) === true
-        : undefined
+        : undefined,
+    riskClassifier: scope.kind === 'workspace' ? classifyWorkspaceGateRisk : undefined
   })
   return { key, scope, runtime: runtimeRef }
 }
@@ -210,6 +226,7 @@ export async function patchScopedAgentGateConfig(
   const next = rt.getConfig()
   if (Array.isArray(patch.allowlist)) next.allowlist = [...patch.allowlist]
   if (Array.isArray(patch.exclusionList)) next.exclusionList = [...patch.exclusionList]
+  if (Array.isArray(patch.commandBlacklist)) next.commandBlacklist = [...patch.commandBlacklist]
   if (patch.permissionRules !== undefined) {
     next.permissionRules = patch.permissionRules?.map((rule) => ({ ...rule }))
   }
@@ -222,11 +239,49 @@ export async function patchScopedAgentGateConfig(
   }
   if (patch.scopePreset !== undefined) next.scopePreset = patch.scopePreset
   if (patch.approvalPreset !== undefined) next.approvalPreset = patch.approvalPreset
+  if (patch.securityMode !== undefined) next.securityMode = patch.securityMode
 
   if (scope.kind === 'companion') {
     await persistCompanionConfig(next)
   } else {
-    await persistWorkspaceConfig(scope.workspaceId, next)
+    const {
+      applyWorkspaceSecurityModeToConfig,
+      resolveWorkspaceSecurityMode
+    } = await import('@baishou/shared')
+    // 以 patch 显式传入的 securityMode 为准，避免旧 approvalPreset 干扰
+    const explicitMode = patch.securityMode
+    const mode =
+      explicitMode === 'full_access' ||
+      explicitMode === 'auto_review' ||
+      explicitMode === 'allow_list'
+        ? explicitMode
+        : resolveWorkspaceSecurityMode(next)
+    const expanded = applyWorkspaceSecurityModeToConfig(
+      {
+        ...next,
+        securityMode: mode
+      },
+      mode
+    )
+    next.exclusionList = [...expanded.exclusionList]
+    next.allowlist = expanded.allowlist.map((entry) => ({ ...entry }))
+    next.permissionRules = expanded.permissionRules?.map((rule) => ({ ...rule }))
+    next.actionRules = expanded.actionRules ? { ...expanded.actionRules } : undefined
+    next.hideDeniedTools = expanded.hideDeniedTools
+    next.repeatAssertAskThreshold = expanded.repeatAssertAskThreshold
+    next.securityMode = mode
+    next.commandBlacklist = expanded.commandBlacklist
+      ? [...expanded.commandBlacklist]
+      : undefined
+    // 清除旧二维预设，防止回读时误判成白名单
+    delete next.approvalPreset
+    delete next.scopePreset
+    await persistWorkspaceConfig(scope.workspaceId, {
+      ...expanded,
+      securityMode: mode,
+      approvalPreset: undefined,
+      scopePreset: undefined
+    })
   }
   return cloneBaishouAgentGateConfig(
     next,

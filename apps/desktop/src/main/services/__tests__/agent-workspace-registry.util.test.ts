@@ -60,6 +60,38 @@ describe('agent-workspace-registry.util', () => {
     expect(merged[0]?.id).toBe('existing')
   })
 
+  it('prefers pinned workspace when deduping same folder', () => {
+    const deduped = dedupeAgentWorkspacesByFolder([
+      entry({
+        id: 'unpinned',
+        folderRoot: 'D:/Projects/demo',
+        updatedAt: '2026-01-05T00:00:00.000Z'
+      }),
+      entry({
+        id: 'pinned',
+        folderRoot: 'D:/Projects/Demo',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        pinnedAt: '2026-01-04T00:00:00.000Z'
+      })
+    ])
+
+    expect(deduped).toHaveLength(1)
+    expect(deduped[0]?.id).toBe('pinned')
+  })
+
+  it('keeps scratch-like removed folder out of session reconcile', () => {
+    const scratchKey = 'd:/code-dev/app/稿纸'
+    const merged = reconcileRegistryFromSessionBindings(
+      [],
+      [{ folderRoot: 'D:/Code-Dev/app/稿纸', folderDisplayName: '稿纸' }],
+      () => 'should-not-appear',
+      '2026-06-01T00:00:00.000Z',
+      new Set([scratchKey])
+    )
+
+    expect(merged).toHaveLength(0)
+  })
+
   it('clears stale last active workspace id after dedupe', () => {
     const workspaces = [entry({ id: 'kept', folderRoot: 'D:/demo' })]
     expect(resolveValidLastActiveWorkspaceId('removed', workspaces)).toBeUndefined()
