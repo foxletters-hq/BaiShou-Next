@@ -4,7 +4,8 @@
   background-color: var(--bg-overlay);
   backdrop-filter: var(--blur-overlay);
   -webkit-backdrop-filter: var(--blur-overlay);
-  z-index: 1000;
+  /* 高于知识库等业务弹窗（约 10000），避免嵌套打开时被挡住 */
+  z-index: 11000;
 }
 
 .dialog {
@@ -12,12 +13,13 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 420px;
-  height: 500px;
+  width: min(420px, calc(100vw - 48px));
+  height: min(62vh, 480px);
+  max-height: calc(100vh - 64px);
   background: var(--bg-surface);
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-  z-index: 1001;
+  z-index: 11001;
   display: flex;
   flex-direction: column;
   overflow: hidden;
