@@ -1,6 +1,7 @@
 import {
   AgentGateEffect,
   AgentGateProfileId,
+  AgentGateRiskLevel,
   CATCH_ALL_ALLOW_RULE,
   allowlistEntriesToPermissionRules,
   agentGatePermissionRuleMatches,
@@ -113,13 +114,41 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       rawEffect = AgentGateEffect.Allow
       usedCatchAllFallback = true
     }
+    // auto_review：命令默认先按 Allow 初评（sanitize 禁止裸 workspace_run Allow），
+    // 再交给黑名单钳制与模型二次审核；allow_list 保持默认 Ask。
+    let usedAutoReviewCommandDefault = false
+    if (
+      config.securityMode === 'auto_review' &&
+      input.action === 'workspace_run' &&
+      rawEffect === AgentGateEffect.Ask &&
+      !forceExcluded
+    ) {
+      rawEffect = AgentGateEffect.Allow
+      usedAutoReviewCommandDefault = true
+    }
+    const riskLevelRaw = input.metadata?.riskLevel
+    const riskLevel =
+      riskLevelRaw === AgentGateRiskLevel.Safe ||
+      riskLevelRaw === AgentGateRiskLevel.Mutating ||
+      riskLevelRaw === AgentGateRiskLevel.Destructive
+        ? riskLevelRaw
+        : undefined
+    const explicitAllow =
+      matched != null &&
+      (matched.layer === 'remembered' ||
+        matched.layer === 'session' ||
+        (matched.layer === 'user' && !isCatchAllAllowRule(matched.rule)))
+
     const effect = clampAgentGateEffect(rawEffect, {
       action: input.action,
       resources,
       exclusionList: config.exclusionList,
+      commandBlacklist: config.commandBlacklist,
       forceExcluded,
       metadata: input.metadata,
-      preview: input.preview
+      riskLevel,
+      preview: input.preview,
+      explicitAllow
     })
 
     const decisionSource: AgentGateDecisionSource = matched
@@ -137,12 +166,19 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
             effect,
             ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
           }
-        : {
-            layer: 'default',
-            action: input.action,
-            effect,
-            ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
-          }
+        : usedAutoReviewCommandDefault
+          ? {
+              layer: 'user',
+              action: 'workspace_run',
+              effect,
+              ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
+            }
+          : {
+              layer: 'default',
+              action: input.action,
+              effect,
+              ...(effect !== rawEffect ? { clampedFrom: rawEffect } : {})
+            }
 
     return { effect, decisionSource }
   }

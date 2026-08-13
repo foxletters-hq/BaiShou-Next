@@ -10,6 +10,7 @@ import {
   AgentGateCorrectedError,
   AgentGateRejectedError,
   applyCapabilityStateToConfig,
+  applyWorkspaceSecurityModeToConfig,
   cloneBaishouAgentGateConfig,
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG
 } from '@baishou/shared'
@@ -69,7 +70,28 @@ describe('BaishouAgentGatePolicyService', () => {
     const allowlist = new BaishouAgentGateAllowlistStore(() => config)
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
 
-    expect(policy.evaluate({ action: 'workspace_delete' })).toBe(AgentGateEffect.Ask)
+    expect(
+      policy.evaluate({
+        action: 'workspace_delete',
+        metadata: { forceExclusion: true }
+      })
+    ).toBe(AgentGateEffect.Ask)
+  })
+
+  it('workspace_delete allowlist 命中后放行', () => {
+    const config = {
+      exclusionList: [],
+      allowlist: [{ id: 'bagal_ws', action: 'workspace_delete', createdAt: 1 }]
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'workspace_delete',
+        metadata: { riskLevel: 'destructive' }
+      })
+    ).toBe(AgentGateEffect.Allow)
   })
 
   it('allowlist 命中则 allow', () => {
@@ -179,7 +201,8 @@ describe('BaishouAgentGatePolicyService', () => {
     expect(
       policy.evaluate({
         action: 'workspace_delete',
-        resources: [{ kind: 'workspace_path', value: 'src/foo.ts' }]
+        resources: [{ kind: 'workspace_path', value: 'src/foo.ts' }],
+        metadata: { forceExclusion: true }
       })
     ).toBe(AgentGateEffect.Ask)
   })
@@ -304,7 +327,7 @@ describe('BaishouAgentGatePolicyService', () => {
 
   it('G4 对抗：*: allow 打头时删除 / 命令 / 区外仍为 Ask', () => {
     const config = {
-      exclusionList: ['workspace_delete'],
+      exclusionList: [],
       allowlist: [],
       permissionRules: [{ action: '*', effect: AgentGateEffect.Allow }]
     }
@@ -314,7 +337,8 @@ describe('BaishouAgentGatePolicyService', () => {
     expect(
       policy.evaluate({
         action: 'workspace_delete',
-        resources: [{ kind: 'workspace_path', value: 'src/a.ts' }]
+        resources: [{ kind: 'workspace_path', value: 'src/a.ts' }],
+        metadata: { riskLevel: 'destructive' }
       })
     ).toBe(AgentGateEffect.Ask)
 
@@ -482,22 +506,25 @@ describe('BaishouAgentGateService', () => {
     await pending
   })
 
-  it('默认排除的 workspace_delete 不能 always', async () => {
-    const { gate } = createBaishouAgentGate()
+  it('workspace_delete 可以始终允许并写入 allowlist', async () => {
+    const { gate, getConfig } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
 
     const pending = gate.assert({
       ...baseAssertInput,
       action: 'workspace_delete',
-      title: '删除工作区文件'
+      title: '删除工作区文件',
+      metadata: { alwaysPatterns: ['*'], riskLevel: 'destructive' }
     })
     const [request] = gate.listPending()
 
-    await expect(
-      gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
-    ).rejects.toBeInstanceOf(AgentGateAlwaysNotAllowedError)
-
-    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Once })
+    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
     await pending
+    expect(getConfig().allowlist.some((e) => e.action === 'workspace_delete')).toBe(true)
   })
 
   it('截断预览即使命中 allowlist 也强制 Ask，且拒绝 Always', async () => {
@@ -1035,5 +1062,122 @@ describe('BaishouAgentGateAllowlistStore', () => {
     expect(config.allowlist).toHaveLength(0)
     await store.persist()
     expect(persist).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('BaishouAgentGate auto_review risk classifier', () => {
+  const workspaceAllowEditConfig = applyWorkspaceSecurityModeToConfig(
+    cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+    'auto_review'
+  )
+
+  it('asks when classifier returns ask for command', async () => {
+    const classifier = vi.fn(async () => ({
+      verdict: 'ask' as const,
+      reason: '可能执行破坏性命令'
+    }))
+    const { gate } = createBaishouAgentGate({
+      config: workspaceAllowEditConfig,
+      riskClassifier: classifier
+    })
+
+    const pending = gate.assert({
+      sessionId: 'sess_ar',
+      vaultName: 'Personal',
+      kind: AgentGateKind.Tool,
+      action: 'workspace_run',
+      title: '运行命令',
+      preview: { type: 'command', command: 'npm test' },
+      profileId: AgentGateProfileId.Workspace
+    })
+    await Promise.resolve()
+    const [request] = gate.listPending()
+    expect(classifier).toHaveBeenCalled()
+    expect(request?.description).toContain('可能执行破坏性命令')
+    await gate.reply({ requestId: request!.id, reply: AgentGateReply.Once })
+    await pending
+  })
+
+  it('allows when classifier returns allow for command', async () => {
+    const classifier = vi.fn(async () => ({ verdict: 'allow' as const }))
+    const { gate } = createBaishouAgentGate({
+      config: workspaceAllowEditConfig,
+      riskClassifier: classifier
+    })
+
+    await gate.assert({
+      sessionId: 'sess_ar2',
+      vaultName: 'Personal',
+      kind: AgentGateKind.Tool,
+      action: 'workspace_run',
+      title: '运行命令',
+      preview: { type: 'command', command: 'npm test' },
+      profileId: AgentGateProfileId.Workspace
+    })
+    expect(classifier).toHaveBeenCalled()
+    expect(gate.listPending()).toHaveLength(0)
+  })
+
+  it('skips classifier for routine workspace_write', async () => {
+    const classifier = vi.fn(async () => ({ verdict: 'ask' as const }))
+    const { gate } = createBaishouAgentGate({
+      config: workspaceAllowEditConfig,
+      riskClassifier: classifier
+    })
+
+    await gate.assert({
+      sessionId: 'sess_ar_edit',
+      vaultName: 'Personal',
+      kind: AgentGateKind.Tool,
+      action: 'workspace_write',
+      title: '写入文件',
+      profileId: AgentGateProfileId.Workspace
+    })
+    expect(classifier).not.toHaveBeenCalled()
+    expect(gate.listPending()).toHaveLength(0)
+  })
+
+  it('skips classifier for workspace_read', async () => {
+    const classifier = vi.fn(async () => ({ verdict: 'ask' as const }))
+    const { gate } = createBaishouAgentGate({
+      config: workspaceAllowEditConfig,
+      riskClassifier: classifier
+    })
+
+    await gate.assert({
+      sessionId: 'sess_ar3',
+      vaultName: 'Personal',
+      kind: AgentGateKind.Tool,
+      action: 'workspace_read',
+      title: '读取文件',
+      profileId: AgentGateProfileId.Workspace
+    })
+    expect(classifier).not.toHaveBeenCalled()
+  })
+
+  it('allow_list still asks for workspace_write', async () => {
+    const allowListConfig = applyWorkspaceSecurityModeToConfig(
+      cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+      'allow_list'
+    )
+    const classifier = vi.fn(async () => ({ verdict: 'allow' as const }))
+    const { gate } = createBaishouAgentGate({
+      config: allowListConfig,
+      riskClassifier: classifier
+    })
+
+    const pending = gate.assert({
+      sessionId: 'sess_al',
+      vaultName: 'Personal',
+      kind: AgentGateKind.Tool,
+      action: 'workspace_write',
+      title: '写入文件',
+      profileId: AgentGateProfileId.Workspace
+    })
+    await Promise.resolve()
+    expect(classifier).not.toHaveBeenCalled()
+    expect(gate.listPending()).toHaveLength(1)
+    await gate.reply({ requestId: gate.listPending()[0]!.id, reply: AgentGateReply.Once })
+    await pending
   })
 })
