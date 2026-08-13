@@ -1,7 +1,14 @@
-import type { AgentSessionRuntimeEvent, AgentSessionRuntimeListener } from '@baishou/shared'
+import type {
+  AgentSessionRuntimeEvent,
+  AgentSessionRuntimeListener,
+  SessionRuntimeToolPayloadSummary
+} from '@baishou/shared'
 import { ChunkType, type StreamChunk } from './stream-chunk.types'
 
 const listeners = new Set<AgentSessionRuntimeListener>()
+
+/** 控制面工具 IO 预览上限（字符） */
+export const SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS = 200
 
 /** 订阅 Agent 会话运行时事件（桌面 IPC 桥接 / 测试 / 后续 UI 消费共用） */
 export function onAgentSessionRuntime(listener: AgentSessionRuntimeListener): () => void {
@@ -64,9 +71,41 @@ function isToolResultFailure(output: unknown): string | null {
   return null
 }
 
+function stringifyToolPayload(value: unknown): string {
+  if (value == null) return ''
+  if (typeof value === 'string') return value
+  if (value instanceof Error) return value.message
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
+/** 将工具 input/output 压缩为控制面摘要（全量 UI 仍走 sendToolStart/Result） */
+export function summarizeToolPayloadForRuntime(
+  value: unknown,
+  maxChars: number = SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS
+): SessionRuntimeToolPayloadSummary {
+  const raw = stringifyToolPayload(value)
+  const charLength = raw.length
+  const truncated = charLength > maxChars
+  const preview = truncated ? raw.slice(0, maxChars) : raw
+  const summary: SessionRuntimeToolPayloadSummary = {
+    preview,
+    truncated,
+    charLength
+  }
+  if (truncated) {
+    summary.byteLength = new TextEncoder().encode(raw).length
+  }
+  return summary
+}
+
 /**
  * 将标准化 StreamChunk 映射为会话运行时事件。
  * 维护 stepIndex / stepStarted 状态，供 AgentSessionService 在 onChunk 中调用。
+ * 工具 IO 仅保留摘要；全量展示仍由 UI emitter 通道负责。
  */
 export function bridgeStreamChunkToRuntimeEvents(
   sessionId: string,
@@ -101,7 +140,7 @@ export function bridgeStreamChunkToRuntimeEvents(
         stepIndex: state.stepIndex,
         toolCallId: chunk.toolCallId,
         toolName: chunk.toolName,
-        input: chunk.input,
+        input: summarizeToolPayloadForRuntime(chunk.input),
         timestamp
       })
       break
@@ -125,7 +164,7 @@ export function bridgeStreamChunkToRuntimeEvents(
           stepIndex: state.stepIndex,
           toolCallId: chunk.toolCallId,
           toolName: chunk.toolName,
-          output: chunk.output,
+          output: summarizeToolPayloadForRuntime(chunk.output),
           timestamp
         })
       }

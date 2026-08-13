@@ -9,7 +9,7 @@ import {
   resolveAssistantParentOrderIndex,
   buildEmojiImagePartsFromToolCalls
 } from './agent-session-persist.utils'
-import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
+import { buildAssistantPartsFromTimeline } from './build-assistant-parts-from-timeline'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -84,67 +84,21 @@ export async function persistResult(params: PersistResultParams): Promise<{
     userMessageId
   })
 
-  // ======== 构建 assistant 消息 Parts ========
+  // ======== 构建 assistant 消息 Parts（按时间线：reasoning → tool → text…）========
   const assistantMsgId = generateUUID()
-  const partsToInsert: any[] = buildEmojiImagePartsFromToolCalls(
+  const emojiParts = buildEmojiImagePartsFromToolCalls(
     accumulator.toolCalls,
     assistantMsgId,
     sessionId,
     params.userConfig
   )
-
-  // 推送文本 Part
-  const assistantText = resolveAssistantTextForStorage(accumulator)
-  if (assistantText) {
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'text',
-      data: { text: assistantText }
-    })
-  }
-
-  // 推送推理 Part (如果有)
-  if (accumulator.reasoning) {
-    logger.info(`[Persist Result] Reasoning Accumulator: ${JSON.stringify(accumulator.reasoning)}`)
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'text',
-      data: { text: accumulator.reasoning, isReasoning: true }
-    })
-  }
-
-  // 推送工具 Call & Result Part
-  for (const tc of accumulator.toolCalls) {
-    if (!tc?.callId || !tc?.name) {
-      logger.warn('[Persist Result] Skip malformed tool-call snapshot:', JSON.stringify(tc))
-      continue
-    }
-    const resultObj = accumulator.toolResults.find((tr) => tr.callId === tc.callId)
-
-    // emoji_send 已转为 image parts，不单独落 tool part
-    if (tc.name === 'emoji_send') {
-      continue
-    }
-
-    const toolData = sanitizeToolPayloadForStorage({
-      callId: tc.callId,
-      name: tc.name,
-      arguments: tc.arguments,
-      result: resultObj ? resultObj.result : undefined,
-      status: resultObj ? 'completed' : 'failed'
-    })
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'tool',
-      data: toolData
-    })
-  }
+  const timelineParts = buildAssistantPartsFromTimeline({
+    accumulator,
+    assistantMsgId,
+    sessionId,
+    startSeq: emojiParts.length
+  })
+  const partsToInsert: any[] = [...emojiParts, ...timelineParts]
 
   for (const gatePart of params.agentGateParts ?? []) {
     partsToInsert.push({
@@ -152,7 +106,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
       messageId: assistantMsgId,
       sessionId,
       type: 'agent_gate',
-      data: gatePart
+      data: { ...gatePart, seq: partsToInsert.length }
     })
   }
 
@@ -162,7 +116,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
       messageId: assistantMsgId,
       sessionId,
       type: 'file_change',
-      data: fileChange
+      data: { ...fileChange, seq: partsToInsert.length }
     })
   }
 

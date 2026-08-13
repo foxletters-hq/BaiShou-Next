@@ -7,7 +7,9 @@ import {
   bridgeStreamChunkToRuntimeEvents,
   createSessionRuntimeBridgeState,
   onAgentSessionRuntime,
-  resetAgentSessionRuntimeForTests
+  resetAgentSessionRuntimeForTests,
+  SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS,
+  summarizeToolPayloadForRuntime
 } from '../session-runtime-event'
 
 describe('session-runtime-event bridge', () => {
@@ -53,6 +55,49 @@ describe('session-runtime-event bridge', () => {
       'session.step_ended'
     ])
     expect(state.stepIndex).toBe(2)
+
+    const toolStarted = events.find((event) => event.type === 'session.tool_started')
+    expect(toolStarted).toMatchObject({
+      type: 'session.tool_started',
+      toolName: 'read_file',
+      toolCallId: 'tc1',
+      input: {
+        preview: JSON.stringify({ path: 'a.ts' }),
+        truncated: false,
+        charLength: JSON.stringify({ path: 'a.ts' }).length
+      }
+    })
+    const toolCompleted = events.find((event) => event.type === 'session.tool_completed')
+    expect(toolCompleted).toMatchObject({
+      type: 'session.tool_completed',
+      output: { preview: 'ok', truncated: false, charLength: 2 }
+    })
+  })
+
+  it('summarizes oversized tool input/output for control-plane events', () => {
+    const huge = 'x'.repeat(SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS + 50)
+    const summary = summarizeToolPayloadForRuntime(huge)
+    expect(summary.preview).toHaveLength(SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS)
+    expect(summary.truncated).toBe(true)
+    expect(summary.charLength).toBe(huge.length)
+    expect(summary.byteLength).toBeGreaterThan(SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS)
+
+    const state = createSessionRuntimeBridgeState()
+    const events = bridgeStreamChunkToRuntimeEvents(
+      'sess-1',
+      {
+        type: ChunkType.TOOL_CALL,
+        toolCallId: 'tc-big',
+        toolName: 'write_file',
+        input: { content: huge }
+      },
+      state
+    )
+    const started = events.find((event) => event.type === 'session.tool_started')
+    expect(started && started.type === 'session.tool_started' && started.input.truncated).toBe(true)
+    expect(
+      started && started.type === 'session.tool_started' && started.input.preview.length
+    ).toBe(SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS)
   })
 
   it('emits tool_failed when tool output carries error', () => {
