@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { AssistantManagementPage, AssistantEditPage } from '@baishou/ui'
+import { useTranslation } from 'react-i18next'
+import { AssistantManagementPage, AssistantEditPage, useToast } from '@baishou/ui'
 import { useAssistantStore } from '@baishou/store'
+import { isSystemLatteAssistantId, SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE } from '@baishou/shared'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const pageTransition = {
@@ -16,7 +18,14 @@ async function refreshAssistantsAfterMutation(loadAssistants: () => Promise<void
   await useAssistantStore.getState().fetchAssistants()
 }
 
+type DeleteAssistantResult =
+  | { success: true }
+  | { success: false; errorCode?: string }
+  | undefined
+
 export const AssistantManagementScreen: React.FC = () => {
+  const { t } = useTranslation()
+  const toast = useToast()
   const [assistants, setAssistants] = useState<any[]>([])
   const [editingAssistantId, setEditingAssistantId] = useState<string | null>(null)
   const [isCreatingNew, setIsCreatingNew] = useState(false)
@@ -26,6 +35,42 @@ export const AssistantManagementScreen: React.FC = () => {
       setAssistants(data || [])
     }
   }, [])
+
+  const notifyDeleteFailure = useCallback(
+    (result?: DeleteAssistantResult) => {
+      if (result?.success === false && result.errorCode === SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE) {
+        toast.showError(
+          t('agent.assistant.system_latte_cannot_delete', '官方 Latte 为系统伙伴，无法删除')
+        )
+        return
+      }
+      toast.showError(t('common.errors.delete_failed', '删除失败'))
+    },
+    [t, toast]
+  )
+
+  const deleteAssistant = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (isSystemLatteAssistantId(id)) {
+        toast.showError(
+          t('agent.assistant.system_latte_cannot_delete', '官方 Latte 为系统伙伴，无法删除')
+        )
+        return false
+      }
+      if (typeof window === 'undefined' || !window.electron) return false
+      const result = (await window.electron.ipcRenderer.invoke(
+        'agent:delete-assistant',
+        id
+      )) as DeleteAssistantResult
+      if (result && result.success === false) {
+        notifyDeleteFailure(result)
+        return false
+      }
+      await refreshAssistantsAfterMutation(loadAssistants)
+      return true
+    },
+    [loadAssistants, notifyDeleteFailure, t, toast]
+  )
 
   useEffect(() => {
     void loadAssistants()
@@ -105,16 +150,14 @@ export const AssistantManagementScreen: React.FC = () => {
                       setEditingAssistantId(null)
                     }}
                     onBack={() => setEditingAssistantId(null)}
-                    onDelete={async () => {
-                      if (typeof window !== 'undefined' && window.electron) {
-                        await window.electron.ipcRenderer.invoke(
-                          'agent:delete-assistant',
-                          target.id
-                        )
-                        await refreshAssistantsAfterMutation(loadAssistants)
-                      }
-                      setEditingAssistantId(null)
-                    }}
+                    onDelete={
+                      isSystemLatteAssistantId(target.id)
+                        ? undefined
+                        : async () => {
+                            const ok = await deleteAssistant(target.id)
+                            if (ok) setEditingAssistantId(null)
+                          }
+                    }
                   />
                 )
               }
@@ -128,10 +171,7 @@ export const AssistantManagementScreen: React.FC = () => {
               onCreate={() => setIsCreatingNew(true)}
               onEdit={(assistant) => setEditingAssistantId(assistant.id)}
               onDelete={async (id) => {
-                if (typeof window !== 'undefined' && window.electron) {
-                  await window.electron.ipcRenderer.invoke('agent:delete-assistant', id)
-                  await refreshAssistantsAfterMutation(loadAssistants)
-                }
+                await deleteAssistant(id)
               }}
               pinnedIds={new Set()}
               onTogglePin={async (id) => {

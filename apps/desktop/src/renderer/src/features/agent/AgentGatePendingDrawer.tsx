@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Shield } from 'lucide-react'
 import { selectGroupedPending, selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
+import { withAppContentOverlay } from '@baishou/ui'
 import styles from './AgentGatePendingDrawer.module.css'
 
 export interface AgentGatePendingDrawerProps {
@@ -23,7 +24,7 @@ export const AgentGatePendingDrawer: React.FC<AgentGatePendingDrawerProps> = ({
   if (!open) return null
 
   return (
-    <div className={styles.backdrop} role="presentation" onClick={onClose}>
+    <div className={withAppContentOverlay(styles.backdrop)} role="presentation" onClick={onClose}>
       <aside
         className={styles.drawer}
         role="dialog"

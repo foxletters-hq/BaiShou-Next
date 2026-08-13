@@ -1,19 +1,25 @@
 import React from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
   ChatCostDialog,
   AssistantPickerSheet,
   ShortcutManagerDialog,
   RecallDialog,
-  ModelSwitcherPopup,
+  SessionModelMenu,
   AgentToolsDialog,
   toast
 } from '@baishou/ui'
-import { isEmbeddingModel, isTtsModel } from '@baishou/shared'
+import {
+  isEmbeddingModel,
+  isTtsModel,
+  type ReasoningControl,
+  type ReasoningEffortSetting
+} from '@baishou/shared'
 import { useSharedMemoryCopyPreview } from '../../../hooks/useSharedMemoryCopyPreview'
 import { usePersistedSharedMemoryCopyPrefix } from '../../../hooks/usePersistedSharedMemoryCopyPrefix'
 import type { AgentOutletContext } from '../agent-outlet-context'
 import { useSettingsStore } from '@baishou/store'
+import { SETTINGS_HUB_PREFIX } from '../../settings/settings-route.util'
 
 interface AgentDialogsProps {
   t: any
@@ -69,6 +75,11 @@ interface AgentDialogsProps {
   currentAssistant: any
   providers: any[]
   inputBarRef: React.RefObject<any>
+  reasoningEffort: ReasoningEffortSetting
+  onReasoningEffortChange: (value: ReasoningEffortSetting) => void
+  reasoningControl?: ReasoningControl | null
+  modelReasoningPreviews?: Record<string, { effort: ReasoningEffortSetting }>
+  modelMenuAnchorRect?: DOMRect | null
 }
 
 /**
@@ -105,8 +116,14 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   handleRefreshPricing,
   currentAssistant: _currentAssistant,
   providers,
-  inputBarRef
+  inputBarRef,
+  reasoningEffort,
+  onReasoningEffortChange,
+  reasoningControl,
+  modelReasoningPreviews,
+  modelMenuAnchorRect
 }) => {
+  const navigate = useNavigate()
   const { onAssistantSwitched } = useOutletContext<AgentOutletContext>()
   const { copyPrefix, setCopyPrefix } = usePersistedSharedMemoryCopyPrefix()
   const { preview: recallCopyPreview, loading: recallCopyPreviewLoading } =
@@ -171,7 +188,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         }}
       />
 
-      {/* 快捷指令配置弹窗 */}
+      {/* Skill 管理弹窗（原快捷指令） */}
       <ShortcutManagerDialog
         isOpen={showShortcutManager}
         onClose={() => setShowShortcutManager(false)}
@@ -181,7 +198,7 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         onDelete={removeShortcut}
         onSelect={(shortcut) => {
           setShowShortcutManager(false)
-          inputBarRef.current?.insertShortcutContent(shortcut.content)
+          inputBarRef.current?.applySkillRef(shortcut)
         }}
       />
 
@@ -229,9 +246,9 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
         }}
       />
 
-      {/* 模型选择浮层 */}
+      {/* 会话模型菜单（思考强度 + 模型） */}
       {showModelSwitcher && (
-        <ModelSwitcherPopup
+        <SessionModelMenu
           onClose={() => setShowModelSwitcher(false)}
           providers={providers
             .map((p) => {
@@ -251,8 +268,13 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
           currentModelId={model.currentModelId}
           onSelect={(pid, mid) => {
             void model.selectDialogueModel(pid, mid)
-            setShowModelSwitcher(false)
           }}
+          onManageProviders={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-services`)}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={onReasoningEffortChange}
+          reasoningControl={reasoningControl}
+          modelReasoningPreviews={modelReasoningPreviews}
+          anchorRect={modelMenuAnchorRect}
         />
       )}
 

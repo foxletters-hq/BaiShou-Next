@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   TokenBadge,
@@ -7,14 +7,18 @@ import {
   useTheme,
   getProviderIcon,
   toast,
-  AgentGateDock
+  AgentGateDock,
+  resolveDesktopAssistantAvatarSrc
 } from '@baishou/ui'
 import { createWebComposerDraftStorage } from '@baishou/ui/shared/composer-draft'
 import {
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
   isConfiguredDialogueModelId,
-  isConfiguredProviderId
+  isConfiguredProviderId,
+  getReasoningControlForModel,
+  type ReasoningEffortSetting,
+  normalizeReasoningEffortSetting
 } from '@baishou/shared'
 import {
   selectQueuePosition,
@@ -29,7 +33,25 @@ import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
 import type { AgentOutletContext } from './agent-outlet-context'
 import styles from './AgentScreen.module.css'
-import { Cloud, Sparkles } from 'lucide-react'
+import { Cloud, Sparkles, ChevronDown, History } from 'lucide-react'
+import {
+  getReasoningEffortForModel,
+  setReasoningEffortForModel,
+  setSessionReasoningEffortOverride
+} from './reasoning-effort-session'
+import {
+  buildModelReasoningPreviewMap,
+  formatReasoningControlPreview
+} from './format-reasoning-control-preview'
+import { useAgentIdleGreeting } from './utils/agent-idle-greeting'
+import partnerWelcomeMascot from './assets/partner-welcome.png'
+
+/** 尚未落库的草稿会话（/chat、/chat/new-session、临时 new-<ts>） */
+function isDraftChatSessionId(sessionId: string | undefined): boolean {
+  if (!sessionId) return true
+  if (sessionId === 'new-session') return true
+  return /^new-\d+$/.test(sessionId)
+}
 
 /**
  * Agent 大模型聊天屏幕主页面组件。
@@ -37,6 +59,7 @@ import { Cloud, Sparkles } from 'lucide-react'
  */
 export const AgentScreen: React.FC = () => {
   const flow = useAgentChatFlow()
+  const idleGreeting = useAgentIdleGreeting()
   const { isDark } = useTheme()
   const {
     currentAssistant,
@@ -57,10 +80,131 @@ export const AgentScreen: React.FC = () => {
   }, [flow.model.currentProviderId, flow.providers, isDark])
 
   const noModelSelected = !isConfiguredDialogueModelId(flow.model.currentModelId)
+  const modelTriggerRef = useRef<HTMLButtonElement>(null)
+  const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
 
   const displayModelName = noModelSelected
     ? flow.t('agent.no_model_selected', '暂未选择模型')
     : flow.model.currentModelId
+
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortSetting>(() =>
+    getReasoningEffortForModel(flow.model.currentProviderId, flow.model.currentModelId)
+  )
+  const [reasoningPreviewTick, setReasoningPreviewTick] = useState(0)
+
+  const reasoningProviderType = useMemo(() => {
+    const providerId = flow.model.currentProviderId
+    const provider = flow.providers.find((p) => p.id === providerId)
+    return provider?.type || providerId || undefined
+  }, [flow.model.currentProviderId, flow.providers])
+
+  const reasoningControl = useMemo(
+    () =>
+      getReasoningControlForModel(flow.model.currentModelId || '', reasoningProviderType),
+    [flow.model.currentModelId, reasoningProviderType]
+  )
+
+  // 切换模型时恢复该模型记忆的档位
+  useEffect(() => {
+    const next = getReasoningEffortForModel(
+      flow.model.currentProviderId,
+      flow.model.currentModelId
+    )
+    setReasoningEffort(next)
+    setSessionReasoningEffortOverride(next)
+  }, [flow.model.currentProviderId, flow.model.currentModelId])
+
+  const handleReasoningEffortChange = (value: ReasoningEffortSetting) => {
+    const normalized = normalizeReasoningEffortSetting(value)
+    setReasoningEffort(normalized)
+    setSessionReasoningEffortOverride(normalized)
+    if (flow.model.currentProviderId && flow.model.currentModelId) {
+      setReasoningEffortForModel(
+        flow.model.currentProviderId,
+        flow.model.currentModelId,
+        normalized
+      )
+      setReasoningPreviewTick((n) => n + 1)
+    }
+  }
+
+  const modelReasoningPreviews = useMemo(
+    () => buildModelReasoningPreviewMap(flow.providers),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick refreshes after persist
+    [flow.providers, reasoningPreviewTick, flow.showModelSwitcher]
+  )
+
+  const effortSuffix = formatReasoningControlPreview({
+    modelId: flow.model.currentModelId,
+    providerTypeOrId: reasoningProviderType,
+    effort: reasoningEffort
+  })
+
+  const openModelSwitcher = () => {
+    setModelMenuAnchor(modelTriggerRef.current?.getBoundingClientRect() ?? null)
+    flow.setShowModelSwitcher(true)
+  }
+
+  const assistantAvatar = resolveDesktopAssistantAvatarSrc(flow.currentAssistant?.avatarPath)
+  const displayAssistantName =
+    flow.currentAssistant?.name || flow.t('agent.partner_label', '伙伴')
+
+  const composerFooter = (
+    <div className={styles.metaRow}>
+      <div className={styles.metaLeading}>
+        <button
+          type="button"
+          className={styles.metaChip}
+          onClick={() => flow.setShowAssistantPicker(true)}
+          aria-haspopup="dialog"
+          aria-label={flow.t('agent.select_assistant', '选择伙伴')}
+          title={flow.t('agent.select_assistant', '选择伙伴')}
+        >
+          <span className={styles.assistantAvatar} aria-hidden>
+            <img
+              key={flow.currentAssistant?.avatarPath ?? flow.currentAssistant?.id ?? 'default'}
+              src={assistantAvatar}
+              alt=""
+            />
+          </span>
+          <span className={styles.metaChipLabel}>{displayAssistantName}</span>
+          <ChevronDown size={12} strokeWidth={2} aria-hidden />
+        </button>
+        <button
+          type="button"
+          className={styles.metaIconBtn}
+          title={flow.t('agent.sidebar.recent_chats', '最近对话')}
+          aria-label={flow.t('agent.sidebar.recent_chats', '最近对话')}
+          onClick={() => onOpenSessions?.()}
+        >
+          <History size={16} strokeWidth={2} aria-hidden />
+        </button>
+      </div>
+      <div className={styles.metaTrailing}>
+        <button
+          ref={modelTriggerRef}
+          type="button"
+          className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInMeta}`}
+          onClick={openModelSwitcher}
+          aria-label={flow.t('models.switch_model', '切换模型')}
+          title={flow.t('models.switch_model', '切换模型')}
+        >
+          <span className={chromeStyles.modelProviderIcon} aria-hidden>
+            {providerIconUrl ? (
+              <img src={providerIconUrl} alt="" />
+            ) : noModelSelected ? (
+              <Sparkles size={15} />
+            ) : (
+              <Cloud size={15} />
+            )}
+          </span>
+          <span className={chromeStyles.modelName}>{displayModelName}</span>
+          {effortSuffix ? <span className={chromeStyles.modelEffort}>{effortSuffix}</span> : null}
+          <span className={chromeStyles.chevron}>▼</span>
+        </button>
+      </div>
+    </div>
+  )
 
   const composerDraftStorage = useMemo(() => createWebComposerDraftStorage(), [])
   const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
@@ -86,6 +230,14 @@ export const AgentScreen: React.FC = () => {
     flow.userProfile?.chatBackgroundOverlayOpacity
   )
 
+  /** 未自动加载上次对话 / 新对话草稿：居中展示欢迎区 + 输入框（有真实 sessionId 时不闪空态） */
+  const isEmptyIdle =
+    isDraftChatSessionId(flow.sessionId) &&
+    flow.chat.messages.length === 0 &&
+    !flow.stream.isStreaming &&
+    !flow.stream.isBridgeActive &&
+    !flow.stream.isCompressing
+
   return (
     <div className={styles.screen}>
       {chatBackgroundUrl ? (
@@ -108,39 +260,122 @@ export const AgentScreen: React.FC = () => {
           ) : null}
         </>
       ) : null}
-      <AgentChatChrome
-        currentAssistant={currentAssistant}
-        onShowPicker={onShowAssistantPicker}
-        onAssistantSwitched={(assistant) => void onAssistantSwitched?.(assistant)}
-        onNewSession={() => onNewSession?.()}
-        onOpenSessions={() => onOpenSessions?.()}
-        trailingControls={
-          <div className={chromeStyles.trailing}>
-            <TokenBadge
-              className={chromeStyles.chip}
-              inputTokens={flow.tokens.totalInputTokens}
-              outputTokens={flow.tokens.totalOutputTokens}
-              costMicros={flow.tokens.estimatedCost * 1000000}
-              onClick={() => flow.setShowCostDialog(true)}
-            />
-          </div>
-        }
-      />
-      <AgentMessageList
-        t={flow.t}
-        sessionId={flow.sessionId}
-        chat={flow.chat}
-        stream={flow.stream}
-        scroll={flow.scroll}
-        currentAssistant={flow.currentAssistant}
-        userProfile={flow.userProfile}
-        searchMode={flow.searchMode}
-        model={flow.model}
-        tts={flow.tts}
-        setContextDialogState={flow.setContextDialogState}
-        sessions={flow.sessions}
-        loadSessions={flow.loadSessions}
-      />
+      {!isEmptyIdle ? (
+        <AgentChatChrome
+          variant="floatingActions"
+          currentAssistant={currentAssistant}
+          onShowPicker={onShowAssistantPicker}
+          onAssistantSwitched={(assistant) => void onAssistantSwitched?.(assistant)}
+          onNewSession={() => onNewSession?.()}
+          trailingControls={
+            <div className={chromeStyles.trailing}>
+              <TokenBadge
+                variant="toolbar"
+                className={chromeStyles.chip}
+                inputTokens={flow.tokens.totalInputTokens}
+                outputTokens={flow.tokens.totalOutputTokens}
+                costMicros={flow.tokens.estimatedCost * 1000000}
+                onClick={() => flow.setShowCostDialog(true)}
+              />
+            </div>
+          }
+        />
+      ) : null}
+
+      {!isEmptyIdle ? (
+        <AgentMessageList
+          t={flow.t}
+          sessionId={flow.sessionId}
+          chat={flow.chat}
+          stream={flow.stream}
+          scroll={flow.scroll}
+          currentAssistant={flow.currentAssistant}
+          userProfile={flow.userProfile}
+          searchMode={flow.searchMode}
+          model={flow.model}
+          tts={flow.tts}
+          setContextDialogState={flow.setContextDialogState}
+          sessions={flow.sessions}
+          loadSessions={flow.loadSessions}
+        />
+      ) : null}
+
+      {/* 空态垂直居中；有消息时粘底。InputBar 始终挂在同一位置，避免切换时失焦/丢草稿 */}
+      <div className={isEmptyIdle ? styles.emptyIdle : styles.inputFooter}>
+        <div className={isEmptyIdle ? styles.emptyComposer : styles.inputContainer}>
+          {isEmptyIdle ? (
+            <div className={styles.emptyHero}>
+              <div className={styles.emptyMascot} aria-hidden>
+                <img
+                  src={partnerWelcomeMascot}
+                  alt=""
+                  className={styles.emptyMascotImg}
+                  draggable={false}
+                />
+              </div>
+              <p className={styles.emptyGreeting}>{idleGreeting}</p>
+            </div>
+          ) : null}
+          {!isEmptyIdle && flow.scroll.showScrollButton ? (
+            <button
+              type="button"
+              className={styles.scrollToBottomBtn}
+              onClick={() => flow.scroll.scrollToBottom()}
+              title={flow.t('agent.chat.scroll_to_bottom', '回到最新消息')}
+              aria-label={flow.t('agent.chat.scroll_to_bottom', '回到最新消息')}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <polyline points="19 12 12 19 5 12" />
+              </svg>
+            </button>
+          ) : null}
+          <AgentGateDock
+            request={pendingGate}
+            isReplying={flow.stream.isAgentGateReplying}
+            onReply={flow.stream.replyAgentGate}
+            queueIndex={gateQueueIndex}
+            queueTotal={gateQueueTotal}
+            sameActionCount={sameActionCount}
+            placement="inline"
+          />
+          <InputBar
+            ref={flow.inputBarRef}
+            isLoading={flow.stream.isStreaming || flow.stream.isCompressing}
+            onSend={flow.handleSend}
+            onStop={flow.handleStop}
+            composerBlocked={composerBlocked}
+            onComposerBlocked={() =>
+              toast.showInfo(
+                hasPendingGate
+                  ? flow.t('agent_gate.composer_blocked', '请先处理待确认操作')
+                  : flow.t('agent.error.no_model', '请先选择一个模型')
+              )
+            }
+            composerDraftKey={composerDraftKey}
+            composerDraftStorage={composerDraftStorage}
+            shortcuts={flow.shortcuts}
+            onManageShortcuts={() => flow.setShowShortcutManager(true)}
+            onRecall={() => flow.setShowRecallSheet(true)}
+            onOpenTools={() => flow.setShowToolManager(true)}
+            searchMode={flow.searchMode}
+            onToggleSearchMode={flow.toggleSearchMode}
+            ttsMode={flow.tts.ttsMode}
+            onToggleTtsMode={flow.tts.toggleTtsMode}
+            footer={composerFooter}
+          />
+        </div>
+      </div>
 
       {/* 对话框与抽屉弹出层组件 */}
       <AgentDialogs
@@ -175,6 +410,11 @@ export const AgentScreen: React.FC = () => {
         currentAssistant={flow.currentAssistant}
         providers={flow.providers}
         inputBarRef={flow.inputBarRef}
+        reasoningEffort={reasoningEffort}
+        onReasoningEffortChange={handleReasoningEffortChange}
+        reasoningControl={reasoningControl}
+        modelReasoningPreviews={modelReasoningPreviews}
+        modelMenuAnchorRect={modelMenuAnchor}
       />
 
       {flow.contextDialogState.flatEntries && (
@@ -236,90 +476,6 @@ export const AgentScreen: React.FC = () => {
           onRecompressDismissError={flow.dismissContextRecompressError}
         />
       )}
-
-      {/* 底部输入区；回到底部为悬浮单按钮，不占布局、不挡内容 */}
-      <div className={styles.inputFooter}>
-        <div className={styles.inputContainer}>
-          {flow.scroll.showScrollButton && (
-            <button
-              type="button"
-              className={styles.scrollToBottomBtn}
-              onClick={() => flow.scroll.scrollToBottom()}
-              title={flow.t('agent.chat.scroll_to_bottom', '回到最新消息')}
-              aria-label={flow.t('agent.chat.scroll_to_bottom', '回到最新消息')}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <polyline points="19 12 12 19 5 12" />
-              </svg>
-            </button>
-          )}
-          <AgentGateDock
-            request={pendingGate}
-            isReplying={flow.stream.isAgentGateReplying}
-            onReply={flow.stream.replyAgentGate}
-            queueIndex={gateQueueIndex}
-            queueTotal={gateQueueTotal}
-            sameActionCount={sameActionCount}
-            placement="inline"
-          />
-          <InputBar
-            ref={flow.inputBarRef}
-            isLoading={flow.stream.isStreaming || flow.stream.isCompressing}
-            onSend={flow.handleSend}
-            onStop={flow.handleStop}
-            composerBlocked={composerBlocked}
-            onComposerBlocked={() =>
-              toast.showInfo(
-                hasPendingGate
-                  ? flow.t('agent_gate.composer_blocked', '请先处理待确认操作')
-                  : flow.t('agent.error.no_model', '请先选择一个模型')
-              )
-            }
-            composerDraftKey={composerDraftKey}
-            composerDraftStorage={composerDraftStorage}
-            shortcuts={flow.shortcuts}
-            assistantName={flow.currentAssistant?.name || 'BaiShou'}
-            onAssistantTap={() => flow.setShowAssistantPicker(true)}
-            onManageShortcuts={() => flow.setShowShortcutManager(true)}
-            onRecall={() => flow.setShowRecallSheet(true)}
-            onOpenTools={() => flow.setShowToolManager(true)}
-            searchMode={flow.searchMode}
-            onToggleSearchMode={flow.toggleSearchMode}
-            ttsMode={flow.tts.ttsMode}
-            onToggleTtsMode={flow.tts.toggleTtsMode}
-            bottomTrailing={
-              <button
-                type="button"
-                className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInComposer}`}
-                onClick={() => flow.setShowModelSwitcher(true)}
-              >
-                <span className={chromeStyles.modelProviderIcon} aria-hidden>
-                  {providerIconUrl ? (
-                    <img src={providerIconUrl} alt="" />
-                  ) : noModelSelected ? (
-                    <Sparkles size={16} />
-                  ) : (
-                    <Cloud size={16} />
-                  )}
-                </span>
-                <span className={chromeStyles.modelName}>{displayModelName}</span>
-                <span className={chromeStyles.chevron}>▼</span>
-              </button>
-            }
-          />
-        </div>
-      </div>
     </div>
   )
 }
