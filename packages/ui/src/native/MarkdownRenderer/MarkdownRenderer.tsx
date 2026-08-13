@@ -69,7 +69,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
   } = props
   const preferSyncRemend = preferSyncRemendProp ?? variant === 'preview'
   const selectable = selectableProp ?? variant !== 'preview'
-  const { colors } = useNativeTheme()
+  const { colors, contentFontScale } = useNativeTheme()
   const { handleLinkPress } = useMarkdownLinkPress()
 
   const useLegacy = useMemo(
@@ -78,8 +78,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = (props) => {
   )
 
   const markdownStyle = useMemo(
-    () => buildStreamdownMarkdownStyle(colors, variant),
-    [colors, variant]
+    () => buildStreamdownMarkdownStyle(colors, variant, contentFontScale),
+    [colors, contentFontScale, variant]
   )
 
   const useTrailingMargin = variant === 'chat' || variant === 'ancillary'

@@ -35,7 +35,17 @@ export const DateSelect: React.FC<DateSelectProps> = ({
   selectionBandColor
 }) => {
   const { t } = useTranslation()
-  const years = useMemo(() => getDatePickerYears(), [])
+  const years = useMemo(() => {
+    const startYear = minDate?.getFullYear()
+    const endYear = maxDate?.getFullYear()
+    if (startYear != null || endYear != null) {
+      return getDatePickerYears({
+        startYear: startYear ?? 2000,
+        endYear: endYear ?? new Date().getFullYear() + 30
+      })
+    }
+    return getDatePickerYears()
+  }, [minDate, maxDate])
   const monthLabels = useMemo(() => getMonthWheelLabels(t), [t])
 
   const showYear = fields.includes('year')

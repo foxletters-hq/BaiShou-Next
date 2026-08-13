@@ -3,6 +3,7 @@ export const SETTINGS_NAV_ICON_IDS = [
   'ai-services',
   'ai-models',
   'assistants',
+  'latte',
   'rag',
   'web-search',
   'mcp',

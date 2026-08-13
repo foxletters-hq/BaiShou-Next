@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert } from 'rea
 import { useTranslation } from 'react-i18next'
 import { Copy, RefreshCw } from 'lucide-react-native'
 import type { McpServerConfig } from '@baishou/shared'
+import { isMcpAuthEnabled } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Input } from '../Input/Input'
 import { Switch } from '../Switch'
@@ -14,11 +15,13 @@ import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 export interface NativeMcpSettingsCardProps {
   config: McpServerConfig
   mcpEndpointUrl: string
+  mcpSseEndpointUrl?: string
   applying?: boolean
   isRunning?: boolean
   activePort?: number
   onChange: (config: McpServerConfig) => void
   onCopyEndpoint: () => void
+  onCopySseEndpoint?: () => void
   onCopyToken?: () => void
   onRefreshToken?: () => void
 }
@@ -26,11 +29,13 @@ export interface NativeMcpSettingsCardProps {
 export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   config,
   mcpEndpointUrl,
+  mcpSseEndpointUrl,
   applying = false,
   isRunning = false,
   activePort,
   onChange,
   onCopyEndpoint,
+  onCopySseEndpoint,
   onCopyToken,
   onRefreshToken
 }) => {
@@ -40,6 +45,7 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   // 本地状态乐观更新，Switch 按钮交互无延迟响应
   const [localEnabled, setLocalEnabled] = React.useState(config.mcpEnabled)
   const [localApplying, setLocalApplying] = React.useState(applying)
+  const authEnabled = isMcpAuthEnabled(config)
 
   React.useEffect(() => {
     setLocalEnabled(config.mcpEnabled)
@@ -82,6 +88,8 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
   const subtitle = localEnabled
     ? t('settings.mcp_running', '运行中 · 端口 $port').replace('$port', String(config.mcpPort))
     : t('settings.mcp_desc', '允许外部 AI 通过 MCP 协议调用白守工具')
+
+  const effectiveToken = authEnabled ? config.mcpAuthToken : undefined
 
   const connectionPanel = (
     <View style={styles.panel}>
@@ -137,6 +145,29 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
               {t('settings.mcp_copy_url', '复制 MCP 地址')}
             </Text>
           </Pressable>
+          {mcpSseEndpointUrl ? (
+            <>
+              <Text style={[styles.label, { color: colors.textSecondary, marginTop: 10 }]}>
+                {t('settings.mcp_sse_label', '连接地址（SSE）')}
+              </Text>
+              <Text style={[styles.mono, { color: colors.primary }]} selectable>
+                {mcpSseEndpointUrl}
+              </Text>
+              {onCopySseEndpoint ? (
+                <Pressable
+                  onPress={onCopySseEndpoint}
+                  style={({ pressed }) => [
+                    styles.copyBtn,
+                    { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }
+                  ]}
+                >
+                  <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 13 }}>
+                    {t('settings.mcp_copy_sse_url', '复制 SSE 地址')}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
           {isRunning && activePort != null ? (
             <Text style={[styles.sub, { color: colors.textSecondary }]}>
               {t('settings.mcp_running').replace('$port', String(activePort))}
@@ -144,7 +175,25 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           ) : null}
         </View>
 
-        {config.mcpAuthToken ? (
+        <View style={[styles.row, styles.rowBorder, { borderTopColor: colors.borderMuted }]}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[hubStyles.rowTitle, { color: colors.textPrimary }]}>
+              {t('settings.mcp_auth_enable', '启用鉴权')}
+            </Text>
+            <Text style={[styles.sub, { color: colors.textSecondary }]}>
+              {t(
+                'settings.mcp_auth_enable_desc',
+                '关闭后无需访问令牌即可连接（仅建议在受信局域网使用）'
+              )}
+            </Text>
+          </View>
+          <Switch
+            value={authEnabled}
+            onValueChange={(value) => onChange({ ...config, mcpAuthEnabled: value })}
+          />
+        </View>
+
+        {authEnabled && config.mcpAuthToken ? (
           <View
             style={[
               styles.row,
@@ -217,8 +266,11 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
           2.{' '}
           {t(
             'settings.mcp_help_cursor_2',
-            '将下方配置粘贴到 mcpServers 中（url 请使用上方连接地址），保存后重启 Cursor 或刷新 MCP 列表。'
+            '将下方配置粘贴到 mcpServers 中（推荐 /mcp；若客户端仅支持旧版 SSE，改用 /sse），保存后重启 Cursor 或刷新 MCP 列表。'
           )}
+        </Text>
+        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 6 }}>
+          {t('settings.mcp_help_streamable_title', '推荐：Streamable HTTP（/mcp）')}
         </Text>
         <Text
           style={{
@@ -232,14 +284,42 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             marginTop: 4
           }}
         >
-          {buildMcpClientJsonExample(mcpEndpointUrl, config.mcpAuthToken)}
+          {buildMcpClientJsonExample(mcpEndpointUrl, effectiveToken)}
         </Text>
+        {mcpSseEndpointUrl ? (
+          <>
+            <Text
+              style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 6 }}
+            >
+              {t('settings.mcp_help_sse_title', '兼容：SSE（/sse）')}
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: 'monospace',
+                backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)',
+                padding: 8,
+                borderRadius: 6,
+                color: colors.primary,
+                lineHeight: 15,
+                marginTop: 4
+              }}
+            >
+              {buildMcpClientJsonExample(mcpSseEndpointUrl, effectiveToken)}
+            </Text>
+          </>
+        ) : null}
       </View>
       <Text style={{ fontSize: 12, color: colors.textTertiary, fontStyle: 'italic', marginTop: 4 }}>
-        {t(
-          'settings.mcp_help_note',
-          '请使用上方 /mcp 地址（不要用 /sse）。启用后需保持白守移动端运行，并确保客户端与手机在同一局域网。'
-        )}
+        {authEnabled
+          ? t(
+              'settings.mcp_help_note',
+              '优先使用 /mcp；仅当客户端不支持 Streamable HTTP 时改用 /sse。启用后需保持白守移动端运行，并确保客户端与手机在同一局域网。'
+            )
+          : t(
+              'settings.mcp_help_auth_disabled_note',
+              '当前已关闭鉴权，配置中无需 Authorization 头。仅建议在受信网络使用。'
+            )}
       </Text>
     </View>
   )
