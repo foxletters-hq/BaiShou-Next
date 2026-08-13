@@ -2,7 +2,7 @@
   font-family: var(--font-family-main, inherit);
   color: var(--text-primary) !important;
   line-height: 1.6;
-  font-size: 15px;
+  font-size: var(--content-font-size-md, 15px);
   word-wrap: break-word;
 }
 

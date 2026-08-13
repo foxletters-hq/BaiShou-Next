@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ChatCostDialog.module.css'
 import { useTranslation } from 'react-i18next'
 
@@ -82,7 +83,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
 
   return (
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={withAppContentOverlay(styles.overlay)} onClick={onClose} />
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>{t('agent.chat.cost_detail_title', '当前计费')}</h2>
 

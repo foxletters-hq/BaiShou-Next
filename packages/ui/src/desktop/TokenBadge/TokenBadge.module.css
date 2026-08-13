@@ -7,42 +7,98 @@
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono, monospace);
-  color: var(--color-success);
-  background-color: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--text-primary);
+  background-color: #fff;
+  border: 1px solid var(--border-control);
   cursor: pointer;
   user-select: none;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition:
+    background-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: none;
+  box-sizing: border-box;
 }
 
 .container:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.12);
-  background-color: rgba(16, 185, 129, 0.14);
+  box-shadow: none;
+  background-color: #fff;
+  border-color: var(--border-control);
+  color: var(--text-primary);
+}
+
+:global(body[data-theme='dark']) .container,
+:global(body[data-theme='dark']) .container:hover {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .container:active {
   transform: translateY(0);
 }
 
+/**
+ * 顶栏变体：用复合选择器压过 .container 的 padding，
+ * 避免跨文件 CSS module 加载顺序把高度撑破。
+ */
+.container.toolbar {
+  height: var(--chrome-chip-height, 36px);
+  min-height: var(--chrome-chip-height, 36px);
+  max-height: var(--chrome-chip-height, 36px);
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: normal;
+  line-height: 1;
+  gap: 6px;
+  box-shadow: none;
+  overflow: hidden;
+  transform: none;
+}
+
+.container.toolbar:hover,
+.container.toolbar:active {
+  transform: none;
+  box-shadow: none;
+}
+
 .iconWrap {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* lucide 全局 1em */
+  font-size: 14px;
+  line-height: 0;
+}
+
+.container.toolbar .iconWrap {
+  font-size: 13px;
 }
 
 .tokenText {
   letter-spacing: -0.2px;
+  line-height: 1;
 }
 
 .costText {
   opacity: 0.8;
   font-weight: 500;
+  line-height: 1;
+  min-width: 9ch;
+  padding-inline: 2px 4px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  box-sizing: content-box;
 }
 
 .divider {
   width: 1px;
-  height: 14px;
+  height: 12px;
   background-color: currentColor;
   opacity: 0.3;
+  flex-shrink: 0;
 }
