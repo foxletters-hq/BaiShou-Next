@@ -4,6 +4,7 @@ import {
   hasGraphModelConfigured,
   isGraphFeatureConfigured,
   isGraphSelfNameConfigured,
+  isGraphStatusBarReady,
   isRagEmbedFeatureConfigured,
   resolveGraphExtractSelfName,
   shouldShowPendingEmbed,
@@ -45,13 +46,19 @@ describe('diary-status-bar.util', () => {
       ).toBe(false)
     })
 
-    it('hasGraphModelConfigured requires explicit dialogue provider+model', () => {
+    it('isGraphStatusBarReady only needs dialogue model', () => {
+      expect(isGraphStatusBarReady({ hasGraphModel: true })).toBe(true)
+      expect(isGraphStatusBarReady({ hasGraphModel: false })).toBe(false)
+    })
+
+    it('hasGraphModelConfigured requires explicit dialogue modelId', () => {
       expect(
         hasGraphModelConfigured({
           globalDialogueProviderId: 'openai',
           globalDialogueModelId: 'gpt-4o'
         })
       ).toBe(true)
+      expect(hasGraphModelConfigured({ globalDialogueModelId: 'gpt-4o' })).toBe(true)
       expect(hasGraphModelConfigured({})).toBe(false)
       expect(
         hasGraphModelConfigured({
@@ -61,14 +68,11 @@ describe('diary-status-bar.util', () => {
       ).toBe(false)
     })
 
-    it('isRagEmbedFeatureConfigured requires rag + embedding ids', () => {
+    it('isRagEmbedFeatureConfigured requires rag memory enabled only', () => {
       expect(
         isRagEmbedFeatureConfigured({
           ragConfig: { ragEnabled: true },
-          globalModels: {
-            globalEmbeddingProviderId: 'openai',
-            globalEmbeddingModelId: 'text-embedding-3-small'
-          }
+          globalModels: {}
         })
       ).toBe(true)
       expect(
@@ -80,15 +84,7 @@ describe('diary-status-bar.util', () => {
           }
         })
       ).toBe(false)
-      expect(
-        isRagEmbedFeatureConfigured({
-          ragConfig: { ragEnabled: true },
-          globalModels: {
-            globalEmbeddingProviderId: '',
-            globalEmbeddingModelId: 'text-embedding-3-small'
-          }
-        })
-      ).toBe(false)
+      expect(isRagEmbedFeatureConfigured({ ragConfig: null })).toBe(true)
     })
   })
 
