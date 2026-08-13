@@ -33,14 +33,9 @@ import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.
 import { mobileListPendingReextract } from '../../services/mobile-graph.service'
 import { getDiaryEmbedJobsPendingCount } from '../../services/mobile-diary-embed-jobs-consumer.service'
 import {
-  hasGraphModelConfigured,
-  isGraphFeatureConfigured,
-  isGraphSelfNameConfigured,
   isRagEmbedFeatureConfigured,
   shouldShowPendingEmbed,
   shouldShowPendingExtract,
-  GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
-  getUserProfileFromSettings,
   type GlobalModelsConfig,
   type RagConfig
 } from '@baishou/shared'
@@ -302,8 +297,7 @@ export const DiaryScreen: React.FC = () => {
       const vaultName = activeVault?.name || 'Personal'
       const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
-      const [pending, embedCount, globalModels, ragConfig, selfNameFlag, profile] =
-        await Promise.all([
+      const [pending, embedCount, globalModels, ragConfig] = await Promise.all([
           mobileListPendingReextract({
             vaultName,
             shadowRepo,
@@ -315,19 +309,12 @@ export const DiaryScreen: React.FC = () => {
           ).getUnindexedDiaryCount?.().catch(() => getDiaryEmbedJobsPendingCount()) ??
             getDiaryEmbedJobsPendingCount().catch(() => 0),
           services.settingsManager.get<GlobalModelsConfig>('global_models'),
-          services.settingsManager.get<RagConfig>('rag_config'),
-          services.settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY),
-          getUserProfileFromSettings(services.settingsManager)
+          services.settingsManager.get<RagConfig>('rag_config')
         ])
       setPendingGraphCount(pending.length)
       setPendingEmbedCount(typeof embedCount === 'number' ? embedCount : 0)
-      const selfConfigured = isGraphSelfNameConfigured(selfNameFlag === true, profile.nickname)
-      setGraphConfigured(
-        isGraphFeatureConfigured({
-          selfNameConfigured: selfConfigured,
-          hasGraphModel: hasGraphModelConfigured(globalModels)
-        })
-      )
+      // 有待办就显示：自称/模型缺失时由图谱页引导，避免底栏长期空白
+      setGraphConfigured(true)
       setRagConfigured(
         isRagEmbedFeatureConfigured({
           ragConfig,
@@ -562,6 +549,7 @@ const styles = StyleSheet.create({
   statusBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 12,
     minHeight: 24,
     paddingHorizontal: 16,

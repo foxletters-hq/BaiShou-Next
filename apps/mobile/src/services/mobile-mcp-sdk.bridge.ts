@@ -17,6 +17,7 @@ import {
   parseMcpRequestBody,
   type McpNativeResponseSink
 } from './mobile-mcp-web-response.util'
+import { MobileSseServerTransport } from './mobile-mcp-sse.transport'
 
 export {
   buildMcpRequestUrl,
@@ -27,16 +28,38 @@ export {
   type McpNativeResponseSink
 } from './mobile-mcp-web-response.util'
 
-type McpSession = {
+type StreamableMcpSession = {
+  kind: 'streamable'
   transport: WebStandardStreamableHTTPServerTransport
   server: Server
 }
+
+type SseMcpSession = {
+  kind: 'sse'
+  transport: MobileSseServerTransport
+  server: Server
+}
+
+type McpSession = StreamableMcpSession | SseMcpSession
 
 const nativeSink: McpNativeResponseSink = {
   resolveMcpHttpResponse: BaishouServer.resolveMcpHttpResponse,
   beginMcpHttpStream: BaishouServer.beginMcpHttpStream,
   pushMcpHttpStreamChunk: BaishouServer.pushMcpHttpStreamChunk,
   endMcpHttpStream: BaishouServer.endMcpHttpStream
+}
+
+function pathnameOf(path: string): string {
+  const q = path.indexOf('?')
+  return q >= 0 ? path.slice(0, q) : path
+}
+
+function queryParam(path: string, key: string): string | undefined {
+  const q = path.indexOf('?')
+  if (q < 0) return undefined
+  const params = new URLSearchParams(path.slice(q + 1))
+  const value = params.get(key)
+  return value?.trim() || undefined
 }
 
 export class MobileMcpSdkBridge {
@@ -75,6 +98,138 @@ export class MobileMcpSdkBridge {
     requestId: string,
     method: string,
     headers: Record<string, string>,
+    body: string,
+    path = '/mcp'
+  ): Promise<void> {
+    const pathname = pathnameOf(path)
+    if (pathname === '/sse' || pathname === '/sse/') {
+      await this.handleSseConnect(requestId, method)
+      return
+    }
+    if (pathname === '/message') {
+      await this.handleSseMessage(requestId, method, path, headers, body)
+      return
+    }
+
+    await this.handleStreamableRequest(requestId, method, headers, body)
+  }
+
+  async closeAllSessions(): Promise<void> {
+    for (const controller of this.activeDeliveries.values()) {
+      controller.abort()
+    }
+    this.activeDeliveries.clear()
+
+    const sessionIds = [...this.sessions.keys()]
+    await Promise.all(sessionIds.map((sid) => this.closeSession(sid)))
+    this.sessionChains.clear()
+  }
+
+  private async handleSseConnect(requestId: string, method: string): Promise<void> {
+    if (method !== 'GET') {
+      this.resolvePlainError(requestId, 405, 'Method Not Allowed')
+      return
+    }
+
+    let server: Server | null = null
+    let transport: MobileSseServerTransport | null = null
+
+    try {
+      transport = new MobileSseServerTransport('/message')
+      transport.bindStreamRequest(requestId)
+      server = createBaishouMcpServer(this.appVersion, this.toolRegistry, () =>
+        this.resolveToolContext()
+      )
+
+      const sessionId = transport.sessionId
+      transport.onclose = () => {
+        void this.closeSession(sessionId)
+      }
+
+      await server.connect(transport)
+      this.sessions.set(sessionId, { kind: 'sse', transport, server })
+      logger.info(`[MobileMcpSdkBridge] SSE session connected: ${sessionId}`)
+    } catch (e) {
+      logger.error('[MobileMcpSdkBridge] SSE connect failed', e as Error)
+      const streamAlreadyOpen = transport?.hasStarted === true
+      if (transport) {
+        try {
+          await transport.close()
+        } catch {
+          /* ignore */
+        }
+      }
+      if (server) {
+        try {
+          await server.close()
+        } catch {
+          /* ignore */
+        }
+      }
+      // beginMcpHttpStream 已占用原生 pending 时只能 end stream，不能再 resolve 固定响应
+      if (!streamAlreadyOpen) {
+        this.resolveJsonRpcError(
+          requestId,
+          500,
+          -32603,
+          `Error: ${e instanceof Error ? e.message : String(e)}`
+        )
+      }
+    }
+  }
+
+  private async handleSseMessage(
+    requestId: string,
+    method: string,
+    path: string,
+    headers: Record<string, string>,
+    body: string
+  ): Promise<void> {
+    if (method !== 'POST') {
+      this.resolvePlainError(requestId, 405, 'Method Not Allowed')
+      return
+    }
+
+    const sessionId = queryParam(path, 'sessionId')
+    if (!sessionId) {
+      this.resolvePlainError(requestId, 400, 'Missing sessionId')
+      return
+    }
+
+    const session = this.sessions.get(sessionId)
+    if (!session || session.kind !== 'sse') {
+      logger.warn(`[MobileMcpSdkBridge] SSE session not found: ${sessionId}`)
+      this.resolvePlainError(requestId, 404, 'Session not found')
+      return
+    }
+
+    const contentType = headers['content-type'] ?? ''
+    if (contentType && !contentType.toLowerCase().includes('application/json')) {
+      this.resolvePlainError(requestId, 400, `Unsupported content-type: ${contentType}`)
+      return
+    }
+
+    try {
+      const parsedBody = parseMcpRequestBody(body)
+      await this.runWithSessionLock(sessionId, async () => {
+        await session.transport.handleMessage(parsedBody)
+      })
+      BaishouServer.resolveMcpHttpResponse(requestId, {
+        statusCode: 202,
+        headers: { 'content-type': 'text/plain' },
+        body: 'Accepted'
+      })
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.error('[MobileMcpSdkBridge] SSE message failed', e as Error)
+      this.resolvePlainError(requestId, 400, `Invalid message: ${message}`)
+    }
+  }
+
+  private async handleStreamableRequest(
+    requestId: string,
+    method: string,
+    headers: Record<string, string>,
     body: string
   ): Promise<void> {
     const sessionId = headers['mcp-session-id']
@@ -87,7 +242,7 @@ export class MobileMcpSdkBridge {
       if (sessionId) {
         await this.runWithSessionLock(sessionId, async () => {
           const session = this.sessions.get(sessionId)
-          if (!session) {
+          if (!session || session.kind !== 'streamable') {
             this.resolveJsonRpcError(requestId, 404, -32001, `Session not found: ${sessionId}`)
             return
           }
@@ -127,17 +282,6 @@ export class MobileMcpSdkBridge {
     }
   }
 
-  async closeAllSessions(): Promise<void> {
-    for (const controller of this.activeDeliveries.values()) {
-      controller.abort()
-    }
-    this.activeDeliveries.clear()
-
-    const sessionIds = [...this.sessions.keys()]
-    await Promise.all(sessionIds.map((sid) => this.closeSession(sid)))
-    this.sessionChains.clear()
-  }
-
   private async handleInitializeRequest(
     requestId: string,
     method: string,
@@ -161,7 +305,7 @@ export class MobileMcpSdkBridge {
         enableJsonResponse: true,
         onsessioninitialized: (sid) => {
           if (server && transport) {
-            this.sessions.set(sid, { transport, server })
+            this.sessions.set(sid, { kind: 'streamable', transport, server })
             logger.info(`[MobileMcpSdkBridge] Streamable session initialized: ${sid}`)
           }
         },
@@ -174,7 +318,7 @@ export class MobileMcpSdkBridge {
       sessionId = transport.sessionId
 
       if (sessionId && server && transport) {
-        this.sessions.set(sessionId, { transport, server })
+        this.sessions.set(sessionId, { kind: 'streamable', transport, server })
       }
 
       const webRequest = nanoEventToRequest(method, headers, body, port)
@@ -218,6 +362,10 @@ export class MobileMcpSdkBridge {
     if (!session) return
     this.sessions.delete(sessionId)
 
+    if (session.kind === 'sse') {
+      session.transport.onclose = undefined
+    }
+
     try {
       await session.transport.close()
     } catch (e) {
@@ -228,7 +376,17 @@ export class MobileMcpSdkBridge {
     } catch (e) {
       logger.warn(`[MobileMcpSdkBridge] server close failed for ${sessionId}`, e as Error)
     }
-    logger.info(`[MobileMcpSdkBridge] Streamable session closed: ${sessionId}`)
+    logger.info(
+      `[MobileMcpSdkBridge] ${session.kind === 'sse' ? 'SSE' : 'Streamable'} session closed: ${sessionId}`
+    )
+  }
+
+  private resolvePlainError(requestId: string, statusCode: number, message: string): void {
+    BaishouServer.resolveMcpHttpResponse(requestId, {
+      statusCode,
+      headers: { 'content-type': 'text/plain' },
+      body: message
+    })
   }
 
   private resolveJsonRpcError(

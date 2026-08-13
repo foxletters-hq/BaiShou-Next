@@ -23,7 +23,9 @@ import {
   getUserProfileFromSettings,
   normalizeChatBackgroundBlur,
   normalizeChatBackgroundOverlayOpacity,
+  normalizeUiFontSizeLevel,
   saveUserProfileToSettings,
+  UI_FONT_SIZE_LEVEL_DEFAULT,
   withSummaryPromptLocaleFromUi,
   type SummaryConfig,
   type UserProfile
@@ -70,6 +72,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
   const [seedColor, setSeedColor] = useState('#5BA8F5')
   const [language, setLanguage] = useState('system')
+  const [fontSizeLevel, setFontSizeLevel] = useState(UI_FONT_SIZE_LEVEL_DEFAULT)
   const [profile, setProfile] = useState<{ nickname: string; avatarPath?: string | null }>(() => {
     const cached = peekAgentUserProfileCache()
     if (!cached) return { nickname: '', avatarPath: '' }
@@ -168,6 +171,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       const nextThemeMode = settings.themeMode as 'system' | 'light' | 'dark' | undefined
       const nextSeedColor = typeof settings.seedColor === 'string' ? settings.seedColor : undefined
       const nextLanguage = typeof settings.language === 'string' ? settings.language : undefined
+      const nextFontSizeLevel = normalizeUiFontSizeLevel(settings.fontSizeLevel)
 
       const userProfile = await getUserProfileFromSettings(services.settingsManager)
       if (loadGen !== accountLoadGenRef.current) {
@@ -196,6 +200,7 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
 
       if (nextThemeMode) setThemeMode(nextThemeMode)
       if (nextSeedColor) setSeedColor(nextSeedColor)
+      setFontSizeLevel(nextFontSizeLevel)
       if (nextLanguage) {
         console.log('[AppearanceLang] load:apply-language', {
           loadGen,
@@ -331,6 +336,22 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
       notifyThemeRefresh()
     } catch (e) {
       console.error('Save seed color failed', e)
+    }
+  }
+
+  const handleFontSizeLevelChange = async (level: number) => {
+    if (!services || !dbReady) return
+    const next = normalizeUiFontSizeLevel(level)
+    try {
+      accountLoadGenRef.current += 1
+      setFontSizeLevel(next)
+      const settings = (await services.settingsManager.get<any>('settings')) || {}
+      settings.fontSizeLevel = next
+      await services.settingsManager.set('settings', settings)
+      accountLoadGenRef.current += 1
+      notifyThemeRefresh()
+    } catch (e) {
+      console.error('Save font size failed', e)
     }
   }
 
@@ -521,9 +542,11 @@ export const QuickSettingsGroup: React.FC<QuickSettingsGroupProps> = ({ groupCar
             themeMode={themeMode}
             seedColor={seedColor}
             language={language as 'system' | 'zh' | 'zh-TW' | 'en' | 'ja'}
+            fontSizeLevel={fontSizeLevel}
             onThemeModeChange={handleSaveTheme}
             onSeedColorChange={handleSeedColorChange}
             onLanguageChange={handleSaveLanguage}
+            onFontSizeLevelChange={handleFontSizeLevelChange}
           />
           <SettingsGroupDivider />
           <ChatBackgroundSettingsCard
