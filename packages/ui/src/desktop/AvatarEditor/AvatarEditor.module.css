@@ -15,12 +15,10 @@
   left: 0; /* Aligned to left to avoid clipping in padded containers */
   z-index: 100;
   width: 360px;
-  background: var(--bg-glass-surface);
-  backdrop-filter: var(--blur-glass);
-  -webkit-backdrop-filter: var(--blur-glass);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-xl);
-  border-radius: 16px;
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  border-radius: var(--menu-popup-radius, 8px);
   overflow: hidden;
   animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }

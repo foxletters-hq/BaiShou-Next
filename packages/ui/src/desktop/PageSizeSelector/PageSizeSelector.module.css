@@ -54,11 +54,11 @@
 
 .dropdownContent {
   position: fixed;
-  background: var(--bg-surface);
-  border-radius: 12px;
-  border: 1px solid var(--border-card);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
-  padding: 8px;
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border-radius: var(--menu-popup-radius, 8px);
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
+  padding: var(--menu-popup-padding, 4px);
   z-index: 10000;
   min-width: 160px;
   box-sizing: border-box;
@@ -73,7 +73,7 @@
 
 .optionBtn {
   padding: 8px 0;
-  border-radius: 8px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   background: transparent;
   border: none;
   font-size: 13px;
@@ -87,14 +87,14 @@
 }
 
 .optionBtn:hover {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  color: var(--color-primary);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
+  color: var(--text-primary);
 }
 
 .optionBtnSelected {
-  background: var(--color-primary) !important;
-  color: var(--text-on-primary) !important;
-  font-weight: 600;
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high)) !important;
+  color: var(--color-primary) !important;
+  font-weight: 500;
   box-shadow: none;
 }
 

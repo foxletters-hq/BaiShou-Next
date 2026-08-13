@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { APP_UI_LANGUAGE_ORDER } from '@baishou/shared'
+import {
+  APP_UI_LANGUAGE_ORDER,
+  normalizeUiFontSizeLevel,
+  UI_FONT_SIZE_LEVEL_DEFAULT,
+  UI_FONT_SIZE_LEVEL_MAX,
+  UI_FONT_SIZE_LEVEL_MIN,
+  UI_FONT_SIZE_SCALES
+} from '@baishou/shared'
 import './AppearanceSettingsCard.css'
 import { useTranslation } from 'react-i18next'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
@@ -10,26 +17,36 @@ export interface AppearanceSettingsProps {
   themeMode: 'system' | 'light' | 'dark'
   seedColor: string
   language?: string
+  fontSizeLevel?: number
   onThemeModeChange: (mode: 'system' | 'light' | 'dark') => void
   onSeedColorChange: (color: string) => void
   onLanguageChange: (lang: string) => void
+  onFontSizeLevelChange?: (level: number) => void
   embedded?: boolean
   isLast?: boolean
 }
+
+const FONT_SIZE_TICKS = Array.from(
+  { length: UI_FONT_SIZE_LEVEL_MAX - UI_FONT_SIZE_LEVEL_MIN + 1 },
+  (_, i) => i + UI_FONT_SIZE_LEVEL_MIN
+)
 
 export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
   themeMode,
   seedColor,
   language = 'system',
+  fontSizeLevel = UI_FONT_SIZE_LEVEL_DEFAULT,
   onThemeModeChange,
   onSeedColorChange,
   onLanguageChange,
+  onFontSizeLevelChange,
   embedded = false,
   isLast = false
 }) => {
   const { t } = useTranslation()
   const [showPicker, setShowPicker] = useState(false)
   const [localColor, setLocalColor] = useState(seedColor)
+  const resolvedFontSizeLevel = normalizeUiFontSizeLevel(fontSizeLevel)
 
   useEffect(() => {
     setLocalColor(seedColor)
@@ -74,6 +91,37 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
 
   const getLangText = () => {
     return LANGS.find((l) => l.val === language)?.label || t('settings.language_system', '跟随系统')
+  }
+
+  const fontSizeLabelForTick = (level: number) => {
+    if (level === UI_FONT_SIZE_LEVEL_MIN) return t('settings.font_size_small', '小')
+    if (level === UI_FONT_SIZE_LEVEL_DEFAULT) return t('settings.font_size_default', '默认')
+    if (level === UI_FONT_SIZE_LEVEL_MAX) return t('settings.font_size_large', '大')
+    return ''
+  }
+
+  const fontSizeLabelStyle = (level: number): React.CSSProperties => {
+    const span = UI_FONT_SIZE_LEVEL_MAX - UI_FONT_SIZE_LEVEL_MIN
+    const pct = span <= 0 ? 0 : ((level - UI_FONT_SIZE_LEVEL_MIN) / span) * 100
+    const scale = UI_FONT_SIZE_SCALES[level] ?? 1
+    const align =
+      level === UI_FONT_SIZE_LEVEL_MIN
+        ? 'left'
+        : level === UI_FONT_SIZE_LEVEL_MAX
+          ? 'right'
+          : 'center'
+    const transform =
+      level === UI_FONT_SIZE_LEVEL_MIN
+        ? 'translateY(-50%)'
+        : level === UI_FONT_SIZE_LEVEL_MAX
+          ? 'translate(-100%, -50%)'
+          : 'translate(-50%, -50%)'
+    return {
+      left: `${pct}%`,
+      transform,
+      textAlign: align,
+      fontSize: `${Math.round(12 * scale)}px`
+    }
   }
 
   return (
@@ -176,6 +224,54 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
             ))}
           </div>
         </div>
+
+        {onFontSizeLevelChange ? (
+          <>
+            <div className="appearance-row divider-row">
+              <div className="settings-list-divider indent" />
+            </div>
+
+            <div className="appearance-row font-size-row">
+              <label className="settings-label" htmlFor="appearance-font-size">
+                {t('settings.font_size', '字体大小')}
+              </label>
+              <div className="font-size-slider">
+                <input
+                  id="appearance-font-size"
+                  type="range"
+                  className="font-size-range"
+                  min={UI_FONT_SIZE_LEVEL_MIN}
+                  max={UI_FONT_SIZE_LEVEL_MAX}
+                  step={1}
+                  value={resolvedFontSizeLevel}
+                  aria-valuemin={UI_FONT_SIZE_LEVEL_MIN}
+                  aria-valuemax={UI_FONT_SIZE_LEVEL_MAX}
+                  aria-valuenow={resolvedFontSizeLevel}
+                  aria-label={t('settings.font_size', '字体大小')}
+                  onChange={(e) =>
+                    onFontSizeLevelChange(normalizeUiFontSizeLevel(Number(e.target.value)))
+                  }
+                />
+                <div className="font-size-ticks" aria-hidden="true">
+                  {FONT_SIZE_TICKS.map((level) => (
+                    <span key={level} className="font-size-tick" />
+                  ))}
+                </div>
+                <div className="font-size-labels" aria-hidden="true">
+                  {FONT_SIZE_TICKS.filter((level) => fontSizeLabelForTick(level)).map((level) => (
+                    <span
+                      key={level}
+                      className={`font-size-label${level === resolvedFontSizeLevel ? ' active' : ''}`}
+                      style={fontSizeLabelStyle(level)}
+                    >
+                      {fontSizeLabelForTick(level)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
       </SettingsExpansionTile>
     </div>
   )

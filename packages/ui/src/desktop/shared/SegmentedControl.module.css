@@ -1,14 +1,14 @@
 /**
- * 分段滑块 — 与回忆生成设置「生成模式」同尺寸
- * 选中态由 .thumb 白底指示器滑动呈现；.btnActive 仅改文字色
+ * 分段滑块 — 选中态由 .thumb 白底指示器滑动呈现；.btnActive 改文字色
  * group / btn / btnActive / thumb；可选 groupStretch、groupInline、badge
  */
 .group {
   display: inline-flex;
   gap: 0;
-  background-color: var(--bg-app);
+  background-color: var(--bg-surface-normal);
+  border: 1px solid var(--border-control);
   padding: 3px;
-  border-radius: 8px;
+  border-radius: 10px;
   width: fit-content;
   box-sizing: border-box;
   align-items: center;
@@ -35,11 +35,19 @@
   left: 0;
   z-index: 0;
   height: 26px;
-  border-radius: 6px;
+  border-radius: 7px;
   background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
   pointer-events: none;
   will-change: transform, width;
+}
+
+:global(body[data-theme='dark']) .thumb {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .thumbAnimate {
@@ -59,12 +67,12 @@
   z-index: 1;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   height: 26px;
   padding: 0 14px;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
-  font-weight: 400;
+  font-weight: 500;
   font-family: inherit;
   color: var(--text-secondary);
   cursor: pointer;
@@ -76,6 +84,8 @@
   box-sizing: border-box;
   white-space: nowrap;
   flex-shrink: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .groupStretch .btn {
@@ -86,11 +96,15 @@
   color: var(--text-primary);
 }
 
+.btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.28);
+}
+
 .btnActive,
 .btnActive:hover:not(:disabled) {
   background: transparent;
   color: var(--color-primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .btn:disabled {
@@ -99,8 +113,8 @@
 }
 
 .btnActive .badge {
-  background: rgba(255, 255, 255, 0.22);
-  color: var(--text-on-primary);
+  background: rgba(var(--color-primary-rgb), 0.14);
+  color: var(--color-primary);
 }
 
 .badge {
