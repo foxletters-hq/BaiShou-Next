@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
+import { withAppContentOverlay } from '../overlay'
 import './VersionHistorySidebar.css'
 import type { VersionHistoryEntry, FileDiff, FileChange } from '@baishou/shared'
 
@@ -77,7 +78,7 @@ export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="vhs-overlay"
+          className={withAppContentOverlay('vhs-overlay')}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

@@ -22,7 +22,7 @@
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -57,8 +57,8 @@
 .unifiedContent {
   margin: 0;
   padding: 10px 12px;
-  font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: var(--ui-fs-lg);
+  font-family: var(--font-family-mono);
   line-height: 1.55;
   white-space: pre;
 }
@@ -101,7 +101,7 @@
 
 .splitHeaderCell {
   padding: 6px 12px;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -121,8 +121,8 @@
 .splitPane {
   overflow: auto;
   min-height: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-lg);
   line-height: 1.55;
 }
 
@@ -168,6 +168,6 @@
 .empty {
   padding: 16px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   font-style: italic;
 }

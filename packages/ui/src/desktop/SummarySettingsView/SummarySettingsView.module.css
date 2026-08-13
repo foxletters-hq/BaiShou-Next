@@ -116,6 +116,14 @@
   background: var(--form-field-bg);
   transition: border-color var(--duration-fast, 0.15s) ease;
   box-sizing: border-box;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.lookbackInput::-webkit-outer-spin-button,
+.lookbackInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .lookbackInput:focus {

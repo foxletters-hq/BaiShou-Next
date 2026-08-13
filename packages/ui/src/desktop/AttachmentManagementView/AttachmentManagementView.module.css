@@ -651,13 +651,13 @@
   top: calc(100% + 6px);
   left: 0;
   min-width: 140px;
-  background: var(--bg-surface);
-  border-radius: 12px;
-  border: 1px solid var(--border-card);
-  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.12));
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border-radius: var(--menu-popup-radius, 8px);
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 1000;
   overflow: hidden;
-  padding: 4px;
+  padding: var(--menu-popup-padding, 4px);
 }
 
 .dropdownMenuYear {
@@ -684,7 +684,7 @@
 .dropdownItem {
   width: 100%;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -699,12 +699,12 @@
 }
 
 .dropdownItem:hover {
-  background: var(--bg-surface-high);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
   color: var(--text-primary);
 }
 
 .dropdownItem.active {
-  background: var(--bg-surface-high);
+  background: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
   color: var(--color-primary);
 }
 

@@ -289,10 +289,10 @@
   top: calc(100% + 4px);
   left: 0;
   width: 100%;
-  background-color: var(--bg-surface-raised);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  background-color: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, 8px);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   z-index: 100;
   overflow: hidden;
   animation: slideDown var(--duration-fast) var(--ease-out-cubic) forwards;
@@ -333,24 +333,19 @@
   padding: 8px 12px;
   font-size: 14px;
   color: var(--text-primary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--menu-popup-item-radius, 5px);
   cursor: pointer;
-  transition: all var(--duration-fast) ease;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .comboboxOptionItem:hover {
-  background-color: var(--bg-surface-high);
+  background-color: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
 }
 
 .selected {
-  background-color: var(--color-primary-light);
-  color: var(--color-primary-dark);
-  font-weight: 500;
-}
-
-[data-theme='dark'] .selected {
-  background-color: rgba(var(--color-primary-rgb), 0.15);
-  color: var(--color-primary);
+  background-color: var(--menu-popup-item-selected-bg, var(--bg-surface-high));
+  color: var(--text-primary);
+  font-weight: 400;
 }
 
 .optionText {

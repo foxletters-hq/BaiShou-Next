@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react'
+import { withAppContentOverlay } from '../overlay'
 import styles from './ActivityHeatmap.module.css'
 
 import { generateHeatmapMatrix, ActivityData } from '../../utils/heatmap-matrix'
@@ -237,7 +238,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
       </div>
 
       {showYearPicker && (
-        <div className={styles.yearOverlay} onClick={() => setShowYearPicker(false)}>
+        <div className={withAppContentOverlay(styles.yearOverlay)} onClick={() => setShowYearPicker(false)}>
           <div className={styles.yearModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.yearModalTitle}>{t('activity.select_year', '选择年份')}</div>
             <div className={styles.yearGrid}>
