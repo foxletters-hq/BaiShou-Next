@@ -1,5 +1,6 @@
 /*
- * Obsidian 风格上下文菜单：中性悬停、左图标 + 文案。
+ * 锚定上下文菜单：中性悬停、左图标 + 文案。
+ * 外壳 token：--menu-popup-*（与工作台选择工作空间菜单同一套）。
  * 背景用 --bg-surface（与页面/编辑器同色），不用 raised——深色下 raised 更亮，会显得「更白一档」。
  */
 .context-menu {
@@ -7,16 +8,26 @@
   z-index: 401;
   min-width: 180px;
   max-width: 280px;
-  padding: 4px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-muted);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
+  padding: var(--menu-popup-padding, 4px);
+  background: var(--menu-popup-bg, var(--bg-surface));
+  border: 1px solid var(--menu-popup-border, var(--border-muted));
+  border-radius: var(--menu-popup-radius, 8px);
+  box-shadow: var(--menu-popup-shadow, var(--shadow-md));
   animation: context-menu-appear 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   gap: 1px;
   font-family: var(--font-family);
+}
+
+/* AnchoredContextMenu：落位前隐藏，避免先闪错误坐标 */
+.context-menu.context-menu-pending {
+  animation: none;
+  opacity: 0;
+}
+
+.context-menu.context-menu-ready {
+  animation: context-menu-appear 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes context-menu-appear {
@@ -38,7 +49,7 @@
   min-height: 28px;
   padding: 5px 10px;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--menu-popup-item-radius, 5px);
   background: transparent;
   color: var(--text-primary);
   font-size: 13px;
@@ -50,7 +61,7 @@
 }
 
 .context-menu-item:hover:not(:disabled):not(.disabled) {
-  background: var(--bg-surface-high);
+  background: var(--menu-popup-item-hover-bg, var(--bg-surface-high));
   color: var(--text-primary);
 }
 
@@ -109,4 +120,34 @@
   align-items: center;
   color: var(--text-tertiary);
   flex-shrink: 0;
+}
+
+.context-menu-item-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.context-menu-item.has-submenu {
+  padding-right: 6px;
+}
+
+.context-menu-submenu {
+  position: absolute;
+  top: -4px;
+  z-index: 2;
+  min-width: 180px;
+  max-width: 260px;
+  max-height: min(320px, calc(100vh - 24px));
+  overflow-y: auto;
+  /* 默认不播动画；落位完成后再加 context-menu-ready */
+  animation: none;
+}
+
+.context-menu-submenu-right {
+  left: 100%;
+}
+
+.context-menu-submenu-left {
+  right: 100%;
+  left: auto;
 }

@@ -3,15 +3,19 @@ import { createPortal } from 'react-dom'
 import './ContextMenu.css'
 import { applyFixedContextMenuLayout } from './context-menu-placement.util'
 import { DIARY_EDITOR_OVERLAY_Z } from '../../shared/diary-codemirror/editorOverlayZIndex'
+import { ContextMenuItemList } from './ContextMenuItemList'
 
 export interface ContextMenuItem {
   label: string
   icon?: React.ReactNode
-  onClick: () => void
+  /** 叶子项必填；有 children 时可为占位空函数 */
+  onClick?: () => void
   disabled?: boolean
   divider?: boolean
   /** 为 true 时点击后不关闭菜单（适合开关类项） */
   keepOpen?: boolean
+  /** 悬停展开的二级菜单 */
+  children?: ContextMenuItem[]
 }
 
 interface ContextMenuProps {
@@ -101,28 +105,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 top: position.y
               }}
             >
-              {items.map((item, index) => {
-                if (item.divider) {
-                  return <div key={index} className="context-menu-divider" />
-                }
-
-                return (
-                  <button
-                    key={index}
-                    className={`context-menu-item ${item.disabled ? 'disabled' : ''}`}
-                    onClick={() => {
-                      if (!item.disabled) {
-                        item.onClick()
-                        if (!item.keepOpen) handleClose()
-                      }
-                    }}
-                    disabled={item.disabled}
-                  >
-                    {item.icon && <span className="context-menu-icon">{item.icon}</span>}
-                    <span className="context-menu-label">{item.label}</span>
-                  </button>
-                )
-              })}
+              <ContextMenuItemList items={items} onClose={handleClose} />
             </div>
           </>,
           document.body
