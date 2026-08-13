@@ -9,7 +9,8 @@ import { useBaishou } from '../providers/BaishouProvider'
 
 const DEFAULT_MCP_CONFIG: McpServerConfig = {
   mcpEnabled: false,
-  mcpPort: 31004
+  mcpPort: 31004,
+  mcpAuthEnabled: true
 }
 
 async function persistMcpConfig(
@@ -86,6 +87,7 @@ export function useMobileMcpConfig() {
   }, [applying, config.mcpEnabled, loadTools, loading])
 
   const mcpEndpointUrl = `http://${deviceIp}:${config.mcpPort}/mcp`
+  const mcpSseEndpointUrl = `http://${deviceIp}:${config.mcpPort}/sse`
   const persistConfig = useCallback(
     async (next: McpServerConfig) => {
       if (!services || !dbReady) return
@@ -136,6 +138,7 @@ export function useMobileMcpConfig() {
     loading,
     applying,
     mcpEndpointUrl,
+    mcpSseEndpointUrl,
     persistConfig,
     refreshAuthToken,
     tools,
