@@ -263,23 +263,23 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
       <SettingsPageChrome
         title={t('settings.lan_transfer', '局域网传输')}
         layout="stack"
+        titleAccessory={
+          <HelpTooltip
+            content={t(
+              'lan_transfer.usage_tooltip',
+              '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。'
+            )}
+            size={16}
+          />
+        }
         trailing={
-          <>
-            <HelpTooltip
-              content={t(
-                'lan_transfer.usage_tooltip',
-                '在同一局域网（Wi-Fi）下，两台设备都打开此页面，即可相互快速传输整个数据的全量备份包。'
-              )}
-              size={16}
-            />
-            <button
-              className={styles.refreshBtn}
-              onClick={restartDualMode}
-              title={t('common.refresh', '刷新')}
-            >
-              <RefreshCw size={20} />
-            </button>
-          </>
+          <button
+            className={styles.refreshBtn}
+            onClick={restartDualMode}
+            title={t('common.refresh', '刷新')}
+          >
+            <RefreshCw size={20} />
+          </button>
         }
       >
         <div className={styles.container}>
