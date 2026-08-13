@@ -90,7 +90,7 @@ export function AssistantSortableListItem({
   assistant: AssistantInfo
   isPinned: boolean
   onEdit: (assistant: AssistantInfo) => void
-  onDelete: (assistantId: string) => void
+  onDelete?: (assistantId: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: assistant.id
