@@ -39,6 +39,12 @@
   color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
+  outline: none;
+}
+
+.close:focus,
+.close:focus-visible {
+  outline: none;
 }
 
 .empty {
@@ -87,6 +93,12 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  outline: none;
+}
+
+.item:focus,
+.item:focus-visible {
+  outline: none;
 }
 
 .itemTitle {
@@ -106,10 +118,17 @@
   border: none;
   border-radius: 999px;
   padding: 4px 8px;
+  margin-right: 10px;
   background: color-mix(in srgb, var(--color-primary) 14%, transparent);
   color: var(--color-primary);
   cursor: pointer;
+  outline: none;
   -webkit-app-region: no-drag;
+}
+
+.badgeBtn:focus,
+.badgeBtn:focus-visible {
+  outline: none;
 }
 
 .badgeCount {

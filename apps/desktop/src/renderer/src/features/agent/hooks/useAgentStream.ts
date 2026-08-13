@@ -18,6 +18,7 @@ import {
   type ToolExecution,
   type PendingEmoji
 } from './agent-stream-session-store'
+import { getSessionReasoningEffortOverride } from '../reasoning-effort-session'
 
 export {
   clearStreamBridgeForSession,
@@ -29,13 +30,15 @@ export type { ToolExecution, PendingEmoji } from './agent-stream-session-store'
 export interface UseAgentStreamResult {
   text: string
   reasoning: string
+  /** 流式时间线：思考 → 工具 → 思考 → 正文，按发生顺序 */
+  timeline: import('@baishou/shared').AgentStreamTimelineItem[]
   isStreaming: boolean
   isCompressing: boolean
   compressionPhase: 'auto' | 'manual'
   compressionText: string
   compressionReasoning: string
   compressionTriggerMessageId: string | null
-  activeTool: { name: string; args: any } | null
+  activeTool: { name: string; args: any; callId?: string } | null
   completedTools: ToolExecution[]
   /** 流式期间收到的 emoji_send 表情包，即时显示为图片 */
   pendingEmojis: PendingEmoji[]
@@ -45,7 +48,11 @@ export interface UseAgentStreamResult {
   saveUserMessage: (
     sessionId: string,
     text: string,
-    attachments?: any[]
+    attachments?: any[],
+    meta?: {
+      displayText?: string
+      skillRefs?: Array<{ command: string; content: string }>
+    }
   ) => Promise<{ userMessageId: string; attachments?: any[] } | { error: string }>
   startChat: (
     sessionId: string,
@@ -138,12 +145,18 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     async (
       sessionId: string,
       userText: string,
-      attachments?: any[]
+      attachments?: any[],
+      meta?: {
+        displayText?: string
+        skillRefs?: Array<{ command: string; content: string }>
+      }
     ): Promise<{ userMessageId: string; attachments?: any[] } | { error: string }> => {
       const result = await window.electron.ipcRenderer.invoke('agent:save-user-message', {
         sessionId,
         text: userText,
-        attachments
+        attachments,
+        displayText: meta?.displayText,
+        skillRefs: meta?.skillRefs
       })
       return result
     },
@@ -171,6 +184,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
+        state.timeline = []
         state.activeToolStartTime = undefined
         clearCompressionStreamState(state)
       })
@@ -182,7 +196,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         modelId,
         attachments,
         searchMode,
-        userMsgId
+        userMsgId,
+        reasoningEffort: getSessionReasoningEffortOverride()
       })
     },
     []
@@ -209,6 +224,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
+        state.timeline = []
         state.activeToolStartTime = undefined
         clearCompressionStreamState(state)
       })
@@ -246,6 +262,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         state.pendingEmojis = []
         state.text = ''
         state.reasoning = ''
+        state.timeline = []
         state.activeToolStartTime = undefined
         clearCompressionStreamState(state)
       })
@@ -274,6 +291,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       state.pendingEmojis = []
       state.text = ''
       state.reasoning = ''
+      state.timeline = []
       state.activeToolStartTime = undefined
       state.pendingAgentGate = null
       state.isAgentGateReplying = false
@@ -363,6 +381,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
     : {
         text: '',
         reasoning: '',
+        timeline: [],
         isStreaming: false,
         isCompressing: false,
         compressionPhase: 'auto' as const,
@@ -381,6 +400,7 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
   return {
     text: activeState.text,
     reasoning: activeState.reasoning,
+    timeline: activeState.timeline,
     isStreaming: activeState.isStreaming,
     isBridgeActive: activeState.isBridgeActive,
     isCompressing: activeState.isCompressing,

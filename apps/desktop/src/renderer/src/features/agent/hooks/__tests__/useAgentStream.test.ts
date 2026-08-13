@@ -268,7 +268,9 @@ describe('useAgentStream', () => {
       act(() => {
         emit('agent:tool-start', { sessionId: 's1', name: 'diary_search', args: { query: 'test' } })
       })
-      expect(result.current.activeTool).toEqual({ name: 'diary_search', args: { query: 'test' } })
+      expect(result.current.activeTool).toEqual(
+        expect.objectContaining({ name: 'diary_search', args: { query: 'test' } })
+      )
     })
 
     it('should handle tool-result event', () => {

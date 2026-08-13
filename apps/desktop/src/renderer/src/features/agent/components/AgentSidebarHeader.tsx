@@ -64,10 +64,11 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
   wrapperClassName,
   compact = false
 }) => (
-  <div className={`${styles.currentAssistantWrapper} ${wrapperClassName ?? ''}`.trim()}>
+  <div
+    className={`${styles.currentAssistantWrapper} ${compact ? styles.compact : ''} ${wrapperClassName ?? ''}`.trim()}
+  >
     <div
       className={styles.currentAssistantCard}
-      style={compact ? { height: 36, padding: '0 10px' } : undefined}
       onClick={() => {
         if (onShowPicker) onShowPicker()
         else if (currentAssistant) onAssistantSwitched(currentAssistant)
@@ -75,7 +76,7 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
     >
       {currentAssistant ? (
         <>
-          <AssistantAvatar assistant={currentAssistant} size={compact ? 28 : 36} />
+          <AssistantAvatar assistant={currentAssistant} size={compact ? 24 : 36} />
           <div className={styles.assistantInfo}>
             <div className={styles.assistantNameRow}>
               <div className={styles.assistantName}>{currentAssistant.name}</div>
@@ -91,7 +92,7 @@ export const CurrentAssistantSlot: React.FC<CurrentAssistantSlotProps> = ({
         <>
           <div
             className={styles.avatarSkeleton}
-            style={compact ? { width: 28, height: 28 } : undefined}
+            style={compact ? { width: 24, height: 24 } : undefined}
           />
           <div className={styles.assistantInfo}>
             <div className={styles.skeletonLine} style={{ width: 80 }} />
