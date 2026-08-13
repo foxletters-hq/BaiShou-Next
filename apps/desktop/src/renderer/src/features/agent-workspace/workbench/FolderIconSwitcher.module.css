@@ -56,7 +56,7 @@
 }
 
 .initial {
-  font-size: 14px;
+  font-size: var(--ui-fs-lg);
   font-weight: 600;
   line-height: 1;
   user-select: none;

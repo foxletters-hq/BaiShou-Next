@@ -22,6 +22,7 @@ import {
   type FileExplorerContextMenuState
 } from './WorkbenchFileExplorerContextMenu'
 import { InlineTreeNameRow, type InlineTreeEditState } from './WorkbenchFileExplorerInlineEdit'
+import { useWorkbenchFileExplorerDnd } from './useWorkbenchFileExplorerDnd'
 import styles from './WorkbenchFileExplorer.module.css'
 
 export interface WorkbenchFileExplorerProps {
@@ -61,7 +62,13 @@ function TreeNode({
   onContextMenu,
   inlineEdit,
   onCommitInline,
-  onCancelInline
+  onCancelInline,
+  draggingPaths,
+  dropTargetDir,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop
 }: {
   node: FileTreeNode
   depth: number
@@ -74,18 +81,31 @@ function TreeNode({
   inlineEdit: InlineTreeEditState | null
   onCommitInline: (name: string) => void
   onCancelInline: () => void
+  draggingPaths: string[]
+  dropTargetDir: string | null
+  onDragStart: (event: React.DragEvent, node: FileTreeNode) => void
+  onDragEnd: () => void
+  onDragOver: (event: React.DragEvent, node: FileTreeNode) => void
+  onDrop: (event: React.DragEvent, node: FileTreeNode) => void
 }) {
   const expanded = node.isDirectory && isExpanded(node.relativePath)
   const children = expanded ? getChildren(node.relativePath) : []
   const isSelected = selectedPath === node.relativePath
   const isRenaming = inlineEdit?.mode === 'rename' && inlineEdit.relativePath === node.relativePath
   const pendingCreate = inlineEdit?.mode === 'create' && inlineEdit.parentDir === node.relativePath
+  const isDragging = draggingPaths.includes(node.relativePath)
+  const isDropTarget = node.isDirectory && dropTargetDir === node.relativePath
 
   return (
     <>
       <div
-        className={`${styles.row} ${isSelected ? styles.rowSelected : ''} ${isRenaming ? styles.rowEditing : ''}`}
+        className={`${styles.row} ${isSelected ? styles.rowSelected : ''} ${isRenaming ? styles.rowEditing : ''} ${isDragging ? styles.rowDragging : ''} ${isDropTarget ? styles.rowDropTarget : ''}`}
         style={{ paddingLeft: 8 + depth * 14 }}
+        draggable={!isRenaming}
+        onDragStart={(event) => onDragStart(event, node)}
+        onDragEnd={onDragEnd}
+        onDragOver={(event) => onDragOver(event, node)}
+        onDrop={(event) => onDrop(event, node)}
         onContextMenu={(event) => onContextMenu(event, node)}
       >
         {node.isDirectory ? (
@@ -152,6 +172,12 @@ function TreeNode({
               inlineEdit={inlineEdit}
               onCommitInline={onCommitInline}
               onCancelInline={onCancelInline}
+              draggingPaths={draggingPaths}
+              dropTargetDir={dropTargetDir}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
             />
           ))}
           {pendingCreate ? (
@@ -179,6 +205,13 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
   const tree = useWorkbenchFileTree(folderRoot)
   const [contextMenu, setContextMenu] = useState<FileExplorerContextMenuState | null>(null)
   const [inlineEdit, setInlineEdit] = useState<InlineTreeEditState | null>(null)
+  const dnd = useWorkbenchFileExplorerDnd({
+    folderRoot,
+    isExpanded: tree.isExpanded,
+    ensureExpanded: tree.ensureExpanded,
+    refreshRoot: tree.refreshRoot,
+    selectPath: tree.selectPath
+  })
 
   const closeContextMenu = useCallback(() => setContextMenu(null), [])
   useCloseOnScroll(closeContextMenu, Boolean(contextMenu))
@@ -485,7 +518,13 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
           ) : null}
         </div>
       </div>
-      <div className={styles.tree} onContextMenu={handleTreeContextMenu}>
+      <div
+        className={`${styles.tree} ${dnd.dropTargetDir === '' ? styles.treeDropTarget : ''}`}
+        onContextMenu={handleTreeContextMenu}
+        onDragOver={dnd.handleDragOverRoot}
+        onDragLeave={dnd.handleDragLeaveRoot}
+        onDrop={dnd.handleDropOnRoot}
+      >
         {tree.loadingRoot ? (
           <p className={styles.placeholder}>{t('common.loading', '加载中…')}</p>
         ) : tree.rootError ? (
@@ -506,6 +545,12 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
                 inlineEdit={inlineEdit}
                 onCommitInline={(name) => void commitInlineEdit(name)}
                 onCancelInline={cancelInlineEdit}
+                draggingPaths={dnd.draggingPaths}
+                dropTargetDir={dnd.dropTargetDir}
+                onDragStart={dnd.handleDragStart}
+                onDragEnd={dnd.handleDragEnd}
+                onDragOver={dnd.handleDragOverNode}
+                onDrop={dnd.handleDropOnNode}
               />
             ))}
             {rootPendingCreate ? (

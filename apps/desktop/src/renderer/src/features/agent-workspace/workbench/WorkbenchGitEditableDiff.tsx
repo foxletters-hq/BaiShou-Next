@@ -1,9 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
-import { workbenchEditorTheme } from '@baishou/ui/shared/diary-codemirror'
+import {
+  editorContextMenuExtension,
+  workbenchEditorTheme,
+  type EditorContextMenuOpenPayload
+} from '@baishou/ui/shared/diary-codemirror'
+import { AnchoredContextMenu, type ContextMenuItem, useToast } from '@baishou/ui'
+import { EditorContextMenuHost } from '@baishou/ui/desktop/ContextMenu/EditorContextMenuHost'
 import styles from './WorkbenchGitEditableDiff.module.css'
 
 function splitLines(text: string): string[] {
@@ -29,12 +35,15 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
   onChange
 }) => {
   const { t } = useTranslation()
+  const toast = useToast()
   const leftRef = useRef<HTMLDivElement>(null)
   const editorHostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const suppressEchoRef = useRef(false)
   const syncing = useRef(false)
+  const [textContextMenu, setTextContextMenu] = useState<EditorContextMenuOpenPayload | null>(null)
+  const [originalMenu, setOriginalMenu] = useState<{ x: number; y: number } | null>(null)
 
   const originalLines = useMemo(() => splitLines(originalContent), [originalContent])
   const isNewFile = originalLines.length === 0
@@ -59,6 +68,10 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
           EditorView.updateListener.of((update) => {
             if (!update.docChanged || suppressEchoRef.current) return
             onChangeRef.current(update.state.doc.toString())
+          }),
+          editorContextMenuExtension({
+            readOnly: false,
+            onOpen: (payload) => setTextContextMenu(payload)
           })
         ]
       }),
@@ -67,6 +80,7 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
     viewRef.current = view
 
     return () => {
+      setTextContextMenu(null)
       view.destroy()
       viewRef.current = null
     }
@@ -109,42 +123,77 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
     return () => view.scrollDOM.removeEventListener('scroll', onEditorScroll)
   }, [onEditorScroll])
 
+  const originalMenuItems = useMemo((): ContextMenuItem[] => {
+    return [
+      {
+        label: t('common.copy', '复制'),
+        onClick: () => {
+          const selected = window.getSelection()?.toString()
+          const text = selected?.trim() ? selected : originalContent
+          void navigator.clipboard.writeText(text).then(
+            () => toast.showSuccess(t('common.copied', '已复制到剪贴板')),
+            () => toast.showError(t('common.copy_failed', '复制失败'))
+          )
+        }
+      }
+    ]
+  }, [originalContent, t, toast])
+
   return (
-    <div className={styles.root}>
-      <div className={styles.header}>
-        <div className={styles.headerCell}>{t('workbench.diff_original', '原始')}</div>
-        <div className={styles.headerCell}>{t('workbench.diff_modified', '修改后')}</div>
-      </div>
-      <div className={styles.body}>
-        <div
-          ref={leftRef}
-          className={`${styles.pane} ${styles.readonlyPane}`}
-          onScroll={(event) => {
-            const view = viewRef.current
-            if (!view) return
-            syncScroll(event.currentTarget, view.scrollDOM)
-          }}
-        >
-          {isNewFile ? (
-            <div className={styles.emptyOriginal}>
-              {t('workbench.diff_original_empty', '（新文件，HEAD 中无此内容）')}
-            </div>
-          ) : (
-            originalLines.map((line, index) => (
-              <div key={index} className={styles.lineRow}>
-                <span className={styles.lineNum}>{index + 1}</span>
-                <span className={styles.lineText}>{line}</span>
+    <>
+      <div className={styles.root}>
+        <div className={styles.header}>
+          <div className={styles.headerCell}>{t('workbench.diff_original', '原始')}</div>
+          <div className={styles.headerCell}>{t('workbench.diff_modified', '修改后')}</div>
+        </div>
+        <div className={styles.body}>
+          <div
+            ref={leftRef}
+            className={`${styles.pane} ${styles.readonlyPane}`}
+            onScroll={(event) => {
+              const view = viewRef.current
+              if (!view) return
+              syncScroll(event.currentTarget, view.scrollDOM)
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setOriginalMenu({ x: event.clientX, y: event.clientY })
+            }}
+          >
+            {isNewFile ? (
+              <div className={styles.emptyOriginal}>
+                {t('workbench.diff_original_empty', '（新文件，HEAD 中无此内容）')}
               </div>
-            ))
-          )}
+            ) : (
+              originalLines.map((line, index) => (
+                <div key={index} className={styles.lineRow}>
+                  <span className={styles.lineNum}>{index + 1}</span>
+                  <span className={styles.lineText}>{line}</span>
+                </div>
+              ))
+            )}
+          </div>
+          <div className={`${styles.pane} ${styles.editorPane}`}>
+            <div ref={editorHostRef} className={styles.editorHost} />
+          </div>
         </div>
-        <div className={`${styles.pane} ${styles.editorPane}`}>
-          <div ref={editorHostRef} className={styles.editorHost} />
+        <div className={styles.hint}>
+          {t('workbench.git_diff_editable_hint', '右侧可直接编辑，保存后自动写入工作区文件')}
         </div>
       </div>
-      <div className={styles.hint}>
-        {t('workbench.git_diff_editable_hint', '右侧可直接编辑，保存后自动写入工作区文件')}
-      </div>
-    </div>
+      <EditorContextMenuHost
+        menu={textContextMenu}
+        onClose={() => setTextContextMenu(null)}
+        variant="context-menu"
+      />
+      {originalMenu ? (
+        <AnchoredContextMenu
+          x={originalMenu.x}
+          y={originalMenu.y}
+          items={originalMenuItems}
+          onClose={() => setOriginalMenu(null)}
+        />
+      ) : null}
+    </>
   )
 }
