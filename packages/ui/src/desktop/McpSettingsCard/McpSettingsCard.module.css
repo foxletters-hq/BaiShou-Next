@@ -143,6 +143,12 @@
   color: var(--text-secondary);
 }
 
+.authToggleRow {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin: 2px 0;
+}
+
 .copyBtn {
   flex-shrink: 0;
   display: flex;

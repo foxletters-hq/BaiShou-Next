@@ -86,3 +86,11 @@
   border: 1px solid var(--border-muted);
   color: var(--text-primary);
 }
+
+.sectionHint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
