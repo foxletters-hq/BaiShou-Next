@@ -51,9 +51,9 @@ export interface ExtractDiariesResult {
 export interface ExtractionCostEstimate {
   entryCount: number
   estimatedTokens: number
-  /** Lower bound yuan (still slightly over true average). */
-  estimatedYuanLow: number
-  estimatedYuanHigh: number
+  /** Lower bound USD (still slightly over true average). */
+  estimatedUsdLow: number
+  estimatedUsdHigh: number
   estimatedMinutesLow: number
   estimatedMinutesHigh: number
 }
@@ -62,8 +62,8 @@ export interface ExtractionCostEstimate {
 const ESTIMATE_TOKENS_FLOOR = 600
 /** Upper-bound multiplier so UI prefers overestimate. */
 const ESTIMATE_OVERESTIMATE = 1.25
-const ESTIMATE_YUAN_PER_1K_LOW = 0.005
-const ESTIMATE_YUAN_PER_1K_HIGH = 0.012
+const ESTIMATE_USD_PER_1K_LOW = 0.005
+const ESTIMATE_USD_PER_1K_HIGH = 0.012
 const ESTIMATE_SECONDS_PER_ENTRY_LOW = 2
 const ESTIMATE_SECONDS_PER_ENTRY_HIGH = 4
 
@@ -99,8 +99,8 @@ export function estimateExtractionCost(
   return {
     entryCount: n,
     estimatedTokens,
-    estimatedYuanLow: Math.round(k * ESTIMATE_YUAN_PER_1K_LOW * 100) / 100,
-    estimatedYuanHigh: Math.round(k * ESTIMATE_YUAN_PER_1K_HIGH * 100) / 100,
+    estimatedUsdLow: Math.round(k * ESTIMATE_USD_PER_1K_LOW * 100) / 100,
+    estimatedUsdHigh: Math.round(k * ESTIMATE_USD_PER_1K_HIGH * 100) / 100,
     estimatedMinutesLow:
       n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_LOW) / 60)),
     estimatedMinutesHigh:

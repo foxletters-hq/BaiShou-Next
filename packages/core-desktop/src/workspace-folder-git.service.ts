@@ -566,9 +566,15 @@ export class WorkspaceFolderGitService {
     }
   }
 
+  /** 仅取当前分支名（rev-parse），不做 branch 列表 / upstream 查询 */
+  async getCurrentBranchName(): Promise<string> {
+    const { git } = await this.ensureGit()
+    return (await git.revparse(['--abbrev-ref', 'HEAD'])).trim()
+  }
+
   async getBranchInfo(): Promise<WorkspaceGitBranchInfo> {
     const { git } = await this.ensureGit()
-    const current = (await git.revparse(['--abbrev-ref', 'HEAD'])).trim()
+    const current = await this.getCurrentBranchName()
     const localBranches = (await git.branchLocal()).all.filter((branch) => branch !== 'HEAD')
     const remotes = await git.getRemotes(true)
     const hasRemote = remotes.some((remote) => remote.name === 'origin')
