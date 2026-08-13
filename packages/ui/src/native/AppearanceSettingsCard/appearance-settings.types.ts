@@ -5,9 +5,11 @@ export interface AppearanceSettingsProps {
   themeMode: ThemeMode
   seedColor: string
   language: AppLanguage
+  fontSizeLevel?: number
   onThemeModeChange: (mode: ThemeMode) => void
   onSeedColorChange: (color: string) => void
   onLanguageChange: (lang: AppLanguage) => void
+  onFontSizeLevelChange?: (level: number) => void
   /** 嵌入设置枢纽分组，使用紧凑列表行样式 */
   embedded?: boolean
   isLast?: boolean

@@ -9,22 +9,30 @@ export type ThemeModePreference = 'system' | 'light' | 'dark'
 type NativeThemeContextValue = {
   themeMode: ThemeModePreference
   seedColor?: string
+  /** 阅读正文相对默认字号的缩放 */
+  contentFontScale: number
 }
 
 const NativeThemeContext = createContext<NativeThemeContextValue>({
-  themeMode: 'system'
+  themeMode: 'system',
+  contentFontScale: 1
 })
 
 export function NativeThemeProvider({
   themeMode = 'system',
   seedColor,
+  contentFontScale = 1,
   children
 }: {
   themeMode?: ThemeModePreference
   seedColor?: string
+  contentFontScale?: number
   children: React.ReactNode
 }) {
-  const value = useMemo(() => ({ themeMode, seedColor }), [themeMode, seedColor])
+  const value = useMemo(
+    () => ({ themeMode, seedColor, contentFontScale }),
+    [themeMode, seedColor, contentFontScale]
+  )
   return <NativeThemeContext.Provider value={value}>{children}</NativeThemeContext.Provider>
 }
 

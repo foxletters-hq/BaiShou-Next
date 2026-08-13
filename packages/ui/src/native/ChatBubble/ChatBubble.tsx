@@ -213,7 +213,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
               <ToolResultGroupCard
                 completedTools={streamingCompletedTools}
                 activeToolName={streamingActiveToolName}
-                defaultExpanded
               />
             </View>
           ) : null}

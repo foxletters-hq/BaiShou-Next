@@ -58,6 +58,36 @@ export const appearanceSettingsStyles = StyleSheet.create({
     borderWidth: 1
   },
   langText: { fontSize: 14 },
+  fontSizeBlock: { marginTop: 0 },
+  fontSizeSliderWrap: {
+    justifyContent: 'center',
+    minHeight: NATIVE_SLIDER_HEIGHT,
+    height: NATIVE_SLIDER_HEIGHT,
+    marginTop: 4
+  },
+  fontSizeTicks: {
+    position: 'relative',
+    height: 8,
+    marginTop: 2,
+    marginHorizontal: 8
+  },
+  fontSizeTick: {
+    position: 'absolute',
+    top: 0,
+    width: 1,
+    height: 8,
+    marginLeft: -0.5
+  },
+  fontSizeLabels: {
+    position: 'relative',
+    height: 22,
+    marginTop: 8,
+    marginHorizontal: 8
+  },
+  fontSizeLabel: {
+    position: 'absolute',
+    top: '50%'
+  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',

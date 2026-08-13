@@ -51,7 +51,7 @@ export function getNativeElevationStyle(isDark: boolean, level: 'subtle' | 'rais
 }
 
 export function useNativeTheme() {
-  const { themeMode, seedColor } = useNativeThemeContext()
+  const { themeMode, seedColor, contentFontScale } = useNativeThemeContext()
   const rawScheme = useColorScheme()
   const systemScheme = resolveSystemColorScheme(rawScheme)
   const { width, height } = useWindowDimensions()
@@ -69,6 +69,7 @@ export function useNativeTheme() {
     screenWidth: width,
     screenHeight: height,
     fontScale,
+    contentFontScale,
     maxModalWidth,
     themeMode
   }
