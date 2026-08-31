@@ -65,20 +65,6 @@
   box-shadow: none;
 }
 
-.iconWrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  /* lucide 全局 1em */
-  font-size: 14px;
-  line-height: 0;
-}
-
-.container.toolbar .iconWrap {
-  font-size: 13px;
-}
-
 .tokenText {
   letter-spacing: -0.2px;
   line-height: 1;

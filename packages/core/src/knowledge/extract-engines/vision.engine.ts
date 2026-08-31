@@ -26,7 +26,7 @@ function resolveMissingPageNumbers(
 
 /**
  * vision：复用已配置的多模态模型逐页识别（平台注入 recognizer）。
- * 支持 1–3 页并发；渲染由平台侧串行化。
+ * 支持 1–10 页并发；渲染由平台侧串行化。
  */
 export const visionExtractEngine: ExtractEngine = {
   id: 'vision',

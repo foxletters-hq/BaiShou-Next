@@ -11,6 +11,7 @@ export interface AgentToolChainSectionProps {
   invocations?: ToolInvocationLike[]
   completedTools?: AgentToolChainStreamingTool[]
   activeToolName?: string | null
+  activeToolArgs?: unknown
   isStreaming?: boolean
   /** 流式场景：自动展开已有内容的工具节点 */
   defaultExpanded?: boolean
@@ -20,7 +21,8 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
   invocations = [],
   completedTools = [],
   activeToolName = null,
-  isStreaming = false,
+  activeToolArgs,
+  isStreaming: _isStreaming = false,
   defaultExpanded = false
 }) => {
   const models = useMemo(
@@ -29,9 +31,10 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
         invocations,
         completedTools,
         activeToolName,
+        activeToolArgs,
         isToolError: isToolResultError
       }),
-    [invocations, completedTools, activeToolName]
+    [invocations, completedTools, activeToolName, activeToolArgs]
   )
 
   if (models.length === 0) return null
@@ -52,6 +55,6 @@ export const AgentToolChainSection: React.FC<AgentToolChainSectionProps> = ({
 const styles = StyleSheet.create({
   root: {
     width: '100%',
-    gap: 8
+    gap: 2
   }
 })

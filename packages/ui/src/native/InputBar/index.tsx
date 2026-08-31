@@ -63,6 +63,7 @@ import {
   type ComposerDraftStorage,
   type ComposerOnSend
 } from '../../shared/composer-draft'
+import { resolveInputBarPrimaryAction } from '../../shared/input-bar-primary-action.util'
 import { DEFAULT_STROKE_WIDTH, INPUT_BAR_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import { LucideIcon } from '../icons/LucideIcon'
 
@@ -656,7 +657,11 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                       />
                     </TouchableOpacity>
 
-                    {isLoading ? (
+                    {resolveInputBarPrimaryAction({
+                      isLoading,
+                      canSend: Boolean(text.trim() || attachments.length > 0),
+                      hasStopHandler: Boolean(onStop)
+                    }) === 'stop' ? (
                       <TouchableOpacity
                         style={[styles.stopBtn, { backgroundColor: colors.textPrimary }]}
                         onPress={onStop}
@@ -813,15 +818,15 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   stopBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center'
   },
   stopIcon: {
-    width: 12,
-    height: 12,
+    width: 8,
+    height: 8,
     borderRadius: 2
   },
   attachmentList: {

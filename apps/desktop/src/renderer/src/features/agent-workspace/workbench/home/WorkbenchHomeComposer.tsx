@@ -16,6 +16,7 @@ import { usePromptShortcutStore, useUserProfileStore } from '@baishou/store'
 import { Check, ChevronDown, Folder } from 'lucide-react'
 import workbenchMascot from '../assets/workbench-mascot.png'
 import { useWorkbenchInputPlaceholder } from '../../utils/workbench-input-placeholder'
+import { createWorkspaceComposerDropResolver } from '../../utils/workspace-composer-drop.util'
 import styles from './WorkbenchHomeComposer.module.css'
 
 const COMPOSER_GREETING_KEYS = [
@@ -63,6 +64,7 @@ export interface WorkbenchHomeComposerProps {
   onAssistantClick: () => void
   workspaceOptions: Array<{ value: string; label: string }>
   workspaceId: string | null
+  folderRoot?: string | null
   onWorkspaceChange: (workspaceId: string) => void
   onOpenFolder: () => void
   securityMode: AgentWorkspaceSecurityMode
@@ -105,6 +107,7 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
   onAssistantClick,
   workspaceOptions,
   workspaceId,
+  folderRoot = null,
   onWorkspaceChange,
   onOpenFolder,
   securityMode,
@@ -133,6 +136,10 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
   )
   const [metaMenu, setMetaMenu] = useState<MetaMenuState | null>(null)
   const inputPlaceholder = useWorkbenchInputPlaceholder()
+  const resolveDropAttachments = useMemo(
+    () => createWorkspaceComposerDropResolver(folderRoot),
+    [folderRoot]
+  )
 
   const assistantName = currentAssistant?.name || t('agent.partner_label', '伙伴')
   const assistantAvatar = resolveDesktopAssistantAvatarSrc(currentAssistant?.avatarPath)
@@ -268,6 +275,8 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
       <InputBar
         ref={inputBarRef}
         isLoading={Boolean(sending)}
+        attachmentIntake="workspace"
+        resolveDropAttachments={resolveDropAttachments}
         onSend={onSend}
         shortcuts={resolvedShortcuts}
         onManageShortcuts={() => setShowShortcutManager(true)}

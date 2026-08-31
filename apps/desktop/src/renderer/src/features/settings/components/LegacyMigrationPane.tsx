@@ -161,7 +161,7 @@ export const LegacyMigrationPane: React.FC = () => {
       >
         <SettingsPageChrome title={t('version_migration.title', '版本迁移')}>
           <p className="legacy-migration-error">
-            {t('legacy_migration.api_unavailable', '迁移 API 不可用')}
+            {t('version_migration.api_unavailable', '迁移 API 不可用')}
           </p>
         </SettingsPageChrome>
       </div>

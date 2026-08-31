@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createFallbackSnapshotStore } from '../fallback-snapshot.store'
-import type { WorkspaceSnapshotStore } from '../workspace-snapshot-store'
+import type { WorkspaceSnapshotHandle, WorkspaceSnapshotStore } from '../workspace-snapshot-store'
 
-const GIT_HANDLE = { kind: 'git', treeOid: 'tree-1' } as const
-const INLINE_HANDLE = { kind: 'inline', files: [] } as const
+const GIT_HANDLE: WorkspaceSnapshotHandle = { kind: 'git', treeOid: 'tree-1' }
+const INLINE_HANDLE: WorkspaceSnapshotHandle = { kind: 'inline', files: [] }
 
 function createStubStore(kind: 'git' | 'inline'): WorkspaceSnapshotStore & {
   capture: ReturnType<typeof vi.fn>

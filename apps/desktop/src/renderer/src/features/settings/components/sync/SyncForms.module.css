@@ -6,33 +6,6 @@
   margin-bottom: 4px;
 }
 
-.input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border-control);
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: var(--settings-font-label-size);
-  font-family: inherit;
-  box-sizing: border-box;
-  outline: none;
-  box-shadow: none;
-  transition: var(--form-field-transition);
-}
-
-.input:focus,
-.input:focus-visible {
-  outline: none;
-  border-color: var(--form-field-border-focus);
-  box-shadow: var(--form-field-focus-ring);
-  background: var(--bg-surface);
-}
-
-.input:hover {
-  border-color: var(--border-control);
-}
-
 .actionBtn {
   display: inline-flex;
   align-items: center;
@@ -98,10 +71,6 @@
 }
 
 .eyeBtn {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
   border: none;
   background: none;
   color: var(--text-tertiary);

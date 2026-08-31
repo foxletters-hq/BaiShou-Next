@@ -1,3 +1,4 @@
+import { isGarbledExtractText } from '@baishou/shared'
 import { md5Hex } from '../fs/md5'
 
 /** 页边界偏移表（D12 L2） */
@@ -30,6 +31,12 @@ export interface ExtractResult {
 
 /** 单页判定「有文本层」的最小字符数（过滤页眉页脚水印） */
 export const MIN_TEXT_LAYER_CHARS = 50
+
+export function pageTextNeedsOcr(text: string): boolean {
+  const trimmed = text.trim()
+  if (trimmed.length < MIN_TEXT_LAYER_CHARS) return true
+  return isGarbledExtractText(trimmed)
+}
 
 /** 有文本层页占比阈值 */
 export const OK_TEXT_PAGE_RATIO = 0.9
@@ -90,7 +97,7 @@ export function analyzePageTexts(pageTexts: string[]): ExtractResult {
       page: i + 1,
       text: t,
       charCount: trimmed.length,
-      hasTextLayer: trimmed.length >= MIN_TEXT_LAYER_CHARS
+      hasTextLayer: !pageTextNeedsOcr(t)
     }
   })
   const pageCount = infos.length
@@ -116,6 +123,42 @@ let pdfPageExtractor: PdfPageExtractor | null = null
 
 export function registerPdfPageExtractor(fn: PdfPageExtractor | null): void {
   pdfPageExtractor = fn
+}
+
+export type PdfPageSampleExtractor = (filePath: string, maxPages: number) => Promise<string[]>
+
+let pdfPageSampleExtractor: PdfPageSampleExtractor | null = null
+
+export function registerPdfPageSampleExtractor(fn: PdfPageSampleExtractor | null): void {
+  pdfPageSampleExtractor = fn
+}
+
+export async function probePdfPageTexts(filePath: string, maxPages = 12): Promise<string[]> {
+  if (pdfPageSampleExtractor) {
+    return pdfPageSampleExtractor(filePath, maxPages)
+  }
+  const pages = await extractPdfPageTexts(filePath)
+  return pages.slice(0, Math.max(1, maxPages))
+}
+
+export type EpubPageExtractor = (filePath: string) => Promise<string[]>
+
+let epubPageExtractor: EpubPageExtractor | null = null
+
+export function registerEpubPageExtractor(fn: EpubPageExtractor | null): void {
+  epubPageExtractor = fn
+}
+
+export async function extractEpubPageTextsFromPath(filePath: string): Promise<string[]> {
+  if (!epubPageExtractor) {
+    throw new Error('EPUB extractor not registered')
+  }
+  return epubPageExtractor(filePath)
+}
+
+export async function extractEpubFromPath(filePath: string): Promise<ExtractResult> {
+  const pageTexts = await extractEpubPageTextsFromPath(filePath)
+  return { ...analyzePageTexts(pageTexts), extractEngine: 'simple' }
 }
 
 export async function extractMarkdownOrText(content: string): Promise<ExtractResult> {
@@ -191,6 +234,11 @@ export async function extractSourceContent(options: {
   if (ext === '.pdf') {
     if (!options.absolutePath) throw new Error('pdf extract requires absolutePath')
     return extractPdfFromPath(options.absolutePath)
+  }
+
+  if (ext === '.epub') {
+    if (!options.absolutePath) throw new Error('epub extract requires absolutePath')
+    return extractEpubFromPath(options.absolutePath)
   }
 
   throw new Error(`Unsupported source type for extract: kind=${options.kind} ext=${ext}`)

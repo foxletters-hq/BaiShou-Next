@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react'
 import { Routes, Route, type Location } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { settingsOverlayRoutesLocation } from '../features/settings/settings-navigation.util'
 import styles from './SettingsOverlayHost.module.css'
 
 /** 与 MainLayout 日记↔伙伴切换遮罩同时长 */
@@ -68,7 +69,8 @@ export const SettingsOverlayHost: React.FC<SettingsOverlayHostProps> = ({
       className={`${styles.host}${visible ? '' : ` ${styles.hostInactive}`}`}
       style={{
         visibility: paintVisible ? 'visible' : 'hidden',
-        pointerEvents: visible ? 'auto' : 'none'
+        pointerEvents: visible ? 'auto' : 'none',
+        display: paintVisible ? undefined : 'none'
       }}
     >
       <div className={`${styles.surfaceCard} ${exiting ? styles.surfaceExiting : ''}`}>
@@ -80,7 +82,7 @@ export const SettingsOverlayHost: React.FC<SettingsOverlayHostProps> = ({
           className={styles.surfaceContent}
           style={exiting || !paintVisible ? { visibility: 'hidden' } : undefined}
         >
-          <Routes location={settingsLocation}>
+          <Routes location={settingsOverlayRoutesLocation(visible, settingsLocation)}>
             <Route path="/settings/*" element={<SettingsPage />} />
             {/* 预挂载时 location 仍是业务页路径，避免刷 No routes matched */}
             <Route path="*" element={null} />

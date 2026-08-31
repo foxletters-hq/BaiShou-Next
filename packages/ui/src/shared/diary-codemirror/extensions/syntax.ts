@@ -14,10 +14,6 @@ const livePreviewHighlight = HighlightStyle.define([
     tag: tags.strikethrough,
     textDecoration: 'line-through',
     color: 'var(--text-tertiary)'
-  },
-  {
-    tag: tags.monospace,
-    class: 'cm-rendered-inline-code'
   }
 ])
 

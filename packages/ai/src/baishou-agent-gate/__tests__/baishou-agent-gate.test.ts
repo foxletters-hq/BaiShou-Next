@@ -4,6 +4,7 @@ import {
   AgentGateKind,
   AgentGateProfileId,
   AgentGateReply,
+  AgentGateRiskLevel,
   AgentGateDeniedError,
   AgentGateAlwaysNotAllowedError,
   AgentGateCancelledError,
@@ -36,6 +37,22 @@ describe('BaishouAgentGatePolicyService', () => {
     const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
 
     expect(policy.evaluate({ action: 'diary_edit' })).toBe(AgentGateEffect.Ask)
+  })
+
+  it('Safe 风险未匹配规则时默认 allow', () => {
+    const config = {
+      exclusionList: [],
+      allowlist: []
+    }
+    const allowlist = new BaishouAgentGateAllowlistStore(() => config)
+    const policy = new BaishouAgentGatePolicyService(() => config, allowlist)
+
+    expect(
+      policy.evaluate({
+        action: 'diary_read',
+        metadata: { riskLevel: 'safe' }
+      })
+    ).toBe(AgentGateEffect.Allow)
   })
 
   it('full_trust 放行非排除动作', () => {
@@ -732,6 +749,176 @@ describe('BaishouAgentGateService', () => {
     await other
   })
 
+  it('once 级联放行同 session 同 action 的挂起请求，且不写入 allowlist', async () => {
+    const persist = vi.fn().mockResolvedValue(undefined)
+    const { gate, allowlistStore } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      },
+      persistConfig: persist
+    })
+
+    const first = gate.assert({ ...baseAssertInput, action: 'url_read', title: '读取网页 1' })
+    const second = gate.assert({ ...baseAssertInput, action: 'url_read', title: '读取网页 2' })
+    const other = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入文件'
+    })
+
+    const pending = gate.listPending('sess_1')
+    const urlIds = pending.filter((request) => request.action === 'url_read').map((request) => request.id)
+    await gate.reply({ requestId: urlIds[0]!, reply: AgentGateReply.Once })
+
+    await first
+    await second
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+    expect(gate.listPending('sess_1')[0]?.action).toBe('workspace_write')
+    expect(allowlistStore.list()).toHaveLength(0)
+    expect(persist).not.toHaveBeenCalled()
+
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await other
+  })
+
+  it('once 后本轮同类操作不再询问，回答结束后恢复询问', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert({ ...baseAssertInput, action: 'url_read', title: '读取网页' })
+    await Promise.resolve()
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await first
+
+    await expect(
+      gate.assert({ ...baseAssertInput, action: 'url_read', title: '再读一页' })
+    ).resolves.toBeUndefined()
+    expect(gate.listPending('sess_1')).toHaveLength(0)
+
+    const otherPending = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_write',
+      title: '写入文件'
+    })
+    await Promise.resolve()
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await otherPending
+
+    gate.cancelSession('sess_1', 'stream ended')
+
+    const afterTurn = gate.assert({ ...baseAssertInput, action: 'url_read', title: '下一轮读取' })
+    await Promise.resolve()
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await afterTurn
+  })
+
+  it('workspace_run 的 once 只放行同类命令前缀', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_run',
+      title: '运行命令',
+      resources: [{ kind: 'shell_command', value: 'npm test' }],
+      preview: { type: 'command', command: 'npm test', prefixPattern: 'npm test *' },
+      metadata: { alwaysPatterns: ['npm test *'] }
+    })
+    await Promise.resolve()
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await first
+
+    await expect(
+      gate.assert({
+        ...baseAssertInput,
+        action: 'workspace_run',
+        title: '再跑测试',
+        resources: [{ kind: 'shell_command', value: 'npm test --watch' }],
+        preview: { type: 'command', command: 'npm test --watch', prefixPattern: 'npm test *' },
+        metadata: { alwaysPatterns: ['npm test *'] }
+      })
+    ).resolves.toBeUndefined()
+
+    const otherCommand = gate.assert({
+      ...baseAssertInput,
+      action: 'workspace_run',
+      title: '其他命令',
+      resources: [{ kind: 'shell_command', value: 'git status' }],
+      preview: { type: 'command', command: 'git status', prefixPattern: 'git status *' },
+      metadata: { alwaysPatterns: ['git status *'] }
+    })
+    await Promise.resolve()
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await otherCommand
+  })
+
+  it('proactive once 不记住本轮工具放行', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: []
+      }
+    })
+
+    const first = gate.assertWithResolution({
+      ...baseAssertInput,
+      kind: AgentGateKind.Proactive,
+      action: 'companion_ask',
+      title: '选哪个？',
+      options: [{ id: '0', label: 'A' }]
+    })
+    await Promise.resolve()
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once,
+      selectedOptionIds: ['0']
+    })
+    await first
+
+    const second = gate.assert({
+      ...baseAssertInput,
+      action: 'url_read',
+      title: '读取网页'
+    })
+    await Promise.resolve()
+    expect(gate.listPending('sess_1')).toHaveLength(1)
+    await gate.reply({
+      requestId: gate.listPending('sess_1')[0]!.id,
+      reply: AgentGateReply.Once
+    })
+    await second
+  })
+
   it('always 不级联放行同 action 的截断预览 pending', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
@@ -866,6 +1053,31 @@ describe('BaishouAgentGateService', () => {
     expect(settled).toBe(true)
   })
 
+  it('安全读操作连续多次不因连打强制 ask', async () => {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        exclusionList: [],
+        allowlist: [],
+        repeatAssertAskThreshold: 3
+      }
+    })
+
+    const readPage = (title: string) =>
+      gate.assert({
+        sessionId: 'sess_1',
+        vaultName: 'Personal',
+        kind: AgentGateKind.Tool,
+        action: 'url_read',
+        title,
+        metadata: { riskLevel: AgentGateRiskLevel.Safe }
+      })
+
+    await expect(readPage('读取网页 1')).resolves.toBeUndefined()
+    await expect(readPage('读取网页 2')).resolves.toBeUndefined()
+    await expect(readPage('读取网页 3')).resolves.toBeUndefined()
+    expect(gate.listPending('sess_1')).toHaveLength(0)
+  })
+
   it('repeatAssertAskThreshold=0 关闭连打强制 ask', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
@@ -953,7 +1165,7 @@ describe('Agent Gate profile + probeEffect', () => {
   })
 
   it('companion profile does not force Ask for recall_relations (G1.d / G-D4)', () => {
-    // recall_relations 无 Gate metadata → 拦截器直接放行；此处断言 companion 规则也未对其设 Ask
+    // 只读图谱检索默认放行；用户可在设置里改为询问/拒绝
     const { gate } = createBaishouAgentGate({
       config: {
         exclusionList: [],

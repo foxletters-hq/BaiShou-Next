@@ -22,7 +22,8 @@ import {
 import {
   attachWorkspaceNotebook,
   getWorkspaceSessionBinding,
-  listWorkspaceSessions
+  listWorkspaceSessions,
+  setWorkspaceSessionPinned
 } from '../services/agent-workspace-session.store'
 import {
   addAgentWorkspace,
@@ -44,6 +45,7 @@ import {
   importExternalPaths,
   moveWorkspaceEntry
 } from '../services/agent-workspace-fs-transfer'
+import { shouldListWorkbenchTreeEntry } from '../services/workbench-tree-list.util'
 
 function stripUtf8Bom(text: string): string {
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
@@ -72,25 +74,29 @@ async function listDirectoryEntries(
     throw new Error('Not a directory')
   }
 
-  const names = await fs.readdir(dirPath)
+  const dirents = await fs.readdir(dirPath, { withFileTypes: true })
   const entries: AgentWorkspaceDirEntry[] = []
 
-  for (const name of names.slice(0, MAX_LIST_ENTRIES)) {
-    if (name.startsWith('.')) continue
-    const fullPath = path.join(dirPath, name)
-    try {
-      const entryStat = await fs.stat(fullPath)
-      const entryRelative = relativePath
-        ? path.posix.join(relativePath.replace(/\\/g, '/'), name)
-        : name
-      entries.push({
-        name,
-        relativePath: entryRelative,
-        isDirectory: entryStat.isDirectory()
-      })
-    } catch {
-      /* skip inaccessible entries */
+  for (const dirent of dirents) {
+    if (entries.length >= MAX_LIST_ENTRIES) break
+    const name = dirent.name
+    if (!shouldListWorkbenchTreeEntry(name)) continue
+    let isDirectory = dirent.isDirectory()
+    if (!isDirectory && dirent.isSymbolicLink()) {
+      try {
+        isDirectory = (await fs.stat(path.join(dirPath, name))).isDirectory()
+      } catch {
+        continue
+      }
     }
+    const entryRelative = relativePath
+      ? path.posix.join(relativePath.replace(/\\/g, '/'), name)
+      : name
+    entries.push({
+      name,
+      relativePath: entryRelative,
+      isDirectory
+    })
   }
 
   entries.sort((a, b) => {
@@ -409,12 +415,19 @@ export function registerAgentWorkspaceIPC(): void {
 
       for (const binding of bindings) {
         let title = binding.folderDisplayName || path.basename(binding.folderRoot)
+        let isPinned = Boolean(binding.isPinned)
         try {
           const session = await realSessionRepo.getSessionById?.(binding.sessionId)
           if (session && typeof (session as { title?: string }).title === 'string') {
             const sessionTitle = (session as { title?: string }).title?.trim()
             if (sessionTitle) title = sessionTitle
           }
+          const row = session as { isPinned?: unknown; is_pinned?: unknown } | null
+          isPinned =
+            isPinned ||
+            Boolean(row?.isPinned) ||
+            row?.is_pinned === 1 ||
+            row?.is_pinned === true
         } catch {
           /* ignore missing session metadata */
         }
@@ -425,11 +438,35 @@ export function registerAgentWorkspaceIPC(): void {
           folderRoot: binding.folderRoot,
           folderDisplayName:
             binding.folderDisplayName || path.basename(binding.folderRoot.replace(/\\/g, '/')),
-          updatedAt: binding.updatedAt
+          updatedAt: binding.updatedAt,
+          isPinned
         })
       }
 
       return items
+    }
+  )
+
+  ipcMain.handle(
+    'agent-workspace:pin-session',
+    async (_, sessionId: string, isPinned: boolean) => {
+      if (!sessionId?.trim()) {
+        return { success: false }
+      }
+      const ok = await setWorkspaceSessionPinned(sessionId, Boolean(isPinned))
+      if (!ok) {
+        return { success: false }
+      }
+      try {
+        const { sessionManager } = getAgentManagers()
+        await sessionManager.togglePin(sessionId, Boolean(isPinned))
+      } catch (error) {
+        logger.warn(
+          '[AgentWorkspaceIPC] pin-session session table failed:',
+          error instanceof Error ? error.message : String(error)
+        )
+      }
+      return { success: true }
     }
   )
 
@@ -501,6 +538,7 @@ export function registerAgentWorkspaceIPC(): void {
         modelId?: string
         reasoningEffort?: string
         searchMode?: boolean
+        forceStart?: boolean
       }
     ) => {
       return admitWorkspaceInput({
@@ -512,7 +550,8 @@ export function registerAgentWorkspaceIPC(): void {
         providerId: params.providerId,
         modelId: params.modelId,
         reasoningEffort: params.reasoningEffort,
-        searchMode: params.searchMode
+        searchMode: params.searchMode,
+        forceStart: params.forceStart
       })
     }
   )

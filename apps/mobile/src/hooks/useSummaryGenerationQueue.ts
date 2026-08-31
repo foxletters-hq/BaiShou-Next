@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { i18n as I18nInstance } from 'i18next'
 import { SummaryType, logger } from '@baishou/shared'
+import { isSummaryUserAbortError } from '@baishou/core-mobile'
 import { resolveMobileSummaryGenerateOptions } from '../services/mobile-summary-generate-options'
 import type { useBaishou } from '../providers/BaishouProvider'
 
@@ -193,7 +194,7 @@ export function useSummaryGenerationQueue(options: {
         }
       } catch (e: unknown) {
         const err = e as { message?: string; stack?: string; name?: string }
-        if (signal?.aborted || err.name === 'AbortError') {
+        if (isSummaryUserAbortError(e, signal)) {
           task.status = 'error'
           task.error = i18n.t('auto.apps.mobile.src.hooks.useSummaryData.L356', '用户取消了生成')
           broadcastState()

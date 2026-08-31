@@ -18,7 +18,6 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: 16px;
   margin: 0;
   min-width: 0;
   position: relative;
@@ -35,7 +34,7 @@
 }
 
 .mascotImg {
-  width: min(148px, 32vw);
+  width: min(150px, 29vw);
   height: auto;
   margin: 0;
   padding: 0;
@@ -44,11 +43,11 @@
 }
 
 .greeting {
-  margin: 0 0 40px;
+  margin: 0 0 52px;
   flex: 0 1 auto;
   min-width: 0;
   max-width: none;
-  font-size: var(--ui-fs-xl);
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.45;
   letter-spacing: -0.01em;
@@ -57,17 +56,13 @@
 }
 
 @media (max-width: 520px) {
-  .hero {
-    gap: 12px;
-  }
-
   .greeting {
-    font-size: var(--ui-fs-xl);
-    margin-bottom: 28px;
+    font-size: 18px;
+    margin-bottom: 36px;
   }
 
   .mascotImg {
-    width: min(112px, 36vw);
+    width: min(112px, 32vw);
   }
 }
 

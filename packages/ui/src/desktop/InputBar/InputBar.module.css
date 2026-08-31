@@ -46,6 +46,15 @@
   box-shadow: var(--form-field-focus-ring);
 }
 
+.composerShellDropActive,
+.composerShellDropActive:focus-within,
+.composerShellDropActive:focus-within:hover,
+.composerShellDropActive:focus-within:active {
+  border: 1px solid var(--form-field-border-focus);
+  background-color: var(--bg-surface-high);
+  box-shadow: var(--form-field-focus-ring);
+}
+
 /* 底部有延伸区时允许下拉溢出；否则裁切以贴合圆角 */
 .composerShellWithFooter {
   overflow: visible;
@@ -544,7 +553,7 @@
 }
 
 .textarea::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .textarea::-webkit-scrollbar-track {
@@ -648,14 +657,37 @@
 }
 
 .stopBtn {
-  background-color: var(--bg-surface-highest);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  width: 22px;
+  height: 22px;
+  background-color: var(--text-primary);
+  color: var(--bg-surface);
+  box-shadow:
+    0 1px 1px color-mix(in srgb, var(--text-primary) 12%, transparent),
+    0 2px 5px color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.stopBtn:hover {
+  box-shadow:
+    0 1px 1px color-mix(in srgb, var(--text-primary) 14%, transparent),
+    0 2px 6px color-mix(in srgb, var(--text-primary) 12%, transparent);
+}
+
+:global([data-theme='dark']) .stopBtn {
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.24),
+    0 2px 5px rgba(0, 0, 0, 0.16);
+}
+
+:global([data-theme='dark']) .stopBtn:hover {
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .stopSquare {
-  width: 12px;
-  height: 12px;
-  background-color: var(--text-primary);
+  width: 8px;
+  height: 8px;
+  background-color: var(--bg-surface);
   border-radius: 2px;
 }
 

@@ -85,7 +85,7 @@
 }
 
 .grid::-webkit-scrollbar {
-  width: 5px;
+  width: 10px;
 }
 .grid::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);

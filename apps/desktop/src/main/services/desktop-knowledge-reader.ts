@@ -1,4 +1,4 @@
-import { KnowledgeReaderAdapter } from '@baishou/ai'
+import { KnowledgeReaderAdapter, usableKnowledgeSearchHits } from '@baishou/ai'
 import { KnowledgeSearchService } from '@baishou/core-desktop'
 import type { ToolKnowledgeReader } from '@baishou/shared'
 import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
@@ -61,16 +61,18 @@ export function createDesktopKnowledgeReader(
       queryVector,
       topK: opts.limit
     })
-    return hits.map((h) => ({
-      chunkId: h.chunkId,
-      sourceId: h.sourceId,
-      notebookId: h.notebookId,
-      chunkIndex: h.chunkIndex,
-      chunkText: h.chunkText,
-      score: h.score,
-      title: h.title,
-      offset: h.offset,
-      len: h.len
-    }))
+    return usableKnowledgeSearchHits(
+      hits.map((h) => ({
+        chunkId: h.chunkId,
+        sourceId: h.sourceId,
+        notebookId: h.notebookId,
+        chunkIndex: h.chunkIndex,
+        chunkText: h.chunkText,
+        score: h.score,
+        title: h.title,
+        offset: h.offset,
+        len: h.len
+      }))
+    )
   })
 }

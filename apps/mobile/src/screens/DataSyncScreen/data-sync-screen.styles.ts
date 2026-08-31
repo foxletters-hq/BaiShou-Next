@@ -87,16 +87,6 @@ export const dataSyncScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center'
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderRadius: 4,
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  checkmark: { fontSize: 14, fontWeight: '600' },
   recordInfo: { flex: 1 },
   recordName: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   recordMeta: { fontSize: 11 },

@@ -155,19 +155,6 @@ export const attachmentManagementStyles = StyleSheet.create({
     padding: 6,
     borderRadius: 6
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10
-  },
-  checkmark: {
-    fontSize: 13,
-    fontWeight: '600'
-  },
   sessionFileListCard: {
     marginBottom: 8,
     borderRadius: 10,

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Checkbox } from '../Checkbox'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import type { AssistantKind } from '@baishou/shared'
 
@@ -111,19 +112,7 @@ export const AssistantMatrixCard: React.FC<AssistantMatrixCardProps> = ({
                       }
                     ]}
                   >
-                    <View
-                      style={[
-                        styles.checkbox,
-                        {
-                          borderColor: isChecked ? colors.primary : colors.borderSubtle,
-                          backgroundColor: isChecked ? colors.primary : 'transparent'
-                        }
-                      ]}
-                    >
-                      {isChecked && (
-                        <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
-                      )}
-                    </View>
+                    <Checkbox selected={isChecked} style={{ marginRight: 10 }} />
                     <Text
                       style={[
                         styles.modelName,
@@ -241,19 +230,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderRadius: 8
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10
-  },
-  checkmark: {
-    fontSize: 12,
-    fontWeight: '600'
   },
   modelName: {
     fontSize: 14

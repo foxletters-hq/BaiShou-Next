@@ -6,7 +6,6 @@ import {
   AgentGateDock,
   useDialog,
   AssistantPickerSheet,
-  ChatCostDialog,
   SessionModelMenu,
   toast
 } from '@baishou/ui'
@@ -15,11 +14,9 @@ import {
   isTtsModel,
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
-  formatDialogueModelLabel,
   getReasoningControlForModel,
   normalizeReasoningEffortSetting,
-  type ReasoningEffortSetting,
-  type WorkspaceChangeEntry
+  type ReasoningEffortSetting
 } from '@baishou/shared'
 import {
   selectQueuePosition,
@@ -49,6 +46,10 @@ import {
 } from '../agent/format-reasoning-control-preview'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { workspaceEntryMatchesFolder } from './utils/workspace-display.util'
+import {
+  hasWorkspaceComposerPayload,
+  normalizeWorkspaceSendAttachments
+} from './utils/workspace-message-display.util'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
 import styles from './AgentWorkspaceScreen.module.css'
 
@@ -84,7 +85,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
     sessionId && sessionId !== 'new-session' ? sessionId : boundStreamSessionId
   const chrome = useAgentWorkspaceChrome(streamBindId ?? sessionId)
   const { sessions, loading: loadingSessions } = useWorkspaceSessions()
-  const [changes, setChanges] = useState<WorkspaceChangeEntry[]>([])
   const [composerRefill, setComposerRefill] = useState<{
     text: string
     skillRefs?: Array<{ command: string; content: string }>
@@ -285,10 +285,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
     }
   }, [sessionId, folderRoot, workspaces, resolvedActiveWorkspace?.id, selectWorkspace])
 
-  const handleChangesUpdate = useCallback((nextChanges: WorkspaceChangeEntry[]) => {
-    setChanges(nextChanges)
-  }, [])
-
   const handleRuntimeRefresh = useCallback(() => {
     void chat.refresh()
   }, [chat])
@@ -301,12 +297,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
       isConfiguredDialogueModelId(chrome.model.currentModelId),
     [chrome.model.currentModelId, chrome.model.currentProviderId]
   )
-
-  useEffect(() => {
-    if (!sessionId || sessionId === 'new-session') {
-      setChanges([])
-    }
-  }, [sessionId])
 
   const handleBackToHome = useCallback(() => {
     setFolderRoot(null)
@@ -343,7 +333,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
       clearStreamBridgeForSession(previousBind)
     }
     setBoundStreamSessionId(undefined)
-    setChanges([])
     setComposerRefill(null)
     navigate(openWorkspacePath(id))
   }, [
@@ -472,7 +461,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
         providerId,
         modelId,
         reasoningEffort,
-        searchMode
+        searchMode,
+        forceStart: true
       })
       window.dispatchEvent(
         new CustomEvent('baishou:workspace-pending-inputs-changed', {
@@ -502,7 +492,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
   const handleSend = useCallback(
     async (
       text: string,
-      _attachments?: unknown[],
+      incomingAttachments?: unknown[],
       searchMode?: boolean,
       meta?: {
         displayText?: string
@@ -511,7 +501,10 @@ export const AgentWorkspaceScreen: React.FC = () => {
       }
     ) => {
       const trimmed = text.trim()
-      if (!trimmed) return
+      const attachments = normalizeWorkspaceSendAttachments(incomingAttachments)
+      if (!hasWorkspaceComposerPayload({ text: trimmed, attachments, skillRefs: meta?.skillRefs })) {
+        return
+      }
 
       if (
         !isConfiguredProviderId(currentProviderId) ||
@@ -539,7 +532,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
         const prepared = await stream.prepareWorkspaceTurn(sessionId, trimmed, folder, {
           assistantId: selectedAssistantId,
           displayText,
-          skillRefs
+          skillRefs,
+          attachments
         })
 
         setBoundStreamSessionId(prepared.sessionId)
@@ -559,7 +553,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
           providerId: currentProviderId,
           modelId: currentModelId,
           reasoningEffort: getSessionReasoningEffortOverride(),
-          searchMode: effectiveSearchMode
+          searchMode: effectiveSearchMode,
+          forceStart: !stream.isStreaming
         })
         window.dispatchEvent(
           new CustomEvent('baishou:workspace-pending-inputs-changed', {
@@ -628,7 +623,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
         sessions={sessions}
         loadingSessions={loadingSessions}
         activeSessionId={sessionId}
-        changes={changes}
         onOpenFolder={() => void handleAddWorkspace()}
         onBackToHome={handleBackToHome}
         onNewSession={handleNewSession}
@@ -652,15 +646,20 @@ export const AgentWorkspaceScreen: React.FC = () => {
             providers: chrome.providers,
             totalInputTokens: chrome.tokens.totalInputTokens,
             totalOutputTokens: chrome.tokens.totalOutputTokens,
+            totalCacheReadInputTokens: chrome.tokens.totalCacheReadInputTokens,
+            totalCacheWriteInputTokens: chrome.tokens.totalCacheWriteInputTokens,
             estimatedCost: chrome.tokens.estimatedCost,
             onAssistantClick: () => chrome.setShowAssistantPicker(true),
             onModelClick: (anchorRect) => openModelSwitcher(anchorRect),
             effortSuffix,
-            onCostClick: () => chrome.setShowCostDialog(true)
+            pricingLastUpdated: chrome.pricingLastUpdated,
+            onRefreshPricing: chrome.handleRefreshPricing
           },
           chat: {
             messages: chat.messages,
-            pendingAssistantMsg: chat.pendingAssistantMsg
+            pendingAssistantMsg: chat.pendingAssistantMsg,
+            hasMore: chat.hasMore,
+            loadMore: chat.loadMore
           },
           stream: {
             text: stream.text,
@@ -682,9 +681,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
               }
             : undefined,
           onSend: (text, attachments, searchMode, meta) => void handleSend(text, attachments, searchMode, meta),
-          onRollbackRound: (id) => void messageActions.handleRollback(id),
           onEditResend: (id, text, meta) => messageActions.handleEditResend(id, text, meta),
-          onChangesUpdate: handleChangesUpdate,
           onAssistantTap: () => chrome.setShowAssistantPicker(true),
           assistantName: chrome.currentAssistant?.name || t('agent.partner_label', '伙伴'),
           composerRefill,
@@ -701,24 +698,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
             />
           )
         }}
-      />
-
-      <ChatCostDialog
-        isOpen={chrome.showCostDialog}
-        onClose={() => chrome.setShowCostDialog(false)}
-        details={{
-          modelName:
-            formatDialogueModelLabel(chrome.model.currentModelId) ??
-            t('agent.no_model_selected', '暂未选择模型'),
-          promptTokens: chrome.tokens.totalInputTokens,
-          completionTokens: chrome.tokens.totalOutputTokens,
-          cacheReadTokens: chrome.tokens.totalCacheReadInputTokens,
-          cacheWriteTokens: chrome.tokens.totalCacheWriteInputTokens,
-          totalTokens: chrome.tokens.totalInputTokens + chrome.tokens.totalOutputTokens,
-          estimatedCost: `$${chrome.tokens.estimatedCost.toFixed(6)}`
-        }}
-        pricingLastUpdated={chrome.pricingLastUpdated}
-        onRefreshPricing={chrome.handleRefreshPricing}
       />
 
       {chrome.showModelSwitcher ? (

@@ -6,8 +6,10 @@ import {
   workbenchEditorTheme,
   placePreviewCursorPastHeading,
   placePreviewCursorAt,
+  replaceEditorDocumentContent,
   type DiaryCmPlatform
 } from '@baishou/ui/shared/diary-codemirror'
+import { isSkillMarkdownPath } from '@baishou/shared'
 import {
   editorContextMenuExtension,
   type EditorContextMenuOpenPayload
@@ -19,6 +21,7 @@ export interface WorkbenchLivePreviewEditorProps {
   documentId: string
   content: string
   folderRoot: string
+  relativePath?: string
   scrollToLine?: number
   scrollToColumn?: number
   onScrolledToLine?: () => void
@@ -30,6 +33,7 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
   documentId,
   content,
   folderRoot,
+  relativePath,
   scrollToLine,
   scrollToColumn,
   onScrolledToLine,
@@ -41,12 +45,16 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
   const onChangeRef = useRef(onChange)
   const suppressEchoRef = useRef(false)
   const pendingScrollRef = useRef<{ line: number; column?: number } | null>(null)
+  const skipHeadingPlacementRef = useRef(false)
   const [textContextMenu, setTextContextMenu] = useState<EditorContextMenuOpenPayload | null>(null)
 
   useEffect(() => {
     if (scrollToLine) {
       pendingScrollRef.current = { line: scrollToLine, column: scrollToColumn }
+      skipHeadingPlacementRef.current = true
+      return
     }
+    pendingScrollRef.current = null
   }, [scrollToLine, scrollToColumn])
 
   useEffect(() => {
@@ -69,7 +77,8 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
 
     const platform: DiaryCmPlatform = {
       resolveAttachmentUrl: resolveUrl,
-      interactionMode: 'mouse'
+      interactionMode: 'mouse',
+      documentProperties: relativePath ? isSkillMarkdownPath(relativePath) : false
     }
 
     const view = createDiaryCodeMirror(container, {
@@ -91,8 +100,14 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
       ]
     })
     viewRef.current = view
+    const pending = pendingScrollRef.current
+    skipHeadingPlacementRef.current = pending != null
+    if (pending) {
+      placePreviewCursorAt(view, pending.line, pending.column ?? 0)
+      pendingScrollRef.current = null
+    }
     requestAnimationFrame(() => {
-      if (pendingScrollRef.current) return
+      if (skipHeadingPlacementRef.current || pendingScrollRef.current) return
       placePreviewCursorPastHeading(view)
     })
 
@@ -102,17 +117,13 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
       viewRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recreate editor per document
-  }, [documentId, folderRoot, readOnly, resolveUrl])
+  }, [documentId, folderRoot, readOnly, resolveUrl, relativePath])
 
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    const current = view.state.doc.toString()
-    if (current === content) return
     suppressEchoRef.current = true
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: content }
-    })
+    replaceEditorDocumentContent(view, content, { scrollIntoView: false })
     suppressEchoRef.current = false
   }, [content])
 
@@ -120,6 +131,7 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
     const view = viewRef.current
     if (!view || !scrollToLine) return
     placePreviewCursorAt(view, scrollToLine, scrollToColumn ?? 0)
+    skipHeadingPlacementRef.current = true
     pendingScrollRef.current = null
     onScrolledToLine?.()
   }, [content, documentId, onScrolledToLine, scrollToColumn, scrollToLine])

@@ -8,6 +8,7 @@ import {
   ChevronUp,
   FolderSearch
 } from 'lucide-react'
+import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './AttachmentManagementView.module.css'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 
@@ -89,9 +90,7 @@ export const SessionAttachmentGroupList: React.FC<{ vm: Vm }> = ({ vm }) => {
               onClick={() => toggleExpand(group.sessionId)}
             >
               <div className={styles.checkboxWrapper} onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  className={styles.customCheck}
+                <Checkbox
                   checked={isChecked}
                   onChange={(e) => toggleSelect(group.sessionId, e.target.checked)}
                 />

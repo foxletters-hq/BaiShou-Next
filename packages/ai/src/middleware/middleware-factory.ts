@@ -121,7 +121,7 @@ export function wrapLanguageModelWithMiddlewares(
   if (middlewares.length > 0) {
     return wrapLanguageModel({
       model: model as Parameters<typeof wrapLanguageModel>[0]['model'],
-      middleware: middlewares
+      middleware: middlewares as never
     })
   }
   return model

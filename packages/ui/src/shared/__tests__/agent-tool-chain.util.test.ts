@@ -47,10 +47,28 @@ describe('buildAgentToolChainItems', () => {
   it('appends active loading tool after completed tools', () => {
     const items = buildAgentToolChainItems({
       completedTools: [{ name: 'url_read', durationMs: 120 }],
-      activeToolName: 'web_search'
+      activeToolName: 'web_search',
+      activeToolArgs: { query: 'docs' }
     })
 
     expect(items.map((item) => item.status)).toEqual(['success', 'loading'])
+    expect(items[1]?.invocation?.args).toEqual({ query: 'docs' })
+  })
+
+  it('marks completed tools with error as error status', () => {
+    const items = buildAgentToolChainItems({
+      completedTools: [
+        {
+          name: 'workspace_read',
+          durationMs: 10,
+          error: 'not found',
+          args: { path: 'missing.md' }
+        }
+      ]
+    })
+
+    expect(items[0]?.status).toBe('error')
+    expect(items[0]?.hasContent).toBe(true)
   })
 })
 
@@ -69,6 +87,15 @@ describe('isToolResultError', () => {
       isToolResultError({
         toolName: 'web_search',
         result: { error: 'network down' }
+      })
+    ).toBe(true)
+  })
+
+  it('detects Tool execution failed without a colon', () => {
+    expect(
+      isToolResultError({
+        toolName: 'skill_write',
+        result: 'Tool execution failed'
       })
     ).toBe(true)
   })

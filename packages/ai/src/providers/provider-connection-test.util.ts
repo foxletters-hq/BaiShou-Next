@@ -35,13 +35,13 @@ export async function probeProviderConnection(
 
   try {
     const modelId = params.modelId?.trim()
-    const built =
-      modelId &&
-      buildSmallTaskReasoningOptions({
-        modelId,
-        providerType: params.providerType,
-        baseUrl: params.baseUrl
-      })
+    const built = modelId
+      ? buildSmallTaskReasoningOptions({
+          modelId,
+          providerType: params.providerType,
+          baseUrl: params.baseUrl
+        })
+      : undefined
 
     await runWithOpenAiThinkingInjectAsync(built?.openAiThinkingInject, async () =>
       generateText({
@@ -49,7 +49,9 @@ export async function probeProviderConnection(
         prompt: CONNECTION_TEST_PROMPT,
         maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS,
         abortSignal: abortController.signal,
-        ...(built?.providerOptions ? { providerOptions: built.providerOptions } : {})
+        ...(built?.providerOptions
+          ? { providerOptions: built.providerOptions as never }
+          : {})
       })
     )
   } catch (e: unknown) {

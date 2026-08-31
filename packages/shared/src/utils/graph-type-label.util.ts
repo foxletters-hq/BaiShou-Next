@@ -24,6 +24,10 @@ export const GRAPH_NODE_TYPE_LABEL_FALLBACKS: Record<string, string> = {
 
 type TranslateFn = (key: string, defaultValue?: string) => string
 
+export function asGraphTranslateFn(t: unknown): TranslateFn {
+  return (key, defaultValue) => (t as TranslateFn)(key, defaultValue)
+}
+
 export function translateGraphEdgeType(t: TranslateFn, edgeType: string): string {
   const key = String(edgeType || '').trim()
   if (!key) return ''

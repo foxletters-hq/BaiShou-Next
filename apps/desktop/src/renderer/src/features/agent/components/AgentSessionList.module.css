@@ -9,7 +9,7 @@
 }
 
 .scroller::-webkit-scrollbar {
-  width: 5px;
+  width: 10px;
 }
 
 .scroller::-webkit-scrollbar-thumb {

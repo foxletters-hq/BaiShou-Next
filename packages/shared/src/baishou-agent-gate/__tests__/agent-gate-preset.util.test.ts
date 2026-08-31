@@ -49,8 +49,13 @@ describe('agent-gate-preset.util (security modes)', () => {
   })
 
   it('resolveWorkspaceSecurityMode defaults to auto_review', () => {
-    expect(resolveWorkspaceSecurityMode({})).toBe('auto_review')
-    expect(resolveWorkspaceSecurityMode({ securityMode: 'full_access' })).toBe('full_access')
+    expect(resolveWorkspaceSecurityMode(undefined)).toBe('auto_review')
+    expect(
+      resolveWorkspaceSecurityMode({
+        ...cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+        securityMode: 'full_access'
+      })
+    ).toBe('full_access')
   })
 
   it('matchesCommandBlacklist catches rm -rf', () => {

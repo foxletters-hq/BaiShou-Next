@@ -56,23 +56,6 @@
   color: var(--text-primary);
 }
 
-.input {
-  height: 40px;
-  border: 1px solid var(--border-control);
-  border-radius: 10px;
-  padding: 0 12px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 14px;
-}
-
-.input:focus {
-  outline: none;
-  border-color: var(--form-field-border-focus, var(--color-primary));
-  box-shadow: var(--form-field-focus-ring, 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent));
-}
-
 .genderRow {
   display: flex;
   flex-wrap: wrap;

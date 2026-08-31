@@ -6,14 +6,16 @@ import {
   ChevronRight,
   File,
   ListCollapse,
+  MoreHorizontal,
+  RefreshCw,
   Regex,
   Replace,
-  Search,
   WholeWord,
   X
 } from 'lucide-react'
-import { basenameFromPath } from '@baishou/ui'
+import { basenameFromPath, Input } from '@baishou/ui'
 import { useWorkbenchSearch } from './useWorkbenchSearch'
+import { parentRelativePath } from './workbench-path.util'
 import { SearchMatchPreview } from './workbench-search-preview'
 import styles from './WorkbenchSearchView.module.css'
 
@@ -64,6 +66,9 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
     return result.files.every((file) => collapsedFiles.has(file.relativePath))
   }, [collapsedFiles, result?.files])
 
+  const hasQuery = state.pattern.trim().length > 0
+  const hasResults = Boolean(result?.files.length)
+
   if (!folderRoot) {
     return (
       <div className={styles.root}>
@@ -80,7 +85,17 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
           <button
             type="button"
             className={styles.iconBtn}
+            title={t('common.refresh', '刷新')}
+            disabled={!hasQuery || loading}
+            onClick={() => void search.runSearch()}
+          >
+            <RefreshCw size={16} strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            className={styles.iconBtn}
             title={t('workbench.search_clear', '清除搜索')}
+            disabled={!hasQuery && !hasResults}
             onClick={search.clearSearch}
           >
             <X size={16} strokeWidth={1.75} />
@@ -93,6 +108,7 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
                 ? t('workbench.search_expand_all', '展开全部')
                 : t('workbench.search_collapse_all', '折叠全部')
             }
+            disabled={!hasResults}
             onClick={() => {
               if (!result?.files.length) return
               if (allCollapsed) {
@@ -104,110 +120,122 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
           >
             <ListCollapse size={16} strokeWidth={1.75} />
           </button>
-          <button
-            type="button"
-            className={`${styles.iconBtn} ${state.showReplace ? styles.iconBtnActive : ''}`}
-            title={t('workbench.search_toggle_replace', '切换替换')}
-            aria-pressed={state.showReplace}
-            onClick={() => patchState({ showReplace: !state.showReplace })}
-          >
-            <Replace size={16} strokeWidth={1.75} />
-          </button>
         </div>
       </div>
 
-      <div className={styles.form}>
-        <div className={styles.inputRow}>
-          <Search size={14} strokeWidth={1.75} className={styles.inputIcon} aria-hidden />
-          <input
-            className={styles.input}
-            value={state.pattern}
-            onChange={(event) => patchState({ pattern: event.target.value })}
-            placeholder={t('workbench.search_in_files', '搜索')}
-            spellCheck={false}
-          />
-          <div className={styles.toggles}>
-            <ToggleButton
-              active={state.matchCase}
-              title={t('workbench.search_match_case', '区分大小写')}
-              onClick={() => patchState({ matchCase: !state.matchCase })}
-            >
-              <CaseSensitive size={14} strokeWidth={1.75} />
-            </ToggleButton>
-            <ToggleButton
-              active={state.matchWholeWord}
-              title={t('workbench.search_whole_word', '全字匹配')}
-              onClick={() => patchState({ matchWholeWord: !state.matchWholeWord })}
-            >
-              <WholeWord size={14} strokeWidth={1.75} />
-            </ToggleButton>
-            <ToggleButton
-              active={state.useRegex}
-              title={t('workbench.search_regex', '使用正则表达式')}
-              onClick={() => patchState({ useRegex: !state.useRegex })}
-            >
-              <Regex size={14} strokeWidth={1.75} />
-            </ToggleButton>
-          </div>
-        </div>
-
-        {state.showReplace ? (
-          <div className={styles.inputRow}>
-            <Replace size={14} strokeWidth={1.75} className={styles.inputIcon} aria-hidden />
-            <input
-              className={styles.input}
-              value={state.replace}
-              onChange={(event) => patchState({ replace: event.target.value })}
-              placeholder={t('workbench.search_replace', '替换')}
-              spellCheck={false}
-            />
-            <button
-              type="button"
-              className={styles.replaceAllBtn}
-              disabled={!state.pattern.trim() || replacing || loading}
-              onClick={() => void search.replaceAll()}
-            >
-              {replacing
-                ? t('workbench.search_replacing', '替换中…')
-                : t('workbench.search_replace_all', '全部替换')}
-            </button>
-          </div>
-        ) : null}
-
+      <div className={styles.widget}>
         <button
           type="button"
-          className={styles.filterToggle}
-          onClick={() => patchState({ showFilters: !state.showFilters })}
+          className={styles.replaceToggle}
+          title={t('workbench.search_toggle_replace', '切换替换')}
+          aria-expanded={state.showReplace}
+          onClick={() => patchState({ showReplace: !state.showReplace })}
         >
-          {state.showFilters ? (
+          {state.showReplace ? (
             <ChevronDown size={14} strokeWidth={1.75} />
           ) : (
             <ChevronRight size={14} strokeWidth={1.75} />
           )}
-          <span>{t('workbench.search_files_filter', '要包含的文件')}</span>
         </button>
 
-        {state.showFilters ? (
-          <div className={styles.filters}>
-            <input
-              className={styles.filterInput}
-              value={state.includePattern}
-              onChange={(event) => patchState({ includePattern: event.target.value })}
-              placeholder={t('workbench.search_include_placeholder', '例如 **/*.ts, **/*.md')}
-              spellCheck={false}
-            />
-            <input
-              className={styles.filterInput}
-              value={state.excludePattern}
-              onChange={(event) => patchState({ excludePattern: event.target.value })}
-              placeholder={t(
-                'workbench.search_exclude_placeholder',
-                '排除文件，例如 node_modules, dist'
-              )}
-              spellCheck={false}
-            />
+        <div className={styles.widgetFields}>
+          <Input
+            fieldSize="small"
+            inputClassName={styles.findInput}
+            value={state.pattern}
+            onChange={(event) => patchState({ pattern: event.target.value })}
+            placeholder={t('workbench.search_in_files', '搜索')}
+            spellCheck={false}
+            trailing={
+              <div className={styles.toggles}>
+                <ToggleButton
+                  active={state.matchCase}
+                  title={t('workbench.search_match_case', '区分大小写')}
+                  onClick={() => patchState({ matchCase: !state.matchCase })}
+                >
+                  <CaseSensitive size={14} strokeWidth={1.75} />
+                </ToggleButton>
+                <ToggleButton
+                  active={state.matchWholeWord}
+                  title={t('workbench.search_whole_word', '全字匹配')}
+                  onClick={() => patchState({ matchWholeWord: !state.matchWholeWord })}
+                >
+                  <WholeWord size={14} strokeWidth={1.75} />
+                </ToggleButton>
+                <ToggleButton
+                  active={state.useRegex}
+                  title={t('workbench.search_regex', '使用正则表达式')}
+                  onClick={() => patchState({ useRegex: !state.useRegex })}
+                >
+                  <Regex size={14} strokeWidth={1.75} />
+                </ToggleButton>
+              </div>
+            }
+          />
+
+          {state.showReplace ? (
+            <div className={styles.replaceRow}>
+              <Input
+                fieldSize="small"
+                className={styles.replaceBox}
+                value={state.replace}
+                onChange={(event) => patchState({ replace: event.target.value })}
+                placeholder={t('workbench.search_replace', '替换')}
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className={styles.iconBtn}
+                title={t('workbench.search_replace_all', '全部替换')}
+                disabled={!hasQuery || replacing || loading}
+                onClick={() => void search.replaceAll()}
+              >
+                <Replace size={15} strokeWidth={1.75} />
+              </button>
+            </div>
+          ) : null}
+
+          <div className={styles.queryDetails}>
+            <button
+              type="button"
+              className={`${styles.moreBtn} ${state.showFilters ? styles.moreBtnActive : ''}`}
+              title={t('workbench.search_files_filter', '要包含 / 排除的文件')}
+              aria-expanded={state.showFilters}
+              onClick={() => patchState({ showFilters: !state.showFilters })}
+            >
+              <MoreHorizontal size={16} strokeWidth={1.75} />
+            </button>
+            {state.showFilters ? (
+              <div className={styles.filters}>
+                <label className={styles.filterLabel} htmlFor="workbench-search-include">
+                  {t('workbench.search_include_label', '要包含的文件')}
+                </label>
+                <Input
+                  id="workbench-search-include"
+                  fieldSize="small"
+                  value={state.includePattern}
+                  onChange={(event) => patchState({ includePattern: event.target.value })}
+                  placeholder={t('workbench.search_include_placeholder', '例如 **/*.ts, **/*.md')}
+                  spellCheck={false}
+                />
+                <label className={styles.filterLabel} htmlFor="workbench-search-exclude">
+                  {t('workbench.search_exclude_label', '要排除的文件')}
+                </label>
+                <Input
+                  id="workbench-search-exclude"
+                  fieldSize="small"
+                  value={state.excludePattern}
+                  onChange={(event) => patchState({ excludePattern: event.target.value })}
+                  placeholder={t(
+                    'workbench.search_exclude_placeholder',
+                    '排除文件，例如 node_modules, dist'
+                  )}
+                  spellCheck={false}
+                />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
 
       <div className={styles.results}>
@@ -215,7 +243,7 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
           <p className={styles.hint}>{t('workbench.search_searching', '正在搜索…')}</p>
         ) : error ? (
           <p className={styles.error}>{error}</p>
-        ) : state.pattern.trim() === '' ? (
+        ) : !hasQuery ? (
           <p className={styles.hint}>
             {t('workbench.search_empty', '输入关键词在工作区文件中搜索')}
           </p>
@@ -233,6 +261,7 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
             <ul className={styles.fileList}>
               {result.files.map((file) => {
                 const collapsed = collapsedFiles.has(file.relativePath)
+                const parentPath = parentRelativePath(file.relativePath)
                 return (
                   <li key={file.relativePath} className={styles.fileGroup}>
                     <button
@@ -247,7 +276,7 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
                       )}
                       <File size={14} strokeWidth={1.75} className={styles.fileIcon} />
                       <span className={styles.fileName}>{basenameFromPath(file.relativePath)}</span>
-                      <span className={styles.filePath}>{file.relativePath}</span>
+                      {parentPath ? <span className={styles.filePath}>{parentPath}</span> : null}
                       <span className={styles.fileCount}>{file.matches.length}</span>
                     </button>
                     {!collapsed ? (
@@ -264,7 +293,6 @@ export const WorkbenchSearchView: React.FC<WorkbenchSearchViewProps> = ({
                                 })
                               }
                             >
-                              <span className={styles.lineNo}>{match.line}</span>
                               <SearchMatchPreview match={match} />
                             </button>
                           </li>

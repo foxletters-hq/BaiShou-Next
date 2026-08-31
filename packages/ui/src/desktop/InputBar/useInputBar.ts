@@ -8,12 +8,15 @@ import {
 } from './useInputBarExpand'
 import {
   CREATE_SKILL_SLASH_COMMAND,
+  buildSkillSendText,
+  composerExtraPlain,
   getCreateSkillGuidePrompt,
   getDefaultShortcutLabelsFromT,
   getShortcutCommand,
   localizePromptShortcuts,
   type MockChatAttachment,
-  type PromptShortcut
+  type PromptShortcut,
+  type SkillInvokeRef
 } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useComposerDraft } from '../../shared/composer-draft'
@@ -73,6 +76,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     shortcuts,
     onTriggerShortcut,
     onManageShortcuts,
+    createSkillScope = 'software',
     onOpenTools,
     searchMode = true,
     onToggleSearchMode,
@@ -80,10 +84,13 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     onToggleTtsMode,
     onOpenNotebookMount,
     placeholder,
+    onEscape,
     bottomTrailing,
     footer,
     sendIconSize,
-    minRows = 1
+    minRows = 1,
+    attachmentIntake = 'companion',
+    resolveDropAttachments
   } = props
 
   const { t, i18n } = useTranslation()
@@ -100,8 +107,10 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   const editorRef = useRef<HTMLDivElement>(null)
   const htmlSnapshotRef = useRef('')
   const textRef = useRef(text)
+  const skillRefsRef = useRef(skillRefs)
   const slashDismissedRef = useRef(false)
   textRef.current = text
+  skillRefsRef.current = skillRefs
 
   const applyExternalText = useCallback((value: string | ((prev: string) => string)) => {
     const next = typeof value === 'function' ? value(textRef.current) : value
@@ -122,7 +131,10 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     draftSyncSuspended: isSending
   })
 
-  const attachmentHandlers = useInputBarAttachments(setAttachments)
+  const attachmentHandlers = useInputBarAttachments(setAttachments, {
+    attachmentIntake,
+    resolveDropAttachments
+  })
   const localizedShortcuts = useMemo(() => {
     if (!shortcuts?.length) return undefined
     return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
@@ -181,16 +193,126 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     [insertSkillChip, slashToken]
   )
 
+  const sendComposer = useCallback(
+    async (overrideSkills?: SkillInvokeRef[]) => {
+      const root = editorRef.current
+      const snap = root
+        ? serializeSkillComposer(root)
+        : { plainText: text, skills: skillRefs, sendText: sendTextCache }
+      const pendingSkills: SkillRefChip[] = (
+        overrideSkills?.length ? overrideSkills : snap.skills
+      ).map((item, index) => ({
+        id:
+          'id' in item && typeof item.id === 'string' && item.id
+            ? item.id
+            : makeSkillChipId(item.command || `skill-${index}`),
+        command: item.command,
+        content: item.content
+      }))
+      const pendingPlain = snap.plainText
+      const extraPlain = composerExtraPlain(pendingPlain, pendingSkills)
+      const pendingText = buildSkillSendText(
+        pendingSkills.map((item) => ({ command: item.command, content: item.content })),
+        extraPlain
+      )
+      const hasPayload = Boolean(pendingText || attachments.length > 0)
+      if (!hasPayload || isSending) return
+      if (isLoading && !allowSendWhileLoading) return
+      if (composerBlocked) {
+        onComposerBlocked?.()
+        return
+      }
+
+      const pendingAttachments = attachments.length > 0 ? [...attachments] : []
+      const pendingHtml = htmlSnapshotRef.current
+      const hadSearchMode = searchMode
+
+      if (root) clearComposer(root)
+      setText('')
+      setAttachments([])
+      setSkillRefs([])
+      setSendTextCache('')
+      setSlashToken(null)
+      setSkillPickerOpen(false)
+      htmlSnapshotRef.current = ''
+      setComposerSyncHtml('')
+      setComposerSyncKey((k) => k + 1)
+
+      setIsSending(true)
+      try {
+        const accepted = await Promise.resolve(
+          onSend(
+            pendingText,
+            pendingAttachments.length > 0 ? pendingAttachments : undefined,
+            hadSearchMode,
+            pendingSkills.length > 0
+              ? {
+                  displayText: pendingPlain.trim() || pendingText,
+                  skillRefs: pendingSkills.map((item) => ({
+                    command: item.command,
+                    content: item.content
+                  }))
+                }
+              : undefined
+          )
+        )
+        if (accepted === false) {
+          setComposerSyncHtml(pendingHtml)
+          setComposerSyncKey((k) => k + 1)
+          setText(pendingPlain)
+          setAttachments(pendingAttachments)
+          setSkillRefs(pendingSkills)
+        } else {
+          await clearDraft()
+        }
+      } finally {
+        setIsSending(false)
+      }
+    },
+    [
+      allowSendWhileLoading,
+      attachments,
+      clearDraft,
+      composerBlocked,
+      isLoading,
+      isSending,
+      onComposerBlocked,
+      onSend,
+      searchMode,
+      sendTextCache,
+      skillRefs,
+      text
+    ]
+  )
+
+  const handleSend = useCallback(() => {
+    void sendComposer()
+  }, [sendComposer])
+
+  const launchInsertedSkill = useCallback(
+    (skills: SkillInvokeRef[]) => {
+      void sendComposer(skills)
+    },
+    [sendComposer]
+  )
+
   const armCreateSkillChip = useCallback(() => {
-    addSkillRef(CREATE_SKILL_SLASH_COMMAND, getCreateSkillGuidePrompt(t))
-  }, [addSkillRef, t])
+    const content = getCreateSkillGuidePrompt(
+      (key, fallback) => String(t(key, fallback ?? '')),
+      createSkillScope
+    )
+    addSkillRef(CREATE_SKILL_SLASH_COMMAND, content)
+    launchInsertedSkill([{ command: CREATE_SKILL_SLASH_COMMAND, content }])
+  }, [addSkillRef, createSkillScope, launchInsertedSkill, t])
 
   const applyShortcut = useCallback(
     (shortcut: PromptShortcut) => {
       const command = getShortcutCommand(shortcut)
-      addSkillRef(command, shortcut.content || '')
+      const content = shortcut.content || ''
+      addSkillRef(command, content)
+      launchInsertedSkill([{ command, content }])
     },
-    [addSkillRef]
+    [addSkillRef, launchInsertedSkill]
   )
 
   useImperativeHandle(ref, () => ({
@@ -216,6 +338,13 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       applyExternalText(nextText)
       queueMicrotask(() => editorRef.current?.focus())
     },
+    getDraft: () => ({
+      text: textRef.current,
+      skillRefs: skillRefsRef.current.map((ref) => ({
+        command: ref.command,
+        content: ref.content
+      }))
+    }),
     restoreDraft: (draft) => {
       const plain = typeof draft.text === 'string' ? draft.text : ''
       const refs = (draft.skillRefs ?? [])
@@ -277,69 +406,6 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     focus: () => editorRef.current?.focus()
   }))
 
-  const handleSend = async () => {
-    const pendingText =
-      sendTextCache.trim() ||
-      [...skillRefs.map((c) => c.content.trim()).filter(Boolean), text.trim()]
-        .filter(Boolean)
-        .join('\n\n')
-    const hasPayload = Boolean(pendingText || attachments.length > 0)
-    if (!hasPayload || isSending) return
-    if (isLoading && !allowSendWhileLoading) return
-    if (composerBlocked) {
-      onComposerBlocked?.()
-      return
-    }
-
-    const pendingAttachments = attachments.length > 0 ? [...attachments] : []
-    const pendingHtml = htmlSnapshotRef.current
-    const pendingPlain = text
-    const pendingSkills = skillRefs
-    const hadSearchMode = searchMode
-
-    if (editorRef.current) clearComposer(editorRef.current)
-    setText('')
-    setAttachments([])
-    setSkillRefs([])
-    setSendTextCache('')
-    setSlashToken(null)
-    setSkillPickerOpen(false)
-    htmlSnapshotRef.current = ''
-    setComposerSyncHtml('')
-    setComposerSyncKey((k) => k + 1)
-
-    setIsSending(true)
-    try {
-      const accepted = await Promise.resolve(
-        onSend(
-          pendingText,
-          pendingAttachments.length > 0 ? pendingAttachments : undefined,
-          hadSearchMode,
-          pendingSkills.length > 0 || pendingPlain.trim() !== pendingText.trim()
-            ? {
-                displayText: pendingPlain.trim() || pendingText,
-                skillRefs: pendingSkills.map((s) => ({
-                  command: s.command,
-                  content: s.content
-                }))
-              }
-            : undefined
-        )
-      )
-      if (accepted === false) {
-        setComposerSyncHtml(pendingHtml)
-        setComposerSyncKey((k) => k + 1)
-        setText(pendingPlain)
-        setAttachments(pendingAttachments)
-        setSkillRefs(pendingSkills)
-      } else {
-        await clearDraft()
-      }
-    } finally {
-      setIsSending(false)
-    }
-  }
-
   const filteredShortcuts = useMemo(() => {
     const list = localizedShortcuts ?? []
     const q = (slashToken?.query || '').trim().toLowerCase()
@@ -355,7 +421,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   const slashPickerEntries = useMemo(() => {
     const q = (slashToken?.query || '').trim().toLowerCase()
     const createName = CREATE_SKILL_SLASH_COMMAND
-    const createDesc = t('shortcut.create_skill_desc', '创建可复用的 Agent Skill')
+    const createDesc = CREATE_SKILL_SLASH_COMMAND
     const entries: Array<{
       id: string
       name: string
@@ -387,7 +453,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       })
     }
     return entries
-  }, [filteredShortcuts, slashToken, t])
+  }, [filteredShortcuts, slashToken])
 
   useEffect(() => {
     setSkillPickerIndex(0)
@@ -454,6 +520,11 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       setSkillPickerOpen(false)
       return
     }
+    if (e.key === 'Escape' && onEscape) {
+      e.preventDefault()
+      onEscape()
+      return
+    }
     // IME 组字中的 Enter 交给浏览器确认候选，不发送 / 不拦截
     if (e.nativeEvent.isComposing || e.keyCode === 229) return
 
@@ -491,6 +562,8 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     fileInputRef: attachmentHandlers.fileInputRef,
     handlePickFiles: attachmentHandlers.handlePickFiles,
     handleNativeWebFileChange: attachmentHandlers.handleNativeWebFileChange,
+    handleAttachmentDrop: attachmentHandlers.handleAttachmentDrop,
+    attachmentIntake,
     handlePaste,
     skillPickerOpen,
     closeSkillPicker,

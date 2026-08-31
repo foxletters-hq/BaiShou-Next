@@ -168,6 +168,9 @@ export async function syncMobileGraphPendingIndex(options: {
   drizzleDb: AppDatabase
   embeddingProvider?: IAIProvider | null
   embeddingModelId?: string | null
+  vaultId?: string
+  absentSweep?: 'shard-present' | 'off'
+  deletedShardPaths?: string[]
 }): Promise<void> {
   if (!runtime) return
   const graphRepo = new GraphRepository(options.drizzleDb)
@@ -181,7 +184,11 @@ export async function syncMobileGraphPendingIndex(options: {
       : undefined,
     modelId: embeddingAdapter?.embeddingModelId
   })
-  await graphSync.syncPendingIndex()
+  await graphSync.syncPendingIndex({
+    absentSweep: options.absentSweep,
+    deletedShardPaths: options.deletedShardPaths,
+    vaultId: options.vaultId
+  })
 }
 
 export async function runMobileDerivedIndexHydration(options: {
@@ -193,6 +200,7 @@ export async function runMobileDerivedIndexHydration(options: {
   embeddingProvider?: IAIProvider | null
   embeddingModelId?: string | null
   reason: string
+  deletedShardPaths?: string[]
 }): Promise<void> {
   if (!runtime) {
     logger.warn(`[RawData] mobile skip hydration (${options.reason}): runtime not ready`)
@@ -278,7 +286,10 @@ export async function runMobileDerivedIndexHydration(options: {
         : undefined,
       modelId: embeddingAdapter?.embeddingModelId
     })
-    await graphSync.syncPendingIndex()
+    await graphSync.syncPendingIndex({
+      vaultId: options.vaultId,
+      deletedShardPaths: options.deletedShardPaths
+    })
 
     logger.info(
       `[RawData] mobile derived hydration done (${options.reason}): legacyCopy=${legacyCopy.copied}/${legacyCopy.skipped}`
@@ -329,15 +340,25 @@ export async function runMobileKnowledgeHydration(options: {
         (await options.pathService.getActiveVaultNameForContext?.().catch(() => 'Personal')) ||
           'Personal'
       )
+    const { NotebookGraphRawManager, NotebookGraphIndexService } =
+      await import('@baishou/core-mobile')
+    const { NotebookGraphRepository } = await import('@baishou/database/expo')
+    const graphRaw = new NotebookGraphRawManager(options.pathService, options.fileSystem)
+    const graphIndex = new NotebookGraphIndexService(
+      graphRaw,
+      new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+    )
     const hydration = new KnowledgeHydrationService({
       repo,
       notebookManager,
       vaultId,
-      isEmbeddingConfigured: () => embeddingOk
+      isEmbeddingConfigured: () => embeddingOk,
+      graphRaw,
+      graphIndex
     })
     const result = await hydration.hydrate()
 
-    if (result.embedJobsEnqueued > 0 && embeddingOk) {
+    if (result.embedJobsEnqueued > 0 || result.graphJobsEnqueued > 0) {
       const { scheduleConsumeMobileKnowledgeIngestJobs } =
         await import('./mobile-knowledge-ingest-jobs.consumer')
       scheduleConsumeMobileKnowledgeIngestJobs(options.reason)
@@ -346,5 +367,40 @@ export async function runMobileKnowledgeHydration(options: {
     logger.info(`[KnowledgeHydration] mobile done (${options.reason})`, { ...result })
   } catch (e) {
     logger.warn(`[KnowledgeHydration] mobile failed (${options.reason}):`, e as Error)
+  }
+}
+
+export async function runMobileNotebookGraphIndex(options: {
+  notebookIds: string[]
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  deletedShardPaths?: string[]
+}): Promise<void> {
+  const ids = [...new Set(options.notebookIds.map((id) => id.trim()).filter(Boolean))]
+  if (ids.length === 0) return
+  try {
+    const { expoKnowledgeConnectionManager, NotebookGraphRepository } =
+      await import('@baishou/database/expo')
+    if (!expoKnowledgeConnectionManager.isConnected()) return
+    const { NotebookGraphRawManager, NotebookGraphIndexService } =
+      await import('@baishou/core-mobile')
+    const vaultId =
+      (await options.pathService.getLocalActiveVaultId?.()) ||
+      deriveLegacyVaultId(
+        (await options.pathService.getActiveVaultNameForContext?.().catch(() => 'Personal')) ||
+          'Personal'
+      )
+    const raw = new NotebookGraphRawManager(options.pathService, options.fileSystem)
+    const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+    const index = new NotebookGraphIndexService(raw, repo)
+    for (const notebookId of ids) {
+      await index.syncPendingIndex({
+        vaultId,
+        notebookId,
+        deletedShardPaths: options.deletedShardPaths
+      })
+    }
+  } catch (e) {
+    logger.warn('[NotebookGraphIndex] mobile after-sync failed:', e as Error)
   }
 }

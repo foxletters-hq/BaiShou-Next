@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { pruneShadowSnapshotObjects } from '../git-shadow-gc'
+import type { KeyedMutex } from '../keyed-mutex'
 import type { WorkspaceGitCommandResult } from '../git-shadow-snapshot.store'
 
 const FOLDER_ROOT = join('D:', 'notes')
@@ -136,7 +137,7 @@ describe('pruneShadowSnapshotObjects', () => {
       gitDir: GIT_DIR,
       folderRoot: FOLDER_ROOT,
       liveTreeOids: [],
-      mutex
+      mutex: mutex as KeyedMutex
     })
 
     expect(order).toEqual([`lock:${GIT_DIR}`, `unlock:${GIT_DIR}`])

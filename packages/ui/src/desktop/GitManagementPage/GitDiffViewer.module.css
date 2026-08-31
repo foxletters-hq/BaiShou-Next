@@ -2,7 +2,6 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
 }
 
 .toolbar {
@@ -37,15 +36,16 @@
 .fill {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  height: 100%;
+  overflow: hidden;
   max-height: none;
 }
 
 .unified {
-  border-top: 1px solid var(--border-subtle);
-  background: var(--bg-surface-normal);
+  border-top: 1px solid var(--border-muted);
+  background: var(--bg-surface-low);
   overflow: auto;
-  max-height: 280px;
+  max-height: 320px;
 }
 
 .unifiedFill {
@@ -56,31 +56,120 @@
 
 .unifiedContent {
   margin: 0;
-  padding: 10px 12px;
-  font-size: var(--ui-fs-lg);
+  padding: 4px 0;
+  font-size: var(--ui-fs-sm);
   font-family: var(--font-family-mono);
+  font-variant-ligatures: none;
   line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.unifiedRow {
+  display: grid;
+  grid-template-columns: 3px 40px 40px 16px minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 1.45em;
+}
+
+.hunkHeader,
+.metaLine {
+  display: block;
+  padding: 4px 10px;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  font-family: var(--font-family-mono);
+  color: var(--text-tertiary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-surface-normal));
+}
+
+.metaLine {
+  background: transparent;
+  font-style: italic;
+  color: var(--text-tertiary);
+}
+
+.hunkText {
+  display: block;
   white-space: pre;
 }
 
-.hunkHeader {
-  color: var(--color-primary);
-  font-weight: 600;
-  margin: 8px 0 4px;
+.gutterBar {
+  width: 3px;
+  background: transparent;
+}
+
+.lineAdd .gutterBar {
+  background: rgba(16, 185, 129, 0.85);
+}
+
+.lineRemove .gutterBar {
+  background: rgba(239, 68, 68, 0.85);
+}
+
+.lineNum {
+  padding: 0 6px;
+  text-align: right;
+  color: var(--text-tertiary);
+  user-select: none;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-sm);
+}
+
+.marker {
+  text-align: center;
+  user-select: none;
+  font-family: var(--font-family-mono);
+}
+
+.lineAdd .marker {
+  color: var(--color-success);
+}
+
+.lineRemove .marker {
+  color: var(--color-error);
+}
+
+.lineText {
+  padding: 0 10px 0 4px;
+  white-space: pre;
+  overflow-x: auto;
+  min-width: 0;
+  font-family: var(--font-family-mono);
 }
 
 .lineAdd {
-  background: rgba(34, 197, 94, 0.12);
+  background: rgba(16, 185, 129, 0.1);
   color: var(--text-primary);
 }
 
 .lineRemove {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.1);
   color: var(--text-primary);
 }
 
 .lineNormal {
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.inlineChanged {
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.lineAdd .inlineChanged {
+  background: rgba(16, 185, 129, 0.32);
+}
+
+.lineRemove .inlineChanged {
+  background: rgba(239, 68, 68, 0.28);
+}
+
+.rowAdd .inlineChanged {
+  background: rgba(16, 185, 129, 0.32);
+}
+
+.rowRemove .inlineChanged {
+  background: rgba(239, 68, 68, 0.28);
 }
 
 .splitRoot {
@@ -122,8 +211,10 @@
   overflow: auto;
   min-height: 0;
   font-family: var(--font-family-mono);
-  font-size: var(--ui-fs-lg);
+  font-size: var(--ui-fs-sm);
+  font-variant-ligatures: none;
   line-height: 1.55;
+  background: var(--bg-surface-low);
 }
 
 .splitPane + .splitPane {
@@ -136,33 +227,27 @@
   min-height: 20px;
 }
 
-.lineNum {
-  padding: 0 8px;
-  text-align: right;
-  color: var(--text-tertiary);
-  user-select: none;
+.splitRow .lineNum {
   border-right: 1px solid var(--border-subtle);
   background: var(--bg-surface-normal);
 }
 
-.lineText {
+.splitRow .lineText {
   padding: 0 10px;
-  white-space: pre;
-  overflow-x: auto;
 }
 
 .rowRemove .lineText {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.1);
   color: var(--text-primary);
 }
 
 .rowAdd .lineText {
-  background: rgba(34, 197, 94, 0.12);
+  background: rgba(16, 185, 129, 0.1);
   color: var(--text-primary);
 }
 
 .rowEmpty .lineText {
-  background: rgba(0, 0, 0, 0.02);
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
 }
 
 .empty {

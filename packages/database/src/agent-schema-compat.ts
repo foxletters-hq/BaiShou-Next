@@ -83,6 +83,7 @@ export const GRAPH_NODES_CREATE_SQL = `
     vault_id TEXT NOT NULL,
     node_type TEXT NOT NULL,
     name TEXT NOT NULL,
+    name_normalized TEXT DEFAULT '' NOT NULL,
     aliases TEXT DEFAULT '[]' NOT NULL,
     summary TEXT DEFAULT '' NOT NULL,
     props_json TEXT DEFAULT '{}' NOT NULL,
@@ -98,6 +99,15 @@ export const GRAPH_NODES_CREATE_SQL = `
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     deleted_at INTEGER
+  )
+`
+
+export const GRAPH_NODE_ALIASES_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS graph_node_aliases (
+    id TEXT PRIMARY KEY NOT NULL,
+    vault_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    alias_normalized TEXT NOT NULL
   )
 `
 
@@ -126,8 +136,22 @@ export const GRAPH_EDGES_CREATE_SQL = `
   )
 `
 
+/** Remove historical graph_nodes/graph_edges rows that only had deleted_at set. */
+export const GRAPH_PURGE_SOFT_DELETED_SQL = [
+  `DELETE FROM graph_edges WHERE deleted_at IS NOT NULL`,
+  `DELETE FROM graph_edges WHERE from_id IN (SELECT id FROM graph_nodes WHERE deleted_at IS NOT NULL)
+    OR to_id IN (SELECT id FROM graph_nodes WHERE deleted_at IS NOT NULL)`,
+  `DELETE FROM graph_node_aliases WHERE node_id IN (SELECT id FROM graph_nodes WHERE deleted_at IS NOT NULL)`,
+  `DELETE FROM graph_nodes WHERE deleted_at IS NOT NULL`
+] as const
+
 export const GRAPH_INDEXES_SQL = [
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_id_type ON graph_nodes(vault_id, node_type)`,
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_name_norm ON graph_nodes(vault_id, name_normalized)`,
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_mention ON graph_nodes(vault_id, mention_count)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS graph_nodes_vault_type_name_live ON graph_nodes(vault_id, node_type, name_normalized) WHERE deleted_at IS NULL AND node_type != 'entry'`,
+  `CREATE INDEX IF NOT EXISTS graph_node_aliases_vault_alias ON graph_node_aliases(vault_id, alias_normalized)`,
+  `CREATE INDEX IF NOT EXISTS graph_node_aliases_node ON graph_node_aliases(node_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_from ON graph_edges(from_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_to ON graph_edges(to_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_vault_id_type_current ON graph_edges(vault_id, edge_type, is_current)`,

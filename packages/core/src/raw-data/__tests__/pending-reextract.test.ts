@@ -44,8 +44,22 @@ describe('pending-reextract + extract-state', () => {
       shadowRepo: {
         listAll: async () => journals
       } as never,
-      getVaultName: () => 'Personal'
+      getVaultName: () => 'Personal',
+      getVaultId: () => 'vlt_testaaaaaaaaaa'
     })
+  })
+
+  it('does not enqueue when extract-state matches even if graph rows are absent', async () => {
+    await freshness.commitReextract('Journals/2026-07-01.md', 'hash-a')
+    const pending = await freshness.listPendingReextract()
+    expect(pending.map((p) => p.filePath)).toEqual(['Journals/2026-07-02.md'])
+  })
+
+  it('same-hash diary stays extracted after an edit mark', async () => {
+    await freshness.commitReextract('Journals/2026-07-01.md', 'hash-a')
+    freshness.markPendingReextract('Journals/2026-07-01.md', 'hash-a')
+    const pending = await freshness.listPendingReextract()
+    expect(pending.every((p) => p.filePath !== 'Journals/2026-07-01.md')).toBe(true)
   })
 
   it('lists never-extracted journals as pending', async () => {

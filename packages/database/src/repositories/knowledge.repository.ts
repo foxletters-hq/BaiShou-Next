@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import {
   knowledgeChunksTable,
@@ -10,6 +10,7 @@ import {
   type KnowledgeSourceRow,
   type NotebookRow
 } from '../schema/knowledge'
+import type { NotebookGraphWrite } from './notebook-graph.ports'
 
 export type KnowledgeSourceStatus =
   | 'pending'
@@ -19,12 +20,36 @@ export type KnowledgeSourceStatus =
   | 'embedding'
   | 'ready'
   | 'failed'
+  | 'stored'
 
-export type KnowledgeIngestStage = 'extract' | 'embed'
+export type KnowledgeIngestStage = 'extract' | 'embed' | 'graph'
 export type KnowledgeIngestJobStatus = 'pending' | 'running' | 'failed'
 
+/** 向量页列表项：不返回 embedding BLOB */
+export type KnowledgeChunkListItem = {
+  chunkId: string
+  sourceId: string
+  notebookId: string
+  chunkIndex: number
+  chunkText: string
+  metadataJson: string
+  dimension: number
+  modelId: string
+  createdAt: number
+  sourceTitle: string | null
+}
+
 export class KnowledgeRepository {
-  constructor(private readonly db: AppDatabase) {}
+  constructor(
+    private readonly db: AppDatabase,
+    private readonly notebookGraphWrite?: NotebookGraphWrite
+  ) {}
+
+  private async notebookGraph(): Promise<NotebookGraphWrite> {
+    if (this.notebookGraphWrite) return this.notebookGraphWrite
+    const { NotebookGraphRepository } = await import('./notebook-graph.repository')
+    return new NotebookGraphRepository(this.db)
+  }
 
   // ── notebooks ──────────────────────────────────────────
 
@@ -33,6 +58,10 @@ export class KnowledgeRepository {
     name: string
     description?: string
     vaultId: string
+    sortOrder?: number
+    coverTone?: string
+    coverIcon?: string
+    coverImage?: string
   }): Promise<NotebookRow> {
     const now = Date.now()
     const vaultId = input.vaultId.trim()
@@ -43,6 +72,10 @@ export class KnowledgeRepository {
       name: input.name,
       description: input.description ?? '',
       archived: 0,
+      sortOrder: input.sortOrder ?? 0,
+      coverTone: input.coverTone ?? '',
+      coverIcon: input.coverIcon ?? '',
+      coverImage: input.coverImage ?? '',
       createdAt: now,
       updatedAt: now
     })
@@ -71,34 +104,66 @@ export class KnowledgeRepository {
         .select()
         .from(notebooksTable)
         .where(eq(notebooksTable.vaultId, vaultId))
-        .orderBy(notebooksTable.updatedAt)
+        .orderBy(
+          asc(notebooksTable.sortOrder),
+          desc(notebooksTable.createdAt),
+          notebooksTable.id
+        )
     }
     if (vaultId) {
       return this.db
         .select()
         .from(notebooksTable)
         .where(and(eq(notebooksTable.vaultId, vaultId), eq(notebooksTable.archived, 0)))
-        .orderBy(notebooksTable.updatedAt)
+        .orderBy(
+          asc(notebooksTable.sortOrder),
+          desc(notebooksTable.createdAt),
+          notebooksTable.id
+        )
     }
     if (archivedOk) {
-      return this.db.select().from(notebooksTable).orderBy(notebooksTable.updatedAt)
+      return this.db
+        .select()
+        .from(notebooksTable)
+        .orderBy(
+          asc(notebooksTable.sortOrder),
+          desc(notebooksTable.createdAt),
+          notebooksTable.id
+        )
     }
     return this.db
       .select()
       .from(notebooksTable)
       .where(eq(notebooksTable.archived, 0))
-      .orderBy(notebooksTable.updatedAt)
+      .orderBy(
+        asc(notebooksTable.sortOrder),
+        desc(notebooksTable.createdAt),
+        notebooksTable.id
+      )
   }
 
   async updateNotebook(
     id: string,
-    patch: { name?: string; description?: string; archived?: boolean; vaultId?: string }
+    patch: {
+      name?: string
+      description?: string
+      archived?: boolean
+      vaultId?: string
+      sortOrder?: number
+      coverTone?: string
+      coverIcon?: string
+      coverImage?: string
+    }
   ): Promise<void> {
     const set: Partial<NotebookRow> = { updatedAt: Date.now() }
     if (patch.name !== undefined) set.name = patch.name
     if (patch.description !== undefined) set.description = patch.description
     if (patch.archived !== undefined) set.archived = patch.archived ? 1 : 0
     if (patch.vaultId !== undefined) set.vaultId = patch.vaultId.trim()
+    if (patch.sortOrder !== undefined) set.sortOrder = patch.sortOrder
+    if (patch.coverTone !== undefined) set.coverTone = patch.coverTone
+    if (patch.coverIcon !== undefined) set.coverIcon = patch.coverIcon
+    if (patch.coverImage !== undefined) set.coverImage = patch.coverImage
     await this.db.update(notebooksTable).set(set).where(eq(notebooksTable.id, id))
   }
 
@@ -190,7 +255,7 @@ export class KnowledgeRepository {
       .select()
       .from(knowledgeSourcesTable)
       .where(eq(knowledgeSourcesTable.notebookId, notebookId))
-      .orderBy(knowledgeSourcesTable.createdAt)
+      .orderBy(knowledgeSourcesTable.createdAt, knowledgeSourcesTable.id)
   }
 
   async updateSourceStatus(
@@ -295,6 +360,79 @@ export class KnowledgeRepository {
   }
 
   /**
+   * 按笔记本分页列出向量片段。禁止 SELECT *，避免把 embedding BLOB 拉进 UI。
+   */
+  async listChunksByNotebook(input: {
+    notebookId: string
+    limit?: number
+    offset?: number
+    query?: string
+  }): Promise<{ items: KnowledgeChunkListItem[]; total: number }> {
+    const notebookId = input.notebookId.trim()
+    if (!notebookId) throw new Error('listChunksByNotebook: notebookId is required')
+    const limit = Math.min(100, Math.max(1, input.limit ?? 20))
+    const offset = Math.max(0, input.offset ?? 0)
+    const query = input.query?.trim() ?? ''
+    const filters = [eq(knowledgeChunksTable.notebookId, notebookId)]
+    if (query) {
+      const q = `%${query.replace(/[%_]/g, '')}%`
+      filters.push(sql`${knowledgeChunksTable.chunkText} LIKE ${q}`)
+    }
+    const where = and(...filters)
+
+    const countRows = await this.db
+      .select({ c: sql<number>`count(*)` })
+      .from(knowledgeChunksTable)
+      .where(where)
+    const total = Number(countRows[0]?.c ?? 0)
+
+    const items = await this.db
+      .select({
+        chunkId: knowledgeChunksTable.chunkId,
+        sourceId: knowledgeChunksTable.sourceId,
+        notebookId: knowledgeChunksTable.notebookId,
+        chunkIndex: knowledgeChunksTable.chunkIndex,
+        chunkText: knowledgeChunksTable.chunkText,
+        metadataJson: knowledgeChunksTable.metadataJson,
+        dimension: knowledgeChunksTable.dimension,
+        modelId: knowledgeChunksTable.modelId,
+        createdAt: knowledgeChunksTable.createdAt,
+        sourceTitle: knowledgeSourcesTable.title
+      })
+      .from(knowledgeChunksTable)
+      .leftJoin(
+        knowledgeSourcesTable,
+        eq(knowledgeChunksTable.sourceId, knowledgeSourcesTable.id)
+      )
+      .where(where)
+      .orderBy(asc(knowledgeChunksTable.chunkIndex), desc(knowledgeChunksTable.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    return { items, total }
+  }
+
+  /** 只计行数，禁止为存在性判断拉 embedding BLOB */
+  async countChunksBySource(sourceId: string): Promise<number> {
+    const rows = await this.db
+      .select({ c: sql<number>`count(*)` })
+      .from(knowledgeChunksTable)
+      .where(eq(knowledgeChunksTable.sourceId, sourceId))
+    return Number(rows[0]?.c ?? 0)
+  }
+
+  async deleteChunksBySourceFromIndex(sourceId: string, fromIndex: number): Promise<void> {
+    await this.db
+      .delete(knowledgeChunksTable)
+      .where(
+        and(
+          eq(knowledgeChunksTable.sourceId, sourceId),
+          sql`${knowledgeChunksTable.chunkIndex} >= ${fromIndex}`
+        )
+      )
+  }
+
+  /**
    * 库内 source_id（orphan 差集用）。
    * 传入 vaultId 时只看该仓；禁止在多仓全局库上无过滤全扫。
    */
@@ -375,7 +513,19 @@ export class KnowledgeRepository {
     await this.db
       .delete(knowledgeIngestJobsTable)
       .where(eq(knowledgeIngestJobsTable.sourceId, sourceId))
+    const source = await this.getSource(sourceId)
     await this.db.delete(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.id, sourceId))
+    if (source?.notebookId) {
+      const { notebookGraphSourceNodeId } = await import('@baishou/shared')
+      const graph = await this.notebookGraph()
+      await graph.deleteEdgesBySourcePrefix(source.notebookId, sourceId)
+      if (source.vaultId?.trim()) {
+        await graph.softDeleteNode(
+          notebookGraphSourceNodeId(source.vaultId, source.notebookId, sourceId),
+          source.notebookId
+        )
+      }
+    }
   }
 
   async deleteNotebook(notebookId: string): Promise<void> {
@@ -386,6 +536,7 @@ export class KnowledgeRepository {
     await this.db
       .delete(knowledgeSourcesTable)
       .where(eq(knowledgeSourcesTable.notebookId, notebookId))
+    await (await this.notebookGraph()).deleteAllForNotebook(notebookId)
     await this.db.delete(notebooksTable).where(eq(notebooksTable.id, notebookId))
   }
 
@@ -429,6 +580,7 @@ export class KnowledgeRepository {
         .where(eq(knowledgeIngestJobsTable.vaultId, id))
     )
 
+    await (await this.notebookGraph()).deleteAllForVault(id)
     await this.db.delete(knowledgeIngestJobsTable).where(eq(knowledgeIngestJobsTable.vaultId, id))
     await this.db.delete(knowledgeChunksTable).where(eq(knowledgeChunksTable.vaultId, id))
     await this.db.delete(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.vaultId, id))
@@ -469,7 +621,10 @@ export class KnowledgeRepository {
     const vaultId = job.vaultId.trim()
     if (!vaultId) throw new Error('enqueueIngestJob: vaultId is required')
     const existing = await this.db
-      .select({ id: knowledgeIngestJobsTable.id })
+      .select({
+        id: knowledgeIngestJobsTable.id,
+        status: knowledgeIngestJobsTable.status
+      })
       .from(knowledgeIngestJobsTable)
       .where(
         and(
@@ -480,6 +635,9 @@ export class KnowledgeRepository {
       .limit(1)
 
     if (existing[0]) {
+      if (existing[0].status === 'running' && !job.error) {
+        return
+      }
       await this.db
         .update(knowledgeIngestJobsTable)
         .set({
@@ -508,15 +666,40 @@ export class KnowledgeRepository {
     })
   }
 
-  async countIngestJobs(): Promise<number> {
+  async countIngestJobs(options?: {
+    notebookId?: string
+    vaultId?: string
+    stages?: KnowledgeIngestStage[]
+    /** 只计可领取（pending/failed 且已到重试时间），不含 running */
+    claimableOnly?: boolean
+  }): Promise<number> {
+    const notebookId = options?.notebookId?.trim()
+    const vaultId = options?.vaultId?.trim()
+    const stages = options?.stages?.filter(Boolean)
+    const now = Date.now()
+    const filters = options?.claimableOnly
+      ? [
+          inArray(knowledgeIngestJobsTable.status, ['pending', 'failed']),
+          or(
+            isNull(knowledgeIngestJobsTable.nextRetryAt),
+            lte(knowledgeIngestJobsTable.nextRetryAt, now)
+          )
+        ]
+      : [inArray(knowledgeIngestJobsTable.status, ['pending', 'failed', 'running'])]
+    if (notebookId) filters.push(eq(knowledgeIngestJobsTable.notebookId, notebookId))
+    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
+    if (stages?.length) filters.push(inArray(knowledgeIngestJobsTable.stage, stages))
     const rows = await this.db
       .select({ c: sql<number>`count(*)` })
       .from(knowledgeIngestJobsTable)
-      .where(inArray(knowledgeIngestJobsTable.status, ['pending', 'failed', 'running']))
+      .where(and(...filters))
     return Number(rows[0]?.c ?? 0)
   }
 
-  async claimIngestJobs(limit: number): Promise<
+  async claimIngestJobs(
+    limit: number,
+    options?: { vaultId?: string; stages?: KnowledgeIngestStage[] }
+  ): Promise<
     Array<{
       id: number
       notebookId: string
@@ -527,18 +710,20 @@ export class KnowledgeRepository {
     }>
   > {
     const now = Date.now()
+    const vaultId = options?.vaultId?.trim()
+    const stages = options?.stages?.filter(Boolean)
+    const filters = [
+      inArray(knowledgeIngestJobsTable.status, ['pending', 'failed']),
+      or(isNull(knowledgeIngestJobsTable.nextRetryAt), lte(knowledgeIngestJobsTable.nextRetryAt, now))
+    ]
+    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
+    if (stages?.length) filters.push(inArray(knowledgeIngestJobsTable.stage, stages))
+
     const candidates = await this.db
       .select()
       .from(knowledgeIngestJobsTable)
-      .where(
-        and(
-          inArray(knowledgeIngestJobsTable.status, ['pending', 'failed']),
-          or(
-            isNull(knowledgeIngestJobsTable.nextRetryAt),
-            lte(knowledgeIngestJobsTable.nextRetryAt, now)
-          )
-        )
-      )
+      .where(and(...filters))
+      .orderBy(knowledgeIngestJobsTable.createdAt, knowledgeIngestJobsTable.id)
       .limit(Math.max(1, limit))
 
     const claimed: Array<{
@@ -551,14 +736,21 @@ export class KnowledgeRepository {
     }> = []
 
     for (const row of candidates) {
-      await this.db
+      const updated = await this.db
         .update(knowledgeIngestJobsTable)
         .set({
           status: 'running',
           attempts: row.attempts + 1,
           updatedAt: now
         })
-        .where(eq(knowledgeIngestJobsTable.id, row.id))
+        .where(
+          and(
+            eq(knowledgeIngestJobsTable.id, row.id),
+            inArray(knowledgeIngestJobsTable.status, ['pending', 'failed'])
+          )
+        )
+        .returning({ id: knowledgeIngestJobsTable.id })
+      if (!updated[0]) continue
       claimed.push({
         id: row.id,
         notebookId: row.notebookId,
@@ -575,38 +767,87 @@ export class KnowledgeRepository {
     await this.db.delete(knowledgeIngestJobsTable).where(eq(knowledgeIngestJobsTable.id, id))
   }
 
-  /** 进程崩溃后：running 任务改回 pending，便于重新领取 */
-  async reclaimRunningIngestJobs(): Promise<number> {
+  /** 仅回收超时的 running（lease）；进行中的 job 靠 live guard / updatedAt 续约 */
+  async reclaimStaleRunningIngestJobs(options?: {
+    olderThanMs?: number
+    vaultId?: string
+    excludeSourceIds?: string[]
+  }): Promise<number> {
     const now = Date.now()
+    const olderThanMs = options?.olderThanMs ?? 15 * 60_000
+    const cutoff = now - olderThanMs
+    const vaultId = options?.vaultId?.trim()
+    const filters = [
+      eq(knowledgeIngestJobsTable.status, 'running'),
+      lte(knowledgeIngestJobsTable.updatedAt, cutoff)
+    ]
+    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
+    const exclude = new Set((options?.excludeSourceIds ?? []).filter(Boolean))
     const rows = await this.db
-      .select({ id: knowledgeIngestJobsTable.id })
+      .select({
+        id: knowledgeIngestJobsTable.id,
+        sourceId: knowledgeIngestJobsTable.sourceId
+      })
       .from(knowledgeIngestJobsTable)
-      .where(eq(knowledgeIngestJobsTable.status, 'running'))
+      .where(and(...filters))
+    let reclaimed = 0
     for (const row of rows) {
-      await this.db
+      if (exclude.has(row.sourceId)) continue
+      const updated = await this.db
         .update(knowledgeIngestJobsTable)
         .set({
           status: 'pending',
           nextRetryAt: null,
           updatedAt: now
         })
-        .where(eq(knowledgeIngestJobsTable.id, row.id))
+        .where(
+          and(
+            eq(knowledgeIngestJobsTable.id, row.id),
+            eq(knowledgeIngestJobsTable.status, 'running')
+          )
+        )
+        .returning({ id: knowledgeIngestJobsTable.id })
+      if (updated[0]) reclaimed += 1
     }
-    return rows.length
+    return reclaimed
   }
 
-  async listIngestJobsByStatus(status: KnowledgeIngestJobStatus): Promise<KnowledgeIngestJobRow[]> {
+  /** @deprecated 使用 reclaimStaleRunningIngestJobs；全量回收会踩正在跑的 worker */
+  async reclaimRunningIngestJobs(): Promise<number> {
+    return this.reclaimStaleRunningIngestJobs({ olderThanMs: 0 })
+  }
+
+  async listIngestJobsByStatus(
+    status: KnowledgeIngestJobStatus,
+    options?: { vaultId?: string }
+  ): Promise<KnowledgeIngestJobRow[]> {
+    const vaultId = options?.vaultId?.trim()
+    const filters = [eq(knowledgeIngestJobsTable.status, status)]
+    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
     return this.db
       .select()
       .from(knowledgeIngestJobsTable)
-      .where(eq(knowledgeIngestJobsTable.status, status))
+      .where(and(...filters))
   }
 
-  async listSourcesByStatus(status: KnowledgeSourceStatus | string): Promise<KnowledgeSourceRow[]> {
+  async listIngestJobsBySource(sourceId: string): Promise<KnowledgeIngestJobRow[]> {
+    return this.db
+      .select()
+      .from(knowledgeIngestJobsTable)
+      .where(eq(knowledgeIngestJobsTable.sourceId, sourceId))
+  }
+
+  async listSourcesByStatus(
+    status: KnowledgeSourceStatus | string,
+    options?: { vaultId?: string }
+  ): Promise<KnowledgeSourceRow[]> {
+    const vaultId = options?.vaultId?.trim()
+    const filters = [eq(knowledgeSourcesTable.status, status)]
+    if (vaultId) filters.push(eq(knowledgeSourcesTable.vaultId, vaultId))
     return this.db
       .select()
       .from(knowledgeSourcesTable)
-      .where(eq(knowledgeSourcesTable.status, status))
+      .where(and(...filters))
   }
 
   async deleteIngestJobsForSource(
@@ -709,7 +950,10 @@ export class KnowledgeRepository {
               : this.db.select({ c: sql<number>`count(*)` }).from(knowledgeChunksTable))
           )[0]?.c ?? 0
         )
-    const pendingJobs = await this.countIngestJobs()
+    const pendingJobs = await this.countIngestJobs({
+      notebookId,
+      vaultId: vid
+    })
 
     const originalRows = notebookId
       ? await this.db
@@ -735,26 +979,114 @@ export class KnowledgeRepository {
     const derivedRows = notebookId
       ? await this.db
           .select({
-            c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText}) + length(${knowledgeChunksTable.embedding})), 0)`
+            c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText})), 0)`
           })
           .from(knowledgeChunksTable)
           .where(eq(knowledgeChunksTable.notebookId, notebookId))
       : vid
         ? await this.db
             .select({
-              c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText}) + length(${knowledgeChunksTable.embedding})), 0)`
+              c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText})), 0)`
             })
             .from(knowledgeChunksTable)
             .where(eq(knowledgeChunksTable.vaultId, vid))
         : await this.db
             .select({
-              c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText}) + length(${knowledgeChunksTable.embedding})), 0)`
+              c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText})), 0)`
             })
             .from(knowledgeChunksTable)
     const derivedBytes = Number(derivedRows[0]?.c ?? 0)
     const totalBytes = originalBytes + derivedBytes
 
     return { notebooks, sources, chunks, pendingJobs, originalBytes, totalBytes }
+  }
+
+  /** 列表用：一次按 notebook 聚合，不扫 embedding BLOB */
+  async listNotebookStats(vaultId: string): Promise<
+    Array<{
+      notebookId: string
+      sources: number
+      chunks: number
+      pendingJobs: number
+      originalBytes: number
+      totalBytes: number
+    }>
+  > {
+    const vid = vaultId.trim()
+    if (!vid) throw new Error('listNotebookStats: vaultId is required')
+
+    const sourceRows = await this.db
+      .select({
+        notebookId: knowledgeSourcesTable.notebookId,
+        sources: sql<number>`count(*)`,
+        originalBytes: sql<number>`coalesce(sum(${knowledgeSourcesTable.byteSize}), 0)`
+      })
+      .from(knowledgeSourcesTable)
+      .where(eq(knowledgeSourcesTable.vaultId, vid))
+      .groupBy(knowledgeSourcesTable.notebookId)
+
+    const chunkRows = await this.db
+      .select({
+        notebookId: knowledgeChunksTable.notebookId,
+        chunks: sql<number>`count(*)`
+      })
+      .from(knowledgeChunksTable)
+      .where(eq(knowledgeChunksTable.vaultId, vid))
+      .groupBy(knowledgeChunksTable.notebookId)
+
+    const jobRows = await this.db
+      .select({
+        notebookId: knowledgeIngestJobsTable.notebookId,
+        pendingJobs: sql<number>`count(*)`
+      })
+      .from(knowledgeIngestJobsTable)
+      .where(
+        and(
+          eq(knowledgeIngestJobsTable.vaultId, vid),
+          inArray(knowledgeIngestJobsTable.status, ['pending', 'failed', 'running'])
+        )
+      )
+      .groupBy(knowledgeIngestJobsTable.notebookId)
+
+    const byId = new Map<
+      string,
+      {
+        notebookId: string
+        sources: number
+        chunks: number
+        pendingJobs: number
+        originalBytes: number
+        totalBytes: number
+      }
+    >()
+    const ensure = (notebookId: string) => {
+      let row = byId.get(notebookId)
+      if (!row) {
+        row = {
+          notebookId,
+          sources: 0,
+          chunks: 0,
+          pendingJobs: 0,
+          originalBytes: 0,
+          totalBytes: 0
+        }
+        byId.set(notebookId, row)
+      }
+      return row
+    }
+    for (const r of sourceRows) {
+      const row = ensure(r.notebookId)
+      row.sources = Number(r.sources ?? 0)
+      row.originalBytes = Number(r.originalBytes ?? 0)
+      row.totalBytes = row.originalBytes
+    }
+    for (const r of chunkRows) {
+      ensure(r.notebookId).chunks = Number(r.chunks ?? 0)
+    }
+    for (const r of jobRows) {
+      ensure(r.notebookId).pendingJobs = Number(r.pendingJobs ?? 0)
+    }
+    return [...byId.values()]
   }
 
   /** 暴露底层 job 行（调试） */

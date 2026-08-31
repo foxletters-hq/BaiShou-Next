@@ -7,7 +7,7 @@ export async function callKnowledgeApi<T>(
   channel: string,
   ...args: unknown[]
 ): Promise<T> {
-  const kn = window.api?.knowledge as Record<string, unknown> | undefined
+  const kn = window.api?.knowledge as unknown as Record<string, unknown> | undefined
   const fn = kn?.[method]
   if (typeof fn === 'function') {
     return (await (fn as (...a: unknown[]) => Promise<T>)(...args)) as T

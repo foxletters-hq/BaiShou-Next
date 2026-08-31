@@ -1,0 +1,31 @@
+.helpModal {
+  min-width: min(440px, 92vw);
+  max-width: 520px;
+}
+
+.helpContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.intro,
+.notice {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.noticeLink {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-primary);
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.noticeLink:hover {
+  text-decoration: underline;
+}

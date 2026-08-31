@@ -94,10 +94,20 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
   const followModeRef = useRef<ScrollFollowMode>('following')
   const [followMode, setFollowMode] = useState<ScrollFollowMode>('following')
   const [showScrollButton, setShowScrollButton] = useState(false)
-  const pendingInstantBottomRef = useRef(false)
-  const prevSessionIdRef = useRef<string | undefined>(sessionId)
+  const pendingInstantBottomRef = useRef(true)
+  const prevSessionIdRef = useRef<string | undefined>(undefined)
   const suppressInterruptRef = useRef(0)
   const isSmoothScrollingRef = useRef(false)
+
+  if (prevSessionIdRef.current !== sessionId) {
+    prevSessionIdRef.current = sessionId
+    pendingInstantBottomRef.current = true
+    followModeRef.current = 'following'
+    if (followMode !== 'following') {
+      setFollowMode('following')
+      setShowScrollButton(false)
+    }
+  }
 
   const setFollowModeState = useCallback((mode: ScrollFollowMode) => {
     followModeRef.current = mode
@@ -114,14 +124,6 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
     setFollowModeState('idle')
   }, [setFollowModeState])
 
-  useEffect(() => {
-    if (prevSessionIdRef.current !== sessionId) {
-      prevSessionIdRef.current = sessionId
-      pendingInstantBottomRef.current = true
-      enterFollowing()
-    }
-  }, [sessionId, enterFollowing])
-
   const jumpToBottomInstant = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
@@ -136,10 +138,15 @@ export function useChatScroll(params: UseChatScrollParams): UseChatScrollResult 
   }, [])
 
   useLayoutEffect(() => {
-    if (!pendingInstantBottomRef.current || messages.length === 0) return
+    if (!pendingInstantBottomRef.current) return
     jumpToBottomInstant()
+    if (messages.length === 0) return
     pendingInstantBottomRef.current = false
     enterFollowing()
+    requestAnimationFrame(() => {
+      jumpToBottomInstant()
+      requestAnimationFrame(jumpToBottomInstant)
+    })
   }, [sessionId, messages, jumpToBottomInstant, enterFollowing])
 
   useEffect(() => {

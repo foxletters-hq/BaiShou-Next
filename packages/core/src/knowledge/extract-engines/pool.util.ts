@@ -1,3 +1,5 @@
+export { clampOcrConcurrency } from '@baishou/shared'
+
 /** 有限并发池：最多 concurrency 个任务同时执行 */
 export async function runPool<T>(
   items: T[],
@@ -18,11 +20,6 @@ export async function runPool<T>(
     })()
   )
   await Promise.all(runners)
-}
-
-export function clampOcrConcurrency(value: number | undefined | null): number {
-  const n = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 1
-  return Math.max(1, Math.min(3, n))
 }
 
 export function yieldEventLoop(): Promise<void> {

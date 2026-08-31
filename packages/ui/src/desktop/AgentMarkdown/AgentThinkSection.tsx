@@ -26,7 +26,13 @@ export const AgentThinkSection: React.FC<AgentThinkSectionProps> = ({
 
   const xProviderTheme = useMemo(
     () => ({
-      algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm
+      algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      token: {
+        colorText: 'var(--text-secondary)',
+        colorTextSecondary: 'var(--text-secondary)',
+        colorTextTertiary: 'var(--text-tertiary)',
+        colorTextDescription: 'var(--text-secondary)'
+      }
     }),
     [isDark]
   )

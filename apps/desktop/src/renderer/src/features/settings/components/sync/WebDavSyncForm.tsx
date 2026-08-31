@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Select } from '@baishou/ui'
+import { Input, Select } from '@baishou/ui'
 import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
 import styles from './SyncForms.module.css'
 
@@ -34,61 +34,59 @@ export const WebDavSyncForm: React.FC<WebDavSyncFormProps> = ({ config, onChange
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
       <div style={{ gridColumn: 'span 2' }}>
         <label className={styles.fieldLabel}>{t('data_sync.webdav_url', 'Server URL')}</label>
-        <input
+        <Input
+          fieldSize="small"
           type="text"
           value={config.webdavUrl || ''}
           onChange={(e) => onChange({ webdavUrl: e.target.value })}
-          className={styles.input}
         />
       </div>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.path_prefix', 'Path Prefix')}</label>
-        <input
+        <Input
+          fieldSize="small"
           type="text"
           value={config.webdavPath || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH}
           onChange={(e) => onChange({ webdavPath: e.target.value })}
-          className={styles.input}
         />
       </div>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.webdav_user', 'Username')}</label>
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showAccessKey ? 'text' : 'password'}
-            value={config.webdavUsername || ''}
-            onChange={(e) => onChange({ webdavUsername: e.target.value })}
-            className={styles.input}
-            style={{ paddingRight: 36 }}
-          />
-          <button
-            onClick={() => setShowAccessKey(!showAccessKey)}
-            className={styles.eyeBtn}
-            type="button"
-          >
-            {showAccessKey ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-        </div>
+        <Input
+          fieldSize="small"
+          type={showAccessKey ? 'text' : 'password'}
+          value={config.webdavUsername || ''}
+          onChange={(e) => onChange({ webdavUsername: e.target.value })}
+          trailing={
+            <button
+              onClick={() => setShowAccessKey(!showAccessKey)}
+              className={styles.eyeBtn}
+              type="button"
+            >
+              {showAccessKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          }
+        />
       </div>
       <div>
         <label className={styles.fieldLabel}>
           {t('data_sync.webdav_password', 'Password/App Token')}
         </label>
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showSecretKey ? 'text' : 'password'}
-            value={config.webdavPassword || ''}
-            onChange={(e) => onChange({ webdavPassword: e.target.value })}
-            className={styles.input}
-            style={{ paddingRight: 36 }}
-          />
-          <button
-            onClick={() => setShowSecretKey(!showSecretKey)}
-            className={styles.eyeBtn}
-            type="button"
-          >
-            {showSecretKey ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-        </div>
+        <Input
+          fieldSize="small"
+          type={showSecretKey ? 'text' : 'password'}
+          value={config.webdavPassword || ''}
+          onChange={(e) => onChange({ webdavPassword: e.target.value })}
+          trailing={
+            <button
+              onClick={() => setShowSecretKey(!showSecretKey)}
+              className={styles.eyeBtn}
+              type="button"
+            >
+              {showSecretKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          }
+        />
       </div>
       <div>
         <label className={styles.fieldLabel}>

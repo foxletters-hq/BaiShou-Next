@@ -2,6 +2,7 @@ import React from 'react'
 import styles from './SessionListItem.module.css'
 import { useTranslation } from 'react-i18next'
 import { Pin, PinOff, Edit3, Trash2 } from 'lucide-react'
+import { Checkbox } from '../Checkbox/Checkbox'
 
 export interface SessionData {
   id: string
@@ -77,9 +78,7 @@ export const SessionListItem: React.FC<SessionListItemProps> = ({
         <div className={styles.headerRow}>
           <div className={styles.titleArea}>
             {isMultiSelect && (
-              <input
-                type="checkbox"
-                className={styles.checkbox}
+              <Checkbox
                 checked={isChecked}
                 onChange={(e) => onCheckChanged?.(e.target.checked)}
                 onClick={(e) => e.stopPropagation()}

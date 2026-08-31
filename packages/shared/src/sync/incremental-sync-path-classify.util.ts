@@ -11,6 +11,8 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
   graph: boolean
   /** Notebooks/ 结构层 + extracted + 原文 — 差集排 knowledge embed job */
   notebooks: boolean
+  /** 命中 Notebooks/<id>/graph/ 的笔记本 id，只对这些本做图谱 pending-index */
+  notebookGraphIds: string[]
   sessionRefs: Array<{ vaultName: string; sessionId: string }>
 } {
   let journals = false
@@ -21,6 +23,8 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
   let memory = false
   let graph = false
   let notebooks = false
+  const notebookGraphIds: string[] = []
+  const seenNotebookGraph = new Set<string>()
   const sessionRefs: Array<{ vaultName: string; sessionId: string }> = []
   const seenSession = new Set<string>()
 
@@ -33,6 +37,12 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
     if (/(^|\/)Memory\//.test(p)) memory = true
     if (/(^|\/)Graph\//.test(p)) graph = true
     if (/(^|\/)Notebooks\//.test(p)) notebooks = true
+    const nbGraph = p.match(/(?:^|\/)Notebooks\/([^/]+)\/graph\//)
+    const nbGraphId = nbGraph?.[1]?.trim()
+    if (nbGraphId && !seenNotebookGraph.has(nbGraphId)) {
+      seenNotebookGraph.add(nbGraphId)
+      notebookGraphIds.push(nbGraphId)
+    }
 
     const sessionMatch = p.match(/(?:^|\/)([^/]+)\/Sessions\/([^/]+)\.json$/i)
     const vaultName = sessionMatch?.[1]
@@ -56,6 +66,7 @@ export function classifyIncrementalSyncPaths(paths: readonly string[]): {
     memory,
     graph,
     notebooks,
+    notebookGraphIds,
     sessionRefs
   }
 }

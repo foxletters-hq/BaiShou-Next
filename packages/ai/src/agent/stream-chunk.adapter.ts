@@ -37,7 +37,9 @@ export class StreamChunkAdapter {
    *
    * @returns 流执行过程中遇到的致命错误（如果有），null 表示正常结束。
    */
-  async consumeStream(streamResult: StreamTextResult<any, any>): Promise<{ error: any | null }> {
+  async consumeStream(
+    streamResult: StreamTextResult<any, any, any>
+  ): Promise<{ error: any | null }> {
     if (!streamResult.fullStream) {
       return { error: null }
     }

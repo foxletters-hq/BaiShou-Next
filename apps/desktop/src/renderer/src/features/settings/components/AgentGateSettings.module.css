@@ -34,26 +34,10 @@
   flex-wrap: wrap;
 }
 
-.textInput {
+.formRow .textInput {
   flex: 1;
   min-width: 140px;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--form-field-border, var(--border-control));
-  background: var(--form-field-bg, var(--bg-surface));
-  color: var(--text-primary);
-  font-size: var(--settings-font-desc-size);
-  font-weight: var(--settings-font-desc-weight);
-  font-family: var(--font-family);
-  box-sizing: border-box;
-  transition: var(--form-field-transition);
-}
-
-.textInput:focus {
-  outline: none;
-  border-color: var(--form-field-border-focus);
-  box-shadow: var(--form-field-focus-ring);
+  width: auto;
 }
 
 .presetSelect {
@@ -67,33 +51,22 @@
   flex: 0 0 auto;
 }
 
-.compactNumberInput {
+:global(.settings-list-tile) .compactNumberInput {
   width: 64px;
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--form-field-border, var(--border-control));
-  background: var(--form-field-bg, var(--bg-surface));
-  color: var(--text-primary);
-  font-size: var(--settings-font-desc-size);
-  font-family: var(--font-family);
+  max-width: 64px;
+  flex: 0 0 64px;
+}
+
+.compactNumberInputField {
   text-align: center;
-  box-sizing: border-box;
   -moz-appearance: textfield;
   appearance: textfield;
-  transition: var(--form-field-transition);
 }
 
-.compactNumberInput::-webkit-outer-spin-button,
-.compactNumberInput::-webkit-inner-spin-button {
+.compactNumberInputField::-webkit-outer-spin-button,
+.compactNumberInputField::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
-}
-
-.compactNumberInput:focus {
-  outline: none;
-  border-color: var(--form-field-border-focus);
-  box-shadow: var(--form-field-focus-ring);
 }
 
 /* 对齐供应商管理：44×24 开关，替代默认 52×28 */

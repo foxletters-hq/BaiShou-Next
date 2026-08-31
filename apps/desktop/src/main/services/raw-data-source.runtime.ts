@@ -30,7 +30,8 @@ import {
   getActiveVaultShadowRepo,
   pathService,
   vaultService,
-  resolveVaultIdByName
+  resolveVaultIdByName,
+  resolveActiveVaultId
 } from '../ipc/vault.ipc'
 
 let runtime: {
@@ -91,7 +92,8 @@ export function ensureRawDataRuntime(): {
         freshness: created.freshness,
         graphManager: created.graphManager,
         shadowRepo,
-        getVaultName: () => vaultService.getActiveVault()?.name || 'Personal'
+        getVaultName: () => vaultService.getActiveVault()?.name || 'Personal',
+        getVaultId: () => resolveActiveVaultId()
       })
     } catch (e) {
       logger.warn('[RawData] bind pending-reextract skipped:', e as Error)
@@ -116,7 +118,8 @@ export function rebindPendingReextractCollaborators(): void {
       freshness,
       graphManager,
       shadowRepo,
-      getVaultName: () => vaultService.getActiveVault()?.name || 'Personal'
+      getVaultName: () => vaultService.getActiveVault()?.name || 'Personal',
+      getVaultId: () => resolveActiveVaultId()
     })
   } catch (e) {
     logger.warn('[RawData] rebind pending-reextract failed:', e as Error)
@@ -333,11 +336,15 @@ export async function repairMemoryConsistency(options: {
 export async function syncGraphPendingIndexWithDeps(options: {
   graphRepo: GraphRepository
   embeddingAdapter?: EmbeddingAdapter | null
+  vaultId?: string
+  absentSweep?: 'shard-present' | 'off'
+  deletedShardPaths?: string[]
 }): Promise<{
   shards: number
   nodesUpserted: number
   edgesUpserted: number
   deleted: number
+  skippedNoVaultId: number
 }> {
   const { graphManager } = ensureRawDataRuntime()
   const sync = new GraphSyncService(graphManager, options.graphRepo, {
@@ -346,11 +353,18 @@ export async function syncGraphPendingIndexWithDeps(options: {
       : undefined,
     modelId: options.embeddingAdapter?.embeddingModelId
   })
-  return sync.syncPendingIndex()
+  return sync.syncPendingIndex({
+    vaultId: options.vaultId,
+    absentSweep: options.absentSweep,
+    deletedShardPaths: options.deletedShardPaths
+  })
 }
 
 /** Tool-context hook: hydrate graph pending-index using current agent DB + embedding. */
-export async function syncGraphPendingIndex(): Promise<void> {
+export async function syncGraphPendingIndex(opts?: {
+  absentSweep?: 'shard-present' | 'off'
+  deletedShardPaths?: string[]
+}): Promise<void> {
   if (!connectionManager.isConnected()) return
   const drizzleDb = connectionManager.getDb()
   const clientExecutor = createSqlExecutorFromDrizzleDb(drizzleDb)
@@ -366,13 +380,22 @@ export async function syncGraphPendingIndex(): Promise<void> {
   } catch {
     // optional
   }
-  await syncGraphPendingIndexWithDeps({ graphRepo, embeddingAdapter })
+  await syncGraphPendingIndexWithDeps({
+    graphRepo,
+    embeddingAdapter,
+    vaultId: resolveActiveVaultId(),
+    absentSweep: opts?.absentSweep,
+    deletedShardPaths: opts?.deletedShardPaths
+  })
 }
 
 /**
  * Cold start / vault switch / sync-complete: backfill Memory JSONL, then pending-index for memory + graph.
  */
-export async function runDerivedIndexHydration(reason: string): Promise<void> {
+export async function runDerivedIndexHydration(
+  reason: string,
+  opts?: { deletedShardPaths?: string[] }
+): Promise<void> {
   try {
     if (!connectionManager.isConnected()) {
       logger.warn(`[RawData] skip derived hydration (${reason}): agent db not connected`)
@@ -414,7 +437,12 @@ export async function runDerivedIndexHydration(reason: string): Promise<void> {
       vaultId: activeVault.id,
       vaultName: activeVault.name
     })
-    const graph = await syncGraphPendingIndexWithDeps({ graphRepo, embeddingAdapter })
+    const graph = await syncGraphPendingIndexWithDeps({
+      graphRepo,
+      embeddingAdapter,
+      vaultId: activeVault.id,
+      deletedShardPaths: opts?.deletedShardPaths
+    })
 
     logger.info(
       `[RawData] derived hydration done (${reason}): backfill=${backfill.written}/${backfill.skipped} normalized=${backfill.normalized} meta=${backfill.metadataPatched} legacyCopy=${legacyCopy.copied}/${legacyCopy.skipped} memoryShards=${memory.shards} graphShards=${graph.shards}`
@@ -442,15 +470,25 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
     const notebookManager = getNotebookRawManager()
     const vaultId = resolveActiveVaultId()
 
+    const { NotebookGraphRawManager, NotebookGraphIndexService } =
+      await import('@baishou/core-desktop')
+    const { NotebookGraphRepository } = await import('@baishou/database-desktop')
+    const graphRaw = new NotebookGraphRawManager(pathService, fileSystem)
+    const graphIndex = new NotebookGraphIndexService(
+      graphRaw,
+      new NotebookGraphRepository(knowledgeConnectionManager.getDb())
+    )
     const hydration = new KnowledgeHydrationService({
       repo,
       notebookManager,
       vaultId,
-      isEmbeddingConfigured: () => embeddingService.isConfigured
+      isEmbeddingConfigured: () => embeddingService.isConfigured,
+      graphRaw,
+      graphIndex
     })
     const result = await hydration.hydrate()
 
-    if (result.embedJobsEnqueued > 0) {
+    if (result.embedJobsEnqueued > 0 || result.graphJobsEnqueued > 0) {
       const { scheduleConsumeKnowledgeIngestJobs } =
         await import('./knowledge-ingest-jobs.consumer')
       scheduleConsumeKnowledgeIngestJobs(reason)
@@ -459,5 +497,35 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
     logger.info(`[KnowledgeHydration] done (${reason})`, { ...result })
   } catch (e) {
     logger.warn(`[KnowledgeHydration] failed (${reason}):`, e as Error)
+  }
+}
+
+/** 只对同步命中 Notebooks/<id>/graph/ 的本子做 pending-index，禁止全仓扫 JSONL */
+export async function runNotebookGraphIndexAfterSync(
+  notebookIds: string[],
+  opts?: { deletedShardPaths?: string[] }
+): Promise<void> {
+  const ids = [...new Set(notebookIds.map((id) => id.trim()).filter(Boolean))]
+  if (ids.length === 0) return
+  try {
+    const { knowledgeConnectionManager, NotebookGraphRepository } =
+      await import('@baishou/database-desktop')
+    if (!knowledgeConnectionManager.isConnected()) return
+    const { NotebookGraphRawManager, NotebookGraphIndexService } =
+      await import('@baishou/core-desktop')
+    const vaultId = resolveActiveVaultId()?.trim() || ''
+    if (!vaultId) return
+    const raw = new NotebookGraphRawManager(pathService, fileSystem)
+    const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
+    const index = new NotebookGraphIndexService(raw, repo)
+    for (const notebookId of ids) {
+      await index.syncPendingIndex({
+        vaultId,
+        notebookId,
+        deletedShardPaths: opts?.deletedShardPaths
+      })
+    }
+  } catch (e) {
+    logger.warn('[NotebookGraphIndex] after-sync failed:', e as Error)
   }
 }

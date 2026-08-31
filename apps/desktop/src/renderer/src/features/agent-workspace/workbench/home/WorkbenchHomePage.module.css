@@ -20,7 +20,7 @@
 }
 
 .mainInner {
-  width: min(820px, 100%);
+  width: min(980px, 100%);
   margin: 0 auto;
   padding: 40px 28px;
   box-sizing: border-box;

@@ -16,12 +16,16 @@ import {
   buildQuarterlyPrompt,
   buildYearlyPrompt
 } from './summary-prompt-templates'
+import { isSummaryUserAbortError } from './summary-ai-stream'
 
 export interface SummaryAiGenerateOptions {
   system?: string
   providerId?: string
-  /** 用户取消 / 队列停止时中止 generateText */
+  /** 用户取消 / 队列停止时中止生成请求 */
   abortSignal?: AbortSignal
+  reasoningEffort?: string
+  onTextDelta?: (text: string) => void
+  onReasoningDelta?: (reasoning: string) => void
 }
 
 export interface SummaryAiClient {
@@ -187,7 +191,7 @@ export class SummaryGeneratorService {
       )
       yield generatedResult
     } catch (e: any) {
-      if (e?.name === 'AbortError' || options.abortSignal?.aborted) {
+      if (isSummaryUserAbortError(e, options.abortSignal)) {
         throw e instanceof Error ? e : new DOMException('The operation was aborted', 'AbortError')
       }
       logger.error(

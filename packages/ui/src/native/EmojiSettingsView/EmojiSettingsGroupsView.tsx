@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { ChevronRight, Plus, Smile, Trash2 } from 'lucide-react-native'
+import { ChevronRight, Plus, Trash2 } from 'lucide-react-native'
 import type { EmojiToolConfig } from '@baishou/shared'
 import {
   createEmojiGroup,
@@ -82,9 +82,6 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
         ]}
       >
         <View style={styles.enableRow}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.primaryContainer }]}>
-            <Smile size={20} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-          </View>
           <View style={styles.enableText}>
             <View style={styles.titleRow}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>
@@ -108,25 +105,21 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
 
       {isEnabled ? (
         <>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {t('agent.tools.emoji_groups_title', '表情包组')}
-            </Text>
-            <TouchableOpacity style={styles.addGroupBtn} onPress={() => void handleAddGroup()}>
-              <Plus size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-              <Text style={[styles.addGroupText, { color: colors.primary }]}>
+          <View style={{ gap: 10 }}>
+            <TouchableOpacity style={styles.addGroupRow} onPress={() => void handleAddGroup()}>
+              <View
+                style={[
+                  styles.addGroupIcon,
+                  { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }
+                ]}
+              >
+                <Plus size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+              </View>
+              <Text style={[styles.groupName, { color: colors.textPrimary }]}>
                 {t('agent.tools.emoji_group_add', '新建组')}
               </Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={{ gap: 10 }}>
-            {normalized.groups.length === 0 ? (
-              <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
-                {t('agent.tools.emoji_groups_empty', '暂无表情包组，点击「新建组」开始添加')}
-              </Text>
-            ) : (
-              normalized.groups.map((group) => (
+            {normalized.groups.map((group) => (
                 <View
                   key={group.id}
                   style={[
@@ -139,6 +132,13 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
                   ]}
                 >
                   <TouchableOpacity style={styles.groupMain} onPress={() => onOpenGroup(group.id)}>
+                    <View
+                      style={[styles.groupTile, { backgroundColor: colors.primaryContainer }]}
+                    >
+                      <Text style={[styles.groupTileText, { color: colors.primary }]}>
+                        {group.name.trim().slice(0, 1) || '组'}
+                      </Text>
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.groupName, { color: colors.textPrimary }]}>
                         {group.name}
@@ -163,8 +163,7 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
                     <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
                   </TouchableOpacity>
                 </View>
-              ))
-            )}
+            ))}
           </View>
         </>
       ) : null}
@@ -182,13 +181,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
   },
   enableText: { flex: 1, gap: 4 },
   titleRow: {
@@ -218,7 +210,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6
   },
   addGroupText: { fontSize: 14, fontWeight: '600' },
-  emptyHint: { fontSize: 14, paddingHorizontal: 4, lineHeight: 20 },
+  addGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12
+  },
+  addGroupIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  groupTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  groupTileText: { fontSize: 13, fontWeight: '600' },
   groupCard: {
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',

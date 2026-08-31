@@ -1,12 +1,55 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Think } from '@ant-design/x'
-import { CloseCircleOutlined, ToolOutlined } from '@ant-design/icons'
+import type { LucideIcon } from 'lucide-react'
+import {
+  ChevronRight,
+  CircleX,
+  FileDiff,
+  FilePen,
+  FileText,
+  FileX,
+  FolderTree,
+  Globe,
+  Link2,
+  Loader2,
+  MessageCircleQuestion,
+  Search,
+  Sparkles,
+  Terminal,
+  Wrench
+} from 'lucide-react'
 import type { MockToolInvocation } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { formatToolDurationMs, type AgentToolChainItemModel } from '../../shared/agent-tool-chain'
-import { getToolDisplayName } from '../../shared/tool-result.util'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import {
+  getToolDisplayName,
+  getToolRowSubtitle,
+  resolveCompanionAskPresentation
+} from '../../shared/tool-result.util'
+import { CompanionAskResultCard } from './CompanionAskResultCard'
 import { ToolResultContent } from './ToolResultContent'
 import styles from './AgentToolChainSection.module.css'
+
+const ROW_ICON_SIZE = 14
+
+const TOOL_ROW_ICONS: Record<string, LucideIcon> = {
+  workspace_list: FolderTree,
+  workspace_read: FileText,
+  workspace_write: FilePen,
+  workspace_patch: FileDiff,
+  workspace_delete: FileX,
+  workspace_rename: FileDiff,
+  workspace_run: Terminal,
+  web_search: Globe,
+  url_read: Link2,
+  diary_search: Search,
+  vector_search: Search,
+  message_search: Search,
+  knowledge_search: Search,
+  knowledge_graph_search: Search,
+  skill_write: Sparkles,
+  companion_ask: MessageCircleQuestion
+}
 
 export interface AgentToolThinkItemProps {
   model: AgentToolChainItemModel
@@ -20,19 +63,20 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
 }: AgentToolThinkItemProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  /** 首次展开后保持挂载，以便 Think 收起时播放高度过渡动画 */
-  const [contentMounted, setContentMounted] = useState(false)
 
   const isLoading = model.status === 'loading'
   const invocation = model.invocation as MockToolInvocation | undefined
-  const hasContent = model.hasContent
+  const askPresentation = useMemo(() => {
+    if (!invocation || isLoading || model.status === 'error') return null
+    return resolveCompanionAskPresentation(invocation)
+  }, [invocation, isLoading, model.status])
+  const canExpand = Boolean(model.hasContent && invocation && !isLoading && !askPresentation)
 
   useEffect(() => {
-    if (autoExpand) {
-      setContentMounted(true)
+    if (autoExpand && canExpand) {
       setExpanded(true)
     }
-  }, [autoExpand])
+  }, [autoExpand, canExpand])
 
   const displayTitle = useMemo(() => {
     if (invocation != null) {
@@ -41,46 +85,89 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
     return t(`agent.tools.${model.toolName}`, model.toolName)
   }, [invocation, model.toolName, t])
 
-  const title = useMemo(
-    () => (
-      <span className={styles.titleRow}>
-        <span className={styles.titleText}>{displayTitle}</span>
+  const subtitle = useMemo(
+    () => getToolRowSubtitle(invocation, model.status, (key, fallback) => t(key, fallback)),
+    [invocation, model.status, t]
+  )
+
+  const handleToggle = useCallback(() => {
+    if (!canExpand) return
+    setExpanded((prev) => !prev)
+  }, [canExpand])
+
+  if (askPresentation) {
+    return (
+      <div className={styles.item}>
+        <CompanionAskResultCard data={askPresentation} />
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.item} data-expanded={expanded ? 'true' : 'false'}>
+      <button
+        type="button"
+        className={styles.row}
+        disabled={!canExpand}
+        aria-expanded={canExpand ? expanded : undefined}
+        onClick={handleToggle}
+      >
+        <span className={`${styles.icon} ${model.status === 'error' ? styles.errorIcon : ''}`}>
+          <ToolRowIcon toolName={model.toolName} status={model.status} />
+        </span>
+        <span className={styles.labels}>
+          <span className={`${styles.title} ${isLoading ? styles.titleLoading : ''}`}>
+            {displayTitle}
+          </span>
+          {subtitle ? (
+            <>
+              <span className={styles.sep} aria-hidden="true">
+                ·
+              </span>
+              <span className={styles.subtitle} title={subtitle}>
+                {subtitle}
+              </span>
+            </>
+          ) : (
+            <span className={styles.subtitleSpacer} />
+          )}
+        </span>
         {model.durationMs != null ? (
           <span className={styles.duration}>{formatToolDurationMs(model.durationMs)}</span>
         ) : null}
-      </span>
-    ),
-    [displayTitle, model.durationMs]
-  )
-
-  const icon = useMemo(() => {
-    if (model.status === 'error') {
-      return <CloseCircleOutlined className={styles.errorIcon} />
-    }
-    return <ToolOutlined />
-  }, [model.status])
-
-  const handleExpand = useCallback((next: boolean) => {
-    if (next) setContentMounted(true)
-    setExpanded(next)
-  }, [])
-
-  const statusClassName = !hasContent ? styles.staticStatus : undefined
-
-  return (
-    <Think
-      className={styles.toolThink}
-      classNames={statusClassName ? { status: statusClassName } : undefined}
-      title={title}
-      icon={isLoading ? undefined : icon}
-      loading={isLoading}
-      blink={isLoading}
-      expanded={hasContent ? expanded : false}
-      onExpand={hasContent ? handleExpand : undefined}
-    >
-      {hasContent && invocation && contentMounted ? (
-        <ToolResultContent invocation={invocation} />
+        {canExpand ? (
+          <ChevronRight
+            className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}
+            size={ROW_ICON_SIZE}
+            strokeWidth={DEFAULT_STROKE_WIDTH}
+            aria-hidden
+          />
+        ) : (
+          <span className={styles.chevronSlot} aria-hidden />
+        )}
+      </button>
+      {expanded && canExpand && invocation ? (
+        <div className={styles.contentInner}>
+          <ToolResultContent invocation={invocation} />
+        </div>
       ) : null}
-    </Think>
+    </div>
   )
 })
+
+function ToolRowIcon({
+  toolName,
+  status
+}: {
+  toolName: string
+  status: AgentToolChainItemModel['status']
+}) {
+  if (status === 'loading') {
+    return <Loader2 className={styles.spin} size={ROW_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} />
+  }
+  if (status === 'error') {
+    return <CircleX size={ROW_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} />
+  }
+  const Icon = TOOL_ROW_ICONS[toolName] ?? Wrench
+  return <Icon size={ROW_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} />
+}

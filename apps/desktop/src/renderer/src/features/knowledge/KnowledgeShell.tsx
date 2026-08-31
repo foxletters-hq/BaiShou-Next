@@ -20,7 +20,7 @@ export interface KnowledgeShellProps {
   activeNav?: WorkbenchHomeNavId
   children: React.ReactNode
   setFolderRoot: WorkspaceOutletContext['setFolderRoot']
-  /** 详情三栏等需要撑满视口时传入（如 overflow:hidden） */
+  /** 详情页需要撑满视口时传入（如 overflow:hidden） */
   mainClassName?: string
 }
 
@@ -44,7 +44,7 @@ export const KnowledgeShell: React.FC<KnowledgeShellProps> = ({
     removeWorkspace,
     setWorkspacePinned
   } = useAgentWorkspaces()
-  const { sessions, reloadSessions } = useWorkspaceSessions()
+  const { sessions, reloadSessions, pinSession } = useWorkspaceSessions()
   const [creating, setCreating] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsWorkspace, setSettingsWorkspace] = useState<{
@@ -138,7 +138,7 @@ export const KnowledgeShell: React.FC<KnowledgeShellProps> = ({
         onNewProject={() => void handleOpenFolder()}
         onOpenHome={() => navigate('/agent-workspace')}
         onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
-        onOpenTemplates={() => navigate('/agent-workspace/templates')}
+        onOpenSkills={() => navigate('/agent-workspace/skills')}
         onOpenProjects={() => navigate('/agent-workspace/projects')}
         onOpenSettings={() => void handleOpenSettings()}
         creating={creating}
@@ -150,6 +150,7 @@ export const KnowledgeShell: React.FC<KnowledgeShellProps> = ({
         onDeleteSession={(sessionId) => void handleDeleteSession(sessionId)}
         onRemoveWorkspace={removeWorkspace}
         onTogglePinWorkspace={(id, pinned) => setWorkspacePinned(id, pinned)}
+        onTogglePinSession={pinSession}
       />
       <main className={[pageStyles.main, mainClassName].filter(Boolean).join(' ')}>
         {children}

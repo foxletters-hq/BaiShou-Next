@@ -26,7 +26,11 @@ describe('workspace rollback preview copy', () => {
       t
     )
 
-    expect(copy.fileLines).toEqual(['将还原以下文件：', '  · notes/a.md', '  · notes/b.md'])
+    expect(copy.attributed).toEqual({
+      label: '助手改过、将会撤回的文件：',
+      paths: ['notes/a.md', 'notes/b.md'],
+      moreCount: 0
+    })
     expect(copy.needsScopeChoice).toBe(false)
     expect(copy.isEmpty).toBe(false)
   })
@@ -41,8 +45,8 @@ describe('workspace rollback preview copy', () => {
     )
 
     expect(copy.needsScopeChoice).toBe(true)
-    expect(copy.extraLines[0]).toContain('另有 2 个文件')
-    expect(copy.extraLines).toContain('  · build/output.log')
+    expect(copy.extra?.label).toContain('下面这些文件也有变化')
+    expect(copy.extra?.paths).toEqual(['build/output.log', 'notes/manual-edit.md'])
   })
 
   it('truncates long file lists instead of flooding the dialog', () => {
@@ -53,8 +57,8 @@ describe('workspace rollback preview copy', () => {
       t
     )
 
-    expect(copy.fileLines).toHaveLength(7)
-    expect(copy.fileLines.at(-1)).toBe('  · 另有 4 个文件…')
+    expect(copy.attributed?.paths).toHaveLength(5)
+    expect(copy.attributed?.moreCount).toBe(4)
   })
 
   it('warns that later rounds will be undone too', () => {
@@ -69,7 +73,7 @@ describe('workspace rollback preview copy', () => {
     const copy = buildWorkspaceRollbackPreviewCopy(createPreview(), t)
 
     expect(copy.isEmpty).toBe(true)
-    expect(copy.fileLines).toEqual([])
+    expect(copy.attributed).toBeNull()
     expect(copy.needsScopeChoice).toBe(false)
   })
 
@@ -84,7 +88,7 @@ describe('workspace rollback preview copy', () => {
     )
 
     expect(copy.needsScopeChoice).toBe(false)
-    expect(copy.extraLines).toEqual([])
+    expect(copy.extra).toBeNull()
   })
 })
 

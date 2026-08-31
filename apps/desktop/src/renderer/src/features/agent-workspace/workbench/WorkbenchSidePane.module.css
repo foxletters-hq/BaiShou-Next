@@ -13,17 +13,20 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 8px 10px;
+  height: 35px;
+  min-height: 35px;
+  padding: 0 4px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-app);
 }
 
 .viewTab {
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -69,21 +72,21 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
   background: var(--bg-app);
 }
 
 .divider {
   height: 1px;
-  margin: 8px 16px;
-  background-color: var(--border-subtle);
+  margin: 4px 0;
+  background-color: var(--border-muted);
 }
 
 .fixedNav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 10px;
+  gap: 0;
+  padding: 2px 4px;
   margin-bottom: 0;
   flex-shrink: 0;
 }
@@ -92,9 +95,9 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 9px 12px;
+  padding: 6px 8px;
   border: none;
-  border-radius: 10px;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
@@ -117,9 +120,9 @@
 }
 
 .navIcon {
-  width: 18px;
-  height: 18px;
-  margin-right: 12px;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -134,7 +137,7 @@
 }
 
 .navLabel {
-  font-size: var(--ui-fs-lg);
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   line-height: 1.25;
   min-width: 0;

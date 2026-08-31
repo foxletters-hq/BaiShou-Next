@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { Suspense, lazy, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
@@ -7,9 +7,11 @@ import {
   Database,
   FlaskConical,
   GalleryHorizontalEnd,
+  LayoutGrid,
   MessageCircle,
   Trash2
 } from 'lucide-react'
+const DeveloperIconGallery = lazy(() => import('./DeveloperIconGallery'))
 
 export interface DeveloperOptionsViewProps {
   /** 注入压缩测试会话后跳转到对应对话页（桌面端传入） */
@@ -31,7 +33,16 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
   const [isLoadingDemo, setIsLoadingDemo] = useState(false)
   const [isClearingAgent, setIsClearingAgent] = useState(false)
   const [isInsertingCompressionTest, setIsInsertingCompressionTest] = useState(false)
+  const [page, setPage] = useState<'menu' | 'icons'>('menu')
   const toast = useToast()
+
+  if (page === 'icons') {
+    return (
+      <Suspense fallback={null}>
+        <DeveloperIconGallery onBack={() => setPage('menu')} />
+      </Suspense>
+    )
+  }
 
   const handleLoadDemoData = async () => {
     const confirmed = await confirm(
@@ -148,6 +159,39 @@ export const DeveloperOptionsView: React.FC<DeveloperOptionsViewProps> = ({
 
   return (
     <div style={{ padding: '24px' }}>
+      <div className="glass-panel-card" style={{ padding: 0, marginBottom: 16 }}>
+        <div
+          className="settings-action-item"
+          onClick={() => setPage('icons')}
+          style={{
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          <LayoutGrid
+            size={24}
+            style={{
+              marginRight: 16,
+              color: 'var(--color-primary)'
+            }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '600', fontSize: 15 }}>
+              {t('developer.icon_gallery', '图标参考')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              {t(
+                'developer.icon_gallery_desc',
+                '顶部是软件已使用的图标，下面按分组展示全部 lucide 图标。'
+              )}
+            </div>
+          </div>
+          <ChevronRight size={24} style={{ opacity: 0.5 }} />
+        </div>
+      </div>
+
       {onOpenOnboarding ? (
         <div className="glass-panel-card" style={{ padding: 0, marginBottom: 16 }}>
           <div

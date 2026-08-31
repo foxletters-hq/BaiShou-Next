@@ -3,7 +3,16 @@ import './app-identity'
 import { DESKTOP_APP_ID, DESKTOP_DEV_APP_ID, isDesktopDevBuild } from './app-identity'
 import { app, shell, BrowserWindow, ipcMain, Menu, protocol, net } from 'electron'
 import { join } from 'path'
-import { fileURLToPath } from 'url'
+import { open, stat } from 'node:fs/promises'
+import { createReadStream, existsSync } from 'node:fs'
+import { Readable } from 'node:stream'
+import {
+  localFileContentType,
+  localProtocolEmojiRelativePath,
+  localProtocolFileResponseHeaders,
+  localProtocolUrlToFilePath,
+  parseByteRangeHeader
+} from './local-protocol.util'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerAgentIPC } from './ipc/agent.ipc'
@@ -43,7 +52,13 @@ import {
 import { getAppDb } from './db'
 import { HotkeyService } from './services/hotkey.service'
 import { setHotkeyService } from './ipc/settings.ipc'
-import { logger } from '@baishou/shared'
+import {
+  logger,
+  nextUiFontSizeLevel,
+  resolvePageZoomShortcut,
+  uiFontSizeLevelFromZoom,
+  uiPageZoomFromLevel
+} from '@baishou/shared'
 import { markStartup, traceStartupStep } from './startup-trace.util'
 
 markStartup('main.module.loaded')
@@ -51,6 +66,77 @@ markStartup('main.module.loaded')
 if (is.dev) {
   app.commandLine.appendSwitch('remote-debugging-port', '9333')
   app.commandLine.appendSwitch('js-flags', '--expose-gc')
+}
+
+// 必须在 app ready 之前注册，否则渲染进程 fetch('local://...') 会直接 Failed to fetch
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
+])
+
+function applyLocalProtocolCors(headers: Headers): Headers {
+  headers.set('Access-Control-Allow-Origin', '*')
+  headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
+  headers.set('Access-Control-Allow-Headers', '*')
+  headers.set(
+    'Access-Control-Expose-Headers',
+    'Accept-Ranges, Content-Range, Content-Length, Content-Type'
+  )
+  return headers
+}
+
+function localProtocolResponse(body: BodyInit | null, init?: ResponseInit): Response {
+  const headers = applyLocalProtocolCors(new Headers(init?.headers))
+  return new Response(body, { ...init, headers })
+}
+
+async function serveLocalPhysicalFile(request: Request, physicalPath: string): Promise<Response> {
+  const contentType = localFileContentType(physicalPath)
+  const fileStat = await stat(physicalPath)
+  const size = fileStat.size
+  if (request.method === 'HEAD') {
+    const meta = localProtocolFileResponseHeaders({ contentType, size })
+    return localProtocolResponse(null, { status: meta.status, headers: meta.headers })
+  }
+  const rangeResult = parseByteRangeHeader(request.headers.get('Range'), size)
+  if (rangeResult === 'unsatisfiable') {
+    return localProtocolResponse(null, {
+      status: 416,
+      headers: {
+        'Content-Range': `bytes */${size}`,
+        'Accept-Ranges': 'bytes'
+      }
+    })
+  }
+  if (rangeResult) {
+    const meta = localProtocolFileResponseHeaders({ contentType, size, range: rangeResult })
+    const length = rangeResult.end - rangeResult.start + 1
+    const handle = await open(physicalPath, 'r')
+    try {
+      const buf = Buffer.allocUnsafe(length)
+      const { bytesRead } = await handle.read(buf, 0, length, rangeResult.start)
+      const body = bytesRead === length ? buf : buf.subarray(0, bytesRead)
+      return localProtocolResponse(body, { status: meta.status, headers: meta.headers })
+    } finally {
+      await handle.close()
+    }
+  }
+  const meta = localProtocolFileResponseHeaders({ contentType, size })
+  if (size === 0) {
+    return localProtocolResponse(new Uint8Array(), { status: 200, headers: meta.headers })
+  }
+  return localProtocolResponse(Readable.toWeb(createReadStream(physicalPath)) as ReadableStream, {
+    status: 200,
+    headers: meta.headers
+  })
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -168,25 +254,16 @@ function createWindow(needsOnboarding: boolean): void {
     }
   })
 
-  // ── 缩放快捷键：Ctrl+= 放大，Ctrl+- 缩小，Ctrl+0 重置 ──
-  mainWindow.webContents.on('before-input-event', (_event, input) => {
+  mainWindow.webContents.on('before-input-event', (event, input) => {
     if (!input.control && !input.meta) return
     if (input.type !== 'keyDown') return
-
-    const win = BrowserWindow.fromWebContents(mainWindow!.webContents)
-    if (!win) return
-
-    if (input.key === '=' || input.key === '+') {
-      const current = mainWindow!.webContents.getZoomLevel()
-      mainWindow!.webContents.setZoomLevel(Math.min(current + 0.5, 5))
-    } else if (input.key === '-') {
-      const current = mainWindow!.webContents.getZoomLevel()
-      mainWindow!.webContents.setZoomLevel(Math.max(current - 0.5, -3))
-    } else if (input.key === '0') {
-      mainWindow!.webContents.setZoomLevel(0)
-    } else {
-      return
-    }
+    const action = resolvePageZoomShortcut(input)
+    if (!action) return
+    event.preventDefault()
+    const current = uiFontSizeLevelFromZoom(mainWindow!.webContents.getZoomFactor())
+    const next = nextUiFontSizeLevel(current, action)
+    mainWindow!.webContents.setZoomFactor(uiPageZoomFromLevel(next))
+    mainWindow!.webContents.send('zoom:set-level', next)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -308,35 +385,26 @@ app.whenReady().then(async () => {
   // Register local protocol for secure local asset rendering
   protocol.handle('local', async (request) => {
     try {
-      let targetUrl = request.url.replace(/^local:/i, 'file:')
-
-      // Resolve relative emoji paths: local:///emojis/xxx.png → absolute vault path
-      const emojiMatch = targetUrl.match(/^file:\/\/+emojis\/(.+)$/i)
-      if (emojiMatch) {
+      if (request.method === 'OPTIONS') {
+        return localProtocolResponse(null, { status: 204 })
+      }
+      const emojiRel = localProtocolEmojiRelativePath(request.url)
+      let physicalPath: string
+      if (emojiRel) {
         const { DesktopStoragePathService } = await import('./services/path.service')
         const pathService = new DesktopStoragePathService()
         const emojisDir = await pathService.getEmojisDirectory()
-        const absolutePath = require('path').join(emojisDir, emojiMatch[1])
-        const { existsSync } = require('node:fs')
-        if (!existsSync(absolutePath)) {
-          return new Response('Not found', { status: 404 })
-        }
-        return await net.fetch(`file:///${absolutePath.replace(/\\/g, '/')}`)
+        physicalPath = join(emojisDir, emojiRel)
+      } else {
+        physicalPath = localProtocolUrlToFilePath(request.url)
       }
-
-      // Ensure absolute file URL starts with file:/// on Windows/Unix
-      if (targetUrl.startsWith('file://') && !targetUrl.startsWith('file:///')) {
-        targetUrl = 'file:///' + targetUrl.slice(7)
-      }
-      const physicalPath = fileURLToPath(targetUrl)
-      const { existsSync } = require('node:fs')
       if (!existsSync(physicalPath)) {
-        return new Response('Not found', { status: 404 })
+        return localProtocolResponse('Not found', { status: 404 })
       }
-      return await net.fetch(targetUrl)
+      return serveLocalPhysicalFile(request, physicalPath)
     } catch (e) {
       // Squash annoying ERR_FILE_NOT_FOUND stack traces when UI loads dead db avatar paths
-      return new Response('Not found', { status: 404 })
+      return localProtocolResponse('Not found', { status: 404 })
     }
   })
 

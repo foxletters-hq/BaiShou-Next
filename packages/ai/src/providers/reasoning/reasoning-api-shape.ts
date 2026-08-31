@@ -59,7 +59,11 @@ export function resolveReasoningApiShape(ctx: ReasoningApiShapeContext): Reasoni
   if (!modelId) return 'none'
 
   const control = getReasoningControlForModel(modelId, ctx.providerType)
-  // toggle / budget（Kimi、通义）走 chat + fetch 注入
+  // Kimi 走 chat + budget_tokens 注入（自有预算上限）；通义 toggle 同样走 chat
+  if (isKimiThinkingControlModel(modelId)) {
+    return 'chat'
+  }
+  // toggle / budget（通义等）走 chat + fetch 注入
   if (control.supportsToggle || control.mode === 'toggle' || control.mode === 'budget') {
     if (type === 'anthropic' || (type === 'opencodego' && isAnthropicReasoningModel(modelId))) {
       // 非 Kimi 的 anthropic 仍走 anthropic shape

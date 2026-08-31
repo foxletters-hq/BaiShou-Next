@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { GitManagementViewModel } from '@baishou/ui'
+import { Input, type GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
 
 export const GitWorkbenchStashSection: React.FC<{ vm: GitManagementViewModel }> = ({ vm }) => {
@@ -32,7 +32,8 @@ export const GitWorkbenchStashSection: React.FC<{ vm: GitManagementViewModel }> 
       {expanded ? (
         <div className="gmp-collapsible-body">
           <div className={styles.stashInputRow}>
-            <input
+            <Input
+              fieldSize="small"
               className={styles.menuInput}
               value={stashMessage}
               onChange={(event) => setStashMessage(event.target.value)}

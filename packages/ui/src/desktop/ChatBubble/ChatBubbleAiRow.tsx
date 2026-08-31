@@ -24,7 +24,7 @@ interface ChatBubbleAiRowProps {
   onCancelEdit: () => void
   onSaveEdit: () => void
   onCopy: (e?: React.MouseEvent) => void
-  onStartEdit: () => void
+  onStartEdit?: () => void
   onRegenerate?: () => void
   onDelete?: () => void
   onBranch?: () => void

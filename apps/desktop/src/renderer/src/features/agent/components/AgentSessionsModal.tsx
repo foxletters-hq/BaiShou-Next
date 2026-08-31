@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ListChecks } from 'lucide-react'
-import { Modal, type SessionData } from '@baishou/ui'
+import { Input, Modal, type SessionData } from '@baishou/ui'
 import { AgentSessionList } from './AgentSessionList'
 import styles from './AgentSessionsModal.module.css'
 
@@ -86,25 +86,27 @@ export const AgentSessionsModal: React.FC<AgentSessionsModalProps> = ({
     >
       <div className={styles.content}>
         <div className={styles.toolbar}>
-          <div className={styles.searchWrap}>
-            <input
-              className={styles.searchInput}
-              type="search"
-              placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
-              value={searchQuery}
-              onChange={(e) => onSearchQueryChanged(e.target.value)}
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                className={styles.searchClear}
-                onClick={() => onSearchQueryChanged('')}
-                aria-label={t('common.clear', '清除')}
-              >
-                ✕
-              </button>
-            ) : null}
-          </div>
+          <Input
+            fieldSize="small"
+            className={styles.searchWrap}
+            inputClassName={styles.searchInput}
+            type="search"
+            placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChanged(e.target.value)}
+            trailing={
+              searchQuery ? (
+                <button
+                  type="button"
+                  className={styles.searchClear}
+                  onClick={() => onSearchQueryChanged('')}
+                  aria-label={t('common.clear', '清除')}
+                >
+                  ✕
+                </button>
+              ) : null
+            }
+          />
           {sessions.length > 0 ? (
             <button
               type="button"

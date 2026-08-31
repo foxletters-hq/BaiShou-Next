@@ -137,7 +137,7 @@ export const classifyWorkspaceGateRisk: AgentGateRiskClassifier = async (input) 
         temperature: 0,
         maxOutputTokens: CLASSIFIER_MAX_OUTPUT_TOKENS,
         abortSignal: abortController.signal,
-        ...(reasoningOptions ? { providerOptions: reasoningOptions } : {})
+        ...(reasoningOptions ? { providerOptions: reasoningOptions as never } : {})
       })
       return parseClassifierText(result.text ?? '')
     } finally {

@@ -3,6 +3,8 @@ import type { AgentSkill, AgentSkillWriteInput, PromptShortcut } from '@baishou/
 
 export const skillsApi = {
   list: () => ipcRenderer.invoke('skills:list') as Promise<AgentSkill[]>,
+  listWorkspace: (folderRoot: string) =>
+    ipcRenderer.invoke('skills:list-workspace', folderRoot) as Promise<AgentSkill[]>,
   listAsShortcuts: () =>
     ipcRenderer.invoke('skills:list-as-shortcuts') as Promise<PromptShortcut[]>,
   getRoot: () => ipcRenderer.invoke('skills:get-root') as Promise<string>,
@@ -10,7 +12,14 @@ export const skillsApi = {
     ipcRenderer.invoke('skills:create', input) as Promise<AgentSkill>,
   update: (input: AgentSkillWriteInput) =>
     ipcRenderer.invoke('skills:update', input) as Promise<AgentSkill>,
-  remove: (name: string) => ipcRenderer.invoke('skills:remove', name) as Promise<void>
+  updateWorkspace: (folderRoot: string, input: AgentSkillWriteInput) =>
+    ipcRenderer.invoke('skills:update-workspace', folderRoot, input) as Promise<AgentSkill>,
+  remove: (name: string) => ipcRenderer.invoke('skills:remove', name) as Promise<void>,
+  onChanged: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('skills:changed', handler)
+    return () => ipcRenderer.off('skills:changed', handler)
+  }
 }
 
 /** 兼容旧调用：底层已切到磁盘 Skill */

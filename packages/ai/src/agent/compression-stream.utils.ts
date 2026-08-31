@@ -65,7 +65,7 @@ function throwIfAborted(abortSignal?: AbortSignal): void {
  * 消费 Vercel AI SDK fullStream 原生 reasoning-delta / text-delta 事件。
  */
 export async function consumeCompressionModelStream(
-  streamResult: StreamTextResult<any, any>,
+  streamResult: StreamTextResult<any, any, any>,
   sessionId: string,
   abortSignal?: AbortSignal
 ): Promise<CompressionStreamConsumeResult> {

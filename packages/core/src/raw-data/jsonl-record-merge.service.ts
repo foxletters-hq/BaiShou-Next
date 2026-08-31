@@ -1,5 +1,5 @@
 /**
- * Line-level LWW merge for Memory / Graph monthly JSONL shards.
+ * Line-level LWW merge for Memory monthly JSONL shards.
  * Fold by id → union; winner = higher updatedAt; same timestamp → tombstone wins;
  * still tied → canonical JSON string compare.
  */

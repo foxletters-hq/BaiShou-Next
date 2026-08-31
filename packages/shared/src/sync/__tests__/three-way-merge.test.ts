@@ -206,6 +206,17 @@ describe('threeWayMerge', () => {
     expect(decision?.type).toBe('skip')
   })
 
+  it('does not download or upload jsonl shards.manifest.json', () => {
+    const manifestPath = 'Personal/Graph/nodes/shards.manifest.json'
+    const entry = makeEntry({ hash: 'idx-hash' })
+    const local = makeManifest({})
+    const remote = makeManifest({ [manifestPath]: entry })
+    const ancestor = makeManifest({})
+
+    const decisions = threeWayMerge(local, remote, ancestor)
+    expect(decisions.find((d) => d.filePath === manifestPath)).toBeUndefined()
+  })
+
   it('should schedule delete-remote for sqlite runtime files present on remote', () => {
     const dbShm = 'baishou_agent.db-shm'
     const entry = makeEntry({ hash: 'shm-hash' })

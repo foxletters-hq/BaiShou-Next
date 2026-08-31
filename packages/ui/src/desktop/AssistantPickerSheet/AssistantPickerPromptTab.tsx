@@ -48,11 +48,12 @@ export function AssistantPickerPromptTab({
     setShowModelSwitcher,
     providers,
     globalEmojiEnabled,
-    emojiGroups,
+    emojiConfig,
     editingEmojiEnabled,
     editingSelectedEmojiGroupIds,
     handleEmojiEnabledChange,
-    handleToggleEmojiGroup
+    handleToggleEmojiGroup,
+    handleEmojiConfigChange
   } = vm
   const { isDark } = useTheme()
 
@@ -119,11 +120,12 @@ export function AssistantPickerPromptTab({
       {globalEmojiEnabled ? (
         <div className={styles.emojiGroupSection}>
           <AssistantEditEmojiGroupSection
-            emojiGroups={emojiGroups}
+            emojiConfig={emojiConfig}
             emojiEnabled={editingEmojiEnabled}
             selectedGroupIds={editingSelectedEmojiGroupIds}
             onEmojiEnabledChange={handleEmojiEnabledChange}
             onToggleGroup={handleToggleEmojiGroup}
+            onEmojiConfigChange={handleEmojiConfigChange}
           />
         </div>
       ) : null}

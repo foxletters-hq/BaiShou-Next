@@ -7,6 +7,7 @@ import {
   type WorkspaceToolManagementConfig
 } from '@baishou/shared'
 import { BaishouAgentGateSettingsSection } from '../../settings/components/BaishouAgentGateSettingsSection'
+import { WorkbenchGeneralSettingsPane } from './WorkbenchGeneralSettingsPane'
 import styles from './WorkbenchWorkspaceGateSheet.module.css'
 
 export interface WorkbenchWorkspaceGateSheetProps {
@@ -16,9 +17,9 @@ export interface WorkbenchWorkspaceGateSheetProps {
   onClose: () => void
 }
 
-type WorkbenchSettingsTab = 'permissions' | 'tools'
+type WorkbenchSettingsTab = 'permissions' | 'tools' | 'general'
 
-/** 工作台设置：全局 Agent 安全模式与工具（居中弹窗） */
+/** 工作台设置：权限、工具与通用（居中弹窗） */
 export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetProps> = ({
   open,
   workspaceId,
@@ -126,6 +127,10 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
                 {
                   value: 'tools',
                   label: t('settings.agent_tools_tab_workspace_tools', '工具')
+                },
+                {
+                  value: 'general',
+                  label: t('workbench.settings_tab_general', '通用')
                 }
               ]}
               onChange={setTab}
@@ -141,7 +146,7 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
               scope={{ kind: 'workspace', workspaceId }}
               onSubpageActiveChange={setPermissionsSubpageActive}
             />
-          ) : (
+          ) : tab === 'tools' ? (
             <AgentToolsView
               scene="workspace"
               config={workspaceTools}
@@ -150,6 +155,8 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
               }}
               onSubpageActiveChange={setToolsSubpageActive}
             />
+          ) : (
+            <WorkbenchGeneralSettingsPane />
           )}
         </div>
       </div>

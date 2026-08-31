@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, X, Check, ArrowUpCircle, BookOpen, Loader2, Copy } from 'lucide-react'
+import { Search, X, ArrowUpCircle, BookOpen, Loader2, Copy } from 'lucide-react'
+import { Input } from '../Input/Input'
 import { withAppContentOverlay } from '../overlay'
+import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './RecallDialog.module.css'
 import { SegmentedControl } from '../shared/SegmentedControl'
 import { DashboardSharedMemoryCard } from '../DashboardSharedMemoryCard/DashboardSharedMemoryCard'
@@ -134,14 +136,16 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
             <div className={styles.ragSearchBar}>
               <div className={styles.ragSearchInner}>
                 <Search size={18} className={styles.ragSearchIcon} />
-                <input
+                <Input
                   type="text"
+                  fieldSize="small"
+                  className={styles.ragSearchInput}
+                  inputClassName="baishou-form-field--embed"
                   placeholder={
                     searchMode === 'semantic'
                       ? t('recall.search_semantic_hint', '语义搜索记忆内容...')
                       : t('recall.search_text_hint', '关键词搜索记忆内容...')
                   }
-                  className={styles.ragSearchInput}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -248,8 +252,8 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
                     className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
                     onClick={() => toggleSelect(item.id)}
                   >
-                    <div className={styles.checkboxWrap}>
-                      {isSelected && <Check size={14} strokeWidth={4} />}
+                    <div className={styles.checkboxWrap} onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={isSelected} onChange={() => toggleSelect(item.id)} />
                     </div>
                     <div className={styles.cardInfo}>
                       <div className={styles.cardHeader}>

@@ -186,7 +186,7 @@ stackGroup
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 页面顶栏                   | `padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`；可 `position: sticky; top: 0`                                                                                                                                                                                                                                              |
 | 设置 / 管理内容区          | 顶栏下内容间距 `--settings-page-content-gap`（24px）；卡片 `border-radius: 12px`；外框用 `border: 1px solid var(--border-card)`；背景 `--bg-surface`（参照 `GeneralSettingsPane` / `SettingsPageChrome`）；**禁止大卡套小卡**；板块分割见 §3.7（卡外标题 + 卡片间距，卡内细线）；**设置白卡禁止 `overflow: hidden`**（会裁切绝对定位的 Select / Combobox 下拉）                   |
-| 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；`:focus` / `:focus-within` 用 `--form-field-border-focus`（浅灰加深）+ `--form-field-focus-ring: none`；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈 |
+| 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；**仅** `:focus` / `:focus-within` 用 `--form-field-border-focus`（浅灰加深）+ `--form-field-focus-ring: none`，**禁止 `:hover` 加深描边**；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈 |
 | 锚定菜单 / 下拉弹层        | 一律 `--menu-popup-*`（§3.8）；悬停/选中灰底，选中可用主色字或 Check；禁止 `raised` 底、重阴影、主色洗底                                                                                                                                                                                                                                                                          |
 | 分段滑块                   | 只用 [`SegmentedControl`](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                                         |
 | 原生滑动条                 | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`                                                                                                                                                                                                                                      |
@@ -263,7 +263,7 @@ stackGroup
 - [ ] 设置行图标使用 `--settings-icon-*` / `settingsIcons`（leading 20 / trailing 18），无大卡套小卡
 - [ ] 设置页分割：大板块用卡外标题 + sibling 卡间距；卡内才用细线（§3.7），无「全页同款水平线」切板块
 - [ ] 桌面全屏 Dialog/Modal 遮罩裁到内容卡（`Modal` 默认或 `withAppContentOverlay`），未透过 TitleBar 露模糊（§4.1）；全窗沉浸才显式关闭裁切
-- [ ] 表单聚焦描边使用 `--form-field-border-focus` 浅灰加深，未自写更重描边
+- [ ] 表单聚焦描边使用 `--form-field-border-focus` 浅灰加深，仅 `:focus` / `:focus-within`，未在 `:hover` 变色，未自写更重描边
 - [ ] 锚定菜单 / 下拉使用 `--menu-popup-*`（§3.8），未用 raised/glass/重阴影/主色洗底选中
 
 _—— 适用于桌面与移动前端组件渲染行为。_

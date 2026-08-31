@@ -199,7 +199,7 @@
 }
 
 .messageList::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .messageList::-webkit-scrollbar-thumb {
@@ -240,7 +240,6 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: 16px;
   margin: 0;
   min-width: 0;
   position: relative;
@@ -257,7 +256,7 @@
 }
 
 .emptyMascotImg {
-  width: min(148px, 32vw);
+  width: min(150px, 29vw);
   height: auto;
   margin: 0;
   padding: 0;
@@ -266,10 +265,10 @@
 }
 
 .emptyGreeting {
-  margin: 0 0 40px;
+  margin: 0 0 52px;
   flex: 0 1 auto;
   min-width: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.45;
   letter-spacing: -0.01em;
@@ -277,17 +276,13 @@
 }
 
 @media (max-width: 520px) {
-  .emptyHero {
-    gap: 12px;
-  }
-
   .emptyGreeting {
-    font-size: 16px;
-    margin-bottom: 28px;
+    font-size: 18px;
+    margin-bottom: 36px;
   }
 
   .emptyMascotImg {
-    width: min(112px, 36vw);
+    width: min(112px, 32vw);
   }
 }
 

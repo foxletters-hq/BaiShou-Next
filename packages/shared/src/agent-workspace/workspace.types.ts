@@ -69,6 +69,8 @@ export interface AgentWorkspaceSessionListItem {
   folderRoot: string
   folderDisplayName: string
   updatedAt: string
+  /** 项目内对话置顶 */
+  isPinned?: boolean
 }
 
 /** 工作区类型：普通文件夹 / 内置临时「稿纸」 */

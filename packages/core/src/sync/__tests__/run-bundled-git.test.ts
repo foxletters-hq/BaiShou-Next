@@ -99,7 +99,9 @@ describe('runBundledGit', () => {
     child.finish(0)
     await promise
 
-    const [binary, args, options] = spawnMock.mock.calls[0]
+    const firstCall = spawnMock.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const [binary, args, options] = firstCall!
     expect(binary).toBe('/bundled/git')
     expect(args).toEqual(['write-tree'])
     expect(options.cwd).toBe('/projects/notes')

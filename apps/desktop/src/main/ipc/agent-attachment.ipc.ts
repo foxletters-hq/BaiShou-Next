@@ -1,9 +1,15 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
+import * as os from 'os'
 import * as path from 'path'
 import { logger, supportsNativePdf, stripAttachmentBinaryForStorage } from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import { getAgentManagers, getActiveProvider } from './agent-helpers'
+import { getWorkspaceSessionBinding } from '../services/agent-workspace-session.store'
+import {
+  decorateWorkspacePromptAttachment,
+  planWorkspacePromptAttachment
+} from '../services/workspace-prompt-attachment.util'
 
 function isEphemeralAttachmentPath(filePath?: string): boolean {
   if (!filePath) return true
@@ -91,9 +97,70 @@ export function registerAttachmentIPC() {
           logger.warn('Failed to resolve provider type for session', { error: provErr as any })
         }
 
-        // 处理附件：复制到会话目录
+        // 处理附件：伙伴会话复制到附件库；工作台图片做本机快照，其余记原路径
         let finalAttachments = args.attachments
-        if (finalAttachments && finalAttachments.length > 0) {
+        const workspaceBinding = await getWorkspaceSessionBinding(args.sessionId)
+        if (finalAttachments && finalAttachments.length > 0 && workspaceBinding?.folderRoot) {
+          const safeSessionId = args.sessionId.replace(/[\\/]/g, '')
+          const snapshotDir = path.join(os.tmpdir(), 'baishou-workbench-prompt', safeSessionId)
+          finalAttachments = await Promise.all(
+            finalAttachments.map(async (att) => {
+              const plan = planWorkspacePromptAttachment(att)
+              if (plan.mode === 'path-ref') {
+                return decorateWorkspacePromptAttachment({
+                  absolutePath: plan.absolutePath,
+                  fileName: plan.fileName,
+                  folderRoot: workspaceBinding.folderRoot,
+                  mimeType: att.mimeType
+                })
+              }
+              if (plan.mode === 'image-snapshot') {
+                const ext = path.extname(plan.fileName) || path.extname(plan.absolutePath) || '.png'
+                const originalName = path.parse(plan.fileName).name || 'image'
+                const snapshotName = `${originalName}_${Date.now()}${ext}`
+                await fs.mkdir(snapshotDir, { recursive: true })
+                const destPath = path.join(snapshotDir, snapshotName)
+                try {
+                  await fs.copyFile(plan.absolutePath, destPath)
+                  return decorateWorkspacePromptAttachment({
+                    absolutePath: destPath,
+                    fileName: plan.fileName,
+                    mimeType: att.mimeType
+                  })
+                } catch (error) {
+                  logger.error('Failed to snapshot workbench image attachment', {
+                    path: plan.absolutePath,
+                    error
+                  })
+                  return decorateWorkspacePromptAttachment({
+                    absolutePath: plan.absolutePath,
+                    fileName: plan.fileName,
+                    folderRoot: workspaceBinding.folderRoot,
+                    mimeType: att.mimeType
+                  })
+                }
+              }
+              if (plan.mode === 'ephemeral' && att.data) {
+                const ext = inferAttachmentExt(att)
+                const originalName = path.parse(att.fileName || 'pasted').name || 'pasted'
+                const newFileName = `${originalName}_${Date.now()}${ext}`
+                await fs.mkdir(snapshotDir, { recursive: true })
+                const destPath = path.join(snapshotDir, newFileName)
+                const buffer = Buffer.from(
+                  String(att.data).replace(/^data:[^;]+;base64,/, ''),
+                  'base64'
+                )
+                await fs.writeFile(destPath, buffer)
+                return decorateWorkspacePromptAttachment({
+                  absolutePath: destPath,
+                  fileName: att.fileName || newFileName,
+                  mimeType: att.mimeType
+                })
+              }
+              return stripAttachmentBinaryForStorage(att)
+            })
+          )
+        } else if (finalAttachments && finalAttachments.length > 0) {
           try {
             const attachBase = await pathService.getAttachmentsBaseDirectory()
             const safeSessionId = args.sessionId.replace(/[\\/]/g, '')

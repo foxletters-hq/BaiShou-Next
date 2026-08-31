@@ -16,7 +16,7 @@
 }
 
 .summary-page-container::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 .summary-page-container::-webkit-scrollbar-thumb {
   background-color: var(--border-muted);

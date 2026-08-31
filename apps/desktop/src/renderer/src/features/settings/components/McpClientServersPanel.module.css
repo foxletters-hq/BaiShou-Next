@@ -1,0 +1,340 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  padding: 0;
+  font-size: var(--settings-font-label-size, 13px);
+  font-weight: var(--settings-font-section-weight, 600);
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.sectionCount {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.state,
+.empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.empty {
+  padding: 16px;
+}
+
+.sheet {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.list .row,
+.list + .row {
+  box-shadow: inset 0 1px 0 var(--border-muted);
+}
+
+.list .row:first-child {
+  box-shadow: none;
+}
+
+.empty + .row {
+  box-shadow: inset 0 1px 0 var(--border-muted);
+}
+
+.cardMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 10px 4px 4px;
+  box-sizing: border-box;
+}
+
+.cardHit {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 10px;
+}
+
+.cardHit:hover {
+  background: var(--bg-surface-high);
+}
+
+.toolsBtn {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.toolsBtn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong, var(--border-control));
+}
+
+.toolsBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.toolsModal {
+  min-width: min(480px, 92vw);
+  max-width: 560px;
+}
+
+.iconWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--bg-surface-high);
+}
+
+.iconMark {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.statusDot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid var(--bg-surface);
+  box-sizing: border-box;
+}
+
+.statusOn {
+  background: var(--color-success, #22c55e);
+}
+
+.statusOff {
+  background: var(--text-tertiary, var(--text-secondary));
+}
+
+.cardCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  background: var(--bg-surface-high);
+  border: 1px solid var(--border-muted);
+}
+
+.cardDesc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.cardDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 16px 16px 58px;
+}
+
+.toolList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(60vh, 480px);
+  overflow: auto;
+}
+
+.toolItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-control);
+}
+
+.toolName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+.toolDesc {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.detailState {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.enableRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.textBtn,
+.primaryBtn,
+.iconBtn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.textBtn,
+.primaryBtn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.textBtn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.primaryBtn {
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+}
+
+.primaryBtn:hover {
+  opacity: 0.92;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  background: var(--bg-surface-high);
+  color: var(--color-error);
+}
+
+.textBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

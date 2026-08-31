@@ -290,6 +290,7 @@ export const DiaryEditorScreen: React.FC = () => {
         const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
         const pending = await mobileListPendingReextract({
           vaultName,
+          vaultId,
           shadowRepo,
           pathService: services.pathService,
           fileSystem: services.fileSystem

@@ -19,9 +19,8 @@ import {
   normalizeEmojiToolConfig,
   serializeAssistantEmojiGroupIds,
   type AssistantKind,
-  type EmojiGroup,
-  type ModelSwitcherProvider,
-  type ToolManagementConfig
+  type EmojiToolConfig,
+  type ModelSwitcherProvider
 } from '@baishou/shared'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -38,6 +37,8 @@ import { resolveAssistantAvatarForMobileUi } from '../../../lib/assistant-avatar
 import { markAssistantsNeedRefresh } from '../../../lib/assistant-ui-refresh-signal'
 import { launchAvatarImageLibraryAsync, requestAvatarLibraryPermission } from '@baishou/ui/native'
 import type { Assistant } from '../assistant-edit-format.util'
+import { useEmojiToolSettings } from '../../../hooks/useEmojiToolSettings'
+import { MobileAttachmentManagerService } from '../../../services/mobile-attachment-manager.service'
 
 export function useAssistantEditForm() {
   const { t, i18n } = useTranslation()
@@ -76,10 +77,9 @@ export function useAssistantEditForm() {
   const [saving, setSaving] = useState(false)
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
   const [outerScrollEnabled, setOuterScrollEnabled] = useState(true)
-  const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>([])
-  const [globalEmojiEnabled, setGlobalEmojiEnabled] = useState(false)
   const [emojiEnabled, setEmojiEnabled] = useState(false)
   const [selectedEmojiGroupIds, setSelectedEmojiGroupIds] = useState<string[]>([])
+  const { config: emojiConfig, persist: persistEmojiConfig } = useEmojiToolSettings()
 
   const isUnlimitedContext = contextWindow < 0
   const isCompressDisabled = compressTokenThreshold <= 0
@@ -127,18 +127,6 @@ export function useAssistantEditForm() {
       .get<AIProviderConfig[]>('ai_providers')
       .then((list) => setChatProviders(filterProvidersForModelSwitcher(list || [], 'dialogue')))
       .catch(() => setChatProviders([]))
-  }, [dbReady, services])
-
-  useEffect(() => {
-    if (!dbReady || !services) return
-    void services.settingsManager
-      .get<ToolManagementConfig>('tool_management_config')
-      .then((config) => {
-        const normalized = normalizeEmojiToolConfig(config?.emojiConfig)
-        setGlobalEmojiEnabled(normalized.enabled === true)
-        setEmojiGroups(normalized.groups)
-      })
-      .catch(() => setEmojiGroups([]))
   }, [dbReady, services])
 
   useEffect(() => {
@@ -283,6 +271,47 @@ export function useAssistantEditForm() {
     [isNew, persistMemoryConfig]
   )
 
+  const handleEmojiConfigChange = useCallback(
+    (next: EmojiToolConfig) => {
+      const normalized = normalizeEmojiToolConfig(next)
+      void persistEmojiConfig(normalized)
+      const validIds = new Set(normalized.groups.map((group) => group.id))
+      setSelectedEmojiGroupIds((prev) => {
+        const pruned = prev.filter((id) => validIds.has(id))
+        if (pruned.length !== prev.length && !isNew) {
+          void persistMemoryConfig({ emojiGroupIds: pruned })
+        }
+        return pruned
+      })
+    },
+    [isNew, persistEmojiConfig, persistMemoryConfig]
+  )
+
+  const handlePickAndImportEmojis = useCallback(async () => {
+    if (!services) return []
+    return MobileAttachmentManagerService.pickAndImportEmojis(services.attachmentManager)
+  }, [services])
+
+  const handleResolveEmojiPath = useCallback(
+    async (relativePath: string) => {
+      if (!services) return ''
+      try {
+        return await services.attachmentManager.resolveEmojiPath(relativePath)
+      } catch {
+        return ''
+      }
+    },
+    [services]
+  )
+
+  const handleDeleteEmoji = useCallback(
+    async (relativePath: string) => {
+      if (!services) return false
+      return services.attachmentManager.deleteEmoji(relativePath)
+    },
+    [services]
+  )
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.showError(t('agent.assistant.name_required', '请输入伙伴名称'))
@@ -410,8 +439,8 @@ export function useAssistantEditForm() {
     setShowModelSwitcher,
     outerScrollEnabled,
     setOuterScrollEnabled,
-    emojiGroups,
-    globalEmojiEnabled,
+    emojiConfig,
+    globalEmojiEnabled: emojiConfig.enabled === true,
     emojiEnabled,
     selectedEmojiGroupIds,
     handlePickImage,
@@ -420,6 +449,10 @@ export function useAssistantEditForm() {
     openModelSwitcher,
     handleToggleEmojiGroup,
     handleEmojiEnabledChange,
+    handleEmojiConfigChange,
+    handlePickAndImportEmojis,
+    handleResolveEmojiPath,
+    handleDeleteEmoji,
     handleSave,
     handleDelete,
     canDelete: !isNew,

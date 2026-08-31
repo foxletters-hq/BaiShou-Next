@@ -1,16 +1,20 @@
-import React, { useCallback, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useDialog, toast } from '@baishou/ui'
 import type { WorkspaceRollbackPreview, WorkspaceRollbackScope } from '@baishou/shared'
+import { WorkspaceRollbackPreviewBody } from '../components/WorkspaceRollbackPreviewBody'
 import {
   buildWorkspaceRollbackPreviewCopy,
-  formatWorkspaceRollbackSummary,
-  type WorkspaceRollbackPreviewCopy
+  formatWorkspaceRollbackSummary
 } from '../utils/workspace-rollback.util'
 import {
   getWorkspaceUserSkillRefs,
   getWorkspaceUserText
 } from '../utils/workspace-message-display.util'
 import type { WorkspaceChatMessage } from './useWorkspaceChatMessages'
+import {
+  readSkipEditResendConfirm,
+  writeSkipEditResendConfirm
+} from '../utils/workspace-edit-resend-skip.util'
 import {
   buildWorkspaceEditResendModelText,
   runWorkspaceEditResendPipeline
@@ -51,6 +55,7 @@ export interface UseWorkspaceMessageActionsOptions {
       assistantId?: string
       displayText?: string
       skillRefs?: SkillRef[]
+      attachments?: unknown[]
     }
   ) => Promise<{ sessionId: string; userMessageId: string; createdNew: boolean }>
   admitAndStream: (params: {
@@ -107,56 +112,11 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
     if (isStreaming) stopChat()
   }, [isStreaming, stopChat])
 
-  const renderScopeNote = useCallback(
-    () => (
-      <p style={{ marginTop: 8, opacity: 0.75, fontSize: '0.9em' }}>
-        {t('round_rollback.scope_note', '仅覆盖本会话中 AI 写工具触及的路径；不能替代版本控制。')}
-      </p>
-    ),
-    [t]
-  )
-
   const renderPreviewBody = useCallback(
-    (intro: string, copy: WorkspaceRollbackPreviewCopy | null) => {
-      if (!copy) {
-        return (
-          <div>
-            <p>{intro}</p>
-            {renderScopeNote()}
-          </div>
-        )
-      }
-
-      const pathListStyle: React.CSSProperties = {
-        margin: '4px 0 0',
-        paddingLeft: 16,
-        maxHeight: 160,
-        overflowY: 'auto',
-        fontSize: '0.9em',
-        opacity: 0.85,
-        whiteSpace: 'pre-wrap'
-      }
-
-      return (
-        <div>
-          <p>{intro}</p>
-          {copy.cascadeNote ? (
-            <p style={{ marginTop: 8, fontSize: '0.9em' }}>{copy.cascadeNote}</p>
-          ) : null}
-          {copy.isEmpty ? (
-            <p style={{ marginTop: 8, opacity: 0.75, fontSize: '0.9em' }}>
-              {t('round_rollback.preview_no_files', '本轮没有文件改动，只会删除对话记录。')}
-            </p>
-          ) : null}
-          {copy.fileLines.length > 0 ? <pre style={pathListStyle}>{copy.fileLines.join('\n')}</pre> : null}
-          {copy.extraLines.length > 0 ? (
-            <pre style={{ ...pathListStyle, marginTop: 8 }}>{copy.extraLines.join('\n')}</pre>
-          ) : null}
-          {copy.extraLines.length === 0 ? renderScopeNote() : null}
-        </div>
-      )
-    },
-    [renderScopeNote, t]
+    (intro: string, copy: ReturnType<typeof buildWorkspaceRollbackPreviewCopy> | null) => (
+      <WorkspaceRollbackPreviewBody intro={intro} copy={copy} />
+    ),
+    []
   )
 
   /**
@@ -168,8 +128,14 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
     async (
       targetSessionId: string,
       userMessageId: string,
-      copyKeys: { title: string; intro: string }
+      copyKeys: { title: string; intro: string },
+      options?: { rememberSkip?: boolean }
     ): Promise<WorkspaceRollbackScope | null> => {
+      if (options?.rememberSkip) {
+        const skipped = readSkipEditResendConfirm()
+        if (skipped) return skipped
+      }
+
       const preview = previewRollback
         ? await previewRollback(targetSessionId, userMessageId).catch((error) => {
             console.warn('[useWorkspaceMessageActions] rollback preview failed:', error)
@@ -178,24 +144,52 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
         : null
       const copy = preview ? buildWorkspaceRollbackPreviewCopy(preview, t) : null
       const body = renderPreviewBody(copyKeys.intro, copy)
+      const dontAskAgainLabel = t('workspace_edit_resend.dont_ask_again', '不再提示')
+      const scopeChoices = [
+        {
+          label: t('round_rollback.scope_attributed', '只撤回助手改过的文件'),
+          description: t(
+            'round_rollback.scope_attributed_desc',
+            '你自己改过的文件、命令产生的文件会保留。'
+          ),
+          value: 'attributed'
+        },
+        {
+          label: t('round_rollback.scope_all', '把这段时间的文件变化全部撤回'),
+          description: t(
+            'round_rollback.scope_all_desc',
+            '包括上面列出的、不是助手直接改的那些文件。'
+          ),
+          value: 'all',
+          destructive: true
+        }
+      ]
 
       if (copy?.needsScopeChoice) {
-        const choice = await dialog.choose(
-          copyKeys.title,
-          [
-            {
-              label: t('round_rollback.scope_attributed', '只还原 AI 改动的文件'),
-              value: 'attributed'
-            },
-            {
-              label: t('round_rollback.scope_all', '全部还原，包括上面这些变化'),
-              value: 'all',
-              destructive: true
-            }
-          ],
-          body
-        )
+        if (options?.rememberSkip) {
+          const choice = await dialog.chooseWithDontAskAgain(
+            copyKeys.title,
+            scopeChoices,
+            body,
+            dontAskAgainLabel
+          )
+          if (!choice || (choice.value !== 'all' && choice.value !== 'attributed')) return null
+          if (choice.dontAskAgain) writeSkipEditResendConfirm(choice.value)
+          return choice.value
+        }
+        const choice = await dialog.choose(copyKeys.title, scopeChoices, body)
         return choice === 'all' || choice === 'attributed' ? choice : null
+      }
+
+      if (options?.rememberSkip) {
+        const result = await dialog.confirmWithDontAskAgain(
+          body,
+          copyKeys.title,
+          dontAskAgainLabel
+        )
+        if (!result.confirmed) return null
+        if (result.dontAskAgain) writeSkipEditResendConfirm('attributed')
+        return 'attributed'
       }
 
       const confirmed = await dialog.confirm(body, copyKeys.title)
@@ -301,13 +295,18 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
       try {
         const outcome = await runWorkspaceEditResendPipeline({
           confirm: async () => {
-            const scope = await confirmRollbackScope(sessionId, userMessageId, {
-              title: t('workspace_edit_resend.confirm_title', '编辑并重新发送？'),
-              intro: t(
-                'workspace_edit_resend.confirm_desc',
-                '将撤回该轮及之后的文件改动与对话，并用新内容重新发送。此操作不可撤销。'
-              )
-            })
+            const scope = await confirmRollbackScope(
+              sessionId,
+              userMessageId,
+              {
+                title: t('workspace_edit_resend.confirm_title', '用编辑后的内容重新发送？'),
+                intro: t(
+                  'workspace_edit_resend.confirm_desc',
+                  '会先撤回这一轮及之后的对话，再用你改过的内容重新发送。文件怎么处理，请选下面一项。此操作不可撤销。'
+                )
+              },
+              { rememberSkip: true }
+            )
             if (!scope) return false
             resendScope = scope
             return true

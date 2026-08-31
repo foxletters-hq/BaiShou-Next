@@ -6,11 +6,18 @@ import type {
   AgentWorkspaceSessionListItem,
   WorkspaceChangeEntry
 } from '@baishou/shared'
-import { formatDialogueModelLabel, isConfiguredProviderId } from '@baishou/shared'
 import {
+  exclusiveInputTokens,
+  formatDialogueModelLabel,
+  getModelContextWindow,
+  isConfiguredProviderId,
+  pickLastRoundUsage,
+  skillToPromptShortcut
+} from '@baishou/shared'
+import {
+  ContextUsageRing,
   InputBar,
   ShortcutManagerDialog,
-  TokenBadge,
   getProviderIcon,
   resolveDesktopAssistantAvatarSrc,
   useTheme,
@@ -21,8 +28,9 @@ import { usePromptShortcutStore } from '@baishou/store'
 import { usePersistedSearchMode } from '../../agent/hooks/usePersistedSearchMode'
 import chromeStyles from '../../agent/components/AgentChatChrome.module.css'
 import { AgentWorkspaceMessageList, type AgentWorkspaceMessageListHandle } from '../components/AgentWorkspaceMessageList'
+import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 import { useWorkbenchInputPlaceholder } from '../utils/workbench-input-placeholder'
-import { WorkbenchAgentChangesSummary } from './WorkbenchAgentChangesSummary'
+import { createWorkspaceComposerDropResolver } from '../utils/workspace-composer-drop.util'
 import { WorkbenchSessionView } from './WorkbenchSessionView'
 import { WorkbenchNotebookMountDialog } from './WorkbenchNotebookMountDialog'
 import styles from './WorkbenchAgentPanel.module.css'
@@ -35,7 +43,6 @@ export interface WorkbenchAgentPanelProps {
   sessionId?: string
   sessions: AgentWorkspaceSessionListItem[]
   loadingSessions?: boolean
-  changes: WorkspaceChangeEntry[]
   onSelectChange: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
   sessionsViewActive?: boolean
@@ -57,15 +64,20 @@ export interface WorkbenchAgentPanelProps {
     }>
     totalInputTokens: number
     totalOutputTokens: number
+    totalCacheReadInputTokens: number
+    totalCacheWriteInputTokens: number
     estimatedCost: number
     onAssistantClick: () => void
     onModelClick: (anchorRect?: DOMRect | null) => void
     effortSuffix?: string | null
-    onCostClick: () => void
+    pricingLastUpdated?: Date | null
+    onRefreshPricing?: () => Promise<{ success: boolean; error?: string }>
   }
   chat: {
     messages: unknown[]
     pendingAssistantMsg: unknown
+    hasMore?: boolean
+    loadMore?: () => Promise<void>
   }
   stream: {
     text: string
@@ -90,13 +102,11 @@ export interface WorkbenchAgentPanelProps {
       delivery?: 'steer' | 'queue'
     }
   ) => void | Promise<void>
-  onRollbackRound: (userMessageId: string) => void | Promise<void>
   onEditResend?: (
     userMessageId: string,
     newText: string,
     meta?: { skillRefs?: Array<{ command: string; content: string }> }
   ) => boolean | Promise<boolean>
-  onChangesUpdate: (changes: WorkspaceChangeEntry[]) => void
   onAssistantTap: () => void
   assistantName: string
   /** 回滚成功后回填输入框 */
@@ -119,7 +129,6 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   sessionId,
   sessions,
   loadingSessions,
-  changes,
   onSelectChange,
   onReviewAll,
   sessionsViewActive = false,
@@ -133,9 +142,7 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   stream,
   assistantProfile,
   onSend,
-  onRollbackRound,
   onEditResend,
-  onChangesUpdate,
   onAssistantTap,
   assistantName,
   composerRefill = null,
@@ -150,7 +157,12 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   const [notebookMountOpen, setNotebookMountOpen] = useState(false)
   const [pendingQueue, setPendingQueue] = useState<Array<{ id: string; text: string }>>([])
   const [showShortcutManager, setShowShortcutManager] = useState(false)
+  const [workspaceShortcuts, setWorkspaceShortcuts] = useState<PromptShortcut[]>([])
   const inputPlaceholder = useWorkbenchInputPlaceholder()
+  const resolveDropAttachments = useMemo(
+    () => createWorkspaceComposerDropResolver(workspace?.folderRoot ?? null),
+    [workspace?.folderRoot]
+  )
   const {
     shortcuts,
     loadShortcuts,
@@ -163,6 +175,64 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   useEffect(() => {
     void loadShortcuts()
   }, [loadShortcuts])
+
+  useEffect(() => {
+    const folderRoot = workspace?.folderRoot
+    if (!folderRoot) {
+      setWorkspaceShortcuts([])
+      return
+    }
+    let cancelled = false
+    const listWorkspace = (
+      window.api as {
+        skills?: { listWorkspace?: (root: string) => Promise<import('@baishou/shared').AgentSkill[]> }
+      }
+    ).skills?.listWorkspace
+
+    const loadWorkspaceShortcuts = () => {
+      if (!listWorkspace) {
+        if (!cancelled) setWorkspaceShortcuts([])
+        return
+      }
+      void listWorkspace(folderRoot)
+        .then((skills) => {
+          if (cancelled) return
+          setWorkspaceShortcuts(skills.map(skillToPromptShortcut))
+        })
+        .catch(() => {
+          if (!cancelled) setWorkspaceShortcuts([])
+        })
+    }
+
+    loadWorkspaceShortcuts()
+    const onSkillsChanged = () => {
+      void loadShortcuts()
+      loadWorkspaceShortcuts()
+    }
+    let treeTimer: ReturnType<typeof setTimeout> | null = null
+    const onTreeRefresh = () => {
+      if (treeTimer) clearTimeout(treeTimer)
+      treeTimer = setTimeout(() => {
+        treeTimer = null
+        loadWorkspaceShortcuts()
+      }, 100)
+    }
+    const unsubSkills = (
+      window.api as { skills?: { onChanged?: (cb: () => void) => () => void } }
+    ).skills?.onChanged?.(onSkillsChanged)
+    window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+    return () => {
+      cancelled = true
+      unsubSkills?.()
+      window.removeEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+      if (treeTimer) clearTimeout(treeTimer)
+    }
+  }, [workspace?.folderRoot, loadShortcuts])
+
+  const composerShortcuts = useMemo(
+    () => [...shortcuts, ...workspaceShortcuts],
+    [shortcuts, workspaceShortcuts]
+  )
 
   useEffect(() => {
     if (!sessionId) {
@@ -200,6 +270,8 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
     })
   }, [composerRefill])
 
+  const workspaceMessages = chat.messages as WorkspaceChatMessage[]
+
   const providerIconUrl = useMemo(() => {
     if (!isConfiguredProviderId(chrome.currentProviderId)) return undefined
     const providerRecord = chrome.providers.find((provider) => provider.id === chrome.currentProviderId)
@@ -212,6 +284,8 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   const displayModelName =
     formatDialogueModelLabel(chrome.currentModelId) ?? t('agent.no_model_selected', '暂未选择模型')
   const noModelSelected = !isConfiguredProviderId(chrome.currentProviderId) || !chrome.currentModelId
+  const lastRoundUsage = useMemo(() => pickLastRoundUsage(workspaceMessages), [workspaceMessages])
+  const contextWindow = getModelContextWindow(chrome.currentModelId)
   const assistantAvatar = resolveDesktopAssistantAvatarSrc(chrome.currentAssistant?.avatarPath)
   const displayAssistantName = chrome.currentAssistant?.name || assistantName
   const headerTitle = useMemo(() => {
@@ -273,6 +347,25 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
           ) : null}
           <span className={chromeStyles.chevron}>▼</span>
         </button>
+        {hasWorkspace ? (
+          <ContextUsageRing
+            lastRound={lastRoundUsage}
+            contextWindow={contextWindow}
+            cumulative={{
+              inputTokens: exclusiveInputTokens(
+                chrome.totalInputTokens,
+                chrome.totalCacheReadInputTokens,
+                chrome.totalCacheWriteInputTokens
+              ),
+              outputTokens: chrome.totalOutputTokens,
+              cacheReadTokens: chrome.totalCacheReadInputTokens,
+              cacheWriteTokens: chrome.totalCacheWriteInputTokens,
+              estimatedCost: `$${chrome.estimatedCost.toFixed(6)}`
+            }}
+            pricingLastUpdated={chrome.pricingLastUpdated}
+            onRefreshPricing={chrome.onRefreshPricing}
+          />
+        ) : null}
       </div>
     </div>
   )
@@ -285,14 +378,6 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
         </span>
         {hasWorkspace ? (
           <div className={styles.headerActions}>
-            <TokenBadge
-              variant="toolbar"
-              className={styles.headerTokenBadge}
-              inputTokens={chrome.totalInputTokens}
-              outputTokens={chrome.totalOutputTokens}
-              costMicros={chrome.estimatedCost * 1_000_000}
-              onClick={chrome.onCostClick}
-            />
             <button
               type="button"
               className={styles.headerIconBtn}
@@ -337,9 +422,10 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
               </p>
             ) : (
               <AgentWorkspaceMessageList
+                key={sessionId ?? 'workspace-chat'}
                 ref={messageListRef}
                 sessionId={sessionId}
-                messages={chat.messages as any}
+                messages={workspaceMessages}
                 pendingAssistantMsg={chat.pendingAssistantMsg as any}
                 streamingText={stream.text}
                 streamingReasoning={stream.reasoning}
@@ -351,18 +437,14 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
                 completedTools={stream.completedTools as any}
                 failedTools={stream.failedTools as any}
                 assistantProfile={assistantProfile}
-                onRollbackRound={onRollbackRound}
+                hasMore={chat.hasMore}
+                onLoadMore={chat.loadMore}
                 onEditResend={onEditResend}
-                onChangesUpdate={onChangesUpdate}
+                onSelectChange={onSelectChange}
+                onReviewAll={onReviewAll}
               />
             )}
           </div>
-
-          <WorkbenchAgentChangesSummary
-            changes={changes}
-            onSelectChange={onSelectChange}
-            onReviewAll={onReviewAll}
-          />
 
           {hasWorkspace ? (
             <div className={styles.inputArea}>
@@ -380,7 +462,11 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
                   <ul className={styles.pendingList}>
                     {pendingQueue.map((item) => (
                       <li key={item.id} className={styles.pendingItem}>
-                        <span className={styles.pendingText}>{item.text.slice(0, 80)}</span>
+                        <span className={styles.pendingText}>
+                          {item.text.trim()
+                            ? item.text.slice(0, 80)
+                            : t('input.upload_attachment', '上传附件')}
+                        </span>
                         <button
                           type="button"
                           className={styles.pendingCancel}
@@ -409,6 +495,8 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
                 ref={inputBarRef}
                 isLoading={stream.isStreaming}
                 allowSendWhileLoading
+                attachmentIntake="workspace"
+                resolveDropAttachments={resolveDropAttachments}
                 composerBlocked={!hasConfiguredModel || gateBlocksComposer}
                 onSend={async (text, attachments, searchMode, meta) => {
                   messageListRef.current?.beginFollowIfAtBottom()
@@ -419,7 +507,8 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
                   return true
                 }}
                 onStop={stream.stopChat}
-                shortcuts={shortcuts}
+                shortcuts={composerShortcuts}
+                createSkillScope="workspace"
                 onManageShortcuts={() => setShowShortcutManager(true)}
                 searchMode={searchMode}
                 onToggleSearchMode={toggleSearchMode}

@@ -91,7 +91,10 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       (rule) => !isCatchAllAllowRule(rule)
     )
     const rememberedRules = allowlistEntriesToPermissionRules(this.allowlistStore.list())
-    const sessionRules = input.autoAccept ? [{ action: '*', effect: AgentGateEffect.Allow }] : []
+    const sessionRules = [
+      ...(input.autoAccept ? [{ action: '*', effect: AgentGateEffect.Allow }] : []),
+      ...(input.sessionRules ?? [])
+    ]
 
     const matched = findLastMatchingLayeredRule({
       action: input.action,
@@ -104,7 +107,11 @@ export class BaishouAgentGatePolicyService implements IAgentGatePolicy {
       ]
     })
 
-    let rawEffect = matched?.rule.effect ?? AgentGateEffect.Ask
+    const unmatchedDefault =
+      input.metadata?.riskLevel === AgentGateRiskLevel.Safe
+        ? AgentGateEffect.Allow
+        : AgentGateEffect.Ask
+    let rawEffect = matched?.rule.effect ?? unmatchedDefault
     let usedCatchAllFallback = false
     if (
       rawEffect === AgentGateEffect.Ask &&

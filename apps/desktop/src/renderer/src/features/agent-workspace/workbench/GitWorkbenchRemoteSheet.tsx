@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
-import type { GitManagementViewModel } from '@baishou/ui'
+import { Input, type GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
 
 export interface GitWorkbenchRemoteSheetProps {
@@ -62,7 +62,8 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
 
         <div className={styles.sheetBody}>
           <label className={styles.sheetLabel}>{t('version_control.author_name', '用户名')}</label>
-          <input
+          <Input
+            fieldSize="small"
             className={styles.menuInput}
             value={userName}
             onChange={(event) => {
@@ -71,7 +72,8 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
             }}
           />
           <label className={styles.sheetLabel}>{t('version_control.author_email', '邮箱')}</label>
-          <input
+          <Input
+            fieldSize="small"
             className={styles.menuInput}
             value={userEmail}
             onChange={(event) => {
@@ -85,7 +87,8 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
           <label className={styles.sheetLabel}>
             {t('version_control.remote_url', '远程仓库 URL')}
           </label>
-          <input
+          <Input
+            fieldSize="small"
             className={styles.menuInput}
             value={remoteUrl}
             onChange={(event) => {
@@ -95,7 +98,8 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
             placeholder="https://github.com/user/repo.git"
           />
           <label className={styles.sheetLabel}>{t('version_control.remote_branch', '分支')}</label>
-          <input
+          <Input
+            fieldSize="small"
             className={styles.menuInput}
             value={remoteBranch}
             onChange={(event) => {
@@ -106,7 +110,8 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
           <label className={styles.sheetLabel}>
             {t('version_control.remote_username', '用户名')}
           </label>
-          <input
+          <Input
+            fieldSize="small"
             className={styles.menuInput}
             value={remoteUsername}
             onChange={(event) => {
@@ -118,7 +123,8 @@ export const GitWorkbenchRemoteSheet: React.FC<GitWorkbenchRemoteSheetProps> = (
             {t('version_control.remote_token', 'Token / 密码')}
           </label>
           <div className={styles.tokenRow}>
-            <input
+            <Input
+              fieldSize="small"
               className={styles.menuInput}
               type={showPassword ? 'text' : 'password'}
               value={remoteToken}

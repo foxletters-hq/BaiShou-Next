@@ -1,27 +1,40 @@
-import { and, eq, isNull, like, or, desc, inArray } from 'drizzle-orm'
+import { and, eq, isNull, like, or, desc, inArray, gte, lte, sql, ne } from 'drizzle-orm'
 import {
   graphEdgesTable,
+  graphNodeAliasesTable,
   graphNodesTable,
   type GraphEdgeType,
   type GraphNodeType
 } from '../schema/graph'
 import type { AppDatabase } from '../types'
-import { isGraphEdgeInMonthRange } from '@baishou/shared'
-
-const VECTOR_REUSE_DISTANCE = 0.15
-
-function normalizeName(name: string): string {
-  return name.trim().replace(/\s+/g, ' ')
-}
+import {
+  GRAPH_PENDING_LIST_LIMIT,
+  GRAPH_SQL_IN_CHUNK,
+  GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT,
+  graphNodeIdForEntity,
+  normalizeGraphEdgeReviewFields,
+  normalizeGraphName,
+  preferGraphOrigin,
+  shouldKeepIncomingGraphNodeId
+} from '@baishou/shared'
+import {
+  isMissingSqliteFunctionError,
+  isSqliteUniqueConstraintError
+} from '../utils/sqlite-function-error.util'
+import type { GraphRepositoryPort } from './graph.ports'
 
 function parseAliases(raw: string | null | undefined): string[] {
   if (!raw) return []
   try {
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => aIsString(x)) : []
   } catch {
     return []
   }
+}
+
+function aIsString(x: unknown): x is string {
+  return typeof x === 'string'
 }
 
 function serializeVector(vector: number[]): Buffer {
@@ -33,11 +46,19 @@ function ms(date: Date | null | undefined): number | null {
   return date.getTime()
 }
 
+function chunkIds<T>(ids: T[], size = GRAPH_SQL_IN_CHUNK): T[][] {
+  if (ids.length === 0) return []
+  const out: T[][] = []
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size))
+  return out
+}
+
 export interface GraphNodeRow {
   id: string
   vaultId: string
   nodeType: string
   name: string
+  nameNormalized: string
   aliases: string[]
   summary: string
   propsJson: string
@@ -75,6 +96,13 @@ export interface GraphEdgeRow {
   createdAt: number
   updatedAt: number
   deletedAt: number | null
+}
+
+export type ApplyRawNodeResult = {
+  id: string
+  remappedFrom?: string
+  remappedFromShardMonth?: string
+  writeBackSurvivor?: boolean
 }
 
 export interface UpsertNodeInput {
@@ -140,6 +168,7 @@ function mapNode(row: typeof graphNodesTable.$inferSelect): GraphNodeRow {
     vaultId: row.vaultId,
     nodeType: row.nodeType,
     name: row.name,
+    nameNormalized: row.nameNormalized || normalizeGraphName(row.name),
     aliases: parseAliases(row.aliases),
     summary: row.summary,
     propsJson: row.propsJson,
@@ -182,36 +211,119 @@ function mapEdge(row: typeof graphEdgesTable.$inferSelect): GraphEdgeRow {
   }
 }
 
+function mergeAliases(existing: string[], extra: string[]): string[] {
+  const set = new Set<string>()
+  for (const a of [...existing, ...extra]) {
+    const n = a.trim().replace(/\s+/g, ' ')
+    if (n) set.add(n)
+  }
+  return [...set]
+}
+
+function cosineDistance(a: Float32Array, b: Float32Array): number {
+  let dot = 0
+  let na = 0
+  let nb = 0
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i]!
+    const y = b[i]!
+    dot += x * y
+    na += x * x
+    nb += y * y
+  }
+  if (na === 0 || nb === 0) return 1
+  const sim = dot / (Math.sqrt(na) * Math.sqrt(nb))
+  return 1 - sim
+}
+
 /**
  * SQLite-only graph repository. Does not write Graph/ JSONL files.
  */
-export class GraphRepository {
+export class GraphRepository implements GraphRepositoryPort {
   constructor(private readonly database: AppDatabase) {}
+
+  private async replaceAliases(vaultId: string, nodeId: string, aliases: string[]): Promise<void> {
+    await this.database
+      .delete(graphNodeAliasesTable)
+      .where(eq(graphNodeAliasesTable.nodeId, nodeId))
+    const seen = new Set<string>()
+    for (const a of aliases) {
+      const norm = normalizeGraphName(a)
+      if (!norm || seen.has(norm)) continue
+      seen.add(norm)
+      const id =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `a_${nodeId}_${norm}`
+      await this.database.insert(graphNodeAliasesTable).values({
+        id,
+        vaultId,
+        nodeId,
+        aliasNormalized: norm
+      })
+    }
+  }
 
   async findNodeByNameOrAlias(
     vaultId: string,
     name: string,
-    type: GraphNodeType | string
+    type?: GraphNodeType | string
   ): Promise<GraphNodeRow | null> {
-    const normalized = normalizeName(name)
+    const normalized = normalizeGraphName(name)
     if (!normalized) return null
-    const rows = await this.database
+    const typed = type?.trim()
+
+    const nameConditions = [
+      eq(graphNodesTable.vaultId, vaultId),
+      eq(graphNodesTable.nameNormalized, normalized),
+      isNull(graphNodesTable.deletedAt)
+    ]
+    if (typed) nameConditions.push(eq(graphNodesTable.nodeType, typed))
+
+    const byName = await this.database
       .select()
       .from(graphNodesTable)
+      .where(and(...nameConditions))
+      .limit(typed ? 1 : 8)
+
+    if (typed) {
+      if (byName[0]) return mapNode(byName[0])
+      const aliasHits = await this.database
+        .select({ nodeId: graphNodeAliasesTable.nodeId })
+        .from(graphNodeAliasesTable)
+        .where(
+          and(
+            eq(graphNodeAliasesTable.vaultId, vaultId),
+            eq(graphNodeAliasesTable.aliasNormalized, normalized)
+          )
+        )
+        .limit(8)
+      for (const hit of aliasHits) {
+        const node = await this.getNodeById(hit.nodeId, vaultId)
+        if (node && node.nodeType === typed) return node
+      }
+      return null
+    }
+
+    const ids = new Set(byName.map((row) => row.id))
+    const aliasHits = await this.database
+      .select({ nodeId: graphNodeAliasesTable.nodeId })
+      .from(graphNodeAliasesTable)
       .where(
         and(
-          eq(graphNodesTable.vaultId, vaultId),
-          eq(graphNodesTable.nodeType, type),
-          isNull(graphNodesTable.deletedAt)
+          eq(graphNodeAliasesTable.vaultId, vaultId),
+          eq(graphNodeAliasesTable.aliasNormalized, normalized)
         )
       )
-    const lower = normalized.toLowerCase()
-    for (const row of rows) {
-      if (normalizeName(row.name).toLowerCase() === lower) return mapNode(row)
-      const aliases = parseAliases(row.aliases)
-      if (aliases.some((a) => normalizeName(a).toLowerCase() === lower)) return mapNode(row)
+      .limit(16)
+    for (const hit of aliasHits) {
+      const node = await this.getNodeById(hit.nodeId, vaultId)
+      if (node) ids.add(node.id)
     }
-    return null
+    if (ids.size !== 1) return null
+    const id = [...ids][0]!
+    const named = byName.find((row) => row.id === id)
+    return named ? mapNode(named) : this.getNodeById(id, vaultId)
   }
 
   async searchNodesByVector(
@@ -220,6 +332,38 @@ export class GraphRepository {
     topK: number,
     opts?: { nodeType?: string; modelId?: string }
   ): Promise<Array<GraphNodeRow & { distance: number }>> {
+    const query = new Float32Array(vector)
+    const buf = serializeVector(vector)
+
+    try {
+      const conditions = [
+        eq(graphNodesTable.vaultId, vaultId),
+        isNull(graphNodesTable.deletedAt),
+        sql`${graphNodesTable.embedding} is not null`,
+        eq(graphNodesTable.dimension, query.length)
+      ]
+      if (opts?.nodeType) conditions.push(eq(graphNodesTable.nodeType, opts.nodeType))
+      if (opts?.modelId) conditions.push(eq(graphNodesTable.modelId, opts.modelId))
+
+      const rows = await this.database
+        .select({
+          row: graphNodesTable,
+          distance: sql<number>`vec_distance_cosine(${graphNodesTable.embedding}, ${buf})`.as(
+            'distance'
+          )
+        })
+        .from(graphNodesTable)
+        .where(and(...conditions))
+        .orderBy(sql`vec_distance_cosine(${graphNodesTable.embedding}, ${buf}) ASC`)
+        .limit(topK)
+
+      return rows.map((r) => ({ ...mapNode(r.row), distance: Number(r.distance) }))
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      if (!isMissingSqliteFunctionError(message)) throw e
+    }
+
+    // JS fallback when sqlite-vec is unavailable
     const filters = [
       eq(graphNodesTable.vaultId, vaultId),
       isNull(graphNodesTable.deletedAt),
@@ -229,15 +373,19 @@ export class GraphRepository {
       .select()
       .from(graphNodesTable)
       .where(and(...filters))
-    const query = new Float32Array(vector)
+      .limit(GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT)
+    if (rows.length >= GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT) {
+      console.warn(
+        `[GraphRepository] searchNodesByVector JS fallback scanned ${GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT} rows`
+      )
+    }
     const scored: Array<GraphNodeRow & { distance: number }> = []
     for (const row of rows) {
       if (!row.embedding || !row.dimension || row.dimension !== query.length) continue
       if (opts?.modelId && row.modelId && row.modelId !== opts.modelId) continue
-      const buf = row.embedding as Buffer
-      const emb = new Float32Array(buf.buffer, buf.byteOffset, row.dimension)
-      const distance = cosineDistance(query, emb)
-      scored.push({ ...mapNode(row), distance })
+      const embBuf = row.embedding as Buffer
+      const emb = new Float32Array(embBuf.buffer, embBuf.byteOffset, row.dimension)
+      scored.push({ ...mapNode(row), distance: cosineDistance(query, emb) })
     }
     scored.sort((a, b) => a.distance - b.distance)
     return scored.slice(0, topK)
@@ -252,33 +400,60 @@ export class GraphRepository {
     if (!q) return []
     const limit = opts?.limit ?? 20
     const pattern = `%${q}%`
-    const rows = await this.database
+    const norm = normalizeGraphName(q)
+
+    const typeFilter =
+      opts?.nodeTypes?.length && opts.nodeTypes.length > 0
+        ? inArray(graphNodesTable.nodeType, opts.nodeTypes as string[])
+        : undefined
+
+    const byName = await this.database
       .select()
       .from(graphNodesTable)
       .where(
         and(
           eq(graphNodesTable.vaultId, vaultId),
           isNull(graphNodesTable.deletedAt),
-          or(like(graphNodesTable.name, pattern), like(graphNodesTable.aliases, pattern))
+          or(like(graphNodesTable.name, pattern), eq(graphNodesTable.nameNormalized, norm)),
+          typeFilter
         )
       )
       .orderBy(desc(graphNodesTable.mentionCount))
-      .limit(limit * 3)
-    let mapped = rows.map(mapNode)
-    if (opts?.nodeTypes?.length) {
-      const allow = new Set(opts.nodeTypes)
-      mapped = mapped.filter((n) => allow.has(n.nodeType))
+      .limit(limit)
+
+    const aliasRows = await this.database
+      .select({ nodeId: graphNodeAliasesTable.nodeId })
+      .from(graphNodeAliasesTable)
+      .where(
+        and(
+          eq(graphNodeAliasesTable.vaultId, vaultId),
+          or(eq(graphNodeAliasesTable.aliasNormalized, norm), like(graphNodeAliasesTable.aliasNormalized, pattern))
+        )
+      )
+      .limit(limit)
+
+    const seen = new Map<string, GraphNodeRow>()
+    for (const row of byName) seen.set(row.id, mapNode(row))
+    for (const hit of aliasRows) {
+      if (seen.has(hit.nodeId)) continue
+      const node = await this.getNodeById(hit.nodeId, vaultId)
+      if (!node) continue
+      if (opts?.nodeTypes?.length && !opts.nodeTypes.includes(node.nodeType)) continue
+      seen.set(node.id, node)
     }
-    return mapped.slice(0, limit)
+    return [...seen.values()]
+      .sort((a, b) => b.mentionCount - a.mentionCount)
+      .slice(0, limit)
   }
 
   /**
-   * Disambiguation: exact name/alias → vector threshold 0.15 → create.
-   * When forceId + id provided, upsert that row without reuse.
+   * Write a node by id. Without forceId, reuse an exact name/alias hit of the same type.
+   * Does not merge by vector similarity — chat/manual writes are explicit.
    */
   async upsertNode(input: UpsertNodeInput): Promise<string> {
     const now = Date.now()
-    const name = normalizeName(input.name)
+    const name = input.name.trim().replace(/\s+/g, ' ')
+    const nameNormalized = normalizeGraphName(name)
     const updatedAt = input.updatedAt ?? now
     const createdAt = input.createdAt ?? now
 
@@ -288,49 +463,34 @@ export class GraphRepository {
         await this.touchNode(existing.id, {
           aliases: mergeAliases(existing.aliases, input.aliases ?? [name]),
           lastSeenAt: input.lastSeenAt ?? now,
-          mentionCount: existing.mentionCount + 1,
+          mentionCount: input.mentionCount ?? existing.mentionCount,
           summary: input.summary ?? existing.summary,
           embedding: input.embedding,
           modelId: input.modelId,
-          updatedAt
+          updatedAt,
+          name,
+          nameNormalized
         })
         return existing.id
       }
-      if (input.embedding?.length) {
-        const hits = await this.searchNodesByVector(input.vaultId, input.embedding, 1, {
-          nodeType: input.nodeType,
-          modelId: input.modelId
-        })
-        const top = hits[0]
-        if (top && top.distance < VECTOR_REUSE_DISTANCE) {
-          await this.touchNode(top.id, {
-            aliases: mergeAliases(top.aliases, [name, ...(input.aliases ?? [])]),
-            lastSeenAt: input.lastSeenAt ?? now,
-            mentionCount: top.mentionCount + 1,
-            summary: input.summary ?? top.summary,
-            embedding: input.embedding,
-            modelId: input.modelId,
-            updatedAt
-          })
-          return top.id
-        }
-      }
     }
 
-    const id =
-      input.id ??
-      (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `n_${Date.now()}_${Math.random().toString(16).slice(2)}`)
+    if (!input.id && input.nodeType === 'entry') {
+      throw new Error('GraphRepository.upsertNode: entry requires a path-based id')
+    }
+    const id = input.id ?? graphNodeIdForEntity(input.vaultId, input.nodeType, name)
 
-    const aliases = JSON.stringify(mergeAliases([], input.aliases ?? [name]))
+    const aliases = mergeAliases([], input.aliases ?? [name])
     const embeddingBuf = input.embedding?.length ? serializeVector(input.embedding) : null
+    const existingById = await this.getNodeById(id, input.vaultId)
+    const origin = preferGraphOrigin(existingById?.origin, input.origin)
     const values = {
       id,
       vaultId: input.vaultId,
       nodeType: input.nodeType,
       name,
-      aliases,
+      nameNormalized,
+      aliases: JSON.stringify(aliases),
       summary: input.summary ?? '',
       propsJson: input.propsJson ?? '{}',
       embedding: embeddingBuf,
@@ -339,7 +499,7 @@ export class GraphRepository {
       mentionCount: input.mentionCount ?? 1,
       firstSeenAt: input.firstSeenAt != null ? new Date(input.firstSeenAt) : new Date(createdAt),
       lastSeenAt: input.lastSeenAt != null ? new Date(input.lastSeenAt) : new Date(updatedAt),
-      origin: input.origin ?? 'ai',
+      origin,
       shardMonth: input.shardMonth ?? '',
       reviewStatus: input.reviewStatus ?? 'approved',
       createdAt: new Date(createdAt),
@@ -347,28 +507,36 @@ export class GraphRepository {
       deletedAt: input.deletedAt != null ? new Date(input.deletedAt) : null
     }
 
+    const conflictSet = {
+      name: values.name,
+      nameNormalized: values.nameNormalized,
+      aliases: values.aliases,
+      summary: values.summary,
+      propsJson: values.propsJson,
+      mentionCount: values.mentionCount,
+      lastSeenAt: values.lastSeenAt,
+      origin: values.origin,
+      shardMonth: values.shardMonth,
+      reviewStatus: values.reviewStatus,
+      updatedAt: values.updatedAt,
+      deletedAt: values.deletedAt,
+      ...(input.embedding?.length
+        ? {
+            embedding: embeddingBuf,
+            dimension: input.embedding.length,
+            modelId: input.modelId ?? ''
+          }
+        : {})
+    }
+
     await this.database
       .insert(graphNodesTable)
       .values(values)
       .onConflictDoUpdate({
         target: [graphNodesTable.id],
-        set: {
-          name: values.name,
-          aliases: values.aliases,
-          summary: values.summary,
-          propsJson: values.propsJson,
-          embedding: values.embedding,
-          dimension: values.dimension,
-          modelId: values.modelId,
-          mentionCount: values.mentionCount,
-          lastSeenAt: values.lastSeenAt,
-          origin: values.origin,
-          shardMonth: values.shardMonth,
-          reviewStatus: values.reviewStatus,
-          updatedAt: values.updatedAt,
-          deletedAt: values.deletedAt
-        }
+        set: conflictSet
       })
+    await this.replaceAliases(input.vaultId, id, aliases)
     return id
   }
 
@@ -382,6 +550,8 @@ export class GraphRepository {
       embedding?: number[] | null
       modelId?: string
       updatedAt: number
+      name?: string
+      nameNormalized?: string
     }
   ): Promise<void> {
     const set: Record<string, unknown> = {
@@ -392,18 +562,27 @@ export class GraphRepository {
       updatedAt: new Date(patch.updatedAt),
       deletedAt: null
     }
+    if (patch.name) set.name = patch.name
+    if (patch.nameNormalized) set.nameNormalized = patch.nameNormalized
     if (patch.embedding?.length) {
       set.embedding = serializeVector(patch.embedding)
       set.dimension = patch.embedding.length
       if (patch.modelId) set.modelId = patch.modelId
     }
     await this.database.update(graphNodesTable).set(set).where(eq(graphNodesTable.id, id))
+    const node = await this.getNodeById(id)
+    if (node) await this.replaceAliases(node.vaultId, id, patch.aliases)
   }
 
   async upsertEdge(input: UpsertEdgeInput): Promise<string> {
     const now = Date.now()
     const createdAt = input.createdAt ?? now
     const updatedAt = input.updatedAt ?? now
+    const review = normalizeGraphEdgeReviewFields({
+      confidence: input.confidence,
+      reviewStatus: input.reviewStatus,
+      fallbackConfidence: 100
+    })
     const values = {
       id: input.id,
       vaultId: input.vaultId,
@@ -418,9 +597,9 @@ export class GraphRepository {
       sourceRef: input.sourceRef ?? null,
       sourceExcerpt: input.sourceExcerpt ?? '',
       sourceContentHash: input.sourceContentHash ?? null,
-      confidence: input.confidence ?? 100,
+      confidence: review.confidence,
       origin: input.origin ?? 'ai',
-      reviewStatus: input.reviewStatus ?? 'approved',
+      reviewStatus: review.reviewStatus,
       shardMonth: input.shardMonth,
       createdAt: new Date(createdAt),
       updatedAt: new Date(updatedAt),
@@ -468,7 +647,7 @@ export class GraphRepository {
   async supersedeEdgesBySourceRef(
     vaultId: string,
     sourceRef: string,
-    opts?: { keepUserOrigin?: boolean }
+    opts?: { keepUserOrigin?: boolean; exceptIds?: ReadonlySet<string> }
   ): Promise<void> {
     const now = Date.now()
     const rows = await this.database
@@ -484,8 +663,61 @@ export class GraphRepository {
       )
     for (const row of rows) {
       if (opts?.keepUserOrigin && row.origin === 'user') continue
+      if (opts?.exceptIds?.has(row.id)) continue
       await this.supersedeEdge(row.id, now)
     }
+  }
+
+  private async selectNodesByIds(vaultId: string, ids: string[]): Promise<GraphNodeRow[]> {
+    if (ids.length === 0) return []
+    const out: GraphNodeRow[] = []
+    for (const part of chunkIds(ids)) {
+      const rows = await this.database
+        .select()
+        .from(graphNodesTable)
+        .where(
+          and(
+            eq(graphNodesTable.vaultId, vaultId),
+            inArray(graphNodesTable.id, part),
+            isNull(graphNodesTable.deletedAt)
+          )
+        )
+      out.push(...rows.map(mapNode))
+    }
+    return out
+  }
+
+  private async selectCurrentEdgesTouching(
+    vaultId: string,
+    frontier: string[],
+    opts?: { approvedOnly?: boolean }
+  ): Promise<GraphEdgeRow[]> {
+    if (frontier.length === 0) return []
+    const approvedOnly = opts?.approvedOnly === true
+    const out: GraphEdgeRow[] = []
+    const seen = new Set<string>()
+    // from IN + to IN doubles bind count — use half chunk
+    const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
+    for (const part of chunkIds(frontier, half)) {
+      const rows = await this.database
+        .select()
+        .from(graphEdgesTable)
+        .where(
+          and(
+            eq(graphEdgesTable.vaultId, vaultId),
+            eq(graphEdgesTable.isCurrent, true),
+            isNull(graphEdgesTable.deletedAt),
+            or(inArray(graphEdgesTable.fromId, part), inArray(graphEdgesTable.toId, part))
+          )
+        )
+      for (const e of rows) {
+        if (approvedOnly && (e.reviewStatus === 'pending' || e.reviewStatus === 'rejected')) continue
+        if (seen.has(e.id)) continue
+        seen.add(e.id)
+        out.push(mapEdge(e))
+      }
+    }
+    return out
   }
 
   async traverse(
@@ -502,24 +734,12 @@ export class GraphRepository {
     let frontier = [centerId]
     for (let d = 0; d < hops; d++) {
       if (frontier.length === 0) break
-      const edges = await this.database
-        .select()
-        .from(graphEdgesTable)
-        .where(
-          and(
-            eq(graphEdgesTable.vaultId, vaultId),
-            eq(graphEdgesTable.isCurrent, true),
-            isNull(graphEdgesTable.deletedAt),
-            or(inArray(graphEdgesTable.fromId, frontier), inArray(graphEdgesTable.toId, frontier))
-          )
-        )
+      const edges = await this.selectCurrentEdgesTouching(vaultId, frontier, { approvedOnly })
       const next: string[] = []
       for (const e of edges) {
-        if (approvedOnly && e.reviewStatus === 'pending') continue
-        if (approvedOnly && e.reviewStatus === 'rejected') continue
         if (!edgeIds.has(e.id)) {
           edgeIds.add(e.id)
-          edgeRows.push(mapEdge(e))
+          edgeRows.push(e)
         }
         for (const id of [e.fromId, e.toId]) {
           if (!nodeIds.has(id)) {
@@ -530,20 +750,7 @@ export class GraphRepository {
       }
       frontier = next
     }
-    const ids = [...nodeIds]
-    if (ids.length === 0) return { nodes: [], edges: edgeRows }
-    let nodes = (
-      await this.database
-        .select()
-        .from(graphNodesTable)
-        .where(
-          and(
-            eq(graphNodesTable.vaultId, vaultId),
-            inArray(graphNodesTable.id, ids),
-            isNull(graphNodesTable.deletedAt)
-          )
-        )
-    ).map(mapNode)
+    let nodes = await this.selectNodesByIds(vaultId, [...nodeIds])
     if (approvedOnly) {
       nodes = nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
     }
@@ -561,6 +768,9 @@ export class GraphRepository {
   ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
     const approvedOnly = opts?.approvedOnly !== false
     const limit = opts?.limit ?? 80
+    const reviewFilter = approvedOnly
+      ? and(ne(graphEdgesTable.reviewStatus, 'pending'), ne(graphEdgesTable.reviewStatus, 'rejected'))
+      : undefined
     const rows = await this.database
       .select()
       .from(graphEdgesTable)
@@ -568,36 +778,19 @@ export class GraphRepository {
         and(
           eq(graphEdgesTable.vaultId, vaultId),
           isNull(graphEdgesTable.deletedAt),
-          or(eq(graphEdgesTable.fromId, nodeId), eq(graphEdgesTable.toId, nodeId))
+          or(eq(graphEdgesTable.fromId, nodeId), eq(graphEdgesTable.toId, nodeId)),
+          reviewFilter
         )
       )
-    let edges = rows.map(mapEdge)
-    if (approvedOnly) {
-      edges = edges.filter((e) => e.reviewStatus !== 'pending' && e.reviewStatus !== 'rejected')
-    }
-    edges.sort((a, b) => {
-      const av = a.validFrom ?? a.createdAt
-      const bv = b.validFrom ?? b.createdAt
-      return av - bv
-    })
-    edges = edges.slice(0, limit)
+      .orderBy(sql`coalesce(${graphEdgesTable.validFrom}, ${graphEdgesTable.createdAt}) ASC`)
+      .limit(limit)
+    const edges = rows.map(mapEdge)
     const idSet = new Set<string>([nodeId])
     for (const e of edges) {
       idSet.add(e.fromId)
       idSet.add(e.toId)
     }
-    let nodes = (
-      await this.database
-        .select()
-        .from(graphNodesTable)
-        .where(
-          and(
-            eq(graphNodesTable.vaultId, vaultId),
-            inArray(graphNodesTable.id, [...idSet]),
-            isNull(graphNodesTable.deletedAt)
-          )
-        )
-    ).map(mapNode)
+    let nodes = await this.selectNodesByIds(vaultId, [...idSet])
     if (approvedOnly) {
       nodes = nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
     }
@@ -609,7 +802,7 @@ export class GraphRepository {
     maxNodes?: number
     minMentionCount?: number
     nodeTypes?: Array<GraphNodeType | string>
-    /** Inclusive YYYY-MM range; when set, graph is built from edges in that window. */
+    /** Inclusive YYYY-MM range; when set, graph includes edges and nodes in that window. */
     monthRange?: { startMonth: string; endMonth: string }
   }): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
     const maxNodes = opts.maxNodes ?? 200
@@ -625,79 +818,175 @@ export class GraphRepository {
     if (useMonthRange) {
       const from = startMonth! <= endMonth! ? startMonth! : endMonth!
       const to = startMonth! <= endMonth! ? endMonth! : startMonth!
-      const range = { startMonth: from, endMonth: to }
-      // Load all live edges then resolve month via shardMonth / sourceRef / createdAt.
-      // Many legacy rows have empty shardMonth; SQL-only filter would miss or over-include.
-      const edgeRows = await this.database
-        .select()
+      const monthFilter = and(
+        eq(graphEdgesTable.vaultId, opts.vaultId),
+        eq(graphEdgesTable.isCurrent, true),
+        isNull(graphEdgesTable.deletedAt),
+        ne(graphEdgesTable.shardMonth, ''),
+        gte(graphEdgesTable.shardMonth, from),
+        lte(graphEdgesTable.shardMonth, to)
+      )
+      const fromRows = await this.database
+        .select({
+          id: graphEdgesTable.fromId,
+          c: sql<number>`count(*)`.as('c')
+        })
         .from(graphEdgesTable)
+        .where(monthFilter)
+        .groupBy(graphEdgesTable.fromId)
+      const toRows = await this.database
+        .select({
+          id: graphEdgesTable.toId,
+          c: sql<number>`count(*)`.as('c')
+        })
+        .from(graphEdgesTable)
+        .where(monthFilter)
+        .groupBy(graphEdgesTable.toId)
+      const touch = new Map<string, number>()
+      for (const row of fromRows) touch.set(row.id, (touch.get(row.id) ?? 0) + Number(row.c))
+      for (const row of toRows) touch.set(row.id, (touch.get(row.id) ?? 0) + Number(row.c))
+      const monthNodeRows = await this.database
+        .select({
+          id: graphNodesTable.id,
+          reviewStatus: graphNodesTable.reviewStatus
+        })
+        .from(graphNodesTable)
         .where(
           and(
-            eq(graphEdgesTable.vaultId, opts.vaultId),
-            eq(graphEdgesTable.isCurrent, true),
-            isNull(graphEdgesTable.deletedAt)
+            eq(graphNodesTable.vaultId, opts.vaultId),
+            isNull(graphNodesTable.deletedAt),
+            ne(graphNodesTable.shardMonth, ''),
+            gte(graphNodesTable.shardMonth, from),
+            lte(graphNodesTable.shardMonth, to)
           )
         )
-      const edgesAll = edgeRows.map(mapEdge).filter((e) => isGraphEdgeInMonthRange(e, range))
-      const endpointIds = new Set<string>()
-      for (const e of edgesAll) {
-        endpointIds.add(e.fromId)
-        endpointIds.add(e.toId)
+      for (const row of monthNodeRows) {
+        if (!touch.has(row.id)) touch.set(row.id, 0)
       }
-      if (endpointIds.size === 0) return { nodes: [], edges: [] }
-
-      let nodes = (
-        await this.database
-          .select()
-          .from(graphNodesTable)
-          .where(
-            and(
-              eq(graphNodesTable.vaultId, opts.vaultId),
-              isNull(graphNodesTable.deletedAt),
-              inArray(graphNodesTable.id, [...endpointIds])
-            )
-          )
-          .orderBy(desc(graphNodesTable.mentionCount))
-          .limit(maxNodes)
-      ).map(mapNode)
+      const oversample = opts.nodeTypes?.length || minMention > 0 ? maxNodes * 20 : maxNodes * 4
+      const rankedIds = [...touch.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, oversample)
+        .map(([id]) => id)
+      if (rankedIds.length === 0) return { nodes: [], edges: [] }
+      let nodes = await this.selectNodesByIds(opts.vaultId, rankedIds)
+      const order = new Map(rankedIds.map((id, i) => [id, i]))
+      nodes.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
       if (minMention > 0) nodes = nodes.filter((n) => n.mentionCount >= minMention)
       if (opts.nodeTypes?.length) {
         const allow = new Set(opts.nodeTypes)
         nodes = nodes.filter((n) => allow.has(n.nodeType))
       }
+      nodes = nodes.slice(0, maxNodes)
+      const pendingMissingIds = monthNodeRows
+        .filter((row) => row.reviewStatus === 'pending')
+        .map((row) => row.id)
+        .filter((id) => !nodes.some((n) => n.id === id))
+        .slice(0, GRAPH_PENDING_LIST_LIMIT)
+      if (pendingMissingIds.length > 0) {
+        let extra = await this.selectNodesByIds(opts.vaultId, pendingMissingIds)
+        extra = extra.filter((n) => n.reviewStatus === 'pending')
+        if (minMention > 0) extra = extra.filter((n) => n.mentionCount >= minMention)
+        if (opts.nodeTypes?.length) {
+          const allow = new Set(opts.nodeTypes)
+          extra = extra.filter((n) => allow.has(n.nodeType))
+        }
+        nodes = [...nodes, ...extra]
+      }
       const idSet = new Set(nodes.map((n) => n.id))
-      const edges = edgesAll.filter((e) => idSet.has(e.fromId) && idSet.has(e.toId))
+      if (idSet.size === 0) return { nodes: [], edges: [] }
+      const edges: GraphEdgeRow[] = []
+      const idList = [...idSet]
+      const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
+      for (const part of chunkIds(idList, half)) {
+        const rows = await this.database
+          .select()
+          .from(graphEdgesTable)
+          .where(
+            and(
+              monthFilter,
+              inArray(graphEdgesTable.fromId, part),
+              inArray(graphEdgesTable.toId, idList.length <= half ? idList : part)
+            )
+          )
+        for (const e of rows.map(mapEdge)) {
+          if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+        }
+      }
+      if (idList.length > half) {
+        edges.length = 0
+        for (const part of chunkIds(idList, half)) {
+          const rows = await this.database
+            .select()
+            .from(graphEdgesTable)
+            .where(and(monthFilter, inArray(graphEdgesTable.fromId, part)))
+          for (const e of rows.map(mapEdge)) {
+            if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+          }
+        }
+      }
       return { nodes, edges }
     }
 
-    let nodes = (
+    const globalFilters = [
+      eq(graphNodesTable.vaultId, opts.vaultId),
+      isNull(graphNodesTable.deletedAt)
+    ]
+    if (minMention > 0) globalFilters.push(gte(graphNodesTable.mentionCount, minMention))
+    if (opts.nodeTypes?.length) {
+      globalFilters.push(inArray(graphNodesTable.nodeType, opts.nodeTypes as string[]))
+    }
+    const nodes = (
       await this.database
         .select()
         .from(graphNodesTable)
-        .where(and(eq(graphNodesTable.vaultId, opts.vaultId), isNull(graphNodesTable.deletedAt)))
+        .where(and(...globalFilters))
         .orderBy(desc(graphNodesTable.mentionCount))
         .limit(maxNodes)
     ).map(mapNode)
-    if (minMention > 0) nodes = nodes.filter((n) => n.mentionCount >= minMention)
-    if (opts.nodeTypes?.length) {
-      const allow = new Set(opts.nodeTypes)
-      nodes = nodes.filter((n) => allow.has(n.nodeType))
-    }
     const idSet = new Set(nodes.map((n) => n.id))
-    const edges = (
-      await this.database
+    if (idSet.size === 0) return { nodes: [], edges: [] }
+
+    const edges: GraphEdgeRow[] = []
+    const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
+    const idList = [...idSet]
+    for (const part of chunkIds(idList, half)) {
+      const rows = await this.database
         .select()
         .from(graphEdgesTable)
         .where(
           and(
             eq(graphEdgesTable.vaultId, opts.vaultId),
             eq(graphEdgesTable.isCurrent, true),
-            isNull(graphEdgesTable.deletedAt)
+            isNull(graphEdgesTable.deletedAt),
+            inArray(graphEdgesTable.fromId, part),
+            inArray(graphEdgesTable.toId, idList.length <= half ? idList : part)
           )
         )
-    )
-      .map(mapEdge)
-      .filter((e) => idSet.has(e.fromId) && idSet.has(e.toId))
+      for (const e of rows.map(mapEdge)) {
+        if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+      }
+    }
+    // When id list is large, second filter: load edges where both ends in set via from-chunk only
+    if (idList.length > half) {
+      edges.length = 0
+      for (const part of chunkIds(idList, half)) {
+        const rows = await this.database
+          .select()
+          .from(graphEdgesTable)
+          .where(
+            and(
+              eq(graphEdgesTable.vaultId, opts.vaultId),
+              eq(graphEdgesTable.isCurrent, true),
+              isNull(graphEdgesTable.deletedAt),
+              inArray(graphEdgesTable.fromId, part)
+            )
+          )
+        for (const e of rows.map(mapEdge)) {
+          if (idSet.has(e.fromId) && idSet.has(e.toId)) edges.push(e)
+        }
+      }
+    }
     return { nodes, edges }
   }
 
@@ -723,20 +1012,112 @@ export class GraphRepository {
     return rows[0] ? mapEdge(rows[0]) : null
   }
 
-  async softDeleteNode(id: string): Promise<void> {
-    const now = new Date()
-    await this.database
-      .update(graphNodesTable)
-      .set({ deletedAt: now, updatedAt: now })
-      .where(eq(graphNodesTable.id, id))
+  /** Removes the node row. Incident edges are removed unless cascadeEdges is false. */
+  async softDeleteNode(id: string, opts?: { cascadeEdges?: boolean }): Promise<void> {
+    if (opts?.cascadeEdges !== false) {
+      await this.database
+        .delete(graphEdgesTable)
+        .where(or(eq(graphEdgesTable.fromId, id), eq(graphEdgesTable.toId, id)))
+    }
+    await this.database.delete(graphNodeAliasesTable).where(eq(graphNodeAliasesTable.nodeId, id))
+    await this.database.delete(graphNodesTable).where(eq(graphNodesTable.id, id))
   }
 
-  async softDeleteEdge(id: string): Promise<void> {
+  async listEdgesTouching(vaultId: string, nodeId: string): Promise<GraphEdgeRow[]> {
+    const rows = await this.database
+      .select()
+      .from(graphEdgesTable)
+      .where(
+        and(
+          eq(graphEdgesTable.vaultId, vaultId),
+          isNull(graphEdgesTable.deletedAt),
+          or(eq(graphEdgesTable.fromId, nodeId), eq(graphEdgesTable.toId, nodeId))
+        )
+      )
+    return rows.map(mapEdge)
+  }
+
+  async remapEdgeEndpoints(vaultId: string, fromId: string, toId: string): Promise<void> {
+    if (!fromId || !toId || fromId === toId) return
     const now = new Date()
     await this.database
       .update(graphEdgesTable)
-      .set({ deletedAt: now, updatedAt: now, isCurrent: false })
-      .where(eq(graphEdgesTable.id, id))
+      .set({ fromId: toId, updatedAt: now })
+      .where(
+        and(
+          eq(graphEdgesTable.vaultId, vaultId),
+          eq(graphEdgesTable.fromId, fromId),
+          isNull(graphEdgesTable.deletedAt)
+        )
+      )
+    await this.database
+      .update(graphEdgesTable)
+      .set({ toId: toId, updatedAt: now })
+      .where(
+        and(
+          eq(graphEdgesTable.vaultId, vaultId),
+          eq(graphEdgesTable.toId, fromId),
+          isNull(graphEdgesTable.deletedAt)
+        )
+      )
+  }
+
+  /** Removes the edge row. */
+  async softDeleteEdge(id: string): Promise<void> {
+    await this.database.delete(graphEdgesTable).where(eq(graphEdgesTable.id, id))
+  }
+
+  /**
+   * Recount mention_count from current live edge endpoints for the given nodes
+   * (or all nodes in vault when nodeIds omitted).
+   */
+  async recountMentions(vaultId: string, nodeIds?: string[]): Promise<void> {
+    const ids =
+      nodeIds && nodeIds.length > 0
+        ? nodeIds
+        : (
+            await this.database
+              .select({ id: graphNodesTable.id })
+              .from(graphNodesTable)
+              .where(and(eq(graphNodesTable.vaultId, vaultId), isNull(graphNodesTable.deletedAt)))
+          ).map((r) => r.id)
+
+    const counts = new Map<string, number>()
+    for (const id of ids) counts.set(id, 0)
+
+    const half = Math.max(50, Math.floor(GRAPH_SQL_IN_CHUNK / 2))
+    for (const part of chunkIds(ids, half)) {
+      const rows = await this.database
+        .select({ fromId: graphEdgesTable.fromId, toId: graphEdgesTable.toId })
+        .from(graphEdgesTable)
+        .where(
+          and(
+            eq(graphEdgesTable.vaultId, vaultId),
+            eq(graphEdgesTable.isCurrent, true),
+            isNull(graphEdgesTable.deletedAt),
+            or(inArray(graphEdgesTable.fromId, part), inArray(graphEdgesTable.toId, part))
+          )
+        )
+      for (const e of rows) {
+        if (counts.has(e.fromId)) counts.set(e.fromId, (counts.get(e.fromId) ?? 0) + 1)
+        if (counts.has(e.toId)) counts.set(e.toId, (counts.get(e.toId) ?? 0) + 1)
+      }
+    }
+
+    const now = new Date()
+    const entries = [...counts.entries()]
+    for (const part of chunkIds(entries, 80)) {
+      if (part.length === 0) continue
+      const cases = part.map(([id, count]) => sql`WHEN ${id} THEN ${count}`)
+      const ids = part.map(([id]) => id)
+      await this.database
+        .update(graphNodesTable)
+        .set({
+          mentionCount: sql`CASE id ${sql.join(cases, sql` `)} ELSE ${graphNodesTable.mentionCount} END`,
+          updatedAt: now
+        })
+        .where(inArray(graphNodesTable.id, ids))
+    }
   }
 
   async listNodeIds(vaultId: string): Promise<string[]> {
@@ -755,22 +1136,20 @@ export class GraphRepository {
     return rows.map((r) => r.id)
   }
 
-  /** All live node ids across vaults (for orphan sweep after pending-index). */
-  async listAllLiveNodeIds(): Promise<string[]> {
+  async listLiveNodeRefs(vaultId: string): Promise<Array<{ id: string; shardMonth: string }>> {
     const rows = await this.database
-      .select({ id: graphNodesTable.id })
+      .select({ id: graphNodesTable.id, shardMonth: graphNodesTable.shardMonth })
       .from(graphNodesTable)
-      .where(isNull(graphNodesTable.deletedAt))
-    return rows.map((r) => r.id)
+      .where(and(eq(graphNodesTable.vaultId, vaultId), isNull(graphNodesTable.deletedAt)))
+    return rows.map((r) => ({ id: r.id, shardMonth: r.shardMonth ?? '' }))
   }
 
-  /** All live edge ids across vaults (for orphan sweep after pending-index). */
-  async listAllLiveEdgeIds(): Promise<string[]> {
+  async listLiveEdgeRefs(vaultId: string): Promise<Array<{ id: string; shardMonth: string }>> {
     const rows = await this.database
-      .select({ id: graphEdgesTable.id })
+      .select({ id: graphEdgesTable.id, shardMonth: graphEdgesTable.shardMonth })
       .from(graphEdgesTable)
-      .where(isNull(graphEdgesTable.deletedAt))
-    return rows.map((r) => r.id)
+      .where(and(eq(graphEdgesTable.vaultId, vaultId), isNull(graphEdgesTable.deletedAt)))
+    return rows.map((r) => ({ id: r.id, shardMonth: r.shardMonth ?? '' }))
   }
 
   async listPendingEdges(vaultId: string): Promise<GraphEdgeRow[]> {
@@ -784,6 +1163,8 @@ export class GraphRepository {
           isNull(graphEdgesTable.deletedAt)
         )
       )
+      .orderBy(desc(graphEdgesTable.updatedAt), graphEdgesTable.id)
+      .limit(GRAPH_PENDING_LIST_LIMIT)
     return rows.map(mapEdge)
   }
 
@@ -798,12 +1179,14 @@ export class GraphRepository {
           isNull(graphNodesTable.deletedAt)
         )
       )
+      .orderBy(desc(graphNodesTable.updatedAt), graphNodesTable.id)
+      .limit(GRAPH_PENDING_LIST_LIMIT)
     return rows.map(mapNode)
   }
 
   /**
    * Shortest path (BFS) between two nodes, max 2–3 hops.
-   * High-degree hub nodes are not expanded (except as endpoints) to reduce noise.
+   * Expands via frontier SQL queries (no full-edge load). Deque uses head index.
    */
   async findShortestPath(
     vaultId: string,
@@ -822,57 +1205,42 @@ export class GraphRepository {
     const approvedOnly = opts?.approvedOnly !== false
     const hubDegreeThreshold = opts?.hubDegreeThreshold ?? 40
 
-    const edgeRows = (
-      await this.database
-        .select()
-        .from(graphEdgesTable)
-        .where(
-          and(
-            eq(graphEdgesTable.vaultId, vaultId),
-            eq(graphEdgesTable.isCurrent, true),
-            isNull(graphEdgesTable.deletedAt)
-          )
-        )
-    )
-      .map(mapEdge)
-      .filter((e) => {
-        if (!approvedOnly) return e.reviewStatus !== 'rejected'
-        return e.reviewStatus !== 'pending' && e.reviewStatus !== 'rejected'
-      })
-
-    const adj = new Map<string, Array<{ neighbor: string; edge: GraphEdgeRow }>>()
-    const degree = new Map<string, number>()
-    for (const e of edgeRows) {
-      if (!adj.has(e.fromId)) adj.set(e.fromId, [])
-      if (!adj.has(e.toId)) adj.set(e.toId, [])
-      adj.get(e.fromId)!.push({ neighbor: e.toId, edge: e })
-      adj.get(e.toId)!.push({ neighbor: e.fromId, edge: e })
-      degree.set(e.fromId, (degree.get(e.fromId) ?? 0) + 1)
-      degree.set(e.toId, (degree.get(e.toId) ?? 0) + 1)
-    }
-
     type Prev = { prevId: string; edge: GraphEdgeRow; direction: 'forward' | 'reverse' } | null
     const visited = new Map<string, { hops: number; prev: Prev }>()
     visited.set(fromId, { hops: 0, prev: null })
-    const queue: string[] = [fromId]
+    let frontier = [fromId]
+    const degree = new Map<string, number>()
 
-    while (queue.length > 0) {
-      const cur = queue.shift()!
-      const curState = visited.get(cur)!
-      if (cur === toId) break
-      if (curState.hops >= maxHops) continue
-      const isHub = cur !== fromId && cur !== toId && (degree.get(cur) ?? 0) > hubDegreeThreshold
-      if (isHub) continue
-      for (const { neighbor, edge } of adj.get(cur) ?? []) {
-        if (visited.has(neighbor)) continue
-        const direction: 'forward' | 'reverse' =
-          edge.fromId === cur && edge.toId === neighbor ? 'forward' : 'reverse'
-        visited.set(neighbor, {
-          hops: curState.hops + 1,
-          prev: { prevId: cur, edge, direction }
-        })
-        queue.push(neighbor)
+    for (let hops = 0; hops < maxHops && frontier.length > 0; hops++) {
+      if (visited.has(toId) && (visited.get(toId)?.hops ?? 0) <= hops) break
+      const expandable = frontier.filter((id) => {
+        if (id === toId) return false
+        const isHub = id !== fromId && id !== toId && (degree.get(id) ?? 0) > hubDegreeThreshold
+        return !isHub
+      })
+      if (expandable.length === 0) break
+      const expandSet = new Set(expandable)
+      const edges = await this.selectCurrentEdgesTouching(vaultId, expandable, { approvedOnly })
+      const next: string[] = []
+      for (const edge of edges) {
+        degree.set(edge.fromId, (degree.get(edge.fromId) ?? 0) + 1)
+        degree.set(edge.toId, (degree.get(edge.toId) ?? 0) + 1)
+        for (const cur of expandable) {
+          if (edge.fromId !== cur && edge.toId !== cur) continue
+          if (!expandSet.has(cur)) continue
+          const neighbor = edge.fromId === cur ? edge.toId : edge.fromId
+          if (visited.has(neighbor)) continue
+          const curState = visited.get(cur)!
+          const direction: 'forward' | 'reverse' =
+            edge.fromId === cur && edge.toId === neighbor ? 'forward' : 'reverse'
+          visited.set(neighbor, {
+            hops: curState.hops + 1,
+            prev: { prevId: cur, edge, direction }
+          })
+          next.push(neighbor)
+        }
       }
+      frontier = next
     }
 
     if (!visited.has(toId)) return null
@@ -913,60 +1281,42 @@ export class GraphRepository {
     const approvedOnly = opts?.approvedOnly !== false
     const hubDegreeThreshold = opts?.hubDegreeThreshold ?? 40
 
-    const edgeRows = (
-      await this.database
-        .select()
-        .from(graphEdgesTable)
-        .where(
-          and(
-            eq(graphEdgesTable.vaultId, vaultId),
-            eq(graphEdgesTable.isCurrent, true),
-            isNull(graphEdgesTable.deletedAt)
-          )
-        )
-    )
-      .map(mapEdge)
-      .filter((e) => {
-        if (!approvedOnly) return e.reviewStatus !== 'rejected'
-        return e.reviewStatus !== 'pending' && e.reviewStatus !== 'rejected'
-      })
-
-    const adj = new Map<string, Array<{ neighbor: string; edge: GraphEdgeRow }>>()
-    const degree = new Map<string, number>()
-    for (const e of edgeRows) {
-      if (!adj.has(e.fromId)) adj.set(e.fromId, [])
-      if (!adj.has(e.toId)) adj.set(e.toId, [])
-      adj.get(e.fromId)!.push({ neighbor: e.toId, edge: e })
-      adj.get(e.toId)!.push({ neighbor: e.fromId, edge: e })
-      degree.set(e.fromId, (degree.get(e.fromId) ?? 0) + 1)
-      degree.set(e.toId, (degree.get(e.toId) ?? 0) + 1)
-    }
-
     type Prev = { prevId: string; edge: GraphEdgeRow; direction: 'forward' | 'reverse' } | null
     const visited = new Map<string, { hops: number; prev: Prev }>()
     visited.set(fromId, { hops: 0, prev: null })
-    const queue: string[] = [fromId]
+    let frontier = [fromId]
     const destinations: string[] = []
+    const degree = new Map<string, number>()
 
-    while (queue.length > 0) {
-      const cur = queue.shift()!
-      const curState = visited.get(cur)!
-      if (cur !== fromId && curState.hops >= 1) {
-        destinations.push(cur)
+    for (let hops = 0; hops < maxHops && frontier.length > 0; hops++) {
+      const expandable = frontier.filter((id) => {
+        const isHub = id !== fromId && (degree.get(id) ?? 0) > hubDegreeThreshold
+        return !isHub
+      })
+      if (expandable.length === 0) break
+      const expandSet = new Set(expandable)
+      const edges = await this.selectCurrentEdgesTouching(vaultId, expandable, { approvedOnly })
+      const next: string[] = []
+      for (const edge of edges) {
+        degree.set(edge.fromId, (degree.get(edge.fromId) ?? 0) + 1)
+        degree.set(edge.toId, (degree.get(edge.toId) ?? 0) + 1)
+        for (const cur of expandable) {
+          if (edge.fromId !== cur && edge.toId !== cur) continue
+          if (!expandSet.has(cur)) continue
+          const neighbor = edge.fromId === cur ? edge.toId : edge.fromId
+          if (visited.has(neighbor)) continue
+          const curState = visited.get(cur)!
+          const direction: 'forward' | 'reverse' =
+            edge.fromId === cur && edge.toId === neighbor ? 'forward' : 'reverse'
+          visited.set(neighbor, {
+            hops: curState.hops + 1,
+            prev: { prevId: cur, edge, direction }
+          })
+          next.push(neighbor)
+          destinations.push(neighbor)
+        }
       }
-      if (curState.hops >= maxHops) continue
-      const isHub = cur !== fromId && (degree.get(cur) ?? 0) > hubDegreeThreshold
-      if (isHub) continue
-      for (const { neighbor, edge } of adj.get(cur) ?? []) {
-        if (visited.has(neighbor)) continue
-        const direction: 'forward' | 'reverse' =
-          edge.fromId === cur && edge.toId === neighbor ? 'forward' : 'reverse'
-        visited.set(neighbor, {
-          hops: curState.hops + 1,
-          prev: { prevId: cur, edge, direction }
-        })
-        queue.push(neighbor)
-      }
+      frontier = next
     }
 
     const paths: GraphPath[] = []
@@ -1012,32 +1362,82 @@ export class GraphRepository {
     shardMonth?: string
     embedding?: number[] | null
     modelId?: string
-  }): Promise<void> {
+  }): Promise<ApplyRawNodeResult> {
     if (row.deletedAt != null) {
       await this.softDeleteNode(row.id)
-      return
+      return { id: row.id }
     }
-    await this.upsertNode({
+    const existingById = await this.getNodeById(row.id, row.vaultId)
+    const input = {
       id: row.id,
-      forceId: true,
+      forceId: true as const,
       vaultId: row.vaultId,
       nodeType: row.nodeType,
       name: row.name,
-      aliases: row.aliases,
-      summary: row.summary,
+      aliases: mergeAliases(existingById?.aliases ?? [], [row.name, ...(row.aliases ?? [])]),
+      summary: row.summary || existingById?.summary || '',
       propsJson: JSON.stringify(row.props ?? {}),
       mentionCount: row.mentionCount,
       firstSeenAt: row.firstSeenAt,
       lastSeenAt: row.lastSeenAt,
       origin: row.origin,
-      shardMonth: row.shardMonth,
+      shardMonth: row.shardMonth || existingById?.shardMonth,
       reviewStatus: row.reviewStatus ?? 'approved',
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       deletedAt: null,
       embedding: row.embedding,
       modelId: row.modelId
-    })
+    }
+    try {
+      await this.upsertNode(input)
+      return { id: row.id }
+    } catch (error) {
+      if (row.nodeType === 'entry' || !isSqliteUniqueConstraintError(error)) throw error
+      const existing = await this.findNodeByNameOrAlias(row.vaultId, row.name, row.nodeType)
+      if (!existing || existing.id === row.id) throw error
+      const keepIncoming = shouldKeepIncomingGraphNodeId({
+        vaultId: row.vaultId,
+        nodeType: row.nodeType,
+        name: row.name,
+        incomingId: row.id,
+        existingId: existing.id
+      })
+      const mergedAliases = mergeAliases(existing.aliases, [
+        existing.name,
+        row.name,
+        ...(row.aliases ?? [])
+      ])
+      if (!keepIncoming) {
+        await this.remapEdgeEndpoints(row.vaultId, row.id, existing.id)
+        await this.upsertNode({
+          ...input,
+          id: existing.id,
+          aliases: mergedAliases,
+          origin: preferGraphOrigin(existing.origin, row.origin),
+          shardMonth: existing.shardMonth || input.shardMonth
+        })
+        return {
+          id: existing.id,
+          remappedFrom: row.id,
+          remappedFromShardMonth: row.shardMonth || existing.shardMonth,
+          writeBackSurvivor: true
+        }
+      }
+      await this.remapEdgeEndpoints(row.vaultId, existing.id, row.id)
+      await this.softDeleteNode(existing.id, { cascadeEdges: false })
+      await this.upsertNode({
+        ...input,
+        aliases: mergedAliases,
+        origin: preferGraphOrigin(existing.origin, row.origin)
+      })
+      return {
+        id: row.id,
+        remappedFrom: existing.id,
+        remappedFromShardMonth: existing.shardMonth,
+        writeBackSurvivor: true
+      }
+    }
   }
 
   async applyRawEdge(row: {
@@ -1089,29 +1489,4 @@ export class GraphRepository {
       deletedAt: null
     })
   }
-}
-
-function mergeAliases(existing: string[], extra: string[]): string[] {
-  const set = new Set<string>()
-  for (const a of [...existing, ...extra]) {
-    const n = normalizeName(a)
-    if (n) set.add(n)
-  }
-  return [...set]
-}
-
-function cosineDistance(a: Float32Array, b: Float32Array): number {
-  let dot = 0
-  let na = 0
-  let nb = 0
-  for (let i = 0; i < a.length; i++) {
-    const x = a[i]!
-    const y = b[i]!
-    dot += x * y
-    na += x * x
-    nb += y * y
-  }
-  if (na === 0 || nb === 0) return 1
-  const sim = dot / (Math.sqrt(na) * Math.sqrt(nb))
-  return 1 - sim
 }

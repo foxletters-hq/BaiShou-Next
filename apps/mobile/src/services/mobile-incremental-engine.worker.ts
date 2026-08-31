@@ -11,6 +11,8 @@ import {
   createEmptySyncManifest,
   getIncrementalSyncStorageId,
   isIncrementalSyncRemoteFileNotFoundError,
+  isJsonlShardsManifestSyncPath,
+  isSqliteRuntimeSyncPath,
   normalizeSyncManifest,
   reconcileSyncManifestRemovedWithRemoteFiles,
   resolveIncrementalSyncStorageHistory,
@@ -87,7 +89,7 @@ export type IncrementalEngineHost = {
   lastConflicts: string[]
   setLastConflicts(v: string[]): void
   invalidateExternalSyncMounts(): void
-  /** Prefer Manager for monthly JSONL LWW merge when runtime is ready. */
+  /** Prefer Manager when rewriting a monthly JSONL shard after sync. */
   getRawDataSourceManager?: () => RawDataSourceManager | null
 }
 
@@ -522,6 +524,9 @@ export class MobileIncrementalEngineWorker {
     fullPath: string,
     size: number
   ): Promise<boolean> {
+    if (isSqliteRuntimeSyncPath(relPath) || isJsonlShardsManifestSyncPath(relPath)) {
+      return false
+    }
     try {
       await client.downloadFile(relPath, fullPath, size > 0 ? size : undefined)
       return await this.host.fileSystem.exists(fullPath)

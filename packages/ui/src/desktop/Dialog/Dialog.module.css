@@ -3,23 +3,31 @@
   flex-direction: column;
   gap: 0;
   min-width: 320px;
-  max-width: 400px;
+  max-width: 440px;
+  font-family: var(--font-family);
+  font-synthesis: none;
 }
 
 .title {
-  font-size: 16px;
-  font-weight: 650;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-xl);
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1.35;
   margin: 0 0 10px;
 }
 
 .message {
-  font-size: 14px;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-lg);
+  font-weight: 400;
   color: var(--text-secondary);
-  line-height: 1.55;
-  white-space: pre-wrap;
+  line-height: 1.6;
   margin: 0;
+}
+
+.messagePlain {
+  white-space: pre-wrap;
 }
 
 .checkboxRow {
@@ -30,8 +38,8 @@
   padding: 0;
   border: none;
   background: transparent;
-  font-family: inherit;
-  font-size: 13px;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
@@ -42,37 +50,6 @@
 .checkboxRow:focus,
 .checkboxRow:focus-visible {
   outline: none;
-}
-
-.checkboxBox {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1.5px solid var(--border-control);
-  background: var(--bg-surface);
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.checkboxRow:hover .checkboxBox {
-  border-color: var(--color-primary);
-}
-
-.checkboxRowChecked .checkboxBox {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-}
-
-.checkboxTick {
-  width: 8px;
-  height: 4px;
-  border-left: 2px solid var(--color-on-primary, #fff);
-  border-bottom: 2px solid var(--color-on-primary, #fff);
-  transform: rotate(-45deg) translateY(-1px);
-  box-sizing: border-box;
 }
 
 .checkboxLabel {
@@ -103,8 +80,8 @@
   padding: 0 14px;
   border-radius: 8px;
   border: 1px solid transparent;
-  font-family: inherit;
-  font-size: 13px;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-md);
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -146,33 +123,36 @@
 .chooseList {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 8px;
   max-height: 320px;
   overflow-y: auto;
 }
 
 .chooseItem {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   width: 100%;
-  padding: 12px 10px;
-  border: none;
-  border-bottom: 1px solid var(--border-muted);
-  background: transparent;
+  padding: 10px 12px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
   cursor: pointer;
   text-align: left;
   border-radius: 8px;
   outline: none;
+  font-family: var(--font-family);
+  box-shadow: none;
 }
 
 .chooseItem:focus,
 .chooseItem:focus-visible {
   outline: none;
+  border-color: var(--form-field-border-focus);
 }
 
 .chooseItem:hover {
-  background: var(--bg-surface-normal);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
 }
 
 .chooseItemCentered {
@@ -186,8 +166,37 @@
   flex-shrink: 0;
 }
 
+.chooseItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .chooseLabel {
-  font-size: 15px;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
+  line-height: 1.45;
   color: var(--text-primary);
+}
+
+.chooseLabelDanger {
+  color: var(--color-error);
+}
+
+.chooseDesc {
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-md);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.message + .chooseList {
+  margin-top: 16px;
+}
+
+.chooseList + .checkboxRow {
+  margin-top: 14px;
 }

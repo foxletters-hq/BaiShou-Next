@@ -37,6 +37,7 @@ describe('heading with diary tag line (screenshot case)', () => {
     expect(headingNodes).toContain('ATXHeading5')
 
     const firstLine = parent.querySelector('.cm-line')
+    expect(firstLine?.classList.contains('cm-rendered-h5')).toBe(true)
     expect(firstLine?.querySelector('.cm-rendered-h5')).not.toBeNull()
     expect(firstLine?.textContent).toContain('07:00')
     expect(parent.querySelectorAll('.cm-syntax-hidden-widget').length).toBeGreaterThan(0)

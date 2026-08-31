@@ -35,7 +35,7 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
   } = vm
 
   return (
-    <section className={styles.vscodeSection}>
+    <section className={styles.panelSection}>
       <button
         type="button"
         className={styles.sectionHeader}

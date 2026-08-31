@@ -39,7 +39,7 @@
 }
 
 .listArea::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 .listArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.4);

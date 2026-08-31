@@ -54,6 +54,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
       <div className={styles.refAudioInputRow}>
         <div className={styles.refAudioInputWrap}>
           <Input
+            fieldSize="small"
             placeholder={placeholder}
             value={currentConfig.refAudioPath || ''}
             onChange={(e) =>
@@ -82,6 +83,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
       {showPresetVoice && (
         <div className={styles.section}>
           <Input
+            fieldSize="small"
             label={t('tts.settings.voice_label', '发音人 (Voice ID)')}
             placeholder={
               providerType === 'clone-tts' || providerType === 'gpt-sovits'
@@ -117,6 +119,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
       {showMimoVoiceDesignPrompt && (
         <div className={styles.section}>
           <Input
+            fieldSize="small"
             label={t('tts.settings.mimo_voice_design_label', '音色描述 (Voice Design)')}
             placeholder={t(
               'tts.settings.mimo_voice_design_placeholder',
@@ -134,6 +137,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
       {showMimoStylePrompt && (
         <div className={styles.section}>
           <Input
+            fieldSize="small"
             label={t('tts.settings.mimo_style_prompt_label', '风格指令 (可选)')}
             placeholder={t(
               'tts.settings.mimo_style_prompt_placeholder',
@@ -159,6 +163,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
           )}
           <div className={styles.section}>
             <Input
+              fieldSize="small"
               label={t('tts.settings.prompt_text_label', '参考音频文本 (promptText)')}
               placeholder={t(
                 'tts.settings.prompt_text_placeholder',

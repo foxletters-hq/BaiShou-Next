@@ -61,8 +61,16 @@ export interface StreamChatOptions {
   rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
   /** Host hook: Graph JSONL → SQLite pending-index sync */
   syncGraphPendingIndex?: () => Promise<void>
+  /** Host hook: remove a life-graph node or edge from JSONL and SQLite together */
+  deleteGraphRecord?: (input: { kind: 'node' | 'edge'; id: string }) => Promise<void>
   /** Read-only GraphRAG for recall_relations */
   graphReader?: import('@baishou/shared').ToolGraphReader
+  /** Exact name / id lookup for graph_upsert */
+  graphNodeLookup?: import('@baishou/shared').ToolGraphNodeLookup
+  /** Existing-edge lookup for graph_upsert updates */
+  graphEdgeLookup?: import('@baishou/shared').ToolGraphEdgeLookup
+  /** Read-only knowledge notebook graph for knowledge_graph_search */
+  knowledgeGraphReader?: import('@baishou/shared').ToolKnowledgeGraphReader
   /** Read-only knowledge notebook search for knowledge_search */
   knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
   /**
@@ -93,6 +101,10 @@ export interface StreamChatOptions {
   /** Skills 目录（名+描述），注入 system <skills_catalog> */
   skillsCatalog?: Array<{ name: string; description?: string }>
   skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
+  /** 额外 Vercel 工具（如外部 /mcp 客户端），在内置工具之后合并 */
+  extraVercelToolsFactory?: (
+    context: import('../tools/agent.tool').ToolContext
+  ) => Record<string, unknown> | Promise<Record<string, unknown>>
   /** 覆盖默认 maxSteps（SDK 内或多 turn 外环）；未传时由 resolveSessionRuntimeProfile 从 userConfig 解析 */
   maxSteps?: number
   /** 覆盖 Session Runtime v2；未传时按 sessionKind + userConfig 解析（workspace 默认开） */

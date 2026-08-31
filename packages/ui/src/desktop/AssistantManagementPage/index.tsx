@@ -11,6 +11,7 @@ import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToWindowEdges } from '@dnd-kit/modifiers'
 import { Plus, Sparkles, Trash2, Search } from 'lucide-react'
 import { isSystemLatteAssistantId } from '@baishou/shared'
+import { Input } from '../Input/Input'
 import { withAppContentOverlay } from '../overlay'
 import styles from './AssistantManagementPage.module.css'
 import { AssistantListRow, AssistantSortableListItem } from './AssistantSortableListItem'
@@ -96,8 +97,10 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
           {assistants.length > 0 ? (
             <div className={styles.searchBox}>
               <Search size={16} color="var(--text-tertiary)" />
-              <input
+              <Input
+                fieldSize="small"
                 className={styles.searchInput}
+                inputClassName="baishou-form-field--embed"
                 placeholder={t('agent.assistant.search_hint')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

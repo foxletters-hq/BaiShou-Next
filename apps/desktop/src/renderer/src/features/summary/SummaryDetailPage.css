@@ -9,7 +9,7 @@
 }
 
 .summary-detail-container::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .summary-detail-container::-webkit-scrollbar-thumb {

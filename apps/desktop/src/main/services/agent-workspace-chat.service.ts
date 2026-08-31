@@ -6,7 +6,8 @@ import {
   getSharedSessionInbox,
   reconcileCompressionStateAfterTruncate,
   runCascadeThenTruncateSteps,
-  waitForStreamIdleThenForceClear
+  waitForStreamIdleThenForceClear,
+  clearPendingAgentStreamStop
 } from '@baishou/ai'
 import {
   logger,
@@ -27,6 +28,7 @@ import i18n from 'i18next'
 import { cleanupAttachmentsForParts } from '@baishou/core-desktop'
 import { ElectronStreamEmitter } from '../ipc/electron-stream-emitter'
 import {
+  applySessionReasoningEffort,
   buildStreamConfig,
   createDiarySearcher,
   createFetchSearchPage,
@@ -39,7 +41,8 @@ import {
 import { settingsManager } from '../ipc/settings.ipc'
 import { getWorkspaceAgentGate } from './agent-gate.service'
 import { createDesktopSkillsWriter } from './desktop-skills-writer'
-import { listAgentSkillsCatalog } from './agent-skills.service'
+import { desktopExtraVercelToolsFactory } from './mcp-client-runtime'
+import { listAgentSkillsCatalogForWorkspace } from './agent-skills.service'
 import { getWorkspaceFolderGitService } from './workspace-folder-git.registry'
 import {
   bindWorkspaceSession,
@@ -70,7 +73,7 @@ import {
 import { createDesktopKnowledgeReader } from './desktop-knowledge-reader'
 import { AgentChatService } from '../ipc/AgentChatService'
 import { resolveActiveVaultId } from '../ipc/vault.ipc'
-import { drainSessionInbox } from './session-inbox-drain'
+import { drainSessionInbox, waitForSessionInboxDrainLock } from './session-inbox-drain'
 import { initDesktopSessionInboxStore } from './session-inbox.store'
 
 const checkpointService = new AgentRoundCheckpointService(
@@ -272,10 +275,10 @@ export async function runWorkspaceStreamChat(params: {
     assistantContextWindow
   )
 
-  const mergedUserConfig =
-    params.reasoningEffort && params.reasoningEffort !== 'auto'
-      ? { ...(userConfig as Record<string, unknown>), reasoningEffort: params.reasoningEffort }
-      : userConfig
+  const mergedUserConfig = applySessionReasoningEffort(
+    userConfig as Record<string, unknown>,
+    params.reasoningEffort
+  )
 
   const [workspaceGateConfig, workspaceTools] = await Promise.all([
     getWorkspaceGateConfig(workspaceId),
@@ -309,6 +312,8 @@ export async function runWorkspaceStreamChat(params: {
     const emitter = new ElectronStreamEmitter(params.event)
     const agentGate = await getWorkspaceAgentGate(workspaceId)
     const knowledgeReader = createDesktopKnowledgeReader()
+    const { createDesktopKnowledgeGraphReader } = await import('./desktop-knowledge-graph-reader')
+    const knowledgeGraphReader = createDesktopKnowledgeGraphReader()
     const notebookId = binding.notebookId?.trim() || undefined
 
     let gitMeta: {
@@ -324,7 +329,7 @@ export async function runWorkspaceStreamChat(params: {
 
     let skillsCatalog: Array<{ name: string; description?: string }> | undefined
     try {
-      skillsCatalog = await listAgentSkillsCatalog()
+      skillsCatalog = await listAgentSkillsCatalogForWorkspace(folderRoot)
     } catch {
       skillsCatalog = undefined
     }
@@ -349,7 +354,7 @@ export async function runWorkspaceStreamChat(params: {
       realSnapshotRepo,
       toolRegistry,
       diarySearcher: createDiarySearcher(),
-      skillsWriter: createDesktopSkillsWriter(),
+      skillsWriter: createDesktopSkillsWriter({ folderRoot }),
       webSearchResultFetcher: createWebSearchResultFetcher(),
       fetchSearchPage: createFetchSearchPage(),
       agentGate,
@@ -357,7 +362,9 @@ export async function runWorkspaceStreamChat(params: {
         await setWorkspaceGateConfig(workspaceId, config)
       },
       knowledgeReader,
+      knowledgeGraphReader,
       skillsCatalog,
+      extraVercelToolsFactory: desktopExtraVercelToolsFactory,
       workspace: {
         folderRoot,
         sessionKind: 'workspace',
@@ -550,6 +557,8 @@ export async function rollbackWorkspaceRound(params: {
 }): Promise<{ restored: string[]; deleted: string[]; skipped: string[] }> {
   AgentChatService.stopStream(params.sessionId)
   await waitForWorkspaceSessionStreamIdle(params.sessionId)
+  // 空闲时 stop 会留下 pending-stop；不清除的话，随后编辑重发的 claim 会立刻中止
+  clearPendingAgentStreamStop(params.sessionId)
 
   const context = await collectWorkspaceRollbackContext({ ...params, persist: true })
   const { folderRoot, followingIds, userMessageIds, checkpoints } = context
@@ -661,6 +670,8 @@ export async function admitWorkspaceInput(params: {
   modelId?: string
   reasoningEffort?: string
   searchMode?: boolean
+  /** 渲染进程认为空闲时：清掉过期的 busy 标记并立刻开流，避免消息落库后没人干活 */
+  forceStart?: boolean
 }): Promise<{
   input: SessionInputRecord
   started: boolean
@@ -689,8 +700,16 @@ export async function admitWorkspaceInput(params: {
     timestamp: Date.now()
   })
 
-  const busy = isWorkspaceSessionStreaming(params.sessionId)
-  if (busy) {
+  if (params.forceStart) {
+    if (isWorkspaceSessionStreaming(params.sessionId)) {
+      removeActiveWorkspaceStreamSessionId(params.sessionId)
+    }
+    clearPendingAgentStreamStop(params.sessionId)
+  }
+
+  await waitForSessionInboxDrainLock(params.sessionId)
+
+  if (isWorkspaceSessionStreaming(params.sessionId)) {
     return { input, started: false, queued: true }
   }
 

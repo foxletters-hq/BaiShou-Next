@@ -10,6 +10,7 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
 import { Input } from '../Input/Input'
+import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './Dialog.module.css'
 
 /** 须高于业务 Modal（如会话历史 1300），避免确认框被压在下层 */
@@ -18,6 +19,8 @@ const DIALOG_Z_INDEX = 3200
 export interface ChooseOption {
   label: string
   value: string
+  /** 选项下方的补充说明 */
+  description?: string
   destructive?: boolean
   leading?: ReactNode
   centered?: boolean
@@ -25,6 +28,11 @@ export interface ChooseOption {
 
 export interface ConfirmWithDontAskAgainResult {
   confirmed: boolean
+  dontAskAgain: boolean
+}
+
+export interface ChooseWithDontAskAgainResult {
+  value: string
   dontAskAgain: boolean
 }
 
@@ -46,13 +54,29 @@ export interface DialogContextState {
     options: ChooseOption[],
     message?: ReactNode
   ) => Promise<string | null>
+  chooseWithDontAskAgain: (
+    title: string | undefined,
+    options: ChooseOption[],
+    message?: ReactNode,
+    dontAskAgainLabel?: string
+  ) => Promise<ChooseWithDontAskAgainResult | null>
   alert: (message: ReactNode, title?: string) => Promise<void>
   closeAll: () => void
 }
 
+function hasChooseMessage(message: ReactNode): boolean {
+  if (message == null || message === false) return false
+  if (typeof message === 'string') return message.trim().length > 0
+  return true
+}
+
 const DialogContext = createContext<DialogContextState | null>(null)
 
-type DialogType = 'alert' | 'confirm' | 'confirmDontAsk' | 'prompt' | 'choose'
+type DialogType = 'alert' | 'confirm' | 'confirmDontAsk' | 'prompt' | 'choose' | 'chooseDontAsk'
+
+function isChooseType(type: DialogType): boolean {
+  return type === 'choose' || type === 'chooseDontAsk'
+}
 
 interface DialogState {
   isOpen: boolean
@@ -88,7 +112,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setState((prev) => {
       if (!prev.isOpen) return prev
       if (prev.resolve) {
-        if (prev.type === 'prompt' || prev.type === 'choose') prev.resolve(null)
+        if (prev.type === 'prompt' || isChooseType(prev.type)) prev.resolve(null)
         else if (prev.type === 'confirmDontAsk') {
           prev.resolve({ confirmed: false, dontAskAgain: false })
         } else if (prev.type === 'confirm') prev.resolve(false)
@@ -102,7 +126,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setState((prev) => {
       if (!prev.isOpen && !prev.resolve) return prev
       if (prev.resolve) {
-        if (prev.type === 'prompt' || prev.type === 'choose') prev.resolve(null)
+        if (prev.type === 'prompt' || isChooseType(prev.type)) prev.resolve(null)
         else if (prev.type === 'confirmDontAsk') {
           prev.resolve({ confirmed: false, dontAskAgain: false })
         } else prev.resolve(false)
@@ -114,7 +138,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     return () => {
       if (state.isOpen && state.resolve) {
-        if (state.type === 'prompt' || state.type === 'choose') state.resolve(null)
+        if (state.type === 'prompt' || isChooseType(state.type)) state.resolve(null)
         else if (state.type === 'confirmDontAsk') {
           state.resolve({ confirmed: false, dontAskAgain: false })
         } else if (state.type === 'confirm') state.resolve(false)
@@ -182,6 +206,29 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     []
   )
 
+  const chooseWithDontAskAgain = useCallback(
+    (
+      title: string | undefined,
+      options: ChooseOption[],
+      message?: ReactNode,
+      dontAskAgainLabel?: string
+    ): Promise<ChooseWithDontAskAgainResult | null> => {
+      return new Promise((resolve) => {
+        setDontAskAgain(false)
+        setState({
+          isOpen: true,
+          type: 'chooseDontAsk',
+          title,
+          message: message ?? '',
+          chooseOptions: options,
+          dontAskAgainLabel,
+          resolve
+        })
+      })
+    },
+    []
+  )
+
   const prompt = useCallback(
     (
       message: ReactNode,
@@ -206,8 +253,16 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   )
 
   const dialogApi = useMemo(
-    () => ({ alert, confirm, confirmWithDontAskAgain, prompt, choose, closeAll }),
-    [alert, confirm, confirmWithDontAskAgain, prompt, choose, closeAll]
+    () => ({
+      alert,
+      confirm,
+      confirmWithDontAskAgain,
+      prompt,
+      choose,
+      chooseWithDontAskAgain,
+      closeAll
+    }),
+    [alert, confirm, confirmWithDontAskAgain, prompt, choose, chooseWithDontAskAgain, closeAll]
   )
 
   const inlineTitle =
@@ -219,7 +274,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       ? state.title
       : undefined
 
-  const modalTitle = state.type === 'choose' ? state.title : undefined
+  const modalTitle = isChooseType(state.type) ? state.title : undefined
 
   return (
     <DialogContext.Provider value={dialogApi}>
@@ -230,32 +285,39 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           onClose={dismissDialog}
           title={modalTitle}
           zIndex={DIALOG_Z_INDEX}
+          animation="fade"
         >
           <div className={styles.dialogContent}>
             {inlineTitle ? <div className={styles.title}>{inlineTitle}</div> : null}
 
-            {state.type !== 'choose' ? <div className={styles.message}>{state.message}</div> : null}
+            {!isChooseType(state.type) ? (
+              <div
+                className={`${styles.message} ${typeof state.message === 'string' ? styles.messagePlain : ''}`}
+              >
+                {state.message}
+              </div>
+            ) : null}
 
-            {state.type === 'choose' &&
-            typeof state.message === 'string' &&
-            state.message.trim().length > 0 ? (
-              <div className={styles.message}>{state.message}</div>
+            {isChooseType(state.type) && hasChooseMessage(state.message) ? (
+              <div
+                className={`${styles.message} ${typeof state.message === 'string' ? styles.messagePlain : ''}`}
+              >
+                {state.message}
+              </div>
             ) : null}
 
             {state.type === 'confirmDontAsk' ? (
-              <button
-                type="button"
+              <label
                 className={`${styles.checkboxRow} ${dontAskAgain ? styles.checkboxRowChecked : ''}`}
-                onClick={() => setDontAskAgain((v) => !v)}
-                aria-pressed={dontAskAgain}
               >
-                <span className={styles.checkboxBox} aria-hidden>
-                  {dontAskAgain ? <span className={styles.checkboxTick} /> : null}
-                </span>
+                <Checkbox
+                  checked={dontAskAgain}
+                  onChange={(e) => setDontAskAgain(e.target.checked)}
+                />
                 <span className={styles.checkboxLabel}>
                   {state.dontAskAgainLabel || t('common.dont_ask_again', '不再提示')}
                 </span>
-              </button>
+              </label>
             ) : null}
 
             {state.type === 'prompt' &&
@@ -264,20 +326,8 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                   autoFocus
                   value={promptValue}
                   onChange={(e) => setPromptValue(e.target.value)}
-                  className={styles.promptInput}
+                  className={`baishou-form-field ${styles.promptInput}`}
                   rows={6}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--form-field-border, var(--border-control))',
-                    background: 'var(--form-field-bg, var(--bg-surface))',
-                    color: 'var(--text-primary)',
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
                 />
               ) : (
                 <Input
@@ -291,7 +341,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 />
               ))}
 
-            {state.type === 'choose' && state.chooseOptions ? (
+            {isChooseType(state.type) && state.chooseOptions ? (
               <div className={styles.chooseList}>
                 {state.chooseOptions.map((opt) => (
                   <button
@@ -304,24 +354,48 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     ]
                       .filter(Boolean)
                       .join(' ')}
-                    onClick={() => closeDialog(opt.value)}
+                    onClick={() =>
+                      closeDialog(
+                        state.type === 'chooseDontAsk'
+                          ? { value: opt.value, dontAskAgain }
+                          : opt.value
+                      )
+                    }
                   >
                     {opt.leading ? (
                       <span className={styles.chooseLeading}>{opt.leading}</span>
                     ) : null}
-                    <span
-                      className={styles.chooseLabel}
-                      style={opt.destructive ? { color: 'var(--color-error)' } : undefined}
-                    >
-                      {opt.label}
+                    <span className={styles.chooseItemText}>
+                      <span
+                        className={`${styles.chooseLabel} ${opt.destructive ? styles.chooseLabelDanger : ''}`}
+                      >
+                        {opt.label}
+                      </span>
+                      {opt.description ? (
+                        <span className={styles.chooseDesc}>{opt.description}</span>
+                      ) : null}
                     </span>
                   </button>
                 ))}
               </div>
             ) : null}
 
+            {state.type === 'chooseDontAsk' ? (
+              <label
+                className={`${styles.checkboxRow} ${dontAskAgain ? styles.checkboxRowChecked : ''}`}
+              >
+                <Checkbox
+                  checked={dontAskAgain}
+                  onChange={(e) => setDontAskAgain(e.target.checked)}
+                />
+                <span className={styles.checkboxLabel}>
+                  {state.dontAskAgainLabel || t('common.dont_ask_again', '不再提示')}
+                </span>
+              </label>
+            ) : null}
+
             <div className={styles.actions}>
-              {state.type === 'choose' ? (
+              {isChooseType(state.type) ? (
                 <button type="button" className={styles.cancelBtn} onClick={() => closeDialog(null)}>
                   {t('common.cancel', '取消')}
                 </button>

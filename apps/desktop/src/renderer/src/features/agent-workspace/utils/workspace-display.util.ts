@@ -47,3 +47,47 @@ export function workspaceEntryMatchesFolder(
     folderRoot.replace(/\\/g, '/').toLowerCase()
   )
 }
+
+export function isWorkspacePinned(entry: AgentWorkspaceEntry): boolean {
+  return Boolean(entry.pinnedAt)
+}
+
+/** 会话行短相对时间：43m / 7h / 2天 */
+export function formatCompactRelativeTime(updatedAt: string, nowMs = Date.now()): string {
+  const ts = Date.parse(updatedAt)
+  if (Number.isNaN(ts)) return ''
+  const diffMs = nowMs - ts
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return '刚刚'
+  if (mins < 60) return `${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}天`
+  const date = new Date(ts)
+  const now = new Date(nowMs)
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
+  }
+  return date.toLocaleDateString()
+}
+
+/** 置顶项目在前，其次最近活跃，再按 updatedAt。 */
+export function sortAgentWorkspaces(
+  list: AgentWorkspaceEntry[],
+  lastActiveId?: string | null
+): AgentWorkspaceEntry[] {
+  return [...list].sort((a, b) => {
+    const aPinned = isWorkspacePinned(a)
+    const bPinned = isWorkspacePinned(b)
+    if (aPinned !== bPinned) return aPinned ? -1 : 1
+    if (aPinned && bPinned) {
+      return Date.parse(b.pinnedAt ?? '') - Date.parse(a.pinnedAt ?? '')
+    }
+    if (lastActiveId) {
+      if (a.id === lastActiveId) return -1
+      if (b.id === lastActiveId) return 1
+    }
+    return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
+  })
+}

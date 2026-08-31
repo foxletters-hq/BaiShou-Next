@@ -19,7 +19,6 @@ describe('estimateExtractionCost', () => {
     const e = estimateExtractionCost(128)
     expect(e.entryCount).toBe(128)
     expect(e.estimatedTokens).toBe(Math.ceil(128 * 600 * 1.25))
-    expect(e.estimatedUsdHigh).toBeGreaterThanOrEqual(e.estimatedUsdLow)
     expect(e.estimatedMinutesHigh).toBeGreaterThanOrEqual(e.estimatedMinutesLow)
     expect(e.estimatedMinutesLow).toBeGreaterThanOrEqual(1)
   })

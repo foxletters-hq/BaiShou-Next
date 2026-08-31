@@ -17,7 +17,7 @@
 .viewHeader {
   display: flex;
   align-items: center;
-  padding: 8px 12px 4px;
+  padding: 6px 8px 2px;
   flex-shrink: 0;
 }
 
@@ -30,7 +30,7 @@
   color: var(--text-secondary);
 }
 
-.vscodeSection {
+.panelSection {
   border-bottom: 1px solid var(--border-muted);
 }
 
@@ -39,7 +39,8 @@
   align-items: center;
   gap: 4px;
   width: 100%;
-  padding: 4px 8px;
+  padding: 3px 8px;
+  min-height: 22px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -48,7 +49,7 @@
 }
 
 .sectionHeader:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface-high);
 }
 
 .sectionChevron {
@@ -82,9 +83,9 @@
 .repoRow {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 2px 4px 8px 22px;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 4px 22px;
 }
 
 .repoMain {
@@ -99,10 +100,10 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
-  padding: 4px 6px;
+  gap: 0;
+  padding: 2px 4px;
   border: none;
-  border-radius: 4px;
+  border-radius: 2px;
   background: transparent;
   cursor: pointer;
   font-family: inherit;
@@ -110,7 +111,7 @@
 }
 
 .repoInfo:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface-high);
 }
 
 .repoName {
@@ -181,7 +182,7 @@
 }
 
 .subgroupToggle:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface-high);
 }
 
 .subgroupTitle {
@@ -230,67 +231,101 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px 3px 36px;
+  padding: 0 8px 0 22px;
   min-height: 22px;
+  height: 22px;
 }
 
 .treeRow:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-surface-high);
 }
 
-.treeRow:hover .treeActions {
-  opacity: 1;
+.treeRow:hover .treeActions,
+.treeRow:focus-within .treeActions {
+  display: flex;
 }
 
 .treeRowClickable {
   cursor: pointer;
 }
 
-.treeBadge {
-  width: 16px;
-  height: 16px;
+.treeFileIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--ui-fs-sm);
-  font-weight: 600;
-  border-radius: 3px;
   flex-shrink: 0;
-  font-family: var(--font-family-mono);
-  /* VS Code：浅色状态底 + 默认前景色文字，不用白字实心块 */
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.treeName {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: var(--ui-fs-md);
+  font-family: var(--font-family);
+  font-weight: 400;
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeNameDeleted {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.treeDir {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--ui-fs-sm);
+  font-family: var(--font-family);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeBadge {
+  width: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+  font-family: var(--font-family);
+  background: transparent;
 }
 
 .badge_added {
-  background: rgba(46, 160, 67, 0.18);
-  background: color-mix(in srgb, #2ea043 18%, transparent);
+  color: var(--color-success);
 }
 
 .badge_modified {
-  background: rgba(31, 111, 235, 0.18);
-  background: color-mix(in srgb, #1f6feb 18%, transparent);
+  color: var(--color-warning);
 }
 
 .badge_deleted {
-  background: rgba(207, 34, 46, 0.18);
-  background: color-mix(in srgb, #cf222e 18%, transparent);
+  color: var(--color-error);
 }
 
 .badge_renamed {
-  background: rgba(130, 80, 223, 0.18);
-  background: color-mix(in srgb, #8250df 18%, transparent);
+  color: #8250df;
 }
 
 .badge_untracked {
-  background: rgba(110, 119, 129, 0.18);
-  background: color-mix(in srgb, #6e7781 18%, transparent);
+  color: var(--color-success);
 }
 
 .treePath {
   flex: 1;
   min-width: 0;
   font-size: var(--ui-fs-sm);
-  font-family: var(--font-family-mono);
+  font-family: var(--font-family);
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -298,12 +333,29 @@
 }
 
 .treeActions {
-  display: flex;
+  display: none;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.12s;
+}
+
+.treeIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.treeIconBtn:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .treeActionBtn {
@@ -318,7 +370,7 @@
 }
 
 .treeActionBtn:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--bg-surface);
   color: var(--text-primary);
 }
 
@@ -528,10 +580,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
@@ -655,20 +707,11 @@
 }
 
 .menuInput {
-  width: 100%;
-  box-sizing: border-box;
   margin: 4px 0;
-  padding: 6px 8px;
-  border: 1px solid var(--border-muted);
-  border-radius: 6px;
-  background: var(--bg-app);
-  color: var(--text-primary);
-  font-size: var(--ui-fs-sm);
-  font-family: inherit;
 }
 
 .commitBox {
-  padding: 8px 12px;
+  padding: 4px 8px 8px;
   border-bottom: 1px solid var(--border-muted);
   flex-shrink: 0;
 }
@@ -676,15 +719,15 @@
 .commitMessage {
   width: 100%;
   box-sizing: border-box;
-  min-height: 62px;
+  min-height: 46px;
   max-height: 120px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-muted);
-  border-radius: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-control);
+  border-radius: 2px;
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: var(--ui-fs-sm);
-  line-height: 1.5;
+  line-height: 1.4;
   font-family: inherit;
   resize: vertical;
   outline: none;
@@ -699,28 +742,27 @@
 
 .commitActions {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
   margin-top: 8px;
 }
 
 .commitPrimary {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--border-control);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 2px 0 0 2px;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   font-size: var(--ui-fs-sm);
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
 }
 
 .commitPrimary:disabled {
@@ -729,23 +771,31 @@
 }
 
 .commitPrimary:not(:disabled):hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
+  background: var(--color-primary-dark);
 }
 
 .commitMenuBtn {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 26px;
   padding: 0;
-  border: 1px solid var(--border-muted);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
+  border: none;
+  border-left: 1px solid color-mix(in srgb, var(--text-on-primary) 28%, transparent);
+  border-radius: 0 2px 2px 0;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .commitMenuBtn:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-primary-dark);
+}
+
+.commitActions .branchWrap {
+  display: flex;
+  align-items: stretch;
 }
 
 .branchRow {
@@ -836,6 +886,7 @@
 
 .tokenRow .menuInput {
   flex: 1;
+  min-width: 0;
 }
 
 .sheetFooter {

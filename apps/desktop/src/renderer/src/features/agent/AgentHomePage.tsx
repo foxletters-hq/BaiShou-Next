@@ -65,6 +65,7 @@ export const AgentHomePage: React.FC = () => {
       <div className={styles.inputDock}>
         <InputBar
           isLoading={false}
+          attachmentIntake="companion"
           onSend={handleSend}
           shortcuts={shortcuts}
           onManageShortcuts={() => navigate('/chat/new-session?focus=manage-shortcuts')}

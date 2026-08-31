@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import React from 'react'
 import { Archive } from 'lucide-react'
 import { withAppContentOverlay } from '../overlay'
+import { Input } from '../Input/Input'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 
@@ -50,21 +51,11 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
                   : t('data_sync.max_backup_title', '备份上限设置')}
               </span>
             </div>
-            <input
+            <Input
               type="text"
-              className={styles.smNumberInput}
-              style={{
-                width: 72,
-                padding: '4px 8px',
-                border: '1px solid var(--form-field-border, var(--border-control))',
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-                textAlign: 'center',
-                background: 'var(--form-field-bg, var(--bg-surface))',
-                outline: 'none'
-              }}
+              fieldSize="small"
+              className={styles.countModalNumberHost}
+              inputClassName={styles.countModalNumberInput}
               value={tempCount === -1 ? noLimitLabel : tempCount}
               onChange={(e) => {
                 const val = e.target.value.trim()

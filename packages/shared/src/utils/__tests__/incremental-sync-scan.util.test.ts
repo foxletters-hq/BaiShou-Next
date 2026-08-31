@@ -18,6 +18,18 @@ describe('incremental-sync-scan.util', () => {
       false
     )
     expect(shouldIncludeIncrementalSyncFile('baishou_agent.db', 'baishou_agent.db')).toBe(false)
+    expect(
+      shouldIncludeIncrementalSyncFile(
+        'shards.manifest.json',
+        'Personal/Graph/nodes/shards.manifest.json'
+      )
+    ).toBe(false)
+    expect(
+      shouldIncludeIncrementalSyncFile(
+        'shards.manifest.json',
+        'Personal/Notebooks/nb1/graph/edges/shards.manifest.json'
+      )
+    ).toBe(false)
   })
 
   it('excludes chat background images from incremental sync', () => {

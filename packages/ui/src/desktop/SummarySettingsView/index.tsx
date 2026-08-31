@@ -5,6 +5,7 @@ import { useToast } from '../Toast/useToast'
 import { SettingsPageChrome } from '../shared/SettingsPageChrome'
 import stack from '../shared/SettingsStack.module.css'
 import { HelpTooltip } from '../HelpTooltip'
+import { Input } from '../Input/Input'
 import { Switch } from '../Switch/Switch'
 import { Modal } from '../Modal/Modal'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
@@ -576,11 +577,12 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
                       >
                         {t('settings.summary_inject_lookback_label', '回溯月数')}
                       </label>
-                      <input
+                      <Input
                         id="summary-inject-lookback"
                         type="number"
+                        fieldSize="small"
+                        className="sm-number-input-host"
                         min={SHARED_MEMORY_LOOKBACK_MIN}
-                        className="sm-number-input"
                         value={lookbackDraft}
                         onChange={(e) => previewLookback(Number(e.target.value))}
                         onBlur={() => commitLookback()}

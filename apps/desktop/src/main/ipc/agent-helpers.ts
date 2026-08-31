@@ -354,7 +354,18 @@ export async function buildAgentUserConfigFromSettings(options?: {
   }
 }
 
-/** 流式对话权威模型链：伙伴 → 请求 → 全局 → 错误（不伪造默认模型） */
+/** 会话/工作台选了具体档时覆盖设置默认；auto 仍走设置项，请求侧会物化成具体 effort */
+export function applySessionReasoningEffort<T extends Record<string, unknown>>(
+  userConfig: T,
+  reasoningEffort?: string | null
+): T {
+  if (typeof reasoningEffort === 'string' && reasoningEffort && reasoningEffort !== 'auto') {
+    return { ...userConfig, reasoningEffort } as T
+  }
+  return userConfig
+}
+
+/** 流式对话权威模型链：请求 → 全局 → 错误（不伪造默认模型；伙伴不再绑定模型） */
 export async function resolveStreamDialogueSelection(params: {
   sessionId?: string
   requestedProviderId?: string
@@ -553,7 +564,10 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
       await import('../services/desktop-knowledge-reader')
     ).createDesktopKnowledgeReader(
       embAdapter?.isConfigured ? (text) => embAdapter.embedQuery(text) : undefined
-    )
+    ),
+    knowledgeGraphReader: (
+      await import('../services/desktop-knowledge-graph-reader')
+    ).createDesktopKnowledgeGraphReader()
   })
 
   if (activeWorkspace) {

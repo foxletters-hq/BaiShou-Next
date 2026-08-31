@@ -23,7 +23,7 @@ export interface AgentGateDockProps {
   /** 队列位置（1-based）；与 queueTotal 一起显示 */
   queueIndex?: number
   queueTotal?: number
-  /** Always/Reject 级联将影响的同 action 数量（含当前） */
+  /** Always / Once / Reject 将影响的同 action 数量（含当前） */
   sameActionCount?: number
   /** inline：嵌入输入区上方；overlay：兼容旧浮层 */
   placement?: 'inline' | 'overlay'
@@ -197,6 +197,11 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
 
       {repeatHint ? <p className={styles.hint}>{repeatHint}</p> : null}
       {cascadeHint ? <p className={styles.hint}>{cascadeHint}</p> : null}
+      {request.kind === AgentGateKind.Tool ? (
+        <p className={styles.hint}>
+          {t('agent_gate.once_turn_hint', '「本次允许」在本轮回答彻底结束前都有效；「始终允许」会一直记住。')}
+        </p>
+      ) : null}
 
       {preview?.type === 'file_change' ? (
         <div className={styles.previewBlock}>

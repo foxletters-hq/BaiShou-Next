@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Settings, Trash2, Upload, ImagePlus, Sticker } from 'lucide-react'
+import { Input } from '../Input/Input'
 import { Switch } from '../Switch/Switch'
 import { Modal } from '../Modal/Modal'
 import { HelpTooltip } from '../HelpTooltip'
@@ -170,7 +171,6 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({ config, onChange }
         <div className={styles.toolInfo}>
           <div className={styles.toolNameRow}>
             <span className={styles.toolName}>{t('agent.tools.emoji_send', '表情包')}</span>
-            <span className={styles.toolIdTag}>emoji_send</span>
             <HelpTooltip
               content={t(
                 'agent.tools.emoji_send_desc',
@@ -229,8 +229,10 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({ config, onChange }
                     )}
                   </div>
                   <div className={styles.emojiCardFooter}>
-                    <input
-                      className={styles.emojiCardNameInput}
+                    <Input
+                      fieldSize="small"
+                      className={styles.emojiCardNameInputHost}
+                      inputClassName={`baishou-form-field--embed ${styles.emojiCardNameInput}`}
                       value={emoji.name}
                       onChange={(e) => handleRenameEmoji(emoji.id, e.target.value)}
                       placeholder={t('agent.tools.emoji_name_placeholder', '名称')}

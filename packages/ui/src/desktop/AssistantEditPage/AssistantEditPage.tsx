@@ -13,6 +13,7 @@ import { AssistantEditEmojiGroupSection } from './AssistantEditEmojiGroupSection
 import { AssistantDeleteConfirmDialog } from './AssistantDeleteConfirmDialog'
 import { AssistantModelPicker } from './AssistantModelPicker'
 import { AssistantKindTabBar } from '../AssistantKindTabBar'
+import { Input } from '../Input/Input'
 import { ResizableMarkdownEditor } from '../ResizableMarkdownEditor'
 import styles from './AssistantEditPage.module.css'
 
@@ -63,8 +64,8 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
             <div className={styles.spacer16} />
 
             <label className={styles.fieldLabel}>{t('agent.assistant.name_label', '名称')}</label>
-            <input
-              className={styles.inputField}
+            <Input
+              fieldSize="small"
               value={form.name}
               onChange={(e) => form.setName(e.target.value)}
               placeholder={t('agent.assistant.name_hint')}
@@ -112,11 +113,12 @@ export const AssistantEditPage: React.FC<AssistantEditPageProps> = ({
                 <div className={styles.sectionDivider} />
                 <div className={styles.spacer16} />
                 <AssistantEditEmojiGroupSection
-                  emojiGroups={form.emojiGroups}
+                  emojiConfig={form.emojiConfig}
                   emojiEnabled={form.emojiEnabled}
                   selectedGroupIds={form.selectedEmojiGroupIds}
                   onEmojiEnabledChange={form.setEmojiEnabled}
                   onToggleGroup={form.toggleEmojiGroup}
+                  onEmojiConfigChange={form.handleEmojiConfigChange}
                 />
               </>
             ) : null}

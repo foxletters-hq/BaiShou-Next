@@ -53,6 +53,23 @@
   color: var(--text-primary);
 }
 
+.sm-number-input-host {
+  width: 64px !important;
+}
+
+.sm-number-input-host input {
+  text-align: center;
+  font-weight: 600;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.sm-number-input-host input::-webkit-outer-spin-button,
+.sm-number-input-host input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .sm-number-input {
   width: 64px;
   padding: 4px 8px;

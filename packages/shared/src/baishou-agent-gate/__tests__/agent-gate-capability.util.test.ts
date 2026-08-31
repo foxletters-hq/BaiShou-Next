@@ -3,7 +3,8 @@ import { AgentGateEffect } from '../agent-gate.enums'
 import {
   applyCapabilityStateToConfig,
   applyCapabilityToConfig,
-  capabilityStateFromConfig
+  capabilityStateFromConfig,
+  COMPANION_GATE_CAPABILITIES
 } from '../agent-gate-capability.util'
 import {
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
@@ -166,15 +167,10 @@ describe('agent-gate-capability.util', () => {
     expect(state.effects.edit).toBe(AgentGateEffect.Allow)
   })
 
-  it('companion delete caps stay locked ask', () => {
+  it('companion delete caps honor allow and deny', () => {
     const config = cloneBaishouAgentGateConfig(null, DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
     const next = applyCapabilityStateToConfig(config, 'companion', {
       effects: {
-        browse: AgentGateEffect.Ask,
-        edit: AgentGateEffect.Ask,
-        delete: AgentGateEffect.Ask,
-        command: AgentGateEffect.Ask,
-        external: AgentGateEffect.Ask,
         diary_write: AgentGateEffect.Allow,
         diary_delete: AgentGateEffect.Allow,
         memory_store: AgentGateEffect.Allow,
@@ -184,9 +180,34 @@ describe('agent-gate-capability.util', () => {
     })
     const state = capabilityStateFromConfig(next, 'companion')
     expect(state.effects.diary_write).toBe(AgentGateEffect.Allow)
-    expect(state.effects.diary_delete).toBe(AgentGateEffect.Ask)
+    expect(state.effects.diary_delete).toBe(AgentGateEffect.Allow)
     expect(state.effects.memory_store).toBe(AgentGateEffect.Allow)
-    expect(state.effects.memory_delete).toBe(AgentGateEffect.Ask)
-    expect(next.exclusionList).toEqual(expect.arrayContaining(['diary_delete', 'memory_delete']))
+    expect(state.effects.memory_delete).toBe(AgentGateEffect.Deny)
+    expect(next.exclusionList).not.toContain('diary_delete')
+    expect(next.exclusionList).not.toContain('memory_delete')
+  })
+
+  it('companion graph_upsert defaults to Ask', () => {
+    const cap = COMPANION_GATE_CAPABILITIES.find((item) => item.id === 'graph_upsert')
+    expect(cap?.defaultEffect).toBe(AgentGateEffect.Ask)
+    const config = cloneBaishouAgentGateConfig(null, DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+    expect(capabilityStateFromConfig(config, 'companion').effects.graph_upsert).toBe(
+      AgentGateEffect.Ask
+    )
+  })
+
+  it('companion read tools default allow and can be set to ask', () => {
+    const config = cloneBaishouAgentGateConfig(null, DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+    expect(capabilityStateFromConfig(config, 'companion').effects.diary_read).toBe(
+      AgentGateEffect.Allow
+    )
+    const next = applyCapabilityToConfig(config, 'companion', {
+      capabilityId: 'diary_read',
+      effect: AgentGateEffect.Ask
+    })
+    expect(capabilityStateFromConfig(next, 'companion').effects.diary_read).toBe(AgentGateEffect.Ask)
+    expect(next.permissionRules).toEqual(
+      expect.arrayContaining([{ action: 'diary_read', effect: AgentGateEffect.Ask }])
+    )
   })
 })

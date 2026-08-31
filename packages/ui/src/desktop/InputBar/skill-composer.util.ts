@@ -37,7 +37,7 @@ export function createSkillChipElement(
   return el
 }
 
-function isSkillChip(node: Node | null): node is HTMLElement {
+function isSkillChip(node: Node | null): boolean {
   return (
     !!node &&
     node.nodeType === Node.ELEMENT_NODE &&
@@ -62,9 +62,10 @@ export function serializeSkillComposer(root: HTMLElement): {
       return
     }
     if (isSkillChip(node)) {
-      const id = node.getAttribute(SKILL_CHIP_ATTR) || makeSkillChipId('skill')
-      const command = node.getAttribute(SKILL_COMMAND_ATTR) || 'skill'
-      const content = node.getAttribute(SKILL_CONTENT_ATTR) || ''
+      const chipEl = node as HTMLElement
+      const id = chipEl.getAttribute(SKILL_CHIP_ATTR) || makeSkillChipId('skill')
+      const command = chipEl.getAttribute(SKILL_COMMAND_ATTR) || 'skill'
+      const content = chipEl.getAttribute(SKILL_CONTENT_ATTR) || ''
       skills.push({ id, command, content })
       plainParts.push(`/${command}`)
       if (content.trim()) sendParts.push(content.trim())
@@ -138,18 +139,19 @@ export function getSlashTokenBeforeCaret(root: HTMLElement): SlashToken | null {
   const caretNode = endRange.endContainer
   const caretOffset = endRange.endOffset
   if (caretNode.nodeType !== Node.TEXT_NODE) return null
+  const caretText = caretNode as Text
 
-  const text = caretNode.textContent ?? ''
+  const text = caretText.textContent ?? ''
   const localBefore = text.slice(0, caretOffset).replace(/\u200B/g, '')
   // 用原始偏移重新匹配（忽略 zwsp 时回退到简单正则）
   const localMatch = text.slice(0, caretOffset).match(/\/[^\s/]*$/)
   if (!localMatch) return null
   const start = caretOffset - localMatch[0].length
-  if (!isSlashTokenBoundaryBefore(caretNode, start)) return null
+  if (!isSlashTokenBoundaryBefore(caretText, start)) return null
 
   const range = document.createRange()
-  range.setStart(caretNode, start)
-  range.setEnd(caretNode, caretOffset)
+  range.setStart(caretText, start)
+  range.setEnd(caretText, caretOffset)
   return { query: localMatch[0].slice(1), range }
 }
 
@@ -247,21 +249,21 @@ export function tryDeleteSkillChipByBackspace(root: HTMLElement): boolean {
 
   if (node === root && offset > 0) {
     const prev = root.childNodes[offset - 1]
-    if (isSkillChip(prev)) chip = prev
+    if (isSkillChip(prev)) chip = prev as HTMLElement
   } else if (node?.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? ''
     if (offset === 0 || (offset === 1 && text === '\u200B') || (offset > 0 && text.slice(0, offset).replace(/\u200B/g, '') === '')) {
       const prev = node.previousSibling
-      if (isSkillChip(prev)) chip = prev
+      if (isSkillChip(prev)) chip = prev as HTMLElement
     }
   } else if (node && node.nodeType === Node.ELEMENT_NODE) {
     const el = node as HTMLElement
     if (offset === 0) {
       const prev = el.previousSibling
-      if (isSkillChip(prev)) chip = prev
+      if (isSkillChip(prev)) chip = prev as HTMLElement
     } else {
       const prev = el.childNodes[offset - 1]
-      if (isSkillChip(prev)) chip = prev
+      if (isSkillChip(prev)) chip = prev as HTMLElement
     }
   }
 
@@ -294,10 +296,9 @@ export function setComposerPlainText(root: HTMLElement, text: string) {
 export function sanitizeComposerFormatting(root: HTMLElement): boolean {
   let changed = false
   const victims: HTMLElement[] = []
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
-  while (walker.nextNode()) {
-    const el = walker.currentNode as HTMLElement
-    if (isSkillChip(el) || el.closest?.(`[${SKILL_CHIP_ATTR}]`)) continue
+  const elements = Array.from(root.querySelectorAll<HTMLElement>('*'))
+  for (const el of elements) {
+    if (isSkillChip(el) || el.closest(`[${SKILL_CHIP_ATTR}]`)) continue
     const tag = el.tagName
     if (
       tag === 'FONT' ||

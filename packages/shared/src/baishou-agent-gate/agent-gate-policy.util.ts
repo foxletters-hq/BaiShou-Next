@@ -2,8 +2,8 @@ import { DEFAULT_AGENT_GATE_EXCLUSION_LIST } from './agent-gate.defaults'
 import { canPermanentlyAllowShellCommand } from './agent-gate-shell-match.util'
 import type { AgentGateResourceKind, AgentGateResourceRef } from './agent-gate.types'
 
-/** Actions that must never be permanently allowlisted, even via custom IPC/UI. */
-export const FORCE_EXCLUDED_AGENT_GATE_ACTIONS = DEFAULT_AGENT_GATE_EXCLUSION_LIST
+/** 仅 metadata.forceExclusion 硬拦截；删除类工具改由用户 exclusionList / 能力矩阵决定 */
+export const FORCE_EXCLUDED_AGENT_GATE_ACTIONS = [] as const
 
 export function isAgentGateActionForceExcluded(
   action: string,

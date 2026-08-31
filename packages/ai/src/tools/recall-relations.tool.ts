@@ -10,28 +10,47 @@ const params = z.object({
   entity: z
     .string()
     .describe(
-      'Person, place, topic, or compound query (e.g. "小明和杭州") to recall relation paths for.'
+      'Person, place, topic, or compound query (e.g. "小明和杭州") to look up in the memory graph.'
     ),
   mode: z
-    .enum(['network', 'timeline'])
+    .enum(['network', 'timeline', 'neighbors', 'search'])
     .optional()
     .describe(
-      'network = shortest relation paths (2–3 hops) with diary excerpts; timeline = relations ordered by validFrom.'
-    )
+      'search = find matching entities by name; neighbors = nearby nodes around the first match; ' +
+        'network = shortest relation paths (default, 2–3 hops) with diary excerpts; ' +
+        'timeline = relations ordered by validFrom.'
+    ),
+  node_type: z
+    .enum(['person', 'place', 'organization', 'event', 'topic'])
+    .optional()
+    .describe('Optional type filter when searching or resolving the entity.'),
+  depth: z
+    .union([z.literal(1), z.literal(2), z.literal(3)])
+    .optional()
+    .describe('Hop cap for neighbors (default 1) or network paths (default 3).'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .optional()
+    .describe('Max nodes or paths to return (default 12).')
 })
 
 export class RecallRelationsTool extends AgentTool<typeof params> {
   readonly name = 'recall_relations'
 
   readonly description =
-    "Recall how people, places, and events in the user's life connect to each other.\n\n" +
-    'Call this when:\n' +
-    '- the user refers to a past event, person, or place assuming you already know it\n' +
-    '  ("那家店", "上次和他一起", "毕业旅行的时候")\n' +
-    '- you want to mention a connection between two things the user has told you about\n' +
-    '- the user asks why/how two things are related\n\n' +
-    'Returns relation paths with excerpts from the original diary entries, so you can ' +
-    'say where you know it from. Read-only; does not modify the graph.'
+    "Look up people, places, events and how they connect in the user's life graph (diary relations).\n\n" +
+    'This is not the notebook graph — use knowledge_graph_search for relations inside a knowledge notebook.\n\n' +
+    'Modes:\n' +
+    '- search: list matching entities when you only have a name or type\n' +
+    '- neighbors: who/what sits next to an entity (1 hop by default)\n' +
+    '- network: shortest relation paths with diary excerpts (default)\n' +
+    '- timeline: the same entity\'s relations ordered by time\n\n' +
+    'Call this when the user refers to someone or somewhere as if you already know them, ' +
+    'asks how two things relate, or you need to check who is already in the graph before writing. ' +
+    'Read-only; approved relations only. Do not invent connections that are not returned.'
 
   readonly parameters = params
 
@@ -44,7 +63,7 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
   }
 
   get displayName(): string {
-    return '回忆关系图谱'
+    return '回忆人生关系图'
   }
 
   async execute(args: z.infer<typeof params>, context: ToolContext): Promise<string> {
@@ -60,7 +79,13 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
 
     const mode = args.mode ?? 'network'
     try {
-      const result = await reader.recallRelations({ entity, mode })
+      const result = await reader.recallRelations({
+        entity,
+        mode,
+        depth: args.depth,
+        nodeType: args.node_type,
+        limit: args.limit
+      })
       if (!result.anchors.length) {
         return (
           `No graph entity found for「${entity}」. Do not retry this tool for the same entity in this conversation. ` +
@@ -70,9 +95,37 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
       }
 
       const anchorLines = result.anchors
-        .slice(0, 5)
+        .slice(0, 8)
         .map((a) => `- ${a.name} (${a.nodeType})${a.summary ? `: ${a.summary}` : ''}`)
         .join('\n')
+
+      if (mode === 'search') {
+        const nodeLines = result.nodes
+          .slice(0, args.limit ?? 12)
+          .map((n) => `- ${n.name} (${n.nodeType})${n.summary ? `: ${n.summary}` : ''}`)
+          .join('\n')
+        return [`## 匹配实体`, nodeLines || anchorLines, `共 ${result.nodes.length} 个`].join('\n')
+      }
+
+      if (mode === 'neighbors') {
+        const center = result.anchors[0]
+        const edgeLines = result.subgraph
+          .slice(0, 24)
+          .map((e) => {
+            const from = result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
+            const to = result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
+            const excerpt = e.sourceExcerpt ? ` 「${e.sourceExcerpt.slice(0, 80)}」` : ''
+            return `- ${from} —${e.edgeType}→ ${to}${excerpt}`
+          })
+          .join('\n')
+        return [
+          `## 中心`,
+          center ? `- ${center.name} (${center.nodeType})` : anchorLines,
+          `## 邻居关系`,
+          edgeLines || '(无邻居)',
+          `节点 ${result.nodes.length} · 边 ${result.subgraph.length}`
+        ].join('\n')
+      }
 
       if (mode === 'timeline') {
         const edgeSource = result.timeline || result.subgraph

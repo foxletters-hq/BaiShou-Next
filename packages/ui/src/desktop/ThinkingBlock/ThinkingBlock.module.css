@@ -157,7 +157,7 @@
 .content h4,
 .content h5,
 .content h6 {
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-weight: 600;
   margin-top: 14px;
   margin-bottom: 8px;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Input } from '../Input/Input'
 import { withAppContentOverlay } from '../overlay'
 import styles from './ModelSwitcherPopup.module.css'
 import { useTranslation } from 'react-i18next'
@@ -90,12 +91,13 @@ export const ModelSwitcherPopup: React.FC<ModelSwitcherPopupProps> = ({
           <span className={styles.searchIcon}>
             <Search />
           </span>
-          <input
+          <Input
             type="text"
+            fieldSize="small"
             placeholder={t('common.search_model', '搜索模型...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={styles.searchInput}
+            inputClassName="baishou-form-field--pad-leading"
             autoFocus
           />
         </div>

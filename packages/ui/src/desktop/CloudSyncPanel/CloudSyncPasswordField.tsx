@@ -1,6 +1,7 @@
 import React from 'react'
 import { Eye, EyeOff } from 'lucide-react'
-import { inputStyle, labelStyle, passwordToggleButtonStyle } from './cloud-sync.styles'
+import { Input } from '../Input/Input'
+import { labelStyle, passwordToggleButtonStyle } from './cloud-sync.styles'
 
 export interface CloudSyncPasswordFieldProps {
   label: string
@@ -19,16 +20,16 @@ export const CloudSyncPasswordField: React.FC<CloudSyncPasswordFieldProps> = ({
 }) => (
   <>
     <label style={labelStyle}>{label}</label>
-    <div style={{ position: 'relative' }}>
-      <input
-        type={showPassword ? 'text' : 'password'}
-        style={{ ...inputStyle, paddingRight: 36 }}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <button type="button" style={passwordToggleButtonStyle} onClick={onTogglePassword}>
-        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-      </button>
-    </div>
+    <Input
+      fieldSize="small"
+      type={showPassword ? 'text' : 'password'}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      trailing={
+        <button type="button" style={passwordToggleButtonStyle} onClick={onTogglePassword}>
+          {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      }
+    />
   </>
 )

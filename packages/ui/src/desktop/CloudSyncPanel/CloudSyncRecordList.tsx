@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DownloadCloud, Edit3, FileText, Loader2, Package, Trash2 } from 'lucide-react'
+import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 
@@ -115,9 +116,7 @@ export const CloudSyncRecordList: React.FC<CloudSyncRecordListProps> = ({ vm }) 
               style={{ cursor: manageMode ? 'pointer' : 'default' }}
             >
               {manageMode && (
-                <input
-                  type="checkbox"
-                  className={styles.customCheck}
+                <Checkbox
                   checked={selected.has(r.filename)}
                   onClick={(e) => e.stopPropagation()}
                   onChange={(e) => {

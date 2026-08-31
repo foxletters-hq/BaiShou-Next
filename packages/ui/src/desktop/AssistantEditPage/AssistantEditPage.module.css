@@ -616,61 +616,78 @@ input:checked + .sliderRound:before {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
-.emojiGroupPickSectionLabel {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.emojiGroupPickSectionIcon {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background-color: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
-  color: var(--color-primary);
-}
-
-.emojiGroupPickList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 202px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 2px;
-}
-
-.emojiGroupPickItem {
+.emojiGroupPickerTrigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
   min-height: 62px;
-  flex-shrink: 0;
   padding: 12px 14px;
   border: 1.5px solid var(--border-card);
   border-radius: 10px;
   background: var(--bg-surface);
+  color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
-  transition:
-    border-color 0.15s,
-    background-color 0.15s;
+  font-family: inherit;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
-.emojiGroupPickItem:hover {
+.emojiGroupPickerTrigger:hover {
   border-color: var(--border-strong);
 }
 
-.emojiGroupPickItemActive {
-  border-width: 2px;
+.emojiPickerDialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 280px;
+}
+
+.emojiPickerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.emojiPickerRow + .emojiPickerRow {
+  border-top: 1px solid var(--border-muted);
+}
+
+.emojiPickerCheck {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-surface);
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.emojiPickerCheckActive {
   border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-surface));
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--bg-surface));
+}
+
+.emojiPickerRowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .emojiGroupPickLeading {
@@ -710,6 +727,9 @@ input:checked + .sliderRound:before {
 .emojiGroupPickMeta {
   font-size: 12px;
   color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @keyframes fadeIn {

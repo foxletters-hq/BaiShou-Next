@@ -111,6 +111,23 @@
   flex-shrink: 0;
 }
 
+.portInputHost {
+  width: 100px !important;
+  flex-shrink: 0;
+}
+
+.portInputHost input {
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.portInputHost input::-webkit-outer-spin-button,
+.portInputHost input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .endpointLabel {
   flex-shrink: 0;
   font-size: 14px;

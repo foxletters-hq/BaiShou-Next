@@ -75,4 +75,11 @@ describe('NotebookRawManager binary safety', () => {
     const ok = await manager.absolutePath('nb1/sources/a.pdf')
     expect(ok.replace(/\\/g, '/')).toContain('/Notebooks/nb1/sources/a.pdf')
   })
+
+  it('existsRelative 只认 Notebooks 根内已有文件', async () => {
+    expect(await manager.existsRelative('nb1/cover.png')).toBe(false)
+    await manager.writeFile('nb1/cover.png', new Uint8Array([1, 2, 3]), { skipVersion: true })
+    expect(await manager.existsRelative('nb1/cover.png')).toBe(true)
+    expect(await manager.existsRelative('../outside.png')).toBe(false)
+  })
 })

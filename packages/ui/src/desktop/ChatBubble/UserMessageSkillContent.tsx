@@ -35,7 +35,11 @@ export function UserMessageSkillContent({ text, skillRefs, className }: Props) {
               type="button"
               className={styles.skillCite}
               title={t('shortcut.view_skill', '查看 Skill')}
-              onClick={() => setPreview({ command: seg.command, content: seg.content })}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                setPreview({ command: seg.command, content: seg.content })
+              }}
             >
               /{seg.command}
             </button>

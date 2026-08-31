@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
-import { AgentGateReply, type AgentGateRequest } from '@baishou/shared'
+import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import {
@@ -166,6 +166,14 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
             ) : null}
             {cascadeHint ? (
               <Text style={[styles.hint, { color: colors.textSecondary }]}>{cascadeHint}</Text>
+            ) : null}
+            {request.kind === AgentGateKind.Tool ? (
+              <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                {t(
+                  'agent_gate.once_turn_hint',
+                  '「本次允许」在本轮回答彻底结束前都有效；「始终允许」会一直记住。'
+                )}
+              </Text>
             ) : null}
 
             {preview?.type === 'file_change' ? (

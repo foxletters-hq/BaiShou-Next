@@ -55,6 +55,23 @@ describe('fetchUrlAsMarkdown', () => {
     ).rejects.toThrow(/404/)
   })
 
+  it('登录页或前端外壳不入库', async () => {
+    await expect(
+      fetchUrlAsMarkdown('https://example.com/projects/demo', {
+        fetchImpl: async () =>
+          ({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            url: 'https://example.com/login?callbackUrl=%2Fprojects%2Fdemo',
+            headers: { get: () => 'text/html' },
+            text: async () =>
+              '<html><head><title>登录</title></head><body><a href="/plaza/new">发布需求</a><p>加载中...</p></body></html>'
+          }) as unknown as Response
+      })
+    ).rejects.toThrow('目标网页需要登录，无法直接抓取')
+  })
+
   it('拦截私网 URL（SSRF）', async () => {
     await expect(
       fetchUrlAsMarkdown('http://127.0.0.1/secret', {
@@ -71,5 +88,30 @@ describe('fetchUrlAsMarkdown', () => {
         }
       })
     ).rejects.toThrow(/private|local/i)
+  })
+
+  it('allowPrivateNetwork 允许内网但仍拒绝非 http(s)', async () => {
+    const result = await fetchUrlAsMarkdown('http://192.168.1.1/doc', {
+      allowPrivateNetwork: true,
+      fetchImpl: async () =>
+        ({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          url: 'http://192.168.1.1/doc',
+          headers: { get: () => 'text/plain' },
+          text: async () => '内网文档'
+        }) as unknown as Response
+    })
+    expect(result.markdown).toBe('内网文档')
+
+    await expect(
+      fetchUrlAsMarkdown('file:///etc/passwd', {
+        allowPrivateNetwork: true,
+        fetchImpl: async () => {
+          throw new Error('should not fetch')
+        }
+      })
+    ).rejects.toThrow(/http\/https/i)
   })
 })

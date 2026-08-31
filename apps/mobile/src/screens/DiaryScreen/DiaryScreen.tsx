@@ -300,6 +300,7 @@ export const DiaryScreen: React.FC = () => {
       const [pending, embedCount, globalModels, ragConfig] = await Promise.all([
           mobileListPendingReextract({
             vaultName,
+            vaultId,
             shadowRepo,
             pathService: services.pathService,
             fileSystem: services.fileSystem
@@ -550,15 +551,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 12,
-    minHeight: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    gap: 14,
+    minHeight: 32,
+    paddingHorizontal: 20,
+    paddingVertical: 6,
     borderTopWidth: StyleSheet.hairlineWidth
   },
   statusItem: {
-    fontSize: 11,
-    lineHeight: 16
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500'
   },
   deleteOverlay: {
     flex: 1,

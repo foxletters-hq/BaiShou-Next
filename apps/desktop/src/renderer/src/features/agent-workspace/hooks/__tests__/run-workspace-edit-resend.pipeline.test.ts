@@ -178,9 +178,10 @@ describe('runWorkspaceEditResendPipeline', () => {
       { command: 'summarize', content: 'Summarize briefly.' }
     ])
 
-    expect(modelText).toBe(
-      ['You are a translator.', 'Summarize briefly.', 'user question'].join('\n\n')
-    )
+    expect(modelText).toContain('用户已启用技能「translate」')
+    expect(modelText).toContain('You are a translator.')
+    expect(modelText).toContain('Summarize briefly.')
+    expect(modelText).toContain('user question')
 
     const prepareWorkspaceTurn = vi.fn(async (text: string) => ({
       sessionId: 's1',
@@ -271,6 +272,19 @@ describe('buildWorkspaceEditResendModelText', () => {
         { command: 'a', content: 'A' },
         { command: 'b', content: '  B  ' }
       ])
-    ).toBe('A\n\nB\n\nask')
+    ).toContain('用户已启用技能「a」')
+    expect(
+      buildWorkspaceEditResendModelText('ask', [
+        { command: 'a', content: 'A' },
+        { command: 'b', content: '  B  ' }
+      ])
+    ).toContain('ask')
+  })
+
+  it('strips slash labels from display text when rebuilding model text', () => {
+    const text = buildWorkspaceEditResendModelText('/a', [{ command: 'a', content: 'A' }])
+    expect(text).toContain('用户已启用技能「a」')
+    expect(text).toContain('A')
+    expect(text.endsWith('/a')).toBe(false)
   })
 })

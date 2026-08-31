@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   forceCollide,
   forceLink,
@@ -15,7 +15,12 @@ import {
 } from 'd3-force'
 import {
   GRAPH_APPEARANCE_DEFAULTS,
+  GRAPH_CANVAS_THEME,
   GRAPH_FORCE_DEFAULTS,
+  GRAPH_NODE_TYPE_COLORS,
+  GRAPH_NODE_TYPE_COLOR_FALLBACK,
+  fitGraphCameraToPoints,
+  isGraphHubLabelVisible,
   type GraphAppearanceSettings,
   type GraphForceSettings
 } from '@baishou/shared'
@@ -43,19 +48,9 @@ type SimLink = SimulationLinkDatum<SimNode> & {
   reviewStatus?: string
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  person: '#3b82f6',
-  place: '#22c55e',
-  organization: '#a855f7',
-  event: '#f59e0b',
-  emotion: '#ec4899',
-  topic: '#64748b',
-  work: '#0ea5e9',
-  activity: '#14b8a6',
-  product: '#8b5cf6',
-  food: '#f97316',
-  entry: '#94a3b8'
-}
+const TYPE_COLORS = GRAPH_NODE_TYPE_COLORS
+const TYPE_COLOR_FALLBACK = GRAPH_NODE_TYPE_COLOR_FALLBACK
+const EDGE_HIGHLIGHT = GRAPH_CANVAS_THEME.light.edgeHighlight
 
 const DRAG_THRESHOLD_PX = 5
 const LOCATE_TARGET_K = 1.85
@@ -103,6 +98,12 @@ export const GraphForceCanvas: React.FC<{
   /** Selected node + 1-hop neighbors for focus dimming / labels. */
   focusIds?: Set<string>
   selectedId?: string | null
+  /** Extra rings for merge-mode multi-select. */
+  selectedIds?: Set<string>
+  /** Highlight specific edges (pending relation「查看」). */
+  highlightEdgeIds?: Set<string>
+  /** Camera-fit these node ids on locateSeq (relation pair). */
+  locateIds?: string[]
   onSelectNode?: (id: string) => void
   /** Click empty canvas (no drag) clears focus / selection. */
   onClearSelection?: () => void
@@ -117,6 +118,9 @@ export const GraphForceCanvas: React.FC<{
   highlightIds,
   focusIds,
   selectedId,
+  selectedIds,
+  highlightEdgeIds,
+  locateIds,
   onSelectNode,
   onClearSelection,
   forceSettings = GRAPH_FORCE_DEFAULTS,
@@ -153,6 +157,9 @@ export const GraphForceCanvas: React.FC<{
   const highlightRef = useRef(highlightIds)
   const focusRef = useRef(focusIds)
   const selectedRef = useRef(selectedId)
+  const selectedIdsRef = useRef(selectedIds)
+  const highlightEdgeRef = useRef(highlightEdgeIds)
+  const locateIdsRef = useRef(locateIds)
   const onSelectRef = useRef(onSelectNode)
   const onClearRef = useRef(onClearSelection)
   const drawRef = useRef<() => void>(() => {})
@@ -163,7 +170,30 @@ export const GraphForceCanvas: React.FC<{
   const cameraAnimRef = useRef(false)
   /** Keep selected node screen-centered until this timestamp (ms). */
   const followUntilRef = useRef(0)
+  /** User is dragging a node or panning; do not fight the pointer with camera follow. */
+  const suppressCameraRef = useRef(false)
+  /** Pointer is down; async select must not start camera follow until the gesture ends. */
+  const interactingRef = useRef(false)
+  const kickFollowRef = useRef<() => void>(() => {})
+  const [followKick, setFollowKick] = useState(0)
   const graphFpRef = useRef('')
+  const degreeByIdRef = useRef(new Map<string, number>())
+
+  const stopCameraFollow = () => {
+    suppressCameraRef.current = true
+    cameraAnimRef.current = false
+    followUntilRef.current = 0
+    pendingZoomRef.current = false
+    if (centerRafRef.current != null) {
+      cancelAnimationFrame(centerRafRef.current)
+      centerRafRef.current = null
+    }
+  }
+
+  kickFollowRef.current = () => {
+    if (interactingRef.current) return
+    setFollowKick((n) => n + 1)
+  }
 
   // Sync locate intent during render so topology rebuild in the same commit can seed/center.
   if (locateSeq !== locateSeqRef.current) {
@@ -174,26 +204,43 @@ export const GraphForceCanvas: React.FC<{
     }
   }
 
-  const cameraTargetForSelected = (k: number): { x: number; y: number; k: number } | null => {
-    const canvas = canvasRef.current
+  const cameraFitIds = (): string[] => {
+    const ids = locateIdsRef.current
+    if (ids && ids.length > 0) return ids
     const selected = selectedRef.current
-    if (!canvas || !selected) return null
-    const n = nodesRef.current.find((x) => x.id === selected)
-    if (!n || n.x == null || n.y == null) return null
-    const w = canvas.clientWidth
-    const h = canvas.clientHeight
-    if (w <= 0 || h <= 0) return null
-    return {
-      x: w / 2 - n.x * k,
-      y: h / 2 - n.y * k,
-      k
-    }
+    return selected ? [selected] : []
   }
 
-  /** Soft-follow (or hard-set when alpha>=1) toward the selected node. */
+  const cameraTargetForIds = (
+    ids: string[],
+    k: number
+  ): { x: number; y: number; k: number } | null => {
+    const canvas = canvasRef.current
+    if (!canvas || ids.length === 0) return null
+    const pts: Array<{ x: number; y: number }> = []
+    for (const id of ids) {
+      const n = nodesRef.current.find((x) => x.id === id)
+      if (!n || n.x == null || n.y == null) continue
+      pts.push({ x: n.x, y: n.y })
+    }
+    const w = canvas.clientWidth
+    const h = canvas.clientHeight
+    if (w <= 0 || h <= 0 || pts.length === 0) return null
+    if (pts.length === 1) {
+      return {
+        x: w / 2 - pts[0]!.x * k,
+        y: h / 2 - pts[0]!.y * k,
+        k
+      }
+    }
+    return fitGraphCameraToPoints(pts, w, h, { padding: 80, maxK: k, minK: 0.45 })
+  }
+
+  /** Soft-follow (or hard-set when alpha>=1) toward the locate/selected nodes. */
   const easeCameraTowardSelected = (opts?: { k?: number; alpha?: number }) => {
+    const ids = cameraFitIds()
     const k = opts?.k ?? transformRef.current.k
-    const target = cameraTargetForSelected(k)
+    const target = cameraTargetForIds(ids, k)
     if (!target) return false
     const alpha = opts?.alpha ?? 1
     if (alpha >= 1) {
@@ -229,6 +276,20 @@ export const GraphForceCanvas: React.FC<{
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
+
+  useEffect(() => {
+    selectedIdsRef.current = selectedIds
+    drawRef.current()
+  }, [selectedIds])
+
+  useEffect(() => {
+    highlightEdgeRef.current = highlightEdgeIds
+    drawRef.current()
+  }, [highlightEdgeIds])
+
+  useEffect(() => {
+    locateIdsRef.current = locateIds
+  }, [locateIds])
 
   useEffect(() => {
     onSelectRef.current = onSelectNode
@@ -291,11 +352,24 @@ export const GraphForceCanvas: React.FC<{
       const h = canvas.clientHeight
       if (w <= 0 || h <= 0) return
 
-      // Soft-follow after scripted animation (skip while easing to avoid fighting it).
+      const { x: tx0, y: ty0, k: k0 } = transformRef.current
+      if (k0 > 0) {
+        const wx = (w / 2 - tx0) / k0
+        const wy = (h / 2 - ty0) / k0
+        const sim = simRef.current
+        if (sim) {
+          ;(sim.force('x') as ForceX<SimNode> | undefined)?.x(wx)
+          ;(sim.force('y') as ForceY<SimNode> | undefined)?.y(wy)
+        }
+      }
+
+      // Soft-follow after scripted animation (skip while easing or user dragging).
       if (
+        !interactingRef.current &&
+        !suppressCameraRef.current &&
         !cameraAnimRef.current &&
         followUntilRef.current > performance.now() &&
-        selectedRef.current
+        (locateIdsRef.current?.length || selectedRef.current)
       ) {
         easeCameraTowardSelected({
           k: pendingZoomRef.current
@@ -328,22 +402,27 @@ export const GraphForceCanvas: React.FC<{
         const t = link.target as SimNode
         if (s.x == null || t.x == null || s.y == null || t.y == null) continue
         const pending = isPending(link.reviewStatus)
+        const edgeHighlighted = highlightEdgeRef.current?.has(link.id) === true
         const incident =
           !focusing ||
           s.id === selected ||
           t.id === selected ||
+          edgeHighlighted ||
           (focus?.has(s.id) === true && focus?.has(t.id) === true)
         if (focusing && !incident) continue
-        const stroke = pending
-          ? focusing
-            ? 'rgba(100,116,139,0.28)'
-            : 'rgba(100,116,139,0.22)'
-          : focusing
-            ? 'rgba(100,116,139,0.55)'
-            : 'rgba(100,116,139,0.45)'
+        const stroke = edgeHighlighted
+          ? EDGE_HIGHLIGHT
+          : pending
+            ? focusing
+              ? 'rgba(100,116,139,0.28)'
+              : 'rgba(100,116,139,0.22)'
+            : focusing
+              ? 'rgba(100,116,139,0.55)'
+              : 'rgba(100,116,139,0.45)'
         ctx.globalAlpha = 1
         ctx.strokeStyle = stroke
         ctx.fillStyle = stroke
+        ctx.lineWidth = ((edgeHighlighted ? 2.6 : 1) * lineScale) / k
         ctx.setLineDash(pending ? [4 / k, 4 / k] : [])
         ctx.beginPath()
         ctx.moveTo(s.x, s.y)
@@ -354,51 +433,51 @@ export const GraphForceCanvas: React.FC<{
         }
       }
       ctx.setLineDash([])
+      ctx.lineWidth = (1 * lineScale) / k
 
-      const degreeById = new Map<string, number>()
-      for (const link of linksRef.current) {
-        const sid =
-          typeof link.source === 'object' && link.source
-            ? (link.source as SimNode).id
-            : String(link.source)
-        const tid =
-          typeof link.target === 'object' && link.target
-            ? (link.target as SimNode).id
-            : String(link.target)
-        degreeById.set(sid, (degreeById.get(sid) ?? 0) + 1)
-        degreeById.set(tid, (degreeById.get(tid) ?? 0) + 1)
-      }
+      const degreeById = degreeByIdRef.current
 
       for (const n of nodesRef.current) {
         if (n.x == null || n.y == null) continue
         const r = (6 + Math.min(10, (n.mentionCount ?? 1) * 1.2)) * nodeScale
-        const highlighted = highlights?.has(n.id) || n.id === selected
+        const multiSelected = selectedIdsRef.current?.has(n.id) === true
+        const highlighted = highlights?.has(n.id) || n.id === selected || multiSelected
         const pending = isPending(n.reviewStatus)
         const inFocus = !focusing || focus?.has(n.id) === true
         const dim = focusing && !inFocus
-        const isHub =
-          (degreeById.get(n.id) ?? 0) > appearance.hubLabelMinDegree ||
-          (n.mentionCount ?? 0) >= appearance.hubLabelMinMentions
-        ctx.globalAlpha = dim ? 0.1 : pending ? 0.45 : 1
+        const isHub = isGraphHubLabelVisible({
+          degree: degreeById.get(n.id) ?? 0,
+          mentionCount: n.mentionCount ?? 0,
+          hubLabelMinDegree: appearance.hubLabelMinDegree,
+          hubLabelMinMentions: appearance.hubLabelMinMentions
+        })
+        ctx.globalAlpha = dim ? 0.1 : pending && !highlighted ? 0.45 : 1
         ctx.beginPath()
-        ctx.fillStyle = TYPE_COLORS[n.nodeType] || '#64748b'
+        ctx.fillStyle = TYPE_COLORS[n.nodeType] || TYPE_COLOR_FALLBACK
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2)
         ctx.fill()
-        if (pending && inFocus) {
+        if (multiSelected) {
+          ctx.strokeStyle = '#2563eb'
+          ctx.lineWidth = (2.8 * lineScale) / k
+          ctx.stroke()
+        } else if (highlighted) {
+          ctx.setLineDash(pending ? [3 / k, 3 / k] : [])
+          ctx.strokeStyle = '#0f172a'
+          ctx.lineWidth = (2.5 * lineScale) / k
+          ctx.stroke()
+          ctx.setLineDash([])
+        } else if (pending && inFocus) {
           ctx.setLineDash([3 / k, 3 / k])
           ctx.strokeStyle = 'rgba(15,23,42,0.55)'
           ctx.lineWidth = (1.5 * lineScale) / k
           ctx.stroke()
           ctx.setLineDash([])
-        } else if (highlighted) {
-          ctx.strokeStyle = '#0f172a'
-          ctx.lineWidth = (2.5 * lineScale) / k
-          ctx.stroke()
         }
         const showLabel =
           textAlpha > 0.01 &&
           !dim &&
           (n.id === selected ||
+            multiSelected ||
             highlights?.has(n.id) === true ||
             (focusing && inFocus) ||
             isHub)
@@ -452,6 +531,14 @@ export const GraphForceCanvas: React.FC<{
       return
     }
 
+    const nextDegree = new Map<string, number>()
+    for (const l of nextLinks) {
+      const sid = String(l.source)
+      const tid = String(l.target)
+      nextDegree.set(sid, (nextDegree.get(sid) ?? 0) + 1)
+      nextDegree.set(tid, (nextDegree.get(tid) ?? 0) + 1)
+    }
+    degreeByIdRef.current = nextDegree
     graphFpRef.current = fp
     const prevById = new Map(nodesRef.current.map((n) => [n.id, n]))
     const cx = Math.max(1, canvas.clientWidth) / 2
@@ -556,14 +643,17 @@ export const GraphForceCanvas: React.FC<{
   }, [animationTick])
 
   // Smooth camera: ease pan (+ optional zoom) to the selected node, then soft-follow.
+  // Skip while the pointer is down — async select must not fight a drag.
   useEffect(() => {
-    if (!selectedId) {
+    const fitIds = locateIds?.length ? locateIds : selectedId ? [selectedId] : []
+    if (fitIds.length === 0) {
       pendingZoomRef.current = false
       followUntilRef.current = 0
       cameraAnimRef.current = false
       drawRef.current()
       return
     }
+    if (interactingRef.current) return
     const canvas = canvasRef.current
     if (!canvas) return
     const withZoom = pendingZoomRef.current
@@ -576,6 +666,7 @@ export const GraphForceCanvas: React.FC<{
       centerRafRef.current = null
     }
 
+    suppressCameraRef.current = false
     if (withZoom) {
       followUntilRef.current = Math.max(followUntilRef.current, performance.now() + 1400)
     }
@@ -584,23 +675,26 @@ export const GraphForceCanvas: React.FC<{
     let waitTimer: number | null = null
 
     const runEase = () => {
-      if (cancelled) return
+      if (cancelled || suppressCameraRef.current || interactingRef.current) return
       cameraAnimRef.current = true
       const start = performance.now()
 
       const step = (now: number) => {
-        if (cancelled) return
+        if (cancelled || suppressCameraRef.current || interactingRef.current) {
+          cameraAnimRef.current = false
+          centerRafRef.current = null
+          return
+        }
         const t = Math.min(1, (now - start) / duration)
         const ease = easeOutCubic(t)
-        const k = from.k + (targetK - from.k) * ease
-        const desired = cameraTargetForSelected(k)
+        const desired = cameraTargetForIds(fitIds, targetK)
         if (!desired) {
           centerRafRef.current = requestAnimationFrame(step)
           return
         }
         transformRef.current.x = from.x + (desired.x - from.x) * ease
         transformRef.current.y = from.y + (desired.y - from.y) * ease
-        transformRef.current.k = k
+        transformRef.current.k = from.k + (desired.k - from.k) * ease
         drawRef.current()
         if (t < 1) {
           centerRafRef.current = requestAnimationFrame(step)
@@ -614,18 +708,18 @@ export const GraphForceCanvas: React.FC<{
       centerRafRef.current = requestAnimationFrame(step)
     }
 
-    if (cameraTargetForSelected(from.k)) {
+    if (cameraTargetForIds(fitIds, from.k)) {
       runEase()
     } else {
       let tries = 0
       waitTimer = window.setInterval(() => {
         tries += 1
-        if (cameraTargetForSelected(from.k) || tries >= 40) {
+        if (cameraTargetForIds(fitIds, from.k) || tries >= 40) {
           if (waitTimer != null) {
             window.clearInterval(waitTimer)
             waitTimer = null
           }
-          if (tries < 40 && !cancelled) runEase()
+          if (tries < 40 && !cancelled && !interactingRef.current) runEase()
         }
       }, 40)
     }
@@ -639,11 +733,11 @@ export const GraphForceCanvas: React.FC<{
         centerRafRef.current = null
       }
     }
-  }, [selectedId, locateSeq])
+  }, [selectedId, locateIds, locateSeq, followKick])
 
   useEffect(() => {
     drawRef.current()
-  }, [highlightIds, selectedId, focusIds])
+  }, [highlightIds, selectedId, selectedIds, focusIds, highlightEdgeIds])
 
   // Pointer handlers mount once; callbacks read latest via refs.
   useEffect(() => {
@@ -674,6 +768,8 @@ export const GraphForceCanvas: React.FC<{
 
     const onDown = (ev: PointerEvent) => {
       if (ev.button !== 0) return
+      interactingRef.current = true
+      stopCameraFollow()
       const p = toWorld(ev.clientX, ev.clientY)
       const hit = findNode(p.x, p.y)
       try {
@@ -692,8 +788,8 @@ export const GraphForceCanvas: React.FC<{
           startX: ev.clientX,
           startY: ev.clientY
         }
-        onSelectRef.current?.(hit.id)
-        // Do not restart simulation on click — only when user actually drags.
+        // Select on pointerup if this stays a click. Selecting here would start
+        // camera follow while the user may still begin a drag.
       } else {
         dragRef.current = {
           id: null,
@@ -723,6 +819,7 @@ export const GraphForceCanvas: React.FC<{
         if (!drag.dragging) {
           if (dist < DRAG_THRESHOLD_PX) return
           drag.dragging = true
+          stopCameraFollow()
         }
         transformRef.current.x += ev.clientX - drag.lastX
         transformRef.current.y += ev.clientY - drag.lastY
@@ -736,6 +833,7 @@ export const GraphForceCanvas: React.FC<{
       if (!drag.dragging) {
         if (dist < DRAG_THRESHOLD_PX) return
         drag.dragging = true
+        stopCameraFollow()
         const n = nodesRef.current.find((x) => x.id === drag.id)
         if (n) {
           n.fx = n.x
@@ -753,7 +851,9 @@ export const GraphForceCanvas: React.FC<{
 
     const endDrag = (ev: PointerEvent) => {
       const drag = dragRef.current
-      if (drag.pointerId != null && ev.pointerId !== drag.pointerId) return
+      if (drag.pointerId == null) return
+      if (ev.pointerId !== drag.pointerId) return
+      const wasNodeClick = Boolean(drag.id) && !drag.dragging
       if (drag.pointerId != null) {
         try {
           canvas.releasePointerCapture(drag.pointerId)
@@ -782,12 +882,18 @@ export const GraphForceCanvas: React.FC<{
         startX: 0,
         startY: 0
       }
+      interactingRef.current = false
+      if (wasNodeClick && drag.id) {
+        if (selectedRef.current === drag.id) kickFollowRef.current()
+        else onSelectRef.current?.(drag.id)
+      }
       canvas.style.cursor = 'move'
       drawRef.current()
     }
 
     const onWheel = (ev: WheelEvent) => {
       ev.preventDefault()
+      stopCameraFollow()
       const rect = canvas.getBoundingClientRect()
       const mx = ev.clientX - rect.left
       const my = ev.clientY - rect.top

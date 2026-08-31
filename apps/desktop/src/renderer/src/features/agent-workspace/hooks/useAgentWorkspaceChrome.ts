@@ -34,7 +34,6 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
     readStoredAssistantId
   )
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
-  const [showCostDialog, setShowCostDialog] = useState(false)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
   const pricingBootWarnShownRef = useRef(false)
@@ -142,8 +141,6 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
     tokens,
     showModelSwitcher,
     setShowModelSwitcher,
-    showCostDialog,
-    setShowCostDialog,
     showAssistantPicker,
     setShowAssistantPicker,
     pricingLastUpdated,

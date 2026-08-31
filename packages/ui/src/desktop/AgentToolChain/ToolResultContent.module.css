@@ -24,6 +24,7 @@
   width: 100% !important;
   font-size: 13px !important;
   line-height: 1.55 !important;
+  color: var(--text-secondary);
 }
 
 .markdownBody :global(.x-markdown p) {
@@ -36,12 +37,23 @@
 
 .resultTextLog {
   margin: 0;
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-family-mono, var(--font-mono, monospace));
   font-size: 12px;
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
+}
+
+.resultStatus {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 20px;
 }
 
 .errorText {
@@ -63,7 +75,7 @@
 .structTitle {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .structLink {

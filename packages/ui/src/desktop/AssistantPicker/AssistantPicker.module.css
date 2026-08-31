@@ -85,7 +85,7 @@
 }
 
 .assistantList::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 .assistantList::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.2);

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { withAppContentOverlay } from '../overlay'
+import { Input } from '../Input/Input'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import { resolveProviderTypeLabel } from './ai-model-services.constants'
@@ -94,9 +95,9 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                   <span className={styles.materialLabel}>
                     {t('agent.provider.add_name_label', '供应商名称')}
                   </span>
-                  <input
+                  <Input
                     type="text"
-                    className={styles.addModalInput}
+                    fieldSize="small"
                     placeholder={t('agent.provider.add_name_hint', '例如: My OpenAI Proxy')}
                     value={addModalData.name}
                     onChange={(e) => setAddModalData({ ...addModalData, name: e.target.value })}
@@ -104,9 +105,9 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                 </div>
                 <div className={styles.materialField}>
                   <span className={styles.materialLabel}>Base URL</span>
-                  <input
+                  <Input
                     type="text"
-                    className={styles.addModalInput}
+                    fieldSize="small"
                     placeholder="https://api.example.com/v1"
                     value={addModalData.baseUrl}
                     onChange={(e) =>
@@ -170,9 +171,11 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                     <span className={styles.testSearchIcon}>
                       <Search size={16} />
                     </span>
-                    <input
+                    <Input
                       type="text"
+                      fieldSize="small"
                       className={styles.testSearchInput}
+                      inputClassName="baishou-form-field--embed"
                       placeholder={t('common.search_model', '搜索模型...')}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}

@@ -98,13 +98,6 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
                       {t('agent.assistant.context_window_label', '上下文窗口')}:{' '}
                       {assistant.contextWindow}
                     </span>
-                    {assistant.modelId && (
-                      <>
-                        <span style={{ margin: '0 8px' }}>•</span>
-                        <Sparkles size={12} style={{ marginRight: 4 }} />
-                        <span>{assistant.modelId}</span>
-                      </>
-                    )}
                   </div>
                 </div>
 

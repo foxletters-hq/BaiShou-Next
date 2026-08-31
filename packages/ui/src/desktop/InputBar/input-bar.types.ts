@@ -2,6 +2,9 @@ import type { ReactNode } from 'react'
 import type { MockChatAttachment } from '@baishou/shared'
 import type { PromptShortcut } from '../PromptShortcutSheet'
 import type { ComposerDraftStorage, ComposerOnSend } from '../../shared/composer-draft'
+import type { InputBarAttachmentIntake } from './input-bar-drop.util'
+
+export type { InputBarAttachmentIntake }
 
 export interface InputBarProps {
   isLoading: boolean
@@ -21,6 +24,8 @@ export interface InputBarProps {
   onTriggerShortcut?: () => void
   /** 打开 Skill 管理（原快捷指令管理） */
   onManageShortcuts?: () => void
+  /** create-skill 引导写入范围：software 为用户主目录，workspace 为当前项目 */
+  createSkillScope?: 'software' | 'workspace'
   onOpenTools?: () => void
   searchMode?: boolean
   onToggleSearchMode?: () => void
@@ -30,6 +35,8 @@ export interface InputBarProps {
   onOpenNotebookMount?: () => void
   /** 覆盖默认输入框占位文案 */
   placeholder?: string
+  /** 技能选择器关闭后，Escape 的额外处理（如取消编辑此前消息） */
+  onEscape?: () => void
   /** 底部右侧发送按钮左侧的附加控件（如模型选择） */
   bottomTrailing?: ReactNode
   /** 输入外壳底部延伸区 */
@@ -38,17 +45,32 @@ export interface InputBarProps {
   sendIconSize?: number
   /** 文本区最少显示行数（默认 1） */
   minRows?: number
+  /**
+   * 拖入附件的入口。发送后的落盘仍按会话分流：
+   * companion 拷进附件库；workspace 按工作台规则（图片快照 / 路径引用）。
+   */
+  attachmentIntake?: InputBarAttachmentIntake
+  /**
+   * 工作台：把文件树内部拖放解析成附件。返回 null 时回退为系统文件列表。
+   */
+  resolveDropAttachments?: (
+    dataTransfer: DataTransfer
+  ) => Promise<MockChatAttachment[] | null>
+}
+
+export type InputBarDraft = {
+  text: string
+  skillRefs?: Array<{ command: string; content: string }>
 }
 
 export interface InputBarRef {
   insertText: (text: string) => void
   /** 整段替换输入框内容（草稿恢复 / 回滚回填） */
   setText: (text: string) => void
+  /** 读取当前输入框正文与 Skill 引用（进入编辑此前消息前暂存草稿） */
+  getDraft: () => InputBarDraft
   /** 回填纯文案，并按需恢复 Skill 引用胶囊 */
-  restoreDraft: (draft: {
-    text: string
-    skillRefs?: Array<{ command: string; content: string }>
-  }) => void
+  restoreDraft: (draft: InputBarDraft) => void
   /** 插入快捷指令正文并自动换行（遗留）；Skill 请用 applySkillRef */
   insertShortcutContent: (content: string) => void
   /** 以输入框内引用胶囊挂载 Skill（发送时再展开正文） */

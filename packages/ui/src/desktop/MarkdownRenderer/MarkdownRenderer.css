@@ -29,15 +29,24 @@
 }
 
 .markdown-renderer pre {
-  background-color: var(--bg-surface-highlight);
+  background-color: var(--bg-code-block, #eceef2);
   border-radius: 6px;
   padding: 12px;
   overflow-x: auto;
 }
 
 .markdown-renderer code {
-  font-family: monospace;
-  background-color: var(--bg-surface-highlight);
-  padding: 2px 4px;
-  border-radius: 4px;
+  font-family: var(--font-family-main, var(--font-family));
+  background-color: var(--bg-surface-normal);
+  padding: 0.08em 0.35em;
+  border-radius: 0.35rem;
+  font-size: inherit;
+}
+
+.markdown-renderer pre code {
+  font-family: var(--font-family-mono);
+}
+
+.markdown-renderer blockquote {
+  font-family: var(--font-family);
 }

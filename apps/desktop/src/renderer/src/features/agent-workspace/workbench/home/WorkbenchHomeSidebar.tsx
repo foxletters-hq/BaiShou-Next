@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,7 +9,7 @@ import {
   Pin,
   Plus,
   Settings,
-  LayoutTemplate,
+  Sparkles,
   Trash2
 } from 'lucide-react'
 import type { AgentWorkspaceEntry, AgentWorkspaceSessionListItem } from '@baishou/shared'
@@ -20,16 +20,24 @@ import {
   rememberSettingsReturnPath
 } from '../../../settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../../../lib/prefetch-settings-entry'
-import { workspaceEntryMatchesFolder } from '../../utils/workspace-display.util'
-import { WorkbenchRemoveRecentConfirmDialog } from './WorkbenchRemoveRecentConfirmDialog'
+import {
+  formatCompactRelativeTime,
+  isWorkspacePinned,
+  sortAgentWorkspaces,
+  workspaceEntryMatchesFolder
+} from '../../utils/workspace-display.util'
+import {
+  readSkipRemoveRecentConfirm,
+  writeSkipRemoveRecentConfirm
+} from '../../utils/workspace-dont-ask-again.util'
+import { previewWorkspaceSessions } from '../workbenchSessionGroups'
 import styles from './WorkbenchHomeSidebar.module.css'
 
-export type WorkbenchHomeNavId = 'home' | 'knowledge' | 'templates' | 'projects' | null
+export type WorkbenchHomeNavId = 'home' | 'knowledge' | 'skills' | 'projects' | null
 
 const RECENT_LIMIT = 10
 const SESSION_PREVIEW_LIMIT = 8
 const EXPANDED_STORAGE_KEY = 'baishou:workbench-home-recent-expanded'
-const SKIP_REMOVE_CONFIRM_KEY = 'baishou:workbench-skip-remove-recent-confirm'
 
 function readExpandedPreference(): boolean {
   try {
@@ -49,95 +57,12 @@ function writeExpandedPreference(expanded: boolean): void {
   }
 }
 
-function readSkipRemoveConfirm(): boolean {
-  try {
-    return localStorage.getItem(SKIP_REMOVE_CONFIRM_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function writeSkipRemoveConfirm(): void {
-  try {
-    localStorage.setItem(SKIP_REMOVE_CONFIRM_KEY, '1')
-  } catch {
-    /* ignore */
-  }
-}
-
-function isPinned(ws: AgentWorkspaceEntry): boolean {
-  return Boolean(ws.pinnedAt)
-}
-
-function sortRecentWorkspaces(
-  list: AgentWorkspaceEntry[],
-  lastActiveId: string | null | undefined
-): AgentWorkspaceEntry[] {
-  return [...list].sort((a, b) => {
-    const aPinned = isPinned(a)
-    const bPinned = isPinned(b)
-    if (aPinned !== bPinned) return aPinned ? -1 : 1
-    if (aPinned && bPinned) {
-      return Date.parse(b.pinnedAt ?? '') - Date.parse(a.pinnedAt ?? '')
-    }
-    if (lastActiveId) {
-      if (a.id === lastActiveId) return -1
-      if (b.id === lastActiveId) return 1
-    }
-    return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
-  })
-}
-
-/** 相对打开时间，风格贴近「11天前」 */
-function formatOpenedRelativeTime(
-  updatedAt: string,
-  t: (key: string, fallback: string) => string
-): string {
-  const ts = Date.parse(updatedAt)
-  if (Number.isNaN(ts)) return ''
-  const diffMs = Date.now() - ts
-  const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return t('common.justNow', '刚刚')
-  if (mins < 60) return `${mins}${t('common.minutes_ago', '分钟前')}`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}${t('common.hours_ago', '小时前')}`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return t('common.yesterday', '昨天')
-  if (days < 30) return `${days}${t('common.days_ago', '天前')}`
-  const date = new Date(ts)
-  const now = new Date()
-  if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
-  }
-  return date.toLocaleDateString()
-}
-
-/** 会话行短相对时间：43分 / 2天 */
-function formatCompactRelativeTime(updatedAt: string): string {
-  const ts = Date.parse(updatedAt)
-  if (Number.isNaN(ts)) return ''
-  const diffMs = Date.now() - ts
-  const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return '刚刚'
-  if (mins < 60) return `${mins}分`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}时`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}天`
-  const date = new Date(ts)
-  const now = new Date()
-  if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
-  }
-  return date.toLocaleDateString()
-}
-
 export interface WorkbenchHomeSidebarProps {
   activeNav?: WorkbenchHomeNavId
   onNewProject: () => void
   onOpenHome: () => void
   onOpenKnowledge: () => void
-  onOpenTemplates: () => void
+  onOpenSkills: () => void
   onOpenProjects: () => void
   onOpenSettings: () => void
   creating?: boolean
@@ -151,6 +76,7 @@ export interface WorkbenchHomeSidebarProps {
   /** 由父组件提供，避免侧栏再开一份 useAgentWorkspaces 导致状态不同步 */
   onRemoveWorkspace: (workspaceId: string) => Promise<boolean>
   onTogglePinWorkspace: (workspaceId: string, pinned: boolean) => Promise<unknown>
+  onTogglePinSession?: (sessionId: string, pinned: boolean) => Promise<unknown>
 }
 
 export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
@@ -158,7 +84,7 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
   onNewProject,
   onOpenHome,
   onOpenKnowledge,
-  onOpenTemplates,
+  onOpenSkills,
   onOpenProjects: _onOpenProjects,
   onOpenSettings,
   creating,
@@ -169,14 +95,14 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
   onOpenSession,
   onDeleteSession,
   onRemoveWorkspace,
-  onTogglePinWorkspace
+  onTogglePinWorkspace,
+  onTogglePinSession
 }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const dialog = useDialog()
   const [recentExpanded, setRecentExpanded] = useState(readExpandedPreference)
-  const [removeTarget, setRemoveTarget] = useState<AgentWorkspaceEntry | null>(null)
   const [removing, setRemoving] = useState(false)
   const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState<Set<string>>(() =>
     lastActiveWorkspaceId ? new Set([lastActiveWorkspaceId]) : new Set()
@@ -191,22 +117,20 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
 
   const handleOpenSystemSettings = useCallback(() => {
     rememberSettingsReturnPath(locationToReturnPath(location))
-    startTransition(() => {
-      navigate('/settings/general')
-    })
+    navigate('/settings/general')
   }, [location, navigate])
 
   const recent = useMemo(
-    () => sortRecentWorkspaces(recentWorkspaces, lastActiveWorkspaceId).slice(0, RECENT_LIMIT),
+    () => sortAgentWorkspaces(recentWorkspaces, lastActiveWorkspaceId).slice(0, RECENT_LIMIT),
     [lastActiveWorkspaceId, recentWorkspaces]
   )
 
   const sessionsByWorkspaceId = useMemo(() => {
     const map = new Map<string, AgentWorkspaceSessionListItem[]>()
     for (const ws of recent) {
-      const list = sessions
-        .filter((session) => workspaceEntryMatchesFolder(ws, session.folderRoot))
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      const list = sessions.filter((session) =>
+        workspaceEntryMatchesFolder(ws, session.folderRoot)
+      )
       map.set(ws.id, list)
     }
     return map
@@ -256,7 +180,6 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
         )
       } finally {
         setRemoving(false)
-        setRemoveTarget(null)
       }
     },
     [dialog, onRemoveWorkspace, t]
@@ -267,31 +190,45 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
       e.stopPropagation()
       e.preventDefault()
       if (removing) return
-      if (readSkipRemoveConfirm()) {
+      if (readSkipRemoveRecentConfirm()) {
         void performRemove(ws)
         return
       }
-      setRemoveTarget(ws)
+      void dialog
+        .confirmWithDontAskAgain(
+          t(
+            'workbench.home_remove_workspace_confirm',
+            '将「{{name}}」从工作目录列表中移除？磁盘上的文件不会被删除。',
+            { name: projectLabel(ws) }
+          ),
+          t('workbench.home_remove_workspace', '移除工作目录'),
+          t('workbench.home_remove_dont_ask_again', '不再提示')
+        )
+        .then((result) => {
+          if (!result.confirmed) return
+          if (result.dontAskAgain) writeSkipRemoveRecentConfirm()
+          void performRemove(ws)
+        })
     },
-    [performRemove, removing]
+    [dialog, performRemove, projectLabel, removing, t]
   )
 
   const handlePinClick = useCallback(
     (e: React.MouseEvent, ws: AgentWorkspaceEntry) => {
       e.stopPropagation()
       e.preventDefault()
-      void onTogglePinWorkspace(ws.id, !isPinned(ws))
+      e.currentTarget.blur()
+      const nextPinned = !isWorkspacePinned(ws)
+      if (nextPinned) {
+        setExpandedWorkspaceIds((prev) => {
+          const next = new Set(prev)
+          next.add(ws.id)
+          return next
+        })
+      }
+      void onTogglePinWorkspace(ws.id, nextPinned)
     },
     [onTogglePinWorkspace]
-  )
-
-  const handleConfirmRemove = useCallback(
-    (dontAskAgain: boolean) => {
-      if (!removeTarget) return
-      if (dontAskAgain) writeSkipRemoveConfirm()
-      void performRemove(removeTarget)
-    },
-    [performRemove, removeTarget]
   )
 
   const handleDeleteSessionClick = useCallback(
@@ -301,6 +238,32 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
       onDeleteSession?.(sessionId)
     },
     [onDeleteSession]
+  )
+
+  const handlePinSessionClick = useCallback(
+    (e: React.MouseEvent, sessionId: string, pinned: boolean) => {
+      e.stopPropagation()
+      e.preventDefault()
+      e.currentTarget.blur()
+      void (async () => {
+        try {
+          if (onTogglePinSession) {
+            await onTogglePinSession(sessionId, !pinned)
+            return
+          }
+          const pinSession = window.api?.agentWorkspace?.pinSession
+          if (pinSession) {
+            await pinSession(sessionId, !pinned)
+          } else {
+            await window.electron.ipcRenderer.invoke('agent:pin-session', sessionId, !pinned)
+          }
+          window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
+        } catch (error) {
+          console.error('[WorkbenchHomeSidebar] pin session failed:', error)
+        }
+      })()
+    },
+    [onTogglePinSession]
   )
 
   return (
@@ -357,14 +320,14 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
           </button>
           <button
             type="button"
-            className={`${styles.navItem} ${activeNav === 'templates' ? styles.selected : ''}`}
-            onClick={onOpenTemplates}
+            className={`${styles.navItem} ${activeNav === 'skills' ? styles.selected : ''}`}
+            onClick={onOpenSkills}
           >
             <span className={styles.navLead} aria-hidden />
             <span className={styles.navIcon} aria-hidden>
-              <LayoutTemplate size={18} />
+              <Sparkles size={18} />
             </span>
-            <span className={styles.navLabel}>{t('workbench.home_templates', '模板')}</span>
+            <span className={styles.navLabel}>{t('workbench.home_skills', '技能')}</span>
           </button>
 
           <div className={styles.recentSection}>
@@ -397,11 +360,13 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
                   aria-label={t('workbench.home_recent_projects', '最近项目')}
                 >
                   {recent.map((ws) => {
-                    const pinned = isPinned(ws)
+                    const pinned = isWorkspacePinned(ws)
                     const isExpanded = expandedWorkspaceIds.has(ws.id)
                     const workspaceSessions = sessionsByWorkspaceId.get(ws.id) ?? []
-                    const previewSessions = workspaceSessions.slice(0, SESSION_PREVIEW_LIMIT)
-                    const hasMore = workspaceSessions.length > SESSION_PREVIEW_LIMIT
+                    const { preview: previewSessions, hasMore } = previewWorkspaceSessions(
+                      workspaceSessions,
+                      SESSION_PREVIEW_LIMIT
+                    )
                     return (
                       <li key={ws.id} className={styles.recentTreeItem}>
                         <div
@@ -459,9 +424,6 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
                               <Trash2 size={13} />
                             </button>
                           </div>
-                          <span className={styles.recentTime}>
-                            {formatOpenedRelativeTime(ws.updatedAt, t)}
-                          </span>
                         </div>
 
                         {isExpanded ? (
@@ -474,15 +436,27 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
                                 {t('workbench.home_no_sessions', '暂无对话')}
                               </li>
                             ) : (
-                              previewSessions.map((session) => (
+                              previewSessions.map((session) => {
+                                const sessionPinned = Boolean(session.isPinned)
+                                return (
                                 <li key={session.sessionId}>
-                                  <div className={styles.sessionItem}>
+                                  <div
+                                    className={`${styles.sessionItem} ${sessionPinned ? styles.sessionItemPinned : ''}`}
+                                  >
                                     <button
                                       type="button"
                                       className={styles.sessionOpen}
                                       onClick={() => onOpenSession?.(session.sessionId, ws.id)}
                                       title={session.title || t('workbench.untitled_session', '未命名会话')}
                                     >
+                                      {sessionPinned ? (
+                                        <Pin
+                                          size={11}
+                                          className={styles.sessionPinBadge}
+                                          fill="currentColor"
+                                          aria-hidden
+                                        />
+                                      ) : null}
                                       <span className={styles.sessionTitle}>
                                         {session.title?.trim() ||
                                           t('workbench.untitled_session', '未命名会话')}
@@ -491,10 +465,29 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
                                         {formatCompactRelativeTime(session.updatedAt)}
                                       </span>
                                     </button>
+                                    <button
+                                      type="button"
+                                      className={`${styles.sessionActionBtn} ${sessionPinned ? styles.sessionActionBtnActive : ''}`}
+                                      onClick={(e) =>
+                                        handlePinSessionClick(e, session.sessionId, sessionPinned)
+                                      }
+                                      title={
+                                        sessionPinned
+                                          ? t('workbench.home_unpin_session', '取消置顶')
+                                          : t('workbench.home_pin_session', '置顶对话')
+                                      }
+                                      aria-label={
+                                        sessionPinned
+                                          ? t('workbench.home_unpin_session', '取消置顶')
+                                          : t('workbench.home_pin_session', '置顶对话')
+                                      }
+                                    >
+                                      <Pin size={12} fill={sessionPinned ? 'currentColor' : 'none'} />
+                                    </button>
                                     {onDeleteSession ? (
                                       <button
                                         type="button"
-                                        className={styles.sessionDeleteBtn}
+                                        className={styles.sessionActionBtn}
                                         onClick={(e) =>
                                           handleDeleteSessionClick(e, session.sessionId)
                                         }
@@ -506,7 +499,8 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
                                     ) : null}
                                   </div>
                                 </li>
-                              ))
+                                )
+                              })
                             )}
                             {hasMore ? (
                               <li>
@@ -555,13 +549,6 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
           </button>
         </div>
       </div>
-
-      <WorkbenchRemoveRecentConfirmDialog
-        open={Boolean(removeTarget)}
-        projectName={removeTarget ? projectLabel(removeTarget) : ''}
-        onCancel={() => setRemoveTarget(null)}
-        onConfirm={handleConfirmRemove}
-      />
     </aside>
   )
 }

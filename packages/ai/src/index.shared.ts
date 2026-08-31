@@ -12,6 +12,10 @@ export * from './tools/adapters/graph.adapter'
 export * from './tools/adapters/knowledge.adapter'
 export * from './tools/recall-relations.tool'
 export * from './tools/knowledge-search.tool'
+export * from './tools/knowledge-graph-search.tool'
+export * from './tools/knowledge-tool-scope.util'
+export * from './tools/knowledge-search-result.util'
+export * from './tools/notebook-agent-stream.util'
 export * from './tools/graph-upsert.tool'
 export * from './rag/hybrid-search.service'
 export * from './rag/hybrid-search'
@@ -34,6 +38,7 @@ export * from './tools/tool-registry'
 export * from './tools/tool-context.util'
 export * from './tools/mcp-tool.util'
 export * from './mcp/baishou-mcp-server'
+export * from './mcp/external-mcp-tools'
 export * from './tools/current-time.tool'
 export * from './tools/diary-read.tool'
 export * from './tools/diary-list.tool'
@@ -76,6 +81,7 @@ export * from './agent/context-call-chain.builder'
 export * from './agent/model-message-display.formatter'
 export * from './agent/session-system-prompt.resolver'
 export * from './agent/system-prompt.builder'
+export * from './agent/runtime-clock-message.util'
 export * from './agent/title-generator.service'
 export * from './agent/context-compressor.service'
 export * from './agent/compression-lifecycle'
@@ -89,6 +95,7 @@ export {
   readPdfTextFromPath,
   readLocalFileAsBase64,
   readLocalFileAsBase64Async,
+  readLocalTextFile,
   canReadLocalPath
 } from './platform/read-local-file'
 export {
@@ -124,7 +131,8 @@ export {
   isAgentStreamSessionBusy,
   releaseAgentStreamSession,
   abortAgentStreamSession,
-  abortAllAgentStreamSessions
+  abortAllAgentStreamSessions,
+  clearPendingAgentStreamStop
 } from './agent/stream-session-guard'
 export { AgentChatActionCoreRunner } from './agent/agent-chat-action-core.runner'
 export type { ActionDeps, StreamRunConfig } from './agent/actions/base.action'

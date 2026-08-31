@@ -1,4 +1,5 @@
-import type { GraphEdgeRow, GraphNodeRow, GraphPath, GraphRepository } from '@baishou/database'
+import type { GraphRecallMode } from '@baishou/shared'
+import type { GraphEdgeRow, GraphNodeRow, GraphPath, GraphQuery } from '@baishou/database/shared'
 
 export interface GraphRagPath {
   nodeIds: string[]
@@ -20,8 +21,10 @@ export interface GraphRagResult {
 export interface RecallRelationsOptions {
   vaultId: string
   entity: string
-  mode: 'network' | 'timeline'
+  mode: GraphRecallMode
   depth?: 1 | 2 | 3
+  nodeType?: string
+  limit?: number
   embedQuery?: (text: string) => Promise<number[] | null>
 }
 
@@ -30,7 +33,7 @@ export interface RecallRelationsOptions {
  * Defaults to approved-only edges/nodes so pending review never reaches the Agent.
  */
 export class GraphRagService {
-  constructor(private readonly repo: GraphRepository) {}
+  constructor(private readonly repo: GraphQuery) {}
 
   async recallRelations(opts: RecallRelationsOptions): Promise<GraphRagResult> {
     const entity = opts.entity.trim()
@@ -38,9 +41,20 @@ export class GraphRagService {
       return { anchors: [], subgraph: [], nodes: [], paths: [] }
     }
 
-    const anchors = await this.resolveAnchors(opts.vaultId, entity, opts.embedQuery)
+    const limit = clampLimit(opts.limit)
+    const nodeType = opts.nodeType?.trim().toLowerCase() || undefined
+
+    if (opts.mode === 'search') {
+      return this.searchEntities(opts.vaultId, entity, nodeType, limit)
+    }
+
+    const anchors = await this.resolveAnchors(opts.vaultId, entity, opts.embedQuery, nodeType)
     if (anchors.length === 0) {
       return { anchors: [], subgraph: [], nodes: [], paths: [] }
+    }
+
+    if (opts.mode === 'neighbors') {
+      return this.listNeighbors(opts.vaultId, anchors, opts.depth ?? 1, nodeType, limit)
     }
 
     if (opts.mode === 'timeline') {
@@ -105,7 +119,7 @@ export class GraphRagService {
       const foundPaths = await this.repo.findPathsFrom(opts.vaultId, center.id, {
         maxHops: pathDepth,
         approvedOnly: true,
-        limit: 12
+        limit
       })
       for (const found of foundPaths) {
         paths.push(await this.hydratePath(opts.vaultId, found, nodeMap))
@@ -117,7 +131,57 @@ export class GraphRagService {
       anchors: approvedAnchors,
       subgraph: [...edgeMap.values()],
       nodes: [...nodeMap.values()],
-      paths
+      paths: paths.slice(0, limit)
+    }
+  }
+
+  private async searchEntities(
+    vaultId: string,
+    entity: string,
+    nodeType: string | undefined,
+    limit: number
+  ): Promise<GraphRagResult> {
+    const seen = new Map<string, GraphNodeRow>()
+    for (const part of splitEntityQuery(entity)) {
+      const rows = await this.repo.searchNodesByName(vaultId, part, {
+        nodeTypes: nodeType ? [nodeType] : undefined,
+        limit
+      })
+      for (const n of this.filterApprovedNodes(rows)) seen.set(n.id, n)
+    }
+    const nodes = [...seen.values()].slice(0, limit)
+    return { anchors: nodes, subgraph: [], nodes, paths: [] }
+  }
+
+  private async listNeighbors(
+    vaultId: string,
+    anchors: GraphNodeRow[],
+    depth: 1 | 2 | 3,
+    nodeType: string | undefined,
+    limit: number
+  ): Promise<GraphRagResult> {
+    const hops: 1 | 2 | 3 = depth === 2 || depth === 3 ? depth : 1
+    const center = anchors[0]!
+    const view = await this.repo.traverse(vaultId, center.id, hops, { approvedOnly: true })
+    let nodes = this.filterApprovedNodes(view.nodes)
+    if (nodeType) {
+      const keep = new Set(
+        nodes.filter((n) => n.id === center.id || n.nodeType === nodeType).map((n) => n.id)
+      )
+      nodes = nodes.filter((n) => keep.has(n.id)).slice(0, limit + 1)
+      const edges = view.edges.filter((e) => keep.has(e.fromId) && keep.has(e.toId))
+      return {
+        anchors: [center],
+        subgraph: edges,
+        nodes,
+        paths: []
+      }
+    }
+    return {
+      anchors: [center],
+      subgraph: view.edges,
+      nodes: nodes.slice(0, limit + 1),
+      paths: []
     }
   }
 
@@ -149,16 +213,20 @@ export class GraphRagService {
   private async resolveAnchors(
     vaultId: string,
     entity: string,
-    embedQuery?: (text: string) => Promise<number[] | null>
+    embedQuery?: (text: string) => Promise<number[] | null>,
+    nodeType?: string
   ): Promise<GraphNodeRow[]> {
     // Split "A 和 B" / "A and B" / "A与B" into multiple search terms when useful
     const parts = splitEntityQuery(entity)
     const seen = new Map<string, GraphNodeRow>()
 
     for (const part of parts) {
-      const byName = (await this.repo.searchNodesByName(vaultId, part, { limit: 8 })).filter(
-        (n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected'
-      )
+      const byName = (
+        await this.repo.searchNodesByName(vaultId, part, {
+          limit: 8,
+          nodeTypes: nodeType ? [nodeType] : undefined
+        })
+      ).filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
       for (const n of byName) seen.set(n.id, n)
     }
 
@@ -172,6 +240,7 @@ export class GraphRagService {
           return hits
             .map(({ distance: _d, ...row }) => row)
             .filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
+            .filter((n) => !nodeType || n.nodeType === nodeType)
         }
       } catch {
         // optional
@@ -179,6 +248,11 @@ export class GraphRagService {
     }
     return []
   }
+}
+
+function clampLimit(limit?: number): number {
+  if (!limit || !Number.isFinite(limit)) return 12
+  return Math.min(20, Math.max(1, Math.floor(limit)))
 }
 
 /** Split compound entity queries into search terms. */

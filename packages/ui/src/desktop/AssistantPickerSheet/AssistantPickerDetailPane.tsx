@@ -85,20 +85,14 @@ export function AssistantPickerDetailPane({
             <button
               type="button"
               className={`${styles.tab} ${activeTab === 'prompt' ? styles.tabActive : ''}`}
-              onClick={() => {
-                vm.setShowModelSwitcher(false)
-                setActiveTab('prompt')
-              }}
+              onClick={() => setActiveTab('prompt')}
             >
               {t('agent.assistant.partner_info_label', '伙伴信息')}
             </button>
             <button
               type="button"
               className={`${styles.tab} ${activeTab === 'memory' ? styles.tabActive : ''}`}
-              onClick={() => {
-                vm.setShowModelSwitcher(false)
-                setActiveTab('memory')
-              }}
+              onClick={() => setActiveTab('memory')}
             >
               {t('agent.assistant.memory_label', '记忆')}
             </button>

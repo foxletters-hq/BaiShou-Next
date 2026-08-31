@@ -139,8 +139,8 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.vector_search': '语义搜索',
   'agent.tools.memory_store': '记忆存储',
   'agent.tools.memory_delete': '记忆删除',
-  'agent.tools.recall_relations': '回忆关系图谱',
-  'agent.tools.graph_upsert': '写入记忆图谱',
+  'agent.tools.recall_relations': '回忆人生关系图',
+  'agent.tools.graph_upsert': '写入人生关系图',
   'agent.tools.web_search': '网络搜索',
   'agent.tools.url_read': '网页读取',
   'agent.tools.auto_inject_time': '当前时间',
@@ -153,7 +153,10 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.workspace_rename': '重命名文件',
   'agent.tools.workspace_delete': '删除文件',
   'agent.tools.workspace_run': '运行命令',
-  'agent.tools.companion_ask': '向用户提问'
+  'agent.tools.companion_ask': '向用户提问',
+  'agent.tools.skill_write': '写入技能',
+  'agent.tools.knowledge_search': '知识库搜索',
+  'agent.tools.knowledge_graph_search': '知识图谱搜索'
 }
 
 export function buildAgentTools(t: (key: string, fallback: string) => string): AgentToolDef[] {

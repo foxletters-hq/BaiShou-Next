@@ -1,6 +1,36 @@
-import type { AgentPart } from '@baishou/shared'
-import { normalizePartData } from '@baishou/shared'
+import type { AgentPart, MockChatAttachment } from '@baishou/shared'
+import {
+  buildSkillSendText,
+  composerExtraPlain,
+  mapAttachmentsFromParts,
+  normalizePartData
+} from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
+
+export function normalizeWorkspaceSendAttachments(
+  attachments?: unknown[]
+): unknown[] | undefined {
+  return Array.isArray(attachments) && attachments.length > 0 ? attachments : undefined
+}
+
+export function hasWorkspaceComposerPayload(params: {
+  text: string
+  attachments?: unknown[]
+  skillRefs?: unknown[]
+}): boolean {
+  return Boolean(
+    params.text.trim() ||
+      normalizeWorkspaceSendAttachments(params.attachments) ||
+      (Array.isArray(params.skillRefs) && params.skillRefs.length > 0)
+  )
+}
+
+export function getWorkspaceUserAttachments(
+  message: WorkspaceChatMessage
+): MockChatAttachment[] {
+  if (message.attachments?.length) return message.attachments
+  return mapAttachmentsFromParts(message.parts) ?? []
+}
 
 export function getWorkspaceUserText(message: WorkspaceChatMessage): string {
   if (message.content?.trim()) return message.content
@@ -36,12 +66,7 @@ export function buildWorkspaceModelText(
 ): string {
   const trimmedPlain = plainText.trim()
   if (!skillRefs?.length) return trimmedPlain
-  // skillRefs.map(s => s.content).concat(trimmedPlain).filter(Boolean).join('\n\n')
-  return skillRefs
-    .map((s) => s.content.trim())
-    .concat(trimmedPlain)
-    .filter(Boolean)
-    .join('\n\n')
+  return buildSkillSendText(skillRefs, composerExtraPlain(trimmedPlain, skillRefs))
 }
 
 export function getWorkspaceAssistantText(message: WorkspaceChatMessage): string {

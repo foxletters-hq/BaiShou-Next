@@ -2,6 +2,7 @@ import type {
   GitSyncConfig,
   GitCommit,
   GitStatus,
+  GitRemoteStatus,
   VersionHistoryEntry,
   FileChange,
   FileDiff,
@@ -42,7 +43,13 @@ export interface GitManagementPageProps {
     offset?: number
   ) => Promise<VersionHistoryEntry[]>
   onGetHistoryCount: (filePath?: string) => Promise<number>
-  onGetRecentPulls: (limit?: number) => Promise<VersionHistoryEntry[]>
+  onGetRecentPulls?: (limit?: number) => Promise<VersionHistoryEntry[]>
+  onGetRemoteStatus?: (fetch?: boolean) => Promise<GitRemoteStatus>
+  onSyncRemote?: () => Promise<{
+    success: boolean
+    message?: string
+    conflicts?: string[]
+  }>
   onGetCommitChanges: (commitHash: string) => Promise<FileChange[]>
   onGetFileDiff: (filePath: string, commitHash?: string) => Promise<FileDiff>
   onGetWorkingDiff: (filePath: string, staged: boolean) => Promise<FileDiff>

@@ -34,13 +34,15 @@ export interface SessionModelMenuProps {
   onSelect: (providerId: string, modelId: string) => void
   onClose: () => void
   onManageProviders?: () => void
-  reasoningEffort: ReasoningEffortSetting
-  onReasoningEffortChange: (value: ReasoningEffortSetting) => void
+  reasoningEffort?: ReasoningEffortSetting
+  onReasoningEffortChange?: (value: ReasoningEffortSetting) => void
   /** 当前模型思考控制；缺省时按 currentModel 推断 */
   reasoningControl?: ReasoningControl | null
   /** 各模型持久化预览（key = providerId::modelId） */
   modelReasoningPreviews?: Record<string, ModelReasoningPreview>
   anchorRect?: DOMRect | null
+  /** 视觉提取等场景不需要思考强度 */
+  showReasoningPanel?: boolean
 }
 
 const MODEL_PANEL_WIDTH = 300
@@ -57,7 +59,8 @@ function previewKey(providerId: string, modelId: string): string {
 
 function computeShellCoords(
   anchorRect: DOMRect | null | undefined,
-  height: number
+  height: number,
+  width = SHELL_WIDTH
 ): { left: number; top: number } {
   const vw = window.innerWidth
   const vh = window.innerHeight
@@ -65,17 +68,17 @@ function computeShellCoords(
   let top: number
 
   if (anchorRect) {
-    left = anchorRect.right - SHELL_WIDTH
+    left = anchorRect.right - width
     top = anchorRect.top - height - ANCHOR_GAP
     if (top < VIEW_PAD) {
       top = Math.min(anchorRect.bottom + ANCHOR_GAP, vh - height - VIEW_PAD)
     }
   } else {
-    left = vw - SHELL_WIDTH - 24
+    left = vw - width - 24
     top = vh - height - 96
   }
 
-  left = Math.max(VIEW_PAD, Math.min(left, vw - SHELL_WIDTH - VIEW_PAD))
+  left = Math.max(VIEW_PAD, Math.min(left, vw - width - VIEW_PAD))
   top = Math.max(VIEW_PAD, Math.min(top, vh - height - VIEW_PAD))
   return { left, top }
 }
@@ -91,7 +94,8 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
   onReasoningEffortChange,
   reasoningControl: reasoningControlProp,
   modelReasoningPreviews,
-  anchorRect
+  anchorRect,
+  showReasoningPanel = true
 }) => {
   const { t } = useTranslation()
   const { isDark } = useTheme()
@@ -111,8 +115,10 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
     )
 
   const effortValue = normalizeReasoningEffortSetting(reasoningEffort)
-  const showEffort = control.mode === 'effort' && Boolean(control.efforts?.length)
-  const showAutoOnly = !showEffort
+  const showEffort =
+    showReasoningPanel && control.mode === 'effort' && Boolean(control.efforts?.length)
+  const showAutoOnly = showReasoningPanel && !showEffort
+  const shellWidth = showReasoningPanel ? SHELL_WIDTH : MODEL_PANEL_WIDTH
 
   const effortLabel = (opt: ReasoningEffortSetting) => formatReasoningEffortLabel(opt)
 
@@ -164,9 +170,9 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
     const shell = shellRef.current
     if (!shell) return
     const height = shell.offsetHeight || 300
-    setCoords(computeShellCoords(anchorRect, height))
+    setCoords(computeShellCoords(anchorRect, height, shellWidth))
     setPlaced(true)
-  }, [anchorRect, providerData.length, showEffort])
+  }, [anchorRect, providerData.length, showEffort, shellWidth])
 
   useEffect(() => {
     if (!closing) return
@@ -249,9 +255,11 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
                       const isSelected =
                         provider.id === currentProviderId && modelId === currentModelId
                       const stored = modelReasoningPreviews?.[previewKey(provider.id, modelId)]
-                      const suffix = isSelected
-                        ? currentPreviewSuffix
-                        : formatPreview(stored, provider.type, modelId)
+                      const suffix = showReasoningPanel
+                        ? isSelected
+                          ? currentPreviewSuffix
+                          : formatPreview(stored, provider.type, modelId)
+                        : ''
                       return (
                         <button
                           key={modelId}
@@ -304,6 +312,7 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
           ) : null}
         </div>
 
+        {showReasoningPanel ? (
         <div className={`${styles.panel} ${styles.effortPanel}`}>
           <div className={styles.sectionLabel}>
             {t('agent.reasoning.effort_section', '思考强度')}
@@ -316,7 +325,7 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
                 type="button"
                 className={`${styles.row} ${selected ? styles.rowActive : ''}`}
                 disabled={closing}
-                onClick={() => onReasoningEffortChange(opt)}
+                onClick={() => onReasoningEffortChange?.(opt)}
               >
                 <span className={styles.rowLabel}>{effortLabel(opt)}</span>
                 {selected ? (
@@ -328,6 +337,7 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
             )
           })}
         </div>
+        ) : null}
       </div>
     </>,
     document.body

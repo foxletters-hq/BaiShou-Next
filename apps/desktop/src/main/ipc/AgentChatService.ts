@@ -6,7 +6,7 @@ import {
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   type BaishouAgentGateConfig,
   type SessionInputDelivery,
-  type SessionInputRecord
+  type SessionInputRecord,
 } from '@baishou/shared'
 import {
   AgentChatCoreService,
@@ -22,8 +22,10 @@ import {
   createWebSearchResultFetcher,
   createFetchSearchPage,
   buildStreamConfig,
-  resolveStreamDialogueSelection
+  resolveStreamDialogueSelection,
+  applySessionReasoningEffort
 } from './agent-helpers'
+import { desktopExtraVercelToolsFactory } from '../services/mcp-client-runtime'
 import { settingsManager } from './settings.ipc'
 import { resolveActiveVaultId, resolveVaultNameById } from './vault.ipc'
 import { searchService } from '../services/search.service'
@@ -148,7 +150,8 @@ export class AgentChatService {
     const { getRawDataSourceManager, syncGraphPendingIndex } =
       await import('../services/raw-data-source.runtime')
     const rawDataSourceManager = getRawDataSourceManager()
-    const { GraphReaderAdapter, EmbeddingAdapter } = await import('@baishou/ai')
+    const { GraphReaderAdapter, createCompanionGraphLookups, EmbeddingAdapter } =
+      await import('@baishou/ai')
     const { GraphRagService } = await import('@baishou/core-desktop')
     const { connectionManager, GraphRepository } = await import('@baishou/database-desktop')
     const systemModels = params.systemModels as {
@@ -177,6 +180,9 @@ export class AgentChatService {
             vaultId,
             entity: opts.entity,
             mode: opts.mode,
+            depth: opts.depth,
+            nodeType: opts.nodeType,
+            limit: opts.limit,
             embedQuery
           })
           return {
@@ -226,8 +232,24 @@ export class AgentChatService {
           }
         })
       : undefined
+    const { graphNodeLookup, graphEdgeLookup } = connectionManager.isConnected()
+      ? createCompanionGraphLookups(async () => {
+          const repo = new GraphRepository(connectionManager.getDb())
+          const vaultId = resolveActiveVaultId()
+          return {
+            findByNameOrAlias: (name, nodeType) =>
+              repo.findNodeByNameOrAlias(vaultId, name, nodeType),
+            getNodeById: (id) => repo.getNodeById(id, vaultId),
+            getEdgeById: (id) => repo.getEdgeById(id, vaultId)
+          }
+        })
+      : { graphNodeLookup: undefined, graphEdgeLookup: undefined }
 
     const knowledgeReader = createDesktopKnowledgeReader(embedQuery)
+    const { createDesktopKnowledgeGraphReader } = await import(
+      '../services/desktop-knowledge-graph-reader'
+    )
+    const knowledgeGraphReader = createDesktopKnowledgeGraphReader()
 
     const { DesktopStoragePathService } = await import('../services/path.service')
     const { refreshDesktopAttachmentPathRemapper } = await import('./attachment-path-cache')
@@ -259,8 +281,25 @@ export class AgentChatService {
       },
       rawDataSourceManager,
       syncGraphPendingIndex,
+      deleteGraphRecord: async ({ kind, id }) => {
+        if (!connectionManager.isConnected()) {
+          throw new Error('Database not connected')
+        }
+        const { applyDiaryGraphSurgicalDelete } = await import('@baishou/core-desktop')
+        const { getGraphRawManager } = await import('../services/raw-data-source.runtime')
+        await applyDiaryGraphSurgicalDelete({
+          kind,
+          id,
+          vaultId: resolveActiveVaultId(),
+          manager: getGraphRawManager(),
+          repo: new GraphRepository(connectionManager.getDb())
+        })
+      },
       graphReader,
+      graphNodeLookup,
+      graphEdgeLookup,
       knowledgeReader,
+      knowledgeGraphReader,
       realSessionRepo,
       realSnapshotRepo,
       toolRegistry,
@@ -270,7 +309,8 @@ export class AgentChatService {
       fetchSearchPage: createFetchSearchPage(),
       flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId),
       resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId),
-      skillsCatalog
+      skillsCatalog,
+      extraVercelToolsFactory: desktopExtraVercelToolsFactory
     })
   }
 
@@ -307,10 +347,10 @@ export class AgentChatService {
         prefs.assistantEmojiPrefs
       )
 
-      const mergedUserConfig =
-        args.reasoningEffort && args.reasoningEffort !== 'auto'
-          ? { ...(userConfig as Record<string, unknown>), reasoningEffort: args.reasoningEffort }
-          : userConfig
+      const mergedUserConfig = applySessionReasoningEffort(
+        userConfig as Record<string, unknown>,
+        args.reasoningEffort
+      )
 
       const streamResult = await this.runStreamChat({
         event,

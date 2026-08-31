@@ -18,7 +18,9 @@ export function isConfiguredProviderId(providerId: string | null | undefined): b
 }
 
 export interface DialogueModelSelectionInput {
+  /** @deprecated 伙伴不再绑定模型，解析时忽略 */
   assistantProviderId?: string | null
+  /** @deprecated 伙伴不再绑定模型，解析时忽略 */
   assistantModelId?: string | null
   /** 用户在本轮/本会话手动选择的供应商与模型 */
   requestedProviderId?: string | null
@@ -66,15 +68,14 @@ export interface AgentDialogueSelectionSwitchEvent {
 
 /**
  * 解析 Agent 对话模型（权威链）：
- * 伙伴专属 → 用户请求 → 全局默认 → none。
+ * 用户请求 → 全局默认 → none。
+ * 伙伴上的 providerId/modelId 不再参与解析。
  * fallback 仅当显式传入且前序均为 none 时用于桌面选择器建议，流式发送不得依赖 fallback。
  */
 export function resolveDialogueModelSelection(
   input: DialogueModelSelectionInput
 ): ResolvedDialogueModel {
   const {
-    assistantProviderId,
-    assistantModelId,
     requestedProviderId,
     requestedModelId,
     globalDialogueProviderId,
@@ -82,17 +83,6 @@ export function resolveDialogueModelSelection(
     fallbackProviderId,
     fallbackModelId
   } = input
-
-  if (
-    isConfiguredProviderId(assistantProviderId) &&
-    isConfiguredDialogueModelId(assistantModelId)
-  ) {
-    return {
-      providerId: assistantProviderId!.trim(),
-      modelId: assistantModelId!.trim(),
-      source: 'assistant'
-    }
-  }
 
   if (
     isConfiguredProviderId(requestedProviderId) &&

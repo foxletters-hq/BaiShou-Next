@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Checkbox } from '../Checkbox'
 import type { RecallItem } from './recall-dialog.types'
 import { getSimilarityColors } from './recall-dialog.utils'
 
@@ -35,21 +36,7 @@ export const RecallDialogItem: React.FC<RecallDialogItemProps> = ({
         borderRadius: tokens.radius.lg
       }}
     >
-      <View
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 6,
-          borderWidth: 2,
-          borderColor: isSelected ? colors.primary : colors.outlineVariant,
-          backgroundColor: isSelected ? colors.primary : colors.bgSurface,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: 2
-        }}
-      >
-        {isSelected && <Text style={{ color: colors.onPrimary, fontSize: 12 }}>✓</Text>}
-      </View>
+      <Checkbox selected={isSelected} style={{ marginTop: 2 }} />
       <View style={{ flex: 1 }}>
         <View
           style={{

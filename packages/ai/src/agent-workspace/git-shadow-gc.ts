@@ -34,7 +34,7 @@ export interface ShadowGitGcResult {
 export async function pruneShadowSnapshotObjects(
   options: ShadowGitGcOptions
 ): Promise<ShadowGitGcResult> {
-  const { gitDir, folderRoot, mutex } = options
+  const { gitDir, mutex } = options
   const task = (): Promise<ShadowGitGcResult> => collect(options)
   return mutex ? mutex.run(gitDir, task) : task()
 }

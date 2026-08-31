@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 import { GitDestructiveConfirmDialog, type GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
 import { GitWorkbenchRepositoriesSection } from './GitWorkbenchRepositoriesSection'
@@ -23,10 +23,10 @@ const GitWorkbenchCommitForm: React.FC<{ vm: GitManagementViewModel }> = ({ vm }
         onChange={(event) => vm.setCommitMessage(event.target.value)}
         placeholder={t(
           'workbench.git_commit_message',
-          '消息（留空将使用当前日期时间；Ctrl+Enter 提交暂存变更）'
+          '消息（留空将使用当前日期时间；Ctrl+Enter 提交）'
         )}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && vm.canCommitStaged) {
+          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && vm.canCommit) {
             event.preventDefault()
             void vm.handleManualCommit()
           }
@@ -36,9 +36,10 @@ const GitWorkbenchCommitForm: React.FC<{ vm: GitManagementViewModel }> = ({ vm }
         <button
           type="button"
           className={styles.commitPrimary}
-          disabled={!vm.canCommitStaged}
+          disabled={!vm.canCommit}
           onClick={() => void vm.handleManualCommit()}
         >
+          <Check size={14} strokeWidth={2.25} />
           {t('version_control.commit', '提交')}
         </button>
         <div className={styles.branchWrap} ref={menuRef}>
@@ -78,7 +79,7 @@ const GitWorkbenchCommitForm: React.FC<{ vm: GitManagementViewModel }> = ({ vm }
               <button
                 type="button"
                 className={styles.menuItem}
-                disabled={!vm.canCommitStaged}
+                disabled={!vm.canCommit}
                 onClick={() => {
                   setMenuOpen(false)
                   void vm.handleCommitAndPush()

@@ -4,6 +4,7 @@ import {
   canReadLocalPath,
   readLocalFileAsBase64,
   readLocalFileAsBase64Async,
+  readLocalTextFile,
   readPdfTextFromPath
 } from '../platform/read-local-file'
 import { normalizeImageForModel } from '../platform/normalize-image-for-model'
@@ -104,7 +105,17 @@ export async function appendFileAttachmentToContentParts(
   }
 
   if (flags.isText || att.textContent) {
-    const textContent = att.textContent || ''
+    let textContent = att.textContent || ''
+    if (!textContent) {
+      try {
+        const filePath = resolveAttachmentFilePath(att)
+        if (canReadLocalPath(filePath)) {
+          textContent = await readLocalTextFile(filePath)
+        }
+      } catch {
+        textContent = ''
+      }
+    }
     contentParts.push({
       type: 'text',
       text: `\n\n[User Uploaded File Attachment: ${displayName}]\n\`\`\`\n${textContent}\n\`\`\`\n`

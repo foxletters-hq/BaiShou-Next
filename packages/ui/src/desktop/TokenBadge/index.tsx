@@ -1,6 +1,5 @@
 import React from 'react'
 import styles from './TokenBadge.module.css'
-import { Activity } from 'lucide-react'
 
 export interface TokenBadgeProps {
   inputTokens?: number
@@ -36,9 +35,6 @@ export const TokenBadge: React.FC<TokenBadgeProps> = ({
       className={`${styles.container} ${variant === 'toolbar' ? styles.toolbar : ''} ${className ?? ''}`.trim()}
       onClick={onClick}
     >
-      <span className={styles.iconWrap}>
-        <Activity size={14} strokeWidth={2.5} />
-      </span>
       <span className={styles.tokenText}>{formatTokens(total)}</span>
       {costText && (
         <>

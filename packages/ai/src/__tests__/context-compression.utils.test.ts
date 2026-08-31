@@ -271,7 +271,8 @@ describe('context-compression.utils', () => {
   })
 
   it('getModelContextWindow maps known models and defaults otherwise', () => {
-    expect(getModelContextWindow('deepseek-chat')).toBe(64_000)
+    expect(getModelContextWindow('deepseek-v4-flash')).toBe(1_000_000)
+    expect(getModelContextWindow('deepseek-chat')).toBe(128_000)
     expect(getModelContextWindow('claude-3-5-sonnet')).toBe(200_000)
     expect(getModelContextWindow('gpt-4o-mini')).toBe(128_000)
     expect(getModelContextWindow('some-unknown-model')).toBe(DEFAULT_MODEL_CONTEXT_WINDOW)

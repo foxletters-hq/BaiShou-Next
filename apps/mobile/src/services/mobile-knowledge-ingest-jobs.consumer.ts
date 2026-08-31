@@ -1,7 +1,15 @@
 import { logger, deriveLegacyVaultId } from '@baishou/shared'
 import { expoKnowledgeConnectionManager, KnowledgeRepository } from '@baishou/database/expo'
 import { KnowledgeEmbeddingStorage } from '@baishou/ai'
-import { KnowledgeIngestService } from '@baishou/core-mobile'
+import {
+  KnowledgeIngestService,
+  markEmbedJobLive,
+  markExtractJobLive,
+  markGraphJobLive,
+  unmarkEmbedJobLive,
+  unmarkExtractJobLive,
+  unmarkGraphJobLive
+} from '@baishou/core-mobile'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { MobileStoragePathService } from './path.service'
 import {
@@ -11,7 +19,13 @@ import {
 } from './mobile-raw-data-source.runtime'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 
-let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null
+type ConsumeResult = { processed: number; failed: number; skipped?: string }
+
+const INDEX_STAGES = ['extract', 'embed'] as const
+const GRAPH_STAGES = ['graph'] as const
+
+let ingestInFlight: Promise<ConsumeResult> | null = null
+let graphInFlight: Promise<ConsumeResult> | null = null
 
 async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestService | null> {
   if (!expoKnowledgeConnectionManager.isConnected()) return null
@@ -64,26 +78,47 @@ async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestServi
         modelId: params.modelId
       })
     },
-    deleteChunksBySource: (id) => repo.deleteChunksBySource(id)
+    deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
+    extractNotebookGraph: (await import('./mobile-knowledge-graph-extract')).createMobileKnowledgeGraphExtractFn()
   })
 }
 
 /**
  * 消费知识库 embed 欠账（移动端消费端：只跑 embed，一般不跑 extract）。
+ * 提取/嵌入与图谱分车道，避免图谱 LLM 堵住嵌入。
  */
 export async function consumeMobileKnowledgeIngestJobs(options?: {
   limit?: number
   reason?: string
-}): Promise<{ processed: number; failed: number; skipped?: string }> {
-  if (consumeInFlight) return consumeInFlight
+}): Promise<ConsumeResult> {
+  return consumeMobileKnowledgeLane('index', options)
+}
 
-  consumeInFlight = (async () => {
+async function consumeMobileKnowledgeLane(
+  lane: 'index' | 'graph',
+  options?: {
+    limit?: number
+    reason?: string
+  }
+): Promise<ConsumeResult> {
+  const existing = lane === 'index' ? ingestInFlight : graphInFlight
+  if (existing) return existing
+
+  const stages = lane === 'index' ? [...INDEX_STAGES] : [...GRAPH_STAGES]
+  const run = (async () => {
     if (!expoKnowledgeConnectionManager.isConnected()) {
       return { processed: 0, failed: 0, skipped: 'db-not-connected' }
     }
 
     const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
-    const pending = await repo.countIngestJobs()
+    const runtime = agentDbRuntimeRef.current
+    const vaultId =
+      (await runtime?.pathService?.getLocalActiveVaultId()) ||
+      deriveLegacyVaultId(
+        (await runtime?.pathService?.getActiveVaultNameForContext().catch(() => 'Personal')) ||
+          'Personal'
+      )
+    const pending = await repo.countIngestJobs({ vaultId, stages, claimableOnly: true })
     if (pending === 0) {
       return { processed: 0, failed: 0, skipped: 'empty' }
     }
@@ -94,7 +129,12 @@ export async function consumeMobileKnowledgeIngestJobs(options?: {
     }
 
     const limit = options?.limit ?? 8
-    const jobs = await repo.claimIngestJobs(limit)
+    const jobs = await repo.claimIngestJobs(limit, { vaultId, stages })
+    for (const job of jobs) {
+      if (job.stage === 'extract') markExtractJobLive(job.sourceId)
+      if (job.stage === 'embed') markEmbedJobLive(job.sourceId)
+      if (job.stage === 'graph') markGraphJobLive(job.sourceId)
+    }
     logger.info('[MobileKnowledgeIngestJobs] consuming', {
       reason: options?.reason ?? 'unspecified',
       claimed: jobs.length,
@@ -104,53 +144,77 @@ export async function consumeMobileKnowledgeIngestJobs(options?: {
     let processed = 0
     let failed = 0
 
-    for (const job of jobs) {
-      try {
-        // 移动端是消费端：优先 embed；若误排了 extract 则跳过并标失败提示
-        if (job.stage === 'extract') {
-          // K1.5：text/url/note/md 可在移动端 extract；PDF 跳过（无 OCR）
-          const source = await repo.getSource(job.sourceId)
-          const rel = source?.relativePath || ''
-          const isPdf = /\.pdf$/i.test(rel) || /\.pdf$/i.test(source?.title || '')
-          if (isPdf) {
-            await repo.failIngestJob(job.id, 'mobile-skip-pdf-extract', {
-              backoffMs: 24 * 60 * 60_000
-            })
+    try {
+      for (const job of jobs) {
+        try {
+          // 移动端是消费端：优先 embed；若误排了 extract 则跳过并标失败提示
+          if (job.stage === 'extract') {
+            // K1.5：text/url/note/md 可在移动端 extract；PDF 跳过（无 OCR）
+            const source = await repo.getSource(job.sourceId)
+            const rel = source?.relativePath || ''
+            const isPdf = /\.pdf$/i.test(rel) || /\.pdf$/i.test(source?.title || '')
+            if (isPdf) {
+              await repo.failIngestJob(job.id, 'mobile-skip-pdf-extract', {
+                backoffMs: 24 * 60 * 60_000
+              })
+              failed++
+              continue
+            }
+            await svc.processExtractJob(job.sourceId)
+            await repo.completeIngestJob(job.id)
+            processed++
+            continue
+          }
+          if (job.stage === 'graph') {
+            await svc.processGraphJob(job.sourceId)
+            await repo.completeIngestJob(job.id)
+            processed++
+            continue
+          }
+          await svc.processEmbedJob(job.sourceId)
+          await repo.completeIngestJob(job.id)
+          processed++
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e)
+          if (message === 'embedding-not-configured' || message === 'graph-extract-not-configured') {
+            await repo.failIngestJob(job.id, message, { backoffMs: 5 * 60_000 })
             failed++
             continue
           }
-          await svc.processExtractJob(job.sourceId)
-          await repo.completeIngestJob(job.id)
-          processed++
-          continue
-        }
-        await svc.processEmbedJob(job.sourceId)
-        await repo.completeIngestJob(job.id)
-        processed++
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e)
-        if (message === 'embedding-not-configured') {
-          await repo.failIngestJob(job.id, message, { backoffMs: 5 * 60_000 })
+          await repo.failIngestJob(job.id, message, {
+            backoffMs: Math.min(30 * 60_000, 15_000 * Math.max(1, job.attempts))
+          })
           failed++
-          continue
         }
-        await repo.failIngestJob(job.id, message, {
-          backoffMs: Math.min(30 * 60_000, 15_000 * Math.max(1, job.attempts))
-        })
-        failed++
+      }
+    } finally {
+      for (const job of jobs) {
+        if (job.stage === 'extract') unmarkExtractJobLive(job.sourceId)
+        if (job.stage === 'embed') unmarkEmbedJobLive(job.sourceId)
+        if (job.stage === 'graph') unmarkGraphJobLive(job.sourceId)
       }
     }
 
     return { processed, failed }
   })().finally(() => {
-    consumeInFlight = null
+    if (lane === 'index') ingestInFlight = null
+    else graphInFlight = null
   })
 
-  return consumeInFlight
+  if (lane === 'index') ingestInFlight = run
+  else graphInFlight = run
+  return run
 }
 
 export function scheduleConsumeMobileKnowledgeIngestJobs(reason: string): void {
-  void consumeMobileKnowledgeIngestJobs({ reason }).catch((e) => {
-    logger.warn('[MobileKnowledgeIngestJobs] schedule failed:', e as Error)
-  })
+  const kick = (lane: 'index' | 'graph') => {
+    void consumeMobileKnowledgeLane(lane, { reason }).catch((e) => {
+      logger.warn('[MobileKnowledgeIngestJobs] schedule failed:', {
+        lane,
+        error: e instanceof Error ? e.message : String(e)
+      })
+    })
+  }
+  kick('index')
+  kick('graph')
 }

@@ -11,6 +11,7 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
+import { insertRuntimeClockIfEnabled } from './runtime-clock-message.util'
 import {
   isVisionModel,
   logger,
@@ -111,13 +112,18 @@ export class AgentSessionService {
       persistBaishouAgentGateConfig,
       rawDataSourceManager,
       syncGraphPendingIndex,
+      deleteGraphRecord,
       graphReader,
+      graphNodeLookup,
+      graphEdgeLookup,
       knowledgeReader,
+      knowledgeGraphReader,
       diarySearcher,
       skillsWriter,
       workspace: workspaceInput,
       resolveVaultDisplayName,
       skillsCatalog,
+      extraVercelToolsFactory,
       maxSteps: maxStepsOption,
       sessionRuntimeV2: sessionRuntimeV2Option
     } = options
@@ -358,9 +364,10 @@ export class AgentSessionService {
 
       const providerType = effectiveProviderType as ProviderType
       const messageMiddlewareChain = buildMiddlewareChain(providerType)
-      const messagesForModel = messageMiddlewareChain.isEmpty
+      const adaptedMessages = messageMiddlewareChain.isEmpty
         ? coreMessages
         : messageMiddlewareChain.apply(coreMessages)
+      const messagesForModel = insertRuntimeClockIfEnabled(adaptedMessages, injectMessageTime)
 
       // 3. 构建可用的 Tools 及其底层接续支持（静态 import，避免 Android Hermes 运行时动态打包 SyntaxError）
       const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database
@@ -451,7 +458,7 @@ export class AgentSessionService {
 
       const gateProfile = workspaceOptions?.sessionKind === 'workspace' ? 'workspace' : 'companion'
 
-      const enabledTools = toolRegistry.getEnabledToolsAsVercel({
+      const toolContext = {
         userConfig: mergedUserConfig,
         sessionId,
         vaultId,
@@ -469,12 +476,26 @@ export class AgentSessionService {
         gateProfile,
         rawDataSourceManager,
         syncGraphPendingIndex,
+        deleteGraphRecord,
         graphReader,
+        graphNodeLookup,
+        graphEdgeLookup,
         knowledgeReader,
+        knowledgeGraphReader,
         skillsWriter,
         workspace: workspaceOptions,
         interruptOnGateReject
-      } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0])
+      } as Parameters<typeof toolRegistry.getEnabledToolsAsVercel>[0]
+
+      const enabledTools = toolRegistry.getEnabledToolsAsVercel(toolContext)
+      if (extraVercelToolsFactory) {
+        try {
+          const extra = await extraVercelToolsFactory(toolContext)
+          Object.assign(enabledTools, extra)
+        } catch (error) {
+          console.warn('[AgentSession] extra vercel tools failed', error)
+        }
+      }
 
       const builtSystemPrompt = SystemPromptBuilder.build({
         vaultName,
@@ -642,6 +663,7 @@ export class AgentSessionService {
             model,
             messages,
             system: buildCachedSystemForStream(systemPromptThisTurn, cachingCtx),
+            allowSystemInMessages: true,
             tools: enabledTools,
             stopWhen: stepCountIs(maxStepsThisTurn),
             abortSignal,

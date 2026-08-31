@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_EMOJI_GROUP_ID,
+  emojiGroupMatchesQuery,
   normalizeEmojiToolConfig,
   resolveAssistantEmojiConfig
 } from '../utils/emoji-config.util'
@@ -47,6 +48,18 @@ describe('emoji-config.util', () => {
     expect(resolved.emojis).toHaveLength(1)
     expect(resolved.emojis[0]?.id).toBe('b.png')
     expect(resolved.groupName).toBe('日常')
+  })
+
+  it('matches emoji groups by name or sticker name', () => {
+    const group = {
+      id: 'life',
+      name: '日常',
+      emojis: [{ id: 'cat.png', name: '困困猫', relativePath: 'emojis/cat.png' }]
+    }
+    expect(emojiGroupMatchesQuery(group, '')).toBe(true)
+    expect(emojiGroupMatchesQuery(group, '日常')).toBe(true)
+    expect(emojiGroupMatchesQuery(group, '困困')).toBe(true)
+    expect(emojiGroupMatchesQuery(group, '工作')).toBe(false)
   })
 
   it('returns disabled when companion emoji switch is off', () => {

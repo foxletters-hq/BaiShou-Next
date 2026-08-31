@@ -1,3 +1,21 @@
+export const OCR_CONCURRENCY_MIN = 1
+export const OCR_CONCURRENCY_MAX = 10
+export const DEFAULT_OCR_CONCURRENCY = 1
+
+/** 将用户配置的 OCR / 视觉识图并发限制在 1–10。 */
+export function clampOcrConcurrency(value: number | undefined | null): number {
+  const n =
+    typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : DEFAULT_OCR_CONCURRENCY
+  return Math.max(OCR_CONCURRENCY_MIN, Math.min(OCR_CONCURRENCY_MAX, n))
+}
+
+export function listOcrConcurrencyValues(): number[] {
+  return Array.from(
+    { length: OCR_CONCURRENCY_MAX - OCR_CONCURRENCY_MIN + 1 },
+    (_, i) => OCR_CONCURRENCY_MIN + i
+  )
+}
+
 export const BATCH_EMBED_CONCURRENCY_MIN = 1
 export const BATCH_EMBED_CONCURRENCY_MAX = 20
 export const DEFAULT_BATCH_EMBED_CONCURRENCY = 20

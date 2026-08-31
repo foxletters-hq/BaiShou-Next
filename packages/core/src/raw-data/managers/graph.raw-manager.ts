@@ -13,25 +13,21 @@ import type {
   ShardInfo,
   WriteOpts
 } from '../raw-data-source.types'
+import { graphDiaryInstant, isValidGraphMonth } from '@baishou/shared'
+import type { GraphIndexSource } from '../graph-index-source'
+import type { GraphExtractRawWriter } from '../graph-extract-raw'
 
 const COLLECTIONS: GraphCollection[] = ['nodes', 'edges', 'extract-state']
-const NODES_IDMAP_FILE = 'nodes.idmap.json'
-
-export interface NodesIdMapFile {
-  schemaVersion: 1
-  updatedAt: number
-  map: Record<string, string>
-}
 
 function shardMonthForNode(row: GraphNodeRawRecord): string {
+  if (row.shardMonth && isValidGraphMonth(row.shardMonth)) return row.shardMonth
   return shardMonthFromInstant(row.firstSeenAt || row.createdAt)
 }
 
 function shardMonthForEdge(row: GraphEdgeRawRecord): string {
-  if (row.shardMonth) return row.shardMonth
+  if (row.shardMonth && isValidGraphMonth(row.shardMonth)) return row.shardMonth
   if (row.sourceKind === 'diary' && row.sourceRef) {
-    const m = row.sourceRef.match(/(\d{4})[-/](\d{2})[-/]\d{2}/)
-    if (m) return `${m[1]}-${m[2]}`
+    return graphDiaryInstant(row.sourceRef).shardMonth
   }
   if (row.validFrom != null) return shardMonthFromInstant(row.validFrom)
   return shardMonthFromInstant(row.createdAt)
@@ -40,9 +36,9 @@ function shardMonthForEdge(row: GraphEdgeRawRecord): string {
 /**
  * Graph JSONL: Graph/{nodes|edges|extract-state}/YYYY-MM.jsonl
  * Each collection has its own shards.manifest.json under the subdir.
- * Optional Graph/nodes.idmap.json: nodeId → shardMonth.
+ * Node shardMonth lives on the record (nodes.idmap.json is no longer written).
  */
-export class GraphRawManager implements RecordCollectionKindManager {
+export class GraphRawManager implements RecordCollectionKindManager, GraphIndexSource, GraphExtractRawWriter {
   readonly kind = 'graph' as const
   readonly shape = 'record-collection' as const
 
@@ -83,69 +79,11 @@ export class GraphRawManager implements RecordCollectionKindManager {
     return opts?.collection ?? 'nodes'
   }
 
-  private async idmapPath(): Promise<string> {
-    return path.join(await this.getRoot(), NODES_IDMAP_FILE)
-  }
-
-  private async readIdmap(): Promise<NodesIdMapFile> {
-    const file = await this.idmapPath()
-    if (!(await this.fs.exists(file))) {
-      return { schemaVersion: 1, updatedAt: Date.now(), map: {} }
-    }
-    try {
-      const raw = await this.fs.readFile(file, 'utf8')
-      const parsed = JSON.parse(raw) as NodesIdMapFile
-      if (!parsed || typeof parsed !== 'object' || typeof parsed.map !== 'object' || !parsed.map) {
-        return { schemaVersion: 1, updatedAt: Date.now(), map: {} }
-      }
-      return {
-        schemaVersion: 1,
-        updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
-        map: parsed.map
-      }
-    } catch {
-      return { schemaVersion: 1, updatedAt: Date.now(), map: {} }
-    }
-  }
-
-  private async writeIdmap(idmap: NodesIdMapFile): Promise<void> {
-    const root = await this.getRoot()
-    await this.fs.mkdir(root, { recursive: true })
-    await this.fs.writeFile(
-      await this.idmapPath(),
-      JSON.stringify({ schemaVersion: 1 as const, updatedAt: Date.now(), map: idmap.map }, null, 2),
-      'utf8'
-    )
-  }
-
-  private async upsertNodeIdmapEntry(id: string, shardMonth: string): Promise<void> {
-    const idmap = await this.readIdmap()
-    if (idmap.map[id] === shardMonth) return
-    idmap.map[id] = shardMonth
-    await this.writeIdmap(idmap)
-  }
-
-  /** Lookup nodeId → shardMonth from nodes.idmap.json (null if missing). */
-  async lookupNodeShardMonth(id: string): Promise<string | null> {
-    const idmap = await this.readIdmap()
-    return idmap.map[id] ?? null
-  }
-
-  /** Rebuild Graph/nodes.idmap.json by scanning all node shards. */
+  /**
+   * Previously rebuilt nodes.idmap.json. Idmap is retired; kept as no-op for sync callers.
+   */
   async rebuildIdmap(): Promise<number> {
-    const store = await this.getStore('nodes')
-    const shards = await store.listShards()
-    const map: Record<string, string> = {}
-    for (const shard of shards) {
-      const rows = collapseJsonlById(
-        (await store.readRecords(shard.shardMonth)) as GraphNodeRawRecord[]
-      )
-      for (const row of rows) {
-        if (row?.id) map[row.id] = shard.shardMonth
-      }
-    }
-    await this.writeIdmap({ schemaVersion: 1, updatedAt: Date.now(), map })
-    return Object.keys(map).length
+    return 0
   }
 
   async writeRecord(
@@ -161,6 +99,7 @@ export class GraphRawManager implements RecordCollectionKindManager {
         throw new Error('GraphRawManager.writeRecord(nodes): invalid node record')
       }
       shardMonth = shardMonthForNode(row)
+      if (!row.shardMonth) (record as GraphNodeRawRecord).shardMonth = shardMonth
     } else if (collection === 'edges') {
       const row = record as GraphEdgeRawRecord
       if (!row?.id || !row.fromId || !row.toId) {
@@ -170,16 +109,12 @@ export class GraphRawManager implements RecordCollectionKindManager {
       if (!row.shardMonth) (record as GraphEdgeRawRecord).shardMonth = shardMonth
     } else {
       const row = record as GraphExtractStateRawRecord
-      if (!row?.id || !row.filePath) {
-        throw new Error('GraphRawManager.writeRecord(extract-state): invalid record')
+      if (!row?.id || !row.filePath || !String(row.vaultId ?? '').trim()) {
+        throw new Error('GraphRawManager.writeRecord(extract-state): vaultId is required')
       }
       shardMonth = shardMonthFromInstant(row.extractedAt || row.updatedAt)
     }
     const written = await store.appendRecord(shardMonth, record)
-    if (collection === 'nodes') {
-      const row = record as GraphNodeRawRecord
-      await this.upsertNodeIdmapEntry(row.id, shardMonth)
-    }
     return {
       ...written,
       relativePath: `${collection}/${written.relativePath}`
@@ -191,44 +126,22 @@ export class GraphRawManager implements RecordCollectionKindManager {
     opts: WriteOpts & { collection?: GraphCollection; shardMonth?: string }
   ): Promise<void> {
     const collection = this.resolveCollection(opts)
+    const hinted = opts.shardMonth?.trim()
+    if (hinted && isValidGraphMonth(hinted)) {
+      const removed = await this.removeRecordsFromShard(collection, hinted, [id])
+      if (removed > 0) return
+    }
     const store = await this.getStore(collection)
-    const now = Date.now()
-    let shardMonth = opts.shardMonth
-    if (!shardMonth && collection === 'nodes') {
-      shardMonth = (await this.lookupNodeShardMonth(id)) ?? undefined
+    for (const shard of [...(await store.listShards())].reverse()) {
+      if (hinted && shard.shardMonth === hinted) continue
+      const removed = await this.removeRecordsFromShard(collection, shard.shardMonth, [id])
+      if (removed > 0) return
     }
-    if (!shardMonth) {
-      const shards = await store.listShards()
-      for (const shard of [...shards].reverse()) {
-        const rows = collapseJsonlById(
-          (await store.readRecords(shard.shardMonth)) as Array<{
-            id: string
-            updatedAt: number
-          }>
-        )
-        const hit = rows.find((r) => r.id === id) as Record<string, unknown> | undefined
-        if (hit) {
-          await store.appendRecord(shard.shardMonth, {
-            ...hit,
-            updatedAt: now,
-            deletedAt: now
-          })
-          // Keep idmap entry so future lookups still find the shard
-          return
-        }
-      }
-      throw new Error(`Graph tombstone: id not found: ${id}`)
-    }
-    const rows = collapseJsonlById(
-      (await store.readRecords(shardMonth)) as Array<{ id: string; updatedAt: number }>
+    throw new Error(
+      hinted
+        ? `Graph delete: id not found in ${collection}/${hinted}`
+        : `Graph delete: id not found: ${id}`
     )
-    const hit = rows.find((r) => r.id === id) as Record<string, unknown> | undefined
-    if (!hit) throw new Error(`Graph tombstone: id not found in ${collection}/${shardMonth}`)
-    await store.appendRecord(shardMonth, {
-      ...hit,
-      updatedAt: now,
-      deletedAt: now
-    })
   }
 
   /** Atomically rewrite a collection monthly shard (e.g. sync LWW merge). */
@@ -239,13 +152,57 @@ export class GraphRawManager implements RecordCollectionKindManager {
   ): Promise<{ shardPath: string; relativePath: string; contentHash: string }> {
     const store = await this.getStore(collection)
     const written = await store.replaceShardContent(shardMonth, content)
-    if (collection === 'nodes') {
-      // Refresh idmap entries for ids present in this shard (full rebuild is safer after LWW)
-      await this.rebuildIdmap()
-    }
     return {
       ...written,
       relativePath: `${collection}/${written.relativePath}`
+    }
+  }
+
+  /** Drop ids from a month shard. Does not append deletedAt. */
+  async removeRecordsFromShard(
+    collection: GraphCollection,
+    shardMonth: string,
+    ids: readonly string[]
+  ): Promise<number> {
+    const idSet = new Set(ids.map((id) => id.trim()).filter(Boolean))
+    if (idSet.size === 0 || !isValidGraphMonth(shardMonth)) return 0
+    const store = await this.getStore(collection)
+    const rows = collapseJsonlById(
+      (await store.readRecords(shardMonth)) as Array<{
+        id: string
+        updatedAt: number
+        deletedAt?: number | null
+      }>
+    )
+    const kept = rows.filter((row) => !idSet.has(row.id) && !row.deletedAt)
+    const hadTarget = rows.some((row) => idSet.has(row.id))
+    if (!hadTarget && kept.length === rows.filter((row) => !row.deletedAt).length) return 0
+    const content = kept.length === 0 ? '' : `${kept.map((row) => JSON.stringify(row)).join('\n')}\n`
+    await store.replaceShardContent(shardMonth, content)
+    return rows.length - kept.length
+  }
+
+  /**
+   * Collapse append-only history for a monthly shard into live LWW winners only.
+   */
+  async compactShard(
+    collection: GraphCollection,
+    shardMonth: string
+  ): Promise<{ shardPath: string; relativePath: string; contentHash: string; rows: number }> {
+    const store = await this.getStore(collection)
+    const collapsed = collapseJsonlById(
+      (await store.readRecords(shardMonth)) as Array<{
+        id: string
+        updatedAt: number
+        deletedAt?: number | null
+      }>
+    ).filter((row) => !row.deletedAt)
+    const content = collapsed.map((r) => JSON.stringify(r)).join('\n')
+    const written = await store.replaceShardContent(shardMonth, content)
+    return {
+      ...written,
+      relativePath: `${collection}/${written.relativePath}`,
+      rows: collapsed.length
     }
   }
 
@@ -271,6 +228,13 @@ export class GraphRawManager implements RecordCollectionKindManager {
     }
     const store = await this.getStore(collection as GraphCollection)
     return store.readRecordsByRelativePath(file)
+  }
+
+  async invalidateIndexedHashes(): Promise<void> {
+    for (const collection of COLLECTIONS) {
+      const store = await this.getStore(collection)
+      await store.invalidateIndexedHashes()
+    }
   }
 
   async listPendingIndex(collection?: GraphCollection): Promise<ShardInfo[]> {
@@ -341,14 +305,15 @@ export class GraphRawManager implements RecordCollectionKindManager {
 
   /**
    * File-side replace: mark prior AI edges for this diary sourceRef as not current.
-   * Keeps user-origin edges. Optionally skip newly written edge ids.
+   * Only reads the month shard derived from sourceRef (not all edge shards).
    */
   async supersedeAiEdgesBySourceRef(
     sourceRef: string,
-    opts?: { exceptIds?: ReadonlySet<string> }
+    opts?: { exceptIds?: ReadonlySet<string>; shardMonth?: string }
   ): Promise<number> {
     const now = Date.now()
-    const edges = await this.readAllCollapsedEdges()
+    const shardMonth = opts?.shardMonth || graphDiaryInstant(sourceRef).shardMonth
+    const edges = await this.readCollapsedEdges(shardMonth)
     let count = 0
     for (const edge of edges) {
       if (edge.sourceRef !== sourceRef) continue
@@ -365,6 +330,9 @@ export class GraphRawManager implements RecordCollectionKindManager {
         { collection: 'edges' }
       )
       count += 1
+    }
+    if (count > 0) {
+      await this.compactShard('edges', shardMonth)
     }
     return count
   }

@@ -112,6 +112,8 @@ export const agentWorkspaceApi = {
   } | null> => ipcRenderer.invoke('agent-workspace:attach-notebook', params),
   listSessions: (): Promise<AgentWorkspaceSessionListItem[]> =>
     ipcRenderer.invoke('agent-workspace:list-sessions'),
+  pinSession: (sessionId: string, isPinned: boolean): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('agent-workspace:pin-session', sessionId, isPinned),
   deleteSession: (sessionId: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('agent-workspace:delete-session', sessionId),
   chat: (params: {
@@ -132,6 +134,7 @@ export const agentWorkspaceApi = {
     modelId?: string
     reasoningEffort?: string
     searchMode?: boolean
+    forceStart?: boolean
   }): Promise<{
     input: import('@baishou/shared').SessionInputRecord
     started: boolean

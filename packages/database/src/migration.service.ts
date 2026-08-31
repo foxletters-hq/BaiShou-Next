@@ -12,7 +12,9 @@ import {
   DIARY_EMBED_JOBS_INDEXES_SQL,
   GRAPH_EDGES_CREATE_SQL,
   GRAPH_INDEXES_SQL,
+  GRAPH_NODE_ALIASES_CREATE_SQL,
   GRAPH_NODES_CREATE_SQL,
+  GRAPH_PURGE_SOFT_DELETED_SQL,
   MEMORY_EMBEDDINGS_CREATE_SQL,
   MEMORY_EMBEDDINGS_INDEX_SQL,
   MEMORY_EMBEDDINGS_VAULT_INDEX_SQL,
@@ -365,15 +367,41 @@ export class MigrationService {
     }
   }
 
-  /** 确保 graph_nodes / graph_edges 存在（P1 图谱派生索引）。 */
+  /** 确保 graph_nodes / graph_edges / aliases 存在；缺 name_normalized 时 ADD COLUMN 回填。 */
   private async _ensureGraphTables(): Promise<void> {
     try {
       const nodes = await this._executeSql(
         `SELECT name FROM sqlite_master WHERE type='table' AND name='graph_nodes'`
       )
-      if (nodes.rows.length === 0) {
+      if (nodes.rows.length > 0) {
+        const cols = await this._executeSql(`PRAGMA table_info(graph_nodes)`)
+        const names = new Set(
+          cols.rows.map((c: { name?: string }) => c.name).filter(Boolean) as string[]
+        )
+        if (!names.has('name_normalized')) {
+          logger.info('[MigrationService] graph_nodes 缺 name_normalized，ADD COLUMN 回填...')
+          await this._executeSql(
+            `ALTER TABLE graph_nodes ADD COLUMN name_normalized TEXT NOT NULL DEFAULT ''`
+          )
+          await this._executeSql(
+            `UPDATE graph_nodes SET name_normalized = lower(trim(name)) WHERE name_normalized = ''`
+          )
+        }
+      }
+
+      const nodesAfter = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='graph_nodes'`
+      )
+      if (nodesAfter.rows.length === 0) {
         logger.info('[MigrationService] 创建缺失的 graph_nodes 表...')
         await this._executeSql(GRAPH_NODES_CREATE_SQL)
+      }
+      const aliases = await this._executeSql(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='graph_node_aliases'`
+      )
+      if (aliases.rows.length === 0) {
+        logger.info('[MigrationService] 创建缺失的 graph_node_aliases 表...')
+        await this._executeSql(GRAPH_NODE_ALIASES_CREATE_SQL)
       }
       const edges = await this._executeSql(
         `SELECT name FROM sqlite_master WHERE type='table' AND name='graph_edges'`
@@ -383,6 +411,9 @@ export class MigrationService {
         await this._executeSql(GRAPH_EDGES_CREATE_SQL)
       }
       for (const ddl of GRAPH_INDEXES_SQL) {
+        await this._executeSql(ddl)
+      }
+      for (const ddl of GRAPH_PURGE_SOFT_DELETED_SQL) {
         await this._executeSql(ddl)
       }
     } catch (e: unknown) {

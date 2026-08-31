@@ -157,7 +157,7 @@
 }
 
 .sessionListContainer::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 .sessionListContainer::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
@@ -196,55 +196,6 @@
   box-shadow: 0 4px 16px rgba(var(--color-primary-rgb), 0.15) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-}
-
-.sessionCheckbox {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: 1.5px solid var(--border-control);
-  margin: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  position: relative;
-  outline: none;
-}
-
-.sessionCheckbox:hover {
-  border-color: var(--color-primary);
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.sessionCheckbox:checked {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  box-shadow: none;
-}
-
-.sessionCheckbox::after {
-  content: '';
-  width: 5px;
-  height: 10px;
-  border: solid transparent;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  position: absolute;
-  top: 3px;
-  left: 7px;
-  transition: border-color 0.15s ease;
-}
-
-.sessionCheckbox:checked::after {
-  border-color: var(--text-on-primary);
 }
 
 .sessionInfo {

@@ -95,6 +95,18 @@ describe('reasoning adapters', () => {
     })
   })
 
+  it('sends effort on openrouter for gemini 2.5 instead of token budget', () => {
+    const built = buildReasoningProviderOptionsResult({
+      modelId: 'gemini-2.5-flash',
+      providerType: 'openrouter',
+      effort: 'max'
+    })
+    expect(built.providerOptions).toBeUndefined()
+    expect(built.openAiThinkingInject).toEqual({
+      openRouterReasoning: { effort: 'max' }
+    })
+  })
+
   it('builds glm-5.2 chat efforts', () => {
     const variants = listReasoningVariants({
       modelId: 'glm-5.2',
@@ -103,7 +115,7 @@ describe('reasoning adapters', () => {
     expect(variants.map((v) => v.id)).toEqual(expect.arrayContaining(['high', 'max']))
   })
 
-  it('routes kimi / dashscope toggle models to chat inject', () => {
+  it('routes kimi / dashscope models to chat inject', () => {
     expect(resolveReasoningApiShape({ modelId: 'kimi-k2.5', providerType: 'opencodego' })).toBe(
       'chat'
     )
@@ -111,24 +123,26 @@ describe('reasoning adapters', () => {
       'chat'
     )
 
-    const off = buildReasoningProviderOptionsResult({
-      modelId: 'kimi-k2.5',
-      providerType: 'opencodego',
-      effort: 'none'
-    })
-    expect(off.providerOptions).toBeUndefined()
-    expect(off.openAiThinkingInject).toEqual({
-      enableThinking: true,
-      budgetTokens: 81920
-    })
-
-    const on = buildReasoningProviderOptionsResult({
+    const high = buildReasoningProviderOptionsResult({
       modelId: 'kimi-k2.5',
       providerType: 'opencodego',
       effort: 'high'
     })
-    expect(on.openAiThinkingInject).toEqual({
+    expect(high.providerOptions).toBeUndefined()
+    expect(high.openAiThinkingInject).toEqual({
       enableThinking: true,
+      reasoningEffort: 'high',
+      budgetTokens: 40960
+    })
+
+    const max = buildReasoningProviderOptionsResult({
+      modelId: 'kimi-k2.5',
+      providerType: 'opencodego',
+      effort: 'max'
+    })
+    expect(max.openAiThinkingInject).toEqual({
+      enableThinking: true,
+      reasoningEffort: 'max',
       budgetTokens: 81920
     })
 
@@ -147,8 +161,78 @@ describe('reasoning adapters', () => {
     })
     expect(kimiAuto.openAiThinkingInject).toEqual({
       enableThinking: true,
-      budgetTokens: 81920
+      reasoningEffort: 'high',
+      budgetTokens: 40960
     })
+
+    expect(
+      listReasoningVariants({ modelId: 'kimi-k2.5', providerType: 'opencodego' }).map((v) => v.id)
+    ).toEqual(['high', 'max'])
+  })
+
+  it('maps anthropic / gemini 2.5 budgets from effort tiers', () => {
+    const claudeHigh = buildReasoningProviderOptions({
+      modelId: 'claude-3-5-sonnet',
+      providerType: 'anthropic',
+      effort: 'high'
+    })
+    expect(claudeHigh?.anthropic).toMatchObject({
+      thinking: { type: 'enabled', budgetTokens: 16000 },
+      effort: 'high'
+    })
+
+    const claudeMax = buildReasoningProviderOptions({
+      modelId: 'claude-3-5-sonnet',
+      providerType: 'anthropic',
+      effort: 'max'
+    })
+    expect(claudeMax?.anthropic).toMatchObject({
+      thinking: { type: 'enabled', budgetTokens: 31999 },
+      effort: 'max'
+    })
+
+    const flashHigh = buildReasoningProviderOptions({
+      modelId: 'gemini-2.5-flash',
+      providerType: 'gemini',
+      effort: 'high'
+    })
+    expect(flashHigh?.google).toMatchObject({
+      thinkingConfig: { includeThoughts: true, thinkingBudget: 12288 }
+    })
+
+    const flashMax = buildReasoningProviderOptions({
+      modelId: 'gemini-2.5-flash',
+      providerType: 'gemini',
+      effort: 'max'
+    })
+    expect(flashMax?.google).toMatchObject({
+      thinkingConfig: { includeThoughts: true, thinkingBudget: 24576 }
+    })
+
+    const proMax = buildReasoningProviderOptions({
+      modelId: 'gemini-2.5-pro',
+      providerType: 'gemini',
+      effort: 'max'
+    })
+    expect(proMax?.google).toMatchObject({
+      thinkingConfig: { includeThoughts: true, thinkingBudget: 31999 }
+    })
+  })
+
+  it('keeps claude 4.6 on adaptive effort without integer budget', () => {
+    const built = buildReasoningProviderOptions({
+      modelId: 'claude-sonnet-4-6',
+      providerType: 'anthropic',
+      effort: 'high'
+    })
+    expect(built?.anthropic).toMatchObject({
+      thinking: { type: 'adaptive' },
+      effort: 'high'
+    })
+    expect(
+      (built?.anthropic as { thinking?: { budgetTokens?: number } } | undefined)?.thinking
+        ?.budgetTokens
+    ).toBeUndefined()
   })
 
   it('passes deepseek-v4 max via openaiCompatible providerOptions', () => {

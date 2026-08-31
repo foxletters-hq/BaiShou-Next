@@ -6,8 +6,13 @@ import { getDefaultRagConfig } from '@baishou/store'
 import { useRagSettings } from '../hooks/useRagSettings'
 import { useRagStatsPrefetch } from '../hooks/useRagStatsPrefetch'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
+import { MemoryReadinessBar } from '../../memory/MemoryReadinessBar'
+import { useMemoryReadiness } from '../../memory/useMemoryReadiness'
 
-export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
+export const RagSettingsPane: React.FC<{
+  settings: any
+  showReadinessBar?: boolean
+}> = ({ settings, showReadinessBar = true }) => {
   useRagStatsPrefetch()
   const settingsNav = useSettingsScopeNavigation()
   const navigate = useNavigate()
@@ -47,8 +52,17 @@ export const RagSettingsPane: React.FC<{ settings: any }> = ({ settings }) => {
   } = useRagSettings({ settings, t, toast, confirm, prompt, alert })
 
   const ragConfig = settings.ragConfig ?? getDefaultRagConfig()
+  const readiness = useMemoryReadiness()
   return (
     <div className="settings-pane settings-pane-full">
+      {showReadinessBar ? (
+        <MemoryReadinessBar
+          rows={readiness.rows}
+          onConfigureEmbedding={() => settingsNav.goAiModels()}
+          onStartIndex={() => navigate('/memory/vectors')}
+          onStartOrganize={() => navigate('/memory/graph')}
+        />
+      ) : null}
       <RagMemoryView
         config={ragConfig}
         stats={ragStats}

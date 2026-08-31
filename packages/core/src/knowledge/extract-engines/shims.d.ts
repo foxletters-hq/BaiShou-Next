@@ -2,7 +2,7 @@ declare module 'tesseract.js' {
   export function createWorker(
     langs?: string | string[],
     oem?: number,
-    options?: unknown
+    options?: { workerPath?: string; corePath?: string; langPath?: string }
   ): Promise<{
     loadLanguage: (lang: string) => Promise<void>
     initialize: (lang: string) => Promise<void>

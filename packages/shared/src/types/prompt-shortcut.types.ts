@@ -10,4 +10,6 @@ export interface PromptShortcut {
   command?: string
   tag?: string
   description?: string
+  /** 缺省视为 software：安装目录技能；workspace 为当前项目内技能 */
+  source?: 'software' | 'workspace'
 }

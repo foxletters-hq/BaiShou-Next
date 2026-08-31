@@ -4,7 +4,7 @@ import { CircleHelp } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
 import { useNativeTheme } from '../theme'
-import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { DEFAULT_STROKE_WIDTH, HELP_ICON_SIZE } from '../../shared/icons/icon-sizes'
 
 export type SyncModeComparisonHelpProps = {
   context?: 'incremental' | 'fullBackup'
@@ -56,7 +56,7 @@ function SyncModeComparisonBody({ context }: { context?: 'incremental' | 'fullBa
 
 export const SyncModeComparisonHelp: React.FC<SyncModeComparisonHelpProps> = ({
   context,
-  size = 18
+  size: _size
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -74,7 +74,11 @@ export const SyncModeComparisonHelp: React.FC<SyncModeComparisonHelpProps> = ({
         )}
         style={styles.helpBtn}
       >
-        <CircleHelp size={size} color={colors.textTertiary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+        <CircleHelp
+          size={HELP_ICON_SIZE}
+          color={colors.textTertiary}
+          strokeWidth={DEFAULT_STROKE_WIDTH}
+        />
       </Pressable>
       <Modal
         visible={open}
@@ -111,8 +115,4 @@ const styles = StyleSheet.create({
     lineHeight: 19
   },
   hint: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 4
-  }
-})
+    fontSize: 

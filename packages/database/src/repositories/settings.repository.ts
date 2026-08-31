@@ -193,7 +193,9 @@ export class SettingsRepository {
       agentPersona: raw.agentPersona ?? DEFAULT_AGENT_BEHAVIOR.agentPersona,
       agentGuidelines: raw.agentGuidelines ?? DEFAULT_AGENT_BEHAVIOR.agentGuidelines,
       pinnedAssistantIds: raw.pinnedAssistantIds ?? DEFAULT_AGENT_BEHAVIOR.pinnedAssistantIds,
-      restoreLastSessionOnReturn: raw.restoreLastSessionOnReturn !== false
+      restoreLastSessionOnReturn: raw.restoreLastSessionOnReturn !== false,
+      reasoningEffortDefault:
+        raw.reasoningEffortDefault ?? DEFAULT_AGENT_BEHAVIOR.reasoningEffortDefault
     }
   }
   async setAgentBehaviorConfig(config: AgentBehaviorConfig): Promise<void> {

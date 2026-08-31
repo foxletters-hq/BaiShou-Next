@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
-import { ChevronRight, Smile } from 'lucide-react-native'
+import { ChevronRight } from 'lucide-react-native'
 import type { EmojiToolConfig } from '@baishou/shared'
 import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
@@ -27,9 +27,6 @@ export const EmojiSettingsEntryRow: React.FC<EmojiSettingsEntryRowProps> = ({
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
-        <Smile size={16} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-      </View>
       <View style={styles.info}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>
           {t('agent.tools.emoji_settings', '表情包设置')}
@@ -55,13 +52,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 4,
     paddingVertical: 10
-  },
-  iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center'
   },
   info: { flex: 1, gap: 2 },
   title: { fontSize: 14, fontWeight: '600' },

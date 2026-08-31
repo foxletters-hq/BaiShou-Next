@@ -237,7 +237,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         providerId,
         modelId,
         attachments,
-        searchMode
+        searchMode,
+        getSessionReasoningEffortOverride()
       )
     },
     []
@@ -273,7 +274,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         messageId,
         searchMode,
         providerId,
-        modelId
+        modelId,
+        getSessionReasoningEffortOverride()
       )
     },
     []

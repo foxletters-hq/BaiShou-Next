@@ -5,6 +5,7 @@ import { Sidebar } from '../components/Sidebar'
 import styles from './MainLayout.module.css'
 import { MainPageCache, getMainPageCacheKey } from './MainPageCache'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
+import { isAgentWorkspaceKnowledgeDetailPath } from '../features/agent-workspace/utils/agent-workspace-route.util'
 import {
   getDesktopVaultScopeRevision,
   subscribeDesktopVaultScope
@@ -19,11 +20,14 @@ export const MainLayout: React.FC = () => {
   )
   const cacheKey = getMainPageCacheKey(location.pathname)
   const showOutlet = cacheKey === null
+  const flushWorkbenchChrome = location.pathname.startsWith('/agent-workspace')
   // 日记/总结二级页：隐藏底座列表，避免与 Outlet 叠层。设置全屏 overlay 不隐藏底座——
   // overlay 已有更高 z-index 盖住即可；hidden 再显示会造成伙伴页闪烁。
   const hideCacheForSubRoute =
     showOutlet &&
-    (location.pathname.startsWith('/diary/') || location.pathname.startsWith('/summary/'))
+    (location.pathname.startsWith('/diary/') ||
+      location.pathname.startsWith('/summary/') ||
+      isAgentWorkspaceKnowledgeDetailPath(location.pathname))
 
   // 当处于日记编辑或总结详情等二级子页面时，保持对应底座页面挂载，但隐藏以免与 Outlet 叠层闪烁
   let activeCacheKey = cacheKey
@@ -52,8 +56,11 @@ export const MainLayout: React.FC = () => {
   }, [vaultScopeRevision, location.pathname, navigate])
 
   return (
-    <div className={styles.appContainer}>
-      <div className={styles.mainContent} data-baishou-main-card>
+    <div className={`${styles.appContainer} ${flushWorkbenchChrome ? styles.appContainerFlush : ''}`}>
+      <div
+        className={`${styles.mainContent} ${flushWorkbenchChrome ? styles.mainContentFlush : ''}`}
+        data-baishou-main-card
+      >
         <Sidebar />
         <div className={styles.pageContent}>
           <MainPageCache

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   GitStatus,
+  GitRemoteStatus,
   VersionHistoryEntry,
   FileChange,
   FileDiff,
@@ -25,6 +26,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     onGetHistory,
     onGetHistoryCount,
     onGetRecentPulls,
+    onGetRemoteStatus,
+    onSyncRemote,
     onGetCommitChanges,
     onGetFileDiff,
     onGetWorkingDiff,
@@ -54,7 +57,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   } = props
   const { t } = useTranslation()
 
-  const [tab, setTab] = useState<'config' | 'version'>('config')
+  const [tab, setTab] = useState<'config' | 'version'>('version')
   const [remoteUrl, setRemoteUrl] = useState(config.remote?.url || '')
   const [remoteBranch, setRemoteBranch] = useState(config.remote?.branch || 'main')
   const [remoteUsername, setRemoteUsername] = useState(config.remote?.username || '')
@@ -65,6 +68,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
 
   // 工作区状态
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null)
+  const [remoteStatus, setRemoteStatus] = useState<GitRemoteStatus | null>(null)
+  const [isSyncingRemote, setIsSyncingRemote] = useState(false)
   const [branchInfo, setBranchInfo] = useState<GitBranchInfo | null>(null)
   const [stashList, setStashList] = useState<GitStashEntry[]>([])
 
@@ -109,28 +114,39 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }, [])
 
-  const handleRefreshStatus = useCallback(async () => {
-    try {
-      const status = await onGetStatus()
-      setGitStatus(status)
-    } catch {
-      // 静默失败
-    }
-    if (onGetBranchInfo) {
+  const handleRefreshStatus = useCallback(
+    async (options?: { fetch?: boolean }) => {
       try {
-        setBranchInfo(await onGetBranchInfo())
+        const status = await onGetStatus()
+        setGitStatus(status)
+        setConflicts(status.conflicted ?? [])
       } catch {
-        setBranchInfo(null)
+        // 静默失败
       }
-    }
-    if (onListStash) {
-      try {
-        setStashList(await onListStash())
-      } catch {
-        setStashList([])
+      if (onGetRemoteStatus) {
+        try {
+          setRemoteStatus(await onGetRemoteStatus(Boolean(options?.fetch)))
+        } catch {
+          setRemoteStatus(null)
+        }
       }
-    }
-  }, [onGetStatus, onGetBranchInfo, onListStash])
+      if (onGetBranchInfo) {
+        try {
+          setBranchInfo(await onGetBranchInfo())
+        } catch {
+          setBranchInfo(null)
+        }
+      }
+      if (onListStash) {
+        try {
+          setStashList(await onListStash())
+        } catch {
+          setStashList([])
+        }
+      }
+    },
+    [onGetStatus, onGetRemoteStatus, onGetBranchInfo, onListStash]
+  )
 
   const handleLoadHistory = useCallback(async () => {
     const requestId = ++historyRequestRef.current
@@ -142,7 +158,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
       ])
       if (requestId !== historyRequestRef.current) return
       setHistory(entries)
-      setTotalCount(total)
+      setTotalCount(typeof total === 'number' && Number.isFinite(total) ? Math.max(0, total) : 0)
     } catch {
       if (requestId !== historyRequestRef.current) return
       onToast(t('version_control.load_history_failed', '加载历史失败'), 'error')
@@ -150,6 +166,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   }, [onGetHistory, onGetHistoryCount, page, pageSize, onToast, t])
 
   useEffect(() => {
+    if (totalCount <= 0) return
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
     if (page > totalPages) {
       setPage(totalPages)
@@ -157,6 +174,7 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   }, [page, pageSize, totalCount])
 
   const handleLoadRecentPulls = useCallback(async () => {
+    if (!onGetRecentPulls) return
     try {
       const pulls = await onGetRecentPulls(10)
       setRecentPulls(pulls)
@@ -169,11 +187,12 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     const result = await onInit()
     if (result.success) {
       onToast(t('version_control.git_init_success', 'Git 仓库初始化成功'), 'success')
-      handleRefreshStatus()
+      await handleRefreshStatus({ fetch: true })
+      await handleLoadHistory()
     } else {
       onToast(result.message || t('version_control.git_init_failed', '初始化失败'), 'error')
     }
-  }, [onInit, onToast, t, handleRefreshStatus])
+  }, [onInit, onToast, t, handleRefreshStatus, handleLoadHistory])
 
   const handleSaveAuthorConfig = useCallback(async () => {
     try {
@@ -200,10 +219,20 @@ export function useGitManagementPage(props: GitManagementPageProps) {
           : undefined
       })
       onToast(t('common.save_success', '保存成功'), 'success')
+      await handleRefreshStatus({ fetch: true })
     } catch (e: any) {
       onToast(e?.message || t('common.error', '保存失败'), 'error')
     }
-  }, [remoteUrl, remoteBranch, remoteUsername, remoteToken, onSaveConfig, onToast, t])
+  }, [
+    remoteUrl,
+    remoteBranch,
+    remoteUsername,
+    remoteToken,
+    onSaveConfig,
+    onToast,
+    t,
+    handleRefreshStatus
+  ])
 
   const handleTestRemote = useCallback(async () => {
     const ok = await onTestRemote()
@@ -215,7 +244,20 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     )
   }, [onTestRemote, onToast, t])
 
+  const isRemoteConfigured = useCallback(
+    () => Boolean(remoteStatus?.configured || remoteUrl.trim()),
+    [remoteStatus, remoteUrl]
+  )
+
+  const notifyRemoteRequired = useCallback(() => {
+    onToast(t('version_control.sync_requires_remote', '尚未配置远程仓库'), 'warning')
+  }, [onToast, t])
+
   const handlePush = useCallback(async () => {
+    if (!isRemoteConfigured()) {
+      notifyRemoteRequired()
+      return
+    }
     const result = await onPush()
     onToast(
       result.success
@@ -223,7 +265,53 @@ export function useGitManagementPage(props: GitManagementPageProps) {
         : result.message || t('version_control.git_push_failed', '推送失败'),
       result.success ? 'success' : 'error'
     )
-  }, [onPush, onToast, t])
+    if (result.success) {
+      await handleRefreshStatus({ fetch: true })
+      await handleLoadHistory()
+    }
+  }, [
+    isRemoteConfigured,
+    notifyRemoteRequired,
+    onPush,
+    onToast,
+    t,
+    handleRefreshStatus,
+    handleLoadHistory
+  ])
+
+  const handleSyncRemote = useCallback(async () => {
+    if (!isRemoteConfigured()) {
+      notifyRemoteRequired()
+      return
+    }
+    if (!onSyncRemote) return
+    setIsSyncingRemote(true)
+    try {
+      const result = await onSyncRemote()
+      if (result.success) {
+        onToast(t('version_control.sync_remote_success', '远程同步完成'), 'success')
+        setConflicts([])
+        await handleRefreshStatus({ fetch: true })
+        await handleLoadHistory()
+      } else {
+        onToast(result.message || t('version_control.sync_remote_failed', '远程同步失败'), 'error')
+        if (result.conflicts) {
+          setConflicts(result.conflicts)
+        }
+        await handleRefreshStatus({ fetch: true })
+      }
+    } finally {
+      setIsSyncingRemote(false)
+    }
+  }, [
+    isRemoteConfigured,
+    notifyRemoteRequired,
+    onSyncRemote,
+    onToast,
+    t,
+    handleRefreshStatus,
+    handleLoadHistory
+  ])
 
   const stagedCount = gitStatus?.staged.length ?? 0
   const unstagedCount = (gitStatus?.unstaged.length ?? 0) + (gitStatus?.untracked.length ?? 0)
@@ -369,18 +457,30 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   )
 
   const handlePull = useCallback(async () => {
+    if (!isRemoteConfigured()) {
+      notifyRemoteRequired()
+      return
+    }
     const result = await onPull()
     if (result.success) {
       onToast(t('version_control.pull_success', '拉取成功'), 'success')
-      handleRefreshStatus()
-      handleLoadHistory()
+      await handleRefreshStatus({ fetch: true })
+      await handleLoadHistory()
     } else {
       onToast(result.message || t('version_control.git_pull_failed', '拉取失败'), 'error')
       if (result.conflicts) {
         setConflicts(result.conflicts)
       }
     }
-  }, [onPull, onToast, t, handleRefreshStatus, handleLoadHistory])
+  }, [
+    isRemoteConfigured,
+    notifyRemoteRequired,
+    onPull,
+    onToast,
+    t,
+    handleRefreshStatus,
+    handleLoadHistory
+  ])
 
   const {
     handleSelectCommit,
@@ -428,6 +528,19 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handleLoadHistory
   })
 
+  const handleResolveConflict = useCallback(
+    async (filePath: string, resolution: 'ours' | 'theirs') => {
+      const result = await onResolveConflict(filePath, resolution)
+      if (result.success) {
+        onToast(t('version_control.conflict_resolved', '已处理冲突'), 'success')
+        await handleRefreshStatus()
+      } else {
+        onToast(t('version_control.conflict_resolve_failed', '处理冲突失败'), 'error')
+      }
+    },
+    [onResolveConflict, onToast, t, handleRefreshStatus]
+  )
+
   return {
     t,
     isInitialized,
@@ -449,6 +562,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     showPassword,
     setShowPassword,
     gitStatus,
+    remoteStatus,
+    isSyncingRemote,
     branchInfo,
     stashList,
     expandedSections,
@@ -483,6 +598,9 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handleTestRemote,
     handlePush,
     handlePull,
+    handleSyncRemote,
+    canSyncRemote: Boolean(onSyncRemote),
+    handleResolveConflict,
     handleManualCommit,
     handleCommitAll,
     handleCommitAndPush,

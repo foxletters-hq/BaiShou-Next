@@ -12,6 +12,24 @@ function isPersistablePath(filePath?: string): boolean {
   return !filePath.startsWith('blob:') && !filePath.startsWith('data:')
 }
 
+export function resolveDroppedFilePath(file: File): string | undefined {
+  const electronPath = (file as ElectronFile).path
+  if (isPersistablePath(electronPath)) return electronPath
+  if (typeof window === 'undefined') return undefined
+  const getter = (
+    window as Window & {
+      api?: { agentWorkspace?: { getPathForFile?: (next: File) => string } }
+    }
+  ).api?.agentWorkspace?.getPathForFile
+  if (typeof getter !== 'function') return undefined
+  try {
+    const next = getter(file)
+    return isPersistablePath(next) ? next : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -22,7 +40,7 @@ export function fileToBase64(file: File): Promise<string> {
 }
 
 export async function fileToChatAttachment(file: File): Promise<InputBarAttachment> {
-  const electronPath = (file as ElectronFile).path
+  const localPath = resolveDroppedFilePath(file)
   const isImage = file.type.startsWith('image/')
   const isPdf = file.type === 'application/pdf'
   const isText = file.type.startsWith('text/') || /\.(txt|md)$/i.test(file.name)
@@ -30,11 +48,11 @@ export async function fileToChatAttachment(file: File): Promise<InputBarAttachme
 
   const id = Math.random().toString(36).substring(7)
 
-  if (isPersistablePath(electronPath)) {
+  if (isPersistablePath(localPath)) {
     return {
       id,
       fileName,
-      filePath: electronPath,
+      filePath: localPath,
       isImage,
       isPdf,
       isText,

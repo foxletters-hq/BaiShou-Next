@@ -121,19 +121,18 @@ export function buildStreamdownMarkdownStyle(
     },
     code: {
       color: colors.textPrimary,
-      backgroundColor: colors.bgSurfaceHighest,
-      borderColor: colors.borderSubtle,
-      fontSize: codeFontSize,
-      fontFamily: 'monospace'
+      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
+      borderColor: isPreview ? colors.bgSurfaceNormal : colors.borderSubtle,
+      fontSize: isPreview ? bodyFontSize : codeFontSize
     },
     codeBlock: {
       color: colors.textPrimary,
-      backgroundColor: colors.bgSurfaceHighest,
-      borderColor: colors.borderSubtle,
+      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
+      borderColor: isPreview ? colors.bgSurfaceNormal : colors.borderSubtle,
       borderRadius: 8,
       padding: 10,
       marginBottom: paragraphMargin,
-      fontSize: codeFontSize,
+      fontSize: isPreview ? bodyFontSize : codeFontSize,
       fontFamily: 'monospace'
     },
     link: {

@@ -45,7 +45,7 @@ export const SETTINGS_SEGMENT_CONFIG_KEYS: Record<string, SettingsConfigKey[]> =
   assistants: ['providers', 'agentBehavior'],
   rag: ['ragConfig', 'globalModels'],
   'web-search': ['webSearchConfig'],
-  'agent-tools': ['toolManagementConfig'],
+  'agent-tools': ['toolManagementConfig', 'agentBehavior'],
   summary: ['summaryConfig', 'globalModels'],
   tts: ['providers', 'globalModels'],
   'data-sync': ['cloudSyncConfig']

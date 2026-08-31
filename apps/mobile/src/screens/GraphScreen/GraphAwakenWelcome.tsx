@@ -135,7 +135,7 @@ export function GraphAwakenWelcome(props: {
           {step === 'welcome' ? (
             <>
               <Text style={[styles.title, { color: colors.textPrimary }]}>
-                {t('graph.awaken_welcome_title', '唤醒你的关系图谱')}
+                {t('graph.awaken_welcome_title', '唤醒你的人生关系图')}
               </Text>
               <Text style={[styles.body, { color: colors.textSecondary }]}>
                 {t(
@@ -155,7 +155,7 @@ export function GraphAwakenWelcome(props: {
                 ]}
               >
                 <Text style={[styles.ctaText, { color: colors.textPrimary }]}>
-                  {t('graph.awaken_welcome_cta', '唤醒关系图谱')}
+                  {t('graph.awaken_welcome_cta', '唤醒人生关系图')}
                 </Text>
               </Pressable>
             </>

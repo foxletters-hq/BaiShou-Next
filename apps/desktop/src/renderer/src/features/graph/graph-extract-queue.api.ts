@@ -4,21 +4,9 @@
  * is stale after renderer HMR (Electron preload only reloads on full app restart).
  */
 
-export type GraphExtractQueueSnapshot = {
-  items: Array<{
-    id: string
-    filePath: string
-    date?: string
-    progress: number
-    status: 'pending' | 'running' | 'completed' | 'error'
-    error?: string
-  }>
-  activeCount: number
-  pendingCount: number
-  runningCount: number
-  completedCount: number
-  errorCount: number
-}
+import type { GraphExtractQueueSnapshot } from '@baishou/shared'
+
+export type { GraphExtractQueueSnapshot, GraphExtractQueueItem } from '@baishou/shared'
 
 function electronInvoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const invoke = window.electron?.ipcRenderer?.invoke
@@ -28,11 +16,26 @@ function electronInvoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   return invoke(channel, ...args) as Promise<T>
 }
 
-export function graphQueueExtract(opts?: { filePaths?: string[] }) {
+export function graphQueueExtract(opts?: { filePaths?: string[]; concurrency?: number }) {
   if (typeof window.api?.graph?.queueExtract === 'function') {
     return window.api.graph.queueExtract(opts)
   }
-  return electronInvoke<{ queued: number; totalPending: number }>('graph:queue-extract', opts)
+  return electronInvoke<{
+    queued: number
+    totalPending: number
+    skippedNotEmbedded: string[]
+  }>('graph:queue-extract', opts)
+}
+
+export function graphSetExtractConcurrency(concurrency: number) {
+  const invoke = window.electron?.ipcRenderer?.invoke
+  if (typeof window.api?.graph?.setExtractConcurrency === 'function') {
+    return window.api.graph.setExtractConcurrency({ concurrency })
+  }
+  if (typeof invoke !== 'function') {
+    return Promise.resolve({ concurrency })
+  }
+  return invoke('graph:set-extract-concurrency', { concurrency }) as Promise<{ concurrency: number }>
 }
 
 export function graphGetQueueState() {
@@ -50,6 +53,13 @@ export function graphStopExtract() {
     return window.api.graph.cancelExtract()
   }
   return electronInvoke<{ ok: boolean }>('graph:stop-extract')
+}
+
+export function graphCancelQueueItem(filePath: string) {
+  if (typeof window.api?.graph?.cancelQueueItem === 'function') {
+    return window.api.graph.cancelQueueItem({ filePath })
+  }
+  return electronInvoke<{ ok: boolean }>('graph:cancel-queue-item', { filePath })
 }
 
 export function graphOnQueueProgress(

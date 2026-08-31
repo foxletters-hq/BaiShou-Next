@@ -65,8 +65,17 @@ describe('ToolRegistry workspace session', () => {
     })
     const names = enabled.map((tool) => tool.name)
     expect(names).toContain('knowledge_search')
+    expect(names).toContain('knowledge_graph_search')
     expect(
       registry.isToolEnabled('knowledge_search', {
+        sessionId: 'ws-session',
+        vaultId: deriveLegacyVaultId('Personal'),
+        vaultName: 'Personal',
+        workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' }
+      })
+    ).toBe(true)
+    expect(
+      registry.isToolEnabled('knowledge_graph_search', {
         sessionId: 'ws-session',
         vaultId: deriveLegacyVaultId('Personal'),
         vaultName: 'Personal',

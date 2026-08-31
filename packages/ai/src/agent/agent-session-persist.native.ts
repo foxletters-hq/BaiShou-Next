@@ -1,6 +1,6 @@
 import { StreamTextResult } from 'ai'
 import { SessionRepository } from '@baishou/database'
-import { logger, sanitizeAssistantGeneratedText } from '@baishou/shared'
+import { logger } from '@baishou/shared'
 import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
@@ -21,17 +21,10 @@ function generateUUID(): string {
   })
 }
 
-function resolveAssistantTextForStorage(accumulator: StreamAccumulator): string {
-  if (typeof accumulator.sanitizedText === 'string') {
-    return accumulator.sanitizedText
-  }
-  return sanitizeAssistantGeneratedText(accumulator.text)
-}
-
 export interface PersistResultParams {
   sessionId: string
   rawUserText: string
-  streamResult: StreamTextResult<any, any>
+  streamResult: StreamTextResult<any, any, any>
   accumulator: StreamAccumulator
   sessionRepo: SessionRepository
   snapshotRepo: SnapshotRepository

@@ -83,7 +83,7 @@ export async function probeExtractEngineCapabilities(
   } else {
     vision = {
       available: true,
-      detail: opts.visionModelId ? `模型：${opts.visionModelId}` : undefined
+      detail: opts.visionModelId || undefined
     }
   }
 

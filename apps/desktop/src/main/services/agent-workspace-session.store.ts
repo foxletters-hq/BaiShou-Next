@@ -14,6 +14,8 @@ interface WorkspaceSessionBinding {
   folderDisplayName?: string
   /** 工作台挂载的知识库笔记本（检索作用域，非 folderRoot） */
   notebookId?: string
+  /** 项目内对话置顶；不随 updatedAt 刷新，避免打乱最近排序 */
+  isPinned?: boolean
   updatedAt: string
   checkpointsByUserMessageId: Record<string, string>
   selection?: AgentDialogueSelectionState
@@ -104,6 +106,7 @@ export async function bindWorkspaceSession(sessionId: string, folderRoot: string
     folderRoot,
     folderDisplayName,
     notebookId: prev?.notebookId,
+    isPinned: prev?.isPinned,
     updatedAt: now,
     checkpointsByUserMessageId: prev?.checkpointsByUserMessageId ?? {},
     selection: prev?.selection,
@@ -153,6 +156,18 @@ export async function getWorkspaceSessionBinding(
 ): Promise<WorkspaceSessionBinding | null> {
   const store = await loadStore()
   return store.bindings[sessionId] ?? null
+}
+
+export async function setWorkspaceSessionPinned(
+  sessionId: string,
+  isPinned: boolean
+): Promise<boolean> {
+  const store = await loadStore()
+  const binding = store.bindings[sessionId]
+  if (!binding) return false
+  binding.isPinned = isPinned
+  await saveStore()
+  return true
 }
 
 export async function saveWorkspaceCheckpoint(checkpoint: AgentRoundCheckpoint): Promise<void> {

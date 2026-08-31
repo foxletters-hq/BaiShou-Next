@@ -30,7 +30,7 @@ export const GitChangesSection: React.FC<GitChangesSectionProps> = ({ vm }) => {
     <div className="gmp-collapsible-section">
       <div className="gmp-collapsible-header" onClick={() => toggleSection('changes')}>
         <span className="gmp-collapsible-arrow">{expandedSections.changes ? '▾' : '▸'}</span>
-        <span className="gmp-collapsible-title">{t('version_control.changes', 'Changes')}</span>
+        <span className="gmp-collapsible-title">{t('version_control.changes', '未暂存变更')}</span>
         {unstagedCount > 0 && <span className="gmp-collapsible-badge">{unstagedCount}</span>}
         {unstagedCount > 0 && (
           <button

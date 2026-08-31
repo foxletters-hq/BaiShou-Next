@@ -25,8 +25,8 @@ export function useSettingsScopeNavigation() {
       goIdentityCards: () => go('identity-cards'),
       goAiServices: () => go('ai-services'),
       goAiModels: () => go('ai-models'),
-      goRag: () => go('rag')
+      goRag: () => (scope === 'overlay' ? go('rag') : navigate('/memory/vectors'))
     }),
-    [go, isHub, scope]
+    [go, isHub, navigate, scope]
   )
 }

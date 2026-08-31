@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Pencil, Search, Trash2 } from 'lucide-react'
+import { Check, Pencil, Pin, Search, Trash2 } from 'lucide-react'
 import type { AgentWorkspaceEntry, AgentWorkspaceSessionListItem } from '@baishou/shared'
+import { Input } from '@baishou/ui'
 import { workspaceEntryMatchesFolder } from '../utils/workspace-display.util'
 import { groupSessionsByTime, type SessionTimeGroupKey } from './workbenchSessionGroups'
 import styles from './WorkbenchSessionView.module.css'
@@ -17,6 +18,7 @@ export interface WorkbenchSessionViewProps {
 }
 
 const GROUP_LABEL_KEYS: Record<SessionTimeGroupKey, string> = {
+  pinned: 'workbench.sessions_group_pinned',
   today: 'workbench.sessions_group_today',
   yesterday: 'workbench.sessions_group_yesterday',
   previous7days: 'workbench.sessions_group_week',
@@ -28,6 +30,8 @@ function sessionGroupLabel(
   key: SessionTimeGroupKey
 ): string {
   switch (key) {
+    case 'pinned':
+      return t(GROUP_LABEL_KEYS.pinned, '已置顶')
     case 'today':
       return t(GROUP_LABEL_KEYS.today, '今天')
     case 'yesterday':
@@ -80,7 +84,6 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
         const title = sessionDisplayTitle(session, defaultTitle).toLowerCase()
         return title.includes(normalizedQuery)
       })
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   }, [defaultTitle, query, sessions, workspace])
 
   const groupedSessions = useMemo(() => groupSessionsByTime(workspaceSessions), [workspaceSessions])
@@ -97,6 +100,22 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
   const cancelEditing = useCallback(() => {
     setEditingId(null)
     setDraftTitle('')
+  }, [])
+
+  const handlePinSession = useCallback((sessionId: string, pinned: boolean) => {
+    void (async () => {
+      try {
+        const pinSession = window.api?.agentWorkspace?.pinSession
+        if (pinSession) {
+          await pinSession(sessionId, !pinned)
+        } else {
+          await window.electron.ipcRenderer.invoke('agent:pin-session', sessionId, !pinned)
+        }
+        window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
+      } catch (error) {
+        console.error('[WorkbenchSessionView] pin session failed:', error)
+      }
+    })()
   }, [])
 
   const commitEditing = useCallback(
@@ -125,9 +144,10 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
           <Search size={14} strokeWidth={1.75} className={styles.searchIcon} aria-hidden />
-          <input
+          <Input
             type="search"
-            className={styles.searchInput}
+            fieldSize="small"
+            inputClassName={styles.searchInput}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('workbench.search_sessions', '搜索会话…')}
@@ -158,7 +178,8 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
                     <li key={session.sessionId} className={styles.sessionNode}>
                       {isEditing ? (
                         <div className={styles.editRow}>
-                          <input
+                          <Input
+                            fieldSize="small"
                             className={styles.editInput}
                             value={draftTitle}
                             autoFocus
@@ -199,6 +220,22 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
                             </span>
                           </button>
                           <div className={styles.sessionActions}>
+                            <button
+                              type="button"
+                              className={`${styles.iconBtn} ${session.isPinned ? styles.iconBtnActive : ''}`}
+                              title={
+                                session.isPinned
+                                  ? t('workbench.home_unpin_session', '取消置顶')
+                                  : t('workbench.home_pin_session', '置顶对话')
+                              }
+                              onClick={() => handlePinSession(session.sessionId, Boolean(session.isPinned))}
+                            >
+                              <Pin
+                                size={13}
+                                strokeWidth={1.75}
+                                fill={session.isPinned ? 'currentColor' : 'none'}
+                              />
+                            </button>
                             {onRenameSession ? (
                               <button
                                 type="button"

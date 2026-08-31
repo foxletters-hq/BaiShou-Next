@@ -3,7 +3,9 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,14 +14,12 @@ import {
   AgentMarkdownRenderer,
   AgentThinkSection,
   AgentToolChainSection,
-  ChatBubbleInlineEditor,
-  FileChangeCard,
+  ChatBubbleAttachments,
   MessageActionBar,
   UserMessageSkillContent,
-  parseRedactedThinking,
-  useChatBubbleEdit
+  parseRedactedThinking
 } from '@baishou/ui'
-import type { AgentStreamTimelineItem, FileChangePartData } from '@baishou/shared'
+import type { AgentStreamTimelineItem, MockToolInvocation, WorkspaceChangeEntry } from '@baishou/shared'
 import type {
   WorkspaceChatMessage,
   PendingWorkspaceAssistantMsg
@@ -27,17 +27,25 @@ import type {
 import type { WorkspaceToolError } from '../hooks/useWorkspaceAgentStream'
 import {
   getWorkspaceAssistantText,
+  getWorkspaceUserAttachments,
   getWorkspaceUserSkillRefs,
   getWorkspaceUserText
 } from '../utils/workspace-message-display.util'
 import {
+  buildFileOpEntries,
   buildWorkspaceAssistantTimeline,
-  collectWorkspaceFileChanges,
   formatWorkspaceToolDisplayName,
-  isFileChangePartFailed
+  groupStreamTimelineItems,
+  groupWorkspaceAssistantTimeline,
+  type WorkspaceStreamTimelineGroup
 } from '../utils/workspace-message-parts.util'
-import type { WorkspaceChangeEntry } from '@baishou/shared'
+import { shouldStartWorkspaceBubbleEdit } from '../utils/workspace-rollback-hover.util'
+import {
+  shouldShowStreamWaitingDots,
+  streamTimelineHasRunningTool
+} from '../utils/workspace-stream-waiting.util'
 import { useChatScroll } from '../../agent/hooks/useChatScroll'
+import { WorkspaceFileChangeList } from './WorkspaceFileChangeList'
 import styles from './AgentWorkspaceMessageList.module.css'
 
 export interface AgentWorkspaceMessageListProps {
@@ -59,13 +67,15 @@ export interface AgentWorkspaceMessageListProps {
     avatarPath?: string | null
     emoji?: string | null
   }
-  onRollbackRound?: (userMessageId: string) => void
   onEditResend?: (
     userMessageId: string,
     newText: string,
     meta?: { skillRefs?: Array<{ command: string; content: string }> }
   ) => boolean | Promise<boolean>
-  onChangesUpdate?: (changes: WorkspaceChangeEntry[]) => void
+  onSelectChange?: (change: WorkspaceChangeEntry) => void
+  onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
+  hasMore?: boolean
+  onLoadMore?: () => Promise<void>
 }
 
 export interface AgentWorkspaceMessageListHandle {
@@ -96,7 +106,6 @@ function WorkspaceUserTurn(props: {
   dimmed?: boolean
   editingActive: boolean
   onEditingChange: (messageId: string | null) => void
-  onRollbackRound?: (userMessageId: string) => void
   onEditResend?: (
     userMessageId: string,
     newText: string,
@@ -104,89 +113,133 @@ function WorkspaceUserTurn(props: {
   ) => boolean | Promise<boolean>
 }) {
   const { t } = useTranslation()
-  const { msg, dimmed, editingActive, onEditingChange, onRollbackRound, onEditResend } = props
+  const {
+    msg,
+    dimmed,
+    editingActive,
+    onEditingChange,
+    onEditResend
+  } = props
   const userText = getWorkspaceUserText(msg)
   const skillRefs = getWorkspaceUserSkillRefs(msg) ?? msg.skillRefs
-
-  const edit = useChatBubbleEdit(userText, true)
-
-  const handleResend = useCallback(async () => {
-    const trimmed = edit.editedContent.trim()
-    if (!trimmed || !onEditResend) return
-    const applied = await onEditResend(msg.id, trimmed, { skillRefs })
-    if (applied) {
-      edit.handleCancelEdit()
-      onEditingChange(null)
-    }
-  }, [edit, msg.id, onEditResend, onEditingChange, skillRefs])
+  const attachments = getWorkspaceUserAttachments(msg)
+  const [editedContent, setEditedContent] = useState(userText)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (!editingActive && edit.isEditing) {
-      edit.handleCancelEdit()
+    if (editingActive) {
+      setEditedContent(userText)
     }
-  }, [editingActive, edit.isEditing, edit.handleCancelEdit])
+  }, [editingActive, userText])
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current
+    if (!editingActive || !textarea) return
+    textarea.style.height = 'auto'
+    textarea.style.height = `${Math.max(textarea.scrollHeight, 40)}px`
+  }, [editingActive, editedContent])
+
+  useEffect(() => {
+    if (!editingActive || !textareaRef.current) return
+    const textarea = textareaRef.current
+    textarea.focus({ preventScroll: true })
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+  }, [editingActive])
 
   const startEdit = () => {
-    edit.handleStartEdit()
+    if (!onEditResend) return
     onEditingChange(msg.id)
   }
 
   const cancelEdit = () => {
-    edit.handleCancelEdit()
+    setEditedContent(userText)
     onEditingChange(null)
+  }
+
+  const handleResend = useCallback(async () => {
+    const trimmed = editedContent.trim()
+    if (!trimmed || !onEditResend) return
+    const applied = await onEditResend(msg.id, trimmed, { skillRefs })
+    if (applied) {
+      onEditingChange(null)
+    }
+  }, [editedContent, msg.id, onEditResend, onEditingChange, skillRefs])
+
+  const handleBubbleClick = (event: React.MouseEvent) => {
+    if (!onEditResend || editingActive) return
+    const selection = window.getSelection()
+    if (
+      !shouldStartWorkspaceBubbleEdit({
+        defaultPrevented: event.defaultPrevented,
+        target: event.target,
+        hasNonCollapsedSelection: Boolean(
+          selection && !selection.isCollapsed && selection.toString().trim()
+        )
+      })
+    ) {
+      return
+    }
+    startEdit()
   }
 
   return (
     <div
-      className={`${styles.turn} ${styles.userTurn}${dimmed ? ` ${styles.turnDimmed}` : ''}`}
+      className={`chat-bubble-container ${styles.turn} ${styles.userTurn}${
+        dimmed ? ` ${styles.turnDimmed}` : ''
+      }${editingActive ? ` ${styles.turnEditing}` : ''}`}
     >
-      {edit.isEditing ? (
+      {editingActive ? (
         <div className={styles.userEditWrap}>
-          <ChatBubbleInlineEditor
-            isUser
-            editedContent={edit.editedContent}
-            onChange={edit.setEditedContent}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault()
+          <textarea
+            ref={textareaRef}
+            className={styles.userEditArea}
+            value={editedContent}
+            onChange={(event) => setEditedContent(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault()
                 cancelEdit()
                 return
               }
-              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault()
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault()
                 void handleResend()
               }
             }}
-            onCancel={cancelEdit}
-            onSave={cancelEdit}
-            onResend={() => {
-              void handleResend()
-            }}
-            textareaRef={edit.textareaRef}
+            rows={1}
+            aria-label={t('workbench.click_to_edit_message', '点击编辑这条消息')}
           />
+          <div className={styles.userEditActions}>
+            <button type="button" className={styles.userEditCancel} onClick={cancelEdit}>
+              {t('common.cancel', '取消')}
+            </button>
+            <button
+              type="button"
+              className={styles.userEditSend}
+              onClick={() => {
+                void handleResend()
+              }}
+            >
+              {t('workbench.send_edited_message', '发送')}
+            </button>
+          </div>
         </div>
       ) : (
         <>
-          <div className={styles.userAnchor}>
+          <div
+            className={`${styles.userAnchor}${onEditResend ? ` ${styles.userAnchorEditable}` : ''}`}
+            title={onEditResend ? t('workbench.click_to_edit_message', '点击编辑这条消息') : undefined}
+            onClick={handleBubbleClick}
+          >
+            {attachments.length > 0 ? (
+              <ChatBubbleAttachments attachments={attachments} />
+            ) : null}
             {userText || skillRefs?.length ? (
               <UserMessageSkillContent text={userText} skillRefs={skillRefs} />
             ) : null}
           </div>
           <div className={styles.turnActions}>
-            <MessageActionBar
-              isAI={false}
-              onCopy={() => copyText(userText)}
-              onEdit={onEditResend ? startEdit : undefined}
-            />
-            {onRollbackRound ? (
-              <button
-                type="button"
-                className={styles.rollbackBtn}
-                onClick={() => onRollbackRound(msg.id)}
-              >
-                {t('round_rollback.action', '回滚本轮')}
-              </button>
-            ) : null}
+            <MessageActionBar isAI={false} onCopy={() => copyText(userText)} />
           </div>
         </>
       )}
@@ -194,13 +247,70 @@ function WorkspaceUserTurn(props: {
   )
 }
 
+function streamToolToInvocation(
+  item: Extract<AgentStreamTimelineItem, { kind: 'tool' }>
+): MockToolInvocation {
+  return {
+    toolCallId: item.callId,
+    toolName: item.name,
+    state: item.status === 'completed' ? 'result' : 'call',
+    args: item.arguments ?? {},
+    result: item.result
+  }
+}
+
+function renderStreamFileOps(
+  items: Array<Extract<AgentStreamTimelineItem, { kind: 'tool' }>>,
+  options: {
+    onSelectChange?: (change: WorkspaceChangeEntry) => void
+    onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
+  }
+) {
+  const changes = buildFileOpEntries('stream', items.map(streamToolToInvocation), [])
+  if (changes.length === 0) return null
+  return (
+    <WorkspaceFileChangeList
+      key={`stream-files-${items[0]?.callId ?? items[0]?.name}`}
+      changes={changes}
+      running={items.some((item) => item.status === 'running')}
+      onSelectChange={options.onSelectChange ?? (() => undefined)}
+    />
+  )
+}
+
+function renderStreamToolGroup(
+  items: Array<Extract<AgentStreamTimelineItem, { kind: 'tool' }>>,
+  failedByName: Map<string, string>
+) {
+  const completed = items.filter((item) => item.status !== 'running')
+  const running = items.find((item) => item.status === 'running')
+  return (
+    <AgentToolChainSection
+      key={`stream-tools-${items[0]?.callId ?? items[0]?.name}`}
+      completedTools={completed.map((item) => ({
+        name: item.name,
+        durationMs: item.durationMs ?? 0,
+        toolCallId: item.callId,
+        result: item.result,
+        args: item.arguments,
+        error: item.status === 'failed' ? failedByName.get(item.name) : undefined
+      }))}
+      activeToolName={running?.name ?? null}
+      activeToolArgs={running?.arguments}
+      isStreaming={Boolean(running)}
+    />
+  )
+}
+
 function renderStreamTimelineItem(
-  item: AgentStreamTimelineItem,
+  item: WorkspaceStreamTimelineGroup,
   index: number,
   options: {
     isStreaming: boolean
     isLast: boolean
     failedByName: Map<string, string>
+    onSelectChange?: (change: WorkspaceChangeEntry) => void
+    onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
   }
 ) {
   if (item.kind === 'reasoning') {
@@ -228,29 +338,11 @@ function renderStreamTimelineItem(
     )
   }
 
-  const displayName = formatWorkspaceToolDisplayName(item.name)
-  const failedError = options.failedByName.get(item.name)
-  if (item.status === 'running') {
-    return (
-      <AgentToolChainSection
-        key={`stream-tool-${item.callId || index}`}
-        activeToolName={displayName}
-        isStreaming
-      />
-    )
+  if (item.kind === 'file_ops') {
+    return renderStreamFileOps(item.items, options)
   }
-  return (
-    <AgentToolChainSection
-      key={`stream-tool-${item.callId || index}`}
-      completedTools={[
-        {
-          name: displayName,
-          durationMs: item.durationMs ?? 0,
-          error: failedError
-        }
-      ]}
-    />
-  )
+
+  return renderStreamToolGroup(item.items, options.failedByName)
 }
 
 export const AgentWorkspaceMessageList = forwardRef<
@@ -270,9 +362,11 @@ export const AgentWorkspaceMessageList = forwardRef<
     activeToolName = null,
     completedTools = [],
     failedTools = [],
-    onRollbackRound,
     onEditResend,
-    onChangesUpdate
+    onSelectChange,
+    onReviewAll,
+    hasMore = false,
+    onLoadMore
   },
   ref
 ) {
@@ -306,20 +400,51 @@ export const AgentWorkspaceMessageList = forwardRef<
     [scroll.beginFollowIfAtBottom, scroll.scrollToBottom]
   )
 
-  const syncChanges = useCallback(
-    (list: WorkspaceChatMessage[]) => {
-      onChangesUpdate?.(collectWorkspaceFileChanges(list))
-    },
-    [onChangesUpdate]
-  )
-
-  useEffect(() => {
-    syncChanges(messages)
-  }, [messages, syncChanges])
-
   useEffect(() => {
     setEditingMessageId(null)
   }, [sessionId])
+
+  const loadMoreLockRef = useRef(false)
+  const [showLoadMoreButton, setShowLoadMoreButton] = useState(false)
+  const LOAD_MORE_TOP_THRESHOLD_PX = 120
+
+  const syncLoadMoreVisibility = useCallback(() => {
+    const el = scroll.scrollRef.current
+    if (!el || !hasMore) {
+      setShowLoadMoreButton(false)
+      return
+    }
+    setShowLoadMoreButton(el.scrollTop < LOAD_MORE_TOP_THRESHOLD_PX)
+  }, [hasMore, scroll.scrollRef])
+
+  const triggerLoadMore = useCallback(() => {
+    if (!hasMore || !onLoadMore || loadMoreLockRef.current) return
+    const el = scroll.scrollRef.current
+    loadMoreLockRef.current = true
+    const prevHeight = el?.scrollHeight ?? 0
+    void onLoadMore().finally(() => {
+      requestAnimationFrame(() => {
+        const pane = scroll.scrollRef.current
+        if (pane) {
+          pane.scrollTop = pane.scrollHeight - prevHeight
+        }
+        loadMoreLockRef.current = false
+        syncLoadMoreVisibility()
+      })
+    })
+  }, [hasMore, onLoadMore, scroll.scrollRef, syncLoadMoreVisibility])
+
+  useEffect(() => {
+    const el = scroll.scrollRef.current
+    if (!el) return
+    syncLoadMoreVisibility()
+    el.addEventListener('scroll', syncLoadMoreVisibility, { passive: true })
+    return () => el.removeEventListener('scroll', syncLoadMoreVisibility)
+  }, [syncLoadMoreVisibility, messages.length, sessionId, scroll.scrollRef])
+
+  useLayoutEffect(() => {
+    syncLoadMoreVisibility()
+  }, [syncLoadMoreVisibility, messages.length, isStreaming, isBridgeActive])
 
   const editingIndex = useMemo(() => {
     if (!editingMessageId) return -1
@@ -370,22 +495,18 @@ export const AgentWorkspaceMessageList = forwardRef<
   const streamingCompletedTools = useMemo(
     () => [
       ...completedTools.map((tool) => ({
-        name: formatWorkspaceToolDisplayName(tool.name),
+        name: tool.name,
         durationMs: tool.durationMs,
         error: tool.error
       })),
       ...failedTools.map((tool) => ({
-        name: formatWorkspaceToolDisplayName(tool.name),
+        name: tool.name,
         durationMs: 0,
         error: tool.error
       }))
     ],
     [completedTools, failedTools]
   )
-
-  const activeToolDisplayName = activeToolName
-    ? formatWorkspaceToolDisplayName(activeToolName)
-    : null
 
   if (!sessionId || sessionId === 'new-session') {
     return (
@@ -404,7 +525,7 @@ export const AgentWorkspaceMessageList = forwardRef<
       })
     : false
   const streamHasTools =
-    streamingCompletedTools.some((tool) => !tool.error) || Boolean(activeToolDisplayName)
+    streamingCompletedTools.some((tool) => !tool.error) || Boolean(activeToolName)
   const streamHasReasoning =
     streamingParsed.cleanReasoning.length > 0 ||
     Boolean(streamingReasoning && !streamingParsed.cleanContent)
@@ -418,12 +539,15 @@ export const AgentWorkspaceMessageList = forwardRef<
     ((lastTimelineItem?.kind === 'text' && Boolean(lastTimelineItem.text.trim())) ||
       (lastTimelineItem?.kind === 'reasoning' && Boolean(lastTimelineItem.text.trim())) ||
       (!useLiveTimeline && (streamHasText || Boolean(streamingReasoning))))
-  // 工具/确认门禁之后模型尚未吐字时，仍显示等待点，避免「卡住了」的空窗
-  const streamShowWaiting =
-    isStreaming &&
-    !isBridgeActive &&
-    !streamError &&
-    !lastItemIsLiveText
+  // 工具/确认门禁之后模型尚未吐字时，仍显示等待点，避免「卡住了」的空窗。
+  // 工具行已有转动指示时不再叠底部三点。
+  const streamShowWaiting = shouldShowStreamWaitingDots({
+    isStreaming,
+    isBridgeActive,
+    streamError,
+    lastItemIsLiveText,
+    hasRunningTool: streamTimelineHasRunningTool(streamingTimeline, activeToolName)
+  })
   const streamShowPlaceholder =
     streamShowWaiting &&
     !(useLiveTimeline
@@ -436,12 +560,14 @@ export const AgentWorkspaceMessageList = forwardRef<
     <div className={styles.scrollWrap}>
       <div className={styles.scroll} ref={scroll.scrollRef}>
         <div className={styles.list}>
+          {showLoadMoreButton ? (
+            <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
+              {t('agent.chat.load_earlier_messages', '加载更早对话')}
+            </button>
+          ) : null}
           {messages.length === 0 && !showStreamingBubble && !showPendingAssistant ? (
             <p className={styles.empty}>
-              {t(
-                'round_rollback.help_scope',
-                '会话回滚仅覆盖 AI 写工具已知路径；重要节点请用版本控制保存。'
-              )}
+              {t('workbench.chat_empty', '在下方输入，开始这一轮协作')}
             </p>
           ) : null}
           {messages.map((msg, index) => {
@@ -453,13 +579,13 @@ export const AgentWorkspaceMessageList = forwardRef<
                 dimmed={editingIndex >= 0 && index > editingIndex}
                 editingActive={editingMessageId === msg.id}
                 onEditingChange={setEditingMessageId}
-                onRollbackRound={onRollbackRound}
                 onEditResend={onEditResend}
               />
             )
           }
 
           const timeline = buildWorkspaceAssistantTimeline(msg.parts)
+          const timelineGroups = groupWorkspaceAssistantTimeline(timeline)
           const assistantText =
             timeline
               .filter((item) => item.kind === 'text')
@@ -474,30 +600,40 @@ export const AgentWorkspaceMessageList = forwardRef<
                 editingIndex >= 0 && index > editingIndex ? ` ${styles.turnDimmed}` : ''
               }`}
             >
-              {timeline.length > 0
-                ? timeline.map((item) => {
+              {timelineGroups.length > 0
+                ? timelineGroups.map((item) => {
                     if (item.kind === 'reasoning') {
                       return <AgentThinkSection key={item.key} content={item.text} />
                     }
                     if (item.kind === 'text') {
                       return <AgentMarkdownRenderer key={item.key} content={item.text} />
                     }
-                    if (item.kind === 'tool') {
+                    if (item.kind === 'tools') {
                       return (
                         <AgentToolChainSection
                           key={item.key}
-                          invocations={[item.invocation]}
+                          invocations={item.invocations}
                         />
                       )
                     }
-                    if (isFileChangePartFailed(item.data)) {
+                    if (item.kind === 'file_change_failed') {
                       return (
                         <div key={item.key} className={styles.fileChangeError}>
                           {t('file_change.failed', '文件变更失败')}: {item.data.path}
                         </div>
                       )
                     }
-                    return <FileChangeCard key={item.key} data={item.data as FileChangePartData} />
+                    return (
+                      <WorkspaceFileChangeList
+                        key={item.key}
+                        changes={buildFileOpEntries(
+                          msg.id,
+                          item.invocations,
+                          item.items.map((entry) => entry.data)
+                        )}
+                        onSelectChange={(change) => onSelectChange?.(change)}
+                      />
+                    )
                   })
                 : null}
               {assistantText ? (
@@ -521,11 +657,13 @@ export const AgentWorkspaceMessageList = forwardRef<
               </div>
             ) : null}
             {useLiveTimeline
-              ? streamingTimeline.map((item, index) =>
+              ? groupStreamTimelineItems(streamingTimeline).map((item, index, groups) =>
                   renderStreamTimelineItem(item, index, {
                     isStreaming: isStreaming && !isBridgeActive,
-                    isLast: index === streamingTimeline.length - 1,
-                    failedByName
+                    isLast: index === groups.length - 1,
+                    failedByName,
+                    onSelectChange,
+                    onReviewAll
                   })
                 )
               : (
@@ -539,7 +677,7 @@ export const AgentWorkspaceMessageList = forwardRef<
                     {streamHasTools ? (
                       <AgentToolChainSection
                         completedTools={streamingCompletedTools.filter((tool) => !tool.error)}
-                        activeToolName={activeToolDisplayName}
+                        activeToolName={activeToolName}
                         isStreaming
                       />
                     ) : null}

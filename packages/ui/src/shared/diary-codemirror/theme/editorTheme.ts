@@ -9,8 +9,8 @@ export const editorTheme = EditorView.baseTheme({
     lineHeight: '1.5',
     backgroundColor: 'var(--bg-surface)'
   },
-  '.cm-editor.cm-focused': {
-    outline: 'none !important'
+  '&.cm-focused': {
+    outline: 'none'
   },
   '.cm-scroller': {
     overflow: 'auto',
@@ -73,28 +73,29 @@ export const editorTheme = EditorView.baseTheme({
     pointerEvents: 'none'
   },
 
-  // 渲染标题（行级 class，避免 inline mark 触发坐标扫描问题）
-  '.cm-rendered-h1': {
+  // 标题字号只挂行级 class。HighlightStyle 也会打同名 class，若写在
+  // `.cm-rendered-hN` 上会行内再放大一档，posAtCoords 扫描会偏。
+  '.cm-line.cm-rendered-h1': {
     fontSize: '1.8em',
     fontWeight: '700'
   },
-  '.cm-rendered-h2': {
+  '.cm-line.cm-rendered-h2': {
     fontSize: '1.5em',
     fontWeight: '600'
   },
-  '.cm-rendered-h3': {
+  '.cm-line.cm-rendered-h3': {
     fontSize: '1.3em',
     fontWeight: '600'
   },
-  '.cm-rendered-h4': {
+  '.cm-line.cm-rendered-h4': {
     fontSize: '1.1em',
     fontWeight: '600'
   },
-  '.cm-rendered-h5': {
+  '.cm-line.cm-rendered-h5': {
     fontSize: '1.15em',
     fontWeight: '600'
   },
-  '.cm-rendered-h6': {
+  '.cm-line.cm-rendered-h6': {
     fontSize: '1em',
     fontWeight: '600',
     color: 'var(--text-secondary)'
@@ -103,29 +104,40 @@ export const editorTheme = EditorView.baseTheme({
   '.cm-rendered-blockquote-content': {
     borderLeft: '3px solid var(--color-primary)',
     padding: '0 0 0 12px',
-    color: 'var(--text-secondary)'
+    color: 'var(--text-secondary)',
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
   },
 
   '.cm-line.cm-rendered-blockquote': {
     borderLeft: '3px solid var(--color-primary)',
     padding: '0 0 0 12px',
-    color: 'var(--text-secondary)'
+    color: 'var(--text-secondary)',
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
   },
 
   '.cm-rendered-blockquote': {
     borderLeft: '3px solid var(--color-primary)',
     padding: '0 0 0 12px',
-    color: 'var(--text-secondary)'
+    color: 'var(--text-secondary)',
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
   },
 
   '.cm-rendered-inline-code': {
-    fontFamily: "'Fira Code', 'Courier New', monospace",
-    fontSize: '0.88em',
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
+    fontSize: 'inherit',
     color: 'var(--text-primary)',
     backgroundColor: 'var(--bg-surface-normal)',
     borderRadius: '0.35rem',
     padding: '0.08em 0.35em',
+    margin: '-0.08em 0',
+    lineHeight: 'inherit',
     wordBreak: 'break-word'
+  },
+
+  '.cm-rendered-inline-code .cm-rendered-inline-code, .cm-rendered-inline-code .cm-code': {
+    backgroundColor: 'transparent',
+    padding: 0,
+    borderRadius: 0
   },
 
   '.cm-syntax-hidden-mark': {
@@ -152,7 +164,8 @@ export const editorTheme = EditorView.baseTheme({
     borderLeft: '3px solid var(--color-primary)',
     paddingLeft: '16px',
     color: 'var(--text-secondary)',
-    margin: '8px 0'
+    margin: '8px 0',
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
   },
   '.cm-list-bullet': {
     display: 'inline-block',
@@ -796,14 +809,14 @@ export const editorTheme = EditorView.baseTheme({
     },
 
   '.cm-code': {
-    fontFamily: "'Fira Code', 'Courier New', monospace",
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
     backgroundColor: 'var(--bg-surface-normal)',
     padding: '2px 6px',
     borderRadius: '4px',
-    fontSize: '0.9em'
+    fontSize: 'inherit'
   },
   '.cm-codeBlock': {
-    fontFamily: "'Fira Code', 'Courier New', monospace",
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
     backgroundColor: 'var(--bg-surface-normal)',
     padding: '16px',
     borderRadius: '8px',
@@ -816,49 +829,76 @@ export const editorTheme = EditorView.baseTheme({
 
   // 围栏代码块行级灰底（inline live preview）
   '.cm-rendered-codeBlock': {
-    fontFamily: "'Fira Code', 'Courier New', monospace",
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
     backgroundColor: 'var(--bg-surface-normal)',
     fontSize: '13px',
     lineHeight: '1.6'
   },
   '.cm-code-line': {
     backgroundColor: 'var(--bg-code-block, #eceef2) !important',
+    fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
     paddingLeft: '12px !important',
-    paddingRight: '12px !important'
+    paddingRight: '12px !important',
+    minHeight: '1.5em',
+    lineHeight: '1.5'
   },
   '.cm-code-line .cm-rendered-inline-code': {
     backgroundColor: 'transparent !important',
     padding: '0 !important',
+    margin: '0 !important',
     borderRadius: '0 !important'
   },
   '.cm-activeLine.cm-code-line': {
     backgroundColor: 'var(--bg-code-block, #eceef2) !important'
   },
+  '.cm-line.cm-wb-properties': {
+    backgroundColor: 'color-mix(in srgb, var(--text-primary) 4%, var(--bg-surface-low, var(--bg-editor, #fff)))',
+    padding: '4px 12px'
+  },
+  '.cm-line.cm-wb-properties-first': {
+    paddingTop: '14px',
+    borderTopLeftRadius: '8px',
+    borderTopRightRadius: '8px'
+  },
+  '.cm-line.cm-wb-properties-last': {
+    paddingBottom: '26px',
+    borderBottomLeftRadius: '8px',
+    borderBottomRightRadius: '8px'
+  },
+  '.cm-wb-property-key': {
+    color: 'var(--text-tertiary)',
+    fontWeight: '600'
+  },
   '.cm-line.cm-wb-hr': {
     position: 'relative',
-    minHeight: '1.5em'
+    minHeight: '1.5em',
+    paddingTop: '14px',
+    paddingBottom: '14px'
   },
   '.cm-wb-hr-widget': {
     display: 'inline-block',
     width: '100%',
     height: '0',
-    margin: '14px 0',
+    margin: '0',
     borderTop: '1px solid var(--border-control)',
     verticalAlign: 'middle',
     pointerEvents: 'none',
     boxSizing: 'border-box'
   },
   '.cm-code-line-top': {
-    paddingTop: '12px !important',
-    marginTop: '8px',
+    paddingTop: '20px !important',
+    minHeight: 'calc(1.5em + 20px)',
     borderTopLeftRadius: '8px',
     borderTopRightRadius: '8px'
   },
   '.cm-code-line-bottom': {
-    paddingBottom: '12px !important',
-    marginBottom: '8px',
+    paddingBottom: '20px !important',
+    minHeight: 'calc(1.5em + 20px)',
     borderBottomLeftRadius: '8px',
     borderBottomRightRadius: '8px'
+  },
+  '.cm-code-line-top.cm-code-line-bottom': {
+    minHeight: 'calc(1.5em + 40px)'
   },
   '.cm-rendered-codeMark': {
     color: 'var(--text-tertiary)',

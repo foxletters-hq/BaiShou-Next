@@ -129,7 +129,7 @@
 }
 
 .listContainer::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 .listContainer::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.8);

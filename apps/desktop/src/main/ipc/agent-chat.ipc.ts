@@ -65,7 +65,8 @@ export function registerChatIPC() {
       messageId?: string,
       searchMode?: boolean,
       requestedProviderId?: string,
-      requestedModelId?: string
+      requestedModelId?: string,
+      reasoningEffort?: string
     ) => {
       return AgentChatActionRunner.regenerate(
         event,
@@ -73,7 +74,8 @@ export function registerChatIPC() {
         messageId,
         searchMode,
         requestedProviderId,
-        requestedModelId
+        requestedModelId,
+        reasoningEffort
       )
     }
   )
@@ -98,7 +100,8 @@ export function registerChatIPC() {
       requestedProviderId?: string,
       requestedModelId?: string,
       attachments?: any[],
-      searchMode?: boolean
+      searchMode?: boolean,
+      reasoningEffort?: string
     ) => {
       return AgentChatActionRunner.editMessage(
         event,
@@ -108,7 +111,8 @@ export function registerChatIPC() {
         requestedProviderId,
         requestedModelId,
         attachments,
-        searchMode
+        searchMode,
+        reasoningEffort
       )
     }
   )
@@ -124,7 +128,8 @@ export function registerChatIPC() {
       messageId: string,
       searchMode?: boolean,
       requestedProviderId?: string,
-      requestedModelId?: string
+      requestedModelId?: string,
+      reasoningEffort?: string
     ) => {
       return AgentChatActionRunner.resend(
         event,
@@ -132,7 +137,8 @@ export function registerChatIPC() {
         messageId,
         searchMode,
         requestedProviderId,
-        requestedModelId
+        requestedModelId,
+        reasoningEffort
       )
     }
   )

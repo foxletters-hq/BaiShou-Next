@@ -1,11 +1,13 @@
 import type { AgentSkillWriteInput, PromptShortcut } from '@baishou/shared'
 import {
   createAgentSkill,
-  getAiSkillsRoot,
+  getWritableUserSkillsRoot,
   listAgentSkills,
   listAgentSkillsAsShortcuts,
+  listWorkspaceAgentSkills,
   removeAgentSkill,
-  updateAgentSkill
+  updateAgentSkill,
+  updateWorkspaceAgentSkill
 } from '../services/agent-skills.service'
 import { tracedIpcHandle } from './ipc-trace.util'
 
@@ -14,12 +16,16 @@ export function registerSkillIPC() {
     return await listAgentSkills()
   })
 
+  tracedIpcHandle('skills:list-workspace', async (_, folderRoot: string) => {
+    return await listWorkspaceAgentSkills(typeof folderRoot === 'string' ? folderRoot : '')
+  })
+
   tracedIpcHandle('skills:list-as-shortcuts', async () => {
     return await listAgentSkillsAsShortcuts()
   })
 
   tracedIpcHandle('skills:get-root', async () => {
-    return await getAiSkillsRoot()
+    return await getWritableUserSkillsRoot()
   })
 
   tracedIpcHandle('skills:create', async (_, input: AgentSkillWriteInput) => {
@@ -29,6 +35,16 @@ export function registerSkillIPC() {
   tracedIpcHandle('skills:update', async (_, input: AgentSkillWriteInput) => {
     return await updateAgentSkill(input)
   })
+
+  tracedIpcHandle(
+    'skills:update-workspace',
+    async (_, folderRoot: string, input: AgentSkillWriteInput) => {
+      return await updateWorkspaceAgentSkill(
+        typeof folderRoot === 'string' ? folderRoot : '',
+        input
+      )
+    }
+  )
 
   tracedIpcHandle('skills:remove', async (_, name: string) => {
     await removeAgentSkill(name)

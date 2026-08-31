@@ -3,6 +3,7 @@
 .ancillary:global(.x-markdown) {
   width: fit-content !important;
   max-width: 100%;
+  font-family: var(--font-family);
   font-size: var(--content-font-size-md, 15px);
   line-height: 1.6;
 }
@@ -10,6 +11,47 @@
 .ancillary:global(.x-markdown) {
   font-size: var(--content-font-size, 14px);
   line-height: 1.7;
+  color: var(--text-secondary) !important;
+}
+
+/* 引用块、行内代码、代码块引用与正文同一套思源黑体和字号 */
+.root:global(.x-markdown) blockquote,
+.root:global(.x-markdown) blockquote :global(*),
+.ancillary:global(.x-markdown) blockquote,
+.ancillary:global(.x-markdown) blockquote :global(*),
+.root:global(.x-markdown) code,
+.ancillary:global(.x-markdown) code,
+.root:global(.x-markdown) pre,
+.ancillary:global(.x-markdown) pre {
+  font-family: var(--font-family-main, var(--font-family)) !important;
+}
+
+.root:global(.x-markdown) blockquote,
+.ancillary:global(.x-markdown) blockquote,
+.root:global(.x-markdown) pre,
+.ancillary:global(.x-markdown) pre {
+  font-size: calc(1em - 1px);
+  line-height: inherit;
+}
+
+.root:global(.x-markdown) pre,
+.ancillary:global(.x-markdown) pre {
+  border: none;
+  box-shadow: none;
+}
+
+.root:global(.x-markdown):global(.x-markdown-light) pre code,
+.root:global(.x-markdown):global(.x-markdown-dark) pre code,
+.ancillary:global(.x-markdown):global(.x-markdown-light) pre code,
+.ancillary:global(.x-markdown):global(.x-markdown-dark) pre code {
+  font-family: var(--font-family-main, var(--font-family)) !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  display: block;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
 }
 
 .plainText {
@@ -17,6 +59,7 @@
   max-width: 100%;
   white-space: pre-wrap;
   word-break: break-word;
+  font-family: var(--font-family);
   font-size: var(--content-font-size, 14px);
   line-height: 1.6;
   color: var(--text-primary);

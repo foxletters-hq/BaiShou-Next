@@ -1,0 +1,73 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--font-family);
+}
+
+.intro,
+.note,
+.empty,
+.scopeNote,
+.sectionLabel,
+.more {
+  margin: 0;
+  font-family: var(--font-family);
+  font-weight: 400;
+}
+
+.intro {
+  font-size: var(--ui-fs-lg);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.note,
+.empty,
+.scopeNote {
+  font-size: var(--ui-fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sectionLabel {
+  font-size: var(--ui-fs-md);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.pathList {
+  margin: 0;
+  padding: 8px 10px;
+  list-style: none;
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--bg-surface-normal);
+}
+
+.pathItem {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--ui-fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.more {
+  font-size: var(--ui-fs-sm);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}

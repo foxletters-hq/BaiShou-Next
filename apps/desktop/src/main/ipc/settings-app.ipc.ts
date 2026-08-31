@@ -184,7 +184,7 @@ export function registerSettingsAppIPC() {
     return getDesktopLanIpv4()
   })
 
-  ipcMain.handle('settings:get-mcp-tools', async () => {
+    ipcMain.handle('settings:get-mcp-tools', async () => {
     const { toolRegistry, buildMcpToolContext } = await import('./agent-helpers')
     const { listBaishouMcpExposedTools } = await import('@baishou/ai')
     const { logger } = await import('@baishou/shared')
@@ -197,6 +197,34 @@ export function registerSettingsAppIPC() {
       return []
     }
   })
+
+  ipcMain.handle('settings:get-mcp-client-config', async () => {
+    const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+    return getDesktopMcpClientRuntime().ensureLoaded()
+  })
+
+  ipcMain.handle('settings:set-mcp-client-config', async (_, config: unknown) => {
+    const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+    return getDesktopMcpClientRuntime().saveConfig(
+      config as import('@baishou/shared').McpClientConfig
+    )
+  })
+
+  ipcMain.handle('settings:get-mcp-client-statuses', async () => {
+    const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+    return getDesktopMcpClientRuntime().listServerStatuses()
+  })
+
+  ipcMain.handle(
+    'settings:test-mcp-client',
+    async (_, payload: { url?: string; authToken?: string } | undefined) => {
+      const { getDesktopMcpClientRuntime } = await import('../services/mcp-client-runtime')
+      return getDesktopMcpClientRuntime().testConnection(
+        String(payload?.url ?? ''),
+        payload?.authToken
+      )
+    }
+  )
 
   ipcMain.handle('settings:get-hotkey-config', async () => {
     const { getDesktopHotkeyConfig } = await import('../services/desktop-hotkey-config.store')

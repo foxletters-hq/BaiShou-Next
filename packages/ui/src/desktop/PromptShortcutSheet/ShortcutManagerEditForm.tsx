@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Input } from '../Input/Input'
 import styles from './ShortcutManagerDialog.module.css'
 
 interface ShortcutManagerEditFormProps {
@@ -29,8 +30,8 @@ export const ShortcutManagerEditForm: React.FC<ShortcutManagerEditFormProps> = (
     <div className={styles.form}>
       <div className={styles.field}>
         <label className={styles.fieldLabel}>{t('shortcut.label_name', '展示名称')}</label>
-        <input
-          className={styles.fieldInput}
+        <Input
+          fieldSize="small"
           value={draftName}
           onChange={(e) => onDraftNameChange(e.target.value)}
           placeholder={t('shortcut.label_hint', '例如: 翻译')}
@@ -40,8 +41,8 @@ export const ShortcutManagerEditForm: React.FC<ShortcutManagerEditFormProps> = (
         <label className={styles.fieldLabel}>
           {t('shortcut.command_label', 'Skill 名称 (用于 / 触发)')}
         </label>
-        <input
-          className={styles.fieldInput}
+        <Input
+          fieldSize="small"
           value={draftCommand}
           onChange={(e) => onDraftCommandChange(e.target.value)}
           placeholder={t('shortcut.command_hint', '例如: review, translate')}

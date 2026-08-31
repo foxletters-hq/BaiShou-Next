@@ -4,15 +4,18 @@ import { useTranslation } from 'react-i18next'
 import {
   ChevronRight,
   ChevronDown,
-  File,
   FilePlus,
+  Folder,
+  FolderOpen,
   FolderPlus,
-  Pencil,
+  ListCollapse,
+  ListTree,
   RefreshCw,
   Trash2
 } from 'lucide-react'
-import { useDialog, toast } from '@baishou/ui'
+import { getFileTypeIcon, useDialog, toast } from '@baishou/ui'
 import { useWorkbenchFileTree, type FileTreeNode } from './useWorkbenchFileTree'
+import { workbenchTreeTwistieOffset } from './workbench-file-tree.util'
 import { joinRelativePath, parentRelativePath } from './workbench-path.util'
 import { suggestUniqueEntryName } from './workbench-inline-name.util'
 import {
@@ -100,7 +103,6 @@ function TreeNode({
     <>
       <div
         className={`${styles.row} ${isSelected ? styles.rowSelected : ''} ${isRenaming ? styles.rowEditing : ''} ${isDragging ? styles.rowDragging : ''} ${isDropTarget ? styles.rowDropTarget : ''}`}
-        style={{ paddingLeft: 8 + depth * 14 }}
         draggable={!isRenaming}
         onDragStart={(event) => onDragStart(event, node)}
         onDragEnd={onDragEnd}
@@ -108,22 +110,29 @@ function TreeNode({
         onDrop={(event) => onDrop(event, node)}
         onContextMenu={(event) => onContextMenu(event, node)}
       >
-        {node.isDirectory ? (
-          <button
-            type="button"
-            className={styles.chevronBtn}
-            onClick={() => onToggle(node.relativePath)}
-            aria-expanded={expanded}
-          >
-            {expanded ? (
-              <ChevronDown size={16} strokeWidth={1.75} />
-            ) : (
-              <ChevronRight size={16} strokeWidth={1.75} />
-            )}
-          </button>
-        ) : (
-          <span className={styles.chevronSpacer} />
-        )}
+        {depth > 0 ? (
+          <span className={styles.indentGuides} aria-hidden>
+            {Array.from({ length: depth }, (_, index) => (
+              <span key={index} className={styles.indentGuide} />
+            ))}
+          </span>
+        ) : null}
+        <span className={styles.twistie} style={{ marginLeft: workbenchTreeTwistieOffset(depth) }}>
+          {node.isDirectory ? (
+            <button
+              type="button"
+              className={styles.chevronBtn}
+              onClick={() => onToggle(node.relativePath)}
+              aria-expanded={expanded}
+            >
+              {expanded ? (
+                <ChevronDown size={16} strokeWidth={1.75} />
+              ) : (
+                <ChevronRight size={16} strokeWidth={1.75} />
+              )}
+            </button>
+          ) : null}
+        </span>
         {isRenaming ? (
           <InlineTreeNameRow
             depth={depth}
@@ -149,9 +158,17 @@ function TreeNode({
               }
             }}
           >
-            {!node.isDirectory ? (
-              <File size={14} strokeWidth={1.75} className={styles.fileIcon} />
-            ) : null}
+            <span className={styles.rowIcon}>
+              {node.isDirectory ? (
+                expanded ? (
+                  <FolderOpen size={16} strokeWidth={1.75} />
+                ) : (
+                  <Folder size={16} strokeWidth={1.75} />
+                )
+              ) : (
+                getFileTypeIcon(node.name, 16)
+              )}
+            </span>
             <span className={styles.name}>{node.name}</span>
           </button>
         )}
@@ -209,7 +226,7 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
     folderRoot,
     isExpanded: tree.isExpanded,
     ensureExpanded: tree.ensureExpanded,
-    refreshRoot: tree.refreshRoot,
+    refreshRoot: tree.softRefreshExpanded,
     selectPath: tree.selectPath
   })
 
@@ -442,7 +459,7 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
       onDelete: (node) => void handleDelete(node),
       onCopyPath: handleCopyPath,
       onRevealInExplorer: handleRevealInExplorer,
-      onRefresh: () => void tree.refreshRoot()
+      onRefresh: () => void tree.softRefreshExpanded()
     })
   }, [
     contextMenu,
@@ -491,30 +508,42 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
           <button
             type="button"
             className={styles.actionBtn}
-            onClick={() => void tree.refreshRoot()}
+            onClick={() => void tree.softRefreshExpanded()}
             title={t('common.refresh', '刷新')}
           >
             <RefreshCw size={16} strokeWidth={1.75} />
           </button>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={() => tree.toggleAllFolders()}
+            disabled={!tree.canToggleAllFolders}
+            title={
+              tree.canCollapseAllFolders
+                ? t('workbench.collapse_folders', '折叠全部文件夹')
+                : t('workbench.expand_folders', '展开全部文件夹')
+            }
+            aria-label={
+              tree.canCollapseAllFolders
+                ? t('workbench.collapse_folders', '折叠全部文件夹')
+                : t('workbench.expand_folders', '展开全部文件夹')
+            }
+          >
+            {tree.canCollapseAllFolders ? (
+              <ListCollapse size={16} strokeWidth={1.75} />
+            ) : (
+              <ListTree size={16} strokeWidth={1.75} />
+            )}
+          </button>
           {selectedNode ? (
-            <>
-              <button
-                type="button"
-                className={styles.actionBtn}
-                onClick={() => void handleRename(selectedNode)}
-                title={t('workbench.rename', '重命名')}
-              >
-                <Pencil size={15} strokeWidth={1.75} />
-              </button>
-              <button
-                type="button"
-                className={styles.actionBtn}
-                onClick={() => void handleDelete(selectedNode)}
-                title={t('workbench.delete', '删除')}
-              >
-                <Trash2 size={15} strokeWidth={1.75} />
-              </button>
-            </>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={() => void handleDelete(selectedNode)}
+              title={t('workbench.delete', '删除')}
+            >
+              <Trash2 size={15} strokeWidth={1.75} />
+            </button>
           ) : null}
         </div>
       </div>
@@ -525,9 +554,9 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
         onDragLeave={dnd.handleDragLeaveRoot}
         onDrop={dnd.handleDropOnRoot}
       >
-        {tree.loadingRoot ? (
+        {tree.loadingRoot && tree.rootChildren.length === 0 ? (
           <p className={styles.placeholder}>{t('common.loading', '加载中…')}</p>
-        ) : tree.rootError ? (
+        ) : tree.rootError && tree.rootChildren.length === 0 ? (
           <p className={styles.error}>{tree.rootError}</p>
         ) : (
           <>

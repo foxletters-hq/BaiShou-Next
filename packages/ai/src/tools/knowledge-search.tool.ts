@@ -6,6 +6,8 @@
 import { z } from 'zod'
 import { AgentTool } from './agent.tool'
 import type { ToolContext } from './agent.tool'
+import { formatKnowledgeSearchHits } from './knowledge-search-result.util'
+import { resolveKnowledgeToolNotebookId } from './knowledge-tool-scope.util'
 
 const params = z.object({
   query: z.string().describe('Search query against the mounted knowledge notebook.'),
@@ -13,7 +15,7 @@ const params = z.object({
     .string()
     .optional()
     .describe(
-      'Notebook id to search (companion sessions only). Workspace sessions always use the mounted notebook and ignore this.'
+      'Notebook id to search only when no notebook is already bound. A bound notebook always wins and this value is ignored.'
     ),
   limit: z
     .number()
@@ -28,10 +30,10 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
   readonly name = 'knowledge_search'
 
   readonly description =
-    'Search the knowledge notebook (vector + full-text) for source excerpts.\n\n' +
-    'Call this when:\n' +
-    '- the user asks about imported documents / research notes in a notebook\n' +
-    '- you need citations or passages before editing local files in the workspace\n\n' +
+    'Search the current knowledge notebook (vector + full-text) for source excerpts.\n\n' +
+    'Call this when the user asks about imported documents or you need passages before answering.\n' +
+    'Do not call this for greetings or small talk.\n' +
+    'If a notebook is already bound in this conversation, omit notebookId; a bound id always wins.\n' +
     'In a workspace session, a notebook must be mounted first; args.notebookId cannot bypass that. ' +
     'Read-only; does not modify notebooks or sources.'
 
@@ -53,36 +55,13 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
     const query = args.query.trim()
     if (!query) return '请提供 query（检索问题）。'
 
-    const attached = context.workspace?.notebookId?.trim() || ''
-    const isWorkspace = context.workspace?.sessionKind === 'workspace'
-
-    let notebookId = ''
-    if (isWorkspace) {
-      // 工作台：必须已挂载；禁止 args.notebookId 绕过
-      if (!attached) {
-        return (
-          '工作台尚未挂载知识库笔记本，拒绝检索。' +
-          '请先在工作台挂载笔记本；不可通过 notebookId 参数绕过。'
-        )
-      }
-      notebookId = attached
-    } else {
-      notebookId = args.notebookId?.trim() || attached
-      if (!notebookId) {
-        return (
-          'No knowledge notebook is attached and notebookId was not provided. ' +
-          'Attach a notebook or pass notebookId explicitly. ' +
-          'Do not invent document contents.'
-        )
-      }
-    }
+    const scoped = resolveKnowledgeToolNotebookId(context, args.notebookId)
+    if (scoped.error) return scoped.error
+    const notebookId = scoped.notebookId
 
     const reader = context.knowledgeReader
     if (!reader) {
-      return (
-        'The knowledge notebook search is not available yet. Do not call this tool again in this conversation. ' +
-        'Continue without notebook excerpts.'
-      )
+      return '知识库检索当前不可用。这一轮不要再调用该工具，也不要编造资料内容。'
     }
 
     try {
@@ -91,32 +70,10 @@ export class KnowledgeSearchTool extends AgentTool<typeof params> {
         notebookId,
         limit: args.limit ?? 8
       })
-      if (!hits.length) {
-        return (
-          `No matching passages found in notebook「${notebookId}」for「${query}」. ` +
-          'Do not invent contents; continue with what you already know or ask the user to import sources.'
-        )
-      }
-
-      const lines = hits.map((h, i) => {
-        const title = h.title?.trim() || h.sourceId.slice(0, 8)
-        const excerpt = h.chunkText.replace(/\s+/g, ' ').trim().slice(0, 400)
-        return (
-          `${i + 1}. [${title}] chunk#${h.chunkIndex} score=${h.score.toFixed(3)}\n` +
-          `   sourceId=${h.sourceId} chunkId=${h.chunkId}\n` +
-          `   「${excerpt}」`
-        )
-      })
-
-      return [
-        `## Knowledge search (notebook=${notebookId})`,
-        `Query: ${query}`,
-        `Hits: ${hits.length}`,
-        ...lines
-      ].join('\n')
+      return formatKnowledgeSearchHits(query, hits)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      return `Knowledge search failed: ${message}. Do not call this tool again for the same query in this conversation.`
+      return `知识库检索失败：${message}。同一查询不要再调用该工具。`
     }
   }
 }

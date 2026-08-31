@@ -72,7 +72,7 @@
 }
 
 .navScrollArea::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 
 .navScrollArea::-webkit-scrollbar-track {

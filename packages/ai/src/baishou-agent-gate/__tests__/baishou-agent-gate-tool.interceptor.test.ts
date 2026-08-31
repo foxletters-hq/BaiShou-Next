@@ -116,9 +116,9 @@ describe('wrapVercelToolExecuteWithAgentGate', () => {
     expect(execute).not.toHaveBeenCalled()
   })
 
-  it('skips Ask for recall_relations (no gate metadata / G-D4)', async () => {
-    expect(resolveAgentGateToolMetadata('recall_relations')).toBeUndefined()
-    const assert = vi.fn()
+  it('gates recall_relations as a Safe tool (default Allow, user can Ask/Deny)', async () => {
+    expect(resolveAgentGateToolMetadata('recall_relations')?.riskLevel).toBe(AgentGateRiskLevel.Safe)
+    const assert = vi.fn().mockResolvedValue(undefined)
     const gate = { assert } as unknown as IBaishouAgentGate
     const execute = vi.fn().mockResolvedValue('graph-ok')
     const wrapped = wrapVercelToolExecuteWithAgentGate(
@@ -128,7 +128,7 @@ describe('wrapVercelToolExecuteWithAgentGate', () => {
       execute
     )
     await expect(wrapped({ entity: '小明' })).resolves.toBe('graph-ok')
-    expect(assert).not.toHaveBeenCalled()
+    expect(assert).toHaveBeenCalledOnce()
     expect(execute).toHaveBeenCalledOnce()
   })
 })

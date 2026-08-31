@@ -73,7 +73,8 @@ export class HybridSearchUtils {
     merged.sort((a, b) => {
       const aTotal = a.ftsScore + a.vectorScore
       const bTotal = b.ftsScore + b.vectorScore
-      return bTotal - aTotal // 降序
+      if (bTotal !== aTotal) return bTotal - aTotal
+      return String(a.result.messageId).localeCompare(String(b.result.messageId))
     })
 
     return merged.slice(0, limit).map((m) => {

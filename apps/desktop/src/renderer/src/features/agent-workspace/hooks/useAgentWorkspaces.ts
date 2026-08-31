@@ -105,6 +105,7 @@ export function useAgentWorkspaces() {
       }
       setWorkspaces((prev) => upsertWorkspaceEntry(prev, entry))
       await selectWorkspace(entry.id)
+      notifyAgentWorkspacesChanged()
       return entry
     },
     [selectWorkspace, t]
@@ -159,14 +160,37 @@ export function useAgentWorkspaces() {
   }, [])
 
   const setWorkspacePinned = useCallback(async (workspaceId: string, pinned: boolean) => {
-    const updated = await window.api?.agentWorkspace?.updateWorkspace?.(workspaceId, {
-      pinnedAt: pinned ? new Date().toISOString() : null
-    })
-    if (updated) {
-      setWorkspaces((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
-      notifyAgentWorkspacesChanged()
+    const pinnedAt = pinned ? new Date().toISOString() : null
+    let previousPinnedAt: string | null | undefined
+    setWorkspaces((prev) =>
+      prev.map((item) => {
+        if (item.id !== workspaceId) return item
+        previousPinnedAt = item.pinnedAt
+        return { ...item, pinnedAt }
+      })
+    )
+    try {
+      const updated = await window.api?.agentWorkspace?.updateWorkspace?.(workspaceId, {
+        pinnedAt
+      })
+      if (updated) {
+        setWorkspaces((prev) =>
+          prev.map((item) =>
+            item.id === updated.id
+              ? { ...updated, pinnedAt: updated.pinnedAt ?? pinnedAt }
+              : item
+          )
+        )
+      }
+      return updated ?? null
+    } catch (error) {
+      setWorkspaces((prev) =>
+        prev.map((item) =>
+          item.id === workspaceId ? { ...item, pinnedAt: previousPinnedAt } : item
+        )
+      )
+      throw error
     }
-    return updated
   }, [])
 
   const ensureScratchWorkspace = useCallback(async (): Promise<AgentWorkspaceEntry> => {

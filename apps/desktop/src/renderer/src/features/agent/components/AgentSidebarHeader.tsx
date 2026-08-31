@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge } from '@baishou/ui'
+import { resolveDesktopAssistantAvatarSrc, AssistantKindBadge, Input } from '@baishou/ui'
 import type { AgentAssistant } from './AgentSidebar'
 import styles from './AgentSidebar.module.css'
 import {
@@ -212,18 +212,25 @@ export const AgentSidebarHeader: React.FC<AgentSidebarHeaderProps> = ({
       </div>
 
       <div className={styles.searchWrapper}>
-        <input
-          className={styles.searchInput}
+        <Input
+          fieldSize="small"
           type="text"
+          inputClassName={styles.searchInput}
           placeholder={t('agent.sidebar.search_hint', '搜索近期聊天...')}
           value={searchQuery}
           onChange={(e) => onSearchQueryChanged(e.target.value)}
+          trailing={
+            searchQuery ? (
+              <button
+                type="button"
+                className={styles.searchClearBtn}
+                onClick={() => onSearchQueryChanged('')}
+              >
+                ✕
+              </button>
+            ) : null
+          }
         />
-        {searchQuery && (
-          <button className={styles.searchClearBtn} onClick={() => onSearchQueryChanged('')}>
-            ✕
-          </button>
-        )}
       </div>
     </>
   )

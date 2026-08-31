@@ -26,4 +26,24 @@ describe('replaceEditorDocumentContent', () => {
     view.destroy()
     parent.remove()
   })
+
+  it('preserves mid-document caret when replacing with longer content', () => {
+    const parent = document.createElement('div')
+    document.body.appendChild(parent)
+
+    const view = createDiaryCodeMirror(parent, {
+      content: 'hello world',
+      platform: { resolveAttachmentUrl: (s) => s, interactionMode: 'mouse' }
+    })
+
+    view.dispatch({ selection: { anchor: 6, head: 6 } })
+    replaceEditorDocumentContent(view, 'hello world!!!')
+
+    expect(view.state.doc.toString()).toBe('hello world!!!')
+    expect(view.state.selection.main.head).toBe(6)
+    expect(view.state.selection.main.anchor).toBe(6)
+
+    view.destroy()
+    parent.remove()
+  })
 })

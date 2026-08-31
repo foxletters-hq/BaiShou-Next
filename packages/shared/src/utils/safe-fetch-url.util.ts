@@ -1,7 +1,24 @@
 /**
- * 拦截指向私网 / 回环 / 链路本地的 URL，降低 SSRF 风险。
- * 供知识库 URL 导入、url_read 等共用。
+ * HTTP(S) 地址校验。
+ * 知识库导入允许内网；代理发起的 url_read 仍走公网限制，降低 SSRF。
  */
+
+function assertHttpOrHttpsUrl(url: string): URL {
+  const trimmed = url?.trim()
+  if (!trimmed) throw new Error('url is required')
+
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    throw new Error('invalid url')
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('only http/https urls are allowed')
+  }
+  return parsed
+}
 
 function isIpv4(host: string): boolean {
   const parts = host.split('.')
@@ -41,23 +58,17 @@ function isBlockedHostname(hostname: string): boolean {
 }
 
 /**
+ * 只要求 http/https，允许内网 / 本机（知识库用户主动导入）。
+ */
+export function assertSafeHttpUrl(url: string): void {
+  assertHttpOrHttpsUrl(url)
+}
+
+/**
  * @throws Error 当 URL 非法或指向私网/本机
  */
 export function assertSafePublicHttpUrl(url: string): void {
-  const trimmed = url?.trim()
-  if (!trimmed) throw new Error('url is required')
-
-  let parsed: URL
-  try {
-    parsed = new URL(trimmed)
-  } catch {
-    throw new Error('invalid url')
-  }
-
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new Error('only http/https urls are allowed')
-  }
-
+  const parsed = assertHttpOrHttpsUrl(url)
   if (isBlockedHostname(parsed.hostname)) {
     throw new Error('private or local network url is blocked')
   }

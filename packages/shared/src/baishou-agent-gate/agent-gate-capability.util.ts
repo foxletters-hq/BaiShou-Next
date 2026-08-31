@@ -19,10 +19,22 @@ export type AgentGateCapabilityId =
   | 'delete'
   | 'command'
   | 'external'
+  | 'diary_read'
   | 'diary_write'
+  | 'diary_edit'
   | 'diary_delete'
+  | 'diary_list'
+  | 'diary_search'
+  | 'summary_read'
+  | 'message_search'
+  | 'vector_search'
   | 'memory_store'
   | 'memory_delete'
+  | 'recall_relations'
+  | 'graph_upsert'
+  | 'web_search'
+  | 'url_read'
+  | 'current_time'
 
 export type AgentGateCapabilityEffect = AgentGateEffect
 
@@ -30,6 +42,8 @@ export interface AgentGateCapabilityDef {
   id: AgentGateCapabilityId
   /** 该能力管理的 action（支持写入 permissionRules） */
   actions: readonly string[]
+  /** 无用户规则时的默认效果（只读工具 Allow，写入/删除 Ask） */
+  defaultEffect?: AgentGateCapabilityEffect
   /** 删除等：UI 锁定为询问，不能改为允许/拒绝 */
   lockedToAsk?: boolean
   /** 命令等：不可整项允许，仅可询问/拒绝（或通过始终允许前缀） */
@@ -39,7 +53,7 @@ export interface AgentGateCapabilityDef {
 }
 
 export interface AgentGateCapabilityState {
-  effects: Record<AgentGateCapabilityId, AgentGateCapabilityEffect>
+  effects: Partial<Record<AgentGateCapabilityId, AgentGateCapabilityEffect>>
   /** 工作台：可信区外目录（glob / 绝对路径前缀）→ 编译为 external_directory Allow */
   trustedExternalDirs: string[]
 }
@@ -50,24 +64,50 @@ const WORKSPACE_DELETE_ACTIONS = ['workspace_delete'] as const
 const WORKSPACE_COMMAND_ACTIONS = ['workspace_run'] as const
 
 export const WORKSPACE_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
-  { id: 'browse', actions: WORKSPACE_BROWSE_ACTIONS },
-  { id: 'edit', actions: WORKSPACE_EDIT_ACTIONS },
-  { id: 'delete', actions: WORKSPACE_DELETE_ACTIONS },
-  { id: 'command', actions: WORKSPACE_COMMAND_ACTIONS, disallowAllow: true },
-  { id: 'external', actions: [EXTERNAL_DIRECTORY_ACTION], external: true }
+  { id: 'browse', actions: WORKSPACE_BROWSE_ACTIONS, defaultEffect: AgentGateEffect.Allow },
+  { id: 'edit', actions: WORKSPACE_EDIT_ACTIONS, defaultEffect: AgentGateEffect.Ask },
+  { id: 'delete', actions: WORKSPACE_DELETE_ACTIONS, defaultEffect: AgentGateEffect.Ask },
+  {
+    id: 'command',
+    actions: WORKSPACE_COMMAND_ACTIONS,
+    defaultEffect: AgentGateEffect.Ask,
+    disallowAllow: true
+  },
+  {
+    id: 'external',
+    actions: [EXTERNAL_DIRECTORY_ACTION],
+    defaultEffect: AgentGateEffect.Ask,
+    external: true
+  }
 ]
 
 export const COMPANION_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
-  { id: 'diary_write', actions: ['diary_write'] },
-  { id: 'diary_delete', actions: ['diary_delete'], lockedToAsk: true },
-  { id: 'memory_store', actions: ['memory_store'] },
-  { id: 'memory_delete', actions: ['memory_delete'], lockedToAsk: true }
+  { id: 'diary_read', actions: ['diary_read'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'diary_write', actions: ['diary_write'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'diary_edit', actions: ['diary_edit'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'diary_delete', actions: ['diary_delete'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'diary_list', actions: ['diary_list'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'diary_search', actions: ['diary_search'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'summary_read', actions: ['summary_read'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'message_search', actions: ['message_search'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'vector_search', actions: ['vector_search'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'memory_store', actions: ['memory_store'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'memory_delete', actions: ['memory_delete'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'recall_relations', actions: ['recall_relations'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'graph_upsert', actions: ['graph_upsert'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'web_search', actions: ['web_search'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'url_read', actions: ['url_read'], defaultEffect: AgentGateEffect.Allow },
+  { id: 'current_time', actions: ['current_time'], defaultEffect: AgentGateEffect.Allow }
 ]
 
 export function getGateCapabilitiesForScene(
   scene: AgentToolScene
 ): readonly AgentGateCapabilityDef[] {
   return scene === 'workspace' ? WORKSPACE_GATE_CAPABILITIES : COMPANION_GATE_CAPABILITIES
+}
+
+export function isCompanionGateCapabilityId(id: string): id is AgentGateCapabilityId {
+  return COMPANION_GATE_CAPABILITIES.some((cap) => cap.id === id)
 }
 
 function managedActionSet(scene: AgentToolScene): Set<string> {
@@ -130,6 +170,11 @@ function effectForActions(
   )
   if (allow) return AgentGateEffect.Allow
 
+  const ask = actions.every((action) =>
+    actionOnly.some((rule) => rule.action === action && rule.effect === AgentGateEffect.Ask)
+  )
+  if (ask) return AgentGateEffect.Ask
+
   // 旧 FullTrust 等价：`*: allow` 垫底时，未显式 Deny 的能力显示为允许
   if (hasCatchAllAllowRule(config)) {
     const hasDeny = actions.some((action) =>
@@ -165,19 +210,22 @@ export function capabilityStateFromConfig(
   scene: AgentToolScene
 ): AgentGateCapabilityState {
   const trustedExternalDirs = readTrustedExternalDirsFromRules(config.permissionRules ?? [])
-  const effects = {} as Record<AgentGateCapabilityId, AgentGateCapabilityEffect>
+  const effects: Partial<Record<AgentGateCapabilityId, AgentGateCapabilityEffect>> = {}
 
-  if (scene === 'workspace') {
-    effects.browse = effectForActions(config, WORKSPACE_BROWSE_ACTIONS, AgentGateEffect.Allow)
-    effects.edit = effectForActions(config, WORKSPACE_EDIT_ACTIONS, AgentGateEffect.Ask)
-    effects.delete = effectForActions(config, WORKSPACE_DELETE_ACTIONS, AgentGateEffect.Ask)
-    effects.command = effectForActions(config, WORKSPACE_COMMAND_ACTIONS, AgentGateEffect.Ask)
-    effects.external = effectForExternalDirectory(config)
-  } else {
-    effects.diary_write = effectForActions(config, ['diary_write'], AgentGateEffect.Ask)
-    effects.diary_delete = AgentGateEffect.Ask
-    effects.memory_store = effectForActions(config, ['memory_store'], AgentGateEffect.Ask)
-    effects.memory_delete = AgentGateEffect.Ask
+  for (const cap of getGateCapabilitiesForScene(scene)) {
+    if (cap.lockedToAsk) {
+      effects[cap.id] = AgentGateEffect.Ask
+      continue
+    }
+    if (cap.external) {
+      effects[cap.id] = effectForExternalDirectory(config)
+      continue
+    }
+    effects[cap.id] = effectForActions(
+      config,
+      cap.actions,
+      cap.defaultEffect ?? AgentGateEffect.Ask
+    )
   }
 
   return { effects, trustedExternalDirs }
@@ -185,9 +233,10 @@ export function capabilityStateFromConfig(
 
 function buildActionOnlyRules(
   actions: readonly string[],
-  effect: AgentGateCapabilityEffect
+  effect: AgentGateCapabilityEffect,
+  defaultEffect: AgentGateCapabilityEffect = AgentGateEffect.Ask
 ): AgentGatePermissionRule[] {
-  if (effect === AgentGateEffect.Ask) return []
+  if (effect === defaultEffect) return []
   if (effect === AgentGateEffect.Allow && actions.includes('workspace_run')) {
     return actions
       .filter((action) => action !== 'workspace_run')
@@ -264,13 +313,12 @@ function rebuildManagedRules(
   const nextRules: AgentGatePermissionRule[] = [...preserved]
   for (const cap of caps) {
     if (cap.external) continue
-    let capEffect = cap.lockedToAsk
-      ? AgentGateEffect.Ask
-      : (state.effects[cap.id] ?? AgentGateEffect.Ask)
+    const fallback = cap.defaultEffect ?? AgentGateEffect.Ask
+    let capEffect = cap.lockedToAsk ? AgentGateEffect.Ask : (state.effects[cap.id] ?? fallback)
     if (cap.disallowAllow && capEffect === AgentGateEffect.Allow) {
       capEffect = AgentGateEffect.Ask
     }
-    nextRules.push(...buildActionOnlyRules(cap.actions, capEffect))
+    nextRules.push(...buildActionOnlyRules(cap.actions, capEffect, fallback))
   }
 
   if (scene === 'workspace') {
@@ -293,9 +341,12 @@ function rebuildManagedRules(
     next.exclusionList = [...exclusion]
   } else {
     const exclusion = new Set(config.exclusionList ?? [...DEFAULT_AGENT_GATE_EXCLUSION_LIST])
-    exclusion.add('diary_delete')
-    exclusion.add('memory_delete')
     exclusion.delete('workspace_delete')
+    for (const action of ['diary_delete', 'memory_delete'] as const) {
+      const effect = state.effects[action] ?? AgentGateEffect.Ask
+      if (effect === AgentGateEffect.Ask) exclusion.add(action)
+      else exclusion.delete(action)
+    }
     next.exclusionList = [...exclusion]
   }
 

@@ -1,5 +1,6 @@
 import React from 'react'
 import { FolderMinus, Trash2, FolderSearch, Maximize2 } from 'lucide-react'
+import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './AttachmentManagementView.module.css'
 import { Pagination } from '../Pagination'
 import { PageSizeSelector } from '../PageSizeSelector'
@@ -105,9 +106,7 @@ export const DiaryAttachmentGrid: React.FC<DiaryAttachmentGridProps> = ({ vm }) 
                 )}
 
                 <div className={styles.diaryCardCheckbox} onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    className={styles.customCheck}
+                  <Checkbox
                     checked={isChecked}
                     onChange={(e) => toggleSelectDiary(item.path, e.target.checked)}
                   />

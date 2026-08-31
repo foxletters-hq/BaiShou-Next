@@ -120,7 +120,7 @@
 }
 
 .scrollPane::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .scrollPane::-webkit-scrollbar-thumb {

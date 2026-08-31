@@ -196,6 +196,8 @@ export interface AgentGateEvaluateInput {
   profileId?: AgentGateProfileId
   /** G4：工作区自动接受时注入会话层 Allow */
   autoAccept?: boolean
+  /** 本轮「本次允许」注入的会话层规则，回答结束后由运行时清掉 */
+  sessionRules?: AgentGatePermissionRule[]
 }
 
 export interface AgentGateAssertInput {

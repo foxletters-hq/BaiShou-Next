@@ -63,6 +63,11 @@ describeKnowledge('KnowledgeConnectionManager', () => {
         'knowledge_ingest_jobs'
       ])
     )
+
+    const cols = sqlite.prepare('PRAGMA table_info(notebooks)').all() as Array<{ name: string }>
+    expect(cols.map((col) => col.name)).toEqual(
+      expect.arrayContaining(['sort_order', 'cover_tone', 'cover_icon', 'cover_image'])
+    )
   })
 
   it('repository 可创建笔记本并写 chunk', async () => {
@@ -100,6 +105,22 @@ describeKnowledge('KnowledgeConnectionManager', () => {
     const hits = await repo.searchChunksLike(nb.id, 'knowledge')
     expect(hits.length).toBe(1)
     expect(hits[0]?.chunkText).toContain('knowledge')
+
+    const listed = await repo.listChunksByNotebook({ notebookId: nb.id, limit: 10, offset: 0 })
+    expect(listed.total).toBe(1)
+    expect(listed.items[0]?.chunkId).toBe('c1')
+    expect(listed.items[0]?.sourceTitle).toBe('a.txt')
+    expect(listed.items[0]?.chunkText).toContain('knowledge')
+    expect(listed.items[0]).not.toHaveProperty('embedding')
+
+    const filtered = await repo.listChunksByNotebook({
+      notebookId: nb.id,
+      query: 'missing-term',
+      limit: 10,
+      offset: 0
+    })
+    expect(filtered.total).toBe(0)
+    expect(filtered.items).toEqual([])
 
     const purged = await repo.deleteAllForVault('vault_test')
     expect(purged.notebooks).toBe(1)

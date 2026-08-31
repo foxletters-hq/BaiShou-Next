@@ -73,33 +73,13 @@
   width: 44px;
   height: 32px;
   padding: 0 6px;
-  border-radius: 8px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
-  color: var(--text-primary);
   font-size: 13px;
   line-height: 1;
   text-align: center;
-  outline: none;
-  box-sizing: border-box;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
 }
 
 .jumperInput::placeholder {
-  color: var(--text-tertiary);
   font-size: 12px;
-}
-
-.jumperInput:focus {
-  border-color: var(--form-field-border-focus);
-  box-shadow: var(--form-field-focus-ring);
-}
-
-.jumperInput:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
 }
 
 .jumperSuffix {

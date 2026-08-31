@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import {
+  clampOcrConcurrency,
   logger,
   isVisionModel,
   type GlobalModelsConfig,
@@ -10,20 +11,48 @@ import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/databa
 import { KnowledgeEmbeddingStorage } from '@baishou/ai'
 import {
   KnowledgeIngestService,
+  markEmbedJobLive,
   markExtractJobLive,
+  markGraphJobLive,
+  unmarkEmbedJobLive,
   unmarkExtractJobLive,
+  unmarkGraphJobLive,
   type KnowledgeExtractProgress
 } from '@baishou/core-desktop'
 import { getNotebookRawManager } from './raw-data-source.runtime'
 import { fileSystem } from './node-file-system'
 
-let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null
+type IngestLane = 'index' | 'graph'
+type ConsumeResult = { processed: number; failed: number; skipped?: string }
+
+const INDEX_STAGES = ['extract', 'embed'] as const
+const GRAPH_STAGES = ['graph'] as const
+
+const laneInFlight: Record<IngestLane, Promise<ConsumeResult> | null> = {
+  index: null,
+  graph: null
+}
+
+function stagesForLane(lane: IngestLane): Array<(typeof INDEX_STAGES)[number] | (typeof GRAPH_STAGES)[number]> {
+  return lane === 'index' ? [...INDEX_STAGES] : [...GRAPH_STAGES]
+}
 
 function broadcastKnowledgeOcrProgress(info: KnowledgeExtractProgress): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (win.isDestroyed()) continue
     try {
       win.webContents.send('knowledge:ocr-progress', info)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function broadcastKnowledgeGraphProgress(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.isDestroyed()) continue
+    try {
+      win.webContents.send('knowledge:graph-progress', { at: Date.now() })
     } catch {
       /* ignore */
     }
@@ -84,7 +113,7 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
         defaultEngine: cfg.defaultExtractEngine,
         ocrLanguage: cfg.ocrLanguage,
         ocrDpi: cfg.ocrDpi,
-        ocrConcurrency: cfg.ocrConcurrency,
+        ocrConcurrency: clampOcrConcurrency(cfg.ocrConcurrency),
         visionModelConfigured: visionConfigured,
         visionModelId: modelId
       }
@@ -108,20 +137,33 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
         modelId: params.modelId
       })
     },
-    deleteChunksBySource: (id) => repo.deleteChunksBySource(id)
+    deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
+    extractNotebookGraph: (await import('./desktop-knowledge-graph-extract')).createDesktopKnowledgeGraphExtractFn()
   })
 }
 
 /**
- * 消费知识库摄入欠账（extract / embed），单飞 + 退避。
+ * 消费知识库摄入欠账。提取/嵌入与图谱分车道，避免图谱 LLM 堵住 PDF 嵌入。
  */
 export async function consumeKnowledgeIngestJobs(options?: {
   limit?: number
   reason?: string
-}): Promise<{ processed: number; failed: number; skipped?: string }> {
-  if (consumeInFlight) return consumeInFlight
+}): Promise<ConsumeResult> {
+  return consumeKnowledgeLane('index', options)
+}
 
-  consumeInFlight = (async () => {
+async function consumeKnowledgeLane(
+  lane: IngestLane,
+  options?: {
+    limit?: number
+    reason?: string
+  }
+): Promise<ConsumeResult> {
+  const existing = laneInFlight[lane]
+  if (existing) return existing
+
+  const stages = stagesForLane(lane)
+  const run = (async () => {
     if (!knowledgeConnectionManager.isConnected()) {
       return { processed: 0, failed: 0, skipped: 'db-not-connected' }
     }
@@ -132,35 +174,52 @@ export async function consumeKnowledgeIngestJobs(options?: {
       return { processed: 0, failed: 0, skipped: 'service-unavailable' }
     }
 
-    if (!svc) {
-      return { processed: 0, failed: 0, skipped: 'service-unavailable' }
-    }
-
     try {
       const recovered = await svc.recoverStaleIngestState()
       if (recovered.resetSources || recovered.droppedExtractJobs || recovered.reclaimedEmbedJobs) {
         logger.info('[KnowledgeIngestJobs] recovered stale state', {
+          lane,
           reason: options?.reason ?? 'unspecified',
           ...recovered
         })
       }
     } catch (e) {
       logger.warn('[KnowledgeIngestJobs] recover stale state failed', {
+        lane,
         error: e instanceof Error ? e.message : String(e)
       })
     }
 
-    const pending = await repo.countIngestJobs()
+    const { resolveActiveVaultId } = await import('../ipc/vault.ipc')
+    const vaultId = resolveActiveVaultId()?.trim() || ''
+    const pending = await repo.countIngestJobs({
+      ...(vaultId ? { vaultId } : {}),
+      stages,
+      claimableOnly: true
+    })
     if (pending === 0) {
       return { processed: 0, failed: 0, skipped: 'empty' }
     }
 
     const limit = options?.limit ?? 10
-    const jobs = await repo.claimIngestJobs(limit)
+    const jobs = await repo.claimIngestJobs(limit, {
+      ...(vaultId ? { vaultId } : {}),
+      stages
+    })
+    jobs.sort((a, b) => {
+      const rank = { extract: 0, embed: 1, graph: 2 }
+      return (rank[a.stage] ?? 9) - (rank[b.stage] ?? 9)
+    })
     for (const job of jobs) {
       if (job.stage === 'extract') markExtractJobLive(job.sourceId)
+      if (job.stage === 'embed') markEmbedJobLive(job.sourceId)
+      if (job.stage === 'graph') markGraphJobLive(job.sourceId)
+    }
+    if (jobs.some((job) => job.stage === 'graph')) {
+      broadcastKnowledgeGraphProgress()
     }
     logger.info('[KnowledgeIngestJobs] consuming', {
+      lane,
       reason: options?.reason ?? 'unspecified',
       claimed: jobs.length,
       pendingBefore: pending
@@ -174,6 +233,9 @@ export async function consumeKnowledgeIngestJobs(options?: {
         try {
           if (job.stage === 'extract') {
             await svc.processExtractJob(job.sourceId)
+          } else if (job.stage === 'graph') {
+            await svc.processGraphJob(job.sourceId)
+            broadcastKnowledgeGraphProgress()
           } else {
             await svc.processEmbedJob(job.sourceId)
           }
@@ -186,7 +248,7 @@ export async function consumeKnowledgeIngestJobs(options?: {
             processed++
             continue
           }
-          if (message === 'embedding-not-configured') {
+          if (message === 'embedding-not-configured' || message === 'graph-extract-not-configured') {
             await repo.failIngestJob(job.id, message, { backoffMs: 5 * 60_000 })
             failed++
             continue
@@ -206,21 +268,40 @@ export async function consumeKnowledgeIngestJobs(options?: {
     } finally {
       for (const job of jobs) {
         if (job.stage === 'extract') unmarkExtractJobLive(job.sourceId)
+        if (job.stage === 'embed') unmarkEmbedJobLive(job.sourceId)
+        if (job.stage === 'graph') unmarkGraphJobLive(job.sourceId)
+      }
+      if (jobs.some((job) => job.stage === 'graph')) {
+        broadcastKnowledgeGraphProgress()
       }
     }
 
     return { processed, failed }
   })().finally(() => {
-    consumeInFlight = null
+    laneInFlight[lane] = null
   })
 
-  const result = await consumeInFlight
+  laneInFlight[lane] = run
+  const result = await run
   try {
     if (knowledgeConnectionManager.isConnected()) {
       const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
-      const remaining = await repo.countIngestJobs()
+      const { resolveActiveVaultId } = await import('../ipc/vault.ipc')
+      const activeVaultId = resolveActiveVaultId()?.trim() || ''
+      const remaining = await repo.countIngestJobs({
+        ...(activeVaultId ? { vaultId: activeVaultId } : {}),
+        stages,
+        claimableOnly: true
+      })
       if (remaining > 0) {
-        setTimeout(() => scheduleConsumeKnowledgeIngestJobs('drain'), 0)
+        setTimeout(() => {
+          void consumeKnowledgeLane(lane, { reason: 'drain' }).catch((e) => {
+            logger.warn('[KnowledgeIngestJobs] drain failed', {
+              lane,
+              error: e instanceof Error ? e.message : String(e)
+            })
+          })
+        }, 0)
       }
     }
   } catch {
@@ -230,10 +311,15 @@ export async function consumeKnowledgeIngestJobs(options?: {
 }
 
 export function scheduleConsumeKnowledgeIngestJobs(reason: string): void {
-  void consumeKnowledgeIngestJobs({ reason }).catch((e) => {
-    logger.warn('[KnowledgeIngestJobs] consume failed', {
-      reason,
-      error: e instanceof Error ? e.message : String(e)
+  const kick = (lane: IngestLane) => {
+    void consumeKnowledgeLane(lane, { reason }).catch((e) => {
+      logger.warn('[KnowledgeIngestJobs] consume failed', {
+        lane,
+        reason,
+        error: e instanceof Error ? e.message : String(e)
+      })
     })
-  })
+  }
+  kick('index')
+  kick('graph')
 }

@@ -13,6 +13,8 @@ const mockColors = {
   primary: '#0a7',
   bgSurface: '#fff',
   bgSurfaceHighest: '#eee',
+  bgSurfaceNormal: '#EAECEF',
+  bgSurfaceHigh: '#F0F2F5',
   borderSubtle: '#ccc'
 } as const
 
@@ -23,6 +25,14 @@ describe('buildStreamdownMarkdownStyle', () => {
     expect(style.h4?.fontSize).toBeGreaterThanOrEqual(16)
     expect(style.h5?.fontSize).toBeGreaterThanOrEqual(15)
     expect(style.h6?.fontSize).toBeGreaterThanOrEqual(15)
+  })
+
+  it('uses editor code surfaces in preview', () => {
+    const style = buildStreamdownMarkdownStyle(mockColors, 'preview')
+    expect(style.code?.backgroundColor).toBe('#EAECEF')
+    expect(style.code?.fontSize).toBe(15)
+    expect(style.codeBlock?.backgroundColor).toBe('#EAECEF')
+    expect(style.codeBlock?.fontSize).toBe(15)
   })
 })
 

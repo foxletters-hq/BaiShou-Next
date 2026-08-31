@@ -9,6 +9,7 @@ export interface AgentToolChainStreamingTool {
   toolCallId?: string
   result?: unknown
   args?: unknown
+  error?: string
 }
 
 export interface AgentToolChainItemModel {
@@ -26,7 +27,7 @@ export function formatToolDurationMs(ms: number): string {
 }
 
 function hasInvocationContent(invocation?: ToolInvocationLike): boolean {
-  if (!invocation) return false
+  if (!invocation || invocation.result === undefined || invocation.result === null) return false
   return Boolean(getToolResultRawContent(invocation).trim())
 }
 
@@ -34,11 +35,19 @@ function buildStreamingInvocation(
   tool: AgentToolChainStreamingTool,
   index: number
 ): ToolInvocationLike | undefined {
-  if (tool.result === undefined || tool.result === null) return undefined
+  const result = tool.result ?? tool.error
+  if (result === undefined || result === null) {
+    if (tool.args === undefined) return undefined
+    return {
+      toolCallId: tool.toolCallId ?? `stream-${tool.name}-${index}`,
+      toolName: tool.name,
+      args: tool.args
+    }
+  }
   return {
     toolCallId: tool.toolCallId ?? `stream-${tool.name}-${index}`,
     toolName: tool.name,
-    result: tool.result,
+    result,
     args: tool.args
   }
 }
@@ -51,6 +60,7 @@ export function buildAgentToolChainItems(options: {
   invocations?: ToolInvocationLike[]
   completedTools?: AgentToolChainStreamingTool[]
   activeToolName?: string | null
+  activeToolArgs?: unknown
   isToolError?: (invocation: ToolInvocationLike) => boolean
 }): AgentToolChainItemModel[] {
   const items: AgentToolChainItemModel[] = []
@@ -79,7 +89,7 @@ export function buildAgentToolChainItems(options: {
     upsertItem({
       key: streamingToolKey(tool, index),
       toolName: tool.name,
-      status: 'success',
+      status: tool.error ? 'error' : 'success',
       durationMs: tool.durationMs,
       invocation,
       hasContent: hasInvocationContent(invocation)
@@ -87,10 +97,19 @@ export function buildAgentToolChainItems(options: {
   }
 
   if (options.activeToolName) {
+    const invocation =
+      options.activeToolArgs === undefined
+        ? undefined
+        : {
+            toolCallId: `stream-active-${options.activeToolName}`,
+            toolName: options.activeToolName,
+            args: options.activeToolArgs
+          }
     upsertItem({
       key: `stream-active-${options.activeToolName}`,
       toolName: options.activeToolName,
       status: 'loading',
+      invocation,
       hasContent: false
     })
   }

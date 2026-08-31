@@ -1,4 +1,3 @@
-import { TextStreamPart } from 'ai'
 import { logger, sanitizeAssistantGeneratedText } from '@baishou/shared'
 
 export interface ToolCallSnapshot {
@@ -51,7 +50,10 @@ function extractCacheUsageFromRecord(
   const cacheReadInputTokens = readNumber(
     usage?.cacheReadInputTokens ??
       usage?.cachedInputTokens ??
+      usage?.prompt_cache_hit_tokens ??
+      usage?.promptCacheHitTokens ??
       (usage?.promptTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
+      (usage?.promptTokensDetails as Record<string, unknown> | undefined)?.cached_tokens ??
       (usage?.inputTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
       anthropic?.cacheReadInputTokens ??
       anthropic?.cache_read_input_tokens ??
@@ -137,7 +139,7 @@ export class StreamAccumulator {
     }
   }
 
-  add(part: FullStreamPart<any>): void {
+  add(part: unknown): void {
     const p = part as Record<string, unknown>
     switch (p.type) {
       case 'text-delta': {

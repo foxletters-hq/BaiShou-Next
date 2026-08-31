@@ -7,6 +7,10 @@ import {
   listDeepSeekReasoningEfforts,
   listReasoningBudgetPresets,
   getReasoningControlForModel,
+  getReasoningBudgetBoundsForModel,
+  resolveReasoningBudgetTiers,
+  resolveReasoningBudgetTokens,
+  mapLegacyReasoningBudgetTokensToEffort,
   normalizeReasoningEffortSetting,
   formatReasoningEffortLabel,
   pickWeakestReasoningEffort,
@@ -93,13 +97,15 @@ describe('reasoning-effort', () => {
     ])
   })
 
-  it('exposes kimi toggle + budget control', () => {
+  it('exposes kimi budget-only high/max control', () => {
     expect(isKimiThinkingControlModel('kimi-k2.6')).toBe(true)
     const ctl = getReasoningControlForModel('kimi-k2.6', 'opencodego')
-    expect(ctl.mode).toBe('toggle')
-    expect(ctl.supportsToggle).toBe(true)
+    expect(ctl.mode).toBe('effort')
+    expect(ctl.efforts).toEqual(['high', 'max'])
     expect(ctl.supportsBudget).toBe(true)
+    expect(ctl.catalogMax).toBe(81920)
     expect(ctl.maxBudgetTokens).toBe(81920)
+    expect(ctl.supportsToggle).toBeUndefined()
   })
 
   it('dashscope qwen is toggle', () => {
@@ -146,9 +152,47 @@ describe('reasoning-effort', () => {
     expect(pickWeakestReasoningEffort(['high', 'none', 'low'])).toBe('none')
   })
 
-  it('lists budget presets capped by max', () => {
-    expect(listReasoningBudgetPresets(10000)).toEqual([4000, 8000, 10000])
-    expect(listReasoningBudgetPresets(8000)).toEqual([4000, 8000])
-    expect(listReasoningBudgetPresets(81920)).toContain(81920)
+  it('lists budget-only efforts instead of integer presets', () => {
+    expect(listReasoningBudgetPresets(10000)).toEqual(['high', 'max'])
+    expect(listReasoningBudgetPresets(81920)).toEqual(['high', 'max'])
+    expect(listReasoningBudgetPresets()).not.toEqual(expect.arrayContaining([4000, 8000, 16000, 32000]))
+  })
+
+  it('resolves budget tokens from effort and bounds', () => {
+    expect(
+      resolveReasoningBudgetTiers({ catalogMin: 1024, catalogMax: 64000 })
+    ).toEqual({ high: 16000, max: 31999 })
+    expect(resolveReasoningBudgetTiers({ outputLimit: 5000 })).toEqual({ high: 2500, max: 4999 })
+    expect(resolveReasoningBudgetTiers({ catalogMax: 24576 })).toEqual({ high: 12288, max: 24576 })
+    expect(resolveReasoningBudgetTokens('high', { catalogMax: 24576 })).toBe(12288)
+    expect(resolveReasoningBudgetTokens('max', { catalogMax: 24576 })).toBe(24576)
+    expect(resolveReasoningBudgetTokens('auto')).toBeUndefined()
+    expect(mapLegacyReasoningBudgetTokensToEffort(30000)).toBe('max')
+    expect(mapLegacyReasoningBudgetTokensToEffort(16000)).toBe('high')
+  })
+
+  it('caps kimi at 32k on anthropic transport and keeps 81920 on native budget', () => {
+    const native = getReasoningBudgetBoundsForModel('kimi-k2.6', { transport: 'native' })
+    expect(resolveReasoningBudgetTiers(native)).toEqual({ high: 40960, max: 81920 })
+    const anthropic = getReasoningBudgetBoundsForModel('kimi-k2.6', { transport: 'anthropic' })
+    expect(resolveReasoningBudgetTiers(anthropic)).toEqual({ high: 16000, max: 31999 })
+    expect(
+      resolveReasoningBudgetTiers(
+        getReasoningBudgetBoundsForModel('kimi-k2.6', { transport: 'native', outputLimit: 5000 })
+      )
+    ).toEqual({ high: 2500, max: 4999 })
+  })
+
+  it('attaches gemini 2.5 catalog max to effort control', () => {
+    const flash = getReasoningControlForModel('gemini-2.5-flash', 'gemini')
+    expect(flash.mode).toBe('effort')
+    expect(flash.efforts).toEqual(['high', 'max'])
+    expect(flash.catalogMax).toBe(24576)
+    const pro = getReasoningControlForModel('gemini-2.5-pro', 'gemini')
+    expect(pro.catalogMax).toBe(32768)
+    expect(resolveReasoningBudgetTiers(getReasoningBudgetBoundsForModel('gemini-2.5-pro'))).toEqual({
+      high: 16000,
+      max: 31999
+    })
   })
 })

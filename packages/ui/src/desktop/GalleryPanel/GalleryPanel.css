@@ -508,7 +508,7 @@
 }
 
 .gallery-year-modal-body::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .gallery-year-modal-body::-webkit-scrollbar-thumb {

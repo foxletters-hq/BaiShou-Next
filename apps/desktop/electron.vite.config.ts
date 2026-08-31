@@ -48,6 +48,10 @@ export default defineConfig({
             id.startsWith('sqlite-vec/') ||
             id === 'dugite' ||
             id.startsWith('dugite/') ||
+            id === 'tesseract.js' ||
+            id.startsWith('tesseract.js/') ||
+            id === 'tesseract.js-core' ||
+            id.startsWith('tesseract.js-core/') ||
             id === '@libsql/client' ||
             id.startsWith('@libsql/client/')
           ) {
@@ -62,7 +66,14 @@ export default defineConfig({
       alias: workspaceAliases
     },
     ssr: {
-      external: ['better-sqlite3', 'sqlite-vec', 'dugite', '@libsql/client']
+      external: [
+        'better-sqlite3',
+        'sqlite-vec',
+        'dugite',
+        'tesseract.js',
+        'tesseract.js-core',
+        '@libsql/client'
+      ]
     },
     build: {
       rollupOptions: {
@@ -76,6 +87,7 @@ export default defineConfig({
             id.includes('better-sqlite3') ||
             id.includes('sqlite-vec') ||
             id.includes('dugite') ||
+            id.includes('tesseract.js') ||
             id.includes('@libsql/client')
           ) {
             return true

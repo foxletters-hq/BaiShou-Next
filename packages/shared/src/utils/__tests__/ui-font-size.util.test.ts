@@ -3,9 +3,12 @@ import {
   UI_FONT_SIZE_LEVEL_DEFAULT,
   UI_PAGE_ZOOM_FACTORS,
   normalizeUiFontSizeLevel,
+  nextUiFontSizeLevel,
+  resolvePageZoomShortcut,
   uiFontSizeLevelFromZoom,
   uiFontSizeScaleFromLevel,
-  uiPageZoomFromLevel
+  uiPageZoomFromLevel,
+  uiPageZoomFromPersistedSettingsJson
 } from '../ui-font-size.util'
 
 describe('ui-font-size.util', () => {
@@ -29,6 +32,27 @@ describe('ui-font-size.util', () => {
     )
     expect(uiPageZoomFromLevel(0)).toBe(0.75)
     expect(uiPageZoomFromLevel(5)).toBe(1.35)
+  })
+
+  it('reads page zoom from zustand persist JSON', () => {
+    expect(uiPageZoomFromPersistedSettingsJson(null)).toBeNull()
+    expect(uiPageZoomFromPersistedSettingsJson('{')).toBeNull()
+    expect(uiPageZoomFromPersistedSettingsJson(JSON.stringify({ state: {} }))).toBeNull()
+    expect(
+      uiPageZoomFromPersistedSettingsJson(JSON.stringify({ state: { fontSizeLevel: 4 } }))
+    ).toBe(1.2)
+  })
+
+  it('resolves zoom shortcuts from key and code', () => {
+    expect(resolvePageZoomShortcut({ key: '-' })).toBe('out')
+    expect(resolvePageZoomShortcut({ key: 'Minus' })).toBe('out')
+    expect(resolvePageZoomShortcut({ code: 'NumpadSubtract' })).toBe('out')
+    expect(resolvePageZoomShortcut({ key: '=' })).toBe('in')
+    expect(resolvePageZoomShortcut({ key: '0' })).toBe('reset')
+    expect(resolvePageZoomShortcut({ key: 'a' })).toBeNull()
+    expect(nextUiFontSizeLevel(1, 'out')).toBe(0)
+    expect(nextUiFontSizeLevel(0, 'out')).toBe(0)
+    expect(nextUiFontSizeLevel(1, 'reset')).toBe(UI_FONT_SIZE_LEVEL_DEFAULT)
   })
 
   it('maps arbitrary zoom to nearest level', () => {

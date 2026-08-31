@@ -1,5 +1,6 @@
 import React from 'react'
 import { Button } from '../Button/Button'
+import { Input } from '../Input/Input'
 import styles from './TTSProviderSettings.module.css'
 import type { TTSProviderSettingsViewModel } from './useTTSProviderSettings'
 
@@ -24,8 +25,9 @@ export function TTSProviderSettingsFormModelFields({ vm }: { vm: TTSProviderSett
       <label className={styles.comboboxLabel}>{t('tts.settings.model_id_label', '模型 ID')}</label>
       <div className={styles.modelInputRow}>
         <div className={styles.comboboxWrapper}>
-          <input
+          <Input
             type="text"
+            fieldSize="small"
             placeholder={
               providerType === 'clone-tts' || providerType === 'gpt-sovits'
                 ? 'default'
@@ -39,7 +41,7 @@ export function TTSProviderSettingsFormModelFields({ vm }: { vm: TTSProviderSett
               setIsDropdownOpen(true)
             }}
             onFocus={() => setIsDropdownOpen(true)}
-            className={styles.comboboxInput}
+            inputClassName="baishou-form-field--with-trailing"
           />
           <div
             className={`${styles.comboboxArrow} ${isDropdownOpen ? styles.rotated : ''}`}

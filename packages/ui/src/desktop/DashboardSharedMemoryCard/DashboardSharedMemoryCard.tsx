@@ -7,6 +7,7 @@ import {
   SHARED_MEMORY_LOOKBACK_MIN,
   SHARED_MEMORY_LOOKBACK_SLIDER_BASE
 } from '@baishou/shared'
+import { Input } from '../Input/Input'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { HelpTooltip } from '../HelpTooltip'
 import { useDialog } from '../Dialog'
@@ -209,8 +210,10 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
       <div className="sm-controls">
         <div className="sm-label-row">
           <span className="sm-label">{t('summary.lookback_label', 'Lookback (months)')}</span>
-          <input
+          <Input
             type="number"
+            fieldSize="small"
+            className="sm-number-input-host"
             min={SHARED_MEMORY_LOOKBACK_MIN}
             value={lookbackDraft}
             onChange={(e) =>
@@ -220,7 +223,6 @@ export const DashboardSharedMemoryCard: React.FC<DashboardSharedMemoryCardProps>
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur()
             }}
-            className="sm-number-input"
           />
         </div>
         <div className="sm-slider-container">

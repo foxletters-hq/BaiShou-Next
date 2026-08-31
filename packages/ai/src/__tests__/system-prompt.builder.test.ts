@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { SystemPromptBuilder } from '../agent/system-prompt.builder'
 import { MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from '@baishou/shared'
 
@@ -18,7 +18,10 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('<output_protocol>')
     expect(prompt).toContain('<runtime_context>')
     expect(prompt).toContain('<context_encoding>')
-    expect(prompt).toContain('[System Current Date / Time]')
+    expect(prompt).not.toContain('[System Current Date]')
+    expect(prompt).not.toContain('[System Current Date / Time]')
+    expect(prompt).toContain('later system message after conversation history')
+    expect(prompt).toContain('**current_time** tool')
     expect(prompt).toContain(`<${MESSAGE_TIME_TAG}>`)
     expect(prompt).toContain(`<${MESSAGE_CONTENT_TAG}>`)
     expect(prompt).toContain('[Forbidden in user-visible text]')
@@ -40,7 +43,7 @@ describe('SystemPromptBuilder', () => {
     }
   })
 
-  it('omits context_encoding and system time when injectCurrentTime is false', () => {
+  it('omits clock from the top-level system prompt when injectCurrentTime is false', () => {
     const prompt = SystemPromptBuilder.build({
       vaultName: 'Personal',
       tools: {},
@@ -48,7 +51,9 @@ describe('SystemPromptBuilder', () => {
     })
 
     expect(prompt).toContain('<runtime_context>')
+    expect(prompt).not.toContain('[System Current Date]')
     expect(prompt).not.toContain('[System Current Date / Time]')
+    expect(prompt).not.toContain('later system message after conversation history')
     expect(prompt).not.toContain('<context_encoding>')
     expect(prompt).not.toContain('[Historical messages]')
     expect(prompt).toContain('**current_time** tool')
@@ -173,6 +178,25 @@ describe('SystemPromptBuilder', () => {
     })
     expect(companionPrompt).not.toContain('<workspace_env>')
     expect(companionPrompt).not.toContain('D:/proj')
+  })
+
+  it('keeps top-level system prompt identical across minutes on the same calendar day', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 7, 22, 10, 1, 0))
+    const morning = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {}
+    })
+    vi.setSystemTime(new Date(2026, 7, 22, 23, 59, 0))
+    const evening = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      tools: {}
+    })
+    vi.useRealTimers()
+
+    expect(morning).toBe(evening)
+    expect(morning).not.toContain('[System Current Date]')
+    expect(morning).not.toMatch(/\d{2}:\d{2}:\d{2}/)
   })
 
   it('injects skills_catalog when provided', () => {

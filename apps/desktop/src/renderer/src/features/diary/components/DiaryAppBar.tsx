@@ -13,7 +13,7 @@ import {
   type WeatherId,
   type MoodId
 } from '@baishou/shared'
-import { YearMonthPicker } from '@baishou/ui'
+import { Input, YearMonthPicker } from '@baishou/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DiaryAppBarProps {
@@ -231,12 +231,13 @@ export const DiaryAppBar: React.FC<DiaryAppBarProps> = ({
       <div className="diary-appbar-right">
         <div className="diary-search-wrapper">
           <Search size={16} className="diary-search-icon" />
-          <input
+          <Input
+            fieldSize="small"
             type="text"
+            inputClassName="diary-search-input"
             placeholder={t('common.search_hint', '搜索记忆...')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="diary-search-input"
           />
         </div>
 

@@ -23,13 +23,16 @@ export function buildWorkspaceEnvLines(env: WorkspaceEnvInfo): string[] {
   }
   if (env.notebookId?.trim()) {
     lines.push(
-      `Mounted knowledge notebookId: ${env.notebookId.trim()} (use knowledge_search for retrieval).`
+      `Mounted knowledge notebookId: ${env.notebookId.trim()} (use knowledge_search / knowledge_graph_search).`
     )
   } else {
     lines.push(
-      'No knowledge notebook mounted; knowledge_search requires mounting first (do not invent notebookId).'
+      'No knowledge notebook mounted; knowledge_search / knowledge_graph_search require mounting first (do not invent notebookId).'
     )
   }
   lines.push('Only use workspace_* tools to read/write files inside this folder.')
+  lines.push(
+    'When the user must choose or confirm (create files, pick a folder name, proceed or stop), call companion_ask. Do not ask that question in plain chat text.'
+  )
   return lines
 }

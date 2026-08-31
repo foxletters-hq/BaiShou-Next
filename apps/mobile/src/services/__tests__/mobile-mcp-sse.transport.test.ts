@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-const beginMcpHttpStream = vi.fn(() => true)
-const pushMcpHttpStreamChunk = vi.fn(() => true)
-const endMcpHttpStream = vi.fn(() => true)
+const beginMcpHttpStream = vi.fn<(...args: unknown[]) => boolean>(() => true)
+const pushMcpHttpStreamChunk = vi.fn<(...args: unknown[]) => boolean>(() => true)
+const endMcpHttpStream = vi.fn<(...args: unknown[]) => boolean>(() => true)
 
 vi.mock('expo-baishou-server', () => ({
   beginMcpHttpStream: (...args: unknown[]) => beginMcpHttpStream(...args),
