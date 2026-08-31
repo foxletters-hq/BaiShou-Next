@@ -147,5 +147,7 @@ describe('ContextAtMessageService.getContextAtMessage', () => {
     expect(result.viewModel.systemPrompt).toBe('test prompt')
     expect(result.viewModel.flatEntries.some((e) => e.kind === 'system-prompt')).toBe(true)
     expect(result.messages.map((m) => m.role)).toContain('user')
+    const lastUser = [...result.messages].reverse().find((m) => m.role === 'user')
+    expect(String(lastUser?.content)).not.toContain('[System Current Date / Time]')
   })
 })

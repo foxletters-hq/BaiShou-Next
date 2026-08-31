@@ -1,6 +1,7 @@
 import {
   buildContextEncodingSystemPromptLines,
   buildOutputProtocolSystemPromptLines,
+  formatHostTimezoneOffset,
   getAssistantKindLabelKey,
   translateMain,
   type AssistantKind
@@ -17,7 +18,7 @@ export interface SystemPromptBuilderOptions {
   diaryAiWritingPrompt?: string
   /** 亲密伙伴 / 工作伙伴，影响能力边界说明 */
   assistantKind?: AssistantKind
-  /** 是否在 system prompt 中注入当前时间，默认 true（兼容旧配置） */
+  /** 是否启用消息发送时刻加壳，并在 runtime_context 写入稳定时区（不含具体时刻） */
   injectCurrentTime?: boolean
   /** App UI 语言，用于用户可见固定话术（如联网未开提示） */
   locale?: string
@@ -31,18 +32,6 @@ function pushSection(buffer: string[], tag: string, lines: string[]): void {
   buffer.push('')
 }
 
-function formatSystemCurrentTime(now = new Date()): string {
-  const tzOffset = -now.getTimezoneOffset() / 60
-  const tzSign = tzOffset >= 0 ? '+' : ''
-  const dateStr =
-    `${now.getFullYear()}-` +
-    `${String(now.getMonth() + 1).padStart(2, '0')}-` +
-    `${String(now.getDate()).padStart(2, '0')} ` +
-    `${String(now.getHours()).padStart(2, '0')}:` +
-    `${String(now.getMinutes()).padStart(2, '0')}`
-  return `[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`
-}
-
 function resolveLocale(locale?: string): string | undefined {
   if (!locale || locale.trim() === '' || locale === 'system') return undefined
   return locale
@@ -54,12 +43,10 @@ function resolveLocale(locale?: string): string | undefined {
  * 固定分区顺序：
  * persona → output_protocol → runtime_context → context_encoding(条件) →
  * user_identity → assistant_capabilities → available_tools →
- * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines →
- * system_time(条件)
+ * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines
  *
- * 注意：动态时间戳被刻意放在最后一个分区，以最大化 DeepSeek / OpenAI 等
- * 厂商 KV 上下文硬盘缓存的前缀复用率。任何"按请求变化"的内容都应追加到
- * 最末尾，避免破坏前面稳定分区的缓存命中。
+ * 「现在几点」只写在各条消息的 <message-time> 上。
+ * system 里只保留稳定时区，避免分钟跳动破坏前缀缓存。
  */
 export class SystemPromptBuilder {
   public static build(options: SystemPromptBuilderOptions): string {
@@ -93,11 +80,13 @@ export class SystemPromptBuilder {
     // 2. output_protocol（始终存在）
     pushSection(buffer, 'output_protocol', buildOutputProtocolSystemPromptLines())
 
-    // 3. runtime_context（仅含稳定字段：vault / 伙伴类型；动态时间戳后置到 system_time）
+    // 3. runtime_context（仅含稳定字段：vault / 伙伴类型 / 时区）
     const runtimeLines: string[] = []
     runtimeLines.push(`[Current Vault / Workspace]: ${vaultName}`)
     runtimeLines.push(`[Partner type]: ${assistantKind === 'work' ? 'work' : 'companion'}`)
-    if (!injectCurrentTime) {
+    if (injectCurrentTime) {
+      runtimeLines.push(`[Host timezone]: ${formatHostTimezoneOffset()}`)
+    } else {
       runtimeLines.push(
         'Note: System current time is not injected. Use the **current_time** tool when you need "now".'
       )
@@ -197,11 +186,6 @@ export class SystemPromptBuilder {
     // 10. behavior_guidelines
     if (customGuidelines && customGuidelines.trim().length > 0) {
       pushSection(buffer, 'behavior_guidelines', [customGuidelines.trim()])
-    }
-
-    // 11. system_time（刻意置于最末尾：所有稳定分区在前，保证 KV 上下文缓存前缀最大化命中）
-    if (injectCurrentTime) {
-      pushSection(buffer, 'system_time', [formatSystemCurrentTime()])
     }
 
     return buffer.join('\n').trimEnd() + '\n'

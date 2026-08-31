@@ -6,6 +6,7 @@ import {
   formatLocalDateFromInstant,
   formatLocalDateTime,
   formatLocalTime,
+  formatHostTimezoneOffset,
   formatMessageTimestamp,
   formatRagEntryTimestamp,
   formatStoredTimestamp,
@@ -75,6 +76,16 @@ describe('formatStoredTimestamp', () => {
 
   it('returns undefined for epoch noise', () => {
     expect(formatStoredTimestamp(1_740_000)).toBeUndefined()
+  })
+})
+
+describe('formatHostTimezoneOffset', () => {
+  it('should format the local offset without a wall-clock time', () => {
+    const now = new Date('2026-09-01T00:34:00.000Z')
+    const tzOffset = -now.getTimezoneOffset() / 60
+    const tzSign = tzOffset >= 0 ? '+' : ''
+    expect(formatHostTimezoneOffset(now)).toBe(`UTC${tzSign}${tzOffset}`)
+    expect(formatHostTimezoneOffset(now)).not.toMatch(/\d{4}-\d{2}-\d{2}/)
   })
 })
 
