@@ -1,7 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { FileDiff } from '@baishou/shared'
-import { fileDiffToSplitRows } from './git-diff.utils'
+import {
+  fileDiffToSplitRows,
+  fileDiffToUnifiedRows,
+  type GitInlineChange,
+  type GitUnifiedDiffRow
+} from './git-diff.utils'
 import styles from './GitDiffViewer.module.css'
 
 export type GitDiffViewMode = 'unified' | 'split'
@@ -15,39 +20,72 @@ export interface GitDiffViewerProps {
   className?: string
 }
 
-const UnifiedDiffBody: React.FC<{ diff: FileDiff; fillHeight?: boolean }> = ({
-  diff,
-  fillHeight
-}) => {
-  const { t } = useTranslation()
+const InlineText: React.FC<{ text: string; inline?: GitInlineChange }> = ({ text, inline }) => {
+  if (!inline) return <>{text}</>
+  return (
+    <>
+      {inline.prefix}
+      <span className={styles.inlineChanged}>{inline.changed}</span>
+      {inline.suffix}
+    </>
+  )
+}
 
-  if (diff.hunks.length === 0) {
-    return <div className={styles.empty}>{t('version_control.no_diff', 'No diff')}</div>
+function unifiedRowClass(kind: GitUnifiedDiffRow['kind']): string {
+  switch (kind) {
+    case 'add':
+      return styles.lineAdd
+    case 'remove':
+      return styles.lineRemove
+    case 'hunk':
+      return styles.hunkHeader
+    case 'meta':
+      return styles.metaLine
+    default:
+      return styles.lineNormal
+  }
+}
+
+const UnifiedDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
+  const { t } = useTranslation()
+  const rows = fileDiffToUnifiedRows(diff)
+
+  if (rows.length === 0) {
+    return <div className={styles.empty}>{t('version_control.no_diff', '没有可显示的差异')}</div>
   }
 
   return (
-    <pre className={styles.unifiedContent}>
-      {diff.hunks.map((hunk, i) => (
-        <div key={i}>
-          <div className={styles.hunkHeader}>
-            @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
+    <div className={styles.unifiedContent} role="table" aria-label={t('workbench.diff_unified', '统一')}>
+      {rows.map((row, index) => {
+        if (row.kind === 'hunk') {
+          return (
+            <div key={index} className={`${styles.unifiedRow} ${styles.hunkHeader}`}>
+              <span className={styles.hunkText}>{row.text}</span>
+            </div>
+          )
+        }
+        if (row.kind === 'meta') {
+          return (
+            <div key={index} className={`${styles.unifiedRow} ${styles.metaLine}`}>
+              <span className={styles.hunkText}>
+                {t('version_control.no_newline_eof', '文件末尾没有换行符')}
+              </span>
+            </div>
+          )
+        }
+        return (
+          <div key={index} className={`${styles.unifiedRow} ${unifiedRowClass(row.kind)}`}>
+            <span className={styles.gutterBar} aria-hidden />
+            <span className={styles.lineNum}>{row.oldNum ?? ''}</span>
+            <span className={styles.lineNum}>{row.newNum ?? ''}</span>
+            <span className={styles.marker}>{row.marker}</span>
+            <span className={styles.lineText}>
+              <InlineText text={row.text} inline={row.inline} />
+            </span>
           </div>
-          {hunk.content.split('\n').map((line, j) => {
-            if (!line && j === hunk.content.split('\n').length - 1) return null
-            const cls = line.startsWith('+')
-              ? styles.lineAdd
-              : line.startsWith('-')
-                ? styles.lineRemove
-                : styles.lineNormal
-            return (
-              <div key={j} className={cls}>
-                {line}
-              </div>
-            )
-          })}
-        </div>
-      ))}
-    </pre>
+        )
+      })}
+    </div>
   )
 }
 
@@ -69,7 +107,7 @@ const SplitDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
   }, [])
 
   if (rows.length === 0) {
-    return <div className={styles.empty}>{t('version_control.no_diff', 'No diff')}</div>
+    return <div className={styles.empty}>{t('version_control.no_diff', '没有可显示的差异')}</div>
   }
 
   return (
@@ -88,7 +126,7 @@ const SplitDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
             <div
               key={`l-${index}`}
               className={`${styles.splitRow} ${
-                row.kind === 'remove'
+                row.kind === 'remove' || row.kind === 'replace'
                   ? styles.rowRemove
                   : row.leftText === undefined
                     ? styles.rowEmpty
@@ -96,7 +134,9 @@ const SplitDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
               }`}
             >
               <span className={styles.lineNum}>{row.leftNum ?? ''}</span>
-              <span className={styles.lineText}>{row.leftText ?? ''}</span>
+              <span className={styles.lineText}>
+                <InlineText text={row.leftText ?? ''} inline={row.leftInline} />
+              </span>
             </div>
           ))}
         </div>
@@ -109,7 +149,7 @@ const SplitDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
             <div
               key={`r-${index}`}
               className={`${styles.splitRow} ${
-                row.kind === 'add'
+                row.kind === 'add' || row.kind === 'replace'
                   ? styles.rowAdd
                   : row.rightText === undefined
                     ? styles.rowEmpty
@@ -117,7 +157,9 @@ const SplitDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
               }`}
             >
               <span className={styles.lineNum}>{row.rightNum ?? ''}</span>
-              <span className={styles.lineText}>{row.rightText ?? ''}</span>
+              <span className={styles.lineText}>
+                <InlineText text={row.rightText ?? ''} inline={row.rightInline} />
+              </span>
             </div>
           ))}
         </div>
@@ -165,7 +207,7 @@ export const GitDiffViewer: React.FC<GitDiffViewerProps> = ({
         <SplitDiffBody diff={diff} />
       ) : (
         <div className={`${styles.unified} ${fillHeight ? styles.unifiedFill : ''}`}>
-          <UnifiedDiffBody diff={diff} fillHeight={fillHeight} />
+          <UnifiedDiffBody diff={diff} />
         </div>
       )}
     </div>

@@ -6,11 +6,15 @@ import { isValidShardMonth } from '../raw-data-month.util'
 import { pickWinner, type JsonlMergeableRecord } from '../jsonl-record-merge.service'
 
 const MANIFEST_NAME = 'shards.manifest.json'
+/** appendRecord defers MD5 until listShards / compact / replace. */
+export const DIRTY_SHARD_HASH = 'dirty'
 
 export interface MonthlyJsonlStoreOptions {
   fs: IFileSystem
   /** Absolute directory for this collection root (e.g. Memory/ or Graph/nodes/) */
   rootDir: string
+  /** Defaults to YYYY-MM. Notebook graph injects sourceId validation. */
+  isValidShardKey?: (value: string) => boolean
 }
 
 /**
@@ -26,6 +30,10 @@ export class MonthlyJsonlStore {
 
   private get rootDir(): string {
     return this.options.rootDir
+  }
+
+  private isValidKey(value: string): boolean {
+    return (this.options.isValidShardKey ?? isValidShardMonth)(value)
   }
 
   private manifestPath(): string {
@@ -93,23 +101,22 @@ export class MonthlyJsonlStore {
     relativePath: string
     contentHash: string
   }> {
-    if (!isValidShardMonth(shardMonth)) {
-      throw new Error(`Invalid shard month: ${shardMonth}`)
+    if (!this.isValidKey(shardMonth)) {
+      throw new Error(`Invalid shard key: ${shardMonth}`)
     }
     await this.ensureRoot()
     const abs = this.shardAbsolutePath(shardMonth)
     const line = `${JSON.stringify(record)}\n`
     await this.fs.appendFile(abs, line, 'utf8')
-    const contentHash = await this.computeShardHash(shardMonth)
     const manifest = await this.readManifest()
     const rel = this.shardRelativePath(shardMonth)
     const prev = manifest.shards[rel]
     manifest.shards[rel] = {
-      contentHash,
+      contentHash: DIRTY_SHARD_HASH,
       indexedHash: prev?.indexedHash
     }
     await this.writeManifest(manifest)
-    return { shardPath: abs, relativePath: rel, contentHash }
+    return { shardPath: abs, relativePath: rel, contentHash: DIRTY_SHARD_HASH }
   }
 
   async readRecords(shardMonth: string): Promise<unknown[]> {
@@ -136,7 +143,7 @@ export class MonthlyJsonlStore {
         .replace(/\.jsonl$/i, '')
         .split(/[/\\]/)
         .pop() ?? ''
-    if (!isValidShardMonth(month)) return []
+    if (!this.isValidKey(month)) return []
     return this.readRecords(month)
   }
 
@@ -151,26 +158,61 @@ export class MonthlyJsonlStore {
     const months = names
       .filter((n) => n.endsWith('.jsonl'))
       .map((n) => n.replace(/\.jsonl$/i, ''))
-      .filter(isValidShardMonth)
+      .filter((stem) => this.isValidKey(stem))
 
     const result: ShardInfo[] = []
+    let manifestDirty = false
     for (const month of months) {
       const rel = this.shardRelativePath(month)
-      // Always recompute from disk so external writes (sync LWW / download) invalidate pending-index
-      const contentHash = await this.computeShardHash(month)
+      const abs = this.shardAbsolutePath(month)
       const prev = manifest.shards[rel]
-      manifest.shards[rel] = {
-        contentHash,
-        indexedHash: prev?.indexedHash
+      let contentHash = prev?.contentHash
+      let size: number | undefined
+      let mtimeMs: number | undefined
+      try {
+        const st = await this.fs.stat(abs)
+        size = st.size
+        mtimeMs = st.mtimeMs
+      } catch {
+        size = undefined
+        mtimeMs = undefined
+      }
+      const fingerprintHit =
+        !!contentHash &&
+        contentHash !== DIRTY_SHARD_HASH &&
+        prev?.size != null &&
+        prev?.mtimeMs != null &&
+        size != null &&
+        mtimeMs != null &&
+        prev.size === size &&
+        prev.mtimeMs === mtimeMs
+      if (!fingerprintHit) {
+        contentHash = await this.computeShardHash(month)
+      }
+      if (
+        !prev ||
+        prev.contentHash !== contentHash ||
+        prev.size !== size ||
+        prev.mtimeMs !== mtimeMs
+      ) {
+        manifest.shards[rel] = {
+          contentHash: contentHash!,
+          indexedHash: prev?.indexedHash,
+          size,
+          mtimeMs
+        }
+        manifestDirty = true
       }
       result.push({
-        path: this.shardAbsolutePath(month),
+        path: abs,
         relativePath: rel,
-        contentHash,
+        contentHash: contentHash!,
         shardMonth: month
       })
     }
-    await this.writeManifest(manifest)
+    if (manifestDirty) {
+      await this.writeManifest(manifest)
+    }
     return result.sort((a, b) => a.shardMonth.localeCompare(b.shardMonth))
   }
 
@@ -182,8 +224,8 @@ export class MonthlyJsonlStore {
     shardMonth: string,
     content: string
   ): Promise<{ shardPath: string; relativePath: string; contentHash: string }> {
-    if (!isValidShardMonth(shardMonth)) {
-      throw new Error(`Invalid shard month: ${shardMonth}`)
+    if (!this.isValidKey(shardMonth)) {
+      throw new Error(`Invalid shard key: ${shardMonth}`)
     }
     await this.ensureRoot()
     const abs = this.shardAbsolutePath(shardMonth)
@@ -202,32 +244,110 @@ export class MonthlyJsonlStore {
   }
 
   /**
-   * After an out-of-band rewrite of a shard file, refresh contentHash and keep indexedHash
-   * so listPendingIndex reports dirty until re-hydrated.
+   * After an out-of-band rewrite of a shard file, refresh contentHash and drop indexedHash
+   * so this machine must re-hydrate even if another device already indexed the same bytes.
    */
   async refreshShardHashAfterExternalWrite(shardMonth: string): Promise<string> {
-    if (!isValidShardMonth(shardMonth)) {
-      throw new Error(`Invalid shard month: ${shardMonth}`)
+    if (!this.isValidKey(shardMonth)) {
+      return ''
     }
     const contentHash = await this.computeShardHash(shardMonth)
     const manifest = await this.readManifest()
     const rel = this.shardRelativePath(shardMonth)
-    const prev = manifest.shards[rel]
+    let size: number | undefined
+    let mtimeMs: number | undefined
+    try {
+      const st = await this.fs.stat(this.shardAbsolutePath(shardMonth))
+      size = st.size
+      mtimeMs = st.mtimeMs
+    } catch {
+      size = undefined
+      mtimeMs = undefined
+    }
     manifest.shards[rel] = {
       contentHash,
-      indexedHash: prev?.indexedHash
+      size,
+      mtimeMs
     }
     await this.writeManifest(manifest)
     return contentHash
   }
 
-  async markIndexed(relativePath: string, contentHash: string): Promise<void> {
+  /** Drop indexedHash so the next pending-index treats every live shard as dirty. */
+  async invalidateIndexedHashes(): Promise<void> {
     const manifest = await this.readManifest()
-    const prev = manifest.shards[relativePath] ?? { contentHash }
+    let dirty = false
+    for (const rel of Object.keys(manifest.shards)) {
+      const prev = manifest.shards[rel]
+      if (!prev?.indexedHash) continue
+      manifest.shards[rel] = { ...prev, indexedHash: undefined }
+      dirty = true
+    }
+    if (dirty) await this.writeManifest(manifest)
+  }
+
+  async listJsonlStems(): Promise<string[]> {
+    const names = await this.fs.readdir(this.rootDir).catch((e: NodeJS.ErrnoException) => {
+      if (e?.code === 'ENOENT') return [] as string[]
+      throw e
+    })
+    return names
+      .filter((n) => n.endsWith('.jsonl'))
+      .map((n) => n.replace(/\.jsonl$/i, ''))
+      .filter((stem) => stem && !stem.includes('/') && !stem.includes('\\') && !stem.includes('..'))
+  }
+
+  async deleteShard(shardKey: string): Promise<void> {
+    if (!this.isValidKey(shardKey)) {
+      throw new Error(`Invalid shard key: ${shardKey}`)
+    }
+    await this.removeShardFile(shardKey)
+  }
+
+  /** Delete a jsonl stem even when it is not a valid shard key (legacy YYYY-MM files). */
+  async removeShardFile(stem: string): Promise<void> {
+    const key = stem.trim()
+    if (!key || key.includes('/') || key.includes('\\') || key.includes('..')) {
+      throw new Error(`Invalid shard file stem: ${stem}`)
+    }
+    const abs = this.shardAbsolutePath(key)
+    if (await this.fs.exists(abs)) {
+      await this.fs.unlink(abs)
+    }
+    const manifest = await this.readManifest()
+    const rel = this.shardRelativePath(key)
+    if (manifest.shards[rel]) {
+      delete manifest.shards[rel]
+      await this.writeManifest(manifest)
+    }
+  }
+
+  async markIndexed(relativePath: string, _contentHash: string): Promise<void> {
+    const month =
+      relativePath
+        .replace(/\.jsonl$/i, '')
+        .split(/[/\\]/)
+        .pop() ?? ''
+    if (!this.isValidKey(month)) return
+    const current = await this.computeShardHash(month)
+    const manifest = await this.readManifest()
+    const prev = manifest.shards[relativePath]
+    let size: number | undefined
+    let mtimeMs: number | undefined
+    try {
+      const st = await this.fs.stat(this.shardAbsolutePath(month))
+      size = st.size
+      mtimeMs = st.mtimeMs
+    } catch {
+      size = prev?.size
+      mtimeMs = prev?.mtimeMs
+    }
     manifest.shards[relativePath] = {
       ...prev,
-      contentHash: prev.contentHash || contentHash,
-      indexedHash: contentHash
+      contentHash: current,
+      indexedHash: current,
+      size,
+      mtimeMs
     }
     await this.writeManifest(manifest)
   }

@@ -18,7 +18,6 @@ import {
   isEmbeddingModel,
   isTtsModel,
   normalizeReasoningEffortSetting,
-  type AgentWorkspaceEntry,
   type AgentWorkspaceSecurityMode,
   type BaishouAgentGateConfig,
   type ReasoningEffortSetting
@@ -44,29 +43,15 @@ import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
 import { WorkbenchHomeSidebar } from './WorkbenchHomeSidebar'
 import { WorkbenchHomeComposer } from './WorkbenchHomeComposer'
 import { stashWorkspaceInitMeta } from '../../utils/workspace-init-meta.util'
+import { sortAgentWorkspaces } from '../../utils/workspace-display.util'
+import {
+  hasWorkspaceComposerPayload,
+  normalizeWorkspaceSendAttachments
+} from '../../utils/workspace-message-display.util'
 import styles from './WorkbenchHomePage.module.css'
 
 interface WorkspaceOutletContext {
   setFolderRoot: (path: string | null) => void
-}
-
-function sortWorkspaces(
-  list: AgentWorkspaceEntry[],
-  lastActiveId: string | null
-): AgentWorkspaceEntry[] {
-  return [...list].sort((a, b) => {
-    const aPinned = Boolean(a.pinnedAt)
-    const bPinned = Boolean(b.pinnedAt)
-    if (aPinned !== bPinned) return aPinned ? -1 : 1
-    if (aPinned && bPinned) {
-      return Date.parse(b.pinnedAt ?? '') - Date.parse(a.pinnedAt ?? '')
-    }
-    if (lastActiveId) {
-      if (a.id === lastActiveId) return -1
-      if (b.id === lastActiveId) return 1
-    }
-    return Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
-  })
 }
 
 async function persistSecurityMode(params: {
@@ -111,7 +96,7 @@ export const WorkbenchHomePage: React.FC = () => {
   const modelTriggerRef = useRef<HTMLButtonElement>(null)
   const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
   const [reasoningPreviewTick, setReasoningPreviewTick] = useState(0)
-  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortSetting>('unset')
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortSetting>('auto')
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [securityMode, setSecurityMode] = useState<AgentWorkspaceSecurityMode>('auto_review')
@@ -128,10 +113,18 @@ export const WorkbenchHomePage: React.FC = () => {
 
   useEffect(() => {
     void loadShortcuts()
+    const unsubSkills = (
+      window.api as { skills?: { onChanged?: (cb: () => void) => () => void } }
+    ).skills?.onChanged?.(() => {
+      void loadShortcuts()
+    })
+    return () => {
+      unsubSkills?.()
+    }
   }, [loadShortcuts])
 
   const sortedWorkspaces = useMemo(
-    () => sortWorkspaces(workspaces, lastActiveWorkspaceId),
+    () => sortAgentWorkspaces(workspaces, lastActiveWorkspaceId),
     [workspaces, lastActiveWorkspaceId]
   )
 
@@ -227,7 +220,7 @@ export const WorkbenchHomePage: React.FC = () => {
     [sortedWorkspaces, t]
   )
 
-  const { sessions, reloadSessions } = useWorkspaceSessions()
+  const { sessions, reloadSessions, pinSession } = useWorkspaceSessions()
 
   const enterWorkspace = useCallback(
     async (workspaceId: string) => {
@@ -398,7 +391,7 @@ export const WorkbenchHomePage: React.FC = () => {
   const handleSend = useCallback(
     async (
       text: string,
-      _attachments?: unknown[],
+      incomingAttachments?: unknown[],
       _searchMode?: boolean,
       meta?: {
         displayText?: string
@@ -406,7 +399,13 @@ export const WorkbenchHomePage: React.FC = () => {
       }
     ) => {
       const trimmed = text.trim()
-      if (!trimmed || sending) return false
+      const attachments = normalizeWorkspaceSendAttachments(incomingAttachments)
+      if (
+        sending ||
+        !hasWorkspaceComposerPayload({ text: trimmed, attachments, skillRefs: meta?.skillRefs })
+      ) {
+        return false
+      }
 
       setSending(true)
       try {
@@ -440,7 +439,8 @@ export const WorkbenchHomePage: React.FC = () => {
         stashWorkspaceInitMeta(sessionId, {
           text: trimmed,
           displayText: meta?.displayText?.trim() || undefined,
-          skillRefs: meta?.skillRefs
+          skillRefs: meta?.skillRefs,
+          attachments
         })
         navigate(`/agent-workspace/${sessionId}?init=${encodeURIComponent(trimmed)}`)
         return true
@@ -567,7 +567,7 @@ export const WorkbenchHomePage: React.FC = () => {
         onNewProject={() => void handleOpenFolder()}
         onOpenHome={() => navigate('/agent-workspace')}
         onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
-        onOpenTemplates={() => navigate('/agent-workspace/templates')}
+        onOpenSkills={() => navigate('/agent-workspace/skills')}
         onOpenProjects={() => navigate('/agent-workspace/projects')}
         onOpenSettings={() => void handleOpenSettings()}
         creating={creating}
@@ -579,6 +579,7 @@ export const WorkbenchHomePage: React.FC = () => {
         onDeleteSession={(sessionId) => void handleDeleteSession(sessionId)}
         onRemoveWorkspace={handleRemoveWorkspace}
         onTogglePinWorkspace={handleTogglePinWorkspace}
+        onTogglePinSession={pinSession}
       />
 
       <main className={styles.main}>
@@ -596,6 +597,7 @@ export const WorkbenchHomePage: React.FC = () => {
             onAssistantClick={() => chrome.setShowAssistantPicker(true)}
             workspaceOptions={workspaceOptions}
             workspaceId={selectedWorkspaceId}
+            folderRoot={selectedWorkspace?.folderRoot ?? null}
             onWorkspaceChange={(id) => void handleWorkspaceChange(id)}
             onOpenFolder={() => void handlePickFolderInComposer()}
             securityMode={securityMode}

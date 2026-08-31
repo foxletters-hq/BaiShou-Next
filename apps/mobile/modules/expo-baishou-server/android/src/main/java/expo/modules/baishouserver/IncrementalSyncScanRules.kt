@@ -46,9 +46,13 @@ object IncrementalSyncScanRules {
         return true
     }
 
+    private fun isJsonlShardsManifestSyncPath(relativePath: String): Boolean =
+        basenameFromRel(relativePath) == "shards.manifest.json"
+
     fun shouldIncludeFile(entryName: String, relativePath: String): Boolean {
         val rel = normalizeRel(relativePath)
         if (isSqliteRuntimeSyncPath(rel) || isSqliteRuntimeSyncPath(entryName)) return false
+        if (isJsonlShardsManifestSyncPath(rel) || isJsonlShardsManifestSyncPath(entryName)) return false
         if (isBaishouSettingsTree(rel)) {
             return if (rel.contains("/.baishou/settings/") || rel.startsWith(BAISHOU_SETTINGS_PREFIX)) {
                 rel.endsWith(".json") && !entryName.endsWith(".tmp")

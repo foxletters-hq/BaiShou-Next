@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../Button/Button'
+import { Input } from '../Input/Input'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import { withAppContentOverlay } from '../overlay'
 import styles from './AssistantPicker.module.css'
@@ -59,8 +60,10 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
 
           <div className={styles.searchWrapper}>
             <span className={styles.searchIcon}>🔍</span>
-            <input
+            <Input
+              fieldSize="small"
               className={styles.searchInput}
+              inputClassName="baishou-form-field--embed"
               placeholder={t('common.search', '搜索...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

@@ -2,6 +2,9 @@ import type { EmojiGroup, EmojiItem, EmojiToolConfig } from '../types/settings.t
 
 export const DEFAULT_EMOJI_GROUP_ID = 'default'
 
+/** 伙伴页等处改完表情包组后，通知设置内存态同步，避免整包回写覆盖 */
+export const EMOJI_TOOL_CONFIG_UPDATED_EVENT = 'baishou:emoji-config-updated'
+
 export type AssistantEmojiPrefs = {
   /** 伙伴是否启用表情包（默认关闭） */
   emojiEnabled?: boolean | null
@@ -92,6 +95,13 @@ export function removeEmojiGroup(config: EmojiToolConfig, groupId: string): Emoj
     ...normalized,
     groups: normalized.groups.filter((group) => group.id !== groupId)
   }
+}
+
+export function emojiGroupMatchesQuery(group: EmojiGroup, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  if (group.name.toLowerCase().includes(q)) return true
+  return (group.emojis ?? []).some((emoji) => emoji.name.toLowerCase().includes(q))
 }
 
 export function findEmojiGroup(

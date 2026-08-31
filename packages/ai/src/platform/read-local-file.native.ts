@@ -25,6 +25,10 @@ export async function readLocalFileAsBase64Async(filePath: string): Promise<stri
   }
 }
 
+export async function readLocalTextFile(_filePath: string): Promise<string> {
+  return ''
+}
+
 export async function readPdfTextFromPath(_filePath: string): Promise<string> {
   return ''
 }

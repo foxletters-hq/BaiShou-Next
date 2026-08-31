@@ -10,12 +10,6 @@
   width: 100%;
 }
 
-/* 展开时抬升，避免被后续设置卡盖住（卡片不再用 overflow:hidden 裁切） */
-.container:has(.dropdown) {
-  position: relative;
-  z-index: 20;
-}
-
 .trigger {
   display: flex;
   justify-content: space-between;
@@ -66,16 +60,19 @@
   color: var(--color-primary);
 }
 
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
 .dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  width: 100%;
+  position: fixed;
   background-color: var(--menu-popup-bg, var(--bg-surface));
   border: 1px solid var(--menu-popup-border, var(--border-muted));
   border-radius: var(--menu-popup-radius, 8px);
   box-shadow: var(--menu-popup-shadow, var(--shadow-md));
-  z-index: 100;
+  z-index: 10000;
   overflow: hidden;
   animation: slideDown var(--duration-fast) var(--ease-out-cubic) forwards;
 }
@@ -100,7 +97,7 @@
 }
 
 .optionsList::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .optionsList::-webkit-scrollbar-thumb {
@@ -234,9 +231,4 @@
 .variantGhost .rotated {
   color: inherit;
   opacity: 1;
-}
-
-.variantGhost .dropdown {
-  width: max(200px, 100%);
-  min-width: 200px;
 }

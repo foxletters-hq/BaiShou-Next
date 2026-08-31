@@ -1,6 +1,6 @@
 /**
- * 表单控件聚焦描边过渡（桌面）
- * Token：--form-field-transition / --form-field-border-focus
+ * 表单控件：共享描边 / 聚焦（桌面）
+ * Token：--form-field-* ；禁止组件内再写一套平行 input 描边
  */
 :where(
   input:not(
@@ -19,4 +19,70 @@
   select
 ) {
   transition: var(--form-field-transition);
+}
+
+.baishou-form-field,
+textarea.baishou-form-field {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--form-field-border);
+  border-radius: var(--radius-md);
+  background-color: var(--form-field-bg);
+  color: var(--text-primary);
+  font-size: var(--ui-fs-lg);
+  font-weight: 400;
+  font-family: var(--font-family);
+  outline: none;
+  box-shadow: none;
+  transition: var(--form-field-transition);
+}
+
+.baishou-form-field::placeholder,
+textarea.baishou-form-field::placeholder {
+  color: var(--text-tertiary);
+}
+
+.baishou-form-field:focus,
+.baishou-form-field:focus-visible,
+textarea.baishou-form-field:focus,
+textarea.baishou-form-field:focus-visible {
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
+  background-color: var(--form-field-bg);
+}
+
+.baishou-form-field:disabled,
+textarea.baishou-form-field:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.baishou-form-field--small {
+  padding: 6px 10px;
+  font-size: var(--ui-fs-md);
+  border-radius: 8px;
+}
+
+.baishou-form-field--error {
+  border-color: var(--color-error);
+}
+
+.baishou-form-field--with-trailing {
+  padding-right: 36px;
+}
+
+.baishou-form-field--pad-leading {
+  padding-left: 36px;
+}
+
+.baishou-form-field.baishou-form-field--embed,
+.baishou-form-field.baishou-form-field--embed:focus,
+.baishou-form-field.baishou-form-field--embed:focus-visible {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
 }

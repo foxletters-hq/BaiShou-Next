@@ -4,6 +4,7 @@ import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 import { collectFencedCodeBlockRanges } from '../extensions/fencedCodeScan'
 import { buildMarkerHidingDecorations } from '../extensions/build'
 import { editorFocusEffect } from '../extensions/editorFocus'
+import { isLivePreviewPointerFrozen, previewFrozenField } from '../extensions/livePreviewFreeze'
 import type { EditorView } from '@codemirror/view'
 
 describe('fenced code inline touch flow', () => {
@@ -111,7 +112,7 @@ describe('fenced code inline touch flow', () => {
     }
 
     fireTap()
-    await flushMicrotasks()
+    await new Promise((resolve) => setTimeout(resolve, 20))
     expect(isOpenFenceHidden()).toBe(false)
 
     v.dispatch({ selection: { anchor: outsidePos, head: outsidePos } })
@@ -119,7 +120,50 @@ describe('fenced code inline touch flow', () => {
     expect(isOpenFenceHidden()).toBe(true)
 
     fireTap()
-    await flushMicrotasks()
+    await new Promise((resolve) => setTimeout(resolve, 20))
     expect(isOpenFenceHidden()).toBe(false)
+  })
+
+  it('pointerdown does not move caret to document end', async () => {
+    const content = 'first line\nsecond line\nthird line'
+    const v = await mountAndSettle(content)
+    const mid = content.indexOf('second')
+    v.dispatch({ selection: { anchor: mid, head: mid } })
+
+    v.contentDOM.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
+    )
+    expect(isLivePreviewPointerFrozen(v)).toBe(true)
+    expect(v.state.selection.main.head).toBe(mid)
+    expect(v.state.selection.main.head).not.toBe(v.state.doc.length)
+
+    const clickPos = content.indexOf('third')
+    v.dispatch({ selection: { anchor: clickPos, head: clickPos } })
+    expect(v.state.selection.main.head).toBe(clickPos)
+  })
+
+  it('freezes live preview while dragging a selection across a fenced block', async () => {
+    const content = 'plain\n```\ntube\n```\nafter'
+    const v = await mountAndSettle(content)
+    v.dispatch({ effects: editorFocusEffect.of(true) })
+    const lineEl = v.contentDOM.querySelector('.cm-code-line') as HTMLElement | null
+    expect(lineEl).not.toBeNull()
+
+    lineEl!.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
+    )
+    expect(isLivePreviewPointerFrozen(v)).toBe(true)
+
+    const from = content.indexOf('plain')
+    const to = content.indexOf('after') + 2
+    expect(() => {
+      v.dispatch({ selection: { anchor: from, head: to } })
+    }).not.toThrow()
+    expect(isLivePreviewPointerFrozen(v)).toBe(true)
+
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(isLivePreviewPointerFrozen(v)).toBe(false)
+    expect(v.state.field(previewFrozenField)).toBe(false)
   })
 })

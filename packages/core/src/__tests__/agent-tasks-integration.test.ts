@@ -155,8 +155,8 @@ describe('Agent 4: 设置与 UI 细节验证', () => {
     expect(ts).toContain("key === '-'")
     // zoom 通过 preload bridge 调用，不是直接 webFrame
     expect(ts).toContain('api.zoom.setFactor')
-    expect(ts).toContain('UI_FONT_SIZE_LEVEL_MIN')
-    expect(ts).toContain('UI_FONT_SIZE_LEVEL_MAX')
+    expect(ts).toContain('resolvePageZoomShortcut')
+    expect(ts).toContain('nextUiFontSizeLevel')
   })
 
   it('任务21: descriptionText 和 chipsScrollArea 有内边距', () => {

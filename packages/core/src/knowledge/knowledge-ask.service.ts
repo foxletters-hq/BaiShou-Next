@@ -1,3 +1,4 @@
+import { isGarbledExtractText, shouldRetrieveNotebookSources } from '@baishou/shared'
 import type { KnowledgeSearchHit, KnowledgeSearchService } from './knowledge-search.service'
 
 export interface KnowledgePageBoundary {
@@ -27,6 +28,7 @@ export interface KnowledgeAskResult {
   hits: KnowledgeSearchHit[]
   /** 多子查询时实际使用的子查询列表 */
   subQueries?: string[]
+  reasoning?: string
 }
 
 export interface KnowledgeAskDeps {
@@ -36,7 +38,12 @@ export interface KnowledgeAskDeps {
     question: string
     contextBlocks: string
     citations: KnowledgeCitation[]
-  }) => Promise<string>
+  }) => Promise<string | { answer: string; reasoning?: string }>
+  onProgress?: (event: {
+    phase: 'retrieving' | 'thinking' | 'answering'
+    text?: string
+    reasoning?: string
+  }) => void
   getSourceTitle?: (sourceId: string) => Promise<string | null> | string | null
   /** 读取 extracted/<sourceId>.pages.json */
   getPageBoundaries?: (
@@ -60,8 +67,10 @@ export interface KnowledgeAskOptions {
   multiQuery?: boolean
 }
 
-const DEFAULT_SYSTEM = `你是知识库问答助手。只根据提供的资料片段回答问题；若资料不足请明确说明。
-回答时可用 [1]、[2] 标注引用编号，对应提供的资料列表。不要编造资料中没有的内容。`
+const DEFAULT_SYSTEM = `你是知识库问答助手。只根据提供的资料片段回答与资料相关的问题；若资料不足请明确说明。
+回答资料问题时用 [1]、[2] 标注实际用到的引用编号，不要罗列未使用的资料。不要编造资料中没有的内容。`
+
+const CONVERSATIONAL_SYSTEM = `你是笔记本里的对话助手。当前没有需要引用的资料，请正常对话，不要编造引用编号，也不要假装引用了来源。`
 
 /**
  * 从页边界表反查偏移所在页码（L2）。
@@ -121,7 +130,7 @@ function mergeHitsByChunkId(hitLists: KnowledgeSearchHit[][]): KnowledgeSearchHi
       }
     }
   }
-  return [...map.values()].sort((a, b) => b.score - a.score)
+  return [...map.values()].sort((a, b) => b.score - a.score || a.chunkId.localeCompare(b.chunkId))
 }
 
 /**
@@ -136,6 +145,19 @@ export class KnowledgeAskService {
     if (!notebookId) throw new Error('knowledge ask requires notebookId')
     const question = opts.question?.trim()
     if (!question) throw new Error('knowledge ask requires question')
+    if (!shouldRetrieveNotebookSources(question)) {
+      const generated = await this.deps.generateAnswer({
+        question,
+        contextBlocks: '',
+        citations: []
+      })
+      const answer = typeof generated === 'string' ? generated : generated.answer
+      const reasoning =
+        typeof generated === 'string' ? undefined : generated.reasoning?.trim() || undefined
+      return { answer, citations: [], hits: [], reasoning }
+    }
+
+    this.deps.onProgress?.({ phase: 'retrieving' })
 
     let subQueries: string[] | undefined
     let queries = [question]
@@ -173,7 +195,9 @@ export class KnowledgeAskService {
       ? mergeHitsByChunkId(hitLists).slice(0, opts.topK ?? 8)
       : (hitLists[0] ?? [])
 
-    const citations = await this.buildCitations(notebookId, hits)
+    const citations = (await this.buildCitations(notebookId, hits)).filter(
+      (citation) => !isGarbledExtractText(citation.excerpt)
+    )
     const contextBlocks = citations
       .map((c, i) => {
         const loc =
@@ -186,19 +210,38 @@ export class KnowledgeAskService {
       })
       .join('\n\n')
 
-    const answer =
-      citations.length === 0
-        ? '当前笔记本里没有检索到相关资料，请先导入并等待索引完成后再提问。'
-        : await this.deps.generateAnswer({ question, contextBlocks, citations })
+    if (hits.length === 0) {
+      const answer = '当前笔记本里没有检索到相关资料，请先导入并等待索引完成后再提问。'
+      this.deps.onProgress?.({ phase: 'answering', text: answer })
+      return { answer, citations: [], hits, subQueries }
+    }
 
-    return { answer, citations, hits, subQueries }
+    if (citations.length === 0) {
+      const answer =
+        '当前检索到的资料文本质量过低，像是扫描件没有可用文本层。请对该来源使用 OCR 或视觉提取后再提问。'
+      this.deps.onProgress?.({ phase: 'answering', text: answer })
+      return { answer, citations: [], hits, subQueries }
+    }
+
+    const generated = await this.deps.generateAnswer({ question, contextBlocks, citations })
+    const answer = typeof generated === 'string' ? generated : generated.answer
+    const reasoning =
+      typeof generated === 'string' ? undefined : generated.reasoning?.trim() || undefined
+    return { answer, citations, hits, subQueries, reasoning }
   }
 
   /** 供调用方拼 system/user prompt（桌面 IPC 可自行调用 generateText） */
   static buildPrompt(question: string, contextBlocks: string): { system: string; prompt: string } {
+    const blocks = contextBlocks.trim()
+    if (!blocks || blocks === '（无）') {
+      return {
+        system: CONVERSATIONAL_SYSTEM,
+        prompt: question
+      }
+    }
     return {
       system: DEFAULT_SYSTEM,
-      prompt: `资料：\n${contextBlocks || '（无）'}\n\n问题：${question}\n\n请作答：`
+      prompt: `资料：\n${blocks}\n\n问题：${question}\n\n请作答：`
     }
   }
 

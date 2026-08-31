@@ -75,6 +75,7 @@ interface SummaryAPI {
 interface ZoomAPI {
   setFactor(factor: number): void
   getFactor(): number
+  onSetLevel(callback: (level: number) => void): () => void
 }
 
 interface UpdaterAPI {
@@ -232,6 +233,8 @@ interface AgentWorkspaceAPI {
     folderRoot: string
     assistantId?: string
     title?: string
+    providerId?: string
+    modelId?: string
   }): Promise<string>
   getBinding(sessionId: string): Promise<{
     sessionId: string
@@ -244,6 +247,7 @@ interface AgentWorkspaceAPI {
     notebookId?: string
   } | null>
   listSessions(): Promise<import('@baishou/shared').AgentWorkspaceSessionListItem[]>
+  pinSession(sessionId: string, isPinned: boolean): Promise<{ success: boolean }>
   deleteSession(sessionId: string): Promise<{ success: boolean }>
   chat(params: {
     sessionId: string
@@ -263,6 +267,7 @@ interface AgentWorkspaceAPI {
     modelId?: string
     reasoningEffort?: string
     searchMode?: boolean
+    forceStart?: boolean
   }): Promise<{
     input: import('@baishou/shared').SessionInputRecord
     started: boolean
@@ -457,8 +462,6 @@ interface GraphAPI {
   estimateExtraction(): Promise<{
     entryCount: number
     estimatedTokens: number
-    estimatedUsdLow: number
-    estimatedUsdHigh: number
     estimatedMinutesLow: number
     estimatedMinutesHigh: number
   }>
@@ -469,24 +472,48 @@ interface GraphAPI {
     cancelled?: boolean
     errors: Array<{ filePath: string; message: string }>
   }>
-  queueExtract(opts?: { filePaths?: string[] }): Promise<{ queued: number; totalPending: number }>
+  queueExtract(opts?: { filePaths?: string[]; concurrency?: number }): Promise<{
+    queued: number
+    totalPending: number
+    skippedNotEmbedded: string[]
+  }>
+  setExtractConcurrency(opts: { concurrency: number }): Promise<{ concurrency: number }>
   getQueueState(): Promise<{
     items: Array<{
       id: string
       filePath: string
       date?: string
       progress: number
-      status: 'pending' | 'running' | 'completed' | 'error'
+      status: 'pending' | 'running' | 'aligning' | 'completed' | 'error'
+      phase?:
+        | 'queued'
+        | 'reading'
+        | 'model'
+        | 'waiting_model'
+        | 'thinking'
+        | 'streaming'
+        | 'parsing'
+        | 'waiting_pool'
+        | 'recalling'
+        | 'waiting_align'
+        | 'aligning'
+        | 'writing'
+      phaseDetail?: string
       error?: string
     }>
     activeCount: number
     pendingCount: number
     runningCount: number
+    aligningCount?: number
     completedCount: number
     errorCount: number
+    overallProgress?: number
+    alignPoolSize?: number
+    alignPoolCount?: number
   }>
   stopExtract(): Promise<{ ok: boolean }>
   cancelExtract(): Promise<{ ok: boolean }>
+  cancelQueueItem(opts: { filePath: string }): Promise<{ ok: boolean }>
   onQueueProgress(
     callback: (state: {
       items: Array<{
@@ -494,14 +521,32 @@ interface GraphAPI {
         filePath: string
         date?: string
         progress: number
-        status: 'pending' | 'running' | 'completed' | 'error'
+        status: 'pending' | 'running' | 'aligning' | 'completed' | 'error'
+        phase?:
+          | 'queued'
+          | 'reading'
+          | 'model'
+          | 'waiting_model'
+          | 'thinking'
+          | 'streaming'
+          | 'parsing'
+          | 'waiting_pool'
+          | 'recalling'
+          | 'waiting_align'
+          | 'aligning'
+          | 'writing'
+        phaseDetail?: string
         error?: string
       }>
       activeCount: number
       pendingCount: number
       runningCount: number
+      aligningCount?: number
       completedCount: number
       errorCount: number
+      overallProgress?: number
+      alignPoolSize?: number
+      alignPoolCount?: number
     }) => void
   ): () => void
   onExtractProgress(
@@ -520,6 +565,16 @@ interface GraphAPI {
     maxHops?: 2 | 3
   }): Promise<{ nodeIds: string[]; edges: any[] } | null>
   search(opts: { query: string; nodeTypes?: string[]; limit?: number }): Promise<any[]>
+  findByName(opts: {
+    query: string
+    nodeType?: string
+  }): Promise<{
+    id: string
+    name: string
+    nodeType: string
+    summary: string
+    aliases: string[]
+  } | null>
   listPendingEdges(): Promise<any[]>
   listPending(): Promise<{ nodes: any[]; edges: any[] }>
   setEdgeReview(opts: {
@@ -530,13 +585,25 @@ interface GraphAPI {
     nodeId: string
     reviewStatus: 'approved' | 'rejected'
   }): Promise<{ ok: boolean }>
+  setReviewsBatch(opts: {
+    reviewStatus: 'approved' | 'rejected'
+    nodeIds?: string[]
+    edgeIds?: string[]
+    allPending?: boolean
+  }): Promise<{ ok: boolean; nodeCount: number; edgeCount: number }>
   upsertNode(input: {
     id?: string
     name: string
     nodeType: string
     aliases?: string[]
     summary?: string
-  }): Promise<{ id: string }>
+  }): Promise<
+    | { id: string }
+    | {
+        conflict: 'same-name'
+        existing: { id: string; name: string; nodeType: string; summary: string }
+      }
+  >
   upsertEdge(input: {
     id?: string
     fromId: string
@@ -546,6 +613,16 @@ interface GraphAPI {
     sourceExcerpt?: string
   }): Promise<{ id: string }>
   softDelete(opts: { kind: 'node' | 'edge'; id: string }): Promise<{ ok: boolean }>
+  mergeNodes(opts: {
+    survivorId: string
+    loserId: string
+    reason?: string
+  }): Promise<{ ok: boolean; survivorId: string; loserId: string }>
+  mergeNodesBatch(opts: {
+    survivorId: string
+    loserIds: string[]
+    reason?: string
+  }): Promise<{ ok: boolean; survivorId: string; loserIds: string[] }>
   getNode(id: string): Promise<any>
   meta(): Promise<{ nodeTypes: string[]; edgeTypes: string[] }>
 }
@@ -554,8 +631,62 @@ interface KnowledgeAPI {
   createNotebook(input: {
     name: string
     description?: string
-  }): Promise<{ id: string; name: string }>
+    coverTone?: string
+    coverIcon?: string
+  }): Promise<{
+    id: string
+    name: string
+    coverTone: string
+    coverIcon: string
+    sortOrder: number
+    coverImageUrl?: string | null
+  }>
   listNotebooks(): Promise<unknown[]>
+  getNotebook(notebookId: string): Promise<{
+    id: string
+    name: string
+    description?: string
+    updatedAt?: number
+    createdAt?: number
+    sortOrder?: number
+    coverTone?: string
+    coverIcon?: string
+    coverImage?: string
+    coverImageUrl?: string | null
+  } | null>
+  updateNotebook(input: {
+    notebookId: string
+    name?: string
+    description?: string
+    coverTone?: string | null
+    coverIcon?: string | null
+    coverImage?: string | null
+  }): Promise<{
+    id: string
+    name: string
+    description?: string
+    sortOrder?: number
+    coverTone?: string
+    coverIcon?: string
+    coverImage?: string
+    coverImageUrl?: string | null
+  }>
+  setCoverImage(input: { notebookId: string; absolutePath: string }): Promise<{
+    id: string
+    coverImage?: string
+    coverImageUrl?: string | null
+  }>
+  reorderNotebooks(orderedIds: string[]): Promise<unknown[]>
+  listNotebookStats(): Promise<
+    Array<{
+      notebookId: string
+      sources: number
+      chunks: number
+      pendingJobs: number
+      originalBytes: number
+      totalBytes: number
+    }>
+  >
   importSource(input: {
     notebookId: string
     title: string
@@ -565,8 +696,15 @@ interface KnowledgeAPI {
     fileName?: string
     originUrl?: string
     extractEngine?: 'simple' | 'ocr' | 'vision'
+    importProcessMode?: import('@baishou/shared').KnowledgeImportProcessMode
   }): Promise<{ sourceId: string }>
+  probeExtractHint(input: {
+    absolutePath?: string
+    sourceId?: string
+  }): Promise<import('@baishou/shared').KnowledgeExtractHint>
   retrySource(sourceId: string): Promise<{ ok: boolean }>
+  reprocessSource(input: { sourceId: string; target: 'embed' | 'graph' }): Promise<{ ok: boolean }>
+  deleteSource(sourceId: string): Promise<{ ok: boolean }>
   rebuildIndex(notebookId: string): Promise<{ ok: boolean }>
   getStats(notebookId?: string): Promise<{
     notebooks: number
@@ -578,12 +716,38 @@ interface KnowledgeAPI {
   }>
   hasModelMismatch(): Promise<boolean>
   listSources(notebookId: string): Promise<unknown[]>
+  listChunks(input: {
+    notebookId: string
+    limit?: number
+    offset?: number
+    query?: string
+  }): Promise<{
+    items: Array<{
+      chunkId: string
+      sourceId: string
+      notebookId: string
+      chunkIndex: number
+      chunkText: string
+      metadataJson: string
+      dimension: number
+      modelId: string
+      createdAt: number
+      sourceTitle: string | null
+    }>
+    total: number
+  }>
   search(input: { notebookId: string; query: string; topK?: number }): Promise<unknown[]>
   ask(input: {
     notebookId: string
     question: string
     topK?: number
     multiQuery?: boolean
+    assistantId?: string
+    modelId?: string
+    providerId?: string
+    reasoningEffort?: string
+    sessionId?: string
+    searchMode?: boolean
   }): Promise<{
     answer: string
     citations: Array<{
@@ -600,7 +764,25 @@ interface KnowledgeAPI {
     }>
     hits: unknown[]
     subQueries?: string[]
+    reasoning?: string
   }>
+  cancelAsk(notebookId: string): Promise<{ cancelled: boolean }>
+  onAskProgress(
+    callback: (progress: {
+      notebookId: string
+      phase: 'retrieving' | 'thinking' | 'answering' | 'tool'
+      text?: string
+      reasoning?: string
+      toolName?: string
+      toolStatus?: 'running' | 'done' | 'failed'
+      tools?: Array<{
+        name: string
+        displayName?: string
+        status: 'running' | 'done' | 'failed'
+        result?: string
+      }>
+    }) => void
+  ): () => void
   chat(input: {
     notebookId: string
     question: string
@@ -646,6 +828,7 @@ interface KnowledgeAPI {
   }>
   getConfig(): Promise<{
     defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+    importProcessMode?: import('@baishou/shared').KnowledgeImportProcessMode
     ocrLanguage?: string
     ocrDpi?: number
     ocrConcurrency?: number
@@ -655,6 +838,7 @@ interface KnowledgeAPI {
   }>
   setConfig(patch: {
     defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+    importProcessMode?: import('@baishou/shared').KnowledgeImportProcessMode
     ocrLanguage?: string
     ocrDpi?: number
     ocrConcurrency?: number
@@ -671,6 +855,7 @@ interface KnowledgeAPI {
     kind: 'pdf' | 'text' | 'url' | 'unsupported'
     fileName: string
     localUrl: string | null
+    fileBytes: Uint8Array | null
     textContent: string | null
     originUrl: string | null
   }>
@@ -680,6 +865,135 @@ interface KnowledgeAPI {
       page: number
       total: number
       phase?: 'ocr' | 'vision' | 'render'
+    }) => void
+  ): () => void
+  getGraphView(input: { notebookId: string; maxNodes?: number }): Promise<{
+    nodes: Array<{
+      id: string
+      name: string
+      nodeType: string
+      mentionCount?: number
+      reviewStatus?: string
+      summary?: string
+    }>
+    edges: Array<{
+      id: string
+      fromId: string
+      toId: string
+      edgeType: string
+      reviewStatus?: string
+    }>
+  }>
+  graphSearch(input: {
+    notebookId: string
+    query: string
+    limit?: number
+  }): Promise<Array<{ id: string; name: string; nodeType: string; summary?: string }>>
+  setGraphNodeReview(input: {
+    notebookId: string
+    nodeId: string
+    reviewStatus: 'approved' | 'rejected'
+  }): Promise<{ ok: boolean }>
+  setGraphEdgeReview(input: {
+    notebookId: string
+    edgeId: string
+    reviewStatus: 'approved' | 'rejected'
+  }): Promise<{ ok: boolean }>
+  setGraphReviewsBatch(input: {
+    notebookId: string
+    reviewStatus: 'approved' | 'rejected'
+    nodeIds?: string[]
+    edgeIds?: string[]
+    allPending?: boolean
+  }): Promise<{ ok: boolean; nodeCount: number; edgeCount: number }>
+  rebuildGraph(notebookId: string): Promise<{ ok: boolean }>
+  listChatSessions(notebookId: string): Promise<
+    Array<{
+      id: string
+      notebookId: string
+      assistantId: string
+      title: string
+      pinned?: boolean
+      createdAt: number
+      updatedAt: number
+    }>
+  >
+  createChatSession(input: {
+    notebookId: string
+    assistantId: string
+    title?: string
+  }): Promise<{
+    id: string
+    notebookId: string
+    assistantId: string
+    title: string
+    pinned?: boolean
+    createdAt: number
+    updatedAt: number
+  }>
+  updateChatSession(input: {
+    notebookId: string
+    sessionId: string
+    title?: string
+    pinned?: boolean
+    assistantId?: string
+    deletedAt?: number | null
+  }): Promise<{
+    id: string
+    notebookId: string
+    assistantId: string
+    title: string
+    pinned?: boolean
+    createdAt: number
+    updatedAt: number
+  } | null>
+  listChatMessages(input: { notebookId: string; sessionId: string }): Promise<
+    Array<{
+      id: string
+      sessionId: string
+      role: 'user' | 'assistant'
+      text: string
+      reasoning?: string
+      citations?: Array<{ sourceId?: string; title: string; excerpt?: string; page?: number }>
+      createdAt: number
+    }>
+  >
+  appendChatMessage(input: {
+    notebookId: string
+    sessionId: string
+    role: 'user' | 'assistant'
+    text: string
+    reasoning?: string
+    citations?: Array<{ sourceId?: string; title: string; excerpt?: string; page?: number }>
+  }): Promise<{
+    id: string
+    sessionId: string
+    role: 'user' | 'assistant'
+    text: string
+    reasoning?: string
+    citations?: Array<{ sourceId?: string; title: string; excerpt?: string; page?: number }>
+    createdAt: number
+  }>
+  listGraphJobs(notebookId: string): Promise<{
+    pending: number
+    running: number
+    failed: number
+    currentSourceId: string | null
+    currentSourceTitle: string | null
+    items: Array<{
+      sourceId: string
+      title: string
+      status: string
+      lastError?: string | null
+    }>
+  }>
+  onGraphProgress(
+    callback: (progress: {
+      at: number
+      notebookId?: string
+      sourceId?: string
+      windowsDone?: number
+      windowsTotal?: number
     }) => void
   ): () => void
 }
@@ -732,6 +1046,8 @@ interface GitAPI {
   getHistory(filePath?: string, limit?: number, offset?: number): Promise<unknown[]>
   getHistoryCount(filePath?: string): Promise<number>
   getRecentPulls(limit?: number): Promise<unknown[]>
+  getRemoteStatus(fetch?: boolean): Promise<import('@baishou/shared').GitRemoteStatus>
+  syncRemote(): Promise<{ success: boolean; message?: string; conflicts?: string[] }>
   getCommitChanges(commitHash: string): Promise<unknown[]>
   getFileDiff(filePath: string, commitHash?: string): Promise<unknown>
   getWorkingDiff(filePath: string, staged: boolean): Promise<unknown>

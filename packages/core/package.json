@@ -24,7 +24,7 @@
     "@baishou/ai": "workspace:*",
     "@baishou/database": "workspace:*",
     "@baishou/shared": "workspace:*",
-    "ai": "^6.0.146",
+    "ai": "^7.0.68",
     "drizzle-orm": "^0.45.2",
     "simple-git": "^3.28.0",
     "zod": "^4.3.6"

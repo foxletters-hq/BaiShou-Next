@@ -222,6 +222,14 @@ export function useAgentChatFlow() {
   useEffect(() => {
     fetchAssistants()
     loadShortcuts()
+    const unsubSkills = (
+      window.api as { skills?: { onChanged?: (cb: () => void) => () => void } }
+    ).skills?.onChanged?.(() => {
+      void loadShortcuts()
+    })
+    return () => {
+      unsubSkills?.()
+    }
   }, [fetchAssistants, loadShortcuts])
 
   // ── 7. 搜索模式持久化见 usePersistedSearchMode ──

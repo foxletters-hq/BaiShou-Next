@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { SetURLSearchParams } from 'react-router-dom'
 import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 import { consumeWorkspaceInitMeta } from '../utils/workspace-init-meta.util'
+import { hasWorkspaceComposerPayload } from '../utils/workspace-message-display.util'
 
 /**
  * 消费首页带来的 ?init= 首条消息：只发送一次，并在模型未就绪时等待。
@@ -45,7 +46,7 @@ export function useWorkspaceInitMessage(params: {
 
   useEffect(() => {
     const raw = searchParams.get('init')
-    if (!raw?.trim() || consumedRef.current) return
+    if (raw === null || consumedRef.current) return
     if (!sessionId || !activeFolderRoot || isStreaming || loadingWorkspaces) return
 
     if (
@@ -67,6 +68,17 @@ export function useWorkspaceInitMessage(params: {
     )
 
     const stash = consumeWorkspaceInitMeta(sessionId)
+    const sendText = (stash?.text ?? raw).trim()
+    const attachments = stash?.attachments
+    if (
+      !hasWorkspaceComposerPayload({
+        text: sendText,
+        attachments,
+        skillRefs: stash?.skillRefs
+      })
+    ) {
+      return
+    }
     const meta =
       stash?.displayText || stash?.skillRefs?.length
         ? {
@@ -74,7 +86,7 @@ export function useWorkspaceInitMessage(params: {
             skillRefs: stash.skillRefs
           }
         : undefined
-    void onSendRef.current(raw, undefined, undefined, meta)
+    void onSendRef.current(sendText, attachments, undefined, meta)
   }, [
     activeFolderRoot,
     currentModelId,

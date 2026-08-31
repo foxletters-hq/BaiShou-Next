@@ -40,30 +40,11 @@
 }
 
 .searchInput {
-  width: 100%;
-  box-sizing: border-box;
   height: 36px;
-  padding: 0 32px 0 12px;
   border-radius: 10px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
-  outline: none;
-  transition: var(--form-field-transition);
-}
-
-.searchInput:focus {
-  background: var(--bg-surface);
-  border-color: var(--form-field-border-focus);
-  box-shadow: var(--form-field-focus-ring);
 }
 
 .searchClear {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
   border: none;
   background: transparent;
   color: var(--text-tertiary);

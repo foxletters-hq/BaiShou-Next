@@ -39,4 +39,33 @@ describe('GraphLlmExtractionService.extractDiaries selfName gate', () => {
 
     expect(freshness.listPendingReextract).not.toHaveBeenCalled()
   })
+
+  it('returns failed when requested paths are not in pending-reextract', async () => {
+    const freshness = {
+      listPendingReextract: vi.fn(async () => [
+        { filePath: 'Journal/2026/08/04.md', contentHash: 'x' }
+      ])
+    }
+    const service = new GraphLlmExtractionService(
+      {} as never,
+      freshness as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      vi.fn()
+    )
+
+    const result = await service.extractDiaries({
+      vaultId: 'v1',
+      vaultName: 'Personal',
+      selfName: '小明',
+      filePaths: ['Journal/other.md']
+    })
+
+    expect(result.done).toBe(0)
+    expect(result.failed).toBe(1)
+    expect(result.errors[0]?.message).toContain('pending-reextract')
+    expect(freshness.listPendingReextract).toHaveBeenCalled()
+  })
 })

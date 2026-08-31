@@ -1,16 +1,20 @@
-import { generateText } from 'ai'
 import { settingsManager } from './settings.ipc'
 import {
   GlobalModelsConfig,
   canUseProviderModel,
   logger,
+  normalizeReasoningEffortSetting,
   prepareProviderConfigForRuntime,
   resolveSummaryConfigFromSettings,
   type AIProviderConfig
 } from '@baishou/shared'
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-desktop'
-import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core/shared'
-import { AIProviderRegistry } from '@baishou/ai'
+import {
+  SUMMARY_AI_GENERATION_TIMEOUT_MS,
+  generateSummaryTextFromModel,
+  isSummaryFirstOutputTimeoutError
+} from '@baishou/core/shared'
+import { AIProviderRegistry, buildReasoningProviderOptions } from '@baishou/ai'
 
 function resolveProviderById(
   providers: AIProviderConfig[],
@@ -91,39 +95,38 @@ export function buildSummaryAiClient(): SummaryAiClient {
       }
 
       const timeoutSeconds = SUMMARY_AI_GENERATION_TIMEOUT_MS / 1000
-      let timeoutId: ReturnType<typeof setTimeout>
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          abortController.abort()
-          const err = new Error(
-            `AI generation timed out after ${timeoutSeconds} seconds (Promise level force-abort).`
-          )
-          err.name = 'AbortError'
-          reject(err)
-        }, SUMMARY_AI_GENERATION_TIMEOUT_MS)
-      })
 
       try {
         logger.info(
-          `[SummaryAI] Invoking Vercel AI SDK generateText with ${timeoutSeconds}s Promise-race timeout...`
+          `[SummaryAI] Invoking streamText with ${timeoutSeconds}s first-output timeout...`
         )
 
-        const generatePromise = (async () => {
-          const { text } = await generateText({
-            model,
-            ...(options?.system ? { system: options.system } : {}),
-            prompt,
-            maxSteps: 1,
-            abortSignal: abortController.signal
-          } as any)
-          return text
-        })()
-
-        const text = await Promise.race([generatePromise, timeoutPromise])
+        const providerOptions = options?.reasoningEffort
+          ? buildReasoningProviderOptions({
+              modelId: finalModelId,
+              providerType: providerConfig.type || providerConfig.id,
+              effort: normalizeReasoningEffortSetting(options.reasoningEffort)
+            })
+          : undefined
+        const text = await generateSummaryTextFromModel({
+          model,
+          prompt,
+          system: options?.system,
+          abortController,
+          firstOutputTimeoutMs: SUMMARY_AI_GENERATION_TIMEOUT_MS,
+          providerOptions,
+          onFirstOutput: () => {
+            logger.info(
+              `[SummaryAI] First model output received after ${Date.now() - startTime}ms; generation timeout cleared.`
+            )
+          },
+          onTextDelta: options?.onTextDelta,
+          onReasoningDelta: options?.onReasoningDelta
+        })
         const duration = Date.now() - startTime
 
         logger.info(
-          `[SummaryAI] generateText request succeeded in ${duration}ms. Response text length: ${text.length} characters.`
+          `[SummaryAI] streamText request succeeded in ${duration}ms. Response text length: ${text.length} characters.`
         )
 
         return text
@@ -133,24 +136,19 @@ export function buildSummaryAiClient(): SummaryAiClient {
 
         if (userCancelled) {
           logger.info(`[SummaryAI] Generation aborted by user after ${duration}ms.`)
-        } else if (
-          err.name === 'AbortError' ||
-          err.message?.includes('aborted') ||
-          err.message?.includes('timeout')
-        ) {
+        } else if (isSummaryFirstOutputTimeoutError(err)) {
           logger.error(
-            `[SummaryAI] REQUEST TIMED OUT! AI generation request failed in ${duration}ms after exceeding the 120 seconds limit.`
+            `[SummaryAI] REQUEST TIMED OUT! AI generation request failed in ${duration}ms after exceeding the ${timeoutSeconds} seconds first-output limit.`
           )
         } else {
           logger.error(
-            `[SummaryAI] generateText request failed in ${duration}ms. Error name: ${err.name}, message: ${err.message}`,
+            `[SummaryAI] streamText request failed in ${duration}ms. Error name: ${err.name}, message: ${err.message}`,
             err
           )
         }
 
         throw err
       } finally {
-        clearTimeout(timeoutId!)
         userSignal?.removeEventListener('abort', onUserAbort)
       }
     }

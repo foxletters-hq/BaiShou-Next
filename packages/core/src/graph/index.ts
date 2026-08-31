@@ -1,2 +1,5 @@
 export * from './graph-llm-extraction.service'
 export * from './graph-rag.service'
+export * from './find-or-create-graph-node'
+export * from './graph-entity-align'
+export * from './graph-merge-nodes'

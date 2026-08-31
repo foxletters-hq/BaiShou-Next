@@ -4,7 +4,7 @@ import {
   SYSTEM_LATTE_ASSISTANT_ID,
   getDefaultLatteAssistantSystemPrompt
 } from '@baishou/shared'
-import { HelpTooltip, SettingsPageChrome, useToast } from '@baishou/ui'
+import { HelpTooltip, SettingsPageChrome, useDialog, useToast } from '@baishou/ui'
 import { useAssistantStore } from '@baishou/store'
 import styles from './DiarySettingsPane.module.css'
 import pane from './GeneralSettingsPane.module.css'
@@ -18,13 +18,13 @@ type LatteAssistantRow = {
 export const LatteSettingsPane: React.FC = () => {
   const { t, i18n } = useTranslation()
   const toast = useToast()
+  const dialog = useDialog()
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [personaPrompt, setPersonaPrompt] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
   const [dirty, setDirty] = useState(false)
-  const [confirmFetchLatest, setConfirmFetchLatest] = useState(false)
 
   const loadLatte = useCallback(async () => {
     setLoading(true)
@@ -70,10 +70,17 @@ export const LatteSettingsPane: React.FC = () => {
     }
   }
 
-  const handleFetchLatest = () => {
+  const handleFetchLatest = async () => {
+    const confirmed = await dialog.confirm(
+      t(
+        'settings.latte_fetch_latest_confirm',
+        '将用人设官方文案覆盖当前人设提示词，自定义提示词不会改动。覆盖后仍需点击保存才会生效。'
+      ),
+      t('settings.latte_fetch_latest_confirm_title', '获取最新人设？')
+    )
+    if (!confirmed) return
     setPersonaPrompt(getDefaultLatteAssistantSystemPrompt(i18n.language))
     setDirty(true)
-    setConfirmFetchLatest(false)
     toast.showSuccess(t('settings.latte_fetch_latest_done', '已写入最新人设提示词，请保存'))
   }
 
@@ -145,7 +152,7 @@ export const LatteSettingsPane: React.FC = () => {
                     <button
                       type="button"
                       className={styles.btn}
-                      onClick={() => setConfirmFetchLatest(true)}
+                      onClick={() => void handleFetchLatest()}
                       disabled={saving}
                     >
                       {t('settings.latte_fetch_latest', '获取最新')}
@@ -208,38 +215,6 @@ export const LatteSettingsPane: React.FC = () => {
           </>
         ) : null}
       </div>
-
-      {confirmFetchLatest ? (
-        <div className={styles.confirmOverlay} role="dialog" aria-modal="true">
-          <div className={styles.confirmBox}>
-            <div className={styles.confirmTitle}>
-              {t('settings.latte_fetch_latest_confirm_title', '获取最新人设？')}
-            </div>
-            <div className={styles.confirmText}>
-              {t(
-                'settings.latte_fetch_latest_confirm',
-                '将用人设官方文案覆盖当前人设提示词，自定义提示词不会改动。覆盖后仍需点击保存才会生效。'
-              )}
-            </div>
-            <div className={styles.confirmActions}>
-              <button
-                type="button"
-                className={styles.btn}
-                onClick={() => setConfirmFetchLatest(false)}
-              >
-                {t('common.cancel', '取消')}
-              </button>
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={handleFetchLatest}
-              >
-                {t('settings.latte_fetch_latest', '获取最新')}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </SettingsPageChrome>
   )
 }

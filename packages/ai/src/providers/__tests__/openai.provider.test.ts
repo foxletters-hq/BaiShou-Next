@@ -89,4 +89,25 @@ describe('OpenAIAdaptedProvider', () => {
     const mockProvider = vi.mocked(openaiSdk.createOpenAI).mock.results.at(-1)!.value
     expect(mockProvider.responses).toHaveBeenCalledWith('gpt-5.6-sol')
   })
+
+  it('uses openai-compatible SDK for embeddings on compatible gateways', () => {
+    vi.mocked(openaiSdk.createOpenAI).mockClear()
+    vi.mocked(openaiCompatibleSdk.createOpenAICompatible).mockClear()
+    const config = createAiProvider({
+      id: ProviderType.DeepSeek,
+      name: 'DeepSeek',
+      type: ProviderType.DeepSeek,
+      apiKey: 'test-key',
+      baseUrl: 'https://api.deepseek.com/v1'
+    })
+
+    const provider = new OpenAIAdaptedProvider(config)
+    provider.getEmbeddingModel('Qwen/Qwen3-Embedding-4B')
+
+    expect(openaiCompatibleSdk.createOpenAICompatible).toHaveBeenCalled()
+    const mockProvider = vi.mocked(openaiCompatibleSdk.createOpenAICompatible).mock.results.at(-1)!
+      .value
+    expect(mockProvider.textEmbeddingModel).toHaveBeenCalledWith('Qwen/Qwen3-Embedding-4B')
+    expect(openaiSdk.createOpenAI).not.toHaveBeenCalled()
+  })
 })

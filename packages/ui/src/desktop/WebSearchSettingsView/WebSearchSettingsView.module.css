@@ -47,7 +47,7 @@
 }
 
 .scrollArea::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .scrollArea::-webkit-scrollbar-thumb {

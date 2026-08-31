@@ -7,7 +7,6 @@ import {
   Cable,
   Layers,
   Cloud,
-  Database,
   Globe,
   GraduationCap,
   Coffee,
@@ -19,7 +18,7 @@ import {
   Puzzle,
   RefreshCw,
   Settings,
-  Share2,
+  PawPrint,
   SlidersHorizontal,
   Sparkles,
   Volume2,
@@ -38,7 +37,7 @@ export const DEFAULT_VISIBLE_NAV_IDS = [
   'diary',
   'companion',
   'summary',
-  'graph',
+  'memory',
   'incremental-sync'
 ] as const
 
@@ -48,7 +47,7 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'companion',
   'workbench',
   'summary',
-  'graph',
+  'memory',
   'diary-template',
   'general',
   'mcp',
@@ -56,7 +55,6 @@ export const ALL_SIDEBAR_NAV_IDS = [
   'ai-models',
   'assistants',
   'latte',
-  'rag',
   'web-search',
   'agent-tools',
   'summary-settings',
@@ -111,7 +109,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
       'companion',
       'workbench',
       'summary',
-      'graph',
+      'memory',
       'diary-template',
       'summary-settings'
     ]
@@ -138,7 +136,7 @@ export const SIDEBAR_NAV_GROUPS: SidebarNavGroupDef[] = [
     key: 'settings-companion',
     labelKey: 'settings.nav_group_companion',
     defaultLabel: i18n.t('settings.nav_group_companion', '伙伴'),
-    itemIds: ['assistants', 'latte', 'agent-tools', 'rag']
+    itemIds: ['assistants', 'latte', 'agent-tools']
   },
   {
     key: 'memory',
@@ -165,7 +163,7 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   companion: '/chat',
   workbench: '/agent-workspace',
   summary: '/summary',
-  graph: '/graph',
+  memory: '/memory',
   'diary-template': `${SETTINGS_HUB_PREFIX}/diary-template`,
   general: `${SETTINGS_HUB_PREFIX}/general`,
   mcp: `${SETTINGS_HUB_PREFIX}/mcp`,
@@ -173,7 +171,6 @@ export const SIDEBAR_NAV_PATHS: Record<SidebarNavId, string> = {
   'ai-models': `${SETTINGS_HUB_PREFIX}/ai-models`,
   assistants: `${SETTINGS_HUB_PREFIX}/assistants`,
   latte: `${SETTINGS_HUB_PREFIX}/latte`,
-  rag: `${SETTINGS_HUB_PREFIX}/rag`,
   'web-search': `${SETTINGS_HUB_PREFIX}/web-search`,
   'agent-tools': `${SETTINGS_HUB_PREFIX}/agent-tools`,
   'summary-settings': `${SETTINGS_HUB_PREFIX}/summary`,
@@ -210,10 +207,10 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       label: t('summary.dashboard_title', '回忆'),
       path: '/summary'
     },
-    graph: {
-      icon: icon(<Share2 />),
-      label: t('nav.graph', '关系图谱'),
-      path: '/graph'
+    memory: {
+      icon: icon(<PawPrint />),
+      label: t('nav.memory', '记忆'),
+      path: '/memory'
     },
     'diary-template': {
       icon: icon(<NotebookPen />),
@@ -249,11 +246,6 @@ export function buildSidebarNavItems(t: TFunction): Record<SidebarNavId, Sidebar
       icon: icon(<Coffee />),
       label: t('settings.latte_settings_title', 'Latte'),
       path: `${SETTINGS_HUB_PREFIX}/latte`
-    },
-    rag: {
-      icon: icon(<Database />),
-      label: t('agent.rag.title', '伙伴记忆管理'),
-      path: `${SETTINGS_HUB_PREFIX}/rag`
     },
     'web-search': {
       icon: icon(<Globe />),

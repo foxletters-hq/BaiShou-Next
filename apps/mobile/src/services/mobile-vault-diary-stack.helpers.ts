@@ -66,6 +66,7 @@ export function createVaultBoundDiaryStack(deps: {
   )
   wireMobilePendingReextractHook({
     vaultName: activeVault.name,
+    vaultId: activeVault.id,
     shadowRepo,
     pathService: deps.pathService,
     fileSystem: deps.fileSystem,

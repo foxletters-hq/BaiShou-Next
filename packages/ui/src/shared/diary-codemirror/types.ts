@@ -21,6 +21,8 @@ export interface DiaryCmPlatform {
   scrollMode?: 'viewport' | 'document'
   /** CM 内嵌 UI（如 ckant 表格菜单）文案；key 为 i18n 路径，defaultValue 为英文回退 */
   translate?: (key: string, defaultValue: string) => string
+  /** 将文件开头的 name:/description: 当作 properties 元信息，而不是正文或分割线 */
+  documentProperties?: boolean
 }
 
 export type DiaryCmInteractionMode = DiaryCmPlatform['interactionMode']

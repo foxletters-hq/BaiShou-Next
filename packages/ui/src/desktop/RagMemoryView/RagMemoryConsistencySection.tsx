@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Checkbox } from '../Checkbox/Checkbox'
 import type { MemoryConsistencyReport } from './rag-memory.types'
 import styles from './RagMemoryView.module.css'
 
@@ -160,8 +161,7 @@ export const RagMemoryConsistencySection: React.FC<RagMemoryConsistencySectionPr
               <div className={styles.consistencyMissingList}>
                 {report.missing.map((item) => (
                   <label key={item.id} className={styles.consistencyMissingItem}>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedMissing.has(item.id)}
                       onChange={() => toggleMissing(item.id)}
                     />

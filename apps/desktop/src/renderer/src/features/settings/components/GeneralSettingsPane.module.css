@@ -105,3 +105,13 @@
   width: 100%;
   box-sizing: border-box;
 }
+
+.selectControl {
+  width: 176px;
+  flex-shrink: 0;
+}
+
+.kindTabs {
+  display: flex;
+  align-items: center;
+}

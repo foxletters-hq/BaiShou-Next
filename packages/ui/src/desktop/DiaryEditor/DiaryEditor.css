@@ -239,8 +239,8 @@
 
 .codemirror-editor-wrapper .cm-scroller::-webkit-scrollbar {
   display: block !important;
-  width: 6px !important;
-  height: 6px !important;
+  width: 10px !important;
+  height: 10px !important;
 }
 
 .codemirror-editor-wrapper .cm-scroller::-webkit-scrollbar-track {

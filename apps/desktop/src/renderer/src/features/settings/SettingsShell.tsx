@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Archive,
@@ -6,8 +6,8 @@ import {
   ArrowLeftRight,
   Cable,
   Cloud,
-  Database,
   Globe,
+  PawPrint,
   GraduationCap,
   History,
   NotebookPen,
@@ -41,27 +41,11 @@ export const SettingsShell: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [isClosing, setIsClosing] = useState(false)
   const settingsRouteActive = useSettingsRouteActive()
-  // 必须从 false 起算：首次挂载时路由往往已是 active
-  const prevSettingsRouteActiveRef = useRef(false)
   const activeTab = pathnameToSettingsTabId(location.pathname)
   const contentKey = getSettingsRouteSegment(location.pathname)
 
   useRagRuntimeBridge(settingsRouteActive)
-
-  useLayoutEffect(() => {
-    if (!settingsRouteActive) {
-      prevSettingsRouteActiveRef.current = false
-      return
-    }
-
-    const opened = !prevSettingsRouteActiveRef.current
-    prevSettingsRouteActiveRef.current = true
-    if (!opened) return
-    // 打开时取消关闭态；进入过渡由 SettingsOverlayHost 遮罩负责
-    setIsClosing(false)
-  }, [settingsRouteActive])
 
   const TABS = useMemo<SettingsTabItem[]>(
     () => [
@@ -122,8 +106,8 @@ export const SettingsShell: React.FC = () => {
       {
         id: 4,
         kind: 'item',
-        label: t('agent.rag.title', '伙伴记忆管理'),
-        icon: <Database size={NAV_ICON_SIZE} />
+        label: t('nav.memory', '记忆'),
+        icon: <PawPrint size={NAV_ICON_SIZE} />
       },
       {
         kind: 'section',
@@ -194,7 +178,7 @@ export const SettingsShell: React.FC = () => {
       {
         id: 17,
         kind: 'item',
-        label: t('legacy_migration.title', '版本迁移'),
+        label: t('version_migration.title', '版本迁移'),
         icon: <ArrowLeftRight size={NAV_ICON_SIZE} />
       }
     ],
@@ -217,9 +201,8 @@ export const SettingsShell: React.FC = () => {
   }
 
   const handleBack = () => {
-    if (isClosing) return
-    setIsClosing(true)
-    // 立即离开路由；「先消失再 fade」由 SettingsOverlayHost 遮罩完成
+    // 立即离开路由；「先消失再 fade」由 SettingsOverlayHost 遮罩完成。
+    // 不要用 isClosing 锁死返回：navigate 若被延后，按钮会再也点不动。
     navigate(resolveSettingsReturnPath(), { replace: true })
   }
 

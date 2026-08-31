@@ -51,12 +51,17 @@ export class AgentChatCoreService {
     ) => Promise<void>
     rawDataSourceManager?: import('@baishou/shared').ToolRawDataSourceManager
     syncGraphPendingIndex?: () => Promise<void>
+    deleteGraphRecord?: (input: { kind: 'node' | 'edge'; id: string }) => Promise<void>
     graphReader?: import('@baishou/shared').ToolGraphReader
+    graphNodeLookup?: import('@baishou/shared').ToolGraphNodeLookup
+    graphEdgeLookup?: import('@baishou/shared').ToolGraphEdgeLookup
     knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
+    knowledgeGraphReader?: import('@baishou/shared').ToolKnowledgeGraphReader
     skillsWriter?: import('../tools/agent.tool').ToolContext['skillsWriter']
     workspace?: import('./agent-session.types').StreamChatOptions['workspace']
     resolveVaultDisplayName?: (vaultId: string) => string | null | undefined
     skillsCatalog?: import('./agent-session.types').StreamChatOptions['skillsCatalog']
+    extraVercelToolsFactory?: import('./agent-session.types').StreamChatOptions['extraVercelToolsFactory']
     maxSteps?: number
     sessionRuntimeV2?: boolean
   }): Promise<{ aborted: boolean }> {
@@ -90,12 +95,17 @@ export class AgentChatCoreService {
           persistBaishouAgentGateConfig: params.persistBaishouAgentGateConfig,
           rawDataSourceManager: params.rawDataSourceManager,
           syncGraphPendingIndex: params.syncGraphPendingIndex,
+          deleteGraphRecord: params.deleteGraphRecord,
           graphReader: params.graphReader,
+          graphNodeLookup: params.graphNodeLookup,
+          graphEdgeLookup: params.graphEdgeLookup,
           knowledgeReader: params.knowledgeReader,
+          knowledgeGraphReader: params.knowledgeGraphReader,
           skillsWriter: params.skillsWriter,
           workspace: params.workspace,
           resolveVaultDisplayName: params.resolveVaultDisplayName,
           skillsCatalog: params.skillsCatalog,
+          extraVercelToolsFactory: params.extraVercelToolsFactory,
           maxSteps: params.maxSteps,
           sessionRuntimeV2: params.sessionRuntimeV2,
           abortSignal: claim.signal,

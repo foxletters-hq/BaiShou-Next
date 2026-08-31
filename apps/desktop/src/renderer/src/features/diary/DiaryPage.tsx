@@ -18,17 +18,17 @@ import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
 import { useStorageIndexing } from './hooks/useStorageIndexing'
 import type { DiaryEntry } from './DiaryCard'
-import { useToast, withAppContentOverlay } from '@baishou/ui'
+import { useDialog, useToast } from '@baishou/ui'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryGrid } from './components/DiaryGrid'
 import { DiaryStatusBar } from './components/DiaryStatusBar'
-import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
+  const dialog = useDialog()
 
   // 搜索与月份状态（持久化到 sessionStorage）
   const [searchQuery, setSearchQuery] = useState(
@@ -94,7 +94,6 @@ export const DiaryPage: React.FC = () => {
   })
 
   const [todayEntry, setTodayEntry] = useState<DiaryEntry | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [attachmentBasePath, setAttachmentBasePath] = useState<string>('')
   const gridScrollRef = useRef<HTMLDivElement>(null)
   const [pendingGraphCount, setPendingGraphCount] = useState(0)
@@ -289,12 +288,15 @@ export const DiaryPage: React.FC = () => {
     navigate(`/diary/new?date=${dateStr}`)
   }
 
-  const performDelete = async () => {
-    if (deletingId === null) return
+  const handleDeleteEntry = async (id: number) => {
+    const ok = await dialog.confirm(
+      t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆转。'),
+      t('common.confirm_delete', '确认删除')
+    )
+    if (!ok) return
     try {
-      await window.api.diary.delete(deletingId)
+      await window.api.diary.delete(id)
       loadEntries()
-      setDeletingId(null)
       toast.showSuccess(t('diary.delete_success', '日记已删除'))
     } catch (e) {
       console.error('Delete failed', e)
@@ -365,7 +367,7 @@ export const DiaryPage: React.FC = () => {
         storageIndexing={storageIndexing}
         attachmentBasePath={attachmentBasePath}
         onGoToEditor={goToEditor}
-        onDeleteEntry={setDeletingId}
+        onDeleteEntry={(id) => void handleDeleteEntry(id)}
         onPageChange={setCurrentPage}
         onPageSizeChange={setPageSize}
         onViewAll={() => setSelectedMonth(null)}
@@ -376,32 +378,9 @@ export const DiaryPage: React.FC = () => {
         pendingExtractCount={pendingGraphCount}
         showPendingEmbed={showPendingEmbed}
         pendingEmbedCount={pendingEmbedCount}
-        onPendingExtractClick={() => navigate('/graph')}
-        onPendingEmbedClick={() => navigate(`${SETTINGS_HUB_PREFIX}/rag`)}
+        onPendingExtractClick={() => navigate('/memory/graph')}
+        onPendingEmbedClick={() => navigate('/memory/vectors')}
       />
-
-      {/* 删除确认弹窗 */}
-      {deletingId !== null && (
-        <div
-          className={withAppContentOverlay('diary-delete-modal-overlay')}
-          onClick={() => setDeletingId(null)}
-        >
-          <div className="diary-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="dd-modal-title">{t('common.confirm_delete', '确认删除')}</div>
-            <div className="dd-modal-content">
-              {t('diary.delete_warning', '您确定要永久删除这篇日记吗？此操作不可逆转。')}
-            </div>
-            <div className="dd-modal-actions">
-              <button className="dd-btn-cancel" onClick={() => setDeletingId(null)}>
-                {t('common.cancel', '取消')}
-              </button>
-              <button className="dd-btn-confirm" onClick={performDelete}>
-                {t('common.delete', '删除')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </motion.div>
   )
 }

@@ -112,7 +112,7 @@
 }
 
 .settings-nav-scroll::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 .settings-nav-scroll::-webkit-scrollbar-thumb {
   background-color: var(--color-outline-variant);
@@ -223,7 +223,7 @@
 }
 
 .settings-content-scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .settings-content-scroll::-webkit-scrollbar-thumb {
@@ -274,6 +274,12 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+
+.settings-content-motion-host > .settings-pane-body > .memory-center-embedded {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .settings-content-motion-host {

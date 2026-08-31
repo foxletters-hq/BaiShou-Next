@@ -1,8 +1,15 @@
 import { createRequire } from 'node:module'
 import fs from 'node:fs'
-import { registerPdfNumPagesProbe, registerPdfPageExtractor } from '@baishou/core-desktop'
+import {
+  extractEpubPageTexts,
+  registerEpubPageExtractor,
+  registerPdfNumPagesProbe,
+  registerPdfPageExtractor,
+  registerPdfPageSampleExtractor
+} from '@baishou/core-desktop'
 
 const nodeRequire = createRequire(import.meta.url)
+const PDF_PROBE_STOP = 'pdf-probe-stop'
 
 async function probePdfNumPages(filePath: string): Promise<number | null> {
   try {
@@ -17,23 +24,25 @@ async function probePdfNumPages(filePath: string): Promise<number | null> {
   }
 }
 
-/**
- * 桌面端：用 pdf-parse 的 pagerender 按页抽取文本层；并注册 numPages probe。
- */
-export function registerDesktopPdfPageExtractor(): void {
-  registerPdfNumPagesProbe(probePdfNumPages)
+async function extractPdfPageTextsLimited(
+  filePath: string,
+  maxPages?: number
+): Promise<string[]> {
+  const pdfParse = nodeRequire('pdf-parse') as (
+    buffer: Buffer,
+    options?: { pagerender?: (pageData: unknown) => Promise<string> }
+  ) => Promise<{ text?: string; numpages?: number; numPages?: number }>
 
-  registerPdfPageExtractor(async (filePath: string) => {
-    const pdfParse = nodeRequire('pdf-parse') as (
-      buffer: Buffer,
-      options?: { pagerender?: (pageData: unknown) => Promise<string> }
-    ) => Promise<{ text?: string; numpages?: number; numPages?: number }>
+  const dataBuffer = fs.readFileSync(filePath)
+  const pageTexts: string[] = []
+  const limit = maxPages && maxPages > 0 ? maxPages : Number.POSITIVE_INFINITY
 
-    const dataBuffer = fs.readFileSync(filePath)
-    const pageTexts: string[] = []
-
+  try {
     const parsed = await pdfParse(dataBuffer, {
       pagerender: async (pageData: unknown) => {
+        if (pageTexts.length >= limit) {
+          throw new Error(PDF_PROBE_STOP)
+        }
         try {
           const page = pageData as {
             getTextContent: () => Promise<{ items?: Array<{ str?: string }> }>
@@ -49,7 +58,8 @@ export function registerDesktopPdfPageExtractor(): void {
             .trim()
           pageTexts.push(pageText)
           return pageText
-        } catch {
+        } catch (error) {
+          if (error instanceof Error && error.message === PDF_PROBE_STOP) throw error
           pageTexts.push('')
           return ''
         }
@@ -65,15 +75,33 @@ export function registerDesktopPdfPageExtractor(): void {
       const text = (data.text || '').trim()
       const n = Number(data.numpages ?? numPages ?? 0)
       if (n > 0) {
-        const pages = Array.from({ length: n }, () => '')
+        const pages = Array.from({ length: Math.min(n, Number.isFinite(limit) ? limit : n) }, () => '')
         if (text) pages[0] = text
         return pages
       }
       return text ? [text] : []
     }
 
-    // 用官方 numPages 补齐空页，避免页数未知
-    while (numPages > 0 && pageTexts.length < numPages) pageTexts.push('')
-    return pageTexts
-  })
+    if (!Number.isFinite(limit)) {
+      while (numPages > 0 && pageTexts.length < numPages) pageTexts.push('')
+    }
+    return pageTexts.slice(0, Number.isFinite(limit) ? limit : pageTexts.length)
+  } catch (error) {
+    if (error instanceof Error && error.message === PDF_PROBE_STOP) {
+      return pageTexts.slice(0, Number.isFinite(limit) ? limit : pageTexts.length)
+    }
+    throw error
+  }
+}
+
+/**
+ * 桌面端：用 pdf-parse 的 pagerender 按页抽取文本层；并注册 numPages probe。
+ */
+export function registerDesktopPdfPageExtractor(): void {
+  registerPdfNumPagesProbe(probePdfNumPages)
+  registerPdfPageExtractor((filePath) => extractPdfPageTextsLimited(filePath))
+  registerPdfPageSampleExtractor((filePath, maxPages) =>
+    extractPdfPageTextsLimited(filePath, maxPages)
+  )
+  registerEpubPageExtractor(async (filePath) => extractEpubPageTexts(fs.readFileSync(filePath)))
 }

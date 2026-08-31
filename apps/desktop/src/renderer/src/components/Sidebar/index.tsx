@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback, startTransition } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { GripVertical, Settings, SlidersHorizontal } from 'lucide-react'
 import styles from './Sidebar.module.css'
 import { useTranslation } from 'react-i18next'
-import { useUserProfileStore } from '@baishou/store'
+import { useSettingsStore, useUserProfileStore } from '@baishou/store'
 import { useToast } from '@baishou/ui/desktop/Toast/useToast'
-import { buildAgentChatNavigationPath, isCustomUserAvatar } from '@baishou/shared'
+import { isCustomUserAvatar, resolveCompanionReturnPath } from '@baishou/shared'
 import appIcon from '@baishou/shared/assets/images/icon.png'
 import {
   isSidebarVisibilityConfigured,
@@ -35,6 +35,9 @@ import { readActiveVaultNavigationSnapshot } from '../../lib/agent-navigation-pe
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation()
   const { profile, loadProfile } = useUserProfileStore()
+  const restoreLastSessionOnReturn = useSettingsStore(
+    (s) => s.agentBehavior?.restoreLastSessionOnReturn !== false
+  )
   const toast = useToast()
 
   const navigate = useNavigate()
@@ -136,8 +139,12 @@ export const Sidebar: React.FC = () => {
 
   const navigateToNavId = (id: SidebarNavId, path: string) => {
     if (id === 'companion') {
-      const saved = readActiveVaultNavigationSnapshot()
-      navigate(saved ? buildAgentChatNavigationPath(saved) : '/chat')
+      navigate(
+        resolveCompanionReturnPath({
+          restoreLastSessionOnReturn,
+          snapshot: readActiveVaultNavigationSnapshot()
+        })
+      )
       return
     }
     navigate(path)
@@ -244,9 +251,7 @@ export const Sidebar: React.FC = () => {
               onClick={() => {
                 setManageModalOpen(false)
                 rememberSettingsReturnPath(locationToReturnPath(location))
-                startTransition(() => {
-                  navigate('/settings/general')
-                })
+                navigate('/settings/general')
               }}
             >
               <span className={styles.navIcon}>

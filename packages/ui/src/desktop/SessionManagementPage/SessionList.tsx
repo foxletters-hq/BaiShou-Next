@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
+import { Checkbox } from '../Checkbox/Checkbox'
 import type { SessionInfo } from './session-management.types'
 import { formatSessionDate } from './session-management.utils'
 import styles from './SessionManagementPage.module.css'
@@ -46,9 +47,7 @@ export const SessionList: React.FC<SessionListProps> = ({
           onClick={() => (isMultiSelect ? onToggleSelect(session.id) : onSessionTap(session))}
         >
           {isMultiSelect && (
-            <input
-              type="checkbox"
-              className={styles.sessionCheckbox}
+            <Checkbox
               checked={selectedIds.has(session.id)}
               onChange={() => onToggleSelect(session.id)}
               onClick={(e) => e.stopPropagation()}

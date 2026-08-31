@@ -15,8 +15,45 @@ const VISIBILITY_CONFIGURED_KEY = 'desktop_sidebar_visibility_configured'
 const HIDDEN_ITEMS_KEY = 'desktop_sidebar_hidden_items'
 const NAV_ORDER_KEY = 'desktop_sidebar_nav_order'
 const MIGRATION_VERSION_KEY = 'desktop_sidebar_mv'
-/** v4：伙伴进侧栏默认可见；工作台改由顶栏进入（侧栏默认隐藏） */
-const CURRENT_MIGRATION_VERSION = 4
+/** v5：人生关系图 / 伙伴记忆管理收拢为「记忆」 */
+const CURRENT_MIGRATION_VERSION = 5
+
+export function migrateSidebarNavIdsToMemory(input: {
+  order: readonly string[]
+  hidden: readonly string[]
+}): { order: string[]; hidden: string[] } {
+  const hidden = new Set(input.hidden)
+  const graphVisible = input.order.includes('graph') && !hidden.has('graph')
+  const ragVisible = input.order.includes('rag') && !hidden.has('rag')
+  const memoryAlreadyVisible = input.order.includes('memory') && !hidden.has('memory')
+  const memoryVisible = graphVisible || ragVisible || memoryAlreadyVisible
+
+  const order: string[] = []
+  let insertedMemory = false
+  for (const id of input.order) {
+    if (id === 'graph' || id === 'memory') {
+      if (!insertedMemory) {
+        order.push('memory')
+        insertedMemory = true
+      }
+      continue
+    }
+    if (id === 'rag') continue
+    order.push(id)
+  }
+  if (!insertedMemory) {
+    const summaryIndex = order.indexOf('summary')
+    if (summaryIndex >= 0) order.splice(summaryIndex + 1, 0, 'memory')
+    else order.push('memory')
+  }
+
+  hidden.delete('graph')
+  hidden.delete('rag')
+  if (memoryVisible) hidden.delete('memory')
+  else hidden.add('memory')
+
+  return { order, hidden: [...hidden] }
+}
 
 /** 仅从日记区侧边栏移除；仍可通过系统设置访问 */
 const REMOVED_SIDEBAR_NAV_IDS = new Set(['legacy-migration'])
@@ -33,6 +70,7 @@ export function markSidebarVisibilityConfigured(): void {
 
 /** 未手动配置前：默认显示日记、伙伴、回忆、图谱与增量同步 */
 export function loadHiddenNavItems(): string[] {
+  applySidebarMemoryNavMigration()
   if (!isSidebarVisibilityConfigured()) {
     return [...getDefaultHiddenNavIds()]
   }
@@ -74,6 +112,31 @@ export function filterVisibleNavIds(order: string[]): string[] {
 
 export { SIDEBAR_NAV_PATHS }
 
+function readRawNavList(key: string): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || 'null') as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((id): id is string => typeof id === 'string')
+  } catch {
+    return []
+  }
+}
+
+function applySidebarMemoryNavMigration(): void {
+  const mv = parseInt(localStorage.getItem(MIGRATION_VERSION_KEY) || '0', 10)
+  if (mv >= 5) return
+  if (!isSidebarVisibilityConfigured()) return
+  const rawOrder = readRawNavList(NAV_ORDER_KEY)
+  const rawHidden = readRawNavList(HIDDEN_ITEMS_KEY)
+  if (rawOrder.length === 0 && rawHidden.length === 0) return
+  const migrated = migrateSidebarNavIdsToMemory({
+    order: rawOrder.length > 0 ? rawOrder : [...ALL_SIDEBAR_NAV_IDS],
+    hidden: rawHidden
+  })
+  localStorage.setItem(NAV_ORDER_KEY, JSON.stringify(migrated.order))
+  persistHiddenNavItems(migrated.hidden.filter((id) => ALL_NAV_ID_SET.has(id)))
+}
+
 /** 日记区首页：固定为日记列表，不受侧边栏排序影响 */
 export const DIARY_HOME_PATH = '/diary'
 
@@ -98,6 +161,7 @@ function ensureCompanionAfterDiary(order: string[]): string[] {
 
 /** 合并迁移：补全新导航项、应用默认隐藏策略 */
 export function loadSidebarNavOrder(): string[] {
+  applySidebarMemoryNavMigration()
   const defaults = [...ALL_SIDEBAR_NAV_IDS]
   const saved = localStorage.getItem(NAV_ORDER_KEY)
   let order: string[] = [...defaults]

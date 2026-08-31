@@ -40,11 +40,25 @@ function applyResolvedToUi(resolved: ReturnType<typeof resolveDialogueModelSelec
 /**
  * 模型选择 Hook
  *
- * 权威解析链：伙伴 → 用户手动选择 → 全局默认 → none（unknown 哨兵，不伪造默认模型）。
+ * 权威解析链：用户手动选择 → 全局默认 → none（unknown 哨兵，不伪造默认模型）。
  */
+function isSameSelectionState(
+  left: AgentDialogueSelectionState,
+  right: AgentDialogueSelectionState
+): boolean {
+  return (
+    left.assistantId === right.assistantId &&
+    left.providerId === right.providerId &&
+    left.modelId === right.modelId &&
+    left.modelSelectionSource === right.modelSelectionSource
+  )
+}
+
 export function useModelSelection(params: UseModelSelectionParams): UseModelSelectionResult {
   const { sessionId, currentAssistant } = params
-  const settings = useSettingsStore()
+  const globalModels = useSettingsStore((s) => s.globalModels)
+  const globalDialogueProviderId = globalModels?.globalDialogueProviderId
+  const globalDialogueModelId = globalModels?.globalDialogueModelId
 
   const assistantId = currentAssistant?.id != null ? String(currentAssistant.id) : undefined
 
@@ -70,7 +84,9 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
   const commitResolved = useCallback(
     (resolved: ReturnType<typeof resolveDialogueModelSelection>) => {
       const next = buildAgentDialogueSelectionState({ assistantId, resolved })
-      const switches = detectDialogueSelectionSwitches(selectionStateRef.current, next, sessionId)
+      const previous = selectionStateRef.current
+      if (isSameSelectionState(previous, next)) return
+      const switches = detectDialogueSelectionSwitches(previous, next, sessionId)
       selectionStateRef.current = next
       setSelectionState(next)
       setModelSelectionSource(resolved.source)
@@ -90,35 +106,30 @@ export function useModelSelection(params: UseModelSelectionParams): UseModelSele
     if (userManuallySetModelRef.current) return
 
     const resolved = resolveDialogueModelSelection({
-      assistantProviderId: currentAssistant?.providerId,
-      assistantModelId: currentAssistant?.modelId,
-      globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
-      globalDialogueModelId: settings.globalModels?.globalDialogueModelId
+      globalDialogueProviderId,
+      globalDialogueModelId
     })
     const ui = applyResolvedToUi(resolved)
     setCurrentProviderId(ui.providerId)
     setCurrentModelId(ui.modelId)
     commitResolved(resolved)
-  }, [sessionId, currentAssistant, settings.globalModels, assistantId, commitResolved])
+  }, [sessionId, globalDialogueProviderId, globalDialogueModelId, commitResolved])
 
   useEffect(() => {
     if (!userManuallySetModelRef.current) return
 
     const resolved = resolveDialogueModelSelection({
-      assistantProviderId: currentAssistant?.providerId,
-      assistantModelId: currentAssistant?.modelId,
       requestedProviderId: currentProviderId,
       requestedModelId: currentModelId,
-      globalDialogueProviderId: settings.globalModels?.globalDialogueProviderId,
-      globalDialogueModelId: settings.globalModels?.globalDialogueModelId
+      globalDialogueProviderId,
+      globalDialogueModelId
     })
     commitResolved(resolved)
   }, [
     currentProviderId,
     currentModelId,
-    currentAssistant,
-    settings.globalModels,
-    assistantId,
+    globalDialogueProviderId,
+    globalDialogueModelId,
     commitResolved
   ])
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, createElement } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,9 +16,7 @@ import {
   mergeDiaryTags,
   type DiaryTemplateConfig
 } from '@baishou/shared'
-import { useToast } from '@baishou/ui'
-import { ensureDesktopGraphSelfName } from '../utils/ensure-graph-self-name'
-import { graphQueueExtract } from '../../graph/graph-extract-queue.api'
+import { useDialog, useToast } from '@baishou/ui'
 
 type DiaryEditorInitialState = {
   content: string
@@ -39,6 +37,7 @@ export function useDiaryEditorPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const toast = useToast()
+  const dialog = useDialog()
 
   const isAppendMode = searchParams.get('append') === '1'
 
@@ -330,7 +329,6 @@ export function useDiaryEditorPage() {
     return false
   }
 
-  const [showExitConfirm, setShowExitConfirm] = useState(false)
   /** idle → saving → leaving（退场动画）→ 导航 */
   const [savePhase, setSavePhase] = useState<'idle' | 'saving' | 'leaving'>('idle')
 
@@ -343,13 +341,19 @@ export function useDiaryEditorPage() {
     }
   }, [navigate])
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (savePhase !== 'idle') return
     if (checkIsReallyDirty()) {
-      setShowExitConfirm(true)
-    } else {
-      goBackToSidebar()
+      const ok = await dialog.confirm(
+        t(
+          'diary.editor_leave_confirm',
+          '当前有尚未保存的文字，如果强行退出，将不会保存刚才键入的内容。确定要丢弃并离开吗？'
+        ),
+        t('common.confirm_leave', '确认离开')
+      )
+      if (!ok) return
     }
+    goBackToSidebar()
   }
 
   const handleSave = async () => {
@@ -357,71 +361,7 @@ export function useDiaryEditorPage() {
     setSavePhase('saving')
     try {
       await autoSave(content)
-      const dateKey = formatLocalDate(selectedDate)
-      let pendingFilePath: string | null = null
-      try {
-        const pending = await window.api.graph.listPendingReextract()
-        const hit = pending.find(
-          (p) => p.date === dateKey || String(p.filePath || '').includes(dateKey)
-        )
-        pendingFilePath = hit?.filePath ?? null
-      } catch {
-        // graph API optional for save success path
-      }
-
-      if (pendingFilePath) {
-        const extractPath = pendingFilePath
-        toast.showSuccess(
-          createElement(
-            'span',
-            { style: { display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' } },
-            t('common.saved', '已保存'),
-            ' · ',
-            createElement(
-              'button',
-              {
-                type: 'button',
-                style: {
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  margin: 0,
-                  color: 'var(--accent, #2563eb)',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  font: 'inherit'
-                },
-                onClick: (e: { stopPropagation: () => void }) => {
-                  e.stopPropagation()
-                  void (async () => {
-                    try {
-                      const selfName = await ensureDesktopGraphSelfName()
-                      if (!selfName) {
-                        toast.showError(
-                          t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取')
-                        )
-                        navigate('/graph')
-                        return
-                      }
-                      await graphQueueExtract({ filePaths: [extractPath] })
-                      toast.showSuccess(
-                        t('graph.extract_queued_one', '已加入后台整理队列，可继续写日记')
-                      )
-                    } catch (err: unknown) {
-                      const message = err instanceof Error ? err.message : String(err)
-                      toast.showError(message || t('graph.extract_failed', '整理失败'))
-                    }
-                  })()
-                }
-              },
-              t('graph.extract_this_entry', '让伙伴记住这篇里的人和事')
-            )
-          ),
-          { duration: 8000 }
-        )
-      } else {
-        toast.showSuccess(t('common.saved', '已保存'))
-      }
+      toast.showSuccess(t('common.saved', '已保存'))
       setSavePhase('leaving')
       await new Promise((resolve) => setTimeout(resolve, 320))
       goBackToSidebar()
@@ -445,8 +385,6 @@ export function useDiaryEditorPage() {
     isDirty,
     isSaving: savePhase !== 'idle',
     savePhase,
-    showExitConfirm,
-    setShowExitConfirm,
     handleContentChange,
     handleBack,
     handleSave,

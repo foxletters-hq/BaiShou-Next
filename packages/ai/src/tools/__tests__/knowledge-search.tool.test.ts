@@ -50,7 +50,42 @@ describe('KnowledgeSearchTool', () => {
     } as unknown as ToolContext
 
     const result = await tool.execute({ query: '对齐' }, context)
-    expect(result).toMatch(/not available/i)
+    expect(result).toMatch(/不可用/)
+  })
+
+  it('ignores companion args.notebookId when a notebook is already bound', async () => {
+    const search = vi.fn().mockResolvedValue([])
+    const context = {
+      knowledgeReader: { search },
+      workspace: {
+        folderRoot: '',
+        sessionKind: 'companion',
+        notebookId: 'nb-bound'
+      }
+    } as unknown as ToolContext
+
+    await tool.execute({ query: '蒙太奇', notebookId: 'nb-other' }, context)
+    expect(search).toHaveBeenCalledWith({
+      query: '蒙太奇',
+      notebookId: 'nb-bound',
+      limit: 8
+    })
+  })
+
+  it('uses the bound notebook when companion args omit notebookId', async () => {
+    const search = vi.fn().mockResolvedValue([])
+    const context = {
+      knowledgeReader: { search },
+      workspace: {
+        folderRoot: '',
+        sessionKind: 'companion',
+        notebookId: 'nb-bound'
+      }
+    } as unknown as ToolContext
+
+    const result = await tool.execute({ query: '蒙太奇' }, context)
+    expect(search).toHaveBeenCalledWith({ query: '蒙太奇', notebookId: 'nb-bound', limit: 8 })
+    expect(result).toContain('没有找到')
   })
 
   it('forces workspace attached notebookId over args (K1.3)', async () => {

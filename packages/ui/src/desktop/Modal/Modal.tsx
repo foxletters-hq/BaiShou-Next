@@ -17,6 +17,11 @@ export interface ModalProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
    * Set false for immersive full-window surfaces.
    */
   containToContentCard?: boolean
+  /**
+   * scale 会把文字先栅格化再拉伸，CJK 看起来像换了字体。
+   * 确认框等短文案弹窗应使用 fade。
+   */
+  animation?: 'scale' | 'fade'
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -29,16 +34,15 @@ export const Modal: React.FC<ModalProps> = ({
   zIndex = 1000,
   overlayClassName = '',
   containToContentCard = true,
+  animation = 'scale',
   ...props
 }) => {
   useEffect(() => {
-    if (isOpen && typeof document !== 'undefined') {
-      document.body.style.overflow = 'hidden'
-    } else if (typeof document !== 'undefined') {
-      document.body.style.overflow = 'auto'
-    }
+    if (!isOpen || typeof document === 'undefined') return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     return () => {
-      if (typeof document !== 'undefined') document.body.style.overflow = 'auto'
+      document.body.style.overflow = previousOverflow
     }
   }, [isOpen])
 
@@ -63,7 +67,7 @@ export const Modal: React.FC<ModalProps> = ({
       onPointerDown={handleOverlayPointerDown}
     >
       <div
-        className={`${styles.modal} ${className}`.trim()}
+        className={`${styles.modal} ${animation === 'fade' ? styles.modalFade : ''} ${className}`.trim()}
         style={{ zIndex: zIndex + 1 }}
         onClick={(e) => e.stopPropagation()}
         {...props}

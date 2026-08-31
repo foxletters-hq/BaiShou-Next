@@ -133,6 +133,10 @@ export function registerGitSyncIPC() {
     return getGitService().getRecentPulls(limit)
   })
 
+  ipcMain.handle('git:getRemoteStatus', async (_, fetch?: boolean) => {
+    return getGitService().getRemoteStatus({ fetch: Boolean(fetch) })
+  })
+
   ipcMain.handle('git:getCommitChanges', async (_, commitHash: string) => {
     return getGitService().getCommitChanges(commitHash)
   })
@@ -190,6 +194,30 @@ export function registerGitSyncIPC() {
         success: false,
         message:
           e?.message || i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L168', '推送失败')
+      }
+    }
+  })
+
+  ipcMain.handle('git:syncRemote', async () => {
+    try {
+      await getGitService().syncRemote()
+      await resyncAfterGitWorkingTreeMutation('git:sync-remote', { scope: 'full' })
+      return { success: true }
+    } catch (e: any) {
+      if (e instanceof GitRemoteNotConfiguredError) {
+        return {
+          success: false,
+          message: i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L179', '未配置远程仓库')
+        }
+      }
+      if (e instanceof GitPullError) {
+        return { success: false, message: e.message, conflicts: e.conflicts || [] }
+      }
+      logger.error(`[GitIPC] 同步远程失败:`, e as any)
+      return {
+        success: false,
+        message:
+          e?.message || i18n.t('auto.apps.desktop.src.main.ipc.git.sync.ipc.L185', '同步远程失败')
       }
     }
   })

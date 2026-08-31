@@ -30,7 +30,7 @@ export const GitStagedSection: React.FC<GitStagedSectionProps> = ({ vm }) => {
       <div className="gmp-collapsible-header" onClick={() => toggleSection('staged')}>
         <span className="gmp-collapsible-arrow">{expandedSections.staged ? '▾' : '▸'}</span>
         <span className="gmp-collapsible-title">
-          {t('version_control.staged_changes', 'Staged Changes')}
+          {t('version_control.staged_changes', '已暂存')}
         </span>
         {stagedCount > 0 && <span className="gmp-collapsible-badge">{stagedCount}</span>}
         {stagedCount > 0 && (

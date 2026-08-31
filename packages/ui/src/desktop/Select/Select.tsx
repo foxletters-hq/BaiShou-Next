@@ -1,5 +1,19 @@
-import React, { useState, useRef, useEffect, SelectHTMLAttributes, type ReactNode } from 'react'
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  type SelectHTMLAttributes,
+  type ReactNode
+} from 'react'
+import { createPortal } from 'react-dom'
+import { withAppContentOverlay } from '../overlay'
 import styles from './Select.module.css'
+import {
+  estimateSelectDropdownHeight,
+  resolveSelectDropdownBox
+} from './select-dropdown-placement.util'
 
 export interface SelectOption {
   value: string
@@ -32,31 +46,72 @@ export const Select: React.FC<SelectProps> = ({
   size = 'medium',
   variant = 'default',
   leading,
-  ...props
+  id,
+  name,
+  'aria-label': ariaLabel
 }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((opt) => opt.value === value)
   const displayLabel = selectedOption?.label || placeholder || ''
 
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current
+    const dropdown = dropdownRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const measured = dropdown?.offsetHeight || estimateSelectDropdownHeight(options.length)
+    const box = resolveSelectDropdownBox(
+      { top: rect.top, bottom: rect.bottom, left: rect.left, width: rect.width },
+      measured,
+      { width: window.innerWidth, height: window.innerHeight },
+      { minWidth: variant === 'ghost' ? 200 : rect.width }
+    )
+    setDropdownStyle({
+      top: `${box.top}px`,
+      left: `${box.left}px`,
+      width: `${box.width}px`,
+      maxHeight: `${box.maxHeight}px`
+    })
+  }, [options.length, variant])
+
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    updatePosition()
+    const frame = requestAnimationFrame(updatePosition)
+    return () => cancelAnimationFrame(frame)
+  }, [isOpen, updatePosition, options.length])
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
+    if (!isOpen) return undefined
+    const dropdown = dropdownRef.current
+    const observer =
+      dropdown && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updatePosition())
+        : null
+    observer?.observe(dropdown)
+
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false)
     }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+    window.addEventListener('keydown', onKeyDown)
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      observer?.disconnect()
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('keydown', onKeyDown)
     }
-  }, [isOpen])
+  }, [isOpen, updatePosition])
 
   const handleToggle = () => {
     if (disabled) return
-    setIsOpen(!isOpen)
+    setIsOpen((open) => !open)
   }
 
   const handleSelect = (val: string) => {
@@ -64,7 +119,7 @@ export const Select: React.FC<SelectProps> = ({
     if (onChange && val !== value) {
       const mockEvent = {
         target: {
-          name: props.name,
+          name,
           value: val
         }
       } as React.ChangeEvent<HTMLSelectElement>
@@ -80,10 +135,21 @@ export const Select: React.FC<SelectProps> = ({
     >
       <div className={styles.wrapper}>
         <div
+          ref={triggerRef}
+          id={id}
           className={`${styles.trigger} ${isOpen ? styles.isOpen : ''} ${error ? styles.hasError : ''}`}
           onClick={handleToggle}
-          role="button"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-label={ariaLabel}
           tabIndex={disabled ? -1 : 0}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              handleToggle()
+            }
+          }}
         >
           {leading ? <span className={styles.leading}>{leading}</span> : null}
           <span className={styles.valueText}>{displayLabel}</span>
@@ -106,45 +172,59 @@ export const Select: React.FC<SelectProps> = ({
           </div>
         </div>
 
-        {isOpen && (
-          <div className={styles.dropdown}>
-            <ul className={styles.optionsList}>
-              {options.map((opt) => {
-                const isSelected = opt.value === value
-                return (
-                  <li
-                    key={opt.value}
-                    className={`${styles.optionItem} ${isSelected ? styles.selected : ''}`}
-                    onClick={() => handleSelect(opt.value)}
-                    role="option"
-                    aria-selected={isSelected}
-                  >
-                    {opt.label}
-                    {isSelected && (
-                      <span className={styles.checkIcon}>
-                        <svg
-                          width="12"
-                          height="9"
-                          viewBox="0 0 12 9"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M1 4.5L4.33333 7.5L11 1.5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
+        {isOpen &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <>
+              <div
+                className={withAppContentOverlay(styles.overlay)}
+                onClick={() => setIsOpen(false)}
+              />
+              <div
+                ref={dropdownRef}
+                className={`${styles.dropdown} ${size === 'small' ? styles.sizeSmall : ''}`}
+                style={dropdownStyle}
+                role="listbox"
+              >
+                <ul className={styles.optionsList}>
+                  {options.map((opt) => {
+                    const isSelected = opt.value === value
+                    return (
+                      <li
+                        key={opt.value}
+                        className={`${styles.optionItem} ${isSelected ? styles.selected : ''}`}
+                        onClick={() => handleSelect(opt.value)}
+                        role="option"
+                        aria-selected={isSelected}
+                      >
+                        {opt.label}
+                        {isSelected && (
+                          <span className={styles.checkIcon}>
+                            <svg
+                              width="12"
+                              height="9"
+                              viewBox="0 0 12 9"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M1 4.5L4.33333 7.5L11 1.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            </>,
+            document.body
+          )}
       </div>
       {error && <span className={styles.errorText}>{error}</span>}
     </div>

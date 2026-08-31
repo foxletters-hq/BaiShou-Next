@@ -9,7 +9,6 @@ import { reconcileUserAvatarProfileAfterStorageChange } from '../lib/user-avatar
 import { MOBILE_EXTERNAL_TEXT_READ_MAX_BYTES } from './mobile-file-read-limits'
 import { classifyIncrementalSyncPaths } from './mobile-incremental-sync-path-classify.util'
 import type { MobileIncrementalSyncOutcome } from './mobile-incremental-engine.types'
-import { deriveLegacyVaultId } from '@baishou/shared'
 import type { MobileDataBootstrapper } from './mobile-bootstrapper.service'
 
 export interface MobileIncrementalAfterSyncDeps {
@@ -51,6 +50,7 @@ export async function runMobileIncrementalAfterSync(
         memory: cls.memory,
         graph: cls.graph,
         notebooks: cls.notebooks,
+        notebookGraphIds: cls.notebookGraphIds.length,
         sessionRefCount: cls.sessionRefs.length
       }
     })
@@ -64,7 +64,8 @@ export async function runMobileIncrementalAfterSync(
       cls.assistants ||
       cls.memory ||
       cls.graph ||
-      cls.notebooks
+      cls.notebooks ||
+      cls.notebookGraphIds.length > 0
 
     let step = 0
     const needsSessionHydrate = cls.sessions || cls.sessionRefs.length > 0
@@ -167,21 +168,23 @@ export async function runMobileIncrementalAfterSync(
             activeVaultId = undefined
           }
           if (!activeVaultId) {
-            activeVaultId = deriveLegacyVaultId(activeVaultName)
+            console.warn('[IncrementalSync] skip graph hydration: no vault.id')
+          } else {
+            const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+            const vaults = deps.vaultService
+              ? deps.vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name }))
+              : undefined
+            await runMobileDerivedIndexHydration({
+              drizzleDb: runtime.drizzleDb,
+              vaultId: activeVaultId,
+              vaultName: activeVaultName,
+              vaults,
+              embeddingProvider: emb.embeddingProvider,
+              embeddingModelId: emb.embeddingModelId,
+              reason: 'incremental-sync',
+              deletedShardPaths: outcome.deletedLocalPaths
+            })
           }
-          const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
-          const vaults = deps.vaultService
-            ? deps.vaultService.getAllVaults().map((v) => ({ id: v.id, name: v.name }))
-            : undefined
-          await runMobileDerivedIndexHydration({
-            drizzleDb: runtime.drizzleDb,
-            vaultId: activeVaultId,
-            vaultName: activeVaultName,
-            vaults,
-            embeddingProvider: emb.embeddingProvider,
-            embeddingModelId: emb.embeddingModelId,
-            reason: 'incremental-sync'
-          })
         }
       } catch (e: unknown) {
         console.warn('[IncrementalSync][PostSync] derived hydration failed:', e)
@@ -203,6 +206,20 @@ export async function runMobileIncrementalAfterSync(
         }
       } catch (e: unknown) {
         console.warn('[IncrementalSync][PostSync] knowledge hydration failed:', e)
+      }
+    }
+
+    if (cls.notebookGraphIds.length > 0) {
+      try {
+        const { runMobileNotebookGraphIndex } = await import('./mobile-raw-data-source.runtime')
+        await runMobileNotebookGraphIndex({
+          notebookIds: cls.notebookGraphIds,
+          pathService: deps.pathService,
+          fileSystem: deps.fileSystem,
+          deletedShardPaths: outcome.deletedLocalPaths
+        })
+      } catch (e: unknown) {
+        console.warn('[IncrementalSync][PostSync] notebook graph index failed:', e)
       }
     }
 

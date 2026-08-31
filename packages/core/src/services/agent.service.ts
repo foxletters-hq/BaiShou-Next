@@ -70,6 +70,7 @@ export class AgentService {
     const result = streamText({
       model,
       system: session.systemPrompt ?? undefined,
+      allowSystemInMessages: true,
       messages,
       tools: Object.keys(vercelTools).length > 0 ? vercelTools : undefined,
       stopWhen: stepCountIs(input.maxSteps ?? 10), // 自动代理工具的递归调用次数限制

@@ -8,9 +8,9 @@ import {
 } from '@baishou/shared'
 
 describe('agent-gate-policy.util', () => {
-  it('treats default exclusion actions as force excluded', () => {
+  it('default exclusion list blocks always-allow without hard force-exclude', () => {
     for (const action of DEFAULT_AGENT_GATE_EXCLUSION_LIST) {
-      expect(isAgentGateActionForceExcluded(action)).toBe(true)
+      expect(isAgentGateActionForceExcluded(action)).toBe(false)
       expect(canPermanentlyAllowAgentGateAction(action)).toBe(false)
     }
   })

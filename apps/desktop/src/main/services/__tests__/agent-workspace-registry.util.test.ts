@@ -92,6 +92,29 @@ describe('agent-workspace-registry.util', () => {
     expect(merged).toHaveLength(0)
   })
 
+  it('sorts pinned workspaces ahead of more recently updated ones', () => {
+    const merged = reconcileRegistryFromSessionBindings(
+      [
+        entry({
+          id: 'recent',
+          folderRoot: 'D:/recent',
+          updatedAt: '2026-08-10T00:00:00.000Z'
+        }),
+        entry({
+          id: 'pinned',
+          folderRoot: 'D:/pinned',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          pinnedAt: '2026-08-14T00:00:00.000Z'
+        })
+      ],
+      [],
+      () => 'unused',
+      '2026-08-15T00:00:00.000Z'
+    )
+
+    expect(merged.map((item) => item.id)).toEqual(['pinned', 'recent'])
+  })
+
   it('clears stale last active workspace id after dedupe', () => {
     const workspaces = [entry({ id: 'kept', folderRoot: 'D:/demo' })]
     expect(resolveValidLastActiveWorkspaceId('removed', workspaces)).toBeUndefined()

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
+  appendFileAttachmentToContentParts,
   appendImagePartToContentParts,
   inferAttachmentFlags,
   finalizeUserContentParts
@@ -8,6 +9,8 @@ import {
 vi.mock('../platform/read-local-file', () => ({
   canReadLocalPath: (p: string) => Boolean(p),
   readLocalFileAsBase64: () => 'ZmFrZQ==',
+  readLocalFileAsBase64Async: async () => 'ZmFrZQ==',
+  readLocalTextFile: async () => 'notes from disk',
   readPdfTextFromPath: async () => 'pdf text'
 }))
 
@@ -52,6 +55,31 @@ describe('appendImagePartToContentParts', () => {
       image: 'ZmFrZQ==',
       mediaType: 'image/png'
     })
+  })
+})
+
+describe('appendFileAttachmentToContentParts', () => {
+  it('reads text files from the original path when textContent is empty', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      { fileName: 'notes.md', filePath: 'D:\\Projects\\invoice\\notes.md', isText: true },
+      { modelId: 'deepseek-v4-flash' }
+    )
+
+    expect((parts[0] as { text: string }).text).toContain('notes from disk')
+    expect((parts[0] as { text: string }).text).toContain('notes.md')
+  })
+
+  it('reads pdf text from the original path when native pdf is unsupported', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      { fileName: 'brief.pdf', filePath: 'D:\\Projects\\invoice\\brief.pdf', isPdf: true },
+      { modelId: 'deepseek-v4-flash', providerType: 'deepseek' }
+    )
+
+    expect((parts[0] as { text: string }).text).toContain('pdf text')
   })
 })
 

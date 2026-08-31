@@ -100,6 +100,9 @@ export class RawDataSourceManager {
       await mgr.replaceShardContent(classified.shardMonth, content)
       return true
     }
+    if (classified.kind === 'notebook-graph') {
+      return false
+    }
     const mgr = this.getGraphManager()
     if (!mgr) return false
     await mgr.replaceShardContent(classified.collection, classified.shardMonth, content)

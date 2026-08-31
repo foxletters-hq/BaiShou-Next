@@ -1,12 +1,28 @@
-import { logger } from '@baishou/shared'
+import { splitTextIntoChunks } from '@baishou/ai'
+import {
+  logger,
+  notebookCoverImageCandidates,
+  normalizeNotebookCoverIcon,
+  normalizeNotebookCoverImage,
+  normalizeNotebookCoverTone,
+  type NotebookGraphExtractStateRawRecord
+} from '@baishou/shared'
 import type { KnowledgeRepository } from '@baishou/database/shared'
 import { md5Hex } from '../fs/md5'
 import type { NotebookRawManager } from '../raw-data/managers/notebook.raw-manager'
+import {
+  resolveHydrationGraphDecision,
+  resolveHydrationSourceDecision
+} from './knowledge-hydration-status.util'
+import { notebookGraphDeletedShardPaths } from '../raw-data/notebook-graph-shard-key.util'
+import type { NotebookGraphIndexService } from './notebook-graph-index.service'
+import type { NotebookGraphRawManager } from './notebook-graph-raw.manager'
 
 export interface KnowledgeHydrationResult {
   notebooksUpserted: number
   sourcesUpserted: number
   embedJobsEnqueued: number
+  graphJobsEnqueued: number
   orphansCleaned: number
   skipped?: string
 }
@@ -18,6 +34,9 @@ export interface KnowledgeHydrationDeps {
   vaultId: string
   /** 未配嵌入模型时仍同步结构层并清理 orphan，但不排 embed job */
   isEmbeddingConfigured: () => boolean
+  /** 有则按 extract-state 差集排 graph job；缺省时有正文就排 */
+  graphRaw?: NotebookGraphRawManager
+  graphIndex?: Pick<NotebookGraphIndexService, 'syncPendingIndex'>
 }
 
 /**
@@ -38,6 +57,7 @@ export class KnowledgeHydrationService {
         notebooksUpserted: 0,
         sourcesUpserted: 0,
         embedJobsEnqueued: 0,
+        graphJobsEnqueued: 0,
         orphansCleaned: 0,
         skipped: 'vault-id-empty'
       }
@@ -47,6 +67,7 @@ export class KnowledgeHydrationService {
     let notebooksUpserted = 0
     let sourcesUpserted = 0
     let embedJobsEnqueued = 0
+    let graphJobsEnqueued = 0
 
     const diskNotebooks = await this.deps.notebookManager.listNotebookRecords()
     const liveSourceIds = new Set<string>()
@@ -55,34 +76,84 @@ export class KnowledgeHydrationService {
     for (const nb of diskNotebooks) {
       liveNotebookIds.add(nb.id)
       const existingNb = await this.deps.repo.getNotebook(nb.id)
+      const diskHasSort =
+        typeof nb.sortOrder === 'number' && Number.isFinite(nb.sortOrder)
+      const diskHasTone = typeof nb.coverTone === 'string'
+      const diskHasIcon = typeof nb.coverIcon === 'string'
+      const diskHasImage = typeof nb.coverImage === 'string'
+      const nextSort = diskHasSort ? nb.sortOrder : (existingNb?.sortOrder ?? 0)
+      const nextTone = diskHasTone
+        ? normalizeNotebookCoverTone(nb.coverTone)
+        : (existingNb?.coverTone ?? '')
+      const nextIcon = diskHasIcon
+        ? normalizeNotebookCoverIcon(nb.coverIcon)
+        : (existingNb?.coverIcon ?? '')
+      let nextImage = diskHasImage
+        ? normalizeNotebookCoverImage(nb.id, nb.coverImage)
+        : (existingNb?.coverImage ?? '')
+      if (!nextImage) {
+        nextImage = await this.findCoverImageOnDisk(nb.id)
+      }
+
       if (!existingNb) {
         await this.deps.repo.createNotebook({
           id: nb.id,
           name: nb.name,
           description: nb.description,
-          vaultId
+          vaultId,
+          sortOrder: nextSort,
+          coverTone: nextTone,
+          coverIcon: nextIcon,
+          coverImage: nextImage
         })
         notebooksUpserted += 1
       } else if (
         existingNb.name !== nb.name ||
         (existingNb.description ?? '') !== (nb.description ?? '') ||
-        existingNb.vaultId !== vaultId
+        existingNb.vaultId !== vaultId ||
+        (existingNb.sortOrder ?? 0) !== nextSort ||
+        (existingNb.coverTone ?? '') !== nextTone ||
+        (existingNb.coverIcon ?? '') !== nextIcon ||
+        (existingNb.coverImage ?? '') !== nextImage
       ) {
         await this.deps.repo.updateNotebook(nb.id, {
           name: nb.name,
           description: nb.description,
-          vaultId
+          vaultId,
+          sortOrder: nextSort,
+          coverTone: nextTone,
+          coverIcon: nextIcon,
+          coverImage: nextImage
         })
         notebooksUpserted += 1
       }
 
+      const extractStateBySource = await this.loadExtractStates(nb.id)
       const sources = await this.deps.notebookManager.listSourceRecords(nb.id)
       for (const src of sources) {
         liveSourceIds.add(src.id)
         const existing = await this.deps.repo.getSource(src.id)
-        const extracted = await this.deps.notebookManager.readExtractedText(nb.id, src.id)
-        const extractedHash = extracted?.trim() ? md5Hex(extracted) : null
+        const extracted = await this.resolveExtracted(nb.id, src.id, existing)
+        const extractedHash = extracted.hash
         const relativePath = this.resolveRelativePath(nb.id, src.path)
+        const chunkCount = await this.deps.repo.countChunksBySource(src.id)
+        const hashChanged =
+          existing?.extractedTextHash != null &&
+          extractedHash != null &&
+          existing.extractedTextHash !== extractedHash
+        const expectedChunkCount = await this.resolveExpectedChunkCount(
+          nb.id,
+          src.id,
+          existing?.status,
+          extracted
+        )
+        const decision = resolveHydrationSourceDecision({
+          existingStatus: existing?.status,
+          extractedHash,
+          hashChanged,
+          chunkCount,
+          expectedChunkCount
+        })
 
         await this.deps.repo.upsertSource({
           id: src.id,
@@ -94,46 +165,39 @@ export class KnowledgeHydrationService {
           contentHash: src.contentHash,
           extractedTextHash: extractedHash,
           extractEngine: src.extractEngine ?? 'simple',
-          pageCount: src.pageCount ?? null,
-          status:
-            existing?.status === 'ready' && extractedHash
-              ? 'ready'
-              : extractedHash
-                ? 'pending'
-                : 'pending'
+          ...(src.pageCount != null ? { pageCount: src.pageCount } : {}),
+          status: decision.status
         })
         sourcesUpserted += 1
 
-        if (!extractedHash) continue
-
-        const chunks = await this.deps.repo.listChunksBySource(src.id)
-        const hashChanged =
-          existing?.extractedTextHash != null && existing.extractedTextHash !== extractedHash
-        const needsEmbed = chunks.length === 0 || hashChanged
-
-        if (!needsEmbed) {
-          if (existing?.status !== 'ready') {
-            await this.deps.repo.updateSourceStatus(src.id, 'ready', {
-              extractedTextHash: extractedHash,
-              errorMessage: null
-            })
-          }
-          continue
+        if (decision.needsEmbed && embeddingOk) {
+          await this.deps.repo.updateSourceStatus(src.id, 'pending', {
+            extractedTextHash: extractedHash,
+            errorMessage: null
+          })
+          await this.deps.repo.enqueueIngestJob({
+            notebookId: nb.id,
+            sourceId: src.id,
+            stage: 'embed',
+            vaultId
+          })
+          embedJobsEnqueued += 1
         }
 
-        if (!embeddingOk) continue
-
-        await this.deps.repo.updateSourceStatus(src.id, 'pending', {
-          extractedTextHash: extractedHash,
-          errorMessage: null
-        })
-        await this.deps.repo.enqueueIngestJob({
-          notebookId: nb.id,
-          sourceId: src.id,
-          stage: 'embed',
-          vaultId
-        })
-        embedJobsEnqueued += 1
+        if (
+          resolveHydrationGraphDecision({
+            extractedHash,
+            extractState: extractStateBySource.get(src.id) ?? null
+          })
+        ) {
+          await this.deps.repo.enqueueIngestJob({
+            notebookId: nb.id,
+            sourceId: src.id,
+            stage: 'graph',
+            vaultId
+          })
+          graphJobsEnqueued += 1
+        }
       }
     }
 
@@ -143,12 +207,63 @@ export class KnowledgeHydrationService {
       notebooksUpserted,
       sourcesUpserted,
       embedJobsEnqueued,
+      graphJobsEnqueued,
       orphansCleaned,
       skipped: embeddingOk ? undefined : 'embedding-not-configured'
     }
 
     logger.info('[KnowledgeHydration] done', { ...result, vaultId })
     return result
+  }
+
+  private async resolveExtracted(
+    notebookId: string,
+    sourceId: string,
+    existing: { extractedTextHash?: string | null; updatedAt?: number } | null
+  ): Promise<{ hash: string | null; text: string | null }> {
+    const stat = await this.deps.notebookManager.statExtracted(notebookId, sourceId)
+    if (!stat) return { hash: null, text: null }
+    const stored = existing?.extractedTextHash?.trim() || null
+    const updatedAt = Number(existing?.updatedAt ?? 0)
+    if (stored && stat.mtimeMs != null && updatedAt > 0 && stat.mtimeMs <= updatedAt + 1000) {
+      return { hash: stored, text: null }
+    }
+    const extracted = await this.deps.notebookManager.readExtractedText(notebookId, sourceId)
+    const text = extracted?.trim() ? extracted : null
+    return { hash: text ? md5Hex(extracted!) : null, text }
+  }
+
+  private async resolveExpectedChunkCount(
+    notebookId: string,
+    sourceId: string,
+    existingStatus: string | undefined,
+    extracted: { hash: string | null; text: string | null }
+  ): Promise<number | undefined> {
+    const status = (existingStatus ?? '').trim()
+    if (status !== 'ready' && status !== 'partial' && status !== 'failed') return undefined
+    if (!extracted.hash) return undefined
+    let text = extracted.text
+    if (!text) {
+      const read = await this.deps.notebookManager.readExtractedText(notebookId, sourceId)
+      text = read?.trim() ? read : null
+    }
+    if (!text) return undefined
+    return splitTextIntoChunks(text).length
+  }
+
+  private async loadExtractStates(
+    notebookId: string
+  ): Promise<Map<string, NotebookGraphExtractStateRawRecord>> {
+    const out = new Map<string, NotebookGraphExtractStateRawRecord>()
+    if (!this.deps.graphRaw) return out
+    const rows = await this.deps.graphRaw.readCollapsed<NotebookGraphExtractStateRawRecord>(
+      notebookId,
+      'extract-state'
+    )
+    for (const row of rows) {
+      if (row.sourceId) out.set(row.sourceId, row)
+    }
+    return out
   }
 
   private resolveRelativePath(notebookId: string, pathFromJsonl?: string | null): string | null {
@@ -175,7 +290,18 @@ export class KnowledgeHydrationService {
     const dbSourceIds = await this.deps.repo.listDistinctSourceIds({ vaultId })
     for (const sourceId of dbSourceIds) {
       if (liveSourceIds.has(sourceId)) continue
+      const source = await this.deps.repo.getSource(sourceId)
+      if (this.deps.graphRaw && source?.notebookId) {
+        await this.deps.graphRaw.deleteSourceShards(source.notebookId, sourceId)
+      }
       await this.deps.repo.deleteSource(sourceId)
+      if (this.deps.graphIndex && source?.notebookId) {
+        await this.deps.graphIndex.syncPendingIndex({
+          vaultId: source.vaultId?.trim() || vaultId,
+          notebookId: source.notebookId,
+          deletedShardPaths: notebookGraphDeletedShardPaths(source.notebookId, sourceId)
+        })
+      }
       cleaned += 1
     }
 
@@ -189,5 +315,16 @@ export class KnowledgeHydrationService {
       cleaned += 1
     }
     return cleaned
+  }
+
+  private async findCoverImageOnDisk(notebookId: string): Promise<string> {
+    for (const rel of notebookCoverImageCandidates(notebookId)) {
+      try {
+        if (await this.deps.notebookManager.existsRelative(rel)) return rel
+      } catch {
+        /* 越界或未实现时忽略 */
+      }
+    }
+    return ''
   }
 }

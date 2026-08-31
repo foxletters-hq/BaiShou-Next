@@ -61,6 +61,12 @@ export const settingsApi = {
       ipcRenderer.invoke('settings:set-mcp-server-config', config),
     refreshMcpAuthToken: () => ipcRenderer.invoke('settings:refresh-mcp-auth-token'),
     getMcpTools: () => ipcRenderer.invoke('settings:get-mcp-tools'),
+    getMcpClientConfig: () => ipcRenderer.invoke('settings:get-mcp-client-config'),
+    setMcpClientConfig: (config: unknown) =>
+      ipcRenderer.invoke('settings:set-mcp-client-config', config),
+    getMcpClientStatuses: () => ipcRenderer.invoke('settings:get-mcp-client-statuses'),
+    testMcpClient: (payload: { url: string; authToken?: string }) =>
+      ipcRenderer.invoke('settings:test-mcp-client', payload),
 
     getHotkeyConfig: () => ipcRenderer.invoke('settings:get-hotkey-config'),
     setHotkeyConfig: (config: any) => ipcRenderer.invoke('settings:set-hotkey-config', config),

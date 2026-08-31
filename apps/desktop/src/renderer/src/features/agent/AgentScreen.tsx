@@ -352,6 +352,7 @@ export const AgentScreen: React.FC = () => {
           <InputBar
             ref={flow.inputBarRef}
             isLoading={flow.stream.isStreaming || flow.stream.isCompressing}
+            attachmentIntake="companion"
             onSend={flow.handleSend}
             onStop={flow.handleStop}
             composerBlocked={composerBlocked}

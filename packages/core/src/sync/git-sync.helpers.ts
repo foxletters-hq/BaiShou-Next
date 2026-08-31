@@ -13,6 +13,52 @@ export function pathsEqual(a: string, b: string): boolean {
   return sharedNormalizeGitPath(a) === sharedNormalizeGitPath(b)
 }
 
+/** 解析 `git rev-list --left-right --count A...B` 输出：左侧为 behind，右侧为 ahead */
+export function parseLeftRightCount(raw: string): { behind: number; ahead: number } {
+  const [behindCount, aheadCount] = raw.trim().split(/\s+/)
+  return {
+    behind: Number.parseInt(behindCount ?? '0', 10) || 0,
+    ahead: Number.parseInt(aheadCount ?? '0', 10) || 0
+  }
+}
+
+/** 解析 `git rev-list --count` 输出，取最后一行纯数字（忽略警告） */
+export function parseRevListCount(raw: string): number {
+  const lines = raw
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i]
+    if (line && /^\d+$/.test(line)) {
+      return Number.parseInt(line, 10)
+    }
+  }
+  return 0
+}
+
+export interface GitHistoryLogRow {
+  hash: string
+  message: string
+  date: string
+}
+
+/** 解析 `git log --format=%H%x1f%s%x1f%aI` 输出 */
+export function parseGitHistoryLog(raw: string): GitHistoryLogRow[] {
+  if (!raw.trim()) return []
+  return raw
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter(Boolean)
+    .map((line) => {
+      const [hash = '', message = '', date = ''] = line.split('\x1f')
+      return { hash: hash.trim(), message, date: date.trim() }
+    })
+    .filter((row) => row.hash.length > 0)
+}
+
 export function getAuthenticatedUrl(url: string, username?: string, token?: string): string {
   const isHttp = url.startsWith('http://')
   const isHttps = url.startsWith('https://')

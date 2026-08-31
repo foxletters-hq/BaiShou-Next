@@ -1,3 +1,6 @@
+/** zustand persist 键：主题 / 字号档等 UI 偏好 */
+export const UI_SETTINGS_STORAGE_KEY = 'baishou-ui-settings-storage'
+
 /** UI 显示缩放档位（常规设置「字体大小」滑条 → 桌面整页 zoom） */
 
 export const UI_FONT_SIZE_LEVEL_MIN = 0
@@ -42,6 +45,48 @@ export function uiFontSizeScaleFromLevel(level: unknown): number {
 export function uiPageZoomFromLevel(level: unknown): number {
   const normalized = normalizeUiFontSizeLevel(level)
   return UI_PAGE_ZOOM_FACTORS[normalized] ?? UI_PAGE_ZOOM_FACTORS[UI_FONT_SIZE_LEVEL_DEFAULT]
+}
+
+/** 从 persist JSON 读出桌面整页 zoom；读不到返回 null */
+export function uiPageZoomFromPersistedSettingsJson(raw: string | null | undefined): number | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as { state?: { fontSizeLevel?: unknown } }
+    if (parsed?.state?.fontSizeLevel === undefined) return null
+    return uiPageZoomFromLevel(parsed.state.fontSizeLevel)
+  } catch {
+    return null
+  }
+}
+
+export type PageZoomShortcut = 'in' | 'out' | 'reset'
+
+/** 识别 Ctrl/Cmd + / - / 0，兼容 Minus、小键盘 */
+export function resolvePageZoomShortcut(input: {
+  key?: string
+  code?: string
+}): PageZoomShortcut | null {
+  const key = input.key ?? ''
+  const code = input.code ?? ''
+  if (key === '0' || code === 'Digit0' || code === 'Numpad0') return 'reset'
+  if (key === '=' || key === '+' || code === 'Equal' || code === 'NumpadAdd') return 'in'
+  if (
+    key === '-' ||
+    key === '_' ||
+    key === 'Minus' ||
+    code === 'Minus' ||
+    code === 'NumpadSubtract'
+  ) {
+    return 'out'
+  }
+  return null
+}
+
+export function nextUiFontSizeLevel(current: unknown, action: PageZoomShortcut): UiFontSizeLevel {
+  if (action === 'reset') return UI_FONT_SIZE_LEVEL_DEFAULT
+  const level = normalizeUiFontSizeLevel(current)
+  if (action === 'in') return normalizeUiFontSizeLevel(level + 1)
+  return normalizeUiFontSizeLevel(level - 1)
 }
 
 /** 将任意 zoom 系数映射到最近档位（迁移旧 localStorage 缩放） */

@@ -1,7 +1,19 @@
 import { splitTextIntoChunks } from '@baishou/ai'
-import { logger } from '@baishou/shared'
+import {
+  knowledgeImportProcessTargets,
+  logger,
+  normalizeKnowledgeImportProcessMode,
+  normalizeNotebookCoverIcon,
+  normalizeNotebookCoverImage,
+  normalizeNotebookCoverTone,
+  notebookCoverImageExt
+} from '@baishou/shared'
+import type { KnowledgeImportProcessMode } from '@baishou/shared'
 import type { KnowledgeRepository } from '@baishou/database/shared'
-import type { NotebookRawManager } from '../raw-data/managers/notebook.raw-manager'
+import type {
+  NotebookRawManager,
+  NotebookRawRecord
+} from '../raw-data/managers/notebook.raw-manager'
 import type { IFileSystem } from '../fs/file-system.types'
 import { extractSourceContent, type ExtractResult } from './knowledge-extract'
 import { probeExtractEngineCapabilities, resolveExtractEngine } from './extract-engine-capabilities'
@@ -18,7 +30,7 @@ export interface KnowledgeExtractConfig {
   defaultEngine?: ExtractEngineId
   ocrLanguage?: string
   ocrDpi?: number
-  /** OCR / vision 并发页数（1–3） */
+  /** OCR / vision 并发页数（1–10） */
   ocrConcurrency?: number
   visionModelConfigured?: boolean
   visionModelId?: string | null
@@ -56,6 +68,17 @@ export interface KnowledgeIngestDeps {
   deleteChunksBySource: (sourceId: string) => Promise<void>
   /** 可选：真实网络嵌入；缺省时用 insertChunk 传入的向量由调用方 mock */
   embedText?: (text: string, modelId: string) => Promise<number[]>
+  extractNotebookGraph?: (input: {
+    vaultId: string
+    notebookId: string
+    sourceId: string
+    sourceTitle: string
+    text: string
+    textHash: string
+    pages?: Array<{ page: number; start: number; end: number }> | null
+    force?: boolean
+  }) => Promise<void>
+  deleteNotebookGraphSource?: (input: { notebookId: string; sourceId: string }) => Promise<void>
 }
 
 /** 入队 OCR 时暂存的页码覆盖（consumer 无 payload 时用） */
@@ -63,6 +86,38 @@ const pendingExtractOverrides = new Map<
   string,
   { pageNumbers?: number[]; onlyMissingPages?: boolean; forceEngine?: ExtractEngineId }
 >()
+
+/** 用户点重新抽取图数据时，消费端另建 service 实例，用模块级标记跨实例传 force */
+const pendingGraphExtractForce = new Set<string>()
+
+function markGraphExtractForce(sourceId: string): void {
+  const id = sourceId.trim()
+  if (id) pendingGraphExtractForce.add(id)
+}
+
+function peekGraphExtractForce(sourceId: string): boolean {
+  return pendingGraphExtractForce.has(sourceId.trim())
+}
+
+function clearGraphExtractForce(sourceId: string): void {
+  pendingGraphExtractForce.delete(sourceId.trim())
+}
+
+/** 导入时指定提取完成后入队哪些后续任务；缺省两边都做 */
+const pendingProcessTargets = new Map<string, { embed: boolean; graph: boolean }>()
+
+function rememberProcessTargets(
+  sourceId: string,
+  targets: { embed: boolean; graph: boolean }
+): void {
+  pendingProcessTargets.set(sourceId, targets)
+}
+
+function takeProcessTargets(sourceId: string): { embed: boolean; graph: boolean } {
+  const remembered = pendingProcessTargets.get(sourceId)
+  pendingProcessTargets.delete(sourceId)
+  return remembered ?? { embed: true, graph: true }
+}
 
 /** 进行中的提取取消控制器 */
 const extractAbortControllers = new Map<string, AbortController>()
@@ -72,6 +127,8 @@ const extractAbortControllers = new Map<string, AbortController>()
  * recoverStale 不得清掉这些 source，否则会与正在启动的 extract 竞态。
  */
 const extractLiveGuards = new Set<string>()
+const embedLiveGuards = new Set<string>()
+const graphLiveGuards = new Set<string>()
 
 /** consumer claim 到 extract job 后立刻调用；process 结束在 finally 中解除 */
 export function markExtractJobLive(sourceId: string): void {
@@ -80,6 +137,26 @@ export function markExtractJobLive(sourceId: string): void {
 
 export function unmarkExtractJobLive(sourceId: string): void {
   extractLiveGuards.delete(sourceId)
+}
+
+export function markEmbedJobLive(sourceId: string): void {
+  embedLiveGuards.add(sourceId)
+}
+
+export function unmarkEmbedJobLive(sourceId: string): void {
+  embedLiveGuards.delete(sourceId)
+}
+
+export function markGraphJobLive(sourceId: string): void {
+  graphLiveGuards.add(sourceId)
+}
+
+export function unmarkGraphJobLive(sourceId: string): void {
+  graphLiveGuards.delete(sourceId)
+}
+
+export function listLiveGraphSourceIds(): string[] {
+  return [...graphLiveGuards]
 }
 
 function isExtractProtected(sourceId: string): boolean {
@@ -182,6 +259,34 @@ function requireVaultId(getVaultId: () => string): string {
   return id
 }
 
+function toNotebookRawRecord(row: {
+  id: string
+  name: string
+  description?: string | null
+  createdAt: number
+  updatedAt: number
+  sortOrder?: number
+  coverTone?: string | null
+  coverIcon?: string | null
+  coverImage?: string | null
+}): NotebookRawRecord {
+  const coverTone = normalizeNotebookCoverTone(row.coverTone)
+  const coverIcon = normalizeNotebookCoverIcon(row.coverIcon)
+  const coverImage = normalizeNotebookCoverImage(row.id, row.coverImage)
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? '',
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    deletedAt: null,
+    sortOrder: row.sortOrder ?? 0,
+    ...(coverTone ? { coverTone } : {}),
+    ...(coverIcon ? { coverIcon } : {}),
+    ...(coverImage ? { coverImage } : {})
+  }
+}
+
 /**
  * 知识库摄入编排：extract → embed 两段 job；磁盘先落定再灌库。
  */
@@ -192,29 +297,148 @@ export class KnowledgeIngestService {
     name: string
     description?: string
     id?: string
-  }): Promise<{ id: string; name: string }> {
+    coverTone?: string
+    coverIcon?: string
+  }): Promise<{
+    id: string
+    name: string
+    coverTone: string
+    coverIcon: string
+    sortOrder: number
+  }> {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const id = input.id ?? newId('nb')
-    const now = Date.now()
-    await this.deps.repo.createNotebook({
+    const existing = await this.deps.repo.listNotebooks({ vaultId })
+    const sortOrder = existing.reduce((max, row) => Math.max(max, row.sortOrder ?? 0), -1) + 1
+    const coverTone = normalizeNotebookCoverTone(input.coverTone)
+    const coverIcon = normalizeNotebookCoverIcon(input.coverIcon)
+    const created = await this.deps.repo.createNotebook({
       id,
       name: input.name,
       description: input.description,
-      vaultId
+      vaultId,
+      sortOrder,
+      coverTone,
+      coverIcon
     })
-    await this.deps.notebookManager.appendNotebookRecord({
+    await this.deps.notebookManager.appendNotebookRecord(toNotebookRawRecord(created))
+    return {
       id,
-      name: input.name,
-      description: input.description ?? '',
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null
-    })
-    return { id, name: input.name }
+      name: created.name,
+      coverTone: created.coverTone,
+      coverIcon: created.coverIcon,
+      sortOrder: created.sortOrder
+    }
   }
 
   async listNotebooks() {
     const vaultId = requireVaultId(this.deps.getVaultId)
+    return this.deps.repo.listNotebooks({ vaultId })
+  }
+
+  async updateNotebook(input: {
+    notebookId: string
+    name?: string
+    description?: string
+    coverTone?: string | null
+    coverIcon?: string | null
+    coverImage?: string | null
+  }) {
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    const existing = await this.deps.repo.getNotebook(input.notebookId)
+    if (!existing || existing.vaultId !== vaultId) {
+      throw new Error('notebook not found')
+    }
+    const patch: {
+      name?: string
+      description?: string
+      coverTone?: string
+      coverIcon?: string
+      coverImage?: string
+    } = {}
+    if (input.name !== undefined) {
+      const name = input.name.trim()
+      if (!name) throw new Error('notebook name is required')
+      patch.name = name
+    }
+    if (input.description !== undefined) patch.description = input.description
+    if (input.coverTone !== undefined) {
+      patch.coverTone = normalizeNotebookCoverTone(input.coverTone)
+    }
+    if (input.coverIcon !== undefined) {
+      patch.coverIcon = normalizeNotebookCoverIcon(input.coverIcon)
+    }
+    if (input.coverImage !== undefined) {
+      patch.coverImage = normalizeNotebookCoverImage(existing.id, input.coverImage)
+      if (!patch.coverImage && existing.coverImage) {
+        await this.removeCoverImageFile(existing.coverImage)
+      }
+    }
+    if (Object.keys(patch).length === 0) return existing
+    await this.deps.repo.updateNotebook(existing.id, patch)
+    const updated = await this.deps.repo.getNotebook(existing.id)
+    if (!updated) throw new Error('notebook missing after update')
+    await this.deps.notebookManager.appendNotebookRecord(toNotebookRawRecord(updated))
+    return updated
+  }
+
+  async setCoverImage(input: { notebookId: string; absolutePath: string }) {
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    const existing = await this.deps.repo.getNotebook(input.notebookId)
+    if (!existing || existing.vaultId !== vaultId) {
+      throw new Error('notebook not found')
+    }
+    const ext = notebookCoverImageExt(input.absolutePath)
+    if (!ext) throw new Error('cover image must be png, jpg, jpeg, webp or gif')
+    const relativePath = normalizeNotebookCoverImage(existing.id, `${existing.id}/cover.${ext}`)
+    if (!relativePath) throw new Error('invalid cover image path')
+    if (existing.coverImage && existing.coverImage !== relativePath) {
+      await this.removeCoverImageFile(existing.coverImage)
+    }
+    await this.deps.notebookManager.copySourceFile(relativePath, input.absolutePath)
+    await this.deps.repo.updateNotebook(existing.id, { coverImage: relativePath })
+    const updated = await this.deps.repo.getNotebook(existing.id)
+    if (!updated) throw new Error('notebook missing after update')
+    await this.deps.notebookManager.appendNotebookRecord(toNotebookRawRecord(updated))
+    return updated
+  }
+
+  private async removeCoverImageFile(relativePath: string): Promise<void> {
+    try {
+      const abs = await this.deps.notebookManager.absolutePath(relativePath)
+      if (await this.deps.fs.exists(abs)) await this.deps.fs.unlink(abs)
+    } catch {
+      /* 旧封面不在盘上时忽略 */
+    }
+  }
+
+  async reorderNotebooks(orderedIds: string[]) {
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    const existing = await this.deps.repo.listNotebooks({ vaultId })
+    const byId = new Map(existing.map((row) => [row.id, row]))
+    const seen = new Set<string>()
+    const ordered: string[] = []
+    for (const id of orderedIds) {
+      if (!byId.has(id) || seen.has(id)) continue
+      seen.add(id)
+      ordered.push(id)
+    }
+    for (const row of existing) {
+      if (!seen.has(row.id)) ordered.push(row.id)
+    }
+    const now = Date.now()
+    for (let i = 0; i < ordered.length; i++) {
+      const row = byId.get(ordered[i]!)
+      if (!row) continue
+      await this.deps.repo.updateNotebook(row.id, { sortOrder: i })
+      await this.deps.notebookManager.appendNotebookRecord(
+        toNotebookRawRecord({
+          ...row,
+          sortOrder: i,
+          updatedAt: now
+        })
+      )
+    }
     return this.deps.repo.listNotebooks({ vaultId })
   }
 
@@ -227,6 +451,8 @@ export class KnowledgeIngestService {
     fileName?: string
     originUrl?: string
     extractEngine?: ExtractEngineId
+    /** 导入后处理：向量、图关系，或两者。 */
+    importProcessMode?: KnowledgeImportProcessMode
   }): Promise<{ sourceId: string }> {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const notebook = await this.deps.repo.getNotebook(input.notebookId)
@@ -244,6 +470,8 @@ export class KnowledgeIngestService {
     let originUrl: string | null = input.originUrl ?? null
     const extractEngine = input.extractEngine ?? 'simple'
     const sourceKind = input.kind === 'note' ? 'note' : input.kind
+    const importProcessMode = normalizeKnowledgeImportProcessMode(input.importProcessMode)
+    const processTargets = knowledgeImportProcessTargets(importProcessMode)
 
     if (input.kind === 'file') {
       if (!input.absolutePath) throw new Error('import file requires absolutePath')
@@ -311,6 +539,10 @@ export class KnowledgeIngestService {
       deletedAt: null
     })
 
+    rememberProcessTargets(sourceId, {
+      embed: processTargets.embed,
+      graph: processTargets.graph
+    })
     await this.deps.repo.enqueueIngestJob({
       notebookId: input.notebookId,
       sourceId,
@@ -364,16 +596,99 @@ ${citeBlock}
     })
   }
 
+  async deleteSource(sourceId: string): Promise<void> {
+    requestExtractAbort(sourceId)
+    const source = await this.deps.repo.getSource(sourceId)
+    if (!source) throw new Error(`source not found: ${sourceId}`)
+    const now = Date.now()
+
+    const unlinkRel = async (relativePath: string | null | undefined) => {
+      if (!relativePath) return
+      try {
+        const abs = await this.deps.notebookManager.absolutePath(relativePath)
+        if (await this.deps.fs.exists(abs)) await this.deps.fs.unlink(abs)
+      } catch {
+        /* 文件缺失不拦删除 */
+      }
+    }
+
+    await unlinkRel(source.relativePath)
+    await unlinkRel(path.join(source.notebookId, 'extracted', `${sourceId}.md`))
+    await unlinkRel(path.join(source.notebookId, 'extracted', `${sourceId}.pages.json`))
+
+    await this.deps.notebookManager.appendSourceRecord(source.notebookId, {
+      id: source.id,
+      title: source.title,
+      kind: source.sourceKind,
+      path: source.relativePath
+        ? source.relativePath.replace(/\\/g, '/').split('/').slice(-2).join('/')
+        : null,
+      contentHash: source.contentHash,
+      extractEngine: source.extractEngine,
+      pageCount: source.pageCount,
+      createdAt: source.createdAt,
+      updatedAt: now,
+      deletedAt: now
+    })
+
+    if (this.deps.deleteNotebookGraphSource) {
+      try {
+        await this.deps.deleteNotebookGraphSource({
+          notebookId: source.notebookId,
+          sourceId
+        })
+      } catch {
+        /* 图谱分片缺失不拦删除 */
+      }
+    }
+
+    await this.deps.repo.deleteSource(sourceId)
+  }
+
   async retrySource(sourceId: string): Promise<void> {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
-    const stage = source.status === 'failed' && source.extractedTextHash ? 'embed' : 'extract'
+    const stage = source.extractedTextHash ? 'embed' : 'extract'
     await this.deps.repo.updateSourceStatus(sourceId, 'pending', { errorMessage: null })
     await this.deps.repo.enqueueIngestJob({
       notebookId: source.notebookId,
       sourceId,
       stage,
+      vaultId: source.vaultId?.trim() || vaultId
+    })
+    if (source.extractedTextHash) {
+      await this.deps.repo.enqueueIngestJob({
+        notebookId: source.notebookId,
+        sourceId,
+        stage: 'graph',
+        vaultId: source.vaultId?.trim() || vaultId
+      })
+    }
+  }
+
+  async reprocessSource(sourceId: string, target: 'embed' | 'graph'): Promise<void> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    const source = await this.deps.repo.getSource(sourceId)
+    if (!source) throw new Error(`source not found: ${sourceId}`)
+    if (!source.extractedTextHash) {
+      throw new Error('extracted text missing')
+    }
+    if (target === 'embed') {
+      await this.deps.repo.updateSourceStatus(sourceId, 'pending', { errorMessage: null })
+      await this.deps.repo.enqueueIngestJob({
+        notebookId: source.notebookId,
+        sourceId,
+        stage: 'embed',
+        vaultId: source.vaultId?.trim() || vaultId
+      })
+      return
+    }
+    markGraphExtractForce(sourceId)
+    await this.deps.repo.enqueueIngestJob({
+      notebookId: source.notebookId,
+      sourceId,
+      stage: 'graph',
       vaultId: source.vaultId?.trim() || vaultId
     })
   }
@@ -435,57 +750,46 @@ ${citeBlock}
   }
 
   /**
-   * 进程重启后恢复：清掉上次崩溃遗留的 extracting / running extract，避免 UI 永久卡住。
-   * 本进程正在跑或刚 claim 的提取（AbortController / live guard / pending override）不会被清掉。
-   * embed 的孤儿 running 改回 pending 以便续跑。
+   * 进程重启后恢复：只回收超时 lease（running → pending），不删 extract job。
+   * live guard / 未超时的 running 不动。extracting 且已无 extract job 的资料打回 pending 并重新入队。
    */
-  async recoverStaleIngestState(): Promise<{
+  async recoverStaleIngestState(options?: { olderThanMs?: number }): Promise<{
     resetSources: number
     reclaimedEmbedJobs: number
     droppedExtractJobs: number
   }> {
-    let resetSources = 0
-    let droppedExtractJobs = 0
-    let reclaimedEmbedJobs = 0
-
-    const running = await this.deps.repo.listIngestJobsByStatus('running')
-    for (const job of running) {
-      if (job.stage === 'extract') {
-        if (isExtractProtected(job.sourceId)) continue
-        await this.deps.repo.deleteIngestJobsForSource(job.sourceId, 'extract')
-        droppedExtractJobs += 1
-        const source = await this.deps.repo.getSource(job.sourceId)
-        if (source && (source.status === 'extracting' || source.status === 'pending')) {
-          await this.deps.repo.updateSourceStatus(source.id, resolveStatusAfterCancel(source), {
-            errorMessage: null
-          })
-          resetSources += 1
-        }
-        continue
-      }
-
-      if (job.stage === 'embed') {
-        await this.deps.repo.enqueueIngestJob({
-          notebookId: job.notebookId,
-          sourceId: job.sourceId,
-          stage: 'embed',
-          vaultId: job.vaultId
-        })
-        reclaimedEmbedJobs += 1
-      }
+    const vaultId = this.deps.getVaultId()?.trim()
+    if (!vaultId) {
+      return { resetSources: 0, reclaimedEmbedJobs: 0, droppedExtractJobs: 0 }
     }
 
-    const extracting = await this.deps.repo.listSourcesByStatus('extracting')
+    const reclaimedEmbedJobs = await this.deps.repo.reclaimStaleRunningIngestJobs({
+      olderThanMs: options?.olderThanMs,
+      vaultId,
+      excludeSourceIds: [...embedLiveGuards, ...graphLiveGuards, ...extractLiveGuards]
+    })
+
+    let resetSources = 0
+    const extracting = await this.deps.repo.listSourcesByStatus('extracting', { vaultId })
     for (const source of extracting) {
       if (isExtractProtected(source.id)) continue
-      await this.deps.repo.deleteIngestJobsForSource(source.id, 'extract')
-      await this.deps.repo.updateSourceStatus(source.id, resolveStatusAfterCancel(source), {
-        errorMessage: null
+      const jobs = await this.deps.repo.listIngestJobsBySource(source.id)
+      const hasExtract = jobs.some(
+        (job) =>
+          job.stage === 'extract' && (job.status === 'pending' || job.status === 'running')
+      )
+      if (hasExtract) continue
+      await this.deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
+      await this.deps.repo.enqueueIngestJob({
+        notebookId: source.notebookId,
+        sourceId: source.id,
+        stage: 'extract',
+        vaultId: source.vaultId?.trim() || vaultId
       })
       resetSources += 1
     }
 
-    return { resetSources, reclaimedEmbedJobs, droppedExtractJobs }
+    return { resetSources, reclaimedEmbedJobs, droppedExtractJobs: 0 }
   }
 
   async rebuildIndex(notebookId: string): Promise<void> {
@@ -493,12 +797,36 @@ ${citeBlock}
     const sources = await this.deps.repo.listSources(notebookId)
     await this.deps.repo.deleteChunksByNotebook(notebookId)
     for (const source of sources) {
+      if (source.status === 'stored') continue
       if (!source.extractedTextHash && source.status === 'needs_ocr') continue
       await this.deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
       await this.deps.repo.enqueueIngestJob({
         notebookId,
         sourceId: source.id,
         stage: 'embed',
+        vaultId: source.vaultId?.trim() || vaultId
+      })
+      if (source.extractedTextHash) {
+        await this.deps.repo.enqueueIngestJob({
+          notebookId,
+          sourceId: source.id,
+          stage: 'graph',
+          vaultId: source.vaultId?.trim() || vaultId
+        })
+      }
+    }
+  }
+
+  async rebuildNotebookGraph(notebookId: string): Promise<void> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    const sources = await this.deps.repo.listSources(notebookId)
+    for (const source of sources) {
+      if (!source.extractedTextHash) continue
+      markGraphExtractForce(source.id)
+      await this.deps.repo.enqueueIngestJob({
+        notebookId,
+        sourceId: source.id,
+        stage: 'graph',
         vaultId: source.vaultId?.trim() || vaultId
       })
     }
@@ -594,6 +922,12 @@ ${citeBlock}
             : ext,
         textContent: text
       })
+    } else if (ext === '.epub') {
+      result = await extractSourceContent({
+        kind: 'file',
+        ext: '.epub',
+        absolutePath: abs
+      })
     } else if (ext === '.pdf') {
       const cfg = (await this.deps.getExtractConfig?.()) ?? {}
       const requested =
@@ -685,6 +1019,7 @@ ${citeBlock}
     throwIfExtractAborted(signal)
 
     if (!result.text.trim() || result.quality === 'needs_ocr') {
+      pendingProcessTargets.delete(sourceId)
       await this.deps.repo.updateSourceStatus(sourceId, 'needs_ocr', {
         errorMessage:
           [result.degradationMessage, result.evidence].filter(Boolean).join('；') || 'needs_ocr',
@@ -713,7 +1048,9 @@ ${citeBlock}
     )
     await revertIfExtractAborted(this.deps.repo, sourceId, signal)
 
-    const nextStatus = result.quality === 'partial' ? 'partial' : 'embedding'
+    const targets = takeProcessTargets(sourceId)
+    const nextStatus =
+      result.quality === 'partial' ? 'partial' : targets.embed ? 'embedding' : 'ready'
     await this.deps.repo.updateSourceStatus(sourceId, nextStatus, {
       extractedTextHash: textHash,
       pageCount: result.pageCount,
@@ -723,15 +1060,56 @@ ${citeBlock}
     })
     await revertIfExtractAborted(this.deps.repo, sourceId, signal)
 
-    await this.deps.repo.enqueueIngestJob({
-      notebookId: source.notebookId,
-      sourceId,
-      stage: 'embed',
-      vaultId: source.vaultId?.trim() || vaultId
-    })
+    if (targets.embed) {
+      await this.deps.repo.enqueueIngestJob({
+        notebookId: source.notebookId,
+        sourceId,
+        stage: 'embed',
+        vaultId: source.vaultId?.trim() || vaultId
+      })
+    }
+    if (targets.graph) {
+      await this.deps.repo.enqueueIngestJob({
+        notebookId: source.notebookId,
+        sourceId,
+        stage: 'graph',
+        vaultId: source.vaultId?.trim() || vaultId
+      })
+    }
     await revertIfExtractAborted(this.deps.repo, sourceId, signal)
 
     return result
+  }
+
+  async processGraphJob(sourceId: string): Promise<void> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    const source = await this.deps.repo.getSource(sourceId)
+    if (!source) throw new Error(`source not found: ${sourceId}`)
+    const text = await this.deps.notebookManager.readExtractedText(source.notebookId, sourceId)
+    if (!text?.trim()) {
+      throw new Error('extracted text missing')
+    }
+    if (!this.deps.extractNotebookGraph) {
+      throw new Error('graph-extract-not-configured')
+    }
+    const pages = await this.deps.notebookManager.readPagesJson(source.notebookId, sourceId)
+    const force = peekGraphExtractForce(sourceId)
+    try {
+      await this.deps.extractNotebookGraph({
+        vaultId: source.vaultId?.trim() || vaultId,
+        notebookId: source.notebookId,
+        sourceId,
+        sourceTitle: source.title,
+        text,
+        textHash: source.extractedTextHash || '',
+        pages: pages?.pages ?? null,
+        force
+      })
+      clearGraphExtractForce(sourceId)
+    } catch (error) {
+      if (!force) clearGraphExtractForce(sourceId)
+      throw error
+    }
   }
 
   async processEmbedJob(sourceId: string): Promise<void> {
@@ -753,7 +1131,6 @@ ${citeBlock}
     }
 
     await this.deps.repo.updateSourceStatus(sourceId, 'embedding')
-    await this.deps.deleteChunksBySource(sourceId)
 
     const modelId = embeddingCfg?.getModelId() ?? 'mock'
     const chunks = splitTextIntoChunks(text)
@@ -793,6 +1170,8 @@ ${citeBlock}
         vaultId: chunkVaultId
       })
     }
+
+    await this.deps.repo.deleteChunksBySourceFromIndex(sourceId, chunks.length)
 
     const pageCount = source.pageCount
     const textPageCount = source.textPageCount

@@ -1,10 +1,10 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Minus, Plus, Undo2 } from 'lucide-react'
 import { isTextDiffablePath } from '@baishou/shared'
-import type { GitManagementViewModel } from '@baishou/ui'
+import { getFileTypeIcon, type GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
-import { getFileStatusIcon } from './git-workbench.utils'
+import { getFileStatusIcon, splitGitDisplayPath } from './git-workbench.utils'
 
 function statusBadgeClass(status: string): string {
   switch (status) {
@@ -52,34 +52,62 @@ const ChangesSubgroup: React.FC<{
 
 const FileRow: React.FC<{
   path: string
-  status: string
-  statusClass: string
+  statusKey: string
   onOpen?: () => void
   actions: React.ReactNode
-}> = ({ path, status, statusClass, onOpen, actions }) => (
-  <div
-    className={`${styles.treeRow} ${onOpen ? styles.treeRowClickable : ''}`}
-    onClick={onOpen}
-    role={onOpen ? 'button' : undefined}
-    tabIndex={onOpen ? 0 : undefined}
-    onKeyDown={
-      onOpen
-        ? (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              onOpen()
+}> = ({ path, statusKey, onOpen, actions }) => {
+  const { name, dir } = splitGitDisplayPath(path)
+  const letter = getFileStatusIcon(statusKey)
+  return (
+    <div
+      className={`${styles.treeRow} ${onOpen ? styles.treeRowClickable : ''}`}
+      onClick={onOpen}
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      title={path}
+      onKeyDown={
+        onOpen
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onOpen()
+              }
             }
-          }
-        : undefined
-    }
-  >
-    <span className={`${styles.treeBadge} ${statusClass}`}>{status}</span>
-    <span className={styles.treePath} title={path}>
-      {path}
-    </span>
-    <div className={styles.treeActions}>{actions}</div>
-  </div>
-)
+          : undefined
+      }
+    >
+      <span className={styles.treeFileIcon}>{getFileTypeIcon(name, 16)}</span>
+      <span
+        className={`${styles.treeName} ${statusKey === 'deleted' ? styles.treeNameDeleted : ''}`}
+      >
+        {name}
+      </span>
+      {dir ? <span className={styles.treeDir}>{dir}</span> : null}
+      <div className={styles.treeActions}>{actions}</div>
+      <span className={`${styles.treeBadge} ${statusBadgeClass(statusKey)}`}>{letter}</span>
+    </div>
+  )
+}
+
+function IconAction(props: {
+  title: string
+  onClick: () => void
+  children: React.ReactNode
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      className={styles.treeIconBtn}
+      title={props.title}
+      onClick={(event) => {
+        event.stopPropagation()
+        props.onClick()
+      }}
+    >
+      {props.children}
+    </button>
+  )
+}
 
 export const GitWorkbenchChangesTree: React.FC<{ vm: GitManagementViewModel }> = ({ vm }) => {
   const { t } = useTranslation()
@@ -113,13 +141,12 @@ export const GitWorkbenchChangesTree: React.FC<{ vm: GitManagementViewModel }> =
           onToggle={() => toggleSection('staged')}
           emptyLabel={t('version_control.no_staged_changes', '没有已暂存的变更')}
           headerActions={
-            <button
-              type="button"
-              className={styles.treeActionBtn}
+            <IconAction
+              title={t('version_control.unstage_all', '全部取消暂存')}
               onClick={() => void handleUnstageAll()}
             >
-              {t('version_control.unstage_all', '全部取消暂存')}
-            </button>
+              <Minus size={14} />
+            </IconAction>
           }
         >
           {gitStatus.staged.map((file) => {
@@ -128,20 +155,15 @@ export const GitWorkbenchChangesTree: React.FC<{ vm: GitManagementViewModel }> =
               <FileRow
                 key={`staged:${file.path}`}
                 path={file.path}
-                status={getFileStatusIcon(file.stagedStatus)}
-                statusClass={statusBadgeClass(file.stagedStatus)}
+                statusKey={file.stagedStatus}
                 onOpen={canDiff ? () => void handleViewWorkingDiff(file.path, true) : undefined}
                 actions={
-                  <button
-                    type="button"
-                    className={styles.treeActionBtn}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleUnstageFile(file.path)
-                    }}
+                  <IconAction
+                    title={t('version_control.unstage', '取消暂存')}
+                    onClick={() => void handleUnstageFile(file.path)}
                   >
-                    {t('version_control.unstage', '取消暂存')}
-                  </button>
+                    <Minus size={14} />
+                  </IconAction>
                 }
               />
             )
@@ -162,20 +184,18 @@ export const GitWorkbenchChangesTree: React.FC<{ vm: GitManagementViewModel }> =
         headerActions={
           unstagedCount > 0 ? (
             <>
-              <button
-                type="button"
-                className={styles.treeActionBtn}
-                onClick={() => void handleStageAll()}
-              >
-                {t('version_control.stage_all', '全部暂存')}
-              </button>
-              <button
-                type="button"
-                className={styles.treeActionBtn}
+              <IconAction
+                title={t('version_control.discard_all', '全部撤销')}
                 onClick={() => void handleDiscardAll()}
               >
-                {t('version_control.discard_all', '全部撤销')}
-              </button>
+                <Undo2 size={14} />
+              </IconAction>
+              <IconAction
+                title={t('version_control.stage_all', '全部暂存')}
+                onClick={() => void handleStageAll()}
+              >
+                <Plus size={14} />
+              </IconAction>
             </>
           ) : null
         }
@@ -186,31 +206,22 @@ export const GitWorkbenchChangesTree: React.FC<{ vm: GitManagementViewModel }> =
             <FileRow
               key={`unstaged:${file.path}`}
               path={file.path}
-              status={getFileStatusIcon(file.unstagedStatus)}
-              statusClass={statusBadgeClass(file.unstagedStatus)}
+              statusKey={file.unstagedStatus}
               onOpen={canDiff ? () => void handleViewWorkingDiff(file.path, false) : undefined}
               actions={
                 <>
-                  <button
-                    type="button"
-                    className={styles.treeActionBtn}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleStageFile(file.path)
-                    }}
+                  <IconAction
+                    title={t('version_control.discard', '撤销')}
+                    onClick={() => void handleDiscardFile(file.path)}
                   >
-                    {t('version_control.stage', '暂存')}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.treeActionBtn}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleDiscardFile(file.path)
-                    }}
+                    <Undo2 size={14} />
+                  </IconAction>
+                  <IconAction
+                    title={t('version_control.stage', '暂存')}
+                    onClick={() => void handleStageFile(file.path)}
                   >
-                    {t('version_control.discard', '撤销')}
-                  </button>
+                    <Plus size={14} />
+                  </IconAction>
                 </>
               }
             />
@@ -222,31 +233,22 @@ export const GitWorkbenchChangesTree: React.FC<{ vm: GitManagementViewModel }> =
             <FileRow
               key={`untracked:${file}`}
               path={file}
-              status="U"
-              statusClass={styles.badge_untracked}
+              statusKey="untracked"
               onOpen={canDiff ? () => void handleViewWorkingDiff(file, false) : undefined}
               actions={
                 <>
-                  <button
-                    type="button"
-                    className={styles.treeActionBtn}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleStageFile(file)
-                    }}
+                  <IconAction
+                    title={t('version_control.discard', '撤销')}
+                    onClick={() => void handleDiscardFile(file, { untracked: true })}
                   >
-                    {t('version_control.stage', '暂存')}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.treeActionBtn}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void handleDiscardFile(file, { untracked: true })
-                    }}
+                    <Undo2 size={14} />
+                  </IconAction>
+                  <IconAction
+                    title={t('version_control.stage', '暂存')}
+                    onClick={() => void handleStageFile(file)}
                   >
-                    {t('version_control.discard', '撤销')}
-                  </button>
+                    <Plus size={14} />
+                  </IconAction>
                 </>
               }
             />

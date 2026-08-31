@@ -23,6 +23,18 @@ describe('classifyIncrementalSyncPaths', () => {
     expect(result.memory).toBe(true)
     expect(result.graph).toBe(true)
     expect(result.notebooks).toBe(true)
+    expect(result.notebookGraphIds).toEqual([])
     expect(result.sessionRefs).toEqual([{ vaultName: 'Work', sessionId: 'abc123' }])
+  })
+
+  it('只收集命中 Notebooks/<id>/graph/ 的本子 id', () => {
+    const result = classifyIncrementalSyncPaths([
+      'Personal/Notebooks/nb1/graph/nodes/2026-08.jsonl',
+      'Personal/Notebooks/nb1/graph/edges/2026-08.jsonl',
+      'Personal/Notebooks/nb2/extracted/src1.md',
+      'Work/Notebooks/nb3/graph/extract-state/2026-08.jsonl'
+    ])
+    expect(result.notebooks).toBe(true)
+    expect(result.notebookGraphIds).toEqual(['nb1', 'nb3'])
   })
 })

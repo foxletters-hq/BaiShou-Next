@@ -26,6 +26,7 @@ import { CompanionAskTool } from './companion-ask.tool'
 import { GraphUpsertTool } from './graph-upsert.tool'
 import { RecallRelationsTool } from './recall-relations.tool'
 import { KnowledgeSearchTool } from './knowledge-search.tool'
+import { KnowledgeGraphSearchTool } from './knowledge-graph-search.tool'
 import { SkillWriteTool } from './skill-write.tool'
 import { WORKSPACE_TOOL_IDS, createWorkspaceTools } from '../agent-workspace/workspace.tools'
 
@@ -39,7 +40,7 @@ const WORKSPACE_SESSION_UTILITY_TOOL_IDS = new Set([
   'url_read'
 ])
 /** Read-only knowledge tools allowed in workspace sessions (D7 / K1.3) */
-const KNOWLEDGE_TOOL_IDS = new Set(['knowledge_search'])
+const KNOWLEDGE_TOOL_IDS = new Set(['knowledge_search', 'knowledge_graph_search'])
 
 function resolveGateProfile(context: ToolContext): AgentGateProfileId {
   if (context.gateProfile) {
@@ -136,6 +137,7 @@ export class ToolRegistry {
       new GraphUpsertTool(),
       new RecallRelationsTool(),
       new KnowledgeSearchTool(),
+      new KnowledgeGraphSearchTool(),
       new SkillWriteTool(),
       ...createWorkspaceTools()
     ])

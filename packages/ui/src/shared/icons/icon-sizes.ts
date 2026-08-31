@@ -1,3 +1,6 @@
+/** 全局问号帮助图标（悬停提示与点击说明共用） */
+export const HELP_ICON_SIZE = 16
+
 /** 与桌面 NAV_ICON_SIZE / SIDEBAR_NAV_ICON_SIZE 一致 */
 export const NAV_ICON_SIZE = 18
 

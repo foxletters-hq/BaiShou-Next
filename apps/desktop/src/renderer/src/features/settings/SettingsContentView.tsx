@@ -9,7 +9,6 @@ import { McpSettingsPane } from './components/McpSettingsPane'
 import { AiModelServicesPane } from './components/AiModelServicesPane'
 import { AiGlobalModelsPane } from './components/AiGlobalModelsPane'
 import { AssistantPane } from './components/AssistantPane'
-import { RagSettingsPane } from './components/RagSettingsPane'
 import { WebSearchPane } from './components/WebSearchPane'
 import { CompanionChatToolsPane } from './components/CompanionChatToolsPane'
 import { DiaryTemplateSettingsPane } from './components/DiaryTemplateSettingsPane'
@@ -24,6 +23,7 @@ import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
 import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
 import { LegacyMigrationPane } from './components/LegacyMigrationPane'
 import { LatteSettingsPane } from './components/LatteSettingsPane'
+import { MemoryCenterPage } from '../memory/MemoryCenterPage'
 
 const FULL_HEIGHT_SEGMENTS = new Set([
   'general',
@@ -204,7 +204,7 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
       case 'latte':
         return <LatteSettingsPane />
       case 'rag':
-        return <RagSettingsPane settings={settings} />
+        return <MemoryCenterPage embedded />
       case 'web-search':
         return <WebSearchPane settings={settings} />
       case 'agent-tools':

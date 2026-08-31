@@ -27,7 +27,11 @@ import {
   createEmptyLastRemoteVaultsSnapshot,
   type LastRemoteVaultsSnapshot
 } from '@baishou/shared'
-import { isIncrementalSyncConflictBackupPath, isSqliteRuntimeSyncPath } from '@baishou/shared'
+import {
+  isIncrementalSyncConflictBackupPath,
+  isJsonlShardsManifestSyncPath,
+  isSqliteRuntimeSyncPath
+} from '@baishou/shared'
 import { isMonthlyJsonlRawPath } from '../raw-data/monthly-jsonl-path.util'
 import { ThreeWaySyncCore } from './three-way-sync.core'
 
@@ -415,8 +419,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async uploadFile(relPath: string): Promise<void> {
-    if (isSqliteRuntimeSyncPath(relPath)) {
-      console.warn(`[ThreeWaySync] Skipping SQLite runtime file upload: ${relPath}`)
+    if (isSqliteRuntimeSyncPath(relPath) || isJsonlShardsManifestSyncPath(relPath)) {
+      console.warn(`[ThreeWaySync] Skipping local-only sync file upload: ${relPath}`)
       return
     }
     const fullPath = await this.resolveSyncFullPath(relPath)
@@ -426,8 +430,8 @@ export abstract class ThreeWaySyncManifestMixin extends ThreeWaySyncCore {
   }
 
   protected async downloadFile(relPath: string): Promise<boolean> {
-    if (isSqliteRuntimeSyncPath(relPath)) {
-      console.warn(`[ThreeWaySync] Skipping SQLite runtime file download: ${relPath}`)
+    if (isSqliteRuntimeSyncPath(relPath) || isJsonlShardsManifestSyncPath(relPath)) {
+      console.warn(`[ThreeWaySync] Skipping local-only sync file download: ${relPath}`)
       return false
     }
     const fullPath = await this.resolveSyncFullPath(relPath)

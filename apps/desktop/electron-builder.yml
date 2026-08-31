@@ -21,6 +21,9 @@ asarUnpack:
   - node_modules/better-sqlite3/**
   - node_modules/sqlite-vec/**
   - node_modules/dugite/**
+  # worker_threads 无法从 asar 加载 tesseract 的 worker-script
+  - node_modules/tesseract.js/**
+  - node_modules/tesseract.js-core/**
 extraResources:
   - from: resources/database
     to: database

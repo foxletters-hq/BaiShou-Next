@@ -1,6 +1,7 @@
 import type { ManifestEntry, SyncManifest } from '../types/version-control.types'
 import {
   isIncrementalSyncChatBackgroundPath,
+  isJsonlShardsManifestSyncPath,
   isSqliteRuntimeSyncPath
 } from '../utils/incremental-sync-scan.util'
 import {
@@ -69,6 +70,10 @@ export function threeWayMerge(
           mkDecision('delete-remote', filePath, remoteEntry, null, remoteEntry, ancestorEntry)
         )
       }
+      continue
+    }
+
+    if (isJsonlShardsManifestSyncPath(filePath)) {
       continue
     }
 

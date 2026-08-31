@@ -52,6 +52,7 @@ describe('ToolRegistry', () => {
     expect(registry.get('graph_upsert')?.name).toBe('graph_upsert')
     expect(registry.get('recall_relations')?.name).toBe('recall_relations')
     expect(registry.get('knowledge_search')?.name).toBe('knowledge_search')
+    expect(registry.get('knowledge_graph_search')?.name).toBe('knowledge_graph_search')
   })
 
   it('hides tools denied by gate profile when hideDeniedTools is on', () => {

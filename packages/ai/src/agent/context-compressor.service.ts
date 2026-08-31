@@ -483,11 +483,12 @@ export class ContextCompressorService {
             modelId,
             sessionId
           }),
+          allowSystemInMessages: true,
           messages,
           temperature: 0.1,
           abortSignal,
           ...(builtReasoning.providerOptions
-            ? { providerOptions: builtReasoning.providerOptions }
+            ? { providerOptions: builtReasoning.providerOptions as never }
             : {})
         })
     )

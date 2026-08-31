@@ -2,7 +2,16 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+}
+
+.git-management-page button,
+.git-management-page input,
+.git-management-page textarea {
+  font-family: inherit;
 }
 
 .gmp-header {
@@ -18,9 +27,33 @@
 
 .gmp-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px 32px 48px;
   background: transparent;
+  /* 覆盖全局隐藏滚动条，与设置页 / 日记正文同一套细滚动条 */
+  -ms-overflow-style: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--border-muted) transparent !important;
+}
+
+.gmp-content::-webkit-scrollbar {
+  display: block !important;
+  width: 10px !important;
+}
+
+.gmp-content::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.gmp-content::-webkit-scrollbar-thumb {
+  background-color: var(--border-muted) !important;
+  border-radius: 4px !important;
+}
+
+.gmp-content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-strong) !important;
 }
 
 .gmp-card {
@@ -35,7 +68,7 @@
 .gmp-section-body {
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 14px 16px;
 }
 
 .gmp-status-enabled {
@@ -59,6 +92,7 @@
   background: var(--form-field-bg, var(--bg-surface));
   color: var(--text-primary);
   font-size: 14px;
+  font-family: inherit;
   outline: none;
   transition:
     border-color var(--duration-normal) var(--ease-out-cubic),
@@ -129,6 +163,7 @@
   color: var(--text-primary);
   cursor: pointer;
   font-size: 13px;
+  font-family: inherit;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
@@ -158,6 +193,7 @@
   color: var(--text-primary);
   cursor: pointer;
   font-size: 12px;
+  font-family: inherit;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;
@@ -206,7 +242,7 @@
   flex: 1;
   font-size: 13px;
   color: var(--text-secondary);
-  font-family: monospace;
+  font-family: inherit;
 }
 
 .gmp-empty {
@@ -314,7 +350,7 @@
 
 .gmp-tl-hash {
   font-size: 10px;
-  font-family: monospace;
+  font-family: inherit;
   color: var(--text-tertiary);
   background: var(--bg-surface-normal);
   padding: 2px 6px;
@@ -368,7 +404,7 @@
   font-weight: 600;
   border-radius: 4px;
   flex-shrink: 0;
-  font-family: monospace;
+  font-family: inherit;
   color: var(--text-on-primary);
 }
 
@@ -387,7 +423,7 @@
 .gmp-tl-file-path {
   flex: 1;
   color: var(--text-secondary);
-  font-family: monospace;
+  font-family: inherit;
   font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -396,7 +432,7 @@
 
 .gmp-tl-file-stats {
   color: var(--text-tertiary);
-  font-family: monospace;
+  font-family: inherit;
   font-size: 11px;
   flex-shrink: 0;
 }
@@ -412,7 +448,7 @@
   margin: 0;
   padding: 10px 12px;
   font-size: 12px;
-  font-family: monospace;
+  font-family: inherit;
   line-height: 1.6;
   white-space: pre-wrap;
   color: var(--text-secondary);
@@ -457,20 +493,20 @@
   gap: 8px;
   align-items: center;
   margin: 0;
-  padding: 16px 20px;
+  padding: 12px 16px;
   border-radius: 0;
-  background: transparent;
+  background: var(--bg-surface);
   border: none;
   border-bottom: 1px solid var(--border-card);
   box-shadow: none;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--bg-surface);
+  position: relative;
+  z-index: 1;
 }
 
 .gmp-commit-input {
   flex: 1;
+  min-width: 0;
+  width: auto;
   margin-bottom: 0;
 }
 
@@ -551,7 +587,7 @@
   font-weight: 600;
   border-radius: 4px;
   flex-shrink: 0;
-  font-family: monospace;
+  font-family: inherit;
   color: var(--text-on-primary);
 }
 
@@ -579,7 +615,7 @@
   flex: 1;
   min-width: 0;
   color: var(--text-secondary);
-  font-family: monospace;
+  font-family: inherit;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -679,4 +715,292 @@
 
 .gmp-btn-danger:hover {
   opacity: 0.9;
+}
+
+.gmp-scope-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.gmp-scope-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.gmp-scope-row + .gmp-scope-row {
+  margin-top: 10px;
+}
+
+.gmp-scope-heading {
+  flex-shrink: 0;
+  width: 48px;
+  padding-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.gmp-scope-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gmp-scope-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 26px;
+}
+
+.gmp-scope-chip-muted {
+  color: var(--text-secondary);
+}
+
+.gmp-remote-status-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+
+.gmp-remote-status-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.gmp-remote-status-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gmp-remote-status-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.gmp-remote-status-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-error);
+  word-break: break-word;
+}
+
+.gmp-graph-section {
+  padding: 8px 12px 4px;
+}
+
+.gmp-graph-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.gmp-graph-row {
+  display: flex;
+  min-height: 32px;
+}
+
+.gmp-graph-lane {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 12px;
+}
+
+.gmp-graph-node {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--border-muted);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.gmp-graph-node-head {
+  border-color: var(--color-primary);
+}
+
+.gmp-graph-line {
+  width: 2px;
+  flex: 1;
+  min-height: 8px;
+  margin-top: -1px;
+}
+
+.gmp-graph-content {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 8px 2px 0;
+}
+
+.gmp-graph-commit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.gmp-graph-commit:hover,
+.gmp-graph-commit-expanded {
+  background: var(--bg-surface-normal);
+}
+
+.gmp-graph-message {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gmp-graph-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gmp-graph-head-badge,
+.gmp-current-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+}
+
+.gmp-graph-remote-icon {
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.gmp-graph-time,
+.gmp-graph-hash {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.gmp-graph-files {
+  padding: 4px 8px 10px 4px;
+}
+
+.gmp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  padding: 8px;
+}
+
+.gmp-password-wrap {
+  position: relative;
+}
+
+.gmp-password-wrap .gmp-input {
+  padding-right: 52px;
+}
+
+.gmp-password-toggle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px;
+}
+
+.gmp-config-modal-overlay.gmp-config-modal-overlay {
+  padding: 56px 32px;
+  box-sizing: border-box;
+}
+
+.gmp-config-modal.gmp-config-modal {
+  width: 520px;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  padding: 40px 32px 48px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.gmp-config-modal.gmp-config-modal > :first-child {
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+
+.gmp-config-modal.gmp-config-modal > :last-child {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.gmp-config-modal.gmp-config-modal > :last-child::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+}
+
+.gmp-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.gmp-config-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gmp-config-block-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gmp-config-block .gmp-label {
+  margin-bottom: 0;
+}
+
+.gmp-config-block .gmp-btn-row {
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .gmp-scope-heading {
+    width: auto;
+  }
+
+  .gmp-graph-commit {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

@@ -72,32 +72,6 @@
   animation: birthdayModalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 挂到主内容圆角卡内：只虚化卡片，不动 TitleBar / 窗外圈 */
-.overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  box-sizing: border-box;
-  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.25));
-  backdrop-filter: var(--blur-overlay, blur(4px));
-  -webkit-backdrop-filter: var(--blur-overlay, blur(4px));
-  border-radius: inherit;
-  animation: birthdayOverlayIn var(--duration-fast, 0.15s) ease-out;
-}
-
-@keyframes birthdayOverlayIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes birthdayModalIn {
   from {
     opacity: 0;

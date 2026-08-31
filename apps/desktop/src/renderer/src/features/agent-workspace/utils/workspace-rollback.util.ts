@@ -29,11 +29,17 @@ function formatPathSection(
   return [label, ...lines]
 }
 
+export interface WorkspaceRollbackPathSection {
+  label: string
+  paths: string[]
+  moreCount: number
+}
+
 export interface WorkspaceRollbackPreviewCopy {
   /** AI 写工具改过、必定会被还原的文件 */
-  fileLines: string[]
+  attributed: WorkspaceRollbackPathSection | null
   /** 同期变化但不是写工具造成的文件：终端命令的产物，或用户自己的编辑 */
-  extraLines: string[]
+  extra: WorkspaceRollbackPathSection | null
   /** 存在无法归因的改动时，必须让用户先选范围再回滚 */
   needsScopeChoice: boolean
   cascadeNote: string | null
@@ -41,36 +47,33 @@ export interface WorkspaceRollbackPreviewCopy {
   isEmpty: boolean
 }
 
+function buildPathSection(label: string, paths: string[]): WorkspaceRollbackPathSection | null {
+  if (paths.length === 0) return null
+  return {
+    label,
+    paths: paths.slice(0, MAX_PATH_LINES),
+    moreCount: Math.max(0, paths.length - MAX_PATH_LINES)
+  }
+}
+
 /** 把回滚预览转成确认框要展示的文案片段 */
 export function buildWorkspaceRollbackPreviewCopy(
   preview: WorkspaceRollbackPreview,
   t: TranslateFn
 ): WorkspaceRollbackPreviewCopy {
-  const more = (count: number) =>
-    t('round_rollback.more_files', '另有 {{count}} 个文件…', { count })
-
-  const fileLines = formatPathSection(
-    t('round_rollback.preview_files_label', '将还原以下文件：'),
-    preview.attributedPaths,
-    more
-  )
-
-  const extraLines =
-    preview.extraPaths.length > 0
-      ? formatPathSection(
-          t(
-            'round_rollback.preview_extra_label',
-            '另有 {{count}} 个文件在这期间变化，可能来自终端命令或你自己的编辑：',
-            { count: preview.extraPaths.length }
-          ),
-          preview.extraPaths,
-          more
-        )
-      : []
-
   return {
-    fileLines,
-    extraLines,
+    attributed: buildPathSection(
+      t('round_rollback.preview_files_label', '助手改过、将会撤回的文件：'),
+      preview.attributedPaths
+    ),
+    extra: buildPathSection(
+      t(
+        'round_rollback.preview_extra_label',
+        '下面这些文件也有变化，但不是助手直接改的（可能是命令或你自己改的）：',
+        { count: preview.extraPaths.length }
+      ),
+      preview.extraPaths
+    ),
     needsScopeChoice: preview.extraPaths.length > 0,
     cascadeNote:
       preview.rounds > 1

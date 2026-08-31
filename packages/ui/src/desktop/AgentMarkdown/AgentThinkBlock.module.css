@@ -1,8 +1,23 @@
 .root {
   width: 100%;
   margin-bottom: 8px;
+  color: var(--text-secondary);
 }
 
 .root:last-child {
   margin-bottom: 0;
+}
+
+/* Ant Design X Think 默认走正文色；思考标题 / 正文比对话正文浅一档 */
+.root :global(.ant-think),
+.root :global(.ant-think-status),
+.root :global(.ant-think-title),
+.root :global(.ant-think-content) {
+  color: var(--text-secondary);
+}
+
+.root :global(.ant-think-icon),
+.root :global(.ant-think-expand),
+.root :global(.ant-think-expand-icon) {
+  color: var(--text-tertiary);
 }

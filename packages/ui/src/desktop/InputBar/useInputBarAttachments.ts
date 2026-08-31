@@ -7,6 +7,10 @@ import {
   fileToChatAttachment,
   type InputBarAttachment
 } from './input-bar-attachment.util'
+import {
+  ingestDroppedAttachments,
+  type InputBarAttachmentIntake
+} from './input-bar-drop.util'
 
 const TEXT_FILE_SIZE_LIMIT = 512 * 1024
 
@@ -24,7 +28,13 @@ function filterValidAttachments(
 }
 
 export function useInputBarAttachments(
-  setAttachments: React.Dispatch<React.SetStateAction<MockChatAttachment[]>>
+  setAttachments: React.Dispatch<React.SetStateAction<MockChatAttachment[]>>,
+  options?: {
+    attachmentIntake?: InputBarAttachmentIntake
+    resolveDropAttachments?: (
+      dataTransfer: DataTransfer
+    ) => Promise<MockChatAttachment[] | null>
+  }
 ) {
   const { t } = useTranslation()
   const toast = useToast()
@@ -77,6 +87,28 @@ export function useInputBarAttachments(
     e.target.value = ''
   }
 
+  const handleAttachmentDrop = useCallback(
+    async (dataTransfer: DataTransfer) => {
+      try {
+        const newAtts = await ingestDroppedAttachments({
+          dataTransfer,
+          intake: options?.attachmentIntake ?? 'companion',
+          resolveDropAttachments: options?.resolveDropAttachments
+            ? async (dt) => {
+                const resolved = await options.resolveDropAttachments?.(dt)
+                return resolved as InputBarAttachment[] | null
+              }
+            : undefined
+        })
+        const valid = filterValidAttachments(newAtts, rejectOversizedText)
+        if (valid.length) setAttachments((prev) => [...prev, ...valid])
+      } catch (e) {
+        console.error('Failed to add dropped attachments:', e)
+      }
+    },
+    [options?.attachmentIntake, options?.resolveDropAttachments, rejectOversizedText, setAttachments]
+  )
+
   const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
       const imageFiles = collectClipboardImageFiles(e.clipboardData)
@@ -96,5 +128,11 @@ export function useInputBarAttachments(
     [addAttachments]
   )
 
-  return { fileInputRef, handlePickFiles, handleNativeWebFileChange, handlePaste }
+  return {
+    fileInputRef,
+    handlePickFiles,
+    handleNativeWebFileChange,
+    handlePaste,
+    handleAttachmentDrop
+  }
 }

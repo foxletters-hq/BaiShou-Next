@@ -23,7 +23,7 @@ alwaysApply: false
 - 可见控件描边：`--border-control`
 - 灰底卡片外框：`--border-card`
 - Focus（通用强调）：`--border-strong`
-- 表单输入聚焦：`--form-field-border-focus`（更深灰描边），`--form-field-focus-ring: none`；过渡 `--form-field-transition`
+- 表单输入聚焦：`--form-field-border-focus`（更深灰描边），`--form-field-focus-ring: none`；仅 `:focus` / `:focus-within`，禁止 `:hover` 加深描边；过渡 `--form-field-transition`
 
 ## 布局
 

@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clampOcrConcurrency,
+  listOcrConcurrencyValues,
   resolveBatchEmbedConcurrency,
   resolveMobileBatchEmbedConcurrency
 } from '../concurrency.util'
+
+describe('clampOcrConcurrency', () => {
+  it('clamps to 1–10 and lists selectable values', () => {
+    expect(clampOcrConcurrency(undefined)).toBe(1)
+    expect(clampOcrConcurrency(0)).toBe(1)
+    expect(clampOcrConcurrency(9)).toBe(9)
+    expect(clampOcrConcurrency(11)).toBe(10)
+    expect(listOcrConcurrencyValues()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  })
+})
 
 describe('resolveBatchEmbedConcurrency', () => {
   it('defaults invalid values to 20', () => {

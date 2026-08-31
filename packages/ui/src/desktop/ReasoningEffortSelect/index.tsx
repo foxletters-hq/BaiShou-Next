@@ -6,6 +6,7 @@ import {
   normalizeReasoningEffortSetting,
   formatReasoningEffortLabel
 } from '@baishou/shared'
+import { Select } from '../Select/Select'
 
 export type ReasoningEffortSelectProps = {
   value: ReasoningEffortSetting
@@ -34,19 +35,18 @@ export const ReasoningEffortSelect: React.FC<ReasoningEffortSelectProps> = ({
   )
 
   return (
-    <select
+    <Select
       id={id}
       className={className}
       disabled={disabled}
+      size="small"
       value={normalized}
       onChange={(e) => onChange(normalizeReasoningEffortSetting(e.target.value))}
       aria-label={t('agent.reasoning.effort_label', '思考强度')}
-    >
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {formatReasoningEffortLabel(opt)}
-        </option>
-      ))}
-    </select>
+      options={options.map((opt) => ({
+        value: opt,
+        label: formatReasoningEffortLabel(opt)
+      }))}
+    />
   )
 }

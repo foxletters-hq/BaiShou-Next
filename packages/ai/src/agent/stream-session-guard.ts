@@ -59,6 +59,11 @@ export function abortAgentStreamSession(sessionId: string): void {
   pendingStopSessionIds.add(sessionId)
 }
 
+/** 回滚/强制开流前清除：空闲 stop 留下的 pending 会毒死下一轮 claim */
+export function clearPendingAgentStreamStop(sessionId: string): void {
+  pendingStopSessionIds.delete(sessionId)
+}
+
 export function abortAllAgentStreamSessions(): void {
   for (const claim of sessionClaims.values()) {
     claim.abortController.abort()

@@ -388,4 +388,87 @@ describe('SummaryGeneratorService', () => {
       providerId: undefined
     })
   })
+
+  it('yields generation_failed_error when first-output timeout occurs', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service')
+    const { createSummaryFirstOutputTimeoutError } = await import('../summary/summary-ai-stream')
+
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        { date: new Date('2026-03-24'), content: '日记', tags: '' }
+      ])
+    }
+    const mockSummaryRepo = { getSummaries: vi.fn(async () => []) }
+    const mockAiClient = {
+      generateContent: vi.fn(async () => {
+        throw createSummaryFirstOutputTimeoutError(300_000)
+      })
+    }
+
+    const service = new SummaryGeneratorService(
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any
+    )
+
+    const target = {
+      type: SummaryType.weekly,
+      startDate: new Date('2026-03-23'),
+      endDate: new Date('2026-03-29'),
+      label: 'Week 4'
+    }
+
+    const outputs: string[] = []
+    await expect(async () => {
+      for await (const chunk of service.generate(target, { modelId: 'm' })) {
+        outputs.push(chunk)
+      }
+    }).rejects.toThrow(/waiting for first output/)
+
+    expect(outputs.some((item) => item.includes('STATUS:generation_failed_error'))).toBe(true)
+    expect(outputs.some((item) => item.includes('timeout'))).toBe(true)
+  })
+
+  it('rethrows user abort without generation_failed_error', async () => {
+    const { SummaryGeneratorService } = await import('../summary/summary-generator.service')
+
+    const abortController = new AbortController()
+    const mockDiaryRepo = {
+      findByDateRange: vi.fn(async () => [
+        { date: new Date('2026-03-24'), content: '日记', tags: '' }
+      ])
+    }
+    const mockSummaryRepo = { getSummaries: vi.fn(async () => []) }
+    const mockAiClient = {
+      generateContent: vi.fn(async () => {
+        abortController.abort()
+        throw new DOMException('The operation was aborted', 'AbortError')
+      })
+    }
+
+    const service = new SummaryGeneratorService(
+      mockDiaryRepo as any,
+      mockSummaryRepo as any,
+      mockAiClient as any
+    )
+
+    const target = {
+      type: SummaryType.weekly,
+      startDate: new Date('2026-03-23'),
+      endDate: new Date('2026-03-29'),
+      label: 'Week 4'
+    }
+
+    const outputs: string[] = []
+    await expect(async () => {
+      for await (const chunk of service.generate(target, {
+        modelId: 'm',
+        abortSignal: abortController.signal
+      })) {
+        outputs.push(chunk)
+      }
+    }).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(outputs.some((item) => item.includes('STATUS:generation_failed_error'))).toBe(false)
+  })
 })

@@ -11,6 +11,7 @@ export type { StackScreenHeaderActionConfig } from './stack-screen-header.types'
 
 export interface StackScreenHeaderProps {
   title: string
+  titleAddon?: React.ReactNode
   showBack?: boolean
   onBack?: () => void
   headerRight?: StackScreenHeaderActionConfig
@@ -22,6 +23,7 @@ export interface StackScreenHeaderProps {
 
 export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
   title,
+  titleAddon,
   showBack = true,
   onBack,
   headerRight,
@@ -81,9 +83,12 @@ export const StackScreenHeader: React.FC<StackScreenHeaderProps> = ({
         ) : null}
       </View>
 
-      <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-        {title}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {titleAddon}
+      </View>
 
       <View style={styles.sideEnd}>{resolvedRight}</View>
     </View>
@@ -133,8 +138,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500'
   },
-  headerTitle: {
+  titleRow: {
     flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4
+  },
+  headerTitle: {
+    flexShrink: 1,
     minWidth: 0,
     fontSize: 17,
     fontWeight: '600',

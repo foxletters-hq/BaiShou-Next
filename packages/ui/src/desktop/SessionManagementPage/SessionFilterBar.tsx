@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Input } from '../Input/Input'
 import { Search } from 'lucide-react'
 import styles from './SessionManagementPage.module.css'
 
@@ -22,8 +23,10 @@ export const SessionFilterBar: React.FC<SessionFilterBarProps> = ({
     <div className={styles.filterBar}>
       <div className={styles.searchBox}>
         <Search size={16} color="var(--text-secondary)" style={{ marginRight: 8 }} />
-        <input
+        <Input
+          fieldSize="small"
           className={styles.searchInput}
+          inputClassName="baishou-form-field--embed"
           placeholder={t('common.search_hint', '搜索记忆...')}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}

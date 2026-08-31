@@ -6,7 +6,7 @@ import { useAgentWorkspaces } from '../../hooks/useAgentWorkspaces'
 import { useWorkspaceSessions } from '../../hooks/useWorkspaceSessions'
 import { SETTINGS_HUB_PREFIX } from '../../../settings/settings-route.util'
 import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
-import { WorkbenchHomeSidebar, type WorkbenchHomeNavId } from './WorkbenchHomeSidebar'
+import { WorkbenchHomeSidebar } from './WorkbenchHomeSidebar'
 import pageStyles from './WorkbenchHomePage.module.css'
 import styles from './WorkbenchPlaceholderPage.module.css'
 
@@ -14,7 +14,7 @@ interface WorkspaceOutletContext {
   setFolderRoot: (path: string | null) => void
 }
 
-export type WorkbenchPlaceholderSection = Exclude<WorkbenchHomeNavId, null | 'home'>
+export type WorkbenchPlaceholderSection = 'projects'
 
 export interface WorkbenchPlaceholderPageProps {
   section: WorkbenchPlaceholderSection
@@ -36,7 +36,7 @@ export const WorkbenchPlaceholderPage: React.FC<WorkbenchPlaceholderPageProps> =
     removeWorkspace,
     setWorkspacePinned
   } = useAgentWorkspaces()
-  const { sessions, reloadSessions } = useWorkspaceSessions()
+  const { sessions, reloadSessions, pinSession } = useWorkspaceSessions()
   const [creating, setCreating] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsWorkspace, setSettingsWorkspace] = useState<{
@@ -130,7 +130,7 @@ export const WorkbenchPlaceholderPage: React.FC<WorkbenchPlaceholderPageProps> =
         onNewProject={() => void handleOpenFolder()}
         onOpenHome={() => navigate('/agent-workspace')}
         onOpenKnowledge={() => navigate('/agent-workspace/knowledge')}
-        onOpenTemplates={() => navigate('/agent-workspace/templates')}
+        onOpenSkills={() => navigate('/agent-workspace/skills')}
         onOpenProjects={() => navigate('/agent-workspace/projects')}
         onOpenSettings={() => void handleOpenSettings()}
         creating={creating}
@@ -142,23 +142,14 @@ export const WorkbenchPlaceholderPage: React.FC<WorkbenchPlaceholderPageProps> =
         onDeleteSession={(sessionId) => void handleDeleteSession(sessionId)}
         onRemoveWorkspace={removeWorkspace}
         onTogglePinWorkspace={(id, pinned) => setWorkspacePinned(id, pinned)}
+        onTogglePinSession={pinSession}
       />
 
       <main className={pageStyles.main}>
         <div className={styles.empty}>
-          <h1 className={styles.title}>
-            {section === 'knowledge'
-              ? t('workbench.home_knowledge', '知识库')
-              : section === 'templates'
-                ? t('workbench.home_templates', '模板')
-                : t('workbench.home_projects', '项目')}
-          </h1>
+          <h1 className={styles.title}>{t('workbench.home_projects', '项目')}</h1>
           <p className={styles.desc}>
-            {section === 'knowledge'
-              ? t('workbench.placeholder_knowledge_desc', '知识库功能即将上线，敬请期待。')
-              : section === 'templates'
-                ? t('workbench.placeholder_templates_desc', '模板功能即将上线，敬请期待。')
-                : t('workbench.placeholder_projects_desc', '项目列表即将上线，敬请期待。')}
+            {t('workbench.placeholder_projects_desc', '项目列表即将上线，敬请期待。')}
           </p>
         </div>
       </main>

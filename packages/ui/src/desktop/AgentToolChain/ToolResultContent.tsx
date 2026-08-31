@@ -1,7 +1,13 @@
 import React, { useMemo } from 'react'
-import type { MockToolInvocation } from '@baishou/shared'
-import { resolveToolResultPresentation } from '../../shared/tool-result.util'
+import { fileChangeFromMutateInvocation, type MockToolInvocation } from '@baishou/shared'
+import { useTranslation } from 'react-i18next'
+import { FileChangeDiff } from '../../agent-workspace/FileChangeDiff'
+import {
+  localizeToolResultText,
+  resolveToolResultPresentation
+} from '../../shared/tool-result.util'
 import { AgentMarkdownRenderer } from '../AgentMarkdown/AgentMarkdownRenderer'
+import { CompanionAskResultCard } from './CompanionAskResultCard'
 import styles from './ToolResultContent.module.css'
 
 export const ToolResultContent = React.memo(function ToolResultContent({
@@ -9,7 +15,24 @@ export const ToolResultContent = React.memo(function ToolResultContent({
 }: {
   invocation: MockToolInvocation
 }) {
+  const { t } = useTranslation()
+  const fileChange = useMemo(() => fileChangeFromMutateInvocation(invocation), [invocation])
   const presentation = useMemo(() => resolveToolResultPresentation(invocation), [invocation])
+  const displayText = useMemo(
+    () =>
+      presentation.mode === 'structured' || presentation.mode === 'companion_ask'
+        ? ''
+        : localizeToolResultText(presentation.text, t),
+    [presentation, t]
+  )
+
+  if (fileChange && (fileChange.diff?.trim() || fileChange.kind === 'rename' || fileChange.kind === 'delete')) {
+    return <FileChangeDiff data={fileChange} />
+  }
+
+  if (presentation.mode === 'companion_ask') {
+    return <CompanionAskResultCard data={presentation} />
+  }
 
   return (
     <div className={styles.resultViewport}>
@@ -28,19 +51,14 @@ export const ToolResultContent = React.memo(function ToolResultContent({
         <StructuredToolResult data={presentation.data} />
       ) : presentation.mode === 'plain' && presentation.renderAsMarkdown ? (
         <AgentMarkdownRenderer
-          content={presentation.text}
+          content={displayText}
           variant="ancillary"
-          wrapXProvider={false}
           className={styles.markdownBody}
         />
+      ) : presentation.mode === 'error' ? (
+        <p className={`${styles.resultStatus} ${styles.errorText}`}>{displayText}</p>
       ) : (
-        <pre
-          className={`${styles.resultTextLog} ${
-            presentation.mode === 'error' ? styles.errorText : ''
-          }`}
-        >
-          {presentation.text}
-        </pre>
+        <pre className={styles.resultTextLog}>{displayText}</pre>
       )}
     </div>
   )

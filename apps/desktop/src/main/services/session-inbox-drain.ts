@@ -76,11 +76,29 @@ export async function drainSessionInbox(params: DrainSessionInboxParams): Promis
   }
 }
 
+export function isSessionInboxDraining(sessionId: string): boolean {
+  return drainingSessions.has(sessionId)
+}
+
+/** 等同一 session 的 drain 锁释放，避免 admit 报 started 但实际被锁挡掉 */
+export async function waitForSessionInboxDrainLock(
+  sessionId: string,
+  maxWaitMs = 2000,
+  pollMs = 50
+): Promise<boolean> {
+  const started = Date.now()
+  while (drainingSessions.has(sessionId)) {
+    if (Date.now() - started >= maxWaitMs) return false
+    await new Promise((resolve) => setTimeout(resolve, pollMs))
+  }
+  return true
+}
+
 /** 测试用：清空 draining 锁 */
 export function resetSessionInboxDrainForTests(): void {
   drainingSessions.clear()
 }
 
 export function isSessionInboxDrainingForTests(sessionId: string): boolean {
-  return drainingSessions.has(sessionId)
+  return isSessionInboxDraining(sessionId)
 }

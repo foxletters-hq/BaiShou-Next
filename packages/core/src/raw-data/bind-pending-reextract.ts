@@ -15,8 +15,9 @@ export function bindPendingReextractCollaborators(options: {
   graphManager: GraphRawManager
   shadowRepo: ShadowIndexRepository
   getVaultName: () => string | Promise<string>
+  getVaultId: () => string | Promise<string>
 }): void {
-  const { freshness, graphManager, shadowRepo, getVaultName } = options
+  const { freshness, graphManager, shadowRepo, getVaultName, getVaultId } = options
 
   freshness.bindPendingReextract({
     loadExtractHashes: async () => {
@@ -47,12 +48,17 @@ export function bindPendingReextractCollaborators(options: {
     },
     writeExtractState: async (filePath, contentHash) => {
       const vaultName = await getVaultName()
+      const vaultId = (await getVaultId()).trim()
+      if (!vaultId) {
+        throw new Error('bindPendingReextract: vaultId is required for extract-state')
+      }
       const now = Date.now()
       const key = normalizeFilePath(filePath)
       const id = `extract:${key}`
       const record: GraphExtractStateRawRecord = {
         id,
         schemaVersion: 1,
+        vaultId,
         vaultName,
         filePath: key,
         sourceContentHash: contentHash,

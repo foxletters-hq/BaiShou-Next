@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
 import { isSettingsHubPath } from '../features/settings/settings-route.util'
+import { isAgentWorkspaceKnowledgeDetailPath } from '../features/agent-workspace/utils/agent-workspace-route.util'
 import styles from './MainLayout.module.css'
 import { MainPageCacheActiveContext } from './main-page-cache.context'
 
@@ -20,8 +21,8 @@ export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
   '/summary': lazy(() =>
     import('../features/summary/SummaryPage').then((m) => ({ default: m.SummaryPage }))
   ),
-  '/graph': lazy(() =>
-    import('../features/graph/GraphPage').then((m) => ({ default: m.GraphPage }))
+  '/memory': lazy(() =>
+    import('../features/memory/MemoryCenterPage').then((m) => ({ default: m.MemoryCenterPage }))
   ),
   '/data-sync': lazy(() =>
     import('../features/settings/CloudSyncPage').then((m) => ({ default: m.CloudSyncPage }))
@@ -52,8 +53,11 @@ export const MAIN_PAGE_CACHE: Record<string, React.ComponentType> = {
 }
 
 export function getMainPageCacheKey(pathname: string): string | null {
+  if (pathname === '/memory' || pathname.startsWith('/memory/')) return '/memory'
   if (pathname in MAIN_PAGE_CACHE) return pathname
   if (pathname.startsWith('/chat')) return '/chat'
+  // 笔记本详情走 Outlet，与日记编辑页相同；列表仍由工作台保活壳渲染
+  if (isAgentWorkspaceKnowledgeDetailPath(pathname)) return null
   if (pathname.startsWith('/agent-workspace')) return '/agent-workspace'
   if (isSettingsHubPath(pathname)) return '/hub'
   return null

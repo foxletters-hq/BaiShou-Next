@@ -1,3 +1,4 @@
+import { resolveDiaryExtractBits } from './diary-extract-bits'
 import type { MonthlyJsonlStore } from './stores/monthly-jsonl.store'
 import type { RawSourceKind, ShardInfo } from './raw-data-source.types'
 
@@ -69,8 +70,8 @@ export class DerivedFreshnessService {
   }
 
   /**
-   * Diaries whose current contentHash ≠ extract-state cursor (or never extracted).
-   * Merges explicit marks with a full shadow scan when collaborators are bound.
+   * Diaries that exist and whose body hash ≠ extract-state cursor (or never extracted).
+   * Edited-but-unchanged body stays extracted. Missing graph rows do not enqueue.
    */
   async listPendingReextract(): Promise<PendingReextractRef[]> {
     const extractHashes =
@@ -86,9 +87,13 @@ export class DerivedFreshnessService {
 
     for (const j of journals) {
       const key = normalizeFilePath(j.filePath)
-      if (!key || !j.contentHash) continue
+      if (!key) continue
       const last = extractHashes.get(key) ?? null
-      if (last === j.contentHash) continue
+      const bits = resolveDiaryExtractBits({
+        contentHash: j.contentHash,
+        extractedHash: last
+      })
+      if (!bits.exists || !bits.needsReextract) continue
       byPath.set(key, {
         filePath: key,
         contentHash: j.contentHash,
@@ -100,7 +105,8 @@ export class DerivedFreshnessService {
     for (const [filePath, contentHash] of this.reextractMarks) {
       const key = normalizeFilePath(filePath)
       const last = extractHashes.get(key) ?? null
-      if (last === contentHash) {
+      const bits = resolveDiaryExtractBits({ contentHash, extractedHash: last })
+      if (!bits.needsReextract) {
         this.reextractMarks.delete(key)
         continue
       }

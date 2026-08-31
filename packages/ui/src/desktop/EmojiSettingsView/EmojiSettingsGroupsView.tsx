@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Plus, Smile, Trash2 } from 'lucide-react'
+import { ChevronRight, Plus, Trash2 } from 'lucide-react'
 import type { EmojiToolConfig } from '@baishou/shared'
 import {
   createEmojiGroup,
@@ -73,9 +73,6 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
     <div className={styles.emojiSettingsPage}>
       <div className={`${styles.toolCard} ${isEnabled ? styles.enabled : styles.disabled}`}>
         <div className={styles.cardMain}>
-          <div className={styles.toolIconWrapper}>
-            <Smile size={20} />
-          </div>
           <div className={styles.toolInfo}>
             <div className={styles.toolNameRow}>
               <span className={styles.toolName}>{t('agent.tools.emoji_send', '表情包')}</span>
@@ -85,53 +82,43 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
                   '开启后，伙伴可在对话中根据语境发送你上传的表情包。先在下方创建表情包组并上传图片，再到伙伴编辑页为每个伙伴开启并选择可用的组。'
                 )}
               />
-              <span className={styles.toolIdTag}>emoji_send</span>
             </div>
+            <span className={styles.toolMeta}>
+              {t('agent.tools.emoji_groups_hint', '为不同伙伴配置独立的表情包组')}
+            </span>
           </div>
           <Switch checked={isEnabled} onChange={handleToggle} />
         </div>
-        {isEnabled ? (
-          <div className={styles.paramsWrapper}>
-            <div className={styles.paramsDivider} />
-            <div className={styles.paramsConfigArea}>
-              <span className={styles.toolMeta}>
-                {t('agent.tools.emoji_groups_hint', '为不同伙伴配置独立的表情包组')}
-              </span>
-            </div>
-          </div>
-        ) : null}
       </div>
 
       {isEnabled ? (
         <div className={styles.categoryList}>
           <button
             type="button"
-            className={styles.emojiAddGroupCard}
+            className={styles.emojiGroupAddRow}
             onClick={() => void handleAddGroup()}
           >
-            <span className={styles.emojiAddGroupCardIcon}>
-              <Plus size={22} strokeWidth={2} />
+            <span className={styles.emojiGroupAddIcon} aria-hidden>
+              <Plus size={18} strokeWidth={2} />
             </span>
-            <span className={styles.emojiAddGroupCardTitle}>
-              {t('agent.tools.emoji_group_add', '新建组')}
-            </span>
-            <span className={styles.emojiAddGroupCardHint}>
-              {normalized.groups.length === 0
-                ? t('agent.tools.emoji_groups_empty', '暂无表情包组，点击「新建组」开始添加')
-                : t('agent.tools.emoji_groups_hint', '为不同伙伴配置独立的表情包组')}
-            </span>
+            <span className={styles.toolName}>{t('agent.tools.emoji_group_add', '新建组')}</span>
           </button>
 
           {normalized.groups.map((group) => (
             <div key={group.id} className={`${styles.toolCard} ${styles.enabled}`}>
               <div className={styles.cardMain}>
-                <div className={styles.toolIconWrapper}>
-                  <Smile size={20} />
+                <div className={styles.emojiGroupTile} aria-hidden>
+                  {group.name.trim().slice(0, 1) || '组'}
                 </div>
                 <div className={styles.toolInfo}>
                   <div className={styles.toolNameRow}>
                     <span className={styles.toolName}>{group.name}</span>
                   </div>
+                  <span className={styles.toolMeta}>
+                    {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
+                      count: group.emojis?.length ?? 0
+                    })}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -149,16 +136,6 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
                 >
                   <ChevronRight size={16} />
                 </button>
-              </div>
-              <div className={styles.paramsWrapper}>
-                <div className={styles.paramsDivider} />
-                <div className={styles.paramsConfigArea}>
-                  <span className={styles.toolMeta}>
-                    {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
-                      count: group.emojis?.length ?? 0
-                    })}
-                  </span>
-                </div>
               </div>
             </div>
           ))}

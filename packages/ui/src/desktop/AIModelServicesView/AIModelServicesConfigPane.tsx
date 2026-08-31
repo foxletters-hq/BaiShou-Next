@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import styles from './AIModelServicesView.module.css'
+import { Input } from '../Input/Input'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
@@ -102,8 +103,9 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             <div className={styles.inputGroup}>
               <div className={styles.inputContainer}>
                 <Link className={styles.inputPrefixIcon} />
-                <input
+                <Input
                   type="text"
+                  fieldSize="small"
                   value={localFormData.baseUrl}
                   onChange={(e) =>
                     setLocalFormData({
@@ -113,7 +115,7 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   }
                   onBlur={handleBaseUrlBlur}
                   placeholder={activeProviderMeta.defaultBase || 'API Base URL'}
-                  className={styles.textFieldWithIcon}
+                  inputClassName="baishou-form-field--pad-leading"
                 />
               </div>
             </div>
@@ -121,8 +123,9 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             <div className={styles.inputGroup}>
               <div className={styles.inputContainer}>
                 <Key className={styles.inputPrefixIcon} />
-                <input
+                <Input
                   type={isObscure ? 'password' : 'text'}
+                  fieldSize="small"
                   value={localFormData.apiKey}
                   onChange={(e) =>
                     setLocalFormData({
@@ -131,11 +134,17 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                     })
                   }
                   placeholder={t('ai_config.api_key_placeholder', 'API Key')}
-                  className={styles.textFieldWithIcon}
+                  inputClassName="baishou-form-field--pad-leading"
+                  trailing={
+                    <button
+                      type="button"
+                      className={styles.revealButton}
+                      onClick={() => setIsObscure(!isObscure)}
+                    >
+                      {isObscure ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
                 />
-                <button className={styles.revealButton} onClick={() => setIsObscure(!isObscure)}>
-                  {isObscure ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
             </div>
 
@@ -182,12 +191,13 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
               <>
                 <div className={styles.modelSearchWrap}>
                   <Search className={styles.modelSearchIcon} size={16} aria-hidden />
-                  <input
+                  <Input
                     type="search"
+                    fieldSize="small"
                     value={modelSearchQuery}
                     onChange={(e) => setModelSearchQuery(e.target.value)}
                     placeholder={t('common.search_model', '搜索模型...')}
-                    className={styles.modelSearchInput}
+                    inputClassName="baishou-form-field--pad-leading"
                     aria-label={t('common.search_model', '搜索模型...')}
                   />
                 </div>

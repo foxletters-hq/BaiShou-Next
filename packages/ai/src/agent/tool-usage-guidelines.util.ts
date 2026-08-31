@@ -45,6 +45,17 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     )
   }
 
+  if (ids.has('companion_ask')) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 向用户提问')
+    lines.push(
+      '- 需要用户做选择、确认、同意或提供名称时，**必须**调用 companion_ask，等待工具返回后再继续。'
+    )
+    lines.push(
+      '- **禁止**把这类问题写在普通回复里让用户打字回答。companion_ask 必须带 question，以及至少两个 options。'
+    )
+  }
+
   if (hasDiaryEdit && hasDiaryRead) {
     if (lines.length > 0) lines.push('')
     lines.push('## 编辑日记前先读取')

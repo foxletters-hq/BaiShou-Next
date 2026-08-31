@@ -9,6 +9,7 @@ describe('CurrentTimeTool', () => {
     expect(tool.name).toBe('current_time')
     expect(tool.description).toContain('current')
     expect(tool.description.toLowerCase()).toContain('time')
+    expect(tool.description).toContain('[System Current Date / Time]')
   })
 
   it('cannot be disabled from tool management', () => {

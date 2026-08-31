@@ -25,7 +25,7 @@ import {
   type BaishouAgentGateConfig,
   DEFAULT_AGENT_GATE_NOTIFICATION_PREFS
 } from '@baishou/shared'
-import { HelpTooltip, SegmentedControl, Select } from '@baishou/ui'
+import { HelpTooltip, Input, SegmentedControl, Select } from '@baishou/ui'
 import { Check, ChevronDown } from 'lucide-react'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
 import pane from './GeneralSettingsPane.module.css'
@@ -70,6 +70,8 @@ function capabilityTitle(id: AgentGateCapabilityId, t: Translate): string {
       return t('settings.agent_gate_cap_memory_store', '写入记忆')
     case 'memory_delete':
       return t('settings.agent_gate_cap_memory_delete', '删除记忆')
+    default:
+      return id
   }
 }
 
@@ -99,14 +101,17 @@ function capabilityHint(id: AgentGateCapabilityId, t: Translate): string {
       return t('settings.agent_gate_cap_memory_store_hint', '写入长期记忆')
     case 'memory_delete':
       return t('settings.agent_gate_cap_memory_delete_hint', '删除记忆始终需要确认')
+    default:
+      return ''
   }
 }
 
 export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsSectionProps> = ({
-  scene = 'companion',
+  scene: sceneProp = 'companion',
   scope = { kind: 'companion' },
   onSubpageActiveChange
 }) => {
+  const scene: AgentToolScene = sceneProp
   const { t } = useTranslation()
   const [config, setConfig] = useState<BaishouAgentGateConfig | null>(null)
   const [loading, setLoading] = useState(true)
@@ -266,7 +271,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
 
   if (!config) return null
 
-  if (scene === 'workspace') {
+  if (sceneProp === 'workspace') {
     return (
       <WorkspaceGatePermissionsPanel
         config={config}
@@ -598,7 +603,8 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                             ))
                           )}
                           <div className={styles.formRow}>
-                            <input
+                            <Input
+                              fieldSize="small"
                               className={styles.textInput}
                               value={trustedDirDraft}
                               onChange={(e) => setTrustedDirDraft(e.target.value)}
@@ -704,8 +710,10 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                       )}
                     </span>
                   </div>
-                  <input
+                  <Input
+                    fieldSize="small"
                     className={styles.compactNumberInput}
+                    inputClassName={styles.compactNumberInputField}
                     type="number"
                     min={0}
                     max={20}
@@ -881,7 +889,8 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                   </React.Fragment>
                 ))}
                 <div className={styles.formRow}>
-                  <input
+                  <Input
+                    fieldSize="small"
                     className={styles.textInput}
                     value={exclusionDraft}
                     onChange={(e) => setExclusionDraft(e.target.value)}
@@ -953,7 +962,8 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                   ))
                 )}
                 <div className={styles.formRow}>
-                  <input
+                  <Input
+                    fieldSize="small"
                     className={styles.textInput}
                     value={ruleAction}
                     onChange={(e) => setRuleAction(e.target.value)}
@@ -963,7 +973,8 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     )}
                     disabled={saving}
                   />
-                  <input
+                  <Input
+                    fieldSize="small"
                     className={styles.textInput}
                     value={rulePattern}
                     onChange={(e) => setRulePattern(e.target.value)}

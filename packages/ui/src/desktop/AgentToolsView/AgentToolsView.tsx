@@ -1,17 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Wrench, X } from 'lucide-react'
+import { Wrench, X } from 'lucide-react'
 import type { AgentToolsViewProps } from './agent-tools.types'
 import { useAgentToolsView } from './useAgentToolsView'
 import { AgentToolsBuiltInList } from './AgentToolsBuiltInList'
-import { EmojiSettingsGroupsView, EmojiGroupDetailView } from '../EmojiSettingsView'
-import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { HelpTooltip } from '../HelpTooltip'
 import styles from './AgentToolsView.module.css'
 
 export type { ToolManagementConfig, AgentToolsViewProps } from './agent-tools.types'
-
-type EmojiSubview = 'none' | 'groups' | 'detail'
 
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
@@ -23,14 +19,7 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 }) => {
   const { t } = useTranslation()
   const view = useAgentToolsView({ config, onChange, scene })
-  const [emojiSubview, setEmojiSubview] = useState<EmojiSubview>('none')
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const isDialog = presentation === 'dialog'
-  const inEmojiSubpage = scene === 'companion' && emojiSubview !== 'none'
-
-  const emojiConfig = normalizeEmojiToolConfig(
-    'emojiConfig' in config ? config.emojiConfig : undefined
-  )
   const containerClass = isDialog
     ? `${styles.container} ${styles.containerDialog}`
     : styles.container
@@ -40,63 +29,9 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
     : styles.scrollArea
 
   useEffect(() => {
-    onSubpageActiveChange?.(inEmojiSubpage)
+    onSubpageActiveChange?.(false)
     return () => onSubpageActiveChange?.(false)
-  }, [inEmojiSubpage, onSubpageActiveChange])
-
-  const handleEmojiConfigChange = (nextEmojiConfig: typeof emojiConfig) => {
-    if (scene !== 'companion') return
-    onChange({ ...config, emojiConfig: nextEmojiConfig })
-  }
-
-  if (inEmojiSubpage) {
-    return (
-      <div className={containerClass}>
-        <div
-          className={`${isDialog ? headerClass : styles.emojiPageHeader} ${styles.emojiSubHeader}`}
-        >
-          <button
-            type="button"
-            className={styles.emojiBackBtn}
-            onClick={() => {
-              if (emojiSubview === 'detail') {
-                setEmojiSubview('groups')
-                return
-              }
-              setEmojiSubview('none')
-              setSelectedGroupId(null)
-            }}
-          >
-            <ArrowLeft size={18} />
-            {t('common.back', '返回')}
-          </button>
-          <span className={styles.emojiPageTitle}>
-            {emojiSubview === 'detail'
-              ? t('agent.tools.emoji_group_detail', '表情包组')
-              : t('agent.tools.emoji_settings', '表情包设置')}
-          </span>
-        </div>
-        <div className={`${scrollClass} ${!isDialog ? styles.emojiPageScroll : ''}`}>
-          {emojiSubview === 'groups' ? (
-            <EmojiSettingsGroupsView
-              config={emojiConfig}
-              onChange={handleEmojiConfigChange}
-              onOpenGroup={(groupId) => {
-                setSelectedGroupId(groupId)
-                setEmojiSubview('detail')
-              }}
-            />
-          ) : selectedGroupId ? (
-            <EmojiGroupDetailView
-              config={emojiConfig}
-              groupId={selectedGroupId}
-              onChange={handleEmojiConfigChange}
-            />
-          ) : null}
-        </div>
-      </div>
-    )
-  }
+  }, [onSubpageActiveChange])
 
   return (
     <div className={containerClass}>
@@ -146,7 +81,6 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
           getToolParam={view.getToolParam}
           setToolParam={view.setToolParam}
           onConfigChange={onChange}
-          onOpenEmojiSettings={() => setEmojiSubview('groups')}
           showEmojiTools={view.showEmojiTools}
         />
       </div>

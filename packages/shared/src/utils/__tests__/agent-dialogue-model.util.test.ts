@@ -15,7 +15,7 @@ import {
 } from '../agent-dialogue-model.util'
 
 describe('resolveDialogueModelSelection', () => {
-  it('prefers assistant model when both provider and model are set', () => {
+  it('ignores assistant-bound model and uses requested', () => {
     expect(
       resolveDialogueModelSelection({
         assistantProviderId: 'openai',
@@ -26,9 +26,9 @@ describe('resolveDialogueModelSelection', () => {
         globalDialogueModelId: 'gemini-2.5-pro'
       })
     ).toEqual({
-      providerId: 'openai',
-      modelId: 'gpt-4o',
-      source: 'assistant'
+      providerId: 'anthropic',
+      modelId: 'claude-3-5-sonnet',
+      source: 'requested'
     })
   })
 
@@ -66,11 +66,11 @@ describe('resolveDialogueModelSelection', () => {
     })
   })
 
-  it('treats partial assistant config as unset and uses global', () => {
+  it('ignores a fully bound assistant model and uses global when requested is unset', () => {
     expect(
       resolveDialogueModelSelection({
         assistantProviderId: 'openai',
-        assistantModelId: 'off',
+        assistantModelId: 'gpt-4o',
         globalDialogueProviderId: 'gemini',
         globalDialogueModelId: 'gemini-2.5-flash'
       })

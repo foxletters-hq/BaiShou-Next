@@ -1,4 +1,5 @@
-import { sqliteTable, integer, text, index, customType } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, integer, text, index, uniqueIndex, customType } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
 
 const sqliteVecBlob = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
@@ -50,6 +51,8 @@ export const graphNodesTable = sqliteTable(
     vaultId: text('vault_id').notNull(),
     nodeType: text('node_type').notNull(),
     name: text('name').notNull(),
+    /** Normalized display name for equality lookup (trim/collapse/lower). */
+    nameNormalized: text('name_normalized').notNull().default(''),
     aliases: text('aliases').notNull().default('[]'),
     summary: text('summary').notNull().default(''),
     propsJson: text('props_json').notNull().default('{}'),
@@ -66,7 +69,30 @@ export const graphNodesTable = sqliteTable(
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
     deletedAt: integer('deleted_at', { mode: 'timestamp' })
   },
-  (t) => [index('graph_nodes_vault_id_type').on(t.vaultId, t.nodeType)]
+  (t) => [
+    index('graph_nodes_vault_id_type').on(t.vaultId, t.nodeType),
+    index('graph_nodes_vault_name_norm').on(t.vaultId, t.nameNormalized),
+    index('graph_nodes_vault_mention').on(t.vaultId, t.mentionCount),
+    // Partial unique for non-entry live entities (SQLite via raw DDL in compat/migration).
+    uniqueIndex('graph_nodes_vault_type_name_live')
+      .on(t.vaultId, t.nodeType, t.nameNormalized)
+      .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'entry'`)
+  ]
+)
+
+/** Alias lookup table — avoids JSON LIKE false positives on graph_nodes.aliases. */
+export const graphNodeAliasesTable = sqliteTable(
+  'graph_node_aliases',
+  {
+    id: text('id').primaryKey(),
+    vaultId: text('vault_id').notNull(),
+    nodeId: text('node_id').notNull(),
+    aliasNormalized: text('alias_normalized').notNull()
+  },
+  (t) => [
+    index('graph_node_aliases_vault_alias').on(t.vaultId, t.aliasNormalized),
+    index('graph_node_aliases_node').on(t.nodeId)
+  ]
 )
 
 export const graphEdgesTable = sqliteTable(

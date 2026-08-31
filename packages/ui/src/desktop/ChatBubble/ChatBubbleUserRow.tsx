@@ -21,7 +21,7 @@ interface ChatBubbleUserRowProps {
   onResendEdit?: () => void
   hasResendEdit: boolean
   onCopy: (e?: React.MouseEvent) => void
-  onStartEdit: () => void
+  onStartEdit?: () => void
   onResend?: () => void
   onDelete?: () => void
   onShowContext?: (msg: MockChatMessage) => void

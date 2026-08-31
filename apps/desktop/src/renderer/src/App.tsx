@@ -37,6 +37,11 @@ const AssistantEditScreen = lazy(() =>
 const DiaryEditorPage = lazy(() =>
   import('./features/diary/DiaryEditorPage').then((m) => ({ default: m.DiaryEditorPage }))
 )
+const KnowledgeDetailPage = lazy(() =>
+  import('./features/knowledge/KnowledgeDetailPage').then((m) => ({
+    default: m.KnowledgeDetailPage
+  }))
+)
 const SummaryDetailPage = lazy(() =>
   import('./features/summary/SummaryDetailPage').then((m) => ({ default: m.SummaryDetailPage }))
 )
@@ -126,12 +131,12 @@ const DiaryEmbedFailureNotifier = () => {
         reason
           ? t(
               'settings.rag_diary_auto_embed_failed_with_reason',
-              '日记已保存，但记忆嵌入未成功：{{message}}。请前往 设置 → 伙伴记忆，点击「全量扫描未索引日记」补全嵌入。',
+              '日记已保存，但记忆嵌入未成功：{{message}}。请前往「记忆」→「向量片段」，点击「全量扫描未索引日记」补全嵌入。',
               { message: reason }
             )
           : t(
               'settings.rag_diary_auto_embed_failed',
-              '日记已保存，但记忆嵌入未成功。请前往 设置 → 伙伴记忆，点击「全量扫描未索引日记」补全嵌入。'
+              '日记已保存，但记忆嵌入未成功。请前往「记忆」→「向量片段」，点击「全量扫描未索引日记」补全嵌入。'
             ),
         { duration: 8000 }
       )
@@ -226,7 +231,10 @@ const AppRoutes = () => {
             <Route path="/diary/:dateStr" element={<DiaryEditorPage />} />
             <Route path="/summary" element={<CachedRoutePlaceholder />} />
             <Route path="/summary/:id" element={<SummaryDetailPage />} />
-            <Route path="/graph" element={<CachedRoutePlaceholder />} />
+            <Route path="/graph" element={<Navigate to="/memory/graph" replace />} />
+            <Route path="/memory/*" element={<CachedRoutePlaceholder />} />
+            <Route path="/memory" element={<CachedRoutePlaceholder />} />
+            <Route path="/hub/rag" element={<Navigate to="/memory/vectors" replace />} />
 
             {/* Tools Routing */}
             <Route path="/lan-transfer" element={<Navigate to="/hub/lan-transfer" replace />} />
@@ -239,6 +247,10 @@ const AppRoutes = () => {
 
             {/* AI / Agent Role Routing - 由 MainPageCache 保活 */}
             <Route path="/chat/*" element={<CachedRoutePlaceholder />} />
+            <Route
+              path="/agent-workspace/knowledge/:notebookId"
+              element={<KnowledgeDetailPage />}
+            />
             <Route path="/agent-workspace/*" element={<CachedRoutePlaceholder />} />
             <Route path="/sessions" element={<SessionManagementScreen />} />
             <Route path="/assistants" element={<AssistantManagementScreen />} />

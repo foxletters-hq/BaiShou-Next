@@ -98,8 +98,11 @@ function embeddingFromCell(value: unknown, dimension: number): number[] | null {
  * 知识库混合检索：向量 + 真 FTS5 + RRF。
  * 强制按 notebook_id 过滤，缺省或空 notebookId 时 fail-closed（抛错 / 空结果不跨本）。
  */
+const SEARCHABLE_SOURCE_STATUSES = "('ready', 'partial')"
+const VEC_RETRY_COOLDOWN_MS = 60_000
+
 export class KnowledgeSearchService {
-  private vecDistanceAvailable: boolean | null = null
+  private vecDisabledUntil = 0
 
   constructor(private readonly deps: KnowledgeSearchDeps) {}
 
@@ -219,8 +222,10 @@ export class KnowledgeSearchService {
           rank AS ftsRank
         FROM knowledge_chunks_fts
         JOIN knowledge_chunks c ON c.id = knowledge_chunks_fts.rowid
+        JOIN knowledge_sources s ON s.id = c.source_id
         WHERE knowledge_chunks_fts MATCH ?
           AND c.notebook_id = ?
+          AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
         ORDER BY rank
         LIMIT ?
         `,
@@ -254,13 +259,11 @@ export class KnowledgeSearchService {
     queryVector: number[],
     limit: number
   ): Promise<KnowledgeSearchHit[]> {
-    if (this.vecDistanceAvailable !== false) {
+    if (Date.now() >= this.vecDisabledUntil) {
       try {
-        const hits = this.queryWithVecDistanceCosine(notebookId, queryVector, limit)
-        this.vecDistanceAvailable = true
-        return hits
+        return this.queryWithVecDistanceCosine(notebookId, queryVector, limit)
       } catch {
-        this.vecDistanceAvailable = false
+        this.vecDisabledUntil = Date.now() + VEC_RETRY_COOLDOWN_MS
       }
     }
     return this.queryWithJsCosine(notebookId, queryVector, limit)
@@ -274,17 +277,19 @@ export class KnowledgeSearchService {
     const vectorBuffer = embeddingVectorToBytes(queryVector)
     const rows = this.deps.sql.all(
       `
-      SELECT
-        chunk_id AS chunkId,
-        source_id AS sourceId,
-        notebook_id AS notebookId,
-        chunk_index AS chunkIndex,
-        chunk_text AS chunkText,
-        metadata_json AS metadataJson,
-        vec_distance_cosine(embedding, ?) AS distance
-      FROM knowledge_chunks
-      WHERE notebook_id = ?
-      ORDER BY vec_distance_cosine(embedding, ?) ASC
+        SELECT
+        c.chunk_id AS chunkId,
+        c.source_id AS sourceId,
+        c.notebook_id AS notebookId,
+        c.chunk_index AS chunkIndex,
+        c.chunk_text AS chunkText,
+        c.metadata_json AS metadataJson,
+        vec_distance_cosine(c.embedding, ?) AS distance
+      FROM knowledge_chunks c
+      JOIN knowledge_sources s ON s.id = c.source_id
+      WHERE c.notebook_id = ?
+        AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
+      ORDER BY vec_distance_cosine(c.embedding, ?) ASC
       LIMIT ?
       `,
       [vectorBuffer, notebookId, vectorBuffer, limit]
@@ -315,19 +320,33 @@ export class KnowledgeSearchService {
     queryVector: number[],
     limit: number
   ): KnowledgeSearchHit[] {
+    const countRows = this.deps.sql.all(
+      `
+      SELECT count(*) AS c
+      FROM knowledge_chunks c
+      JOIN knowledge_sources s ON s.id = c.source_id
+      WHERE c.notebook_id = ?
+        AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
+      `,
+      [notebookId]
+    )
+    if (Number(countRows[0]?.c ?? 0) > 1500) return []
+
     const rows = this.deps.sql.all(
       `
-      SELECT
-        chunk_id AS chunkId,
-        source_id AS sourceId,
-        notebook_id AS notebookId,
-        chunk_index AS chunkIndex,
-        chunk_text AS chunkText,
-        metadata_json AS metadataJson,
-        embedding,
-        dimension
-      FROM knowledge_chunks
-      WHERE notebook_id = ?
+        SELECT
+        c.chunk_id AS chunkId,
+        c.source_id AS sourceId,
+        c.notebook_id AS notebookId,
+        c.chunk_index AS chunkIndex,
+        c.chunk_text AS chunkText,
+        c.metadata_json AS metadataJson,
+        c.embedding AS embedding,
+        c.dimension AS dimension
+      FROM knowledge_chunks c
+      JOIN knowledge_sources s ON s.id = c.source_id
+      WHERE c.notebook_id = ?
+        AND s.status IN ${SEARCHABLE_SOURCE_STATUSES}
       `,
       [notebookId]
     )
@@ -354,7 +373,7 @@ export class KnowledgeSearchService {
       })
     }
 
-    scored.sort((a, b) => b.score - a.score)
+    scored.sort((a, b) => b.score - a.score || a.chunkId.localeCompare(b.chunkId))
     return scored.slice(0, limit)
   }
 }

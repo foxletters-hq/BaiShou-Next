@@ -59,6 +59,7 @@ async function createSchema(db: Client) {
       vault_id TEXT NOT NULL,
       node_type TEXT NOT NULL,
       name TEXT NOT NULL,
+      name_normalized TEXT NOT NULL DEFAULT '',
       aliases TEXT NOT NULL DEFAULT '[]',
       summary TEXT NOT NULL DEFAULT '',
       props_json TEXT NOT NULL DEFAULT '{}',
@@ -70,6 +71,14 @@ async function createSchema(db: Client) {
       created_at INTEGER NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL DEFAULT 0,
       deleted_at INTEGER
+    )
+  `)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS graph_node_aliases (
+      id TEXT PRIMARY KEY NOT NULL,
+      vault_id TEXT NOT NULL,
+      node_id TEXT NOT NULL,
+      alias_normalized TEXT NOT NULL
     )
   `)
   await db.execute(`
@@ -309,7 +318,7 @@ describe('vault isolation V2.2 (vault_id)', () => {
       modelId: 'm'
     })
     await db.execute({
-      sql: `INSERT INTO graph_nodes (id, vault_id, node_type, name) VALUES ('nB', ?, 'person', 'Bob')`,
+      sql: `INSERT INTO graph_nodes (id, vault_id, node_type, name, name_normalized) VALUES ('nB', ?, 'person', 'Bob', 'bob')`,
       args: [VAULT_B]
     })
     await db.execute({
@@ -562,7 +571,7 @@ describe('vault isolation V2.2 (vault_id)', () => {
       modelId: 'm'
     })
     await db.execute({
-      sql: `INSERT INTO graph_nodes (id, vault_id, node_type, name) VALUES ('nA', ?, 'person', 'Ann'), ('nB', ?, 'person', 'Bob')`,
+      sql: `INSERT INTO graph_nodes (id, vault_id, node_type, name, name_normalized) VALUES ('nA', ?, 'person', 'Ann', 'ann'), ('nB', ?, 'person', 'Bob', 'bob')`,
       args: [VAULT_A, VAULT_B]
     })
     await db.execute({

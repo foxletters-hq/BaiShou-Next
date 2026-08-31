@@ -3,11 +3,7 @@ import type {
   AgentWorkspaceSecurityMode,
   BaishouAgentGateConfig
 } from './agent-gate.types'
-import {
-  CATCH_ALL_ALLOW_RULE,
-  hasCatchAllAllowRule,
-  setCatchAllAllowRule
-} from './agent-gate-migrate.util'
+import { hasCatchAllAllowRule, setCatchAllAllowRule } from './agent-gate-migrate.util'
 import { applyCapabilityStateToConfig } from './agent-gate-capability.util'
 import {
   DEFAULT_WORKSPACE_COMMAND_BLACKLIST,
@@ -37,11 +33,7 @@ export function applyWorkspaceSecurityModeToConfig(
     edit: allowList ? AgentGateEffect.Ask : AgentGateEffect.Allow,
     delete: AgentGateEffect.Ask,
     command: AgentGateEffect.Ask,
-    external: AgentGateEffect.Ask,
-    diary_write: AgentGateEffect.Ask,
-    diary_delete: AgentGateEffect.Ask,
-    memory_store: AgentGateEffect.Ask,
-    memory_delete: AgentGateEffect.Ask
+    external: AgentGateEffect.Ask
   }
 
   let next = applyCapabilityStateToConfig(config, 'workspace', {
@@ -75,7 +67,7 @@ export function resolveWorkspaceSecurityMode(
     return mode
   }
   // 兼容旧 approvalPreset（仅在 securityMode 缺失时）
-  if (config?.approvalPreset === 'never_ask' || hasCatchAllAllowRule(config ?? {})) {
+  if (config?.approvalPreset === 'never_ask' || (config != null && hasCatchAllAllowRule(config))) {
     return 'full_access'
   }
   if (config?.approvalPreset === 'dangerous_only') {

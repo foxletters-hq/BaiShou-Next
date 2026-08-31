@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { HelpTooltip } from '../HelpTooltip'
+import { Input } from '../Input/Input'
 import styles from './WebSearchSettingsView.module.css'
 import stack from '../shared/SettingsStack.module.css'
 import { Eye, EyeOff, Key, Save } from 'lucide-react'
@@ -38,17 +39,25 @@ export const ExaApiKeySection: React.FC<ExaApiKeySectionProps> = ({
         <div className={styles.apiConfigBody}>
           <div className={styles.textFieldWrapper}>
             <Key size={20} className={styles.textFieldIcon} />
-            <input
+            <Input
+              fieldSize="small"
               type={apiKeyVisible ? 'text' : 'password'}
               placeholder="exa-xxxxxx"
               className={styles.textFieldInput}
+              inputClassName="baishou-form-field--embed"
               value={localApiKey}
               onChange={(e) => onApiKeyChange(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && onSave()}
+              trailing={
+                <button
+                  type="button"
+                  className={styles.iconIconButton}
+                  onClick={onToggleVisibility}
+                >
+                  {apiKeyVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+                </button>
+              }
             />
-            <button className={styles.iconIconButton} onClick={onToggleVisibility}>
-              {apiKeyVisible ? <Eye size={20} /> : <EyeOff size={20} />}
-            </button>
             <button className={styles.iconIconButton} onClick={onSave}>
               <Save size={20} />
             </button>

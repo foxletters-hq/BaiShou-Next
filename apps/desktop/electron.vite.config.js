@@ -46,6 +46,10 @@ export default defineConfig({
             id.startsWith('better-sqlite3/') ||
             id === 'sqlite-vec' ||
             id.startsWith('sqlite-vec/') ||
+            id === 'tesseract.js' ||
+            id.startsWith('tesseract.js/') ||
+            id === 'tesseract.js-core' ||
+            id.startsWith('tesseract.js-core/') ||
             id === '@libsql/client' ||
             id.startsWith('@libsql/client/')
           ) {
@@ -60,7 +64,7 @@ export default defineConfig({
       alias: workspaceAliases
     },
     ssr: {
-      external: ['better-sqlite3', 'sqlite-vec', '@libsql/client']
+      external: ['better-sqlite3', 'sqlite-vec', 'tesseract.js', 'tesseract.js-core', '@libsql/client']
     },
     build: {
       rollupOptions: {
@@ -73,6 +77,7 @@ export default defineConfig({
             id === 'pdf-parse' ||
             id.includes('better-sqlite3') ||
             id.includes('sqlite-vec') ||
+            id.includes('tesseract.js') ||
             id.includes('@libsql/client')
           ) {
             return true

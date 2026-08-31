@@ -583,53 +583,6 @@
   border-bottom-color: rgba(var(--color-primary-rgb), 0.2) !important;
 }
 
-.customCheck {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
-  cursor: pointer;
-  position: relative;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-  flex-shrink: 0;
-}
-
-.customCheck:hover {
-  border-color: var(--color-primary);
-}
-
-.customCheck:checked {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  box-shadow: none;
-}
-
-.customCheck::after {
-  content: '';
-  width: 4px;
-  height: 7px;
-  border: solid transparent;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  position: absolute;
-  top: 1px;
-  left: 4px;
-  transition: border-color 0.15s ease;
-}
-
-.customCheck:checked::after {
-  border-color: var(--text-on-primary);
-}
-
 .recordIcon {
   width: 32px;
   height: 32px;
@@ -826,6 +779,15 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.countModalNumberHost {
+  width: 72px !important;
+}
+
+.countModalNumberInput {
+  text-align: center;
+  font-weight: 600;
 }
 
 .smSliderContainer {

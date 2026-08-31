@@ -73,6 +73,26 @@ export interface GitSyncConfig {
   remote?: GitRemoteConfig
 }
 
+/** Git 远程同步状态（供版本控制页展示） */
+export interface GitRemoteStatus {
+  /** 是否已填写远程地址 */
+  configured: boolean
+  /** 最近一次 fetch 是否成功；未 fetch 时为 false */
+  connected: boolean
+  /** 远程尚不存在当前分支（从未成功推送） */
+  unpublished: boolean
+  /** 当前跟踪的远程分支名 */
+  branch: string
+  /** 远程地址（不含凭据） */
+  remoteUrl?: string
+  /** 本地领先远程的提交数 */
+  ahead: number
+  /** 本地落后远程的提交数 */
+  behind: number
+  /** fetch 失败时的错误信息 */
+  fetchError?: string
+}
+
 // ── S3 增量同步类型 ──────────────────────────────────────────
 
 /** S3 增量同步配置 */

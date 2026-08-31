@@ -1,26 +1,40 @@
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Smile } from 'lucide-react'
-import type { EmojiGroup } from '@baishou/shared'
+import { ChevronRight, Smile } from 'lucide-react'
+import type { EmojiToolConfig } from '@baishou/shared'
+import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { Switch } from '../Switch/Switch'
+import { AssistantEmojiGroupPickerDialog } from './AssistantEmojiGroupPickerDialog'
 import styles from './AssistantEditPage.module.css'
 
 export interface AssistantEditEmojiGroupSectionProps {
-  emojiGroups: EmojiGroup[]
+  emojiConfig: EmojiToolConfig
   emojiEnabled: boolean
   selectedGroupIds: string[]
   onEmojiEnabledChange: (enabled: boolean) => void
   onToggleGroup: (groupId: string) => void
+  onEmojiConfigChange: (config: EmojiToolConfig) => void
 }
 
 export const AssistantEditEmojiGroupSection: React.FC<AssistantEditEmojiGroupSectionProps> = ({
-  emojiGroups,
+  emojiConfig,
   emojiEnabled,
   selectedGroupIds,
   onEmojiEnabledChange,
-  onToggleGroup
+  onToggleGroup,
+  onEmojiConfigChange
 }) => {
   const { t } = useTranslation()
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const groups = useMemo(() => normalizeEmojiToolConfig(emojiConfig).groups, [emojiConfig])
+  const selectedGroups = groups.filter((group) => selectedGroupIds.includes(group.id))
+  const summary =
+    selectedGroups.length === 0
+      ? t('agent.assistant.emoji_groups_none_selected', '未选择表情包组')
+      : t('agent.assistant.emoji_groups_selected_summary', '已选 {{count}} 组：{{names}}', {
+          count: selectedGroups.length,
+          names: selectedGroups.map((group) => group.name).join('、')
+        })
 
   return (
     <>
@@ -42,51 +56,35 @@ export const AssistantEditEmojiGroupSection: React.FC<AssistantEditEmojiGroupSec
       {emojiEnabled ? (
         <>
           <div className={styles.spacer16} />
-          <div className={styles.emojiGroupPickSectionLabel}>
-            <span className={styles.emojiGroupPickSectionIcon} aria-hidden>
-              <Smile size={16} />
+          <button
+            type="button"
+            className={styles.emojiGroupPickerTrigger}
+            onClick={() => setPickerOpen(true)}
+          >
+            <span className={styles.emojiGroupPickLeading}>
+              <span className={styles.emojiGroupPickIcon} aria-hidden>
+                <Smile size={18} />
+              </span>
+              <span className={styles.emojiGroupPickText}>
+                <span className={styles.emojiGroupPickName}>
+                  {t('agent.assistant.emoji_groups_pick_label', '可用的表情包组')}
+                </span>
+                <span className={styles.emojiGroupPickMeta}>{summary}</span>
+              </span>
             </span>
-            <label className={styles.fieldLabel} style={{ marginBottom: 0 }}>
-              {t('agent.assistant.emoji_groups_pick_label', '可用的表情包组')}
-            </label>
-          </div>
-          <div className={styles.spacer8} />
-          {emojiGroups.length === 0 ? (
-            <p className={styles.descText}>
-              {t('agent.tools.emoji_no_groups', '请先在表情包设置中创建表情包组')}
-            </p>
-          ) : (
-            <div className={styles.emojiGroupPickList}>
-              {emojiGroups.map((group) => {
-                const selected = selectedGroupIds.includes(group.id)
-                return (
-                  <button
-                    key={group.id}
-                    type="button"
-                    className={`${styles.emojiGroupPickItem} ${selected ? styles.emojiGroupPickItemActive : ''}`}
-                    onClick={() => onToggleGroup(group.id)}
-                  >
-                    <span className={styles.emojiGroupPickLeading}>
-                      <span className={styles.emojiGroupPickIcon} aria-hidden>
-                        <Smile size={18} />
-                      </span>
-                      <span className={styles.emojiGroupPickText}>
-                        <span className={styles.emojiGroupPickName}>{group.name}</span>
-                        <span className={styles.emojiGroupPickMeta}>
-                          {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
-                            count: group.emojis?.length ?? 0
-                          })}
-                        </span>
-                      </span>
-                    </span>
-                    {selected ? <Check size={18} /> : null}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+            <ChevronRight size={18} aria-hidden />
+          </button>
         </>
       ) : null}
+
+      <AssistantEmojiGroupPickerDialog
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        emojiConfig={emojiConfig}
+        selectedGroupIds={selectedGroupIds}
+        onToggleGroup={onToggleGroup}
+        onEmojiConfigChange={onEmojiConfigChange}
+      />
     </>
   )
 }

@@ -40,11 +40,9 @@ export const IdentitySettingsPersonaSection: React.FC<IdentitySettingsPersonaSec
               }}
               disabled={isActive}
             >
-              <span>{pid}</span>
+              <span className={styles.inputChipName}>{pid}</span>
               {isActive ? (
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)' }}>
-                  {t('settings.identity_active_mark')}
-                </span>
+                <span className={styles.inputChipMark}>{t('settings.identity_active_mark')}</span>
               ) : null}
             </button>
           )

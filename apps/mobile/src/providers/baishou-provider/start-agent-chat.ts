@@ -10,6 +10,8 @@ import {
   AgentSessionService,
   EmbeddingAdapter,
   GraphReaderAdapter,
+  createCompanionGraphLookups,
+  KnowledgeGraphReaderAdapter,
   KnowledgeReaderAdapter,
   type IBaishouAgentGate,
   type StreamChatCallbacks
@@ -154,6 +156,21 @@ export function createStartAgentChat(deps: {
             (
               await import('../../services/mobile-raw-data-source.runtime')
             ).getMobileRawDataSourceManager() ?? undefined,
+          deleteGraphRecord: async ({ kind, id }) => {
+            const { getMobileGraphRawManager } =
+              await import('../../services/mobile-raw-data-source.runtime')
+            const { applyDiaryGraphSurgicalDelete } = await import('@baishou/core-mobile')
+            const graphManager = getMobileGraphRawManager()
+            if (!graphManager) {
+              throw new Error('Graph raw manager not ready')
+            }
+            await applyDiaryGraphSurgicalDelete({
+              kind,
+              id,
+              manager: graphManager,
+              repo: new GraphRepository(runtime.drizzleDb)
+            })
+          },
           syncGraphPendingIndex: async () => {
             const { syncMobileGraphPendingIndex } =
               await import('../../services/mobile-raw-data-source.runtime')
@@ -185,6 +202,9 @@ export function createStartAgentChat(deps: {
               vaultId,
               entity: opts.entity,
               mode: opts.mode,
+              depth: opts.depth,
+              nodeType: opts.nodeType,
+              limit: opts.limit,
               embedQuery
             })
             return {
@@ -233,10 +253,33 @@ export function createStartAgentChat(deps: {
               }))
             }
           }),
+          ...createCompanionGraphLookups(async () => {
+            const session = await runtime.sessionRepo.getSessionById(sessionId)
+            const vaultId = resolveVaultIdentity({
+              vaultId: session?.vaultId,
+              vaultName: session?.vaultName || 'Personal'
+            }).id
+            const repo = new GraphRepository(runtime.drizzleDb)
+            return {
+              findByNameOrAlias: (name, nodeType) =>
+                repo.findNodeByNameOrAlias(vaultId, name, nodeType),
+              getNodeById: (id) => repo.getNodeById(id, vaultId),
+              getEdgeById: (id) => repo.getEdgeById(id, vaultId)
+            }
+          }),
           knowledgeReader: new KnowledgeReaderAdapter(async (opts) => {
             const { mobileSearchKnowledge } =
               await import('../../services/mobile-knowledge.service')
             return mobileSearchKnowledge({
+              query: opts.query,
+              notebookId: opts.notebookId,
+              limit: opts.limit
+            })
+          }),
+          knowledgeGraphReader: new KnowledgeGraphReaderAdapter(async (opts) => {
+            const { mobileSearchNotebookGraph } =
+              await import('../../services/mobile-knowledge.service')
+            return mobileSearchNotebookGraph({
               query: opts.query,
               notebookId: opts.notebookId,
               limit: opts.limit

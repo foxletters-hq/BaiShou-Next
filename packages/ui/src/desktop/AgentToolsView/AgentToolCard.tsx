@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ListOrdered, Minus, Plus } from 'lucide-react'
+import { Input } from '../Input/Input'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import type { AgentToolDef, AgentToolsConfig, ToolConfigParam } from './agent-tools.types'
@@ -72,8 +73,10 @@ export const AgentToolCard: React.FC<AgentToolCardProps> = ({
                       >
                         <Minus size={14} />
                       </button>
-                      <input
-                        className={styles.stepperInput}
+                      <Input
+                        className={styles.stepperInputHost}
+                        inputClassName={styles.stepperInput}
+                        fieldSize="small"
                         type="number"
                         value={val}
                         onChange={(e) => {

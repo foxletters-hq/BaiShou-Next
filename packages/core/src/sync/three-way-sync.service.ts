@@ -26,8 +26,9 @@ import { S3NotConfiguredError, S3SyncError } from './sync.errors'
 import { ThreeWaySyncManifestMixin } from './three-way-sync.manifest'
 import { limitExecute } from './three-way-sync.utils'
 import {
+  applyJsonlConflictResolved,
   classifyMonthlyJsonlPath,
-  isMonthlyJsonlRawPath
+  shardKeyValidatorForJsonlKind
 } from '../raw-data/monthly-jsonl-path.util'
 import { JsonlRecordMergeService } from '../raw-data/jsonl-record-merge.service'
 import { MonthlyJsonlStore } from '../raw-data/stores/monthly-jsonl.store'
@@ -129,22 +130,24 @@ export class ThreeWaySyncService
               break
             case 'conflict-resolved': {
               result.conflicted.push(d.filePath)
-              if (isMonthlyJsonlRawPath(d.filePath)) {
-                const mergedOk = await this.mergeMonthlyJsonlConflict(d.filePath)
-                if (mergedOk) {
+              const outcome = await applyJsonlConflictResolved({
+                filePath: d.filePath,
+                direction: d.direction,
+                lineMerge: () => this.mergeMonthlyJsonlConflict(d.filePath),
+                overwriteUpload: async () => {
+                  if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
+                  await this.uploadFile(d.filePath)
                   result.uploaded.push(d.filePath)
-                  break
+                },
+                overwriteDownload: async () => {
+                  if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
+                  if (await this.downloadFile(d.filePath)) {
+                    result.downloaded.push(d.filePath)
+                  }
                 }
-              }
-              if (d.direction === 'upload') {
-                if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
-                await this.uploadFile(d.filePath)
+              })
+              if (outcome === 'merged') {
                 result.uploaded.push(d.filePath)
-              } else {
-                if (d.localEntry) await this.backupFile(d.filePath, d.localEntry.hash)
-                if (await this.downloadFile(d.filePath)) {
-                  result.downloaded.push(d.filePath)
-                }
               }
               break
             }
@@ -283,8 +286,8 @@ export class ThreeWaySyncService
   }
 
   /**
-   * Line-level LWW for Memory / Graph monthly JSONL conflicts.
-   * Merges local + remote, writes local, uploads merged result.
+   * Line-level LWW for Memory monthly JSONL conflicts.
+   * Vault Graph and notebook-graph shards overwrite as a whole file.
    */
   protected async mergeMonthlyJsonlConflict(relPath: string): Promise<boolean> {
     try {
@@ -326,7 +329,8 @@ export class ThreeWaySyncService
       if (!wrote) {
         const store = new MonthlyJsonlStore({
           fs: createNodeFileSystem(),
-          rootDir: path.dirname(fullPath)
+          rootDir: path.dirname(fullPath),
+          isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
         })
         await store.replaceShardContent(classified.shardMonth, merged.text)
         if (classified.kind === 'graph' && classified.collection === 'nodes') {
@@ -350,7 +354,8 @@ export class ThreeWaySyncService
     if (!classified) return
     const store = new MonthlyJsonlStore({
       fs: createNodeFileSystem(),
-      rootDir: path.dirname(absoluteShardPath)
+      rootDir: path.dirname(absoluteShardPath),
+      isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
     })
     await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
     if (classified.kind === 'graph' && classified.collection === 'nodes') {

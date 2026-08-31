@@ -8,6 +8,7 @@ import {
   type UserGender,
   type UserProfile
 } from '@baishou/shared'
+import { Input } from '@baishou/ui'
 import { GraphAwakenBirthdayField } from './GraphAwakenBirthdayField'
 import styles from './GraphAwakenWelcome.module.css'
 
@@ -88,7 +89,7 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
           {step === 'welcome' ? (
             <motion.div key="welcome" className={styles.step} {...stepMotion}>
               <h1 className={styles.title}>
-                {t('graph.awaken_welcome_title', '唤醒你的关系图谱')}
+                {t('graph.awaken_welcome_title', '唤醒你的人生关系图')}
               </h1>
               <p className={styles.body}>
                 {t(
@@ -102,7 +103,7 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
                 disabled={busy}
                 onClick={() => setStep('profile')}
               >
-                {t('graph.awaken_welcome_cta', '唤醒关系图谱')}
+                {t('graph.awaken_welcome_cta', '唤醒人生关系图')}
               </button>
             </motion.div>
           ) : (
@@ -117,8 +118,7 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
 
               <label className={styles.field}>
                 <span>{t('graph.awaken_nickname_label', '昵称')}</span>
-                <input
-                  className={styles.input}
+                <Input
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder={t('graph.awaken_nickname_placeholder', '怎么称呼你？')}

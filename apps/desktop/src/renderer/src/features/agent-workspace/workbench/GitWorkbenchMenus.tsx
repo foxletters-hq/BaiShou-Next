@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
-import type { GitManagementViewModel } from '@baishou/ui'
+import { Input, type GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
 
 export function useDismissOnOutsideClick(open: boolean, onClose: () => void) {
@@ -73,7 +73,8 @@ export const GitWorkbenchBranchMenu: React.FC<{
       >
         {t('workbench.git_publish_branch', '发布当前分支到远程')}
       </button>
-      <input
+      <Input
+        fieldSize="small"
         className={styles.menuInput}
         value={mergeBranch}
         onChange={(event) => setMergeBranch(event.target.value)}
@@ -91,7 +92,8 @@ export const GitWorkbenchBranchMenu: React.FC<{
         {t('workbench.git_merge', '合并分支')}
       </button>
       <div className={styles.menuDivider} />
-      <input
+      <Input
+        fieldSize="small"
         className={styles.menuInput}
         value={newBranch}
         onChange={(event) => setNewBranch(event.target.value)}
@@ -166,7 +168,8 @@ export const GitWorkbenchMoreMenu: React.FC<{
       ) : null}
       <div className={styles.menuDivider} />
       <div className={styles.stashMenuBlock}>
-        <input
+        <Input
+          fieldSize="small"
           className={styles.menuInput}
           value={stashMessage}
           onChange={(event) => setStashMessage(event.target.value)}

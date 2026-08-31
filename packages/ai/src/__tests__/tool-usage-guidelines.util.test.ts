@@ -39,4 +39,11 @@ describe('buildToolUsageGuidelines', () => {
   it('returns null for work-partner style tool sets without diary tools', () => {
     expect(buildToolUsageGuidelines(['web_search', 'current_time'])).toBeNull()
   })
+
+  it('requires companion_ask instead of plain-text questions', () => {
+    const guidelines = buildToolUsageGuidelines(['companion_ask', 'workspace_list'])
+    expect(guidelines).toContain('向用户提问')
+    expect(guidelines).toContain('companion_ask')
+    expect(guidelines).toContain('禁止')
+  })
 })

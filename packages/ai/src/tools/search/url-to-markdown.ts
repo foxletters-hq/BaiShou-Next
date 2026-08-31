@@ -1,6 +1,11 @@
 import { HtmlToMarkdownConverter } from './html-to-markdown'
 import { EMPTY_WEB_PAGE_MESSAGE } from './web-content.util'
-import { assertSafePublicHttpUrl } from '@baishou/shared'
+import {
+  assertSafeHttpUrl,
+  assertSafePublicHttpUrl,
+  assessFetchedWebPage,
+  fetchedWebPageIssueMessage
+} from '@baishou/shared'
 
 export interface FetchUrlAsMarkdownResult {
   markdown: string
@@ -17,6 +22,8 @@ export interface FetchUrlAsMarkdownOptions {
   timeoutMs?: number
   /** 跳过私网/SSRF 检查（仅测试） */
   skipSafeUrlCheck?: boolean
+  /** 知识库导入：允许内网 / 本机，仍只接受 http/https */
+  allowPrivateNetwork?: boolean
 }
 
 function extractTitle(html: string): string {
@@ -41,7 +48,8 @@ export async function fetchUrlAsMarkdown(
   }
 
   if (!options?.skipSafeUrlCheck) {
-    assertSafePublicHttpUrl(trimmed)
+    if (options?.allowPrivateNetwork) assertSafeHttpUrl(trimmed)
+    else assertSafePublicHttpUrl(trimmed)
   }
 
   const fetchImpl = options?.fetchImpl ?? fetch
@@ -70,9 +78,10 @@ export async function fetchUrlAsMarkdown(
         ? (response as { url: string }).url
         : trimmed
 
-    // 重定向后再次校验，防止跳进私网
+    // 重定向后再次校验协议；默认模式仍禁止跳进私网
     if (!options?.skipSafeUrlCheck && finalUrl !== trimmed) {
-      assertSafePublicHttpUrl(finalUrl)
+      if (options?.allowPrivateNetwork) assertSafeHttpUrl(finalUrl)
+      else assertSafePublicHttpUrl(finalUrl)
     }
 
     let markdown: string
@@ -92,6 +101,15 @@ export async function fetchUrlAsMarkdown(
         finalUrl,
         contentType
       }
+    }
+
+    const quality = assessFetchedWebPage({
+      requestedUrl: trimmed,
+      finalUrl,
+      markdown
+    })
+    if (!quality.usable) {
+      throw new Error(fetchedWebPageIssueMessage(quality.issue))
     }
 
     return {

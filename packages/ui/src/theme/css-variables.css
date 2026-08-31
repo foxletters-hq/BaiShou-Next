@@ -27,7 +27,8 @@
   --bg-surface-raised: #ffffff; /* 卡片 / 抬起块（锚定菜单勿用，见 --menu-popup-*） */
   --bg-surface-highest: #e8eaed; /* 居中 Modal / Dialog（锚定菜单勿用） */
   --bg-surface-high: #f0f2f5; /* 悬停 */
-  --bg-surface-normal: #eaecef; /* 内凹次级区、分段轨道 */
+  --bg-surface-normal: #eaecef; /* 内凹次级区、分段轨道、行内代码底 */
+  --bg-code-block: #eceef2; /* 围栏代码块底，与编辑器 .cm-code-line 一致 */
   /* 存量兼容（新代码优先用上表） */
   --bg-surface-lowest: #f8fafc;
   --bg-surface-lowest-rgb: 248, 250, 252;
@@ -215,6 +216,7 @@
   --bg-surface-highest: #38383d;
   --bg-surface-high: #323236;
   --bg-surface-normal: #1e1e22;
+  --bg-code-block: #2a2e38;
   --bg-surface-lowest: #151518;
   --bg-surface-lowest-rgb: 21, 21, 24;
   --bg-surface-low: #151518;

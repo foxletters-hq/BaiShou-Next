@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast, useDialog } from '@baishou/ui'
 import type { FileTreeNode } from './useWorkbenchFileTree'
+import { readSkipMoveConfirm, writeSkipMoveConfirm } from '../utils/workspace-dont-ask-again.util'
 import {
   canDropExplorerEntries,
   collectExternalAbsolutePaths,
@@ -14,23 +15,6 @@ import {
 } from './workbench-file-explorer-dnd.util'
 
 const AUTO_EXPAND_MS = 600
-const SKIP_MOVE_CONFIRM_KEY = 'baishou:workbench-skip-move-confirm'
-
-function readSkipMoveConfirm(): boolean {
-  try {
-    return localStorage.getItem(SKIP_MOVE_CONFIRM_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function writeSkipMoveConfirm(): void {
-  try {
-    localStorage.setItem(SKIP_MOVE_CONFIRM_KEY, '1')
-  } catch {
-    // ignore quota / private mode
-  }
-}
 
 export interface UseWorkbenchFileExplorerDndParams {
   folderRoot: string | null

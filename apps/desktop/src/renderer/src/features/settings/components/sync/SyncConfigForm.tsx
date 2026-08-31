@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Cloud, Globe } from 'lucide-react'
-import { useSyncStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import {
   SYNC_DIVERGENCE_THRESHOLD_OPTIONS,
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
 } from '@baishou/shared'
-import { Switch, useDialog, Select } from '@baishou/ui'
+import { Switch, useDialog, Select, useToast } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
 import { notifyIncrementalSyncConfigChanged } from '../../../../lib/incremental-sync-config-events'
@@ -27,7 +26,8 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
-  const { status, message, setStatus, setMessage } = useSyncStore()
+  const toast = useToast()
+  const [isTesting, setIsTesting] = useState(false)
 
   const [config, setConfig] = useState<any>({
     enabled: false,
@@ -198,16 +198,10 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
     try {
       await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(next))
       notifyIncrementalSyncConfigChanged()
-      setMessage(t('data_sync.config_saved', 'Configuration saved'))
-      setStatus('success')
-      setTimeout(() => {
-        setStatus('idle')
-        setMessage('')
-      }, 2000)
+      toast.showSuccess(t('data_sync.config_saved', '配置已保存'))
     } catch (e: any) {
       setConfig((current: typeof config) => ({ ...current, enabled: prevEnabled }))
-      setMessage(e?.message || t('data_sync.save_failed', 'Save failed'))
-      setStatus('error')
+      toast.showError(e?.message || t('data_sync.save_failed', '保存失败'))
     }
   }
 
@@ -215,21 +209,14 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
     try {
       await (window as any).api?.incrementalSync?.updateConfig(buildConfigPayload(config))
       notifyIncrementalSyncConfigChanged()
-      setMessage(t('data_sync.config_saved', 'Configuration saved'))
-      setStatus('success')
-      setTimeout(() => {
-        setStatus('idle')
-        setMessage('')
-      }, 2000)
+      toast.showSuccess(t('data_sync.config_saved', '配置已保存'))
     } catch (e: any) {
-      setMessage(e?.message || t('data_sync.save_failed', 'Save failed'))
-      setStatus('error')
+      toast.showError(e?.message || t('data_sync.save_failed', '保存失败'))
     }
   }
 
   const handleTestConnection = async () => {
-    setStatus('connecting')
-    setMessage(t('data_sync.testing_connection', 'Testing connection...'))
+    setIsTesting(true)
     try {
       const ok = await (window as any).api?.incrementalSync?.testConnection({
         target: config.target,
@@ -243,22 +230,17 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
         chunkConcurrency: config.chunkConcurrency,
         fileConcurrency: config.fileConcurrency
       })
-      setMessage(
-        ok
-          ? t('data_sync.connection_success', 'Connection successful')
-          : t(
-              'data_sync.connection_failed_check',
-              'Connection failed, please check your configuration'
-            )
-      )
-      setStatus(ok ? 'success' : 'error')
+      if (ok) {
+        toast.showSuccess(t('data_sync.connection_success', '连接成功'))
+      } else {
+        toast.showError(t('data_sync.connection_failed_check', '连接失败，请检查配置'))
+      }
     } catch (e: any) {
-      setMessage(
-        friendlyTestConnectionError(
-          e?.message || t('data_sync.connection_failed', 'Connection failed')
-        )
+      toast.showError(
+        friendlyTestConnectionError(e?.message || t('data_sync.connection_failed', '连接失败'))
       )
-      setStatus('error')
+    } finally {
+      setIsTesting(false)
     }
   }
 
@@ -368,39 +350,13 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
         <button
           type="button"
           onClick={handleTestConnection}
-          disabled={status === 'connecting'}
+          disabled={isTesting}
           className={styles.actionBtn}
         >
           {t('data_sync.test_connection', 'Test Connection')}
         </button>
         {afterTestAction}
       </div>
-
-      {message && (status === 'error' || status === 'success' || status === 'connecting') && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: '8px 12px',
-            borderRadius: '6px',
-            fontSize: '13px',
-            background:
-              status === 'error'
-                ? 'rgba(239, 68, 68, 0.1)'
-                : status === 'success'
-                  ? 'rgba(16, 185, 129, 0.1)'
-                  : 'var(--bg-surface-high)',
-            color:
-              status === 'error'
-                ? 'var(--color-error)'
-                : status === 'success'
-                  ? 'var(--color-success)'
-                  : 'var(--text-secondary)',
-            border: `1px solid ${status === 'error' ? 'var(--color-error)' : status === 'success' ? 'var(--color-success)' : 'var(--border-subtle)'}`
-          }}
-        >
-          {message}
-        </div>
-      )}
 
       {syncStatusSlot}
     </div>

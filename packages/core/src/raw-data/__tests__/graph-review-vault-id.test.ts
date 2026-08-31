@@ -11,7 +11,7 @@ import type { IStoragePathService } from '../../vault/storage-path.types'
 import type { GraphRepository } from '@baishou/database'
 
 /**
- * P0：随机 ID 仓库审核写回必须带 vaultId，否则 sync 会用名字派生成另一仓。
+ * P0：随机 ID 仓库审核写回必须带 vaultId，否则 sync 跳过该行且不会用名字派生仓删除本仓。
  */
 describe('graph review vaultId preservation', () => {
   let tmpDir: string
@@ -33,7 +33,6 @@ describe('graph review vaultId preservation', () => {
   it('随机 ID 仓：审核写入带 vaultId 后同步仍属原仓', async () => {
     const randomId = createRandomVaultId()
     const displayName = 'TravelNotes'
-    // Sanity: name-derived id must differ from the random vault id.
     expect(deriveLegacyVaultId(displayName)).not.toBe(randomId)
 
     const now = Date.now()
@@ -52,6 +51,7 @@ describe('graph review vaultId preservation', () => {
         firstSeenAt: now,
         lastSeenAt: now,
         origin: 'ai',
+        shardMonth: '2026-07',
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -67,7 +67,9 @@ describe('graph review vaultId preservation', () => {
       applyRawEdge: vi.fn(),
       softDeleteEdge: vi.fn(),
       listNodeIds: vi.fn().mockResolvedValue(['n-pending']),
-      listEdgeIds: vi.fn().mockResolvedValue([])
+      listEdgeIds: vi.fn().mockResolvedValue([]),
+      listLiveNodeRefs: vi.fn().mockResolvedValue([{ id: 'n-pending', shardMonth: '2026-07' }]),
+      listLiveEdgeRefs: vi.fn().mockResolvedValue([])
     } as unknown as GraphRepository
 
     const sync = new GraphSyncService(graphManager, repo, null)
@@ -77,7 +79,6 @@ describe('graph review vaultId preservation', () => {
       expect.objectContaining({ id: 'n-pending', vaultId: randomId, reviewStatus: 'pending' })
     )
 
-    // Simulate desktop review write that preserves vaultId (fixed path).
     await graphManager.writeRecord(
       {
         id: 'n-pending',
@@ -93,6 +94,7 @@ describe('graph review vaultId preservation', () => {
         firstSeenAt: now,
         lastSeenAt: now,
         origin: 'ai',
+        shardMonth: '2026-07',
         createdAt: now,
         updatedAt: now + 1,
         deletedAt: null,
@@ -107,14 +109,12 @@ describe('graph review vaultId preservation', () => {
     expect(applyRawNode).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'n-pending', vaultId: randomId, reviewStatus: 'approved' })
     )
-    // Must NOT fall back to name-derived id.
     expect(applyRawNode).not.toHaveBeenCalledWith(
       expect.objectContaining({ vaultId: deriveLegacyVaultId(displayName) })
     )
   })
 
-  it('缺少 vaultId 的审核写回会落到名字派生仓（对照回归）', async () => {
-    const randomId = createRandomVaultId()
+  it('缺少 vaultId 的写回会被跳过，不会落到名字派生仓', async () => {
     const displayName = 'TravelNotes'
     const now = Date.now()
 
@@ -123,7 +123,6 @@ describe('graph review vaultId preservation', () => {
         id: 'n-bug',
         schemaVersion: 1,
         vaultName: displayName,
-        // intentionally omit vaultId — old desktop review path
         nodeType: 'person',
         name: '小红',
         aliases: [],
@@ -133,32 +132,39 @@ describe('graph review vaultId preservation', () => {
         firstSeenAt: now,
         lastSeenAt: now,
         origin: 'ai',
+        shardMonth: '2026-07',
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
         reviewStatus: 'approved'
-      },
+      } as never,
       { collection: 'nodes' }
     )
 
     const applyRawNode = vi.fn().mockResolvedValue(undefined)
+    const softDeleteNode = vi.fn()
+    const listNodeIds = vi.fn().mockResolvedValue(['sqlite-live'])
+    const listLiveNodeRefs = vi.fn()
     const repo = {
       applyRawNode,
-      softDeleteNode: vi.fn(),
+      softDeleteNode,
       applyRawEdge: vi.fn(),
       softDeleteEdge: vi.fn(),
-      listNodeIds: vi.fn().mockResolvedValue([]),
-      listEdgeIds: vi.fn().mockResolvedValue([])
+      listNodeIds,
+      listEdgeIds: vi.fn().mockResolvedValue([]),
+      listLiveNodeRefs,
+      listLiveEdgeRefs: vi.fn()
     } as unknown as GraphRepository
 
-    await new GraphSyncService(graphManager, repo, null).syncPendingIndex()
+    const result = await new GraphSyncService(graphManager, repo, null).syncPendingIndex()
 
-    expect(applyRawNode).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'n-bug',
-        vaultId: deriveLegacyVaultId(displayName)
-      })
+    expect(result.skippedNoVaultId).toBeGreaterThanOrEqual(1)
+    expect(applyRawNode).not.toHaveBeenCalled()
+    expect(applyRawNode).not.toHaveBeenCalledWith(
+      expect.objectContaining({ vaultId: deriveLegacyVaultId(displayName) })
     )
-    expect(applyRawNode).not.toHaveBeenCalledWith(expect.objectContaining({ vaultId: randomId }))
+    expect(listNodeIds).not.toHaveBeenCalled()
+    expect(listLiveNodeRefs).not.toHaveBeenCalled()
+    expect(softDeleteNode).not.toHaveBeenCalled()
   })
 })

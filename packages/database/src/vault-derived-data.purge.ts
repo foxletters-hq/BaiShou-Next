@@ -70,6 +70,10 @@ export async function purgeVaultDerivedData(
     args: [id]
   })
   await db.execute({
+    sql: `DELETE FROM graph_node_aliases WHERE vault_id = ?`,
+    args: [id]
+  })
+  await db.execute({
     sql: `DELETE FROM graph_nodes WHERE vault_id = ?`,
     args: [id]
   })

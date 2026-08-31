@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { File, Folder } from 'lucide-react'
+import { Folder } from 'lucide-react'
+import { getFileTypeIcon } from '@baishou/ui'
 import { selectNameRange, validateTreeEntryName } from './workbench-inline-name.util'
+import { workbenchTreeTwistieOffset } from './workbench-file-tree.util'
 import styles from './WorkbenchFileExplorer.module.css'
 
 export type InlineTreeEditState =
@@ -109,10 +111,20 @@ export const InlineTreeNameRow: React.FC<InlineTreeNameRowProps> = ({
     </>
   )
 
+  const entryIcon = (
+    <span className={styles.rowIcon}>
+      {isDirectory ? (
+        <Folder size={16} strokeWidth={1.75} />
+      ) : (
+        getFileTypeIcon(value.trim() || initialName, 16)
+      )}
+    </span>
+  )
+
   if (embedded) {
     return (
       <span className={styles.nameBtn} onMouseDown={(event) => event.stopPropagation()}>
-        {!isDirectory ? <File size={14} strokeWidth={1.75} className={styles.fileIcon} /> : null}
+        {entryIcon}
         {renderInput()}
       </span>
     )
@@ -121,16 +133,20 @@ export const InlineTreeNameRow: React.FC<InlineTreeNameRowProps> = ({
   return (
     <div
       className={`${styles.row} ${styles.rowEditing}`}
-      style={{ paddingLeft: 8 + depth * 14 }}
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <span className={styles.chevronSpacer} />
-      {isDirectory ? (
-        <Folder size={14} strokeWidth={1.75} className={styles.fileIcon} />
-      ) : (
-        <File size={14} strokeWidth={1.75} className={styles.fileIcon} />
-      )}
-      {renderInput()}
+      {depth > 0 ? (
+        <span className={styles.indentGuides} aria-hidden>
+          {Array.from({ length: depth }, (_, index) => (
+            <span key={index} className={styles.indentGuide} />
+          ))}
+        </span>
+      ) : null}
+      <span className={styles.twistie} style={{ marginLeft: workbenchTreeTwistieOffset(depth) }} />
+      <span className={styles.nameBtn}>
+        {entryIcon}
+        {renderInput()}
+      </span>
     </div>
   )
 }

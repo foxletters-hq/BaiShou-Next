@@ -176,7 +176,7 @@
 }
 
 .previewBody::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .previewBody::-webkit-scrollbar-thumb {

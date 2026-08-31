@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Copy, Sparkles, X } from 'lucide-react'
 import { Modal } from '../Modal/Modal'
-import { MarkdownRenderer } from '../MarkdownRenderer'
+import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { useToast } from '../Toast/useToast'
 import styles from './UserMessageSkillContent.module.css'
 
@@ -35,6 +35,7 @@ export function SkillCitePreviewDialog({ open, command, content, onClose }: Prop
       isOpen={open}
       onClose={onClose}
       closeOnOverlayClick
+      animation="fade"
       className={styles.previewModal}
       overlayClassName={styles.previewOverlay}
       zIndex={2800}
@@ -73,7 +74,7 @@ export function SkillCitePreviewDialog({ open, command, content, onClose }: Prop
 
         <div className={styles.previewBody}>
           {hasContent ? (
-            <MarkdownRenderer content={content} />
+            <AgentMarkdownRenderer content={content} />
           ) : (
             <p className={styles.previewEmpty}>
               {t('shortcut.skill_content_empty', '该 Skill 暂无正文内容')}

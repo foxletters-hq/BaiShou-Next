@@ -24,6 +24,12 @@ export function useAgentMarkdownComponents() {
       <a {...props} className={markdownStyles.link} target="_blank" rel="noopener noreferrer" />
     )
 
+    const Pre = ({
+      domNode: _domNode,
+      streamStatus: _streamStatus,
+      children
+    }: XMarkdownComponentProps) => <>{children}</>
+
     const Code = ({
       domNode: _domNode,
       streamStatus: _streamStatus,
@@ -35,33 +41,20 @@ export function useAgentMarkdownComponents() {
     }: XMarkdownComponentProps) => {
       const language = lang || /language-(\w+)/.exec(className || '')?.[1]
       if (block) {
-        if (language) {
-          return (
-            <pre className={markdownStyles.codeWrapper}>
-              <div className={markdownStyles.codeHeader}>
-                <span>{language}</span>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(String(children))}
-                >
-                  {t('markdown.copy', '复制')}
-                </button>
-              </div>
-              <div className={markdownStyles.codeBlock}>
-                <code className={className || `language-${language}`} {...props}>
-                  {children}
-                </code>
-              </div>
-            </pre>
-          )
-        }
         return (
           <pre className={markdownStyles.codeWrapper}>
-            <div className={markdownStyles.codeBlock}>
-              <code className={className} {...props}>
-                {children}
-              </code>
+            <div className={markdownStyles.codeHeader}>
+              {language ? <span>{language}</span> : null}
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(String(children))}
+              >
+                {t('markdown.copy', '复制')}
+              </button>
             </div>
+            <code className={className || (language ? `language-${language}` : undefined)} {...props}>
+              {children}
+            </code>
           </pre>
         )
       }
@@ -72,11 +65,21 @@ export function useAgentMarkdownComponents() {
       )
     }
 
+    const Blockquote = ({
+      domNode: _domNode,
+      streamStatus: _streamStatus,
+      ...props
+    }: XMarkdownComponentProps) => (
+      <blockquote className={markdownStyles.blockquote} {...props} />
+    )
+
     return {
       ...agentIncompleteMarkdownComponents,
       ...thinkTags,
       a: Link,
-      code: Code
+      pre: Pre,
+      code: Code,
+      blockquote: Blockquote
     }
   }, [t])
 }

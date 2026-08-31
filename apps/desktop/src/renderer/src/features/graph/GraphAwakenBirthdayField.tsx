@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
+import { Modal } from '@baishou/ui'
 import styles from './GraphAwakenBirthdayField.module.css'
 
 function parseYmd(value: string): { y: number; m: number; d: number } | null {
@@ -50,12 +50,6 @@ function scrollSelectedToCenter(root: HTMLElement | null) {
   })
 }
 
-function getMainCardPortalRoot(): HTMLElement {
-  return (
-    (document.querySelector('[data-baishou-main-card]') as HTMLElement | null) || document.body
-  )
-}
-
 export interface GraphAwakenBirthdayFieldProps {
   value: string
   onChange: (ymd: string) => void
@@ -75,7 +69,6 @@ export const GraphAwakenBirthdayField: React.FC<GraphAwakenBirthdayFieldProps> =
   const { t } = useTranslation()
   const panelRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
-  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
   const years = useMemo(() => birthdayYearRange(), [])
   const parsed = parseYmd(value)
   const today = useMemo(() => todayParts(), [])
@@ -85,22 +78,12 @@ export const GraphAwakenBirthdayField: React.FC<GraphAwakenBirthdayFieldProps> =
 
   useEffect(() => {
     if (!open) return
-    setPortalRoot(getMainCardPortalRoot())
     const p = parseYmd(value)
     const next = p ?? todayParts()
     setPickerYear(next.y)
     setPickerMonth(next.m)
     setPickerDay(next.d)
   }, [open, value])
-
-  useEffect(() => {
-    if (!open) return undefined
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [open])
 
   useEffect(() => {
     if (!open) return undefined
@@ -162,98 +145,82 @@ export const GraphAwakenBirthdayField: React.FC<GraphAwakenBirthdayFieldProps> =
         <ChevronDown size={16} strokeWidth={1.75} className={styles.chevron} />
       </button>
 
-      {open && portalRoot
-        ? createPortal(
-            <div
-              className={styles.overlay}
-              role="presentation"
-              onPointerDown={(e) => {
-                if (e.target === e.currentTarget) close()
-              }}
-            >
-              <div
-                className={styles.modal}
-                role="dialog"
-                aria-modal="true"
-                aria-label={t('graph.awaken_birthday_label', '生日')}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className={styles.panel} ref={panelRef}>
-                  <div className={styles.header}>
-                    <button type="button" className={styles.cancelBtn} onClick={close}>
-                      {t('common.cancel', '取消')}
-                    </button>
-                    <span className={styles.headerTitle}>
-                      {t('graph.awaken_birthday_label', '生日')}
-                    </span>
-                    <button type="button" className={styles.confirmBtn} onClick={confirm}>
-                      {t('common.confirm', '确认')}
-                    </button>
-                  </div>
-                  <div className={styles.divider} />
-                  <div className={styles.columns}>
-                    <div className={styles.column}>
-                      <div className={styles.colLabel}>{t('common.year_unit_label', '年')}</div>
-                      <div className={styles.colScroll}>
-                        <div className={styles.colPad} aria-hidden />
-                        {years.map((y) => (
-                          <button
-                            key={y}
-                            type="button"
-                            className={
-                              y === pickerYear ? styles.colItemSelected : styles.colItem
-                            }
-                            onClick={() => setPickerYear(y)}
-                          >
-                            {y}
-                          </button>
-                        ))}
-                        <div className={styles.colPad} aria-hidden />
-                      </div>
-                    </div>
-                    <div className={styles.column}>
-                      <div className={styles.colLabel}>{t('common.month_unit_label', '月')}</div>
-                      <div className={styles.colScroll}>
-                        <div className={styles.colPad} aria-hidden />
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            className={
-                              m === pickerMonth ? styles.colItemSelected : styles.colItem
-                            }
-                            onClick={() => setPickerMonth(m)}
-                          >
-                            {m}
-                          </button>
-                        ))}
-                        <div className={styles.colPad} aria-hidden />
-                      </div>
-                    </div>
-                    <div className={styles.column}>
-                      <div className={styles.colLabel}>{t('common.day_unit_label', '日')}</div>
-                      <div className={styles.colScroll}>
-                        <div className={styles.colPad} aria-hidden />
-                        {days.map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            className={d === pickerDay ? styles.colItemSelected : styles.colItem}
-                            onClick={() => setPickerDay(d)}
-                          >
-                            {d}
-                          </button>
-                        ))}
-                        <div className={styles.colPad} aria-hidden />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+      <Modal
+        isOpen={open}
+        onClose={close}
+        closeOnOverlayClick
+        animation="fade"
+        className={styles.modal}
+        aria-label={t('graph.awaken_birthday_label', '生日')}
+      >
+        <div className={styles.panel} ref={panelRef}>
+          <div className={styles.header}>
+            <button type="button" className={styles.cancelBtn} onClick={close}>
+              {t('common.cancel', '取消')}
+            </button>
+            <span className={styles.headerTitle}>
+              {t('graph.awaken_birthday_label', '生日')}
+            </span>
+            <button type="button" className={styles.confirmBtn} onClick={confirm}>
+              {t('common.confirm', '确认')}
+            </button>
+          </div>
+          <div className={styles.divider} />
+          <div className={styles.columns}>
+            <div className={styles.column}>
+              <div className={styles.colLabel}>{t('common.year_unit_label', '年')}</div>
+              <div className={styles.colScroll}>
+                <div className={styles.colPad} aria-hidden />
+                {years.map((y) => (
+                  <button
+                    key={y}
+                    type="button"
+                    className={y === pickerYear ? styles.colItemSelected : styles.colItem}
+                    onClick={() => setPickerYear(y)}
+                  >
+                    {y}
+                  </button>
+                ))}
+                <div className={styles.colPad} aria-hidden />
               </div>
-            </div>,
-            portalRoot
-          )
-        : null}
+            </div>
+            <div className={styles.column}>
+              <div className={styles.colLabel}>{t('common.month_unit_label', '月')}</div>
+              <div className={styles.colScroll}>
+                <div className={styles.colPad} aria-hidden />
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={m === pickerMonth ? styles.colItemSelected : styles.colItem}
+                    onClick={() => setPickerMonth(m)}
+                  >
+                    {m}
+                  </button>
+                ))}
+                <div className={styles.colPad} aria-hidden />
+              </div>
+            </div>
+            <div className={styles.column}>
+              <div className={styles.colLabel}>{t('common.day_unit_label', '日')}</div>
+              <div className={styles.colScroll}>
+                <div className={styles.colPad} aria-hidden />
+                {days.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={d === pickerDay ? styles.colItemSelected : styles.colItem}
+                    onClick={() => setPickerDay(d)}
+                  >
+                    {d}
+                  </button>
+                ))}
+                <div className={styles.colPad} aria-hidden />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

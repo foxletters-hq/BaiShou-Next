@@ -201,11 +201,19 @@ export interface ToolContext {
   rawDataSourceManager?: ToolRawDataSourceManager
   /** After Graph JSONL write: pending-index → SQLite (optional host hook) */
   syncGraphPendingIndex?: () => Promise<void>
+  /** Remove a life-graph node or edge from JSONL and SQLite together */
+  deleteGraphRecord?: (input: { kind: 'node' | 'edge'; id: string }) => Promise<void>
   /** Read-only GraphRAG for recall_relations */
   graphReader?: import('@baishou/shared').ToolGraphReader
+  /** Exact name / id lookup for graph_upsert — not part of graphReader */
+  graphNodeLookup?: import('@baishou/shared').ToolGraphNodeLookup
+  /** Existing-edge lookup for graph_upsert updates */
+  graphEdgeLookup?: import('@baishou/shared').ToolGraphEdgeLookup
   /** Read-only knowledge notebook search for knowledge_search */
   knowledgeReader?: import('@baishou/shared').ToolKnowledgeReader
-  /** 软件级 Skill 落盘（AI/skills） */
+  /** Read-only knowledge notebook graph for knowledge_graph_search */
+  knowledgeGraphReader?: import('@baishou/shared').ToolKnowledgeGraphReader
+  /** Skill 落盘（当前范围的 `.agents/skills`） */
   skillsWriter?: {
     writeSkill(input: {
       name: string

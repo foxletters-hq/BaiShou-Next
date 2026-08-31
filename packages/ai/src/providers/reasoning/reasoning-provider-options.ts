@@ -1,12 +1,16 @@
 import {
   type ReasoningEffort,
   type ReasoningEffortSetting,
+  type ReasoningBudgetBounds,
   normalizeReasoningEffortSetting,
   resolveEffectiveReasoningEffort,
   isOpenAiStyleReasoningModel,
   normalizeModelBaseId,
   getReasoningControlForModel,
-  normalizeReasoningBudgetTokens,
+  getReasoningBudgetBoundsForModel,
+  resolveReasoningBudgetTokens,
+  resolveReasoningBudgetTiers,
+  mapLegacyReasoningBudgetTokensToEffort,
   isMiniMaxM3Model,
   isGlm52ReasoningModel,
   isKimiThinkingControlModel,
@@ -22,8 +26,10 @@ import type { OpenAiThinkingBodyInject } from './openai-thinking-inject'
 export type BuildReasoningProviderOptionsParams = ReasoningApiShapeContext & {
   /** 用户选择或全局默认；auto 时 OpenAI 系用 medium */
   effort?: ReasoningEffortSetting
-  /** 思考预算（token）；auto/未设则不传 */
+  /** 旧整数预算（兼容映射到最近档，不再作为 UI 主路径） */
   budgetTokens?: number | null
+  /** 模型输出上限；参与预算 ceiling 计算 */
+  outputLimit?: number
   /** 小任务：强制最弱档 */
   small?: boolean
   /** 是否携带 function tools（Chat 路径下推理模型需降级 none） */
@@ -83,10 +89,30 @@ function isAnthropic46Adaptive(modelId: string): boolean {
   return /claude.*4[.-]6|opus-4[.-]6|sonnet-4[.-]6/.test(id)
 }
 
+function budgetBoundsForRequest(
+  modelId: string,
+  transport: 'anthropic' | 'native' = 'native',
+  outputLimit?: number
+): ReasoningBudgetBounds {
+  return getReasoningBudgetBoundsForModel(modelId, { transport, outputLimit })
+}
+
+function resolveEnabledThinkingBudget(
+  modelId: string,
+  effort: ReasoningEffort,
+  outputLimit?: number,
+  transport: 'anthropic' | 'native' = 'native'
+): number {
+  const bounds = budgetBoundsForRequest(modelId, transport, outputLimit)
+  return (
+    resolveReasoningBudgetTokens(effort, bounds) ?? resolveReasoningBudgetTiers(bounds).high
+  )
+}
+
 function anthropicOptions(
   modelId: string,
   effort: ReasoningEffort,
-  budgetTokens?: number
+  outputLimit?: number
 ): Record<string, unknown> {
   const id = normalizeModelBaseId(modelId)
   const isOpus45 = /opus-4[.-]5|claude.*opus.*4[.-]5/.test(id)
@@ -138,18 +164,20 @@ function anthropicOptions(
       anthropic: {
         thinking: {
           type: 'enabled',
-          budgetTokens: budgetTokens && budgetTokens > 0 ? budgetTokens : 16000
+          budgetTokens: resolveEnabledThinkingBudget(modelId, effort, outputLimit, 'anthropic')
         },
         effort
       }
     }
   }
 
-  const resolvedBudget =
-    budgetTokens && budgetTokens > 0 ? budgetTokens : effort === 'max' ? 31999 : 16000
   return {
     anthropic: {
-      thinking: { type: 'enabled', budgetTokens: resolvedBudget }
+      thinking: {
+        type: 'enabled',
+        budgetTokens: resolveEnabledThinkingBudget(modelId, effort, outputLimit, 'anthropic')
+      },
+      effort
     }
   }
 }
@@ -157,16 +185,16 @@ function anthropicOptions(
 function geminiOptions(
   modelId: string,
   effort: ReasoningEffort,
-  budgetTokens?: number
+  outputLimit?: number
 ): Record<string, unknown> {
   const id = normalizeModelBaseId(modelId)
   if (id.includes('gemini-2.5')) {
-    const maxBudget = id.includes('pro') ? 32768 : 24576
-    const thinkingBudget =
-      budgetTokens && budgetTokens > 0 ? budgetTokens : effort === 'max' ? maxBudget : 16000
     return {
       google: {
-        thinkingConfig: { includeThoughts: true, thinkingBudget }
+        thinkingConfig: {
+          includeThoughts: true,
+          thinkingBudget: resolveEnabledThinkingBudget(modelId, effort, outputLimit)
+        }
       }
     }
   }
@@ -194,10 +222,12 @@ export function buildReasoningProviderOptionsResult(
   const control = getReasoningControlForModel(params.modelId, params.providerType)
   const variants = listReasoningVariants(params)
   const shape = resolveReasoningApiShape(params)
-  const budget =
-    (control.supportsBudget || control.mode === 'budget') && control.maxBudgetTokens
-      ? control.maxBudgetTokens
-      : normalizeReasoningBudgetTokens(params.budgetTokens, control.maxBudgetTokens)
+  const budgetTransport = shape === 'anthropic' ? 'anthropic' : 'native'
+  const bounds = budgetBoundsForRequest(params.modelId, budgetTransport, params.outputLimit)
+
+  if (params.small && isKimiThinkingControlModel(params.modelId)) {
+    return { openAiThinkingInject: { enableThinking: false } }
+  }
 
   // toggle 模式：自动=默认开；产品无「关闭」档（历史 none 也当开）
   if (control.supportsToggle || control.mode === 'toggle') {
@@ -208,24 +238,32 @@ export function buildReasoningProviderOptionsResult(
         }
       }
     }
+    const toggleBudget = control.supportsBudget
+      ? (resolveReasoningBudgetTokens(
+          normalizeReasoningEffortSetting(params.effort) === 'auto'
+            ? 'high'
+            : normalizeReasoningEffortSetting(params.effort),
+          bounds
+        ) ?? resolveReasoningBudgetTiers(bounds).high)
+      : undefined
     return {
       openAiThinkingInject: {
         enableThinking: true,
-        ...(budget ? { budgetTokens: budget } : {})
+        ...(toggleBudget ? { budgetTokens: toggleBudget } : {})
       }
     }
   }
 
   if (variants.length === 0 || shape === 'none') {
-    return budget && (shape === 'anthropic' || shape === 'gemini')
+    return shape === 'anthropic' || shape === 'gemini'
       ? {
           providerOptions:
             shape === 'anthropic'
-              ? (anthropicOptions(params.modelId, 'high', budget) as Record<
+              ? (anthropicOptions(params.modelId, 'high', params.outputLimit) as Record<
                   string,
                   Record<string, unknown>
                 >)
-              : (geminiOptions(params.modelId, 'high', budget) as Record<
+              : (geminiOptions(params.modelId, 'high', params.outputLimit) as Record<
                   string,
                   Record<string, unknown>
                 >)
@@ -246,8 +284,14 @@ export function buildReasoningProviderOptionsResult(
     effort = 'none'
   } else {
     const setting = normalizeReasoningEffortSetting(params.effort)
+    const legacyWhenAuto =
+      setting === 'auto'
+        ? mapLegacyReasoningBudgetTokensToEffort(params.budgetTokens, bounds)
+        : undefined
     const resolved =
-      setting === 'auto' ? resolveEffectiveReasoningEffort('auto', 'medium')! : setting
+      setting === 'auto'
+        ? (legacyWhenAuto ?? resolveEffectiveReasoningEffort('auto', 'medium')!)
+        : setting
     effort = clampEffortToVariants(resolved, variants)
   }
 
@@ -259,6 +303,16 @@ export function buildReasoningProviderOptionsResult(
       providerOptions = openAiResponsesOptions(effort) as Record<string, Record<string, unknown>>
       break
     case 'chat':
+      if (isKimiThinkingControlModel(params.modelId)) {
+        const kimiBudget =
+          resolveReasoningBudgetTokens(effort, bounds) ?? resolveReasoningBudgetTiers(bounds).high
+        openAiThinkingInject = {
+          enableThinking: effort !== 'none',
+          reasoningEffort: effort,
+          ...(effort !== 'none' ? { budgetTokens: kimiBudget } : {})
+        }
+        break
+      }
       // MiniMax-M3 openai-compat：thinking.type（对齐参考）
       if (isMiniMaxM3Model(params.modelId)) {
         openAiThinkingInject = {
@@ -272,13 +326,13 @@ export function buildReasoningProviderOptionsResult(
       }
       break
     case 'anthropic':
-      providerOptions = anthropicOptions(params.modelId, effort, budget) as Record<
+      providerOptions = anthropicOptions(params.modelId, effort, params.outputLimit) as Record<
         string,
         Record<string, unknown>
       >
       break
     case 'gemini':
-      providerOptions = geminiOptions(params.modelId, effort, budget) as Record<
+      providerOptions = geminiOptions(params.modelId, effort, params.outputLimit) as Record<
         string,
         Record<string, unknown>
       >

@@ -1,34 +1,19 @@
-export const NOTEBOOK_CARD_TONES = [
-  'lavender',
-  'cream',
-  'peach',
-  'mint',
-  'sky',
-  'rose',
-  'lilac',
-  'sand'
-] as const
+import {
+  NOTEBOOK_CARD_ICONS,
+  NOTEBOOK_CARD_TONES,
+  isNotebookCardTone,
+  normalizeNotebookCoverIcon,
+  type NotebookCardIcon,
+  type NotebookCardTone
+} from '@baishou/shared'
 
-export type NotebookCardTone = (typeof NOTEBOOK_CARD_TONES)[number]
-
-const NOTEBOOK_CARD_ICONS = [
-  '📚',
-  '🔬',
-  '🦀',
-  '🤝',
-  '🔭',
-  '💡',
-  '🎯',
-  '📝',
-  '🗂️',
-  '✨',
-  '🧩',
-  '🌊',
-  '📎',
-  '🧠',
-  '🔮',
-  '🌿'
-] as const
+export {
+  NOTEBOOK_CARD_ICONS,
+  NOTEBOOK_CARD_TONES,
+  isNotebookCardTone,
+  type NotebookCardIcon,
+  type NotebookCardTone
+}
 
 function hashString(value: string): number {
   let hash = 2166136261
@@ -39,13 +24,20 @@ function hashString(value: string): number {
   return hash >>> 0
 }
 
-export function getNotebookCardAppearance(id: string): {
+export function getNotebookCardAppearance(
+  id: string,
+  cover?: { coverTone?: string | null; coverIcon?: string | null }
+): {
   tone: NotebookCardTone
   icon: string
 } {
   const hash = hashString(id || 'notebook')
   return {
-    tone: NOTEBOOK_CARD_TONES[hash % NOTEBOOK_CARD_TONES.length],
-    icon: NOTEBOOK_CARD_ICONS[(hash >>> 8) % NOTEBOOK_CARD_ICONS.length]
+    tone: isNotebookCardTone(cover?.coverTone)
+      ? cover.coverTone
+      : NOTEBOOK_CARD_TONES[hash % NOTEBOOK_CARD_TONES.length],
+    icon:
+      normalizeNotebookCoverIcon(cover?.coverIcon) ||
+      NOTEBOOK_CARD_ICONS[(hash >>> 8) % NOTEBOOK_CARD_ICONS.length]
   }
 }

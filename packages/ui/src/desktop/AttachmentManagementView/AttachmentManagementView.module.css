@@ -238,52 +238,6 @@
   background: rgba(var(--color-primary-rgb), 0.08) !important;
 }
 
-.customCheck {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
-  cursor: pointer;
-  position: relative;
-  transition:
-    background-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease),
-    border-color var(--duration-fast, 0.15s) var(--ease-out-cubic, ease);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-  box-shadow: none;
-}
-
-.customCheck:hover {
-  border-color: var(--color-primary);
-}
-
-.customCheck:checked {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.customCheck::after {
-  content: '';
-  width: 4px;
-  height: 8px;
-  border: solid transparent;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-  position: absolute;
-  top: 2px;
-  left: 5px;
-  transition: border-color 0.15s ease;
-}
-
-.customCheck:checked::after {
-  border-color: var(--text-on-primary);
-}
-
 .checkboxWrapper {
   display: flex;
   align-items: center;
@@ -673,7 +627,7 @@
 }
 
 .dropdownList::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 
 .dropdownList::-webkit-scrollbar-thumb {

@@ -5,6 +5,7 @@ import {
   normalizeUiFontSizeLevel,
   resolveAppUiLanguageFromSystemLocale,
   UI_FONT_SIZE_LEVEL_DEFAULT,
+  UI_SETTINGS_STORAGE_KEY,
   withSummaryPromptLocaleFromUi,
   type AIProviderConfig,
   type GlobalModelsConfig,
@@ -14,7 +15,9 @@ import {
   type SummaryConfig,
   type ToolManagementConfig,
   type McpServerConfig,
-  type HotkeyConfig
+  type HotkeyConfig,
+  type EmojiToolConfig,
+  EMOJI_TOOL_CONFIG_UPDATED_EVENT
 } from '@baishou/shared'
 import { useAssistantStore } from './assistant.store'
 import {
@@ -595,7 +598,7 @@ export const useSettingsStore = create<SettingsStore>()(
       { name: 'SettingsStore' }
     ),
     {
-      name: 'baishou-ui-settings-storage',
+      name: UI_SETTINGS_STORAGE_KEY,
       version: 1,
       partialize: (state) => ({
         themeMode: state.themeMode,
@@ -617,3 +620,15 @@ export const useSettingsStore = create<SettingsStore>()(
     }
   )
 )
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(EMOJI_TOOL_CONFIG_UPDATED_EVENT, (event) => {
+    const emojiConfig = (event as CustomEvent<EmojiToolConfig>).detail
+    if (!emojiConfig) return
+    const current = useSettingsStore.getState().toolManagementConfig
+    if (!current) return
+    useSettingsStore.setState({
+      toolManagementConfig: { ...current, emojiConfig }
+    })
+  })
+}

@@ -5,6 +5,7 @@ import {
   isSettingsInlineHelpTarget,
   settingsInlineHelpHostProps
 } from '../shared/settingsInlineHelpBlock'
+import { Input } from '../Input/Input'
 import { withAppContentOverlay } from '../overlay'
 import styles from './McpSettingsCard.module.css'
 import { McpHelpButton } from './McpHelpButton'
@@ -160,9 +161,10 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
     <div className={standalone ? styles.standaloneConnectionSection : styles.connectionSection}>
       <div className={styles.portRow}>
         <span className={styles.portLabel}>{t('settings.mcp_port', '端口')}</span>
-        <input
+        <Input
           type="number"
-          className="settings-number-input"
+          fieldSize="small"
+          className={styles.portInputHost}
           value={config.mcpPort}
           min={1000}
           max={65535}

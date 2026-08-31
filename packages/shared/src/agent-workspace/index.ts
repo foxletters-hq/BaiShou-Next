@@ -1,6 +1,7 @@
 export * from './workspace.types'
 export * from './workspace-search.types'
 export * from './file-change.types'
+export * from './file-change-from-tool.util'
 export * from './round-checkpoint.types'
 export * from './session-runtime-event.types'
 export * from './session-runtime-inbox.types'

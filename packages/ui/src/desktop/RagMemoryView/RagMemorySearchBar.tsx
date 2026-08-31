@@ -1,6 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './RagMemoryView.module.css'
+import { Input } from '../Input/Input'
 import { SegmentedControl } from '../shared/SegmentedControl'
 import { Search, X } from 'lucide-react'
 
@@ -26,14 +27,16 @@ export const RagMemorySearchBar: React.FC<RagMemorySearchBarProps> = ({
       <div className={styles.searchIconOuter}>
         <Search size={20} />
       </div>
-      <input
+      <Input
         type="text"
+        fieldSize="small"
+        className={styles.searchOuterInput}
+        inputClassName="baishou-form-field--embed"
         placeholder={
           searchMode === 'semantic'
             ? t('settings.rag_search_semantic_hint', '语义搜索记忆内容...')
             : t('settings.rag_search_text_hint', '文本搜索记忆内容...')
         }
-        className={styles.searchOuterInput}
         value={searchQuery}
         onChange={onSearch}
       />

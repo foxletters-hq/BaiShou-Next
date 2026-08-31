@@ -49,33 +49,51 @@
 }
 
 .inlineCode {
-  background: var(--bg-surface);
-  color: var(--color-text-main);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 0.9em;
-  border: 1px solid var(--color-glass-border);
+  background: var(--bg-surface-normal);
+  color: var(--text-primary);
+  padding: 0.08em 0.35em;
+  border-radius: 0.35rem;
+  font-family: var(--font-family-main, var(--font-family, inherit));
+  font-size: inherit;
+  border: none;
 }
 
 .codeWrapper {
+  position: relative;
   margin: 12px 0;
-  border-radius: 8px;
-  border: 1px solid var(--color-glass-border, var(--border-subtle));
-  overflow: hidden;
-  background: var(--bg-surface-highlight, var(--bg-surface));
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: none;
+  overflow-x: auto;
+  background: var(--bg-code-block, #eceef2);
+  font-family: var(--font-family-main, var(--font-family));
+  font-size: inherit;
+  line-height: 1.6;
 }
 
 .codeHeader {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0;
   font-size: 12px;
+  font-family: var(--font-family);
   color: var(--text-secondary);
-  background: var(--bg-surface-highlight, rgba(0, 0, 0, 0.03));
-  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  border: none;
+  opacity: 0;
+  pointer-events: none;
   text-transform: lowercase;
+}
+
+.codeWrapper:hover .codeHeader,
+.codeWrapper:focus-within .codeHeader {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .codeHeader button {
@@ -89,30 +107,31 @@
 }
 
 .codeHeader button:hover {
-  background: var(--bg-surface);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   color: var(--text-primary);
 }
 
-.codeBlock {
-  background: var(--bg-surface-highlight, var(--bg-surface));
-  padding: 12px 14px;
-  border-radius: 0;
-  overflow-x: auto;
-  font-family: ui-monospace, monospace;
-  font-size: 13px;
-  border: none;
-  margin: 0;
-  box-shadow: none;
-}
-
-.codeBlock :global(code),
-.codeBlock :global(.hljs) {
+.codeWrapper > code,
+.codeWrapper :global(code),
+.codeWrapper :global(.hljs) {
+  display: block;
   background: transparent !important;
   color: var(--text-primary) !important;
   padding: 0 !important;
-  font-family: inherit;
-  font-size: inherit;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow-x: visible;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
   white-space: pre;
+}
+
+.blockquote,
+.blockquote :global(*) {
+  font-family: var(--font-family-main, var(--font-family));
 }
 
 .blockquote {
@@ -122,6 +141,7 @@
   color: var(--text-secondary);
   background: var(--bg-glass-surface);
   border-radius: 0 8px 8px 0;
+  font-size: calc(1em - 1px);
 }
 
 .blinkingCursor {

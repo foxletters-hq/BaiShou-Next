@@ -1,6 +1,5 @@
-import { generateText } from 'ai'
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-mobile'
-import { SUMMARY_AI_GENERATION_TIMEOUT_MS } from '@baishou/core-mobile'
+import { SUMMARY_AI_GENERATION_TIMEOUT_MS, generateSummaryTextFromModel } from '@baishou/core-mobile'
 import { AIProviderRegistry } from '@baishou/ai'
 import {
   logger,
@@ -71,26 +70,22 @@ export function buildMobileSummaryAiClient(
         }
         userSignal.addEventListener('abort', onUserAbort, { once: true })
       }
-      const timeoutId = setTimeout(() => abortController.abort(), SUMMARY_AI_GENERATION_TIMEOUT_MS)
-
       try {
-        const { text } = await generateText({
+        return await generateSummaryTextFromModel({
           model,
-          ...(options?.system ? { system: options.system } : {}),
           prompt,
-          maxSteps: 1,
-          abortSignal: abortController.signal
-        } as any)
-        return text
+          system: options?.system,
+          abortController,
+          firstOutputTimeoutMs: SUMMARY_AI_GENERATION_TIMEOUT_MS
+        })
       } catch (e) {
         if (userSignal?.aborted) {
           logger.info('[MobileSummaryAI] Generation aborted by user')
         } else {
-          logger.error('[MobileSummaryAI] generateText failed:', e as Error)
+          logger.error('[MobileSummaryAI] streamText failed:', e as Error)
         }
         throw e
       } finally {
-        clearTimeout(timeoutId)
         userSignal?.removeEventListener('abort', onUserAbort)
       }
     }

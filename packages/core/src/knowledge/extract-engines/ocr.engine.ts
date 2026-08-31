@@ -1,8 +1,12 @@
-import { analyzePageTexts, extractPdfPageTexts, MIN_TEXT_LAYER_CHARS } from '../knowledge-extract'
+import { analyzePageTexts, extractPdfPageTexts, pageTextNeedsOcr } from '../knowledge-extract'
 import { md5Hex } from '../../fs/md5'
 import { getPdfPageBitmapRenderer, probeTesseractJs, resolvePdfNumPages } from './adapters'
 import { getRegisteredSimplePageTexts, rememberSimplePageTexts } from './simple-page-cache'
 import { clampOcrConcurrency, runPool, yieldEventLoop } from './pool.util'
+import {
+  resolveTesseractNodeWorkerPath,
+  tesseractCreateWorkerOptions
+} from './tesseract-worker-path.util'
 import type { ExtractEngine, ExtractEngineContext, EngineExtractResult } from './types'
 
 type TesseractWorker = {
@@ -10,20 +14,37 @@ type TesseractWorker = {
   terminate: () => Promise<void>
 }
 
+const TESSERACT_OEM_LSTM_ONLY = 1
+
 async function createTesseractWorker(lang: string): Promise<TesseractWorker> {
   const mod = (await import(/* @vite-ignore */ 'tesseract.js')) as unknown as {
-    createWorker?: (langs?: string | string[]) => Promise<TesseractWorker>
-    default?: { createWorker?: (langs?: string | string[]) => Promise<TesseractWorker> }
+    createWorker?: (
+      langs?: string | string[],
+      oem?: number,
+      options?: { workerPath?: string }
+    ) => Promise<TesseractWorker>
+    default?: {
+      createWorker?: (
+        langs?: string | string[],
+        oem?: number,
+        options?: { workerPath?: string }
+      ) => Promise<TesseractWorker>
+    }
   }
   const createWorker = mod.createWorker ?? mod.default?.createWorker
   if (!createWorker) throw new Error('tesseract.js createWorker missing')
 
+  const options = tesseractCreateWorkerOptions(resolveTesseractNodeWorkerPath())
+  if (!options) {
+    throw new Error('tesseract.js worker-script 未找到，无法启动 OCR 工作线程')
+  }
+
   try {
-    return await createWorker(lang)
+    return await createWorker(lang, TESSERACT_OEM_LSTM_ONLY, options)
   } catch (e) {
     if (lang !== 'eng') {
       try {
-        return await createWorker('eng')
+        return await createWorker('eng', TESSERACT_OEM_LSTM_ONLY, options)
       } catch {
         throw new Error(
           `OCR 语言包不可用（${lang}），且 eng 回退失败：${e instanceof Error ? e.message : String(e)}`
@@ -44,8 +65,7 @@ function resolveMissingPageNumbers(
   }
   const missing: number[] = []
   for (let i = 0; i < pageCount; i++) {
-    const t = (existingPageTexts[i] ?? '').trim()
-    if (t.length < MIN_TEXT_LAYER_CHARS) missing.push(i + 1)
+    if (pageTextNeedsOcr(existingPageTexts[i] ?? '')) missing.push(i + 1)
   }
   // 若全部缺文本且 existing 为空数组长度对不上，OCR 全部页
   if (missing.length === 0 && existingPageTexts.every((t) => !t.trim())) {
@@ -56,7 +76,7 @@ function resolveMissingPageNumbers(
 
 /**
  * ocr：tesseract.js（动态 import）+ 平台注入的 PDF 位图渲染。
- * 支持 1–3 页并发；每并发槽位独立 worker，渲染由平台侧串行化。
+ * 支持 1–10 页并发；每并发槽位独立 worker，渲染由平台侧串行化。
  */
 export const ocrExtractEngine: ExtractEngine = {
   id: 'ocr',

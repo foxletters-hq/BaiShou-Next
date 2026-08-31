@@ -217,7 +217,7 @@
 }
 
 .yearPane::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 
 .yearPane::-webkit-scrollbar-thumb {

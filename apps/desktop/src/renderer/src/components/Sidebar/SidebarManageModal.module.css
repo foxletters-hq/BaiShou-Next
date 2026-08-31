@@ -87,21 +87,6 @@
   background: rgba(var(--color-primary-rgb), 0.08);
 }
 
-.checkbox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-.checkbox svg {
-  width: 20px;
-  height: 20px;
-}
-
 .optionIcon {
   display: flex;
   align-items: center;

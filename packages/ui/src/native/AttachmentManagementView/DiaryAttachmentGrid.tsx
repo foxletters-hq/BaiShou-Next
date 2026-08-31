@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { FolderMinus, Share2, Trash2, ZoomIn } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
+import { Checkbox } from '../Checkbox'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { attachmentManagementStyles as styles } from './attachment-management.styles'
@@ -137,20 +138,7 @@ export const DiaryAttachmentGrid: React.FC<{ vm: AttachmentManagementViewModel }
                 </View>
 
                 <View style={styles.diaryCheckbox}>
-                  <View
-                    style={[
-                      styles.checkbox,
-                      { borderColor: colors.borderSubtle, marginRight: 0 },
-                      isChecked && {
-                        backgroundColor: colors.primary,
-                        borderColor: colors.primary
-                      }
-                    ]}
-                  >
-                    {isChecked && (
-                      <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
-                    )}
-                  </View>
+                  <Checkbox selected={isChecked} />
                 </View>
               </View>
 

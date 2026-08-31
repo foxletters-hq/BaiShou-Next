@@ -3,7 +3,8 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Cloud, Folder, Globe, Home } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
 import stack from '../shared/SettingsStack.module.css'
-import { inputStyle, labelStyle } from './cloud-sync.styles'
+import { Input } from '../Input/Input'
+import { labelStyle } from './cloud-sync.styles'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 import type { SyncConfig } from './cloud-sync.types'
 import { CloudSyncPasswordField } from './CloudSyncPasswordField'
@@ -125,8 +126,8 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                       <label style={labelStyle}>
                         {t('data_sync.webdav_url_label', 'WebDAV URL 地址')}
                       </label>
-                      <input
-                        style={inputStyle}
+                      <Input
+                        fieldSize="small"
                         value={config.webdavUrl}
                         onChange={(e) => updateField('webdavUrl', e.target.value)}
                       />
@@ -135,8 +136,8 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                       <label style={labelStyle}>
                         {t('data_sync.webdav_path_label', 'Base Path 子路径')}
                       </label>
-                      <input
-                        style={inputStyle}
+                      <Input
+                        fieldSize="small"
                         value={config.webdavPath}
                         onChange={(e) => updateField('webdavPath', e.target.value)}
                       />
@@ -145,8 +146,8 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                       <label style={labelStyle}>
                         {t('data_sync.webdav_user_label', 'Username 用户名')}
                       </label>
-                      <input
-                        style={inputStyle}
+                      <Input
+                        fieldSize="small"
                         value={config.webdavUsername}
                         onChange={(e) => updateField('webdavUsername', e.target.value)}
                       />
@@ -169,8 +170,8 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                       <label style={labelStyle}>
                         {t('data_sync.s3_endpoint_label', 'Endpoint 服务地址')}
                       </label>
-                      <input
-                        style={inputStyle}
+                      <Input
+                        fieldSize="small"
                         value={config.s3Endpoint}
                         onChange={(e) => updateField('s3Endpoint', e.target.value)}
                       />
@@ -179,8 +180,8 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                       <label style={labelStyle}>
                         {t('data_sync.s3_region_label', 'Region 区域名')}
                       </label>
-                      <input
-                        style={inputStyle}
+                      <Input
+                        fieldSize="small"
                         value={config.s3Region}
                         onChange={(e) => updateField('s3Region', e.target.value)}
                       />
@@ -189,8 +190,8 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                       <label style={labelStyle}>
                         {t('data_sync.s3_bucket_label', 'Bucket 存储桶')}
                       </label>
-                      <input
-                        style={inputStyle}
+                      <Input
+                        fieldSize="small"
                         value={config.s3Bucket}
                         onChange={(e) => updateField('s3Bucket', e.target.value)}
                       />
@@ -199,8 +200,8 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                       <label style={labelStyle}>
                         {t('data_sync.s3_path_label', 'Path 子路径')}
                       </label>
-                      <input
-                        style={inputStyle}
+                      <Input
+                        fieldSize="small"
                         value={config.s3Path}
                         onChange={(e) => updateField('s3Path', e.target.value)}
                       />

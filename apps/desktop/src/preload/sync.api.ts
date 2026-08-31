@@ -143,9 +143,11 @@ export const syncApi = {
     commitStaged: (message: string) => ipcRenderer.invoke('git:commitStaged', message),
     commit: (files: string[], message: string) => ipcRenderer.invoke('git:commit', files, message),
     getHistory: (filePath?: string, limit?: number, offset?: number) =>
-      ipcRenderer.invoke('git:getHistory', filePath, limit, offset),
+      ipcRenderer.invoke('git:getHistory', filePath ?? null, limit ?? 50, offset ?? 0),
     getHistoryCount: (filePath?: string) => ipcRenderer.invoke('git:getHistoryCount', filePath),
     getRecentPulls: (limit?: number) => ipcRenderer.invoke('git:getRecentPulls', limit),
+    getRemoteStatus: (fetch?: boolean) => ipcRenderer.invoke('git:getRemoteStatus', fetch),
+    syncRemote: () => ipcRenderer.invoke('git:syncRemote'),
     getCommitChanges: (commitHash: string) =>
       ipcRenderer.invoke('git:getCommitChanges', commitHash),
     getFileDiff: (filePath: string, commitHash?: string) =>

@@ -14,6 +14,7 @@ import { SkillSlashPicker } from './SkillSlashPicker'
 import {
   BookOpen,
   Check,
+  FolderOpen,
   Globe,
   LayoutGrid,
   Paperclip,
@@ -21,12 +22,13 @@ import {
   Send,
   Settings2,
   Sparkles,
-  Square,
   Volume2,
   X
 } from 'lucide-react'
 import { getFileTypeIcon } from '../shared/FileTypeIcon'
 import { getShortcutCommand } from '@baishou/shared'
+import { resolveInputBarPrimaryAction } from '../../shared/input-bar-primary-action.util'
+import { shouldAcceptAttachmentDrag } from './input-bar-drop.util'
 
 type InputBarViewModel = ReturnType<typeof useInputBar>
 
@@ -70,7 +72,8 @@ function buildSkillMenuItems(options: {
       const command = getShortcutCommand(skill)
       const displayName = skill.name?.trim()
       items.push({
-        icon: <Sparkles size={15} />,
+        icon:
+          skill.source === 'workspace' ? <FolderOpen size={15} /> : <Sparkles size={15} />,
         label: displayName ? `${displayName}` : `/${command}`,
         onClick: () => applyShortcut(skill)
       })
@@ -101,6 +104,8 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     fileInputRef,
     handlePickFiles,
     handleNativeWebFileChange,
+    handleAttachmentDrop,
+    attachmentIntake,
     handlePaste,
     skillPickerOpen,
     closeSkillPicker,
@@ -132,6 +137,37 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
 
   const textareaMinHeight = getInputBarTextareaMinHeight(minRows)
   const inputWrapperRef = useRef<HTMLDivElement>(null)
+  const [dropActive, setDropActive] = useState(false)
+
+  const clearDropActive = useCallback(() => setDropActive(false), [])
+
+  const handleDragOverCapture = useCallback(
+    (e: React.DragEvent) => {
+      if (!shouldAcceptAttachmentDrag(e.dataTransfer, attachmentIntake)) return
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'copy'
+      setDropActive(true)
+    },
+    [attachmentIntake]
+  )
+
+  const handleDragLeaveCapture = useCallback((e: React.DragEvent) => {
+    const next = e.relatedTarget as Node | null
+    if (next && e.currentTarget.contains(next)) return
+    setDropActive(false)
+  }, [])
+
+  const handleDropCapture = useCallback(
+    (e: React.DragEvent) => {
+      if (!shouldAcceptAttachmentDrag(e.dataTransfer, attachmentIntake)) return
+      e.preventDefault()
+      e.stopPropagation()
+      clearDropActive()
+      void handleAttachmentDrop(e.dataTransfer)
+    },
+    [attachmentIntake, clearDropActive, handleAttachmentDrop]
+  )
 
   const [plusMenu, setPlusMenu] = useState<MenuAnchorState | null>(null)
   const plusMenuOpen = plusMenu != null
@@ -173,6 +209,12 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
         id: entry.id,
         name: entry.name,
         description: entry.description,
+        iconKind:
+          entry.kind === 'create'
+            ? ('create' as const)
+            : entry.skill?.source === 'workspace'
+              ? ('workspace' as const)
+              : ('software' as const),
         onSelect: () => {
           if (entry.kind === 'create') armCreateSkillChip()
           else if (entry.skill) applyShortcut(entry.skill)
@@ -261,11 +303,22 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
         t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line'))
 
   const canSend = Boolean(text.trim() || attachments.length > 0 || skillRefs.length > 0)
+  const primaryAction = resolveInputBarPrimaryAction({
+    isLoading,
+    canSend,
+    allowSendWhileLoading,
+    hasStopHandler: Boolean(onStop)
+  })
+  const sendDisabled =
+    isSending || !canSend || (isLoading && !allowSendWhileLoading)
 
   return (
     <div
       className={styles.containerMask}
       data-desktop-input-bar
+      onDragOverCapture={handleDragOverCapture}
+      onDragLeaveCapture={handleDragLeaveCapture}
+      onDropCapture={handleDropCapture}
       style={
         {
           ['--input-bar-textarea-min-height' as string]: `${textareaMinHeight}px`
@@ -332,7 +385,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
         )}
 
         <div
-          className={`${styles.composerShell}${footer ? ` ${styles.composerShellWithFooter}` : ''}`}
+          className={`${styles.composerShell}${footer ? ` ${styles.composerShellWithFooter}` : ''}${dropActive ? ` ${styles.composerShellDropActive}` : ''}`}
         >
           <div className={styles.inputCard}>
             <div
@@ -368,36 +421,26 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   <div className={styles.bottomTrailing}>{bottomTrailing}</div>
                 ) : null}
                 <div className={styles.sendBtnWrapper}>
-                  {isLoading ? (
-                    <>
-                      <motion.button
-                        className={`${styles.actionBtn} ${styles.stopBtn}`}
-                        onClick={onStop}
-                        type="button"
-                        whileTap={{ scale: 0.92 }}
-                      >
-                        <Square size={14} />
-                      </motion.button>
-                      {allowSendWhileLoading ? (
-                        <motion.button
-                          className={`${styles.actionBtn} ${styles.sendBtn} ${!canSend ? styles.sendBtnDisabled : ''}`}
-                          onClick={handleSend}
-                          disabled={isSending || !canSend}
-                          type="button"
-                          whileTap={{ scale: 0.92 }}
-                          title="Queue / steer while running"
-                        >
-                          <Send size={sendIconSize} />
-                        </motion.button>
-                      ) : null}
-                    </>
-                  ) : (
+                  {primaryAction === 'stop' ? (
                     <motion.button
-                      className={`${styles.actionBtn} ${styles.sendBtn} ${!canSend ? styles.sendBtnDisabled : ''}`}
-                      onClick={handleSend}
-                      disabled={isSending || !canSend}
+                      className={`${styles.actionBtn} ${styles.stopBtn}`}
+                      onClick={onStop}
                       type="button"
                       whileTap={{ scale: 0.92 }}
+                      aria-label={t('common.stop', '停止')}
+                      title={t('common.stop', '停止')}
+                    >
+                      <span className={styles.stopSquare} aria-hidden />
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      className={`${styles.actionBtn} ${styles.sendBtn} ${sendDisabled ? styles.sendBtnDisabled : ''}`}
+                      onClick={handleSend}
+                      disabled={sendDisabled}
+                      type="button"
+                      whileTap={{ scale: 0.92 }}
+                      aria-label={t('common.send', '发送')}
+                      title={t('common.send', '发送')}
                     >
                       <Send size={sendIconSize} />
                     </motion.button>

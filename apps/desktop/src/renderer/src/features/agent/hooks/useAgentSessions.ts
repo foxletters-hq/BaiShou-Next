@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import type { SessionData } from '@baishou/ui'
 
 /** 每页 10 条会话；多取 1 条用于判断是否还有下一页 */
@@ -10,16 +10,11 @@ export interface AgentSessionsManager {
   isLoadingMoreSessions: boolean
   sidebarScrollKey: number
   loadSessions: (resetOffset?: boolean, overrideAssistantId?: string) => Promise<void>
-  renameTarget: { id: string; title: string } | null
-  renameInputRef: React.RefObject<HTMLInputElement>
-  setRenameTarget: (target: { id: string; title: string } | null) => void
-  handleRenameSession: (id: string, sessions: SessionData[]) => void
-  commitRename: (onSuccess: (title: string) => void) => Promise<void>
 }
 
 /**
  * 封装 AgentLayout 中的会话列表管理逻辑。
- * 包含加载/分页/竞态保护/file-changed 监听/内联重命名状态。
+ * 包含加载/分页/竞态保护/file-changed 监听。
  */
 export function useAgentSessions(
   activeAssistantId: string | undefined,
@@ -29,8 +24,6 @@ export function useAgentSessions(
   const [hasMoreSessions, setHasMoreSessions] = useState(false)
   const [isLoadingMoreSessions, setIsLoadingMoreSessions] = useState(false)
   const [sidebarScrollKey, setSidebarScrollKey] = useState(0)
-  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null)
-  const renameInputRef = useRef<HTMLInputElement>(null)
   const lastLoadRequestId = useRef(0)
   const assistantIdRef = useRef<string | undefined>(activeAssistantId)
   const searchQueryRef = useRef<string>(searchQuery)
@@ -137,38 +130,11 @@ export function useAgentSessions(
     return () => removeListener()
   }, [loadSessions])
 
-  const handleRenameSession = (id: string, currentSessions: SessionData[]) => {
-    const s = currentSessions.find((s) => s.id === id)
-    if (!s) return
-    setRenameTarget({ id, title: s.title || '' })
-    setTimeout(() => renameInputRef.current?.select(), 50)
-  }
-
-  const commitRename = async (onSuccess: (title: string) => void) => {
-    if (!renameTarget) return
-    const newTitle = renameTarget.title.trim()
-    if (newTitle && window.electron) {
-      await window.electron.ipcRenderer.invoke(
-        'agent:update-session-title',
-        renameTarget.id,
-        newTitle
-      )
-      loadSessions(true)
-      onSuccess(newTitle)
-    }
-    setRenameTarget(null)
-  }
-
   return {
     sessions,
     hasMoreSessions,
     isLoadingMoreSessions,
     sidebarScrollKey,
-    loadSessions,
-    renameTarget,
-    renameInputRef,
-    setRenameTarget,
-    handleRenameSession,
-    commitRename
+    loadSessions
   }
 }

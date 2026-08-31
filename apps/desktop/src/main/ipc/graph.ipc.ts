@@ -5,7 +5,13 @@ import {
   GraphSyncService,
   createDefaultGraphExtractLlm,
   estimateExtractionCost,
+  mergeDiaryGraphNodeGroup,
+  mergeDiaryGraphNodes,
+  applyDiaryGraphSurgicalDelete,
+  syncDiaryGraphMergeGroupIntoIndex,
+  syncDiaryGraphMergeIntoIndex,
   type GraphEdgeRawRecord,
+  type GraphExtractDraft,
   type GraphNodeRawRecord
 } from '@baishou/core-desktop'
 import {
@@ -16,12 +22,25 @@ import {
   UserProfileRepository
 } from '@baishou/database-desktop'
 import {
+  GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR,
+  GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
+  buildGraphExtractEnqueueItems,
   logger,
   resolveGlobalGraphModelIds,
+  resolveGraphExtractConcurrency,
   resolveGraphExtractSelfName,
-  type GlobalModelsConfig
+  graphDiaryInstant,
+  graphEdgeId,
+  graphNodeIdForEntity,
+  graphSameNameExistingFromRow,
+  GRAPH_GLOBAL_MAX_NODES,
+  expandApprovedGraphReviewEdgeIds,
+  isGraphReviewStatus,
+  uniqueNonEmptyIds,
+  type GlobalModelsConfig,
+  type GraphSetReviewsBatchInput
 } from '@baishou/shared'
 import {
   fileSystem,
@@ -38,6 +57,7 @@ import {
 } from '../services/raw-data-source.runtime'
 import { getActiveProvider } from './agent-helpers'
 import { GraphExtractQueueService } from '../services/graph-extract-queue.service'
+import { resolveDesktopGraphExtractAlignDeps } from '../services/graph-extract-embed-gate'
 
 function requireVaultName(): string {
   return vaultService.getActiveVault()?.name || 'Personal'
@@ -66,7 +86,32 @@ async function buildExtractionService(): Promise<GraphLlmExtractionService> {
   const { graphManager, freshness } = ensureRawDataRuntime()
   const repo = requireGraphRepo()
   const llm = await resolveExtractLlm()
-  const graphSync = new GraphSyncService(graphManager, repo, null)
+  let embedder: { embedQuery?: (text: string) => Promise<number[] | null>; modelId?: string } | null =
+    null
+  try {
+    const { resolveEmbeddingSystemModels } = await import('./agent-helpers')
+    const { EmbeddingAdapter } = await import('@baishou/ai')
+    const { createSqlExecutorFromDrizzleDb, SqliteHybridSearchRepository } = await import(
+      '@baishou/database-desktop'
+    )
+    const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
+    if (embeddingProvider && embeddingModelId && connectionManager.isConnected()) {
+      const hsRepo = new SqliteHybridSearchRepository(
+        createSqlExecutorFromDrizzleDb(connectionManager.getDb())
+      )
+      const adapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
+      if (adapter.isConfigured) {
+        embedder = {
+          embedQuery: (text) => adapter.embedQuery(text),
+          modelId: adapter.embeddingModelId
+        }
+      }
+    }
+  } catch {
+    embedder = null
+  }
+  const graphSync = new GraphSyncService(graphManager, repo, embedder)
+  const alignDeps = await resolveDesktopGraphExtractAlignDeps(requireVaultId())
   return new GraphLlmExtractionService(
     graphManager,
     freshness,
@@ -74,15 +119,14 @@ async function buildExtractionService(): Promise<GraphLlmExtractionService> {
     graphSync,
     pathService,
     fileSystem,
-    llm
+    llm,
+    {
+      embedQuery: alignDeps.embedQuery ?? embedder?.embedQuery,
+      modelId: alignDeps.modelId ?? embedder?.modelId,
+      isEmbeddingConfigured: alignDeps.isEmbeddingConfigured,
+      isDiaryEmbedded: alignDeps.isDiaryEmbedded
+    }
   )
-}
-
-function newId(prefix: string): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
 function parseProps(propsJson: string | null | undefined): Record<string, unknown> {
@@ -134,9 +178,10 @@ async function writeNodeReview(
     firstSeenAt: node.firstSeenAt ?? now,
     lastSeenAt: node.lastSeenAt ?? now,
     origin: node.origin as 'ai' | 'user',
+    shardMonth: node.shardMonth || graphDiaryInstant(null, now).shardMonth,
     createdAt: node.createdAt,
     updatedAt: now,
-    deletedAt: reviewStatus === 'rejected' ? now : node.deletedAt,
+    deletedAt: null,
     reviewStatus
   }
   await getGraphRawManager().writeRecord(record, { collection: 'nodes' })
@@ -174,7 +219,7 @@ async function writeEdgeReview(
     shardMonth: edge.shardMonth,
     createdAt: edge.createdAt,
     updatedAt: now,
-    deletedAt: reviewStatus === 'rejected' ? now : edge.deletedAt
+    deletedAt: null
   }
   await getGraphRawManager().writeRecord(record, { collection: 'edges' })
 
@@ -189,6 +234,47 @@ async function writeEdgeReview(
   }
 }
 
+async function applyGraphReviews(
+  opts: GraphSetReviewsBatchInput
+): Promise<{ ok: true; nodeCount: number; edgeCount: number }> {
+  if (!isGraphReviewStatus(opts.reviewStatus)) {
+    throw new Error('Invalid review status')
+  }
+  const repo = requireGraphRepo()
+  const vaultId = requireVaultId()
+  const [pendingNodes, pendingEdges] = await Promise.all([
+    repo.listPendingNodes(vaultId),
+    repo.listPendingEdges(vaultId)
+  ])
+  const nodeIds = uniqueNonEmptyIds(
+    opts.allPending ? pendingNodes.map((node) => node.id) : opts.nodeIds
+  )
+  const edgeIds = opts.allPending
+    ? uniqueNonEmptyIds(pendingEdges.map((edge) => edge.id))
+    : opts.reviewStatus === 'approved'
+      ? expandApprovedGraphReviewEdgeIds({
+          nodeIds,
+          edgeIds: opts.edgeIds,
+          pendingEdges
+        })
+      : uniqueNonEmptyIds(opts.edgeIds)
+
+  for (const nodeId of nodeIds) {
+    const node = await repo.getNodeById(nodeId)
+    if (!node) continue
+    await writeNodeReview(nodeId, opts.reviewStatus)
+  }
+  for (const edgeId of edgeIds) {
+    const edge = await repo.getEdgeById(edgeId)
+    if (!edge) continue
+    await writeEdgeReview(edgeId, opts.reviewStatus, {
+      approvePendingEndpoints: opts.reviewStatus === 'approved'
+    })
+  }
+  await syncGraphPendingIndex()
+  return { ok: true, nodeCount: nodeIds.length, edgeCount: edgeIds.length }
+}
+
 async function resolveExtractSelfName(): Promise<string> {
   const { settingsManager } = await import('./settings.ipc')
   const flag = await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
@@ -201,6 +287,30 @@ async function resolveExtractSelfName(): Promise<string> {
     throw new Error(GRAPH_SELF_NAME_REQUIRED_ERROR)
   }
   return selfName
+}
+
+async function enqueueGraphExtract(
+  extractQueue: GraphExtractQueueService,
+  opts?: { filePaths?: string[]; concurrency?: number }
+): Promise<{ queued: number; totalPending: number; skippedNotEmbedded: string[] }> {
+  await resolveExtractSelfName()
+  if (opts?.concurrency != null) {
+    extractQueue.setConcurrency(opts.concurrency)
+  }
+  const vaultId = requireVaultId()
+  const alignDeps = await resolveDesktopGraphExtractAlignDeps(vaultId)
+  if (!(await alignDeps.isEmbeddingConfigured?.())) {
+    throw new Error(GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR)
+  }
+  const pending = await getDerivedFreshness().listPendingReextract()
+  const wanted = opts?.filePaths?.length ? opts.filePaths : pending.map((p) => p.filePath)
+  const { items, skippedNotEmbedded } = await buildGraphExtractEnqueueItems({
+    wanted,
+    pending,
+    isDiaryEmbedded: alignDeps.isDiaryEmbedded
+  })
+  const queued = extractQueue.enqueue(items)
+  return { queued, totalPending: items.length, skippedNotEmbedded }
 }
 
 export function registerGraphIPC(): void {
@@ -235,17 +345,27 @@ export function registerGraphIPC(): void {
 
   // Background extract queue (leave Graph page OK; restart loses in-flight).
   const extractQueue = GraphExtractQueueService.getInstance()
-  extractQueue.setRunner(async ({ filePath, signal }) => {
+  extractQueue.setFlushDrafts(async (items, signal, onPhase) => {
+    const service = await buildExtractionService()
+    return service.commitDrafts(
+      items.map((item) => item.draft as GraphExtractDraft),
+      signal,
+      onPhase
+    )
+  })
+  extractQueue.setRunner(async ({ filePath, signal, onProgress }) => {
     const vaultName = requireVaultName()
     const selfName = await resolveExtractSelfName()
     const service = await buildExtractionService()
-    return service.extractDiaries({
+    const draft = await service.extractDraft({
       vaultId: requireVaultId(),
       vaultName,
       selfName,
-      filePaths: [filePath],
-      signal
+      filePath,
+      signal,
+      onProgress
     })
+    return { done: 1, failed: 0, errors: [], draft }
   })
 
   ipcMain.handle('graph:get-queue-state', async () => extractQueue.getQueueState())
@@ -255,48 +375,44 @@ export function registerGraphIPC(): void {
     return { ok: true }
   })
 
+  ipcMain.handle('graph:cancel-queue-item', async (_e, opts: { filePath: string }) => {
+    return { ok: extractQueue.cancelItem(opts?.filePath) }
+  })
+
   // Alias for older clients
   ipcMain.handle('graph:extract-cancel', async () => {
     extractQueue.stop()
     return { ok: true }
   })
 
-  ipcMain.handle('graph:queue-extract', async (_e, opts?: { filePaths?: string[] }) => {
-    await resolveExtractSelfName()
-    const pending = await getDerivedFreshness().listPendingReextract()
-    const wanted = opts?.filePaths?.length
-      ? opts.filePaths
-      : pending.map((p) => p.filePath)
-    const byPath = new Map(pending.map((p) => [p.filePath, p]))
-    const items = wanted.map((filePath) => {
-      const hit = byPath.get(filePath)
-      return { filePath, date: hit?.date }
-    })
-    const queued = extractQueue.enqueue(items)
-    return { queued, totalPending: items.length }
+  ipcMain.handle(
+    'graph:set-extract-concurrency',
+    async (_e, opts?: { concurrency?: number }) => {
+      const concurrency = resolveGraphExtractConcurrency(opts?.concurrency)
+      extractQueue.setConcurrency(concurrency)
+      return { concurrency }
+    }
+  )
+
+  ipcMain.handle('graph:queue-extract', async (_e, opts?: { filePaths?: string[]; concurrency?: number }) => {
+    return enqueueGraphExtract(extractQueue, opts)
   })
 
   /**
    * Backward-compatible: enqueue and return immediately (no longer blocks until batch done).
    * Prefer graph:queue-extract + graph:queue-progress.
    */
-  ipcMain.handle('graph:extract', async (_e, opts?: { filePaths?: string[] }) => {
-    await resolveExtractSelfName()
-    const pending = await getDerivedFreshness().listPendingReextract()
-    const wanted = opts?.filePaths?.length
-      ? opts.filePaths
-      : pending.map((p) => p.filePath)
-    const byPath = new Map(pending.map((p) => [p.filePath, p]))
-    const items = wanted.map((filePath) => {
-      const hit = byPath.get(filePath)
-      return { filePath, date: hit?.date }
-    })
-    const queued = extractQueue.enqueue(items)
+  ipcMain.handle('graph:extract', async (_e, opts?: { filePaths?: string[]; concurrency?: number }) => {
+    const result = await enqueueGraphExtract(extractQueue, opts)
     return {
       done: 0,
-      failed: 0,
-      queued,
-      errors: [] as Array<{ filePath: string; message: string }>
+      failed: result.skippedNotEmbedded.length,
+      queued: result.queued,
+      skippedNotEmbedded: result.skippedNotEmbedded,
+      errors: result.skippedNotEmbedded.map((filePath) => ({
+        filePath,
+          message: GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR
+      }))
     }
   })
 
@@ -314,7 +430,7 @@ export function registerGraphIPC(): void {
       const repo = requireGraphRepo()
       return repo.getGlobalGraph({
         vaultId: requireVaultId(),
-        maxNodes: opts?.maxNodes ?? 200,
+        maxNodes: opts?.maxNodes ?? GRAPH_GLOBAL_MAX_NODES,
         minMentionCount: opts?.minMentionCount ?? 0,
         nodeTypes: opts?.nodeTypes,
         monthRange: opts?.monthRange
@@ -354,6 +470,26 @@ export function registerGraphIPC(): void {
     }
   )
 
+  ipcMain.handle(
+    'graph:find-by-name',
+    async (_e, opts: { query: string; nodeType?: string }) => {
+      const repo = requireGraphRepo()
+      const hit = await repo.findNodeByNameOrAlias(
+        requireVaultId(),
+        opts.query,
+        opts.nodeType
+      )
+      if (!hit) return null
+      return {
+        id: hit.id,
+        name: hit.name,
+        nodeType: hit.nodeType,
+        summary: hit.summary ?? '',
+        aliases: hit.aliases ?? []
+      }
+    }
+  )
+
   ipcMain.handle('graph:list-pending-edges', async () => {
     const repo = requireGraphRepo()
     return repo.listPendingEdges(requireVaultId())
@@ -387,6 +523,10 @@ export function registerGraphIPC(): void {
     }
   )
 
+  ipcMain.handle('graph:set-reviews-batch', async (_e, opts: GraphSetReviewsBatchInput) => {
+    return applyGraphReviews(opts ?? { reviewStatus: 'approved' })
+  })
+
   ipcMain.handle(
     'graph:upsert-node',
     async (
@@ -407,8 +547,20 @@ export function registerGraphIPC(): void {
       const name = input.name.trim()
       const aliases = Array.isArray(input.aliases) ? input.aliases : (existing?.aliases ?? [])
       const vaultId = writeVaultId(existing?.vaultId)
+      const shardMonth =
+        existing?.shardMonth || graphDiaryInstant(null, now).shardMonth
+      if (nodeType === 'entry' && !existing?.id && !input.id) {
+        throw new Error('entry 节点必须基于日记路径，不能手建随机 id')
+      }
+      const sameName = graphSameNameExistingFromRow(
+        await repo.findNodeByNameOrAlias(vaultId, name, existing?.nodeType || nodeType),
+        existing?.id || input.id
+      )
+      if (sameName) {
+        return { conflict: 'same-name' as const, existing: sameName }
+      }
       const record: GraphNodeRawRecord = {
-        id: existing?.id || input.id || newId('n'),
+        id: existing?.id || input.id || graphNodeIdForEntity(vaultId, nodeType, name),
         schemaVersion: 1,
         vaultId,
         vaultName: resolveVaultNameById(vaultId) || vaultName,
@@ -417,11 +569,12 @@ export function registerGraphIPC(): void {
         aliases,
         summary: input.summary ?? existing?.summary ?? '',
         props: existing ? parseProps(existing.propsJson) : {},
-        mentionCount: existing?.mentionCount ?? 1,
+        mentionCount: existing?.mentionCount ?? 0,
         firstSeenAt: existing?.firstSeenAt ?? now,
         lastSeenAt: now,
         // User edits always set origin=user so re-extract will not supersede them.
         origin: 'user',
+        shardMonth,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         deletedAt: null,
@@ -449,13 +602,16 @@ export function registerGraphIPC(): void {
       const vaultName = requireVaultName()
       const vaultId = requireVaultId()
       const now = Date.now()
-      const d = new Date(now)
-      const shardMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const diary = graphDiaryInstant(input.sourceRef ?? null, now)
+      const shardMonth = diary.shardMonth
       const edgeType = GRAPH_EDGE_TYPES.includes(input.edgeType as never)
         ? input.edgeType
         : 'relates_to'
+      const sourceRef = input.sourceRef ?? null
       const record: GraphEdgeRawRecord = {
-        id: input.id || newId('e'),
+        id:
+          input.id ||
+          graphEdgeId(vaultId, input.fromId, input.toId, edgeType, sourceRef),
         schemaVersion: 1,
         vaultId,
         vaultName,
@@ -463,11 +619,11 @@ export function registerGraphIPC(): void {
         toId: input.toId,
         edgeType,
         props: {},
-        validFrom: now,
+        validFrom: diary.validFrom ?? now,
         validTo: null,
         isCurrent: true,
         sourceKind: 'manual',
-        sourceRef: input.sourceRef ?? null,
+        sourceRef,
         sourceExcerpt: input.sourceExcerpt ?? '',
         sourceContentHash: null,
         confidence: 100,
@@ -486,16 +642,62 @@ export function registerGraphIPC(): void {
 
   ipcMain.handle('graph:soft-delete', async (_e, opts: { kind: 'node' | 'edge'; id: string }) => {
     const manager = getGraphRawManager()
-    await manager.tombstone(opts.id, {
-      collection: opts.kind === 'node' ? 'nodes' : 'edges'
-    })
-    await syncGraphPendingIndex()
-    // Ensure SQLite view drops the row even if pending-index sync races.
     const repo = requireGraphRepo()
-    if (opts.kind === 'node') await repo.softDeleteNode(opts.id)
-    else await repo.softDeleteEdge(opts.id)
+    await applyDiaryGraphSurgicalDelete({
+      kind: opts.kind,
+      id: opts.id,
+      vaultId: requireVaultId(),
+      manager,
+      repo
+    })
     return { ok: true }
   })
+
+  ipcMain.handle(
+    'graph:merge-nodes',
+    async (_e, opts: { survivorId: string; loserId: string; reason?: string }) => {
+      const manager = getGraphRawManager()
+      const repo = requireGraphRepo()
+      const result = await mergeDiaryGraphNodes({
+        vaultId: requireVaultId(),
+        vaultName: requireVaultName(),
+        survivorId: opts.survivorId,
+        loserId: opts.loserId,
+        reason: opts.reason,
+        manager,
+        repo
+      })
+      await syncDiaryGraphMergeIntoIndex({
+        loserId: result.loserId,
+        syncPendingIndex: syncGraphPendingIndex,
+        softDeleteNode: (id) => repo.softDeleteNode(id)
+      })
+      return { ok: true, ...result }
+    }
+  )
+
+  ipcMain.handle(
+    'graph:merge-nodes-batch',
+    async (_e, opts: { survivorId: string; loserIds: string[]; reason?: string }) => {
+      const manager = getGraphRawManager()
+      const repo = requireGraphRepo()
+      const result = await mergeDiaryGraphNodeGroup({
+        vaultId: requireVaultId(),
+        vaultName: requireVaultName(),
+        survivorId: opts.survivorId,
+        loserIds: opts.loserIds,
+        reason: opts.reason,
+        manager,
+        repo
+      })
+      await syncDiaryGraphMergeGroupIntoIndex({
+        loserIds: result.loserIds,
+        syncPendingIndex: syncGraphPendingIndex,
+        softDeleteNode: (id) => repo.softDeleteNode(id)
+      })
+      return { ok: true, ...result }
+    }
+  )
 
   ipcMain.handle('graph:get-node', async (_e, id: string) => {
     return requireGraphRepo().getNodeById(id)

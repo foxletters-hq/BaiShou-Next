@@ -90,31 +90,30 @@ function buildMarkdownStyles(
       color: isPreview ? colors.textSecondary : bodyColor
     },
     code_inline: {
-      backgroundColor: colors.bgSurfaceHighest,
+      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
       color: colors.textPrimary,
       paddingHorizontal: 4,
       paddingVertical: 1,
       borderRadius: 4,
-      fontFamily: 'monospace',
-      fontSize: isAncillary ? 12 : 13
+      fontSize: isPreview ? bodyFontSize : isAncillary ? 12 : 13
     },
     code_block: {
-      backgroundColor: colors.bgSurfaceHighest,
+      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
       color: colors.textPrimary,
       padding: 10,
       borderRadius: 8,
       fontFamily: 'monospace',
       marginBottom: paragraphMargin,
-      fontSize: isAncillary ? 12 : 13
+      fontSize: isPreview ? bodyFontSize : isAncillary ? 12 : 13
     },
     fence: {
-      backgroundColor: colors.bgSurfaceHighest,
+      backgroundColor: isPreview ? colors.bgSurfaceNormal : colors.bgSurfaceHighest,
       color: colors.textPrimary,
       padding: 10,
       borderRadius: 8,
       fontFamily: 'monospace',
       marginBottom: paragraphMargin,
-      fontSize: isAncillary ? 12 : 13
+      fontSize: isPreview ? bodyFontSize : isAncillary ? 12 : 13
     },
     list_item: {
       color: bodyColor,

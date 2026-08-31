@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
   normalizeUiFontSizeLevel,
-  UI_FONT_SIZE_LEVEL_DEFAULT,
-  UI_FONT_SIZE_LEVEL_MAX,
-  UI_FONT_SIZE_LEVEL_MIN,
+  resolvePageZoomShortcut,
+  nextUiFontSizeLevel,
   uiPageZoomFromLevel
 } from '@baishou/shared'
 import { useSettingsStore } from '@baishou/store'
@@ -75,26 +74,20 @@ export function useZoom() {
   }, [fontSizeLevel, hydrated])
 
   useEffect(() => {
+    const onLevelFromMain = (level: number) => {
+      useSettingsStore.getState().setFontSizeLevel(level)
+    }
+    const offLevel = (window as any).api?.zoom?.onSetLevel?.(onLevelFromMain) as
+      | (() => void)
+      | undefined
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (!e.ctrlKey && !e.metaKey) return
-
+      const action = resolvePageZoomShortcut({ key: e.key, code: e.code })
+      if (!action) return
+      e.preventDefault()
       const store = useSettingsStore.getState()
-      const current = normalizeUiFontSizeLevel(store.fontSizeLevel)
-
-      if (e.key === '=' || e.key === '+') {
-        e.preventDefault()
-        if (current < UI_FONT_SIZE_LEVEL_MAX) {
-          store.setFontSizeLevel(current + 1)
-        }
-      } else if (e.key === '-') {
-        e.preventDefault()
-        if (current > UI_FONT_SIZE_LEVEL_MIN) {
-          store.setFontSizeLevel(current - 1)
-        }
-      } else if (e.key === '0') {
-        e.preventDefault()
-        store.setFontSizeLevel(UI_FONT_SIZE_LEVEL_DEFAULT)
-      }
+      store.setFontSizeLevel(nextUiFontSizeLevel(store.fontSizeLevel, action))
     }
 
     const onWheel = (e: WheelEvent) => {
@@ -108,6 +101,7 @@ export function useZoom() {
     window.addEventListener('wheel', onWheel, { passive: false })
 
     return () => {
+      offLevel?.()
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('wheel', onWheel)
     }

@@ -9,7 +9,8 @@
     "types": [],
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "resolveJsonModule": true
   },
   "include": [
     "src/env.d.ts",

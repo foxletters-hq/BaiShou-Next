@@ -1,5 +1,6 @@
 export * from './types'
 export * from './adapters'
+export * from './tesseract-worker-path.util'
 export * from './simple.engine'
 export * from './ocr.engine'
 export * from './vision.engine'

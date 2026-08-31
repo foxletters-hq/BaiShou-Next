@@ -61,7 +61,15 @@ export function reconcileRegistryFromSessionBindings(
     map.set(key, entry)
   }
 
-  return [...map.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  return [...map.values()].sort((a, b) => {
+    const aPinned = Boolean(a.pinnedAt)
+    const bPinned = Boolean(b.pinnedAt)
+    if (aPinned !== bPinned) return aPinned ? -1 : 1
+    if (aPinned && bPinned) {
+      return Date.parse(b.pinnedAt ?? '') - Date.parse(a.pinnedAt ?? '')
+    }
+    return b.updatedAt.localeCompare(a.updatedAt)
+  })
 }
 
 export function resolveValidLastActiveWorkspaceId(

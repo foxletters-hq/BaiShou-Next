@@ -211,26 +211,31 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               controls
             />
           ),
+          pre: ({ children }) => <>{children}</>,
           code({ node, className, children, inline, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '')
-            return !inline && match ? (
+            if (inline) {
+              return (
+                <code className={styles.inlineCode} {...props}>
+                  {children}
+                </code>
+              )
+            }
+            return (
               <pre className={styles.codeWrapper}>
                 <div className={styles.codeHeader}>
-                  <span>{match[1]}</span>
-                  <button onClick={() => navigator.clipboard.writeText(String(children))}>
+                  {match?.[1] ? <span>{match[1]}</span> : null}
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(String(children))}
+                  >
                     {t('markdown.copy', '复制')}
                   </button>
                 </div>
-                <div className={styles.codeBlock}>
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                </div>
+                <code className={className} {...props}>
+                  {children}
+                </code>
               </pre>
-            ) : (
-              <code className={styles.inlineCode} {...props}>
-                {children}
-              </code>
             )
           },
           table({ children }) {

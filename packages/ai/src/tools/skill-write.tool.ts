@@ -10,7 +10,9 @@ const skillWriteParams = z.object({
     .describe('Short third-person description of what the skill does and when to use it.'),
   content: z
     .string()
-    .describe('Skill body markdown (instructions only; do not include YAML frontmatter).'),
+    .describe(
+      'Skill body markdown only. Do not include the properties header (name/description) or --- fences; pass those as name and description arguments.'
+    ),
   previous_name: z
     .string()
     .optional()
@@ -21,9 +23,11 @@ export class SkillWriteTool extends AgentTool<typeof skillWriteParams> {
   readonly name = 'skill_write'
 
   readonly description =
-    'Create or update a software-level Skill as AI/skills/<name>/SKILL.md. ' +
+    'Create or update a Skill as .agents/skills/<name>/SKILL.md in the current scope ' +
+    '(user home for companion chat, workspace root for a project session). ' +
     'Use after gathering name, description, and body with the user. ' +
-    'Do not invent a skill without confirmation. Name must be kebab-case.'
+    'Do not invent a skill without confirmation. Name must be kebab-case. ' +
+    'Do not write SKILL.md with workspace file tools.'
 
   readonly parameters = skillWriteParams
 

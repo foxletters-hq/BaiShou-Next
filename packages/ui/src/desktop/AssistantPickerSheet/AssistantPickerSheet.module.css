@@ -101,7 +101,7 @@
 }
 
 .listArea::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 .listArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb), 0.6);
@@ -445,7 +445,7 @@
 }
 
 .detailContent::-webkit-scrollbar {
-  width: 5px;
+  width: 10px;
 }
 .detailContent::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb), 0.5);
@@ -603,15 +603,16 @@
 
 .tabContent {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding-bottom: 4px;
+  overscroll-behavior: contain;
+  display: block;
+  padding-bottom: 8px;
 }
 
 .tabContent::-webkit-scrollbar {
-  width: 5px;
+  width: 10px;
 }
 
 .tabContent::-webkit-scrollbar-thumb {

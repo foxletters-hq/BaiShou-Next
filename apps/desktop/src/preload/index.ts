@@ -11,6 +11,7 @@ import { cacheApi } from './cache.api'
 import { agentWorkspaceApi } from './agent-workspace.api'
 import { graphApi } from './graph.api'
 import { knowledgeApi } from './knowledge.api'
+import { applyPersistedPageZoom } from './apply-persisted-page-zoom'
 
 const preloadStarted = performance.now()
 ipcRenderer.send('startup:mark', {
@@ -75,6 +76,8 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.api = api
 }
+
+applyPersistedPageZoom()
 
 ipcRenderer.send('startup:mark', {
   step: 'preload.ready',

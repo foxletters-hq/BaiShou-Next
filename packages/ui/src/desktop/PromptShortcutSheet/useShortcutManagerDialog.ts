@@ -38,10 +38,10 @@ function buildManagerList(
   const createItem: PromptShortcut = {
     id: CREATE_SKILL_MANAGER_ID,
     command: CREATE_SKILL_SLASH_COMMAND,
-    name: t('shortcut.create_skill', '创建 Skill'),
-    description: t('shortcut.create_skill_desc', '创建可复用的 Agent Skill'),
+    name: CREATE_SKILL_SLASH_COMMAND,
+    description: CREATE_SKILL_SLASH_COMMAND,
     content: getCreateSkillGuidePrompt(t),
-    tag: t('shortcut.create_skill', '创建 Skill')
+    tag: CREATE_SKILL_SLASH_COMMAND
   }
   const rest = shortcuts.filter((item) => !isProtectedSkill(item))
   return [createItem, ...rest]

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react'
-import { Sparkles } from 'lucide-react'
+import { FolderOpen, Plus, Sparkles } from 'lucide-react'
 import styles from './InputBar.module.css'
 
 export type SkillSlashPickerItem = {
   id: string
   name: string
   description: string
+  iconKind?: 'software' | 'workspace' | 'create'
   onSelect: () => void
 }
 
@@ -14,6 +15,12 @@ type Props = {
   selectedIndex: number
   onSelectIndex: (index: number) => void
   onClose: () => void
+}
+
+function SlashItemIcon({ kind }: { kind?: SkillSlashPickerItem['iconKind'] }) {
+  if (kind === 'create') return <Plus size={14} strokeWidth={2} />
+  if (kind === 'workspace') return <FolderOpen size={14} strokeWidth={2} />
+  return <Sparkles size={14} strokeWidth={2} />
 }
 
 export function SkillSlashPicker({ items, selectedIndex, onSelectIndex, onClose }: Props) {
@@ -57,7 +64,7 @@ export function SkillSlashPicker({ items, selectedIndex, onSelectIndex, onClose 
           onClick={() => item.onSelect()}
         >
           <span className={styles.skillSlashIcon} aria-hidden>
-            <Sparkles size={14} strokeWidth={2} />
+            <SlashItemIcon kind={item.iconKind} />
           </span>
           <span className={styles.skillSlashName}>{item.name}</span>
           {item.description ? (

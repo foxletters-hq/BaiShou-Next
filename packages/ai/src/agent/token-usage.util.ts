@@ -27,10 +27,18 @@ export function mergeStreamUsageFromSdk(
   const outputTokens =
     Number(sdkUsage.outputTokens ?? sdkUsage.completionTokens ?? 0) || accumulatorUsage.outputTokens
 
+  const inputTokenDetails = sdkUsage.inputTokenDetails as Record<string, unknown> | undefined
+  const inputTokensDetails = sdkUsage.inputTokensDetails as Record<string, unknown> | undefined
+  const promptTokensDetails = sdkUsage.promptTokensDetails as Record<string, unknown> | undefined
   const cacheRead = Number(
     sdkUsage.cacheReadInputTokens ??
       sdkUsage.cachedInputTokens ??
-      (sdkUsage.inputTokensDetails as Record<string, unknown> | undefined)?.cachedTokens ??
+      sdkUsage.prompt_cache_hit_tokens ??
+      sdkUsage.promptCacheHitTokens ??
+      inputTokenDetails?.cacheReadTokens ??
+      inputTokensDetails?.cachedTokens ??
+      promptTokensDetails?.cachedTokens ??
+      promptTokensDetails?.cached_tokens ??
       (metadata?.anthropic as Record<string, unknown> | undefined)?.cacheReadInputTokens ??
       (metadata?.anthropic as Record<string, unknown> | undefined)?.cache_read_input_tokens ??
       accumulatorUsage.cacheReadInputTokens

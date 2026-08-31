@@ -67,6 +67,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   )
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
+  const canEdit = Boolean(onSaveEdit || onResendEdit)
+  const startEdit = canEdit ? edit.handleStartEdit : undefined
 
   return (
     <>
@@ -88,7 +90,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onResendEdit={edit.handleResendEdit}
             hasResendEdit={Boolean(onResendEdit)}
             onCopy={handleCopy}
-            onStartEdit={edit.handleStartEdit}
+            onStartEdit={startEdit}
             onResend={onResend}
             onDelete={onDelete}
             onShowContext={onShowContext}
@@ -109,7 +111,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             onCancelEdit={edit.handleCancelEdit}
             onSaveEdit={edit.handleSaveEdit}
             onCopy={handleCopy}
-            onStartEdit={edit.handleStartEdit}
+            onStartEdit={startEdit}
             onRegenerate={onRegenerate}
             onDelete={onDelete}
             onBranch={onBranch}
@@ -125,7 +127,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         isUser={isUser}
         onDismiss={() => setContextMenu(null)}
         onCopy={handleCopy}
-        onStartEdit={edit.handleStartEdit}
+        onStartEdit={startEdit}
         onResend={onResend}
         onRegenerate={onRegenerate}
         onDelete={onDelete}

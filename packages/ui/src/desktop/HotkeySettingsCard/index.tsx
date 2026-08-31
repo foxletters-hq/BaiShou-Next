@@ -177,13 +177,10 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
   return (
     <div>
       <div
-        className={`settings-list-tile settings-list-tile-no-row-hover ${config.hotkeyEnabled ? 'settings-list-tile-expandable' : ''}`}
+        className="settings-list-tile settings-list-tile-no-row-hover settings-list-tile-expandable"
         onClick={() => {
-          if (config.hotkeyEnabled) {
-            setCollapsed(!collapsed)
-          }
+          setCollapsed(!collapsed)
         }}
-        style={{ cursor: config.hotkeyEnabled ? 'pointer' : 'default' }}
       >
         <div className="settings-list-tile-leading">
           <Keyboard size={20} />
@@ -216,21 +213,17 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
           <span className="settings-switch-slider" />
         </label>
 
-        {config.hotkeyEnabled && (
-          <span
-            className={`settings-expansion-toggle ${collapsed ? '' : 'is-open'}`}
-            style={{ marginLeft: 12 }}
-            aria-hidden="true"
-          >
-            <ChevronDown className="settings-expansion-arrow" size={16} />
-          </span>
-        )}
+        <span
+          className={`settings-expansion-toggle ${collapsed ? '' : 'is-open'}`}
+          style={{ marginLeft: 12 }}
+          aria-hidden="true"
+        >
+          <ChevronDown className="settings-expansion-arrow" size={16} />
+        </span>
       </div>
 
       {/* 录入快捷组合键 — 用 CSS grid 动画实现平滑展开/收起 */}
-      <div
-        className={`settings-expansion-grid-wrapper ${config.hotkeyEnabled && !collapsed ? 'expanded' : ''}`}
-      >
+      <div className={`settings-expansion-grid-wrapper ${!collapsed ? 'expanded' : ''}`}>
         <div className="settings-expansion-grid-item">
           <div className="settings-list-divider indent" />
           <div className="settings-list-tile settings-list-tile-noclick">

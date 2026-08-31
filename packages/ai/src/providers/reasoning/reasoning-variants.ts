@@ -39,6 +39,12 @@ export function listReasoningVariants(ctx: ListReasoningVariantsContext): Reason
       { id: 'high', label: formatReasoningEffortLabel('high') }
     ]
   }
+  if (control.mode === 'effort' && control.efforts?.length) {
+    return control.efforts.map((id) => ({
+      id,
+      label: formatReasoningEffortLabel(id)
+    }))
+  }
 
   const shape = resolveReasoningApiShape(ctx)
   let efforts: ReasoningEffort[] = []

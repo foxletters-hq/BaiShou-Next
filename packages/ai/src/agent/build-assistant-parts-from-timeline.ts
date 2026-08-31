@@ -69,7 +69,7 @@ export function buildAssistantPartsFromTimeline(params: {
         messageId: assistantMsgId,
         sessionId,
         type: 'tool',
-        data: { ...toolData, seq: seq++ }
+        data: { ...(toolData as Record<string, unknown>), seq: seq++ }
       })
     }
     const text = sanitizeAssistantGeneratedText(accumulator.text)
@@ -100,7 +100,7 @@ export function buildAssistantPartsFromTimeline(params: {
         messageId: assistantMsgId,
         sessionId,
         type: 'tool',
-        data: { ...toolData, seq: seq++ }
+        data: { ...(toolData as Record<string, unknown>), seq: seq++ }
       })
     }
   }

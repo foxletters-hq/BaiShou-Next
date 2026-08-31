@@ -16,5 +16,6 @@ describe('buildWorkspaceEnvLines', () => {
     expect(lines.join('\n')).toContain('Git branch: main')
     expect(lines.join('\n')).toContain('Git changes count: 3')
     expect(lines.join('\n')).toContain('notebookId: nb')
+    expect(lines.join('\n')).toContain('companion_ask')
   })
 })

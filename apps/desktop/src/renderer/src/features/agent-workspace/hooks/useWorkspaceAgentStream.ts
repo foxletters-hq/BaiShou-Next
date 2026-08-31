@@ -28,6 +28,7 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
       title?: string
       displayText?: string
       skillRefs?: Array<{ command: string; content: string }>
+      attachments?: unknown[]
     }
   ) => Promise<StartWorkspaceChatResult>
   runWorkspaceChatStream: (
@@ -151,6 +152,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
         title?: string
         displayText?: string
         skillRefs?: Array<{ command: string; content: string }>
+        attachments?: unknown[]
       }
     ): Promise<StartWorkspaceChatResult> => {
       let activeSessionId = targetSessionId
@@ -174,7 +176,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
         window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
       }
 
-      const saved = await stream.saveUserMessage(activeSessionId, text, undefined, {
+      const saved = await stream.saveUserMessage(activeSessionId, text, options?.attachments, {
         displayText: options?.displayText,
         skillRefs: options?.skillRefs
       })

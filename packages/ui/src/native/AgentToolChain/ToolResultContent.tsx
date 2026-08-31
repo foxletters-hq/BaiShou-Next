@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from 'react'
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import {
+  localizeToolResultText,
   resolveToolResultPresentation,
   type ToolInvocationLike
 } from '../../shared/tool-result.util'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { useNativeTheme } from '../theme'
+import { CompanionAskResultCard } from './CompanionAskResultCard'
 
 const RESULT_MAX_HEIGHT = 320
 
@@ -14,12 +17,24 @@ export const ToolResultContent = React.memo(function ToolResultContent({
 }: {
   invocation: ToolInvocationLike
 }) {
+  const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const presentation = useMemo(() => resolveToolResultPresentation(invocation), [invocation])
   const isError = presentation.mode === 'error'
+  const displayText = useMemo(
+    () =>
+      presentation.mode === 'structured' || presentation.mode === 'companion_ask'
+        ? ''
+        : localizeToolResultText(presentation.text, t),
+    [presentation, t]
+  )
   const [contentHeight, setContentHeight] = useState(0)
   const viewportHeight = Math.min(contentHeight || RESULT_MAX_HEIGHT, RESULT_MAX_HEIGHT)
   const scrollEnabled = contentHeight > RESULT_MAX_HEIGHT
+
+  if (presentation.mode === 'companion_ask') {
+    return <CompanionAskResultCard data={presentation} />
+  }
 
   return (
     <View
@@ -58,13 +73,16 @@ export const ToolResultContent = React.memo(function ToolResultContent({
               </Text>
             ) : null}
             {presentation.mode === 'plain' && presentation.renderAsMarkdown ? (
-              <AgentMarkdownRenderer content={presentation.text} variant="ancillary" />
+              <AgentMarkdownRenderer content={displayText} variant="ancillary" />
             ) : (
               <Text
-                style={[styles.plainText, { color: isError ? colors.error : colors.textSecondary }]}
+                style={[
+                  isError ? styles.statusText : styles.plainText,
+                  { color: isError ? colors.error : colors.textSecondary }
+                ]}
                 selectable
               >
-                {presentation.text}
+                {displayText}
               </Text>
             )}
           </>
@@ -177,6 +195,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginBottom: 8
+  },
+  statusText: {
+    fontSize: 13,
+    lineHeight: 20
   },
   plainText: {
     fontSize: 12,

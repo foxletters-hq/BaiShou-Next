@@ -20,7 +20,7 @@ export interface SystemPromptBuilderOptions {
   diaryAiWritingPrompt?: string
   /** 亲密伙伴 / 工作伙伴，影响能力边界说明 */
   assistantKind?: AssistantKind
-  /** 是否在 system prompt 中注入当前时间，默认 true（兼容旧配置） */
+  /** 是否为历史消息加发送时刻壳；钟点本身在 messages 尾部另插，不写进本段 */
   injectCurrentTime?: boolean
   /** App UI 语言，用于用户可见固定话术（如联网未开提示） */
   locale?: string
@@ -36,18 +36,6 @@ function pushSection(buffer: string[], tag: string, lines: string[]): void {
   buffer.push(...lines)
   buffer.push(`</${tag}>`)
   buffer.push('')
-}
-
-function formatSystemCurrentTime(now = new Date()): string {
-  const tzOffset = -now.getTimezoneOffset() / 60
-  const tzSign = tzOffset >= 0 ? '+' : ''
-  const dateStr =
-    `${now.getFullYear()}-` +
-    `${String(now.getMonth() + 1).padStart(2, '0')}-` +
-    `${String(now.getDate()).padStart(2, '0')} ` +
-    `${String(now.getHours()).padStart(2, '0')}:` +
-    `${String(now.getMinutes()).padStart(2, '0')}`
-  return `[System Current Date / Time]: ${dateStr} (UTC${tzSign}${tzOffset})`
 }
 
 function resolveLocale(locale?: string): string | undefined {
@@ -98,15 +86,15 @@ export class SystemPromptBuilder {
     // 2. output_protocol（始终存在）
     pushSection(buffer, 'output_protocol', buildOutputProtocolSystemPromptLines())
 
-    // 3. runtime_context
-    const runtimeLines: string[] = []
-    if (injectCurrentTime) {
-      runtimeLines.push(formatSystemCurrentTime())
-    } else {
-      runtimeLines.push(
-        'Note: System current time is not injected. Use the **current_time** tool when you need "now".'
-      )
-    }
+    // 3. runtime_context：不写日期/时分，以免截断隐式前缀缓存
+    const runtimeLines: string[] = injectCurrentTime
+      ? [
+          'Current date and clock time are provided in a later system message after conversation history (not in this section).',
+          'Use that later message for "now". Call the **current_time** tool only if you need a fresher clock.'
+        ]
+      : [
+          'Current date and time are not injected. Use the **current_time** tool when you need "now".'
+        ]
     runtimeLines.push(`[Current Vault / Workspace]: ${vaultName}`)
     runtimeLines.push(`[Partner type]: ${assistantKind === 'work' ? 'work' : 'companion'}`)
     pushSection(buffer, 'runtime_context', runtimeLines)

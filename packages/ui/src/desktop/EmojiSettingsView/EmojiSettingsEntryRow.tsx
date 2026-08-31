@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Settings, Smile } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import type { EmojiToolConfig } from '@baishou/shared'
 import { normalizeEmojiToolConfig } from '@baishou/shared'
 import { Switch } from '../Switch/Switch'
@@ -34,9 +34,6 @@ export const EmojiSettingsEntryRow: React.FC<EmojiSettingsEntryRowProps> = ({
   return (
     <div className={`${styles.toolCard} ${isEnabled ? styles.enabled : styles.disabled}`}>
       <div className={styles.cardMain}>
-        <div className={styles.toolIconWrapper}>
-          <Smile size={20} />
-        </div>
         <div className={styles.toolInfo}>
           <div className={styles.toolNameRow}>
             <span className={styles.toolName}>{t('agent.tools.emoji_send', '表情包')}</span>
@@ -46,7 +43,6 @@ export const EmojiSettingsEntryRow: React.FC<EmojiSettingsEntryRowProps> = ({
                 '开启后，伙伴可在对话中根据语境发送你上传的表情包。先在下方创建表情包组并上传图片，再到伙伴编辑页为每个伙伴开启并选择可用的组。'
               )}
             />
-            <span className={styles.toolIdTag}>emoji_send</span>
           </div>
         </div>
         <button

@@ -14,6 +14,8 @@ import {
   isTextDiffablePath,
   mapStatusToType,
   parseDiffHunks,
+  parseGitHistoryLog,
+  parseRevListCount,
   pathsEqual
 } from './git-sync.helpers'
 
@@ -27,7 +29,7 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
         args.push('--', filePath)
       }
       const count = await git.raw(args)
-      return Math.max(0, parseInt(count.trim(), 10) || 0)
+      return parseRevListCount(count)
     } catch {
       return 0
     }
@@ -36,34 +38,33 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
   async getHistory(filePath?: string, limit = 50, offset = 0): Promise<VersionHistoryEntry[]> {
     const git = await this.ensureGit()
 
-    const options = ['--max-count', String(limit)]
-    if (offset > 0) {
-      options.push('--skip', String(offset))
-    }
-    if (filePath) {
-      options.push('--', filePath)
-    }
-
     try {
       const headRef = (await git.revparse(['HEAD'])).trim()
       const headShort = headRef.substring(0, 7)
-      const log = await git.log(options)
-      const entries: VersionHistoryEntry[] = []
-      for (const commit of log.all) {
-        const changes = await this.getCommitChanges(commit.hash)
-        const hashShort = commit.hash.substring(0, 7)
-        entries.push({
+      // 必须走 raw：simple-git 的 log({ '--skip': n }) 只会带上 --skip 开关，不会带数值
+      const args = [
+        'log',
+        `--max-count=${Math.max(0, limit)}`,
+        `--skip=${Math.max(0, offset)}`,
+        '--format=%H%x1f%s%x1f%aI'
+      ]
+      if (filePath) {
+        args.push('--', filePath)
+      }
+      const output = await git.raw(args)
+      return parseGitHistoryLog(output).map((row) => {
+        const hashShort = row.hash.substring(0, 7)
+        return {
           commit: {
             hash: hashShort,
-            message: commit.message,
-            date: new Date(commit.date),
-            files: changes.map((c) => c.path)
+            message: row.message,
+            date: new Date(row.date),
+            files: []
           },
-          changes,
+          changes: [],
           isCurrent: hashShort === headShort
-        })
-      }
-      return entries
+        }
+      })
     } catch {
       return []
     }

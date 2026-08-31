@@ -160,7 +160,6 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
                           {...draggableProvided.dragHandleProps}
                           style={{
                             ...draggableProvided.draggableProps.style,
-                            ...draggableProvided.dragHandleProps?.style,
                             cursor: 'default'
                           }}
                           className={`${styles.tab} ${tab.id === activeTabId ? styles.tabActive : ''} ${snapshot.isDragging ? styles.tabDragging : ''}`}
@@ -305,6 +304,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
               documentId={activeTab.id}
               content={activeTab.content ?? ''}
               folderRoot={folderRoot}
+              relativePath={activeTab.relativePath}
               scrollToLine={activeTab.scrollToLine}
               scrollToColumn={activeTab.scrollToColumn}
               onScrolledToLine={() => clearTabScrollTarget(activeTab.id)}

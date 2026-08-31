@@ -66,6 +66,14 @@ function workspaceRenameResources(args: unknown, ctx: unknown): AgentGateResourc
   return resources
 }
 
+function safeReadTool(action: string, title: string): AgentGateToolMetadata {
+  return {
+    action,
+    riskLevel: AgentGateRiskLevel.Safe,
+    buildTitle: () => title
+  }
+}
+
 function truncateCommandTitle(command: string, maxLen = 80): string {
   const oneLine = command.replace(/\s+/g, ' ').trim()
   if (oneLine.length <= maxLen) return oneLine
@@ -87,8 +95,18 @@ function workspaceRunResources(args: unknown, ctx: unknown): AgentGateResourceRe
   }).resources
 }
 
-/** Default gate metadata for mutating diary / memory tools */
+/** Default gate metadata for companion + workspace tools */
 export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMetadata>> = {
+  diary_read: safeReadTool('diary_read', '读取日记'),
+  diary_list: safeReadTool('diary_list', '列出日记'),
+  diary_search: safeReadTool('diary_search', '搜索日记'),
+  summary_read: safeReadTool('summary_read', '读取总结'),
+  message_search: safeReadTool('message_search', '搜索消息'),
+  vector_search: safeReadTool('vector_search', '语义搜索'),
+  recall_relations: safeReadTool('recall_relations', '回忆关系图谱'),
+  web_search: safeReadTool('web_search', '网络搜索'),
+  url_read: safeReadTool('url_read', '读取网页'),
+  current_time: safeReadTool('current_time', '查询时间'),
   diary_write: {
     action: 'diary_write',
     riskLevel: AgentGateRiskLevel.Mutating,
@@ -125,7 +143,6 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
   diary_delete: {
     action: 'diary_delete',
     riskLevel: AgentGateRiskLevel.Destructive,
-    forceExclusion: true,
     buildTitle: (args) => diaryDateTitle('删除日记', args),
     buildMetadata: (args) => ({ date: (args as GateArgs).date }),
     prepare: async (args) => {
@@ -175,7 +192,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         detailLines: [
           typeof name === 'string' ? `名称：${name}` : null,
           typeof description === 'string' ? `说明：${description}` : null,
-          typeof name === 'string' ? `路径：AI/skills/${name}/SKILL.md` : null
+          typeof name === 'string' ? `路径：.agents/skills/${name}/SKILL.md` : null
         ].filter((line): line is string => Boolean(line))
       })
     }
@@ -183,7 +200,6 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
   memory_delete: {
     action: 'memory_delete',
     riskLevel: AgentGateRiskLevel.Destructive,
-    forceExclusion: true,
     buildTitle: () => '删除记忆',
     buildMetadata: (args) => ({
       query: (args as GateArgs).query,
@@ -325,7 +341,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
   graph_upsert: {
     action: 'graph_upsert',
     riskLevel: AgentGateRiskLevel.Mutating,
-    buildTitle: () => '写入记忆图谱',
+    buildTitle: () => '写入人生关系图',
     buildMetadata: (args) => {
       const summary = (args as GateArgs).summary
       const sourceRef = (args as GateArgs).source_ref
@@ -360,7 +376,7 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
         })
         .filter((t): t is string => Boolean(t))
       return prepareContentGatePreview({
-        subject: '写入记忆图谱',
+        subject: '写入人生关系图',
         counts: { entities: entityCount, edges: edgeCount },
         detailLines: [
           typeof summary === 'string' ? `摘要：${summary.slice(0, 200)}` : null,

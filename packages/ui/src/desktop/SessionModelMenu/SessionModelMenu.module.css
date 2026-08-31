@@ -214,7 +214,7 @@
   background: transparent;
   color: var(--text-primary);
   font-size: 13px;
-  line-height: 1.2;
+  line-height: 1.45;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
@@ -241,7 +241,7 @@
   align-items: center;
   gap: 6px;
   overflow: hidden;
-  line-height: 1.2;
+  line-height: 1.45;
 }
 
 .modelIdPrimary {
@@ -250,9 +250,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.2;
-  /* overflow:hidden + 过紧行高会裁掉 g/p/y 下延 */
-  padding-bottom: 1px;
+  line-height: 1.45;
 }
 
 .modelIdEffort {

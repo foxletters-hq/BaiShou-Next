@@ -20,7 +20,8 @@ describe('live preview marker hiding', () => {
   function mount(
     content: string,
     cursor = content.length,
-    interactionMode: 'touch' | 'mouse' = 'touch'
+    interactionMode: 'touch' | 'mouse' = 'touch',
+    documentProperties = false
   ) {
     parent = document.createElement('div')
     document.body.appendChild(parent)
@@ -29,7 +30,8 @@ describe('live preview marker hiding', () => {
       platform: {
         resolveAttachmentUrl: (u) => u,
         interactionMode,
-        scrollMode: 'viewport'
+        scrollMode: 'viewport',
+        documentProperties
       }
     })
     if (cursor !== content.length) {
@@ -73,14 +75,82 @@ describe('live preview marker hiding', () => {
     expect(parent.querySelector('.cm-rendered-h3')).not.toBeNull()
   })
 
-  it('hides inline code backticks and styles content', () => {
+  it('puts heading class on the line so click mapping uses line metrics', () => {
+    mount('# heading\nnext\n', 0, 'mouse')
+    const line = parent.querySelector('.cm-line')
+    expect(line?.classList.contains('cm-rendered-h1')).toBe(true)
+  })
+
+  it('hides inline code backticks when the caret is outside', () => {
     mount('use `code` here\n')
-    expect(parent.querySelector('.cm-rendered-inline-code')).not.toBeNull()
+    const el = parent.querySelector('.cm-rendered-inline-code')
+    expect(el).not.toBeNull()
+    expect(el?.textContent).toBe('code')
     expect(parent.querySelectorAll('.cm-syntax-hidden-widget').length).toBeGreaterThan(0)
+    expect(parent.textContent).not.toMatch(/`code`/)
+  })
+
+  it('keeps inline code backticks inside the mark when the caret is inside', () => {
+    const content = 'use `code` here\n'
+    mount(content, content.indexOf('c'))
+    const el = parent.querySelector('.cm-rendered-inline-code')
+    expect(el?.textContent).toBe('`code`')
+  })
+
+  it('hides inline code backticks after the caret leaves the span', () => {
+    const content = 's`sadas`\n'
+    const v = mount(content, content.indexOf('a'))
+    focusEditor(v)
+    expect(parent.querySelector('.cm-rendered-inline-code')?.textContent).toBe('`sadas`')
+
+    v.dispatch({ selection: { anchor: content.length, head: content.length } })
+    expect(parent.querySelector('.cm-rendered-inline-code')?.textContent).toBe('sadas')
+    expect(parent.textContent).not.toMatch(/`sadas`/)
+  })
+
+  it('covers the full inline code range including backticks while editing', () => {
+    const content = 'use `code` here\n'
+    const inside = content.indexOf('c')
+    const state = EditorState.create({
+      doc: content,
+      selection: { anchor: inside, head: inside },
+      extensions: [markdown()]
+    })
+    ensureSyntaxTree(state, state.doc.length, 200)
+    const deco = buildMarkerHidingDecorations(
+      state,
+      { resolveAttachmentUrl: (u) => u, interactionMode: 'mouse' },
+      { hasFocus: true }
+    )
+    const openTick = content.indexOf('`')
+    const closeTick = content.lastIndexOf('`')
+    let covered = false
+    let hiddenTicks = 0
+    deco.between(openTick, closeTick + 1, (from, to, value) => {
+      if (
+        value.spec?.class === 'cm-rendered-inline-code' &&
+        from <= openTick &&
+        to >= closeTick + 1
+      ) {
+        covered = true
+      }
+      if (value.spec?.widget?.constructor.name === 'HiddenSyntaxWidget') {
+        hiddenTicks += 1
+      }
+    })
+    expect(covered).toBe(true)
+    expect(hiddenTicks).toBe(0)
   })
 
   it('renders blockquote with left rail', () => {
     mount('> quoted line\n')
+    expect(parent.querySelector('.cm-rendered-blockquote')).not.toBeNull()
+  })
+
+  it('keeps blockquote rail when the caret is on the quote line', () => {
+    const content = '> quoted line\n'
+    const v = mount(content, content.indexOf('q'))
+    focusEditor(v)
     expect(parent.querySelector('.cm-rendered-blockquote')).not.toBeNull()
   })
 
@@ -101,6 +171,22 @@ describe('live preview marker hiding', () => {
     expect(parent.querySelector('.cm-wb-hr')).not.toBeNull()
     expect(parent.querySelector('.cm-wb-hr-widget')).toBeNull()
     expect(v.state.doc.toString()).toContain('---')
+  })
+
+  it('renders skill properties header instead of a horizontal rule', () => {
+    const content = 'name: daily-news-digest\ndescription: 整理当天新闻\n\n# 简报\n'
+    mount(content, content.length, 'mouse', true)
+    expect(parent.querySelector('.cm-wb-properties')).not.toBeNull()
+    expect(parent.querySelector('.cm-wb-property-key')).not.toBeNull()
+    expect(parent.querySelector('.cm-wb-hr')).toBeNull()
+  })
+
+  it('does not render yaml fences in skill properties as a horizontal rule', () => {
+    const content = '---\nname: translate\ndescription: 翻译\n---\n\n请翻译\n'
+    mount(content, content.length, 'mouse', true)
+    expect(parent.querySelector('.cm-wb-properties')).not.toBeNull()
+    expect(parent.querySelector('.cm-wb-hr')).toBeNull()
+    expect(parent.querySelector('.cm-wb-hr-widget')).toBeNull()
   })
 
   it('does not extend blockquote styling to lines without > prefix', () => {
@@ -344,6 +430,29 @@ describe('live preview marker hiding', () => {
       })
       window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
     }).not.toThrow()
+  })
+
+  it('hides markdown link destination until the caret enters the link', () => {
+    const content =
+      '来源（[每日经济新闻](https://www.nbd.com.cn/articles/2026-08-18/4545630.html)）完'
+    const v = mount(content, content.length)
+    focusEditor(v)
+    expect(parent.querySelector('.cm-rendered-link')).not.toBeNull()
+    expect(parent.textContent).toContain('每日经济新闻')
+    expect(parent.textContent).not.toContain('https://www.nbd.com.cn')
+    expect(parent.textContent).not.toMatch(/\]\(/)
+
+    const labelPos = content.indexOf('每日')
+    v.dispatch({ selection: { anchor: labelPos, head: labelPos } })
+    expect(v.state.doc.toString()).toContain('https://www.nbd.com.cn')
+    expect(parent.textContent).toContain('https://www.nbd.com.cn')
+  })
+
+  it('keeps image markdown out of inline link collapsing', () => {
+    const content = '见图 ![照片](attachment/photo.png)\n'
+    const v = mount(content, content.length)
+    focusEditor(v)
+    expect(parent.querySelector('.cm-rendered-link')).toBeNull()
   })
 
   it('table plus fenced block does not insert extra gap on caret move', async () => {

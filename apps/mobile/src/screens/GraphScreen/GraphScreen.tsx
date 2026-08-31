@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -17,9 +17,11 @@ import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   FloatingModal,
+  HelpTooltip,
   Input,
   MarkdownRenderer,
   NativeSlider,
+  Checkbox,
   useNativeTheme,
   useNativeToast
 } from '@baishou/ui/native'
@@ -30,6 +32,7 @@ import {
   translateGraphEdgeType,
   translateGraphNodeType,
   GRAPH_NODE_TYPE_LABEL_FALLBACKS,
+  graphNodeTypeColor,
   loadGraphForceSettings,
   saveGraphForceSettings,
   clampGraphForceSettings,
@@ -58,7 +61,29 @@ import {
   validateGraphAwakenForm,
   isDefaultGraphSelfName,
   type UserGender,
-  type UserProfile
+  type UserProfile,
+  GRAPH_EXTRACT_CONCURRENCY_MAX,
+  GRAPH_EXTRACT_CONCURRENCY_MIN,
+  GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR,
+  GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
+  GRAPH_GLOBAL_MAX_NODES,
+  describeGraphExtractPhase,
+  describeGraphExtractQueueError,
+  emptyGraphExtractQueueSnapshot,
+  graphExtractBarPercent,
+  graphExtractOverallProgress,
+  isGraphExtractBusyStatus,
+  isGraphNodeSameNameConflict,
+  graphPendingItemKey,
+  applyGraphLocalEdgeDelete,
+  applyGraphLocalNodeDelete,
+  omitInFlightGraphDeletes,
+  restoreGraphLocalEdgeDelete,
+  restoreGraphLocalNodeDelete,
+  splitGraphReviewSelection,
+  normalizeGraphFilePath,
+  remapGraphViewReviewForDisplay,
+  type GraphSameNameExisting
 } from '@baishou/shared'
 import { GRAPH_EDGE_TYPES, ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -74,6 +99,10 @@ import {
   mobileSearchGraphNodes,
   mobileSetEdgeReview,
   mobileSetNodeReview,
+  mobileSetReviewsBatch,
+  mobileFindNodeByName,
+  mobileMergeGraphNodeGroup,
+  mobileMergeGraphNodes,
   mobileSoftDeleteGraph,
   mobileUpsertEdge,
   mobileUpsertNode
@@ -88,18 +117,23 @@ import {
   saveMobileGraphAwakenProfile
 } from '../DiaryScreen/ensure-graph-self-name'
 import { GraphAwakenWelcome } from './GraphAwakenWelcome'
+import { GraphExtractHelpButton } from './GraphExtractHelpButton'
 import { GraphMonthRangeSheet } from './GraphMonthRangeSheet'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
+import { GraphCreateNodeSheet } from './GraphCreateNodeSheet'
 import { GraphForceWebView } from './GraphForceWebView'
+import { GraphMergeSearchSheet } from './GraphMergeSearchSheet'
+import {
+  GraphIrreversibleConfirm,
+  type GraphMergeConfirmTarget
+} from './GraphIrreversibleConfirm'
 
 type Tab = 'graph' | 'search' | 'reextract' | 'pending'
 
 type CostEstimate = {
   entryCount: number
   estimatedTokens: number
-  estimatedUsdLow: number
-  estimatedUsdHigh: number
   estimatedMinutesLow: number
   estimatedMinutesHigh: number
 }
@@ -155,6 +189,7 @@ export function GraphScreen() {
   const [pending, setPending] = useState<any[]>([])
   const [pendingNodes, setPendingNodes] = useState<any[]>([])
   const [pendingEdges, setPendingEdges] = useState<any[]>([])
+  const [pendingSelected, setPendingSelected] = useState<Set<string>>(() => new Set())
   const [graphNodes, setGraphNodes] = useState<any[]>([])
   const [graphEdges, setGraphEdges] = useState<any[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -162,13 +197,19 @@ export function GraphScreen() {
   const [localView, setLocalView] = useState<{ nodes: any[]; edges: any[] } | null>(null)
   const [pinNeighborhood, setPinNeighborhood] = useState(false)
   const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set())
+  const [highlightedEdgeIds, setHighlightedEdgeIds] = useState<Set<string>>(() => new Set())
+  const [locateIds, setLocateIds] = useState<string[] | null>(null)
+  const [mergeSearchOpen, setMergeSearchOpen] = useState(false)
+  const [mergeConfirm, setMergeConfirm] = useState<GraphMergeConfirmTarget | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editNameConflict, setEditNameConflict] = useState<GraphSameNameExisting | null>(null)
   const [hideEntry, setHideEntry] = useState(true)
   const [enabledNodeTypes, setEnabledNodeTypes] = useState<Set<string>>(
     () => new Set(GRAPH_FILTER_NODE_TYPES)
   )
-  const [filterOpen, setFilterOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsSection, setSettingsSection] = useState({
+    ops: true,
     profile: false,
     view: true,
     appearance: true,
@@ -186,6 +227,11 @@ export function GraphScreen() {
   const [addEdgeType, setAddEdgeType] = useState<string>(GRAPH_EDGE_TYPES[0] ?? 'relates_to')
   const [busy, setBusy] = useState(false)
   const [extractRunning, setExtractRunning] = useState(false)
+  const [extractConcurrency, setExtractConcurrency] = useState(
+    () => mobileGraphExtractQueue.getConcurrency()
+  )
+  const [extractQueue, setExtractQueue] = useState<GraphExtractQueueSnapshot | null>(null)
+  const [queueModalOpen, setQueueModalOpen] = useState(false)
   const [status, setStatus] = useState('')
   const [approvedOnly, setApprovedOnly] = useState(false)
   const [forceSettings, setForceSettings] = useState<GraphForceSettings>(() => loadGraphForceSettings())
@@ -222,6 +268,13 @@ export function GraphScreen() {
     ],
     [pendingNodes, pendingEdges]
   )
+  const pendingItemKeys = useMemo(
+    () => pendingItems.map((item) => graphPendingItemKey(item.kind, item.id)),
+    [pendingItems]
+  )
+  const pendingSelectedCount = pendingItemKeys.filter((key) => pendingSelected.has(key)).length
+  const allPendingSelected =
+    pendingItemKeys.length > 0 && pendingSelectedCount === pendingItemKeys.length
 
   const tabItems = useMemo(
     () =>
@@ -234,6 +287,23 @@ export function GraphScreen() {
     [t, pending.length, pendingItems.length]
   )
 
+  const inFlightDeletedNodeIdsRef = useRef(new Set<string>())
+  const inFlightDeletedEdgeIdsRef = useRef(new Set<string>())
+  const graphViewRef = useRef({
+    nodes: graphNodes,
+    edges: graphEdges,
+    pendingNodes,
+    pendingEdges,
+    localView
+  })
+  graphViewRef.current = {
+    nodes: graphNodes,
+    edges: graphEdges,
+    pendingNodes,
+    pendingEdges,
+    localView
+  }
+
   const refresh = useCallback(async () => {
     if (!services || !dbReady) return
     const runtime = getAgentDbRuntime()
@@ -242,26 +312,38 @@ export function GraphScreen() {
     setPending(
       await mobileListPendingReextract({
         vaultName,
+        vaultId,
         shadowRepo,
         pathService: services.pathService,
         fileSystem: services.fileSystem
       })
     )
     const pendingBundle = await mobileListPending(runtime.drizzleDb, vaultId)
-    setPendingNodes(pendingBundle.nodes)
-    setPendingEdges(pendingBundle.edges)
+    const pendingView = remapGraphViewReviewForDisplay(pendingBundle.nodes, pendingBundle.edges)
     const graph = await mobileLoadGlobalGraph(
       runtime.drizzleDb,
       vaultId,
-      120,
+      GRAPH_GLOBAL_MAX_NODES,
       clampGraphMonthRange(monthRange)
     )
-    setGraphNodes(graph.nodes)
-    setGraphEdges(graph.edges)
+    const remapped = remapGraphViewReviewForDisplay(graph.nodes, graph.edges)
+    const visible = omitInFlightGraphDeletes({
+      nodes: remapped.nodes,
+      edges: remapped.edges,
+      pendingNodes: pendingView.nodes.filter((node) => node.reviewStatus === 'pending'),
+      pendingEdges: pendingView.edges.filter((edge) => edge.reviewStatus === 'pending'),
+      deletedNodeIds: inFlightDeletedNodeIdsRef.current,
+      deletedEdgeIds: inFlightDeletedEdgeIdsRef.current
+    })
+    setPendingNodes(visible.pendingNodes)
+    setPendingEdges(visible.pendingEdges)
+    setGraphNodes(visible.nodes)
+    setGraphEdges(visible.edges)
     try {
       setEstimate(
         await mobileEstimateExtraction({
           vaultName,
+          vaultId,
           shadowRepo,
           pathService: services.pathService,
           fileSystem: services.fileSystem
@@ -271,6 +353,44 @@ export function GraphScreen() {
       setEstimate(null)
     }
   }, [services, dbReady, vaultName, vaultId, monthRange])
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
+
+  const refreshVisibleAfterReview = async () => {
+    await refresh()
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) return
+    if (selectedId) {
+      setSelectedNode(await mobileGetNode(runtime.drizzleDb, vaultId, selectedId))
+    }
+    if (!pinNeighborhood || !localView) return
+    if (selectedId) {
+      const view = await mobileGetView(runtime.drizzleDb, vaultId, {
+        centerNodeId: selectedId,
+        depth: viewDepthFor(focusDepth)
+      })
+      setLocalView(view)
+      return
+    }
+    const ids = (localView.nodes || []).map((n: { id?: string }) => n.id).filter(Boolean) as string[]
+    const freshNodes = (
+      await Promise.all(ids.map((id) => mobileGetNode(runtime.drizzleDb, vaultId, id)))
+    ).filter((n): n is NonNullable<typeof n> => Boolean(n) && n.reviewStatus !== 'rejected')
+    const edgeById = new Map<string, any>()
+    for (const id of ids.slice(0, 2)) {
+      const view = await mobileGetView(runtime.drizzleDb, vaultId, {
+        centerNodeId: id,
+        depth: 1
+      })
+      for (const edge of view.edges || []) edgeById.set(edge.id, edge)
+    }
+    setLocalView({
+      nodes: freshNodes,
+      edges: (localView.edges || [])
+        .map((edge: { id: string }) => edgeById.get(edge.id) || edge)
+        .filter((edge: { reviewStatus?: string }) => edge.reviewStatus !== 'rejected')
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -353,6 +473,8 @@ export function GraphScreen() {
       setPinNeighborhood(false)
       setLocalView(null)
       setHighlightIds(new Set())
+      setHighlightedEdgeIds(new Set())
+      setLocateIds(null)
       setSelectedId(null)
       setSelectedNode(null)
     },
@@ -395,7 +517,38 @@ export function GraphScreen() {
     setAddEdgeHits([])
     setAddEdgeToId('')
     setAddEdgeType('relates_to')
+    setEditNameConflict(null)
   }, [selectedNode])
+
+  useEffect(() => {
+    const runtime = getAgentDbRuntime()
+    if (!selectedNode || !runtime?.drizzleDb) {
+      setEditNameConflict(null)
+      return
+    }
+    const trimmed = editName.trim()
+    if (!trimmed || trimmed === String(selectedNode.name || '').trim()) {
+      setEditNameConflict(null)
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      void mobileFindNodeByName(runtime.drizzleDb, vaultId, trimmed, selectedNode.nodeType).then(
+        (hit) => {
+          if (cancelled) return
+          setEditNameConflict(
+            hit && hit.id !== selectedNode.id
+              ? { id: hit.id, name: hit.name, nodeType: hit.nodeType, summary: hit.summary }
+              : null
+          )
+        }
+      )
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [editName, selectedNode, vaultId])
 
   useEffect(() => {
     if (!awakenProfile) return
@@ -432,15 +585,17 @@ export function GraphScreen() {
   const displayNodes = useMemo(() => {
     const filterNode = (n: any, keepPendingSelected = false) => {
       if (n.reviewStatus === 'rejected') return false
-      if (hideEntry && n.nodeType === 'entry') return false
-      if (n.nodeType !== 'entry') {
+      const keepLocated = highlightedEdgeIds.size > 0 && highlightIds.has(n.id)
+      if (hideEntry && n.nodeType === 'entry' && !keepLocated) return false
+      if (n.nodeType !== 'entry' && !keepLocated) {
         const nt = String(n.nodeType || '')
         if (GRAPH_FILTER_NODE_TYPES.includes(nt) && !enabledNodeTypes.has(nt)) return false
       }
       if (
         approvedOnly &&
         n.reviewStatus === 'pending' &&
-        !(keepPendingSelected && n.id === selectedId)
+        !(keepPendingSelected && n.id === selectedId) &&
+        !keepLocated
       ) {
         return false
       }
@@ -472,7 +627,9 @@ export function GraphScreen() {
     localView,
     selectedId,
     selectedNode,
-    pinNeighborhood
+    pinNeighborhood,
+    highlightIds,
+    highlightedEdgeIds
   ])
 
   const displayEdges = useMemo(() => {
@@ -498,7 +655,7 @@ export function GraphScreen() {
   }, [selectedId, displayEdges, focusDepth])
 
   const showMonthEmpty =
-    selfNameReady === true && !showEmptyGuide && displayNodes.length === 0 && !pinNeighborhood
+    selfNameReady === true && !showEmptyGuide && canvasNodeCount === 0 && !pinNeighborhood
 
   const detailEdges = useMemo(() => {
     if (!selectedId) return []
@@ -690,12 +847,17 @@ export function GraphScreen() {
     }
   }
 
+  const findGraphNode = (id: string) =>
+    graphNodes.find((n) => n.id === id) || pendingNodes.find((n) => n.id === id) || null
+
   const onSelectNode = async (
     id: string,
     opts?: { locate?: boolean; bypassMonth?: boolean }
   ) => {
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
+    setHighlightedEdgeIds(new Set())
+    setLocateIds(null)
     let depthSetting = focusDepth
     if (opts?.bypassMonth && focusDepth < 2) {
       depthSetting = 2
@@ -719,22 +881,62 @@ export function GraphScreen() {
     setSelectedId(null)
     setSelectedNode(null)
     setHighlightIds(new Set())
+    setHighlightedEdgeIds(new Set())
+    setLocateIds(null)
   }
 
   const clearToGlobal = () => {
     setPinNeighborhood(false)
     setLocalView(null)
     setHighlightIds(new Set())
+    setHighlightedEdgeIds(new Set())
+    setLocateIds(null)
     setSelectedId(null)
     setSelectedNode(null)
   }
 
   const locatePendingNode = (id: string) => {
+    setHighlightedEdgeIds(new Set())
+    setLocateIds(null)
+    setHighlightIds(new Set())
     void onSelectNode(id, { locate: true, bypassMonth: true })
   }
 
-  const locatePendingEdge = async (edge: { fromId: string; toId: string }) => {
-    await onSelectNode(edge.fromId, { locate: true, bypassMonth: true })
+  const locatePendingEdge = async (edge: {
+    id: string
+    fromId: string
+    toId: string
+    edgeType?: string
+    reviewStatus?: string
+  }) => {
+    const runtime = getAgentDbRuntime()
+    const from =
+      graphNodes.find((n) => n.id === edge.fromId) ||
+      pendingNodes.find((n) => n.id === edge.fromId) ||
+      (runtime?.drizzleDb
+        ? await mobileGetNode(runtime.drizzleDb, vaultId, edge.fromId)
+        : null)
+    const to =
+      graphNodes.find((n) => n.id === edge.toId) ||
+      pendingNodes.find((n) => n.id === edge.toId) ||
+      (runtime?.drizzleDb
+        ? await mobileGetNode(runtime.drizzleDb, vaultId, edge.toId)
+        : null)
+    if (!from && !to) return
+    if (!from || !to) {
+      const only = (from || to) as { id: string }
+      void onSelectNode(only.id, { locate: true, bypassMonth: true })
+      return
+    }
+    setSelectedId(null)
+    setSelectedNode(null)
+    setHighlightIds(new Set([from.id, to.id]))
+    setHighlightedEdgeIds(new Set([edge.id]))
+    setLocateIds([from.id, to.id])
+    setLocalView({ nodes: [from, to], edges: [edge] })
+    setPinNeighborhood(true)
+    setTab('graph')
+    setLocateSeq((n) => n + 1)
   }
 
   const onSearch = async () => {
@@ -743,6 +945,8 @@ export function GraphScreen() {
     if (!runtime?.drizzleDb || !q) {
       setHits([])
       setHighlightIds(new Set())
+      setHighlightedEdgeIds(new Set())
+      setLocateIds(null)
       return
     }
     const found = await mobileSearchGraphNodes(runtime.drizzleDb, vaultId, q)
@@ -751,6 +955,8 @@ export function GraphScreen() {
       const hit = found[0]
       setTab('graph')
       setSelectedId(hit.id)
+      setHighlightedEdgeIds(new Set())
+      setLocateIds(null)
       setHighlightIds(new Set([hit.id]))
       const view = await mobileGetView(runtime.drizzleDb, vaultId, {
         centerNodeId: hit.id,
@@ -769,6 +975,8 @@ export function GraphScreen() {
     if (!runtime?.drizzleDb) return
     setTab('graph')
     setSelectedId(item.id)
+    setHighlightedEdgeIds(new Set())
+    setLocateIds(null)
     setHighlightIds(new Set([item.id]))
     const view = await mobileGetView(runtime.drizzleDb, vaultId, {
       centerNodeId: item.id,
@@ -783,15 +991,23 @@ export function GraphScreen() {
 
   const applyQueueSnapshot = useCallback(
     (state: GraphExtractQueueSnapshot) => {
-      const running = state.activeCount > 0 || state.pendingCount > 0 || state.runningCount > 0
+      setExtractQueue(state)
+      const running =
+        state.pendingCount > 0 ||
+        state.runningCount > 0 ||
+        (state.aligningCount ?? 0) > 0
       setExtractRunning(running)
       if (running) {
         const total = state.items.length
-        const current = Math.min(state.completedCount + state.runningCount, total)
+        const current = Math.min(
+          state.completedCount + state.runningCount + (state.aligningCount ?? 0),
+          total
+        )
         setStatus(
-          t('graph.extract_queue_progress', '后台整理中 {{current}}/{{total}}（可离开本页）', {
+          t('graph.extract_queue_progress', '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）', {
             current,
-            total
+            total,
+            percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
           })
         )
       } else if (state.completedCount > 0 || state.errorCount > 0) {
@@ -801,15 +1017,45 @@ export function GraphScreen() {
             failed: state.errorCount
           })
         )
-        void refresh()
+        void refreshRef.current()
       }
     },
-    [refresh, t]
+    [t]
   )
+
+  const queueByPath = useMemo(() => {
+    const map = new Map<string, GraphExtractQueueSnapshot['items'][number]>()
+    for (const item of extractQueue?.items ?? []) {
+      map.set(normalizeGraphFilePath(item.filePath), item)
+    }
+    return map
+  }, [extractQueue])
 
   useEffect(() => {
     return mobileGraphExtractQueue.subscribe(applyQueueSnapshot)
   }, [applyQueueSnapshot])
+
+  const confirmBatchExtract = (): Promise<boolean> => {
+    const count = pending.length
+    if (count <= 0) return Promise.resolve(false)
+    return new Promise((resolve) => {
+      Alert.alert(
+        t('graph.process_pending_reextract_title', '梳理待重抽'),
+        t(
+          'graph.confirm_batch_extract',
+          '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 50% 的候选并由模型判断是否合并再写入。',
+          {
+            count,
+            concurrency: extractConcurrency
+          }
+        ),
+        [
+          { text: t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
+          { text: t('common.confirm', '开始'), onPress: () => resolve(true) }
+        ]
+      )
+    })
+  }
 
   const runExtract = async (filePaths?: string[]) => {
     if (!services) return
@@ -824,12 +1070,16 @@ export function GraphScreen() {
       toast.showError(t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取'))
       return
     }
+    if (!filePaths?.length) {
+      const ok = await confirmBatchExtract()
+      if (!ok) return
+    }
     setSelfNameReady(true)
     setDismissGuide(true)
     try {
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
       const result = await mobileGraphExtractQueue.enqueue(
-        { filePaths },
+        { filePaths, concurrency: extractConcurrency },
         {
           vaultId,
           vaultName,
@@ -840,37 +1090,71 @@ export function GraphScreen() {
           settingsManager: services.settingsManager
         }
       )
+      if (result.skippedNotEmbedded?.length) {
+        toast.showInfo(
+          t('graph.extract_skipped_not_embedded', '有 {{count}} 篇日记尚未嵌入，已跳过', {
+            count: result.skippedNotEmbedded.length
+          })
+        )
+      }
       if (result.queued === 0) {
-        setStatus(t('graph.extract_nothing', '没有可抽取的日记'))
-        toast.showInfo(t('graph.extract_nothing', '没有可抽取的日记'))
+        const requested = filePaths?.length ? filePaths : pending.map((item) => item.filePath)
+        const alreadyQueued = requested.some((path) => {
+          const q = queueByPath.get(normalizeGraphFilePath(path))
+          return isGraphExtractBusyStatus(q?.status)
+        })
+        if (alreadyQueued) {
+          setStatus(t('graph.extract_already_queued', '已在整理队列中'))
+          toast.showInfo(t('graph.extract_already_queued', '已在整理队列中'))
+        } else if (result.skippedNotEmbedded?.length) {
+          setStatus(t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取'))
+          toast.showInfo(t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取'))
+        } else {
+          setStatus(t('graph.extract_nothing', '没有可抽取的日记'))
+          toast.showInfo(t('graph.extract_nothing', '没有可抽取的日记'))
+        }
         return
       }
       setExtractRunning(true)
       setStatus(
-        t('graph.extract_queued', '已加入后台整理队列（{{count}} 篇），可离开本页', {
+        t('graph.extract_queued', '已加入整理队列（{{count}} 篇），可继续点其他日记', {
           count: result.queued
         })
       )
       toast.showSuccess(
-        t('graph.extract_queued', '已加入后台整理队列（{{count}} 篇），可离开本页', {
+        t('graph.extract_queued', '已加入整理队列（{{count}} 篇），可继续点其他日记', {
           count: result.queued
         })
       )
     } catch (e: any) {
       const message = e?.message || String(e)
-      setStatus(
+      const friendly =
         message === GRAPH_SELF_NAME_REQUIRED_ERROR
           ? t('graph.self_name_required', '请先设置图谱自称后再抽取')
-          : message
-      )
-      toast.showError(message)
+          : message === GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR
+            ? t(
+                'graph.extract_embedding_required',
+                '请先配置嵌入模型，并完成本篇日记的向量化后再抽取'
+              )
+            : message === GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR
+              ? t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取')
+              : message
+      setStatus(friendly)
+      toast.showError(friendly)
     }
   }
 
   const stopExtract = () => {
     mobileGraphExtractQueue.stop()
     setExtractRunning(false)
+    setExtractQueue(emptyGraphExtractQueueSnapshot())
+    setQueueModalOpen(false)
     setStatus(t('graph.extract_stopped', '已停止后台整理'))
+    void refreshRef.current()
+  }
+
+  const cancelQueueItem = (filePath: string) => {
+    mobileGraphExtractQueue.cancelItem(filePath)
   }
 
   const reviewEdge = async (
@@ -907,7 +1191,7 @@ export function GraphScreen() {
         }
       }
     }
-    await refresh()
+    await refreshVisibleAfterReview()
   }
 
   const reviewNode = async (nodeId: string, reviewStatus: 'approved' | 'rejected') => {
@@ -935,7 +1219,154 @@ export function GraphScreen() {
         })
       }
     }
-    await refresh()
+    await refreshVisibleAfterReview()
+  }
+
+  const togglePendingItem = (key: string) => {
+    setPendingSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const toggleSelectAllPending = () => {
+    setPendingSelected(allPendingSelected ? new Set() : new Set(pendingItemKeys))
+  }
+
+  const confirmPendingBatch = (opts: {
+    title: string
+    message: string
+    confirmLabel: string
+    destructive?: boolean
+  }): Promise<boolean> =>
+    new Promise((resolve) => {
+      Alert.alert(opts.title, opts.message, [
+        { text: t('common.cancel', '取消'), style: 'cancel', onPress: () => resolve(false) },
+        {
+          text: opts.confirmLabel,
+          style: opts.destructive ? 'destructive' : 'default',
+          onPress: () => resolve(true)
+        }
+      ])
+    })
+
+  const applyPendingReviews = async (opts: {
+    reviewStatus: 'approved' | 'rejected'
+    allPending?: boolean
+  }) => {
+    if (!services) return
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) return
+    const selected = opts.allPending
+      ? { nodeIds: [] as string[], edgeIds: [] as string[] }
+      : splitGraphReviewSelection(pendingItemKeys.filter((key) => pendingSelected.has(key)))
+    if (!opts.allPending && selected.nodeIds.length === 0 && selected.edgeIds.length === 0) return
+    const count = opts.allPending ? pendingItems.length : pendingSelectedCount
+    if (count <= 0) return
+    if (opts.reviewStatus === 'rejected' || opts.allPending) {
+      const title = opts.allPending
+        ? opts.reviewStatus === 'approved'
+          ? t('graph.approve_all', '全部通过')
+          : t('graph.reject_all', '全部拒绝')
+        : t('graph.reject_selected', '拒绝所选')
+      const message = opts.allPending
+        ? opts.reviewStatus === 'approved'
+          ? t(
+              'graph.confirm_approve_all',
+              '将通过全部 {{count}} 项待确认内容。通过节点时会同时通过相连的待审关系。',
+              { count }
+            )
+          : t(
+              'graph.confirm_reject_all',
+              '将拒绝全部 {{count}} 项待确认内容。拒绝节点时会同时拒绝与它相连的关系。',
+              { count }
+            )
+        : t(
+            'graph.confirm_reject_selected',
+            '将拒绝已选的 {{count}} 项。拒绝节点时会同时拒绝与它相连的关系。',
+            { count }
+          )
+      const ok = await confirmPendingBatch({
+        title,
+        message,
+        confirmLabel: title,
+        destructive: opts.reviewStatus === 'rejected'
+      })
+      if (!ok) return
+    }
+    setBusy(true)
+    try {
+      await mobileSetReviewsBatch({
+        drizzleDb: runtime.drizzleDb,
+        pathService: services.pathService,
+        fileSystem: services.fileSystem,
+        vaultId,
+        reviewStatus: opts.reviewStatus,
+        allPending: Boolean(opts.allPending),
+        nodeIds: opts.allPending ? undefined : selected.nodeIds,
+        edgeIds: opts.allPending ? undefined : selected.edgeIds,
+        vaultDisplayName: vaultName
+      })
+      setPendingSelected(new Set())
+      await refreshVisibleAfterReview()
+      toast.showSuccess(
+        opts.reviewStatus === 'approved'
+          ? t('graph.batch_approved', '已通过 {{count}} 项', { count })
+          : t('graph.batch_rejected', '已拒绝 {{count}} 项', { count })
+      )
+    } catch (e: any) {
+      toast.showError(e?.message || String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runConfirmedMerge = async () => {
+    if (!services || !mergeConfirm) return
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) return
+    const { survivorId, losers } = mergeConfirm
+    setBusy(true)
+    try {
+      if (losers.length === 1) {
+        await mobileMergeGraphNodes({
+          drizzleDb: runtime.drizzleDb,
+          pathService: services.pathService,
+          fileSystem: services.fileSystem,
+          vaultId,
+          vaultName,
+          survivorId,
+          loserId: losers[0]!.id,
+          reason: 'explicit-merge'
+        })
+      } else {
+        await mobileMergeGraphNodeGroup({
+          drizzleDb: runtime.drizzleDb,
+          pathService: services.pathService,
+          fileSystem: services.fileSystem,
+          vaultId,
+          vaultName,
+          survivorId,
+          loserIds: losers.map((n) => n.id),
+          reason: 'explicit-merge'
+        })
+      }
+      const loserIds = new Set(losers.map((n) => n.id))
+      if (selectedId && loserIds.has(selectedId)) {
+        setSelectedId(survivorId)
+        setSelectedNode(null)
+      }
+      setMergeConfirm(null)
+      setMergeSearchOpen(false)
+      await refresh()
+      toast.showSuccess(t('graph.nodes_merged', '已合并节点'))
+    } catch (e: any) {
+      toast.showError(e?.message || String(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   const saveNodeEdit = async () => {
@@ -944,13 +1375,30 @@ export function GraphScreen() {
     if (!runtime?.drizzleDb) return
     const name = editName.trim()
     if (!name) return
+    const hit =
+      editNameConflict ||
+      (await mobileFindNodeByName(runtime.drizzleDb, vaultId, name, selectedNode.nodeType).then(
+        (row) =>
+          row && row.id !== selectedNode.id
+            ? { id: row.id, name: row.name, nodeType: row.nodeType, summary: row.summary }
+            : null
+      ))
+    if (hit) {
+      setEditNameConflict(hit)
+      toast.showError(
+        t('graph.same_name_save_blocked', '已有同名节点「{{name}}」。请先换名，或把它合并过去。', {
+          name: hit.name
+        })
+      )
+      return
+    }
     setBusy(true)
     try {
       const aliases = editAliases
         .split(/[,，、]/)
         .map((s) => s.trim())
         .filter(Boolean)
-      await mobileUpsertNode({
+      const result = await mobileUpsertNode({
         drizzleDb: runtime.drizzleDb,
         pathService: services.pathService,
         fileSystem: services.fileSystem,
@@ -962,6 +1410,15 @@ export function GraphScreen() {
         aliases,
         summary: editSummary
       })
+      if (isGraphNodeSameNameConflict(result)) {
+        setEditNameConflict(result.existing)
+        toast.showError(
+          t('graph.same_name_save_blocked', '已有同名节点「{{name}}」。请先换名，或把它合并过去。', {
+            name: result.existing.name
+          })
+        )
+        return
+      }
       setStatus(t('graph.edit_saved', '已保存（手工修正，重抽不会覆盖）'))
       toast.showSuccess(t('graph.edit_saved', '已保存（手工修正，重抽不会覆盖）'))
       await refresh()
@@ -979,7 +1436,7 @@ export function GraphScreen() {
     if (!selectedNode) return
     Alert.alert(
       t('graph.delete_node', '删除节点'),
-      t('graph.confirm_delete_node', '确定删除该节点？相关边也会一并软删。'),
+      t('graph.confirm_delete_node', '确定删除该节点？相关边也会一并删除。'),
       [
         { text: t('common.cancel', '取消'), style: 'cancel' },
         {
@@ -990,26 +1447,96 @@ export function GraphScreen() {
               if (!services) return
               const runtime = getAgentDbRuntime()
               if (!runtime?.drizzleDb) return
-              setBusy(true)
-              try {
-                await mobileSoftDeleteGraph({
-                  drizzleDb: runtime.drizzleDb,
-                  pathService: services.pathService,
-                  fileSystem: services.fileSystem,
-                  kind: 'node',
-                  id: selectedNode.id
-                })
-                setSelectedNode(null)
-                setSelectedId(null)
-                setLocalView(null)
-                setPinNeighborhood(false)
-                await refresh()
-                toast.showSuccess(t('graph.node_deleted', '已删除节点'))
-              } catch (e: any) {
-                setStatus(e?.message || String(e))
-              } finally {
-                setBusy(false)
+              const nodeId = selectedNode.id
+              const snapshot = {
+                graphNodes,
+                graphEdges,
+                pendingNodes,
+                pendingEdges,
+                pendingSelected,
+                highlightIds,
+                highlightedEdgeIds,
+                locateIds,
+                localView,
+                selectedId,
+                selectedNode,
+                pinNeighborhood
               }
+              const next = applyGraphLocalNodeDelete({
+                nodeId,
+                nodes: graphNodes,
+                edges: graphEdges,
+                pendingNodes,
+                pendingEdges,
+                pendingSelected,
+                highlightIds,
+                highlightedEdgeIds,
+                locateIds,
+                localView
+              })
+              setGraphNodes(next.nodes)
+              setGraphEdges(next.edges)
+              setPendingNodes(next.pendingNodes)
+              setPendingEdges(next.pendingEdges)
+              setPendingSelected(next.pendingSelected)
+              setHighlightIds(next.highlightIds)
+              setHighlightedEdgeIds(next.highlightedEdgeIds)
+              setLocateIds(next.locateIds && next.locateIds.length > 0 ? next.locateIds : null)
+              setLocalView(next.localView)
+              setSelectedNode(null)
+              setSelectedId(null)
+              setPinNeighborhood(false)
+              inFlightDeletedNodeIdsRef.current.add(nodeId)
+              for (const edge of snapshot.graphEdges) {
+                if (edge.fromId === nodeId || edge.toId === nodeId) {
+                  inFlightDeletedEdgeIdsRef.current.add(edge.id)
+                }
+              }
+              toast.showSuccess(t('graph.node_deleted', '已删除节点'))
+              void mobileSoftDeleteGraph({
+                drizzleDb: runtime.drizzleDb,
+                pathService: services.pathService,
+                fileSystem: services.fileSystem,
+                kind: 'node',
+                id: nodeId,
+                vaultId
+              }).then(
+                () => {
+                  inFlightDeletedNodeIdsRef.current.delete(nodeId)
+                  for (const edge of snapshot.graphEdges) {
+                    if (edge.fromId === nodeId || edge.toId === nodeId) {
+                      inFlightDeletedEdgeIdsRef.current.delete(edge.id)
+                    }
+                  }
+                },
+                (e: unknown) => {
+                  inFlightDeletedNodeIdsRef.current.delete(nodeId)
+                  for (const edge of snapshot.graphEdges) {
+                    if (edge.fromId === nodeId || edge.toId === nodeId) {
+                      inFlightDeletedEdgeIdsRef.current.delete(edge.id)
+                    }
+                  }
+                  const restored = restoreGraphLocalNodeDelete({
+                    nodeId,
+                    current: graphViewRef.current,
+                    before: {
+                      nodes: snapshot.graphNodes,
+                      edges: snapshot.graphEdges,
+                      pendingNodes: snapshot.pendingNodes,
+                      pendingEdges: snapshot.pendingEdges,
+                      localView: snapshot.localView
+                    }
+                  })
+                  setGraphNodes(restored.nodes)
+                  setGraphEdges(restored.edges)
+                  setPendingNodes(restored.pendingNodes)
+                  setPendingEdges(restored.pendingEdges)
+                  setLocalView(restored.localView)
+                  const message = e instanceof Error ? e.message : String(e)
+                  setStatus(message)
+                  toast.showError(message)
+                }
+              )
             })()
           }
         }
@@ -1031,35 +1558,58 @@ export function GraphScreen() {
               if (!services) return
               const runtime = getAgentDbRuntime()
               if (!runtime?.drizzleDb) return
-              setBusy(true)
-              try {
-                await mobileSoftDeleteGraph({
-                  drizzleDb: runtime.drizzleDb,
-                  pathService: services.pathService,
-                  fileSystem: services.fileSystem,
-                  kind: 'edge',
-                  id: edgeId
-                })
-                setLocalView((prev) =>
-                  prev
-                    ? { ...prev, edges: (prev.edges || []).filter((e: any) => e.id !== edgeId) }
-                    : prev
-                )
-                await refresh()
-                if (selectedId) {
-                  const view = await mobileGetView(runtime.drizzleDb, vaultId, {
-                    centerNodeId: selectedId,
-                    depth: viewDepthFor(focusDepth)
-                  })
-                  setLocalView(view)
-                }
-                toast.showSuccess(t('graph.edge_deleted', '已删除关系'))
-              } catch (e: any) {
-                setStatus(e?.message || String(e))
-                toast.showError(e?.message || String(e))
-              } finally {
-                setBusy(false)
+              const snapshot = {
+                graphEdges,
+                pendingEdges,
+                pendingSelected,
+                highlightedEdgeIds,
+                localView
               }
+              const next = applyGraphLocalEdgeDelete({
+                edgeId,
+                edges: graphEdges,
+                pendingEdges,
+                pendingSelected,
+                highlightedEdgeIds,
+                localView
+              })
+              setGraphEdges(next.edges)
+              setPendingEdges(next.pendingEdges)
+              setPendingSelected(next.pendingSelected)
+              setHighlightedEdgeIds(next.highlightedEdgeIds)
+              setLocalView(next.localView)
+              inFlightDeletedEdgeIdsRef.current.add(edgeId)
+              toast.showSuccess(t('graph.edge_deleted', '已删除关系'))
+              void mobileSoftDeleteGraph({
+                drizzleDb: runtime.drizzleDb,
+                pathService: services.pathService,
+                fileSystem: services.fileSystem,
+                kind: 'edge',
+                id: edgeId,
+                vaultId
+              }).then(
+                () => {
+                  inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+                },
+                (e: unknown) => {
+                  inFlightDeletedEdgeIdsRef.current.delete(edgeId)
+                  const restored = restoreGraphLocalEdgeDelete({
+                    edgeId,
+                    current: graphViewRef.current,
+                    before: {
+                      edges: snapshot.graphEdges,
+                      pendingEdges: snapshot.pendingEdges,
+                      localView: snapshot.localView
+                    }
+                  })
+                  setGraphEdges(restored.edges)
+                  setPendingEdges(restored.pendingEdges)
+                  setLocalView(restored.localView)
+                  const message = e instanceof Error ? e.message : String(e)
+                  setStatus(message)
+                  toast.showError(message)
+                }
+              )
             })()
           }
         }
@@ -1249,15 +1799,24 @@ export function GraphScreen() {
 
   return (
     <StackScreenLayout
-      title={t('graph.title', '关系图谱')}
+      title={t('graph.title', '人生关系图')}
+      titleAddon={
+        <HelpTooltip
+          size={16}
+          content={t(
+            'graph.title_help',
+            '这是从日记里整理出的人物、地点和事件关系。笔记本里的关系图是另一套库，不会混在这里。'
+          )}
+        />
+      }
       {...chrome}
       headerRight={
         phaseKey !== 'main'
           ? undefined
           : extractRunning
             ? {
-                label: t('graph.stop_extract', '停止'),
-                onPress: () => stopExtract()
+                label: t('graph.queue_view_progress', '进度'),
+                onPress: () => setQueueModalOpen(true)
               }
             : showEmptyGuide && tab === 'graph'
               ? undefined
@@ -1311,9 +1870,17 @@ export function GraphScreen() {
             </View>
 
             {status ? (
-              <Text style={[styles.status, { color: colors.textSecondary }]}>{status}</Text>
+              <Pressable
+                onPress={() => {
+                  if (extractRunning || (extractQueue?.items.length ?? 0) > 0) {
+                    setQueueModalOpen(true)
+                  }
+                }}
+              >
+                <Text style={[styles.status, { color: colors.textSecondary }]}>{status}</Text>
+              </Pressable>
             ) : null}
-            {busy || extractRunning ? (
+            {busy && !extractRunning ? (
               <ActivityIndicator color={colors.primary} style={{ marginBottom: 8 }} />
             ) : null}
 
@@ -1322,31 +1889,17 @@ export function GraphScreen() {
                 {!showEmptyGuide ? (
                   <>
                     <View style={styles.toolbarRow}>
-                      <Pressable
-                        onPress={() => setFilterOpen(true)}
-                        style={[
-                          styles.toolBtn,
-                          {
-                            borderColor: filterActive ? colors.primary : colors.borderSubtle,
-                            backgroundColor: colors.bgSurfaceNormal
-                          }
-                        ]}
-                      >
-                        <Text
-                          style={{
-                            color: filterActive ? colors.primary : colors.textSecondary,
-                            fontSize: 12,
-                            fontWeight: '600'
-                          }}
-                        >
-                          {t('graph.filter', '筛选')}
-                        </Text>
-                      </Pressable>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <GraphMonthRangeSheet value={monthRange} onChange={updateMonthRange} />
                       </View>
                       <Pressable
                         onPress={clearToGlobal}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('graph.global_view', '全局')}
+                        accessibilityHint={t(
+                          'graph.global_view_hint',
+                          '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
+                        )}
                         style={[
                           styles.toolBtn,
                           {
@@ -1364,12 +1917,24 @@ export function GraphScreen() {
                         style={[
                           styles.toolBtn,
                           {
-                            borderColor: colors.borderSubtle,
+                            borderColor:
+                              filterActive || mergeSearchOpen
+                                ? colors.primary
+                                : colors.borderSubtle,
                             backgroundColor: colors.bgSurfaceNormal
                           }
                         ]}
                       >
-                        <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+                        <Text
+                          style={{
+                            color:
+                              filterActive || mergeSearchOpen
+                                ? colors.primary
+                                : colors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: '600'
+                          }}
+                        >
                           {t('graph.settings', '设置')}
                         </Text>
                       </Pressable>
@@ -1401,6 +1966,42 @@ export function GraphScreen() {
                         { color: colors.textPrimary, borderColor: colors.borderSubtle }
                       ]}
                     />
+                    {editNameConflict ? (
+                      <View style={{ gap: 6 }}>
+                        <Text style={{ color: colors.textPrimary, fontSize: 12, lineHeight: 18 }}>
+                          {t(
+                            'graph.same_name_exists_edit',
+                            '已有同类型同名节点「{{name}}」。保存前请换名，或合并到该节点。',
+                            { name: editNameConflict.name }
+                          )}
+                        </Text>
+                        <View style={styles.row}>
+                          <Pressable onPress={() => void onSelectNode(editNameConflict.id)}>
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                              {t('graph.open_existing_node', '打开已有节点')}
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() =>
+                              setMergeConfirm({
+                                survivorId: editNameConflict.id,
+                                survivorName: editNameConflict.name,
+                                losers: [
+                                  {
+                                    id: selectedNode.id,
+                                    name: String(selectedNode.name || selectedNode.id)
+                                  }
+                                ]
+                              })
+                            }
+                          >
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                              {t('graph.merge_into_existing', '合并到该节点')}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : null}
                     <Text style={[styles.detailMeta, { color: colors.textSecondary }]}>
                       {translateGraphNodeType(tr, selectedNode.nodeType)}
                       {selectedNode.reviewStatus === 'pending'
@@ -1430,7 +2031,7 @@ export function GraphScreen() {
                       ]}
                     />
                     <View style={styles.row}>
-                      <Pressable disabled={busy} onPress={() => void saveNodeEdit()}>
+                      <Pressable disabled={busy || !!editNameConflict} onPress={() => void saveNodeEdit()}>
                         <Text style={{ color: colors.primary, fontWeight: '600' }}>
                           {t('graph.save_edit', '保存修改')}
                         </Text>
@@ -1621,24 +2222,22 @@ export function GraphScreen() {
                 {showEmptyGuide ? (
                   <View style={styles.guide}>
                     <Text style={[styles.guideTitle, { color: colors.textPrimary }]}>
-                      {t('graph.empty_guide_title', '还没有开始整理你的关系图谱')}
+                      {t('graph.empty_guide_title', '还没有开始整理你的人生关系图')}
                     </Text>
                     <Text style={[styles.guideBody, { color: colors.textSecondary }]}>
                       {t(
                         'graph.empty_guide_body',
-                        '发现 {{count}} 篇日记可以分析，预计消耗 {{tokens}} tokens（约 {{usdLow}}–{{usdHigh}} USD），用时约 {{minLow}}–{{minHigh}} 分钟。',
+                        '发现 {{count}} 篇日记可以分析，预计消耗 {{tokens}} tokens，用时约 {{minLow}}–{{minHigh}} 分钟。',
                         {
                           count: estimate?.entryCount ?? pending.length,
                           tokens: formatTokens(estimate?.estimatedTokens ?? 0),
-                          usdLow: (estimate?.estimatedUsdLow ?? 0).toFixed(2),
-                          usdHigh: (estimate?.estimatedUsdHigh ?? 0).toFixed(2),
                           minLow: estimate?.estimatedMinutesLow ?? 1,
                           minHigh: estimate?.estimatedMinutesHigh ?? 1
                         }
                       )}
                     </Text>
                     <View style={styles.row}>
-                      <Pressable disabled={extractRunning} onPress={() => void runExtract()}>
+                      <Pressable onPress={() => void runExtract()}>
                         <Text style={{ color: colors.primary, fontWeight: '700' }}>
                           {t('graph.start_organize', '开始整理')}
                         </Text>
@@ -1709,6 +2308,8 @@ export function GraphScreen() {
                       selectedId={selectedId}
                       focusIds={focusIds}
                       highlightIds={highlightIds}
+                      highlightEdgeIds={highlightedEdgeIds}
+                      locateIds={locateIds}
                       locateSeq={locateSeq}
                       animationTick={animationTick}
                       onSelectNode={(n) => void onSelectNode(n.id)}
@@ -1798,14 +2399,51 @@ export function GraphScreen() {
                       {item.filePath}
                     </Text>
                     <View style={styles.row}>
-                      <Pressable
-                        disabled={extractRunning}
-                        onPress={() => void runExtract([item.filePath])}
-                      >
-                        <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                          {t('graph.extract_one', '抽取')}
-                        </Text>
-                      </Pressable>
+                      {(() => {
+                        const q = queueByPath.get(normalizeGraphFilePath(item.filePath))
+                        if (q?.status === 'running') {
+                          return (
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                              {t('graph.queue_running', '抽取中')}
+                            </Text>
+                          )
+                        }
+                        if (q?.status === 'aligning') {
+                          return (
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                              {t('graph.extract_aligning', '对齐中')}
+                            </Text>
+                          )
+                        }
+                        if (q?.status === 'pending') {
+                          return (
+                            <>
+                              <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                                {t('graph.queue_pending', '排队中')}
+                              </Text>
+                              <Pressable onPress={() => cancelQueueItem(item.filePath)}>
+                                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
+                                  {t('graph.queue_remove', '取消')}
+                                </Text>
+                              </Pressable>
+                            </>
+                          )
+                        }
+                        if (q?.status === 'completed') {
+                          return (
+                            <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
+                              {t('graph.queue_done', '已完成')}
+                            </Text>
+                          )
+                        }
+                        return (
+                          <Pressable onPress={() => void runExtract([item.filePath])}>
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                              {t('graph.extract_one', '抽取')}
+                            </Text>
+                          </Pressable>
+                        )
+                      })()}
                       {item.date ? (
                         <Pressable onPress={() => void openSource(item.date)}>
                           <Text style={{ color: colors.primary, fontWeight: '600' }}>
@@ -1820,192 +2458,418 @@ export function GraphScreen() {
             )}
 
             {tab === 'pending' && (
-              <FlatList
-                data={pendingItems}
-                keyExtractor={(item) => `${item.kind}-${item.id}`}
-                contentContainerStyle={listPad}
-                ListEmptyComponent={
-                  <Text style={{ color: colors.textSecondary }}>
-                    {t('graph.no_pending', '没有待确认的节点或边')}
-                  </Text>
-                }
-                renderItem={({ item }) => (
-                  <View
-                    style={[
-                      styles.card,
-                      {
-                        backgroundColor: colors.bgSurface,
-                        borderColor: colors.borderSubtle
-                      }
-                    ]}
-                  >
-                    {item.kind === 'node' ? (
-                      <>
-                        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                          {t('graph.pending_node', '节点')} · {item.data.name}
+              <View style={styles.pendingPane}>
+                {pendingItems.length > 0 ? (
+                  <View style={styles.pendingToolbar}>
+                    <Text style={[styles.pendingHintText, { color: colors.textSecondary }]}>
+                      {t(
+                        'graph.pending_hint',
+                        '确认关系会同时通过两端节点；确认节点也会通过与它相连的待审关系。可勾选后批量处理。'
+                      )}
+                    </Text>
+                    <View style={styles.pendingToolbarRow}>
+                      <Pressable
+                        onPress={toggleSelectAllPending}
+                        hitSlop={8}
+                        style={styles.pendingSelectAll}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{
+                          checked: allPendingSelected
+                            ? true
+                            : pendingSelectedCount > 0
+                              ? 'mixed'
+                              : false
+                        }}
+                      >
+                        <Checkbox
+                          selected={allPendingSelected}
+                          indeterminate={pendingSelectedCount > 0 && !allPendingSelected}
+                        />
+                        <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
+                          {allPendingSelected
+                            ? t('graph.pending_deselect_all', '取消全选')
+                            : t('graph.pending_select_all', '全选')}
                         </Text>
-                        <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
-                          {translateGraphNodeType(tr, item.data.nodeType)}
-                          {item.data.summary ? ` · ${item.data.summary}` : ''}
+                      </Pressable>
+                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                        {t('graph.pending_selected_count', '已选 {{count}} 项', {
+                          count: pendingSelectedCount
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.pendingToolbarRow}>
+                      <Pressable
+                        disabled={busy || pendingSelectedCount === 0}
+                        onPress={() => void applyPendingReviews({ reviewStatus: 'approved' })}
+                      >
+                        <Text
+                          style={{
+                            color: colors.primary,
+                            fontWeight: '600',
+                            opacity: busy || pendingSelectedCount === 0 ? 0.4 : 1
+                          }}
+                        >
+                          {t('graph.approve_selected', '通过所选')}
                         </Text>
-                        <View style={styles.row}>
-                          <Pressable onPress={() => void reviewNode(item.id, 'approved')}>
-                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                              {t('graph.approve', '通过')}
-                            </Text>
-                          </Pressable>
-                          <Pressable onPress={() => void reviewNode(item.id, 'rejected')}>
-                            <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                              {t('graph.reject', '拒绝')}
-                            </Text>
-                          </Pressable>
-                          <Pressable onPress={() => locatePendingNode(item.id)}>
-                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                              {t('graph.locate', '查看')}
-                            </Text>
-                          </Pressable>
-                        </View>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                          {t('graph.pending_edge', '关系')} ·{' '}
-                          {translateGraphEdgeType(tr, item.data.edgeType)} · {item.data.confidence}
+                      </Pressable>
+                      <Pressable
+                        disabled={busy || pendingSelectedCount === 0}
+                        onPress={() => void applyPendingReviews({ reviewStatus: 'rejected' })}
+                      >
+                        <Text
+                          style={{
+                            color: colors.textSecondary,
+                            fontWeight: '600',
+                            opacity: busy || pendingSelectedCount === 0 ? 0.4 : 1
+                          }}
+                        >
+                          {t('graph.reject_selected', '拒绝所选')}
                         </Text>
-                        <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
-                          {item.data.sourceExcerpt || item.data.sourceRef || item.data.id}
+                      </Pressable>
+                      <Pressable
+                        disabled={busy}
+                        onPress={() =>
+                          void applyPendingReviews({ reviewStatus: 'approved', allPending: true })
+                        }
+                      >
+                        <Text
+                          style={{
+                            color: colors.primary,
+                            fontWeight: '700',
+                            opacity: busy ? 0.4 : 1
+                          }}
+                        >
+                          {t('graph.approve_all', '全部通过')}
                         </Text>
-                        <View style={styles.row}>
-                          <Pressable
-                            onPress={() =>
-                              void reviewEdge(item.id, 'approved', {
-                                fromId: item.data.fromId,
-                                toId: item.data.toId
-                              })
-                            }
-                          >
-                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                              {t('graph.approve', '通过')}
-                            </Text>
-                          </Pressable>
-                          <Pressable onPress={() => void reviewEdge(item.id, 'rejected')}>
-                            <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                              {t('graph.reject', '拒绝')}
-                            </Text>
-                          </Pressable>
-                          <Pressable
-                            onPress={() =>
-                              void locatePendingEdge({
-                                fromId: item.data.fromId,
-                                toId: item.data.toId
-                              })
-                            }
-                          >
-                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                              {t('graph.locate', '查看')}
-                            </Text>
-                          </Pressable>
-                          {item.data.sourceRef ? (
-                            <Pressable
-                              onPress={() =>
-                                void openSource(item.data.sourceRef, item.data.sourceExcerpt)
-                              }
-                            >
-                              <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                                {t('graph.open_source', '原文')}
-                              </Text>
-                            </Pressable>
-                          ) : null}
-                        </View>
-                      </>
-                    )}
+                      </Pressable>
+                      <Pressable
+                        disabled={busy}
+                        onPress={() =>
+                          void applyPendingReviews({ reviewStatus: 'rejected', allPending: true })
+                        }
+                      >
+                        <Text
+                          style={{
+                            color: colors.textSecondary,
+                            fontWeight: '600',
+                            opacity: busy ? 0.4 : 1
+                          }}
+                        >
+                          {t('graph.reject_all', '全部拒绝')}
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
-                )}
-              />
+                ) : null}
+                <FlatList
+                  data={pendingItems}
+                  keyExtractor={(item) => `${item.kind}-${item.id}`}
+                  contentContainerStyle={listPad}
+                  style={styles.pendingList}
+                  ListEmptyComponent={
+                    <Text style={{ color: colors.textSecondary }}>
+                      {t('graph.no_pending', '没有待确认的节点或边')}
+                    </Text>
+                  }
+                  renderItem={({ item }) => {
+                    const key = graphPendingItemKey(item.kind, item.id)
+                    const selected = pendingSelected.has(key)
+                    return (
+                      <View
+                        style={[
+                          styles.card,
+                          {
+                            backgroundColor: colors.bgSurface,
+                            borderColor: colors.borderSubtle
+                          }
+                        ]}
+                      >
+                        <View style={styles.pendingTitleRow}>
+                          <Pressable
+                            onPress={() => togglePendingItem(key)}
+                            hitSlop={8}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: selected }}
+                            style={{ marginTop: 2 }}
+                          >
+                            <Checkbox selected={selected} />
+                          </Pressable>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            {item.kind === 'node' ? (
+                              <>
+                                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                                  {t('graph.pending_node', '节点')} · {item.data.name}
+                                </Text>
+                                <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
+                                  {translateGraphNodeType(tr, item.data.nodeType)}
+                                  {item.data.summary ? ` · ${item.data.summary}` : ''}
+                                </Text>
+                                <View style={styles.row}>
+                                  <Pressable onPress={() => void reviewNode(item.id, 'approved')}>
+                                    <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                                      {t('graph.approve', '通过')}
+                                    </Text>
+                                  </Pressable>
+                                  <Pressable onPress={() => void reviewNode(item.id, 'rejected')}>
+                                    <Text
+                                      style={{ color: colors.textSecondary, fontWeight: '600' }}
+                                    >
+                                      {t('graph.reject', '拒绝')}
+                                    </Text>
+                                  </Pressable>
+                                  <Pressable onPress={() => locatePendingNode(item.id)}>
+                                    <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                                      {t('graph.locate', '查看')}
+                                    </Text>
+                                  </Pressable>
+                                </View>
+                              </>
+                            ) : (
+                              <>
+                                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                                  {t('graph.pending_edge', '关系')} ·{' '}
+                                  {translateGraphEdgeType(tr, item.data.edgeType)} ·{' '}
+                                  {item.data.confidence}
+                                </Text>
+                                <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
+                                  {item.data.sourceExcerpt || item.data.sourceRef || item.data.id}
+                                </Text>
+                                <View style={styles.row}>
+                                  <Pressable
+                                    onPress={() =>
+                                      void reviewEdge(item.id, 'approved', {
+                                        fromId: item.data.fromId,
+                                        toId: item.data.toId
+                                      })
+                                    }
+                                  >
+                                    <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                                      {t('graph.approve', '通过')}
+                                    </Text>
+                                  </Pressable>
+                                  <Pressable onPress={() => void reviewEdge(item.id, 'rejected')}>
+                                    <Text
+                                      style={{ color: colors.textSecondary, fontWeight: '600' }}
+                                    >
+                                      {t('graph.reject', '拒绝')}
+                                    </Text>
+                                  </Pressable>
+                                  <Pressable
+                                    onPress={() =>
+                                      void locatePendingEdge({
+                                        id: item.data.id,
+                                        fromId: item.data.fromId,
+                                        toId: item.data.toId,
+                                        edgeType: item.data.edgeType,
+                                        reviewStatus: item.data.reviewStatus
+                                      })
+                                    }
+                                  >
+                                    <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                                      {t('graph.locate', '查看')}
+                                    </Text>
+                                  </Pressable>
+                                  {item.data.sourceRef ? (
+                                    <Pressable
+                                      onPress={() =>
+                                        void openSource(
+                                          item.data.sourceRef,
+                                          item.data.sourceExcerpt
+                                        )
+                                      }
+                                    >
+                                      <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                                        {t('graph.open_source', '原文')}
+                                      </Text>
+                                    </Pressable>
+                                  ) : null}
+                                </View>
+                              </>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    )
+                  }}
+                />
+              </View>
             )}
           </>
         )}
       </GraphPhaseFade>
 
       <FloatingModal
-        visible={filterOpen}
-        onClose={() => setFilterOpen(false)}
-        maxWidth={Math.min(screenWidth - 32, 420)}
+        visible={queueModalOpen && (extractQueue?.items.length ?? 0) > 0}
+        onClose={() => setQueueModalOpen(false)}
+        maxWidth={Math.min(screenWidth - 32, 440)}
       >
-        <ScrollView contentContainerStyle={styles.modalPad} keyboardShouldPersistTaps="handled">
+        <View style={styles.queueModalPad}>
           <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-            {t('graph.filter', '筛选')}
+            {extractRunning
+              ? t('graph.queue_modal_title_running', '正在整理日记')
+              : t('graph.queue_modal_title_done', '整理进度')}
           </Text>
-          <View style={styles.switchRow}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
-              {t('graph.hide_entry_anchors', '隐藏日记锚点')}
-            </Text>
-            <Switch value={hideEntry} onValueChange={setHideEntry} />
+          <Text style={[styles.queueModalSubtitle, { color: colors.textSecondary }]}>
+            {extractRunning
+              ? t('graph.queue_modal_hint', '关掉窗口不会中断，可继续添加其他日记')
+              : t('graph.queue_modal_progress', '已完成 {{current}} / {{total}} 篇', {
+                  current: extractQueue?.completedCount ?? 0,
+                  total: extractQueue?.items.length ?? 0
+                })}
+          </Text>
+          <View style={styles.concurrencyRow}>
+            <View style={styles.opsLabelRow}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                {t('graph.extract_concurrency', '同时抽取')}
+              </Text>
+              <GraphExtractHelpButton size={14} />
+            </View>
+            {Array.from(
+              { length: GRAPH_EXTRACT_CONCURRENCY_MAX - GRAPH_EXTRACT_CONCURRENCY_MIN + 1 },
+              (_, i) => GRAPH_EXTRACT_CONCURRENCY_MIN + i
+            ).map((n) => (
+              <Pressable
+                key={n}
+                onPress={() => {
+                  setExtractConcurrency(mobileGraphExtractQueue.setConcurrency(n))
+                }}
+                style={[
+                  styles.concurrencyChip,
+                  {
+                    borderColor: n === extractConcurrency ? colors.primary : colors.borderSubtle,
+                    backgroundColor: n === extractConcurrency ? colors.primary : 'transparent'
+                  }
+                ]}
+              >
+                <Text
+                  style={{
+                    color: n === extractConcurrency ? '#fff' : colors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: '600'
+                  }}
+                >
+                  {n}
+                </Text>
+              </Pressable>
+            ))}
           </View>
-          <View style={styles.switchRow}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
-              {t('graph.approved_only', '只看已确认')}
+          <View style={styles.queueOverallRow}>
+            <Text style={[styles.queueOverallPct, { color: colors.textPrimary }]}>
+              {t('graph.queue_overall_pct', '总进度 {{percent}}%', {
+                percent:
+                  extractQueue?.overallProgress ??
+                  graphExtractOverallProgress(extractQueue?.items ?? [])
+              })}
             </Text>
-            <Switch value={approvedOnly} onValueChange={setApprovedOnly} />
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+              {t('graph.queue_modal_progress', '已完成 {{current}} / {{total}} 篇', {
+                current: extractQueue?.completedCount ?? 0,
+                total: extractQueue?.items.length ?? 0
+              })}
+            </Text>
           </View>
-          <View style={styles.filterSectionHead}>
-            <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 13 }}>
-              {t('graph.filter_by_type', '按分类')}
-            </Text>
-            <Pressable
-              onPress={() =>
-                setEnabledNodeTypes(
-                  typeFilterActive ? new Set(GRAPH_FILTER_NODE_TYPES) : new Set()
-                )
-              }
-            >
-              <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
-                {typeFilterActive
-                  ? t('graph.filter_select_all_types', '全选')
-                  : t('graph.filter_clear_types', '清空')}
+          <View style={[styles.queueProgress, { backgroundColor: colors.borderSubtle, marginTop: 8, height: 6 }]}>
+            <View
+              style={[
+                styles.queueProgressBar,
+                {
+                  width: `${
+                    extractQueue?.overallProgress ??
+                    graphExtractOverallProgress(extractQueue?.items ?? [])
+                  }%`,
+                  backgroundColor: colors.primary
+                }
+              ]}
+            />
+          </View>
+          <ScrollView style={styles.queueModalList} keyboardShouldPersistTaps="handled">
+            {(extractQueue?.items ?? []).map((q) => (
+              <View key={q.id} style={styles.queueModalItem}>
+                <View style={styles.queueDockItemRow}>
+                  <Text style={[styles.queueDockName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {q.date || q.filePath}
+                  </Text>
+                  <Text
+                    style={{
+                      color:
+                        q.status === 'error'
+                          ? colors.error
+                          : q.status === 'completed'
+                            ? colors.textSecondary
+                            : colors.primary,
+                      fontSize: 12,
+                      fontWeight: '600'
+                    }}
+                  >
+                    {q.status === 'running'
+                      ? t('graph.queue_running', '抽取中')
+                      : q.status === 'aligning'
+                        ? t('graph.extract_aligning', '对齐中')
+                        : q.status === 'pending'
+                          ? t('graph.queue_pending', '排队中')
+                          : q.status === 'completed'
+                            ? t('graph.queue_done', '已完成')
+                            : t('graph.queue_error', '失败')}
+                  </Text>
+                  {q.status === 'pending' || q.status === 'running' || q.status === 'aligning' ? (
+                    <Pressable onPress={() => cancelQueueItem(q.filePath)}>
+                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                        {t('graph.queue_remove', '取消')}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {q.status === 'running' || q.status === 'aligning' ? (
+                  <>
+                    <View style={[styles.queueProgress, { backgroundColor: colors.borderSubtle }]}>
+                      <View
+                        style={[
+                          styles.queueProgressBar,
+                          {
+                            width: `${graphExtractBarPercent(q)}%`,
+                            backgroundColor: colors.primary
+                          }
+                        ]}
+                      />
+                    </View>
+                    <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4 }}>
+                      {(() => {
+                        const copy = describeGraphExtractPhase(q)
+                        return t(copy.key, copy.defaultValue, copy.params)
+                      })()}
+                    </Text>
+                  </>
+                ) : null}
+                {q.status === 'error' && q.error ? (
+                  <Text style={{ color: colors.error, fontSize: 11, marginTop: 4 }} numberOfLines={2}>
+                    {(() => {
+                      const copy = describeGraphExtractQueueError(q.error)
+                      return t(copy.key, copy.defaultValue, copy.params)
+                    })()}
+                  </Text>
+                ) : null}
+              </View>
+            ))}
+          </ScrollView>
+          <View style={styles.queueModalFooter}>
+            {extractRunning ? (
+              <Pressable onPress={stopExtract}>
+                <Text style={{ color: colors.error, fontWeight: '600' }}>
+                  {t('graph.stop_extract', '全部停止')}
+                </Text>
+              </Pressable>
+            ) : (
+              <View />
+            )}
+            <Pressable onPress={() => setQueueModalOpen(false)}>
+              <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                {extractRunning
+                  ? t('graph.queue_modal_minimize', '收起，继续整理')
+                  : t('common.close', '关闭')}
               </Text>
             </Pressable>
           </View>
-          <View style={styles.typeChipRow}>
-            {GRAPH_FILTER_NODE_TYPES.map((nodeType) => {
-              const active = enabledNodeTypes.has(nodeType)
-              return (
-                <Pressable
-                  key={nodeType}
-                  onPress={() => toggleNodeTypeFilter(nodeType)}
-                  style={[
-                    styles.edgeTypeChip,
-                    {
-                      backgroundColor: active ? colors.primary : colors.bgSurfaceNormal,
-                      borderColor: active ? colors.primary : colors.borderSubtle
-                    }
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: active ? '#fff' : colors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: active ? '700' : '500'
-                    }}
-                  >
-                    {t(
-                      `graph.node_type.${nodeType}`,
-                      GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
-                    )}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-          <Pressable
-            onPress={() => setFilterOpen(false)}
-            style={{ alignSelf: 'flex-end', marginTop: 12 }}
-          >
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>
-              {t('common.done', '完成')}
-            </Text>
-          </Pressable>
-        </ScrollView>
+        </View>
       </FloatingModal>
 
       <FloatingModal
@@ -2021,6 +2885,203 @@ export function GraphScreen() {
           <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
             {t('graph.settings', '设置')}
           </Text>
+
+          <Pressable
+            onPress={() => setSettingsSection((s) => ({ ...s, ops: !s.ops }))}
+            style={styles.settingsHead}
+          >
+            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+              {settingsSection.ops ? '▾ ' : '▸ '}
+              {t('graph.side_ops', '操作')}
+            </Text>
+          </Pressable>
+          {settingsSection.ops ? (
+            <View style={styles.settingsBody}>
+              <Pressable
+                onPress={() => void runExtract()}
+                disabled={busy || pending.length === 0}
+                style={[
+                  styles.opsPrimaryBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: busy || pending.length === 0 ? 0.5 : 1
+                  }
+                ]}
+              >
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
+                  {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
+                    count: pending.length
+                  })}
+                </Text>
+              </Pressable>
+              {extractRunning ? (
+                <Pressable onPress={() => setQueueModalOpen(true)}>
+                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+                    {t('graph.queue_view_progress', '查看进度')}
+                  </Text>
+                </Pressable>
+              ) : null}
+              <View style={styles.opsLabelRow}>
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                  {t('graph.extract_concurrency', '同时抽取')}
+                </Text>
+                <GraphExtractHelpButton size={14} />
+              </View>
+              <View style={styles.concurrencyRow}>
+                {Array.from(
+                  { length: GRAPH_EXTRACT_CONCURRENCY_MAX - GRAPH_EXTRACT_CONCURRENCY_MIN + 1 },
+                  (_, i) => GRAPH_EXTRACT_CONCURRENCY_MIN + i
+                ).map((n) => (
+                  <Pressable
+                    key={n}
+                    onPress={() => {
+                      setExtractConcurrency(mobileGraphExtractQueue.setConcurrency(n))
+                    }}
+                    style={[
+                      styles.concurrencyChip,
+                      {
+                        borderColor: n === extractConcurrency ? colors.primary : colors.borderSubtle,
+                        backgroundColor: n === extractConcurrency ? colors.primary : 'transparent'
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color: n === extractConcurrency ? '#fff' : colors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: '600'
+                      }}
+                    >
+                      {n}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.opsBtnRow}>
+                <Pressable
+                  onPress={() => {
+                    setMergeSearchOpen(false)
+                    setCreateOpen(true)
+                    setSettingsOpen(false)
+                  }}
+                  style={[
+                    styles.toolBtn,
+                    { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurfaceNormal, flex: 1 }
+                  ]}
+                >
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+                    {t('graph.create_node', '新建节点')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setCreateOpen(false)
+                    setMergeSearchOpen(true)
+                    setSettingsOpen(false)
+                  }}
+                  style={[
+                    styles.toolBtn,
+                    {
+                      borderColor: mergeSearchOpen ? colors.primary : colors.borderSubtle,
+                      backgroundColor: colors.bgSurfaceNormal,
+                      flex: 1
+                    }
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: mergeSearchOpen ? colors.primary : colors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: '600',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {t('graph.merge_nodes', '合并节点')}
+                  </Text>
+                </Pressable>
+              </View>
+              <View style={styles.filterSectionHead}>
+                <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 13 }}>
+                  {t('graph.filter', '筛选')}
+                </Text>
+                {filterActive ? (
+                  <Pressable
+                    onPress={() => {
+                      setHideEntry(true)
+                      setApprovedOnly(false)
+                      setEnabledNodeTypes(new Set(GRAPH_FILTER_NODE_TYPES))
+                    }}
+                  >
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                      {t('graph.filter_reset', '恢复默认')}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+                  {t('graph.hide_entry_anchors', '隐藏日记锚点')}
+                </Text>
+                <Switch value={hideEntry} onValueChange={setHideEntry} />
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+                  {t('graph.approved_only', '只看已确认')}
+                </Text>
+                <Switch value={approvedOnly} onValueChange={setApprovedOnly} />
+              </View>
+              <View style={styles.filterSectionHead}>
+                <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 13 }}>
+                  {t('graph.filter_by_type', '按分类')}
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    setEnabledNodeTypes(
+                      typeFilterActive ? new Set(GRAPH_FILTER_NODE_TYPES) : new Set()
+                    )
+                  }
+                >
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                    {typeFilterActive
+                      ? t('graph.filter_select_all_types', '全选')
+                      : t('graph.filter_clear_types', '清空')}
+                  </Text>
+                </Pressable>
+              </View>
+              <View style={styles.typeChipRow}>
+                {GRAPH_FILTER_NODE_TYPES.map((nodeType) => {
+                  const active = enabledNodeTypes.has(nodeType)
+                  const typeColor = graphNodeTypeColor(nodeType)
+                  return (
+                    <Pressable
+                      key={nodeType}
+                      onPress={() => toggleNodeTypeFilter(nodeType)}
+                      style={[
+                        styles.edgeTypeChip,
+                        {
+                          backgroundColor: active ? typeColor : colors.bgSurfaceNormal,
+                          borderColor: active ? typeColor : colors.borderSubtle
+                        }
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color: active ? '#fff' : colors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: active ? '700' : '500'
+                        }}
+                      >
+                        {t(
+                          `graph.node_type.${nodeType}`,
+                          GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
+                        )}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
+            </View>
+          ) : null}
 
           <Pressable
             onPress={() => setSettingsSection((s) => ({ ...s, profile: !s.profile }))}
@@ -2116,10 +3177,6 @@ export function GraphScreen() {
           </Pressable>
           {settingsSection.view ? (
             <View style={styles.settingsBody}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                {t('graph.month_range', '月份范围')}
-              </Text>
-              <GraphMonthRangeSheet block value={monthRange} onChange={updateMonthRange} />
               {renderDepthChips()}
             </View>
           ) : null}
@@ -2235,6 +3292,53 @@ export function GraphScreen() {
           </ScrollView>
         )}
       </FloatingModal>
+      {services ? (
+        <GraphCreateNodeSheet
+          visible={createOpen}
+          drizzleDb={getAgentDbRuntime()?.drizzleDb ?? null}
+          pathService={services.pathService}
+          fileSystem={services.fileSystem}
+          vaultId={vaultId}
+          vaultName={vaultName}
+          busy={busy}
+          onClose={() => setCreateOpen(false)}
+          onCreated={(id) => {
+            setCreateOpen(false)
+            void refresh().then(() => onSelectNode(id))
+          }}
+          onOpenExisting={(id) => {
+            setCreateOpen(false)
+            void onSelectNode(id)
+          }}
+        />
+      ) : null}
+      <GraphMergeSearchSheet
+        visible={mergeSearchOpen}
+        drizzleDb={getAgentDbRuntime()?.drizzleDb ?? null}
+        vaultId={vaultId}
+        seed={(() => {
+          if (!selectedId) return null
+          const n = selectedNode?.id === selectedId ? selectedNode : findGraphNode(selectedId)
+          if (!n || n.nodeType === 'entry') return null
+          return { id: n.id, name: String(n.name || n.id), nodeType: String(n.nodeType || '') }
+        })()}
+        busy={busy}
+        onClose={() => setMergeSearchOpen(false)}
+        onRequestMerge={(target) => setMergeConfirm(target)}
+      />
+      <GraphIrreversibleConfirm
+        visible={!!mergeConfirm}
+        title={t('graph.merge_nodes', '合并节点')}
+        warning={t(
+          'graph.merge_irreversible',
+          '合并不可撤销。被合并节点会并入保留节点，关系改挂到保留节点，对端同步后只保留目标节点。'
+        )}
+        survivorName={mergeConfirm?.survivorName}
+        losers={mergeConfirm?.losers}
+        busy={busy}
+        onCancel={() => setMergeConfirm(null)}
+        onConfirm={() => void runConfirmedMerge()}
+      />
     </StackScreenLayout>
   )
 }
@@ -2273,6 +3377,37 @@ const styles = StyleSheet.create({
   },
   graphBody: {
     flex: 1
+  },
+  pendingPane: {
+    flex: 1
+  },
+  pendingList: {
+    flex: 1
+  },
+  pendingToolbar: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8
+  },
+  pendingHintText: {
+    fontSize: 12,
+    lineHeight: 18
+  },
+  pendingToolbarRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12
+  },
+  pendingSelectAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  pendingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10
   },
   webWrap: {
     flex: 1
@@ -2411,6 +3546,76 @@ const styles = StyleSheet.create({
     marginTop: 10,
     flexWrap: 'wrap'
   },
+  queueModalPad: {
+    padding: 18
+  },
+  queueModalSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4
+  },
+  concurrencyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10
+  },
+  concurrencyChip: {
+    minWidth: 28,
+    height: 28,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  queueModalList: {
+    maxHeight: 280,
+    marginTop: 8
+  },
+  queueOverallRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 12
+  },
+  queueOverallPct: {
+    fontSize: 13,
+    fontWeight: '650'
+  },
+  queueModalItem: {
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(127,127,127,0.2)'
+  },
+  queueModalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14
+  },
+  queueDockItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  queueDockName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  queueProgress: {
+    marginTop: 6,
+    height: 3,
+    borderRadius: 999,
+    overflow: 'hidden'
+  },
+  queueProgressBar: {
+    height: '100%',
+    borderRadius: 999
+  },
   addEdgeSearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2460,6 +3665,21 @@ const styles = StyleSheet.create({
   settingsBody: {
     gap: 8,
     paddingBottom: 8
+  },
+  opsLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  opsBtnRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  opsPrimaryBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10
   },
   sourceHeader: {
     flexDirection: 'row',

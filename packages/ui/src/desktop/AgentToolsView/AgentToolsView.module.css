@@ -59,7 +59,7 @@
 }
 
 .scrollArea::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 .scrollArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb, 200, 200, 200), 0.6);
@@ -367,7 +367,7 @@
   background-color: var(--theme-surface-container-highest);
   font-size: 10px;
   color: var(--theme-on-surface-variant);
-  font-family: monospace;
+  font-family: var(--font-family);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -438,6 +438,20 @@
 .stepperBtn:disabled {
   opacity: 0.2;
   cursor: not-allowed;
+}
+
+.stepperInputHost {
+  width: 44px !important;
+  height: 100%;
+}
+
+.stepperInputHost input:focus,
+.stepperInputHost input:focus-visible {
+  border: none;
+  border-left: 1px solid var(--border-muted);
+  border-right: 1px solid var(--border-muted);
+  box-shadow: none;
+  background: transparent;
 }
 
 .stepperInput {
@@ -579,6 +593,9 @@ input:checked + .slider:before {
 .emojiPopupModal {
   min-width: 480px !important;
   width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .emojiPopupContent {
@@ -667,6 +684,12 @@ input:checked + .slider:before {
   height: 26px;
   min-height: 26px;
   box-sizing: border-box;
+}
+
+.emojiCardNameInputHost {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 
 .emojiCardNameInput {
@@ -859,59 +882,214 @@ input:checked + .slider:before {
   gap: 16px;
 }
 
-.emojiAddGroupCard {
+.emojiInlinePanel {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  min-height: 118px;
-  padding: 20px 16px;
-  border-radius: 12px;
-  border: 1px dashed var(--border-control);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  cursor: pointer;
-  text-align: center;
+}
+
+.emojiInlineToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 0;
+}
+
+.emojiSearchField {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--form-field-border, var(--border-control));
+  border-radius: 8px;
+  background: var(--form-field-bg, var(--bg-surface));
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiSearchInputHost {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.emojiSearchField input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--theme-on-surface);
+  font-size: var(--settings-font-row-size);
   font-family: inherit;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease;
 }
 
-.emojiAddGroupCard:hover {
-  border-color: rgba(var(--color-primary-rgb), 0.45);
-  background: rgba(var(--color-primary-rgb), 0.04);
-  color: var(--color-primary);
+.emojiInlineAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--theme-primary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.emojiAddGroupCardIcon {
+.emojiInlineAddBtn:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.emojiInlineList {
+  display: flex;
+  flex-direction: column;
+}
+
+.emojiInlineRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.emojiInlineRow + .emojiInlineRow {
+  border-top: 1px solid var(--border-muted);
+}
+
+.emojiManageBtn {
+  border: none;
+  background: transparent;
+  color: var(--theme-primary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+
+.emojiManageBtn:hover {
+  opacity: 0.8;
+}
+
+.emojiInlineEmpty {
+  padding: 16px 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--theme-on-surface-variant);
+}
+
+.emojiInlinePager {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 0;
+}
+
+.emojiManageModalTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.emojiManageDeleteBtn {
+  border: none;
+  background: transparent;
+  color: var(--theme-error);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.emojiDialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 320px;
+  max-height: 56vh;
+  overflow: hidden;
+}
+
+.emojiDialogBody .emojiPopupGrid {
+  flex: 1;
+}
+
+.emojiDialogField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emojiDialogToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.emojiGroupAddRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--theme-on-surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.emojiGroupAddRow:hover {
+  background-color: var(--bg-surface-high);
+}
+
+.emojiGroupAddIcon,
+.emojiGroupTile {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(var(--color-primary-rgb), 0.1);
-  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
-.emojiAddGroupCardTitle {
-  font-size: 14px;
+.emojiGroupAddIcon {
+  border: 1px dashed var(--border-control);
+  background: transparent;
+  color: var(--theme-primary);
+}
+
+.emojiGroupAddRow:hover .emojiGroupAddIcon {
+  border-color: rgba(var(--color-primary-rgb), 0.45);
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.emojiGroupTile {
+  background-color: var(--theme-primary-container-50);
+  color: var(--theme-primary);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  overflow: hidden;
 }
 
-.emojiAddGroupCard:hover .emojiAddGroupCardTitle {
-  color: var(--color-primary);
-}
-
-.emojiAddGroupCardHint {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-tertiary);
-  max-width: 220px;
+.emojiGroupTileImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .emojiEnableCard {

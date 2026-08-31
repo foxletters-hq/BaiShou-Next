@@ -30,7 +30,7 @@ export const GitWorkbenchRepositoriesSection: React.FC<GitWorkbenchRepositoriesS
   if (!vm.isInitialized) return null
 
   return (
-    <section className={styles.vscodeSection}>
+    <section className={styles.panelSection}>
       <button
         type="button"
         className={styles.sectionHeader}
@@ -87,7 +87,7 @@ export const GitWorkbenchRepositoriesSection: React.FC<GitWorkbenchRepositoriesS
               type="button"
               className={styles.iconBtn}
               title={t('version_control.commit', '提交')}
-              disabled={!vm.canCommitStaged}
+              disabled={!vm.canCommit}
               onClick={() => void vm.handleManualCommit()}
             >
               <Check size={15} />

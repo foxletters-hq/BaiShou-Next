@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { classifyExtractQuality, analyzePageTexts } from '../knowledge-extract'
+import { classifyExtractQuality, analyzePageTexts, pageTextNeedsOcr } from '../knowledge-extract'
 import {
   resolveExtractEngine,
   type ExtractEngineCapabilities
@@ -76,5 +76,14 @@ describe('extract quality still works', () => {
       { page: 1, start: 0, end: 3 },
       { page: 2, start: 5, end: 9 }
     ])
+  })
+
+  it('损坏文本层按需要 OCR 处理', () => {
+    const garbled =
+      '和 1 AR 1 次 兴 SN=A I E 4 人 人 0 0 加 Ar 区，和 0 人 0 人 N S ee 1 1 由 0 | 人 0 0 人 RE 省 区 的'
+    expect(pageTextNeedsOcr(garbled)).toBe(true)
+    const result = analyzePageTexts([garbled])
+    expect(result.textPageCount).toBe(0)
+    expect(result.quality).toBe('needs_ocr')
   })
 })

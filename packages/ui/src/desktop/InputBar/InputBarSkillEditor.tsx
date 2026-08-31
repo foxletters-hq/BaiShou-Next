@@ -127,7 +127,7 @@ export function InputBarSkillEditor({
           onKeyDown(e)
         }}
         onPaste={onPaste}
-        onBlur={emit}
+        onBlur={() => emit()}
       />
     </div>
   )

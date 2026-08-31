@@ -1,6 +1,5 @@
 export { GitManagementPage } from './GitManagementPage'
 export type { GitManagementPageProps, GitBranchInfo } from './git-management.types'
-export { GitVersionTab } from './GitVersionTab'
 export { useGitManagementPage } from './useGitManagementPage'
 export type { GitManagementViewModel } from './useGitManagementPage'
 export { GitStagedSection } from './GitStagedSection'

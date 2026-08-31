@@ -32,6 +32,11 @@ export function isIncrementalSyncConflictBackupPath(relativePath: string): boole
   return /\.conflict-\d+/.test(base)
 }
 
+/** JSONL 分片的本机 pending-index 清单，禁止参与增量同步（换机空库不能沿用其它设备的 indexedHash） */
+export function isJsonlShardsManifestSyncPath(relativePath: string): boolean {
+  return basenameFromRel(relativePath) === 'shards.manifest.json'
+}
+
 /** SQLite 运行时附属文件与主库文件，禁止参与增量同步（会被进程锁定，且不应跨设备复制） */
 export function isSqliteRuntimeSyncPath(relativePath: string): boolean {
   const base = basenameFromRel(relativePath).toLowerCase()
@@ -117,6 +122,9 @@ export function shouldIncludeIncrementalSyncFile(entryName: string, relativePath
     return false
   }
   if (isSqliteRuntimeSyncPath(rel) || isSqliteRuntimeSyncPath(entryName)) {
+    return false
+  }
+  if (isJsonlShardsManifestSyncPath(rel) || isJsonlShardsManifestSyncPath(entryName)) {
     return false
   }
   if (isIncrementalSyncConflictBackupPath(rel) || isIncrementalSyncConflictBackupPath(entryName)) {

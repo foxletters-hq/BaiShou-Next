@@ -112,4 +112,89 @@ describe('ThreeWaySyncManifestMixin.downloadFile', () => {
     expect(result).toBe(true)
     expect(await store.listPendingIndex()).toHaveLength(1)
   })
+
+  it('下载 Graph 月分片后立刻标 pending-index', async () => {
+    const nodesDir = path.join(vaultPath, 'Personal', 'Graph', 'nodes')
+    fs.mkdirSync(nodesDir, { recursive: true })
+    const shardPath = path.join(nodesDir, '2026-07.jsonl')
+    fs.writeFileSync(
+      shardPath,
+      `${JSON.stringify({ id: 'n1', updatedAt: 1, name: 'old' })}\n`,
+      'utf8'
+    )
+    const { MonthlyJsonlStore } = await import('../../raw-data/stores/monthly-jsonl.store')
+    const { createNodeFileSystem } = await import('../../fs/create-node-file-system')
+    const store = new MonthlyJsonlStore({
+      fs: createNodeFileSystem(),
+      rootDir: nodesDir
+    })
+    const hash = await store.computeShardHash('2026-07')
+    await store.markIndexed('2026-07.jsonl', hash)
+    expect(await store.listPendingIndex()).toHaveLength(0)
+
+    downloadFile.mockImplementation(async (_remote: string, localDest: string) => {
+      await fs.promises.mkdir(path.dirname(localDest), { recursive: true })
+      await fs.promises.writeFile(
+        localDest,
+        `${JSON.stringify({ id: 'n1', updatedAt: 2, name: 'from-remote' })}\n`,
+        'utf8'
+      )
+    })
+
+    const result = await (service as any).downloadFile('Personal/Graph/nodes/2026-07.jsonl')
+    expect(result).toBe(true)
+    expect(await store.listPendingIndex()).toHaveLength(1)
+  })
+
+  it('下载知识本资料分片后立刻标 pending-index', async () => {
+    const nodesDir = path.join(vaultPath, 'Personal', 'Notebooks', 'nb1', 'graph', 'nodes')
+    fs.mkdirSync(nodesDir, { recursive: true })
+    const shardPath = path.join(nodesDir, 'src_abc.jsonl')
+    fs.writeFileSync(
+      shardPath,
+      `${JSON.stringify({ id: 'n1', updatedAt: 1, name: 'old' })}\n`,
+      'utf8'
+    )
+    const { MonthlyJsonlStore } = await import('../../raw-data/stores/monthly-jsonl.store')
+    const { createNodeFileSystem } = await import('../../fs/create-node-file-system')
+    const { isValidNotebookGraphShardKey } = await import(
+      '../../raw-data/notebook-graph-shard-key.util'
+    )
+    const store = new MonthlyJsonlStore({
+      fs: createNodeFileSystem(),
+      rootDir: nodesDir,
+      isValidShardKey: isValidNotebookGraphShardKey
+    })
+    const hash = await store.computeShardHash('src_abc')
+    await store.markIndexed('src_abc.jsonl', hash)
+    expect(await store.listPendingIndex()).toHaveLength(0)
+
+    downloadFile.mockImplementation(async (_remote: string, localDest: string) => {
+      await fs.promises.mkdir(path.dirname(localDest), { recursive: true })
+      await fs.promises.writeFile(
+        localDest,
+        `${JSON.stringify({ id: 'n1', updatedAt: 2, name: 'from-remote' })}\n`,
+        'utf8'
+      )
+    })
+
+    const result = await (service as any).downloadFile(
+      'Personal/Notebooks/nb1/graph/nodes/src_abc.jsonl'
+    )
+    expect(result).toBe(true)
+    expect(await store.listPendingIndex()).toHaveLength(1)
+  })
+
+  it('下载知识本旧月分片不抛错', async () => {
+    const nodesDir = path.join(vaultPath, 'Personal', 'Notebooks', 'nb1', 'graph', 'nodes')
+    fs.mkdirSync(nodesDir, { recursive: true })
+    downloadFile.mockImplementation(async (_remote: string, localDest: string) => {
+      await fs.promises.mkdir(path.dirname(localDest), { recursive: true })
+      await fs.promises.writeFile(localDest, '{"id":"n1","updatedAt":1}\n', 'utf8')
+    })
+
+    await expect(
+      (service as any).downloadFile('Personal/Notebooks/nb1/graph/nodes/2026-08.jsonl')
+    ).resolves.toBe(true)
+  })
 })

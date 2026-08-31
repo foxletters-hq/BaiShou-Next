@@ -5,7 +5,7 @@ export const GRAPH_APPEARANCE_DEFAULTS = {
   textOpacity: 1,
   nodeSize: 1,
   lineThickness: 1,
-  /** Show name when connected edges exceed this count. */
+  /** Show name when connected edges reach this count. */
   hubLabelMinDegree: 3,
   /** Show name when mentionCount reaches this (visually large nodes). */
   hubLabelMinMentions: 5
@@ -34,6 +34,19 @@ export type GraphAppearanceSettings = {
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
+}
+
+/** Global-view default name: degree or mentionCount reaches the matching threshold. */
+export function isGraphHubLabelVisible(input: {
+  degree: number
+  mentionCount: number
+  hubLabelMinDegree: number
+  hubLabelMinMentions: number
+}): boolean {
+  return (
+    input.degree >= input.hubLabelMinDegree ||
+    input.mentionCount >= input.hubLabelMinMentions
+  )
 }
 
 export function clampGraphAppearanceSettings(

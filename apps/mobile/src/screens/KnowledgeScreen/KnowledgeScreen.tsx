@@ -20,9 +20,11 @@ import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import {
   mobileAskKnowledge,
   mobileGetKnowledgeStats,
+  mobileGetNotebookGraphView,
   mobileHasKnowledgeModelMismatch,
   mobileImportSource,
   mobileListNotebooks,
+  mobileListNotebookStats,
   mobileListSources,
   mobileRebuildKnowledgeIndex,
   mobileSaveAskAsNote
@@ -71,6 +73,8 @@ function statusLabel(status: string, t: (k: string, f: string) => string): strin
       return t('knowledge.status_ready', '就绪')
     case 'failed':
       return t('knowledge.status_failed', '失败')
+    case 'stored':
+      return t('knowledge.status_stored', '仅原文')
     default:
       return status
   }
@@ -100,33 +104,31 @@ export function KnowledgeScreen() {
   const [pasteText, setPasteText] = useState('')
   const [urlValue, setUrlValue] = useState('')
   const [showImport, setShowImport] = useState<'text' | 'url' | null>(null)
+  const [graphNodes, setGraphNodes] = useState<Array<{ id: string; name: string; nodeType: string }>>(
+    []
+  )
+  const [graphEdges, setGraphEdges] = useState<
+    Array<{ id: string; fromId: string; toId: string; edgeType: string }>
+  >([])
 
   const refreshList = useCallback(async () => {
     const list = (await mobileListNotebooks()) as NotebookRow[]
     setNotebooks(list || [])
     const next: Record<string, NotebookStats> = {}
-    await Promise.all(
-      (list || []).map(async (nb) => {
-        try {
-          const stats = await mobileGetKnowledgeStats(nb.id)
-          next[nb.id] = {
-            sources: stats.sources,
-            chunks: stats.chunks,
-            pendingJobs: stats.pendingJobs,
-            originalBytes: stats.originalBytes ?? 0,
-            totalBytes: stats.totalBytes ?? 0
-          }
-        } catch {
-          next[nb.id] = {
-            sources: 0,
-            chunks: 0,
-            pendingJobs: 0,
-            originalBytes: 0,
-            totalBytes: 0
-          }
+    try {
+      const statsList = await mobileListNotebookStats()
+      for (const row of statsList) {
+        next[row.notebookId] = {
+          sources: row.sources,
+          chunks: row.chunks,
+          pendingJobs: row.pendingJobs,
+          originalBytes: row.originalBytes ?? 0,
+          totalBytes: row.totalBytes ?? 0
         }
-      })
-    )
+      }
+    } catch {
+      /* 列表统计失败时卡片仍可点进 */
+    }
     setStatsById(next)
     try {
       setModelMismatch(await mobileHasKnowledgeModelMismatch())
@@ -138,6 +140,36 @@ export function KnowledgeScreen() {
   const refreshDetail = useCallback(async (notebookId: string) => {
     const list = (await mobileListSources(notebookId)) as SourceRow[]
     setSources(list || [])
+    try {
+      const stats = await mobileGetKnowledgeStats(notebookId)
+      setStatsById((prev) => ({
+        ...prev,
+        [notebookId]: {
+          sources: stats.sources,
+          chunks: stats.chunks,
+          pendingJobs: stats.pendingJobs,
+          originalBytes: stats.originalBytes ?? 0,
+          totalBytes: stats.totalBytes ?? 0
+        }
+      }))
+    } catch {
+      /* 统计失败时仍刷新资料与图 */
+    }
+    try {
+      const view = await mobileGetNotebookGraphView(notebookId, 80)
+      setGraphNodes((view.nodes || []).map((n) => ({ id: n.id, name: n.name, nodeType: n.nodeType })))
+      setGraphEdges(
+        (view.edges || []).map((e) => ({
+          id: e.id,
+          fromId: e.fromId,
+          toId: e.toId,
+          edgeType: e.edgeType
+        }))
+      )
+    } catch {
+      setGraphNodes([])
+      setGraphEdges([])
+    }
   }, [])
 
   useEffect(() => {
@@ -146,14 +178,23 @@ export function KnowledgeScreen() {
     scheduleConsumeMobileKnowledgeIngestJobs('knowledge-screen-open')
   }, [dbReady, refreshList])
 
+  const hasActiveIngest =
+    sources.some(
+      (s) => s.status === 'pending' || s.status === 'extracting' || s.status === 'embedding'
+    ) || (selectedId ? (statsById[selectedId]?.pendingJobs ?? 0) > 0 : false)
+
   useEffect(() => {
     if (!selectedId) return
     void refreshDetail(selectedId).catch(() => undefined)
+  }, [selectedId, refreshDetail])
+
+  useEffect(() => {
+    if (!selectedId || !hasActiveIngest) return
     const timer = setInterval(() => {
       void refreshDetail(selectedId).catch(() => undefined)
     }, 4000)
     return () => clearInterval(timer)
-  }, [selectedId, refreshDetail])
+  }, [selectedId, hasActiveIngest, refreshDetail])
 
   const onAsk = async () => {
     const q = question.trim()
@@ -479,6 +520,46 @@ export function KnowledgeScreen() {
           )}
 
           <Text style={[styles.section, { color: colors.textPrimary, marginTop: 20 }]}>
+            {t('knowledge.graph_panel', '本笔记本图谱')}
+          </Text>
+          {graphNodes.length === 0 ? (
+            <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>
+              {t('knowledge.graph_empty', '导入资料并完成抽取后，这里会显示本笔记本的实体关系。')}
+            </Text>
+          ) : (
+            <View style={{ marginBottom: 16 }}>
+              <View style={styles.graphCanvas}>
+                {graphNodes.slice(0, 12).map((n, i) => (
+                  <View
+                    key={n.id}
+                    style={[
+                      styles.graphDot,
+                      {
+                        backgroundColor: colors.primary,
+                        left: 12 + (i % 4) * 78,
+                        top: 10 + Math.floor(i / 4) * 46
+                      }
+                    ]}
+                  >
+                    <Text style={styles.graphDotText} numberOfLines={1}>
+                      {n.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              {graphEdges.slice(0, 8).map((e) => {
+                const from = graphNodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 6)
+                const to = graphNodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 6)
+                return (
+                  <Text key={e.id} style={{ color: colors.textSecondary, marginTop: 4 }}>
+                    {from} —{e.edgeType}→ {to}
+                  </Text>
+                )
+              })}
+            </View>
+          )}
+
+          <Text style={[styles.section, { color: colors.textPrimary, marginTop: 20 }]}>
             {t('knowledge.ask', '提问')}
           </Text>
           <TextInput
@@ -641,5 +722,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 12
-  }
+  },
+  graphCanvas: {
+    height: 150,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    marginBottom: 8,
+    position: 'relative'
+  },
+  graphDot: {
+    position: 'absolute',
+    maxWidth: 72,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 8
+  },
+  graphDotText: { color: '#fff', fontSize: 11, fontWeight: '600' }
 })

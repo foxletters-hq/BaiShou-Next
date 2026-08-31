@@ -74,7 +74,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     onToast(
       t(
         'version_control.author_not_configured',
-        '请先在「Git 提交签名」中填写用户名和邮箱后再提交'
+        '请先在配置中填写用户名和邮箱后再提交'
       ),
       'error'
     )

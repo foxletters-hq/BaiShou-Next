@@ -14,7 +14,7 @@ export const REASONING_EFFORTS = [
 
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number]
 
-/** 设置项：auto = 不显式传 effort，交给模型/SDK 默认 */
+/** 设置项：auto = 落到模型可用档后仍显式发送 effort（默认 medium，再 clamp） */
 export type ReasoningEffortSetting = ReasoningEffort | 'auto'
 
 export const WIDELY_SUPPORTED_EFFORTS: ReasoningEffort[] = ['low', 'medium', 'high']
@@ -28,17 +28,40 @@ export const OPENAI_BASE_EFFORTS: ReasoningEffort[] = [
   'xhigh'
 ]
 
-/** 思考预算预设（按模型 max 裁剪） */
-export const REASONING_BUDGET_PRESETS = [4000, 8000, 16000, 32000] as const
+/**
+ * 预算-only 模型对 UI 暴露的档位（不再给用户整数预设）。
+ * 实际 token 由 resolveReasoningBudgetTokens 按上限推算。
+ */
+export const REASONING_BUDGET_EFFORTS: ReasoningEffort[] = ['high', 'max']
+
+/** 思考预算默认输出封顶（Anthropic thinking 等） */
+export const REASONING_OUTPUT_TOKEN_MAX = 32000
+
+/** Kimi 已知思考预算上限，当作 catalogMax */
+export const KIMI_THINKING_BUDGET_MAX = 81920
+
+export type ReasoningBudgetTransport = 'anthropic' | 'native'
+
+export type ReasoningBudgetBounds = {
+  catalogMin?: number
+  catalogMax?: number
+  outputLimit?: number
+  /**
+   * 默认 true：ceiling 再封顶 OUTPUT_TOKEN_MAX-1。
+   * 走模型自己的 budget 且支持更高上限时传 false。
+   */
+  capToOutputTokenMax?: boolean
+}
 
 export type ReasoningControlMode = 'effort' | 'toggle' | 'budget' | 'none'
 
 export type ReasoningControl = {
   mode: ReasoningControlMode
-  /** 可与 mode 并存：如 Kimi = toggle + budget */
   supportsToggle?: boolean
   supportsBudget?: boolean
   efforts?: ReasoningEffort[]
+  catalogMin?: number
+  catalogMax?: number
   maxBudgetTokens?: number
 }
 
@@ -249,6 +272,14 @@ function listEffortModeEfforts(
 ): ReasoningEffort[] | null {
   const type = (providerTypeOrId || '').toLowerCase()
   if (isDeepSeekV4Model(modelId)) return listDeepSeekReasoningEfforts(modelId)
+  // 无原生 effort，走预算推算 high/max
+  if (isKimiThinkingControlModel(modelId)) return null
+  if (isMiniMaxM3Model(modelId)) return ['none', 'high']
+  if (isGlm52ReasoningModel(modelId)) {
+    // OpenRouter 将 xhigh 映射为 GLM-5.2 原生 max
+    if (type === 'openrouter') return ['high', 'xhigh']
+    return ['high', 'max']
+  }
   if (type.includes('anthropic') || modelId.includes('claude')) {
     const list = listAnthropicReasoningEfforts(modelId)
     return list.length > 0 ? list : null
@@ -257,12 +288,6 @@ function listEffortModeEfforts(
     const list = listGeminiReasoningEfforts(modelId)
     return list.length > 0 ? list : null
   }
-  if (isGlm52ReasoningModel(modelId)) {
-    // OpenRouter 将 xhigh 映射为 GLM-5.2 原生 max
-    if (type === 'openrouter') return ['high', 'xhigh']
-    return ['high', 'max']
-  }
-  if (isMiniMaxM3Model(modelId)) return ['none', 'high']
   if (
     (type === 'grok' || type === 'openrouter' || type === 'custom' || !type) &&
     /grok-3-mini/.test(normalizeModelBaseId(modelId))
@@ -284,8 +309,21 @@ function listEffortModeEfforts(
   return null
 }
 
+function attachReasoningBudgetCatalog(modelId: string, control: ReasoningControl): ReasoningControl {
+  const bounds = getReasoningBudgetBoundsForModel(modelId)
+  if (bounds.catalogMax == null && bounds.catalogMin == null) return control
+  return {
+    ...control,
+    supportsBudget: true,
+    catalogMin: bounds.catalogMin,
+    catalogMax: bounds.catalogMax,
+    maxBudgetTokens: bounds.catalogMax ?? control.maxBudgetTokens
+  }
+}
+
 /**
  * 统一思考控制能力（UI + 请求侧共用）。
+ * 优先级：原生 effort 列表 > 开关（none/high）> 由预算推算的 high/max。
  * mode=none 时右栏仅展示 Default。
  */
 export function getReasoningControlForModel(
@@ -296,29 +334,23 @@ export function getReasoningControlForModel(
 
   const type = (providerTypeOrId || '').toLowerCase()
 
-  if (isKimiThinkingControlModel(modelId)) {
-    return {
-      mode: 'toggle',
-      supportsToggle: true,
-      supportsBudget: true,
-      maxBudgetTokens: 81920
-    }
+  const efforts = listEffortModeEfforts(modelId, providerTypeOrId)
+  if (efforts && efforts.length > 0 && isReasoningCapableModel(modelId, providerTypeOrId)) {
+    return attachReasoningBudgetCatalog(modelId, { mode: 'effort', efforts })
   }
 
   if (isDashScopeThinkingToggleModel(modelId, providerTypeOrId)) {
     return { mode: 'toggle', supportsToggle: true }
   }
-
-  const efforts = listEffortModeEfforts(modelId, providerTypeOrId)
-  if (efforts && efforts.length > 0) {
-    // 还需通过 capable 门槛（避免误开）
-    if (isReasoningCapableModel(modelId, providerTypeOrId)) {
-      return { mode: 'effort', efforts }
-    }
-  }
-
   if (type === 'dashscope' && /qwen|thinking|reasoner/.test(normalizeModelBaseId(modelId))) {
     return { mode: 'toggle', supportsToggle: true }
+  }
+
+  if (isKimiThinkingControlModel(modelId)) {
+    return attachReasoningBudgetCatalog(modelId, {
+      mode: 'effort',
+      efforts: [...REASONING_BUDGET_EFFORTS]
+    })
   }
 
   return { mode: 'none' }
@@ -363,15 +395,82 @@ export function isReasoningCapableModel(modelId: string, providerType?: string):
   return false
 }
 
-/** 按上限裁剪预算预设 */
-export function listReasoningBudgetPresets(maxBudgetTokens?: number): number[] {
-  const max = maxBudgetTokens && maxBudgetTokens > 0 ? maxBudgetTokens : 32000
-  const presets = REASONING_BUDGET_PRESETS.filter((n) => n <= max)
-  if (presets.length === 0) return [Math.min(4000, max)]
-  if (!presets.includes(max) && max > presets[presets.length - 1]!) {
-    return [...presets, max]
+/** 预算-only 模型对 UI 暴露的档位；不再返回整数预设 */
+export function listReasoningBudgetPresets(_maxBudgetTokens?: number): ReasoningEffort[] {
+  return [...REASONING_BUDGET_EFFORTS]
+}
+
+export function getReasoningBudgetBoundsForModel(
+  modelId: string,
+  options?: { transport?: ReasoningBudgetTransport; outputLimit?: number }
+): ReasoningBudgetBounds {
+  const outputLimit = options?.outputLimit
+  if (isKimiThinkingControlModel(modelId)) {
+    return {
+      catalogMax: KIMI_THINKING_BUDGET_MAX,
+      outputLimit,
+      capToOutputTokenMax: options?.transport === 'anthropic'
+    }
   }
-  return [...presets]
+  const id = normalizeModelBaseId(modelId)
+  if (id.includes('gemini-2.5')) {
+    return {
+      catalogMax: id.includes('pro') ? 32768 : 24576,
+      outputLimit,
+      capToOutputTokenMax: true
+    }
+  }
+  return { outputLimit, capToOutputTokenMax: true }
+}
+
+export function resolveReasoningBudgetCeiling(bounds: ReasoningBudgetBounds = {}): number {
+  const capToOutputTokenMax = bounds.capToOutputTokenMax !== false
+  const catalogMax = bounds.catalogMax && bounds.catalogMax > 0 ? bounds.catalogMax : undefined
+  const outputLimit = bounds.outputLimit && bounds.outputLimit > 1 ? bounds.outputLimit : undefined
+
+  if (!capToOutputTokenMax) {
+    const fromCatalog = catalogMax ?? REASONING_OUTPUT_TOKEN_MAX - 1
+    return outputLimit ? Math.min(fromCatalog, outputLimit - 1) : fromCatalog
+  }
+
+  return Math.min(
+    catalogMax ?? REASONING_OUTPUT_TOKEN_MAX - 1,
+    (outputLimit ?? REASONING_OUTPUT_TOKEN_MAX) - 1,
+    REASONING_OUTPUT_TOKEN_MAX - 1
+  )
+}
+
+export function resolveReasoningBudgetTiers(bounds: ReasoningBudgetBounds = {}): {
+  high: number
+  max: number
+} {
+  const ceiling = Math.max(1, resolveReasoningBudgetCeiling(bounds))
+  const catalogMin = bounds.catalogMin ?? 0
+  const high = Math.min(Math.max(catalogMin, Math.floor((ceiling + 1) / 2)), ceiling)
+  return { high, max: ceiling }
+}
+
+/** 档位 → token 预算；auto/none 不显式传预算 */
+export function resolveReasoningBudgetTokens(
+  effort: ReasoningEffortSetting | string | null | undefined,
+  bounds: ReasoningBudgetBounds = {}
+): number | undefined {
+  const normalized = normalizeReasoningEffortSetting(effort)
+  if (normalized === 'auto' || normalized === 'none') return undefined
+  const { high, max } = resolveReasoningBudgetTiers(bounds)
+  if (normalized === 'max' || normalized === 'xhigh') return max
+  return high
+}
+
+/** 旧整数预算映射到最近的 high/max 档 */
+export function mapLegacyReasoningBudgetTokensToEffort(
+  value: unknown,
+  bounds: ReasoningBudgetBounds = {}
+): 'high' | 'max' | undefined {
+  const n = normalizeReasoningBudgetTokens(value)
+  if (n == null) return undefined
+  const { high, max } = resolveReasoningBudgetTiers(bounds)
+  return Math.abs(n - max) <= Math.abs(n - high) ? 'max' : 'high'
 }
 
 export function normalizeReasoningBudgetTokens(

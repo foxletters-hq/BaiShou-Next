@@ -11,7 +11,7 @@ import {
   AssistantEditEmojiSection
 } from '@baishou/ui/native'
 import type { TFunction } from 'i18next'
-import type { EmojiGroup } from '@baishou/shared'
+import type { EmojiToolConfig } from '@baishou/shared'
 import type { AssistantKind } from '@baishou/shared'
 import { assistantEditScreenStyles as styles } from '../assistant-edit-screen.styles'
 
@@ -35,12 +35,21 @@ export type AssistantEditFormBodyProps = {
   openModelSwitcher: () => void
   modelId?: string
   globalEmojiEnabled: boolean
-  emojiGroups: EmojiGroup[]
+  emojiConfig: EmojiToolConfig
   emojiEnabled: boolean
   selectedEmojiGroupIds: string[]
   handleEmojiEnabledChange: (enabled: boolean) => void
   handleToggleEmojiGroup: (groupId: string) => void
-  setOuterScrollEnabled: (enabled: boolean) => void
+  handleEmojiConfigChange: (config: EmojiToolConfig) => void
+  handlePickAndImportEmojis: () => Promise<
+    {
+      relativePath: string
+      originalName: string
+      error: string | null
+    }[]
+  >
+  handleResolveEmojiPath: (relativePath: string) => Promise<string>
+  handleDeleteEmoji: (relativePath: string) => Promise<boolean>
 }
 
 export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
@@ -64,12 +73,15 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
     openModelSwitcher,
     modelId,
     globalEmojiEnabled,
-    emojiGroups,
+    emojiConfig,
     emojiEnabled,
     selectedEmojiGroupIds,
     handleEmojiEnabledChange,
     handleToggleEmojiGroup,
-    setOuterScrollEnabled
+    handleEmojiConfigChange,
+    handlePickAndImportEmojis,
+    handleResolveEmojiPath,
+    handleDeleteEmoji
   } = props
 
   return (
@@ -175,12 +187,15 @@ export function AssistantEditFormBody(props: AssistantEditFormBodyProps) {
 
       {globalEmojiEnabled ? (
         <AssistantEditEmojiSection
-          emojiGroups={emojiGroups}
+          emojiConfig={emojiConfig}
           emojiEnabled={emojiEnabled}
           selectedGroupIds={selectedEmojiGroupIds}
           onEmojiEnabledChange={handleEmojiEnabledChange}
           onToggleGroup={handleToggleEmojiGroup}
-          onLockOuterScroll={(locked) => setOuterScrollEnabled(!locked)}
+          onEmojiConfigChange={handleEmojiConfigChange}
+          onPickAndImport={handlePickAndImportEmojis}
+          onResolvePath={handleResolveEmojiPath}
+          onDelete={handleDeleteEmoji}
         />
       ) : null}
     </>

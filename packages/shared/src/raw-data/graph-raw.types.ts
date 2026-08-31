@@ -3,8 +3,8 @@
 export interface GraphNodeRawRecord {
   id: string
   schemaVersion: 1
-  /** 稳定身份；新写入必填；存量可读路径/活跃上下文推导 */
-  vaultId?: string
+  /** 稳定身份；新写入必填；sync 跳过缺字段行 */
+  vaultId: string
   /** 写入时显示名快照，仅供人阅读；逻辑不得当真值 */
   vaultName: string
   nodeType: string
@@ -16,6 +16,8 @@ export interface GraphNodeRawRecord {
   firstSeenAt: number
   lastSeenAt: number
   origin: 'ai' | 'user'
+  /** YYYY-MM JSONL shard (required for new writes). */
+  shardMonth: string
   createdAt: number
   updatedAt: number
   deletedAt: number | null
@@ -25,8 +27,8 @@ export interface GraphNodeRawRecord {
 export interface GraphEdgeRawRecord {
   id: string
   schemaVersion: 1
-  /** 稳定身份；新写入必填；存量可读路径/活跃上下文推导 */
-  vaultId?: string
+  /** 稳定身份；新写入必填；sync 跳过缺字段行 */
+  vaultId: string
   /** 写入时显示名快照，仅供人阅读；逻辑不得当真值 */
   vaultName: string
   fromId: string

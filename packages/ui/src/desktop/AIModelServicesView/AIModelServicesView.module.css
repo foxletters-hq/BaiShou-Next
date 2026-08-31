@@ -37,7 +37,7 @@
 }
 
 .listScroll::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 
 .listItem {
@@ -340,15 +340,12 @@
 }
 
 .revealButton {
-  position: absolute;
-  right: 12px;
   background: transparent;
   border: none;
   color: var(--text-primary);
   cursor: pointer;
   display: flex;
   padding: 4px;
-  height: 100%;
   align-items: center;
 }
 .revealButton:hover {
@@ -979,7 +976,7 @@ input:checked + .slider:before {
 }
 
 .testListContainer::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 .testListContainer::-webkit-scrollbar-thumb {
   background-color: var(--border-strong);

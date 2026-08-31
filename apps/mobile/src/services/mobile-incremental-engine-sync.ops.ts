@@ -14,8 +14,10 @@ import {
 import {
   JsonlRecordMergeService,
   MonthlyJsonlStore,
+  applyJsonlConflictResolved,
   classifyMonthlyJsonlPath,
-  isMonthlyJsonlRawPath
+  isMonthlyJsonlRawPath,
+  shardKeyValidatorForJsonlKind
 } from '@baishou/core-mobile'
 import { getAppCacheDirectory } from './mobile-app-paths'
 import { MobileIncrementalCloudClient } from './mobile-incremental-cloud.client'
@@ -44,7 +46,8 @@ async function markMobileMonthlyJsonlPending(
   const dir = absoluteShardPath.replace(/[/\\][^/\\]+$/, '')
   const store = new MonthlyJsonlStore({
     fs: worker.host.fileSystem,
-    rootDir: dir
+    rootDir: dir,
+    isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
   })
   await store.refreshShardHashAfterExternalWrite(classified.shardMonth)
   if (classified.kind === 'graph' && classified.collection === 'nodes') {
@@ -94,7 +97,8 @@ async function mergeMobileMonthlyJsonlConflict(
     if (!wrote) {
       const store = new MonthlyJsonlStore({
         fs: worker.host.fileSystem,
-        rootDir: fullPath.replace(/[/\\][^/\\]+$/, '')
+        rootDir: fullPath.replace(/[/\\][^/\\]+$/, ''),
+        isValidShardKey: shardKeyValidatorForJsonlKind(classified.kind)
       })
       await store.replaceShardContent(classified.shardMonth, merged.text)
       if (classified.kind === 'graph' && classified.collection === 'nodes') {
@@ -311,37 +315,34 @@ export async function runSyncThreeWay(
           deletedLocalPaths.push(d.filePath)
           mutated = true
           break
-        case 'conflict-resolved':
+        case 'conflict-resolved': {
           conflicted.push(d.filePath)
-          if (isMonthlyJsonlRawPath(d.filePath)) {
-            const mergedOk = await mergeMobileMonthlyJsonlConflict(
-              worker,
-              client,
-              syncRoot,
-              d.filePath,
-              fullPath
-            )
-            if (mergedOk) {
+          const outcome = await applyJsonlConflictResolved({
+            filePath: d.filePath,
+            direction: d.direction,
+            lineMerge: () =>
+              mergeMobileMonthlyJsonlConflict(worker, client, syncRoot, d.filePath, fullPath),
+            overwriteUpload: async () => {
+              await worker.backupLocalFile(syncRoot, d.filePath)
+              await client.uploadFile(fullPath, d.filePath)
               uploaded++
               uploadedPaths.push(d.filePath)
-              mutated = true
-              break
+            },
+            overwriteDownload: async () => {
+              await worker.backupLocalFile(syncRoot, d.filePath)
+              if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
+                downloaded++
+                downloadedPaths.push(d.filePath)
+              }
             }
-          }
-          if (d.direction === 'upload') {
-            await worker.backupLocalFile(syncRoot, d.filePath)
-            await client.uploadFile(fullPath, d.filePath)
+          })
+          if (outcome === 'merged') {
             uploaded++
             uploadedPaths.push(d.filePath)
-          } else {
-            await worker.backupLocalFile(syncRoot, d.filePath)
-            if (await worker.downloadSyncFile(client, d.filePath, fullPath, d.size)) {
-              downloaded++
-              downloadedPaths.push(d.filePath)
-            }
           }
           mutated = true
           break
+        }
         case 'skip':
           skipped++
           break

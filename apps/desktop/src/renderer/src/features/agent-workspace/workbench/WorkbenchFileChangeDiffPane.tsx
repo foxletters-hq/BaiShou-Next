@@ -115,7 +115,7 @@ export const WorkbenchFileChangeDiffPane: React.FC<WorkbenchFileChangeDiffPanePr
             onClick={() => setViewMode('inline')}
             disabled={loadState.status !== 'ready' || loadState.fallback}
           >
-            {t('workbench.diff_mode_inline', 'Inline')}
+            {t('workbench.diff_mode_inline', '内联')}
           </button>
           <button
             type="button"

@@ -10,11 +10,12 @@ import {
   serializeAssistantEmojiGroupIds,
   SYSTEM_LATTE_ASSISTANT_CANNOT_DELETE,
   isSystemLatteAssistantId,
-  type EmojiGroup,
-  type EmojiToolConfig
+  type EmojiToolConfig,
+  type NormalizedEmojiToolConfig
 } from '@baishou/shared'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
+import { persistDesktopEmojiToolConfig } from '../AssistantEditPage/persist-desktop-emoji-tool-config'
 import type { AssistantInfo, AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 
 const normalizeAssistantId = (id: unknown): string | null =>
@@ -72,8 +73,9 @@ export function useAssistantPickerSheet({
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
   const [providers, setProviders] = useState<any[]>([])
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
-  const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>([])
-  const [globalEmojiEnabled, setGlobalEmojiEnabled] = useState(false)
+  const [emojiConfig, setEmojiConfig] = useState<NormalizedEmojiToolConfig>(() =>
+    normalizeEmojiToolConfig(null)
+  )
   const [editingEmojiEnabled, setEditingEmojiEnabled] = useState(false)
   const [editingSelectedEmojiGroupIds, setEditingSelectedEmojiGroupIds] = useState<string[]>([])
   const hydratedAssistantIdRef = React.useRef<string | null>(null)
@@ -103,10 +105,9 @@ export function useAssistantPickerSheet({
         .getToolManagementConfig()
         .then((config: { emojiConfig?: EmojiToolConfig | null }) => {
           const normalized = normalizeEmojiToolConfig(config?.emojiConfig)
-          setGlobalEmojiEnabled(normalized.enabled === true)
-          setEmojiGroups(normalized.groups)
+          setEmojiConfig(normalized)
         })
-        .catch(() => setEmojiGroups([]))
+        .catch(() => setEmojiConfig(normalizeEmojiToolConfig(null)))
     }
 
     loadEmojiConfig()
@@ -254,6 +255,23 @@ export function useAssistantPickerSheet({
     })
   }
 
+  const handleEmojiConfigChange = (next: EmojiToolConfig) => {
+    const normalized = normalizeEmojiToolConfig(next)
+    setEmojiConfig(normalized)
+    const validIds = new Set(normalized.groups.map((group) => group.id))
+    setEditingSelectedEmojiGroupIds((prev) => {
+      const pruned = prev.filter((id) => validIds.has(id))
+      if (pruned.length !== prev.length && activeAssistant) {
+        void updateAssistantAPI(
+          activeAssistant.id,
+          buildEmojiPersistFields(pruned, editingEmojiEnabled)
+        )
+      }
+      return pruned
+    })
+    void persistDesktopEmojiToolConfig(normalized)
+  }
+
   const confirmDelete = async () => {
     if (deleteTargetId === null) return
     if (isSystemLatteAssistantId(deleteTargetId)) {
@@ -324,12 +342,13 @@ export function useAssistantPickerSheet({
     onTogglePin,
     assistants,
     i18n,
-    emojiGroups,
-    globalEmojiEnabled,
+    emojiConfig,
+    globalEmojiEnabled: emojiConfig.enabled === true,
     editingEmojiEnabled,
     editingSelectedEmojiGroupIds,
     handleEmojiEnabledChange,
-    handleToggleEmojiGroup
+    handleToggleEmojiGroup,
+    handleEmojiConfigChange
   }
 }
 

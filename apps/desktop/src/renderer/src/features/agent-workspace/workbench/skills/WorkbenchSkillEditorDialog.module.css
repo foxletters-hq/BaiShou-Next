@@ -1,0 +1,64 @@
+.modal {
+  width: min(640px, 92vw);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--ui-fs-md);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field span {
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--form-field-border);
+  background: var(--form-field-bg);
+  color: var(--text-primary);
+  font-size: var(--ui-fs-lg);
+  font-family: inherit;
+  min-height: 220px;
+  resize: vertical;
+  line-height: 1.55;
+  outline: none;
+  transition: var(--form-field-transition);
+}
+
+.textarea:focus {
+  background: var(--form-field-bg);
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
+}
+
+.textarea:disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}

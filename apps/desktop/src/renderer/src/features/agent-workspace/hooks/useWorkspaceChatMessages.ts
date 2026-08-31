@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AgentPart } from '@baishou/shared'
+import type { AgentPart, MockChatAttachment } from '@baishou/shared'
 import { clearStreamBridgeForSession } from '../../agent/hooks/agent-stream-session-store'
+import {
+  prependOlderWorkspaceMessages,
+  WORKSPACE_MESSAGE_PAGE_SIZE,
+  workspaceHasMoreMessages
+} from '../utils/workspace-chat-pagination.util'
 
 export interface WorkspaceChatMessage {
   id: string
@@ -8,8 +13,13 @@ export interface WorkspaceChatMessage {
   content?: string
   reasoning?: string
   parts?: AgentPart[]
+  attachments?: MockChatAttachment[]
   skillRefs?: Array<{ command: string; content: string }>
   createdAt?: Date | string
+  inputTokens?: number
+  outputTokens?: number
+  cacheReadInputTokens?: number
+  cacheWriteInputTokens?: number
 }
 
 export interface PendingWorkspaceAssistantMsg {
@@ -18,15 +28,31 @@ export interface PendingWorkspaceAssistantMsg {
   reasoning?: string
 }
 
-async function fetchWorkspaceMessages(sessionId: string): Promise<WorkspaceChatMessage[]> {
+async function fetchWorkspaceMessages(
+  sessionId: string,
+  limit: number,
+  offset: number
+): Promise<WorkspaceChatMessage[]> {
   const rows = (await window.electron.ipcRenderer.invoke(
     'agent:get-messages',
     sessionId,
-    999,
-    0,
+    limit,
+    offset,
     true
   )) as WorkspaceChatMessage[] | null
   return Array.isArray(rows) ? rows : []
+}
+
+function resetPagination(
+  setMessages: (rows: WorkspaceChatMessage[]) => void,
+  setHasMore: (value: boolean) => void,
+  loadedFromEndRef: { current: number },
+  hasMoreRef: { current: boolean }
+) {
+  setMessages([])
+  setHasMore(false)
+  loadedFromEndRef.current = 0
+  hasMoreRef.current = false
 }
 
 export function useWorkspaceChatMessages(params: {
@@ -37,32 +63,81 @@ export function useWorkspaceChatMessages(params: {
 }) {
   const { sessionId, isStreaming, streamingText, streamingReasoning } = params
   const [messages, setMessages] = useState<WorkspaceChatMessage[]>([])
+  const [hasMore, setHasMore] = useState(false)
   const [pendingAssistantMsg, setPendingAssistantMsg] =
     useState<PendingWorkspaceAssistantMsg | null>(null)
   const streamSessionIdRef = useRef<string | null>(null)
+  const sessionIdRef = useRef(sessionId)
+  const loadedFromEndRef = useRef(0)
+  const hasMoreRef = useRef(false)
+  const loadMoreLockRef = useRef(false)
   const prevStreamingRef = useRef(isStreaming)
+  sessionIdRef.current = sessionId
+
+  const applyLatestPage = useCallback((rows: WorkspaceChatMessage[], requestedLimit: number) => {
+    const nextHasMore = workspaceHasMoreMessages(rows.length, requestedLimit)
+    setMessages(rows)
+    loadedFromEndRef.current = rows.length
+    hasMoreRef.current = nextHasMore
+    setHasMore(nextHasMore)
+  }, [])
 
   const refresh = useCallback(
     async (overrideSessionId?: string) => {
       const sid = overrideSessionId ?? sessionId
       if (!sid || sid === 'new-session') {
-        setMessages([])
+        resetPagination(setMessages, setHasMore, loadedFromEndRef, hasMoreRef)
         return false
       }
-      const rows = await fetchWorkspaceMessages(sid)
-      setMessages(rows)
+      const limit = Math.max(loadedFromEndRef.current, WORKSPACE_MESSAGE_PAGE_SIZE)
+      const rows = await fetchWorkspaceMessages(sid, limit, 0)
+      const stillCurrent =
+        sessionIdRef.current === sid || streamSessionIdRef.current === sid
+      if (!stillCurrent) return false
+      applyLatestPage(rows, limit)
       return true
     },
-    [sessionId]
+    [applyLatestPage, sessionId]
   )
+
+  const loadMore = useCallback(async () => {
+    const sid = sessionId
+    if (!sid || sid === 'new-session' || loadMoreLockRef.current || !hasMoreRef.current) return
+    loadMoreLockRef.current = true
+    try {
+      const rows = await fetchWorkspaceMessages(
+        sid,
+        WORKSPACE_MESSAGE_PAGE_SIZE,
+        loadedFromEndRef.current
+      )
+      if (sessionIdRef.current !== sid) return
+      if (rows.length === 0) {
+        hasMoreRef.current = false
+        setHasMore(false)
+        return
+      }
+      const nextHasMore = workspaceHasMoreMessages(rows.length, WORKSPACE_MESSAGE_PAGE_SIZE)
+      setMessages((prev) => prependOlderWorkspaceMessages(prev, rows))
+      loadedFromEndRef.current += rows.length
+      hasMoreRef.current = nextHasMore
+      setHasMore(nextHasMore)
+    } finally {
+      loadMoreLockRef.current = false
+    }
+  }, [sessionId])
 
   const setStreamSessionId = useCallback((sid: string | null) => {
     streamSessionIdRef.current = sid
   }, [])
 
   useEffect(() => {
+    if (!sessionId || sessionId === 'new-session') {
+      resetPagination(setMessages, setHasMore, loadedFromEndRef, hasMoreRef)
+      return
+    }
+    resetPagination(setMessages, setHasMore, loadedFromEndRef, hasMoreRef)
     void refresh()
-  }, [refresh])
+  }, [refresh, sessionId])
 
   useEffect(() => {
     const onChanged = (event: Event) => {
@@ -110,8 +185,10 @@ export function useWorkspaceChatMessages(params: {
 
   return {
     messages,
+    hasMore,
     pendingAssistantMsg,
     refresh,
+    loadMore,
     setStreamSessionId
   }
 }

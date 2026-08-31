@@ -128,7 +128,8 @@ describe('useAgentStream', () => {
         providerId: 'p1',
         modelId: 'm1',
         attachments: [],
-        searchMode: false
+        searchMode: false,
+        reasoningEffort: undefined
       })
       expect(result.current.isStreaming).toBe(true)
     })
@@ -174,6 +175,49 @@ describe('useAgentStream', () => {
       })
       expect(result.current.text).toBe('')
       vi.useRealTimers()
+    })
+
+    it('passes session reasoning effort on chat / edit / resend', async () => {
+      sessionStorage.setItem('baishou.reasoningEffort.sessionOverride', 'high')
+      mockRenderer.invoke.mockResolvedValue(true)
+      const { result } = renderHook(() => useAgentStream('s1'))
+
+      await act(async () => {
+        await result.current.startChat('s1', '你好', 'p1', 'm1', [], false)
+      })
+      expect(mockRenderer.invoke).toHaveBeenCalledWith(
+        'agent:chat',
+        expect.objectContaining({ reasoningEffort: 'high' })
+      )
+
+      await act(async () => {
+        await result.current.editChat('s1', 'm-user', '改过', 'p1', 'm1', [], false)
+      })
+      expect(mockRenderer.invoke).toHaveBeenCalledWith(
+        'agent:edit-message',
+        's1',
+        'm-user',
+        '改过',
+        'p1',
+        'm1',
+        [],
+        false,
+        'high'
+      )
+
+      await act(async () => {
+        await result.current.resendChat('s1', 'm-user', false, 'p1', 'm1')
+      })
+      expect(mockRenderer.invoke).toHaveBeenCalledWith(
+        'agent:resend',
+        's1',
+        'm-user',
+        false,
+        'p1',
+        'm1',
+        'high'
+      )
+      sessionStorage.removeItem('baishou.reasoningEffort.sessionOverride')
     })
   })
 

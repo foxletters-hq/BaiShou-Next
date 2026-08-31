@@ -14,6 +14,10 @@ export interface NotebookRawRecord {
   createdAt: number
   updatedAt: number
   deletedAt?: number | null
+  sortOrder?: number
+  coverTone?: string
+  coverIcon?: string
+  coverImage?: string
 }
 
 /** 结构层 JSONL 行（资料清单） */
@@ -205,6 +209,21 @@ export class NotebookRawManager implements WholeFileKindManager {
     return this.fs.readFile(file, 'utf8')
   }
 
+  async statExtracted(
+    notebookId: string,
+    sourceId: string
+  ): Promise<{ mtimeMs?: number; size?: number } | null> {
+    const base = await this.baseDir()
+    const file = path.join(base, notebookId, 'extracted', `${sourceId}.md`)
+    if (!(await this.fs.exists(file))) return null
+    try {
+      const st = await this.fs.stat(file)
+      return { mtimeMs: st.mtimeMs, size: st.size }
+    } catch {
+      return null
+    }
+  }
+
   async readPagesJson(
     notebookId: string,
     sourceId: string
@@ -246,6 +265,47 @@ export class NotebookRawManager implements WholeFileKindManager {
       throw new Error(`path escapes notebooks root: ${relativePath}`)
     }
     return abs
+  }
+
+  async appendJsonlLine(relativePath: string, record: unknown): Promise<void> {
+    const abs = await this.absolutePath(relativePath)
+    const dir = path.dirname(abs)
+    await this.fs.mkdir(dir, { recursive: true })
+    await this.fs.appendFile(abs, `${JSON.stringify(record)}\n`, 'utf8')
+  }
+
+  async readJsonlLines<T extends { id: string; updatedAt: number; deletedAt?: number | null }>(
+    relativePath: string
+  ): Promise<T[]> {
+    try {
+      const abs = await this.absolutePath(relativePath)
+      if (!(await this.fs.exists(abs))) return []
+      const raw = await this.fs.readFile(abs, 'utf8')
+      const rows = raw
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          try {
+            return JSON.parse(line) as T
+          } catch {
+            return null
+          }
+        })
+        .filter((row): row is T => row != null && typeof row.id === 'string')
+      return collapseJsonlById(rows)
+    } catch {
+      return []
+    }
+  }
+
+  async existsRelative(relativePath: string): Promise<boolean> {
+    try {
+      const abs = await this.absolutePath(relativePath)
+      return this.fs.exists(abs)
+    } catch {
+      return false
+    }
   }
 
   private async maybeBackup(abs: string, nextHash: string): Promise<void> {

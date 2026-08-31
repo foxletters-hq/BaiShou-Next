@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { useColorScheme, View, StyleSheet } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import {
   GRAPH_APPEARANCE_DEFAULTS,
+  GRAPH_CANVAS_THEME,
   GRAPH_FORCE_DEFAULTS,
+  GRAPH_NODE_TYPE_COLORS,
   type GraphAppearanceSettings,
   type GraphForceSettings
 } from '@baishou/shared'
@@ -26,12 +28,12 @@ export interface GraphForceEdge {
 
 function topologyFingerprint(nodes: GraphForceNode[], edges: GraphForceEdge[]): string {
   const nids = nodes
-    .map((n) => `${n.id}:${n.reviewStatus || ''}:${n.name}`)
+    .map((n) => n.id)
     .slice()
     .sort()
     .join(',')
   const eids = edges
-    .map((e) => `${e.id}:${e.reviewStatus || ''}:${e.edgeType || ''}`)
+    .map((e) => e.id)
     .slice()
     .sort()
     .join(',')
@@ -47,19 +49,21 @@ function buildHtml(
   nodes: GraphForceNode[],
   edges: GraphForceEdge[],
   force: GraphForceSettings,
-  appearance: GraphAppearanceSettings
+  appearance: GraphAppearanceSettings,
+  scheme: 'light' | 'dark'
 ): string {
+  const theme = GRAPH_CANVAS_THEME[scheme]
   // Escape `<` so a node name cannot break out of the surrounding <script> tag.
-  const payload = JSON.stringify({ nodes, edges, force, appearance }).replace(/</g, '\\u003c')
+  const payload = JSON.stringify({ nodes, edges, force, appearance, theme }).replace(/</g, '\\u003c')
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <style>
-  html,body{margin:0;padding:0;width:100%;height:100%;background:#0f172a;overflow:hidden;font-family:system-ui,sans-serif;touch-action:none}
+  html,body{margin:0;padding:0;width:100%;height:100%;background:${theme.background};overflow:hidden;font-family:system-ui,sans-serif;touch-action:none}
   canvas{display:block;width:100%;height:100%;touch-action:none}
-  #hint{position:absolute;left:10px;bottom:10px;color:#94a3b8;font-size:11px;pointer-events:none}
+  #hint{position:absolute;left:10px;bottom:10px;color:${theme.hint};font-size:11px;pointer-events:none}
 </style>
 </head>
 <body>
@@ -67,11 +71,8 @@ function buildHtml(
 <div id="hint">虚线=待确认 · 拖动/捏合缩放 · 点节点</div>
 <script>
 const DATA = ${payload};
-const TYPE_COLORS = {
-  person:'#3b82f6', place:'#22c55e', organization:'#a855f7', event:'#f59e0b',
-  emotion:'#ec4899', topic:'#64748b', work:'#0ea5e9', activity:'#14b8a6',
-  product:'#8b5cf6', food:'#f97316', entry:'#94a3b8'
-};
+const TYPE_COLORS = ${JSON.stringify(GRAPH_NODE_TYPE_COLORS)};
+const FORCE_DEFAULTS = ${JSON.stringify(GRAPH_FORCE_DEFAULTS)};
 const DRAG_THRESHOLD_PX = 5;
 const LOCATE_TARGET_K = 1.85;
 const CAMERA_FOLLOW_LERP = 0.2;
@@ -87,12 +88,7 @@ const ctx = canvas.getContext('2d');
 let dpr = window.devicePixelRatio || 1;
 let W = 0, H = 0;
 
-let force = Object.assign({
-  centerStrength: 0.08,
-  linkStrength: 0.4,
-  chargeStrength: -180,
-  linkDistance: 70
-}, DATA.force || {});
+let force = Object.assign({}, FORCE_DEFAULTS, DATA.force || {});
 
 let appearance = Object.assign({
   showArrows: false,
@@ -102,6 +98,16 @@ let appearance = Object.assign({
   hubLabelMinDegree: 3,
   hubLabelMinMentions: 5
 }, DATA.appearance || {});
+
+let theme = Object.assign({
+  background: '#0f172a',
+  label: '#e2e8f0',
+  hint: '#94a3b8',
+    edge: 'rgba(148,163,184,0.45)',
+    edgePending: 'rgba(148,163,184,0.22)',
+    edgeHighlight: '#5BA8F5',
+    highlight: '#e2e8f0'
+  }, DATA.theme || {});
 
 const rawNodes = (DATA.nodes||[]).filter(n=>n.reviewStatus!=='rejected');
 const nodes = rawNodes.map((n)=>{
@@ -134,11 +140,14 @@ let transform = {x:0,y:0,k:1};
 let selectedId = null;
 let focusIds = new Set();
 let highlightIds = new Set();
+let highlightEdgeIds = new Set();
+let locateIds = [];
 
 let cameraAnim = false;
 let followUntil = 0;
 let pendingZoom = false;
 let locateRaf = null;
+let interacting = false;
 
 let dragNode = null;
 let pan = null;
@@ -158,17 +167,41 @@ function resize(){
 window.addEventListener('resize', resize);
 resize();
 
-function cameraTargetForSelected(k){
-  if(!selectedId) return null;
-  const n = nodes.find(x=>x.id===selectedId);
-  if(!n || n.x==null || n.y==null) return null;
-  if(W<=0||H<=0) return null;
-  return { x: W/2 - n.x*k, y: H/2 - n.y*k, k: k };
+function cameraFitIds(){
+  if(locateIds && locateIds.length) return locateIds;
+  if(selectedId) return [selectedId];
+  return [];
+}
+
+function cameraTargetForIds(ids, k){
+  if(!ids || !ids.length) return null;
+  const pts = [];
+  for(const id of ids){
+    const n = nodes.find(x=>x.id===id);
+    if(n && n.x!=null && n.y!=null) pts.push({x:n.x,y:n.y});
+  }
+  if(!pts.length || W<=0 || H<=0) return null;
+  if(pts.length===1){
+    return { x: W/2 - pts[0].x*k, y: H/2 - pts[0].y*k, k: k };
+  }
+  let minX=pts[0].x, maxX=minX, minY=pts[0].y, maxY=minY;
+  for(let i=1;i<pts.length;i++){
+    const p=pts[i];
+    if(p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x;
+    if(p.y<minY) minY=p.y; if(p.y>maxY) maxY=p.y;
+  }
+  const pad=80;
+  const bw=Math.max(maxX-minX,8)+pad*2;
+  const bh=Math.max(maxY-minY,8)+pad*2;
+  const fitK=Math.min(k, Math.max(0.45, Math.min(W/bw, H/bh)));
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  return { x: W/2 - cx*fitK, y: H/2 - cy*fitK, k: fitK };
 }
 
 function easeCameraTowardSelected(opts){
+  const ids = cameraFitIds();
   const k = (opts && opts.k != null) ? opts.k : transform.k;
-  const target = cameraTargetForSelected(k);
+  const target = cameraTargetForIds(ids, k);
   if(!target) return false;
   const alpha = (opts && opts.alpha != null) ? opts.alpha : 1;
   if(alpha >= 1){
@@ -184,8 +217,10 @@ function easeCameraTowardSelected(opts){
 }
 
 function locateSelected(opts){
+  if(interacting) return;
+  const ids = cameraFitIds();
   const withZoom = !!(opts && opts.zoom);
-  if(!selectedId){
+  if(!ids.length){
     pendingZoom = false;
     followUntil = 0;
     cameraAnim = false;
@@ -203,17 +238,22 @@ function locateSelected(opts){
   cameraAnim = true;
   const start = performance.now();
   function step(now){
+    if(interacting){
+      locateRaf = null;
+      cameraAnim = false;
+      return;
+    }
     const t = Math.min(1, (now - start) / duration);
     const ease = easeOutCubic(t);
-    const k = from.k + (targetK - from.k) * ease;
-    const desired = cameraTargetForSelected(k);
+    const desired = cameraTargetForIds(ids, targetK);
     if(!desired){
       locateRaf = requestAnimationFrame(step);
       return;
     }
     transform.x = from.x + (desired.x - from.x) * ease;
     transform.y = from.y + (desired.y - from.y) * ease;
-    transform.k = k;
+    transform.k = from.k + (desired.k - from.k) * ease;
+    requestDraw();
     if(t < 1){
       locateRaf = requestAnimationFrame(step);
       return;
@@ -252,7 +292,9 @@ function step(){
     a.vx+=dx*f; a.vy+=dy*f;
     b.vx-=dx*f; b.vy-=dy*f;
   }
-  const cx = W/2, cy = H/2;
+  const k = transform.k || 1;
+  const cx = (W/2 - transform.x) / k;
+  const cy = (H/2 - transform.y) / k;
   for(const nd of nodes){
     if(dragNode && nd.id===dragNode) continue;
     nd.vx += (cx - nd.x) * centerK * 0.15;
@@ -275,8 +317,15 @@ function drawArrowHead(x1,y1,x2,y2,size){
   ctx.fill();
 }
 
+function stopCameraFollow(){
+  cameraAnim = false;
+  followUntil = 0;
+  pendingZoom = false;
+  if(locateRaf != null){ cancelAnimationFrame(locateRaf); locateRaf = null; }
+}
+
 function draw(){
-  if(!cameraAnim && followUntil > performance.now() && selectedId){
+  if(!interacting && !dragNode && !cameraAnim && followUntil > performance.now() && cameraFitIds().length){
     easeCameraTowardSelected({
       k: pendingZoom ? Math.max(transform.k, LOCATE_TARGET_K) : undefined,
       alpha: CAMERA_FOLLOW_LERP
@@ -301,18 +350,21 @@ function draw(){
     const a=nodes[l.a], b=nodes[l.b];
     if(!a||!b) continue;
     const pending = l.reviewStatus==='pending';
-    const inFocusEdge = !focusing || (focusIds.has(a.id) && focusIds.has(b.id));
-    const dimEdge = focusing && !inFocusEdge;
-    ctx.globalAlpha = dimEdge ? 0.1 : 1;
-    ctx.strokeStyle = pending ? 'rgba(148,163,184,0.22)' : 'rgba(148,163,184,0.45)';
+    const edgeHi = highlightEdgeIds.has(l.id);
+    const inFocusEdge = !focusing || edgeHi || (focusIds.has(a.id) && focusIds.has(b.id));
+    if(focusing && !inFocusEdge) continue;
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = edgeHi ? (theme.edgeHighlight || '#5BA8F5') : (pending ? theme.edgePending : theme.edge);
     ctx.fillStyle = ctx.strokeStyle;
+    ctx.lineWidth = ((edgeHi ? 2.6 : 1) * lineScale) / k;
     ctx.setLineDash(pending ? [4/k, 4/k] : []);
     ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    if(appearance.showArrows && !pending && !dimEdge){
+    if(appearance.showArrows && !pending){
       drawArrowHead(a.x,a.y,b.x,b.y, (6*lineScale)/k);
     }
   }
   ctx.setLineDash([]);
+  ctx.lineWidth = (1 * lineScale) / k;
   ctx.globalAlpha = 1;
 
   for(const n of nodes){
@@ -322,25 +374,27 @@ function draw(){
     const inFocus = !focusing || focusIds.has(n.id);
     const dim = focusing && !inFocus;
     const isHub =
-      (degreeById.get(n.id)||0) > (appearance.hubLabelMinDegree||3) ||
+      (degreeById.get(n.id)||0) >= (appearance.hubLabelMinDegree||3) ||
       (n.mentionCount||0) >= (appearance.hubLabelMinMentions||5);
 
-    ctx.globalAlpha = dim ? 0.1 : pending ? 0.45 : 1;
+    ctx.globalAlpha = dim ? 0.1 : (pending && !highlighted) ? 0.45 : 1;
     ctx.beginPath();
     ctx.fillStyle=TYPE_COLORS[n.nodeType]||'#94a3b8';
     ctx.arc(n.x,n.y,r,0,Math.PI*2);
     ctx.fill();
 
-    if(pending && inFocus){
+    if(highlighted){
+      ctx.setLineDash(pending ? [3/k,3/k] : []);
+      ctx.strokeStyle=theme.highlight;
+      ctx.lineWidth=(2.5*lineScale)/k;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if(pending && inFocus){
       ctx.setLineDash([3/k,3/k]);
-      ctx.strokeStyle='rgba(226,232,240,0.6)';
+      ctx.strokeStyle=theme.highlight;
       ctx.lineWidth=(1.5*lineScale)/k;
       ctx.stroke();
       ctx.setLineDash([]);
-    } else if(highlighted){
-      ctx.strokeStyle='#e2e8f0';
-      ctx.lineWidth=(2.5*lineScale)/k;
-      ctx.stroke();
     }
 
     const showLabel =
@@ -349,7 +403,7 @@ function draw(){
       (n.id===selectedId || highlightIds.has(n.id) || (focusing && inFocus) || isHub);
     if(showLabel){
       ctx.globalAlpha = (pending ? 0.45 : 1) * textAlpha;
-      ctx.fillStyle='#e2e8f0';
+      ctx.fillStyle=theme.label;
       ctx.font=(12/k)+'px system-ui';
       ctx.fillText(n.name.slice(0,16), n.x+r+3, n.y+4);
     }
@@ -358,7 +412,33 @@ function draw(){
   ctx.restore();
 }
 
-function loop(){ step(); draw(); requestAnimationFrame(loop); }
+let simRunning = true;
+let rafId = null;
+function kinetic(){
+  let e = 0;
+  for(const n of nodes) e += (n.vx||0)*(n.vx||0) + (n.vy||0)*(n.vy||0);
+  return e;
+}
+function loop(){
+  rafId = requestAnimationFrame(loop);
+  const following = cameraAnim || followUntil > performance.now();
+  if(simRunning){
+    step();
+    if(!dragNode && kinetic() < 0.08) simRunning = false;
+  }
+  draw();
+  if(!simRunning && !following){
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+}
+function wakeSim(){
+  simRunning = true;
+  if(rafId == null) loop();
+}
+function requestDraw(){
+  if(rafId == null) draw();
+}
 loop();
 
 function worldPoint(clientX, clientY){
@@ -403,6 +483,8 @@ function pinchStateFromTouches(){
 
 canvas.addEventListener('touchstart', (ev)=>{
   syncActiveTouches(ev);
+  interacting = true;
+  stopCameraFollow();
   if(ev.touches.length >= 2){
     dragNode=null;
     pan=null;
@@ -422,8 +504,6 @@ canvas.addEventListener('touchstart', (ev)=>{
   const n=hitNode(p.x,p.y);
   if(n){
     dragNode=n.id;
-    selectedId = n.id;
-    post({type:'select', id:n.id, name:n.name, nodeType:n.nodeType, reviewStatus:n.reviewStatus||'approved'});
   } else {
     dragNode=null;
     pan={ x:t.clientX-transform.x, y:t.clientY-transform.y, startX:t.clientX, startY:t.clientY };
@@ -470,13 +550,16 @@ canvas.addEventListener('touchmove', (ev)=>{
 
   if(dragNode){
     if(dist < DRAG_THRESHOLD_PX) return;
+    stopCameraFollow();
     const p=worldPoint(t.clientX,t.clientY);
     const n=nodes.find(x=>x.id===dragNode);
-    if(n){ n.x=p.x; n.y=p.y; n.vx=0; n.vy=0; }
+    if(n){ n.x=p.x; n.y=p.y; n.vx=0; n.vy=0; wakeSim(); }
   } else if(pan){
     if(dist < DRAG_THRESHOLD_PX) return;
+    stopCameraFollow();
     transform.x=t.clientX-pan.x;
     transform.y=t.clientY-pan.y;
+    requestDraw();
   }
 },{passive:true});
 
@@ -500,8 +583,17 @@ canvas.addEventListener('touchend', (ev)=>{
   }
   // All fingers up
   const wasPan = !!pan && !dragNode;
+  const tappedNode = dragNode && !touchMoved;
   const littleMove = !touchMoved;
-  if(wasPan && littleMove){
+  interacting = false;
+  if(tappedNode){
+    const n=nodes.find(x=>x.id===dragNode);
+    if(n){
+      selectedId = n.id;
+      post({type:'select', id:n.id, name:n.name, nodeType:n.nodeType, reviewStatus:n.reviewStatus||'approved'});
+      locateSelected({zoom:false});
+    }
+  } else if(wasPan && littleMove){
     post({type:'clear'});
   }
   dragNode=null;
@@ -510,17 +602,20 @@ canvas.addEventListener('touchend', (ev)=>{
 },{passive:true});
 
 canvas.addEventListener('touchcancel', ()=>{
+  interacting=false;
   dragNode=null; pan=null; pinch=null; activeTouches.clear();
 },{passive:true});
 
 window.__setGraphForce = function(next){
   if(!next || typeof next !== 'object') return;
   force = Object.assign({}, force, next);
+  wakeSim();
 };
 
 window.__setGraphAppearance = function(next){
   if(!next || typeof next !== 'object') return;
   appearance = Object.assign({}, appearance, next);
+  requestDraw();
 };
 
 window.__setGraphSelection = function(next){
@@ -534,6 +629,34 @@ window.__setGraphSelection = function(next){
   if(Array.isArray(next.highlightIds)){
     highlightIds = new Set(next.highlightIds.map(String));
   }
+  if(Array.isArray(next.highlightEdgeIds)){
+    highlightEdgeIds = new Set(next.highlightEdgeIds.map(String));
+  }
+  if(Array.isArray(next.locateIds)){
+    locateIds = next.locateIds.map(String);
+  }
+  requestDraw();
+};
+
+window.__patchGraphMeta = function(payload){
+  if(!payload || typeof payload !== 'object') return;
+  const byId = new Map((payload.nodes||[]).map(function(n){ return [n.id, n]; }));
+  for(const n of nodes){
+    const fresh = byId.get(n.id);
+    if(!fresh) continue;
+    n.name = fresh.name;
+    n.nodeType = fresh.nodeType;
+    n.mentionCount = fresh.mentionCount;
+    n.reviewStatus = fresh.reviewStatus;
+  }
+  const linkMeta = new Map((payload.edges||[]).map(function(e){ return [e.id, e]; }));
+  for(const l of links){
+    const fresh = linkMeta.get(l.id);
+    if(!fresh) continue;
+    l.reviewStatus = fresh.reviewStatus;
+    l.edgeType = fresh.edgeType;
+  }
+  requestDraw();
 };
 
 window.__locateSelected = function(opts){
@@ -548,6 +671,7 @@ window.__relayout = function(){
     n.vx = (Math.random()-0.5)*12;
     n.vy = (Math.random()-0.5)*12;
   }
+  wakeSim();
 };
 </script>
 </body>
@@ -567,6 +691,8 @@ export const GraphForceWebView: React.FC<{
   selectedId?: string | null
   focusIds?: Set<string> | null
   highlightIds?: Set<string> | null
+  highlightEdgeIds?: Set<string> | null
+  locateIds?: string[] | null
   locateSeq?: number
   animationTick?: number
   onSelectNode?: (node: {
@@ -584,17 +710,21 @@ export const GraphForceWebView: React.FC<{
   selectedId = null,
   focusIds = null,
   highlightIds = null,
+  highlightEdgeIds = null,
+  locateIds = null,
   locateSeq = 0,
   animationTick = 0,
   onSelectNode,
   onClearSelection
 }) => {
+  const colorScheme = useColorScheme() === 'light' ? 'light' : 'dark'
+  const canvasBg = GRAPH_CANVAS_THEME[colorScheme].background
   const fp = useMemo(() => topologyFingerprint(nodes, edges), [nodes, edges])
   const html = useMemo(
-    () => buildHtml(nodes, edges, forceSettings, appearanceSettings),
-    // Rebuild only when graph topology changes; live updates via inject below.
+    () => buildHtml(nodes, edges, forceSettings, appearanceSettings, colorScheme),
+    // Rebuild only when graph topology or appearance scheme changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fp]
+    [fp, colorScheme]
   )
 
   const webRef = useRef<WebView>(null)
@@ -603,6 +733,8 @@ export const GraphForceWebView: React.FC<{
   const selectedIdRef = useRef(selectedId)
   const focusIdsRef = useRef(focusIds)
   const highlightIdsRef = useRef(highlightIds)
+  const highlightEdgeIdsRef = useRef(highlightEdgeIds)
+  const locateIdsRef = useRef(locateIds)
   const locateSeqRef = useRef(locateSeq)
   const animationTickRef = useRef(animationTick)
   const nodesRef = useRef(nodes)
@@ -619,6 +751,8 @@ export const GraphForceWebView: React.FC<{
   selectedIdRef.current = selectedId
   focusIdsRef.current = focusIds
   highlightIdsRef.current = highlightIds
+  highlightEdgeIdsRef.current = highlightEdgeIds
+  locateIdsRef.current = locateIds
   nodesRef.current = nodes
   onSelectRef.current = onSelectNode
   onClearRef.current = onClearSelection
@@ -626,7 +760,9 @@ export const GraphForceWebView: React.FC<{
   const selectionPayload = () => ({
     selectedId: selectedIdRef.current ?? null,
     focusIds: setToArray(focusIdsRef.current),
-    highlightIds: setToArray(highlightIdsRef.current)
+    highlightIds: setToArray(highlightIdsRef.current),
+    highlightEdgeIds: setToArray(highlightEdgeIdsRef.current),
+    locateIds: locateIdsRef.current ?? []
   })
 
   const reinjectAll = (opts?: { locate?: boolean; locateZoom?: boolean }) => {
@@ -641,13 +777,18 @@ export const GraphForceWebView: React.FC<{
       'window.__setGraphSelection && window.__setGraphSelection',
       selectionPayload()
     )
-    if (opts?.locate && selectedIdRef.current) {
+    if (opts?.locate && (selectedIdRef.current || (locateIdsRef.current?.length ?? 0) > 0)) {
       const zoom = opts.locateZoom !== false
       webRef.current?.injectJavaScript(
         `window.__locateSelected && window.__locateSelected(${JSON.stringify({ zoom })}); true;`
       )
     }
   }
+
+  useEffect(() => {
+    if (!loadedRef.current) return
+    injectJson(webRef, 'window.__patchGraphMeta && window.__patchGraphMeta', { nodes, edges })
+  }, [nodes, edges])
 
   useEffect(() => {
     if (!loadedRef.current) return
@@ -668,9 +809,11 @@ export const GraphForceWebView: React.FC<{
     injectJson(webRef, 'window.__setGraphSelection && window.__setGraphSelection', {
       selectedId: selectedId ?? null,
       focusIds: setToArray(focusIds),
-      highlightIds: setToArray(highlightIds)
+      highlightIds: setToArray(highlightIds),
+      highlightEdgeIds: setToArray(highlightEdgeIds),
+      locateIds: locateIds ?? []
     })
-  }, [selectedId, focusIds, highlightIds])
+  }, [selectedId, focusIds, highlightIds, highlightEdgeIds, locateIds])
 
   useEffect(() => {
     if (!loadedRef.current) {
@@ -688,7 +831,7 @@ export const GraphForceWebView: React.FC<{
     }
 
     if (locateBumped) {
-      if (selectedId) {
+      if (selectedId || (locateIds && locateIds.length > 0)) {
         webRef.current?.injectJavaScript(
           `window.__locateSelected && window.__locateSelected(${JSON.stringify({ zoom: true })}); true;`
         )
@@ -705,7 +848,7 @@ export const GraphForceWebView: React.FC<{
         )
       }
     }
-  }, [selectedId, locateSeq])
+  }, [selectedId, locateSeq, locateIds])
 
   useEffect(() => {
     if (!loadedRef.current) {
@@ -773,16 +916,18 @@ export const GraphForceWebView: React.FC<{
         onMessage={onMessage}
         onLoadEnd={() => {
           loadedRef.current = true
-          const shouldLocate = Boolean(selectedIdRef.current) && locateSeqRef.current > 0
+          const hasLocateTarget =
+            Boolean(selectedIdRef.current) || (locateIdsRef.current?.length ?? 0) > 0
+          const shouldLocate = hasLocateTarget && locateSeqRef.current > 0
           reinjectAll({
-            locate: shouldLocate || Boolean(selectedIdRef.current),
+            locate: hasLocateTarget,
             locateZoom: shouldLocate
           })
           locateReadyRef.current = true
           animReadyRef.current = true
           prevSelectedIdRef.current = selectedIdRef.current
         }}
-        style={styles.web}
+        style={[styles.web, { backgroundColor: canvasBg }]}
         javaScriptEnabled
         domStorageEnabled
         allowsInlineMediaPlayback
@@ -797,5 +942,5 @@ export const GraphForceWebView: React.FC<{
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, minHeight: 280 },
-  web: { flex: 1, backgroundColor: '#0f172a' }
+  web: { flex: 1 }
 })

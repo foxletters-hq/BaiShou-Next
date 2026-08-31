@@ -1,3 +1,4 @@
+import { resolveTesseractNodeWorkerPath } from './tesseract-worker-path.util'
 import type { PdfPageBitmapRenderer, VisionPageRecognizer } from './types'
 
 let pdfPageBitmapRenderer: PdfPageBitmapRenderer | null = null
@@ -72,6 +73,13 @@ export async function probeTesseractJs(): Promise<{ ok: boolean; reason?: string
     const mod = await import(/* @vite-ignore */ 'tesseract.js')
     if (!mod?.createWorker && !(mod as { default?: unknown }).default) {
       tesseractProbe = { ok: false, reason: 'tesseract.js 模块不完整' }
+      return tesseractProbe
+    }
+    if (!resolveTesseractNodeWorkerPath()) {
+      tesseractProbe = {
+        ok: false,
+        reason: 'tesseract.js worker-script 未找到，无法启动 OCR 工作线程'
+      }
       return tesseractProbe
     }
     tesseractProbe = { ok: true }

@@ -25,7 +25,6 @@ export interface WorkbenchShellProps {
   sessions: AgentWorkspaceSessionListItem[]
   loadingSessions?: boolean
   activeSessionId?: string
-  changes: WorkspaceChangeEntry[]
   onOpenFolder: () => void
   onBackToHome: () => void
   onNewSession: () => void
@@ -38,7 +37,6 @@ export interface WorkbenchShellProps {
     | 'workspace'
     | 'sessions'
     | 'loadingSessions'
-    | 'changes'
     | 'onSelectChange'
     | 'onReviewAll'
     | 'sessionsViewActive'
@@ -57,7 +55,6 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   sessions,
   loadingSessions,
   activeSessionId: _activeSessionId,
-  changes,
   onOpenFolder,
   onBackToHome,
   onNewSession,
@@ -235,7 +232,6 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               width={liveAgentWidth}
               sessions={sessions}
               loadingSessions={loadingSessions}
-              changes={changes}
               onSelectChange={handleSelectChange}
               onReviewAll={handleReviewAll}
               sessionsViewActive={agentSessionsOpen}

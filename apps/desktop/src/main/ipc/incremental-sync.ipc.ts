@@ -259,8 +259,10 @@ async function afterIncrementalSync(
   } else if (cls.memory || cls.graph) {
     // Memory/Graph-only downloads skip selective resync but still need derived-index hydration
     const { runDerivedIndexHydration } = await import('../services/raw-data-source.runtime')
-    await runDerivedIndexHydration('incremental-sync-memory-graph')
-  } else if (!cls.notebooks) {
+    await runDerivedIndexHydration('incremental-sync-memory-graph', {
+      deletedShardPaths: result.deletedLocal
+    })
+  } else if (!cls.notebooks && cls.notebookGraphIds.length === 0) {
     logger.warn('[IncrementalSync][PostSync] done-lite', { reason: 'sessions-hydrated-only' })
     return
   }
@@ -272,8 +274,19 @@ async function afterIncrementalSync(
   }
 
   if (cls.notebooks) {
-    const { runKnowledgeHydrationAfterSync } = await import('../services/raw-data-source.runtime')
+    const { runKnowledgeHydrationAfterSync, runNotebookGraphIndexAfterSync } =
+      await import('../services/raw-data-source.runtime')
     await runKnowledgeHydrationAfterSync('incremental-sync-notebooks')
+    if (cls.notebookGraphIds.length > 0) {
+      await runNotebookGraphIndexAfterSync(cls.notebookGraphIds, {
+        deletedShardPaths: result.deletedLocal
+      })
+    }
+  } else if (cls.notebookGraphIds.length > 0) {
+    const { runNotebookGraphIndexAfterSync } = await import('../services/raw-data-source.runtime')
+    await runNotebookGraphIndexAfterSync(cls.notebookGraphIds, {
+      deletedShardPaths: result.deletedLocal
+    })
   }
 
   logger.warn('[IncrementalSync][PostSync] done')

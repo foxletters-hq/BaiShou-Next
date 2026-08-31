@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentWorkspaceDirEntry } from '@baishou/shared'
 import { parentRelativePath } from './workbench-path.util'
+import {
+  collapsedExplorerExpandedPaths,
+  explorerHasCollapsibleFolders,
+  restoreExplorerExpandedPaths,
+  snapshotExplorerExpandedPaths
+} from './workbench-file-tree.util'
 
 export interface FileTreeNode {
   relativePath: string
@@ -43,14 +49,19 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [loadingRoot, setLoadingRoot] = useState(false)
   const [rootError, setRootError] = useState<string | null>(null)
+  const hasLoadedOnceRef = useRef(false)
+  const collapseSnapshotRef = useRef<string[] | null>(null)
 
   useEffect(() => {
+    collapseSnapshotRef.current = null
     if (!folderRoot) {
       setChildrenByPath({})
       setSelectedPath(null)
       setExpandedPaths(new Set(['']))
+      hasLoadedOnceRef.current = false
       return
     }
+    hasLoadedOnceRef.current = false
     setExpandedPaths(loadExpandedPaths(folderRoot))
     setChildrenByPath({})
   }, [folderRoot])
@@ -79,16 +90,18 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
 
   const refreshRoot = useCallback(async () => {
     if (!folderRoot) return
-    setLoadingRoot(true)
+    const isInitialLoad = !hasLoadedOnceRef.current
+    if (isInitialLoad) setLoadingRoot(true)
     setRootError(null)
     try {
       await loadPath('')
       const expanded = loadExpandedPaths(folderRoot)
       setExpandedPaths(expanded)
       await Promise.all([...expanded].filter((path) => path !== '').map((path) => loadPath(path)))
+      hasLoadedOnceRef.current = true
     } catch (error) {
       setRootError(error instanceof Error ? error.message : 'Failed to load directory')
-      setChildrenByPath({})
+      if (isInitialLoad) setChildrenByPath({})
     } finally {
       setLoadingRoot(false)
     }
@@ -145,7 +158,44 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
     [folderRoot, loadPath]
   )
 
+  const collapseAllFolders = useCallback(() => {
+    setExpandedPaths((prev) => {
+      if (!explorerHasCollapsibleFolders(prev)) return prev
+      collapseSnapshotRef.current = snapshotExplorerExpandedPaths(prev)
+      const next = collapsedExplorerExpandedPaths()
+      if (folderRoot) persistExpandedPaths(folderRoot, next)
+      return next
+    })
+  }, [folderRoot])
+
   const rootChildren = childrenByPath[''] ?? EMPTY_ROOT_CHILDREN
+
+  const expandCollapsedFolders = useCallback(() => {
+    const snapshot = collapseSnapshotRef.current
+    const fallback = rootChildren
+      .filter((node) => node.isDirectory)
+      .map((node) => node.relativePath)
+    const paths = snapshot && snapshot.length > 0 ? snapshot : fallback
+    if (paths.length === 0) return
+    const next = restoreExplorerExpandedPaths(paths)
+    setExpandedPaths(next)
+    if (folderRoot) persistExpandedPaths(folderRoot, next)
+    void Promise.all(paths.map((path) => loadPath(path))).catch(() => {
+      /* 展开失败时保留已写入的展开状态 */
+    })
+  }, [folderRoot, loadPath, rootChildren])
+
+  const toggleAllFolders = useCallback(() => {
+    if (explorerHasCollapsibleFolders(expandedPaths)) {
+      collapseAllFolders()
+      return
+    }
+    expandCollapsedFolders()
+  }, [collapseAllFolders, expandCollapsedFolders, expandedPaths])
+
+  const canCollapseAllFolders = explorerHasCollapsibleFolders(expandedPaths)
+  const canToggleAllFolders =
+    canCollapseAllFolders || rootChildren.some((node) => node.isDirectory)
 
   const isExpanded = useCallback(
     (relativePath: string) => expandedPaths.has(relativePath),
@@ -185,6 +235,10 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
       selectedPath,
       isExpanded,
       toggleExpanded,
+      collapseAllFolders,
+      toggleAllFolders,
+      canCollapseAllFolders,
+      canToggleAllFolders,
       getChildren,
       selectPath,
       refreshRoot,
@@ -205,6 +259,10 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
     [
       folderRoot,
       getChildren,
+      canCollapseAllFolders,
+      canToggleAllFolders,
+      collapseAllFolders,
+      toggleAllFolders,
       isExpanded,
       loadDirectory,
       loadPath,

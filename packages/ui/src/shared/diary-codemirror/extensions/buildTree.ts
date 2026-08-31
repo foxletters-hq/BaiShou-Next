@@ -2,9 +2,14 @@ import type { EditorState } from '@codemirror/state'
 import { Decoration } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNodeRef } from '@lezer/common'
-import { linkMark } from './styles'
+import { hideSyntaxReplaceSpec, inlineCodeMark, linkMark } from './styles'
 import type { ImageRange } from './buildImages'
 import { rangeOverlapsTableBlocks, type TableBlockRange } from './buildTableChrome'
+import { pushReplaceDecoration } from './decorationMarks'
+import {
+  markdownInlineLinkPreviewRanges,
+  selectionTouchesLinkRange
+} from './markdown-link-preview.util'
 import type { DiaryCmPlatform } from '../types'
 
 type DecorationMark = { from: number; to: number; value: Decoration }
@@ -38,11 +43,11 @@ export function collectTreeDecorations(
   marks: DecorationMark[],
   widgetizedTables: TableBlockRange[] = [],
   hasFocus = true,
-  _platform?: DiaryCmPlatform
+  platform?: DiaryCmPlatform
 ): void {
   const tree = syntaxTree(state)
   const doc = state.doc
-  const activeLinkStarts = new Set<number>()
+  const hideSpec = hideSyntaxReplaceSpec(platform?.interactionMode === 'touch')
 
   tree.iterate({
     enter(node: SyntaxNodeRef) {
@@ -57,31 +62,35 @@ export function collectTreeDecorations(
 
       const name = node.type.name
 
-      if (name === 'FencedCode') {
+      if (name === 'FencedCode' || name === 'CodeBlock') {
         return false
       }
 
-      if (name === 'Link' && hasFocus) {
-        for (const range of state.selection.ranges) {
-          if (range.from <= node.to && range.to >= node.from) {
-            activeLinkStarts.add(node.from)
-            break
-          }
-        }
+      if (name === 'InlineCode' && node.from < node.to) {
+        const alreadyMarked = marks.some(
+          (mark) =>
+            mark.from === node.from &&
+            mark.to === node.to &&
+            mark.value.spec.class === 'cm-rendered-inline-code'
+        )
+        if (!alreadyMarked) pushDecoration(marks, inlineCodeMark, node.from, node.to)
+        return false
       }
 
-      if (name === 'Link' && node.from < node.to) {
-        const text = doc.sliceString(node.from, node.to)
-        const bracketOpen = text.indexOf('[')
-        const bracketClose = text.indexOf('](')
-        if (bracketOpen !== -1 && bracketClose !== -1) {
-          const openFrom = node.from + bracketOpen
-          const closeFrom = node.from + bracketClose
-          if (!activeLinkStarts.has(node.from)) {
-            pushDecoration(marks, linkMark, openFrom + 1, closeFrom)
-          }
-        }
+      if (name !== 'Link' || node.from >= node.to) return
+
+      const raw = doc.sliceString(node.from, node.to)
+      const parts = markdownInlineLinkPreviewRanges(raw, node.from)
+      if (!parts) return
+
+      const editing =
+        hasFocus && selectionTouchesLinkRange(state.selection.ranges, node.from, node.to)
+      if (editing) return
+
+      for (const range of parts.hideRanges) {
+        pushReplaceDecoration(marks, doc, range.from, range.to, hideSpec)
       }
+      pushDecoration(marks, linkMark, parts.labelFrom, parts.labelTo)
     }
   })
 }

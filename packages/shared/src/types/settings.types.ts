@@ -107,14 +107,18 @@ export interface RagConfig {
 /**
  * 知识库提取引擎配置（K1.5）
  */
+export type KnowledgeImportProcessMode = 'vector' | 'graph' | 'both'
+
 export interface KnowledgeConfig {
   /** 默认提取引擎：simple | ocr | vision */
   defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
+  /** 导入后默认：向量、图关系，或两者都做 */
+  importProcessMode?: KnowledgeImportProcessMode
   /** tesseract 语言，如 chi_sim+eng；无语言包时引擎会降级 eng */
   ocrLanguage?: string
   /** PDF 渲染 DPI，建议 200–300 */
   ocrDpi?: number
-  /** OCR / vision 同时处理的页数（1–3，默认 1） */
+  /** OCR / vision 同时处理的页数（1–10，默认 1） */
   ocrConcurrency?: number
   /** Ask 默认开启多子查询（最多 2） */
   multiQueryAsk?: boolean
@@ -236,6 +240,30 @@ export interface McpServerConfig {
   mcpAuthEnabled?: boolean
   /** 可选访问令牌；鉴权开启且为空时会自动生成，外部客户端需在 Authorization 头携带 */
   mcpAuthToken?: string
+}
+
+/** 作为客户端接入的外部 MCP（仅 Streamable HTTP /mcp） */
+export interface McpClientServerEntry {
+  id: string
+  name: string
+  url: string
+  enabled: boolean
+  authToken?: string
+}
+
+export interface McpClientConfig {
+  servers: McpClientServerEntry[]
+}
+
+export interface McpClientListedTool {
+  name: string
+  description?: string
+}
+
+export interface McpClientServerStatus {
+  id: string
+  connected: boolean
+  tools: McpClientListedTool[]
 }
 
 /**

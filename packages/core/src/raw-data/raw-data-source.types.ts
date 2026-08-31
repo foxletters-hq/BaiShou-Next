@@ -28,64 +28,25 @@ export interface ShardsManifest {
       contentHash: string
       /** Last contentHash that was fully indexed into derived SQLite */
       indexedHash?: string
+      /** Fingerprint so listShards can skip MD5 when the file did not change. */
+      size?: number
+      mtimeMs?: number
     }
   >
 }
 
 export type { MemoryRawRecord } from '@baishou/shared'
-
-/** Appendix B.2 — Graph node JSONL row (subset used by P1) */
-export interface GraphNodeRawRecord {
-  id: string
-  schemaVersion: 1
-  vaultId?: string
-  vaultName: string
-  nodeType: string
-  name: string
-  aliases: string[]
-  summary: string
-  props: Record<string, unknown>
-  mentionCount: number
-  firstSeenAt: number
-  lastSeenAt: number
-  origin: 'ai' | 'user'
-  createdAt: number
-  updatedAt: number
-  deletedAt: number | null
-  reviewStatus?: 'approved' | 'pending' | 'rejected'
-}
-
-/** Appendix B.3 — Graph edge JSONL row */
-export interface GraphEdgeRawRecord {
-  id: string
-  schemaVersion: 1
-  vaultId?: string
-  vaultName: string
-  fromId: string
-  toId: string
-  edgeType: string
-  props: Record<string, unknown>
-  validFrom: number | null
-  validTo: number | null
-  isCurrent: boolean
-  sourceKind: 'diary' | 'session' | 'memory' | 'manual' | string
-  sourceRef: string | null
-  sourceExcerpt: string
-  sourceContentHash: string | null
-  confidence: number
-  origin: 'ai' | 'user'
-  reviewStatus: 'approved' | 'pending' | 'rejected'
-  shardMonth: string
-  createdAt: number
-  updatedAt: number
-  deletedAt: number | null
-}
+export type {
+  GraphNodeRawRecord,
+  GraphEdgeRawRecord
+} from '@baishou/shared'
 
 /** Appendix B.4 — extract-state cursor (P2 uses; P1 stores only) */
 export interface GraphExtractStateRawRecord {
   id: string
   schemaVersion: 1
-  vaultId?: string
+  /** Required on new writes; sync skips rows without vaultId. */
+  vaultId: string
   vaultName: string
   filePath: string
   sourceContentHash: string

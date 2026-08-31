@@ -15,6 +15,7 @@ import {
   collectFencedCodeProtectedLineNumbers,
   expandActiveLinesForFencedCode
 } from './buildFencedCode'
+import { collectSkillPropertyDecorations } from './buildSkillProperties'
 import type { DiaryCmPlatform } from '../types'
 
 export interface BuildMarkerHidingOptions {
@@ -35,9 +36,14 @@ export function buildMarkerHidingDecorations(
   expandActiveLinesForFencedCode(state, activeLines)
   const fencedCodeLines = collectFencedCodeProtectedLineNumbers(state)
   const marks: DecorationMark[] = []
+  const propertyLines =
+    platform?.documentProperties === true
+      ? collectSkillPropertyDecorations(state, activeLines, marks)
+      : new Set<number>()
+  const skipLineSyntax = new Set<number>([...fencedCodeLines, ...propertyLines])
   const imageRanges = scanImageRanges(state)
-  collectListLineDecorations(state, cursors, marks, fencedCodeLines)
-  collectLineSyntaxDecorations(state, activeLines, marks, fencedCodeLines, platform)
+  collectListLineDecorations(state, cursors, marks, skipLineSyntax)
+  collectLineSyntaxDecorations(state, activeLines, marks, skipLineSyntax, platform)
   const tableBlocks = collectTableBlockRanges(state)
   if (platform?.interactionMode !== 'touch') {
     collectTableDecorations(state, cursors, marks, tableBlocks)

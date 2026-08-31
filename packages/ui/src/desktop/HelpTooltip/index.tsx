@@ -1,10 +1,12 @@
 import React from 'react'
 import { CircleHelp } from 'lucide-react'
+import { HELP_ICON_SIZE } from '../../shared/icons/icon-sizes'
 import { Tooltip } from '../Tooltip/Tooltip'
 import styles from './SettingsHelpIcon.module.css'
 
 export interface HelpTooltipProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'content'> {
   content: React.ReactNode
+  /** 已废弃：问号统一使用 HELP_ICON_SIZE，传入值不会生效。 */
   size?: number
   tooltipClassName?: string
 }
@@ -12,7 +14,7 @@ export interface HelpTooltipProps extends Omit<React.HTMLAttributes<HTMLDivEleme
 /** Hover "?" help icon — shares icon colors with SettingsHelpIconButton. */
 export const HelpTooltip: React.FC<HelpTooltipProps> = ({
   content,
-  size = 16,
+  size: _size,
   className = '',
   tooltipClassName,
   ...props
@@ -28,7 +30,7 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
       onMouseDown={(e) => e.stopPropagation()}
       {...props}
     >
-      <CircleHelp size={size} className={styles.helpIcon} aria-hidden />
+      <CircleHelp size={HELP_ICON_SIZE} className={styles.helpIcon} aria-hidden />
     </Tooltip>
   )
 }

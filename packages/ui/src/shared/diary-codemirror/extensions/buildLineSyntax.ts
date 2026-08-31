@@ -1,9 +1,11 @@
 import type { EditorState } from '@codemirror/state'
 import {
   blockquoteLineStyle,
+  headingLineStyles,
   hideSyntaxReplaceSpec,
   hrLineStyle,
-  hrWidgetReplaceSpec
+  hrWidgetReplaceSpec,
+  inlineCodeMark
 } from './styles'
 import { pushLineDecoration, pushReplaceDecoration, type DecorationMark } from './decorationMarks'
 import type { DiaryCmPlatform } from '../types'
@@ -68,6 +70,43 @@ function hideDelimiterRuns(
   }
 }
 
+/** 行内代码：编辑时反引号留在灰底内，光标离开后隐藏反引号 */
+function styleInlineCodeRuns(
+  marks: DecorationMark[],
+  doc: EditorState['doc'],
+  hideSpec: Parameters<typeof import('@codemirror/view').Decoration.replace>[0],
+  lineFrom: number,
+  text: string,
+  state: EditorState
+): void {
+  INLINE_CODE_WRAPPER_RE.lastIndex = 0
+  let match = INLINE_CODE_WRAPPER_RE.exec(text)
+  while (match) {
+    const full = match[0]
+    const inner = match[1] ?? ''
+    const openLen = full.indexOf(inner)
+    const closeLen = full.length - openLen - inner.length
+    const from = lineFrom + match.index
+    const to = from + full.length
+    const innerFrom = from + openLen
+    const innerTo = innerFrom + inner.length
+    const editing = selectionIntersectsRange(state, from, to)
+
+    if (editing) {
+      if (from < to) marks.push(inlineCodeMark.range(from, to))
+    } else {
+      if (innerFrom < innerTo) marks.push(inlineCodeMark.range(innerFrom, innerTo))
+      if (openLen > 0) {
+        pushReplaceDecoration(marks, doc, from, from + openLen, hideSpec)
+      }
+      if (closeLen > 0) {
+        pushReplaceDecoration(marks, doc, innerTo, to, hideSpec)
+      }
+    }
+    match = INLINE_CODE_WRAPPER_RE.exec(text)
+  }
+}
+
 export function collectLineSyntaxDecorations(
   state: EditorState,
   activeLines: Set<number>,
@@ -86,6 +125,8 @@ export function collectLineSyntaxDecorations(
 
     const heading = text.match(ATX_HEADING_PREFIX_RE)
     if (heading) {
+      const lineStyle = headingLineStyles[heading[1].length]
+      if (lineStyle) pushLineDecoration(marks, lineStyle, line.from)
       if (!isActiveLine) {
         pushReplaceDecoration(marks, doc, line.from, line.from + heading[0].length, hideSpec)
       }
@@ -102,15 +143,17 @@ export function collectLineSyntaxDecorations(
     }
 
     const quote = text.match(BLOCKQUOTE_PREFIX_RE)
-    if (quote && !isActiveLine) {
-      pushReplaceDecoration(marks, doc, line.from, line.from + quote[0].length, hideSpec)
+    if (quote) {
+      if (!isActiveLine) {
+        pushReplaceDecoration(marks, doc, line.from, line.from + quote[0].length, hideSpec)
+      }
       pushLineDecoration(marks, blockquoteLineStyle, line.from)
     }
 
     hideDelimiterRuns(marks, doc, hideSpec, line.from, text, STRONG_WRAPPER_RE, 1, state)
     hideDelimiterRuns(marks, doc, hideSpec, line.from, text, STRIKETHROUGH_WRAPPER_RE, 1, state)
     if (!text.includes('```')) {
-      hideDelimiterRuns(marks, doc, hideSpec, line.from, text, INLINE_CODE_WRAPPER_RE, 1, state)
+      styleInlineCodeRuns(marks, doc, hideSpec, line.from, text, state)
     }
     hideDelimiterRuns(marks, doc, hideSpec, line.from, text, EMPHASIS_WRAPPER_RE, 1, state)
   }

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Input } from '../Input/Input'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { RefreshCw } from 'lucide-react'
 
@@ -21,8 +22,9 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
 
   return (
     <div className="gmp-commit-area">
-      <input
-        className="gmp-input gmp-commit-input"
+      <Input
+        fieldSize="small"
+        className="gmp-commit-input"
         type="text"
         value={commitMessage}
         onChange={(e) => setCommitMessage(e.target.value)}
@@ -43,21 +45,14 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
         {t('version_control.commit_push', '提交并推送')}
       </button>
       <button
-        className="gmp-btn"
+        className="gmp-btn gmp-icon-btn"
         onClick={() => {
-          vm.handleLoadHistory()
-          vm.handleRefreshStatus()
-          vm.handleLoadRecentPulls()
+          void vm.handleLoadHistory()
+          void vm.handleRefreshStatus({ fetch: true })
         }}
         title={t('common.refresh', '刷新')}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '8px'
-        }}
       >
-        <RefreshCw size={18} />
+        <RefreshCw size={16} />
       </button>
     </div>
   )

@@ -1,2 +1,2 @@
-/** AI 建议补全 / 周期总结生成超时（移动端网络与长上下文场景需要更宽裕） */
-export const SUMMARY_AI_GENERATION_TIMEOUT_MS = 120_000
+/** 等待模型首个输出（正文或推理增量）的超时；收到首个输出后不再按墙钟超时中止 */
+export const SUMMARY_AI_GENERATION_TIMEOUT_MS = 300_000

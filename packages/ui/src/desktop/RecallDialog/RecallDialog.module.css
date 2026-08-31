@@ -198,7 +198,7 @@
 }
 
 .listArea::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 .listArea::-webkit-scrollbar-thumb {
   background-color: rgba(var(--color-outline-variant-rgb), 0.6);
@@ -240,19 +240,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 2px solid var(--border-control);
   flex-shrink: 0;
-  transition: all 0.2s;
-  background: var(--bg-surface);
-}
-
-.cardSelected .checkboxWrap {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--text-on-primary);
 }
 
 .cardInfo {

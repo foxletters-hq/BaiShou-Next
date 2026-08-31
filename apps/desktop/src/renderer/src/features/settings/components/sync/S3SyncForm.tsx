@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Select } from '@baishou/ui'
+import { Input, Select } from '@baishou/ui'
 import { DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH } from '@baishou/shared'
 import styles from './SyncForms.module.css'
 
@@ -34,77 +34,75 @@ export const S3SyncForm: React.FC<S3SyncFormProps> = ({ config, onChange }) => {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_endpoint', 'Endpoint')}</label>
-        <input
+        <Input
+          fieldSize="small"
           type="text"
           value={config.endpoint || ''}
           onChange={(e) => onChange({ endpoint: e.target.value })}
-          className={styles.input}
         />
       </div>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_bucket', 'Bucket')}</label>
-        <input
+        <Input
+          fieldSize="small"
           type="text"
           value={config.bucket || ''}
           onChange={(e) => onChange({ bucket: e.target.value })}
-          className={styles.input}
         />
       </div>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_region', 'Region (Optional)')}</label>
-        <input
+        <Input
+          fieldSize="small"
           type="text"
           value={config.region || ''}
           onChange={(e) => onChange({ region: e.target.value })}
-          className={styles.input}
         />
       </div>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.path_prefix', 'Path Prefix')}</label>
-        <input
+        <Input
+          fieldSize="small"
           type="text"
           value={config.s3Path || DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH}
           onChange={(e) => onChange({ s3Path: e.target.value })}
-          className={styles.input}
         />
       </div>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_access_key', 'Access Key')}</label>
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showAccessKey ? 'text' : 'password'}
-            value={config.s3AccessKey || ''}
-            onChange={(e) => onChange({ s3AccessKey: e.target.value })}
-            className={styles.input}
-            style={{ paddingRight: 36 }}
-          />
-          <button
-            onClick={() => setShowAccessKey(!showAccessKey)}
-            className={styles.eyeBtn}
-            type="button"
-          >
-            {showAccessKey ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-        </div>
+        <Input
+          fieldSize="small"
+          type={showAccessKey ? 'text' : 'password'}
+          value={config.s3AccessKey || ''}
+          onChange={(e) => onChange({ s3AccessKey: e.target.value })}
+          trailing={
+            <button
+              onClick={() => setShowAccessKey(!showAccessKey)}
+              className={styles.eyeBtn}
+              type="button"
+            >
+              {showAccessKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          }
+        />
       </div>
       <div>
         <label className={styles.fieldLabel}>{t('data_sync.s3_secret_key', 'Secret Key')}</label>
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showSecretKey ? 'text' : 'password'}
-            value={config.s3SecretKey || ''}
-            onChange={(e) => onChange({ s3SecretKey: e.target.value })}
-            className={styles.input}
-            style={{ paddingRight: 36 }}
-          />
-          <button
-            onClick={() => setShowSecretKey(!showSecretKey)}
-            className={styles.eyeBtn}
-            type="button"
-          >
-            {showSecretKey ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-        </div>
+        <Input
+          fieldSize="small"
+          type={showSecretKey ? 'text' : 'password'}
+          value={config.s3SecretKey || ''}
+          onChange={(e) => onChange({ s3SecretKey: e.target.value })}
+          trailing={
+            <button
+              onClick={() => setShowSecretKey(!showSecretKey)}
+              className={styles.eyeBtn}
+              type="button"
+            >
+              {showSecretKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          }
+        />
       </div>
       <div>
         <label className={styles.fieldLabel}>

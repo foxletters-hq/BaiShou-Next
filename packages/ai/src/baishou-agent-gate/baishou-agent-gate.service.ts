@@ -6,8 +6,10 @@ import {
   AgentGateCancelledError,
   AgentGateAlwaysNotAllowedError,
   AgentGateEffect,
+  AgentGateKind,
   AgentGateReply,
   AgentGateRequestStatus,
+  AgentGateRiskLevel,
   DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   buildAgentGateAssertFingerprint,
@@ -21,6 +23,8 @@ import {
   type AgentGateAssertInput,
   type AgentGateConfigScope,
   type AgentGateEvaluateInput,
+  type AgentGatePermissionRule,
+  type AgentGatePreview,
   type AgentGateProfileId,
   type AgentGateReplyInput,
   type AgentGateRequest,
@@ -39,6 +43,7 @@ import {
   type IAgentGateAllowlistStore
 } from './baishou-agent-gate-allowlist.store'
 import { AgentGateRepeatTracker } from './baishou-agent-gate-repeat.tracker'
+import { AgentGateTurnAllowStore } from './baishou-agent-gate-turn-allow'
 import type { AgentGateRiskClassifier } from './agent-gate-risk-classifier.types'
 
 /** 常规读写跳过二次审核；命令等 Allow 项才调模型 */
@@ -71,9 +76,46 @@ interface PendingEntry {
   reject: (error: Error) => void
 }
 
+function buildTurnAllowRule(input: {
+  action: string
+  resources: AgentGateResourceRef[]
+  alwaysPatterns?: string[]
+  preview?: AgentGatePreview
+}): AgentGatePermissionRule | null {
+  const declared = input.alwaysPatterns?.find((item) => item.trim().length > 0)?.trim()
+  const shellResource = input.resources.find((item) => item.kind === 'shell_command')
+  const commandFromPreview =
+    input.preview?.type === 'command' ? input.preview.prefixPattern || input.preview.command : null
+  const commandPattern =
+    declared ||
+    (shellResource ? resolveCommandPrefixPatternFromCommand(shellResource.value) : null) ||
+    (typeof commandFromPreview === 'string' && commandFromPreview.trim()
+      ? resolveCommandPrefixPatternFromCommand(commandFromPreview) ?? commandFromPreview.trim()
+      : null)
+
+  if (input.action === 'workspace_run') {
+    if (!commandPattern) return null
+    return { action: input.action, effect: AgentGateEffect.Allow, pattern: commandPattern }
+  }
+
+  if (input.action === 'external_directory') {
+    const external = input.resources.find((item) => item.kind === 'external_path')
+    const pattern = declared || (external ? external.value.replace(/\\/g, '/') : null)
+    if (!pattern) return null
+    return { action: input.action, effect: AgentGateEffect.Allow, pattern }
+  }
+
+  return { action: input.action, effect: AgentGateEffect.Allow }
+}
+
+function isSafeGateRisk(metadata?: Record<string, unknown>): boolean {
+  return metadata?.riskLevel === AgentGateRiskLevel.Safe
+}
+
 export class BaishouAgentGateService implements IBaishouAgentGate {
   private readonly pending = new Map<string, PendingEntry>()
   private readonly repeatTracker: AgentGateRepeatTracker
+  private readonly turnAllow = new AgentGateTurnAllowStore()
   private readonly configScope?: AgentGateConfigScope
   private readonly isAutoAccept?: () => boolean
   private readonly riskClassifier?: AgentGateRiskClassifier
@@ -113,18 +155,20 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       threshold
     )
 
-    let detailed = this.policy.evaluateDetailed({
-      action: assertInput.action,
-      toolDisabled: false,
-      resources: assertInput.resources,
-      metadata: assertInput.metadata,
-      profileId: assertInput.profileId,
-      preview: assertInput.preview,
-      autoAccept: this.isAutoAccept?.() === true
-    })
+    const assertResources = mergeAgentGateResources(
+      assertInput.resources,
+      extractAgentGateResourcesFromMetadata(assertInput.metadata)
+    )
+    let detailed = this.evaluatePolicy({ ...assertInput, resources: assertResources })
     let effect = detailed.effect
+    const turnAllowed = this.turnAllow.matches(
+      assertInput.sessionId,
+      assertInput.action,
+      assertResources
+    )
 
-    if (forceRepeatAsk && effect === AgentGateEffect.Allow) {
+    const safeRisk = isSafeGateRisk(assertInput.metadata)
+    if (forceRepeatAsk && effect === AgentGateEffect.Allow && !turnAllowed && !safeRisk) {
       effect = AgentGateEffect.Ask
       detailed = {
         ...detailed,
@@ -147,9 +191,11 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     // auto_review：规则已 Allow 且非黑名单时，再交给模型判断是否仍需人工确认
     if (
       effect === AgentGateEffect.Allow &&
+      !turnAllowed &&
       this.policy.getConfig().securityMode === 'auto_review' &&
       this.isAutoAccept?.() !== true &&
       this.riskClassifier &&
+      !safeRisk &&
       !AUTO_REVIEW_SKIP_ACTIONS.has(assertInput.action)
     ) {
       try {
@@ -214,6 +260,21 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
 
     if (effect === AgentGateEffect.Allow) {
+      if (safeRisk && assertInput.kind === AgentGateKind.Tool) {
+        const turnRule = buildTurnAllowRule({
+          action: assertInput.action,
+          resources: assertResources,
+          alwaysPatterns: Array.isArray(assertInput.metadata?.alwaysPatterns)
+            ? (assertInput.metadata.alwaysPatterns as unknown[]).filter(
+                (item): item is string => typeof item === 'string' && item.trim().length > 0
+              )
+            : undefined,
+          preview: assertInput.preview
+        })
+        if (turnRule) {
+          this.turnAllow.add(assertInput.sessionId, turnRule)
+        }
+      }
       return {
         requestId: '',
         reply: AgentGateReply.Once,
@@ -233,15 +294,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
 
   async ask(input: AgentGateAssertInput): Promise<AgentGateRequest> {
     const fingerprint = buildAgentGateAssertFingerprint(input)
-    const detailed = this.policy.evaluateDetailed({
-      action: input.action,
-      toolDisabled: false,
-      resources: input.resources,
-      metadata: input.metadata,
-      profileId: input.profileId,
-      preview: input.preview,
-      autoAccept: this.isAutoAccept?.() === true
-    })
+    const detailed = this.evaluatePolicy(input)
     const request = this.createRequest(input, fingerprint, detailed.decisionSource)
     request.repeatCount = this.repeatTracker.getCount(input.sessionId, fingerprint)
     if (detailed.effect === AgentGateEffect.Ask) {
@@ -363,9 +416,21 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       return
     }
 
-    // Once
+    // Once：本轮回答结束前，同类操作保持允许
     this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
+    if (request.kind === AgentGateKind.Tool) {
+      const turnRule = buildTurnAllowRule({
+        action: request.action,
+        resources: replyResources,
+        alwaysPatterns: alwaysPatternsFromMeta,
+        preview: request.preview
+      })
+      if (turnRule) {
+        this.turnAllow.add(request.sessionId, turnRule)
+      }
+    }
     this.resolveEntry(entry, resolution)
+    this.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
   }
 
   get(requestId: string): AgentGateRequest | undefined {
@@ -380,6 +445,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
 
   cancelSession(sessionId: string, reason?: string): void {
     this.repeatTracker.clearSession(sessionId)
+    this.turnAllow.clearSession(sessionId)
     for (const [id, entry] of this.pending.entries()) {
       if (entry.request.sessionId !== sessionId) continue
       entry.request.status = AgentGateRequestStatus.Cancelled
@@ -478,8 +544,28 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
   }
 
+  private evaluatePolicy(input: {
+    sessionId: string
+    action: string
+    resources?: AgentGateResourceRef[]
+    metadata?: Record<string, unknown>
+    profileId?: AgentGateProfileId
+    preview?: AgentGatePreview
+  }) {
+    return this.policy.evaluateDetailed({
+      action: input.action,
+      toolDisabled: false,
+      resources: input.resources,
+      metadata: input.metadata,
+      profileId: input.profileId,
+      preview: input.preview,
+      autoAccept: this.isAutoAccept?.() === true,
+      sessionRules: this.turnAllow.list(input.sessionId)
+    })
+  }
+
   /**
-   * After Always: auto-resolve same-session pending with the same action,
+   * After Always / Once: auto-resolve same-session pending with the same action,
    * only when re-evaluation yields Allow (external_path / Deny must not cascade).
    */
   private cascadeAllowSession(
@@ -492,17 +578,19 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       if (item.request.sessionId !== sessionId || id === skipRequestId) continue
       if (item.request.action !== action) continue
 
-      // 截断/危险预览必须显式确认，不可被 Always 级联盲放行
+      // 截断/危险预览必须显式确认，不可被 Always / Once 级联盲放行
       if (shouldDisableAlwaysForPreview(item.request.preview)) {
         continue
       }
 
-      const effect = this.policy.evaluate({
+      const effect = this.evaluatePolicy({
+        sessionId,
         action: item.request.action,
         resources: item.resources,
         metadata: item.request.metadata,
-        profileId: item.profileId
-      })
+        profileId: item.profileId,
+        preview: item.request.preview
+      }).effect
       if (effect !== AgentGateEffect.Allow) {
         continue
       }

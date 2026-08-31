@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { Input } from '../Input/Input'
 import { withAppContentOverlay } from '../overlay'
 import styles from './ModelSwitcher.module.css'
 import { MockAiProviderModel } from '@baishou/shared'
@@ -93,9 +94,11 @@ export const ModelSwitcher: React.FC<ModelSwitcherProps> = ({
             <span className={styles.searchIcon}>
               <Search size={16} />
             </span>
-            <input
+            <Input
               type="text"
+              fieldSize="small"
               className={styles.searchInput}
+              inputClassName="baishou-form-field--embed"
               placeholder={t('common.search', '搜索模型 ...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   mergeJsonlRecordSides,
   pickWinner,
@@ -7,7 +7,13 @@ import {
   sanitizeRecordTimestamps,
   JSONL_FUTURE_SKEW_MS
 } from '../jsonl-record-merge.service'
-import { isMonthlyJsonlRawPath } from '../monthly-jsonl-path.util'
+import {
+  applyJsonlConflictResolved,
+  classifyMonthlyJsonlPath,
+  isMonthlyJsonlRawPath,
+  shouldLineMergeMonthlyJsonlOnConflict,
+  shardKeyValidatorForJsonlKind
+} from '../monthly-jsonl-path.util'
 
 describe('jsonl-record-merge', () => {
   it('keeps rows unique to each side', () => {
@@ -25,6 +31,14 @@ describe('jsonl-record-merge', () => {
     )
     expect(merged).toHaveLength(1)
     expect(merged[0]).toMatchObject({ text: 'new', updatedAt: 20 })
+  })
+
+  it('newer updatedAt keeps a decreased mentionCount', () => {
+    const winner = pickWinner(
+      { id: 'a', updatedAt: 10, mentionCount: 5 },
+      { id: 'a', updatedAt: 11, mentionCount: 3 }
+    )
+    expect(winner).toMatchObject({ mentionCount: 3, updatedAt: 11 })
   })
 
   it('tombstone wins on equal updatedAt', () => {
@@ -89,5 +103,98 @@ describe('isMonthlyJsonlRawPath', () => {
     expect(isMonthlyJsonlRawPath('Memory/foo/bar.jsonl')).toBe(false)
     expect(isMonthlyJsonlRawPath('Personal/Memory/foo/bar.jsonl')).toBe(false)
     expect(isMonthlyJsonlRawPath('Personal/Memory/2026-07.jsonl')).toBe(true)
+    expect(isMonthlyJsonlRawPath('Personal/Notebooks/nb1/graph/nodes/src_abc.jsonl')).toBe(true)
+  })
+})
+
+describe('classifyMonthlyJsonlPath', () => {
+  it('keeps vault Graph and notebook graph apart', () => {
+    expect(classifyMonthlyJsonlPath('Personal/Graph/nodes/2026-07.jsonl')).toEqual({
+      kind: 'graph',
+      collection: 'nodes',
+      shardFile: '2026-07.jsonl',
+      shardMonth: '2026-07'
+    })
+    expect(
+      classifyMonthlyJsonlPath('Personal/Notebooks/nb1/graph/nodes/src_abc.jsonl')
+    ).toEqual({
+      kind: 'notebook-graph',
+      notebookId: 'nb1',
+      collection: 'nodes',
+      shardFile: 'src_abc.jsonl',
+      shardMonth: 'src_abc'
+    })
+  })
+})
+
+describe('shouldLineMergeMonthlyJsonlOnConflict', () => {
+  it('merges Memory only; overwrites vault Graph and notebook-graph', () => {
+    expect(shouldLineMergeMonthlyJsonlOnConflict('Memory/2026-07.jsonl')).toBe(true)
+    expect(shouldLineMergeMonthlyJsonlOnConflict('Personal/Memory/2026-07.jsonl')).toBe(true)
+    expect(shouldLineMergeMonthlyJsonlOnConflict('Graph/nodes/2026-07.jsonl')).toBe(false)
+    expect(shouldLineMergeMonthlyJsonlOnConflict('Graph/edges/2026-07.jsonl')).toBe(false)
+    expect(shouldLineMergeMonthlyJsonlOnConflict('Graph/extract-state/2026-07.jsonl')).toBe(false)
+    expect(
+      shouldLineMergeMonthlyJsonlOnConflict('Personal/Notebooks/nb1/graph/nodes/src_abc.jsonl')
+    ).toBe(false)
+    expect(
+      shouldLineMergeMonthlyJsonlOnConflict('Work/Notebooks/nb3/graph/extract-state/src_def.jsonl')
+    ).toBe(false)
+    expect(shouldLineMergeMonthlyJsonlOnConflict('Journals/2026-07-01.md')).toBe(false)
+  })
+
+  it('sync validator accepts notebook sourceId and leftover calendar months', () => {
+    const accept = shardKeyValidatorForJsonlKind('notebook-graph')
+    expect(accept('src_abc')).toBe(true)
+    expect(accept('2026-08')).toBe(true)
+    expect(accept('not a key')).toBe(false)
+    expect(shardKeyValidatorForJsonlKind('graph')('2026-08')).toBe(true)
+    expect(shardKeyValidatorForJsonlKind('graph')('src_abc')).toBe(false)
+  })
+})
+
+describe('applyJsonlConflictResolved', () => {
+  it('overwrites vault Graph without calling line-merge', async () => {
+    const lineMerge = vi.fn(async () => true)
+    const overwriteUpload = vi.fn(async () => undefined)
+    const overwriteDownload = vi.fn(async () => undefined)
+    const outcome = await applyJsonlConflictResolved({
+      filePath: 'Personal/Graph/nodes/2026-07.jsonl',
+      direction: 'download',
+      lineMerge,
+      overwriteUpload,
+      overwriteDownload
+    })
+    expect(outcome).toBe('downloaded')
+    expect(lineMerge).not.toHaveBeenCalled()
+    expect(overwriteDownload).toHaveBeenCalledOnce()
+    expect(overwriteUpload).not.toHaveBeenCalled()
+  })
+
+  it('line-merges Memory and overwrites notebook-graph', async () => {
+    const lineMerge = vi.fn(async () => true)
+    const overwriteUpload = vi.fn(async () => undefined)
+    const overwriteDownload = vi.fn(async () => undefined)
+    await expect(
+      applyJsonlConflictResolved({
+        filePath: 'Personal/Memory/2026-07.jsonl',
+        direction: 'download',
+        lineMerge,
+        overwriteUpload,
+        overwriteDownload
+      })
+    ).resolves.toBe('merged')
+    await expect(
+      applyJsonlConflictResolved({
+        filePath: 'Personal/Notebooks/nb1/graph/edges/src_abc.jsonl',
+        direction: 'upload',
+        lineMerge,
+        overwriteUpload,
+        overwriteDownload
+      })
+    ).resolves.toBe('uploaded')
+    expect(lineMerge).toHaveBeenCalledTimes(1)
+    expect(overwriteUpload).toHaveBeenCalledOnce()
+    expect(overwriteDownload).not.toHaveBeenCalled()
   })
 })

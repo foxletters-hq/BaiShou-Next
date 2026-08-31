@@ -31,10 +31,8 @@ describe('mcp-auth.util', () => {
   })
 
   it('treats missing mcpAuthEnabled as enabled', () => {
-    expect(isMcpAuthEnabled({ mcpEnabled: true, mcpPort: 31004 })).toBe(true)
-    expect(isMcpAuthEnabled({ mcpEnabled: true, mcpPort: 31004, mcpAuthEnabled: false })).toBe(
-      false
-    )
+    expect(isMcpAuthEnabled({})).toBe(true)
+    expect(isMcpAuthEnabled({ mcpAuthEnabled: false })).toBe(false)
   })
 
   it('authorizes matching bearer token', () => {

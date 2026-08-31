@@ -36,6 +36,7 @@ export function TTSProviderSettingsFormConnectionFields({
 
       <div className={styles.section}>
         <Input
+          fieldSize="small"
           label={t('tts.settings.base_url_label', 'API Base URL')}
           placeholder={
             providerType === 'clone-tts'
@@ -76,19 +77,18 @@ export function TTSProviderSettingsFormConnectionFields({
               />
             )}
           </div>
-          <div className={styles.passwordInputWrapper}>
-            <input
-              type={showApiKey ? 'text' : 'password'}
-              placeholder={t('tts.settings.api_key_placeholder', 'sk-...（可选）')}
-              value={currentConfig.apiKey}
-              onChange={(e) => updateCurrentConfig({ apiKey: e.target.value })}
-              className={styles.passwordInput}
-            />
-            <div
-              className={styles.passwordToggle}
-              onClick={() => setShowApiKey(!showApiKey)}
-              title={showApiKey ? t('common.hide', '隐藏') : t('common.show', '显示')}
-            >
+          <Input
+            fieldSize="small"
+            type={showApiKey ? 'text' : 'password'}
+            placeholder={t('tts.settings.api_key_placeholder', 'sk-...（可选）')}
+            value={currentConfig.apiKey}
+            onChange={(e) => updateCurrentConfig({ apiKey: e.target.value })}
+            trailing={
+              <div
+                className={styles.passwordToggle}
+                onClick={() => setShowApiKey(!showApiKey)}
+                title={showApiKey ? t('common.hide', '隐藏') : t('common.show', '显示')}
+              >
               {showApiKey ? (
                 <svg
                   width="16"
@@ -118,8 +118,9 @@ export function TTSProviderSettingsFormConnectionFields({
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
               )}
-            </div>
-          </div>
+              </div>
+            }
+          />
         </div>
       )}
     </>

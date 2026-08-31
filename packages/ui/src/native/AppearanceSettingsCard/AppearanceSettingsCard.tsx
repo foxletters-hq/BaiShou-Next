@@ -97,10 +97,10 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
     return ''
   }
 
-  const fontSizeTickLeftPct = (level: number) => {
+  const fontSizeTickLeftPct = (level: number): `${number}%` => {
     const span = UI_FONT_SIZE_LEVEL_MAX - UI_FONT_SIZE_LEVEL_MIN
     if (span <= 0) return '0%'
-    return `${((level - UI_FONT_SIZE_LEVEL_MIN) / span) * 100}%`
+    return `${((level - UI_FONT_SIZE_LEVEL_MIN) / span) * 100}%` as `${number}%`
   }
 
   const content = (

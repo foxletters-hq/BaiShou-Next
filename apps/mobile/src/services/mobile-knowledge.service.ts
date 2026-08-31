@@ -7,6 +7,7 @@ import {
 import {
   KnowledgeAskService,
   KnowledgeSearchService,
+  searchNotebookGraphForTool,
   type KnowledgeSqlExecutor
 } from '@baishou/core-mobile'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
@@ -65,6 +66,41 @@ export async function mobileListSources(notebookId: string) {
 
 export async function mobileGetKnowledgeStats(notebookId?: string) {
   return requireRepo().getStats(notebookId, await resolveMobileActiveVaultId())
+}
+
+export async function mobileListNotebookStats() {
+  return requireRepo().listNotebookStats(await resolveMobileActiveVaultId())
+}
+
+export async function mobileGetNotebookGraphView(notebookId: string, maxNodes = 80) {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  const { NotebookGraphRepository } = await import('@baishou/database/expo')
+  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+  return repo.getView({
+    vaultId: await resolveMobileActiveVaultId(),
+    notebookId: id,
+    maxNodes
+  })
+}
+
+export async function mobileSearchNotebookGraph(opts: {
+  query: string
+  notebookId: string
+  limit?: number
+}) {
+  const notebookId = opts.notebookId.trim()
+  if (!notebookId) throw new Error('notebookId required')
+  const { NotebookGraphRepository } = await import('@baishou/database/expo')
+  const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+  const vaultId = await resolveMobileActiveVaultId()
+  const result = await searchNotebookGraphForTool(repo, {
+    vaultId,
+    notebookId,
+    query: opts.query,
+    limit: opts.limit
+  })
+  return result
 }
 
 export async function mobileHasKnowledgeModelMismatch(): Promise<boolean> {
@@ -263,7 +299,7 @@ export async function mobileImportSource(input: {
   if (input.kind === 'url') {
     const originUrl = (input.originUrl || input.textContent || '').trim()
     if (!originUrl) throw new Error('import url requires originUrl')
-    const fetched = await fetchUrlAsMarkdown(originUrl)
+    const fetched = await fetchUrlAsMarkdown(originUrl, { allowPrivateNetwork: true })
     if (!fetched.markdown?.trim()) throw new Error('URL content empty or could not be parsed')
     payload = {
       ...input,

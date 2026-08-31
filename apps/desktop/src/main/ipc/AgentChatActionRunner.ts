@@ -8,6 +8,7 @@ import {
   createDiarySearcher,
   createWebSearchResultFetcher,
   createFetchSearchPage,
+  applySessionReasoningEffort,
   buildStreamConfig,
   resolveStreamDialogueSelection
 } from './agent-helpers'
@@ -37,7 +38,8 @@ export class AgentChatActionRunner {
     messageId?: string,
     searchMode?: boolean,
     requestedProviderId?: string,
-    requestedModelId?: string
+    requestedModelId?: string,
+    reasoningEffort?: string
   ) {
     const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
     const resolved = await resolveStreamDialogueSelection({
@@ -59,7 +61,10 @@ export class AgentChatActionRunner {
         provider,
         modelId: resolved.modelId,
         systemModels,
-        userConfig
+        userConfig: applySessionReasoningEffort(
+          userConfig as Record<string, unknown>,
+          reasoningEffort
+        )
       },
       messageId
     )
@@ -73,7 +78,8 @@ export class AgentChatActionRunner {
     requestedProviderId?: string,
     requestedModelId?: string,
     attachments?: unknown[],
-    searchMode?: boolean
+    searchMode?: boolean,
+    reasoningEffort?: string
   ) {
     const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
     const resolved = await resolveStreamDialogueSelection({
@@ -95,7 +101,10 @@ export class AgentChatActionRunner {
         provider,
         modelId: resolved.modelId,
         systemModels,
-        userConfig,
+        userConfig: applySessionReasoningEffort(
+          userConfig as Record<string, unknown>,
+          reasoningEffort
+        ),
         attachments
       },
       messageId,
@@ -109,7 +118,8 @@ export class AgentChatActionRunner {
     messageId: string,
     searchMode?: boolean,
     requestedProviderId?: string,
-    requestedModelId?: string
+    requestedModelId?: string,
+    reasoningEffort?: string
   ) {
     const prefs = await AgentChatService.getAssistantSessionPrefs(sessionId)
     const resolved = await resolveStreamDialogueSelection({
@@ -131,7 +141,10 @@ export class AgentChatActionRunner {
         provider,
         modelId: resolved.modelId,
         systemModels,
-        userConfig
+        userConfig: applySessionReasoningEffort(
+          userConfig as Record<string, unknown>,
+          reasoningEffort
+        )
       },
       messageId
     )

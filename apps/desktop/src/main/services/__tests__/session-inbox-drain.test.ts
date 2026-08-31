@@ -9,7 +9,8 @@ import {
 } from '@baishou/ai'
 import {
   drainSessionInbox,
-  resetSessionInboxDrainForTests
+  resetSessionInboxDrainForTests,
+  waitForSessionInboxDrainLock
 } from '../session-inbox-drain'
 
 describe('drainSessionInbox', () => {
@@ -163,5 +164,41 @@ describe('drainSessionInbox', () => {
     off()
 
     expect(types).toEqual(['session.idle'])
+  })
+
+  it('waitForSessionInboxDrainLock resolves after the drain lock is released', async () => {
+    const inbox = getSharedSessionInbox()
+    inbox.admit({ sessionId: 's1', text: 'one', delivery: 'queue' })
+
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+
+    const first = drainSessionInbox({
+      sessionId: 's1',
+      isBusy: () => false,
+      runPromoted: async () => {
+        await gate
+        return 'ok'
+      }
+    })
+
+    await vi.waitFor(() => {
+      expect(inbox.listPending('s1')).toHaveLength(0)
+    })
+
+    let unlocked = false
+    const waiting = waitForSessionInboxDrainLock('s1', 2000, 20).then((ok) => {
+      unlocked = true
+      return ok
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    expect(unlocked).toBe(false)
+
+    release()
+    await expect(waiting).resolves.toBe(true)
+    await first
   })
 })

@@ -87,7 +87,7 @@ export function registerSessionIPC() {
             ? String(rawAssistantId)
             : undefined
 
-      const { sessionManager, assistantManager } = getAgentManagers()
+      const { sessionManager } = getAgentManagers()
 
       let vaultId = resolveActiveVaultId()
       try {
@@ -110,15 +110,6 @@ export function registerSessionIPC() {
         requestedModelId.trim() !== 'off'
           ? requestedModelId.trim()
           : 'default'
-      if (providerId === 'default' || modelId === 'default') {
-        if (safeAssistantId) {
-          const assistant = await assistantManager.findById(safeAssistantId)
-          if (assistant) {
-            if (providerId === 'default') providerId = assistant.providerId || 'default'
-            if (modelId === 'default') modelId = assistant.modelId || 'default'
-          }
-        }
-      }
       if (providerId === 'default' || modelId === 'default') {
         const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
         if (providerId === 'default')

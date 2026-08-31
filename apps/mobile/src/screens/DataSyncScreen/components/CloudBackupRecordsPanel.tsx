@@ -9,7 +9,7 @@ import {
   ActivityIndicator
 } from 'react-native'
 import { Archive, CloudOff, FileText, RefreshCw, Settings } from 'lucide-react-native'
-import { Input } from '@baishou/ui/native'
+import { Input, Checkbox } from '@baishou/ui/native'
 import type { TFunction } from 'i18next'
 import type { SyncConfig, SyncRecord } from '@baishou/core-mobile'
 import { formatRecordSize } from '../data-sync-cloud.utils'
@@ -153,22 +153,11 @@ export function CloudBackupRecordsPanel(props: CloudBackupRecordsPanelProps) {
                 ]}
               >
                 {isMultiSelectMode && (
-                  <TouchableOpacity
-                    style={[
-                      styles.checkbox,
-                      {
-                        borderColor: colors.borderSubtle,
-                        backgroundColor: selectedRecords.has(record.filename)
-                          ? colors.primary
-                          : 'transparent'
-                      }
-                    ]}
+                  <Checkbox
+                    selected={selectedRecords.has(record.filename)}
                     onPress={() => toggleRecordSelection(record.filename)}
-                  >
-                    {selectedRecords.has(record.filename) && (
-                      <Text style={[styles.checkmark, { color: colors.textOnPrimary }]}>✓</Text>
-                    )}
-                  </TouchableOpacity>
+                    style={{ marginRight: 10 }}
+                  />
                 )}
 
                 {renamingRecord === record.filename ? (

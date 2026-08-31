@@ -1,10 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Checkbox } from '@baishou/ui'
 import { Modal } from '@baishou/ui/desktop/Modal/Modal'
-import { CheckSquare, Square } from 'lucide-react'
 import {
   SIDEBAR_NAV_GROUPS,
-  SIDEBAR_NAV_ICON_SIZE,
   buildSidebarNavItems,
   type SidebarNavId
 } from './sidebar-nav-catalog'
@@ -56,22 +55,14 @@ export const SidebarManageModal: React.FC<SidebarManageModalProps> = ({
                     if (!item) return null
                     const visible = !hiddenSet.has(id)
                     return (
-                      <button
+                      <label
                         key={id}
-                        type="button"
                         className={`${styles.option} ${visible ? styles.optionActive : ''}`}
-                        onClick={() => onToggle(id)}
                       >
-                        <span className={styles.checkbox} aria-hidden="true">
-                          {visible ? (
-                            <CheckSquare size={SIDEBAR_NAV_ICON_SIZE} />
-                          ) : (
-                            <Square size={SIDEBAR_NAV_ICON_SIZE} />
-                          )}
-                        </span>
+                        <Checkbox checked={visible} onChange={() => onToggle(id)} />
                         <span className={styles.optionIcon}>{item.icon}</span>
                         <span className={styles.optionLabel}>{item.label}</span>
-                      </button>
+                      </label>
                     )
                   })}
                 </div>
