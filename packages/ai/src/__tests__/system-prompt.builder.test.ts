@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { SystemPromptBuilder } from '../agent/system-prompt.builder'
-import { MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from '@baishou/shared'
+import {
+  formatHostTimezoneOffset,
+  MESSAGE_CONTENT_TAG,
+  MESSAGE_TIME_TAG
+} from '@baishou/shared'
 
 function sectionOrder(prompt: string, tags: string[]): number[] {
   return tags.map((tag) => prompt.indexOf(`<${tag}>`))
@@ -18,7 +22,9 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('<output_protocol>')
     expect(prompt).toContain('<runtime_context>')
     expect(prompt).toContain('<context_encoding>')
-    expect(prompt).toContain('[System Current Date / Time]')
+    expect(prompt).not.toContain('[System Current Date / Time]')
+    expect(prompt).not.toContain('<system_time>')
+    expect(prompt).toContain(`[Host timezone]: ${formatHostTimezoneOffset()}`)
     expect(prompt).toContain(`<${MESSAGE_TIME_TAG}>`)
     expect(prompt).toContain(`<${MESSAGE_CONTENT_TAG}>`)
     expect(prompt).toContain('[Forbidden in user-visible text]')
@@ -49,6 +55,7 @@ describe('SystemPromptBuilder', () => {
 
     expect(prompt).toContain('<runtime_context>')
     expect(prompt).not.toContain('[System Current Date / Time]')
+    expect(prompt).not.toContain('[Host timezone]')
     expect(prompt).not.toContain('<context_encoding>')
     expect(prompt).not.toContain('[Historical messages]')
     expect(prompt).toContain('**current_time** tool')
