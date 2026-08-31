@@ -157,6 +157,13 @@ export function formatStoredTimestamp(ts: number | undefined | null): string | u
   return `${y}-${m}-${d} ${hh}:${mm}`
 }
 
+/** 主机本地时区偏移，如 UTC+8、UTC-5、UTC+5.5（不含具体时刻，避免破坏前缀缓存） */
+export function formatHostTimezoneOffset(now = new Date()): string {
+  const tzOffset = -now.getTimezoneOffset() / 60
+  const tzSign = tzOffset >= 0 ? '+' : ''
+  return `UTC${tzSign}${tzOffset}`
+}
+
 /** 消息 createdAt → 本地 YYYY-MM-DD HH:mm（供模型上下文前缀） */
 export function formatMessageTimestamp(
   value: Date | number | undefined | null
