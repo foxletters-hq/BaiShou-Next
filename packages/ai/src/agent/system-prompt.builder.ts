@@ -54,7 +54,12 @@ function resolveLocale(locale?: string): string | undefined {
  * 固定分区顺序：
  * persona → output_protocol → runtime_context → context_encoding(条件) →
  * user_identity → assistant_capabilities → available_tools →
- * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines
+ * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines →
+ * system_time(条件)
+ *
+ * 注意：动态时间戳被刻意放在最后一个分区，以最大化 DeepSeek / OpenAI 等
+ * 厂商 KV 上下文硬盘缓存的前缀复用率。任何"按请求变化"的内容都应追加到
+ * 最末尾，避免破坏前面稳定分区的缓存命中。
  */
 export class SystemPromptBuilder {
   public static build(options: SystemPromptBuilderOptions): string {
@@ -88,17 +93,15 @@ export class SystemPromptBuilder {
     // 2. output_protocol（始终存在）
     pushSection(buffer, 'output_protocol', buildOutputProtocolSystemPromptLines())
 
-    // 3. runtime_context
+    // 3. runtime_context（仅含稳定字段：vault / 伙伴类型；动态时间戳后置到 system_time）
     const runtimeLines: string[] = []
-    if (injectCurrentTime) {
-      runtimeLines.push(formatSystemCurrentTime())
-    } else {
+    runtimeLines.push(`[Current Vault / Workspace]: ${vaultName}`)
+    runtimeLines.push(`[Partner type]: ${assistantKind === 'work' ? 'work' : 'companion'}`)
+    if (!injectCurrentTime) {
       runtimeLines.push(
         'Note: System current time is not injected. Use the **current_time** tool when you need "now".'
       )
     }
-    runtimeLines.push(`[Current Vault / Workspace]: ${vaultName}`)
-    runtimeLines.push(`[Partner type]: ${assistantKind === 'work' ? 'work' : 'companion'}`)
     pushSection(buffer, 'runtime_context', runtimeLines)
 
     // 4. context_encoding（仅在会给历史加壳时）
@@ -194,6 +197,11 @@ export class SystemPromptBuilder {
     // 10. behavior_guidelines
     if (customGuidelines && customGuidelines.trim().length > 0) {
       pushSection(buffer, 'behavior_guidelines', [customGuidelines.trim()])
+    }
+
+    // 11. system_time（刻意置于最末尾：所有稳定分区在前，保证 KV 上下文缓存前缀最大化命中）
+    if (injectCurrentTime) {
+      pushSection(buffer, 'system_time', [formatSystemCurrentTime()])
     }
 
     return buffer.join('\n').trimEnd() + '\n'
