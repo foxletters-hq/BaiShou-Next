@@ -15,7 +15,7 @@ import { insertRuntimeClockIfEnabled } from './runtime-clock-message.util'
 import {
   isVisionModel,
   logger,
-  mergeDisabledToolIds,
+  resolveSessionDisabledToolIds,
   normalizeAssistantKind,
   buildEffectiveAssistantSystemPrompt,
   isAutoInjectCurrentTimeEnabled,
@@ -217,11 +217,12 @@ export class AgentSessionService {
           assistantKind = normalizeAssistantKind(ast.assistantKind)
           mergedUserConfig = {
             ...mergedUserConfig,
-            disabledToolIds: mergeDisabledToolIds(
+            disabledToolIds: resolveSessionDisabledToolIds(
               Array.isArray(mergedUserConfig['disabledToolIds'])
                 ? (mergedUserConfig['disabledToolIds'] as string[])
                 : [],
-              assistantKind
+              assistantKind,
+              workspaceOptions?.sessionKind
             )
           }
           const combined = buildEffectiveAssistantSystemPrompt(
@@ -527,9 +528,12 @@ export class AgentSessionService {
                 isGitRepo: workspaceOptions.env?.isGitRepo,
                 gitBranch: workspaceOptions.env?.gitBranch,
                 gitChangesCount: workspaceOptions.env?.gitChangesCount,
-                notebookId: workspaceOptions.notebookId
+                notebookIds: workspaceOptions.notebookIds
               }
             : undefined,
+        knowledgeMount: {
+          notebookIds: workspaceOptions?.notebookIds ?? []
+        },
         skillsCatalog
       })
 
