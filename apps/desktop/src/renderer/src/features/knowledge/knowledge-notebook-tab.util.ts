@@ -1,4 +1,4 @@
-export const KNOWLEDGE_NOTEBOOK_TABS = ['chat', 'graph', 'vectors'] as const
+export const KNOWLEDGE_NOTEBOOK_TABS = ['sources', 'graph', 'vectors'] as const
 
 export type KnowledgeNotebookTab = (typeof KNOWLEDGE_NOTEBOOK_TABS)[number]
 

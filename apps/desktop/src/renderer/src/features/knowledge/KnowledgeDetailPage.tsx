@@ -14,6 +14,7 @@ import {
   Cloud,
   ChevronDown,
   MoreHorizontal,
+  MessageSquare,
   X
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -49,7 +50,6 @@ import {
 import { callKnowledgeApi } from './call-knowledge-api'
 import { KnowledgeNotebookTabBar } from './KnowledgeNotebookTabBar'
 import { KnowledgeVectorPane } from './KnowledgeVectorPane'
-import { NotebookChatPane } from './NotebookChatPane'
 import { NotebookOpenGuideDialog } from './NotebookOpenGuideDialog'
 import { NotebookGraphPane } from './NotebookGraphPane'
 import { KnowledgeHeavyConfirmDialog } from './KnowledgeHeavyConfirmDialog'
@@ -236,8 +236,9 @@ export const KnowledgeDetailPage: React.FC = () => {
   const [notebookName, setNotebookName] = useState('')
   const [storageLine, setStorageLine] = useState('')
   const [chunkCount, setChunkCount] = useState(0)
-  const [activeTab, setActiveTab] = useState<KnowledgeNotebookTab>('chat')
+  const [activeTab, setActiveTab] = useState<KnowledgeNotebookTab>('sources')
   const [sources, setSources] = useState<SourceRow[]>([])
+  const [sourcesLoaded, setSourcesLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
   const [hasSkippedGuide, setHasSkippedGuide] = useState(hasAnyNotebookDontAskAgain)
@@ -321,6 +322,10 @@ export const KnowledgeDetailPage: React.FC = () => {
   const globalModels = useSettingsStore((s) => s.globalModels)
   const { assistants, fetchAssistants } = useAssistantStore()
   const { isDark } = useTheme()
+
+  const openAddSource = useCallback(() => {
+    setImportMode('chooser')
+  }, [])
 
   const settleExtractHint = useCallback((choice: KnowledgeExtractHintChoice) => {
     const resolve = extractHintResolver.current
@@ -506,6 +511,7 @@ export const KnowledgeDetailPage: React.FC = () => {
     if (gen !== refreshGen.current) return
     setNotebookName(nb?.name || notebookId)
     setSources(list || [])
+    setSourcesLoaded(true)
     const byId = new Map((list || []).map((s) => [s.id, s]))
     setOcrProgressBySource((prev) => {
       const next = { ...prev }
@@ -578,6 +584,10 @@ export const KnowledgeDetailPage: React.FC = () => {
       setEngineCaps(null)
     }
   }, [])
+
+  useEffect(() => {
+    setSourcesLoaded(false)
+  }, [notebookId])
 
   useEffect(() => {
     void (async () => {
@@ -1269,6 +1279,26 @@ export const KnowledgeDetailPage: React.FC = () => {
     )
   }
 
+  const renderSourcesColumn = () => (
+    <section
+      id="knowledge-sources-panel"
+      className={styles.detailColumn}
+      aria-label={t('knowledge.sources_panel', '来源')}
+    >
+      <div className={styles.columnHead}>
+        <h2 className={styles.columnTitle}>{t('knowledge.sources_panel', '来源')}</h2>
+      </div>
+      <button type="button" className={styles.addSourceBtn} onClick={openAddSource} disabled={busy}>
+        <Plus size={16} />
+        {t('knowledge.add_source', '添加来源')}
+      </button>
+      <ul className={styles.sourceList}>
+        {uploadingSources.map(renderUploadingItem)}
+        {sources.map(renderSourceItem)}
+      </ul>
+    </section>
+  )
+
   return (
     <KnowledgeShell setFolderRoot={setFolderRoot} mainClassName={styles.mainFill}>
       <motion.div
@@ -1342,38 +1372,39 @@ export const KnowledgeDetailPage: React.FC = () => {
         ) : null}
         {error ? <p className={styles.bannerError}>{error}</p> : null}
 
-        {activeTab === 'chat' ? (
-          <div className={styles.detailSplitLayout}>
-            <section className={styles.detailColumn} aria-label={t('knowledge.sources_panel', '来源')}>
-              <div className={styles.columnHead}>
-                <h2 className={styles.columnTitle}>{t('knowledge.sources_panel', '来源')}</h2>
-              </div>
+        {activeTab === 'sources' ? (
+          <div className={styles.detailChatStage}>
+            <div className={styles.sourcesIntro}>
+              <p className={styles.sourcesIntroText}>
+                {t(
+                  'knowledge.mount_hint',
+                  '资料嵌入完成后，可以挂载到伙伴或工作台对话里检索。知识库本身不再单独保存对话。'
+                )}
+              </p>
               <button
                 type="button"
-                className={styles.addSourceBtn}
-                onClick={() => setImportMode('chooser')}
-                disabled={busy}
+                className={styles.startChatBtn}
+                onClick={() => {
+                  void (async () => {
+                    try {
+                      const newId = crypto.randomUUID()
+                      await window.electron.ipcRenderer.invoke('agent:create-session', {
+                        id: newId,
+                        title: notebookName || t('knowledge.start_chat_title', '知识库对话')
+                      })
+                      await window.api.setMountedNotebooks(newId, [notebookId])
+                      navigate(`/chat/${newId}`)
+                    } catch (e: unknown) {
+                      setError(e instanceof Error ? e.message : String(e))
+                    }
+                  })()
+                }}
               >
-                <Plus size={16} />
-                {t('knowledge.add_source', '添加来源')}
+                <MessageSquare size={16} strokeWidth={1.75} aria-hidden />
+                {t('knowledge.start_chat', '用这本笔记本开始对话')}
               </button>
-              {sources.length === 0 && uploadingSources.length === 0 ? (
-                <div className={styles.columnEmpty}>
-                  {t('knowledge.empty_sources', '还没有资料，先导入 PDF / Markdown / URL。')}
-                </div>
-              ) : (
-                <ul className={styles.sourceList}>
-                  {uploadingSources.map(renderUploadingItem)}
-                  {sources.map(renderSourceItem)}
-                </ul>
-              )}
-            </section>
-
-            <NotebookChatPane
-              notebookId={notebookId}
-              sourceCount={sources.length}
-              onError={setError}
-            />
+            </div>
+            {renderSourcesColumn()}
           </div>
         ) : null}
 

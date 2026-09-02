@@ -938,12 +938,58 @@
   background: color-mix(in srgb, var(--color-error, #c44) 10%, var(--bg-surface));
 }
 
+.detailChatStage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.sourcesIntro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 4px 12px;
+}
+
+.sourcesIntroText {
+  margin: 0;
+  flex: 1;
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.startChatBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-control);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: var(--ui-fs-sm);
+}
+
+.startChatBtn:hover {
+  background: var(--bg-surface-high);
+}
+
 .detailSplitLayout {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+}
+
+.splitDocked {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
 }
 
 .notebookGraphHost {
@@ -1068,18 +1114,6 @@
 .addSourceBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.columnEmpty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 12px 6px;
 }
 
 .sourceList {
@@ -1810,20 +1844,6 @@
     grid-area: tabs;
     justify-content: flex-start;
   }
-
-  .detailSplitLayout {
-    grid-template-columns: 1fr;
-    overflow: auto;
-    gap: 8px;
-  }
-
-  .detailColumn {
-    min-height: 280px;
-  }
-
-  .conversationColumn {
-    min-height: 380px;
-  }
 }
 
 @media (max-width: 860px) {
@@ -2473,6 +2493,138 @@
 
 .conversationIdle {
   padding-bottom: 0;
+}
+
+.sourceHeaderBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-family);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sourceHeaderBtn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+}
+
+.sourceHeaderBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sourceHeaderBtnActive {
+  background: var(--bg-surface-high);
+}
+
+.sourceHeaderCount {
+  min-width: 1.25em;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sourceDrawerLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+}
+
+.sourceDrawerBackdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  cursor: pointer;
+}
+
+.sourceDrawer {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  bottom: 8px;
+  width: min(280px, calc(100% - 24px));
+  z-index: 1;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--text-primary) 16%, transparent);
+}
+
+.chatEmptyCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 10px;
+}
+
+.chatEmptyGreetingTight {
+  margin-bottom: 0 !important;
+}
+
+.chatAddSourceBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 40px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-family);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.chatAddSourceBtn:hover {
+  background: var(--bg-surface-high);
+}
+
+.chatNoSourceBanner {
+  position: relative;
+  z-index: 2;
+  margin: 8px 48px 4px 12px;
+  padding: 7px 8px 7px 10px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.chatNoSourceBannerBtn {
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chatNoSourceBannerBtn:hover {
+  background: var(--bg-surface-high);
 }
 
 .citationsUnderBubble {
