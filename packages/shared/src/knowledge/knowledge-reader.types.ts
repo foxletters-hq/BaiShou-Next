@@ -4,10 +4,12 @@ export interface ToolKnowledgeSearchHit {
   chunkId: string
   sourceId: string
   notebookId: string
+  notebookName?: string
   chunkIndex: number
   chunkText: string
   score: number
   title?: string
+  page?: number
   offset?: number
   len?: number
 }
@@ -15,8 +17,9 @@ export interface ToolKnowledgeSearchHit {
 export interface ToolKnowledgeReader {
   search(opts: {
     query: string
-    notebookId: string
+    notebookIds: string[]
     limit?: number
+    limitPerNotebook?: number
   }): Promise<ToolKnowledgeSearchHit[]>
 }
 
@@ -25,6 +28,8 @@ export interface ToolKnowledgeGraphNode {
   name: string
   nodeType: string
   summary?: string
+  notebookId?: string
+  notebookName?: string
 }
 
 export interface ToolKnowledgeGraphEdge {
@@ -33,9 +38,12 @@ export interface ToolKnowledgeGraphEdge {
   toId: string
   edgeType: string
   sourceExcerpt?: string
+  notebookId?: string
 }
 
 export interface ToolKnowledgeGraphSearchResult {
+  notebookId?: string
+  notebookName?: string
   nodes: ToolKnowledgeGraphNode[]
   edges: ToolKnowledgeGraphEdge[]
   paths?: Array<{ nodeNames: string[]; excerpts: string[] }>
@@ -44,7 +52,7 @@ export interface ToolKnowledgeGraphSearchResult {
 export interface ToolKnowledgeGraphReader {
   search(opts: {
     query: string
-    notebookId: string
+    notebookIds: string[]
     limit?: number
-  }): Promise<ToolKnowledgeGraphSearchResult>
+  }): Promise<ToolKnowledgeGraphSearchResult[]>
 }
