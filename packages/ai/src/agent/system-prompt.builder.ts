@@ -3,9 +3,11 @@ import {
   buildOutputProtocolSystemPromptLines,
   getAssistantKindLabelKey,
   translateMain,
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS,
   type AssistantKind
 } from '@baishou/shared'
 import { buildToolUsageGuidelines } from './tool-usage-guidelines.util'
+import { buildKnowledgeMountPromptLines } from '@baishou/shared'
 import { buildWorkspaceEnvLines, type WorkspaceEnvInfo } from './workspace-env.util'
 
 export type { WorkspaceEnvInfo }
@@ -26,6 +28,8 @@ export interface SystemPromptBuilderOptions {
   locale?: string
   /** 工作台会话环境（仅 workspace profile 注入） */
   workspaceEnv?: WorkspaceEnvInfo
+  /** 伙伴会话挂载的笔记本（工作台已写在 workspace_env 里） */
+  knowledgeMount?: { notebookIds: string[]; notebookNames?: Record<string, string> }
   /** Skills 目录（仅名+描述，正文不灌入） */
   skillsCatalog?: Array<{ name: string; description?: string }>
 }
@@ -65,6 +69,7 @@ export class SystemPromptBuilder {
       injectCurrentTime = true,
       locale,
       workspaceEnv,
+      knowledgeMount,
       skillsCatalog
     } = options
 
@@ -102,6 +107,8 @@ export class SystemPromptBuilder {
     // 3b. workspace_env（工作台）
     if (workspaceEnv?.folderRoot) {
       pushSection(buffer, 'workspace_env', buildWorkspaceEnvLines(workspaceEnv))
+    } else if (knowledgeMount) {
+      pushSection(buffer, 'knowledge_mount', buildKnowledgeMountPromptLines(knowledgeMount))
     }
 
     // 3c. skills_catalog
@@ -129,8 +136,18 @@ export class SystemPromptBuilder {
       ])
     }
 
-    // 6. assistant_capabilities（稳定枚举 + 本地化展示名，无硬编码中文）
-    if (assistantKind === 'work') {
+    // 6. assistant_capabilities：能力边界跟实际启用的工具走，避免工作台只读记忆与 work 文案冲突
+    const hasPersonalMemoryRead = availableToolIds.some((id) =>
+      (WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS as readonly string[]).includes(id)
+    )
+    if (workspaceEnv?.folderRoot) {
+      pushSection(buffer, 'assistant_capabilities', [
+        `Partner type: ${assistantKind === 'work' ? 'work' : 'companion'} (${kindLabel}).`,
+        hasPersonalMemoryRead
+          ? 'Workspace session. Read-only diary, recaps, vector memory, and cross-session search may be available—follow the tool usage guidelines. Do not write or delete diary or memory.'
+          : 'Workspace session. Personal diary, memory, structured summaries, and cross-session search are NOT available—do not claim to access them.'
+      ])
+    } else if (assistantKind === 'work') {
       pushSection(buffer, 'assistant_capabilities', [
         `Partner type: work (${kindLabel}).`,
         'Scope: knowledge lookup, web search, and work assistance only. ' +

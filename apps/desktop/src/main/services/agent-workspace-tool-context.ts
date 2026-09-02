@@ -30,7 +30,7 @@ export async function resolveActiveWorkspaceToolContext(): Promise<
   | {
       folderRoot: string
       sessionKind: AgentSessionKind
-      notebookId?: string
+      notebookIds?: string[]
     }
   | undefined
 > {
@@ -38,9 +38,10 @@ export async function resolveActiveWorkspaceToolContext(): Promise<
   if (!activeWorkspaceStreamSessionId) return undefined
   const binding = await getWorkspaceSessionBinding(activeWorkspaceStreamSessionId)
   if (!binding?.folderRoot) return undefined
+  const { readSessionMountedNotebookIds } = await import('./session-mounted-notebooks')
   return {
     folderRoot: binding.folderRoot,
     sessionKind: 'workspace',
-    notebookId: binding.notebookId
+    notebookIds: await readSessionMountedNotebookIds(activeWorkspaceStreamSessionId)
   }
 }

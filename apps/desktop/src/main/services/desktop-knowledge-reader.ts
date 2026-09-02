@@ -1,6 +1,10 @@
 import { KnowledgeReaderAdapter, usableKnowledgeSearchHits } from '@baishou/ai'
-import { KnowledgeSearchService } from '@baishou/core-desktop'
-import type { ToolKnowledgeReader } from '@baishou/shared'
+import { KnowledgeSearchService, searchMountedKnowledgeNotebooks } from '@baishou/core-desktop'
+import {
+  EMBEDDING_NOT_CONFIGURED,
+  parseMountedNotebookIds,
+  type ToolKnowledgeReader
+} from '@baishou/shared'
 import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
 import { getEmbeddingService, getEmbeddingConfig } from '../ipc/rag.ipc'
 import { resolveActiveVaultId } from '../ipc/vault.ipc'
@@ -8,7 +12,6 @@ import { resolveActiveVaultId } from '../ipc/vault.ipc'
 /**
  * Build a ToolKnowledgeReader for companion / workspace chat injection.
  * Returns undefined when knowledge.db is not connected.
- * Shares Ask 的 model-mismatch 硬闸门。
  */
 export function createDesktopKnowledgeReader(
   embedQuery?: (text: string) => Promise<number[] | null>
@@ -39,40 +42,30 @@ export function createDesktopKnowledgeReader(
     })
 
   return new KnowledgeReaderAdapter(async (opts) => {
+    const notebookIds = parseMountedNotebookIds(opts.notebookIds)
+    if (notebookIds.length === 0) return []
+
     const embeddingConfig = getEmbeddingConfig()
     await embeddingConfig.load()
     const modelId = embeddingConfig.getGlobalEmbeddingModelId()
-    const embeddingService = getEmbeddingService()
-    if (modelId && embeddingService.isConfigured) {
-      const vaultId = resolveActiveVaultId()
-      const mismatch = await repo.countHeterogeneousEmbeddings(modelId, { vaultId })
-      if (mismatch > 0) {
-        throw new Error('knowledge-model-mismatch')
-      }
-    }
+    const vaultId = resolveActiveVaultId()
+    const profiles = await repo.listNotebookEmbeddingProfiles({ vaultId, notebookIds })
 
     const queryVector = await resolveEmbed(opts.query)
     if (!queryVector?.length) {
-      throw new Error('embedding-not-configured')
+      throw new Error(EMBEDDING_NOT_CONFIGURED)
     }
-    const hits = await search.search({
-      notebookId: opts.notebookId,
+
+    const hits = await searchMountedKnowledgeNotebooks({
       query: opts.query,
+      notebookIds,
       queryVector,
-      topK: opts.limit
+      currentModelId: modelId,
+      profiles,
+      search,
+      limit: opts.limit,
+      limitPerNotebook: opts.limitPerNotebook
     })
-    return usableKnowledgeSearchHits(
-      hits.map((h) => ({
-        chunkId: h.chunkId,
-        sourceId: h.sourceId,
-        notebookId: h.notebookId,
-        chunkIndex: h.chunkIndex,
-        chunkText: h.chunkText,
-        score: h.score,
-        title: h.title,
-        offset: h.offset,
-        len: h.len
-      }))
-    )
+    return usableKnowledgeSearchHits(hits)
   })
 }
