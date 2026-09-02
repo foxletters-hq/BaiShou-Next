@@ -17,51 +17,52 @@ describe('KnowledgeGraphSearchTool', () => {
     expect(search).not.toHaveBeenCalled()
   })
 
-  it('工作台强制使用已挂载 notebookId', async () => {
-    const search = vi.fn().mockResolvedValue({
-      nodes: [{ id: 'n1', name: '对齐', nodeType: 'topic', summary: '分歧' }],
-      edges: [],
-      paths: []
-    })
+  it('工作台强制使用已挂载 notebookIds', async () => {
+    const search = vi.fn().mockResolvedValue([
+      {
+        notebookId: 'nb-attached',
+        notebookName: '手册',
+        nodes: [{ id: 'n1', name: '对齐', nodeType: 'topic', summary: '分歧' }],
+        edges: [],
+        paths: []
+      }
+    ])
     const context = {
       knowledgeGraphReader: { search },
       workspace: {
         folderRoot: '/tmp',
         sessionKind: 'workspace',
-        notebookId: 'nb-attached'
+        notebookIds: ['nb-attached']
       }
     } as unknown as ToolContext
 
-    await tool.execute({ query: '对齐', notebookId: 'nb-other' }, context)
+    await tool.execute({ query: '对齐' }, context)
     expect(search).toHaveBeenCalledWith({
       query: '对齐',
-      notebookId: 'nb-attached',
+      notebookIds: ['nb-attached'],
       limit: 8
     })
   })
 
-  it('已绑定本子时忽略 companion 传入的 notebookId', async () => {
-    const search = vi.fn().mockResolvedValue({ nodes: [], edges: [], paths: [] })
+  it('已挂载时拒绝越界 notebookId', async () => {
+    const search = vi.fn().mockResolvedValue([])
     const context = {
       knowledgeGraphReader: { search },
       workspace: {
         folderRoot: '',
         sessionKind: 'companion',
-        notebookId: 'nb-bound'
+        notebookIds: ['nb-bound']
       }
     } as unknown as ToolContext
 
-    await tool.execute({ query: '对齐', notebookId: 'nb-other' }, context)
-    expect(search).toHaveBeenCalledWith({
-      query: '对齐',
-      notebookId: 'nb-bound',
-      limit: 8
-    })
+    const result = await tool.execute({ query: '对齐', notebookId: 'nb-other' }, context)
+    expect(result).toMatch(/不在已挂载集合/)
+    expect(search).not.toHaveBeenCalled()
   })
 
   it('缺 reader 时明确提示', async () => {
     const context = {
-      workspace: { folderRoot: '/tmp', sessionKind: 'workspace', notebookId: 'nb1' }
+      workspace: { folderRoot: '/tmp', sessionKind: 'workspace', notebookIds: ['nb1'] }
     } as unknown as ToolContext
     const result = await tool.execute({ query: '对齐' }, context)
     expect(result).toMatch(/不可用/)
