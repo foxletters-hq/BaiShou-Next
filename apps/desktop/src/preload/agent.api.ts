@@ -93,6 +93,10 @@ export const agentApi = {
 
   // Sessions
   getSessions: () => ipcRenderer.invoke('agent:get-sessions'),
+  getMountedNotebooks: (sessionId: string) =>
+    ipcRenderer.invoke('agent:get-mounted-notebooks', sessionId) as Promise<string[]>,
+  setMountedNotebooks: (sessionId: string, notebookIds: string[]) =>
+    ipcRenderer.invoke('agent:set-mounted-notebooks', sessionId, notebookIds) as Promise<string[]>,
   deleteSessions: (ids: string[]) => ipcRenderer.invoke('agent:delete-sessions', ids),
   pinSession: (id: string, isPinned: boolean) =>
     ipcRenderer.invoke('agent:pin-session', id, isPinned),

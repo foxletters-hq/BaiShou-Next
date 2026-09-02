@@ -25,6 +25,8 @@ import {
   selectSameActionCountInSession,
   useAgentGateInboxStore
 } from '@baishou/store'
+import { WorkbenchNotebookMountDialog } from '../agent-workspace/workbench/WorkbenchNotebookMountDialog'
+import { KnowledgeMountHint } from '../knowledge/KnowledgeMountHint'
 import { AgentDialogs } from './components/AgentDialogs'
 import { AgentMessageList } from './components/AgentMessageList'
 import { AgentChatChrome } from './components/AgentChatChrome'
@@ -81,6 +83,7 @@ export const AgentScreen: React.FC = () => {
 
   const noModelSelected = !isConfiguredDialogueModelId(flow.model.currentModelId)
   const modelTriggerRef = useRef<HTMLButtonElement>(null)
+  const [notebookMountOpen, setNotebookMountOpen] = useState(false)
   const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
 
   const displayModelName = noModelSelected
@@ -349,10 +352,15 @@ export const AgentScreen: React.FC = () => {
             sameActionCount={sameActionCount}
             placement="inline"
           />
+          <KnowledgeMountHint
+            sessionId={flow.sessionId}
+            onOpen={() => setNotebookMountOpen(true)}
+          />
           <InputBar
             ref={flow.inputBarRef}
             isLoading={flow.stream.isStreaming || flow.stream.isCompressing}
             attachmentIntake="companion"
+            onOpenNotebookMount={() => setNotebookMountOpen(true)}
             onSend={flow.handleSend}
             onStop={flow.handleStop}
             composerBlocked={composerBlocked}
@@ -377,6 +385,12 @@ export const AgentScreen: React.FC = () => {
           />
         </div>
       </div>
+
+      <WorkbenchNotebookMountDialog
+        open={notebookMountOpen}
+        sessionId={flow.sessionId}
+        onClose={() => setNotebookMountOpen(false)}
+      />
 
       {/* 对话框与抽屉弹出层组件 */}
       <AgentDialogs

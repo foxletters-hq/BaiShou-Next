@@ -1,0 +1,25 @@
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bg-surface-high);
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-sm);
+  cursor: pointer;
+}
+
+.hint span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-normal);
+}

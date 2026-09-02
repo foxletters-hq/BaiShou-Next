@@ -66,6 +66,9 @@ export const AgentHomePage: React.FC = () => {
         <InputBar
           isLoading={false}
           attachmentIntake="companion"
+          onOpenNotebookMount={() =>
+            navigate('/chat/new-session?focus=notebook-mount')
+          }
           onSend={handleSend}
           shortcuts={shortcuts}
           onManageShortcuts={() => navigate('/chat/new-session?focus=manage-shortcuts')}

@@ -156,6 +156,27 @@ export function registerSessionIPC() {
     await sessionManager.togglePin(id, isPinned)
   })
 
+  ipcMain.handle('agent:get-mounted-notebooks', async (_, sessionId: string) => {
+    const { realSessionRepo } = getAgentManagers()
+    const session = await realSessionRepo.getSessionById(sessionId)
+    assertSessionInActiveVault(session, resolveActiveVaultId())
+    const { readSessionMountedNotebookIds } =
+      await import('../services/session-mounted-notebooks')
+    return readSessionMountedNotebookIds(sessionId)
+  })
+
+  ipcMain.handle(
+    'agent:set-mounted-notebooks',
+    async (_, sessionId: string, notebookIds: string[]) => {
+      const { realSessionRepo } = getAgentManagers()
+      const session = await realSessionRepo.getSessionById(sessionId)
+      assertSessionInActiveVault(session, resolveActiveVaultId())
+      const { writeSessionMountedNotebookIds } =
+        await import('../services/session-mounted-notebooks')
+      return writeSessionMountedNotebookIds(sessionId, notebookIds)
+    }
+  )
+
   ipcMain.handle('agent:update-session-title', async (_, sessionId: string, title: string) => {
     const { sessionManager, realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
