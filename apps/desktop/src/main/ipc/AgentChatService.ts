@@ -310,7 +310,16 @@ export class AgentChatService {
       flushSessionToDisk: (sessionId) => sessionManager.flushSessionToDisk(sessionId),
       resolveVaultDisplayName: (vaultId) => resolveVaultNameById(vaultId),
       skillsCatalog,
-      extraVercelToolsFactory: desktopExtraVercelToolsFactory
+      extraVercelToolsFactory: desktopExtraVercelToolsFactory,
+      workspace: {
+        folderRoot: '',
+        sessionKind: 'companion',
+        notebookIds: await (async () => {
+          const { readSessionMountedNotebookIds } =
+            await import('../services/session-mounted-notebooks')
+          return readSessionMountedNotebookIds(params.sessionId)
+        })()
+      }
     })
   }
 

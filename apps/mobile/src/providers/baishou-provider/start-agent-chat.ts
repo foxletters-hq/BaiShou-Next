@@ -4,6 +4,7 @@ import {
   isConfiguredDialogueModelId,
   isConfiguredProviderId,
   logger,
+  parseMountedNotebookIds,
   resolveVaultIdentity
 } from '@baishou/shared'
 import {
@@ -152,6 +153,14 @@ export function createStartAgentChat(deps: {
           flushSessionToDisk: (id) => runtime.sessionManager.flushSessionToDisk(id),
           agentGate: getAgentGate?.(),
           persistBaishouAgentGateConfig,
+          workspace: await (async () => {
+            const session = await runtime.sessionRepo.getSessionById(sessionId)
+            return {
+              folderRoot: '',
+              sessionKind: 'companion' as const,
+              notebookIds: parseMountedNotebookIds(session?.mountedNotebookIds)
+            }
+          })(),
           rawDataSourceManager:
             (
               await import('../../services/mobile-raw-data-source.runtime')
@@ -272,8 +281,9 @@ export function createStartAgentChat(deps: {
               await import('../../services/mobile-knowledge.service')
             return mobileSearchKnowledge({
               query: opts.query,
-              notebookId: opts.notebookId,
-              limit: opts.limit
+              notebookIds: opts.notebookIds,
+              limit: opts.limit,
+              limitPerNotebook: opts.limitPerNotebook
             })
           }),
           knowledgeGraphReader: new KnowledgeGraphReaderAdapter(async (opts) => {
@@ -281,7 +291,7 @@ export function createStartAgentChat(deps: {
               await import('../../services/mobile-knowledge.service')
             return mobileSearchNotebookGraph({
               query: opts.query,
-              notebookId: opts.notebookId,
+              notebookIds: opts.notebookIds,
               limit: opts.limit
             })
           })

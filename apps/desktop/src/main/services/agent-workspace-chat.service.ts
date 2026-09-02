@@ -62,6 +62,7 @@ import {
 } from './workspace-shadow-git.provider'
 import {
   getWorkspaceGateConfig,
+  getWorkspacePersonalMemoryRead,
   getWorkspaceToolManagement,
   setWorkspaceGateConfig
 } from './agent-workspace-policy.store'
@@ -280,9 +281,10 @@ export async function runWorkspaceStreamChat(params: {
     params.reasoningEffort
   )
 
-  const [workspaceGateConfig, workspaceTools] = await Promise.all([
+  const [workspaceGateConfig, workspaceTools, personalMemoryReadEnabled] = await Promise.all([
     getWorkspaceGateConfig(workspaceId),
-    getWorkspaceToolManagement(workspaceId)
+    getWorkspaceToolManagement(workspaceId),
+    getWorkspacePersonalMemoryRead(workspaceId)
   ])
 
   pushActiveWorkspaceStreamSessionId(params.sessionId)
@@ -314,7 +316,8 @@ export async function runWorkspaceStreamChat(params: {
     const knowledgeReader = createDesktopKnowledgeReader()
     const { createDesktopKnowledgeGraphReader } = await import('./desktop-knowledge-graph-reader')
     const knowledgeGraphReader = createDesktopKnowledgeGraphReader()
-    const notebookId = binding.notebookId?.trim() || undefined
+    const { readSessionMountedNotebookIds } = await import('./session-mounted-notebooks')
+    const notebookIds = await readSessionMountedNotebookIds(params.sessionId)
 
     let gitMeta: {
       isGitRepo: boolean
@@ -347,7 +350,8 @@ export async function runWorkspaceStreamChat(params: {
         // 工作区使用独立工具开关与门控配置，不共享伙伴 Vault 配置
         disabledToolIds: workspaceTools.disabledToolIds,
         baishou_agent_gate_config: workspaceGateConfig,
-        workspaceId
+        workspaceId,
+        personalMemoryReadEnabled
       },
       skipUserMessageRecording: params.skipUserMessageRecording,
       realSessionRepo,
@@ -368,7 +372,7 @@ export async function runWorkspaceStreamChat(params: {
       workspace: {
         folderRoot,
         sessionKind: 'workspace',
-        notebookId,
+        notebookIds,
         workspaceId,
         env: {
           platform: process.platform,
