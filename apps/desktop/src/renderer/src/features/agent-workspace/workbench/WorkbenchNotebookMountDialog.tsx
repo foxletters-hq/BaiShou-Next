@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BookOpen, Unlink, X } from 'lucide-react'
 import { Modal } from '@baishou/ui'
+import { canToggleMountedNotebook } from '@baishou/shared'
+import { useNotebookMount } from '../../knowledge/useNotebookMount'
 import styles from './WorkbenchNotebookMountDialog.module.css'
-
-type NotebookRow = { id: string; name: string }
 
 export interface WorkbenchNotebookMountDialogProps {
   open: boolean
@@ -18,57 +18,11 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
   onClose
 }) => {
   const { t } = useTranslation()
-  const [notebookId, setNotebookId] = useState<string | undefined>()
-  const [notebookName, setNotebookName] = useState('')
-  const [notebooks, setNotebooks] = useState<NotebookRow[]>([])
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-
-  const refresh = useCallback(async () => {
-    if (!sessionId || sessionId === 'new-session') {
-      setNotebookId(undefined)
-      setNotebookName('')
-      setNotebooks([])
-      return
-    }
-    setError('')
-    try {
-      const [binding, list] = await Promise.all([
-        window.api.agentWorkspace.getBinding(sessionId),
-        window.api.knowledge.listNotebooks() as Promise<NotebookRow[]>
-      ])
-      const id = binding?.notebookId?.trim() || undefined
-      setNotebookId(id)
-      setNotebooks(list || [])
-      if (!id) {
-        setNotebookName('')
-        return
-      }
-      const match = (list || []).find((n) => n.id === id)
-      setNotebookName(match?.name || id)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e))
-    }
-  }, [sessionId])
+  const mount = useNotebookMount(open ? sessionId : undefined)
 
   useEffect(() => {
-    if (!open) return
-    void refresh()
-  }, [open, refresh])
-
-  const attach = async (id: string | null) => {
-    if (!sessionId || sessionId === 'new-session') return
-    setBusy(true)
-    setError('')
-    try {
-      await window.api.agentWorkspace.attachNotebook({ sessionId, notebookId: id })
-      await refresh()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
+    if (open) void mount.refresh()
+  }, [open, mount.refresh])
 
   return (
     <Modal
@@ -84,9 +38,9 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
             <span className={styles.statusLabel}>
               {t('workbench.mounted_notebooks', '当前挂载')}
             </span>
-            {notebookId ? (
-              <span className={styles.mounted} title={notebookId}>
-                {notebookName || notebookId}
+            {mount.selected.length > 0 ? (
+              <span className={styles.mounted}>
+                {mount.selected.map((row) => row.name).join('、')}
               </span>
             ) : (
               <span className={styles.unmounted}>
@@ -94,43 +48,68 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
               </span>
             )}
           </div>
-          {notebookId ? (
+          {mount.selected.length > 0 ? (
             <button
               type="button"
               className={styles.actionBtn}
-              disabled={busy}
+              disabled={mount.busy}
               title={t('workbench.detach_notebook', '取消挂载')}
-              onClick={() => void attach(null)}
+              onClick={() => void mount.clear()}
             >
               <Unlink size={14} strokeWidth={1.75} aria-hidden />
             </button>
           ) : null}
         </div>
 
-        {error ? <p className={styles.error}>{error}</p> : null}
+        {mount.error ? <p className={styles.error}>{mount.error}</p> : null}
 
-        <p className={styles.hint}>{t('workbench.pick_notebook', '选择要挂载的笔记本')}</p>
+        <p className={styles.hint}>
+          {t('workbench.pick_notebook', '最多挂载 3 本，向量维度必须相同')}
+        </p>
 
         {!sessionId || sessionId === 'new-session' ? (
-          <p className={styles.empty}>{t('workbench.need_session_for_notebook', '请先打开一个会话')}</p>
-        ) : notebooks.length === 0 ? (
+          <p className={styles.empty}>
+            {t('workbench.need_session_for_notebook', '请先打开一个会话')}
+          </p>
+        ) : mount.candidates.length === 0 ? (
           <p className={styles.empty}>
             {t('workbench.no_notebooks', '暂无笔记本，请先在知识库创建。')}
           </p>
         ) : (
           <ul className={styles.list}>
-            {notebooks.map((nb) => (
-              <li key={nb.id}>
-                <button
-                  type="button"
-                  className={`${styles.notebookBtn} ${nb.id === notebookId ? styles.notebookBtnActive : ''}`}
-                  disabled={busy}
-                  onClick={() => void attach(nb.id)}
-                >
-                  {nb.name}
-                </button>
-              </li>
-            ))}
+            {mount.candidates.map((nb) => {
+              const selected = mount.selectedIds.includes(nb.id)
+              const gate = canToggleMountedNotebook({
+                selectedIds: mount.selectedIds,
+                candidate: nb,
+                candidates: mount.candidates
+              })
+              const dimLabel =
+                nb.dimension != null
+                  ? t('workbench.notebook_dimension', '{{count}} 维', { count: nb.dimension })
+                  : t('workbench.notebook_no_embed', '尚未嵌入')
+              return (
+                <li key={nb.id}>
+                  <button
+                    type="button"
+                    className={`${styles.notebookBtn} ${selected ? styles.notebookBtnActive : ''}`}
+                    disabled={mount.busy || (!selected && !gate.allowed)}
+                    title={!selected && gate.reason ? gate.reason : undefined}
+                    onClick={() => void mount.toggle(nb.id)}
+                  >
+                    <span className={styles.notebookName}>{nb.name}</span>
+                    <span className={styles.notebookMeta}>
+                      {t('workbench.notebook_sources', '{{count}} 份资料', { count: nb.sources })}
+                      {' · '}
+                      {dimLabel}
+                    </span>
+                    {!selected && gate.reason ? (
+                      <span className={styles.notebookWarn}>{gate.reason}</span>
+                    ) : null}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
 

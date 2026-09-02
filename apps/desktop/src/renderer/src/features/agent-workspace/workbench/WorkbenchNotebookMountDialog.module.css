@@ -104,6 +104,23 @@
   cursor: pointer;
   padding: 8px 10px;
   font-size: var(--ui-fs-md);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notebookName {
+  font-weight: 600;
+}
+
+.notebookMeta {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-secondary);
+}
+
+.notebookWarn {
+  font-size: var(--ui-fs-sm);
+  color: var(--text-tertiary, var(--text-secondary));
 }
 
 .notebookBtn:hover:not(:disabled) {
