@@ -82,8 +82,8 @@ export interface StreamChatOptions {
   workspace?: {
     folderRoot: string
     sessionKind?: AgentSessionKind
-    /** 工作台挂载的知识库笔记本（检索作用域） */
-    notebookId?: string
+    /** 会话挂载的知识库笔记本（最多 3 本） */
+    notebookIds?: string[]
     /** 工作区身份，供 Gate scope / 观测 */
     workspaceId?: string
     /** 注入 system <workspace_env> 的元数据 */

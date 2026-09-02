@@ -54,7 +54,7 @@ export interface AgentToolsContextParams {
   workspace?: {
     folderRoot?: string
     sessionKind?: AgentSessionKind
-    notebookId?: string
+    notebookIds?: string[]
   }
 }
 
@@ -126,20 +126,26 @@ async function buildToolExecutionContext(
     skillsWriter: params.skillsWriter,
     agentGate: params.agentGate,
     gateProfile,
-    workspace: params.workspace?.folderRoot
-      ? {
-          folderRoot: params.workspace.folderRoot,
-          sessionKind: params.workspace.sessionKind,
-          notebookId: params.workspace.notebookId
-        }
-      : undefined
+    workspace:
+      params.workspace?.folderRoot ||
+      params.workspace?.sessionKind ||
+      (params.workspace?.notebookIds && params.workspace.notebookIds.length > 0)
+        ? {
+            folderRoot: params.workspace.folderRoot ?? '',
+            sessionKind: params.workspace.sessionKind,
+            notebookIds: params.workspace.notebookIds
+          }
+        : undefined
   }
 }
 
 export async function resolveEnabledToolsForSession(
   params: AgentToolsContextParams
 ): Promise<Record<string, unknown>> {
-  const { mergedUserConfig } = await resolveSessionAssistantContext(params)
+  const { mergedUserConfig } = await resolveSessionAssistantContext({
+    ...params,
+    sessionKind: params.workspace?.sessionKind
+  })
   const toolContext = await buildToolExecutionContext(params, mergedUserConfig)
   return params.toolRegistry.getEnabledToolsAsVercel(toolContext)
 }
@@ -150,7 +156,10 @@ export async function buildSystemPromptForSession(
   const enabledTools = await resolveEnabledToolsForSession(params)
   const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
   const { effectiveSystemPrompt, assistantKind, mergedUserConfig } =
-    await resolveSessionAssistantContext(params)
+    await resolveSessionAssistantContext({
+      ...params,
+      sessionKind: params.workspace?.sessionKind
+    })
 
   const customGuidelines =
     typeof params.userConfig?.agentGuidelines === 'string'
