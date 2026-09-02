@@ -4,18 +4,20 @@ import type {
   ToolKnowledgeReader,
   ToolKnowledgeSearchHit
 } from '@baishou/shared'
+import { parseMountedNotebookIds } from '@baishou/shared'
 
 export type KnowledgeSearchFn = (opts: {
   query: string
-  notebookId: string
+  notebookIds: string[]
   limit?: number
+  limitPerNotebook?: number
 }) => Promise<ToolKnowledgeSearchHit[]>
 
 export type KnowledgeGraphSearchFn = (opts: {
   query: string
-  notebookId: string
+  notebookIds: string[]
   limit?: number
-}) => Promise<ToolKnowledgeGraphSearchResult>
+}) => Promise<ToolKnowledgeGraphSearchResult[]>
 
 /**
  * Host-injected knowledge adapter for knowledge_search tool.
@@ -25,10 +27,18 @@ export class KnowledgeReaderAdapter implements ToolKnowledgeReader {
 
   async search(opts: {
     query: string
-    notebookId: string
+    notebookIds: string[]
     limit?: number
+    limitPerNotebook?: number
   }): Promise<ToolKnowledgeSearchHit[]> {
-    return this.searchFn(opts)
+    const notebookIds = parseMountedNotebookIds(opts.notebookIds)
+    if (notebookIds.length === 0) return []
+    return this.searchFn({
+      query: opts.query,
+      notebookIds,
+      limit: opts.limit,
+      limitPerNotebook: opts.limitPerNotebook
+    })
   }
 }
 
@@ -38,9 +48,15 @@ export class KnowledgeGraphReaderAdapter implements ToolKnowledgeGraphReader {
 
   async search(opts: {
     query: string
-    notebookId: string
+    notebookIds: string[]
     limit?: number
-  }): Promise<ToolKnowledgeGraphSearchResult> {
-    return this.searchFn(opts)
+  }): Promise<ToolKnowledgeGraphSearchResult[]> {
+    const notebookIds = parseMountedNotebookIds(opts.notebookIds)
+    if (notebookIds.length === 0) return []
+    return this.searchFn({
+      query: opts.query,
+      notebookIds,
+      limit: opts.limit
+    })
   }
 }
