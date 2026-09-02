@@ -118,6 +118,8 @@ interface SettingsAPI {
     workspaceId: string,
     config: import('@baishou/shared').WorkspaceToolManagementConfig
   ): Promise<import('@baishou/shared').WorkspaceToolManagementConfig>
+  getWorkspacePersonalMemoryRead(workspaceId: string): Promise<boolean>
+  setWorkspacePersonalMemoryRead(workspaceId: string, enabled: boolean): Promise<boolean>
   testTts(
     config: unknown,
     text: string
@@ -241,7 +243,11 @@ interface AgentWorkspaceAPI {
     folderRoot: string
     notebookId?: string
   } | null>
-  attachNotebook(params: { sessionId: string; notebookId: string | null }): Promise<{
+  attachNotebook(params: {
+    sessionId: string
+    notebookId?: string | null
+    notebookIds?: string[]
+  }): Promise<{
     sessionId: string
     folderRoot: string
     notebookId?: string
@@ -311,9 +317,11 @@ interface AgentWorkspaceGitAPI {
   ): Promise<import('@baishou/shared').GitCommit | null>
   getHistory(
     folderRoot: string,
-    filePath?: string,
-    limit?: number
+    filePath?: string | null,
+    limit?: number,
+    offset?: number
   ): Promise<import('@baishou/shared').VersionHistoryEntry[]>
+  getHistoryCount(folderRoot: string, filePath?: string | null): Promise<number>
   getRecentPulls(
     folderRoot: string,
     limit?: number
@@ -333,6 +341,11 @@ interface AgentWorkspaceGitAPI {
     staged: boolean
   ): Promise<import('@baishou/shared').FileDiff>
   getHeadFileContent(folderRoot: string, filePath: string): Promise<string | null>
+  getFileContentAtRevision(
+    folderRoot: string,
+    filePath: string,
+    revision: string
+  ): Promise<string | null>
   hasConflicts(folderRoot: string): Promise<boolean>
   getConflicts(folderRoot: string): Promise<string[]>
   resolveConflict(
@@ -642,6 +655,18 @@ interface KnowledgeAPI {
     coverImageUrl?: string | null
   }>
   listNotebooks(): Promise<unknown[]>
+  listMountSummaries(): Promise<
+    Array<{
+      id: string
+      name: string
+      sources: number
+      chunks: number
+      dimension: number | null
+      dimensions: number[]
+      modelIds: string[]
+      mixedEmbeddings: boolean
+    }>
+  >
   getNotebook(notebookId: string): Promise<{
     id: string
     name: string
@@ -714,7 +739,7 @@ interface KnowledgeAPI {
     originalBytes: number
     totalBytes: number
   }>
-  hasModelMismatch(): Promise<boolean>
+  hasModelMismatch(notebookIds?: string[]): Promise<boolean>
   listSources(notebookId: string): Promise<unknown[]>
   listChunks(input: {
     notebookId: string
@@ -737,78 +762,6 @@ interface KnowledgeAPI {
     total: number
   }>
   search(input: { notebookId: string; query: string; topK?: number }): Promise<unknown[]>
-  ask(input: {
-    notebookId: string
-    question: string
-    topK?: number
-    multiQuery?: boolean
-    assistantId?: string
-    modelId?: string
-    providerId?: string
-    reasoningEffort?: string
-    sessionId?: string
-    searchMode?: boolean
-  }): Promise<{
-    answer: string
-    citations: Array<{
-      sourceId: string
-      title: string
-      chunkId: string
-      chunkIndex: number
-      excerpt: string
-      offset?: number
-      len?: number
-      page?: number
-      score: number
-      source: string
-    }>
-    hits: unknown[]
-    subQueries?: string[]
-    reasoning?: string
-  }>
-  cancelAsk(notebookId: string): Promise<{ cancelled: boolean }>
-  onAskProgress(
-    callback: (progress: {
-      notebookId: string
-      phase: 'retrieving' | 'thinking' | 'answering' | 'tool'
-      text?: string
-      reasoning?: string
-      toolName?: string
-      toolStatus?: 'running' | 'done' | 'failed'
-      tools?: Array<{
-        name: string
-        displayName?: string
-        status: 'running' | 'done' | 'failed'
-        result?: string
-      }>
-    }) => void
-  ): () => void
-  chat(input: {
-    notebookId: string
-    question: string
-    sourceIds: string[]
-    maxContextChars?: number
-  }): Promise<{
-    answer: string
-    citations: Array<{
-      sourceId: string
-      title: string
-      chunkId: string
-      chunkIndex: number
-      excerpt: string
-      score: number
-      source: string
-    }>
-    truncated: boolean
-    mode: 'chat'
-  }>
-  saveNote(input: {
-    notebookId: string
-    title?: string
-    question: string
-    answer: string
-    citations?: Array<{ title: string; page?: number; excerpt?: string }>
-  }): Promise<{ sourceId: string }>
   ocrMissingPages(input: {
     sourceId: string
     engine?: 'simple' | 'ocr' | 'vision'
@@ -907,73 +860,6 @@ interface KnowledgeAPI {
     allPending?: boolean
   }): Promise<{ ok: boolean; nodeCount: number; edgeCount: number }>
   rebuildGraph(notebookId: string): Promise<{ ok: boolean }>
-  listChatSessions(notebookId: string): Promise<
-    Array<{
-      id: string
-      notebookId: string
-      assistantId: string
-      title: string
-      pinned?: boolean
-      createdAt: number
-      updatedAt: number
-    }>
-  >
-  createChatSession(input: {
-    notebookId: string
-    assistantId: string
-    title?: string
-  }): Promise<{
-    id: string
-    notebookId: string
-    assistantId: string
-    title: string
-    pinned?: boolean
-    createdAt: number
-    updatedAt: number
-  }>
-  updateChatSession(input: {
-    notebookId: string
-    sessionId: string
-    title?: string
-    pinned?: boolean
-    assistantId?: string
-    deletedAt?: number | null
-  }): Promise<{
-    id: string
-    notebookId: string
-    assistantId: string
-    title: string
-    pinned?: boolean
-    createdAt: number
-    updatedAt: number
-  } | null>
-  listChatMessages(input: { notebookId: string; sessionId: string }): Promise<
-    Array<{
-      id: string
-      sessionId: string
-      role: 'user' | 'assistant'
-      text: string
-      reasoning?: string
-      citations?: Array<{ sourceId?: string; title: string; excerpt?: string; page?: number }>
-      createdAt: number
-    }>
-  >
-  appendChatMessage(input: {
-    notebookId: string
-    sessionId: string
-    role: 'user' | 'assistant'
-    text: string
-    reasoning?: string
-    citations?: Array<{ sourceId?: string; title: string; excerpt?: string; page?: number }>
-  }): Promise<{
-    id: string
-    sessionId: string
-    role: 'user' | 'assistant'
-    text: string
-    reasoning?: string
-    citations?: Array<{ sourceId?: string; title: string; excerpt?: string; page?: number }>
-    createdAt: number
-  }>
   listGraphJobs(notebookId: string): Promise<{
     pending: number
     running: number
@@ -1014,6 +900,8 @@ interface AppAPI {
   storage: StorageAPI
   tts: TtsAPI
   pickFiles(options?: PickFilesOptions): Promise<PickedFile[]>
+  getMountedNotebooks(sessionId: string): Promise<string[]>
+  setMountedNotebooks(sessionId: string, notebookIds: string[]): Promise<string[]>
   getAssistants(): Promise<unknown[]>
   updateAssistant(id: string, input: Record<string, unknown>): Promise<void>
   ensureDefaultLatteAssistant(locale?: string): Promise<void>
