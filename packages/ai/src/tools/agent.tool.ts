@@ -27,6 +27,7 @@ export interface ToolEmbeddingService {
     vaultId: string
     metadataJson?: string
     sourceCreatedAt?: number
+    chunkPrefix?: string
   }): Promise<void>
 }
 
@@ -51,6 +52,13 @@ export interface VectorSearchTimeFilter {
   vaultId?: string
 }
 
+export interface VectorSourceLookup {
+  sourceType: string
+  sourceId: string
+  chunkText: string
+  createdAt?: number
+}
+
 export interface ToolVectorStore {
   searchSimilar(
     queryEmbedding: number[],
@@ -58,6 +66,12 @@ export interface ToolVectorStore {
     timeFilter?: VectorSearchTimeFilter
   ): Promise<VectorSearchResult[]>
   deleteBySource(sourceType: string, sourceId: string): Promise<void>
+  /** 按来源类型 + 唯一键读取一条嵌入，供精确删除核对。未传 vaultId 时应 fail-closed。 */
+  getBySource?(
+    sourceType: string,
+    sourceId: string,
+    vaultId?: string
+  ): Promise<VectorSourceLookup | null>
   /**
    * 将一个指定的日记文件从向量库中抹去
    */
@@ -76,6 +90,8 @@ export interface ToolVectorStore {
       sessionId: string
       snippet: string
       createdAt?: number
+      sourceType?: string
+      sourceId?: string
     }>
   >
 }
@@ -159,12 +175,11 @@ export interface ToolDiarySearcher {
   ): Promise<Array<{ date: string; preview: string }>>
   /** 按日期读取日记全文（移动端经 DiaryService） */
   readByDates?(dates: string[]): Promise<Array<{ date: string; content: string | null }>>
-  writeEntry?(date: string, content: string, tags?: string): Promise<ToolDiaryMutationResult>
+  writeEntry?(date: string, content: string): Promise<ToolDiaryMutationResult>
   editEntry?(args: {
     date: string
     content: string
     mode?: 'append' | 'overwrite'
-    tags?: string
   }): Promise<ToolDiaryMutationResult>
   deleteEntry?(date: string): Promise<ToolDiaryMutationResult>
 }
@@ -228,8 +243,8 @@ export interface ToolContext {
     sessionKind?: AgentSessionKind
     /** 工作区策略作用域 ID（可选；用于 Gate scope） */
     workspaceId?: string
-    /** 工作台挂载的知识库笔记本（检索作用域，非 folderRoot） */
-    notebookId?: string
+    /** 会话挂载的知识库笔记本（最多 3 本） */
+    notebookIds?: string[]
     fs?: WorkspaceFsAdapter
     roundCheckpointService?: AgentRoundCheckpointService
     roundCheckpointId?: string
