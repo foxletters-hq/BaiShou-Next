@@ -8,7 +8,11 @@ import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
-import type { MockChatAttachment } from '@baishou/shared'
+import {
+  collectKnowledgeCitationsFromInvocations,
+  type MockChatAttachment
+} from '@baishou/shared'
+import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
 import { NativeChatBubbleAttachments } from './NativeChatBubbleAttachments'
@@ -90,6 +94,10 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     toolName: string
     result: unknown
   }>
+  const knowledgeCitations = useMemo(
+    () => collectKnowledgeCitationsFromInvocations(toolInvocations),
+    [toolInvocations]
+  )
   const attachments = useMemo(() => {
     const persisted = (message.attachments || []) as MockChatAttachment[]
     if (persisted.length > 0) return persisted
@@ -255,6 +263,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
             </View>
           )}
         </View>
+        {isAssistant && knowledgeCitations.length > 0 ? (
+          <KnowledgeCitationBlock citations={knowledgeCitations} />
+        ) : null}
 
         {edit.isEditing ? (
           <NativeChatBubbleEditActions

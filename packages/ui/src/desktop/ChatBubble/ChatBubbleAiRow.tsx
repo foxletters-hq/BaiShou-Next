@@ -1,5 +1,6 @@
-import React from 'react'
-import type { MockChatMessage } from '@baishou/shared'
+import React, { useMemo } from 'react'
+import { collectKnowledgeCitationsFromInvocations, type MockChatMessage } from '@baishou/shared'
+import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import { MessageActionBar } from '../MessageActionBar'
 import { AgentMarkdownRenderer, AgentThinkSection } from '../AgentMarkdown'
 import { ToolResultGroup } from '../ToolResultGroupCard'
@@ -34,7 +35,17 @@ interface ChatBubbleAiRowProps {
   t: (key: string, fallback: string) => string
 }
 
-export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
+export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = (props) => {
+  const citations = useMemo(
+    () => collectKnowledgeCitationsFromInvocations(props.message.toolInvocations),
+    [props.message.toolInvocations]
+  )
+  return <ChatBubbleAiRowInner {...props} citations={citations} />
+}
+
+const ChatBubbleAiRowInner: React.FC<
+  ChatBubbleAiRowProps & { citations: ReturnType<typeof collectKnowledgeCitationsFromInvocations> }
+> = ({
   message,
   aiProfile,
   aiName,
@@ -55,7 +66,8 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
   onShowContext,
   onReadAloud,
   isTtsPlaying,
-  t
+  t,
+  citations
 }) => (
   <div className={`${styles.bubbleRow} ${styles.aiRow}`}>
     <div className={styles.avatarWrap}>
@@ -99,6 +111,7 @@ export const ChatBubbleAiRow: React.FC<ChatBubbleAiRowProps> = ({
             )}
             {cleanContent && <AgentMarkdownRenderer content={cleanContent} />}
           </div>
+          {citations.length > 0 ? <KnowledgeCitationBlock citations={citations} /> : null}
 
           <div className={styles.aiFooterRow}>
             <MessageActionBar

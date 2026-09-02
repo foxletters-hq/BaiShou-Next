@@ -264,3 +264,19 @@ describe('getToolRowSubtitle', () => {
     ).toBe('工具执行失败')
   })
 })
+
+describe('knowledge_search presentation', () => {
+  it('unwraps formatted text from citation JSON', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'knowledge_search',
+      result: JSON.stringify({
+        text: '## 知识库检索\n\n[1] 手册 · 视听语言（偏移 12）',
+        citations: [{ notebookName: '手册', title: '视听语言', offset: 12 }]
+      })
+    })
+    expect(presentation.mode).toBe('plain')
+    if (presentation.mode !== 'plain') return
+    expect(presentation.renderAsMarkdown).toBe(true)
+    expect(presentation.text).toContain('视听语言')
+  })
+})

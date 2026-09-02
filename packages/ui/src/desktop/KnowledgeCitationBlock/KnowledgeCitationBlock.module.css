@@ -1,0 +1,35 @@
+.wrap {
+  margin: 6px 0 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--ui-fs-xs, 12px);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemTitle {
+  font-size: var(--ui-fs-sm, 13px);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.excerpt {
+  font-size: var(--ui-fs-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
