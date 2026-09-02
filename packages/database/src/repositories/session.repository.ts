@@ -61,6 +61,10 @@ export class SessionRepository {
     return this.run(() => this.crudOps.updateSessionDialogueModel(...args))
   }
 
+  updateMountedNotebookIds(...args: Parameters<SessionCrudOps['updateMountedNotebookIds']>) {
+    return this.run(() => this.crudOps.updateMountedNotebookIds(...args))
+  }
+
   deleteSessions(...args: Parameters<SessionCrudOps['deleteSessions']>) {
     return this.run(() => this.crudOps.deleteSessions(...args))
   }

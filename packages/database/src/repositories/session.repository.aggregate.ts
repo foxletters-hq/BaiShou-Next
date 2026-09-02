@@ -1,5 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { deriveLegacyVaultId, isVaultId } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  isVaultId,
+  parseMountedNotebookIds,
+  serializeMountedNotebookIds
+} from '@baishou/shared'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
@@ -31,7 +36,12 @@ export class SessionAggregateSync {
       .where(eq(agentSessionsTable.id, sessionId))
       .limit(1)
     if (!sessionDoc.length) return null
-    const session = sessionDoc[0]
+    const row = sessionDoc[0]
+    if (!row) return null
+    const session = {
+      ...row,
+      mountedNotebookIds: parseMountedNotebookIds(row.mountedNotebookIds)
+    }
 
     const messages = await this.db
       .select()
@@ -141,10 +151,10 @@ export class SessionAggregateSync {
     stmts.push({
       sql: `INSERT INTO agent_sessions
               (id, title, vault_id, assistant_id, is_pinned, system_prompt,
-               provider_id, model_id, total_input_tokens, total_output_tokens,
+               mounted_notebook_ids, provider_id, model_id, total_input_tokens, total_output_tokens,
                total_cache_read_input_tokens, total_cache_write_input_tokens,
                total_cost_micros, created_at, updated_at)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [
         session.id,
         session.title ?? null,
@@ -152,6 +162,9 @@ export class SessionAggregateSync {
         session.assistantId ?? null,
         session.isPinned ? 1 : 0,
         session.systemPrompt ?? null,
+        serializeMountedNotebookIds(
+          session.mountedNotebookIds ?? session.mounted_notebook_ids
+        ),
         session.providerId ?? null,
         session.modelId ?? null,
         session.totalInputTokens ?? null,

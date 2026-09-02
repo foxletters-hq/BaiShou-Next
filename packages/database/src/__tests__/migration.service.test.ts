@@ -151,6 +151,7 @@ describe('MigrationService', () => {
       const names = cols.map((c: any) => c.name)
       expect(names).toContain('total_cache_read_input_tokens')
       expect(names).toContain('total_cache_write_input_tokens')
+      expect(names).toContain('mounted_notebook_ids')
     })
 
     it('_ensureAgentSchemaColumns should add missing order_index on legacy agent_messages', async () => {

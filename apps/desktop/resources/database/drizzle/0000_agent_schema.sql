@@ -31,6 +31,7 @@ CREATE TABLE `agent_sessions` (
 	`assistant_id` text,
 	`is_pinned` integer DEFAULT false NOT NULL,
 	`system_prompt` text,
+	`mounted_notebook_ids` text DEFAULT '' NOT NULL,
 	`provider_id` text NOT NULL,
 	`model_id` text NOT NULL,
 	`total_input_tokens` integer DEFAULT 0 NOT NULL,
