@@ -105,6 +105,7 @@ export * from './desktop/VersionManager/index'
 
 // 聊天与Agent组件
 export * from './desktop/ChatBubble/index'
+export * from './desktop/KnowledgeCitationBlock'
 export * from './desktop/StreamingBubble/index'
 export * from './desktop/MessageActionBar/index'
 export * from './desktop/CompressionDivider/index'
@@ -142,6 +143,7 @@ export type { AssistantPickerSheetProps } from './desktop/AssistantPickerSheet/i
 export * from './desktop/PromptShortcutSheet/index'
 export * from './desktop/RecallDialog/index'
 export { resolveActiveToolDisplayName } from './shared/tool-result.util'
+export { HELP_ICON_SIZE } from './shared/icons/icon-sizes'
 export * from './desktop/ModelSwitcherPopup'
 export * from './desktop/SessionModelMenu'
 export * from './shared/ModelVisionBadge'

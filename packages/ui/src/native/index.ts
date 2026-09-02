@@ -16,6 +16,7 @@ export * from './Pagination'
 
 // 聊天组件
 export * from './ChatBubble'
+export * from './KnowledgeCitationBlock'
 export * from './InputBar'
 export * from './TokenBadge'
 export * from './StreamingBubble'
@@ -173,4 +174,5 @@ export {
 export { resolveActiveToolDisplayName } from '../shared/tool-result.util'
 
 export * from './icons'
+export { HELP_ICON_SIZE } from '../shared/icons/icon-sizes'
 export type { SettingsNavIconId } from '../shared/icons/settings-nav-icon-ids'

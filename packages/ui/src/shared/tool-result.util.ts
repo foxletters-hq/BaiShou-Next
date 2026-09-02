@@ -1,3 +1,5 @@
+import { parseKnowledgeSearchToolResult } from '@baishou/shared'
+
 /** 工具调用结果解析 — web / native 共用 */
 
 export interface ToolInvocationLike {
@@ -206,6 +208,14 @@ export function resolveToolResultPresentation(
   if (!isError) {
     const companionAsk = resolveCompanionAskPresentation(invocation)
     if (companionAsk) return companionAsk
+    const knowledgeSearch = parseKnowledgeSearchToolResult(invocation.result)
+    if (knowledgeSearch && invocation.toolName === 'knowledge_search') {
+      return {
+        mode: 'plain',
+        text: normalizeToolResultPlainText(knowledgeSearch.text),
+        renderAsMarkdown: true
+      }
+    }
   }
   const plainText = unwrapPlainToolResultText(invocation.result)
   const sourceUrl = readToolSourceUrl(invocation)
