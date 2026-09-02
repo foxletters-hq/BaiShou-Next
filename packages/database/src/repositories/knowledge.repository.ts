@@ -480,32 +480,72 @@ export class KnowledgeRepository {
    */
   async countHeterogeneousEmbeddings(
     currentModelId: string,
-    options?: { vaultId?: string }
+    options?: { vaultId?: string; notebookIds?: string[] }
   ): Promise<number> {
     const modelId = (currentModelId || '').trim()
     if (!modelId) return 0
     const vaultId = options?.vaultId?.trim()
-    const rows = vaultId
-      ? await this.db
-          .select({ c: sql<number>`count(*)` })
-          .from(knowledgeChunksTable)
-          .where(
-            and(
-              eq(knowledgeChunksTable.vaultId, vaultId),
-              sql`${knowledgeChunksTable.modelId} != ''`,
-              sql`${knowledgeChunksTable.modelId} != ${modelId}`
-            )
-          )
-      : await this.db
-          .select({ c: sql<number>`count(*)` })
-          .from(knowledgeChunksTable)
-          .where(
-            and(
-              sql`${knowledgeChunksTable.modelId} != ''`,
-              sql`${knowledgeChunksTable.modelId} != ${modelId}`
-            )
-          )
+    const notebookIds = (options?.notebookIds ?? []).map((id) => id.trim()).filter(Boolean)
+    if (options?.notebookIds && notebookIds.length === 0) return 0
+    const filters = [
+      sql`${knowledgeChunksTable.modelId} != ''`,
+      sql`${knowledgeChunksTable.modelId} != ${modelId}`
+    ]
+    if (vaultId) filters.push(eq(knowledgeChunksTable.vaultId, vaultId))
+    if (notebookIds.length > 0) {
+      filters.push(inArray(knowledgeChunksTable.notebookId, notebookIds))
+    }
+    const rows = await this.db
+      .select({ c: sql<number>`count(*)` })
+      .from(knowledgeChunksTable)
+      .where(and(...filters))
     return Number(rows[0]?.c ?? 0)
+  }
+
+  /** 按本聚合维度 / 模型，不读 embedding BLOB。 */
+  async listNotebookEmbeddingProfiles(opts: {
+    vaultId?: string
+    notebookIds: string[]
+  }): Promise<
+    Array<{
+      notebookId: string
+      notebookName: string
+      dimension: number
+      modelId: string
+      chunkCount: number
+    }>
+  > {
+    const notebookIds = [...new Set(opts.notebookIds.map((id) => id.trim()).filter(Boolean))]
+    if (notebookIds.length === 0) return []
+    const vaultId = opts.vaultId?.trim()
+    const filters = [inArray(knowledgeChunksTable.notebookId, notebookIds)]
+    if (vaultId) filters.push(eq(knowledgeChunksTable.vaultId, vaultId))
+
+    const rows = await this.db
+      .select({
+        notebookId: knowledgeChunksTable.notebookId,
+        notebookName: notebooksTable.name,
+        dimension: knowledgeChunksTable.dimension,
+        modelId: knowledgeChunksTable.modelId,
+        chunkCount: sql<number>`count(*)`
+      })
+      .from(knowledgeChunksTable)
+      .leftJoin(notebooksTable, eq(notebooksTable.id, knowledgeChunksTable.notebookId))
+      .where(and(...filters))
+      .groupBy(
+        knowledgeChunksTable.notebookId,
+        notebooksTable.name,
+        knowledgeChunksTable.dimension,
+        knowledgeChunksTable.modelId
+      )
+
+    return rows.map((row) => ({
+      notebookId: String(row.notebookId),
+      notebookName: String(row.notebookName ?? '').trim() || String(row.notebookId),
+      dimension: Number(row.dimension ?? 0),
+      modelId: String(row.modelId ?? ''),
+      chunkCount: Number(row.chunkCount ?? 0)
+    }))
   }
 
   async deleteSource(sourceId: string): Promise<void> {

@@ -1,29 +1,31 @@
+import { parseMountedNotebookIds, resolveWorkspaceNotebookIds } from '@baishou/shared'
 import type { ToolContext } from './agent.tool'
 
-export function resolveKnowledgeToolNotebookId(
+export function resolveKnowledgeToolNotebookIds(
   context: ToolContext,
   argsNotebookId?: string
-): { notebookId: string; error?: string } {
-  const attached = context.workspace?.notebookId?.trim() || ''
-  const isWorkspace = context.workspace?.sessionKind === 'workspace'
-
-  if (isWorkspace) {
-    if (!attached) {
-      return {
-        notebookId: '',
-        error: '工作台尚未挂载知识库笔记本，拒绝检索。请先在工作台挂载笔记本；不可通过 notebookId 参数绕过。'
-      }
-    }
-    return { notebookId: attached }
-  }
-
-  // 笔记本页 / 已绑定本子的对话：以上下文为准，忽略模型自带的 notebookId。
-  const notebookId = attached || argsNotebookId?.trim()
-  if (!notebookId) {
+): { notebookIds: string[]; error?: string } {
+  const mounted = resolveWorkspaceNotebookIds(context.workspace)
+  if (mounted.length === 0) {
     return {
-      notebookId: '',
-      error: '当前对话没有绑定笔记本，也没有传入 notebookId。请先打开一本笔记本，不要编造资料内容。'
+      notebookIds: [],
+      error:
+        '当前对话尚未挂载知识库笔记本，拒绝检索。请先挂载笔记本；不可通过 notebookId 参数绕过。'
     }
   }
-  return { notebookId }
+
+  const requested = parseMountedNotebookIds(argsNotebookId)
+  if (requested.length === 0) {
+    return { notebookIds: mounted }
+  }
+
+  const allowed = new Set(mounted)
+  const invalid = requested.filter((id) => !allowed.has(id))
+  if (invalid.length > 0) {
+    return {
+      notebookIds: [],
+      error: `notebookId「${invalid.join('、')}」不在已挂载集合中，拒绝检索。请只检索已挂载的笔记本。`
+    }
+  }
+  return { notebookIds: requested }
 }
