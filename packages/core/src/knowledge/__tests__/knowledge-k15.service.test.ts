@@ -4,8 +4,6 @@ import {
   resolveExtractEngine,
   type ExtractEngineCapabilities
 } from '../extract-engine-capabilities'
-import { heuristicSplitSubQueries } from '../knowledge-ask.service'
-import { trimSourcesToBudget } from '../knowledge-chat.service'
 
 describe('K1.5 extract engine resolve', () => {
   const caps: ExtractEngineCapabilities = {
@@ -29,37 +27,6 @@ describe('K1.5 extract engine resolve', () => {
     })
     expect(r.engine).toBe('ocr')
     expect(r.degraded).toBe(true)
-  })
-})
-
-describe('K1.5 multi-query heuristic', () => {
-  it('最多拆 2 段', () => {
-    expect(heuristicSplitSubQueries('对齐问题，以及可解释性争议', 2)).toEqual([
-      '对齐问题',
-      '以及可解释性争议'
-    ])
-    const parts = heuristicSplitSubQueries('对齐和可解释性', 2)
-    expect(parts.length).toBe(2)
-    expect(parts[0]).toContain('对齐')
-    expect(parts[1]).toContain('可解释')
-  })
-
-  it('无连接词保持单查询', () => {
-    expect(heuristicSplitSubQueries('什么是对齐？')).toEqual(['什么是对齐？'])
-  })
-})
-
-describe('K1.5 chat budget trim', () => {
-  it('超预算截断', () => {
-    const { blocks, truncated } = trimSourcesToBudget(
-      [
-        { sourceId: 'a', title: 'A', text: 'x'.repeat(100) },
-        { sourceId: 'b', title: 'B', text: 'y'.repeat(100) }
-      ],
-      80
-    )
-    expect(truncated).toBe(true)
-    expect(blocks.length).toBeLessThanOrEqual(120)
   })
 })
 

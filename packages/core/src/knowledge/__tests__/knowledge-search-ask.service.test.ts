@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import { embeddingVectorToBytes } from '@baishou/shared'
 import { KnowledgeSearchService } from '../knowledge-search.service'
-import { KnowledgeAskService, resolvePageForOffset } from '../knowledge-ask.service'
+import { resolvePageForOffset } from '../knowledge-page.util'
 
 function canOpenBetterSqlite3(): boolean {
   try {
@@ -210,139 +210,5 @@ describeSearchDb('KnowledgeSearchService notebook isolation (sqlite)', () => {
     expect(hits.every((h) => h.notebookId === 'nb_a')).toBe(true)
     expect(hits.every((h) => h.sourceId === 'src_a')).toBe(true)
     expect(hits.some((h) => h.sourceId === 'src_b')).toBe(false)
-  })
-})
-
-describe('KnowledgeAskService citations', () => {
-  it('组装 L1 偏移与 L2 页码引用', async () => {
-    const search = {
-      search: async () => [
-        {
-          chunkId: 'c1',
-          sourceId: 'src1',
-          notebookId: 'nb1',
-          chunkIndex: 0,
-          chunkText: '第一段关于对齐的讨论。',
-          score: 0.9,
-          source: 'hybrid' as const,
-          offset: 120,
-          len: 12,
-          title: 'report.pdf'
-        }
-      ]
-    }
-
-    const ask = new KnowledgeAskService({
-      search: search as any,
-      embedQuery: async () => [1, 0, 0],
-      generateAnswer: async () => '根据资料[1]，对齐存在主要分歧。',
-      getPageBoundaries: async () => [
-        { page: 1, start: 0, end: 100 },
-        { page: 2, start: 100, end: 200 }
-      ]
-    })
-
-    const result = await ask.ask({ notebookId: 'nb1', question: '对齐分歧是什么？' })
-    expect(result.answer).toContain('对齐')
-    expect(result.citations).toHaveLength(1)
-    expect(result.citations[0]).toMatchObject({
-      sourceId: 'src1',
-      title: 'report.pdf',
-      chunkIndex: 0,
-      offset: 120,
-      len: 12,
-      page: 2
-    })
-    expect(result.citations[0]?.excerpt).toContain('对齐')
-    expect(result.reasoning).toBeUndefined()
-  })
-
-  it('打招呼时不检索、不挂引用', async () => {
-    const search = { search: vi.fn(async () => []) }
-    const ask = new KnowledgeAskService({
-      search: search as any,
-      embedQuery: vi.fn(async () => [1]),
-      generateAnswer: async () => '你好，今天想问这本笔记本里的哪一段？'
-    })
-    const result = await ask.ask({ notebookId: 'nb1', question: 'hi' })
-    expect(result.answer).toContain('你好')
-    expect(result.citations).toEqual([])
-    expect(search.search).not.toHaveBeenCalled()
-  })
-
-  it('不把损坏文本层片段送给模型', async () => {
-    const ask = new KnowledgeAskService({
-      search: {
-        search: async () => [
-          {
-            chunkId: 'c-bad',
-            sourceId: 'src1',
-            notebookId: 'nb1',
-            chunkIndex: 0,
-            chunkText:
-              '和 1 AR 1 次 兴 SN=A I E 4 人 人 0 0 加 Ar 区，和 0 人 0 人 N S ee 1 1 由 0 | 人 0 0 人 RE',
-            score: 0.9,
-            source: 'hybrid' as const
-          },
-          {
-            chunkId: 'c-ok',
-            sourceId: 'src1',
-            notebookId: 'nb1',
-            chunkIndex: 1,
-            chunkText: '视听语言是电影艺术的基础，蒙太奇通过镜头组接创造新的意义。',
-            score: 0.8,
-            source: 'hybrid' as const,
-            title: '视听语言'
-          }
-        ]
-      } as any,
-      embedQuery: async () => [1],
-      generateAnswer: async ({ citations }) => {
-        expect(citations).toHaveLength(1)
-        return '根据[1]，视听语言是电影艺术的基础。'
-      }
-    })
-    const result = await ask.ask({ notebookId: 'nb1', question: '视听语言讲了什么？' })
-    expect(result.citations).toHaveLength(1)
-    expect(result.citations[0]?.excerpt).toContain('视听语言')
-  })
-
-  it('keeps reasoning returned by generateAnswer', async () => {
-    const ask = new KnowledgeAskService({
-      search: {
-        search: async () => [
-          {
-            chunkId: 'c1',
-            sourceId: 'src1',
-            notebookId: 'nb1',
-            chunkIndex: 0,
-            chunkText: '资料正文',
-            score: 0.9,
-            source: 'hybrid' as const
-          }
-        ]
-      } as any,
-      embedQuery: async () => [1],
-      generateAnswer: async () => ({
-        answer: '结论。',
-        reasoning: '  对照资料后归纳  '
-      }),
-      onProgress: (event) => {
-        expect(['retrieving', 'thinking', 'answering']).toContain(event.phase)
-      }
-    })
-    const result = await ask.ask({ notebookId: 'nb1', question: '结论？' })
-    expect(result.answer).toBe('结论。')
-    expect(result.reasoning).toBe('对照资料后归纳')
-  })
-
-  it('缺 notebookId / question 时 fail-closed', async () => {
-    const ask = new KnowledgeAskService({
-      search: { search: async () => [] } as any,
-      embedQuery: async () => [1],
-      generateAnswer: async () => ''
-    })
-    await expect(ask.ask({ notebookId: '', question: 'q' })).rejects.toThrow(/notebookId/)
-    await expect(ask.ask({ notebookId: 'nb', question: '  ' })).rejects.toThrow(/question/)
   })
 })
