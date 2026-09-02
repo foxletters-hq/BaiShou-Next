@@ -3,10 +3,8 @@ import path from 'path'
 import { toLocalProtocolFileUrl } from '../local-protocol.util'
 import { KnowledgeRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
 import {
-  KnowledgeChatService,
   KnowledgeIngestService,
   KnowledgeSearchService,
-  NotebookChatRawManager,
   NotebookGraphRawManager,
   listLiveGraphSourceIds,
   probeExtractEngineCapabilities,
@@ -26,8 +24,7 @@ import {
   type GlobalModelsConfig,
   type KnowledgeConfig,
   type KnowledgeImportProcessMode,
-  type AIProviderConfig,
-  type NotebookAskProgress
+  type AIProviderConfig
 } from '@baishou/shared'
 import { getNotebookRawManager } from '../services/raw-data-source.runtime'
 import {
@@ -35,12 +32,10 @@ import {
   reviewNotebookGraphEdge,
   reviewNotebookGraphNode
 } from '../services/notebook-graph-review'
-import { runNotebookChatAgent } from '../services/notebook-chat-agent.service'
 import { createDesktopKnowledgeGraphExtractFn } from '../services/desktop-knowledge-graph-extract'
 import { fileSystem } from '../services/node-file-system'
 import { scheduleConsumeKnowledgeIngestJobs } from '../services/knowledge-ingest-jobs.consumer'
 import { getEmbeddingService } from './rag.ipc'
-import { buildSummaryAiClient } from './summary-ai-client'
 import { settingsManager } from './settings.ipc'
 import { pathService, resolveActiveVaultId } from './vault.ipc'
 
@@ -105,7 +100,10 @@ function requireActiveVaultId(): string {
   return id
 }
 
-async function assertKnowledgeModelMatch(repo: KnowledgeRepository): Promise<void> {
+async function assertKnowledgeModelMatch(
+  repo: KnowledgeRepository,
+  notebookIds?: string[]
+): Promise<void> {
   const embeddingService = getEmbeddingService()
   const { getEmbeddingConfig } = await import('./rag.ipc')
   const embeddingConfig = getEmbeddingConfig()
@@ -113,7 +111,11 @@ async function assertKnowledgeModelMatch(repo: KnowledgeRepository): Promise<voi
   const modelId = embeddingConfig.getGlobalEmbeddingModelId()
   if (!modelId || !embeddingService.isConfigured) return
   const vaultId = requireActiveVaultId()
-  const mismatch = await repo.countHeterogeneousEmbeddings(modelId, { vaultId })
+  const ids = (notebookIds ?? []).map((id) => id.trim()).filter(Boolean)
+  const mismatch = await repo.countHeterogeneousEmbeddings(modelId, {
+    vaultId,
+    ...(ids.length > 0 ? { notebookIds: ids } : {})
+  })
   if (mismatch > 0) {
     throw new Error('knowledge-model-mismatch')
   }
@@ -238,71 +240,6 @@ function buildSearchService(): KnowledgeSearchService {
   })
 }
 
-type AskPartner = {
-  name: string
-  modelId?: string
-  providerId?: string
-  systemPrompt?: string
-  reasoningEffort?: string
-}
-
-function getNotebookChatManager(): NotebookChatRawManager {
-  return new NotebookChatRawManager(getNotebookRawManager())
-}
-
-async function resolveAskPartner(assistantId?: string): Promise<AskPartner | undefined> {
-  const id = assistantId?.trim()
-  if (!id) return undefined
-  try {
-    const { getAgentManagers } = await import('./agent-helpers')
-    const { assistantManager } = getAgentManagers()
-    const list = (await assistantManager.findAll()) as Array<{
-      id?: string
-      name?: string
-      modelId?: string
-      systemPrompt?: string
-    }>
-    const row = list.find((item) => String(item.id) === id)
-    if (!row) return undefined
-    return {
-      name: String(row.name || ''),
-      modelId: String(row.modelId || '').trim() || undefined,
-      systemPrompt: String(row.systemPrompt || '').trim() || undefined
-    }
-  } catch {
-    return undefined
-  }
-}
-
-const askAbortByNotebook = new Map<string, AbortController>()
-
-function buildChatService(): KnowledgeChatService {
-  const repo = requireKnowledgeRepo()
-  const notebookManager = getNotebookRawManager()
-  const summaryClient = buildSummaryAiClient()
-
-  return new KnowledgeChatService({
-    loadSourceTexts: async (notebookId, sourceIds) => {
-      const out: Array<{ sourceId: string; title: string; text: string }> = []
-      for (const id of sourceIds) {
-        const row = await repo.getSource(id)
-        if (!row || row.notebookId !== notebookId) continue
-        const text = await notebookManager.readExtractedText(notebookId, id)
-        if (!text?.trim()) continue
-        out.push({ sourceId: id, title: row.title, text })
-      }
-      return out
-    },
-    generateAnswer: async ({ question, contextBlocks }) => {
-      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-      const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
-      if (!modelId) throw new Error('No chat/summary model configured')
-      const { system, prompt } = KnowledgeChatService.buildPrompt(question, contextBlocks)
-      return summaryClient.generateContent(prompt, modelId, { system })
-    }
-  })
-}
-
 function handleKnowledgeIpc(
   channel: string,
   listener: Parameters<typeof ipcMain.handle>[1]
@@ -327,6 +264,39 @@ export function registerKnowledgeIPC(): void {
     const svc = getKnowledgeIngestService()
     const rows = await svc.listNotebooks()
     return Promise.all(rows.map((row) => withCoverImageUrl(row)))
+  })
+
+  handleKnowledgeIpc('knowledge:list-mount-summaries', async () => {
+    const repo = requireKnowledgeRepo()
+    const vaultId = requireActiveVaultId()
+    const notebooks = await repo.listNotebooks({ vaultId })
+    const stats = await repo.listNotebookStats(vaultId)
+    const statsById = new Map(stats.map((row) => [row.notebookId, row]))
+    const profiles = await repo.listNotebookEmbeddingProfiles({
+      vaultId,
+      notebookIds: notebooks.map((row) => row.id)
+    })
+    const profilesById = new Map<string, typeof profiles>()
+    for (const profile of profiles) {
+      const list = profilesById.get(profile.notebookId) ?? []
+      list.push(profile)
+      profilesById.set(profile.notebookId, list)
+    }
+    return notebooks.map((notebook) => {
+      const stat = statsById.get(notebook.id)
+      const notebookProfiles = profilesById.get(notebook.id) ?? []
+      const dimensions = [...new Set(notebookProfiles.map((row) => row.dimension))]
+      return {
+        id: notebook.id,
+        name: notebook.name,
+        sources: stat?.sources ?? 0,
+        chunks: stat?.chunks ?? 0,
+        dimension: dimensions.length === 1 ? dimensions[0] : null,
+        dimensions,
+        modelIds: [...new Set(notebookProfiles.map((row) => row.modelId).filter(Boolean))],
+        mixedEmbeddings: dimensions.length > 1
+      }
+    })
   })
 
   handleKnowledgeIpc(
@@ -499,18 +469,25 @@ export function registerKnowledgeIPC(): void {
     return repo.getStats(notebookId, requireActiveVaultId())
   })
 
-  handleKnowledgeIpc('knowledge:has-model-mismatch', async () => {
-    const repo = requireKnowledgeRepo()
-    const embeddingService = getEmbeddingService()
-    const { getEmbeddingConfig } = await import('./rag.ipc')
-    const embeddingConfig = getEmbeddingConfig()
-    await embeddingConfig.load()
-    const modelId = embeddingConfig.getGlobalEmbeddingModelId()
-    if (!modelId || !embeddingService.isConfigured) return false
-    const vaultId = requireActiveVaultId()
-    const count = await repo.countHeterogeneousEmbeddings(modelId, { vaultId })
-    return count > 0
-  })
+  handleKnowledgeIpc(
+    'knowledge:has-model-mismatch',
+    async (_e, notebookIds?: string[]) => {
+      const repo = requireKnowledgeRepo()
+      const embeddingService = getEmbeddingService()
+      const { getEmbeddingConfig } = await import('./rag.ipc')
+      const embeddingConfig = getEmbeddingConfig()
+      await embeddingConfig.load()
+      const modelId = embeddingConfig.getGlobalEmbeddingModelId()
+      if (!modelId || !embeddingService.isConfigured) return false
+      const vaultId = requireActiveVaultId()
+      const ids = (notebookIds ?? []).map((id) => String(id).trim()).filter(Boolean)
+      const count = await repo.countHeterogeneousEmbeddings(modelId, {
+        vaultId,
+        ...(ids.length > 0 ? { notebookIds: ids } : {})
+      })
+      return count > 0
+    }
+  )
 
   handleKnowledgeIpc('knowledge:list-sources', async (_e, notebookId: string) => {
     const repo = requireKnowledgeRepo()
@@ -539,7 +516,7 @@ export function registerKnowledgeIPC(): void {
     'knowledge:search',
     async (_e, input: { notebookId: string; query: string; topK?: number }) => {
       const repo = requireKnowledgeRepo()
-      await assertKnowledgeModelMatch(repo)
+      await assertKnowledgeModelMatch(repo, [input.notebookId])
       const embeddingService = getEmbeddingService()
       const queryVector = await embeddingService.embedQuery(input.query)
       if (!queryVector?.length) {
@@ -551,157 +528,6 @@ export function registerKnowledgeIPC(): void {
         query: input.query,
         queryVector,
         topK: input.topK
-      })
-    }
-  )
-
-  handleKnowledgeIpc(
-    'knowledge:ask',
-    async (
-      e,
-      input: {
-        notebookId: string
-        question: string
-        topK?: number
-        multiQuery?: boolean
-        assistantId?: string
-        modelId?: string
-        providerId?: string
-        reasoningEffort?: string
-        sessionId?: string
-        searchMode?: boolean
-      }
-    ) => {
-      const notebookId = String(input?.notebookId || '').trim()
-      const repo = requireKnowledgeRepo()
-      await assertKnowledgeModelMatch(repo)
-      const partner = await resolveAskPartner(input.assistantId)
-      const abort = new AbortController()
-      askAbortByNotebook.get(notebookId)?.abort()
-      if (notebookId) askAbortByNotebook.set(notebookId, abort)
-      const send = (event: Omit<NotebookAskProgress, 'notebookId'>) => {
-        try {
-          e.sender.send('knowledge:ask-progress', { notebookId, ...event })
-        } catch {
-          /* 窗口已关 */
-        }
-      }
-      try {
-        const sessionId = String(input.sessionId || '').trim()
-        const history = sessionId
-          ? await getNotebookChatManager().listMessages(notebookId, sessionId)
-          : []
-        return await runNotebookChatAgent({
-          notebookId,
-          question: String(input.question || ''),
-          history: history.map((row) => ({ role: row.role, text: row.text })),
-          modelId: input.modelId?.trim() || partner?.modelId,
-          providerId: input.providerId?.trim() || partner?.providerId,
-          partnerName: partner?.name,
-          systemPrompt: partner?.systemPrompt,
-          reasoningEffort: input.reasoningEffort?.trim() || undefined,
-          searchMode: input.searchMode,
-          abortSignal: abort.signal,
-          onProgress: send
-        })
-      } finally {
-        if (notebookId && askAbortByNotebook.get(notebookId) === abort) {
-          askAbortByNotebook.delete(notebookId)
-        }
-      }
-    }
-  )
-
-  handleKnowledgeIpc('knowledge:cancel-ask', async (_e, notebookId: string) => {
-    const id = String(notebookId || '').trim()
-    const abort = askAbortByNotebook.get(id)
-    abort?.abort()
-    if (id) askAbortByNotebook.delete(id)
-    return { cancelled: Boolean(abort) }
-  })
-
-  handleKnowledgeIpc('knowledge:list-chat-sessions', async (_e, notebookId: string) => {
-    const id = String(notebookId || '').trim()
-    if (!id) throw new Error('notebookId required')
-    return getNotebookChatManager().listSessions(id)
-  })
-
-  handleKnowledgeIpc(
-    'knowledge:create-chat-session',
-    async (_e, input: { notebookId: string; assistantId: string; title?: string }) => {
-      const notebookId = String(input?.notebookId || '').trim()
-      if (!notebookId) throw new Error('notebookId required')
-      return getNotebookChatManager().createSession({
-        notebookId,
-        assistantId: String(input.assistantId || ''),
-        title: input.title
-      })
-    }
-  )
-
-  handleKnowledgeIpc(
-    'knowledge:update-chat-session',
-    async (
-      _e,
-      input: {
-        notebookId: string
-        sessionId: string
-        title?: string
-        pinned?: boolean
-        assistantId?: string
-        deletedAt?: number | null
-      }
-    ) => {
-      const notebookId = String(input?.notebookId || '').trim()
-      const sessionId = String(input?.sessionId || '').trim()
-      if (!notebookId || !sessionId) throw new Error('notebookId and sessionId required')
-      return getNotebookChatManager().updateSession(notebookId, sessionId, {
-        title: input.title,
-        pinned: input.pinned,
-        assistantId: input.assistantId,
-        deletedAt: input.deletedAt
-      })
-    }
-  )
-
-  handleKnowledgeIpc(
-    'knowledge:list-chat-messages',
-    async (_e, input: { notebookId: string; sessionId: string }) => {
-      const notebookId = String(input?.notebookId || '').trim()
-      const sessionId = String(input?.sessionId || '').trim()
-      if (!notebookId || !sessionId) throw new Error('notebookId and sessionId required')
-      return getNotebookChatManager().listMessages(notebookId, sessionId)
-    }
-  )
-
-  handleKnowledgeIpc(
-    'knowledge:append-chat-message',
-    async (
-      _e,
-      input: {
-        notebookId: string
-        sessionId: string
-        role: 'user' | 'assistant'
-        text: string
-        reasoning?: string
-        citations?: Array<{
-          sourceId?: string
-          title: string
-          excerpt?: string
-          page?: number
-        }>
-      }
-    ) => {
-      const notebookId = String(input?.notebookId || '').trim()
-      const sessionId = String(input?.sessionId || '').trim()
-      if (!notebookId || !sessionId) throw new Error('notebookId and sessionId required')
-      return getNotebookChatManager().appendMessage({
-        notebookId,
-        sessionId,
-        role: input.role,
-        text: String(input.text || ''),
-        reasoning: input.reasoning,
-        citations: input.citations
       })
     }
   )
@@ -732,45 +558,6 @@ export function registerKnowledgeIPC(): void {
       items
     }
   })
-
-  handleKnowledgeIpc(
-    'knowledge:chat',
-    async (
-      _e,
-      input: {
-        notebookId: string
-        question: string
-        sourceIds: string[]
-        maxContextChars?: number
-      }
-    ) => {
-      const chat = buildChatService()
-      const { clampKnowledgeChatContextChars } = await import('@baishou/core-desktop')
-      return chat.chat({
-        ...input,
-        maxContextChars: clampKnowledgeChatContextChars(input.maxContextChars)
-      })
-    }
-  )
-
-  handleKnowledgeIpc(
-    'knowledge:save-note',
-    async (
-      _e,
-      input: {
-        notebookId: string
-        title?: string
-        question: string
-        answer: string
-        citations?: Array<{ title: string; page?: number; excerpt?: string }>
-      }
-    ) => {
-      const svc = getKnowledgeIngestService()
-      const result = await svc.saveAskAsNote(input)
-      scheduleConsumeKnowledgeIngestJobs('after-save-note')
-      return result
-    }
-  )
 
   handleKnowledgeIpc(
     'knowledge:ocr-missing-pages',

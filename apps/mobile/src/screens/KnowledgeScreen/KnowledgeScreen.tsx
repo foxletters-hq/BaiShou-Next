@@ -18,7 +18,6 @@ import { useBaishou } from '@/src/providers/BaishouProvider'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import {
-  mobileAskKnowledge,
   mobileGetKnowledgeStats,
   mobileGetNotebookGraphView,
   mobileHasKnowledgeModelMismatch,
@@ -26,8 +25,7 @@ import {
   mobileListNotebooks,
   mobileListNotebookStats,
   mobileListSources,
-  mobileRebuildKnowledgeIndex,
-  mobileSaveAskAsNote
+  mobileRebuildKnowledgeIndex
 } from '@/src/services/mobile-knowledge.service'
 import { scheduleConsumeMobileKnowledgeIngestJobs } from '@/src/services/mobile-knowledge-ingest-jobs.consumer'
 
@@ -92,11 +90,6 @@ export function KnowledgeScreen() {
   const [statsById, setStatsById] = useState<Record<string, NotebookStats>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sources, setSources] = useState<SourceRow[]>([])
-  const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState('')
-  const [citations, setCitations] = useState<
-    Array<{ title: string; excerpt: string; page?: number }>
-  >([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [modelMismatch, setModelMismatch] = useState(false)
@@ -196,79 +189,6 @@ export function KnowledgeScreen() {
     return () => clearInterval(timer)
   }, [selectedId, hasActiveIngest, refreshDetail])
 
-  const onAsk = async () => {
-    const q = question.trim()
-    if (!q || !selectedId) return
-
-    if (modelMismatch) {
-      Alert.alert(
-        t('knowledge.model_mismatch_title', '嵌入模型不一致'),
-        t(
-          'knowledge.model_mismatch_desc',
-          '当前嵌入模型与知识库向量不一致，继续提问会得到错误结果。请先重建本笔记本索引。'
-        ),
-        [
-          { text: t('common.cancel', '取消'), style: 'cancel' },
-          {
-            text: t('knowledge.rebuild_index', '重建索引'),
-            onPress: () => {
-              void (async () => {
-                setBusy(true)
-                try {
-                  await mobileRebuildKnowledgeIndex(selectedId)
-                  setModelMismatch(await mobileHasKnowledgeModelMismatch())
-                  setError('')
-                  Alert.alert(
-                    t('knowledge.rebuild_queued', '已排队重建'),
-                    t('knowledge.rebuild_queued_desc', '索引完成后即可提问。')
-                  )
-                } catch (e) {
-                  setError(String((e as Error)?.message || e))
-                } finally {
-                  setBusy(false)
-                }
-              })()
-            }
-          }
-        ]
-      )
-      return
-    }
-
-    setBusy(true)
-    setError('')
-    setAnswer('')
-    setCitations([])
-    try {
-      const result = await mobileAskKnowledge({ notebookId: selectedId, question: q })
-      setAnswer(result.answer)
-      setCitations(
-        (result.citations || []).map((c) => ({
-          title: c.title,
-          excerpt: c.excerpt,
-          page: c.page
-        }))
-      )
-    } catch (e) {
-      const msg = String((e as Error)?.message || e)
-      if (msg === 'knowledge-model-mismatch') {
-        setModelMismatch(true)
-        setError(
-          t(
-            'knowledge.model_mismatch_desc',
-            '当前嵌入模型与知识库向量不一致，继续提问会得到错误结果。请先重建本笔记本索引。'
-          )
-        )
-      } else if (msg === 'embedding-not-configured') {
-        setError(t('knowledge.embedding_required', '请先配置嵌入模型后再提问。'))
-      } else {
-        setError(msg)
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const onImportText = async () => {
     if (!selectedId || !pasteText.trim()) return
     setBusy(true)
@@ -310,29 +230,6 @@ export function KnowledgeScreen() {
       await refreshDetail(selectedId)
       await refreshList()
       Alert.alert(t('knowledge.import_queued', '已加入摄入队列'))
-    } catch (e) {
-      setError(String((e as Error)?.message || e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const onSaveNote = async () => {
-    if (!selectedId || !answer.trim() || !question.trim()) return
-    setBusy(true)
-    try {
-      await mobileSaveAskAsNote({
-        notebookId: selectedId,
-        question: question.trim(),
-        answer: answer.trim(),
-        citations: citations.map((c) => ({
-          title: c.title,
-          page: c.page,
-          excerpt: c.excerpt
-        }))
-      })
-      await refreshDetail(selectedId)
-      Alert.alert(t('knowledge.note_saved', '已保存为 Note，并加入索引队列'))
     } catch (e) {
       setError(String((e as Error)?.message || e))
     } finally {
@@ -559,74 +456,13 @@ export function KnowledgeScreen() {
             </View>
           )}
 
-          <Text style={[styles.section, { color: colors.textPrimary, marginTop: 20 }]}>
-            {t('knowledge.ask', '提问')}
-          </Text>
-          <TextInput
-            value={question}
-            onChangeText={setQuestion}
-            placeholder={t('knowledge.ask_placeholder', '问这本笔记本里的资料…')}
-            placeholderTextColor={colors.textSecondary}
-            style={[
-              styles.input,
-              {
-                color: colors.textPrimary,
-                borderColor: colors.borderSubtle,
-                backgroundColor: colors.bgSurface
-              }
-            ]}
-            multiline
-          />
-          <Pressable
-            style={[
-              styles.btn,
-              {
-                backgroundColor: modelMismatch ? colors.borderSubtle : colors.primary,
-                opacity: busy || !question.trim() ? 0.6 : 1
-              }
-            ]}
-            disabled={busy || !question.trim()}
-            onPress={() => void onAsk()}
-          >
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>{t('knowledge.ask_action', '提问')}</Text>
+          <Text style={[styles.mountHint, { color: colors.textSecondary }]}>
+            {t(
+              'knowledge.mount_hint',
+              '资料嵌入完成后，可以挂载到伙伴对话里检索。知识库本身不再单独保存对话。'
             )}
-          </Pressable>
-
+          </Text>
           {error ? <Text style={{ color: colors.error, marginTop: 8 }}>{error}</Text> : null}
-          {answer ? (
-            <View style={{ marginTop: 16 }}>
-              <Text style={[styles.section, { color: colors.textPrimary }]}>
-                {t('knowledge.answer', '回答')}
-              </Text>
-              <Text style={{ color: colors.textPrimary, lineHeight: 22 }}>{answer}</Text>
-              <Pressable
-                style={[styles.btn, { backgroundColor: colors.primary, marginTop: 10 }]}
-                disabled={busy}
-                onPress={() => void onSaveNote()}
-              >
-                <Text style={styles.btnText}>{t('knowledge.save_note', '保存为 Note')}</Text>
-              </Pressable>
-              {citations.length > 0 ? (
-                <View style={{ marginTop: 12 }}>
-                  <Text style={[styles.section, { color: colors.textPrimary }]}>
-                    {t('knowledge.citations', '引用')}
-                  </Text>
-                  {citations.map((c, i) => (
-                    <View key={`${c.title}-${i}`} style={{ marginBottom: 8 }}>
-                      <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                        [{i + 1}] {c.title}
-                        {c.page != null ? ` · p.${c.page}` : ''}
-                      </Text>
-                      <Text style={{ color: colors.textSecondary }}>{c.excerpt}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
         </ScrollView>
       ) : (
         <FlatList
@@ -689,6 +525,7 @@ const styles = StyleSheet.create({
   pad: { padding: 16 },
   h1: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
   section: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  mountHint: { fontSize: 13, lineHeight: 20, marginTop: 16, marginBottom: 8 },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 10,

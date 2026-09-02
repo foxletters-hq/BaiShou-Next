@@ -1,12 +1,18 @@
-import { logger, deriveLegacyVaultId } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  EMBEDDING_NOT_CONFIGURED,
+  KNOWLEDGE_MODEL_MISMATCH,
+  parseMountedNotebookIds,
+  type ToolKnowledgeGraphSearchResult
+} from '@baishou/shared'
 import {
   expoKnowledgeConnectionManager,
   KnowledgeRepository,
   type ExpoSqliteDatabase
 } from '@baishou/database/expo'
 import {
-  KnowledgeAskService,
   KnowledgeSearchService,
+  searchMountedKnowledgeNotebooks,
   searchNotebookGraphForTool,
   type KnowledgeSqlExecutor
 } from '@baishou/core-mobile'
@@ -17,8 +23,6 @@ import {
   resolveMobileEmbeddingForHydration
 } from './mobile-raw-data-source.runtime'
 import { createMobileFileSystem } from './create-mobile-file-system'
-import { buildMobileSummaryAiClient } from './mobile-summary-ai-client'
-import type { GlobalModelsConfig } from '@baishou/shared'
 
 function requireRepo(): KnowledgeRepository {
   if (!expoKnowledgeConnectionManager.isConnected()) {
@@ -60,6 +64,37 @@ export async function mobileListNotebooks() {
   return requireRepo().listNotebooks({ vaultId: await resolveMobileActiveVaultId() })
 }
 
+export async function mobileListMountSummaries() {
+  const repo = requireRepo()
+  const vaultId = await resolveMobileActiveVaultId()
+  const notebooks = await repo.listNotebooks({ vaultId })
+  const stats = await repo.listNotebookStats(vaultId)
+  const statsById = new Map(stats.map((row) => [row.notebookId, row]))
+  const profiles = await repo.listNotebookEmbeddingProfiles({
+    vaultId,
+    notebookIds: notebooks.map((row) => row.id)
+  })
+  const profilesById = new Map<string, typeof profiles>()
+  for (const profile of profiles) {
+    const list = profilesById.get(profile.notebookId) ?? []
+    list.push(profile)
+    profilesById.set(profile.notebookId, list)
+  }
+  return notebooks.map((notebook) => {
+    const stat = statsById.get(notebook.id)
+    const notebookProfiles = profilesById.get(notebook.id) ?? []
+    const dimensions = [...new Set(notebookProfiles.map((row) => row.dimension))]
+    return {
+      id: notebook.id,
+      name: notebook.name,
+      sources: stat?.sources ?? 0,
+      chunks: stat?.chunks ?? 0,
+      dimension: dimensions.length === 1 ? dimensions[0]! : null,
+      mixedEmbeddings: dimensions.length > 1
+    }
+  })
+}
+
 export async function mobileListSources(notebookId: string) {
   return requireRepo().listSources(notebookId)
 }
@@ -86,30 +121,46 @@ export async function mobileGetNotebookGraphView(notebookId: string, maxNodes = 
 
 export async function mobileSearchNotebookGraph(opts: {
   query: string
-  notebookId: string
+  notebookId?: string
+  notebookIds?: string[]
   limit?: number
 }) {
-  const notebookId = opts.notebookId.trim()
-  if (!notebookId) throw new Error('notebookId required')
+  const notebookIds = parseMountedNotebookIds(opts.notebookIds ?? opts.notebookId)
+  if (notebookIds.length === 0) throw new Error('notebookId required')
   const { NotebookGraphRepository } = await import('@baishou/database/expo')
   const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+  const knowledgeRepo = requireRepo()
   const vaultId = await resolveMobileActiveVaultId()
-  const result = await searchNotebookGraphForTool(repo, {
-    vaultId,
-    notebookId,
-    query: opts.query,
-    limit: opts.limit
-  })
-  return result
+  const notebooks = await knowledgeRepo.listNotebooks({ vaultId })
+  const nameById = new Map(notebooks.map((row) => [row.id, row.name]))
+  const groups: ToolKnowledgeGraphSearchResult[] = []
+  for (const notebookId of notebookIds) {
+    const result = await searchNotebookGraphForTool(repo, {
+      vaultId,
+      notebookId,
+      query: opts.query,
+      limit: opts.limit
+    })
+    groups.push({
+      notebookId,
+      notebookName: nameById.get(notebookId) || notebookId,
+      nodes: result.nodes.map((node) => ({ ...node, notebookId })),
+      edges: result.edges.map((edge) => ({ ...edge, notebookId })),
+      paths: result.paths
+    })
+  }
+  return groups
 }
 
-export async function mobileHasKnowledgeModelMismatch(): Promise<boolean> {
+export async function mobileHasKnowledgeModelMismatch(notebookIds?: string[]): Promise<boolean> {
   const runtime = agentDbRuntimeRef.current
   if (!runtime?.settingsManager) return false
   const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
   if (!emb.embeddingModelId) return false
+  const ids = parseMountedNotebookIds(notebookIds)
   const count = await requireRepo().countHeterogeneousEmbeddings(emb.embeddingModelId, {
-    vaultId: await resolveMobileActiveVaultId()
+    vaultId: await resolveMobileActiveVaultId(),
+    ...(ids.length > 0 ? { notebookIds: ids } : {})
   })
   return count > 0
 }
@@ -132,102 +183,6 @@ export async function mobileRebuildKnowledgeIndex(notebookId: string): Promise<v
   const { scheduleConsumeMobileKnowledgeIngestJobs } =
     await import('./mobile-knowledge-ingest-jobs.consumer')
   scheduleConsumeMobileKnowledgeIngestJobs('mobile-rebuild')
-}
-
-export async function mobileAskKnowledge(input: {
-  notebookId: string
-  question: string
-  topK?: number
-}): Promise<{
-  answer: string
-  citations: Array<{
-    sourceId: string
-    title: string
-    chunkId: string
-    chunkIndex: number
-    excerpt: string
-    offset?: number
-    len?: number
-    page?: number
-    score: number
-    source: string
-  }>
-}> {
-  const mismatch = await mobileHasKnowledgeModelMismatch()
-  if (mismatch) {
-    throw new Error('knowledge-model-mismatch')
-  }
-
-  const runtime = agentDbRuntimeRef.current
-  if (!runtime?.settingsManager || !runtime.pathService) {
-    throw new Error('runtime not ready')
-  }
-
-  const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
-  if (!emb.embeddingProvider || !emb.embeddingModelId) {
-    throw new Error('embedding-not-configured')
-  }
-
-  const fileSystem = createMobileFileSystem()
-  ensureMobileRawDataRuntime({
-    pathService: runtime.pathService,
-    fileSystem
-  })
-  const notebookManager = getMobileNotebookRawManager()
-  if (!notebookManager) throw new Error('notebook manager unavailable')
-
-  const repo = requireRepo()
-  const expoDb = expoKnowledgeConnectionManager.getExpoDb()
-  const search = new KnowledgeSearchService({
-    sql: createKnowledgeSqlExecutor(expoDb),
-    getSourceTitle: async (sourceId) => {
-      const row = await repo.getSource(sourceId)
-      return row?.title ?? null
-    }
-  })
-
-  const embeddingProvider = emb.embeddingProvider
-  const embeddingModelId = emb.embeddingModelId
-  const summaryClient = buildMobileSummaryAiClient(runtime.settingsManager)
-
-  const ask = new KnowledgeAskService({
-    search,
-    embedQuery: async (q) => {
-      const { embed } = await import('ai')
-      const model = embeddingProvider.getEmbeddingModel(embeddingModelId) as never
-      const { embedding } = await embed({ model, value: q })
-      return Array.from(embedding)
-    },
-    getSourceTitle: async (sourceId) => {
-      const row = await repo.getSource(sourceId)
-      return row?.title ?? null
-    },
-    getPageBoundaries: async (notebookId, sourceId) => {
-      const pages = await notebookManager.readPagesJson(notebookId, sourceId)
-      return pages?.pages ?? null
-    },
-    generateAnswer: async ({ question, contextBlocks }) => {
-      const globalModels = await runtime.settingsManager.get<GlobalModelsConfig>('global_models')
-      const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
-      if (!modelId) throw new Error('No chat/summary model configured')
-      const { system, prompt } = KnowledgeAskService.buildPrompt(question, contextBlocks)
-      return summaryClient.generateContent(prompt, modelId, { system })
-    }
-  })
-
-  try {
-    const result = await ask.ask(input)
-    return {
-      answer: result.answer,
-      citations: result.citations.map((c) => ({
-        ...c,
-        source: String(c.source)
-      }))
-    }
-  } catch (e) {
-    logger.warn('[MobileKnowledge] ask failed:', e as Error)
-    throw e
-  }
 }
 
 async function buildMobileIngestService() {
@@ -325,30 +280,19 @@ export async function mobileImportSource(input: {
   return result
 }
 
-export async function mobileSaveAskAsNote(input: {
-  notebookId: string
-  question: string
-  answer: string
-  citations?: Array<{ title: string; page?: number; excerpt?: string }>
-}): Promise<{ sourceId: string }> {
-  const svc = await buildMobileIngestService()
-  const result = await svc.saveAskAsNote(input)
-  const { scheduleConsumeMobileKnowledgeIngestJobs } =
-    await import('./mobile-knowledge-ingest-jobs.consumer')
-  scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-save-note')
-  return result
-}
-
 /** 供 Agent knowledge_search 工具注入 */
 export async function mobileSearchKnowledge(opts: {
   query: string
-  notebookId: string
+  notebookId?: string
+  notebookIds?: string[]
   limit?: number
+  limitPerNotebook?: number
 }): Promise<
   Array<{
     chunkId: string
     sourceId: string
     notebookId: string
+    notebookName?: string
     chunkIndex: number
     chunkText: string
     score: number
@@ -362,13 +306,15 @@ export async function mobileSearchKnowledge(opts: {
   if (!expoKnowledgeConnectionManager.isConnected()) {
     throw new Error('knowledge db not connected')
   }
-  const mismatch = await mobileHasKnowledgeModelMismatch()
+  const notebookIds = parseMountedNotebookIds(opts.notebookIds ?? opts.notebookId)
+  if (notebookIds.length === 0) throw new Error('notebookId required')
+  const mismatch = await mobileHasKnowledgeModelMismatch(notebookIds)
   if (mismatch) {
-    throw new Error('knowledge-model-mismatch')
+    throw new Error(KNOWLEDGE_MODEL_MISMATCH)
   }
   const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
   if (!emb.embeddingProvider || !emb.embeddingModelId) {
-    throw new Error('embedding-not-configured')
+    throw new Error(EMBEDDING_NOT_CONFIGURED)
   }
   const repo = requireRepo()
   const expoDb = expoKnowledgeConnectionManager.getExpoDb()
@@ -379,24 +325,19 @@ export async function mobileSearchKnowledge(opts: {
       return row?.title ?? null
     }
   })
+  const vaultId = await resolveMobileActiveVaultId()
+  const profiles = await repo.listNotebookEmbeddingProfiles({ vaultId, notebookIds })
   const { embed } = await import('ai')
   const model = emb.embeddingProvider.getEmbeddingModel(emb.embeddingModelId) as never
   const { embedding } = await embed({ model, value: opts.query })
-  const hits = await search.search({
-    notebookId: opts.notebookId,
+  return searchMountedKnowledgeNotebooks({
     query: opts.query,
+    notebookIds,
     queryVector: Array.from(embedding),
-    topK: opts.limit
+    currentModelId: emb.embeddingModelId,
+    profiles,
+    search,
+    limit: opts.limit,
+    limitPerNotebook: opts.limitPerNotebook
   })
-  return hits.map((h) => ({
-    chunkId: h.chunkId,
-    sourceId: h.sourceId,
-    notebookId: h.notebookId,
-    chunkIndex: h.chunkIndex,
-    chunkText: h.chunkText,
-    score: h.score,
-    title: h.title,
-    offset: h.offset,
-    len: h.len
-  }))
 }

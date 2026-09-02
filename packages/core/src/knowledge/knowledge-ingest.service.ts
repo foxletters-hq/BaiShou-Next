@@ -553,49 +553,6 @@ export class KnowledgeIngestService {
     return { sourceId }
   }
 
-  /**
-   * 保存 Ask 问答结论为 Note（可变合成层；v1 仅此档）。
-   */
-  async saveAskAsNote(input: {
-    notebookId: string
-    title?: string
-    question: string
-    answer: string
-    citations?: Array<{ title: string; page?: number; excerpt?: string }>
-  }): Promise<{ sourceId: string }> {
-    const title =
-      input.title?.trim() ||
-      `问答 · ${input.question.trim().slice(0, 40)}${input.question.trim().length > 40 ? '…' : ''}`
-    const citeBlock = input.citations?.length
-      ? input.citations
-          .map((c, i) => {
-            const loc = c.page != null ? `第 ${c.page} 页` : ''
-            return `${i + 1}. ${c.title}${loc ? `（${loc}）` : ''}${c.excerpt ? `\n   > ${c.excerpt}` : ''}`
-          })
-          .join('\n')
-      : '（无）'
-    const markdown = `# ${title}
-
-## 问题
-
-${input.question.trim()}
-
-## 回答
-
-${input.answer.trim()}
-
-## 引用
-
-${citeBlock}
-`
-    return this.importSource({
-      notebookId: input.notebookId,
-      title,
-      kind: 'note',
-      textContent: markdown
-    })
-  }
-
   async deleteSource(sourceId: string): Promise<void> {
     requestExtractAbort(sourceId)
     const source = await this.deps.repo.getSource(sourceId)
