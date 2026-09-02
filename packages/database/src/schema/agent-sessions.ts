@@ -7,6 +7,7 @@ export const agentSessionsTable = sqliteTable('agent_sessions', {
   assistantId: text('assistant_id'),
   isPinned: integer('is_pinned', { mode: 'boolean' }).notNull().default(false),
   systemPrompt: text('system_prompt'),
+  mountedNotebookIds: text('mounted_notebook_ids').notNull().default(''),
   providerId: text('provider_id').notNull(),
   modelId: text('model_id').notNull(),
   totalInputTokens: integer('total_input_tokens').notNull().default(0),

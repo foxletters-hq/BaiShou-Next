@@ -1,6 +1,11 @@
 import { eq, desc, or, sql, and, inArray } from 'drizzle-orm'
 import type { InferSelectModel } from 'drizzle-orm'
-import { deriveLegacyVaultId, isVaultId } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  isVaultId,
+  parseMountedNotebookIds,
+  serializeMountedNotebookIds
+} from '@baishou/shared'
 import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
@@ -8,7 +13,21 @@ import { agentPartsTable as partsTbl } from '../schema/agent-parts'
 import type { InsertSessionInput } from './session.repository.types'
 import { usesSyncTransaction } from './session.repository.utils'
 
-export type AgentSessionRow = InferSelectModel<typeof agentSessionsTable>
+export type AgentSessionRow = Omit<
+  InferSelectModel<typeof agentSessionsTable>,
+  'mountedNotebookIds'
+> & {
+  mountedNotebookIds: string[]
+}
+
+function withMountedNotebookIds<T extends { mountedNotebookIds?: unknown }>(
+  row: T
+): T & { mountedNotebookIds: string[] } {
+  return {
+    ...row,
+    mountedNotebookIds: parseMountedNotebookIds(row.mountedNotebookIds)
+  }
+}
 
 function resolveInsertVaultId(raw: string | undefined): string {
   const value = raw || 'default'
@@ -31,6 +50,7 @@ export class SessionCrudOps {
         vaultId: vaultId,
         assistantId: input.assistantId,
         systemPrompt: input.systemPrompt,
+        mountedNotebookIds: serializeMountedNotebookIds(input.mountedNotebookIds),
         providerId: providerId,
         modelId: modelId,
         updatedAt: new Date()
@@ -43,7 +63,10 @@ export class SessionCrudOps {
           updatedAt: new Date(),
           ...(input.assistantId ? { assistantId: input.assistantId } : {}),
           ...(input.providerId ? { providerId } : {}),
-          ...(input.modelId ? { modelId } : {})
+          ...(input.modelId ? { modelId } : {}),
+          ...(input.mountedNotebookIds
+            ? { mountedNotebookIds: serializeMountedNotebookIds(input.mountedNotebookIds) }
+            : {})
         }
       })
   }
@@ -224,7 +247,9 @@ export class SessionCrudOps {
       finalQuery = finalQuery.limit(limit).offset(offset)
     }
 
-    const results = (await finalQuery) as AgentSessionRow[]
+    const results = ((await finalQuery) as InferSelectModel<typeof agentSessionsTable>[]).map(
+      (row) => withMountedNotebookIds(row)
+    )
     console.log(
       `[SessionRepo] findAllSessions(limit=${limit}, offset=${offset}, vault=${vaultId ?? '*'}, astId=${assistantId}, query=${searchQuery}) => returned ${results.length} rows.`
     )
@@ -295,7 +320,18 @@ export class SessionCrudOps {
       .from(agentSessionsTable)
       .where(eq(agentSessionsTable.id, sessionId))
       .limit(1)
-    return docs.length > 0 ? docs[0] : null
+    const row = docs[0]
+    return row ? withMountedNotebookIds(row) : null
+  }
+
+  async updateMountedNotebookIds(sessionId: string, notebookIds: string[]): Promise<void> {
+    await this.db
+      .update(agentSessionsTable)
+      .set({
+        mountedNotebookIds: serializeMountedNotebookIds(notebookIds),
+        updatedAt: new Date()
+      })
+      .where(eq(agentSessionsTable.id, sessionId))
   }
 
   async togglePin(id: string, isPinned: boolean): Promise<void> {

@@ -231,6 +231,11 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     column: 'total_cost_micros',
     ddl: `ALTER TABLE agent_sessions ADD COLUMN total_cost_micros INTEGER NOT NULL DEFAULT 0`
   },
+  {
+    table: 'agent_sessions',
+    column: 'mounted_notebook_ids',
+    ddl: `ALTER TABLE agent_sessions ADD COLUMN mounted_notebook_ids TEXT NOT NULL DEFAULT ''`
+  },
   // ── agent_messages（原 0002_cache_token_usage）──
   {
     table: 'agent_messages',

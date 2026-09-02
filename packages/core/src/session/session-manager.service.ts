@@ -81,6 +81,11 @@ export class SessionManagerService {
     await this.persistence.flushNow(sessionId)
   }
 
+  async updateMountedNotebookIds(sessionId: string, notebookIds: string[]): Promise<void> {
+    await this.sessionRepo.updateMountedNotebookIds(sessionId, notebookIds)
+    await this.persistence.flushNow(sessionId)
+  }
+
   async list(
     limit: number = 20,
     offset: number = 0,

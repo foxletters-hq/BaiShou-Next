@@ -4,6 +4,7 @@ export interface InsertSessionInput {
   vaultId: string
   assistantId?: string
   systemPrompt?: string
+  mountedNotebookIds?: string[]
   providerId: string
   modelId: string
 }
