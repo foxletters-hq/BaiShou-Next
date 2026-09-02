@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   View,
   StyleSheet,
@@ -26,6 +26,7 @@ import { AgentDrawerSwipeZone } from '../../../components/AgentDrawerSwipeZone'
 import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
 import { LIVE_ASSISTANT_STREAM_KEY } from '../agent-screen.constants'
 import { agentScreenStyles as styles } from '../agent-screen.styles'
+import { MobileNotebookMountSheet } from './MobileNotebookMountSheet'
 
 export type AgentChatListProps = {
   colors: any
@@ -123,10 +124,12 @@ export type AgentChatListProps = {
   toggleSearchMode: () => void
   ttsMode: 'manual' | 'always'
   toggleTtsMode: () => void
+  currentSessionId?: string | null
 }
 
 export function AgentChatList(props: AgentChatListProps) {
   const p = props
+  const [notebookMountOpen, setNotebookMountOpen] = useState(false)
   const ChatBackgroundWrapper = (
     p.resolvedChatBackgroundUri ? ImageBackground : View
   ) as typeof View
@@ -404,6 +407,7 @@ export function AgentChatList(props: AgentChatListProps) {
             assistantName={p.assistantDisplayName}
             onManageShortcuts={() => p.setShowShortcutSheet(true)}
             onRecall={() => p.setShowRecallSheet(true)}
+            onOpenNotebookMount={() => setNotebookMountOpen(true)}
             onOpenTools={() => p.router.push('/settings/agent-tools')}
             searchMode={p.searchMode}
             onToggleSearchMode={p.toggleSearchMode}
@@ -411,6 +415,11 @@ export function AgentChatList(props: AgentChatListProps) {
             onToggleTtsMode={p.toggleTtsMode}
           />
         </Animated.View>
+        <MobileNotebookMountSheet
+          visible={notebookMountOpen}
+          sessionId={p.currentSessionId}
+          onClose={() => setNotebookMountOpen(false)}
+        />
       </View>
     </ChatBackgroundWrapper>
   )

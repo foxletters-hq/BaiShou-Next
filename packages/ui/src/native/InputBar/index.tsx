@@ -112,6 +112,7 @@ export interface InputBarProps {
   assistantName?: string
   onAssistantTap?: () => void
   onRecall?: () => void
+  onOpenNotebookMount?: () => void
   shortcuts?: PromptShortcut[]
   onTriggerShortcut?: () => void
   onManageShortcuts?: () => void
@@ -144,6 +145,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       assistantName = 'Assistant',
       onAssistantTap,
       onRecall,
+      onOpenNotebookMount,
       shortcuts,
       onTriggerShortcut,
       onManageShortcuts,
@@ -568,6 +570,13 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                     {renderToolbarChip(t('settings.recall_memories', '唤醒回忆'), onRecall, {
                       icon: BookOpen
                     })}
+                    {onOpenNotebookMount
+                      ? renderToolbarChip(
+                          t('workbench.notebook_mount', '知识库笔记本'),
+                          onOpenNotebookMount,
+                          { icon: BookOpen }
+                        )
+                      : null}
                     {renderToolbarChip(
                       searchMode
                         ? t('settings.web_search_mode_tool', '外部工具搜索')

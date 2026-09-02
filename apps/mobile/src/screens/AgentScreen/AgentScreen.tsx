@@ -113,6 +113,7 @@ export const AgentScreen = () => {
           toggleSearchMode={c.toggleSearchMode}
           ttsMode={c.ttsMode}
           toggleTtsMode={c.toggleTtsMode}
+          currentSessionId={c.currentSessionId}
         />
         <AgentGatePendingList
           currentSessionId={c.currentSessionId}
