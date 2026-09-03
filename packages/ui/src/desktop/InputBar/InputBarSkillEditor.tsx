@@ -5,12 +5,17 @@ import {
   INPUT_BAR_TEXTAREA_MAX_HEIGHT
 } from './useInputBarExpand'
 import {
+  getAtTokenBeforeCaret,
   getSlashTokenBeforeCaret,
   isComposerVisuallyEmpty,
   normalizeEmptyComposer,
   serializeSkillComposer,
   tryDeleteSkillChipByBackspace,
   sanitizeComposerFormatting,
+  FILE_REF_CHIP_ATTR,
+  readFileRefChip,
+  type FileRefChip,
+  type MentionToken,
   type SkillRefChip,
   type SlashToken
 } from './skill-composer.util'
@@ -18,8 +23,10 @@ import {
 export type SkillComposerSnapshot = {
   plainText: string
   skills: SkillRefChip[]
+  fileRefs: FileRefChip[]
   sendText: string
   slashToken: SlashToken | null
+  mentionToken: MentionToken | null
   html: string
 }
 
@@ -34,6 +41,7 @@ type Props = {
   onSnapshot: (snap: SkillComposerSnapshot) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
   onPaste: (e: React.ClipboardEvent<HTMLDivElement>) => void
+  onOpenFileRef?: (relativePath: string, options?: { line?: number }) => void
 }
 
 function readSnapshot(root: HTMLElement): SkillComposerSnapshot {
@@ -41,6 +49,7 @@ function readSnapshot(root: HTMLElement): SkillComposerSnapshot {
   return {
     ...serialized,
     slashToken: getSlashTokenBeforeCaret(root),
+    mentionToken: getAtTokenBeforeCaret(root),
     html: root.innerHTML
   }
 }
@@ -54,7 +63,8 @@ export function InputBarSkillEditor({
   minRows = 1,
   onSnapshot,
   onKeyDown,
-  onPaste
+  onPaste,
+  onOpenFileRef
 }: Props) {
   const minHeight = getInputBarTextareaMinHeight(minRows)
   const lastSyncKeyRef = useRef<number>(-1)
@@ -128,6 +138,28 @@ export function InputBarSkillEditor({
         }}
         onPaste={onPaste}
         onBlur={() => emit()}
+        onMouseDown={(event) => {
+          const target = event.target
+          if (!(target instanceof Element)) return
+          const chip = target.closest(`[${FILE_REF_CHIP_ATTR}]`)
+          if (chip && editorRef.current?.contains(chip)) {
+            event.preventDefault()
+          }
+        }}
+        onClick={(event) => {
+          if (!onOpenFileRef) return
+          const target = event.target
+          if (!(target instanceof Element)) return
+          const chip = target.closest(`[${FILE_REF_CHIP_ATTR}]`)
+          if (!chip || !editorRef.current?.contains(chip)) return
+          event.preventDefault()
+          event.stopPropagation()
+          const ref = readFileRefChip(chip as HTMLElement)
+          if (!ref.relativePath) return
+          onOpenFileRef(ref.relativePath, {
+            line: ref.selection?.startLine
+          })
+        }}
       />
     </div>
   )

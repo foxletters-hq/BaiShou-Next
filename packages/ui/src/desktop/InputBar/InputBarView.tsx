@@ -10,7 +10,9 @@ import {
 } from '../ContextMenu/context-menu-placement.util'
 import { getInputBarTextareaMinHeight } from './useInputBarExpand'
 import { InputBarSkillEditor } from './InputBarSkillEditor'
+import { FileMentionPicker } from './FileMentionPicker'
 import { SkillSlashPicker } from './SkillSlashPicker'
+import { formatFileMentionLabel } from '@baishou/shared'
 import {
   BookOpen,
   Check,
@@ -107,11 +109,19 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     handleAttachmentDrop,
     attachmentIntake,
     handlePaste,
+    onOpenFileRef,
     skillPickerOpen,
     closeSkillPicker,
     slashPickerEntries,
     skillPickerIndex,
     setSkillPickerIndex,
+    mentionPickerOpen,
+    closeMentionPicker,
+    mentionPickerEntries,
+    mentionPickerIndex,
+    setMentionPickerIndex,
+    applyFileMention,
+    fileRefs,
     applyShortcut,
     armCreateSkillChip,
     skillRefs,
@@ -302,7 +312,20 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
       : (vm.placeholder ??
         t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line'))
 
-  const canSend = Boolean(text.trim() || attachments.length > 0 || skillRefs.length > 0)
+  const mentionPickerItems = useMemo(
+    () =>
+      mentionPickerEntries.map((entry) => ({
+        id: entry.id,
+        path: entry.path,
+        group: entry.group,
+        onSelect: () => applyFileMention(entry.path)
+      })),
+    [applyFileMention, mentionPickerEntries]
+  )
+
+  const canSend = Boolean(
+    text.trim() || attachments.length > 0 || skillRefs.length > 0 || fileRefs.length > 0
+  )
   const primaryAction = resolveInputBarPrimaryAction({
     isLoading,
     canSend,
@@ -341,6 +364,15 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
             onClose={closeSkillPicker}
           />
         ) : null}
+        {mentionPickerOpen ? (
+          <FileMentionPicker
+            items={mentionPickerItems}
+            selectedIndex={mentionPickerIndex}
+            onSelectIndex={setMentionPickerIndex}
+            onClose={closeMentionPicker}
+            emptyHint={t('workbench.file_mention_empty', '输入文件名以搜索工作区')}
+          />
+        ) : null}
 
         {attachments.length > 0 && (
           <div className={styles.attachmentList}>
@@ -362,13 +394,22 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   <div className={styles.attFileBox}>
                     <span className={styles.attFileIcon}>{getFileTypeIcon(att.fileName, 18)}</span>
                     <div className={styles.attFileMeta}>
-                      <span className={styles.attFileName}>{att.fileName}</span>
+                      <span className={styles.attFileName}>
+                        {att.relativePath
+                          ? formatFileMentionLabel({
+                              relativePath: att.relativePath,
+                              selection: att.selection
+                            }).replace(/^@/, '')
+                          : att.fileName}
+                      </span>
                       <span className={styles.attFileSize}>
-                        {att.fileSize
-                          ? att.fileSize < 1024 * 1024
-                            ? `${(att.fileSize / 1024).toFixed(1)} KB`
-                            : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`
-                          : ''}
+                        {att.comment?.trim()
+                          ? att.comment
+                          : att.fileSize
+                            ? att.fileSize < 1024 * 1024
+                              ? `${(att.fileSize / 1024).toFixed(1)} KB`
+                              : `${(att.fileSize / 1024 / 1024).toFixed(1)} MB`
+                            : att.relativePath || ''}
                       </span>
                     </div>
                   </div>
@@ -413,6 +454,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
                   onSnapshot={handleComposerSnapshot}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
+                  onOpenFileRef={onOpenFileRef}
                 />
               </div>
 
