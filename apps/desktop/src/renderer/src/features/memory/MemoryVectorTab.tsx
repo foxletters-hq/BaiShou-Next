@@ -37,7 +37,7 @@ export const MemoryVectorTab: React.FC<{ highlightBatchEmbed?: boolean }> = ({
     <div
       className={`${styles.vectorHost} ${highlightBatchEmbed ? styles.highlightBatchEmbed : ''}`}
     >
-      <RagSettingsPane settings={settings} showReadinessBar={false} />
+      <RagSettingsPane settings={settings} showReadinessBar={false} embedded />
     </div>
   )
 }

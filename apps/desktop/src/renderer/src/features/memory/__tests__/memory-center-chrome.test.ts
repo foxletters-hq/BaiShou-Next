@@ -16,6 +16,10 @@ function readSrc(relativeFromRendererSrc: string): string {
   return readFileSync(join(rendererSrc, relativeFromRendererSrc), 'utf8')
 }
 
+function readRagSrc(fileName: string): string {
+  return readFileSync(join(repoRoot, 'packages/ui/src/desktop/RagMemoryView', fileName), 'utf8')
+}
+
 describe('memory center chrome', () => {
   it('A6: GraphPage and RagSettingsPane both import MemoryReadinessBar', () => {
     expect(readSrc('features/graph/GraphPage.tsx')).toContain(
@@ -24,6 +28,8 @@ describe('memory center chrome', () => {
     expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain(
       "import { MemoryReadinessBar } from '../../memory/MemoryReadinessBar'"
     )
+    expect(readSrc('features/memory/MemoryCenterPage.tsx')).not.toContain('<MemoryReadinessBar')
+    expect(readSrc('features/settings/components/RagSettingsPane.tsx')).toContain('extraStatsChips')
   })
 
   it('B2: MainPageCache maps /memory and /memory/vectors to the memory page', () => {
@@ -71,9 +77,38 @@ describe('memory center chrome', () => {
     expect(src.indexOf("value: 'vectors' as const")).toBeLessThan(
       src.indexOf("value: 'graph' as const")
     )
-    expect(src).toContain("to=\"/memory/vectors\"")
+    expect(src).toContain('to="/memory/vectors"')
     expect(src).toContain('<MemoryHelpButton')
     expect(src).not.toContain('HelpTooltip')
+    expect(src.indexOf('styles.titleRow')).toBeLessThan(src.indexOf('styles.tabs'))
+    expect(src.indexOf('styles.tabs')).toBeLessThan(src.indexOf('</header>'))
+  })
+
+  it('vector tab fills the remaining height so the list can scroll', () => {
+    const css = readSrc('features/memory/MemoryCenterPage.module.css')
+    const pane = readSrc('features/settings/components/RagSettingsPane.tsx')
+    expect(css).toContain('.vectorHost :global(.settings-pane)')
+    expect(css).toContain('min-height: 0')
+    expect(pane).toContain('embedded={embedded}')
+  })
+
+  it('vector page keeps exactly one scroll region with pagination pinned under it', () => {
+    const view = readRagSrc('RagMemoryView.tsx')
+    const css = readRagSrc('RagMemoryView.module.css')
+    expect(view).toContain('styles.listScroll')
+    expect(view.lastIndexOf('<RagMemoryEntriesList')).toBeLessThan(
+      view.lastIndexOf('<RagMemoryPaginationBar')
+    )
+    expect(css).toMatch(/\.listScroll \{[^}]*overflow-y: auto/)
+    expect(css).not.toContain('.scrollArea')
+  })
+
+  it('retrieval sliders live in a modal instead of eating the page header', () => {
+    const view = readRagSrc('RagMemoryView.tsx')
+    const toolbar = readRagSrc('RagMemoryToolbar.tsx')
+    expect(view).not.toContain('RagMemoryConfigBlock')
+    expect(toolbar).toContain('RagMemoryParamsModal')
+    expect(readRagSrc('RagMemoryParamsModal.tsx')).toContain('<RagMemoryConfigBlock')
   })
 
   it('B8: DiaryPage status bar jumps to memory tabs', () => {
