@@ -2,16 +2,13 @@ import { createHash } from 'node:crypto'
 import { BrowserWindow } from 'electron'
 import type { IEmbeddingCallback } from '@baishou/core-desktop'
 import {
-  buildDiaryEmbeddingGroupId,
-  buildDiaryEmbeddingSourceId,
-  diaryDateToSourceCreatedSeconds,
   formatAiApiCallError,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
-  hasRagDiaryEmbedFailure,
-  buildDiaryEmbeddingTagPrefix
+  hasRagDiaryEmbedFailure
 } from '@baishou/shared'
+import { buildDesktopDiaryReEmbedArgs } from '../services/diary-embed-text.util'
 
 import { vaultService, resolveActiveVaultId, resolveVaultIdByName } from './vault.ipc'
 import { deleteDiaryEmbeddingAliases } from '../services/diary-embedding.util'
@@ -73,23 +70,16 @@ export const embeddingCallback: IEmbeddingCallback = {
         return false
       }
 
-      const d = new Date(params.date)
-      const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const tagPrefix = buildDiaryEmbeddingTagPrefix(params.tags)
-
-      const sourceId = buildDiaryEmbeddingSourceId(vaultId, params.diaryId)
-
       await deleteDiaryEmbeddingAliases(vaultId, params.diaryId)
-      await embeddingService.reEmbedText({
-        text: params.content,
-        sourceType: 'diary',
-        sourceId,
-        groupId: buildDiaryEmbeddingGroupId(),
-        vaultId,
-        chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
-        metadataJson: JSON.stringify({ updated_at: params.updatedAt.getTime() }),
-        sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000
-      })
+      await embeddingService.reEmbedText(
+        buildDesktopDiaryReEmbedArgs({
+          content: params.content,
+          date: params.date,
+          vaultId,
+          diaryId: params.diaryId,
+          updatedAt: params.updatedAt
+        })
+      )
       await deleteDiaryEmbedJob(vaultId, params.diaryId)
       await clearDiaryEmbedFailureIfSet()
       return true
