@@ -17,6 +17,7 @@ import { Check, ChevronDown, Folder } from 'lucide-react'
 import workbenchMascot from '../assets/workbench-mascot.png'
 import { useWorkbenchInputPlaceholder } from '../../utils/workbench-input-placeholder'
 import { createWorkspaceComposerDropResolver } from '../../utils/workspace-composer-drop.util'
+import { searchWorkspaceFileNames } from '../../utils/workspace-file-mention-search.util'
 import styles from './WorkbenchHomeComposer.module.css'
 
 const COMPOSER_GREETING_KEYS = [
@@ -33,16 +34,16 @@ const COMPOSER_GREETING_KEYS = [
 ] as const
 
 const COMPOSER_GREETING_FALLBACKS = [
-  'Hi，{{name}}，今天我们一起做点什么？',
-  '嗨，{{name}}，准备好开工了吗？',
-  '{{name}}，今天想先攻哪一块？',
-  '欢迎回来，{{name}}。一起把事情推进一点？',
-  '{{name}}，有什么想法随时丢给我。',
-  '嘿 {{name}}，我们今天搞点什么好玩的？',
-  '{{name}}，需要我帮你拆任务还是写代码？',
-  '{{name}}，今天的小目标是什么？',
-  'Hi {{name}}，我在这儿呢，说一声就好。',
-  '{{name}}，从哪一步开始都行，我跟着你。'
+  'Hi，{{name}}，今天先从哪一个小灵感开始？',
+  '嗨，{{name}}，咖啡泡好了，我们把上次的想法继续推进吧。',
+  '{{name}}，不管是整理思路还是动笔写写，随时告诉我。',
+  '欢迎回来，{{name}}。准备好了，今天想一起攻克哪一个难题？',
+  '{{name}}，把脑海里的草稿交给我，我们一步步把它变成现实。',
+  '嘿 {{name}}，桌面整整齐齐，就等你的新想法了。',
+  '{{name}}，把手头的事列出来，我来帮你逐项拆解。',
+  '{{name}}，今天想写点什么、改点什么？我都陪着你。',
+  'Hi {{name}}，灵感不分大小，写下一句就算开工。',
+  '{{name}}，欢迎回来，随时在下方输入你想做的事。'
 ] as const
 
 
@@ -77,6 +78,12 @@ export interface WorkbenchHomeComposerProps {
     meta?: {
       displayText?: string
       skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: Array<{
+        relativePath: string
+        selection?: { startLine: number; endLine: number }
+        comment?: string
+        origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+      }>
     }
   ) => boolean | Promise<boolean>
   shortcuts?: PromptShortcut[]
@@ -138,6 +145,23 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
   const inputPlaceholder = useWorkbenchInputPlaceholder()
   const resolveDropAttachments = useMemo(
     () => createWorkspaceComposerDropResolver(folderRoot),
+    [folderRoot]
+  )
+  const fileMention = useMemo(
+    () =>
+      folderRoot
+        ? {
+            enabled: true,
+            recentPaths: [] as string[],
+            searchFiles: (query: string) =>
+              searchWorkspaceFileNames({
+                folderRoot,
+                query,
+                listDir: (rootPath, relativePath) =>
+                  window.api.agentWorkspace.listDir(rootPath, relativePath)
+              })
+          }
+        : undefined,
     [folderRoot]
   )
 
@@ -277,6 +301,7 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
         isLoading={Boolean(sending)}
         attachmentIntake="workspace"
         resolveDropAttachments={resolveDropAttachments}
+        fileMention={fileMention}
         onSend={onSend}
         shortcuts={resolvedShortcuts}
         onManageShortcuts={() => setShowShortcutManager(true)}

@@ -1,12 +1,15 @@
 /*
  * 布局 / 字号 / 水平对齐：与日记侧栏 Sidebar.module.css 对齐
- * 背景用 --bg-surface（白底），因工作台页面画布是 --bg-app 灰底
+ * 背景用 --bg-surface（白底），因工作台页面画布是 --bg-app 灰底；
+ * 贴齐主内容卡左/上/下缘，由外层 --app-content-radius 裁切，不再单独做浮层卡。
  */
 
 .sidebar {
   width: 240px;
   background-color: var(--bg-surface);
+  border: none;
   border-right: 1px solid var(--border-muted);
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
