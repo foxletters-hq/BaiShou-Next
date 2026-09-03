@@ -20,7 +20,6 @@ export const MainLayout: React.FC = () => {
   )
   const cacheKey = getMainPageCacheKey(location.pathname)
   const showOutlet = cacheKey === null
-  const flushWorkbenchChrome = location.pathname.startsWith('/agent-workspace')
   // 日记/总结二级页：隐藏底座列表，避免与 Outlet 叠层。设置全屏 overlay 不隐藏底座——
   // overlay 已有更高 z-index 盖住即可；hidden 再显示会造成伙伴页闪烁。
   const hideCacheForSubRoute =
@@ -56,11 +55,8 @@ export const MainLayout: React.FC = () => {
   }, [vaultScopeRevision, location.pathname, navigate])
 
   return (
-    <div className={`${styles.appContainer} ${flushWorkbenchChrome ? styles.appContainerFlush : ''}`}>
-      <div
-        className={`${styles.mainContent} ${flushWorkbenchChrome ? styles.mainContentFlush : ''}`}
-        data-baishou-main-card
-      >
+    <div className={styles.appContainer}>
+      <div className={styles.mainContent} data-baishou-main-card>
         <Sidebar />
         <div className={styles.pageContent}>
           <MainPageCache
