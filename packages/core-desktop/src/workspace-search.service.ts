@@ -1,12 +1,13 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import type {
-  WorkspaceReplaceOptions,
-  WorkspaceReplaceResult,
-  WorkspaceSearchFileResult,
-  WorkspaceSearchMatch,
-  WorkspaceSearchOptions,
-  WorkspaceSearchResult
+import {
+  PROMPT_TEXT_EXTENSIONS,
+  type WorkspaceReplaceOptions,
+  type WorkspaceReplaceResult,
+  type WorkspaceSearchFileResult,
+  type WorkspaceSearchMatch,
+  type WorkspaceSearchOptions,
+  type WorkspaceSearchResult
 } from '@baishou/shared'
 
 const SKIP_DIR_NAMES = new Set([
@@ -27,55 +28,7 @@ const MAX_FILE_BYTES = 512 * 1024
 const DEFAULT_MAX_MATCHES = 2000
 const DEFAULT_MAX_FILES = 200
 
-const TEXT_EXTENSIONS = new Set([
-  '.md',
-  '.markdown',
-  '.mdx',
-  '.txt',
-  '.json',
-  '.jsonc',
-  '.js',
-  '.jsx',
-  '.ts',
-  '.tsx',
-  '.mjs',
-  '.cjs',
-  '.css',
-  '.scss',
-  '.less',
-  '.html',
-  '.htm',
-  '.xml',
-  '.svg',
-  '.yaml',
-  '.yml',
-  '.toml',
-  '.ini',
-  '.env',
-  '.sh',
-  '.bash',
-  '.zsh',
-  '.ps1',
-  '.bat',
-  '.cmd',
-  '.py',
-  '.rb',
-  '.go',
-  '.rs',
-  '.java',
-  '.kt',
-  '.swift',
-  '.c',
-  '.h',
-  '.cpp',
-  '.hpp',
-  '.cs',
-  '.sql',
-  '.graphql',
-  '.vue',
-  '.svelte',
-  '.lock'
-])
+const TEXT_EXTENSIONS = PROMPT_TEXT_EXTENSIONS
 
 function resolveWithinRoot(rootPath: string, relativePath = ''): string {
   const root = path.resolve(rootPath)
