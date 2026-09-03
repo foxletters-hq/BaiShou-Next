@@ -1,3 +1,5 @@
+import type { PromptFileRef } from '@baishou/shared'
+
 export interface ComposerDraftPayload {
   text: string
 }
@@ -16,10 +18,13 @@ export type ComposerSendSkillRef = {
   content: string
 }
 
+export type ComposerSendFileRef = PromptFileRef
+
 export type ComposerSendMeta = {
   /** 含 `/command` 的展示文案 */
   displayText?: string
   skillRefs?: ComposerSendSkillRef[]
+  fileRefs?: ComposerSendFileRef[]
   /** 忙时投递：插入当前 / 排队 */
   delivery?: 'steer' | 'queue'
 }
