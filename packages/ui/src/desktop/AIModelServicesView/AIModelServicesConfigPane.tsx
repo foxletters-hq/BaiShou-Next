@@ -101,51 +101,45 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             </div>
 
             <div className={styles.inputGroup}>
-              <div className={styles.inputContainer}>
-                <Link className={styles.inputPrefixIcon} />
-                <Input
-                  type="text"
-                  fieldSize="small"
-                  value={localFormData.baseUrl}
-                  onChange={(e) =>
-                    setLocalFormData({
-                      ...localFormData,
-                      baseUrl: e.target.value
-                    })
-                  }
-                  onBlur={handleBaseUrlBlur}
-                  placeholder={activeProviderMeta.defaultBase || 'API Base URL'}
-                  inputClassName="baishou-form-field--pad-leading"
-                />
-              </div>
+              <Input
+                type="text"
+                fieldSize="small"
+                value={localFormData.baseUrl}
+                onChange={(e) =>
+                  setLocalFormData({
+                    ...localFormData,
+                    baseUrl: e.target.value
+                  })
+                }
+                onBlur={handleBaseUrlBlur}
+                placeholder={activeProviderMeta.defaultBase || 'API Base URL'}
+                leading={<Link size={16} aria-hidden />}
+              />
             </div>
 
             <div className={styles.inputGroup}>
-              <div className={styles.inputContainer}>
-                <Key className={styles.inputPrefixIcon} />
-                <Input
-                  type={isObscure ? 'password' : 'text'}
-                  fieldSize="small"
-                  value={localFormData.apiKey}
-                  onChange={(e) =>
-                    setLocalFormData({
-                      ...localFormData,
-                      apiKey: e.target.value
-                    })
-                  }
-                  placeholder={t('ai_config.api_key_placeholder', 'API Key')}
-                  inputClassName="baishou-form-field--pad-leading"
-                  trailing={
-                    <button
-                      type="button"
-                      className={styles.revealButton}
-                      onClick={() => setIsObscure(!isObscure)}
-                    >
-                      {isObscure ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  }
-                />
-              </div>
+              <Input
+                type={isObscure ? 'password' : 'text'}
+                fieldSize="small"
+                value={localFormData.apiKey}
+                onChange={(e) =>
+                  setLocalFormData({
+                    ...localFormData,
+                    apiKey: e.target.value
+                  })
+                }
+                placeholder={t('ai_config.api_key_placeholder', 'API Key')}
+                leading={<Key size={16} aria-hidden />}
+                trailing={
+                  <button
+                    type="button"
+                    className={styles.revealButton}
+                    onClick={() => setIsObscure(!isObscure)}
+                  >
+                    {isObscure ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                }
+              />
             </div>
 
             <button
@@ -190,14 +184,13 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
             {activeConfig.models && activeConfig.models.length > 0 ? (
               <>
                 <div className={styles.modelSearchWrap}>
-                  <Search className={styles.modelSearchIcon} size={16} aria-hidden />
                   <Input
                     type="search"
                     fieldSize="small"
                     value={modelSearchQuery}
                     onChange={(e) => setModelSearchQuery(e.target.value)}
                     placeholder={t('common.search_model', '搜索模型...')}
-                    inputClassName="baishou-form-field--pad-leading"
+                    leading={<Search size={16} aria-hidden />}
                     aria-label={t('common.search_model', '搜索模型...')}
                   />
                 </div>
