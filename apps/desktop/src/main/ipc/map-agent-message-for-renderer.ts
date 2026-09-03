@@ -1,9 +1,11 @@
 import {
   mapAttachmentsFromParts,
+  normalizeFileCiteRefs,
   normalizePartData,
   normalizeSkillCiteRefs,
   sortAgentMessageParts,
   unwrapMessageMetadataForDisplay,
+  type FileCiteRef,
   type SkillCiteRef
 } from '@baishou/shared'
 import { parseCompactionMarkerData } from '@baishou/ai'
@@ -24,6 +26,7 @@ export type RendererAgentMessage = AgentMessage & {
   compactionRecord: ReturnType<typeof parseCompactionMarkerData>
   parts?: AgentPart[]
   skillRefs?: SkillCiteRef[]
+  fileRefs?: FileCiteRef[]
 }
 
 function textFromPartData(data: unknown): string {
@@ -49,6 +52,16 @@ function skillRefsFromParts(parts: AgentPart[]): SkillCiteRef[] | undefined {
     const refs = normalizeSkillCiteRefs(
       data.skillRefs as Array<{ command?: string; content?: string }> | undefined
     )
+    if (refs.length > 0) return refs
+  }
+  return undefined
+}
+
+function fileRefsFromParts(parts: AgentPart[]): FileCiteRef[] | undefined {
+  for (const part of parts) {
+    if (part.type !== 'text') continue
+    const data = normalizePartData(part.data)
+    const refs = normalizeFileCiteRefs(data.fileRefs as FileCiteRef[] | undefined)
     if (refs.length > 0) return refs
   }
   return undefined
@@ -80,6 +93,7 @@ export function mapAgentMessageForRenderer(
   const contentText = normalTextParts.map((p) => textFromPartData(p.data)).join('\n')
   const reasoningText = reasoningParts.map((p) => textFromPartData(p.data)).join('\n')
   const skillRefs = skillRefsFromParts(orderedParts)
+  const fileRefs = fileRefsFromParts(orderedParts)
 
   const toolInvocations = orderedParts
     .filter((p) => p.type === 'tool')
@@ -109,6 +123,7 @@ export function mapAgentMessageForRenderer(
     hasCompactionMarker: compactionRecord != null,
     compactionRecord,
     ...(skillRefs ? { skillRefs } : {}),
+    ...(fileRefs ? { fileRefs } : {}),
     ...(includeParts ? { parts: orderedParts } : {})
   }
 }
