@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { deriveLegacyVaultId } from '@baishou/shared'
-import { runDiaryEditViaDb, runDiaryReadViaDb } from '../diary-crud-db.util'
+import { runDiaryEditViaDb, runDiaryReadViaDb, runDiaryWriteViaDb } from '../diary-crud-db.util'
 import type { ToolContext } from '../agent.tool'
 
 function createContext(overrides: Partial<ToolContext> = {}): ToolContext {
@@ -22,6 +22,18 @@ function mockDiarySearcher(
 }
 
 describe('diary crud db util', () => {
+  it('diary_write 直接传递助手写出的完整正文', async () => {
+    const writeEntry = vi.fn().mockResolvedValue({ ok: true as const })
+    const context = createContext({
+      diarySearcher: mockDiarySearcher({ writeEntry })
+    })
+    const content = '##### 10:30\n\n#工作\n\n完成了方案'
+
+    await runDiaryWriteViaDb({ date: '2024-03-01', content }, context)
+
+    expect(writeEntry).toHaveBeenCalledWith('2024-03-01', content)
+  })
+
   it('returns diary content from diary_read', async () => {
     const context = createContext({
       diarySearcher: mockDiarySearcher({
@@ -46,7 +58,11 @@ describe('diary crud db util', () => {
     const result = await runDiaryEditViaDb({ date: '2024-03-01', content: '追加内容' }, context)
 
     expect(result).toContain('Successfully appended')
-    expect(editEntry).toHaveBeenCalledOnce()
+    expect(editEntry).toHaveBeenCalledWith({
+      date: '2024-03-01',
+      content: '追加内容',
+      mode: 'append'
+    })
   })
 
   it('supports diary_edit overwrite without a prior diary_read', async () => {

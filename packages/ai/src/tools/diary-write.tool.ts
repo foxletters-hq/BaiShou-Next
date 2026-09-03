@@ -5,11 +5,11 @@ import { runDiaryWriteViaDb } from './diary-crud-db.util'
 
 const diaryWriteParams = z.object({
   date: z.string().describe('The date for the new diary entry. Format: YYYY-MM-DD.'),
-  content: z.string().describe('The full markdown content for the new diary entry.'),
-  tags: z
+  content: z
     .string()
-    .optional()
-    .describe('Comma-separated tags for the diary entry, e.g. "生活,旅行".')
+    .describe(
+      'The complete markdown body to store. Write any desired time heading, section title, and #tags directly in this content; the system does not generate a time heading.'
+    )
 })
 
 export class DiaryWriteTool extends AgentTool<typeof diaryWriteParams> {
@@ -17,7 +17,8 @@ export class DiaryWriteTool extends AgentTool<typeof diaryWriteParams> {
 
   readonly description =
     'Create a new diary entry for a given date. ' +
-    'Prefer the tags parameter for diary labels (comma-separated); the system writes them into the body as #tags so they remain editable. ' +
+    'Compose the complete diary body yourself, including any desired time heading or section title; the system does not add one. ' +
+    'Write labels as #tags directly in content; do not write tags into file metadata. ' +
     'If a diary entry already exists for that date, use diary_edit instead.'
 
   readonly parameters = diaryWriteParams
