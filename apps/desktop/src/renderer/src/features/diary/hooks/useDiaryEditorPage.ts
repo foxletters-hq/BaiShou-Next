@@ -13,7 +13,6 @@ import {
   resolveDiaryNewEntryContent,
   composeDiaryEditorContent,
   parseDiaryEditorContent,
-  mergeDiaryTags,
   type DiaryTemplateConfig
 } from '@baishou/shared'
 import { useDialog, useToast } from '@baishou/ui'
@@ -57,7 +56,6 @@ export function useDiaryEditorPage() {
   const [isDirty, setIsDirty] = useState(false)
   const [diaryId, setDiaryId] = useState<number | null>(null)
   const [mediaPaths, setMediaPaths] = useState<string[]>([])
-  const originalTagsRef = useRef<string[]>([])
 
   const [isLoading, setIsLoading] = useState(true)
   const [attachmentBasePath, setAttachmentBasePath] = useState('')
@@ -163,21 +161,20 @@ export function useDiaryEditorPage() {
             setIsFavorite(diary.isFavorite || false)
             setMediaPaths(diary.mediaPaths || [])
 
-            originalTagsRef.current = parsedTags
             initialWeather = parsedWeather
             initialMood = parsedMood
             initialFavorite = diary.isFavorite || false
             initialMedia = diary.mediaPaths || []
 
+            const composedExisting = composeDiaryEditorContent(diary.content || '', parsedTags)
             if (isAppendMode) {
               const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-              initialContent = joinDiaryContentWithAppendBlock(diary.content || '', timeMark)
+              initialContent = joinDiaryContentWithAppendBlock(composedExisting, timeMark)
             } else {
-              initialContent = composeDiaryEditorContent(diary.content || '', parsedTags)
+              initialContent = composedExisting
             }
           } else {
             initialContent = resolveDiaryNewEntryContent(templateConfig, now)
-            originalTagsRef.current = []
           }
 
           setContent(initialContent)
@@ -254,10 +251,7 @@ export function useDiaryEditorPage() {
       try {
         if (typeof window !== 'undefined' && (window as any).api?.diary) {
           const selectedDateStr = formatLocalDate(selectedDate)
-          const { tags: parsedTags, body } = parseDiaryEditorContent(newContent)
-          const mergedTags = isAppendMode
-            ? mergeDiaryTags(originalTagsRef.current.join(', '), parsedTags.join(','))
-            : parsedTags.join(',')
+          const { body } = parseDiaryEditorContent(newContent)
 
           const payload = {
             date: selectedDateStr,
@@ -266,7 +260,6 @@ export function useDiaryEditorPage() {
               .replace(/^#{1,6}\s*/gm, '')
               .split('\n')[0]
               .substring(0, 50),
-            tags: mergedTags,
             weather,
             mood,
             isFavorite,
