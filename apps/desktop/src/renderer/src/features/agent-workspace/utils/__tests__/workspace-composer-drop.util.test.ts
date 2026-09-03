@@ -19,6 +19,11 @@ describe('workspace-composer-drop.util', () => {
     expect(joinWorkspaceAbsolutePath('D:\\proj', 'docs/a.md')).toBe('D:\\proj\\docs\\a.md')
   })
 
+  it('refuses parent-directory segments', () => {
+    expect(joinWorkspaceAbsolutePath('/tmp/proj', '../secret.ts')).toBe('')
+    expect(joinWorkspaceAbsolutePath('/tmp/proj', 'src/../../outside.ts')).toBe('')
+  })
+
   it('classifies workspace file attachments from path', () => {
     expect(attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.png', fileName: 'a.png' }).isImage).toBe(
       true
@@ -27,6 +32,7 @@ describe('workspace-composer-drop.util', () => {
       true
     )
     expect(attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.md', fileName: 'a.md' }).isText).toBe(true)
+    expect(attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.ts', fileName: 'a.ts' }).isText).toBe(true)
   })
 
   it('returns null for ordinary OS file drops', async () => {

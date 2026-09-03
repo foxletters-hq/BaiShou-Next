@@ -1,6 +1,10 @@
+import { isSafeWorkspaceRelativePath } from '@baishou/shared'
+
 export function normalizeRelativePath(relativePath: string): string {
   return relativePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/$/, '')
 }
+
+export { isSafeWorkspaceRelativePath }
 
 export function joinRelativePath(parent: string, name: string): string {
   const base = normalizeRelativePath(parent)
