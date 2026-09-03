@@ -1,7 +1,9 @@
 import {
   AgentGateEffect,
   AgentGateProfileId,
+  normalizeWorkspacePersonalMemoryReadEnabled,
   resolveAgentGateProfileId,
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
 import { AgentTool, ToolContext } from './agent.tool'
@@ -41,6 +43,9 @@ const WORKSPACE_SESSION_UTILITY_TOOL_IDS = new Set([
 ])
 /** Read-only knowledge tools allowed in workspace sessions (D7 / K1.3) */
 const KNOWLEDGE_TOOL_IDS = new Set(['knowledge_search', 'knowledge_graph_search'])
+const WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_ID_SET = new Set<string>(
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS
+)
 
 function resolveGateProfile(context: ToolContext): AgentGateProfileId {
   if (context.gateProfile) {
@@ -72,13 +77,16 @@ function shouldHideDeniedTool(name: string, context: ToolContext): boolean {
 
 function isToolEnabledForContext(name: string, tool: AgentTool, context: ToolContext): boolean {
   const isWorkspaceSession = context.workspace?.sessionKind === 'workspace'
-  if (
-    isWorkspaceSession &&
-    !WORKSPACE_ONLY_TOOL_IDS.has(name) &&
-    !WORKSPACE_SESSION_UTILITY_TOOL_IDS.has(name) &&
-    !KNOWLEDGE_TOOL_IDS.has(name)
-  ) {
-    return false
+  const personalMemoryReadEnabled = normalizeWorkspacePersonalMemoryReadEnabled(
+    context.userConfig?.['personalMemoryReadEnabled']
+  )
+  if (isWorkspaceSession) {
+    const allowed =
+      WORKSPACE_ONLY_TOOL_IDS.has(name) ||
+      WORKSPACE_SESSION_UTILITY_TOOL_IDS.has(name) ||
+      KNOWLEDGE_TOOL_IDS.has(name) ||
+      (personalMemoryReadEnabled && WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_ID_SET.has(name))
+    if (!allowed) return false
   }
 
   const disabledIds = new Set(
