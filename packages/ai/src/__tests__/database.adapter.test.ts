@@ -111,6 +111,32 @@ describe('DatabaseAdapter.searchMessages', () => {
   })
 })
 
+describe('DatabaseAdapter.getBySource', () => {
+  it('fail-closed: missing vaultId does not query', async () => {
+    const getBySource = vi.fn()
+    const adapter = new DatabaseAdapter({ getBySource } as any, {} as any, {} as any)
+    expect(await adapter.getBySource('memory', 'mem-1')).toBeNull()
+    expect(getBySource).not.toHaveBeenCalled()
+  })
+
+  it('passes explicit vaultId to the hybrid repository', async () => {
+    const getBySource = vi.fn().mockResolvedValue({
+      sourceType: 'memory',
+      sourceId: 'mem-1',
+      chunkText: 'ok',
+      createdAt: 1
+    })
+    const adapter = new DatabaseAdapter(
+      { getBySource } as any,
+      {} as any,
+      {} as any,
+      () => 'vlt_resolver'
+    )
+    await adapter.getBySource('memory', 'mem-1', 'vlt_explicit')
+    expect(getBySource).toHaveBeenCalledWith('memory', 'mem-1', { vaultId: 'vlt_explicit' })
+  })
+})
+
 describe('DatabaseAdapter.getAvailableSummaries', () => {
   it('formats summary ranges with local calendar dates', async () => {
     const start = new Date(2025, 5, 16)

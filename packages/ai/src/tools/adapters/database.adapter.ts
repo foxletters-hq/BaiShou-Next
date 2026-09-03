@@ -48,6 +48,12 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
     await this.hybridRepo.deleteEmbeddingsBySource(sourceType, sourceId)
   }
 
+  async getBySource(sourceType: string, sourceId: string, vaultId?: string) {
+    const scoped = String(vaultId ?? this.tryVaultId() ?? '').trim()
+    if (!scoped) return null
+    return this.hybridRepo.getBySource(sourceType, sourceId, { vaultId: scoped })
+  }
+
   async deleteFile(filePath: string): Promise<void> {
     await this.hybridRepo.deleteEmbeddingsBySource('diary', filePath)
   }
@@ -67,10 +73,12 @@ export class DatabaseAdapter implements ToolVectorStore, ToolMessageSearcher {
       vaultId: timeFilter?.vaultId
     })
     return rows.map((r: any) => ({
-      messageId: r.messageId,
+      messageId: r.sourceId || r.messageId,
       sessionId: r.sessionId,
       snippet: r.chunkText,
-      createdAt: r.createdAt
+      createdAt: r.createdAt,
+      sourceType: r.sourceType,
+      sourceId: r.sourceId != null ? String(r.sourceId) : undefined
     }))
   }
 
