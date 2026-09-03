@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   buildExternalMcpToolId,
   formatMcpClientToolResult,
+  isMcpClientTimeoutMessage,
+  mcpClientProbeReasonFromError,
   normalizeMcpStreamableUrl,
+  resolveMcpClientCardStatusKind,
   sanitizeMcpClientConfig,
   toMcpClientListedTools,
   upsertMcpClientServerStatus
@@ -104,5 +107,42 @@ describe('mcp client status helpers', () => {
         { id: 'a', connected: true, tools: [{ name: 'search' }] }
       )
     ).toEqual([{ id: 'a', connected: true, tools: [{ name: 'search' }] }])
+  })
+
+  it('classifies timeout messages from Chinese or English errors', () => {
+    expect(isMcpClientTimeoutMessage('获取工具超时')).toBe(true)
+    expect(isMcpClientTimeoutMessage('连接超时')).toBe(true)
+    expect(isMcpClientTimeoutMessage('Request timed out')).toBe(true)
+    expect(isMcpClientTimeoutMessage('MCP error -32001: Request timed out')).toBe(true)
+    expect(isMcpClientTimeoutMessage('连接失败')).toBe(false)
+    expect(mcpClientProbeReasonFromError(new Error('获取工具超时'))).toBe('timeout')
+    expect(mcpClientProbeReasonFromError(new Error('ECONNREFUSED'))).toBe('connect')
+  })
+
+  it('keeps loading until timeout, then shows timeout instead of hanging', () => {
+    expect(
+      resolveMcpClientCardStatusKind({
+        enabled: true,
+        connected: false,
+        loading: true,
+        timedOut: false
+      })
+    ).toBe('loading')
+    expect(
+      resolveMcpClientCardStatusKind({
+        enabled: true,
+        connected: false,
+        loading: false,
+        timedOut: true
+      })
+    ).toBe('timeout')
+    expect(
+      resolveMcpClientCardStatusKind({
+        enabled: true,
+        connected: true,
+        loading: false,
+        timedOut: true
+      })
+    ).toBe('connected')
   })
 })

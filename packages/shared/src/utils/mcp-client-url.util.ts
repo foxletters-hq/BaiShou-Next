@@ -1,6 +1,7 @@
 import type {
   McpClientConfig,
   McpClientListedTool,
+  McpClientProbeReason,
   McpClientServerEntry,
   McpClientServerStatus
 } from '../types/settings.types'
@@ -114,6 +115,39 @@ export function toMcpClientListedTools(tools: unknown): McpClientListedTool[] {
     })
   }
   return listed
+}
+
+export function isMcpClientTimeoutMessage(message: string | undefined): boolean {
+  if (!message?.trim()) return false
+  return message.includes('超时') || /timed?\s*out/i.test(message)
+}
+
+export function mcpClientProbeReasonFromError(error: unknown): Extract<
+  McpClientProbeReason,
+  'timeout' | 'connect'
+> {
+  const message = error instanceof Error ? error.message : String(error)
+  return isMcpClientTimeoutMessage(message) ? 'timeout' : 'connect'
+}
+
+export type McpClientCardStatusKind =
+  | 'disabled'
+  | 'connected'
+  | 'loading'
+  | 'timeout'
+  | 'disconnected'
+
+export function resolveMcpClientCardStatusKind(input: {
+  enabled: boolean
+  connected: boolean
+  loading: boolean
+  timedOut: boolean
+}): McpClientCardStatusKind {
+  if (!input.enabled) return 'disabled'
+  if (input.connected) return 'connected'
+  if (input.loading) return 'loading'
+  if (input.timedOut) return 'timeout'
+  return 'disconnected'
 }
 
 export function upsertMcpClientServerStatus(
