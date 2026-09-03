@@ -572,7 +572,10 @@ export const SummarySettingsSection: React.FC = () => {
               {t('settings.summary_generation_assistant_label')}
             </Text>
             <TouchableOpacity
-              style={[styles.partnerCard, { borderColor: colors.borderMuted }]}
+              style={[
+                styles.partnerCard,
+                { borderColor: colors.borderControl, backgroundColor: colors.bgSurface }
+              ]}
               onPress={() => setPartnerPickerOpen(true)}
             >
               {selectedPartner?.displayAvatarUri ? (

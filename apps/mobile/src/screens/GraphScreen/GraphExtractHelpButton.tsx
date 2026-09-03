@@ -3,9 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { useTranslation } from 'react-i18next'
 import { CircleHelp } from 'lucide-react-native'
 import { GRAPH_EXTRACT_ALIGN_POOL_SIZE } from '@baishou/shared'
-import { FloatingModal, useNativeTheme } from '@baishou/ui/native'
+import { FloatingModal, HELP_ICON_SIZE, useNativeTheme } from '@baishou/ui/native'
 
-export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size = 14 }) => {
+export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size: _size }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const { width: screenWidth } = useWindowDimensions()
@@ -19,7 +19,12 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size = 14 
         accessibilityRole="button"
         accessibilityLabel={t('graph.extract_help_aria', '抽取与抽取池说明')}
       >
-        <CircleHelp size={size} color={colors.textTertiary} strokeWidth={2} style={{ opacity: 0.8 }} />
+        <CircleHelp
+          size={HELP_ICON_SIZE}
+          color={colors.textTertiary}
+          strokeWidth={2}
+          style={{ opacity: 0.8 }}
+        />
       </Pressable>
       <FloatingModal
         visible={open}
