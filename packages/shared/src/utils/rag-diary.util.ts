@@ -1,3 +1,24 @@
+import { coerceDiaryCalendarDate, formatLocalDate } from './date.utils'
+
+/** 日记向量分块前缀：只带日期，不带元数据标签 */
+export function buildDiaryEmbeddingDatePrefix(date: Date | string): string {
+  const d = coerceDiaryCalendarDate(date)
+  if (!d) return ''
+  return `[${formatLocalDate(d)} 日记:]\n`
+}
+
+/** 日记嵌入入参：正文原样作为 text，日期前缀单独放在 chunkPrefix。 */
+export function buildDiaryEmbeddingTextArgs(
+  content: string,
+  date: Date | string
+): { text: string; chunkPrefix: string } {
+  const d = coerceDiaryCalendarDate(date)
+  return {
+    text: content,
+    chunkPrefix: d ? buildDiaryEmbeddingDatePrefix(d) : ''
+  }
+}
+
 /** 批量嵌入时优先处理最早日记（日期从旧到新） */
 export function sortDiariesByDateAsc<T extends { date: Date }>(diaries: T[]): T[] {
   return [...diaries].sort((a, b) => a.date.getTime() - b.date.getTime())
