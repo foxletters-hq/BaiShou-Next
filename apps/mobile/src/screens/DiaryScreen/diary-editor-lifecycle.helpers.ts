@@ -153,20 +153,21 @@ export function createDiaryEditorLifecycleHandlers({
 
     if (isAppendMode) {
       const safeExisting = isLikelyEditorBundleLeak(diary.content || '') ? '' : diary.content || ''
+      const composedExisting = composeDiaryEditorContent(safeExisting, parsedTags)
       const timeMark = resolveDiaryAppendBlock(templateConfig, now)
-      const composed = joinDiaryContentWithAppendBlock(safeExisting, timeMark)
+      const composed = joinDiaryContentWithAppendBlock(composedExisting, timeMark)
+      const { tags: editorTags } = parseDiaryEditorContent(composedExisting)
       setContent(composed)
-      setOriginalContent(safeExisting.trimEnd())
+      setOriginalContent(composedExisting.trimEnd())
       savedEditorSnapshotRef.current = {
         body: parseDiaryEditorContent(composed).body,
-        tags: ''
+        tags: editorTags.join(',')
       }
       metadataDirtyRef.current = false
       setIsDirty(false)
       isDirtyRef.current = false
-      setTags([])
-      previousTagsRef.current = []
-      setTagColorRegistry({})
+      setTags(editorTags)
+      previousTagsRef.current = editorTags
     } else {
       const safeContent = isLikelyEditorBundleLeak(diary.content) ? '' : diary.content
       if (safeContent !== diary.content) {

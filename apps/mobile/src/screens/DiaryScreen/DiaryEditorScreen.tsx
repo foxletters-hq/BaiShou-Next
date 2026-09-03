@@ -11,7 +11,6 @@ import {
   useDialog,
   useNativeToast
 } from '@baishou/ui/native'
-import { mergeDiaryTags } from '@baishou/ai'
 import {
   buildDiaryListSavedPatch,
   parseDiaryEditorContent,
@@ -249,9 +248,6 @@ export const DiaryEditorScreen: React.FC = () => {
       await assertExternalStorageReady()
       const targetDate = normalizeDiaryCalendarDate(selectedDateRef.current)
       const { tags: parsedTags, body } = parseDiaryEditorContent(content)
-      const mergedTags = isAppendMode
-        ? mergeDiaryTags(originalTagsRef.current.join(', '), parsedTags.join(','))
-        : parsedTags.join(',')
       const entryTagColors = pickEntryTagColors(parsedTags, tagColorRegistry)
       const saveId =
         !isNewEntryModeRef.current &&
@@ -261,7 +257,6 @@ export const DiaryEditorScreen: React.FC = () => {
           : null
       const input = {
         content: body,
-        tags: mergedTags,
         tagColors: Object.keys(entryTagColors).length > 0 ? entryTagColors : undefined,
         date: targetDate,
         weather: weather || undefined,
