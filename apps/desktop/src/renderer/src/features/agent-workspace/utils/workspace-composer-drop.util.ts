@@ -1,14 +1,18 @@
-import type { MockChatAttachment } from '@baishou/shared'
+import { classifyPromptAttachmentKind, type MockChatAttachment } from '@baishou/shared'
 import {
   parseExplorerDndPayload,
   type WorkbenchExplorerDndPayload
 } from '../workbench/workbench-file-explorer-dnd.util'
-import { normalizeRelativePath, parentRelativePath } from '../workbench/workbench-path.util'
+import {
+  isSafeWorkspaceRelativePath,
+  normalizeRelativePath,
+  parentRelativePath
+} from '../workbench/workbench-path.util'
 
 export function joinWorkspaceAbsolutePath(folderRoot: string, relativePath: string): string {
   const base = folderRoot.replace(/[/\\]+$/, '')
   const rel = normalizeRelativePath(relativePath)
-  if (!rel) return base
+  if (!rel || !isSafeWorkspaceRelativePath(rel)) return ''
   const sep = folderRoot.includes('\\') ? '\\' : '/'
   return `${base}${sep}${rel.split('/').join(sep)}`
 }
@@ -18,16 +22,13 @@ export function classifyComposerDropFile(fileName: string): {
   isPdf: boolean
   isText: boolean
 } {
-  return {
-    isImage: /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(fileName),
-    isPdf: /\.pdf$/i.test(fileName),
-    isText: /\.(txt|md)$/i.test(fileName)
-  }
+  return classifyPromptAttachmentKind(fileName)
 }
 
 export function attachmentFromWorkspaceFilePath(params: {
   absolutePath: string
   fileName: string
+  relativePath?: string
 }): MockChatAttachment {
   const flags = classifyComposerDropFile(params.fileName)
   return {
@@ -36,7 +37,9 @@ export function attachmentFromWorkspaceFilePath(params: {
     filePath: params.absolutePath,
     isImage: flags.isImage,
     isPdf: flags.isPdf,
-    isText: flags.isText
+    isText: flags.isText,
+    relativePath: params.relativePath,
+    origin: 'explorer-drop'
   }
 }
 
@@ -63,7 +66,7 @@ export async function resolveWorkspaceComposerDrop(params: {
   const attachments: MockChatAttachment[] = []
   for (const relativePath of relativePaths) {
     const rel = normalizeRelativePath(relativePath)
-    if (!rel) continue
+    if (!rel || !isSafeWorkspaceRelativePath(rel)) continue
     if (params.listDir) {
       const parent = parentRelativePath(rel)
       let isDirectory = false
@@ -82,7 +85,8 @@ export async function resolveWorkspaceComposerDrop(params: {
     attachments.push(
       attachmentFromWorkspaceFilePath({
         absolutePath: joinWorkspaceAbsolutePath(params.folderRoot, rel),
-        fileName
+        fileName,
+        relativePath: rel
       })
     )
   }
