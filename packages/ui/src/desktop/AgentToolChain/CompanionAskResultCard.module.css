@@ -47,6 +47,71 @@
   font-size: 13px;
   line-height: 1.5;
   word-break: break-word;
+  text-align: left;
+}
+
+.optionInteractive {
+  cursor: pointer;
+  font: inherit;
+}
+
+.optionInteractive:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--form-field-border-focus, var(--color-primary)));
+  color: var(--text-primary);
+}
+
+.optionInteractive:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.customToggle,
+.customSubmit {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.customSubmit {
+  background: var(--color-primary);
+  color: var(--text-on-primary, #fff);
+}
+
+.customToggle:hover:not(:disabled),
+.customSubmit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.customBox {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customInput {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-control, var(--border-subtle));
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  resize: vertical;
+}
+
+.customActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .optionSelected {
