@@ -70,6 +70,27 @@ export function formatLocalTime(value: Date | number | undefined | null): string
 }
 
 /**
+ * 将日记日历日收成本地 Date。
+ * `YYYY-MM-DD` 走 parseDateStr，避免 `new Date('YYYY-MM-DD')` 被当成 UTC 零点。
+ */
+export function coerceDiaryCalendarDate(date: Date | string): Date | undefined {
+  if (date instanceof Date) {
+    return Number.isNaN(date.getTime()) ? undefined : date
+  }
+  const trimmed = String(date).trim()
+  if (!trimmed) return undefined
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    try {
+      return parseDateStr(trimmed)
+    } catch {
+      return undefined
+    }
+  }
+  const parsed = new Date(trimmed)
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed
+}
+
+/**
  * 将 YYYY-MM-DD 字符串解析为本地时区的 Date 对象（午夜 00:00:00 本地时间）
  *
  * ⚠️ 禁止使用 new Date('YYYY-MM-DD')，该写法会被 JS 引擎视作 UTC 零点，

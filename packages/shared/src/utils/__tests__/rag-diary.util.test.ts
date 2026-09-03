@@ -5,7 +5,9 @@ import {
   filterUnindexedDiaries,
   buildDiaryEmbeddingSourceId,
   buildDiaryEmbeddingGroupId,
-  isLegacyDiaryEmbeddingSourceId
+  isLegacyDiaryEmbeddingSourceId,
+  buildDiaryEmbeddingDatePrefix,
+  buildDiaryEmbeddingTextArgs
 } from '../rag-diary.util'
 
 describe('sortDiariesByDateAsc', () => {
@@ -34,6 +36,28 @@ describe('sortDiariesByDateDesc', () => {
     const sorted = sortDiariesByDateDesc(diaries)
 
     expect(sorted.map((d) => d.id)).toEqual([2, 3, 1])
+  })
+})
+
+describe('buildDiaryEmbeddingDatePrefix', () => {
+  it('formats local calendar date without tag metadata', () => {
+    expect(buildDiaryEmbeddingDatePrefix(new Date(2026, 8, 1))).toBe('[2026-09-01 日记:]\n')
+    expect(buildDiaryEmbeddingDatePrefix('2026-09-01')).toBe('[2026-09-01 日记:]\n')
+    expect(buildDiaryEmbeddingDatePrefix('not-a-date')).toBe('')
+  })
+})
+
+describe('buildDiaryEmbeddingTextArgs', () => {
+  it('uses diary body as text and only adds a date prefix', () => {
+    expect(buildDiaryEmbeddingTextArgs('开会纪要 #工作', '2026-09-01')).toEqual({
+      text: '开会纪要 #工作',
+      chunkPrefix: '[2026-09-01 日记:]\n'
+    })
+    expect(buildDiaryEmbeddingTextArgs('开会纪要', '2026-09-01').chunkPrefix).not.toContain('标签')
+    expect(buildDiaryEmbeddingTextArgs('开会纪要', 'not-a-date')).toEqual({
+      text: '开会纪要',
+      chunkPrefix: ''
+    })
   })
 })
 

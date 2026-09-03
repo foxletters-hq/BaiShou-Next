@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  coerceDiaryCalendarDate,
   diaryDateToSourceCreatedSeconds,
   formatRecallDiaryDate,
   formatRecallTimestamp,
@@ -30,6 +31,20 @@ describe('normalizeUnixToSeconds', () => {
   it('converts milliseconds to seconds for storage', () => {
     const ms = new Date(2025, 4, 11).getTime()
     expect(normalizeUnixToSeconds(ms)).toBe(Math.floor(ms / 1000))
+  })
+})
+
+describe('coerceDiaryCalendarDate', () => {
+  it('parses YYYY-MM-DD as a local calendar day', () => {
+    const d = coerceDiaryCalendarDate('2026-09-01')
+    expect(d?.getFullYear()).toBe(2026)
+    expect(d?.getMonth()).toBe(8)
+    expect(d?.getDate()).toBe(1)
+  })
+
+  it('keeps an already valid Date', () => {
+    const input = new Date(2026, 8, 1)
+    expect(coerceDiaryCalendarDate(input)?.getTime()).toBe(input.getTime())
   })
 })
 
