@@ -51,14 +51,3 @@
 .cachedPage[hidden] {
   display: none !important;
 }
-
-/* 工作台：主区贴齐侧栏与窗边，不留内容卡内边距 */
-.appContainerFlush {
-  padding: 0;
-}
-
-.mainContentFlush {
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-}
