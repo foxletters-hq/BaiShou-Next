@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { HelpCircle, RefreshCw } from 'lucide-react-native'
+import { HELP_ICON_SIZE } from '@baishou/ui/native'
 import type { TFunction } from 'i18next'
 import type { SyncConfig } from '@baishou/core-mobile'
 import { dataSyncScreenStyles as styles } from '../data-sync-screen.styles'
@@ -68,7 +69,7 @@ export function DataSyncBackupTabSection({
                 : t('data_sync.sync_records', '云端备份')}
           </Text>
           <TouchableOpacity onPress={showHelp} hitSlop={8}>
-            <HelpCircle size={18} color={colors.textSecondary} strokeWidth={2} />
+            <HelpCircle size={HELP_ICON_SIZE} color={colors.textSecondary} strokeWidth={2} />
           </TouchableOpacity>
           {backupTab === 'cloud' && (
             <View style={[styles.targetBadge, { borderColor: colors.primary }]}>
