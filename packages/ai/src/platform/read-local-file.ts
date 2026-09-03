@@ -19,9 +19,19 @@ export async function readLocalFileAsBase64Async(filePath: string): Promise<stri
   return readLocalFileAsBase64(filePath)
 }
 
-export async function readLocalTextFile(filePath: string): Promise<string> {
+export async function readLocalTextFile(filePath: string, maxBytes?: number): Promise<string> {
   if (!filePath) return ''
-  return fs.readFileSync(filePath, 'utf8')
+  if (!maxBytes || maxBytes <= 0) {
+    return fs.readFileSync(filePath, 'utf8')
+  }
+  const fd = fs.openSync(filePath, 'r')
+  try {
+    const buf = Buffer.alloc(maxBytes)
+    const bytesRead = fs.readSync(fd, buf, 0, maxBytes, 0)
+    return buf.subarray(0, bytesRead).toString('utf8')
+  } finally {
+    fs.closeSync(fd)
+  }
 }
 
 export async function readPdfTextFromPath(filePath: string): Promise<string> {

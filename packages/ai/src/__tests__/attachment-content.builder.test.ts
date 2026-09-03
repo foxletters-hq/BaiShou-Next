@@ -25,6 +25,12 @@ describe('inferAttachmentFlags', () => {
   it('detects image by file extension when flags missing', () => {
     expect(inferAttachmentFlags({ fileName: 'photo.png' }).isImage).toBe(true)
   })
+
+  it('treats source files as text even when stored flags say otherwise', () => {
+    expect(inferAttachmentFlags({ fileName: 'app.ts', isText: false, type: 'file' }).isText).toBe(
+      true
+    )
+  })
 })
 
 describe('appendImagePartToContentParts', () => {
@@ -69,6 +75,52 @@ describe('appendFileAttachmentToContentParts', () => {
 
     expect((parts[0] as { text: string }).text).toContain('notes from disk')
     expect((parts[0] as { text: string }).text).toContain('notes.md')
+  })
+
+  it('inlines workspace source files with relative path and selection', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      {
+        fileName: 'app.ts',
+        relativePath: 'src/app.ts',
+        filePath: 'D:\\Projects\\invoice\\src\\app.ts',
+        selection: { startLine: 1, endLine: 1 },
+        comment: '核对导出'
+      },
+      { modelId: 'deepseek-v4-flash' }
+    )
+
+    const text = (parts[0] as { text: string }).text
+    expect(text).toContain('[User Uploaded File Attachment: src/app.ts (line 1)]')
+    expect(text).toContain('notes from disk')
+    expect(text).toContain('用户针对 src/app.ts 第 1 行的评论：核对导出')
+  })
+
+  it('rejects text that contains null bytes', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      {
+        fileName: 'app.ts',
+        relativePath: 'src/app.ts',
+        isText: true,
+        textContent: 'export const x = 1\0'
+      },
+      { modelId: 'deepseek-v4-flash' }
+    )
+    expect((parts[0] as { text: string }).text).toContain('无法直接放入对话')
+  })
+
+  it('writes a visible hint for unsupported binary files', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      { fileName: 'pack.zip', relativePath: 'pack.zip', filePath: 'D:\\Projects\\invoice\\pack.zip' },
+      { modelId: 'deepseek-v4-flash' }
+    )
+    expect((parts[0] as { text: string }).text).toContain('pack.zip')
+    expect((parts[0] as { text: string }).text).toContain('无法直接放入对话')
   })
 
   it('reads pdf text from the original path when native pdf is unsupported', async () => {

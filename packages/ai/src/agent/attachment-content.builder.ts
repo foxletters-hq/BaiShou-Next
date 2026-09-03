@@ -1,4 +1,15 @@
-import { isVisionModel, supportsNativePdf } from '@baishou/shared'
+import {
+  classifyPromptAttachmentKind,
+  formatPromptFileAttachmentBlock,
+  formatPromptUnsupportedAttachmentHint,
+  looksLikeBinaryText,
+  PROMPT_TEXT_ATTACHMENT_READ_MAX_BYTES,
+  sliceTextBySelection,
+  truncatePromptTextAttachment,
+  type PromptFileSelection,
+  isVisionModel,
+  supportsNativePdf
+} from '@baishou/shared'
 import { resolveAttachmentFilePath } from '../platform/resolve-attachment-path'
 import {
   canReadLocalPath,
@@ -17,10 +28,13 @@ export type AttachmentLike = {
   data?: string
   mimeType?: string
   filePath?: string
+  relativePath?: string
   isText?: boolean
   isImage?: boolean
   isPdf?: boolean
   textContent?: string
+  selection?: PromptFileSelection
+  comment?: string
 }
 
 export function inferAttachmentFlags(att: AttachmentLike): {
@@ -28,15 +42,25 @@ export function inferAttachmentFlags(att: AttachmentLike): {
   isPdf: boolean
   isText: boolean
 } {
-  const fileName = String(att.name || att.fileName || '')
+  const fileName = String(att.name || att.fileName || att.relativePath || '')
+  const classified = classifyPromptAttachmentKind(fileName, att.mimeType)
   return {
     isImage:
       att.isImage === true ||
       att.type === 'image' ||
-      /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(fileName),
-    isPdf: att.isPdf === true || att.mimeType === 'application/pdf' || /\.pdf$/i.test(fileName),
-    isText: att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
+      classified.isImage,
+    isPdf: att.isPdf === true || classified.isPdf,
+    isText:
+      classified.isText ||
+      att.isText === true ||
+      att.type === 'text'
   }
+}
+
+function resolveAttachmentDisplayPath(att: AttachmentLike): string {
+  const relative = String(att.relativePath || '').trim().replace(/\\/g, '/')
+  if (relative) return relative
+  return String(att.name || att.fileName || 'Attachment')
 }
 
 function imagePlaceholderText(att: AttachmentLike): string {
@@ -110,15 +134,35 @@ export async function appendFileAttachmentToContentParts(
       try {
         const filePath = resolveAttachmentFilePath(att)
         if (canReadLocalPath(filePath)) {
-          textContent = await readLocalTextFile(filePath)
+          textContent = await readLocalTextFile(filePath, PROMPT_TEXT_ATTACHMENT_READ_MAX_BYTES)
         }
       } catch {
         textContent = ''
       }
     }
+    const displayPath = resolveAttachmentDisplayPath(att)
+    if (looksLikeBinaryText(textContent)) {
+      contentParts.push({
+        type: 'text',
+        text: formatPromptUnsupportedAttachmentHint(displayPath || displayName)
+      })
+      return
+    }
+    const sliced = sliceTextBySelection(textContent, att.selection)
+    const limited = truncatePromptTextAttachment(sliced.text)
     contentParts.push({
       type: 'text',
-      text: `\n\n[User Uploaded File Attachment: ${displayName}]\n\`\`\`\n${textContent}\n\`\`\`\n`
+      text: formatPromptFileAttachmentBlock({
+        displayPath,
+        text: limited.text,
+        selection: att.selection
+          ? { startLine: sliced.startLine, endLine: sliced.endLine }
+          : undefined,
+        comment: att.comment,
+        truncated: limited.truncated,
+        shownLines: limited.shownLines,
+        totalLines: limited.totalLines
+      })
     })
     return
   }
@@ -159,9 +203,19 @@ export async function appendFileAttachmentToContentParts(
 
     contentParts.push({
       type: 'text',
-      text: `\n\n[User Uploaded File Attachment: ${displayName}]\n\`\`\`\n${textContent}\n\`\`\`\n`
+      text: formatPromptFileAttachmentBlock({
+        displayPath: resolveAttachmentDisplayPath(att),
+        text: textContent,
+        comment: att.comment
+      })
     })
+    return
   }
+
+  contentParts.push({
+    type: 'text',
+    text: formatPromptUnsupportedAttachmentHint(resolveAttachmentDisplayPath(att) || displayName)
+  })
 }
 
 /** @deprecated 使用 appendImagePartToContentParts / appendFileAttachmentToContentParts */

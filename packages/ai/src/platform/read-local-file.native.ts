@@ -25,7 +25,7 @@ export async function readLocalFileAsBase64Async(filePath: string): Promise<stri
   }
 }
 
-export async function readLocalTextFile(_filePath: string): Promise<string> {
+export async function readLocalTextFile(_filePath: string, _maxBytes?: number): Promise<string> {
   return ''
 }
 
