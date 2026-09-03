@@ -9,11 +9,13 @@ describe('agent-tools-ui.constants', () => {
     expect(ids).toContain('web_search')
     expect(ids).toContain('url_read')
     expect(ids).toContain('current_time')
+    expect(ids).toContain('skill_write')
   })
 
   it('keeps auto_inject_time UI-only and out of builtin tool ids', () => {
     expect(AGENT_TOOL_UI_DEFS.some((tool) => tool.id === 'auto_inject_time')).toBe(true)
     expect(AGENT_BUILTIN_TOOL_IDS).not.toContain('auto_inject_time')
     expect(AGENT_BUILTIN_TOOL_IDS).toContain('diary_write')
+    expect(AGENT_BUILTIN_TOOL_IDS).toContain('skill_write')
   })
 })

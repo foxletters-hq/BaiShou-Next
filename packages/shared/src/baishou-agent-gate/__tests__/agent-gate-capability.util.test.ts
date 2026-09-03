@@ -187,6 +187,15 @@ describe('agent-gate-capability.util', () => {
     expect(next.exclusionList).not.toContain('memory_delete')
   })
 
+  it('companion skill_write defaults to Ask', () => {
+    const cap = COMPANION_GATE_CAPABILITIES.find((item) => item.id === 'skill_write')
+    expect(cap?.defaultEffect).toBe(AgentGateEffect.Ask)
+    const config = cloneBaishouAgentGateConfig(null, DEFAULT_BAISHOU_AGENT_GATE_CONFIG)
+    expect(capabilityStateFromConfig(config, 'companion').effects.skill_write).toBe(
+      AgentGateEffect.Ask
+    )
+  })
+
   it('companion graph_upsert defaults to Ask', () => {
     const cap = COMPANION_GATE_CAPABILITIES.find((item) => item.id === 'graph_upsert')
     expect(cap?.defaultEffect).toBe(AgentGateEffect.Ask)
