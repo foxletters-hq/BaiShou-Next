@@ -86,6 +86,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     vaultId: string
     sourceCreatedAt?: number
     metadataJson?: string
+    chunkPrefix?: string
     /** 为 true 时，任一分块失败或全部失败均抛出错误（日记嵌入路径使用） */
     requireSuccess?: boolean
   }): Promise<void> {
@@ -103,7 +104,8 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     let successCount = 0
 
     const embedOneChunk = async (index: number): Promise<boolean> => {
-      const chunk = chunks[index]!
+      const rawChunk = chunks[index]!
+      const chunk = options.chunkPrefix ? `${options.chunkPrefix}${rawChunk}` : rawChunk
       const embVector = await this.embedQueryWithRetry(chunk, `chunk ${index}`)
       if (!embVector) {
         return false
