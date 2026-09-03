@@ -7,6 +7,10 @@ export type MockChatAttachment = {
   isText?: boolean
   textContent?: string
   fileSize?: number
+  relativePath?: string
+  selection?: { startLine: number; endLine: number }
+  comment?: string
+  origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
 }
 
 export type MockToolInvocation = {
@@ -34,6 +38,13 @@ export type MockChatMessage = {
   attachments?: MockChatAttachment[]
   /** 用户消息中的 Skill 引用快照（气泡点击预览） */
   skillRefs?: MockChatSkillCite[]
+  /** 用户消息中的工作区文件引用快照（气泡点击打开） */
+  fileRefs?: Array<{
+    relativePath: string
+    selection?: { startLine: number; endLine: number }
+    comment?: string
+    origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+  }>
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number

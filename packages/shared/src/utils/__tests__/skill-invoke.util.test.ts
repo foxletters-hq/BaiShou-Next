@@ -40,4 +40,28 @@ describe('skill-invoke.util', () => {
       '只要科技'
     )
   })
+
+  it('strips file mention labels so the model only gets the attachment body', () => {
+    expect(
+      composerExtraPlain('看一下 @app.ts#L12-20 这里', [], [
+        { relativePath: 'src/app.ts', selection: { startLine: 12, endLine: 20 } }
+      ])
+    ).toBe('看一下 这里')
+    expect(
+      composerExtraPlain('看一下 @src/app.ts#L12-20 这里', [], [
+        { relativePath: 'src/app.ts', selection: { startLine: 12, endLine: 20 } }
+      ])
+    ).toBe('看一下 这里')
+  })
+
+  it('does not strip a longer path that only shares a prefix', () => {
+    expect(
+      composerExtraPlain('对照 @src/app.ts 和 @src/app.ts.bak', [], [
+        { relativePath: 'src/app.ts' }
+      ])
+    ).toBe('对照 和 @src/app.ts.bak')
+    expect(
+      composerExtraPlain('对照 @app.ts 和 @app.ts.bak', [], [{ relativePath: 'src/app.ts' }])
+    ).toBe('对照 和 @app.ts.bak')
+  })
 })
