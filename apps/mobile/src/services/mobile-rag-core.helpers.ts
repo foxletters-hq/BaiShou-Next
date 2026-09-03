@@ -8,7 +8,8 @@ import {
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
-  buildDiaryEmbeddingTagPrefix,
+  buildDiaryEmbeddingTextArgs,
+  coerceDiaryCalendarDate,
   DIARY_EMBED_GROUP_ID,
   type RagConfig
 } from '@baishou/shared'
@@ -283,18 +284,17 @@ export async function embedDiaryEntry(
   const groupId = buildDiaryEmbeddingGroupId()
   await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVaultId, params.diaryId)
 
-  const d = params.date instanceof Date ? params.date : new Date(params.date)
-  const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const tagPrefix = buildDiaryEmbeddingTagPrefix(params.tags)
-  const prefixedText = `${tagPrefix}[${label} 日记:]\n${params.content}`
+  const d = coerceDiaryCalendarDate(params.date)
   const metadataJson = JSON.stringify({ updated_at: params.updatedAt.getTime() })
+  const { text, chunkPrefix } = buildDiaryEmbeddingTextArgs(params.content, params.date)
   const embedArgs = {
-    text: prefixedText,
+    text,
+    chunkPrefix,
     sourceType: 'diary',
     sourceId,
     groupId,
     vaultId: resolvedVaultId,
-    sourceCreatedAt: diaryDateToSourceCreatedSeconds(d) * 1000,
+    sourceCreatedAt: d ? diaryDateToSourceCreatedSeconds(d) * 1000 : Date.now(),
     metadataJson,
     requireSuccess: true as const
   }

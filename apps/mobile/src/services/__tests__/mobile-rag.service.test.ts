@@ -100,6 +100,34 @@ describe('embedDiaryEntry', () => {
     expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(2, 'diary', '42')
     expect(deps.hsRepo.deleteEmbeddingsBySource).toHaveBeenNthCalledWith(3, 'diary', 'Personal#42')
   })
+
+  it('embeds diary body with a date prefix and without tag metadata', async () => {
+    const deps = createDeps()
+    const embedText = vi.fn().mockResolvedValue(undefined)
+    const adapter = { embedText } as unknown as EmbeddingAdapter
+
+    await embedDiaryEntry(
+      deps,
+      {
+        diaryId: 7,
+        content: '开会纪要 #工作',
+        tags: ['工作'],
+        date: '2026-09-01',
+        updatedAt: new Date(2026, 8, 1, 12, 0, 0)
+      },
+      { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
+    )
+
+    expect(embedText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: '开会纪要 #工作',
+        chunkPrefix: '[2026-09-01 日记:]\n',
+        sourceType: 'diary',
+        requireSuccess: true
+      })
+    )
+    expect(embedText.mock.calls[0]?.[0].chunkPrefix).not.toContain('标签')
+  })
 })
 
 describe('runControlledDiaryBatchEmbed', () => {
