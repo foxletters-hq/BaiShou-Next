@@ -18,6 +18,7 @@ import {
   ScanSearch,
   Search,
   Share2,
+  Sparkles,
   Timer,
   Trash2
 } from 'lucide-react-native'
@@ -47,6 +48,7 @@ const TOOL_ICONS: Record<AgentToolIconId, React.ComponentType<LucideProps>> = {
   memory_delete: DatabaseZap,
   recall_relations: Share2,
   graph_upsert: Share2,
+  skill_write: Sparkles,
   web_search: Globe,
   url_read: Link2,
   auto_inject_time: Clock,

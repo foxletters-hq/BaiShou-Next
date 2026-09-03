@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import React, { useMemo } from 'react'
 import {
+  AgentGateEffect,
+  companionToolEffectOptions,
   normalizeToolManagementConfig,
   type EmojiToolConfig,
   AGENT_TOOL_CATEGORY_ORDER,
@@ -32,6 +34,9 @@ export interface ToolManagementConfig {
 export interface AgentToolsViewProps {
   config: ToolManagementConfig
   onChange: (config: ToolManagementConfig) => void
+  /** 传入后按伙伴对话允许 / 询问 / 拒绝展示，不再只用开关 */
+  resolveToolEffect?: (toolId: string) => AgentGateEffect
+  onToolEffectChange?: (toolId: string, effect: AgentGateEffect) => void
   disableScroll?: boolean
   /** Mobile: pick and import emoji images via image picker */
   onPickAndImportEmojis?: () => Promise<
@@ -78,6 +83,7 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.memory_delete': '记忆删除',
   'agent.tools.recall_relations': '回忆人生关系图',
   'agent.tools.graph_upsert': '写入人生关系图',
+  'agent.tools.skill_write': '保存技能',
   'agent.tools.web_search': '网络搜索',
   'agent.tools.url_read': '网页读取',
   'agent.tools.auto_inject_time': '当前时间',
@@ -132,11 +138,20 @@ const getCategoryMeta = (t: (key: string, fallback: string) => string) =>
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
   onChange,
+  resolveToolEffect,
+  onToolEffectChange,
   disableScroll,
   onOpenEmojiSettings
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const usePermissionMatrix = Boolean(resolveToolEffect && onToolEffectChange)
+
+  const effectLabel = (effect: AgentGateEffect) => {
+    if (effect === AgentGateEffect.Allow) return t('settings.agent_gate_effect_allow', '允许')
+    if (effect === AgentGateEffect.Deny) return t('settings.agent_gate_effect_deny', '拒绝')
+    return t('settings.agent_gate_effect_ask', '询问')
+  }
 
   const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
@@ -187,10 +202,14 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
 
   const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
     const toggleable = tool.canBeDisabled !== false
-    const isEnabled = toggleable
-      ? !(normalizedConfig.disabledToolIds || []).includes(tool.id)
-      : true
+    const currentEffect = resolveToolEffect?.(tool.id)
+    const isEnabled = usePermissionMatrix
+      ? currentEffect !== AgentGateEffect.Deny
+      : toggleable
+        ? !(normalizedConfig.disabledToolIds || []).includes(tool.id)
+        : true
     const hasParams = tool.configurableParams && tool.configurableParams.length > 0
+    const effectOptions = companionToolEffectOptions(tool.id)
 
     return (
       <View
@@ -204,38 +223,72 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
             : undefined
         }
       >
-        <View style={styles.cardMain}>
-          <View style={styles.cardMainLeading}>
-            <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
-              <AgentToolIcon toolId={tool.id} size={AGENT_TOOL_ICON_SIZE} color={colors.primary} />
-            </View>
-            <View style={styles.toolInfo}>
-              <View style={styles.toolNameRow}>
-                <Text style={[styles.toolName, { color: colors.textPrimary }]} numberOfLines={1}>
-                  {tool.name}
-                </Text>
-                <HelpTooltip
-                  content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
-                  size={16}
-                />
-                <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
-                  <Text
-                    style={[styles.toolIdText, { color: colors.textSecondary }]}
-                    numberOfLines={1}
-                  >
-                    {tool.id}
+        <View style={usePermissionMatrix ? styles.cardStack : styles.cardMain}>
+          <View style={styles.cardMain}>
+            <View style={styles.cardMainLeading}>
+              <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
+                <AgentToolIcon toolId={tool.id} size={AGENT_TOOL_ICON_SIZE} color={colors.primary} />
+              </View>
+              <View style={styles.toolInfo}>
+                <View style={styles.toolNameRow}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {tool.name}
                   </Text>
+                  <HelpTooltip
+                    content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
+                    size={16}
+                  />
+                  <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
+                    <Text
+                      style={[styles.toolIdText, { color: colors.textSecondary }]}
+                      numberOfLines={1}
+                    >
+                      {tool.id}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
+            {usePermissionMatrix ? null : (
+              <View style={styles.switchSlot}>
+                <Switch
+                  value={isEnabled}
+                  disabled={!toggleable}
+                  onValueChange={() => toggleTool(tool.id)}
+                />
+              </View>
+            )}
           </View>
-          <View style={styles.switchSlot}>
-            <Switch
-              value={isEnabled}
-              disabled={!toggleable}
-              onValueChange={() => toggleTool(tool.id)}
-            />
-          </View>
+          {usePermissionMatrix && currentEffect && onToolEffectChange ? (
+            <View style={styles.effectRow}>
+              {effectOptions.map((effect) => {
+                const active = currentEffect === effect
+                return (
+                  <TouchableOpacity
+                    key={effect}
+                    style={[
+                      styles.effectChip,
+                      {
+                        borderColor: active ? colors.primary : colors.borderMuted,
+                        backgroundColor: active ? colors.primaryLight : 'transparent'
+                      }
+                    ]}
+                    onPress={() => onToolEffectChange(tool.id, effect)}
+                  >
+                    <Text
+                      style={{
+                        color: active ? colors.primary : colors.textSecondary,
+                        fontWeight: active ? '600' : '400',
+                        fontSize: 12
+                      }}
+                    >
+                      {effectLabel(effect)}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          ) : null}
         </View>
 
         {hasParams && isEnabled && (
@@ -329,6 +382,10 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   }
 
   const emojiConfig = config.emojiConfig || { enabled: false, groups: [] }
+  const visibleCategoryKeys = AGENT_TOOL_CATEGORY_ORDER.filter(
+    (catKey) => (groupedTools[catKey]?.length ?? 0) > 0
+  )
+  const lastCategoryKey = visibleCategoryKeys[visibleCategoryKeys.length - 1]
 
   const content = (
     <View
@@ -340,15 +397,38 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
         }
       ]}
     >
+      <View
+        style={
+          lastCategoryKey
+            ? [styles.categoryGroup, { borderBottomColor: colors.borderStrong }]
+            : styles.categoryGroupLast
+        }
+      >
+        <View style={styles.categoryHeader}>
+          <Smile size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
+          <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>
+            {t('settings.agent_tools_category_interaction', '互动工具')}
+          </Text>
+        </View>
+        <View style={styles.categoryList}>
+          <EmojiSettingsEntryRow config={emojiConfig} onPress={() => onOpenEmojiSettings?.()} />
+        </View>
+      </View>
+
       {AGENT_TOOL_CATEGORY_ORDER.map((catKey) => {
         const list = groupedTools[catKey]
         if (!list || list.length === 0) return null
         const meta = categoryMeta[catKey]
+        const isLast = catKey === lastCategoryKey
 
         return (
           <View
             key={catKey}
-            style={[styles.categoryGroup, { borderBottomColor: colors.borderStrong }]}
+            style={
+              isLast
+                ? styles.categoryGroupLast
+                : [styles.categoryGroup, { borderBottomColor: colors.borderStrong }]
+            }
           >
             <View style={styles.categoryHeader}>
               <AgentToolCategoryIcon categoryId={catKey} color={colors.primary} />
@@ -362,18 +442,6 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
           </View>
         )
       })}
-
-      <View style={styles.categoryGroupLast}>
-        <View style={styles.categoryHeader}>
-          <Smile size={18} color={colors.primary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-          <Text style={[styles.categoryLabel, { color: colors.textPrimary }]}>
-            {t('settings.agent_tools_category_interaction', '互动工具')}
-          </Text>
-        </View>
-        <View style={styles.categoryList}>
-          <EmojiSettingsEntryRow config={emojiConfig} onPress={() => onOpenEmojiSettings?.()} />
-        </View>
-      </View>
     </View>
   )
 
@@ -434,6 +502,9 @@ const styles = StyleSheet.create({
   categoryList: {
     backgroundColor: 'transparent'
   },
+  cardStack: {
+    paddingBottom: 8
+  },
   cardMain: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -450,6 +521,19 @@ const styles = StyleSheet.create({
   },
   switchSlot: {
     flexShrink: 0
+  },
+  effectRow: {
+    flexDirection: 'row',
+    flexShrink: 0,
+    gap: 6,
+    paddingHorizontal: 4,
+    paddingBottom: 6
+  },
+  effectChip: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5
   },
   toolIconWrapper: {
     padding: 6,

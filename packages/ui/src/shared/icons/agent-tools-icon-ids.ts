@@ -17,6 +17,7 @@ export const AGENT_TOOL_ICON_IDS = {
   graph_upsert: 'Share2',
   web_search: 'Globe',
   url_read: 'Link2',
+  skill_write: 'Sparkles',
   auto_inject_time: 'Clock',
   current_time: 'Timer'
 } as const satisfies Record<string, keyof typeof import('lucide-react')>
