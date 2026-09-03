@@ -919,6 +919,42 @@ describe('BaishouAgentGateService', () => {
     await second
   })
 
+  it('proactive companion_ask 在 full_access 与自动接受下仍等待选择', async () => {
+    const config = applyWorkspaceSecurityModeToConfig(
+      cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
+      'full_access'
+    )
+    const { gate } = createBaishouAgentGate({
+      config,
+      isAutoAccept: () => true
+    })
+
+    const pending = gate.assertWithResolution({
+      ...baseAssertInput,
+      kind: AgentGateKind.Proactive,
+      action: 'companion_ask',
+      title: '选哪个？',
+      options: [
+        { id: '0', label: 'A' },
+        { id: '1', label: 'B' }
+      ]
+    })
+
+    await Promise.resolve()
+    const [request] = gate.listPending('sess_1')
+    expect(request?.action).toBe('companion_ask')
+    expect(request?.kind).toBe(AgentGateKind.Proactive)
+
+    await gate.reply({
+      requestId: request!.id,
+      reply: AgentGateReply.Once,
+      selectedOptionIds: ['1']
+    })
+
+    const resolution = await pending
+    expect(resolution.selectedOptionIds).toEqual(['1'])
+  })
+
   it('always 不级联放行同 action 的截断预览 pending', async () => {
     const { gate } = createBaishouAgentGate({
       config: {
@@ -1150,6 +1186,18 @@ describe('Agent Gate profile + probeEffect', () => {
         profileId: AgentGateProfileId.Workspace
       })
     ).toBe(AgentGateEffect.Deny)
+    expect(
+      gate.probeEffect({
+        action: 'diary_write',
+        profileId: AgentGateProfileId.Workspace
+      })
+    ).toBe(AgentGateEffect.Deny)
+    expect(
+      gate.probeEffect({
+        action: 'diary_read',
+        profileId: AgentGateProfileId.Workspace
+      })
+    ).toBe(AgentGateEffect.Allow)
     expect(
       gate.probeEffect({
         action: 'graph_upsert',
