@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { MockChatAttachment } from '@baishou/shared'
+import type { MockChatAttachment, PromptFileRef } from '@baishou/shared'
 import type { PromptShortcut } from '../PromptShortcutSheet'
 import type { ComposerDraftStorage, ComposerOnSend } from '../../shared/composer-draft'
 import type { InputBarAttachmentIntake } from './input-bar-drop.util'
@@ -56,6 +56,13 @@ export interface InputBarProps {
   resolveDropAttachments?: (
     dataTransfer: DataTransfer
   ) => Promise<MockChatAttachment[] | null>
+  /** 工作台：输入 `@` 后按打开标签与文件名搜索附加文件 */
+  fileMention?: {
+    enabled: boolean
+    recentPaths?: string[]
+    searchFiles?: (query: string) => Promise<string[]>
+    onOpenFile?: (relativePath: string, options?: { line?: number }) => void
+  }
 }
 
 export type InputBarDraft = {
@@ -75,5 +82,7 @@ export interface InputBarRef {
   insertShortcutContent: (content: string) => void
   /** 以输入框内引用胶囊挂载 Skill（发送时再展开正文） */
   applySkillRef: (skill: { command?: string; name?: string; id?: string; content: string }) => void
+  /** 将选区或行评论作为输入框内 `@文件名#L` 引用芯片加入下一轮发送 */
+  addFileContext: (ref: PromptFileRef & { filePath?: string }) => void
   focus: () => void
 }
