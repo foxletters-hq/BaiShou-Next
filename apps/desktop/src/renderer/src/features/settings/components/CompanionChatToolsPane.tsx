@@ -13,9 +13,11 @@ import {
   AgentGateEffect,
   applyCapabilityToConfig,
   capabilityStateFromConfig,
-  COMPANION_GATE_CAPABILITIES,
+  companionToolEffectOptions,
   DEFAULT_AGENT_GATE_NOTIFICATION_PREFS,
   isCompanionGateCapabilityId,
+  nextDisabledToolIdsForEffect,
+  resolveCompanionToolEffect,
   type AgentBehaviorConfig,
   type AgentGateCapabilityId,
   type AgentGateNotificationPrefs,
@@ -63,6 +65,7 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.graph_upsert': '写入人生关系图',
   'agent.tools.web_search': '网络搜索',
   'agent.tools.url_read': '网页读取',
+  'agent.tools.skill_write': '保存技能',
   'agent.tools.auto_inject_time': '当前时间',
   'agent.tools.current_time': '查询时间'
 }
@@ -71,7 +74,9 @@ const TOOL_HINT_FALLBACKS: Record<string, string> = {
   'agent.tools.recall_relations_tooltip':
     '按人名、地点或事件查找人生关系图：可搜索实体、查看邻居，或走关系路径并带回日记摘录。只读，不含笔记本内关系。',
   'agent.tools.graph_upsert_tooltip':
-    '把人物、地点、事件及其关系写入人生关系图，写完立即生效。精确同名会更新该节点，不会把两个节点合并。可以改或删已有关系。合并请在图页自己操作。'
+    '把人物、地点、事件及其关系写入人生关系图，写完立即生效。精确同名会更新该节点，不会把两个节点合并。可以改或删已有关系。合并请在图页自己操作。',
+  'agent.tools.skill_write_tooltip':
+    '创建或更新软件级技能说明，写入用户主目录的技能目录。默认每次保存前询问。'
 }
 
 const CATEGORY_LABEL: Record<AgentToolCategory, [string, string]> = {
@@ -154,10 +159,10 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
     effect: AgentGateEffect,
     tools = companionTools
   ) => {
-    const disabled = new Set(tools.disabledToolIds ?? [])
-    if (effect === AgentGateEffect.Deny) disabled.add(toolId)
-    else disabled.delete(toolId)
-    settings.setToolManagementConfig({ ...tools, disabledToolIds: [...disabled] })
+    settings.setToolManagementConfig({
+      ...tools,
+      disabledToolIds: nextDisabledToolIdsForEffect(tools.disabledToolIds, toolId, effect)
+    })
   }
 
   const saveToolEffect = async (toolId: AgentGateCapabilityId, effect: AgentGateEffect) => {
@@ -168,9 +173,9 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
       effect
     })
     setGateConfig(nextConfig)
-    syncDisabledTool(toolId, effect)
     setSaving(true)
     try {
+      await Promise.resolve(syncDisabledTool(toolId, effect))
       const saved = await window.api.settings.setBaishouAgentGateConfig(nextConfig, {
         kind: 'companion'
       })
@@ -183,18 +188,8 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
     }
   }
 
-  const resolveToolEffect = (toolId: string): AgentGateEffect => {
-    if ((companionTools.disabledToolIds ?? []).includes(toolId)) return AgentGateEffect.Deny
-    if (isCompanionGateCapabilityId(toolId)) {
-      const fromState = capabilityState?.effects[toolId]
-      if (fromState) return fromState
-      return (
-        COMPANION_GATE_CAPABILITIES.find((cap) => cap.id === toolId)?.defaultEffect ??
-        AgentGateEffect.Ask
-      )
-    }
-    return AgentGateEffect.Allow
-  }
+  const resolveToolEffect = (toolId: string): AgentGateEffect =>
+    resolveCompanionToolEffect(toolId, companionTools.disabledToolIds, capabilityState)
 
   const effectLabel = (effect: AgentGateEffect) => {
     if (effect === AgentGateEffect.Allow) return t('settings.agent_gate_effect_allow', '允许')
@@ -289,6 +284,11 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                 </section>
               </div>
 
+              <AgentToolsCommunityTab
+                config={companionTools}
+                onConfigChange={(config) => settings.setToolManagementConfig(config)}
+              />
+
               {AGENT_TOOL_CATEGORY_ORDER.map((category) => {
                 const tools = AGENT_TOOL_UI_DEFS.filter((tool) => tool.category === category)
                 if (tools.length === 0) return null
@@ -303,9 +303,7 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                         {tools.map((tool, index) => {
                           const current = resolveToolEffect(tool.id)
                           const isUiOnly = tool.id === 'auto_inject_time'
-                          const options = isUiOnly
-                            ? [AgentGateEffect.Allow, AgentGateEffect.Deny]
-                            : [AgentGateEffect.Allow, AgentGateEffect.Ask, AgentGateEffect.Deny]
+                          const options = companionToolEffectOptions(tool.id)
                           const param = tool.configurableParams?.[0]
 
                           return (
@@ -389,11 +387,6 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                   </div>
                 )
               })}
-
-              <AgentToolsCommunityTab
-                config={companionTools}
-                onConfigChange={(config) => settings.setToolManagementConfig(config)}
-              />
 
               {gateConfig && gateConfig.allowlist.length > 0 ? (
                 <div className={pane.stackGroup}>
