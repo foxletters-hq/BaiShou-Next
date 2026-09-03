@@ -1,7 +1,9 @@
+import type { PromptFileRef } from '@baishou/shared'
 import { buildWorkspaceModelText } from '../utils/workspace-message-display.util'
 import type { WorkspaceRollbackResult } from '../utils/workspace-rollback.util'
 
 export type WorkspaceEditResendSkillRef = { command: string; content: string }
+export type WorkspaceEditResendFileRef = PromptFileRef
 
 export type WorkspaceEditResendPrepareResult = {
   sessionId: string
@@ -12,9 +14,10 @@ export type WorkspaceEditResendPrepareResult = {
 /** 与 InputBar / 工作台发送一致：skill 正文 + 用户 plain */
 export function buildWorkspaceEditResendModelText(
   plain: string,
-  skillRefs?: WorkspaceEditResendSkillRef[]
+  skillRefs?: WorkspaceEditResendSkillRef[],
+  fileRefs?: WorkspaceEditResendFileRef[]
 ): string {
-  return buildWorkspaceModelText(plain, skillRefs)
+  return buildWorkspaceModelText(plain, skillRefs, fileRefs)
 }
 
 export type WorkspaceEditResendPipelineDeps = {

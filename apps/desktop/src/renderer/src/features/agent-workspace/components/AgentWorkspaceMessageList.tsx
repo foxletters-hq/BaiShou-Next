@@ -15,11 +15,21 @@ import {
   AgentThinkSection,
   AgentToolChainSection,
   ChatBubbleAttachments,
+  CompanionAskInteractionProvider,
+  KnowledgeCitationBlock,
   MessageActionBar,
   UserMessageSkillContent,
-  parseRedactedThinking
+  parseRedactedThinking,
+  type AgentGateReplyPayload
 } from '@baishou/ui'
-import type { AgentStreamTimelineItem, MockToolInvocation, WorkspaceChangeEntry } from '@baishou/shared'
+import {
+  collectKnowledgeCitationsFromInvocations,
+  type AgentGateRequest,
+  type AgentStreamTimelineItem,
+  type MockToolInvocation,
+  type PromptFileRef,
+  type WorkspaceChangeEntry
+} from '@baishou/shared'
 import type {
   WorkspaceChatMessage,
   PendingWorkspaceAssistantMsg
@@ -27,7 +37,8 @@ import type {
 import type { WorkspaceToolError } from '../hooks/useWorkspaceAgentStream'
 import {
   getWorkspaceAssistantText,
-  getWorkspaceUserAttachments,
+  getWorkspaceBubbleAttachments,
+  getWorkspaceUserFileRefs,
   getWorkspaceUserSkillRefs,
   getWorkspaceUserText
 } from '../utils/workspace-message-display.util'
@@ -70,12 +81,19 @@ export interface AgentWorkspaceMessageListProps {
   onEditResend?: (
     userMessageId: string,
     newText: string,
-    meta?: { skillRefs?: Array<{ command: string; content: string }> }
+    meta?: {
+      skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: PromptFileRef[]
+    }
   ) => boolean | Promise<boolean>
+  onOpenFile?: (relativePath: string, options?: { line?: number }) => void
   onSelectChange?: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
   hasMore?: boolean
   onLoadMore?: () => Promise<void>
+  pendingAsk?: AgentGateRequest | null
+  isAskReplying?: boolean
+  onAskReply?: (payload: AgentGateReplyPayload) => void | Promise<void>
 }
 
 export interface AgentWorkspaceMessageListHandle {
@@ -109,8 +127,12 @@ function WorkspaceUserTurn(props: {
   onEditResend?: (
     userMessageId: string,
     newText: string,
-    meta?: { skillRefs?: Array<{ command: string; content: string }> }
+    meta?: {
+      skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: PromptFileRef[]
+    }
   ) => boolean | Promise<boolean>
+  onOpenFile?: (relativePath: string, options?: { line?: number }) => void
 }) {
   const { t } = useTranslation()
   const {
@@ -118,11 +140,13 @@ function WorkspaceUserTurn(props: {
     dimmed,
     editingActive,
     onEditingChange,
-    onEditResend
+    onEditResend,
+    onOpenFile
   } = props
   const userText = getWorkspaceUserText(msg)
   const skillRefs = getWorkspaceUserSkillRefs(msg) ?? msg.skillRefs
-  const attachments = getWorkspaceUserAttachments(msg)
+  const fileRefs = getWorkspaceUserFileRefs(msg)
+  const attachments = getWorkspaceBubbleAttachments(msg)
   const [editedContent, setEditedContent] = useState(userText)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -159,11 +183,11 @@ function WorkspaceUserTurn(props: {
   const handleResend = useCallback(async () => {
     const trimmed = editedContent.trim()
     if (!trimmed || !onEditResend) return
-    const applied = await onEditResend(msg.id, trimmed, { skillRefs })
+    const applied = await onEditResend(msg.id, trimmed, { skillRefs, fileRefs })
     if (applied) {
       onEditingChange(null)
     }
-  }, [editedContent, msg.id, onEditResend, onEditingChange, skillRefs])
+  }, [editedContent, fileRefs, msg.id, onEditResend, onEditingChange, skillRefs])
 
   const handleBubbleClick = (event: React.MouseEvent) => {
     if (!onEditResend || editingActive) return
@@ -234,8 +258,13 @@ function WorkspaceUserTurn(props: {
             {attachments.length > 0 ? (
               <ChatBubbleAttachments attachments={attachments} />
             ) : null}
-            {userText || skillRefs?.length ? (
-              <UserMessageSkillContent text={userText} skillRefs={skillRefs} />
+            {userText || skillRefs?.length || fileRefs.length ? (
+              <UserMessageSkillContent
+                text={userText}
+                skillRefs={skillRefs}
+                fileRefs={fileRefs}
+                onOpenFile={onOpenFile}
+              />
             ) : null}
           </div>
           <div className={styles.turnActions}>
@@ -363,10 +392,14 @@ export const AgentWorkspaceMessageList = forwardRef<
     completedTools = [],
     failedTools = [],
     onEditResend,
+    onOpenFile,
     onSelectChange,
     onReviewAll,
     hasMore = false,
-    onLoadMore
+    onLoadMore,
+    pendingAsk = null,
+    isAskReplying = false,
+    onAskReply
   },
   ref
 ) {
@@ -555,8 +588,19 @@ export const AgentWorkspaceMessageList = forwardRef<
       : streamHasText || streamHasTools || streamHasReasoning)
 
   const isEditingTurn = Boolean(editingMessageId)
+  const handleAskReply = useCallback(
+    (payload: AgentGateReplyPayload) => {
+      void onAskReply?.(payload)
+    },
+    [onAskReply]
+  )
 
   return (
+    <CompanionAskInteractionProvider
+      pending={pendingAsk}
+      isReplying={isAskReplying}
+      onReply={handleAskReply}
+    >
     <div className={styles.scrollWrap}>
       <div className={styles.scroll} ref={scroll.scrollRef}>
         <div className={styles.list}>
@@ -580,6 +624,7 @@ export const AgentWorkspaceMessageList = forwardRef<
                 editingActive={editingMessageId === msg.id}
                 onEditingChange={setEditingMessageId}
                 onEditResend={onEditResend}
+                onOpenFile={onOpenFile}
               />
             )
           }
@@ -592,6 +637,11 @@ export const AgentWorkspaceMessageList = forwardRef<
               .map((item) => (item.kind === 'text' ? item.text : ''))
               .join('\n')
               .trim() || getWorkspaceAssistantText(msg)
+          const knowledgeCitations = collectKnowledgeCitationsFromInvocations(
+            timeline
+              .filter((item): item is Extract<typeof item, { kind: 'tool' }> => item.kind === 'tool')
+              .map((item) => item.invocation)
+          )
 
           return (
             <div
@@ -636,6 +686,9 @@ export const AgentWorkspaceMessageList = forwardRef<
                     )
                   })
                 : null}
+              {knowledgeCitations.length > 0 ? (
+                <KnowledgeCitationBlock citations={knowledgeCitations} />
+              ) : null}
               {assistantText ? (
                 <div className={styles.turnActions}>
                   <MessageActionBar isAI onCopy={() => copyText(assistantText)} />
@@ -746,5 +799,6 @@ export const AgentWorkspaceMessageList = forwardRef<
         </button>
       ) : null}
     </div>
+    </CompanionAskInteractionProvider>
   )
 })

@@ -1,15 +1,17 @@
 import { useCallback, useRef } from 'react'
 import { useDialog, toast } from '@baishou/ui'
-import type { WorkspaceRollbackPreview, WorkspaceRollbackScope } from '@baishou/shared'
+import type { PromptFileRef, WorkspaceRollbackPreview, WorkspaceRollbackScope } from '@baishou/shared'
 import { WorkspaceRollbackPreviewBody } from '../components/WorkspaceRollbackPreviewBody'
 import {
   buildWorkspaceRollbackPreviewCopy,
   formatWorkspaceRollbackSummary
 } from '../utils/workspace-rollback.util'
 import {
+  getWorkspaceUserFileRefs,
   getWorkspaceUserSkillRefs,
   getWorkspaceUserText
 } from '../utils/workspace-message-display.util'
+import { mergeWorkspaceFileRefsIntoAttachments } from '../utils/workspace-file-ref-send.util'
 import type { WorkspaceChatMessage } from './useWorkspaceChatMessages'
 import {
   readSkipEditResendConfirm,
@@ -55,6 +57,7 @@ export interface UseWorkspaceMessageActionsOptions {
       assistantId?: string
       displayText?: string
       skillRefs?: SkillRef[]
+      fileRefs?: PromptFileRef[]
       attachments?: unknown[]
     }
   ) => Promise<{ sessionId: string; userMessageId: string; createdNew: boolean }>
@@ -263,7 +266,7 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
     async (
       userMessageId: string,
       newText: string,
-      meta?: { skillRefs?: SkillRef[]; displayText?: string }
+      meta?: { skillRefs?: SkillRef[]; fileRefs?: PromptFileRef[]; displayText?: string }
     ): Promise<boolean> => {
       if (!sessionId || busyRef.current) return false
       const trimmedPlain = newText.trim()
@@ -285,9 +288,11 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
       const skillRefs =
         meta?.skillRefs ??
         (sourceMsg ? getWorkspaceUserSkillRefs(sourceMsg) ?? sourceMsg.skillRefs : undefined)
-      // 展示用明文；LLM 正文经 skillRefs 重建（勿只发 plain）
+      const fileRefs =
+        meta?.fileRefs ?? (sourceMsg ? getWorkspaceUserFileRefs(sourceMsg) : undefined)
+      // 展示用明文；LLM 正文经 skillRefs / fileRefs 重建（勿只发 plain）
       const displayText = trimmedPlain
-      const modelText = buildWorkspaceEditResendModelText(trimmedPlain, skillRefs)
+      const modelText = buildWorkspaceEditResendModelText(trimmedPlain, skillRefs, fileRefs)
 
       // 确认前加锁；取消确认时 finally 清锁
       busyRef.current = true
@@ -324,7 +329,12 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
             prepareWorkspaceTurn(sessionId, editedModelText, folder, {
               assistantId: selectedAssistantId,
               displayText,
-              skillRefs
+              skillRefs,
+              fileRefs,
+              attachments: mergeWorkspaceFileRefsIntoAttachments({
+                fileRefs,
+                folderRoot: folder
+              })
             }),
           admitAndStream,
           modelText,

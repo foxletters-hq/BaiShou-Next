@@ -24,8 +24,14 @@ export function useWorkspaceInitMessage(params: {
     meta?: {
       displayText?: string
       skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: Array<{
+        relativePath: string
+        selection?: { startLine: number; endLine: number }
+        comment?: string
+        origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+      }>
     }
-  ) => void | Promise<void>
+  ) => boolean | void | Promise<boolean | void>
 }): void {
   const {
     searchParams,
@@ -74,16 +80,18 @@ export function useWorkspaceInitMessage(params: {
       !hasWorkspaceComposerPayload({
         text: sendText,
         attachments,
-        skillRefs: stash?.skillRefs
+        skillRefs: stash?.skillRefs,
+        fileRefs: stash?.fileRefs
       })
     ) {
       return
     }
     const meta =
-      stash?.displayText || stash?.skillRefs?.length
+      stash?.displayText || stash?.skillRefs?.length || stash?.fileRefs?.length
         ? {
             displayText: stash.displayText,
-            skillRefs: stash.skillRefs
+            skillRefs: stash.skillRefs,
+            fileRefs: stash.fileRefs
           }
         : undefined
     void onSendRef.current(sendText, attachments, undefined, meta)

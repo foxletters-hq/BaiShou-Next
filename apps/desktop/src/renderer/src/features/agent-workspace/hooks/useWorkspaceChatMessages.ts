@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AgentPart, MockChatAttachment } from '@baishou/shared'
+import type { AgentPart, MockChatAttachment, PromptFileRef } from '@baishou/shared'
 import { clearStreamBridgeForSession } from '../../agent/hooks/agent-stream-session-store'
 import {
   prependOlderWorkspaceMessages,
@@ -15,6 +15,7 @@ export interface WorkspaceChatMessage {
   parts?: AgentPart[]
   attachments?: MockChatAttachment[]
   skillRefs?: Array<{ command: string; content: string }>
+  fileRefs?: PromptFileRef[]
   createdAt?: Date | string
   inputTokens?: number
   outputTokens?: number

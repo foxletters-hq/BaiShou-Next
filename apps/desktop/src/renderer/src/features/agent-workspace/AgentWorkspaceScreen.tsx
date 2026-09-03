@@ -50,6 +50,7 @@ import {
   hasWorkspaceComposerPayload,
   normalizeWorkspaceSendAttachments
 } from './utils/workspace-message-display.util'
+import { mergeWorkspaceFileRefsIntoAttachments } from './utils/workspace-file-ref-send.util'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
 import styles from './AgentWorkspaceScreen.module.css'
 
@@ -497,13 +498,26 @@ export const AgentWorkspaceScreen: React.FC = () => {
       meta?: {
         displayText?: string
         skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: Array<{
+          relativePath: string
+          selection?: { startLine: number; endLine: number }
+          comment?: string
+          origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+        }>
         delivery?: 'steer' | 'queue'
       }
     ) => {
       const trimmed = text.trim()
-      const attachments = normalizeWorkspaceSendAttachments(incomingAttachments)
-      if (!hasWorkspaceComposerPayload({ text: trimmed, attachments, skillRefs: meta?.skillRefs })) {
-        return
+      const incoming = normalizeWorkspaceSendAttachments(incomingAttachments)
+      if (
+        !hasWorkspaceComposerPayload({
+          text: trimmed,
+          attachments: incoming,
+          skillRefs: meta?.skillRefs,
+          fileRefs: meta?.fileRefs
+        })
+      ) {
+        return false
       }
 
       if (
@@ -512,13 +526,13 @@ export const AgentWorkspaceScreen: React.FC = () => {
       ) {
         openModelSwitcher(null)
         toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
-        return
+        return false
       }
 
       let folder = activeFolderRoot
       if (!folder) {
         const entry = await addWorkspaceFromPicker()
-        if (!entry) return
+        if (!entry) return false
         folder = entry.folderRoot
         setFolderRoot(folder)
       }
@@ -527,12 +541,20 @@ export const AgentWorkspaceScreen: React.FC = () => {
       const skillRefs = meta?.skillRefs?.length ? meta.skillRefs : undefined
       const effectiveSearchMode = searchMode ?? searchModeEnabled
       const delivery = meta?.delivery ?? 'queue'
+      const attachments = normalizeWorkspaceSendAttachments(
+        mergeWorkspaceFileRefsIntoAttachments({
+          attachments: incoming,
+          fileRefs: meta?.fileRefs,
+          folderRoot: folder
+        })
+      )
 
       try {
         const prepared = await stream.prepareWorkspaceTurn(sessionId, trimmed, folder, {
           assistantId: selectedAssistantId,
           displayText,
           skillRefs,
+          fileRefs: meta?.fileRefs,
           attachments
         })
 
@@ -566,15 +588,17 @@ export const AgentWorkspaceScreen: React.FC = () => {
           toast.showInfo(
             t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续')
           )
-          return
+          return true
         }
 
         if (admitted.started) {
           stream.beginStreaming(prepared.sessionId)
           notifyWorkspaceSessionsChanged()
         }
+        return true
       } catch (error) {
         console.error('[AgentWorkspaceScreen] send failed:', error)
+        return false
       }
     },
     [
@@ -680,12 +704,16 @@ export const AgentWorkspaceScreen: React.FC = () => {
                 emoji: chrome.currentAssistant.emoji
               }
             : undefined,
-          onSend: (text, attachments, searchMode, meta) => void handleSend(text, attachments, searchMode, meta),
+          onSend: (text, attachments, searchMode, meta) =>
+            handleSend(text, attachments, searchMode, meta),
           onEditResend: (id, text, meta) => messageActions.handleEditResend(id, text, meta),
           onAssistantTap: () => chrome.setShowAssistantPicker(true),
           assistantName: chrome.currentAssistant?.name || t('agent.partner_label', '伙伴'),
           composerRefill,
           gateBlocksComposer: Boolean(pendingGate),
+          pendingAsk: pendingGate,
+          isAskReplying: stream.isAgentGateReplying,
+          onAskReply: (payload) => void stream.replyAgentGate(payload),
           gateSlot: (
             <AgentGateDock
               request={pendingGate}

@@ -28,6 +28,12 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
       title?: string
       displayText?: string
       skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: Array<{
+        relativePath: string
+        selection?: { startLine: number; endLine: number }
+        comment?: string
+        origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+      }>
       attachments?: unknown[]
     }
   ) => Promise<StartWorkspaceChatResult>
@@ -152,6 +158,12 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
         title?: string
         displayText?: string
         skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: Array<{
+          relativePath: string
+          selection?: { startLine: number; endLine: number }
+          comment?: string
+          origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+        }>
         attachments?: unknown[]
       }
     ): Promise<StartWorkspaceChatResult> => {
@@ -178,7 +190,8 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
 
       const saved = await stream.saveUserMessage(activeSessionId, text, options?.attachments, {
         displayText: options?.displayText,
-        skillRefs: options?.skillRefs
+        skillRefs: options?.skillRefs,
+        fileRefs: options?.fileRefs
       })
       if ('error' in saved) {
         throw new Error(saved.error)
