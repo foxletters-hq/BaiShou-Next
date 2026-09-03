@@ -1,4 +1,5 @@
 import {
+  formatLocalDate,
   isAutoResumeEmbedOnOnline,
   isRagMemoryEnabled,
   logger,
@@ -96,7 +97,7 @@ export async function consumeDiaryEmbedJobs(options?: {
           typeof dateRaw === 'string'
             ? dateRaw
             : dateRaw instanceof Date
-              ? dateRaw.toISOString().slice(0, 10)
+              ? formatLocalDate(dateRaw)
               : String(dateRaw ?? '')
 
         const updatedAt =
