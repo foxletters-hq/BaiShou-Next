@@ -318,7 +318,14 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   const canCommit = stagedCount > 0 || unstagedCount > 0
   const canCommitStaged = stagedCount > 0
 
-  const { handleManualCommit, handleCommitAll, handleCommitAndPush } = useGitManagementCommit({
+  const {
+    isCommitActionInFlight,
+    handleManualCommit,
+    handleCommitStaged,
+    handleCommitAll,
+    handleCommitAndPush,
+    handleCommitAllAndPush
+  } = useGitManagementCommit({
     t,
     commitMessage,
     setCommitMessage,
@@ -327,6 +334,8 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     stagedCount,
     onPush,
     onToast,
+    isRemoteConfigured,
+    notifyRemoteRequired,
     handleRefreshStatus,
     handleLoadHistory,
     setSelectedCommit,
@@ -601,9 +610,12 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     handleSyncRemote,
     canSyncRemote: Boolean(onSyncRemote),
     handleResolveConflict,
+    isCommitActionInFlight,
     handleManualCommit,
+    handleCommitStaged,
     handleCommitAll,
     handleCommitAndPush,
+    handleCommitAllAndPush,
     handleCheckoutBranch,
     handleCreateBranch,
     handleMergeBranch,

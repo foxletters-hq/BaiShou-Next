@@ -15,7 +15,8 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
     setCommitMessage,
     handleManualCommit,
     handleCommitAndPush,
-    canCommit
+    canCommit,
+    isCommitActionInFlight
   } = vm
 
   if (!isInitialized) return null
@@ -33,14 +34,14 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
       <button
         className="gmp-btn gmp-btn-primary"
         onClick={handleManualCommit}
-        disabled={!canCommit}
+        disabled={!canCommit || isCommitActionInFlight}
       >
         {t('version_control.commit_local', '提交')}
       </button>
       <button
         className="gmp-btn gmp-btn-primary"
         onClick={handleCommitAndPush}
-        disabled={!canCommit}
+        disabled={!canCommit || isCommitActionInFlight}
       >
         {t('version_control.commit_push', '提交并推送')}
       </button>
