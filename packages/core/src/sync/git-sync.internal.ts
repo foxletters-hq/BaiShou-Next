@@ -121,7 +121,8 @@ export abstract class GitSyncInternalBase {
     if (!this.git || this.currentGitRoot !== gitRoot) {
       this.git = simpleGit({
         baseDir: gitRoot,
-        binary: getBundledGitBinary()
+        binary: getBundledGitBinary(),
+        config: ['core.quotepath=false']
       })
       this.currentGitRoot = gitRoot
     }

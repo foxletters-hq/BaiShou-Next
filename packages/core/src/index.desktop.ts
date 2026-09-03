@@ -20,7 +20,10 @@ export {
   isTextDiffablePath,
   mapStatusToType,
   pathsEqual,
-  getAuthenticatedUrl
+  getAuthenticatedUrl,
+  parseGitHistoryLog,
+  parseRevListCount,
+  unquoteGitPath
 } from './sync/git-sync.helpers'
 export * from './sync/git-binary.registry'
 export * from './sync/run-bundled-git'

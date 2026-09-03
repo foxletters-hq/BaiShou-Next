@@ -16,7 +16,8 @@ import {
   parseDiffHunks,
   parseGitHistoryLog,
   parseRevListCount,
-  pathsEqual
+  pathsEqual,
+  unquoteGitPath
 } from './git-sync.helpers'
 
 export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
@@ -100,7 +101,7 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
       const diff = await git.diffSummary([`${commitHash}~1`, commitHash])
 
       return diff.files.map((file) => ({
-        path: file.file,
+        path: unquoteGitPath(file.file),
         status: mapStatusToType((file as { status?: string }).status ?? 'M'),
         additions: 'insertions' in file ? file.insertions : 0,
         deletions: 'deletions' in file ? file.deletions : 0
@@ -109,7 +110,7 @@ export abstract class GitSyncHistoryMixin extends GitSyncCommitMixin {
       try {
         const diff = await git.diffSummary([commitHash])
         return diff.files.map((file) => ({
-          path: file.file,
+          path: unquoteGitPath(file.file),
           status: 'added' as FileChange['status'],
           additions: 'insertions' in file ? file.insertions : 0,
           deletions: 'deletions' in file ? file.deletions : 0
