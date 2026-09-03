@@ -34,7 +34,7 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
     return (
       <div className={styles.emptyStateContainer}>
         <div className={styles.emptyIconBig}>
-          <Library size={64} />
+          <Library size={48} />
         </div>
         <div className={styles.emptyTitleLarge}>
           {searchQuery
@@ -55,12 +55,9 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
     <div className={styles.entriesWaterfall}>
       {entries.map((e) => (
         <div key={e.embeddingId} className={styles.memoryEntryCard}>
-          <div className={styles.memoryEntryIconBlock}>
-            <span className={styles.memoryEntryBraces}>{`{}`}</span>
-          </div>
           <div className={styles.memoryEntryContentBlock}>
             <div className={styles.memoryEntryText}>{e.text}</div>
-            <div className={styles.memoryEntryMetaRow}>
+            <div className={styles.memoryEntryFooter}>
               {e.isManual && (
                 <span className={styles.memoryMetaBadge}>
                   {t('settings.rag_source_manual', '手动')}
@@ -90,104 +87,60 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                   ))}
                 </span>
               )}
-            </div>
-            <div className={styles.memoryEntryFooter}>
-              <span>{e.modelId}</span>
-              <span>·</span>
               <span>{formatDate(e)}</span>
               {e.memoryUpdatedAt != null && e.memoryUpdatedAt !== e.memoryCreatedAt && (
                 <>
-                  <span>·</span>
+                  <span className={styles.metaSep}>·</span>
                   <span>
                     {t('settings.rag_updated_at', '修改')}{' '}
                     {formatDate({ ...e, createdAt: e.memoryUpdatedAt })}
                   </span>
                 </>
               )}
+              <span className={styles.metaSep}>·</span>
+              <span className={styles.memoryEntryModel} title={e.modelId}>
+                {e.modelId}
+              </span>
               {e.similarity !== undefined && (
-                <>
-                  <span>·</span>
-                  <span className={styles.similarityTag}>
-                    {t('recall.similarity', '相似度')}: {Math.round(e.similarity * 100)}%
-                  </span>
-                </>
+                <span className={styles.similarityTag}>
+                  {t('recall.similarity', '相似度')} {Math.round(e.similarity * 100)}%
+                </span>
               )}
             </div>
           </div>
-          <div className={styles.memoryEntryActionsBlock} style={{ position: 'relative' }}>
+          <div className={styles.memoryEntryActionsBlock}>
             <button
+              type="button"
               className={styles.memoryMoreBtn}
+              aria-label={t('common.more', '更多')}
               onClick={() => setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)}
             >
-              <EllipsisVertical size={20} />
+              <EllipsisVertical size={16} />
             </button>
             {activeMenuId === e.embeddingId && (
               <>
-                <div
-                  style={{ position: 'fixed', inset: 0, zIndex: 9 }}
-                  onClick={(ev) => {
-                    ev.stopPropagation()
-                    setActiveMenuId(null)
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 32,
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-control)',
-                    borderRadius: 6,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    zIndex: 10,
-                    minWidth: 100,
-                    overflow: 'hidden'
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      color: 'var(--text-primary)',
-                      transition: 'background 0.2s',
-                      whiteSpace: 'nowrap',
-                      position: 'relative',
-                      zIndex: 11
-                    }}
-                    onMouseEnter={(ev) =>
-                      (ev.currentTarget.style.background = 'var(--bg-surface-high)')
-                    }
-                    onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
+                <div className={styles.entryMenuBackdrop} onClick={() => setActiveMenuId(null)} />
+                <div className={styles.entryMenu}>
+                  <button
+                    type="button"
+                    className={styles.entryMenuItem}
                     onClick={() => {
                       setActiveMenuId(null)
-                      onEditEntry && onEditEntry(e)
+                      onEditEntry?.(e)
                     }}
                   >
                     {t('common.edit', '编辑片段')}
-                  </div>
-                  <div
-                    style={{
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      color: 'var(--color-error)',
-                      transition: 'background 0.2s',
-                      whiteSpace: 'nowrap',
-                      position: 'relative',
-                      zIndex: 11
-                    }}
-                    onMouseEnter={(ev) =>
-                      (ev.currentTarget.style.background = 'var(--bg-surface-high)')
-                    }
-                    onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.entryMenuItem} ${styles.entryMenuItemDanger}`}
                     onClick={() => {
                       setActiveMenuId(null)
-                      onDeleteEntry && onDeleteEntry(e.embeddingId)
+                      onDeleteEntry?.(e.embeddingId)
                     }}
                   >
                     {t('common.delete', '删除片段')}
-                  </div>
+                  </button>
                 </div>
               </>
             )}
