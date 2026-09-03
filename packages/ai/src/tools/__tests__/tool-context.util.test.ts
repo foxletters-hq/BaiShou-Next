@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { deriveLegacyVaultId } from '@baishou/shared'
 import { ToolRegistry } from '../tool-registry'
-import { hasEmbeddingCapability, syncMcpToolUserConfig } from '../tool-context.util'
+import { AgentGateEffect } from '@baishou/shared'
+import { hasEmbeddingCapability, isNamedToolDenied, syncMcpToolUserConfig } from '../tool-context.util'
 import { MCP_EXTERNAL_SESSION_ID } from '../mcp-tool.util'
 import type { ToolContext } from '../agent.tool'
 
@@ -42,5 +43,29 @@ describe('tool-context.util', () => {
     const enabled = registry.getEnabledToolsRaw(context).map((tool) => tool.name)
     expect(enabled).toContain('vector_search')
     expect(enabled).toContain('memory_store')
+  })
+
+  it('treats disabledToolIds and gate Deny as denied', () => {
+    const vaultId = deriveLegacyVaultId('Personal')
+    expect(
+      isNamedToolDenied('memory_delete', {
+        sessionId: 's',
+        vaultId,
+        vaultName: 'Personal',
+        userConfig: { disabledToolIds: ['memory_delete'] }
+      })
+    ).toBe(true)
+
+    expect(
+      isNamedToolDenied('memory_delete', {
+        sessionId: 's',
+        vaultId,
+        vaultName: 'Personal',
+        userConfig: { baishou_agent_gate_config: { hideDeniedTools: true } },
+        agentGate: {
+          probeEffect: () => AgentGateEffect.Deny
+        } as ToolContext['agentGate']
+      })
+    ).toBe(true)
   })
 })
