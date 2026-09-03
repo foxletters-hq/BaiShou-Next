@@ -75,11 +75,12 @@ export const ChatBubbleUserRow: React.FC<ChatBubbleUserRowProps> = ({
             {message.attachments && message.attachments.length > 0 && (
               <ChatBubbleAttachments attachments={message.attachments} />
             )}
-            {(message.content || message.skillRefs?.length) && (
+            {(message.content || message.skillRefs?.length || message.fileRefs?.length) && (
               <UserMessageSkillContent
                 className={styles.textContentUser}
                 text={message.content || ''}
                 skillRefs={message.skillRefs}
+                fileRefs={message.fileRefs}
               />
             )}
           </div>
