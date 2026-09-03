@@ -185,8 +185,8 @@ export interface DiaryTemplateConfig {
   /** 追加记录时插入的时间块，支持 {time} {date} {datetime} */
   appendBlockTemplate?: string
   /**
-   * 伙伴写日记时的可选补充说明（风格/内容要求，不含时间标题格式）。
-   * 时间标题格式由 newEntryTemplate / appendBlockTemplate 统一决定。
+   * 伙伴写日记时的可选补充说明（风格/内容要求）。
+   * newEntryTemplate / appendBlockTemplate 会另外作为推荐结构提供给伙伴参考。
    */
   writingStyleSupplement?: string
   /** @deprecated 旧字段；读取时会迁移到 writingStyleSupplement，新写入请用 writingStyleSupplement */
@@ -260,10 +260,14 @@ export interface McpClientListedTool {
   description?: string
 }
 
+export type McpClientProbeReason = 'empty' | 'invalid' | 'sse' | 'connect' | 'timeout'
+
 export interface McpClientServerStatus {
   id: string
   connected: boolean
   tools: McpClientListedTool[]
+  error?: string
+  reason?: McpClientProbeReason
 }
 
 /**
