@@ -18,21 +18,21 @@ describe('KnowledgeSearchTool mount gate', () => {
     expect(search).not.toHaveBeenCalled()
   })
 
-  it('工作台已挂载时使用挂载 notebookId', async () => {
+  it('工作台已挂载时使用挂载 notebookIds', async () => {
     const search = vi.fn().mockResolvedValue([])
-    await tool.execute({ query: 'hello', notebookId: 'nb_bypass' }, {
+    await tool.execute({ query: 'hello' }, {
       sessionId: 'ws1',
       vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       workspace: {
         folderRoot: '/tmp/p',
         sessionKind: 'workspace',
-        notebookId: 'nb_mounted'
+        notebookIds: ['nb_mounted']
       },
       knowledgeReader: { search }
     } as any)
     expect(search).toHaveBeenCalledWith(
-      expect.objectContaining({ notebookId: 'nb_mounted', query: 'hello' })
+      expect.objectContaining({ notebookIds: ['nb_mounted'], query: 'hello' })
     )
   })
 })
