@@ -5,6 +5,12 @@ export type WorkspaceInitSendMeta = {
   text: string
   displayText?: string
   skillRefs?: Array<{ command: string; content: string }>
+  fileRefs?: Array<{
+    relativePath: string
+    selection?: { startLine: number; endLine: number }
+    comment?: string
+    origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+  }>
   attachments?: unknown[]
 }
 
@@ -34,6 +40,7 @@ export function stashWorkspaceInitMeta(sessionId: string, meta: WorkspaceInitSen
         text: meta.text,
         displayText: meta.displayText,
         skillRefs: meta.skillRefs,
+        fileRefs: meta.fileRefs,
         attachments: toPersistableAttachments(meta.attachments)
       })
     )
