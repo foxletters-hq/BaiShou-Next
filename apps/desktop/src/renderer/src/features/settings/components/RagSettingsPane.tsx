@@ -12,7 +12,8 @@ import { useMemoryReadiness } from '../../memory/useMemoryReadiness'
 export const RagSettingsPane: React.FC<{
   settings: any
   showReadinessBar?: boolean
-}> = ({ settings, showReadinessBar = true }) => {
+  embedded?: boolean
+}> = ({ settings, showReadinessBar: _showReadinessBar = true, embedded = false }) => {
   useRagStatsPrefetch()
   const settingsNav = useSettingsScopeNavigation()
   const navigate = useNavigate()
@@ -55,15 +56,17 @@ export const RagSettingsPane: React.FC<{
   const readiness = useMemoryReadiness()
   return (
     <div className="settings-pane settings-pane-full">
-      {showReadinessBar ? (
-        <MemoryReadinessBar
-          rows={readiness.rows}
-          onConfigureEmbedding={() => settingsNav.goAiModels()}
-          onStartIndex={() => navigate('/memory/vectors')}
-          onStartOrganize={() => navigate('/memory/graph')}
-        />
-      ) : null}
       <RagMemoryView
+        embedded={embedded}
+        extraStatsChips={
+          <MemoryReadinessBar
+            rows={readiness.rows}
+            omit={['embedding', 'extract', 'graph']}
+            showLabel={false}
+            onConfigureEmbedding={() => settingsNav.goAiModels()}
+            onStartIndex={() => void handleBatchEmbed()}
+          />
+        }
         config={ragConfig}
         stats={ragStats}
         ragState={
