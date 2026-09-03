@@ -52,6 +52,12 @@ export interface UseAgentStreamResult {
     meta?: {
       displayText?: string
       skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: Array<{
+        relativePath: string
+        selection?: { startLine: number; endLine: number }
+        comment?: string
+        origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+      }>
     }
   ) => Promise<{ userMessageId: string; attachments?: any[] } | { error: string }>
   startChat: (
@@ -149,6 +155,12 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       meta?: {
         displayText?: string
         skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: Array<{
+          relativePath: string
+          selection?: { startLine: number; endLine: number }
+          comment?: string
+          origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+        }>
       }
     ): Promise<{ userMessageId: string; attachments?: any[] } | { error: string }> => {
       const result = await window.electron.ipcRenderer.invoke('agent:save-user-message', {
@@ -156,7 +168,8 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
         text: userText,
         attachments,
         displayText: meta?.displayText,
-        skillRefs: meta?.skillRefs
+        skillRefs: meta?.skillRefs,
+        fileRefs: meta?.fileRefs
       })
       return result
     },

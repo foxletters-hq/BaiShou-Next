@@ -13,6 +13,7 @@ import {
   CompressionDivider,
   CompressionActivityBar,
   AgentGatePartBubble,
+  CompanionAskInteractionProvider,
   resolveActiveToolDisplayName
 } from '@baishou/ui'
 import type { AgentGatePartData } from '@baishou/shared'
@@ -313,7 +314,11 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
     )
 
   return (
-    <>
+    <CompanionAskInteractionProvider
+      pending={stream.pendingAgentGate ?? null}
+      isReplying={Boolean(stream.isAgentGateReplying)}
+      onReply={(payload) => void stream.replyAgentGate?.(payload)}
+    >
       <div
         className={`${styles.messageList} ${userProfile?.chatBackgroundPath ? 'chat-over-background' : ''}`}
         ref={scroll.scrollRef}
@@ -482,6 +487,6 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
           )}
         </div>
       </div>
-    </>
+    </CompanionAskInteractionProvider>
   )
 }

@@ -160,7 +160,8 @@
   font-weight: 500;
   line-height: 1.45;
   color: var(--text-primary);
-  max-width: 180px;
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -183,6 +184,7 @@
 .chevron {
   font-size: 10px;
   color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
 /* 输入框底部模型切换：与 32px 加号/发送对齐 */
@@ -205,6 +207,8 @@
 .modelSwitcherInMeta {
   height: 28px;
   min-height: 28px;
+  min-width: 0;
+  flex: 0 1 auto;
   max-width: 100%;
   padding: 4px 6px;
   gap: 6px;
@@ -212,6 +216,7 @@
   border-radius: 8px;
   background-color: transparent;
   color: var(--text-secondary);
+  overflow: hidden;
 }
 
 .modelSwitcherInMeta:hover {
@@ -221,7 +226,6 @@
 }
 
 .modelSwitcherInMeta .modelName {
-  max-width: min(220px, 40vw);
   font-size: 13px;
   font-weight: 500;
   color: inherit;
@@ -245,7 +249,6 @@
 }
 
 .modelSwitcherInComposer .modelName {
-  max-width: min(160px, 28vw);
   font-size: 12px;
 }
 
