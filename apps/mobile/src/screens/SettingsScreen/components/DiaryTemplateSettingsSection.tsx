@@ -98,7 +98,7 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
       <Text style={[styles.desc, { color: colors.textSecondary }]}>
         {t(
           'settings.diary_format_unified_desc',
-          '日记时间标题格式以下方模板为唯一来源，编辑器、伙伴写日记与系统提示词均遵循同一套模板。'
+          '下方模板会由编辑器自动使用，并作为伙伴写日记时的结构参考；伙伴会自行生成完整正文，系统不会替它添加时间标题。'
         )}
       </Text>
 
@@ -212,12 +212,12 @@ export const DiaryTemplateSettingsSection: React.FC = () => {
 
       <View style={styles.fieldBlock}>
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-          {t('settings.diary_agent_guidelines_preview', '伙伴将看到的格式规范（预览）')}
+          {t('settings.diary_agent_guidelines_preview', '伙伴将看到的书写说明（预览）')}
         </Text>
         <Text style={[styles.injectHint, { color: colors.textTertiary }]}>
           {t(
             'settings.diary_agent_guidelines_preview_hint',
-            '由上方模板自动推导，无需单独维护格式提示词。'
+            '由上方模板生成；模板仅作书写参考，伙伴会自行生成完整正文。'
           )}
         </Text>
         <View
