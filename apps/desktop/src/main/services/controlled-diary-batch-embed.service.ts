@@ -2,21 +2,19 @@ import { BrowserWindow } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import { eq, sql, and } from 'drizzle-orm'
 import {
-  buildDiaryEmbeddingGroupId,
   buildDiaryEmbeddingSourceId,
   clearRagDiaryEmbedFailure,
-  diaryDateToSourceCreatedSeconds,
   filterUnindexedDiaries,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   limitExecute,
   logger,
-  buildDiaryEmbeddingTagPrefix,
   resolveBatchEmbedConcurrency,
   sortDiariesByDateAsc,
   DIARY_EMBED_GROUP_ID,
   type RagConfig
 } from '@baishou/shared'
+import { buildDesktopDiaryReEmbedArgs } from './diary-embed-text.util'
 
 import { getAppDb } from '../db'
 import { getEmbeddingService, getEmbeddingConfig } from '../ipc/rag.ipc'
@@ -294,7 +292,6 @@ async function embedVaultDiaries(
 
   await purgeLegacyDiaryEmbeddingsForVault(vaultId, plan.allDiaryIds)
 
-  const groupId = buildDiaryEmbeddingGroupId()
   let embedded = 0
   let loadSkipped = 0
   let failed = 0
@@ -325,25 +322,18 @@ async function embedVaultDiaries(
       return
     }
 
-    const d = diary.date
-    const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const tagPrefix = buildDiaryEmbeddingTagPrefix(diary.tags ?? meta.tags)
-    const sourceCreatedAt = diaryDateToSourceCreatedSeconds(d) * 1000
-    const sourceId = buildDiaryEmbeddingSourceId(vaultId, diary.id)
-
     try {
       await deleteDiaryEmbeddingAliases(vaultId, diary.id)
-      await ctx.embeddingService.reEmbedText({
-        text: diary.content,
-        sourceType: 'diary',
-        sourceId,
-        groupId,
-        vaultId,
-        chunkPrefix: `${tagPrefix}[${label} 日记:]\n`,
-        metadataJson: JSON.stringify({ updated_at: diary.updatedAt?.getTime() ?? Date.now() }),
-        sourceCreatedAt,
-        skipIndexPrep: true
-      })
+      await ctx.embeddingService.reEmbedText(
+        buildDesktopDiaryReEmbedArgs({
+          content: diary.content,
+          date: diary.date,
+          vaultId,
+          diaryId: diary.id,
+          updatedAt: diary.updatedAt ?? Date.now(),
+          skipIndexPrep: true
+        })
+      )
       embedded++
     } catch (error) {
       failed++

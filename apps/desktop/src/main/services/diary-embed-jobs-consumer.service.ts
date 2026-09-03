@@ -1,4 +1,5 @@
 import {
+  formatLocalDate,
   isAutoResumeEmbedOnOnline,
   isRagMemoryEnabled,
   logger,
@@ -81,7 +82,7 @@ export async function consumeDiaryEmbedJobs(options?: {
           typeof diary.date === 'string'
             ? diary.date
             : diary.date instanceof Date
-              ? diary.date.toISOString()
+              ? formatLocalDate(diary.date)
               : String(diary.date)
 
         const ok = await embeddingCallback.reEmbedDiary({
