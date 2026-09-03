@@ -82,4 +82,60 @@ describe('EmbeddingAdapter', () => {
 
     expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(2)
   })
+
+  it('prefixes each chunk with the date label and does not add tag metadata', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '开会纪要',
+      sourceType: 'diary',
+      sourceId: '4',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      chunkPrefix: '[2026-09-01 日记:]\n',
+      requireSuccess: true
+    })
+
+    expect(mockEmbed).toHaveBeenCalledWith(
+      expect.objectContaining({ value: '[2026-09-01 日记:]\n开会纪要' })
+    )
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledWith(
+      expect.objectContaining({ chunkText: '[2026-09-01 日记:]\n开会纪要' })
+    )
+  })
+
+  it('prefixes every chunk with the date label', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+    const prefix = '[2026-09-01 日记:]\n'
+
+    await adapter.embedText({
+      text: 'x'.repeat(1500),
+      sourceType: 'diary',
+      sourceId: '5',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      chunkPrefix: prefix,
+      requireSuccess: true
+    })
+
+    expect(mockEmbed).toHaveBeenCalledTimes(2)
+    expect(mockEmbed.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ value: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(mockEmbed.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ value: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(2)
+    expect(hybridRepo.insertEmbedding).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ chunkText: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(hybridRepo.insertEmbedding).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ chunkText: expect.stringMatching(/^\[2026-09-01 日记:\]\n/) })
+    )
+    expect(
+      String((hybridRepo.insertEmbedding as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].chunkText)
+    ).not.toContain('[标签:')
+  })
 })
