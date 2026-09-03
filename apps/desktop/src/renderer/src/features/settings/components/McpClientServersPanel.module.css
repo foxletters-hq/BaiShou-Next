@@ -130,6 +130,7 @@
 .toolsModal {
   min-width: min(480px, 92vw);
   max-width: 560px;
+  font-family: var(--font-family);
 }
 
 .iconWrap {
@@ -166,8 +167,27 @@
   background: var(--color-success, #22c55e);
 }
 
+.statusLoading {
+  background: var(--color-info, #3b82f6);
+  animation: statusPulse 1.2s ease-in-out infinite;
+}
+
+.statusTimeout {
+  background: var(--color-warning, #f59e0b);
+}
+
 .statusOff {
   background: var(--text-tertiary, var(--text-secondary));
+}
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .cardCopy {
@@ -244,13 +264,14 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--color-primary);
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: var(--font-family);
 }
 
 .toolDesc {
   font-size: 12px;
   line-height: 1.45;
   color: var(--text-secondary);
+  font-family: var(--font-family);
 }
 
 .detailState {

@@ -2,18 +2,38 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import {
+  isMcpClientTimeoutMessage,
+  mcpClientProbeReasonFromError,
   normalizeMcpStreamableUrl,
+  resolveMcpClientCardStatusKind,
   toMcpClientListedTools,
   upsertMcpClientServerStatus,
   type McpClientConfig,
   type McpClientListedTool,
+  type McpClientProbeReason,
   type McpClientServerEntry,
   type McpClientServerStatus
 } from '@baishou/shared'
 import { Input, Modal, Switch, useToast } from '@baishou/ui'
 import styles from './McpClientServersPanel.module.css'
 
-type TestReason = 'empty' | 'invalid' | 'sse' | 'connect'
+type TestReason = McpClientProbeReason
+
+const STATUS_FETCH_TIMEOUT_MS = 20_000
+
+async function withStatusFetchTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('获取工具超时')), ms)
+      })
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
 
 function newServerId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `mcp-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -27,7 +47,9 @@ function defaultNameFromUrl(url: string): string {
   }
 }
 
-function parseMcpClientUrl(raw: string): { url: string } | { error: Exclude<TestReason, 'connect'> } {
+function parseMcpClientUrl(
+  raw: string
+): { url: string } | { error: Exclude<TestReason, 'connect' | 'timeout'> } {
   const result = normalizeMcpStreamableUrl(raw)
   if (result.ok === true) return { url: result.url }
   return { error: result.reason }
@@ -68,6 +90,9 @@ export const McpClientServersPanel: React.FC = () => {
       if (reason === 'invalid') {
         return t('settings.mcp_custom_url_invalid', '请填写 http(s) 的 /mcp 地址')
       }
+      if (reason === 'timeout') {
+        return t('settings.mcp_custom_tools_timeout', '获取工具超时')
+      }
       if (reason === 'connect') {
         return fallback?.trim()
           ? `${t('settings.mcp_custom_test_fail', '连接失败')}：${fallback}`
@@ -81,44 +106,65 @@ export const McpClientServersPanel: React.FC = () => {
   const refreshStatuses = useCallback(async () => {
     setLoadingStatuses(true)
     try {
-      let listed: McpClientServerStatus[] | undefined
-      try {
-        const result = (await window.api.settings.getMcpClientStatuses?.()) as
-          | McpClientServerStatus[]
-          | undefined
-        if (Array.isArray(result)) listed = result
-      } catch (error) {
-        console.warn('[McpClientServersPanel] status ipc failed', error)
-      }
-
-      const hasEnabled = configRef.current.servers.some((server) => server.enabled)
-      const listedReady =
-        listed &&
-        (!hasEnabled || listed.some((item) => item.connected || item.tools.length > 0))
-      if (listed && listedReady) {
+      const listed = await withStatusFetchTimeout(
+        (async () => {
+          try {
+            const result = (await window.api.settings.getMcpClientStatuses?.()) as
+              | McpClientServerStatus[]
+              | undefined
+            if (Array.isArray(result)) return result
+          } catch (error) {
+            console.warn('[McpClientServersPanel] status ipc failed', error)
+          }
+          return undefined
+        })(),
+        STATUS_FETCH_TIMEOUT_MS
+      )
+      if (listed) {
         setStatuses(listed)
         return
       }
 
-      const probed: McpClientServerStatus[] = []
-      for (const server of configRef.current.servers) {
-        if (!server.enabled) {
-          probed.push({ id: server.id, connected: false, tools: [] })
-          continue
-        }
-        const result = (await window.api.settings.testMcpClient({
-          url: server.url,
-          authToken: server.authToken
-        })) as { ok?: boolean; tools?: unknown }
-        probed.push({
-          id: server.id,
-          connected: Boolean(result?.ok),
-          tools: toMcpClientListedTools(result?.tools)
-        })
-      }
+      const probed = await withStatusFetchTimeout(
+        Promise.all(
+          configRef.current.servers.map(async (server): Promise<McpClientServerStatus> => {
+            if (!server.enabled) {
+              return { id: server.id, connected: false, tools: [] }
+            }
+            const result = (await window.api.settings.testMcpClient({
+              url: server.url,
+              authToken: server.authToken
+            })) as {
+              ok?: boolean
+              tools?: unknown
+              error?: string
+              reason?: TestReason
+            }
+            return {
+              id: server.id,
+              connected: Boolean(result?.ok),
+              tools: toMcpClientListedTools(result?.tools),
+              error: result?.error,
+              reason: result?.reason
+            }
+          })
+        ),
+        STATUS_FETCH_TIMEOUT_MS
+      )
       setStatuses(probed)
     } catch (error) {
       console.warn('[McpClientServersPanel] status load failed', error)
+      if (mcpClientProbeReasonFromError(error) === 'timeout') {
+        setStatuses(
+          configRef.current.servers.map((server) => ({
+            id: server.id,
+            connected: false,
+            tools: [],
+            reason: server.enabled ? 'timeout' : undefined,
+            error: '获取工具超时'
+          }))
+        )
+      }
     } finally {
       setLoadingStatuses(false)
     }
@@ -176,10 +222,31 @@ export const McpClientServersPanel: React.FC = () => {
         toast.showError(urlErrorText(parsed.error))
         return false
       }
-      const result = (await window.api.settings.testMcpClient({
-        url: parsed.url,
-        authToken
-      })) as { ok: boolean; tools?: unknown; error?: string; reason?: TestReason }
+      let result: { ok: boolean; tools?: unknown; error?: string; reason?: TestReason }
+      try {
+        result = (await withStatusFetchTimeout(
+          window.api.settings.testMcpClient({
+            url: parsed.url,
+            authToken
+          }),
+          STATUS_FETCH_TIMEOUT_MS
+        )) as { ok: boolean; tools?: unknown; error?: string; reason?: TestReason }
+      } catch (error) {
+        const reason = mcpClientProbeReasonFromError(error)
+        if (serverId) {
+          setStatuses((prev) =>
+            upsertMcpClientServerStatus(prev, {
+              id: serverId,
+              connected: false,
+              tools: [],
+              reason,
+              error: error instanceof Error ? error.message : String(error)
+            })
+          )
+        }
+        toast.showError(urlErrorText(reason, error instanceof Error ? error.message : String(error)))
+        return false
+      }
       if (result?.ok) {
         const tools = toMcpClientListedTools(result.tools)
         if (serverId) {
@@ -197,7 +264,13 @@ export const McpClientServersPanel: React.FC = () => {
       }
       if (serverId) {
         setStatuses((prev) =>
-          upsertMcpClientServerStatus(prev, { id: serverId, connected: false, tools: [] })
+          upsertMcpClientServerStatus(prev, {
+            id: serverId,
+            connected: false,
+            tools: [],
+            error: result?.error,
+            reason: result?.reason
+          })
         )
       }
       toast.showError(urlErrorText(result?.reason, result?.error))
@@ -269,16 +342,35 @@ export const McpClientServersPanel: React.FC = () => {
             const tools = status?.tools ?? []
             const connected = Boolean(status?.connected)
             const expanded = expandedId === server.id
-            const subtitle = !server.enabled
-              ? t('settings.mcp_custom_disabled', '未启用')
-              : connected
-                ? t('settings.mcp_custom_tools_enabled', {
-                    count: tools.length,
-                    defaultValue: '{{count}} 个工具已启用'
-                  })
-                : loadingStatuses
-                  ? t('settings.mcp_custom_tools_loading', '正在获取工具')
-                  : t('settings.mcp_custom_disconnected', '未连接')
+            const timedOut =
+              status?.reason === 'timeout' || isMcpClientTimeoutMessage(status?.error)
+            const cardStatus = resolveMcpClientCardStatusKind({
+              enabled: server.enabled,
+              connected,
+              loading: loadingStatuses && !connected,
+              timedOut
+            })
+            const subtitle =
+              cardStatus === 'disabled'
+                ? t('settings.mcp_custom_disabled', '未启用')
+                : cardStatus === 'connected'
+                  ? t('settings.mcp_custom_tools_enabled', {
+                      count: tools.length,
+                      defaultValue: '{{count}} 个工具已启用'
+                    })
+                  : cardStatus === 'loading'
+                    ? t('settings.mcp_custom_tools_loading', '正在获取工具')
+                    : cardStatus === 'timeout'
+                      ? t('settings.mcp_custom_tools_timeout', '获取工具超时')
+                      : t('settings.mcp_custom_disconnected', '未连接')
+            const statusDotClass =
+              cardStatus === 'connected'
+                ? styles.statusOn
+                : cardStatus === 'loading'
+                  ? styles.statusLoading
+                  : cardStatus === 'timeout'
+                    ? styles.statusTimeout
+                    : styles.statusOff
             return (
               <li key={server.id} className={styles.row}>
                 <div className={styles.cardMain}>
@@ -291,9 +383,7 @@ export const McpClientServersPanel: React.FC = () => {
                     <span className={styles.iconWrap} aria-hidden>
                       <span className={styles.iconMark}>M</span>
                       <span
-                        className={`${styles.statusDot} ${
-                          connected ? styles.statusOn : styles.statusOff
-                        }`}
+                        className={`${styles.statusDot} ${statusDotClass}`}
                       />
                     </span>
                     <span className={styles.cardCopy}>
