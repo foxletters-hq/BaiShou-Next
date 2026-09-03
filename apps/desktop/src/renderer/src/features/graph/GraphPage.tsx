@@ -1532,18 +1532,19 @@ export const GraphPage: React.FC<GraphPageProps> = ({
             transition={phaseTransition}
           >
       <div className={styles.chrome}>
-      <div className={styles.toolbar}>
+      <div className={`${styles.toolbar}${embedded ? ` ${styles.toolbarEmbedded}` : ''}`}>
         <div className={styles.toolbarLeft}>
+          {embedded ? null : (
           <div className={styles.titleRow}>
             <div className={styles.title}>{t('graph.title', '人生关系图')}</div>
             <HelpTooltip
-              size={15}
               content={t(
                 'graph.title_help',
                 '这是从日记里整理出的人物、地点和事件关系。笔记本里的关系图是另一套库，不会混在这里。'
               )}
             />
           </div>
+          )}
           {!showEmptyGuide ? (
             <div className={styles.searchGroup}>
               <div className={styles.searchField}>
@@ -1633,14 +1634,14 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           {status}
         </button>
       ) : null}
-      {!embedded ? (
+      <div className={styles.chipRow}>
         <MemoryReadinessBar
           rows={readiness.rows}
           onConfigureEmbedding={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-models`)}
           onStartIndex={() => navigate('/memory/vectors')}
           onStartOrganize={() => void runExtract()}
         />
-      ) : null}
+      </div>
       </div>
 
       <div className={styles.canvasWrap}>
