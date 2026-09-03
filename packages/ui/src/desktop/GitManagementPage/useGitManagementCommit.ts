@@ -1,8 +1,14 @@
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
 import { isDiskFullError } from '@baishou/shared'
 import type { GitManagementPageProps } from './git-management.types'
 import type { FileChange, FileDiff } from '@baishou/shared'
+import {
+  executeGitCommit,
+  resolveCommitSuccessToast,
+  shouldPushAfterCommit,
+  type GitCommitScope
+} from './git-management-commit.util'
 
 export interface UseGitManagementCommitParams {
   t: TFunction
@@ -13,7 +19,9 @@ export interface UseGitManagementCommitParams {
   stagedCount: number
   onPush: GitManagementPageProps['onPush']
   onToast: GitManagementPageProps['onToast']
-  handleRefreshStatus: () => Promise<void>
+  isRemoteConfigured: () => boolean
+  notifyRemoteRequired: () => void
+  handleRefreshStatus: (options?: { fetch?: boolean }) => Promise<void>
   handleLoadHistory: () => Promise<void>
   setSelectedCommit: (value: string | null) => void
   setCommitChanges: (value: FileChange[]) => void
@@ -30,6 +38,8 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     stagedCount,
     onPush,
     onToast,
+    isRemoteConfigured,
+    notifyRemoteRequired,
     handleRefreshStatus,
     handleLoadHistory,
     setSelectedCommit,
@@ -37,12 +47,8 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     setSelectedFileDiff
   } = params
 
-  /** 有暂存时仅提交暂存；否则 stage 全部后提交 */
-  const performCommit = useCallback(
-    async (msg: string) => (stagedCount > 0 ? onCommit(msg) : onCommitAll(msg)),
-    [stagedCount, onCommit, onCommitAll]
-  )
-  const performCommitAll = useCallback(async (msg: string) => onCommitAll(msg), [onCommitAll])
+  const inFlightRef = useRef(false)
+  const [isCommitActionInFlight, setIsCommitActionInFlight] = useState(false)
 
   const formatGitErrorMessage = useCallback(
     (error: unknown) => {
@@ -80,153 +86,213 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
     )
   }, [onToast, t])
 
-  const notifyCommitOutcome = useCallback(
-    (fileCount: number, mode: 'local' | 'push') => {
-      if (fileCount === 0) {
-        onToast(
-          t('version_control.commit_result_count', '已提交 {{count}} 个文件', { count: 0 }),
-          'warning'
-        )
-        return
-      }
+  const notifyCommitFailure = useCallback(() => {
+    onToast(
+      t('version_control.commit_result_count', '已提交 {{count}} 个文件', { count: 0 }),
+      'warning'
+    )
+  }, [onToast, t])
 
-      if (mode === 'push') {
-        onToast(
-          t(
-            'version_control.commit_all_success_count_pushing',
-            '已暂存并提交 {{count}} 个文件，正在推送...',
-            { count: fileCount }
-          ),
-          'success'
-        )
-        return
-      }
-
-      onToast(
-        t('version_control.commit_all_success_count', '已暂存并提交 {{count}} 个文件', {
-          count: fileCount
-        }),
-        'success'
-      )
+  const notifyCommitSuccess = useCallback(
+    (fileCount: number, mode: 'local' | 'push', scope: GitCommitScope) => {
+      const toast = resolveCommitSuccessToast({
+        fileCount,
+        mode,
+        scope,
+        stagedCount
+      })
+      onToast(t(toast.key, toast.fallback, toast.interpolation), 'success')
     },
-    [onToast, t]
+    [onToast, t, stagedCount]
   )
 
-  const runLocalCommit = useCallback(
-    async (commitFn: (msg: string) => Promise<{ files?: unknown[] } | null>) => {
-      const now = new Date()
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
-      const msg = commitMessage.trim() || timestamp
-      try {
-        const result = await commitFn(msg)
-        const fileCount = result?.files?.length ?? 0
-        notifyCommitOutcome(fileCount, 'local')
-        if (fileCount === 0) return
+  const notifyPushFailure = useCallback(
+    (error: unknown) => {
+      const message =
+        typeof error === 'string'
+          ? error
+          : formatGitErrorMessage(error) || t('version_control.git_push_failed', '推送失败')
+      onToast(
+        isDiskFullError(message)
+          ? t(
+              'settings.error_disk_full',
+              '磁盘空间不足，请清理空间后重试。Git 同步与数据导出都需要足够的可用磁盘空间。'
+            )
+          : message || t('version_control.git_push_failed', '推送失败'),
+        'error'
+      )
+    },
+    [formatGitErrorMessage, onToast, t]
+  )
 
-        setCommitMessage('')
-        handleRefreshStatus()
-        handleLoadHistory()
-      } catch (e: any) {
-        const errorMsg = e?.message || ''
-        if (errorMsg.includes('No changes')) {
-          notifyCommitOutcome(0, 'local')
-        } else if (isAuthorNotConfiguredError(e)) {
-          notifyAuthorNotConfigured()
-        } else {
-          onToast(
-            formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'),
-            'error'
-          )
-        }
+  const runCommit = useCallback(
+    (scope: GitCommitScope) =>
+      executeGitCommit({
+        scope,
+        stagedCount,
+        message: commitMessage,
+        onCommit,
+        onCommitAll
+      }),
+    [stagedCount, commitMessage, onCommit, onCommitAll]
+  )
+
+  const refreshAfterCommit = useCallback(async () => {
+    setCommitMessage('')
+    await handleRefreshStatus()
+    await handleLoadHistory()
+  }, [setCommitMessage, handleRefreshStatus, handleLoadHistory])
+
+  const handleCommitError = useCallback(
+    (error: unknown) => {
+      const errorMsg = (error as { message?: string })?.message || ''
+      if (errorMsg.includes('No changes')) {
+        notifyCommitFailure()
+      } else if (isAuthorNotConfiguredError(error)) {
+        notifyAuthorNotConfigured()
+      } else {
+        onToast(
+          formatGitErrorMessage(error) || t('version_control.git_commit_failed', '提交失败'),
+          'error'
+        )
       }
     },
     [
-      commitMessage,
-      notifyCommitOutcome,
+      notifyCommitFailure,
       isAuthorNotConfiguredError,
       notifyAuthorNotConfigured,
       formatGitErrorMessage,
       onToast,
-      t,
-      handleRefreshStatus,
-      handleLoadHistory,
-      setCommitMessage
+      t
     ]
   )
 
-  const handleManualCommit = useCallback(
-    async () => runLocalCommit(performCommit),
-    [runLocalCommit, performCommit]
+  const runLocalCommit = useCallback(
+    async (scope: GitCommitScope) => {
+      try {
+        const outcome = await runCommit(scope)
+        if (!outcome.ok) {
+          notifyCommitFailure()
+          return false
+        }
+        notifyCommitSuccess(outcome.fileCount, 'local', scope)
+        await refreshAfterCommit()
+        return true
+      } catch (error) {
+        handleCommitError(error)
+        return false
+      }
+    },
+    [runCommit, notifyCommitFailure, notifyCommitSuccess, refreshAfterCommit, handleCommitError]
   )
 
-  const handleCommitAll = useCallback(
-    async () => runLocalCommit(performCommitAll),
-    [runLocalCommit, performCommitAll]
-  )
-
-  const handleCommitAndPush = useCallback(async () => {
-    const now = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
-    const msg = commitMessage.trim() || timestamp
-    try {
-      const result = await performCommit(msg)
-      const fileCount = result?.files?.length ?? 0
-      if (fileCount === 0) {
-        notifyCommitOutcome(0, 'push')
+  const runCommitThenPush = useCallback(
+    async (scope: GitCommitScope) => {
+      let outcome: { ok: boolean; fileCount: number }
+      try {
+        outcome = await runCommit(scope)
+      } catch (error) {
+        handleCommitError(error)
         return
       }
 
-      notifyCommitOutcome(fileCount, 'push')
-      setCommitMessage('')
+      if (!shouldPushAfterCommit(outcome.ok)) {
+        notifyCommitFailure()
+        return
+      }
+
       setSelectedCommit(null)
       setCommitChanges([])
       setSelectedFileDiff(null)
-      handleRefreshStatus()
-      handleLoadHistory()
-      const pushResult = await onPush()
-      onToast(
-        pushResult.success
-          ? t('version_control.push_success', '推送成功')
-          : isDiskFullError(pushResult.message || '')
-            ? t(
-                'settings.error_disk_full',
-                '磁盘空间不足，请清理空间后重试。Git 同步与数据导出都需要足够的可用磁盘空间。'
-              )
-            : pushResult.message || t('version_control.git_push_failed', '推送失败'),
-        pushResult.success ? 'success' : 'error'
-      )
-    } catch (e: any) {
-      const errorMsg = e?.message || ''
-      if (errorMsg.includes('No changes')) {
-        notifyCommitOutcome(0, 'push')
-      } else if (isAuthorNotConfiguredError(e)) {
-        notifyAuthorNotConfigured()
-      } else {
-        onToast(
-          formatGitErrorMessage(e) || t('version_control.git_commit_failed', '提交失败'),
-          'error'
-        )
+      try {
+        await refreshAfterCommit()
+      } catch {
+        // 本地提交已成功，刷新失败不阻断后续推送
       }
-    }
-  }, [
-    commitMessage,
-    performCommit,
-    notifyCommitOutcome,
-    isAuthorNotConfiguredError,
-    notifyAuthorNotConfigured,
-    formatGitErrorMessage,
-    onPush,
-    onToast,
-    t,
-    handleRefreshStatus,
-    handleLoadHistory,
-    setCommitMessage,
-    setSelectedCommit,
-    setCommitChanges,
-    setSelectedFileDiff
-  ])
 
-  return { handleManualCommit, handleCommitAll, handleCommitAndPush }
+      if (!isRemoteConfigured()) {
+        notifyCommitSuccess(outcome.fileCount, 'local', scope)
+        notifyRemoteRequired()
+        return
+      }
+
+      notifyCommitSuccess(outcome.fileCount, 'push', scope)
+      try {
+        const pushResult = await onPush()
+        if (pushResult.success) {
+          onToast(t('version_control.push_success', '推送成功'), 'success')
+          await handleRefreshStatus({ fetch: true })
+          await handleLoadHistory()
+          return
+        }
+        notifyPushFailure(pushResult.message || t('version_control.git_push_failed', '推送失败'))
+      } catch (error) {
+        notifyPushFailure(error)
+      }
+    },
+    [
+      runCommit,
+      handleCommitError,
+      notifyCommitFailure,
+      notifyCommitSuccess,
+      refreshAfterCommit,
+      isRemoteConfigured,
+      notifyRemoteRequired,
+      onPush,
+      onToast,
+      t,
+      handleRefreshStatus,
+      handleLoadHistory,
+      setSelectedCommit,
+      setCommitChanges,
+      setSelectedFileDiff,
+      notifyPushFailure
+    ]
+  )
+
+  const runExclusive = useCallback(async (task: () => Promise<void>) => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
+    setIsCommitActionInFlight(true)
+    try {
+      await task()
+    } finally {
+      inFlightRef.current = false
+      setIsCommitActionInFlight(false)
+    }
+  }, [])
+
+  const handleManualCommit = useCallback(
+    () => runExclusive(async () => { await runLocalCommit('smart') }),
+    [runExclusive, runLocalCommit]
+  )
+
+  const handleCommitStaged = useCallback(
+    () => runExclusive(async () => { await runLocalCommit('staged') }),
+    [runExclusive, runLocalCommit]
+  )
+
+  const handleCommitAll = useCallback(
+    () => runExclusive(async () => { await runLocalCommit('all') }),
+    [runExclusive, runLocalCommit]
+  )
+
+  const handleCommitAndPush = useCallback(
+    () => runExclusive(async () => runCommitThenPush('smart')),
+    [runExclusive, runCommitThenPush]
+  )
+
+  const handleCommitAllAndPush = useCallback(
+    () => runExclusive(async () => runCommitThenPush('all')),
+    [runExclusive, runCommitThenPush]
+  )
+
+  return {
+    isCommitActionInFlight,
+    handleManualCommit,
+    handleCommitStaged,
+    handleCommitAll,
+    handleCommitAndPush,
+    handleCommitAllAndPush
+  }
 }
