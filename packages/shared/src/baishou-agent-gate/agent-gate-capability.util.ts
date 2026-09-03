@@ -32,6 +32,7 @@ export type AgentGateCapabilityId =
   | 'memory_delete'
   | 'recall_relations'
   | 'graph_upsert'
+  | 'skill_write'
   | 'web_search'
   | 'url_read'
   | 'current_time'
@@ -95,6 +96,7 @@ export const COMPANION_GATE_CAPABILITIES: readonly AgentGateCapabilityDef[] = [
   { id: 'memory_delete', actions: ['memory_delete'], defaultEffect: AgentGateEffect.Ask },
   { id: 'recall_relations', actions: ['recall_relations'], defaultEffect: AgentGateEffect.Allow },
   { id: 'graph_upsert', actions: ['graph_upsert'], defaultEffect: AgentGateEffect.Ask },
+  { id: 'skill_write', actions: ['skill_write'], defaultEffect: AgentGateEffect.Ask },
   { id: 'web_search', actions: ['web_search'], defaultEffect: AgentGateEffect.Allow },
   { id: 'url_read', actions: ['url_read'], defaultEffect: AgentGateEffect.Allow },
   { id: 'current_time', actions: ['current_time'], defaultEffect: AgentGateEffect.Allow }

@@ -14,5 +14,6 @@ describe('mcp-exposable-tool-ids.constants', () => {
   it('does not expose internal-only or app-specific tools', () => {
     expect(isMcpExposableToolId('emoji_send')).toBe(false)
     expect(isMcpExposableToolId('compress_context_upstream')).toBe(false)
+    expect(isMcpExposableToolId('skill_write')).toBe(false)
   })
 })
