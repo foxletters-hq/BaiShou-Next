@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { EmbeddingMigrationStateView } from '@baishou/shared'
 
 export interface RagConfig {
@@ -65,6 +66,9 @@ export interface MemoryConsistencyReport {
 }
 
 export interface RagMemoryViewProps {
+  /** 记忆中心内嵌：收起绝对定位顶栏，避免挡住滚动区 */
+  embedded?: boolean
+  extraStatsChips?: ReactNode
   config: RagConfig
   stats: RagStats
   ragState: RagState
