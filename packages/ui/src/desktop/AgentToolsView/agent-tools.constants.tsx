@@ -19,6 +19,7 @@ import {
   Database,
   DatabaseZap,
   Clock,
+  Sparkles,
   Share2,
   FolderTree,
   FilePen,
@@ -53,6 +54,7 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
   memory_delete: <DatabaseZap size={20} />,
   recall_relations: <Share2 size={20} />,
   graph_upsert: <Share2 size={20} />,
+  skill_write: <Sparkles size={20} />,
   web_search: <Globe size={20} />,
   url_read: <Link2 size={20} />,
   auto_inject_time: <Clock size={20} />,
@@ -154,7 +156,7 @@ const TOOL_NAME_FALLBACKS: Record<string, string> = {
   'agent.tools.workspace_delete': '删除文件',
   'agent.tools.workspace_run': '运行命令',
   'agent.tools.companion_ask': '向用户提问',
-  'agent.tools.skill_write': '写入技能',
+  'agent.tools.skill_write': '保存技能',
   'agent.tools.knowledge_search': '知识库搜索',
   'agent.tools.knowledge_graph_search': '知识图谱搜索'
 }
