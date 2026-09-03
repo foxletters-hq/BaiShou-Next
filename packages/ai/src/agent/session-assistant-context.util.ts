@@ -1,7 +1,8 @@
 import {
-  mergeDisabledToolIds,
+  resolveSessionDisabledToolIds,
   normalizeAssistantKind,
   buildEffectiveAssistantSystemPrompt,
+  type AgentSessionKind,
   type AssistantKind
 } from '@baishou/shared'
 
@@ -24,6 +25,8 @@ export async function resolveSessionAssistantContext(params: {
     } | null>
   }
   userConfig: Record<string, unknown>
+  /** 工作台会话以工作区策略为准，不追加伙伴类型禁用列表 */
+  sessionKind?: AgentSessionKind
 }): Promise<SessionAssistantContext> {
   const sessionObj = await params.sessionRepo.getSessionById?.(params.sessionId)
   let mergedUserConfig = params.userConfig
@@ -42,11 +45,12 @@ export async function resolveSessionAssistantContext(params: {
     }
     mergedUserConfig = {
       ...params.userConfig,
-      disabledToolIds: mergeDisabledToolIds(
+      disabledToolIds: resolveSessionDisabledToolIds(
         Array.isArray(params.userConfig?.disabledToolIds)
           ? (params.userConfig.disabledToolIds as string[])
           : [],
-        assistantKind
+        assistantKind,
+        params.sessionKind
       )
     }
   }
