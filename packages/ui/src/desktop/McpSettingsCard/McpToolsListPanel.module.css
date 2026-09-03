@@ -21,7 +21,7 @@
 }
 
 .toolName {
-  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-family: var(--font-family);
   font-size: 13px;
   font-weight: 600;
   color: var(--color-primary);
