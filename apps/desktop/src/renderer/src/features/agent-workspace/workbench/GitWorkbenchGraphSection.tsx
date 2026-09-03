@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Undo2 } from 'lucide-react'
 import { isTextDiffablePath } from '@baishou/shared'
 import type { GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
@@ -22,9 +22,12 @@ function formatGraphTime(date: Date | string): string {
   return value.toLocaleDateString()
 }
 
-export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> = ({ vm }) => {
+export const GitWorkbenchGraphSection: React.FC<{
+  vm: GitManagementViewModel
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}> = ({ vm, open, onOpenChange }) => {
   const { t } = useTranslation()
-  const [sectionOpen, setSectionOpen] = useState(true)
   const {
     history,
     expandedCommit,
@@ -35,21 +38,21 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
   } = vm
 
   return (
-    <section className={styles.panelSection}>
+    <section className={`${styles.panelSection} ${styles.historySection}`}>
       <button
         type="button"
         className={styles.sectionHeader}
-        onClick={() => setSectionOpen((open) => !open)}
+        onClick={() => onOpenChange(!open)}
       >
         <ChevronRight
           size={14}
-          className={`${styles.sectionChevron} ${sectionOpen ? styles.sectionChevronOpen : ''}`}
+          className={`${styles.sectionChevron} ${open ? styles.sectionChevronOpen : ''}`}
         />
-        <span className={styles.sectionTitle}>{t('workbench.git_graph', 'GRAPH')}</span>
+        <span className={styles.sectionTitle}>{t('workbench.git_graph', '历史')}</span>
         {history.length > 0 ? <span className={styles.sectionBadge}>{history.length}</span> : null}
       </button>
 
-      {sectionOpen ? (
+      {open ? (
         <div className={styles.graphBody}>
           {history.length === 0 ? (
             <div className={styles.treeEmpty}>
@@ -78,34 +81,39 @@ export const GitWorkbenchGraphSection: React.FC<{ vm: GitManagementViewModel }> 
                     </div>
 
                     <div className={styles.graphContent}>
-                      <button
-                        type="button"
+                      <div
                         className={`${styles.graphCommit} ${isExpanded ? styles.graphCommitExpanded : ''}`}
-                        onClick={() => void handleSelectCommit(entry.commit.hash)}
                       >
-                        <span className={styles.graphMessage} title={entry.commit.message}>
-                          {entry.commit.message || t('workbench.git_empty_commit', '(empty)')}
-                        </span>
-                        <span className={styles.graphMeta}>
-                          {isHead ? <span className={styles.graphHeadBadge}>HEAD</span> : null}
-                          <span className={styles.graphTime}>
-                            {formatGraphTime(entry.commit.date)}
+                        <button
+                          type="button"
+                          className={styles.graphCommitMain}
+                          onClick={() => void handleSelectCommit(entry.commit.hash)}
+                        >
+                          <span className={styles.graphMessage} title={entry.commit.message}>
+                            {entry.commit.message || t('workbench.git_empty_commit', '（空提交）')}
                           </span>
-                          <span className={styles.graphHash}>{entry.commit.hash.slice(0, 7)}</span>
-                          {!isHead ? (
-                            <button
-                              type="button"
-                              className={styles.treeActionBtn}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                handleRollbackAll(entry.commit.hash, entry.commit.message)
-                              }}
-                            >
-                              {t('version_control.rollback', '回滚')}
-                            </button>
-                          ) : null}
-                        </span>
-                      </button>
+                          <span className={styles.graphMeta}>
+                            {isHead ? <span className={styles.graphHeadBadge}>HEAD</span> : null}
+                            <span className={styles.graphTime}>
+                              {formatGraphTime(entry.commit.date)}
+                            </span>
+                            <span className={styles.graphHash}>{entry.commit.hash.slice(0, 7)}</span>
+                          </span>
+                        </button>
+                        {!isHead ? (
+                          <button
+                            type="button"
+                            className={styles.treeIconBtn}
+                            title={t('version_control.rollback', '回滚')}
+                            aria-label={t('version_control.rollback', '回滚')}
+                            onClick={() =>
+                              handleRollbackAll(entry.commit.hash, entry.commit.message)
+                            }
+                          >
+                            <Undo2 size={14} strokeWidth={2} />
+                          </button>
+                        ) : null}
+                      </div>
 
                       {isExpanded && commitChanges.length > 0 ? (
                         <div className={styles.graphFiles}>
