@@ -1,5 +1,25 @@
 import type { ToolContext } from './agent.tool'
 
+export function resolveDiarySearchResultLimit(
+  argsLimit: number | undefined,
+  userConfig?: Record<string, unknown>
+): number {
+  const custom = userConfig?.customConfigs
+  const raw =
+    custom && typeof custom === 'object'
+      ? (custom as Record<string, { max_results?: unknown }>).diary_search?.max_results
+      : undefined
+  const configured =
+    typeof raw === 'number' && Number.isFinite(raw)
+      ? Math.min(50, Math.max(1, Math.floor(raw)))
+      : undefined
+  const requested =
+    typeof argsLimit === 'number' && Number.isFinite(argsLimit)
+      ? Math.max(1, Math.floor(argsLimit))
+      : (configured ?? 10)
+  return configured != null ? Math.min(requested, configured) : Math.min(requested, 50)
+}
+
 export async function runDiarySearchViaFts(
   args: { query: string; start_date?: string; end_date?: string; limit?: number },
   context: ToolContext
@@ -15,7 +35,7 @@ export async function runDiarySearchViaFts(
     return 'Error: Diary search is not available. Please ensure diary index is synced.'
   }
 
-  const limit = args.limit ?? 10
+  const limit = resolveDiarySearchResultLimit(args.limit, context.userConfig)
   const results: Array<{ date: string; snippet: string }> = []
 
   for (const keyword of keywords) {
