@@ -262,7 +262,7 @@
 }
 
 .attDocument {
-  width: 160px;
+  width: 220px;
   padding: 8px;
   background-color: var(--bg-surface-normal);
   border-radius: 8px;
@@ -270,6 +270,23 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.attDocMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attDocComment {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .attDocIcon {

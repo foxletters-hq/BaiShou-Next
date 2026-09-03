@@ -1,5 +1,5 @@
 import React from 'react'
-import type { MockChatAttachment } from '@baishou/shared'
+import { formatFileMentionLabel, type MockChatAttachment } from '@baishou/shared'
 import { ChatAttachmentImage } from './ChatAttachmentImage'
 import styles from './ChatBubble.module.css'
 
@@ -19,7 +19,19 @@ export const ChatBubbleAttachments: React.FC<ChatBubbleAttachmentsProps> = ({ at
           ) : (
             <div className={styles.attDocument}>
               <span className={styles.attDocIcon}>{att.isPdf || att.isText ? '📄' : '📁'}</span>
-              <span className={styles.attDocName}>{att.fileName}</span>
+              <div className={styles.attDocMeta}>
+                <span className={styles.attDocName}>
+                  {att.relativePath
+                    ? formatFileMentionLabel({
+                        relativePath: att.relativePath,
+                        selection: att.selection
+                      }).replace(/^@/, '')
+                    : att.fileName}
+                </span>
+                {att.comment?.trim() ? (
+                  <span className={styles.attDocComment}>{att.comment.trim()}</span>
+                ) : null}
+              </div>
             </div>
           )}
         </div>
