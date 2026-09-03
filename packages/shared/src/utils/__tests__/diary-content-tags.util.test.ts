@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyDiaryPersistTags,
   composeDiaryEditorContent,
-  ensureDiaryInlineTags,
+  persistDiaryTagsInBody,
   extractDiaryTagsFromContent,
   extractTagsFromTagLine,
   isDiaryTagLine,
   parseDiaryEditorContent,
+  resolveDiaryTagsForPersist,
   resolveDiaryTagsFromSources,
   stripDedicatedTagLinesFromContent,
   stripDiaryTagLineFromContent
@@ -48,9 +50,9 @@ describe('diary-content-tags.util', () => {
     )
   })
 
-  it('正文已有内联标签时不再从元数据重复注入', () => {
+  it('正文已有内联标签时仍补上元数据里多出来的标签', () => {
     expect(composeDiaryEditorContent('今天 #日记 很开心', ['日记', '生活'])).toBe(
-      '今天 #日记 很开心'
+      '#生活\n\n今天 #日记 很开心'
     )
     expect(composeDiaryEditorContent('今天 #日记 很开心', ['日记'])).toBe('今天 #日记 很开心')
   })
@@ -61,14 +63,49 @@ describe('diary-content-tags.util', () => {
     )
   })
 
-  it('ensureDiaryInlineTags 会补齐正文缺失的标签', () => {
-    expect(ensureDiaryInlineTags('今天很开心', ['日记', '生活'])).toBe('#日记 #生活\n\n今天很开心')
-    expect(ensureDiaryInlineTags('今天 #日记 很开心', ['日记', '生活'])).toBe(
-      '今天 #日记 很开心 #生活'
+  it('persistDiaryTagsInBody 把元数据标签写到第一个标题下面', () => {
+    const body = '##### 09:10\n\n早上开会\n\n##### 21:40\n\n晚上买菜'
+    expect(persistDiaryTagsInBody(body, '生活')).toBe(
+      '##### 09:10\n\n#生活\n\n早上开会\n\n##### 21:40\n\n晚上买菜'
     )
-    expect(ensureDiaryInlineTags('##### 12:30:45\n\n今天很开心', '日记,旅行')).toBe(
-      '##### 12:30:45\n\n#日记 #旅行\n\n今天很开心'
-    )
+  })
+
+  it('persistDiaryTagsInBody 原样保留助手写在文首的标签', () => {
+    const body = '#工作 #会议\n\n今天完成了方案'
+    expect(persistDiaryTagsInBody(body, undefined)).toBe(body)
+    expect(persistDiaryTagsInBody(body, '工作')).toBe(body)
+  })
+
+  it('改正文且未传 tags 时不把旧解析标签补回正文', () => {
+    expect(
+      resolveDiaryTagsForPersist({
+        contentProvided: true,
+        tagsProvided: false,
+        incomingTags: undefined,
+        existingTags: '工作'
+      })
+    ).toBeUndefined()
+    expect(
+      applyDiaryPersistTags({
+        content: '正文',
+        contentProvided: true,
+        tagsProvided: false,
+        incomingTags: undefined,
+        existingTags: '工作'
+      })
+    ).toEqual({ content: '正文', tags: undefined })
+  })
+
+  it('显式传入元数据标签时仍会补进正文', () => {
+    expect(
+      applyDiaryPersistTags({
+        content: '正文',
+        contentProvided: true,
+        tagsProvided: true,
+        incomingTags: '工作',
+        existingTags: undefined
+      })
+    ).toEqual({ content: '#工作\n\n正文', tags: '工作' })
   })
 
   it('无标签时正文原样保留', () => {
