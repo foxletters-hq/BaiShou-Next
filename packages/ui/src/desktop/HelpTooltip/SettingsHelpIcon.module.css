@@ -40,6 +40,8 @@
 }
 
 .helpIcon {
+  width: 16px;
+  height: 16px;
   color: var(--text-tertiary);
   transition: color 0.15s ease;
   flex-shrink: 0;

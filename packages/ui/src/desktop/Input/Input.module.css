@@ -18,14 +18,30 @@
   min-width: 0;
 }
 
+.leading,
 .trailing {
   position: absolute;
-  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  z-index: 1;
+}
+
+.leading {
+  left: 12px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.leading svg {
+  width: 16px;
+  height: 16px;
+}
+
+.trailing {
+  right: 8px;
   color: var(--text-tertiary);
 }
 

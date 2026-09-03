@@ -285,6 +285,10 @@ html[lang='en'] {
   --font-family: 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
+:where(input, textarea, select, [contenteditable='true']) {
+  font-family: inherit;
+}
+
 body {
   background-color: var(--bg-app);
   color: var(--text-primary);
