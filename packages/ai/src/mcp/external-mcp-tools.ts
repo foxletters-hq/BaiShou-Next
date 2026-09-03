@@ -3,10 +3,14 @@ import {
   AgentGateRiskLevel,
   buildExternalMcpToolId,
   formatMcpClientToolResult,
+  isMcpExposableToolId,
   type AgentGateToolMetadata
 } from '@baishou/shared'
 import type { ToolContext } from '../tools/agent.tool'
+import { resolveAgentGateToolMetadata } from '../baishou-agent-gate/agent-gate-tool-metadata'
 import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate/baishou-agent-gate-tool.interceptor'
+import { isNamedToolDenied } from '../tools/tool-context.util'
+import { unwrapBaishouMcpToolName } from '../tools/mcp-tool.util'
 
 export type ExternalMcpToolDescriptor = {
   serverId: string
@@ -47,6 +51,11 @@ function asObjectJsonSchema(raw: unknown): {
 }
 
 function remoteMcpGateMetadata(serverName: string, toolName: string): AgentGateToolMetadata {
+  const builtinName = unwrapBaishouMcpToolName(toolName)
+  if (builtinName && isMcpExposableToolId(builtinName)) {
+    const builtin = resolveAgentGateToolMetadata(builtinName)
+    if (builtin) return builtin
+  }
   return {
     action: `mcp_client:${toolName}`,
     riskLevel: AgentGateRiskLevel.Mutating,
@@ -63,6 +72,11 @@ export function buildExternalMcpVercelTools(params: {
   const usedIds = new Set<string>()
 
   for (const item of params.tools) {
+    const builtinName = unwrapBaishouMcpToolName(item.name)
+    if (isMcpExposableToolId(builtinName) && isNamedToolDenied(builtinName, params.context)) {
+      continue
+    }
+
     let id = buildExternalMcpToolId(item.serverId, item.name)
     if (usedIds.has(id) || configured[id]) {
       id = `${id}_${usedIds.size}`

@@ -12,7 +12,12 @@ import { z } from 'zod'
 import type { ToolContext } from '../tools/agent.tool'
 import type { ToolRegistry } from '../tools/tool-registry'
 import { syncMcpToolUserConfig } from '../tools/tool-context.util'
-import { buildMcpInstructions, formatMcpToolCallResult } from '../tools/mcp-tool.util'
+import { wrapVercelToolExecuteWithAgentGate } from '../baishou-agent-gate/baishou-agent-gate-tool.interceptor'
+import {
+  buildMcpInstructions,
+  formatMcpToolCallResult,
+  unwrapBaishouMcpToolName
+} from '../tools/mcp-tool.util'
 
 export type BaishouMcpToolListItem = {
   name: string
@@ -125,7 +130,7 @@ export async function executeBaishouMcpTool(
     throw new Error('Tool registry not initialized')
   }
 
-  const rawName = (params.name || '').replace(/^baishou_/, '')
+  const rawName = unwrapBaishouMcpToolName(params.name || '')
   if (!rawName) {
     throw new Error('Missing tool name')
   }
@@ -142,8 +147,18 @@ export async function executeBaishouMcpTool(
     throw new Error(`Tool not available: ${rawName}`)
   }
 
-  const result = await tool.execute(params.arguments || {}, context)
-  return formatMcpToolCallResult(typeof result === 'string' ? result : JSON.stringify(result))
+  const runExecute = async (args: Record<string, unknown>) => {
+    const result = await tool.execute(args, context)
+    return typeof result === 'string' ? result : JSON.stringify(result)
+  }
+  const execute = wrapVercelToolExecuteWithAgentGate(
+    rawName,
+    tool.agentGateMetadata,
+    context,
+    runExecute
+  )
+  const result = await execute(params.arguments || {})
+  return formatMcpToolCallResult(result)
 }
 
 export function createBaishouMcpServer(

@@ -1,16 +1,25 @@
 import { describe, it, expect, vi } from 'vitest'
-import { deriveLegacyVaultId } from '@baishou/shared'
+import {
+  AgentGateDeniedError,
+  AgentGateEffect,
+  AgentGateProfileId,
+  DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+  WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS,
+  deriveLegacyVaultId
+} from '@baishou/shared'
 import { z } from 'zod'
 import { ToolRegistry } from '../../tools/tool-registry'
 import {
   negotiateMcpProtocolVersion,
   buildBaishouMcpToolSchemas,
   executeBaishouMcpTool,
+  listBaishouMcpExposedTools,
   listBaishouMcpToolsForUi
 } from '../baishou-mcp-server'
 import { DEFAULT_NEGOTIATED_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js'
 import type { ToolContext } from '../../tools/agent.tool'
 import { MCP_EXTERNAL_SESSION_ID } from '../../tools/mcp-tool.util'
+import { createBaishouAgentGate } from '../../baishou-agent-gate/baishou-agent-gate.service'
 
 const baseContext: ToolContext = {
   sessionId: MCP_EXTERNAL_SESSION_ID,
@@ -116,6 +125,15 @@ describe('baishou-mcp-server', () => {
     expect(mcpTools.length).toBeGreaterThan(0)
     expect(uiTools.some((tool) => tool.name === 'baishou_diary_list')).toBe(true)
     expect(mcpTools.some((tool) => tool.name === 'baishou_diary_list')).toBe(true)
+  })
+
+  it('日记写入工具只通过 content 接收正文标签', () => {
+    const tools = buildBaishouMcpToolSchemas(new ToolRegistry(), baseContext)
+    for (const name of ['baishou_diary_write', 'baishou_diary_edit']) {
+      const schema = tools.find((tool) => tool.name === name)
+      expect(schema?.inputSchema.properties).toHaveProperty('content')
+      expect(schema?.inputSchema.properties).not.toHaveProperty('tags')
+    }
   })
 
   it('exposes diary, memory, web, and utility tools via MCP', () => {
@@ -261,5 +279,130 @@ describe('baishou-mcp-server', () => {
 
     expect(result.isError).toBe(false)
     expect(result.content[0]?.text).toBe('done')
+  })
+
+  it('hides baishou_memory_delete from MCP list when companion disabled it', () => {
+    const registry = new ToolRegistry()
+    const context: ToolContext = {
+      ...baseContext,
+      userConfig: {
+        ...baseContext.userConfig,
+        hasEmbeddingModel: true,
+        disabledToolIds: ['memory_delete']
+      }
+    }
+
+    const mcpTools = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    expect(mcpTools).not.toContain('baishou_memory_delete')
+    expect(mcpTools).toContain('baishou_memory_store')
+  })
+
+  it('executeBaishouMcpTool rejects tools disabled by companion settings', async () => {
+    const execute = vi.fn()
+    const registry = {
+      get: () => ({ name: 'memory_delete', execute }),
+      isToolEnabled: () => false
+    } as unknown as ToolRegistry
+
+    await expect(
+      executeBaishouMcpTool(
+        registry,
+        async () => ({
+          sessionId: MCP_EXTERNAL_SESSION_ID,
+          vaultId: deriveLegacyVaultId('Personal'),
+          vaultName: 'Personal',
+          userConfig: { disabledToolIds: ['memory_delete'] }
+        }),
+        { name: 'baishou_memory_delete' }
+      )
+    ).rejects.toThrow('Tool not available: memory_delete')
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('executeBaishouMcpTool refuses denied memory_delete via agent gate', async () => {
+    const execute = vi.fn()
+    const registry = {
+      get: () => ({
+        name: 'memory_delete',
+        execute,
+        agentGateMetadata: { action: 'memory_delete' }
+      }),
+      isToolEnabled: () => true
+    } as unknown as ToolRegistry
+
+    const result = await executeBaishouMcpTool(
+      registry,
+      async () => ({
+        sessionId: MCP_EXTERNAL_SESSION_ID,
+        vaultId: deriveLegacyVaultId('Personal'),
+        vaultName: 'Personal',
+        userConfig: {},
+        agentGate: {
+          assert: vi.fn().mockRejectedValue(new AgentGateDeniedError('memory_delete')),
+          probeEffect: () => AgentGateEffect.Deny
+        } as unknown as ToolContext['agentGate']
+      }),
+      { name: 'baishou_memory_delete', arguments: { memory_id: 'mem-1' } }
+    )
+
+    expect(execute).not.toHaveBeenCalled()
+    expect(result.isError).toBe(true)
+    expect(result.content[0]?.text).toContain('已被禁用')
+  })
+
+  function workspaceStreamMcpContext(personalMemoryReadEnabled: boolean): ToolContext {
+    const { gate } = createBaishouAgentGate({
+      config: {
+        ...DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
+        hideDeniedTools: true
+      }
+    })
+    return {
+      sessionId: MCP_EXTERNAL_SESSION_ID,
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
+      gateProfile: AgentGateProfileId.Workspace,
+      agentGate: gate,
+      workspace: { folderRoot: '/tmp/project', sessionKind: 'workspace' },
+      userConfig: {
+        ragEnabled: true,
+        hasEmbeddingModel: true,
+        personalMemoryReadEnabled,
+        disabledToolIds: [],
+        baishou_agent_gate_config: { hideDeniedTools: true }
+      }
+    }
+  }
+
+  it('hides personal memory tools from MCP tools/list when the workspace switch is off', () => {
+    const registry = new ToolRegistry()
+    const context = workspaceStreamMcpContext(false)
+    const schemaNames = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    const exposedNames = listBaishouMcpExposedTools(registry, context).map((tool) => tool.name)
+
+    for (const id of WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS) {
+      expect(schemaNames).not.toContain(`baishou_${id}`)
+      expect(exposedNames).not.toContain(`baishou_${id}`)
+    }
+    expect(schemaNames).not.toContain('baishou_diary_write')
+    expect(schemaNames).toContain('baishou_current_time')
+    expect(exposedNames).toContain('baishou_current_time')
+  })
+
+  it('exposes read-only personal memory tools via MCP when the workspace switch is on', () => {
+    const registry = new ToolRegistry()
+    const context = workspaceStreamMcpContext(true)
+    const schemaNames = buildBaishouMcpToolSchemas(registry, context).map((tool) => tool.name)
+    const exposedNames = listBaishouMcpExposedTools(registry, context).map((tool) => tool.name)
+
+    for (const id of WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS) {
+      expect(schemaNames).toContain(`baishou_${id}`)
+      expect(exposedNames).toContain(`baishou_${id}`)
+    }
+    expect(schemaNames).not.toContain('baishou_diary_write')
+    expect(schemaNames).not.toContain('baishou_diary_edit')
+    expect(schemaNames).not.toContain('baishou_memory_store')
+    expect(schemaNames).not.toContain('baishou_graph_upsert')
+    expect(exposedNames).not.toContain('baishou_diary_write')
   })
 })
