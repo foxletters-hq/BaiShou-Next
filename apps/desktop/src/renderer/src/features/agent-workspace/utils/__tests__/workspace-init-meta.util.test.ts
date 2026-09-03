@@ -60,4 +60,18 @@ describe('workspace-init-meta', () => {
     expect(got?.text).toBe('')
     expect(got?.attachments).toEqual(attachments)
   })
+
+  it('keeps file refs in the in-memory stash', () => {
+    const fileRefs = [
+      { relativePath: 'docs/note.md', selection: { startLine: 3, endLine: 8 } }
+    ]
+    stashWorkspaceInitMeta('s2', {
+      text: '看这段',
+      fileRefs
+    })
+    expect(consumeWorkspaceInitMeta('s2')).toEqual({
+      text: '看这段',
+      fileRefs
+    })
+  })
 })

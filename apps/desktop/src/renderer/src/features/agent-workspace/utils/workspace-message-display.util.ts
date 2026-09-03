@@ -1,8 +1,9 @@
-import type { AgentPart, MockChatAttachment } from '@baishou/shared'
+import type { AgentPart, MockChatAttachment, PromptFileRef } from '@baishou/shared'
 import {
   buildSkillSendText,
   composerExtraPlain,
   mapAttachmentsFromParts,
+  normalizeFileCiteRefs,
   normalizePartData
 } from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
@@ -17,12 +18,18 @@ export function hasWorkspaceComposerPayload(params: {
   text: string
   attachments?: unknown[]
   skillRefs?: unknown[]
+  fileRefs?: unknown[]
 }): boolean {
   return Boolean(
     params.text.trim() ||
       normalizeWorkspaceSendAttachments(params.attachments) ||
-      (Array.isArray(params.skillRefs) && params.skillRefs.length > 0)
+      (Array.isArray(params.skillRefs) && params.skillRefs.length > 0) ||
+      (Array.isArray(params.fileRefs) && params.fileRefs.length > 0)
   )
+}
+
+export function isInlineWorkspaceFileAttachment(att: MockChatAttachment): boolean {
+  return Boolean(att.relativePath && att.isText && !att.isImage && !att.isPdf)
 }
 
 export function getWorkspaceUserAttachments(
@@ -30,6 +37,25 @@ export function getWorkspaceUserAttachments(
 ): MockChatAttachment[] {
   if (message.attachments?.length) return message.attachments
   return mapAttachmentsFromParts(message.parts) ?? []
+}
+
+export function getWorkspaceBubbleAttachments(
+  message: WorkspaceChatMessage
+): MockChatAttachment[] {
+  return getWorkspaceUserAttachments(message).filter((att) => !isInlineWorkspaceFileAttachment(att))
+}
+
+export function fileRefsFromWorkspaceAttachments(
+  attachments: MockChatAttachment[]
+): PromptFileRef[] {
+  return normalizeFileCiteRefs(
+    attachments.filter(isInlineWorkspaceFileAttachment).map((att) => ({
+      relativePath: att.relativePath,
+      selection: att.selection,
+      comment: att.comment,
+      origin: att.origin
+    }))
+  )
 }
 
 export function getWorkspaceUserText(message: WorkspaceChatMessage): string {
@@ -59,14 +85,30 @@ export function getWorkspaceUserSkillRefs(
   return undefined
 }
 
+export function getWorkspaceUserFileRefs(message: WorkspaceChatMessage): PromptFileRef[] {
+  if (message.fileRefs?.length) return normalizeFileCiteRefs(message.fileRefs)
+  if (message.parts?.length) {
+    for (const part of message.parts) {
+      if (part.type !== 'text') continue
+      const refs = normalizeFileCiteRefs(part.data?.fileRefs)
+      if (refs.length > 0) return refs
+    }
+  }
+  return fileRefsFromWorkspaceAttachments(getWorkspaceUserAttachments(message))
+}
+
 /** 与 InputBar 一致：skill 正文 + 用户 plain，供 LLM turn 使用 */
 export function buildWorkspaceModelText(
   plainText: string,
-  skillRefs?: Array<{ command: string; content: string }>
+  skillRefs?: Array<{ command: string; content: string }>,
+  fileRefs?: PromptFileRef[]
 ): string {
   const trimmedPlain = plainText.trim()
-  if (!skillRefs?.length) return trimmedPlain
-  return buildSkillSendText(skillRefs, composerExtraPlain(trimmedPlain, skillRefs))
+  if (!skillRefs?.length && !fileRefs?.length) return trimmedPlain
+  return buildSkillSendText(
+    skillRefs ?? [],
+    composerExtraPlain(trimmedPlain, skillRefs ?? [], fileRefs ?? [])
+  )
 }
 
 export function getWorkspaceAssistantText(message: WorkspaceChatMessage): string {
