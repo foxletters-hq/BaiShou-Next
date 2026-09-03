@@ -3,7 +3,9 @@ import { AgentGateEffect } from '../agent-gate.enums'
 import {
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
-  cloneBaishouAgentGateConfig
+  applyWorkspacePolicyPatch,
+  cloneBaishouAgentGateConfig,
+  resolveWorkspacePolicyFields
 } from '../agent-gate.defaults'
 import {
   applyCapabilityStateToConfig,
@@ -64,5 +66,29 @@ describe('workspace vs companion gate defaults', () => {
     expect(workspace.permissionRules ?? []).not.toEqual(
       expect.arrayContaining([{ action: 'diary_write', effect: AgentGateEffect.Allow }])
     )
+  })
+
+  it('keeps personalMemoryReadEnabled when only toolManagement is patched', () => {
+    const current = resolveWorkspacePolicyFields({
+      personalMemoryReadEnabled: false,
+      toolManagement: {
+        disabledToolIds: ['workspace_run'],
+        customConfigs: {}
+      }
+    })
+    const afterTools = applyWorkspacePolicyPatch(current, {
+      toolManagement: {
+        disabledToolIds: [],
+        customConfigs: {}
+      }
+    })
+    expect(afterTools.personalMemoryReadEnabled).toBe(false)
+    expect(afterTools.toolManagement.disabledToolIds).toEqual([])
+
+    const afterFlag = applyWorkspacePolicyPatch(afterTools, {
+      personalMemoryReadEnabled: true
+    })
+    expect(afterFlag.personalMemoryReadEnabled).toBe(true)
+    expect(afterFlag.toolManagement.disabledToolIds).toEqual([])
   })
 })

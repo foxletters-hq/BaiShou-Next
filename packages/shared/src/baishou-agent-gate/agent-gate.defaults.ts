@@ -1,6 +1,7 @@
 import { AgentGateEffect, AgentGateProfileId } from './agent-gate.enums'
 import type {
   AgentGatePermissionRule,
+  AgentWorkspacePolicy,
   BaishouAgentGateConfig,
   WorkspaceGatePolicyV2,
   WorkspaceToolManagementConfig
@@ -41,6 +42,10 @@ export const AGENT_GATE_PROFILE_DEFAULT_RULES: Record<
   [AgentGateProfileId.Companion]: [{ action: 'workspace_*', effect: AgentGateEffect.Deny }],
   [AgentGateProfileId.Workspace]: [
     { action: 'diary_*', effect: AgentGateEffect.Deny },
+    // 后写覆盖先写：已知只读日记允许，其余日记操作仍拒绝
+    { action: 'diary_list', effect: AgentGateEffect.Allow },
+    { action: 'diary_search', effect: AgentGateEffect.Allow },
+    { action: 'diary_read', effect: AgentGateEffect.Allow },
     { action: 'memory_*', effect: AgentGateEffect.Deny },
     { action: 'graph_upsert', effect: AgentGateEffect.Deny },
     // G3.2: in-workspace read-only tools default Allow (external_directory still Ask later)
@@ -74,6 +79,23 @@ export const DEFAULT_WORKSPACE_AGENT_GATE_CONFIG: BaishouAgentGateConfig = {
 export const DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG: WorkspaceToolManagementConfig = {
   disabledToolIds: [],
   customConfigs: {}
+}
+
+/** 工作台按需只读个人记忆；缺字段视为开启 */
+export const DEFAULT_WORKSPACE_PERSONAL_MEMORY_READ_ENABLED = true
+
+/** 工作台个人记忆总开关控制的只读工具（不含写入/删除，也不含关系图读取） */
+export const WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS = [
+  'diary_list',
+  'diary_search',
+  'diary_read',
+  'vector_search',
+  'summary_read',
+  'message_search'
+] as const
+
+export function normalizeWorkspacePersonalMemoryReadEnabled(value: unknown): boolean {
+  return value !== false
 }
 
 export function cloneBaishouAgentGateConfig(
@@ -159,5 +181,43 @@ export function cloneWorkspaceToolManagementConfig(
     customConfigs: Object.fromEntries(
       Object.entries(source?.customConfigs ?? {}).map(([toolId, params]) => [toolId, { ...params }])
     )
+  }
+}
+
+export function resolveWorkspacePolicyFields(
+  raw?: Pick<Partial<AgentWorkspacePolicy>, 'toolManagement' | 'personalMemoryReadEnabled'> | null
+): {
+  toolManagement: WorkspaceToolManagementConfig
+  personalMemoryReadEnabled: boolean
+} {
+  return {
+    toolManagement: cloneWorkspaceToolManagementConfig(raw?.toolManagement),
+    personalMemoryReadEnabled: normalizeWorkspacePersonalMemoryReadEnabled(
+      raw?.personalMemoryReadEnabled
+    )
+  }
+}
+
+export function applyWorkspacePolicyPatch(
+  current: {
+    toolManagement: WorkspaceToolManagementConfig
+    personalMemoryReadEnabled: boolean
+  },
+  patch: {
+    toolManagement?: WorkspaceToolManagementConfig
+    personalMemoryReadEnabled?: boolean
+  }
+): {
+  toolManagement: WorkspaceToolManagementConfig
+  personalMemoryReadEnabled: boolean
+} {
+  return {
+    toolManagement: patch.toolManagement
+      ? cloneWorkspaceToolManagementConfig(patch.toolManagement)
+      : cloneWorkspaceToolManagementConfig(current.toolManagement),
+    personalMemoryReadEnabled:
+      typeof patch.personalMemoryReadEnabled === 'boolean'
+        ? patch.personalMemoryReadEnabled
+        : current.personalMemoryReadEnabled
   }
 }

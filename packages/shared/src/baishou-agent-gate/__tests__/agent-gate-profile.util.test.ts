@@ -16,11 +16,20 @@ describe('agent-gate-profile.util', () => {
     )
   })
 
-  it('workspace rules deny diary/memory/graph', () => {
+  it('workspace rules deny diary writes while allowing known diary reads', () => {
     const rules = getAgentGateProfileRules(AgentGateProfileId.Workspace)
     const actions = rules.map((r) => r.action)
     expect(actions).toContain('diary_*')
+    expect(actions).toContain('diary_read')
+    expect(actions).toContain('diary_list')
+    expect(actions).toContain('diary_search')
     expect(actions).toContain('memory_*')
     expect(actions).toContain('graph_upsert')
+    expect(
+      rules.some((r) => r.action === 'diary_read' && r.effect === AgentGateEffect.Allow)
+    ).toBe(true)
+    expect(
+      rules.some((r) => r.action === 'diary_*' && r.effect === AgentGateEffect.Deny)
+    ).toBe(true)
   })
 })

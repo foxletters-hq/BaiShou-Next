@@ -140,6 +140,8 @@ export interface AgentWorkspacePolicy {
   /** @deprecated 工作台 gate 已改为全局配置；读路径忽略此字段 */
   gateConfig: BaishouAgentGateConfig
   toolManagement: WorkspaceToolManagementConfig
+  /** 工作台按需只读个人记忆；缺省视为开启 */
+  personalMemoryReadEnabled: boolean
   updatedAt: string
 }
 
