@@ -10,9 +10,11 @@ import {
 } from '@baishou/ai'
 import {
   logger,
+  mcpClientProbeReasonFromError,
   normalizeMcpStreamableUrl,
   toMcpClientListedTools,
-  type McpClientListedTool
+  type McpClientListedTool,
+  type McpClientProbeReason
 } from '@baishou/shared'
 import {
   getDesktopMcpClientConfig,
@@ -23,6 +25,8 @@ import {
   closeMcpHttpClient,
   connectMcpHttpClient,
   listMcpHttpTools,
+  MCP_HTTP_PROBE_TIMEOUT_MS,
+  withMcpHttpTimeout,
   type McpHttpListedTool
 } from './mcp-http-client'
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -62,43 +66,43 @@ class DesktopMcpClientRuntime {
 
   async listServerStatuses(): Promise<McpClientServerStatus[]> {
     await this.ensureLoaded()
-    const statuses: McpClientServerStatus[] = []
-    for (const entry of this.config.servers) {
-      if (!entry.enabled) {
-        statuses.push({ id: entry.id, connected: false, tools: [] })
-        continue
-      }
-      const session = this.sessions.get(entry.id)
-      const sessionFresh =
-        session &&
-        session.entry.url === entry.url &&
-        (session.entry.authToken ?? '') === (entry.authToken ?? '')
-      if (session && sessionFresh) {
-        statuses.push({
+    return Promise.all(
+      this.config.servers.map(async (entry): Promise<McpClientServerStatus> => {
+        if (!entry.enabled) {
+          return { id: entry.id, connected: false, tools: [] }
+        }
+        const session = this.sessions.get(entry.id)
+        const sessionFresh =
+          session &&
+          session.entry.url === entry.url &&
+          (session.entry.authToken ?? '') === (entry.authToken ?? '')
+        if (session && sessionFresh) {
+          return {
+            id: entry.id,
+            connected: true,
+            tools: session.tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description
+            }))
+          }
+        }
+        const probed = await this.probeTools(entry.url, entry.authToken)
+        return {
           id: entry.id,
-          connected: true,
-          tools: session.tools.map((tool) => ({
-            name: tool.name,
-            description: tool.description
-          }))
-        })
-        continue
-      }
-      const probed = await this.probeTools(entry.url, entry.authToken)
-      statuses.push({
-        id: entry.id,
-        connected: probed.ok,
-        tools: probed.tools
+          connected: probed.ok,
+          tools: probed.tools,
+          error: probed.error,
+          reason: probed.reason
+        }
       })
-    }
-    return statuses
+    )
   }
 
   async testConnection(url: string, authToken?: string): Promise<{
     ok: boolean
     tools?: McpClientListedTool[]
     error?: string
-    reason?: 'empty' | 'invalid' | 'sse' | 'connect'
+    reason?: McpClientProbeReason
   }> {
     return this.probeTools(url, authToken)
   }
@@ -110,7 +114,7 @@ class DesktopMcpClientRuntime {
     ok: boolean
     tools: McpClientListedTool[]
     error?: string
-    reason?: 'empty' | 'invalid' | 'sse' | 'connect'
+    reason?: McpClientProbeReason
   }> {
     const normalized = normalizeMcpStreamableUrl(url)
     if (!normalized.ok) {
@@ -118,16 +122,23 @@ class DesktopMcpClientRuntime {
     }
     let session: Awaited<ReturnType<typeof connectMcpHttpClient>> | null = null
     try {
-      session = await connectMcpHttpClient({
-        url: normalized.url,
-        authToken
-      })
-      const tools = await listMcpHttpTools(session.client)
+      const tools = await withMcpHttpTimeout(
+        (async () => {
+          const connected = await connectMcpHttpClient({
+            url: normalized.url,
+            authToken
+          })
+          session = connected
+          return listMcpHttpTools(connected.client)
+        })(),
+        MCP_HTTP_PROBE_TIMEOUT_MS,
+        '获取工具超时'
+      )
       return { ok: true, tools: toMcpClientListedTools(tools) }
     } catch (error) {
       return {
         ok: false,
-        reason: 'connect',
+        reason: mcpClientProbeReasonFromError(error),
         tools: [],
         error: error instanceof Error ? error.message : String(error)
       }

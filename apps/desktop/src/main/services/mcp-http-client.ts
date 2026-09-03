@@ -3,7 +3,9 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { logger } from '@baishou/shared'
 import { APP_VERSION } from '../../app-version'
 
-const CONNECT_TIMEOUT_MS = 12_000
+export const MCP_HTTP_CONNECT_TIMEOUT_MS = 12_000
+export const MCP_HTTP_LIST_TOOLS_TIMEOUT_MS = 12_000
+export const MCP_HTTP_PROBE_TIMEOUT_MS = 15_000
 
 export type McpHttpListedTool = {
   name: string
@@ -11,13 +13,17 @@ export type McpHttpListedTool = {
   inputSchema?: unknown
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+export async function withMcpHttpTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message = '连接超时'
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('连接超时')), ms)
+        timer = setTimeout(() => reject(new Error(message)), ms)
       })
     ])
   } finally {
@@ -43,7 +49,7 @@ export async function connectMcpHttpClient(params: {
   })
   const client = new Client({ name: 'baishou', version: APP_VERSION })
   try {
-    await withTimeout(client.connect(transport), CONNECT_TIMEOUT_MS)
+    await withMcpHttpTimeout(client.connect(transport), MCP_HTTP_CONNECT_TIMEOUT_MS, '连接超时')
   } catch (error) {
     await closeMcpHttpClient({ client, transport })
     throw error
@@ -51,8 +57,11 @@ export async function connectMcpHttpClient(params: {
   return { client, transport }
 }
 
-export async function listMcpHttpTools(client: Client): Promise<McpHttpListedTool[]> {
-  const listed = await client.listTools()
+export async function listMcpHttpTools(
+  client: Client,
+  timeoutMs = MCP_HTTP_LIST_TOOLS_TIMEOUT_MS
+): Promise<McpHttpListedTool[]> {
+  const listed = await withMcpHttpTimeout(client.listTools(), timeoutMs, '获取工具超时')
   return (listed.tools ?? []).map((tool) => ({
     name: tool.name,
     description: tool.description,
