@@ -77,4 +77,20 @@ describe('decorateWorkspacePromptAttachment', () => {
     expect(att.isPdf).toBe(true)
     expect(att.data).toBeUndefined()
   })
+
+  it('marks source files as text and keeps selection metadata', () => {
+    const att = decorateWorkspacePromptAttachment({
+      absolutePath: path.join('D:', 'Projects', 'invoice', 'src', 'app.ts'),
+      fileName: 'app.ts',
+      folderRoot: path.join('D:', 'Projects', 'invoice'),
+      selection: { startLine: 12, endLine: 20 },
+      comment: '命名',
+      origin: 'mention'
+    })
+    expect(att.isText).toBe(true)
+    expect(att.relativePath).toBe('src/app.ts')
+    expect(att.selection).toEqual({ startLine: 12, endLine: 20 })
+    expect(att.comment).toBe('命名')
+    expect(att.origin).toBe('mention')
+  })
 })
