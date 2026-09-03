@@ -24,6 +24,27 @@ describe('resolveSessionAssistantContext', () => {
     expect(result.mergedUserConfig.disabledToolIds).toContain('vector_search')
   })
 
+  it('does not apply work-assistant disabled tools in workspace sessions', async () => {
+    const result = await resolveSessionAssistantContext({
+      sessionId: 's1',
+      sessionKind: 'workspace',
+      sessionRepo: {
+        getSessionById: async () => ({ assistantId: 'a1' })
+      },
+      assistantRepo: {
+        findById: async () => ({
+          assistantKind: 'work',
+          systemPrompt: 'Work persona'
+        })
+      },
+      userConfig: { disabledToolIds: ['workspace_run'] }
+    })
+
+    expect(result.assistantKind).toBe('work')
+    expect(result.effectiveSystemPrompt).toBe('Work persona')
+    expect(result.mergedUserConfig.disabledToolIds).toEqual(['workspace_run'])
+  })
+
   it('defaults to companion when session has no assistant', async () => {
     const result = await resolveSessionAssistantContext({
       sessionId: 's1',
