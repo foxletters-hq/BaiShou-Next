@@ -63,6 +63,10 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.embeddingStore.deleteEmbeddingsBySource(...args)
   }
 
+  getBySource(...args: Parameters<HybridSearchEmbeddingStore['getBySource']>) {
+    return this.embeddingStore.getBySource(...args)
+  }
+
   listSourceIdsByType(...args: Parameters<HybridSearchEmbeddingStore['listSourceIdsByType']>) {
     return this.embeddingStore.listSourceIdsByType(...args)
   }

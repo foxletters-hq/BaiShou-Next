@@ -262,4 +262,45 @@ describe('SqliteHybridSearchRepository (LibSQL)', () => {
       repo.supportsNativeVectorSearch = originalSupport
     })
   })
+
+  describe('getBySource', () => {
+    it('returns the row in the requested vault and fail-closes without vaultId', async () => {
+      const createdAt = Date.parse('2026-08-01T12:00:00Z')
+      await repo.insertEmbedding({
+        id: 'emb-1',
+        sourceType: 'memory',
+        sourceId: 'mem-1',
+        groupId: 'memory',
+        vaultId: 'vault-a',
+        chunkIndex: 0,
+        chunkText: 'dark theme',
+        embedding: [1, 0, 0],
+        modelId: 'm',
+        sourceCreatedAt: createdAt
+      })
+      await repo.insertEmbedding({
+        id: 'emb-2',
+        sourceType: 'memory',
+        sourceId: 'mem-1',
+        groupId: 'memory',
+        vaultId: 'vault-b',
+        chunkIndex: 0,
+        chunkText: 'other vault',
+        embedding: [0, 1, 0],
+        modelId: 'm',
+        sourceCreatedAt: createdAt
+      })
+
+      const hit = await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-a' })
+      expect(hit).toEqual(
+        expect.objectContaining({
+          sourceType: 'memory',
+          sourceId: 'mem-1',
+          chunkText: 'dark theme'
+        })
+      )
+      expect(await repo.getBySource('memory', 'mem-1', { vaultId: 'vault-missing' })).toBeNull()
+      expect(await repo.getBySource('memory', 'mem-1')).toBeNull()
+    })
+  })
 })
