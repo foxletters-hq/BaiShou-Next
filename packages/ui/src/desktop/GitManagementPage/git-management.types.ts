@@ -28,9 +28,9 @@ export interface GitManagementPageProps {
   isInitialized: boolean
   // 远程
   onTestRemote: () => Promise<boolean>
-  /** 仅提交已暂存文件 */
+  /** 仅提交已暂存文件，不暂存工作区剩余变更 */
   onCommit: (message: string) => Promise<GitCommit | null>
-  /** 无暂存时自动 stage 全部后提交；有暂存时 UI 优先走 onCommit */
+  /** 先暂存工作区全部变更再提交 */
   onCommitAll: (message: string) => Promise<GitCommit | null>
   // 提示
   onToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
