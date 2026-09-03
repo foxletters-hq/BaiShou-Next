@@ -12,6 +12,14 @@ describe('file-change.part-builder', () => {
     expect(stats.additions).toBe(1)
   })
 
+  it('normalizes CRLF so Windows files produce the same hunks as LF', () => {
+    const before = 'keep-a\r\nold\r\nkeep-b\r\n'
+    const after = 'keep-a\r\nnew\r\nkeep-b\r\n'
+    expect(buildUnifiedDiff('README.md', before, after)).toBe(
+      buildUnifiedDiff('README.md', 'keep-a\nold\nkeep-b\n', 'keep-a\nnew\nkeep-b\n')
+    )
+  })
+
   it('builds unified diff text with context hunks', () => {
     const before = 'keep-a\nold\nkeep-b\n'
     const after = 'keep-a\nnew\nkeep-b\n'

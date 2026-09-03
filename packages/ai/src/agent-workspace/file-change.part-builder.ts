@@ -104,7 +104,8 @@ interface DiffHunk {
 
 function splitLines(content: string): string[] {
   if (content.length === 0) return []
-  const lines = content.split('\n')
+  const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = normalized.split('\n')
   if (lines.length > 0 && lines[lines.length - 1] === '') {
     lines.pop()
   }
