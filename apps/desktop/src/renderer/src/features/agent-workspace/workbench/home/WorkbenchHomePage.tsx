@@ -48,6 +48,7 @@ import {
   hasWorkspaceComposerPayload,
   normalizeWorkspaceSendAttachments
 } from '../../utils/workspace-message-display.util'
+import { mergeWorkspaceFileRefsIntoAttachments } from '../../utils/workspace-file-ref-send.util'
 import styles from './WorkbenchHomePage.module.css'
 
 interface WorkspaceOutletContext {
@@ -396,13 +397,24 @@ export const WorkbenchHomePage: React.FC = () => {
       meta?: {
         displayText?: string
         skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: Array<{
+          relativePath: string
+          selection?: { startLine: number; endLine: number }
+          comment?: string
+          origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+        }>
       }
     ) => {
       const trimmed = text.trim()
-      const attachments = normalizeWorkspaceSendAttachments(incomingAttachments)
+      const incoming = normalizeWorkspaceSendAttachments(incomingAttachments)
       if (
         sending ||
-        !hasWorkspaceComposerPayload({ text: trimmed, attachments, skillRefs: meta?.skillRefs })
+        !hasWorkspaceComposerPayload({
+          text: trimmed,
+          attachments: incoming,
+          skillRefs: meta?.skillRefs,
+          fileRefs: meta?.fileRefs
+        })
       ) {
         return false
       }
@@ -440,7 +452,14 @@ export const WorkbenchHomePage: React.FC = () => {
           text: trimmed,
           displayText: meta?.displayText?.trim() || undefined,
           skillRefs: meta?.skillRefs,
-          attachments
+          fileRefs: meta?.fileRefs,
+          attachments: normalizeWorkspaceSendAttachments(
+            mergeWorkspaceFileRefsIntoAttachments({
+              attachments: incoming,
+              fileRefs: meta?.fileRefs,
+              folderRoot: workspace.folderRoot
+            })
+          )
         })
         navigate(`/agent-workspace/${sessionId}?init=${encodeURIComponent(trimmed)}`)
         return true
@@ -615,7 +634,7 @@ export const WorkbenchHomePage: React.FC = () => {
                 className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInMeta}`}
                 onClick={openModelSwitcher}
                 aria-label={t('models.switch_model', '切换模型')}
-                title={t('models.switch_model', '切换模型')}
+                title={displayModelName}
               >
                 <span className={chromeStyles.modelProviderIcon} aria-hidden>
                   {providerIconUrl ? (
