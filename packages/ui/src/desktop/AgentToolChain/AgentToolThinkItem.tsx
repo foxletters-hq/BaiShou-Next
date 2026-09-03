@@ -26,7 +26,13 @@ import {
   getToolRowSubtitle,
   resolveCompanionAskPresentation
 } from '../../shared/tool-result.util'
+import { AgentGateReply } from '@baishou/shared'
 import { CompanionAskResultCard } from './CompanionAskResultCard'
+import { useCompanionAskInteraction } from './companion-ask-interaction'
+import {
+  matchCompanionAskPendingRequest,
+  presentationFromCompanionAskRequest
+} from './companion-ask-interaction.util'
 import { ToolResultContent } from './ToolResultContent'
 import styles from './AgentToolChainSection.module.css'
 
@@ -63,13 +69,23 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
 }: AgentToolThinkItemProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const askInteraction = useCompanionAskInteraction()
 
   const isLoading = model.status === 'loading'
   const invocation = model.invocation as MockToolInvocation | undefined
   const askPresentation = useMemo(() => {
-    if (!invocation || isLoading || model.status === 'error') return null
-    return resolveCompanionAskPresentation(invocation)
-  }, [invocation, isLoading, model.status])
+    if (model.status === 'error') return null
+    if (invocation) return resolveCompanionAskPresentation(invocation)
+    if (model.toolName === 'companion_ask' && askInteraction?.pending) {
+      return presentationFromCompanionAskRequest(askInteraction.pending)
+    }
+    return null
+  }, [askInteraction?.pending, invocation, model.status, model.toolName])
+  const pendingAsk = matchCompanionAskPendingRequest(
+    askInteraction?.pending,
+    askPresentation,
+    model.toolName
+  )
   const canExpand = Boolean(model.hasContent && invocation && !isLoading && !askPresentation)
 
   useEffect(() => {
@@ -98,7 +114,32 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   if (askPresentation) {
     return (
       <div className={styles.item}>
-        <CompanionAskResultCard data={askPresentation} />
+        <CompanionAskResultCard
+          data={askPresentation}
+          pending={Boolean(pendingAsk)}
+          allowCustomInput={Boolean(pendingAsk?.allowCustomInput)}
+          isReplying={Boolean(askInteraction?.isReplying)}
+          onSelectOption={
+            pendingAsk
+              ? (optionId) =>
+                  void askInteraction?.onReply({
+                    requestId: pendingAsk.id,
+                    reply: AgentGateReply.Once,
+                    selectedOptionIds: [optionId]
+                  })
+              : undefined
+          }
+          onSubmitCustom={
+            pendingAsk
+              ? (text) =>
+                  void askInteraction?.onReply({
+                    requestId: pendingAsk.id,
+                    reply: AgentGateReply.Reject,
+                    message: text
+                  })
+              : undefined
+          }
+        />
       </div>
     )
   }
