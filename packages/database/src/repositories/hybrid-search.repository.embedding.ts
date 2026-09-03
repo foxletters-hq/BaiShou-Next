@@ -102,6 +102,49 @@ export class HybridSearchEmbeddingStore {
     })
   }
 
+  /** 按来源类型 + 唯一键读取一条嵌入。未传 vaultId 时 fail-closed。 */
+  async getBySource(
+    sourceType: string,
+    sourceId: string,
+    options?: { vaultId?: string }
+  ): Promise<{
+    sourceType: string
+    sourceId: string
+    chunkText: string
+    createdAt: number | null
+  } | null> {
+    const vaultId = options?.vaultId?.trim()
+    if (!vaultId) return null
+    const trimmedType = sourceType.trim()
+    const trimmedId = sourceId.trim()
+    if (!trimmedType || !trimmedId) return null
+
+    const result = await this.db.execute({
+      sql: `
+        SELECT source_type, source_id, chunk_text, source_created_at
+        FROM ${HYBRID_SEARCH_TABLE}
+        WHERE source_type = ? AND source_id = ? AND vault_id = ?
+        ORDER BY chunk_index ASC
+        LIMIT 1
+      `,
+      args: [trimmedType, trimmedId, vaultId]
+    })
+    const row = result.rows[0] as Record<string, unknown> | undefined
+    if (!row) return null
+
+    const srcAt = row.source_created_at
+    let createdAt: number | null = null
+    if (typeof srcAt === 'number') {
+      createdAt = srcAt > 1e12 ? srcAt : srcAt * 1000
+    }
+    return {
+      sourceType: String(row.source_type ?? trimmedType),
+      sourceId: String(row.source_id ?? trimmedId),
+      chunkText: String(row.chunk_text ?? ''),
+      createdAt
+    }
+  }
+
   /** Distinct source_id values for a source_type (optionally scoped by group_id / vault_id). */
   async listSourceIdsByType(
     sourceType: string,
