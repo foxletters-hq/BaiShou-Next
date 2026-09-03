@@ -46,4 +46,11 @@ describe('buildToolUsageGuidelines', () => {
     expect(guidelines).toContain('companion_ask')
     expect(guidelines).toContain('禁止')
   })
+
+  it('requires unique memory id when memory_delete is available', () => {
+    const guidelines = buildToolUsageGuidelines(['memory_delete', 'vector_search'])
+    expect(guidelines).toContain('删除记忆必须使用唯一 id')
+    expect(guidelines).toContain('memory_id')
+    expect(guidelines).toContain('禁止用描述')
+  })
 })
