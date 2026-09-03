@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
@@ -10,7 +10,30 @@ import {
 } from '../shared/diary-codemirror'
 import { EditorContextMenuHost } from '../desktop/ContextMenu/EditorContextMenuHost'
 import { languageExtensionForPath } from './file-change-language'
+import {
+  workbenchSelectionAffordance,
+  type WorkbenchSelectionAffordanceState
+} from './workbench-selection-affordance'
 import styles from './FileChangeMergeDiff.module.css'
+
+export type FileChangeMergeSelectionHandle = {
+  getSelectionLines: () => { startLine: number; endLine: number } | null
+}
+
+function selectionFromView(
+  view: EditorView | null | undefined
+): { startLine: number; endLine: number } | null {
+  if (!view) return null
+  if (view.state.selection.ranges.length !== 1) return null
+  const { from, to } = view.state.selection.main
+  if (from === to) return null
+  const startLine = view.state.doc.lineAt(from).number
+  const endLine = view.state.doc.lineAt(Math.max(from, to - 1)).number
+  return {
+    startLine: Math.min(startLine, endLine),
+    endLine: Math.max(startLine, endLine)
+  }
+}
 
 export type FileChangeMergeViewMode = 'inline' | 'side-by-side'
 
@@ -23,6 +46,7 @@ export interface FileChangeMergeDiffProps {
   modifiedEditable?: boolean
   onModifiedChange?: (content: string) => void
   className?: string
+  onSelectionAffordanceChange?: (state: WorkbenchSelectionAffordanceState | null) => void
 }
 
 const mergeTheme = EditorView.theme({
@@ -98,7 +122,10 @@ function modifiedSideExtensions(
   editable: boolean,
   onModifiedChangeRef: React.MutableRefObject<((content: string) => void) | undefined>,
   suppressEchoRef: React.MutableRefObject<boolean>,
-  onOpenMenu: OpenMenu
+  onOpenMenu: OpenMenu,
+  onSelectionAffordanceChangeRef: React.MutableRefObject<
+    ((state: WorkbenchSelectionAffordanceState | null) => void) | undefined
+  >
 ): Extension[] {
   const extensions: Extension[] = [
     ...baseExtensions(path),
@@ -106,6 +133,9 @@ function modifiedSideExtensions(
       readOnly: !editable,
       docUri: path,
       onOpen: onOpenMenu
+    }),
+    workbenchSelectionAffordance((state) => {
+      onSelectionAffordanceChangeRef.current?.(state)
     })
   ]
   if (!editable) {
@@ -121,19 +151,27 @@ function modifiedSideExtensions(
   return extensions
 }
 
-export const FileChangeMergeDiff: React.FC<FileChangeMergeDiffProps> = ({
-  path,
-  original,
-  modified,
-  viewMode = 'inline',
-  modifiedEditable = true,
-  onModifiedChange,
-  className
-}) => {
+export const FileChangeMergeDiff = forwardRef<
+  FileChangeMergeSelectionHandle,
+  FileChangeMergeDiffProps
+>(function FileChangeMergeDiff(
+  {
+    path,
+    original,
+    modified,
+    viewMode = 'inline',
+    modifiedEditable = true,
+    onModifiedChange,
+    className,
+    onSelectionAffordanceChange
+  },
+  ref
+) {
   const hostRef = useRef<HTMLDivElement>(null)
   const mergeViewRef = useRef<MergeView | null>(null)
   const unifiedViewRef = useRef<EditorView | null>(null)
   const onModifiedChangeRef = useRef(onModifiedChange)
+  const onSelectionAffordanceChangeRef = useRef(onSelectionAffordanceChange)
   const suppressEchoRef = useRef(false)
   const [textContextMenu, setTextContextMenu] = useState<EditorContextMenuOpenPayload | null>(null)
   const onOpenMenuRef = useRef<OpenMenu>((payload) => setTextContextMenu(payload))
@@ -141,6 +179,18 @@ export const FileChangeMergeDiff: React.FC<FileChangeMergeDiffProps> = ({
   useEffect(() => {
     onModifiedChangeRef.current = onModifiedChange
   }, [onModifiedChange])
+
+  useEffect(() => {
+    onSelectionAffordanceChangeRef.current = onSelectionAffordanceChange
+  }, [onSelectionAffordanceChange])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getSelectionLines: () => selectionFromView(mergeViewRef.current?.b ?? unifiedViewRef.current)
+    }),
+    []
+  )
 
   useEffect(() => {
     onOpenMenuRef.current = (payload) => setTextContextMenu(payload)
@@ -171,7 +221,8 @@ export const FileChangeMergeDiff: React.FC<FileChangeMergeDiffProps> = ({
             modifiedEditable,
             onModifiedChangeRef,
             suppressEchoRef,
-            onOpenMenu
+            onOpenMenu,
+            onSelectionAffordanceChangeRef
           )
         },
         parent: host,
@@ -197,7 +248,8 @@ export const FileChangeMergeDiff: React.FC<FileChangeMergeDiffProps> = ({
             modifiedEditable,
             onModifiedChangeRef,
             suppressEchoRef,
-            onOpenMenu
+            onOpenMenu,
+            onSelectionAffordanceChangeRef
           ),
           unifiedMergeView({
             original,
@@ -256,4 +308,4 @@ export const FileChangeMergeDiff: React.FC<FileChangeMergeDiffProps> = ({
       />
     </>
   )
-}
+})
