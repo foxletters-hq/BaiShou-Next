@@ -89,69 +89,101 @@ function stripLegacyTopTagLine(body: string): string {
   return lines.slice(bodyStart).join('\n')
 }
 
+function nextMarkdownHeadingIndex(lines: string[], after: number): number {
+  for (let i = after + 1; i < lines.length; i++) {
+    if (isMarkdownHeadingLine(lines[i] ?? '')) return i
+  }
+  return lines.length
+}
+
+function insertTagLineAfterHeading(lines: string[], headingIndex: number, tagLine: string): string {
+  const blockEnd = nextMarkdownHeadingIndex(lines, headingIndex)
+  let insertAt = headingIndex + 1
+  while (insertAt < blockEnd && lines[insertAt]?.trim() === '') {
+    insertAt += 1
+  }
+  const firstContent = lines[insertAt] ?? ''
+  if (insertAt < blockEnd && isLegacyDedicatedTagLine(firstContent)) {
+    lines[insertAt] = `${firstContent.trimEnd()} ${tagLine}`
+    return lines.join('\n')
+  }
+  const before = lines.slice(0, insertAt).join('\n')
+  const after = lines.slice(insertAt).join('\n')
+  if (!after.trim()) return `${before}\n${tagLine}\n\n`
+  return `${before}\n${tagLine}\n\n${after}`
+}
+
 function insertTagLineAfterLeadingBlock(body: string, tagLine: string): string {
   const lines = body.split('\n')
   if (lines.length === 0) return `${tagLine}\n\n`
 
   const first = lines[0]?.trim() ?? ''
-  if (isDiaryTimestampLine(first) || isMarkdownHeadingLine(first)) {
-    let insertAt = 1
-    while (insertAt < lines.length && lines[insertAt]?.trim() === '') {
-      insertAt += 1
-    }
-    const before = lines.slice(0, insertAt).join('\n')
-    const after = lines.slice(insertAt).join('\n')
-    if (!after.trim()) return `${before}\n${tagLine}\n\n`
-    return `${before}\n${tagLine}\n\n${after}`
+  if (isMarkdownHeadingLine(first)) {
+    return insertTagLineAfterHeading(lines, 0, tagLine)
   }
 
   if (!body.trim()) return `${tagLine}\n\n`
   return `${tagLine}\n\n${body}`
 }
 
-function appendMissingInlineTags(body: string, missing: string[]): string {
+/**
+ * 更新落盘时决定交给 persistDiaryTagsInBody 的标签。
+ * 调用方改正文但未显式传入 tags 时，不沿用旧解析结果，避免把已删除的 #标签补回去。
+ */
+export function resolveDiaryTagsForPersist(args: {
+  contentProvided: boolean
+  tagsProvided: boolean
+  incomingTags: unknown
+  existingTags: unknown
+}): unknown {
+  if (args.tagsProvided) return args.incomingTags
+  if (args.contentProvided) return undefined
+  return args.existingTags
+}
+
+/**
+ * 按本次写入意图落盘正文，并把 tags 字段同步成当前正文里的 #标签。
+ */
+export function applyDiaryPersistTags(args: {
+  content: string
+  contentProvided: boolean
+  tagsProvided: boolean
+  incomingTags: unknown
+  existingTags: unknown
+}): { content: string; tags: string | undefined } {
+  const persistTags = resolveDiaryTagsForPersist(args)
+  const content = persistDiaryTagsInBody(args.content, persistTags)
+  const tags = extractDiaryTagsFromContent(content)
+  return { content, tags: tags.length > 0 ? tags.join(',') : undefined }
+}
+
+/**
+ * 将仍停在元数据里、正文尚未出现的标签写到第一个 Markdown 标题下面（否则写到文首）。
+ * 用于落盘、导入、演示数据；正文本身始终原样保留。
+ */
+export function persistDiaryTagsInBody(body: string, tags: unknown): string {
+  const normalizedTags = normalizeDiaryTags(tags)
+  if (!normalizedTags.length) return body
+
+  const existingSet = new Set(extractDiaryTagsFromContent(body))
+  const missing = normalizedTags.filter((tag) => !existingSet.has(tag))
   if (!missing.length) return body
+
   const suffix = missing.map((t) => `#${t}`).join(' ')
   const lines = body.split('\n')
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? ''
-    if (shouldSkipDiaryTagExtractionLine(line)) continue
-    if (extractTagsFromTagLine(line).length > 0) {
-      lines[i] = `${line.trimEnd()} ${suffix}`
-      return lines.join('\n')
-    }
+  const headingIndex = lines.findIndex((line) => isMarkdownHeadingLine(line ?? ''))
+  if (headingIndex >= 0) {
+    return insertTagLineAfterHeading(lines, headingIndex, suffix)
   }
   return insertTagLineAfterLeadingBlock(body, suffix)
 }
 
 /**
- * 确保元数据 tags 以正文内联 `#标签` 形式存在（缺什么补什么）。
- * Agent/MCP 写日记时应调用此函数，避免标签只落在 frontmatter 而无法在编辑器中改。
- */
-export function ensureDiaryInlineTags(body: string, tags: unknown): string {
-  const cleanBody = stripLegacyTopTagLine(body)
-  const normalizedTags = normalizeDiaryTags(tags)
-  if (!normalizedTags.length) return cleanBody
-
-  const inlineTagSet = new Set(extractDiaryTagsFromContent(cleanBody))
-  const missing = normalizedTags.filter((tag) => !inlineTagSet.has(tag))
-  if (!missing.length) return cleanBody
-
-  return appendMissingInlineTags(cleanBody, missing)
-}
-
-/**
  * 将正文合成为编辑器展示内容。
- * 正文已有内联 #标签 时不再从元数据 tags 重复注入；仅对无内联标签的旧数据做一次补全。
+ * 元数据里多出来的标签补到第一个标题下面；正文已有的不重复写入。
  */
 export function composeDiaryEditorContent(body: string, tags: unknown): string {
-  const cleanBody = stripLegacyTopTagLine(body)
-  const inlineTags = extractDiaryTagsFromContent(cleanBody)
-  if (inlineTags.length > 0) {
-    return cleanBody
-  }
-
-  return ensureDiaryInlineTags(cleanBody, tags)
+  return persistDiaryTagsInBody(body, tags)
 }
 
 /** 保存前剥离旧版首行纯标签行（内联标签保留在正文中） */

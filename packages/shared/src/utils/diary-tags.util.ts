@@ -28,12 +28,6 @@ export function normalizeDiaryTags(tags: unknown): string[] {
   return []
 }
 
-/** RAG 嵌入 chunk 前缀：兼容 tags 为 string / string[] / JSON 数组字符串 */
-export function buildDiaryEmbeddingTagPrefix(tags: unknown): string {
-  const normalized = normalizeDiaryTags(tags)
-  return normalized.length > 0 ? `[标签: ${normalized.join(', ')}] ` : ''
-}
-
 /** 合并日记标签字符串，去重并保持顺序（先 existing 后 incoming） */
 export function mergeDiaryTags(existing: string | null | undefined, incoming: string): string {
   const existingArr = (existing || '')
