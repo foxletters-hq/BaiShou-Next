@@ -12,26 +12,28 @@
   overflow: hidden;
 }
 
+/* 顶栏与下方标签页自己的状态行共用同一块表面，分隔线由状态行给出 */
 .header {
   flex: 0 0 auto;
-  padding: 12px 32px;
+  padding: 8px 20px 6px;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-muted);
   box-sizing: border-box;
 }
 
 .titleRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .titleHelp {
@@ -39,11 +41,13 @@
 }
 
 .tabs {
-  margin-top: 12px;
+  margin-top: 0;
+  margin-left: 4px;
+  min-width: 0;
 }
 
 .onboarding {
-  margin: 0 32px 12px;
+  margin: 8px 20px 12px;
   padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid var(--border-card);
@@ -108,6 +112,21 @@
   overflow: hidden;
 }
 
+.vectorHost {
+  display: flex;
+  flex-direction: column;
+}
+
+.vectorHost :global(.settings-pane) {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .vectorLoading {
   display: flex;
   align-items: center;
@@ -116,11 +135,18 @@
   font-size: 13px;
 }
 
-.highlightBatchEmbed :global([class*='btnBlueFlat']) {
-  box-shadow: 0 0 0 2px var(--border-strong);
+.highlightBatchEmbed :global([data-rag-action='batch-embed']) {
+  box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 .graphHost {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.graphHost > * {
   flex: 1 1 auto;
   min-height: 0;
 }

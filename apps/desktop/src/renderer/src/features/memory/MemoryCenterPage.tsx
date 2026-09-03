@@ -6,7 +6,6 @@ import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { GraphPage } from '../graph/GraphPage'
 import { MemoryHelpButton } from './MemoryHelpButton'
 import { MemoryOnboardingCard } from './MemoryOnboardingCard'
-import { MemoryReadinessBar } from './MemoryReadinessBar'
 import { MemoryVectorTab } from './MemoryVectorTab'
 import { useMemoryReadiness } from './useMemoryReadiness'
 import {
@@ -91,23 +90,16 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{t('memory.title', '全局 AI 记忆')}</h1>
           <MemoryHelpButton className={styles.titleHelp} />
-        </div>
-        <div className={styles.tabs}>
-          <SegmentedControl
-            value={tab}
-            aria-label={t('memory.tabs', '记忆类型')}
-            options={tabOptions}
-            onChange={selectTab}
-          />
+          <div className={styles.tabs}>
+            <SegmentedControl
+              value={tab}
+              aria-label={t('memory.tabs', '记忆类型')}
+              options={tabOptions}
+              onChange={selectTab}
+            />
+          </div>
         </div>
       </header>
-
-      <MemoryReadinessBar
-        rows={readiness.rows}
-        onConfigureEmbedding={goConfigure}
-        onStartIndex={goIndex}
-        onStartOrganize={goOrganize}
-      />
 
       {showOnboarding ? (
         <MemoryOnboardingCard
