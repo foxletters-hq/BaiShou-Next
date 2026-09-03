@@ -193,18 +193,25 @@
   max-width: 420px;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid var(--border-card);
+  border: 1px solid var(--form-field-border, var(--border-control));
+  background: var(--form-field-bg, var(--bg-surface));
   cursor: pointer;
   text-align: left;
   color: inherit;
   transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .partnerCard:hover {
-  border-color: var(--color-primary);
-  background: rgba(var(--color-primary-rgb), 0.06);
+  background: var(--bg-surface-high);
+  border-color: var(--border-strong);
+}
+
+.partnerCard:focus-visible {
+  outline: none;
+  border-color: var(--form-field-border-focus);
+  box-shadow: var(--form-field-focus-ring);
 }
 
 .partnerAvatar {

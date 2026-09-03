@@ -115,4 +115,8 @@ const styles = StyleSheet.create({
     lineHeight: 19
   },
   hint: {
-    fontSize: 
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4
+  }
+})
