@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Cloud, ChevronDown, MessagesSquare, Plus, Sparkles } from 'lucide-react'
 import type {
+  AgentGateRequest,
   AgentWorkspaceEntry,
   AgentWorkspaceSessionListItem,
+  PromptFileRef,
   WorkspaceChangeEntry
 } from '@baishou/shared'
 import {
@@ -21,6 +23,7 @@ import {
   getProviderIcon,
   resolveDesktopAssistantAvatarSrc,
   useTheme,
+  type AgentGateReplyPayload,
   type InputBarRef,
   type PromptShortcut
 } from '@baishou/ui'
@@ -31,7 +34,9 @@ import { AgentWorkspaceMessageList, type AgentWorkspaceMessageListHandle } from 
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 import { useWorkbenchInputPlaceholder } from '../utils/workbench-input-placeholder'
 import { createWorkspaceComposerDropResolver } from '../utils/workspace-composer-drop.util'
+import { searchWorkspaceFileNames } from '../utils/workspace-file-mention-search.util'
 import { WorkbenchSessionView } from './WorkbenchSessionView'
+import { KnowledgeMountHint } from '../../knowledge/KnowledgeMountHint'
 import { WorkbenchNotebookMountDialog } from './WorkbenchNotebookMountDialog'
 import styles from './WorkbenchAgentPanel.module.css'
 
@@ -51,6 +56,8 @@ export interface WorkbenchAgentPanelProps {
   onSelectSession: (sessionId: string) => void
   onDeleteSession: (sessionId: string) => void
   onRenameSession?: (sessionId: string, title: string) => void
+  recentFilePaths?: string[]
+  onOpenFile?: (relativePath: string, options?: { line?: number }) => void
   chrome: {
     currentAssistant?: { id: string; name: string; avatarPath?: string | null }
     currentProviderId: string
@@ -99,13 +106,14 @@ export interface WorkbenchAgentPanelProps {
     meta?: {
       displayText?: string
       skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: PromptFileRef[]
       delivery?: 'steer' | 'queue'
     }
-  ) => void | Promise<void>
+  ) => boolean | void | Promise<boolean | void>
   onEditResend?: (
     userMessageId: string,
     newText: string,
-    meta?: { skillRefs?: Array<{ command: string; content: string }> }
+    meta?: { skillRefs?: Array<{ command: string; content: string }>; fileRefs?: PromptFileRef[] }
   ) => boolean | Promise<boolean>
   onAssistantTap: () => void
   assistantName: string
@@ -119,9 +127,17 @@ export interface WorkbenchAgentPanelProps {
   gateSlot?: React.ReactNode
   /** 有待确认 Gate 时禁用 composer */
   gateBlocksComposer?: boolean
+  pendingAsk?: AgentGateRequest | null
+  isAskReplying?: boolean
+  onAskReply?: (payload: AgentGateReplyPayload) => void | Promise<void>
 }
 
-export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
+export interface WorkbenchAgentPanelHandle {
+  addFileContext: (ref: PromptFileRef & { filePath?: string }) => void
+}
+
+export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, WorkbenchAgentPanelProps>(
+  function WorkbenchAgentPanel({
   width,
   workspace,
   hasWorkspace,
@@ -137,6 +153,8 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   onSelectSession,
   onDeleteSession,
   onRenameSession,
+  recentFilePaths = [],
+  onOpenFile,
   chrome,
   chat,
   stream,
@@ -147,13 +165,24 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   assistantName,
   composerRefill = null,
   gateSlot,
-  gateBlocksComposer = false
-}) => {
+  gateBlocksComposer = false,
+  pendingAsk = null,
+  isAskReplying = false,
+  onAskReply
+}, ref) {
   const { t } = useTranslation()
   const { isDark } = useTheme()
   const modelBtnRef = useRef<HTMLButtonElement>(null)
   const inputBarRef = useRef<InputBarRef>(null)
   const messageListRef = useRef<AgentWorkspaceMessageListHandle>(null)
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      addFileContext: (next) => inputBarRef.current?.addFileContext(next)
+    }),
+    []
+  )
   const [notebookMountOpen, setNotebookMountOpen] = useState(false)
   const [pendingQueue, setPendingQueue] = useState<Array<{ id: string; text: string }>>([])
   const [showShortcutManager, setShowShortcutManager] = useState(false)
@@ -162,6 +191,24 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
   const resolveDropAttachments = useMemo(
     () => createWorkspaceComposerDropResolver(workspace?.folderRoot ?? null),
     [workspace?.folderRoot]
+  )
+  const fileMention = useMemo(
+    () =>
+      workspace?.folderRoot
+        ? {
+            enabled: true,
+            recentPaths: recentFilePaths,
+            onOpenFile,
+            searchFiles: (query: string) =>
+              searchWorkspaceFileNames({
+                folderRoot: workspace.folderRoot,
+                query,
+                listDir: (rootPath, relativePath) =>
+                  window.api.agentWorkspace.listDir(rootPath, relativePath)
+              })
+          }
+        : undefined,
+    [onOpenFile, recentFilePaths, workspace?.folderRoot]
   )
   const {
     shortcuts,
@@ -330,7 +377,7 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
           className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInMeta}`}
           onClick={() => chrome.onModelClick(modelBtnRef.current?.getBoundingClientRect() ?? null)}
           aria-label={t('models.switch_model', '切换模型')}
-          title={t('models.switch_model', '切换模型')}
+          title={displayModelName}
         >
           <span className={chromeStyles.modelProviderIcon} aria-hidden>
             {providerIconUrl ? (
@@ -440,8 +487,12 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
                 hasMore={chat.hasMore}
                 onLoadMore={chat.loadMore}
                 onEditResend={onEditResend}
+                onOpenFile={onOpenFile}
                 onSelectChange={onSelectChange}
                 onReviewAll={onReviewAll}
+                pendingAsk={pendingAsk}
+                isAskReplying={isAskReplying}
+                onAskReply={onAskReply}
               />
             )}
           </div>
@@ -491,20 +542,25 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
                   </ul>
                 </div>
               ) : null}
+              <KnowledgeMountHint
+                sessionId={sessionId}
+                onOpen={() => setNotebookMountOpen(true)}
+              />
               <InputBar
                 ref={inputBarRef}
                 isLoading={stream.isStreaming}
                 allowSendWhileLoading
                 attachmentIntake="workspace"
                 resolveDropAttachments={resolveDropAttachments}
+                fileMention={fileMention}
                 composerBlocked={!hasConfiguredModel || gateBlocksComposer}
                 onSend={async (text, attachments, searchMode, meta) => {
                   messageListRef.current?.beginFollowIfAtBottom()
-                  await onSend(text, attachments, searchMode, {
+                  const accepted = await onSend(text, attachments, searchMode, {
                     ...meta,
                     delivery: stream.isStreaming ? 'queue' : undefined
                   })
-                  return true
+                  return accepted !== false
                 }}
                 onStop={stream.stopChat}
                 shortcuts={composerShortcuts}
@@ -541,4 +597,4 @@ export const WorkbenchAgentPanel: React.FC<WorkbenchAgentPanelProps> = ({
       />
     </aside>
   )
-}
+})
