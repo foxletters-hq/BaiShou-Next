@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   documentsFromHunks,
+  documentsFromHunksAligned,
   isUnifiedDiffTruncated,
   parseUnifiedDiff,
   resolveFileChangeDocuments,
@@ -32,6 +33,16 @@ const MODIFY_DIFF = `--- a/src/app.ts
  const c = 3
  const d = 4
  const e = 5
+`
+
+const MID_FILE_DIFF = `--- a/story.md
++++ b/story.md
+@@ -20,4 +20,4 @@
+ keep-before
+-old paragraph
++new paragraph
+ keep-after
+ keep-tail
 `
 
 describe('isUnifiedDiffTruncated', () => {
@@ -75,6 +86,17 @@ describe('unifiedDiffToDocuments', () => {
   })
 })
 
+describe('documentsFromHunksAligned', () => {
+  it('pads to the hunk start so line numbers match the source file', () => {
+    const parsed = parseUnifiedDiff(MID_FILE_DIFF)!
+    const docs = documentsFromHunksAligned(parsed.hunks)
+    const originalLines = docs.original.replace(/\n$/, '').split('\n')
+    expect(originalLines).toHaveLength(23)
+    expect(originalLines[19]).toBe('keep-before')
+    expect(originalLines[20]).toBe('old paragraph')
+  })
+})
+
 describe('reverseApplyHunksToModified', () => {
   it('recovers original from full modified + hunks', () => {
     const parsed = parseUnifiedDiff(MODIFY_DIFF)!
@@ -83,9 +105,18 @@ describe('reverseApplyHunksToModified', () => {
     expect(result.ok).toBe(true)
     expect(result.original).toBe(documentsFromHunks(parsed.hunks).original)
 
-    // Prefix shifts line numbers — hunk no longer aligns → fail
-    const mismatched = reverseApplyHunksToModified(`prefix\n${exactModified}`, parsed.hunks)
-    expect(mismatched.ok).toBe(false)
+    const prefixed = reverseApplyHunksToModified(`prefix\n${exactModified}`, parsed.hunks)
+    expect(prefixed.ok).toBe(true)
+    expect(prefixed.original).toBe(`prefix\n${documentsFromHunks(parsed.hunks).original}`)
+  })
+
+  it('recovers original when disk uses CRLF and hunks are LF', () => {
+    const parsed = parseUnifiedDiff(MODIFY_DIFF)!
+    const lfModified = documentsFromHunks(parsed.hunks).modified
+    const crlfModified = lfModified.replace(/\n/g, '\r\n')
+    const result = reverseApplyHunksToModified(crlfModified, parsed.hunks)
+    expect(result.ok).toBe(true)
+    expect(result.original).toBe(documentsFromHunks(parsed.hunks).original)
   })
 
   it('handles pure create reverse', () => {
@@ -135,6 +166,44 @@ describe('resolveFileChangeDocuments', () => {
       expect(result.original).toBe('')
       expect(result.modified).toBe('# Hello\n\nworld\n')
     }
+  })
+
+  it('keeps mid-file hunks at the recorded line numbers without disk', () => {
+    const result = resolveFileChangeDocuments({ diff: MID_FILE_DIFF })
+    expect(result.mode).toBe('merge')
+    if (result.mode !== 'merge') return
+    const originalLines = result.original.replace(/\n$/, '').split('\n')
+    const modifiedLines = result.modified.replace(/\n$/, '').split('\n')
+    expect(originalLines[19]).toBe('keep-before')
+    expect(originalLines[20]).toBe('old paragraph')
+    expect(modifiedLines[20]).toBe('new paragraph')
+  })
+
+  it('rebuilds the full original from disk when the change is mid-file', () => {
+    const prefix = Array.from({ length: 19 }, (_, i) => `line-${i + 1}`).join('\n')
+    const modified = `${prefix}\nkeep-before\nnew paragraph\nkeep-after\nkeep-tail\n`
+    const result = resolveFileChangeDocuments({
+      diff: MID_FILE_DIFF,
+      diskAvailable: true,
+      diskContent: modified
+    })
+    expect(result.mode).toBe('merge')
+    if (result.mode !== 'merge') return
+    expect(result.modified).toBe(modified)
+    expect(result.original).toBe(`${prefix}\nkeep-before\nold paragraph\nkeep-after\nkeep-tail\n`)
+  })
+
+  it('falls back to aligned hunks when disk no longer contains the change', () => {
+    const result = resolveFileChangeDocuments({
+      diff: MID_FILE_DIFF,
+      diskAvailable: true,
+      diskContent: 'totally different\nfile\n'
+    })
+    expect(result.mode).toBe('merge')
+    if (result.mode !== 'merge') return
+    const originalLines = result.original.replace(/\n$/, '').split('\n')
+    expect(originalLines[20]).toBe('old paragraph')
+    expect(result.modified.replace(/\n$/, '').split('\n')[20]).toBe('new paragraph')
   })
 
   it('handles deleted file on disk', () => {

@@ -102,11 +102,15 @@ export function parseUnifiedDiff(diff: string): ParsedUnifiedDiff | null {
   return { path, hunks, truncated }
 }
 
+function hunkLineText(line: string): string {
+  return line.slice(1).replace(/\r$/, '')
+}
+
 function hunkSideLines(hunk: UnifiedDiffHunk, side: 'old' | 'new'): string[] {
   const out: string[] = []
   for (const line of hunk.lines) {
     const prefix = line.charAt(0)
-    const text = line.slice(1)
+    const text = hunkLineText(line)
     if (side === 'old') {
       if (prefix === ' ' || prefix === '-') out.push(text)
     } else if (prefix === ' ' || prefix === '+') {
@@ -114,6 +118,66 @@ function hunkSideLines(hunk: UnifiedDiffHunk, side: 'old' | 'new'): string[] {
     }
   }
   return out
+}
+
+function linesMatchAt(haystack: string[], start: number, needle: string[]): boolean {
+  if (start < 0 || start + needle.length > haystack.length) return false
+  for (let i = 0; i < needle.length; i++) {
+    if (haystack[start + i] !== needle[i]) return false
+  }
+  return true
+}
+
+function findContiguousLines(haystack: string[], needle: string[], preferredStart: number): number {
+  if (needle.length === 0) return -1
+  if (linesMatchAt(haystack, preferredStart, needle)) return preferredStart
+  let best = -1
+  let bestDistance = Number.POSITIVE_INFINITY
+  const last = haystack.length - needle.length
+  for (let i = 0; i <= last; i++) {
+    if (!linesMatchAt(haystack, i, needle)) continue
+    const distance = Math.abs(i - preferredStart)
+    if (distance < bestDistance) {
+      best = i
+      bestDistance = distance
+    }
+  }
+  return best
+}
+
+/** Place hunk sides at the recorded 1-based start so merge line numbers match the file. */
+export function documentsFromHunksAligned(hunks: UnifiedDiffHunk[]): UnifiedDiffDocuments {
+  return {
+    original: joinContentLines(placeHunkSides(hunks, 'old')),
+    modified: joinContentLines(placeHunkSides(hunks, 'new'))
+  }
+}
+
+function placeHunkSides(hunks: UnifiedDiffHunk[], side: 'old' | 'new'): string[] {
+  const lines: string[] = []
+  for (const hunk of hunks) {
+    const start = side === 'old' ? hunk.oldStart : hunk.newStart
+    const sideLines = hunkSideLines(hunk, side)
+    if (start <= 0) {
+      lines.push(...sideLines)
+      continue
+    }
+    while (lines.length < start - 1) {
+      lines.push('')
+    }
+    if (lines.length === start - 1) {
+      lines.push(...sideLines)
+      continue
+    }
+    const at = start - 1
+    for (let i = 0; i < sideLines.length; i++) {
+      lines[at + i] = sideLines[i]!
+    }
+    if (lines.length < at + sideLines.length) {
+      lines.length = at + sideLines.length
+    }
+  }
+  return lines
 }
 
 /** Build documents solely from hunk bodies (correct for create/delete / full-file diffs). */
@@ -130,43 +194,68 @@ export function documentsFromHunks(hunks: UnifiedDiffHunk[]): UnifiedDiffDocumen
   }
 }
 
-/**
- * Reverse-apply unified hunks onto a full modified document to recover the original.
- * Hunks are applied from bottom to top so line indices stay valid.
- */
-export function reverseApplyHunksToModified(
-  modified: string,
+function reverseApplyHunksAtRecordedStarts(
+  lines: string[],
   hunks: UnifiedDiffHunk[]
-): { original: string; ok: boolean } {
-  const lines = splitContentLines(modified)
-
+): boolean {
   for (let i = hunks.length - 1; i >= 0; i--) {
     const hunk = hunks[i]!
     const oldLines = hunkSideLines(hunk, 'old')
     const newLines = hunkSideLines(hunk, 'new')
 
     if (hunk.newCount === 0 && newLines.length === 0) {
-      // Pure deletion in the forward diff: insert old lines at newStart.
       const insertAt = Math.max(0, Math.min(lines.length, hunk.newStart > 0 ? hunk.newStart - 1 : 0))
       lines.splice(insertAt, 0, ...oldLines)
       continue
     }
 
     const start = hunk.newStart > 0 ? hunk.newStart - 1 : 0
-    if (start < 0 || start + newLines.length > lines.length) {
-      return { original: '', ok: false }
-    }
-
-    for (let j = 0; j < newLines.length; j++) {
-      if (lines[start + j] !== newLines[j]) {
-        return { original: '', ok: false }
-      }
-    }
-
+    if (!linesMatchAt(lines, start, newLines)) return false
     lines.splice(start, newLines.length, ...oldLines)
   }
+  return true
+}
 
-  return { original: joinContentLines(lines), ok: true }
+function reverseApplyHunksBySearch(lines: string[], hunks: UnifiedDiffHunk[]): boolean {
+  for (let i = hunks.length - 1; i >= 0; i--) {
+    const hunk = hunks[i]!
+    const oldLines = hunkSideLines(hunk, 'old')
+    const newLines = hunkSideLines(hunk, 'new')
+    const preferredStart = hunk.newStart > 0 ? hunk.newStart - 1 : 0
+
+    if (newLines.length === 0) {
+      const insertAt = Math.max(0, Math.min(lines.length, preferredStart))
+      lines.splice(insertAt, 0, ...oldLines)
+      continue
+    }
+
+    const found = findContiguousLines(lines, newLines, preferredStart)
+    if (found < 0) return false
+    lines.splice(found, newLines.length, ...oldLines)
+  }
+  return true
+}
+
+/**
+ * Reverse-apply unified hunks onto a full modified document to recover the original.
+ * Tries the recorded newStart first, then searches for the new-side lines
+ * (so a later insert above the hunk, or a stale line number, can still recover).
+ */
+export function reverseApplyHunksToModified(
+  modified: string,
+  hunks: UnifiedDiffHunk[]
+): { original: string; ok: boolean } {
+  const positioned = splitContentLines(modified)
+  if (reverseApplyHunksAtRecordedStarts(positioned, hunks)) {
+    return { original: joinContentLines(positioned), ok: true }
+  }
+
+  const searched = splitContentLines(modified)
+  if (reverseApplyHunksBySearch(searched, hunks)) {
+    return { original: joinContentLines(searched), ok: true }
+  }
+
+  return { original: '', ok: false }
 }
 
 export function unifiedDiffToDocuments(diff: string): (UnifiedDiffDocuments & { truncated: boolean }) | null {
@@ -199,7 +288,7 @@ export function resolveFileChangeDocuments(options: {
     return { mode: 'fallback', truncated: true, reason: 'truncated' }
   }
 
-  const fromHunks = documentsFromHunks(parsed.hunks)
+  const fromHunks = documentsFromHunksAligned(parsed.hunks)
 
   if (options.diskAvailable) {
     const modified = options.diskContent ?? ''
@@ -212,7 +301,8 @@ export function resolveFileChangeDocuments(options: {
         truncated: false
       }
     }
-    // Disk no longer matches the recorded diff — fall back to hunk reconstruction.
+    // Disk no longer matches this hunk — keep recorded line numbers instead of
+    // renumbering a 3-line snippet from 1.
     return {
       mode: 'merge',
       original: fromHunks.original,
