@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
@@ -8,7 +16,17 @@ import {
   workbenchEditorTheme,
   type EditorContextMenuOpenPayload
 } from '@baishou/ui/shared/diary-codemirror'
-import { AnchoredContextMenu, type ContextMenuItem, useToast } from '@baishou/ui'
+import {
+  AnchoredContextMenu,
+  workbenchSelectionAffordance,
+  type ContextMenuItem,
+  type WorkbenchSelectionAffordanceState,
+  useToast
+} from '@baishou/ui'
+import {
+  getEditorViewSelectionLines,
+  type WorkbenchEditorSelectionHandle
+} from './workbench-editor-selection.util'
 import { EditorContextMenuHost } from '@baishou/ui/desktop/ContextMenu/EditorContextMenuHost'
 import styles from './WorkbenchGitEditableDiff.module.css'
 
@@ -26,20 +44,26 @@ function splitLines(text: string): string[] {
 export interface WorkbenchGitEditableDiffProps {
   originalContent: string
   content: string
-  onChange: (content: string) => void
+  onChange?: (content: string) => void
+  readOnly?: boolean
+  onSelectionAffordanceChange?: (state: WorkbenchSelectionAffordanceState | null) => void
 }
 
-export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> = ({
-  originalContent,
-  content,
-  onChange
-}) => {
+export const WorkbenchGitEditableDiff = forwardRef<
+  WorkbenchEditorSelectionHandle,
+  WorkbenchGitEditableDiffProps
+>(function WorkbenchGitEditableDiff(
+  { originalContent, content, onChange, readOnly = false, onSelectionAffordanceChange },
+  ref
+) {
   const { t } = useTranslation()
   const toast = useToast()
   const leftRef = useRef<HTMLDivElement>(null)
   const editorHostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
+  const onSelectionAffordanceChangeRef = useRef(onSelectionAffordanceChange)
+  const readOnlyRef = useRef(readOnly)
   const suppressEchoRef = useRef(false)
   const syncing = useRef(false)
   const [textContextMenu, setTextContextMenu] = useState<EditorContextMenuOpenPayload | null>(null)
@@ -50,7 +74,17 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
 
   useEffect(() => {
     onChangeRef.current = onChange
-  }, [onChange])
+    onSelectionAffordanceChangeRef.current = onSelectionAffordanceChange
+    readOnlyRef.current = readOnly
+  }, [onChange, onSelectionAffordanceChange, readOnly])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getSelectionLines: () => getEditorViewSelectionLines(viewRef.current)
+    }),
+    []
+  )
 
   useEffect(() => {
     const host = editorHostRef.current
@@ -65,13 +99,18 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
           keymap.of([...defaultKeymap, ...historyKeymap]),
           workbenchEditorTheme,
           EditorView.lineWrapping,
+          EditorView.editorAttributes.of({ class: 'workbench-cm-editor' }),
+          ...(readOnly ? [EditorState.readOnly.of(true)] : []),
           EditorView.updateListener.of((update) => {
-            if (!update.docChanged || suppressEchoRef.current) return
-            onChangeRef.current(update.state.doc.toString())
+            if (readOnlyRef.current || !update.docChanged || suppressEchoRef.current) return
+            onChangeRef.current?.(update.state.doc.toString())
           }),
           editorContextMenuExtension({
-            readOnly: false,
+            readOnly,
             onOpen: (payload) => setTextContextMenu(payload)
+          }),
+          workbenchSelectionAffordance((state) => {
+            onSelectionAffordanceChangeRef.current?.(state)
           })
         ]
       }),
@@ -162,7 +201,9 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
           >
             {isNewFile ? (
               <div className={styles.emptyOriginal}>
-                {t('workbench.diff_original_empty', '（新文件，HEAD 中无此内容）')}
+                {readOnly
+                  ? t('workbench.diff_revision_empty', '（该版本中无此文件）')
+                  : t('workbench.diff_original_empty', '（新文件，HEAD 中无此内容）')}
               </div>
             ) : (
               originalLines.map((line, index) => (
@@ -177,9 +218,15 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
             <div ref={editorHostRef} className={styles.editorHost} />
           </div>
         </div>
-        <div className={styles.hint}>
-          {t('workbench.git_diff_editable_hint', '右侧可直接编辑，保存后自动写入工作区文件')}
-        </div>
+        {readOnly ? (
+          <div className={styles.hint}>
+            {t('workbench.git_diff_readonly_hint', '历史版本只读，不会改写工作区文件')}
+          </div>
+        ) : (
+          <div className={styles.hint}>
+            {t('workbench.git_diff_editable_hint', '右侧可直接编辑，保存后自动写入工作区文件')}
+          </div>
+        )}
       </div>
       <EditorContextMenuHost
         menu={textContextMenu}
@@ -196,4 +243,4 @@ export const WorkbenchGitEditableDiff: React.FC<WorkbenchGitEditableDiffProps> =
       ) : null}
     </>
   )
-}
+})

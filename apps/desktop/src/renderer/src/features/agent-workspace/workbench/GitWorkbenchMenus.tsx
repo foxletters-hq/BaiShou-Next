@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check } from 'lucide-react'
 import { Input, type GitManagementViewModel } from '@baishou/ui'
 import styles from './GitWorkbenchPanel.module.css'
 
@@ -19,105 +18,6 @@ export function useDismissOnOutsideClick(open: boolean, onClose: () => void) {
   }, [open, onClose])
 
   return ref
-}
-
-export const GitWorkbenchBranchMenu: React.FC<{
-  vm: GitManagementViewModel
-  open: boolean
-  onClose: () => void
-  anchorClassName?: string
-}> = ({ vm, open, onClose, anchorClassName }) => {
-  const { t } = useTranslation()
-  const [newBranch, setNewBranch] = useState('')
-  const [mergeBranch, setMergeBranch] = useState('')
-  const ref = useDismissOnOutsideClick(open, onClose)
-  const branch = vm.branchInfo
-
-  if (!open) return null
-
-  return (
-    <div className={`${styles.menu} ${anchorClassName ?? ''}`} ref={ref}>
-      {(branch?.branches ?? []).map((name) => (
-        <div key={name} className={styles.branchRow}>
-          <button
-            type="button"
-            className={`${styles.menuItem} ${name === branch?.current ? styles.menuItemActive : ''}`}
-            onClick={() => {
-              onClose()
-              void vm.handleCheckoutBranch(name)
-            }}
-          >
-            {name === branch?.current ? <Check size={14} /> : <span style={{ width: 14 }} />}
-            <span>{name}</span>
-          </button>
-          {name !== branch?.current ? (
-            <button
-              type="button"
-              className={styles.branchDeleteBtn}
-              title={t('workbench.git_delete_branch', '删除分支')}
-              onClick={() => void vm.handleDeleteBranch(name)}
-            >
-              ×
-            </button>
-          ) : null}
-        </div>
-      ))}
-      <div className={styles.menuDivider} />
-      <button
-        type="button"
-        className={styles.menuItem}
-        onClick={() => {
-          onClose()
-          void vm.handlePublishBranch()
-        }}
-      >
-        {t('workbench.git_publish_branch', '发布当前分支到远程')}
-      </button>
-      <Input
-        fieldSize="small"
-        className={styles.menuInput}
-        value={mergeBranch}
-        onChange={(event) => setMergeBranch(event.target.value)}
-        placeholder={t('workbench.git_merge_branch', '要合并的分支')}
-      />
-      <button
-        type="button"
-        className={styles.menuItem}
-        disabled={!mergeBranch.trim()}
-        onClick={() => {
-          onClose()
-          void vm.handleMergeBranch(mergeBranch).then(() => setMergeBranch(''))
-        }}
-      >
-        {t('workbench.git_merge', '合并分支')}
-      </button>
-      <div className={styles.menuDivider} />
-      <Input
-        fieldSize="small"
-        className={styles.menuInput}
-        value={newBranch}
-        onChange={(event) => setNewBranch(event.target.value)}
-        placeholder={t('workbench.git_new_branch', '新建分支名称')}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && newBranch.trim()) {
-            onClose()
-            void vm.handleCreateBranch(newBranch).then(() => setNewBranch(''))
-          }
-        }}
-      />
-      <button
-        type="button"
-        className={styles.menuItem}
-        disabled={!newBranch.trim()}
-        onClick={() => {
-          onClose()
-          void vm.handleCreateBranch(newBranch).then(() => setNewBranch(''))
-        }}
-      >
-        {t('workbench.git_create_branch', '创建分支')}
-      </button>
-    </div>
-  )
 }
 
 export const GitWorkbenchMoreMenu: React.FC<{
@@ -158,6 +58,7 @@ export const GitWorkbenchMoreMenu: React.FC<{
         <button
           type="button"
           className={styles.menuItem}
+          disabled={vm.isCommitActionInFlight}
           onClick={() => {
             onClose()
             void vm.handleCommitAll()

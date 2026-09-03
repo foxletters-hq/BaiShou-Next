@@ -38,9 +38,11 @@ const ChangesSubgroup: React.FC<{
           className={`${styles.sectionChevron} ${expanded ? styles.sectionChevronOpen : ''}`}
         />
         <span className={styles.subgroupTitle}>{title}</span>
-        {count > 0 ? <span className={styles.subgroupBadge}>{count}</span> : null}
       </button>
-      {headerActions ? <div className={styles.subgroupActions}>{headerActions}</div> : null}
+      <div className={styles.subgroupTrailing}>
+        {count > 0 ? <span className={styles.subgroupBadge}>{count}</span> : null}
+        {headerActions ? <div className={styles.subgroupActions}>{headerActions}</div> : null}
+      </div>
     </div>
     {expanded ? (
       <div className={styles.subgroupBody}>
@@ -83,8 +85,10 @@ const FileRow: React.FC<{
         {name}
       </span>
       {dir ? <span className={styles.treeDir}>{dir}</span> : null}
-      <div className={styles.treeActions}>{actions}</div>
-      <span className={`${styles.treeBadge} ${statusBadgeClass(statusKey)}`}>{letter}</span>
+      <div className={styles.treeRowEnd}>
+        <span className={`${styles.treeBadge} ${statusBadgeClass(statusKey)}`}>{letter}</span>
+        <div className={styles.treeActions}>{actions}</div>
+      </div>
     </div>
   )
 }

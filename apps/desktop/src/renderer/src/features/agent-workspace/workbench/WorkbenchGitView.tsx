@@ -2,7 +2,6 @@ import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGitManagementPage, type GitManagementPageProps } from '@baishou/ui'
 import { GitWorkbenchPanel } from './GitWorkbenchPanel'
-import { getRepositoryDisplayName } from './git-workbench.utils'
 import styles from './WorkbenchGitView.module.css'
 
 interface WorkbenchGitPanelBodyProps {
@@ -10,14 +9,15 @@ interface WorkbenchGitPanelBodyProps {
   onChangesCountChange?: (count: number) => void
   onOpenGitDiff?: (filePath: string, options?: { staged?: boolean; commitHash?: string }) => void
   onGitMetaChange?: (meta: { branch?: string; ahead: number; behind: number }) => void
+  syncBranch?: string
 }
 
-const WorkbenchGitPanelBody: React.FC<WorkbenchGitPanelBodyProps & { repositoryName: string }> = ({
+const WorkbenchGitPanelBody: React.FC<WorkbenchGitPanelBodyProps> = ({
   panelProps,
-  repositoryName,
   onChangesCountChange,
   onOpenGitDiff,
-  onGitMetaChange
+  onGitMetaChange,
+  syncBranch
 }) => {
   const vm = useGitManagementPage({
     ...panelProps,
@@ -61,7 +61,14 @@ const WorkbenchGitPanelBody: React.FC<WorkbenchGitPanelBodyProps & { repositoryN
     })
   }, [vm.branchInfo, onGitMetaChange])
 
-  return <GitWorkbenchPanel vm={vm} repositoryName={repositoryName} />
+  useEffect(() => {
+    const current = vm.branchInfo?.current?.trim()
+    if (!syncBranch || !current || syncBranch === current) return
+    void vm.handleRefreshStatus()
+    void vm.handleLoadHistory()
+  }, [syncBranch, vm.branchInfo?.current, vm.handleRefreshStatus, vm.handleLoadHistory])
+
+  return <GitWorkbenchPanel vm={vm} />
 }
 
 export interface WorkbenchGitViewProps {
@@ -70,6 +77,7 @@ export interface WorkbenchGitViewProps {
   onChangesCountChange?: (count: number) => void
   onOpenGitDiff?: (filePath: string, options?: { staged?: boolean; commitHash?: string }) => void
   onGitMetaChange?: (meta: { branch?: string; ahead: number; behind: number }) => void
+  syncBranch?: string
 }
 
 export const WorkbenchGitView: React.FC<WorkbenchGitViewProps> = ({
@@ -77,7 +85,8 @@ export const WorkbenchGitView: React.FC<WorkbenchGitViewProps> = ({
   panelProps,
   onChangesCountChange,
   onOpenGitDiff,
-  onGitMetaChange
+  onGitMetaChange,
+  syncBranch
 }) => {
   const { t } = useTranslation()
 
@@ -116,10 +125,10 @@ export const WorkbenchGitView: React.FC<WorkbenchGitViewProps> = ({
     <div className={styles.root}>
       <WorkbenchGitPanelBody
         panelProps={panelProps}
-        repositoryName={getRepositoryDisplayName(folderRoot)}
         onChangesCountChange={onChangesCountChange}
         onOpenGitDiff={onOpenGitDiff}
         onGitMetaChange={onGitMetaChange}
+        syncBranch={syncBranch}
       />
     </div>
   )
