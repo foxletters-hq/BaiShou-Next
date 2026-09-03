@@ -169,6 +169,52 @@ describe('DiaryService - Single Source of Truth architecture', () => {
     expect(mockVaultIndex.upsert).toHaveBeenCalled()
   })
 
+  it('update() 从正文删除标签后不会被旧解析结果补回', async () => {
+    const existingDate = parseDateStr('2026-03-30')
+    mockShadowRepo.findById.mockResolvedValue({
+      id: 99,
+      date: '2026-03-30',
+      filePath: '2026/03/2026-03-30.md',
+      contentHash: 'hash',
+      createdAt: '',
+      updatedAt: '',
+      isFavorite: false,
+      hasMedia: false,
+      weather: null,
+      mood: null,
+      location: null,
+      locationDetail: null,
+      vaultId: TEST_VAULT_ID
+    })
+    mockFileSync.readJournal.mockResolvedValue({
+      id: 99,
+      date: existingDate,
+      content: '#工作\n\n正文',
+      tags: '工作',
+      isFavorite: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      mediaPaths: []
+    })
+    mockShadowSync.syncJournal.mockResolvedValue({
+      isChanged: true,
+      meta: {
+        id: 99,
+        date: existingDate,
+        preview: '正文',
+        tags: [],
+        updatedAt: new Date()
+      }
+    })
+
+    await service.update(99, { content: '正文' })
+
+    expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ content: '正文', tags: undefined }),
+      '2026/03/2026-03-30.md'
+    )
+  })
+
   it('update() with date change should remove old file', async () => {
     const oldDate = parseDateStr('2026-03-30')
     const newDate = parseDateStr('2026-03-31')
@@ -309,7 +355,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       expect(result.id).toBe(10)
       expect(mockFileSync.writeJournal).toHaveBeenCalledWith(
         expect.objectContaining({
-          content: 'Original text\n\nAdditional text',
+          content: '#tag1 #tag2\n\nOriginal text\n\nAdditional text',
           tags: 'tag1,tag2'
         }),
         ''
