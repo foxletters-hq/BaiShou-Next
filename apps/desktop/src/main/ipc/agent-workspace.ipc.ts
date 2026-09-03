@@ -400,9 +400,18 @@ export function registerAgentWorkspaceIPC(): void {
 
   ipcMain.handle(
     'agent-workspace:attach-notebook',
-    async (_, params: { sessionId: string; notebookId: string | null }) => {
+    async (
+      _,
+      params: { sessionId: string; notebookId?: string | null; notebookIds?: string[] }
+    ) => {
       if (!params?.sessionId?.trim()) throw new Error('sessionId is required')
-      return attachWorkspaceNotebook(params.sessionId, params.notebookId)
+      const { writeSessionMountedNotebookIds } =
+        await import('../services/session-mounted-notebooks')
+      const notebookIds =
+        params.notebookIds ?? (params.notebookId == null ? [] : [params.notebookId])
+      const ids = await writeSessionMountedNotebookIds(params.sessionId, notebookIds)
+      await attachWorkspaceNotebook(params.sessionId, ids[0] ?? null)
+      return getWorkspaceSessionBinding(params.sessionId)
     }
   )
 
@@ -669,8 +678,22 @@ export function registerAgentWorkspaceIPC(): void {
 
   ipcMain.handle(
     'agent-workspace:git-get-history',
-    async (_, folderRoot: string, filePath?: string, limit?: number) =>
-      withGit(folderRoot, (svc) => svc.getHistory(filePath, limit))
+    async (
+      _,
+      folderRoot: string,
+      filePath?: string | null,
+      limit?: number,
+      offset?: number
+    ) =>
+      withGit(folderRoot, (svc) =>
+        svc.getHistory(filePath || undefined, limit, offset)
+      )
+  )
+
+  ipcMain.handle(
+    'agent-workspace:git-get-history-count',
+    async (_, folderRoot: string, filePath?: string | null) =>
+      withGit(folderRoot, (svc) => svc.getHistoryCount(filePath || undefined))
   )
 
   ipcMain.handle(
@@ -701,6 +724,12 @@ export function registerAgentWorkspaceIPC(): void {
     'agent-workspace:git-get-head-file-content',
     async (_, folderRoot: string, filePath: string) =>
       withGit(folderRoot, (svc) => svc.getHeadFileContent(filePath))
+  )
+
+  ipcMain.handle(
+    'agent-workspace:git-get-file-content-at-revision',
+    async (_, folderRoot: string, filePath: string, revision: string) =>
+      withGit(folderRoot, (svc) => svc.getFileContentAtRevision(filePath, revision))
   )
 
   ipcMain.handle('agent-workspace:git-has-conflicts', async (_, folderRoot: string) =>
