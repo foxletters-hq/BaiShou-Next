@@ -10,11 +10,15 @@ import {
   CREATE_SKILL_SLASH_COMMAND,
   buildSkillSendText,
   composerExtraPlain,
+  fileContextItemKey,
+  isSafeWorkspaceRelativePath,
   getCreateSkillGuidePrompt,
   getDefaultShortcutLabelsFromT,
   getShortcutCommand,
   localizePromptShortcuts,
+  parseFileMentionToken,
   type MockChatAttachment,
+  type PromptFileRef,
   type PromptShortcut,
   type SkillInvokeRef
 } from '@baishou/shared'
@@ -24,10 +28,14 @@ import type { SkillComposerSnapshot } from './InputBarSkillEditor'
 import {
   clearComposer,
   createSkillChipElement,
+  insertFileRefChipAtSelection,
   insertSkillChipAtSelection,
+  makeFileRefChipId,
   makeSkillChipId,
   serializeSkillComposer,
   setComposerPlainText,
+  type FileRefChip,
+  type MentionToken,
   type SkillRefChip,
   type SlashToken
 } from './skill-composer.util'
@@ -48,6 +56,7 @@ function syncEditorState(
   setters: {
     setText: (v: string) => void
     setSkillRefs: (v: SkillRefChip[]) => void
+    setFileRefs: (v: FileRefChip[]) => void
     setSendTextCache: (v: string) => void
     htmlSnapshotRef: React.MutableRefObject<string>
   }
@@ -55,9 +64,21 @@ function syncEditorState(
   const snap = serializeSkillComposer(root)
   setters.setText(snap.plainText)
   setters.setSkillRefs(snap.skills)
+  setters.setFileRefs(snap.fileRefs)
   setters.setSendTextCache(snap.sendText)
   setters.htmlSnapshotRef.current = root.innerHTML
   return snap
+}
+
+function toSendFileRefs(refs: FileRefChip[]): PromptFileRef[] {
+  return refs
+    .map((ref) => ({
+      relativePath: ref.relativePath,
+      selection: ref.selection,
+      comment: ref.comment,
+      origin: ref.origin ?? 'mention'
+    }))
+    .filter((ref) => Boolean(ref.relativePath))
 }
 
 export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputBarRef>) {
@@ -90,16 +111,22 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     sendIconSize,
     minRows = 1,
     attachmentIntake = 'companion',
-    resolveDropAttachments
+    resolveDropAttachments,
+    fileMention
   } = props
 
   const { t, i18n } = useTranslation()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
   const [skillRefs, setSkillRefs] = useState<SkillRefChip[]>([])
+  const [fileRefs, setFileRefs] = useState<FileRefChip[]>([])
   const [slashToken, setSlashToken] = useState<SlashToken | null>(null)
+  const [mentionToken, setMentionToken] = useState<MentionToken | null>(null)
   const [skillPickerOpen, setSkillPickerOpen] = useState(false)
+  const [mentionPickerOpen, setMentionPickerOpen] = useState(false)
   const [skillPickerIndex, setSkillPickerIndex] = useState(0)
+  const [mentionPickerIndex, setMentionPickerIndex] = useState(0)
+  const [mentionSearchPaths, setMentionSearchPaths] = useState<string[]>([])
   const [isSending, setIsSending] = useState(false)
   const [composerSyncKey, setComposerSyncKey] = useState(0)
   const [composerSyncHtml, setComposerSyncHtml] = useState<string | null>(null)
@@ -109,6 +136,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   const textRef = useRef(text)
   const skillRefsRef = useRef(skillRefs)
   const slashDismissedRef = useRef(false)
+  const mentionDismissedRef = useRef(false)
   textRef.current = text
   skillRefsRef.current = skillRefs
 
@@ -118,9 +146,12 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     setComposerSyncHtml(null)
     setComposerSyncKey((k) => k + 1)
     setSkillRefs([])
+    setFileRefs([])
     setSendTextCache(next.trim())
     setSlashToken(null)
+    setMentionToken(null)
     setSkillPickerOpen(false)
+    setMentionPickerOpen(false)
   }, [])
 
   const { clearDraft } = useComposerDraft({
@@ -131,9 +162,17 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     draftSyncSuspended: isSending
   })
 
+  const insertFileRefChipRef = useRef<(ref: PromptFileRef, token?: MentionToken | null) => void>(
+    () => undefined
+  )
+
   const attachmentHandlers = useInputBarAttachments(setAttachments, {
     attachmentIntake,
-    resolveDropAttachments
+    resolveDropAttachments,
+    promoteWorkspaceTextRefs: Boolean(fileMention?.enabled),
+    onPromotedFileRefs: (refs) => {
+      for (const ref of refs) insertFileRefChipRef.current(ref, null)
+    }
   })
   const localizedShortcuts = useMemo(() => {
     if (!shortcuts?.length) return undefined
@@ -148,19 +187,28 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   const handleComposerSnapshot = useCallback((snap: SkillComposerSnapshot) => {
     setText(snap.plainText)
     setSkillRefs(snap.skills)
+    setFileRefs(snap.fileRefs)
     setSendTextCache(snap.sendText)
     htmlSnapshotRef.current = snap.html
     setSlashToken(snap.slashToken)
+    setMentionToken(snap.mentionToken)
     if (!snap.slashToken) {
       slashDismissedRef.current = false
       setSkillPickerOpen(false)
       setSkillPickerIndex(0)
-      return
-    }
-    if (!slashDismissedRef.current) {
+    } else if (!slashDismissedRef.current) {
       setSkillPickerOpen(true)
     }
-  }, [])
+    if (!fileMention?.enabled || !snap.mentionToken) {
+      mentionDismissedRef.current = false
+      setMentionPickerOpen(false)
+      setMentionPickerIndex(0)
+      return
+    }
+    if (!mentionDismissedRef.current) {
+      setMentionPickerOpen(true)
+    }
+  }, [fileMention?.enabled])
 
   const insertSkillChip = useCallback((command: string, content: string, token?: SlashToken | null) => {
     const normalized = command.trim().replace(/^\//, '')
@@ -179,7 +227,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       styles.skillRefText,
       token === undefined ? null : token
     )
-    syncEditorState(root, { setText, setSkillRefs, setSendTextCache, htmlSnapshotRef })
+    syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
     slashDismissedRef.current = false
     setSlashToken(null)
     setSkillPickerOpen(false)
@@ -193,12 +241,69 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     [insertSkillChip, slashToken]
   )
 
+  const insertFileRefChip = useCallback(
+    (ref: PromptFileRef, token?: MentionToken | null) => {
+      const relativePath = ref.relativePath.trim().replace(/\\/g, '/')
+      if (!relativePath || !isSafeWorkspaceRelativePath(relativePath)) return
+      const root = editorRef.current
+      if (!root) return
+      const nextRef: PromptFileRef = {
+        relativePath,
+        selection: ref.selection,
+        comment: ref.comment?.trim() || undefined,
+        origin: ref.origin ?? 'mention'
+      }
+      const key = fileContextItemKey(nextRef)
+      const existing = serializeSkillComposer(root).fileRefs
+      if (existing.some((chip) => fileContextItemKey(chip) === key)) {
+        mentionDismissedRef.current = false
+        setMentionToken(null)
+        setMentionPickerOpen(false)
+        root.focus()
+        return
+      }
+      const chip: FileRefChip = {
+        id: makeFileRefChipId(relativePath),
+        ...nextRef
+      }
+      insertFileRefChipAtSelection(
+        root,
+        chip,
+        styles.skillRefChip,
+        styles.skillRefText,
+        token === undefined ? mentionToken : token
+      )
+      syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
+      mentionDismissedRef.current = false
+      setMentionToken(null)
+      setMentionPickerOpen(false)
+      root.focus()
+    },
+    [mentionToken]
+  )
+  insertFileRefChipRef.current = insertFileRefChip
+
+  const addFileContext = useCallback(
+    (ref: PromptFileRef & { filePath?: string }) => {
+      insertFileRefChip(
+        {
+          relativePath: ref.relativePath,
+          selection: ref.selection,
+          comment: ref.comment,
+          origin: ref.origin ?? 'selection'
+        },
+        null
+      )
+    },
+    [insertFileRefChip]
+  )
+
   const sendComposer = useCallback(
     async (overrideSkills?: SkillInvokeRef[]) => {
       const root = editorRef.current
       const snap = root
         ? serializeSkillComposer(root)
-        : { plainText: text, skills: skillRefs, sendText: sendTextCache }
+        : { plainText: text, skills: skillRefs, fileRefs, sendText: sendTextCache }
       const pendingSkills: SkillRefChip[] = (
         overrideSkills?.length ? overrideSkills : snap.skills
       ).map((item, index) => ({
@@ -210,12 +315,15 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
         content: item.content
       }))
       const pendingPlain = snap.plainText
-      const extraPlain = composerExtraPlain(pendingPlain, pendingSkills)
+      const extraPlain = composerExtraPlain(pendingPlain, pendingSkills, snap.fileRefs)
       const pendingText = buildSkillSendText(
         pendingSkills.map((item) => ({ command: item.command, content: item.content })),
         extraPlain
       )
-      const hasPayload = Boolean(pendingText || attachments.length > 0)
+      const pendingFileRefs = toSendFileRefs(snap.fileRefs)
+      const hasPayload = Boolean(
+        pendingText || attachments.length > 0 || pendingFileRefs.length > 0
+      )
       if (!hasPayload || isSending) return
       if (isLoading && !allowSendWhileLoading) return
       if (composerBlocked) {
@@ -231,9 +339,12 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       setText('')
       setAttachments([])
       setSkillRefs([])
+      setFileRefs([])
       setSendTextCache('')
       setSlashToken(null)
+      setMentionToken(null)
       setSkillPickerOpen(false)
+      setMentionPickerOpen(false)
       htmlSnapshotRef.current = ''
       setComposerSyncHtml('')
       setComposerSyncKey((k) => k + 1)
@@ -245,13 +356,17 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
             pendingText,
             pendingAttachments.length > 0 ? pendingAttachments : undefined,
             hadSearchMode,
-            pendingSkills.length > 0
+            pendingSkills.length > 0 || pendingFileRefs.length > 0
               ? {
                   displayText: pendingPlain.trim() || pendingText,
-                  skillRefs: pendingSkills.map((item) => ({
-                    command: item.command,
-                    content: item.content
-                  }))
+                  skillRefs:
+                    pendingSkills.length > 0
+                      ? pendingSkills.map((item) => ({
+                          command: item.command,
+                          content: item.content
+                        }))
+                      : undefined,
+                  fileRefs: pendingFileRefs.length > 0 ? pendingFileRefs : undefined
                 }
               : undefined
           )
@@ -262,6 +377,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
           setText(pendingPlain)
           setAttachments(pendingAttachments)
           setSkillRefs(pendingSkills)
+          setFileRefs(snap.fileRefs)
         } else {
           await clearDraft()
         }
@@ -280,6 +396,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       onSend,
       searchMode,
       sendTextCache,
+      fileRefs,
       skillRefs,
       text
     ]
@@ -332,7 +449,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       } else {
         setComposerPlainText(root, root.textContent ? `${root.textContent}\n${newText}` : newText)
       }
-      syncEditorState(root, { setText, setSkillRefs, setSendTextCache, htmlSnapshotRef })
+      syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
     },
     setText: (nextText) => {
       applyExternalText(nextText)
@@ -403,6 +520,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
         `skill-${Date.now().toString(36)}`
       addSkillRef(command, skill.content || '')
     },
+    addFileContext,
     focus: () => editorRef.current?.focus()
   }))
 
@@ -455,9 +573,62 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     return entries
   }, [filteredShortcuts, slashToken])
 
+  const mentionPathQuery = useMemo(
+    () => parseFileMentionToken(mentionToken?.query || '').relativePath,
+    [mentionToken?.query]
+  )
+
+  useEffect(() => {
+    if (!fileMention?.enabled || !mentionPickerOpen) {
+      setMentionSearchPaths([])
+      return
+    }
+    const search = fileMention.searchFiles
+    if (!search || !mentionPathQuery.trim()) {
+      setMentionSearchPaths([])
+      return
+    }
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void search(mentionPathQuery).then((paths) => {
+        if (!cancelled) setMentionSearchPaths(paths)
+      })
+    }, 120)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [fileMention, mentionPathQuery, mentionPickerOpen])
+
+  const mentionPickerEntries = useMemo(() => {
+    if (!fileMention?.enabled) return []
+    const query = mentionPathQuery.toLowerCase()
+    const seen = new Set<string>()
+    const entries: Array<{ id: string; path: string; group: 'recent' | 'search' }> = []
+    for (const path of fileMention.recentPaths ?? []) {
+      const normalized = path.replace(/\\/g, '/')
+      if (!normalized || seen.has(normalized)) continue
+      if (query && !normalized.toLowerCase().includes(query)) continue
+      seen.add(normalized)
+      entries.push({ id: `recent:${normalized}`, path: normalized, group: 'recent' })
+    }
+    for (const path of mentionSearchPaths) {
+      const normalized = path.replace(/\\/g, '/')
+      if (!normalized || seen.has(normalized)) continue
+      if (query && !normalized.toLowerCase().includes(query)) continue
+      seen.add(normalized)
+      entries.push({ id: `search:${normalized}`, path: normalized, group: 'search' })
+    }
+    return entries.slice(0, 20)
+  }, [fileMention, mentionPathQuery, mentionSearchPaths])
+
   useEffect(() => {
     setSkillPickerIndex(0)
   }, [slashToken?.query, slashPickerEntries.length])
+
+  useEffect(() => {
+    setMentionPickerIndex(0)
+  }, [mentionToken?.query, mentionPickerEntries.length])
 
   useEffect(() => {
     if (skillPickerIndex > 0 && skillPickerIndex >= slashPickerEntries.length) {
@@ -480,6 +651,25 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     attachmentHandlers.handlePaste(e as unknown as React.ClipboardEvent<HTMLTextAreaElement>)
   }
 
+  const closeMentionPicker = useCallback(() => {
+    mentionDismissedRef.current = true
+    setMentionPickerOpen(false)
+  }, [])
+
+  const submitMentionPickerSelection = useCallback(() => {
+    const picked = mentionPickerEntries[mentionPickerIndex]
+    if (!picked) return
+    const parsed = parseFileMentionToken(mentionToken?.query || '')
+    insertFileRefChip(
+      {
+        relativePath: picked.path,
+        selection: parsed.selection,
+        origin: 'mention'
+      },
+      mentionToken
+    )
+  }, [insertFileRefChip, mentionPickerEntries, mentionPickerIndex, mentionToken])
+
   const submitSlashPickerSelection = useCallback(() => {
     const picked = slashPickerEntries[skillPickerIndex]
     if (!picked) return
@@ -491,6 +681,31 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   }, [slashPickerEntries, skillPickerIndex, armCreateSkillChip, applyShortcut])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (mentionPickerOpen) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        mentionDismissedRef.current = true
+        setMentionPickerOpen(false)
+        return
+      }
+      if (mentionPickerEntries.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setMentionPickerIndex((i) => Math.min(i + 1, mentionPickerEntries.length - 1))
+          return
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setMentionPickerIndex((i) => Math.max(i - 1, 0))
+          return
+        }
+        if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
+          e.preventDefault()
+          submitMentionPickerSelection()
+          return
+        }
+      }
+    }
     if (skillPickerOpen && slashPickerEntries.length > 0) {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -534,7 +749,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       document.execCommand('insertLineBreak')
       const root = editorRef.current
       if (root) {
-        syncEditorState(root, { setText, setSkillRefs, setSendTextCache, htmlSnapshotRef })
+        syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
       }
       return
     }
@@ -565,12 +780,30 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     handleAttachmentDrop: attachmentHandlers.handleAttachmentDrop,
     attachmentIntake,
     handlePaste,
+    onOpenFileRef: fileMention?.onOpenFile,
     skillPickerOpen,
     closeSkillPicker,
     slashQuery: slashToken?.query ?? '',
     slashPickerEntries,
     skillPickerIndex,
     setSkillPickerIndex,
+    mentionPickerOpen,
+    closeMentionPicker,
+    mentionPickerEntries,
+    mentionPickerIndex,
+    setMentionPickerIndex,
+    applyFileMention: (path: string) => {
+      const parsed = parseFileMentionToken(mentionToken?.query || '')
+      insertFileRefChip(
+        {
+          relativePath: path,
+          selection: parsed.selection,
+          origin: 'mention'
+        },
+        mentionToken
+      )
+    },
+    fileRefs,
     filteredShortcuts,
     applyShortcut,
     toggleSearchMode: () => onToggleSearchMode?.(),

@@ -435,10 +435,14 @@
 .skillEditor {
   white-space: pre-wrap;
   word-break: break-word;
+  font-family: var(--font-family);
 }
 
-/* 禁止粘贴/IME 残留的内联底色盖在普通文字上（Skill 芯片除外） */
-.skillEditor :where(span, font, mark, b, i, u, strong, em, a):not([data-skill-chip]):not([data-skill-ref]) {
+/* 禁止粘贴/IME 残留的内联底色盖在普通文字上（引用芯片除外） */
+.skillEditor
+  :where(span, font, mark, b, i, u, strong, em, a):not([data-skill-chip]):not([data-skill-ref]):not(
+    [data-file-chip]
+  ):not([data-file-ref]) {
   background: transparent !important;
   background-color: transparent !important;
   color: inherit !important;
@@ -515,6 +519,14 @@
   font-weight: 600;
   line-height: 1.35;
   color: var(--text-primary);
+}
+
+.skillSlashEmpty {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
 }
 
 .skillSlashDesc {
@@ -753,6 +765,7 @@
   border: none;
   background: transparent;
   color: #b8860b;
+  font-family: inherit;
   font-size: inherit;
   font-weight: 500;
   line-height: inherit;
@@ -761,8 +774,13 @@
   cursor: default;
 }
 
+.skillRefChip[data-file-ref] {
+  cursor: pointer;
+}
+
 .skillRefText {
   color: inherit;
+  font-family: inherit;
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
