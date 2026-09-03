@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import type { PromptFileRef } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import type {
   AgentWorkspaceEntry,
@@ -7,10 +8,17 @@ import type {
 } from '@baishou/shared'
 import { WorkbenchSidePane } from './WorkbenchSidePane'
 import { WorkbenchMainPane, type WorkbenchMainPaneHandle } from './WorkbenchMainPane'
-import { WorkbenchAgentPanel, type WorkbenchAgentPanelProps } from './WorkbenchAgentPanel'
+import {
+  WorkbenchAgentPanel,
+  type WorkbenchAgentPanelHandle,
+  type WorkbenchAgentPanelProps
+} from './WorkbenchAgentPanel'
+import { joinWorkspaceAbsolutePath } from '../utils/workspace-composer-drop.util'
+import { shouldQueueWorkbenchFileContext } from './workbench-file-context-queue.util'
 import { WorkbenchResizeSash } from './WorkbenchResizeSash'
 import { useWorkbenchLayoutState } from './useWorkbenchLayoutState'
 import { usePanelResize } from './usePanelResize'
+import { useWorkbenchStatusGit } from './useWorkbenchStatusGit'
 import styles from './WorkbenchShell.module.css'
 
 const MIN_SIDE_WIDTH = 200
@@ -45,6 +53,8 @@ export interface WorkbenchShellProps {
     | 'onSelectSession'
     | 'onDeleteSession'
     | 'onRenameSession'
+    | 'recentFilePaths'
+    | 'onOpenFile'
   >
 }
 
@@ -67,23 +77,85 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   const {
     layout,
     toggleAgentPanel,
+    ensureAgentPanelOpen,
     toggleSidePane,
     setActiveSideView,
     setSidePaneWidth,
     setAgentPanelWidth
   } = useWorkbenchLayoutState(layoutScopeKey)
   const mainPaneRef = useRef<WorkbenchMainPaneHandle>(null)
+  const agentPanelRef = useRef<WorkbenchAgentPanelHandle>(null)
+  const [recentFilePaths, setRecentFilePaths] = useState<string[]>([])
+  const [agentSessionsOpen, setAgentSessionsOpen] = useState(false)
+
+  const pendingFileContextRef = useRef<PromptFileRef[]>([])
+
+  const deliverFileContext = useCallback(
+    (ref: PromptFileRef) => {
+      const filePath = folderRoot ? joinWorkspaceAbsolutePath(folderRoot, ref.relativePath) : ''
+      agentPanelRef.current?.addFileContext({
+        ...ref,
+        filePath: filePath || undefined
+      })
+    },
+    [folderRoot]
+  )
+
+  const handleAddFileContext = useCallback(
+    (ref: PromptFileRef) => {
+      const shouldQueue = shouldQueueWorkbenchFileContext({
+        agentPanelCollapsed: layout.agentPanelCollapsed,
+        sessionsViewOpen: agentSessionsOpen,
+        agentPanelMounted: Boolean(agentPanelRef.current)
+      })
+      if (shouldQueue) {
+        pendingFileContextRef.current.push(ref)
+        ensureAgentPanelOpen()
+        if (agentSessionsOpen) setAgentSessionsOpen(false)
+        return
+      }
+      deliverFileContext(ref)
+    },
+    [agentSessionsOpen, deliverFileContext, ensureAgentPanelOpen, layout.agentPanelCollapsed]
+  )
+
+  useLayoutEffect(() => {
+    if (layout.agentPanelCollapsed || agentSessionsOpen) return
+    const pending = pendingFileContextRef.current
+    if (!pending.length) return
+    pendingFileContextRef.current = []
+    for (const ref of pending) deliverFileContext(ref)
+  }, [agentSessionsOpen, deliverFileContext, layout.agentPanelCollapsed])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || !event.shiftKey) return
+      if (event.key.toLowerCase() !== 'l') return
+      if (event.repeat) return
+      const target = event.target
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        if (target.isContentEditable && !target.closest('.workbench-cm-editor')) return
+      }
+      const selection = mainPaneRef.current?.getActiveSelection()
+      if (!selection) return
+      event.preventDefault()
+      handleAddFileContext({
+        relativePath: selection.relativePath,
+        selection: { startLine: selection.startLine, endLine: selection.endLine },
+        origin: 'selection'
+      })
+      mainPaneRef.current?.dismissSelectionAffordance()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleAddFileContext])
 
   /** 拖拽中临时宽度；非拖拽时直接用 layout，避免持久化宽度晚一拍闪烁 */
   const [dragSideWidth, setDragSideWidth] = useState<number | null>(null)
   const [dragAgentWidth, setDragAgentWidth] = useState<number | null>(null)
-  const [agentSessionsOpen, setAgentSessionsOpen] = useState(false)
-  const [gitChangesCount, setGitChangesCount] = useState(0)
-  const [gitBranchMeta, setGitBranchMeta] = useState<{
-    branch?: string
-    ahead: number
-    behind: number
-  }>({ ahead: 0, behind: 0 })
+  const statusGit = useWorkbenchStatusGit(folderRoot)
 
   const liveSideWidth = dragSideWidth ?? layout.sidePaneWidth
   const liveAgentWidth = dragAgentWidth ?? layout.agentPanelWidth
@@ -110,13 +182,6 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   ) => {
     mainPaneRef.current?.openGitDiff(filePath, options)
   }
-
-  const handleOpenGitView = useCallback(() => {
-    setActiveSideView('git')
-    if (!layout.sidePaneVisible) {
-      toggleSidePane()
-    }
-  }, [setActiveSideView, layout.sidePaneVisible, toggleSidePane])
 
   const commitSideWidth = useCallback(
     (width: number) => {
@@ -188,10 +253,11 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               onViewChange={setActiveSideView}
               onOpenFile={handleOpenFile}
               onOpenGitDiff={handleOpenGitDiff}
-              onGitMetaChange={setGitBranchMeta}
+              onGitMetaChange={statusGit.applyViewMeta}
+              syncBranch={statusGit.meta.branch}
               width={liveSideWidth}
-              changesCount={gitChangesCount}
-              onGitChangesCountChange={setGitChangesCount}
+              changesCount={statusGit.changesCount}
+              onGitChangesCountChange={statusGit.setChangesCount}
               onBackToHome={onBackToHome}
               workspaceId={workspace?.id}
               workspaceName={workspace?.displayName}
@@ -206,17 +272,23 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
         <WorkbenchMainPane
           ref={mainPaneRef}
           folderRoot={folderRoot}
+          onAddFileContext={handleAddFileContext}
+          onOpenFilePathsChange={setRecentFilePaths}
           onOpenFolder={onOpenFolder}
           sidePaneVisible={layout.sidePaneVisible}
           agentPanelVisible={showAgentPanel}
           onToggleSidePane={toggleSidePane}
           onToggleAgentPanel={toggleAgentPanel}
           gitStatusBar={{
-            branch: gitBranchMeta.branch,
-            ahead: gitBranchMeta.ahead,
-            behind: gitBranchMeta.behind,
-            changesCount: gitChangesCount,
-            onOpenGitView: handleOpenGitView
+            branch: statusGit.meta.branch,
+            branches: statusGit.meta.branches,
+            ahead: statusGit.meta.ahead,
+            behind: statusGit.meta.behind,
+            changesCount: statusGit.changesCount,
+            onCheckoutBranch: statusGit.checkout,
+            onCreateBranch: statusGit.createBranch,
+            onPublishBranch: statusGit.publish,
+            onRefreshBranches: statusGit.refresh
           }}
         />
 
@@ -227,7 +299,10 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               onMouseDown={rightSash.onMouseDown}
             />
             <WorkbenchAgentPanel
+              ref={agentPanelRef}
               {...agentPanel}
+              onOpenFile={handleOpenFile}
+              recentFilePaths={recentFilePaths}
               workspace={workspace}
               width={liveAgentWidth}
               sessions={sessions}

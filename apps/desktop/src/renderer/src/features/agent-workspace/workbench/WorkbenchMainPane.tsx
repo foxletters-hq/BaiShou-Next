@@ -1,15 +1,40 @@
-import React, { useImperativeHandle, forwardRef, useCallback, useMemo, useRef } from 'react'
+import React, {
+  useImperativeHandle,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
+import type { PromptFileRef } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { X, PanelLeft, PanelRight } from 'lucide-react'
+import { MessageSquare, MessageSquarePlus, X, PanelLeft, PanelRight } from 'lucide-react'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
-import { GitDiffViewer, getFileTypeIcon } from '@baishou/ui'
+import { GitDiffViewer, getFileTypeIcon, type WorkbenchSelectionAffordanceState } from '@baishou/ui'
 import { WorkbenchEmptyState } from './WorkbenchEmptyState'
 import { WorkbenchLivePreviewEditor } from './WorkbenchLivePreviewEditor'
 import { WorkbenchGitEditableDiff } from './WorkbenchGitEditableDiff'
 import { WorkbenchFileChangeDiffPane } from './WorkbenchFileChangeDiffPane'
 import { useWorkbenchTabs } from './useWorkbenchTabs'
+import {
+  type WorkbenchActiveSelection,
+  type WorkbenchEditorSelectionHandle
+} from './workbench-editor-selection.util'
+import {
+  registerWorkbenchFileContextCommands,
+  WORKBENCH_ADD_FILE_CONTEXT_EVENT,
+  WORKBENCH_COMMENT_FILE_CONTEXT_EVENT,
+  type WorkbenchFileContextRangeDetail
+} from './workbench-file-context-commands'
+import {
+  commentPopoverAnchorFromSelectionCoords,
+  resolveWorkbenchCommentPopoverPosition
+} from './workbench-comment-popover.util'
 import { useWorkbenchIdleCaption } from '../utils/workbench-idle-caption'
+import { WorkbenchStatusBranchMenu } from './WorkbenchStatusBranchMenu'
+import { useDismissOnOutsideClick } from './GitWorkbenchMenus'
 import workbenchMascot from './assets/workbench-mascot.png'
 import styles from './WorkbenchMainPane.module.css'
 
@@ -21,19 +46,46 @@ function tabIconName(tab: { title: string; relativePath?: string }): string {
   return tab.relativePath || tab.title
 }
 
+function isPositiveLine(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 1
+}
+
+function commentPopoverPosition(anchor: { x?: number; y?: number }): { x: number; y: number } {
+  return resolveWorkbenchCommentPopoverPosition({
+    x: anchor.x,
+    y: anchor.y,
+    windowWidth: window.innerWidth,
+    windowHeight: window.innerHeight
+  })
+}
+
+function addSelectionShortcutLabel(): string {
+  if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform)) {
+    return '⌘⇧L'
+  }
+  return 'Ctrl+Shift+L'
+}
+
 export interface WorkbenchMainPaneHandle {
   openFile: (relativePath: string, options?: { line?: number; column?: number }) => void
   openDiff: (change: WorkspaceChangeEntry) => void
   openDiffs: (changes: WorkspaceChangeEntry[]) => void
   openGitDiff: (filePath: string, options?: { staged?: boolean; commitHash?: string }) => void
+  getActiveSelection: () => WorkbenchActiveSelection | null
+  dismissSelectionAffordance: () => void
+  getOpenFilePaths: () => string[]
 }
 
 export interface WorkbenchGitStatusBarProps {
   branch?: string | null
+  branches?: string[]
   ahead?: number
   behind?: number
   changesCount?: number
-  onOpenGitView?: () => void
+  onCheckoutBranch?: (branch: string) => void
+  onCreateBranch?: (branch: string) => void
+  onPublishBranch?: () => void
+  onRefreshBranches?: () => void
 }
 
 export interface WorkbenchMainPaneProps {
@@ -45,6 +97,8 @@ export interface WorkbenchMainPaneProps {
   onToggleAgentPanel: () => void
   onTabContentChange?: (tabId: string, content: string, relativePath: string) => void
   gitStatusBar?: WorkbenchGitStatusBarProps
+  onAddFileContext?: (ref: PromptFileRef) => void
+  onOpenFilePathsChange?: (paths: string[]) => void
 }
 
 export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMainPaneProps>(
@@ -57,7 +111,9 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       onToggleSidePane,
       onToggleAgentPanel,
       onTabContentChange,
-      gitStatusBar
+      gitStatusBar,
+      onAddFileContext,
+      onOpenFilePathsChange
     },
     ref
   ) {
@@ -72,9 +128,109 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       closeTab,
       reorderTabs,
       updateTabContent,
+      reloadOpenFileContents,
       clearTabScrollTarget
     } = tabsState
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const markdownEditorRef = useRef<WorkbenchEditorSelectionHandle>(null)
+    const gitDiffEditorRef = useRef<WorkbenchEditorSelectionHandle>(null)
+    const mergeDiffEditorRef = useRef<WorkbenchEditorSelectionHandle>(null)
+    const [selectionAffordance, setSelectionAffordance] =
+      useState<WorkbenchSelectionAffordanceState | null>(null)
+    const selectionAffordanceRef = useRef<WorkbenchSelectionAffordanceState | null>(null)
+    const dismissedSelectionKeyRef = useRef<string | null>(null)
+    const [branchMenuOpen, setBranchMenuOpen] = useState(false)
+    const branchMenuRef = useDismissOnOutsideClick(branchMenuOpen, () => setBranchMenuOpen(false))
+    const [commentDraft, setCommentDraft] = useState<{
+      startLine: number
+      endLine: number
+      x: number
+      y: number
+      text: string
+    } | null>(null)
+    const closeCommentDraft = useCallback(() => setCommentDraft(null), [])
+    const commentPopoverRef = useDismissOnOutsideClick(Boolean(commentDraft), closeCommentDraft)
+
+    selectionAffordanceRef.current = selectionAffordance
+
+    const handleSelectionAffordanceChange = useCallback(
+      (next: WorkbenchSelectionAffordanceState | null) => {
+        if (!next) {
+          dismissedSelectionKeyRef.current = null
+          setSelectionAffordance(null)
+          return
+        }
+        if (next.key === dismissedSelectionKeyRef.current) return
+        setSelectionAffordance(next)
+      },
+      []
+    )
+
+    const dismissSelectionAffordance = useCallback(() => {
+      const current = selectionAffordanceRef.current
+      if (current) dismissedSelectionKeyRef.current = current.key
+      setSelectionAffordance(null)
+    }, [])
+
+    const resolveActiveRelativePath = useCallback(() => {
+      return activeTab?.relativePath || activeTab?.change?.path || ''
+    }, [activeTab])
+
+    const readActiveSelection = useCallback((): WorkbenchActiveSelection | null => {
+      const relativePath = resolveActiveRelativePath()
+      if (!relativePath) return null
+      const range =
+        markdownEditorRef.current?.getSelectionLines() ||
+        gitDiffEditorRef.current?.getSelectionLines() ||
+        mergeDiffEditorRef.current?.getSelectionLines()
+      if (!range) return null
+      return { relativePath, ...range }
+    }, [resolveActiveRelativePath])
+
+    const openCommentDraft = useCallback(
+      (range: { startLine: number; endLine: number; x?: number; y?: number }) => {
+        const fallback = selectionAffordanceRef.current
+        const fallbackAnchor = fallback
+          ? commentPopoverAnchorFromSelectionCoords({
+              left: fallback.endLeft,
+              right: fallback.endLeft,
+              top: fallback.endTop,
+              bottom: fallback.endTop
+            })
+          : {}
+        setCommentDraft({
+          startLine: range.startLine,
+          endLine: range.endLine,
+          ...commentPopoverPosition({
+            x: range.x ?? fallbackAnchor.x,
+            y: range.y ?? fallbackAnchor.y
+          }),
+          text: ''
+        })
+        dismissSelectionAffordance()
+      },
+      [dismissSelectionAffordance]
+    )
+
+    const emitFileContext = useCallback(
+      (partial: {
+        startLine: number
+        endLine: number
+        comment?: string
+        origin?: PromptFileRef['origin']
+      }) => {
+        const relativePath = resolveActiveRelativePath()
+        if (!relativePath) return
+        onAddFileContext?.({
+          relativePath,
+          selection: { startLine: partial.startLine, endLine: partial.endLine },
+          comment: partial.comment,
+          origin: partial.origin ?? (partial.comment ? 'comment' : 'selection')
+        })
+        dismissSelectionAffordance()
+      },
+      [dismissSelectionAffordance, onAddFileContext, resolveActiveRelativePath]
+    )
 
     const handleContentChange = useCallback(
       (tabId: string, content: string, relativePath: string) => {
@@ -88,6 +244,21 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       },
       [folderRoot, onTabContentChange, updateTabContent]
     )
+
+    useEffect(() => {
+      if (!folderRoot) return
+      const onTreeRefresh = () => {
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current)
+          saveTimerRef.current = null
+        }
+        void reloadOpenFileContents()
+      }
+      window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+      return () => {
+        window.removeEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+      }
+    }, [folderRoot, reloadOpenFileContents])
 
     const handleTabMouseDown = useCallback(
       (event: React.MouseEvent, tabId: string, closable: boolean) => {
@@ -119,10 +290,80 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
         openFile: (relativePath, options) => void tabsState.openFile(relativePath, options),
         openDiff: (change) => tabsState.openDiff(change),
         openDiffs: (changes) => tabsState.openDiffs(changes),
-        openGitDiff: (filePath, options) => void tabsState.openGitDiff(filePath, options)
+        openGitDiff: (filePath, options) => void tabsState.openGitDiff(filePath, options),
+        getActiveSelection: () => readActiveSelection(),
+        dismissSelectionAffordance,
+        getOpenFilePaths: () =>
+          tabs
+            .map((tab) => tab.relativePath || tab.change?.path)
+            .filter((path): path is string => Boolean(path))
       }),
-      [tabsState]
+      [dismissSelectionAffordance, readActiveSelection, tabs, tabsState]
     )
+
+    useEffect(() => {
+      registerWorkbenchFileContextCommands()
+    }, [])
+
+    useEffect(() => {
+      dismissedSelectionKeyRef.current = null
+      setSelectionAffordance(null)
+    }, [activeTabId])
+
+    useEffect(() => {
+      if (!selectionAffordance) return
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.defaultPrevented || event.key !== 'Escape') return
+        event.preventDefault()
+        dismissSelectionAffordance()
+      }
+      window.addEventListener('keydown', onKeyDown)
+      return () => window.removeEventListener('keydown', onKeyDown)
+    }, [dismissSelectionAffordance, selectionAffordance])
+
+    useEffect(() => {
+      onOpenFilePathsChange?.(
+        tabs
+          .map((tab) => tab.relativePath || tab.change?.path)
+          .filter((path): path is string => Boolean(path))
+      )
+    }, [onOpenFilePathsChange, tabs])
+
+    useEffect(() => {
+      const onAdd = (event: Event) => {
+        const detail = (event as CustomEvent<WorkbenchFileContextRangeDetail>).detail
+        if (!isPositiveLine(detail?.startLine) || !isPositiveLine(detail?.endLine)) return
+        emitFileContext({
+          startLine: detail.startLine,
+          endLine: detail.endLine,
+          origin: 'selection'
+        })
+      }
+      const onComment = (event: Event) => {
+        const detail = (event as CustomEvent<WorkbenchFileContextRangeDetail>).detail
+        if (!isPositiveLine(detail?.startLine) || !isPositiveLine(detail?.endLine)) return
+        openCommentDraft(detail)
+      }
+      window.addEventListener(WORKBENCH_ADD_FILE_CONTEXT_EVENT, onAdd)
+      window.addEventListener(WORKBENCH_COMMENT_FILE_CONTEXT_EVENT, onComment)
+      return () => {
+        window.removeEventListener(WORKBENCH_ADD_FILE_CONTEXT_EVENT, onAdd)
+        window.removeEventListener(WORKBENCH_COMMENT_FILE_CONTEXT_EVENT, onComment)
+      }
+    }, [emitFileContext, openCommentDraft])
+
+    const submitCommentDraft = useCallback(() => {
+      if (!commentDraft) return
+      const comment = commentDraft.text.trim()
+      if (!comment) return
+      setCommentDraft(null)
+      emitFileContext({
+        startLine: commentDraft.startLine,
+        endLine: commentDraft.endLine,
+        comment,
+        origin: 'comment'
+      })
+    }, [commentDraft, emitFileContext])
 
     if (!folderRoot) {
       return <WorkbenchEmptyState onOpenFolder={onOpenFolder} />
@@ -234,12 +475,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
         <div className={styles.content}>
           {!activeTab ? (
             <div className={styles.idleHero}>
-              <img
-                src={workbenchMascot}
-                alt=""
-                className={styles.idleMascot}
-                draggable={false}
-              />
+              <img src={workbenchMascot} alt="" className={styles.idleMascot} draggable={false} />
               <p className={styles.idleCaption}>{idleCaption}</p>
             </div>
           ) : activeTab.loading ? (
@@ -260,11 +496,31 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
               </div>
               <div className={styles.diffBody}>
                 <WorkbenchGitEditableDiff
+                  ref={gitDiffEditorRef}
                   originalContent={activeTab.gitDiffOriginal ?? ''}
                   content={activeTab.content ?? ''}
                   onChange={(content) => {
                     handleContentChange(activeTab.id, content, activeTab.relativePath!)
                   }}
+                  onSelectionAffordanceChange={handleSelectionAffordanceChange}
+                />
+              </div>
+            </div>
+          ) : activeTab.kind === 'git-diff' &&
+            activeTab.gitDiffReadOnly &&
+            activeTab.relativePath ? (
+            <div className={styles.diffWrap}>
+              <div className={styles.diffHeader}>
+                {activeTab.relativePath}
+                {activeTab.gitDiffCommitHash ? ` @ ${activeTab.gitDiffCommitHash.slice(0, 7)}` : ''}
+              </div>
+              <div className={styles.diffBody}>
+                <WorkbenchGitEditableDiff
+                  ref={gitDiffEditorRef}
+                  originalContent={activeTab.gitDiffOriginal ?? ''}
+                  content={activeTab.content ?? ''}
+                  readOnly
+                  onSelectionAffordanceChange={handleSelectionAffordanceChange}
                 />
               </div>
             </div>
@@ -289,6 +545,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
             </div>
           ) : activeTab.kind === 'diff' && activeTab.change ? (
             <WorkbenchFileChangeDiffPane
+              ref={mergeDiffEditorRef}
               folderRoot={folderRoot}
               change={activeTab.change}
               onModifiedChange={
@@ -298,9 +555,11 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
                     }
                   : undefined
               }
+              onSelectionAffordanceChange={handleSelectionAffordanceChange}
             />
           ) : activeTab.kind === 'markdown' && activeTab.relativePath ? (
             <WorkbenchLivePreviewEditor
+              ref={markdownEditorRef}
               documentId={activeTab.id}
               content={activeTab.content ?? ''}
               folderRoot={folderRoot}
@@ -311,6 +570,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
               onChange={(content) => {
                 handleContentChange(activeTab.id, content, activeTab.relativePath!)
               }}
+              onSelectionAffordanceChange={handleSelectionAffordanceChange}
             />
           ) : (
             <div className={styles.textPreview}>
@@ -325,21 +585,35 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
         {gitStatusBar ? (
           <div className={styles.statusBar}>
             {gitStatusBar.branch ? (
-              <button
-                type="button"
-                className={styles.statusBranch}
-                onClick={gitStatusBar.onOpenGitView}
-                title={t('workbench.git', 'Git')}
-              >
-                <span className={styles.statusBranchIcon}>⎇</span>
-                <span>{gitStatusBar.branch}</span>
-                {gitStatusBar.behind ? (
-                  <span className={styles.statusSync}>↓{gitStatusBar.behind}</span>
-                ) : null}
-                {gitStatusBar.ahead ? (
-                  <span className={styles.statusSync}>↑{gitStatusBar.ahead}</span>
-                ) : null}
-              </button>
+              <div className={styles.statusBranchWrap} ref={branchMenuRef}>
+                <button
+                  type="button"
+                  className={styles.statusBranch}
+                  onClick={() => {
+                    setBranchMenuOpen((open) => !open)
+                    if (!branchMenuOpen) gitStatusBar.onRefreshBranches?.()
+                  }}
+                  title={t('workbench.git_switch_branch', '切换分支')}
+                >
+                  <span className={styles.statusBranchIcon}>⎇</span>
+                  <span>{gitStatusBar.branch}</span>
+                  {gitStatusBar.behind ? (
+                    <span className={styles.statusSync}>↓{gitStatusBar.behind}</span>
+                  ) : null}
+                  {gitStatusBar.ahead ? (
+                    <span className={styles.statusSync}>↑{gitStatusBar.ahead}</span>
+                  ) : null}
+                </button>
+                <WorkbenchStatusBranchMenu
+                  open={branchMenuOpen}
+                  onClose={() => setBranchMenuOpen(false)}
+                  current={gitStatusBar.branch ?? undefined}
+                  branches={gitStatusBar.branches ?? []}
+                  onCheckout={(branch) => gitStatusBar.onCheckoutBranch?.(branch)}
+                  onCreate={(branch) => gitStatusBar.onCreateBranch?.(branch)}
+                  onPublish={() => gitStatusBar.onPublishBranch?.()}
+                />
+              </div>
             ) : null}
             <span className={styles.statusSpacer} />
             {(gitStatusBar.changesCount ?? 0) > 0 ? (
@@ -351,6 +625,120 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
             ) : (
               <span className={styles.statusChanges}>{t('workbench.git_clean', '工作区干净')}</span>
             )}
+          </div>
+        ) : null}
+
+        {selectionAffordance ? (
+          <div
+            className={styles.selectionAffordance}
+            data-placement={selectionAffordance.placement}
+            data-workbench-selection-affordance
+            style={{
+              left: selectionAffordance.left,
+              top: selectionAffordance.top
+            }}
+            onMouseDown={(event) => {
+              // 保留编辑器选区，让点击动作读取到同一范围。
+              event.preventDefault()
+            }}
+          >
+            <button
+              type="button"
+              className={styles.selectionAffordanceAction}
+              tabIndex={-1}
+              title={t(
+                'workbench.add_selection_to_chat_with_shortcut',
+                '将第 {{start}} 至 {{end}} 行加入对话（{{shortcut}}）',
+                {
+                  start: selectionAffordance.startLine,
+                  end: selectionAffordance.endLine,
+                  shortcut: addSelectionShortcutLabel()
+                }
+              )}
+              onClick={() => {
+                emitFileContext({
+                  startLine: selectionAffordance.startLine,
+                  endLine: selectionAffordance.endLine,
+                  origin: 'selection'
+                })
+              }}
+            >
+              <MessageSquarePlus size={14} strokeWidth={1.9} aria-hidden />
+              <span>{t('workbench.add_to_chat', '加入对话')}</span>
+              <kbd className={styles.selectionAffordanceShortcut}>{addSelectionShortcutLabel()}</kbd>
+            </button>
+            <button
+              type="button"
+              className={styles.selectionAffordanceAction}
+              tabIndex={-1}
+              title={t('workbench.comment_selection', '评论此选区')}
+              onClick={() => {
+                openCommentDraft({
+                  startLine: selectionAffordance.startLine,
+                  endLine: selectionAffordance.endLine,
+                  ...commentPopoverAnchorFromSelectionCoords({
+                    left: selectionAffordance.endLeft,
+                    right: selectionAffordance.endLeft,
+                    top: selectionAffordance.endTop,
+                    bottom: selectionAffordance.endTop
+                  })
+                })
+              }}
+            >
+              <MessageSquare size={14} strokeWidth={1.9} aria-hidden />
+              <span>{t('workbench.comment_selection', '评论此选区')}</span>
+            </button>
+          </div>
+        ) : null}
+
+        {commentDraft ? (
+          <div
+            ref={commentPopoverRef}
+            className={styles.commentPopover}
+            style={{ left: commentDraft.x, top: commentDraft.y }}
+          >
+            <p className={styles.commentPopoverTitle}>
+              {commentDraft.startLine === commentDraft.endLine
+                ? t('workbench.comment_line', '评论第 {{line}} 行', {
+                    line: commentDraft.startLine
+                  })
+                : t('workbench.comment_lines', '评论第 {{start}} 至 {{end}} 行', {
+                    start: commentDraft.startLine,
+                    end: commentDraft.endLine
+                  })}
+            </p>
+            <textarea
+              className={styles.commentPopoverInput}
+              value={commentDraft.text}
+              autoFocus
+              placeholder={t('workbench.comment_placeholder', '写下要交给模型看的评论')}
+              onChange={(event) =>
+                setCommentDraft((prev) => (prev ? { ...prev, text: event.target.value } : prev))
+              }
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  closeCommentDraft()
+                  return
+                }
+                if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                  event.preventDefault()
+                  submitCommentDraft()
+                }
+              }}
+            />
+            <div className={styles.commentPopoverActions}>
+              <button type="button" onClick={closeCommentDraft}>
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                type="button"
+                disabled={!commentDraft.text.trim()}
+                onClick={submitCommentDraft}
+              >
+                {t('workbench.add_to_chat', '加入对话')}
+              </button>
+            </div>
           </div>
         ) : null}
       </div>

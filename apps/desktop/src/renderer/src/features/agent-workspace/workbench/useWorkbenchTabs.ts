@@ -16,6 +16,7 @@ export interface WorkbenchTab {
   gitDiffStaged?: boolean
   gitDiffCommitHash?: string
   gitDiffEditable?: boolean
+  gitDiffReadOnly?: boolean
   gitDiffOriginal?: string
   loading?: boolean
   error?: string | null
@@ -36,6 +37,12 @@ function isMarkdownPath(path: string): boolean {
     lower.endsWith('.mdx') ||
     lower.endsWith('.txt')
   )
+}
+
+function isReloadableFileTab(tab: WorkbenchTab): boolean {
+  if (!tab.relativePath || tab.loading) return false
+  if (tab.kind === 'markdown' || tab.kind === 'text') return true
+  return tab.kind === 'git-diff' && Boolean(tab.gitDiffEditable)
 }
 
 let tabCounter = 0
@@ -63,11 +70,32 @@ export function useWorkbenchTabs(folderRoot: string | null) {
       const existing = tabs.find((tab) => tab.relativePath === relativePath && tab.kind !== 'diff')
       if (existing) {
         setActiveTabId(existing.id)
-        if (options?.line) {
+        try {
+          const result = await window.api.agentWorkspace.readFile(folderRoot, relativePath)
           setTabs((prev) =>
             prev.map((tab) =>
               tab.id === existing.id
-                ? { ...tab, scrollToLine: options.line, scrollToColumn: options.column }
+                ? {
+                    ...tab,
+                    content: result.content,
+                    truncated: result.truncated,
+                    error: null,
+                    scrollToLine: options?.line ?? tab.scrollToLine,
+                    scrollToColumn: options?.column ?? tab.scrollToColumn
+                  }
+                : tab
+            )
+          )
+        } catch (error) {
+          setTabs((prev) =>
+            prev.map((tab) =>
+              tab.id === existing.id
+                ? {
+                    ...tab,
+                    error: error instanceof Error ? error.message : 'Failed to load',
+                    scrollToLine: options?.line ?? tab.scrollToLine,
+                    scrollToColumn: options?.column ?? tab.scrollToColumn
+                  }
                 : tab
             )
           )
@@ -242,13 +270,15 @@ export function useWorkbenchTabs(folderRoot: string | null) {
         return
       }
 
-      const title = `Δ ${basenameFromPath(filePath)} (${commitHash.slice(0, 7)})`
+      const shortHash = commitHash.slice(0, 7)
+      const title = `${basenameFromPath(filePath)} (${shortHash})`
       const placeholder: WorkbenchTab = {
         id,
         kind: 'git-diff',
         title,
         relativePath: filePath,
         gitDiffCommitHash: commitHash,
+        gitDiffReadOnly: true,
         loading: true
       }
 
@@ -256,13 +286,25 @@ export function useWorkbenchTabs(folderRoot: string | null) {
       setActiveTabId(id)
 
       try {
-        const fileDiff = await window.api.agentWorkspace.git.getFileDiff(
-          folderRoot,
-          filePath,
-          commitHash
-        )
+        const [modified, original] = await Promise.all([
+          window.api.agentWorkspace.git.getFileContentAtRevision(folderRoot, filePath, commitHash),
+          window.api.agentWorkspace.git.getFileContentAtRevision(
+            folderRoot,
+            filePath,
+            `${commitHash}~1`
+          )
+        ])
         setTabs((prev) =>
-          prev.map((tab) => (tab.id === id ? { ...tab, loading: false, fileDiff } : tab))
+          prev.map((tab) =>
+            tab.id === id
+              ? {
+                  ...tab,
+                  loading: false,
+                  content: modified ?? '',
+                  gitDiffOriginal: original ?? ''
+                }
+              : tab
+          )
         )
       } catch (error) {
         setTabs((prev) =>
@@ -271,7 +313,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
               ? {
                   ...tab,
                   loading: false,
-                  error: error instanceof Error ? error.message : 'Failed to load diff'
+                  error: error instanceof Error ? error.message : 'Failed to load revision'
                 }
               : tab
           )
@@ -309,6 +351,39 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     setTabs((prev) => prev.map((tab) => (tab.id === tabId ? { ...tab, content } : tab)))
   }, [])
 
+  const reloadOpenFileContents = useCallback(async () => {
+    if (!folderRoot) return
+    const targets = tabs.filter(isReloadableFileTab)
+    if (targets.length === 0) return
+
+    const updates = await Promise.all(
+      targets.map(async (tab) => {
+        try {
+          const result = await window.api.agentWorkspace.readFile(folderRoot, tab.relativePath!)
+          return { id: tab.id, content: result.content, truncated: result.truncated, error: null }
+        } catch (error) {
+          return {
+            id: tab.id,
+            error: error instanceof Error ? error.message : 'Failed to load'
+          }
+        }
+      })
+    )
+
+    setTabs((prev) =>
+      prev.map((tab) => {
+        const update = updates.find((item) => item.id === tab.id)
+        if (!update) return tab
+        return {
+          ...tab,
+          content: update.content ?? tab.content,
+          truncated: update.truncated ?? tab.truncated,
+          error: update.error
+        }
+      })
+    )
+  }, [folderRoot, tabs])
+
   const resetTabs = useCallback(() => {
     setTabs([])
     setActiveTabId(null)
@@ -334,6 +409,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     closeTab,
     reorderTabs,
     updateTabContent,
+    reloadOpenFileContents,
     clearTabScrollTarget,
     resetTabs
   }

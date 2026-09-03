@@ -1,7 +1,7 @@
 .sash {
   flex-shrink: 0;
-  width: 4px;
-  margin: 0 -2px;
+  width: 8px;
+  margin: 0 -4px;
   cursor: col-resize;
   position: relative;
   z-index: 5;
@@ -12,14 +12,43 @@
 .sash::after {
   content: '';
   position: absolute;
-  inset: 0;
-  left: 1px;
-  width: 2px;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 2px);
+  width: 4px;
+  border-radius: 999px;
   background: transparent;
   transition: background 0.15s;
 }
 
 .sash:hover::after,
 .sash:active::after {
+  background: var(--color-primary);
+}
+
+.sashHorizontal {
+  flex-shrink: 0;
+  height: 8px;
+  margin: -4px 0;
+  cursor: row-resize;
+  position: relative;
+  z-index: 5;
+  background: transparent;
+}
+
+.sashHorizontal::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 2px);
+  height: 4px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.sashHorizontal:hover::after,
+.sashHorizontal:active::after {
   background: var(--color-primary);
 }
