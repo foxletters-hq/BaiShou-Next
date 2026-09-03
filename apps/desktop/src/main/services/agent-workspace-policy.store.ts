@@ -7,6 +7,8 @@ import {
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
   cloneBaishouAgentGateConfig,
   cloneWorkspaceToolManagementConfig,
+  applyWorkspacePolicyPatch,
+  resolveWorkspacePolicyFields,
   type AgentWorkspacePolicy,
   type BaishouAgentGateConfig,
   type WorkspaceToolManagementConfig
@@ -42,10 +44,12 @@ async function loadStore(): Promise<WorkspacePolicyFile> {
     // 旧 per-workspace gateConfig 直接丢弃，只保留 toolManagement
     const normalized: Record<string, AgentWorkspacePolicy> = {}
     for (const [id, policy] of Object.entries(byWorkspaceId)) {
+      const fields = resolveWorkspacePolicyFields(policy)
       normalized[id] = {
         workspaceId: id,
         gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
-        toolManagement: cloneWorkspaceToolManagementConfig(policy?.toolManagement),
+        toolManagement: fields.toolManagement,
+        personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
         updatedAt: policy?.updatedAt ?? new Date().toISOString()
       }
     }
@@ -65,10 +69,14 @@ async function saveStore(): Promise<void> {
 }
 
 function buildDefaultPolicy(workspaceId: string): AgentWorkspacePolicy {
+  const fields = resolveWorkspacePolicyFields({
+    toolManagement: DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG
+  })
   return {
     workspaceId,
     gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
-    toolManagement: cloneWorkspaceToolManagementConfig(DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG),
+    toolManagement: fields.toolManagement,
+    personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
     updatedAt: new Date().toISOString()
   }
 }
@@ -78,11 +86,13 @@ function normalizePolicy(
   raw?: AgentWorkspacePolicy | null
 ): AgentWorkspacePolicy {
   if (!raw) return buildDefaultPolicy(workspaceId)
+  const fields = resolveWorkspacePolicyFields(raw)
   return {
     workspaceId,
     // gate 已全局化；磁盘上的 per-workspace gateConfig 忽略
     gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
-    toolManagement: cloneWorkspaceToolManagementConfig(raw.toolManagement),
+    toolManagement: fields.toolManagement,
+    personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString()
   }
 }
@@ -106,11 +116,16 @@ export async function getWorkspaceToolManagement(
   return (await getWorkspacePolicy(workspaceId)).toolManagement
 }
 
+export async function getWorkspacePersonalMemoryRead(workspaceId: string): Promise<boolean> {
+  return (await getWorkspacePolicy(workspaceId)).personalMemoryReadEnabled
+}
+
 export async function setWorkspacePolicy(
   workspaceId: string,
   patch: {
     gateConfig?: BaishouAgentGateConfig
     toolManagement?: WorkspaceToolManagementConfig
+    personalMemoryReadEnabled?: boolean
   }
 ): Promise<AgentWorkspacePolicy> {
   if (patch.gateConfig) {
@@ -118,12 +133,15 @@ export async function setWorkspacePolicy(
   }
   const store = await loadStore()
   const current = normalizePolicy(workspaceId, store.byWorkspaceId[workspaceId])
+  const fields = applyWorkspacePolicyPatch(current, {
+    toolManagement: patch.toolManagement,
+    personalMemoryReadEnabled: patch.personalMemoryReadEnabled
+  })
   const next: AgentWorkspacePolicy = {
     workspaceId,
     gateConfig: cloneBaishouAgentGateConfig(null, DEFAULT_WORKSPACE_AGENT_GATE_CONFIG),
-    toolManagement: patch.toolManagement
-      ? cloneWorkspaceToolManagementConfig(patch.toolManagement)
-      : current.toolManagement,
+    toolManagement: fields.toolManagement,
+    personalMemoryReadEnabled: fields.personalMemoryReadEnabled,
     updatedAt: new Date().toISOString()
   }
   store.byWorkspaceId[workspaceId] = next
@@ -147,6 +165,14 @@ export async function setWorkspaceToolManagement(
   toolManagement: WorkspaceToolManagementConfig
 ): Promise<WorkspaceToolManagementConfig> {
   return (await setWorkspacePolicy(workspaceId, { toolManagement })).toolManagement
+}
+
+export async function setWorkspacePersonalMemoryRead(
+  workspaceId: string,
+  enabled: boolean
+): Promise<boolean> {
+  return (await setWorkspacePolicy(workspaceId, { personalMemoryReadEnabled: enabled }))
+    .personalMemoryReadEnabled
 }
 
 /** 测试 / Vault 重置时清空内存缓存（不删磁盘文件） */

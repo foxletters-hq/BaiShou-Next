@@ -70,6 +70,8 @@ export function registerSettingsAppIPC() {
 
   ipcMain.handle('settings:set-tool-management-config', async (_, config: any) => {
     await settingsManager.set('tool_management_config', config)
+    const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+    invalidateMcpToolContextCache()
     return true
   })
 
@@ -95,7 +97,10 @@ export function registerSettingsAppIPC() {
           ? ({ kind: 'workspace', workspaceId: scope.workspaceId } as const)
           : ({ kind: 'companion' } as const)
       const patch = sanitizeBaishouAgentGateConfigPatch(config)
-      return patchScopedAgentGateConfig(normalized, patch)
+      const saved = await patchScopedAgentGateConfig(normalized, patch)
+      const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+      invalidateMcpToolContextCache()
+      return saved
     }
   )
 
@@ -116,7 +121,7 @@ export function registerSettingsAppIPC() {
       if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
         throw new Error('workspaceId is required')
       }
-      return setWorkspaceToolManagement(
+      const saved = await setWorkspaceToolManagement(
         workspaceId.trim(),
         cloneWorkspaceToolManagementConfig({
           disabledToolIds: Array.isArray(config?.disabledToolIds) ? config.disabledToolIds : [],
@@ -126,6 +131,33 @@ export function registerSettingsAppIPC() {
               : {}
         })
       )
+      const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+      invalidateMcpToolContextCache()
+      return saved
+    }
+  )
+
+  ipcMain.handle('settings:get-workspace-personal-memory-read', async (_, workspaceId: string) => {
+    const { getWorkspacePersonalMemoryRead } =
+      await import('../services/agent-workspace-policy.store')
+    if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+      throw new Error('workspaceId is required')
+    }
+    return getWorkspacePersonalMemoryRead(workspaceId.trim())
+  })
+
+  ipcMain.handle(
+    'settings:set-workspace-personal-memory-read',
+    async (_, workspaceId: string, enabled: unknown) => {
+      const { setWorkspacePersonalMemoryRead } =
+        await import('../services/agent-workspace-policy.store')
+      if (typeof workspaceId !== 'string' || !workspaceId.trim()) {
+        throw new Error('workspaceId is required')
+      }
+      const saved = await setWorkspacePersonalMemoryRead(workspaceId.trim(), enabled !== false)
+      const { invalidateMcpToolContextCache } = await import('./agent-helpers')
+      invalidateMcpToolContextCache()
+      return saved
     }
   )
 

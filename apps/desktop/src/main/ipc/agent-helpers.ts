@@ -22,6 +22,7 @@ import { resolveActiveWorkspaceToolContext } from '../services/agent-workspace-t
 import { resolveOrCreateWorkspaceIdByFolder } from '../services/agent-workspace-registry.store'
 import {
   getWorkspaceGateConfig,
+  getWorkspacePersonalMemoryRead,
   getWorkspaceToolManagement
 } from '../services/agent-workspace-policy.store'
 import { fileSystem, pathService, vaultService, resolveActiveVaultId } from './vault.ipc'
@@ -322,6 +323,7 @@ export async function buildAgentUserConfigFromSettings(options?: {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
     disabledToolIds: toolManagementConfig.disabledToolIds,
+    customConfigs: toolManagementConfig.customConfigs,
     recentCount:
       options?.assistantContextWindow !== undefined
         ? options.assistantContextWindow < 0
@@ -530,16 +532,18 @@ export async function buildMcpToolContext(): Promise<ToolContext> {
 
   if (activeWorkspace?.folderRoot) {
     const workspaceId = await resolveOrCreateWorkspaceIdByFolder(activeWorkspace.folderRoot)
-    const [workspaceGateConfig, workspaceTools] = await Promise.all([
+    const [workspaceGateConfig, workspaceTools, personalMemoryReadEnabled] = await Promise.all([
       getWorkspaceGateConfig(workspaceId),
-      getWorkspaceToolManagement(workspaceId)
+      getWorkspaceToolManagement(workspaceId),
+      getWorkspacePersonalMemoryRead(workspaceId)
     ])
     agentGate = await getWorkspaceAgentGate(workspaceId)
     scopedUserConfig = {
       ...userConfig,
       disabledToolIds: workspaceTools.disabledToolIds,
       baishou_agent_gate_config: workspaceGateConfig,
-      workspaceId
+      workspaceId,
+      personalMemoryReadEnabled
     }
   }
 
