@@ -45,6 +45,15 @@ export function buildToolUsageGuidelines(availableToolIds: readonly string[]): s
     )
   }
 
+  if (ids.has('memory_delete')) {
+    if (lines.length > 0) lines.push('')
+    lines.push('## 删除记忆必须使用唯一 id')
+    lines.push(
+      '- 调用 memory_delete 时必须传入 vector_search 返回的 memory_id，或 memory_store 返回的 id。'
+    )
+    lines.push('- 禁止用描述、日期、标题或语义查询代替 id；找不到 id 时先检索，不要猜测。')
+  }
+
   if (ids.has('companion_ask')) {
     if (lines.length > 0) lines.push('')
     lines.push('## 向用户提问')
