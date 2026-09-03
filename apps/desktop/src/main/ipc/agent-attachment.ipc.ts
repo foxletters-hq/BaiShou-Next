@@ -2,7 +2,13 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import * as fs from 'fs/promises'
 import * as os from 'os'
 import * as path from 'path'
-import { logger, supportsNativePdf, stripAttachmentBinaryForStorage } from '@baishou/shared'
+import {
+  classifyPromptAttachmentKind,
+  logger,
+  normalizeFileCiteRefs,
+  supportsNativePdf,
+  stripAttachmentBinaryForStorage
+} from '@baishou/shared'
 import { pathService } from './vault.ipc'
 import { getAgentManagers, getActiveProvider } from './agent-helpers'
 import { getWorkspaceSessionBinding } from '../services/agent-workspace-session.store'
@@ -77,6 +83,12 @@ export function registerAttachmentIPC() {
         attachments?: any[]
         displayText?: string
         skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: Array<{
+          relativePath?: string
+          selection?: { startLine?: number; endLine?: number }
+          comment?: string
+          origin?: string
+        }>
       }
     ) => {
       try {
@@ -111,7 +123,10 @@ export function registerAttachmentIPC() {
                   absolutePath: plan.absolutePath,
                   fileName: plan.fileName,
                   folderRoot: workspaceBinding.folderRoot,
-                  mimeType: att.mimeType
+                  mimeType: att.mimeType,
+                  selection: att.selection,
+                  comment: att.comment,
+                  origin: att.origin
                 })
               }
               if (plan.mode === 'image-snapshot') {
@@ -186,9 +201,10 @@ export function registerAttachmentIPC() {
                     att.fileName = newFileName
                     att.name = newFileName
 
-                    const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
-                    const isText = /\.(txt|md)$/i.test(newFileName)
-                    const isPdf = /\.pdf$/i.test(newFileName)
+                    const flags = classifyPromptAttachmentKind(newFileName)
+                    const isImage = flags.isImage
+                    const isText = flags.isText
+                    const isPdf = flags.isPdf
                     att.isImage = isImage
                     att.isText = isText
                     att.isPdf = isPdf
@@ -220,9 +236,10 @@ export function registerAttachmentIPC() {
                     att.fileName = att.fileName || newFileName
                     att.name = att.name || att.fileName
 
-                    const isImage = /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(newFileName)
-                    const isText = /\.(txt|md)$/i.test(newFileName)
-                    const isPdf = /\.pdf$/i.test(newFileName)
+                    const flags = classifyPromptAttachmentKind(newFileName)
+                    const isImage = flags.isImage
+                    const isText = flags.isText
+                    const isPdf = flags.isPdf
                     att.isImage = isImage
                     att.isText = isText
                     att.isPdf = isPdf
@@ -312,13 +329,16 @@ export function registerAttachmentIPC() {
               }))
               .filter((ref) => Boolean(ref.command))
           : []
+        const fileRefs = normalizeFileCiteRefs(args.fileRefs)
         const rawDisplay =
           typeof args.displayText === 'string' && args.displayText.trim()
             ? args.displayText
             : undefined
         const displayText =
           rawDisplay &&
-          (skillRefs.length > 0 || rawDisplay.trim() !== String(args.text ?? '').trim())
+          (skillRefs.length > 0 ||
+            fileRefs.length > 0 ||
+            rawDisplay.trim() !== String(args.text ?? '').trim())
             ? rawDisplay
             : undefined
 
@@ -331,7 +351,8 @@ export function registerAttachmentIPC() {
             data: {
               text: args.text,
               ...(displayText ? { displayText } : {}),
-              ...(skillRefs.length > 0 ? { skillRefs } : {})
+              ...(skillRefs.length > 0 ? { skillRefs } : {}),
+              ...(fileRefs.length > 0 ? { fileRefs } : {})
             }
           }
         ]
@@ -391,10 +412,11 @@ export function registerAttachmentIPC() {
       if (result.canceled) return []
 
       const filePromises = result.filePaths.map(async (filePath) => {
-        const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(filePath)
-        const isPdf = /\.pdf$/i.test(filePath)
-        const isText = /\.(txt|md)$/i.test(filePath)
         const fileName = filePath.split(/[/\\]/).pop() || 'Unknown'
+        const flags = classifyPromptAttachmentKind(fileName)
+        const isImage = flags.isImage
+        const isPdf = flags.isPdf
+        const isText = flags.isText
 
         let fileSize = 0
         try {

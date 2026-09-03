@@ -1,5 +1,10 @@
 import path from 'node:path'
-import { stripAttachmentBinaryForStorage } from '@baishou/shared'
+import {
+  classifyPromptAttachmentKind,
+  stripAttachmentBinaryForStorage,
+  type PromptFileRefOrigin,
+  type PromptFileSelection
+} from '@baishou/shared'
 
 export function isEphemeralAttachmentPath(filePath?: string): boolean {
   if (!filePath) return true
@@ -10,16 +15,7 @@ export function classifyPromptAttachmentFlags(
   fileName: string,
   mimeType?: string
 ): { isImage: boolean; isPdf: boolean; isText: boolean } {
-  const mime = mimeType || ''
-  return {
-    isImage:
-      mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(fileName),
-    isPdf: mime === 'application/pdf' || /\.pdf$/i.test(fileName),
-    isText:
-      mime === 'text/plain' ||
-      mime === 'text/markdown' ||
-      /\.(txt|md)$/i.test(fileName)
-  }
+  return classifyPromptAttachmentKind(fileName, mimeType)
 }
 
 export function toFileUrl(absolutePath: string): string {
@@ -61,12 +57,16 @@ export function decorateWorkspacePromptAttachment(params: {
   fileName: string
   folderRoot?: string
   mimeType?: string
+  selection?: PromptFileSelection
+  comment?: string
+  origin?: PromptFileRefOrigin
 }): Record<string, unknown> {
   const flags = classifyPromptAttachmentFlags(params.fileName, params.mimeType)
   const relativePath = params.folderRoot
     ? workspaceRelativeFromFolder(params.folderRoot, params.absolutePath)
     : undefined
   const fileUrl = toFileUrl(params.absolutePath)
+  const comment = params.comment?.trim()
   return stripAttachmentBinaryForStorage({
     filePath: params.absolutePath,
     fileName: params.fileName,
@@ -74,10 +74,13 @@ export function decorateWorkspacePromptAttachment(params: {
     url: fileUrl,
     uri: fileUrl,
     ...(relativePath ? { relativePath } : {}),
+    ...(params.selection ? { selection: params.selection } : {}),
+    ...(comment ? { comment } : {}),
+    ...(params.origin ? { origin: params.origin } : {}),
     isImage: flags.isImage,
     isPdf: flags.isPdf,
     isText: flags.isText,
-    type: flags.isImage ? 'image' : 'file',
+    type: flags.isImage ? 'image' : flags.isText ? 'text' : 'file',
     mimeType: mimeTypeForFlags(params.fileName, flags, params.mimeType)
   })
 }
