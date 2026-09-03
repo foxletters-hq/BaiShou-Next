@@ -104,7 +104,8 @@ export const agentWorkspaceApi = {
   } | null> => ipcRenderer.invoke('agent-workspace:get-binding', sessionId),
   attachNotebook: (params: {
     sessionId: string
-    notebookId: string | null
+    notebookId?: string | null
+    notebookIds?: string[]
   }): Promise<{
     sessionId: string
     folderRoot: string
@@ -182,8 +183,21 @@ export const agentWorkspaceApi = {
       ipcRenderer.invoke('agent-workspace:git-commit-staged', folderRoot, message),
     commitAll: (folderRoot: string, message: string) =>
       ipcRenderer.invoke('agent-workspace:git-commit-all', folderRoot, message),
-    getHistory: (folderRoot: string, filePath?: string, limit?: number) =>
-      ipcRenderer.invoke('agent-workspace:git-get-history', folderRoot, filePath, limit),
+    getHistory: (
+      folderRoot: string,
+      filePath?: string | null,
+      limit?: number,
+      offset?: number
+    ) =>
+      ipcRenderer.invoke(
+        'agent-workspace:git-get-history',
+        folderRoot,
+        filePath ?? null,
+        limit ?? 50,
+        offset ?? 0
+      ),
+    getHistoryCount: (folderRoot: string, filePath?: string | null) =>
+      ipcRenderer.invoke('agent-workspace:git-get-history-count', folderRoot, filePath ?? null),
     getRecentPulls: (folderRoot: string, limit?: number) =>
       ipcRenderer.invoke('agent-workspace:git-get-recent-pulls', folderRoot, limit),
     getCommitChanges: (folderRoot: string, commitHash: string) =>
@@ -194,6 +208,13 @@ export const agentWorkspaceApi = {
       ipcRenderer.invoke('agent-workspace:git-get-working-diff', folderRoot, filePath, staged),
     getHeadFileContent: (folderRoot: string, filePath: string) =>
       ipcRenderer.invoke('agent-workspace:git-get-head-file-content', folderRoot, filePath),
+    getFileContentAtRevision: (folderRoot: string, filePath: string, revision: string) =>
+      ipcRenderer.invoke(
+        'agent-workspace:git-get-file-content-at-revision',
+        folderRoot,
+        filePath,
+        revision
+      ),
     hasConflicts: (folderRoot: string) =>
       ipcRenderer.invoke('agent-workspace:git-has-conflicts', folderRoot),
     getConflicts: (folderRoot: string) =>
