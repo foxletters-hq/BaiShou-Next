@@ -1,11 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
 import {
   FileChangeDiff,
   FileChangeMergeDiff,
   resolveFileChangeDocuments,
-  type FileChangeMergeViewMode
+  type FileChangeMergeSelectionHandle,
+  type FileChangeMergeViewMode,
+  type WorkbenchSelectionAffordanceState
 } from '@baishou/ui'
 import styles from './WorkbenchFileChangeDiffPane.module.css'
 
@@ -14,6 +16,7 @@ export interface WorkbenchFileChangeDiffPaneProps {
   change: WorkspaceChangeEntry
   /** When set with folderRoot, modified edits are persisted like other workbench tabs. */
   onModifiedChange?: (content: string) => void
+  onSelectionAffordanceChange?: (state: WorkbenchSelectionAffordanceState | null) => void
 }
 
 type LoadState =
@@ -25,11 +28,13 @@ type LoadState =
       fallback: boolean
     }
 
-export const WorkbenchFileChangeDiffPane: React.FC<WorkbenchFileChangeDiffPaneProps> = ({
-  folderRoot,
-  change,
-  onModifiedChange
-}) => {
+export const WorkbenchFileChangeDiffPane = forwardRef<
+  FileChangeMergeSelectionHandle,
+  WorkbenchFileChangeDiffPaneProps
+>(function WorkbenchFileChangeDiffPane(
+  { folderRoot, change, onModifiedChange, onSelectionAffordanceChange },
+  ref
+) {
   const { t } = useTranslation()
   const [viewMode, setViewMode] = useState<FileChangeMergeViewMode>('inline')
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' })
@@ -37,8 +42,8 @@ export const WorkbenchFileChangeDiffPane: React.FC<WorkbenchFileChangeDiffPanePr
   useEffect(() => {
     let cancelled = false
 
-    async function load() {
-      setLoadState({ status: 'loading' })
+    async function load(quiet = false) {
+      if (!quiet) setLoadState({ status: 'loading' })
 
       let diskAvailable = false
       let diskContent: string | null | undefined
@@ -86,13 +91,21 @@ export const WorkbenchFileChangeDiffPane: React.FC<WorkbenchFileChangeDiffPanePr
     }
 
     void load()
+    const onTreeRefresh = () => {
+      void load(true)
+    }
+    window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
     return () => {
       cancelled = true
+      window.removeEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
     }
   }, [folderRoot, change.id, change.path, change.kind, change.data.diff])
 
   const canEditModified =
-    Boolean(folderRoot) && Boolean(onModifiedChange) && loadState.status === 'ready' && !loadState.fallback
+    Boolean(folderRoot) &&
+    Boolean(onModifiedChange) &&
+    loadState.status === 'ready' &&
+    !loadState.fallback
 
   const handleModifiedChange = useCallback(
     (content: string) => {
@@ -132,12 +145,14 @@ export const WorkbenchFileChangeDiffPane: React.FC<WorkbenchFileChangeDiffPanePr
           <p className={styles.status}>{t('workbench.loading_diff', '正在加载 diff…')}</p>
         ) : !loadState.fallback ? (
           <FileChangeMergeDiff
+            ref={ref}
             path={change.path}
             original={loadState.original}
             modified={loadState.modified}
             viewMode={viewMode}
             modifiedEditable={canEditModified}
             onModifiedChange={canEditModified ? handleModifiedChange : undefined}
+            onSelectionAffordanceChange={onSelectionAffordanceChange}
           />
         ) : (
           <FileChangeDiff data={change.data} className={styles.fallbackDiff} />
@@ -145,4 +160,4 @@ export const WorkbenchFileChangeDiffPane: React.FC<WorkbenchFileChangeDiffPanePr
       </div>
     </div>
   )
-}
+})
