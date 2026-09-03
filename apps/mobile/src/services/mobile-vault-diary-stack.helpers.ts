@@ -10,15 +10,12 @@ import {
   type SettingsManagerService
 } from '@baishou/core-mobile'
 import {
-  ensureDiaryInlineTags,
+  formatDiaryPreviewText,
   parseDateStr,
-  prepareDiaryAppendContent,
-  prepareDiaryWriteContent,
-  resolveDiaryEditMode
+  prepareDiarySearcherEdit,
+  prepareDiarySearcherWrite
 } from '@baishou/shared'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
-import { formatDiaryPreviewText, type DiaryTemplateConfig } from '@baishou/shared'
-import { mergeDiaryTags } from '@baishou/ai'
 import { createShadowDiaryRepoAdapter } from './shadow-diary-adapter'
 import { getMobileDiaryEmbeddingCallback } from './mobile-diary-embedding.service'
 import { ensureMobileRawDataRuntime } from './mobile-raw-data-source.runtime'
@@ -110,22 +107,11 @@ export function createVaultBoundDiaryStack(deps: {
       }
       return rows
     },
-    async writeEntry(date: string, content: string, tags?: string) {
+    async writeEntry(date: string, content: string) {
       try {
-        const templateConfig: DiaryTemplateConfig = deps.settingsManager
-          ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
-          : {}
-        const tagsStr = tags
-          ?.split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .join(',')
-        const prepared = prepareDiaryWriteContent(content, templateConfig, new Date())
-        // 标签只写正文 #标签，不写 frontmatter（由正文解析进索引）
-        const finalContent = tagsStr ? ensureDiaryInlineTags(prepared, tagsStr) : prepared
         await diaryService.create({
           date: parseDateStr(date),
-          content: finalContent
+          ...prepareDiarySearcherWrite(content)
         })
         return { ok: true as const }
       } catch (e) {
@@ -141,7 +127,7 @@ export function createVaultBoundDiaryStack(deps: {
         }
       }
     },
-    async editEntry({ date, content, mode, tags }) {
+    async editEntry({ date, content, mode }) {
       try {
         const existing = await diaryService.findByDate(parseDateStr(date))
         if (!existing?.id) {
@@ -151,30 +137,10 @@ export function createVaultBoundDiaryStack(deps: {
           }
         }
 
-        let finalContent = content
-        const editMode = resolveDiaryEditMode(mode)
-        if (editMode === 'append') {
-          const templateConfig: DiaryTemplateConfig = deps.settingsManager
-            ? (await deps.settingsManager.get<DiaryTemplateConfig>('diary_template_config')) || {}
-            : {}
-          finalContent = prepareDiaryAppendContent(
-            existing.content,
-            content,
-            templateConfig,
-            new Date()
-          )
-        }
-
-        const mergedTags = tags ? mergeDiaryTags(existing.tags, tags) : existing.tags
-        // 标签只写正文 #标签；清空 metadata tags，避免再落 frontmatter
-        if (mergedTags) {
-          finalContent = ensureDiaryInlineTags(finalContent, mergedTags)
-        }
-
-        await diaryService.update(existing.id, {
-          content: finalContent,
-          tags: ''
-        })
+        await diaryService.update(
+          existing.id,
+          prepareDiarySearcherEdit(existing.content, content, mode)
+        )
         return { ok: true as const }
       } catch (e) {
         return {

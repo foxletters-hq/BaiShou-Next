@@ -13,12 +13,11 @@ export type VaultDiarySearcher = {
     endDate: string
   ) => Promise<Array<{ date: string; preview: string }>>
   readByDates: (dates: string[]) => Promise<Array<{ date: string; content: string | null }>>
-  writeEntry: (date: string, content: string, tags?: string) => Promise<ToolDiaryMutationResult>
+  writeEntry: (date: string, content: string) => Promise<ToolDiaryMutationResult>
   editEntry: (args: {
     date: string
     content: string
     mode?: 'append' | 'overwrite'
-    tags?: string
   }) => Promise<ToolDiaryMutationResult>
   deleteEntry: (date: string) => Promise<ToolDiaryMutationResult>
 }
