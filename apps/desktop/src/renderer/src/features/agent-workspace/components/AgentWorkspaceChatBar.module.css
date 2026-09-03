@@ -142,7 +142,8 @@
   font-size: var(--ui-fs-sm);
   font-weight: 500;
   line-height: 1.45;
-  max-width: 140px;
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
