@@ -206,16 +206,18 @@ export function isExcludedFromVersionControl(filePath: string): boolean {
 export const GITLINK_MODE = '160000'
 
 /**
- * 解码 `git ls-files` 等命令输出的 C 风格引号路径。
- * 例如 `"\346\230\257"` → `是`
+ * 解码 `git ls-files` / `diff --numstat` 等输出的 C 风格路径。
+ * 例如 `"\346\230\257"` 或未加引号的 `\346\230\257` → `是`
  */
 export function unquoteGitPath(filePath: string): string {
   const trimmed = filePath.trim()
-  if (!trimmed.startsWith('"') || !trimmed.endsWith('"') || trimmed.length < 2) {
+  if (!trimmed) return trimmed
+
+  const quoted = trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2
+  const inner = quoted ? trimmed.slice(1, -1) : trimmed
+  if (!quoted && !/\\[0-7]{3}|\\[ntr\\"]/.test(inner)) {
     return trimmed
   }
-
-  const inner = trimmed.slice(1, -1)
   const bytes: number[] = []
 
   for (let i = 0; i < inner.length; i++) {

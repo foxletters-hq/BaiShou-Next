@@ -337,6 +337,14 @@ describe('GitSyncService', () => {
       expect(unquoteGitPath('"\\346\\230\\257"')).toBe('是')
       expect(unquoteGitPath('plain/path.md')).toBe('plain/path.md')
     })
+
+    it('decodes unquoted octal-escaped paths from diff --numstat', async () => {
+      const { unquoteGitPath } = await import('../git-sync.helpers')
+      expect(unquoteGitPath('\\345\\260\\217\\350\\257\\264.md')).toBe('小说.md')
+      expect(unquoteGitPath('"\\345\\260\\217\\350\\257\\264\\350\\247\\204\\350\\214\\203.md"')).toBe(
+        '小说规范.md'
+      )
+    })
   })
 
   describe('parseDiffHunks', () => {
