@@ -41,7 +41,8 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
     'Store important information as long-term memory for later semantic search retrieval. ' +
     'Use this tool when the user expresses preferences, makes decisions, ' +
     'or when you encounter information worth remembering. ' +
-    'Stored memories are vectorized and can be retrieved via the vector_search tool.'
+    'Stored memories are vectorized and can be retrieved via the vector_search tool. ' +
+    'The returned id is the unique key required by memory_delete.'
 
   readonly parameters = memoryStoreParams
 

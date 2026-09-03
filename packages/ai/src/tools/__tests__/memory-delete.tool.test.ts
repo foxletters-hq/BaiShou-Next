@@ -1,7 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { deriveLegacyVaultId, MEMORY_SOURCE_TYPE } from '@baishou/shared'
-import { MemoryDeleteTool } from '../memory-delete.tool'
+import { collectMemoryDeleteIds, MemoryDeleteTool } from '../memory-delete.tool'
 import type { ToolContext } from '../agent.tool'
+
+describe('collectMemoryDeleteIds', () => {
+  it('deduplicates memory_id and memory_ids', () => {
+    expect(
+      collectMemoryDeleteIds({
+        memory_id: ' mem-1 ',
+        memory_ids: ['mem-1', 'mem-2', '', 'mem-2']
+      })
+    ).toEqual(['mem-1', 'mem-2'])
+  })
+})
 
 describe('MemoryDeleteTool', () => {
   let tool: MemoryDeleteTool
@@ -10,30 +21,46 @@ describe('MemoryDeleteTool', () => {
     tool = new MemoryDeleteTool()
   })
 
-  it('tombstones JSONL when deleting sourceType=memory hits', async () => {
-    const tombstone = vi.fn().mockResolvedValue(undefined)
-    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+  it('rejects calls without a unique memory id and does not search', async () => {
+    const searchSimilar = vi.fn()
+    const deleteBySource = vi.fn()
     const context: ToolContext = {
       sessionId: 'sess-1',
       vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
       embeddingService: {
         isConfigured: true,
-        embedQuery: vi.fn().mockResolvedValue([0.1, 0.2]),
+        embedQuery: vi.fn(),
         embedText: vi.fn()
       },
+      vectorStore: { searchSimilar, deleteBySource }
+    }
+
+    const result = await tool.execute({}, context)
+
+    expect(result).toMatch(/缺少记忆唯一键|memory_id/)
+    expect(searchSimilar).not.toHaveBeenCalled()
+    expect(deleteBySource).not.toHaveBeenCalled()
+  })
+
+  it('tombstones JSONL and deletes only the requested memory id', async () => {
+    const tombstone = vi.fn().mockResolvedValue(undefined)
+    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const getBySource = vi.fn().mockResolvedValue({
+      sourceType: MEMORY_SOURCE_TYPE,
+      sourceId: 'mem-1',
+      chunkText: 'user likes dark theme',
+      createdAt: Date.parse('2026-08-01T12:00:00Z')
+    })
+    const searchSimilar = vi.fn()
+    const context: ToolContext = {
+      sessionId: 'sess-1',
+      vaultId: deriveLegacyVaultId('Personal'),
+      vaultName: 'Personal',
       vectorStore: {
-        searchSimilar: vi.fn().mockResolvedValue([
-          {
-            sourceType: MEMORY_SOURCE_TYPE,
-            sourceId: 'mem-1',
-            groupId: 'memory',
-            chunkText: 'user likes dark theme',
-            distance: 0.1,
-            createdAt: Date.parse('2026-08-01T12:00:00Z')
-          }
-        ]),
-        deleteBySource
+        searchSimilar,
+        deleteBySource,
+        getBySource
       },
       rawDataSourceManager: {
         writeRecord: vi.fn(),
@@ -41,72 +68,74 @@ describe('MemoryDeleteTool', () => {
       }
     }
 
-    const result = await tool.execute({ query: 'dark theme' }, context)
+    const result = await tool.execute({ memory_id: 'mem-1' }, context)
 
-    expect(result).toContain('Deleted 1')
+    expect(result).toContain('已按唯一键删除 1')
+    expect(result).toContain('mem-1')
+    expect(searchSimilar).not.toHaveBeenCalled()
+    expect(getBySource).toHaveBeenCalledWith(
+      MEMORY_SOURCE_TYPE,
+      'mem-1',
+      deriveLegacyVaultId('Personal')
+    )
     expect(tombstone).toHaveBeenCalledWith(
       'memory',
       'mem-1',
       expect.objectContaining({ shardMonth: expect.stringMatching(/^\d{4}-\d{2}$/) })
     )
+    expect(deleteBySource).toHaveBeenCalledTimes(1)
     expect(deleteBySource).toHaveBeenCalledWith(MEMORY_SOURCE_TYPE, 'mem-1')
   })
 
-  it('does not tombstone chat embeddings when deleting by message_id', async () => {
-    const tombstone = vi.fn().mockResolvedValue(undefined)
+  it('skips unknown ids without deleting other memories', async () => {
+    const tombstone = vi
+      .fn()
+      .mockRejectedValue(new Error('Memory tombstone: id not found: missing'))
     const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const getBySource = vi.fn().mockResolvedValue(null)
     const context: ToolContext = {
       sessionId: 'sess-1',
       vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
-      vectorStore: { searchSimilar: vi.fn(), deleteBySource },
+      vectorStore: { searchSimilar: vi.fn(), deleteBySource, getBySource },
       rawDataSourceManager: {
         writeRecord: vi.fn(),
         tombstone
       }
     }
 
-    const result = await tool.execute({ query: 'ignored', message_id: 'msg-9' }, context)
+    const result = await tool.execute({ memory_id: 'missing' }, context)
 
-    expect(result).toContain('msg-9')
-    expect(deleteBySource).toHaveBeenCalledWith('chat', 'msg-9')
-    expect(tombstone).not.toHaveBeenCalled()
+    expect(result).toMatch(/没有删除任何记忆|未找到/)
+    expect(deleteBySource).not.toHaveBeenCalled()
   })
 
-  it('does not tombstone chat hits from semantic search', async () => {
+  it('deletes multiple exact ids without semantic search', async () => {
     const tombstone = vi.fn().mockResolvedValue(undefined)
     const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const getBySource = vi.fn().mockImplementation(async (_type: string, sourceId: string) => ({
+      sourceType: MEMORY_SOURCE_TYPE,
+      sourceId,
+      chunkText: sourceId,
+      createdAt: Date.parse('2026-08-01T12:00:00Z')
+    }))
     const context: ToolContext = {
       sessionId: 'sess-1',
       vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
-      embeddingService: {
-        isConfigured: true,
-        embedQuery: vi.fn().mockResolvedValue([0.1]),
-        embedText: vi.fn()
-      },
-      vectorStore: {
-        searchSimilar: vi.fn().mockResolvedValue([
-          {
-            sourceType: 'chat',
-            sourceId: 'msg-2',
-            groupId: 'session-1',
-            chunkText: 'chat snippet',
-            distance: 0.2
-          }
-        ]),
-        deleteBySource
-      },
+      vectorStore: { searchSimilar: vi.fn(), deleteBySource, getBySource },
       rawDataSourceManager: {
         writeRecord: vi.fn(),
         tombstone
       }
     }
 
-    await tool.execute({ query: 'chat' }, context)
+    const result = await tool.execute({ memory_ids: ['a', 'b'] }, context)
 
-    expect(tombstone).not.toHaveBeenCalled()
-    expect(deleteBySource).toHaveBeenCalledWith('chat', 'msg-2')
+    expect(result).toContain('已按唯一键删除 2')
+    expect(deleteBySource).toHaveBeenCalledWith(MEMORY_SOURCE_TYPE, 'a')
+    expect(deleteBySource).toHaveBeenCalledWith(MEMORY_SOURCE_TYPE, 'b')
+    expect(deleteBySource).toHaveBeenCalledTimes(2)
   })
 
   it('fail-closed: tombstone IO failure does not delete vectors', async () => {
@@ -116,23 +145,15 @@ describe('MemoryDeleteTool', () => {
       sessionId: 'sess-1',
       vaultId: deriveLegacyVaultId('Personal'),
       vaultName: 'Personal',
-      embeddingService: {
-        isConfigured: true,
-        embedQuery: vi.fn().mockResolvedValue([0.1, 0.2]),
-        embedText: vi.fn()
-      },
       vectorStore: {
-        searchSimilar: vi.fn().mockResolvedValue([
-          {
-            sourceType: MEMORY_SOURCE_TYPE,
-            sourceId: 'mem-io',
-            groupId: 'memory',
-            chunkText: 'should remain',
-            distance: 0.05,
-            createdAt: Date.parse('2026-08-01T12:00:00Z')
-          }
-        ]),
-        deleteBySource
+        searchSimilar: vi.fn(),
+        deleteBySource,
+        getBySource: vi.fn().mockResolvedValue({
+          sourceType: MEMORY_SOURCE_TYPE,
+          sourceId: 'mem-io',
+          chunkText: 'should remain',
+          createdAt: Date.parse('2026-08-01T12:00:00Z')
+        })
       },
       rawDataSourceManager: {
         writeRecord: vi.fn(),
@@ -140,7 +161,7 @@ describe('MemoryDeleteTool', () => {
       }
     }
 
-    const result = await tool.execute({ query: 'remain' }, context)
+    const result = await tool.execute({ memory_id: 'mem-io' }, context)
 
     expect(result).toMatch(/Failed to delete|ENOSPC/)
     expect(tombstone).toHaveBeenCalled()

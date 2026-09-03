@@ -68,6 +68,36 @@ describe('VectorSearchTool', () => {
     expect(searchFts).not.toHaveBeenCalled()
   })
 
+  it('prints memory_id so callers can delete by unique key', async () => {
+    const result = await tool.execute(
+      { query: '主题', mode: 'vector' },
+      createContext({
+        embeddingService: {
+          isConfigured: true,
+          embedQuery: vi.fn().mockResolvedValue([0.1]),
+          embedText: vi.fn()
+        },
+        vectorStore: {
+          searchSimilar: vi.fn().mockResolvedValue([
+            {
+              sourceType: 'memory',
+              sourceId: 'mem-abc',
+              groupId: 'memory',
+              chunkText: '喜欢深色主题',
+              distance: 0.1,
+              createdAt: Date.parse('2026-08-01T12:00:00Z')
+            }
+          ]),
+          deleteBySource: vi.fn()
+        }
+      })
+    )
+
+    expect(result).toContain('类型: memory')
+    expect(result).toContain('memory_id: mem-abc')
+    expect(result).toContain('喜欢深色主题')
+  })
+
   it('passes time filter to FTS in hybrid mode', async () => {
     const searchSimilar = vi.fn().mockResolvedValue([])
     const searchFts = vi.fn().mockResolvedValue([])

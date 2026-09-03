@@ -66,7 +66,8 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
     'Combine with diary_search when the answer may live in diary entries. ' +
     'Optionally set start_date and/or end_date (YYYY-MM-DD, local calendar day) to narrow results to a time window—' +
     'use this when the user mentions a specific period (e.g. last spring, March 2024, before a trip). ' +
-    'Returns the most semantically relevant conversation snippets with scores.'
+    'Returns the most semantically relevant snippets with scores. ' +
+    'Memory hits include memory_id; pass that exact id to memory_delete. Do not delete by description.'
 
   readonly parameters = vectorSearchParams
 
@@ -131,7 +132,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         chunkText: r.chunkText,
         score: 1.0 - r.distance,
         source: 'vector' as const,
-        createdAt: r.createdAt
+        createdAt: r.createdAt,
+        sourceType: r.sourceType,
+        sourceId: r.sourceId
       }))
 
       const bestVecScore = vectorResults.length > 0 ? vectorResults[0]!.score.toFixed(4) : '-'
@@ -150,7 +153,9 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
           chunkText: r.snippet,
           score: 0,
           source: 'fts' as const,
-          createdAt: r.createdAt
+          createdAt: r.createdAt,
+          sourceType: r.sourceType,
+          sourceId: r.sourceId ?? r.messageId
         }))
 
         results = HybridSearchUtils.mergeRRF(ftsResults, vectorResults, maxResults)
@@ -183,6 +188,12 @@ export class VectorSearchTool extends AgentTool<typeof vectorSearchParams> {
         const r = results[i]!
         const sourceLabel = r.source === 'hybrid' ? '混合' : r.source === 'fts' ? 'FTS' : '向量'
         lines.push(`--- 结果 ${i + 1} [${sourceLabel}] ---`)
+        const sourceType = r.sourceType?.trim() || 'unknown'
+        lines.push(`类型: ${sourceType}`)
+        const entityId = (r.sourceId || r.messageId || '').trim()
+        if (entityId) {
+          lines.push(sourceType === 'memory' ? `memory_id: ${entityId}` : `id: ${entityId}`)
+        }
         const timeLabel = resolveResultTimestamp(r.chunkText, r.createdAt)
         if (timeLabel) {
           lines.push(`时间: ${timeLabel}`)
