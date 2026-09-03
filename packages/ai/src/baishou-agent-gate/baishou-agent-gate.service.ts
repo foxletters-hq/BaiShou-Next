@@ -181,6 +181,11 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
+    // 向用户提问必须等答复，不能被策略 Allow / Deny、自动接受或 auto_review 跳过
+    if (assertInput.kind === AgentGateKind.Proactive) {
+      effect = AgentGateEffect.Ask
+    }
+
     if (effect === AgentGateEffect.Deny) {
       throw new AgentGateDeniedError(assertInput.action)
     }
@@ -191,6 +196,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     // auto_review：规则已 Allow 且非黑名单时，再交给模型判断是否仍需人工确认
     if (
       effect === AgentGateEffect.Allow &&
+      assertInput.kind !== AgentGateKind.Proactive &&
       !turnAllowed &&
       this.policy.getConfig().securityMode === 'auto_review' &&
       this.isAutoAccept?.() !== true &&

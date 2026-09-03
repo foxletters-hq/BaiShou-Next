@@ -19,6 +19,21 @@ import {
 
 type GateArgs = Record<string, unknown>
 
+function collectMemoryGateIds(args: GateArgs): string[] {
+  const raw: unknown[] = []
+  if (typeof args.memory_id === 'string') raw.push(args.memory_id)
+  if (Array.isArray(args.memory_ids)) raw.push(...args.memory_ids)
+  const seen = new Set<string>()
+  const ids: string[] = []
+  for (const value of raw) {
+    const id = typeof value === 'string' ? value.trim() : ''
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    ids.push(id)
+  }
+  return ids
+}
+
 /** LLM tools sometimes pass entities/edges as JSON strings — parse before counting. */
 function coerceJsonArray(value: unknown): unknown[] {
   if (Array.isArray(value)) return value
@@ -202,18 +217,14 @@ export const AGENT_GATE_TOOL_METADATA: Readonly<Record<string, AgentGateToolMeta
     riskLevel: AgentGateRiskLevel.Destructive,
     buildTitle: () => '删除记忆',
     buildMetadata: (args) => ({
-      query: (args as GateArgs).query,
-      message_id: (args as GateArgs).message_id
+      memory_id: (args as GateArgs).memory_id,
+      memory_ids: (args as GateArgs).memory_ids
     }),
     prepare: async (args) => {
-      const query = (args as GateArgs).query
-      const messageId = (args as GateArgs).message_id
+      const ids = collectMemoryGateIds(args as GateArgs)
       return prepareContentGatePreview({
         subject: '删除记忆',
-        detailLines: [
-          typeof query === 'string' ? `查询：${query}` : null,
-          typeof messageId === 'string' ? `消息：${messageId}` : null
-        ].filter((line): line is string => Boolean(line))
+        detailLines: ids.length > 0 ? ids.map((id) => `id：${id}`) : ['未提供记忆唯一键']
       })
     }
   },
