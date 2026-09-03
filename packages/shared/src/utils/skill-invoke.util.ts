@@ -1,4 +1,5 @@
 import { CREATE_SKILL_SLASH_COMMAND } from './create-skill-guide.util'
+import { fileMentionDisplayLabels, type PromptFileSelection } from './prompt-attachment-kind.util'
 
 export type SkillInvokeRef = {
   command: string
@@ -7,6 +8,17 @@ export type SkillInvokeRef = {
 
 function normalizeCommand(command: string): string {
   return command.trim().replace(/^\//, '')
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** 只去掉完整芯片标签，避免 `@src/app.ts` 误删 `@src/app.ts.bak` */
+export function stripExactChipLabel(text: string, label: string): string {
+  if (!label) return text
+  const pattern = new RegExp(`${escapeRegExp(label)}(?![A-Za-z0-9_./\\\\-])`, 'g')
+  return text.replace(pattern, '')
 }
 
 /** 把技能正文收成模型应立即执行的说明；创建技能引导不包这层 */
@@ -26,13 +38,28 @@ export function buildSkillSendText(skills: SkillInvokeRef[], extraPlain = ''): s
   return [...skills.map(buildSkillInvocationBody), extraPlain.trim()].filter(Boolean).join('\n\n')
 }
 
-/** 去掉芯片标签后的伴随输入，避免把 `/name` 再发给模型 */
-export function composerExtraPlain(plainText: string, skills: Array<{ command: string }>): string {
+/** 去掉芯片标签后的伴随输入，避免把 `/name` 或 `@path` 再发给模型 */
+export function composerExtraPlain(
+  plainText: string,
+  skills: Array<{ command: string }>,
+  fileRefs: Array<{ relativePath: string; selection?: PromptFileSelection }> = []
+): string {
   let extra = plainText
   for (const skill of skills) {
     const command = normalizeCommand(skill.command)
     if (!command) continue
     extra = extra.split(`/${command}`).join('')
   }
-  return extra.replace(/\u200B/g, '').replace(/[ \t]+\n/g, '\n').trim()
+  const mentionLabels = fileRefs
+    .flatMap((ref) => fileMentionDisplayLabels(ref))
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length)
+  for (const label of mentionLabels) {
+    extra = stripExactChipLabel(extra, label)
+  }
+  return extra
+    .replace(/\u200B/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
 }

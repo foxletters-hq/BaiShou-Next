@@ -1,4 +1,5 @@
 import type { MockChatAttachment } from '../mock/agent.mock'
+import { classifyPromptAttachmentKind } from './prompt-attachment-kind.util'
 
 export type MessagePartLike = {
   id?: string
@@ -97,9 +98,11 @@ export function mapAttachmentsFromParts(
     const fileName = String(att.name || att.fileName || 'Attachment')
     const isImage =
       String(p.type ?? '').toLowerCase() === 'image' || att.type === 'image' || att.isImage === true
+    const classified = classifyPromptAttachmentKind(fileName, String(att.mimeType || ''))
     const isPdf =
-      att.mimeType === 'application/pdf' || att.isPdf === true || /\.pdf$/i.test(fileName)
-    const isText = att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
+      att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
+    const isText =
+      classified.isText || att.isText === true || att.type === 'text'
     const rawPath = String(att.url || att.filePath || '')
     return {
       id: String(p.id ?? fileName),
@@ -107,7 +110,14 @@ export function mapAttachmentsFromParts(
       filePath: toLocalAttachmentPath(rawPath),
       isImage,
       isPdf,
-      isText
+      isText,
+      relativePath: typeof att.relativePath === 'string' ? att.relativePath : undefined,
+      selection:
+        att.selection && typeof att.selection === 'object'
+          ? (att.selection as MockChatAttachment['selection'])
+          : undefined,
+      comment: typeof att.comment === 'string' ? att.comment : undefined,
+      origin: att.origin as MockChatAttachment['origin']
     }
   })
 
@@ -171,9 +181,11 @@ export function mapSavedAttachmentsForUi(
     const att = normalizePartData(raw)
     const fileName = String(att.name || att.fileName || 'Attachment')
     const isImage = att.type === 'image' || att.isImage === true
+    const classified = classifyPromptAttachmentKind(fileName, String(att.mimeType || ''))
     const isPdf =
-      att.mimeType === 'application/pdf' || att.isPdf === true || /\.pdf$/i.test(fileName)
-    const isText = att.isText === true || att.type === 'text' || /\.(txt|md)$/i.test(fileName)
+      att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
+    const isText =
+      classified.isText || att.isText === true || att.type === 'text'
     const rawPath = String(att.url || att.filePath || '')
 
     return {
@@ -182,7 +194,14 @@ export function mapSavedAttachmentsForUi(
       filePath: toLocalAttachmentPath(rawPath),
       isImage,
       isPdf,
-      isText
+      isText,
+      relativePath: typeof att.relativePath === 'string' ? att.relativePath : undefined,
+      selection:
+        att.selection && typeof att.selection === 'object'
+          ? (att.selection as MockChatAttachment['selection'])
+          : undefined,
+      comment: typeof att.comment === 'string' ? att.comment : undefined,
+      origin: att.origin as MockChatAttachment['origin']
     }
   })
 
