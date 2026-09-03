@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState
+} from 'react'
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import {
@@ -15,6 +22,11 @@ import {
   type EditorContextMenuOpenPayload
 } from '@baishou/ui/shared/diary-codemirror'
 import { EditorContextMenuHost } from '@baishou/ui/desktop/ContextMenu/EditorContextMenuHost'
+import { workbenchSelectionAffordance, type WorkbenchSelectionAffordanceState } from '@baishou/ui'
+import {
+  getEditorViewSelectionLines,
+  type WorkbenchEditorSelectionHandle
+} from './workbench-editor-selection.util'
 import styles from './WorkbenchLivePreviewEditor.module.css'
 
 export interface WorkbenchLivePreviewEditorProps {
@@ -27,22 +39,31 @@ export interface WorkbenchLivePreviewEditorProps {
   onScrolledToLine?: () => void
   onChange?: (content: string) => void
   readOnly?: boolean
+  onSelectionAffordanceChange?: (state: WorkbenchSelectionAffordanceState | null) => void
 }
 
-export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProps> = ({
-  documentId,
-  content,
-  folderRoot,
-  relativePath,
-  scrollToLine,
-  scrollToColumn,
-  onScrolledToLine,
-  onChange,
-  readOnly = false
-}) => {
+export const WorkbenchLivePreviewEditor = forwardRef<
+  WorkbenchEditorSelectionHandle,
+  WorkbenchLivePreviewEditorProps
+>(function WorkbenchLivePreviewEditor(
+  {
+    documentId,
+    content,
+    folderRoot,
+    relativePath,
+    scrollToLine,
+    scrollToColumn,
+    onScrolledToLine,
+    onChange,
+    readOnly = false,
+    onSelectionAffordanceChange
+  },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
+  const onSelectionAffordanceChangeRef = useRef(onSelectionAffordanceChange)
   const suppressEchoRef = useRef(false)
   const pendingScrollRef = useRef<{ line: number; column?: number } | null>(null)
   const skipHeadingPlacementRef = useRef(false)
@@ -60,6 +81,18 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
   useEffect(() => {
     onChangeRef.current = onChange
   }, [onChange])
+
+  useEffect(() => {
+    onSelectionAffordanceChangeRef.current = onSelectionAffordanceChange
+  }, [onSelectionAffordanceChange])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getSelectionLines: () => getEditorViewSelectionLines(viewRef.current)
+    }),
+    []
+  )
 
   const resolveUrl = useCallback(
     (srcRaw: string): string => {
@@ -96,6 +129,9 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
           readOnly,
           docUri: documentId,
           onOpen: (payload) => setTextContextMenu(payload)
+        }),
+        workbenchSelectionAffordance((state) => {
+          onSelectionAffordanceChangeRef.current?.(state)
         })
       ]
     })
@@ -146,4 +182,4 @@ export const WorkbenchLivePreviewEditor: React.FC<WorkbenchLivePreviewEditorProp
       />
     </>
   )
-}
+})
