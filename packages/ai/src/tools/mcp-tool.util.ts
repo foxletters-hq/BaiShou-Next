@@ -9,12 +9,17 @@ export function buildMcpInstructions(vaultName: string): string {
   )
 }
 
+export function unwrapBaishouMcpToolName(name: string): string {
+  return name.startsWith('baishou_') ? name.slice('baishou_'.length) : name
+}
+
 /** 根据工具返回文本推断 MCP isError（工具层仍返回 string，此处做启发式判断） */
 export function isMcpToolErrorResult(result: string): boolean {
   const text = result.trim()
   if (!text) return false
   if (text.startsWith('Error:')) return true
   if (text.startsWith('工具执行失败')) return true
+  if (text.includes('已被禁用')) return true
   if (/^(请提供|Please provide)/.test(text)) return true
   if (/未配置.*无法|无法.*未配置/.test(text)) return true
   return false

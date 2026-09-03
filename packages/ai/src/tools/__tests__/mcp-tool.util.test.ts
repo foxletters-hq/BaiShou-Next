@@ -3,12 +3,18 @@ import {
   MCP_EXTERNAL_SESSION_ID,
   buildMcpInstructions,
   formatMcpToolCallResult,
-  isMcpToolErrorResult
+  isMcpToolErrorResult,
+  unwrapBaishouMcpToolName
 } from '../mcp-tool.util'
 
 describe('mcp-tool.util', () => {
   it('defines the MCP external session id', () => {
     expect(MCP_EXTERNAL_SESSION_ID).toBe('mcp-external')
+  })
+
+  it('unwraps baishou_ prefix from MCP tool names', () => {
+    expect(unwrapBaishouMcpToolName('baishou_memory_delete')).toBe('memory_delete')
+    expect(unwrapBaishouMcpToolName('memory_delete')).toBe('memory_delete')
   })
 
   it('buildMcpInstructions includes workspace name', () => {
@@ -18,6 +24,7 @@ describe('mcp-tool.util', () => {
   it('detects Error: prefixed tool failures', () => {
     expect(isMcpToolErrorResult('Error: diary not found')).toBe(true)
     expect(isMcpToolErrorResult('Successfully created diary entry')).toBe(false)
+    expect(isMcpToolErrorResult('操作「memory_delete」已被禁用，无法执行。')).toBe(true)
   })
 
   it('formatMcpToolCallResult sets isError for failures', () => {
