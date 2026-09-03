@@ -18,7 +18,8 @@ import {
   normalizeDiaryPreviewMarkdown,
   mergeDiaryTagColorRegistries,
   normalizeDiaryTagColorRegistry,
-  resolveDiaryTagsFromSources
+  resolveDiaryTagsFromSources,
+  applyDiaryPersistTags
 } from '@baishou/shared'
 import { DiaryNotFoundError, DiaryDateConflictError } from './diary.types'
 import { emitDomainMutation } from '../events'
@@ -48,8 +49,17 @@ export class DiaryService {
     // 2. 补全必要的主键和时间戳（对标原版：targetId = id ?? DateTime.now().millisecondsSinceEpoch）
     // 完全摒弃依赖数据库下发 ID 导致的「双写（覆盖写）」问题。
     const now = new Date()
+    const persisted = applyDiaryPersistTags({
+      content: input.content ?? '',
+      contentProvided: true,
+      tagsProvided: Object.prototype.hasOwnProperty.call(input, 'tags'),
+      incomingTags: input.tags,
+      existingTags: undefined
+    })
     const finalDiary: Diary = {
       ...input,
+      content: persisted.content,
+      tags: persisted.tags,
       id: (input as any).id ?? Date.now(),
       createdAt: (input as any).createdAt ?? now,
       updatedAt: now,
@@ -153,6 +163,15 @@ export class DiaryService {
       updatedAt: new Date()
     }
     if (inputDate) mergedDiaryToSave.date = inputDate
+    const persisted = applyDiaryPersistTags({
+      content: mergedDiaryToSave.content ?? '',
+      contentProvided: Object.prototype.hasOwnProperty.call(input, 'content'),
+      tagsProvided: Object.prototype.hasOwnProperty.call(input, 'tags'),
+      incomingTags: input.tags,
+      existingTags: existingDiary.tags
+    })
+    mergedDiaryToSave.content = persisted.content
+    mergedDiaryToSave.tags = persisted.tags
     await this.fileSync.writeJournal(mergedDiaryToSave, existingShadow.filePath)
 
     // 呼唤影子同步引擎进行更新重算和提取

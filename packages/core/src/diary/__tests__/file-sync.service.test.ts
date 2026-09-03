@@ -55,11 +55,12 @@ describe('FileSyncService', () => {
     const content = fs.readFileSync(expectedPath, 'utf8')
     expect(content).toContain('id: 1')
     expect(content).toContain('date: 2026-03-24')
-    expect(content).toContain('tags: [test, sync]')
+    expect(content).not.toContain('tags:')
+    expect(content).toContain('#test #sync')
     expect(content).toContain('My test file sync diary content.')
   })
 
-  it('should omit frontmatter tags when they already appear inline in content', async () => {
+  it('should omit frontmatter tags even when diary.tags is set', async () => {
     await service.writeJournal({
       ...sampleDiary,
       content: '今天 #test 很开心，#sync 也不错',
@@ -74,6 +75,22 @@ describe('FileSyncService', () => {
 
     expect(content).not.toContain('tags:')
     expect(content).toContain('#test')
+  })
+
+  it('writes metadata-only tags under the first time title', async () => {
+    await service.writeJournal({
+      ...sampleDiary,
+      content: '##### 07:00\n\n在图书馆待了一下午。',
+      tags: '阅读,独处'
+    })
+
+    const year = sampleDiary.date.getFullYear().toString()
+    const month = (sampleDiary.date.getMonth() + 1).toString().padStart(2, '0')
+    const day = formatLocalDate(sampleDiary.date)
+    const content = fs.readFileSync(path.join(rootPath, year, month, `${day}.md`), 'utf8')
+
+    expect(content).not.toContain('tags:')
+    expect(content).toContain('##### 07:00\n\n#阅读 #独处\n\n在图书馆待了一下午。')
   })
 
   it('should read inline tags from content when frontmatter omits tags', async () => {
@@ -93,7 +110,7 @@ describe('FileSyncService', () => {
 
     expect(readBack).toBeDefined()
     expect(readBack?.id).toBe(1)
-    expect(readBack?.content).toBe('My test file sync diary content.')
+    expect(readBack?.content).toBe('#test #sync\n\nMy test file sync diary content.')
     expect(readBack?.tags).toBe('test,sync')
     expect(readBack?.updatedAt?.getTime()).toBe(sampleDiary.updatedAt?.getTime())
   })
