@@ -156,7 +156,7 @@ export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetPr
               onSubpageActiveChange={setToolsSubpageActive}
             />
           ) : (
-            <WorkbenchGeneralSettingsPane />
+            <WorkbenchGeneralSettingsPane workspaceId={workspaceId} />
           )}
         </div>
       </div>

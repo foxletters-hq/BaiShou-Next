@@ -14,12 +14,18 @@ import {
 } from '../utils/workspace-dont-ask-again.util'
 import styles from './WorkbenchWorkspaceGateSheet.module.css'
 
-/** 工作台设置「通用」：导入默认策略，以及恢复本机已勾选的不再提示。 */
-export const WorkbenchGeneralSettingsPane: React.FC = () => {
+export interface WorkbenchGeneralSettingsPaneProps {
+  workspaceId: string
+}
+
+/** 工作台设置「通用」：个人记忆、导入默认策略，以及恢复本机已勾选的不再提示。 */
+export const WorkbenchGeneralSettingsPane: React.FC<WorkbenchGeneralSettingsPaneProps> = ({
+  workspaceId
+}) => {
   const { t } = useTranslation()
   const [hasSkipped, setHasSkipped] = useState(hasAnyWorkbenchDontAskAgain)
-  const [importProcessMode, setImportProcessMode] =
-    useState<KnowledgeImportProcessMode>('both')
+  const [importProcessMode, setImportProcessMode] = useState<KnowledgeImportProcessMode>('both')
+  const [personalMemoryReadEnabled, setPersonalMemoryReadEnabled] = useState(true)
 
   useEffect(() => {
     void window.api.knowledge
@@ -29,6 +35,20 @@ export const WorkbenchGeneralSettingsPane: React.FC = () => {
       })
       .catch(() => undefined)
   }, [])
+
+  useEffect(() => {
+    if (!workspaceId) return
+    let cancelled = false
+    void window.api.settings
+      .getWorkspacePersonalMemoryRead(workspaceId)
+      .then((enabled) => {
+        if (!cancelled) setPersonalMemoryReadEnabled(enabled !== false)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId])
 
   const handleModeChange = useCallback(
     async (mode: KnowledgeImportProcessMode) => {
@@ -44,6 +64,21 @@ export const WorkbenchGeneralSettingsPane: React.FC = () => {
     [importProcessMode]
   )
 
+  const handlePersonalMemoryChange = useCallback(
+    async (enabled: boolean) => {
+      const previous = personalMemoryReadEnabled
+      setPersonalMemoryReadEnabled(enabled)
+      try {
+        const saved = await window.api.settings.setWorkspacePersonalMemoryRead(workspaceId, enabled)
+        setPersonalMemoryReadEnabled(saved)
+      } catch (e) {
+        setPersonalMemoryReadEnabled(previous)
+        toast.showError(String((e as Error)?.message || e))
+      }
+    },
+    [personalMemoryReadEnabled, workspaceId]
+  )
+
   const handleReset = useCallback(() => {
     const cleared = clearAllWorkbenchDontAskAgain()
     setHasSkipped(hasAnyWorkbenchDontAskAgain())
@@ -56,6 +91,37 @@ export const WorkbenchGeneralSettingsPane: React.FC = () => {
 
   return (
     <div className={pane.stack}>
+      <div className={pane.stackGroup}>
+        <div className={pane.sectionLabelRow}>
+          <h3 className={pane.sectionLabel}>
+            {t('workbench.personal_memory_section', '个人记忆')}
+          </h3>
+        </div>
+        <section className={pane.cardSection}>
+          <div className="settings-list-tile settings-list-tile-noclick">
+            <div className="settings-list-tile-content">
+              <span className="settings-list-tile-title">
+                {t('workbench.personal_memory_access', '允许读取个人记忆')}
+              </span>
+              <span className="settings-list-tile-subtitle">
+                {t(
+                  'workbench.personal_memory_access_desc',
+                  '开启后，工作台伙伴可按需只读日记、回忆总结、向量记忆和跨会话检索，不会写入或删除。关闭后从下一轮对话生效，已进入当前会话的内容不会清除。身份卡与已挂载知识库不受影响。'
+                )}
+              </span>
+            </div>
+            <label className="settings-switch-label">
+              <input
+                type="checkbox"
+                checked={personalMemoryReadEnabled}
+                onChange={(event) => void handlePersonalMemoryChange(event.target.checked)}
+                aria-label={t('workbench.personal_memory_access', '允许读取个人记忆')}
+              />
+              <span className="settings-switch-slider" />
+            </label>
+          </div>
+        </section>
+      </div>
       <div className={pane.stackGroup}>
         <div className={pane.sectionLabelRow}>
           <h3 className={pane.sectionLabel}>
