@@ -84,7 +84,24 @@ export function resolveDiaryAppendBlock(
   return normalizeResolvedAppendBlock(applyDiaryTemplateVars(template, date))
 }
 
-/** 可选补充说明（风格/内容要求；格式由模板统一决定） */
+/**
+ * 编辑器将已有正文与用户配置的追加模板拼接。
+ * 模板缺少前导换行时，也确保不会贴在上一段末尾。
+ */
+export function joinDiaryContentWithAppendBlock(
+  existingContent: string,
+  appendBlock: string
+): string {
+  const existing = existingContent.trimEnd()
+  const block = appendBlock.replace(/\u200B$/, '')
+  if (!existing) {
+    return block.trimStart()
+  }
+  const normalizedBlock = block.startsWith('\n') ? block : `\n\n${block}`
+  return existing + normalizedBlock
+}
+
+/** 可选补充说明（风格/内容要求；格式模板会作为助手的书写参考） */
 export function resolveDiaryWritingStyleSupplement(
   config: DiaryTemplateConfig | null | undefined
 ): string {
@@ -98,9 +115,7 @@ export function resolveDiaryWritingStyleSupplement(
   return ''
 }
 
-/**
- * 由模板推导 Agent 格式规范（编辑器插入、工具写入、系统提示词共用同一来源）。
- */
+/** 由编辑器模板推导助手可参考的日记书写说明。 */
 export function buildDiaryFormatRulesFromTemplates(
   config: DiaryTemplateConfig | null | undefined,
   referenceDate: Date = new Date()
@@ -117,19 +132,21 @@ export function buildDiaryFormatRulesFromTemplates(
   const appendExample = resolveDiaryAppendBlock(config, referenceDate).replace(/\u200B$/, '')
 
   return [
-    '日记时间标题与块结构由下方模板统一决定（编辑器、Agent 工具自动插入与系统提示词均遵循同一套模板）：',
+    '日记正文由你完整编写。系统不会自动添加、识别、删除或改写时间标题；以下编辑器模板仅作为书写结构参考：',
     '',
     '关于 diary_write 新建日记：',
     `- 新建日记模板：${newEntryTemplate}`,
     `- 按当前时间解析后的示例：${JSON.stringify(newEntryExample)}`,
-    '- 若 content 未包含时间标题行，系统会自动按上述模板插入；content 只需写正文即可。',
+    '- content 必须包含准备写入的完整 Markdown 正文。需要时间标题时，请参考上述模板自行写入，不要依赖系统补写。',
+    '- 可根据用户要求和记录内容自行决定是否添加时间标题或小标题，并保持正文结构清楚。',
+    '- 标签请直接写进 content，例如在对应标题下写 `#工作 #会议`，空一行后再写正文。',
     '',
     '关于 diary_edit 追加模式（append，默认首选）：',
-    `- 追加记录模板：${appendTemplate}`,
-    `- 按当前时间解析后的插入示例：${JSON.stringify(appendExample)}`,
-    '- 系统会在 content 之前自动插入上述时间块；请勿在 content 中重复写入纯时间标题行。',
-    '- 若 content 以「时间 + 小标题」的 Markdown 标题行开头（例如 ###### 14:30 - 下午茶），系统将以该行为本章标题，不再额外插入纯时间块。',
-    '- 请勿先写纯时间标题、再另起一条带小标题的时间标题；若使用小标题，一条时间标题行即可。',
+    `- 追加记录参考模板：${appendTemplate}`,
+    `- 按当前时间解析后的参考示例：${JSON.stringify(appendExample)}`,
+    '- 系统只会把 content 作为新段落追加到已有正文末尾，不会自动添加或删除时间标题。',
+    '- 需要时间标题、小标题和标签时，请在 content 中完整写出；可根据本次内容自行组织。',
+    '- 不要修改当天其它段落里的标签。',
     '- append 模式下 content **只传新增段落**，不要传整篇日记；已有段落由系统保留在原文中，无需重复写入。',
     '- 用户要求修改既有某段时：优先 append 追加勘误说明；若必须改写该段，overwrite 时须基于 diary_read 全文，**保留所有未修改段落**，仅替换目标段。',
     '',
@@ -138,7 +155,7 @@ export function buildDiaryFormatRulesFromTemplates(
     '- content 必须是**完整正文**：包含 diary_read 中所有要保留的段落 + 修改后的段落。',
     '- **禁止**只传修改后的片段或删减后的节选——未写入 content 的段落会被永久删除。',
     '',
-    '通用：标签请优先通过工具的 tags 参数传递；系统会写入正文 `#标签`，便于用户在编辑器中修改。'
+    '通用：标签必须由你直接写成正文 `#标签`，不要写进文件头部；工具不提供独立的标签参数。'
   ].join('\n')
 }
 
@@ -150,104 +167,9 @@ export function resolveDiaryAiWritingPrompt(
   return buildDiaryWritingGuidelinesForSystemPrompt(config, referenceDate)
 }
 
-const DIARY_TIMESTAMP_HEADING_LINE_RE = /^#{1,6}\s+\d{2}:\d{2}(:\d{2})?\s*$/
-
-/** 带小标题的章节行，如 ###### 14:30 - 下午茶 */
-const DIARY_TITLED_SECTION_HEADING_LINE_RE = /^#{1,6}\s+\d{2}:\d{2}(:\d{2})?\s*[-–—:：]\s*.+/
-
-function getFirstDiaryContentLine(content: string): string {
-  return (
-    content
-      .replace(/^\uFEFF/, '')
-      .trimStart()
-      .split('\n')[0]
-      ?.trim() ?? ''
-  )
-}
-
-/** 正文是否以 Markdown 纯时间标题行开头（##### / ###### HH:mm 等；兼容旧版 HH:mm:ss） */
-export function contentStartsWithDiaryTimestampHeading(content: string): boolean {
-  return DIARY_TIMESTAMP_HEADING_LINE_RE.test(getFirstDiaryContentLine(content))
-}
-
-/** 正文是否以「时间 + 小标题」章节行开头（例如 ###### 14:30 - 下午茶） */
-export function contentStartsWithDiaryTitledSectionHeading(content: string): boolean {
-  return DIARY_TITLED_SECTION_HEADING_LINE_RE.test(getFirstDiaryContentLine(content))
-}
-
-/** 去掉 Agent 在 append 正文中误写的纯时间标题行，避免与系统插入块重复 */
-export function stripLeadingDiaryTimestampHeading(content: string): string {
-  const normalized = content.replace(/^\uFEFF/, '')
-  const lines = normalized.split('\n')
-  let index = 0
-  while (index < lines.length) {
-    const trimmed = lines[index]?.trim() ?? ''
-    if (trimmed === '') {
-      index++
-      continue
-    }
-    if (DIARY_TIMESTAMP_HEADING_LINE_RE.test(trimmed)) {
-      index++
-      continue
-    }
-    break
-  }
-  if (index === 0) return content
-  return lines.slice(index).join('\n')
-}
-
-/** 新建日记：若正文缺少时间标题，则按「新建日记模板」自动插入 */
-export function prepareDiaryWriteContent(
-  content: string,
-  config: DiaryTemplateConfig | null | undefined,
-  date: Date = new Date()
-): string {
-  const body = stripLeadingDiaryTimestampHeading(content)
-  if (contentStartsWithDiaryTitledSectionHeading(body)) {
-    return body
-  }
-  if (contentStartsWithDiaryTimestampHeading(content)) {
-    return content
-  }
-  const block = resolveDiaryNewEntryContent(config, date).replace(/\u200B$/, '')
-  return block + body
-}
-
-/**
- * 将已有正文与追加时间块拼接，确保非空正文与时间标题之间至少有一个换行。
- * 模板若缺少前导 \\n（例如设置页 trim 后）也不会贴在上一条末尾。
- */
-export function joinDiaryContentWithAppendBlock(
-  existingContent: string,
-  appendBlock: string
-): string {
-  const existing = existingContent.trimEnd()
-  const block = appendBlock.replace(/\u200B$/, '')
-  if (!existing) {
-    return block.trimStart()
-  }
-  const normalizedBlock = block.startsWith('\n') ? block : `\n\n${block}`
-  return existing + normalizedBlock
-}
-
-/** 追加日记：按「追加记录模板」插入时间块，并剥离 Agent 重复写入的时间标题 */
-export function prepareDiaryAppendContent(
-  existingContent: string,
-  content: string,
-  config: DiaryTemplateConfig | null | undefined,
-  date: Date = new Date()
-): string {
-  const body = stripLeadingDiaryTimestampHeading(content)
-  if (contentStartsWithDiaryTitledSectionHeading(body)) {
-    return joinDiaryContentWithAppendBlock(existingContent, '') + body
-  }
-  const block = resolveDiaryAppendBlock(config, date)
-  return joinDiaryContentWithAppendBlock(existingContent, block) + body
-}
-
 /**
  * 构建注入 Agent 系统提示词的完整日记书写规范。
- * 格式部分由模板推导；writingStyleSupplement 仅承载风格/内容补充。
+ * 模板只作为书写参考；writingStyleSupplement 承载风格/内容补充。
  */
 export function buildDiaryWritingGuidelinesForSystemPrompt(
   config: DiaryTemplateConfig | null | undefined,
@@ -256,7 +178,7 @@ export function buildDiaryWritingGuidelinesForSystemPrompt(
   const parts = [buildDiaryFormatRulesFromTemplates(config, referenceDate)]
   const supplement = resolveDiaryWritingStyleSupplement(config)
   if (supplement) {
-    parts.push('', '补充书写说明（风格与内容要求，格式仍以上方模板为准）：', supplement)
+    parts.push('', '补充书写说明（风格与内容要求，可结合上方模板参考）：', supplement)
   }
   return parts.join('\n')
 }
