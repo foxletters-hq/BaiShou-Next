@@ -4,18 +4,21 @@ import styles from './WorkbenchResizeSash.module.css'
 export interface WorkbenchResizeSashProps {
   onMouseDown: (event: React.MouseEvent) => void
   ariaLabel: string
+  orientation?: 'vertical' | 'horizontal'
 }
 
-/** VS Code 风格垂直分割条（sash） */
+/** 分割条：默认竖向调宽度，horizontal 用于上下分区调高度 */
 export const WorkbenchResizeSash: React.FC<WorkbenchResizeSashProps> = ({
   onMouseDown,
-  ariaLabel
+  ariaLabel,
+  orientation = 'vertical'
 }) => {
+  const horizontal = orientation === 'horizontal'
   return (
     <div
-      className={styles.sash}
+      className={horizontal ? styles.sashHorizontal : styles.sash}
       role="separator"
-      aria-orientation="vertical"
+      aria-orientation={horizontal ? 'horizontal' : 'vertical'}
       aria-label={ariaLabel}
       onMouseDown={onMouseDown}
     />

@@ -25,6 +25,7 @@ export interface WorkbenchSidePaneProps {
   onOpenFile: (relativePath: string, options?: { line?: number; column?: number }) => void
   onOpenGitDiff?: (filePath: string, options?: { staged?: boolean; commitHash?: string }) => void
   onGitMetaChange?: (meta: { branch?: string; ahead: number; behind: number }) => void
+  syncBranch?: string
   width: number
   changesCount?: number
   onGitChangesCountChange?: (count: number) => void
@@ -40,6 +41,7 @@ export const WorkbenchSidePane: React.FC<WorkbenchSidePaneProps> = ({
   onOpenFile,
   onOpenGitDiff,
   onGitMetaChange,
+  syncBranch,
   width,
   changesCount = 0,
   onGitChangesCountChange,
@@ -126,12 +128,15 @@ export const WorkbenchSidePane: React.FC<WorkbenchSidePaneProps> = ({
             onChangesCountChange={onGitChangesCountChange}
             onOpenGitDiff={onOpenGitDiff}
             onGitMetaChange={onGitMetaChange}
+            syncBranch={syncBranch}
           />
         ) : null}
       </div>
 
       <div className={styles.footer}>
-        <div className={styles.divider} />
+        <div className={styles.dividerWrapper}>
+          <div className={styles.divider} />
+        </div>
         <div className={styles.fixedNav}>
           <button
             type="button"

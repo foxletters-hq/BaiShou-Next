@@ -91,6 +91,10 @@ export function useWorkbenchLayoutState(scopeKey: string | null) {
     update({ agentPanelCollapsed: !layout.agentPanelCollapsed })
   }, [layout.agentPanelCollapsed, update])
 
+  const ensureAgentPanelOpen = useCallback(() => {
+    update({ agentPanelCollapsed: false })
+  }, [update])
+
   const toggleSidePane = useCallback(() => {
     update({ sidePaneVisible: !layout.sidePaneVisible })
   }, [layout.sidePaneVisible, update])
@@ -120,6 +124,7 @@ export function useWorkbenchLayoutState(scopeKey: string | null) {
     () => ({
       layout,
       toggleAgentPanel,
+      ensureAgentPanelOpen,
       toggleSidePane,
       setActiveSideView,
       setSidePaneWidth,
@@ -132,6 +137,7 @@ export function useWorkbenchLayoutState(scopeKey: string | null) {
       setAgentPanelWidth,
       setSidePaneWidth,
       toggleAgentPanel,
+      ensureAgentPanelOpen,
       toggleSidePane,
       update
     ]

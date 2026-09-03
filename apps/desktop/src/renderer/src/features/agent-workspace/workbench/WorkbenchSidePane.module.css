@@ -67,27 +67,31 @@
   background: var(--bg-app);
 }
 
+/* 左下角设置项：与日记侧栏 / 工作台首页侧栏对齐 */
 .footer {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding-bottom: 4px;
   background: var(--bg-app);
+}
+
+.dividerWrapper {
+  padding: 0 16px;
+  margin: 4px 0 8px 0;
+  flex-shrink: 0;
 }
 
 .divider {
   height: 1px;
-  margin: 4px 0;
-  background-color: var(--border-muted);
+  background-color: var(--border-subtle);
 }
 
 .fixedNav {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding: 2px 4px;
-  margin-bottom: 0;
+  gap: 2px;
+  padding: 0 10px;
+  margin-bottom: 8px;
   flex-shrink: 0;
 }
 
@@ -95,9 +99,9 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 6px 8px;
+  padding: 9px 12px;
   border: none;
-  border-radius: 4px;
+  border-radius: 10px;
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
@@ -105,6 +109,7 @@
   text-align: left;
   box-sizing: border-box;
   outline: none;
+  position: relative;
   transition:
     background-color 0.15s ease,
     color 0.15s ease;
@@ -120,9 +125,9 @@
 }
 
 .navIcon {
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
+  width: 18px;
+  height: 18px;
+  margin-right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,7 +142,7 @@
 }
 
 .navLabel {
-  font-size: var(--ui-fs-md);
+  font-size: var(--ui-fs-lg);
   font-weight: 500;
   line-height: 1.25;
   min-width: 0;
