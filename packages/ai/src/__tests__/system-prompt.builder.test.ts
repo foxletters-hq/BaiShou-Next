@@ -133,6 +133,24 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('<tool_usage_guidelines>')
   })
 
+  it('keeps user_identity in workspace prompts when personal memory tools are absent', () => {
+    const prompt = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'work',
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32'
+      },
+      userProfileBlock: 'Name: Alice',
+      tools: {
+        workspace_read: { description: 'Read file' }
+      }
+    })
+    expect(prompt).toContain('<user_identity>')
+    expect(prompt).toContain('Name: Alice')
+    expect(prompt).toContain('are NOT available—do not claim to access them.')
+  })
+
   it('places user_identity after context_encoding and before capabilities', () => {
     const prompt = SystemPromptBuilder.build({
       vaultName: 'Personal',
@@ -153,6 +171,40 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('Name: Alice')
   })
 
+  it('describes workspace personal memory from the actual tool list', () => {
+    const withMemory = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'work',
+      locale: 'en',
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32'
+      },
+      tools: {
+        diary_read: { description: 'Read diary' },
+        workspace_read: { description: 'Read file' }
+      }
+    })
+    expect(withMemory).toContain('Workspace session.')
+    expect(withMemory).toContain('Read-only diary')
+    expect(withMemory).not.toContain('are NOT available—do not claim to access them.')
+
+    const withoutMemory = SystemPromptBuilder.build({
+      vaultName: 'Personal',
+      assistantKind: 'work',
+      locale: 'en',
+      workspaceEnv: {
+        folderRoot: 'D:/proj',
+        platform: 'win32'
+      },
+      tools: {
+        workspace_read: { description: 'Read file' }
+      }
+    })
+    expect(withoutMemory).toContain('Workspace session.')
+    expect(withoutMemory).toContain('are NOT available—do not claim to access them.')
+  })
+
   it('injects workspace_env for workspace sessions and keeps companion clean', () => {
     const workspacePrompt = SystemPromptBuilder.build({
       vaultName: 'Personal',
@@ -163,14 +215,14 @@ describe('SystemPromptBuilder', () => {
         isGitRepo: true,
         gitBranch: 'main',
         gitChangesCount: 2,
-        notebookId: 'nb-1'
+        notebookIds: ['nb-1']
       }
     })
     expect(workspacePrompt).toContain('<workspace_env>')
     expect(workspacePrompt).toContain('Working directory: D:/proj')
     expect(workspacePrompt).toContain('Is git repo: yes')
     expect(workspacePrompt).toContain('Git branch: main')
-    expect(workspacePrompt).toContain('notebookId: nb-1')
+    expect(workspacePrompt).toContain('Mounted knowledge notebooks (1/3): nb-1')
 
     const companionPrompt = SystemPromptBuilder.build({
       vaultName: 'Personal',
