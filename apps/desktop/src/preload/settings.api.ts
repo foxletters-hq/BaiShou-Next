@@ -45,6 +45,10 @@ export const settingsApi = {
       ipcRenderer.invoke('settings:get-workspace-tool-management', workspaceId),
     setWorkspaceToolManagement: (workspaceId: string, config: any) =>
       ipcRenderer.invoke('settings:set-workspace-tool-management', workspaceId, config),
+    getWorkspacePersonalMemoryRead: (workspaceId: string) =>
+      ipcRenderer.invoke('settings:get-workspace-personal-memory-read', workspaceId),
+    setWorkspacePersonalMemoryRead: (workspaceId: string, enabled: boolean) =>
+      ipcRenderer.invoke('settings:set-workspace-personal-memory-read', workspaceId, enabled),
 
     getSearchModeEnabled: () => ipcRenderer.invoke('settings:get-search-mode-enabled'),
     setSearchModeEnabled: (enabled: boolean) =>

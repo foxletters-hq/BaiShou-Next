@@ -4,7 +4,10 @@ import {
   AgentGateEffect,
   cloneBaishouAgentGateConfig,
   cloneWorkspaceToolManagementConfig,
-  hasCatchAllAllowRule
+  hasCatchAllAllowRule,
+  normalizeWorkspacePersonalMemoryReadEnabled,
+  applyWorkspacePolicyPatch,
+  resolveWorkspacePolicyFields
 } from '@baishou/shared'
 
 /**
@@ -49,5 +52,35 @@ describe('workspace policy defaults (migration safety)', () => {
 
     expect(a.disabledToolIds).toEqual(['workspace_run'])
     expect(a.customConfigs.workspace_run).toEqual({ timeout: 1 })
+  })
+
+  it('treats missing personalMemoryReadEnabled as on', () => {
+    expect(normalizeWorkspacePersonalMemoryReadEnabled(undefined)).toBe(true)
+    expect(normalizeWorkspacePersonalMemoryReadEnabled(null)).toBe(true)
+    expect(normalizeWorkspacePersonalMemoryReadEnabled(true)).toBe(true)
+    expect(normalizeWorkspacePersonalMemoryReadEnabled(false)).toBe(false)
+    expect(resolveWorkspacePolicyFields(undefined).personalMemoryReadEnabled).toBe(true)
+    expect(resolveWorkspacePolicyFields({}).personalMemoryReadEnabled).toBe(true)
+    expect(
+      resolveWorkspacePolicyFields({ personalMemoryReadEnabled: false }).personalMemoryReadEnabled
+    ).toBe(false)
+  })
+
+  it('keeps personal memory flag when only tool management is patched', () => {
+    const current = resolveWorkspacePolicyFields({
+      personalMemoryReadEnabled: false,
+      toolManagement: {
+        disabledToolIds: ['workspace_run'],
+        customConfigs: {}
+      }
+    })
+    const afterTools = applyWorkspacePolicyPatch(current, {
+      toolManagement: {
+        disabledToolIds: [],
+        customConfigs: {}
+      }
+    })
+    expect(afterTools.personalMemoryReadEnabled).toBe(false)
+    expect(afterTools.toolManagement.disabledToolIds).toEqual([])
   })
 })
