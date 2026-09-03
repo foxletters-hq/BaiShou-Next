@@ -21,8 +21,16 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 18%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 70%),
-    radial-gradient(ellipse 50% 40% at 80% 80%, color-mix(in srgb, var(--color-primary) 6%, transparent), transparent 65%);
+    radial-gradient(
+      ellipse 70% 55% at 50% 18%,
+      color-mix(in srgb, var(--color-primary) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 80% 80%,
+      color-mix(in srgb, var(--color-primary) 6%, transparent),
+      transparent 65%
+    );
 }
 
 .mainPhase {
@@ -59,6 +67,27 @@
   flex-wrap: nowrap;
   container-type: inline-size;
   container-name: graph-toolbar;
+}
+
+.toolbarEmbedded {
+  padding: 6px 20px;
+  min-height: 42px;
+  border-bottom: none;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px 9px;
+  border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+  box-sizing: border-box;
+}
+
+.chipRow:empty {
+  display: none;
 }
 
 .toolbarLeft,
