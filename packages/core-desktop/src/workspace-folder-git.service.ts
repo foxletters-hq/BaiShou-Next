@@ -22,8 +22,17 @@ import {
   mapStatusToType,
   mapWorkingStatus,
   parseDiffHunks,
-  pathsEqual
+  parseGitHistoryLog,
+  parseRevListCount,
+  pathsEqual,
+  unquoteGitPath
 } from '@baishou/core/desktop'
+import {
+  parseGitNulSeparatedPaths,
+  toGitShowSpec,
+  resolveWorkspaceFolderGitRoot,
+  toWorkspaceHistoryEntries
+} from './workspace-folder-git.util'
 
 const DEFAULT_IGNORE = [
   'node_modules/',
@@ -91,31 +100,14 @@ export class WorkspaceFolderGitService {
     applyGitProcessEnv()
     return simpleGit({
       baseDir,
-      binary: getBundledGitBinary()
+      binary: getBundledGitBinary(),
+      config: ['core.quotepath=false']
     })
   }
 
   private async resolveContext(): Promise<WorkspaceGitContext> {
     if (this.context) return this.context
-
-    const folderRoot = path.resolve(this.folderRoot)
-    let current = folderRoot
-    while (true) {
-      if (fs.existsSync(path.join(current, '.git'))) {
-        const scopePrefix = normalizePosix(path.relative(current, folderRoot))
-        this.context = {
-          folderRoot,
-          gitRoot: current,
-          scopePrefix: scopePrefix === '.' ? '' : scopePrefix
-        }
-        return this.context
-      }
-      const parent = path.dirname(current)
-      if (parent === current) break
-      current = parent
-    }
-
-    this.context = { folderRoot, gitRoot: folderRoot, scopePrefix: '' }
+    this.context = resolveWorkspaceFolderGitRoot(this.folderRoot)
     return this.context
   }
 
@@ -133,9 +125,12 @@ export class WorkspaceFolderGitService {
   }
 
   async init(): Promise<void> {
-    const context = await this.resolveContext()
+    const context = resolveWorkspaceFolderGitRoot(this.folderRoot)
     const git = this.createGit(context.folderRoot)
     await git.init()
+    this.context = context
+    this.git = git
+    await this.ensureAuthor(git)
     const gitignorePath = path.join(context.folderRoot, '.gitignore')
     if (!fs.existsSync(gitignorePath)) {
       await fs.promises.writeFile(gitignorePath, `${DEFAULT_IGNORE.join('\n')}\n`, 'utf8')
@@ -146,12 +141,6 @@ export class WorkspaceFolderGitService {
         /* empty repo */
       }
     }
-    this.context = {
-      folderRoot: context.folderRoot,
-      gitRoot: context.folderRoot,
-      scopePrefix: ''
-    }
-    this.git = this.createGit(context.folderRoot)
   }
 
   async getStatus(): Promise<GitStatus> {
@@ -300,8 +289,15 @@ export class WorkspaceFolderGitService {
     }
   }
 
+  private async listStagedPaths(git: SimpleGit): Promise<string[]> {
+    const output = await git.raw(['diff', '--cached', '--name-only', '-z'])
+    return parseGitNulSeparatedPaths(output)
+  }
+
   async commitStaged(message: string): Promise<GitCommit | null> {
     const { git } = await this.ensureGit()
+    const files = await this.listStagedPaths(git)
+    if (files.length === 0) return null
     await this.ensureAuthor(git)
     const finalMessage = resolveGitCommitMessage(message)
     const result = await git.commit(finalMessage)
@@ -310,7 +306,7 @@ export class WorkspaceFolderGitService {
       hash: result.commit.substring(0, 7),
       message: finalMessage,
       date: new Date(),
-      files: result.summary.changes ? [] : []
+      files
     }
   }
 
@@ -319,27 +315,30 @@ export class WorkspaceFolderGitService {
     return this.commitStaged(message)
   }
 
-  async getHistory(filePath?: string, limit = 50): Promise<VersionHistoryEntry[]> {
+  async getHistoryCount(filePath?: string): Promise<number> {
     const { git } = await this.ensureGit()
-    const options = ['--max-count', String(limit)]
-    if (filePath) options.push('--', filePath)
     try {
-      const log = await git.log(options)
-      const entries: VersionHistoryEntry[] = []
-      for (const commit of log.all) {
-        const changes = await this.getCommitChanges(commit.hash)
-        entries.push({
-          commit: {
-            hash: commit.hash.substring(0, 7),
-            message: commit.message,
-            date: new Date(commit.date),
-            files: changes.map((change) => change.path)
-          },
-          changes,
-          isCurrent: entries.length === 0
-        })
-      }
-      return entries
+      const args = ['rev-list', '--count', 'HEAD']
+      if (filePath) args.push('--', filePath)
+      return parseRevListCount(await git.raw(args))
+    } catch {
+      return 0
+    }
+  }
+
+  async getHistory(filePath?: string, limit = 50, offset = 0): Promise<VersionHistoryEntry[]> {
+    const { git } = await this.ensureGit()
+    try {
+      const headRef = (await git.revparse(['HEAD'])).trim()
+      const args = [
+        'log',
+        `--max-count=${Math.max(0, limit)}`,
+        `--skip=${Math.max(0, offset)}`,
+        '--format=%H%x1f%s%x1f%aI'
+      ]
+      if (filePath) args.push('--', filePath)
+      const output = await git.raw(args)
+      return toWorkspaceHistoryEntries(parseGitHistoryLog(output), headRef)
     } catch {
       return []
     }
@@ -366,23 +365,22 @@ export class WorkspaceFolderGitService {
 
   async getCommitChanges(commitHash: string): Promise<FileChange[]> {
     const { git } = await this.ensureGit()
+    const toChange = (
+      file: { file: string; status?: string; insertions?: number; deletions?: number },
+      fallbackStatus: FileChange['status']
+    ): FileChange => ({
+      path: unquoteGitPath(file.file),
+      status: file.status ? mapStatusToType(file.status) : fallbackStatus,
+      additions: file.insertions ?? 0,
+      deletions: file.deletions ?? 0
+    })
     try {
       const diff = await git.diffSummary([`${commitHash}~1`, commitHash])
-      return diff.files.map((file) => ({
-        path: file.file,
-        status: mapStatusToType((file as { status?: string }).status ?? 'M'),
-        additions: 'insertions' in file ? file.insertions : 0,
-        deletions: 'deletions' in file ? file.deletions : 0
-      }))
+      return diff.files.map((file) => toChange(file, mapStatusToType('M')))
     } catch {
       try {
         const diff = await git.diffSummary([commitHash])
-        return diff.files.map((file) => ({
-          path: file.file,
-          status: 'added' as FileChange['status'],
-          additions: 'insertions' in file ? file.insertions : 0,
-          deletions: 'deletions' in file ? file.deletions : 0
-        }))
+        return diff.files.map((file) => toChange(file, 'added'))
       } catch {
         return []
       }
@@ -418,17 +416,22 @@ export class WorkspaceFolderGitService {
     }
   }
 
-  /** 读取 HEAD 中的文件内容；未跟踪或新文件返回 null */
-  async getHeadFileContent(filePath: string): Promise<string | null> {
+  /** 读取某次提交中的文件内容；该版本不存在此文件时返回 null */
+  async getFileContentAtRevision(filePath: string, revision: string): Promise<string | null> {
     if (!isTextDiffablePath(filePath)) return null
+    const spec = toGitShowSpec(revision, filePath)
     const { git } = await this.ensureGit()
-    const normalized = filePath.replace(/\\/g, '/')
     try {
-      const content = await git.show([`HEAD:${normalized}`])
+      const content = await git.show([spec])
       return typeof content === 'string' ? content : null
     } catch {
       return null
     }
+  }
+
+  /** 读取 HEAD 中的文件内容；未跟踪或新文件返回 null */
+  async getHeadFileContent(filePath: string): Promise<string | null> {
+    return this.getFileContentAtRevision(filePath, 'HEAD')
   }
 
   async getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff> {
