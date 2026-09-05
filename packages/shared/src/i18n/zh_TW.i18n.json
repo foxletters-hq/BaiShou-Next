@@ -1139,7 +1139,7 @@
     "progress_index_assistants": "正在同步夥伴設定…",
     "progress_index_settings": "正在同步設定…",
     "progress_reconcile_avatar": "正在對帳大頭貼…",
-    "progress_schedule_embed": "正在安排日記向量化…"
+    "progress_schedule_embed": "正在安排日記向量化…",
     "config_section": "設定",
     "target_type": "目標類型",
     "path_prefix": "路徑前綴",
@@ -1177,7 +1177,7 @@
     "error_test_dns": "連線失敗：域名解析失敗，請檢查網路和 Endpoint/URL",
     "error_test_conn_refused": "連線失敗：連接被拒絕，請確認端點埠是否正確以及服務是否線上",
     "error_sync_failed_with_msg": "同步失敗: {{msg}}",
-    "error_connection_failed_with_msg": "連線失敗: {{msg}}",
+    "error_connection_failed_with_msg": "連線失敗: {{msg}}"
   },
   "lan_transfer": {
     "usage_tooltip": "在同一區域網路（Wi-Fi）下，兩台裝置都打開此頁面，即可相互快速傳輸整個資料的完整備份包。",
