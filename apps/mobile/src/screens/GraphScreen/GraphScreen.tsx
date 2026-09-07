@@ -124,10 +124,7 @@ import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import { GraphCreateNodeSheet } from './GraphCreateNodeSheet'
 import { GraphForceWebView } from './GraphForceWebView'
 import { GraphMergeSearchSheet } from './GraphMergeSearchSheet'
-import {
-  GraphIrreversibleConfirm,
-  type GraphMergeConfirmTarget
-} from './GraphIrreversibleConfirm'
+import { GraphIrreversibleConfirm, type GraphMergeConfirmTarget } from './GraphIrreversibleConfirm'
 
 type Tab = 'graph' | 'search' | 'reextract' | 'pending'
 
@@ -227,14 +224,16 @@ export function GraphScreen() {
   const [addEdgeType, setAddEdgeType] = useState<string>(GRAPH_EDGE_TYPES[0] ?? 'relates_to')
   const [busy, setBusy] = useState(false)
   const [extractRunning, setExtractRunning] = useState(false)
-  const [extractConcurrency, setExtractConcurrency] = useState(
-    () => mobileGraphExtractQueue.getConcurrency()
+  const [extractConcurrency, setExtractConcurrency] = useState(() =>
+    mobileGraphExtractQueue.getConcurrency()
   )
   const [extractQueue, setExtractQueue] = useState<GraphExtractQueueSnapshot | null>(null)
   const [queueModalOpen, setQueueModalOpen] = useState(false)
   const [status, setStatus] = useState('')
   const [approvedOnly, setApprovedOnly] = useState(false)
-  const [forceSettings, setForceSettings] = useState<GraphForceSettings>(() => loadGraphForceSettings())
+  const [forceSettings, setForceSettings] = useState<GraphForceSettings>(() =>
+    loadGraphForceSettings()
+  )
   const [appearanceSettings, setAppearanceSettings] = useState<GraphAppearanceSettings>(() =>
     clampGraphAppearanceSettings(GRAPH_APPEARANCE_DEFAULTS)
   )
@@ -372,10 +371,12 @@ export function GraphScreen() {
       setLocalView(view)
       return
     }
-    const ids = (localView.nodes || []).map((n: { id?: string }) => n.id).filter(Boolean) as string[]
+    const ids = (localView.nodes || [])
+      .map((n: { id?: string }) => n.id)
+      .filter(Boolean) as string[]
     const freshNodes = (
       await Promise.all(ids.map((id) => mobileGetNode(runtime.drizzleDb, vaultId, id)))
-    ).filter((n): n is NonNullable<typeof n> => Boolean(n) && n.reviewStatus !== 'rejected')
+    ).filter((n): n is NonNullable<typeof n> => n != null && n.reviewStatus !== 'rejected')
     const edgeById = new Map<string, any>()
     for (const id of ids.slice(0, 2)) {
       const view = await mobileGetView(runtime.drizzleDb, vaultId, {
@@ -659,9 +660,7 @@ export function GraphScreen() {
 
   const detailEdges = useMemo(() => {
     if (!selectedId) return []
-    const nodeById = new Map(
-      (localView?.nodes || graphNodes).map((n: any) => [n.id as string, n])
-    )
+    const nodeById = new Map((localView?.nodes || graphNodes).map((n: any) => [n.id as string, n]))
     const seen = new Set<string>()
     const list: Array<{ edge: any; partnerName: string }> = []
     const edgeSource = localView?.edges?.length ? localView.edges : graphEdges
@@ -769,10 +768,7 @@ export function GraphScreen() {
         return aliases.includes(prev)
       })
     if (!match) return false
-    const aliases = new Set<string>([
-      ...(Array.isArray(match.aliases) ? match.aliases : []),
-      prev
-    ])
+    const aliases = new Set<string>([...(Array.isArray(match.aliases) ? match.aliases : []), prev])
     aliases.delete(next)
     await mobileUpsertNode({
       drizzleDb: runtime.drizzleDb,
@@ -850,10 +846,7 @@ export function GraphScreen() {
   const findGraphNode = (id: string) =>
     graphNodes.find((n) => n.id === id) || pendingNodes.find((n) => n.id === id) || null
 
-  const onSelectNode = async (
-    id: string,
-    opts?: { locate?: boolean; bypassMonth?: boolean }
-  ) => {
+  const onSelectNode = async (id: string, opts?: { locate?: boolean; bypassMonth?: boolean }) => {
     const runtime = getAgentDbRuntime()
     if (!runtime?.drizzleDb) return
     setHighlightedEdgeIds(new Set())
@@ -913,15 +906,11 @@ export function GraphScreen() {
     const from =
       graphNodes.find((n) => n.id === edge.fromId) ||
       pendingNodes.find((n) => n.id === edge.fromId) ||
-      (runtime?.drizzleDb
-        ? await mobileGetNode(runtime.drizzleDb, vaultId, edge.fromId)
-        : null)
+      (runtime?.drizzleDb ? await mobileGetNode(runtime.drizzleDb, vaultId, edge.fromId) : null)
     const to =
       graphNodes.find((n) => n.id === edge.toId) ||
       pendingNodes.find((n) => n.id === edge.toId) ||
-      (runtime?.drizzleDb
-        ? await mobileGetNode(runtime.drizzleDb, vaultId, edge.toId)
-        : null)
+      (runtime?.drizzleDb ? await mobileGetNode(runtime.drizzleDb, vaultId, edge.toId) : null)
     if (!from && !to) return
     if (!from || !to) {
       const only = (from || to) as { id: string }
@@ -993,9 +982,7 @@ export function GraphScreen() {
     (state: GraphExtractQueueSnapshot) => {
       setExtractQueue(state)
       const running =
-        state.pendingCount > 0 ||
-        state.runningCount > 0 ||
-        (state.aligningCount ?? 0) > 0
+        state.pendingCount > 0 || state.runningCount > 0 || (state.aligningCount ?? 0) > 0
       setExtractRunning(running)
       if (running) {
         const total = state.items.length
@@ -1004,11 +991,15 @@ export function GraphScreen() {
           total
         )
         setStatus(
-          t('graph.extract_queue_progress', '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）', {
-            current,
-            total,
-            percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
-          })
+          t(
+            'graph.extract_queue_progress',
+            '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
+            {
+              current,
+              total,
+              percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
+            }
+          )
         )
       } else if (state.completedCount > 0 || state.errorCount > 0) {
         setStatus(
@@ -1108,7 +1099,9 @@ export function GraphScreen() {
           toast.showInfo(t('graph.extract_already_queued', '已在整理队列中'))
         } else if (result.skippedNotEmbedded?.length) {
           setStatus(t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取'))
-          toast.showInfo(t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取'))
+          toast.showInfo(
+            t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取')
+          )
         } else {
           setStatus(t('graph.extract_nothing', '没有可抽取的日记'))
           toast.showInfo(t('graph.extract_nothing', '没有可抽取的日记'))
@@ -1413,9 +1406,13 @@ export function GraphScreen() {
       if (isGraphNodeSameNameConflict(result)) {
         setEditNameConflict(result.existing)
         toast.showError(
-          t('graph.same_name_save_blocked', '已有同名节点「{{name}}」。请先换名，或把它合并过去。', {
-            name: result.existing.name
-          })
+          t(
+            'graph.same_name_save_blocked',
+            '已有同名节点「{{name}}」。请先换名，或把它合并过去。',
+            {
+              name: result.existing.name
+            }
+          )
         )
         return
       }
@@ -1707,7 +1704,8 @@ export function GraphScreen() {
     } catch (e: any) {
       setSourcePreview({
         date,
-        content: excerpt || String(e?.message || e) || t('graph.source_load_failed', '加载原文失败'),
+        content:
+          excerpt || String(e?.message || e) || t('graph.source_load_failed', '加载原文失败'),
         loading: false
       })
     }
@@ -1777,7 +1775,11 @@ export function GraphScreen() {
               />
             </View>
             <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
-              {key === 'chargeStrength' ? Math.abs(value) : key === 'linkDistance' ? value : value.toFixed(2)}
+              {key === 'chargeStrength'
+                ? Math.abs(value)
+                : key === 'linkDistance'
+                  ? value
+                  : value.toFixed(2)}
             </Text>
           </View>
         )
@@ -1908,7 +1910,9 @@ export function GraphScreen() {
                           }
                         ]}
                       >
-                        <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+                        <Text
+                          style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}
+                        >
                           {t('graph.global_view', '全局')}
                         </Text>
                       </Pressable>
@@ -2031,7 +2035,10 @@ export function GraphScreen() {
                       ]}
                     />
                     <View style={styles.row}>
-                      <Pressable disabled={busy || !!editNameConflict} onPress={() => void saveNodeEdit()}>
+                      <Pressable
+                        disabled={busy || !!editNameConflict}
+                        onPress={() => void saveNodeEdit()}
+                      >
                         <Text style={{ color: colors.primary, fontWeight: '600' }}>
                           {t('graph.save_edit', '保存修改')}
                         </Text>
@@ -2065,14 +2072,15 @@ export function GraphScreen() {
                         {detailEdges.map(({ edge, partnerName }) => (
                           <View
                             key={edge.id}
-                            style={[
-                              styles.incidentRow,
-                              { borderColor: colors.borderSubtle }
-                            ]}
+                            style={[styles.incidentRow, { borderColor: colors.borderSubtle }]}
                           >
                             <View style={{ flex: 1, minWidth: 0 }}>
                               <Text
-                                style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}
+                                style={{
+                                  color: colors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: '600'
+                                }}
                                 numberOfLines={1}
                               >
                                 {translateGraphEdgeType(tr, edge.edgeType)} · {partnerName}
@@ -2085,12 +2093,12 @@ export function GraphScreen() {
                             </View>
                             {edge.sourceRef || edge.sourceExcerpt ? (
                               <Pressable
-                                onPress={() =>
-                                  void openSource(edge.sourceRef, edge.sourceExcerpt)
-                                }
+                                onPress={() => void openSource(edge.sourceRef, edge.sourceExcerpt)}
                                 hitSlop={6}
                               >
-                                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                                <Text
+                                  style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}
+                                >
                                   {t('graph.open_source', '原文')}
                                 </Text>
                               </Pressable>
@@ -2105,7 +2113,13 @@ export function GraphScreen() {
                                     })
                                   }
                                 >
-                                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+                                  <Text
+                                    style={{
+                                      color: colors.primary,
+                                      fontSize: 12,
+                                      fontWeight: '600'
+                                    }}
+                                  >
                                     {t('graph.approve', '通过')}
                                   </Text>
                                 </Pressable>
@@ -2124,7 +2138,11 @@ export function GraphScreen() {
                             ) : null}
                             <Pressable onPress={() => deleteEdge(edge.id)}>
                               <Text
-                                style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600' }}
+                                style={{
+                                  color: colors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: '600'
+                                }}
                               >
                                 {t('graph.delete_edge', '删除')}
                               </Text>
@@ -2134,7 +2152,9 @@ export function GraphScreen() {
                       </View>
                     ) : null}
 
-                    <Text style={[styles.detailMeta, { color: colors.textSecondary, marginTop: 4 }]}>
+                    <Text
+                      style={[styles.detailMeta, { color: colors.textSecondary, marginTop: 4 }]}
+                    >
                       {t('graph.add_edge', '添加关系')}
                     </Text>
                     <View style={styles.addEdgeSearchRow}>
@@ -2207,7 +2227,9 @@ export function GraphScreen() {
                             }
                           ]}
                         >
-                          <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>
+                          <Text
+                            style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}
+                          >
                             {h.name}
                           </Text>
                           <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
@@ -2768,7 +2790,12 @@ export function GraphScreen() {
               })}
             </Text>
           </View>
-          <View style={[styles.queueProgress, { backgroundColor: colors.borderSubtle, marginTop: 8, height: 6 }]}>
+          <View
+            style={[
+              styles.queueProgress,
+              { backgroundColor: colors.borderSubtle, marginTop: 8, height: 6 }
+            ]}
+          >
             <View
               style={[
                 styles.queueProgressBar,
@@ -2786,7 +2813,10 @@ export function GraphScreen() {
             {(extractQueue?.items ?? []).map((q) => (
               <View key={q.id} style={styles.queueModalItem}>
                 <View style={styles.queueDockItemRow}>
-                  <Text style={[styles.queueDockName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.queueDockName, { color: colors.textPrimary }]}
+                    numberOfLines={1}
+                  >
                     {q.date || q.filePath}
                   </Text>
                   <Text
@@ -2841,7 +2871,10 @@ export function GraphScreen() {
                   </>
                 ) : null}
                 {q.status === 'error' && q.error ? (
-                  <Text style={{ color: colors.error, fontSize: 11, marginTop: 4 }} numberOfLines={2}>
+                  <Text
+                    style={{ color: colors.error, fontSize: 11, marginTop: 4 }}
+                    numberOfLines={2}
+                  >
                     {(() => {
                       const copy = describeGraphExtractQueueError(q.error)
                       return t(copy.key, copy.defaultValue, copy.params)
@@ -2940,7 +2973,8 @@ export function GraphScreen() {
                     style={[
                       styles.concurrencyChip,
                       {
-                        borderColor: n === extractConcurrency ? colors.primary : colors.borderSubtle,
+                        borderColor:
+                          n === extractConcurrency ? colors.primary : colors.borderSubtle,
                         backgroundColor: n === extractConcurrency ? colors.primary : 'transparent'
                       }
                     ]}
@@ -2966,10 +3000,21 @@ export function GraphScreen() {
                   }}
                   style={[
                     styles.toolBtn,
-                    { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurfaceNormal, flex: 1 }
+                    {
+                      borderColor: colors.borderSubtle,
+                      backgroundColor: colors.bgSurfaceNormal,
+                      flex: 1
+                    }
                   ]}
                 >
-                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: '600',
+                      textAlign: 'center'
+                    }}
+                  >
                     {t('graph.create_node', '新建节点')}
                   </Text>
                 </Pressable>
@@ -3176,9 +3221,7 @@ export function GraphScreen() {
             </Text>
           </Pressable>
           {settingsSection.view ? (
-            <View style={styles.settingsBody}>
-              {renderDepthChips()}
-            </View>
+            <View style={styles.settingsBody}>{renderDepthChips()}</View>
           ) : null}
 
           <Pressable
@@ -3583,7 +3626,7 @@ const styles = StyleSheet.create({
   },
   queueOverallPct: {
     fontSize: 13,
-    fontWeight: '650'
+    fontWeight: '600'
   },
   queueModalItem: {
     paddingVertical: 10,
