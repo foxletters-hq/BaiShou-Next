@@ -71,6 +71,14 @@ export class SqliteHybridSearchRepository implements IHybridSearchStorage, IEmbe
     return this.embeddingStore.recordEmbedFailure(...args)
   }
 
+  reconcileEmbedLedger(...args: Parameters<HybridSearchEmbeddingStore['reconcileEmbedLedger']>) {
+    return this.embeddingStore.reconcileEmbedLedger(...args)
+  }
+
+  rebuildEmbedLedger(...args: Parameters<HybridSearchEmbeddingStore['rebuildEmbedLedger']>) {
+    return this.embeddingStore.rebuildEmbedLedger(...args)
+  }
+
   getBySource(...args: Parameters<HybridSearchEmbeddingStore['getBySource']>) {
     return this.embeddingStore.getBySource(...args)
   }
