@@ -9,6 +9,7 @@ import {
   MEMORY_EMBED_GROUP_ID,
   MEMORY_SOURCE_TYPE,
   buildMemoryMetadataJson,
+  hashEmbedSourceContent,
   type MemoryRawRecord,
   type ToolRawDataSourceManager
 } from '@baishou/shared'
@@ -162,7 +163,8 @@ export class MemoryStoreTool extends AgentTool<typeof memoryStoreParams> {
         groupId: MEMORY_EMBED_GROUP_ID,
         vaultId,
         metadataJson: buildMemoryMetadataJson(record),
-        sourceCreatedAt: now
+        sourceCreatedAt: now,
+        contentHash: hashEmbedSourceContent(contentToStore)
       })
 
       const memoryMgr = rawManager.getMemoryManager?.()

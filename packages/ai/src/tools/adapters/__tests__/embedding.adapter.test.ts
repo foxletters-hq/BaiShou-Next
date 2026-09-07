@@ -93,7 +93,7 @@ describe('EmbeddingAdapter', () => {
         sourceType: 'diary',
         sourceId: '3',
         chunkCount: 2,
-        contentHash: '',
+        contentHash: expect.any(String),
         modelId: 'text-embedding-3-small',
         dimension: 3
       })
@@ -154,6 +154,49 @@ describe('EmbeddingAdapter', () => {
     expect(
       String((hybridRepo.insertEmbedding as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].chunkText)
     ).not.toContain('[标签:')
+  })
+
+  it('records a zero ledger row when text is empty', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '   ',
+      sourceType: 'diary',
+      sourceId: 'vault-a#empty',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      contentHash: 'empty-hash'
+    })
+
+    expect(hybridRepo.insertEmbedding).not.toHaveBeenCalled()
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceId: 'vault-a#empty',
+        contentHash: 'empty-hash',
+        chunkCount: 0
+      })
+    )
+  })
+
+  it('writes content_hash into vector metadata_json', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '短日记',
+      sourceType: 'diary',
+      sourceId: 'vault-a#meta',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      metadataJson: JSON.stringify({ updated_at: 1 }),
+      contentHash: 'cafe',
+      requireSuccess: true
+    })
+
+    expect(hybridRepo.insertEmbedding).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadataJson: JSON.stringify({ updated_at: 1, content_hash: 'cafe' })
+      })
+    )
   })
 
   it('forwards contentHash to recordEmbedded when provided', async () => {

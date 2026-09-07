@@ -129,9 +129,12 @@ describe('MemoryStoreTool', () => {
     expect(mockEmbedService.embedText).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceType: MEMORY_SOURCE_TYPE,
-        text: 'Brand new info'
+        text: 'Brand new info',
+        contentHash: expect.any(String)
       })
     )
+    const embedArgs = mockEmbedService.embedText.mock.calls[0]?.[0] as { contentHash?: string }
+    expect(embedArgs.contentHash).toBeTruthy()
     expect(result).toContain('记忆已成功存储并建立向量索引')
   })
 
