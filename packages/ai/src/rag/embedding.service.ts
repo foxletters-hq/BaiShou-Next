@@ -201,6 +201,7 @@ export class EmbeddingService {
     chunkPrefix?: string
     /** Skip dimension detect / index init when batch caller already ran prepareEmbeddingIndex(). */
     skipIndexPrep?: boolean
+    contentHash?: string
   }): Promise<void> {
     if (!this.isConfigured || !params.text.trim()) return
     const vaultId = params.vaultId.trim()
@@ -264,8 +265,24 @@ export class EmbeddingService {
       if (futures.length > 0) {
         await Promise.all(futures)
       }
+
+      await this.writeEmbedLedgerSuccess({
+        vaultId,
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
+        contentHash: params.contentHash ?? '',
+        chunkCount: chunks.length,
+        modelId,
+        dimension: this.config.getGlobalEmbeddingDimension() || 0
+      })
     } catch (e) {
       logger.error('embedText failed', { error: e })
+      await this.writeEmbedLedgerFailure({
+        vaultId,
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
+        lastError: formatAiApiCallError(e)
+      })
       throw e
     }
   }
@@ -280,6 +297,7 @@ export class EmbeddingService {
     sourceCreatedAt?: number
     chunkPrefix?: string
     skipIndexPrep?: boolean
+    contentHash?: string
   }): Promise<void> {
     await this.db.deleteEmbeddingsBySource(params.sourceType, params.sourceId)
     await this.embedText(params)
@@ -359,6 +377,41 @@ export class EmbeddingService {
       retryEmbed: (action, label) => this.retryEmbed(action, label),
       rollbackConfig: this.rollbackConfig,
       lifecycle: this.migrationLifecycle
+    }
+  }
+
+  private isLedgerSourceType(sourceType: string): boolean {
+    return sourceType === 'diary' || sourceType === 'memory'
+  }
+
+  private async writeEmbedLedgerSuccess(params: {
+    vaultId: string
+    sourceType: string
+    sourceId: string
+    contentHash: string
+    chunkCount: number
+    modelId: string
+    dimension: number
+  }): Promise<void> {
+    if (!this.db.recordEmbedded || !this.isLedgerSourceType(params.sourceType)) return
+    try {
+      await this.db.recordEmbedded(params)
+    } catch (e) {
+      logger.warn('embed_ledger 写入失败', { error: e })
+    }
+  }
+
+  private async writeEmbedLedgerFailure(params: {
+    vaultId: string
+    sourceType: string
+    sourceId: string
+    lastError: string
+  }): Promise<void> {
+    if (!this.db.recordEmbedFailure || !this.isLedgerSourceType(params.sourceType)) return
+    try {
+      await this.db.recordEmbedFailure(params)
+    } catch (e) {
+      logger.warn('embed_ledger 失败记录写入失败', { error: e })
     }
   }
 

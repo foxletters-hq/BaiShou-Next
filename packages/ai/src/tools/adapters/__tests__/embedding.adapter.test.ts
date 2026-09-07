@@ -22,7 +22,9 @@ describe('EmbeddingAdapter', () => {
   } as unknown as IAIProvider
 
   const hybridRepo = {
-    insertEmbedding: vi.fn().mockResolvedValue(undefined)
+    insertEmbedding: vi.fn().mockResolvedValue(undefined),
+    recordEmbedded: vi.fn().mockResolvedValue(undefined),
+    recordEmbedFailure: vi.fn().mockResolvedValue(undefined)
   } as unknown as SqliteHybridSearchRepository
 
   beforeEach(() => {
@@ -44,6 +46,8 @@ describe('EmbeddingAdapter', () => {
         requireSuccess: true
       })
     ).rejects.toThrow(/Embedding API returned no vectors/)
+    expect(hybridRepo.recordEmbedFailure).toHaveBeenCalledTimes(1)
+    expect(hybridRepo.recordEmbedded).not.toHaveBeenCalled()
   })
 
   it('throws when requireSuccess and only some chunks succeed', async () => {
@@ -66,6 +70,8 @@ describe('EmbeddingAdapter', () => {
         requireSuccess: true
       })
     ).rejects.toThrow(/incomplete vectors/)
+    expect(hybridRepo.recordEmbedFailure).toHaveBeenCalledTimes(1)
+    expect(hybridRepo.recordEmbedded).not.toHaveBeenCalled()
   })
 
   it('succeeds when all chunks embed', async () => {
@@ -81,6 +87,17 @@ describe('EmbeddingAdapter', () => {
     })
 
     expect(hybridRepo.insertEmbedding).toHaveBeenCalledTimes(2)
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledTimes(1)
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: 'diary',
+        sourceId: '3',
+        chunkCount: 2,
+        contentHash: '',
+        modelId: 'text-embedding-3-small',
+        dimension: 3
+      })
+    )
   })
 
   it('prefixes each chunk with the date label and does not add tag metadata', async () => {
@@ -137,5 +154,27 @@ describe('EmbeddingAdapter', () => {
     expect(
       String((hybridRepo.insertEmbedding as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].chunkText)
     ).not.toContain('[标签:')
+  })
+
+  it('forwards contentHash to recordEmbedded when provided', async () => {
+    const adapter = new EmbeddingAdapter(provider, 'text-embedding-3-small', hybridRepo)
+
+    await adapter.embedText({
+      text: '短日记',
+      sourceType: 'diary',
+      sourceId: 'vault-a#8',
+      groupId: 'diary',
+      vaultId: deriveLegacyVaultId('Personal'),
+      contentHash: 'deadbeef',
+      requireSuccess: true
+    })
+
+    expect(hybridRepo.recordEmbedded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceId: 'vault-a#8',
+        contentHash: 'deadbeef',
+        chunkCount: 1
+      })
+    )
   })
 })

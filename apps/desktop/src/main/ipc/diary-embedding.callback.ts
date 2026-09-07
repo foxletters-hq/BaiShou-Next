@@ -71,15 +71,16 @@ export const embeddingCallback: IEmbeddingCallback = {
       }
 
       await deleteDiaryEmbeddingAliases(vaultId, params.diaryId)
-      await embeddingService.reEmbedText(
-        buildDesktopDiaryReEmbedArgs({
+      await embeddingService.reEmbedText({
+        ...buildDesktopDiaryReEmbedArgs({
           content: params.content,
           date: params.date,
           vaultId,
           diaryId: params.diaryId,
           updatedAt: params.updatedAt
-        })
-      )
+        }),
+        contentHash
+      })
       await deleteDiaryEmbedJob(vaultId, params.diaryId)
       await clearDiaryEmbedFailureIfSet()
       return true
