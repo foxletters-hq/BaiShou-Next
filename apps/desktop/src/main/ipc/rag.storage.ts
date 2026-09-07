@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import { IEmbeddingStorage } from '@baishou/ai'
-import { memoryEmbeddingsTable } from '@baishou/database-desktop'
+import { embedLedgerTable, memoryEmbeddingsTable } from '@baishou/database-desktop'
+import type { EmbedLedgerFailureParams, EmbedLedgerRecordParams } from '@baishou/shared'
 import { getAppDb } from '../db'
 import { mapMigrationBackupRow, logger, normalizeUnixToSeconds } from '@baishou/shared'
 import { eq, and, sql } from 'drizzle-orm'
@@ -102,6 +103,96 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
             eq(memoryEmbeddingsTable.sourceId, sourceId)
           )
         )
+      try {
+        await db
+          .delete(embedLedgerTable)
+          .where(
+            and(
+              eq(embedLedgerTable.sourceType, sourceType),
+              eq(embedLedgerTable.sourceId, sourceId)
+            )
+          )
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e)
+        logger.warn('[RAG] 删除 embed_ledger 行失败（非阻塞）:', message)
+      }
+    })
+  }
+
+  async recordEmbedded(params: EmbedLedgerRecordParams): Promise<void> {
+    await withEmbeddingWriteLock(async () => {
+      const db = getAppDb()
+      const vaultId = params.vaultId.trim()
+      if (!vaultId) {
+        throw new Error('recordEmbedded: vaultId is required')
+      }
+      const now = Date.now()
+      await db
+        .insert(embedLedgerTable)
+        .values({
+          vaultId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          contentHash: params.contentHash,
+          chunkCount: params.chunkCount,
+          modelId: params.modelId,
+          dimension: params.dimension,
+          status: 'embedded',
+          attempts: 0,
+          lastError: null,
+          embeddedAt: now,
+          updatedAt: now
+        })
+        .onConflictDoUpdate({
+          target: [embedLedgerTable.vaultId, embedLedgerTable.sourceType, embedLedgerTable.sourceId],
+          set: {
+            contentHash: params.contentHash,
+            chunkCount: params.chunkCount,
+            modelId: params.modelId,
+            dimension: params.dimension,
+            status: 'embedded',
+            attempts: 0,
+            lastError: null,
+            embeddedAt: now,
+            updatedAt: now
+          }
+        })
+    })
+  }
+
+  async recordEmbedFailure(params: EmbedLedgerFailureParams): Promise<void> {
+    await withEmbeddingWriteLock(async () => {
+      const db = getAppDb()
+      const vaultId = params.vaultId.trim()
+      if (!vaultId) {
+        throw new Error('recordEmbedFailure: vaultId is required')
+      }
+      const now = Date.now()
+      await db
+        .insert(embedLedgerTable)
+        .values({
+          vaultId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          contentHash: '',
+          chunkCount: 0,
+          modelId: '',
+          dimension: 0,
+          status: 'failed',
+          attempts: 1,
+          lastError: params.lastError,
+          embeddedAt: null,
+          updatedAt: now
+        })
+        .onConflictDoUpdate({
+          target: [embedLedgerTable.vaultId, embedLedgerTable.sourceType, embedLedgerTable.sourceId],
+          set: {
+            status: 'failed',
+            attempts: sql`${embedLedgerTable.attempts} + 1`,
+            lastError: params.lastError,
+            updatedAt: now
+          }
+        })
     })
   }
 

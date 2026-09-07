@@ -4,8 +4,14 @@ import {
   mapMigrationBackupRow,
   MEMORY_EMBED_GROUP_ID
 } from '@baishou/shared'
-import type { ISqlExecutor, EmbeddingSnapshotMeta } from '@baishou/shared'
+import type {
+  ISqlExecutor,
+  EmbeddingSnapshotMeta,
+  EmbedLedgerFailureParams,
+  EmbedLedgerRecordParams
+} from '@baishou/shared'
 import {
+  EMBED_LEDGER_TABLE,
   HYBRID_SEARCH_BACKUP_TABLE,
   HYBRID_SEARCH_INDEX_NAME,
   HYBRID_SEARCH_TABLE,
@@ -99,6 +105,74 @@ export class HybridSearchEmbeddingStore {
     await this.db.execute({
       sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE source_type = ? AND source_id = ?`,
       args: [sourceType, sourceId]
+    })
+    try {
+      await this.db.execute({
+        sql: `DELETE FROM ${EMBED_LEDGER_TABLE} WHERE source_type = ? AND source_id = ?`,
+        args: [sourceType, sourceId]
+      })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[VectorSearch] 删除 embed_ledger 行失败（非阻塞）:', message)
+    }
+  }
+
+  async recordEmbedded(params: EmbedLedgerRecordParams): Promise<void> {
+    const vaultId = params.vaultId.trim()
+    if (!vaultId) {
+      throw new Error('recordEmbedded: vaultId is required')
+    }
+    const now = Date.now()
+    await this.db.execute({
+      sql: `
+        INSERT INTO ${EMBED_LEDGER_TABLE}
+        (vault_id, source_type, source_id, content_hash, chunk_count,
+         model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'embedded', 0, NULL, ?, ?)
+        ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
+          content_hash = excluded.content_hash,
+          chunk_count = excluded.chunk_count,
+          model_id = excluded.model_id,
+          dimension = excluded.dimension,
+          status = 'embedded',
+          attempts = 0,
+          last_error = NULL,
+          embedded_at = excluded.embedded_at,
+          updated_at = excluded.updated_at
+      `,
+      args: [
+        vaultId,
+        params.sourceType,
+        params.sourceId,
+        params.contentHash,
+        params.chunkCount,
+        params.modelId,
+        params.dimension,
+        now,
+        now
+      ]
+    })
+  }
+
+  async recordEmbedFailure(params: EmbedLedgerFailureParams): Promise<void> {
+    const vaultId = params.vaultId.trim()
+    if (!vaultId) {
+      throw new Error('recordEmbedFailure: vaultId is required')
+    }
+    const now = Date.now()
+    await this.db.execute({
+      sql: `
+        INSERT INTO ${EMBED_LEDGER_TABLE}
+        (vault_id, source_type, source_id, content_hash, chunk_count,
+         model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
+        VALUES (?, ?, ?, '', 0, '', 0, 'failed', 1, ?, NULL, ?)
+        ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
+          status = 'failed',
+          attempts = attempts + 1,
+          last_error = excluded.last_error,
+          updated_at = excluded.updated_at
+      `,
+      args: [vaultId, params.sourceType, params.sourceId, params.lastError, now]
     })
   }
 

@@ -109,6 +109,23 @@ export interface EmbeddingSnapshotMeta {
  * 为了与 Beta 提供的数据存储解耦而抽象的数据接口
  * (原版 AgentDatabase 中关于 Embedding 的部分)
  */
+export interface EmbedLedgerRecordParams {
+  vaultId: string
+  sourceType: string
+  sourceId: string
+  contentHash: string
+  chunkCount: number
+  modelId: string
+  dimension: number
+}
+
+export interface EmbedLedgerFailureParams {
+  vaultId: string
+  sourceType: string
+  sourceId: string
+  lastError: string
+}
+
 export interface IEmbeddingStorage {
   initVectorIndex(dimension: number): Promise<void>
 
@@ -128,6 +145,10 @@ export interface IEmbeddingStorage {
   }): Promise<void>
 
   deleteEmbeddingsBySource(sourceType: string, sourceId: string): Promise<void>
+  /** 一个来源的全部切片写完后记一行；按来源覆盖，不按切片累加 */
+  recordEmbedded?(params: EmbedLedgerRecordParams): Promise<void>
+  /** 嵌入失败时记 failed 并累加 attempts，不改 chunk_count */
+  recordEmbedFailure?(params: EmbedLedgerFailureParams): Promise<void>
   clearEmbeddings(): Promise<void>
 
   // --- 迁移用的 ---
