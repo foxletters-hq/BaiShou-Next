@@ -89,6 +89,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     chunkPrefix?: string
     /** 为 true 时，任一分块失败或全部失败均抛出错误（日记嵌入路径使用） */
     requireSuccess?: boolean
+    contentHash?: string
   }): Promise<void> {
     if (!this.hybridRepo) {
       throw new Error('hybridRepo must be provided to store embeddings permanently.')
@@ -102,6 +103,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     // 对齐原版：长文本先分块，每块独立嵌入入库（分块级有限并发）
     const chunks = splitIntoChunks(options.text)
     let successCount = 0
+    let lastDimension = 0
 
     const embedOneChunk = async (index: number): Promise<boolean> => {
       const rawChunk = chunks[index]!
@@ -124,6 +126,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         modelId: this.modelId,
         sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
       })
+      lastDimension = embVector.length
       return true
     }
 
@@ -137,13 +140,67 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
 
     if (options.requireSuccess && chunks.length > 0) {
       if (successCount === 0) {
-        throw new Error(`Embedding API returned no vectors (model: ${this.modelId})`)
+        const error = new Error(`Embedding API returned no vectors (model: ${this.modelId})`)
+        await this.writeEmbedLedgerFailure(hybridRepo, options, vaultId, error.message)
+        throw error
       }
       if (successCount < chunks.length) {
-        throw new Error(
+        const error = new Error(
           `Embedding API returned incomplete vectors (${successCount}/${chunks.length} chunks, model: ${this.modelId})`
         )
+        await this.writeEmbedLedgerFailure(hybridRepo, options, vaultId, error.message)
+        throw error
       }
+    }
+
+    if (successCount === chunks.length && chunks.length > 0) {
+      await this.writeEmbedLedgerSuccess(hybridRepo, options, vaultId, chunks.length, lastDimension)
+    }
+  }
+
+  private isLedgerSourceType(sourceType: string): boolean {
+    return sourceType === 'diary' || sourceType === 'memory'
+  }
+
+  private async writeEmbedLedgerSuccess(
+    hybridRepo: SqliteHybridSearchRepository,
+    options: { sourceType: string; sourceId: string; contentHash?: string },
+    vaultId: string,
+    chunkCount: number,
+    dimension: number
+  ): Promise<void> {
+    if (!hybridRepo.recordEmbedded || !this.isLedgerSourceType(options.sourceType)) return
+    try {
+      await hybridRepo.recordEmbedded({
+        vaultId,
+        sourceType: options.sourceType,
+        sourceId: options.sourceId,
+        contentHash: options.contentHash ?? '',
+        chunkCount,
+        modelId: this.modelId,
+        dimension
+      })
+    } catch (e) {
+      logger.warn('[EmbeddingAdapter] embed_ledger 写入失败', { error: e })
+    }
+  }
+
+  private async writeEmbedLedgerFailure(
+    hybridRepo: SqliteHybridSearchRepository,
+    options: { sourceType: string; sourceId: string },
+    vaultId: string,
+    lastError: string
+  ): Promise<void> {
+    if (!hybridRepo.recordEmbedFailure || !this.isLedgerSourceType(options.sourceType)) return
+    try {
+      await hybridRepo.recordEmbedFailure({
+        vaultId,
+        sourceType: options.sourceType,
+        sourceId: options.sourceId,
+        lastError
+      })
+    } catch (e) {
+      logger.warn('[EmbeddingAdapter] embed_ledger 失败记录写入失败', { error: e })
     }
   }
 }

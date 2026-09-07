@@ -98,14 +98,18 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
         return false
       }
 
-      await embedDiaryEntry(deps, {
-        diaryId: params.diaryId,
-        content: params.content,
-        tags: params.tags,
-        date: params.date,
-        updatedAt: params.updatedAt,
-        vaultName: params.vaultName
-      })
+      await embedDiaryEntry(
+        deps,
+        {
+          diaryId: params.diaryId,
+          content: params.content,
+          tags: params.tags,
+          date: params.date,
+          updatedAt: params.updatedAt,
+          vaultName: params.vaultName
+        },
+        { contentHash }
+      )
       await deleteDiaryEmbedJob(vaultId, params.diaryId)
       const ragConfigAfter = await loadRagConfig(deps.settingsManager)
       if (hasRagDiaryEmbedFailure(ragConfigAfter)) {

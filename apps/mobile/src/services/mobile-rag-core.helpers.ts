@@ -5,8 +5,10 @@ import {
   buildDiaryEmbeddingGroupId,
   buildDiaryEmbeddingSourceId,
   clearRagDiaryEmbedFailure,
+  formatAiApiCallError,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
+  logger,
   markRagDiaryEmbedFailure,
   buildDiaryEmbeddingTextArgs,
   coerceDiaryCalendarDate,
@@ -57,6 +59,7 @@ export type EmbedDiaryEntryOptions = {
   adapter?: EmbeddingAdapter
   skipIndexPrep?: boolean
   skipRagEnabledCheck?: boolean
+  contentHash?: string
 }
 
 export type ControlledDiaryBatchEmbedResult = {
@@ -296,13 +299,24 @@ export async function embedDiaryEntry(
     vaultId: resolvedVaultId,
     sourceCreatedAt: d ? diaryDateToSourceCreatedSeconds(d) * 1000 : Date.now(),
     metadataJson,
-    requireSuccess: true as const
+    requireSuccess: true as const,
+    contentHash: options?.contentHash ?? ''
   }
 
   try {
     await adapter.embedText(embedArgs)
   } catch (error) {
     await deps.hsRepo.deleteEmbeddingsBySource('diary', sourceId)
+    try {
+      await deps.hsRepo.recordEmbedFailure?.({
+        vaultId: resolvedVaultId,
+        sourceType: 'diary',
+        sourceId,
+        lastError: formatAiApiCallError(error)
+      })
+    } catch (ledgerError) {
+      logger.warn('[MobileDiaryEmbed] embed_ledger 失败记录写入失败', ledgerError as Error)
+    }
     throw error
   }
 }
