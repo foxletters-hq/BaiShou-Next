@@ -162,7 +162,31 @@ export interface GraphPath {
   edgeDirections?: Array<'forward' | 'reverse'>
 }
 
-function mapNode(row: typeof graphNodesTable.$inferSelect): GraphNodeRow {
+const GRAPH_NODE_ROW_COLUMNS = {
+  id: graphNodesTable.id,
+  vaultId: graphNodesTable.vaultId,
+  nodeType: graphNodesTable.nodeType,
+  name: graphNodesTable.name,
+  nameNormalized: graphNodesTable.nameNormalized,
+  aliases: graphNodesTable.aliases,
+  summary: graphNodesTable.summary,
+  propsJson: graphNodesTable.propsJson,
+  mentionCount: graphNodesTable.mentionCount,
+  firstSeenAt: graphNodesTable.firstSeenAt,
+  lastSeenAt: graphNodesTable.lastSeenAt,
+  origin: graphNodesTable.origin,
+  shardMonth: graphNodesTable.shardMonth,
+  reviewStatus: graphNodesTable.reviewStatus,
+  modelId: graphNodesTable.modelId,
+  dimension: graphNodesTable.dimension,
+  createdAt: graphNodesTable.createdAt,
+  updatedAt: graphNodesTable.updatedAt,
+  deletedAt: graphNodesTable.deletedAt
+} as const
+
+type GraphNodeMappedRow = Omit<typeof graphNodesTable.$inferSelect, 'embedding'>
+
+function mapNode(row: GraphNodeMappedRow): GraphNodeRow {
   return {
     id: row.id,
     vaultId: row.vaultId,
@@ -359,8 +383,7 @@ export class GraphRepository implements GraphRepositoryPort {
 
       return rows.map((r) => ({ ...mapNode(r.row), distance: Number(r.distance) }))
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e)
-      if (!isMissingSqliteFunctionError(message)) throw e
+      if (!isMissingSqliteFunctionError(e)) throw e
     }
 
     // JS fallback when sqlite-vec is unavailable
@@ -427,7 +450,10 @@ export class GraphRepository implements GraphRepositoryPort {
       .where(
         and(
           eq(graphNodeAliasesTable.vaultId, vaultId),
-          or(eq(graphNodeAliasesTable.aliasNormalized, norm), like(graphNodeAliasesTable.aliasNormalized, pattern))
+          or(
+            eq(graphNodeAliasesTable.aliasNormalized, norm),
+            like(graphNodeAliasesTable.aliasNormalized, pattern)
+          )
         )
       )
       .limit(limit)
@@ -441,9 +467,7 @@ export class GraphRepository implements GraphRepositoryPort {
       if (opts?.nodeTypes?.length && !opts.nodeTypes.includes(node.nodeType)) continue
       seen.set(node.id, node)
     }
-    return [...seen.values()]
-      .sort((a, b) => b.mentionCount - a.mentionCount)
-      .slice(0, limit)
+    return [...seen.values()].sort((a, b) => b.mentionCount - a.mentionCount).slice(0, limit)
   }
 
   /**
@@ -673,7 +697,7 @@ export class GraphRepository implements GraphRepositoryPort {
     const out: GraphNodeRow[] = []
     for (const part of chunkIds(ids)) {
       const rows = await this.database
-        .select()
+        .select(GRAPH_NODE_ROW_COLUMNS)
         .from(graphNodesTable)
         .where(
           and(
@@ -711,7 +735,8 @@ export class GraphRepository implements GraphRepositoryPort {
           )
         )
       for (const e of rows) {
-        if (approvedOnly && (e.reviewStatus === 'pending' || e.reviewStatus === 'rejected')) continue
+        if (approvedOnly && (e.reviewStatus === 'pending' || e.reviewStatus === 'rejected'))
+          continue
         if (seen.has(e.id)) continue
         seen.add(e.id)
         out.push(mapEdge(e))
@@ -724,19 +749,70 @@ export class GraphRepository implements GraphRepositoryPort {
     vaultId: string,
     centerId: string,
     depth: 1 | 2 | 3,
-    opts?: { approvedOnly?: boolean }
+    opts?: {
+      approvedOnly?: boolean
+      queryVector?: number[]
+      resolveQueryVector?: () => Promise<number[] | null | undefined>
+      maxNeighborsPerHop?: number
+    }
   ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }> {
     const approvedOnly = opts?.approvedOnly === true
     const hops = Math.min(3, Math.max(1, Math.floor(depth))) as 1 | 2 | 3
+    // Omit the cap to keep canvas expand complete; GraphRAG passes GRAPH_MAX_NEIGHBORS_PER_HOP.
+    const maxNeighborsPerHop = opts?.maxNeighborsPerHop ?? Number.POSITIVE_INFINITY
     const nodeIds = new Set<string>([centerId])
+    const neighborOrder: string[] = []
     const edgeIds = new Set<string>()
     const edgeRows: GraphEdgeRow[] = []
     let frontier = [centerId]
+    let cachedQueryVector = opts?.queryVector
+    let resolveQueryVectorTried = false
+    let didPrune = false
+
+    const ensureQueryVector = async (): Promise<number[] | undefined> => {
+      if (cachedQueryVector?.length) return cachedQueryVector
+      if (resolveQueryVectorTried) return cachedQueryVector
+      resolveQueryVectorTried = true
+      if (!opts?.resolveQueryVector) return cachedQueryVector
+      const resolved = await opts.resolveQueryVector()
+      if (resolved?.length) cachedQueryVector = resolved
+      return cachedQueryVector
+    }
+
     for (let d = 0; d < hops; d++) {
       if (frontier.length === 0) break
       const edges = await this.selectCurrentEdgesTouching(vaultId, frontier, { approvedOnly })
+      const candidateIds: string[] = []
+      const seenCandidate = new Set<string>()
+      for (const e of edges) {
+        for (const id of [e.fromId, e.toId]) {
+          if (id === centerId || nodeIds.has(id) || seenCandidate.has(id)) continue
+          seenCandidate.add(id)
+          candidateIds.push(id)
+        }
+      }
+
+      let keepNew = seenCandidate
+      if (candidateIds.length > maxNeighborsPerHop) {
+        didPrune = true
+        const queryVector = await ensureQueryVector()
+        const kept = await this.selectPrunedNeighborIds(
+          vaultId,
+          candidateIds,
+          maxNeighborsPerHop,
+          queryVector
+        )
+        keepNew = new Set(kept)
+        neighborOrder.push(...kept)
+      } else {
+        neighborOrder.push(...candidateIds)
+      }
+
       const next: string[] = []
       for (const e of edges) {
+        const fromKept = e.fromId === centerId || nodeIds.has(e.fromId) || keepNew.has(e.fromId)
+        const toKept = e.toId === centerId || nodeIds.has(e.toId) || keepNew.has(e.toId)
+        if (!fromKept || !toKept) continue
         if (!edgeIds.has(e.id)) {
           edgeIds.add(e.id)
           edgeRows.push(e)
@@ -754,7 +830,137 @@ export class GraphRepository implements GraphRepositoryPort {
     if (approvedOnly) {
       nodes = nodes.filter((n) => n.reviewStatus !== 'pending' && n.reviewStatus !== 'rejected')
     }
+    if (didPrune) {
+      const rank = new Map<string, number>()
+      neighborOrder.forEach((id, i) => {
+        if (!rank.has(id)) rank.set(id, i)
+      })
+      nodes.sort((a, b) => {
+        if (a.id === centerId) return -1
+        if (b.id === centerId) return 1
+        return (
+          (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+        )
+      })
+    }
     return { nodes, edges: edgeRows }
+  }
+
+  /**
+   * Rank candidate neighbor ids to `limit` without materializing embedding blobs in JS.
+   * Vector compare stays inside SQLite; missing sqlite-vec falls back to mention_count.
+   */
+  private async selectPrunedNeighborIds(
+    vaultId: string,
+    candidateIds: string[],
+    limit: number,
+    queryVector?: number[]
+  ): Promise<string[]> {
+    if (candidateIds.length === 0 || limit <= 0) return []
+    if (queryVector?.length) {
+      try {
+        let ranked = await this.selectNeighborIdsByVector(vaultId, candidateIds, queryVector, limit)
+        if (ranked.length < limit) {
+          const have = new Set(ranked)
+          const rest = candidateIds.filter((id) => !have.has(id))
+          ranked = ranked.concat(
+            await this.selectNeighborIdsByMention(vaultId, rest, limit - ranked.length)
+          )
+        }
+        console.info(
+          `[GraphRepository] traverse prune: vec_distance_cosine kept ${ranked.length}/${candidateIds.length}`
+        )
+        return ranked
+      } catch (e) {
+        if (!isMissingSqliteFunctionError(e)) throw e
+        console.warn(
+          `[GraphRepository] traverse prune: sqlite-vec unavailable, ranking by mention_count (${candidateIds.length} candidates)`
+        )
+      }
+    } else {
+      console.info(
+        `[GraphRepository] traverse prune: mention_count kept ${Math.min(limit, candidateIds.length)}/${candidateIds.length}`
+      )
+    }
+    return this.selectNeighborIdsByMention(vaultId, candidateIds, limit)
+  }
+
+  private async selectNeighborIdsByVector(
+    vaultId: string,
+    candidateIds: string[],
+    queryVector: number[],
+    limit: number
+  ): Promise<string[]> {
+    const buf = serializeVector(queryVector)
+    const merged: Array<{ id: string; distance: number }> = []
+    for (const part of chunkIds(candidateIds)) {
+      const rows = await this.database
+        .select({
+          id: graphNodesTable.id,
+          distance: sql<number>`vec_distance_cosine(${graphNodesTable.embedding}, ${buf})`.as(
+            'distance'
+          )
+        })
+        .from(graphNodesTable)
+        .where(
+          and(
+            eq(graphNodesTable.vaultId, vaultId),
+            isNull(graphNodesTable.deletedAt),
+            inArray(graphNodesTable.id, part),
+            sql`${graphNodesTable.embedding} is not null`,
+            eq(graphNodesTable.dimension, queryVector.length)
+          )
+        )
+        .orderBy(sql`vec_distance_cosine(${graphNodesTable.embedding}, ${buf}) ASC`)
+        .limit(limit)
+      for (const row of rows) merged.push({ id: row.id, distance: Number(row.distance) })
+    }
+    merged.sort((a, b) => a.distance - b.distance)
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const row of merged) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      out.push(row.id)
+      if (out.length >= limit) break
+    }
+    return out
+  }
+
+  private async selectNeighborIdsByMention(
+    vaultId: string,
+    candidateIds: string[],
+    limit: number
+  ): Promise<string[]> {
+    const merged: Array<{ id: string; mentionCount: number }> = []
+    for (const part of chunkIds(candidateIds)) {
+      const rows = await this.database
+        .select({
+          id: graphNodesTable.id,
+          mentionCount: graphNodesTable.mentionCount
+        })
+        .from(graphNodesTable)
+        .where(
+          and(
+            eq(graphNodesTable.vaultId, vaultId),
+            isNull(graphNodesTable.deletedAt),
+            inArray(graphNodesTable.id, part)
+          )
+        )
+        .orderBy(desc(graphNodesTable.mentionCount))
+        .limit(limit)
+      merged.push(...rows)
+    }
+    merged.sort((a, b) => b.mentionCount - a.mentionCount)
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const row of merged) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      out.push(row.id)
+      if (out.length >= limit) break
+    }
+    return out
   }
 
   /**
@@ -769,7 +975,10 @@ export class GraphRepository implements GraphRepositoryPort {
     const approvedOnly = opts?.approvedOnly !== false
     const limit = opts?.limit ?? 80
     const reviewFilter = approvedOnly
-      ? and(ne(graphEdgesTable.reviewStatus, 'pending'), ne(graphEdgesTable.reviewStatus, 'rejected'))
+      ? and(
+          ne(graphEdgesTable.reviewStatus, 'pending'),
+          ne(graphEdgesTable.reviewStatus, 'rejected')
+        )
       : undefined
     const rows = await this.database
       .select()

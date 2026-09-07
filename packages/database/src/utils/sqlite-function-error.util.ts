@@ -1,11 +1,19 @@
 /** SQLite 扩展/自定义函数未安装时的典型错误文案 */
-export function isMissingSqliteFunctionError(message: string): boolean {
-  const lower = message.toLowerCase()
-  return (
-    lower.includes('no such function') ||
-    lower.includes('unknown function') ||
-    lower.includes('not authorized to use function')
-  )
+export function isMissingSqliteFunctionError(error: unknown): boolean {
+  let current: unknown = error
+  for (let i = 0; i < 6 && current; i++) {
+    const message = current instanceof Error ? current.message : String(current)
+    const lower = message.toLowerCase()
+    if (
+      lower.includes('no such function') ||
+      lower.includes('unknown function') ||
+      lower.includes('not authorized to use function')
+    ) {
+      return true
+    }
+    current = current instanceof Error ? (current as Error & { cause?: unknown }).cause : undefined
+  }
+  return false
 }
 
 export function isSqliteUniqueConstraintError(error: unknown): boolean {
@@ -25,8 +33,7 @@ export function isSqliteUniqueConstraintError(error: unknown): boolean {
     ) {
       return true
     }
-    current =
-      current instanceof Error ? (current as Error & { cause?: unknown }).cause : undefined
+    current = current instanceof Error ? (current as Error & { cause?: unknown }).cause : undefined
   }
   return false
 }
