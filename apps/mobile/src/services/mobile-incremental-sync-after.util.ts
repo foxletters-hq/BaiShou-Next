@@ -137,13 +137,6 @@ export async function runMobileIncrementalAfterSync(
       }
     }
 
-    if (cls.journals) {
-      deps.reportPostSync('data_sync.progress_schedule_embed', ++step, totalSteps)
-      const { schedulePostSyncDiaryBatchEmbed } =
-        await import('./mobile-post-sync-diary-embed.service')
-      schedulePostSyncDiaryBatchEmbed()
-    }
-
     if (cls.memory || cls.graph) {
       try {
         const { runMobileDerivedIndexHydration, resolveMobileEmbeddingForHydration } =

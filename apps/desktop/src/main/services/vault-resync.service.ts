@@ -108,18 +108,12 @@ export function scheduleVaultEcosystemResync(reason: string): Promise<void> {
     .catch((e) => {
       logger.error(`[VaultResync] Background resync failed (${reason}):`, e as any)
     })
-    .finally(async () => {
+    .finally(() => {
       markStartup('vaultResync.finished', {
         reason,
         ms: startupElapsedMs(scheduledAt)
       })
       backgroundResyncInFlight = null
-      // 冷启动/对齐结束后尝试消化嵌入欠账（受「联网自动恢复」开关约束）
-      void import('./diary-embed-jobs-consumer.service').then(
-        ({ scheduleConsumeDiaryEmbedJobs }) => {
-          scheduleConsumeDiaryEmbedJobs(`after-resync:${reason}`)
-        }
-      )
     })
 
   return backgroundResyncInFlight

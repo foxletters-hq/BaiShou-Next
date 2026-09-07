@@ -264,12 +264,6 @@ export class MobileDataBootstrapper {
 
       await Promise.all([shadowScan, summaryScan, assistantScan, sessionScan, settingsScan])
 
-      void import('./mobile-diary-embed-jobs-consumer.service')
-        .then(({ scheduleConsumeDiaryEmbedJobs }) => {
-          scheduleConsumeDiaryEmbedJobs('cold-start-resync')
-        })
-        .catch(() => undefined)
-
       const settings = (await deps.settingsManager.get<{ language?: string }>('settings')) || {}
       const locale = await resolveMobileBootstrapUiLocale(settings.language)
       if (locale) {
