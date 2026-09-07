@@ -14,6 +14,8 @@ const mockStorage: IEmbeddingStorage = {
   initVectorIndex: vi.fn(),
   insertEmbedding: vi.fn(),
   deleteEmbeddingsBySource: vi.fn(),
+  recordEmbedded: vi.fn(),
+  recordEmbedFailure: vi.fn(),
   clearEmbeddings: vi.fn(),
   hasPendingMigration: vi.fn(),
   hasMigrationBackupTable: vi.fn().mockResolvedValue(true),
@@ -80,6 +82,42 @@ describe('EmbeddingService', () => {
       expect(chunks.length).toBe(1)
       expect(chunks[0]!.text).toBe(text)
       expect(chunks[0]!.index).toBe(0)
+    })
+  })
+
+  describe('embedText ledger', () => {
+    it('records a zero ledger row when text is empty', async () => {
+      await service.embedText({
+        text: '   ',
+        sourceType: 'diary',
+        sourceId: 'vault-a#empty',
+        groupId: 'diary',
+        vaultId: 'vault-a',
+        contentHash: 'empty-hash'
+      })
+
+      expect(mockStorage.insertEmbedding).not.toHaveBeenCalled()
+      expect(mockStorage.recordEmbedded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          vaultId: 'vault-a',
+          sourceType: 'diary',
+          sourceId: 'vault-a#empty',
+          contentHash: 'empty-hash',
+          chunkCount: 0
+        })
+      )
+    })
+
+    it('does not write ledger when embedding model is not configured', async () => {
+      vi.mocked(mockConfig.getGlobalEmbeddingModelId).mockReturnValueOnce('')
+      await service.embedText({
+        text: '',
+        sourceType: 'diary',
+        sourceId: 'vault-a#empty',
+        groupId: 'diary',
+        vaultId: 'vault-a'
+      })
+      expect(mockStorage.recordEmbedded).not.toHaveBeenCalled()
     })
   })
 })

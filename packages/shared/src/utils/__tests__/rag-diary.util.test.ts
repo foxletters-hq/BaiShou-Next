@@ -7,7 +7,10 @@ import {
   buildDiaryEmbeddingGroupId,
   isLegacyDiaryEmbeddingSourceId,
   buildDiaryEmbeddingDatePrefix,
-  buildDiaryEmbeddingTextArgs
+  buildDiaryEmbeddingTextArgs,
+  aggregateEmbedLedgerFromVectorRows,
+  extractEmbedContentHashFromMetadata,
+  mergeEmbedContentHashIntoMetadata
 } from '../rag-diary.util'
 
 describe('sortDiariesByDateAsc', () => {
@@ -115,5 +118,101 @@ describe('filterUnindexedDiaries', () => {
 
     expect(result).toHaveLength(1)
     expect(result[0]?.id).toBe(1)
+  })
+
+  it('treats hash mismatch as pending even when updatedAt is smaller', () => {
+    const older = new Date('2026-05-10T00:00:00Z')
+    const newer = new Date('2026-05-20T00:00:00Z')
+    const diaries = [{ id: 1, updatedAt: older, contentHash: 'hash-old' }]
+    const embeddedIds = new Set(['1'])
+    const embeddedUpdatedAtMap = new Map<string, number>([['1', newer.getTime()]])
+    const embeddedContentHashMap = new Map<string, string>([['1', 'hash-new']])
+
+    const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
+      embeddedContentHashMap
+    })
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.id).toBe(1)
+  })
+
+  it('falls back to time comparison when ledger has no hash', () => {
+    const older = new Date('2026-05-10T00:00:00Z')
+    const newer = new Date('2026-05-20T00:00:00Z')
+    const diaries = [
+      { id: 1, updatedAt: older, contentHash: 'hash-old' },
+      { id: 2, updatedAt: newer, contentHash: 'hash-new' }
+    ]
+    const embeddedIds = new Set(['1', '2'])
+    const embeddedUpdatedAtMap = new Map<string, number>([
+      ['1', newer.getTime()],
+      ['2', older.getTime()]
+    ])
+
+    const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
+      embeddedContentHashMap: new Map()
+    })
+
+    expect(result.map((d) => d.id)).toEqual([2])
+  })
+
+  it('keeps matching hashes out of pending even if updatedAt shrinks', () => {
+    const older = new Date('2026-05-10T00:00:00Z')
+    const newer = new Date('2026-05-20T00:00:00Z')
+    const diaries = [{ id: 1, updatedAt: older, contentHash: 'same' }]
+    const embeddedIds = new Set(['1'])
+    const embeddedUpdatedAtMap = new Map<string, number>([['1', newer.getTime()]])
+    const embeddedContentHashMap = new Map<string, string>([['1', 'same']])
+
+    const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
+      embeddedContentHashMap
+    })
+
+    expect(result).toHaveLength(0)
+  })
+})
+
+describe('embed ledger metadata helpers', () => {
+  it('writes and reads content_hash from metadata_json', () => {
+    const merged = mergeEmbedContentHashIntoMetadata(
+      JSON.stringify({ updated_at: 100 }),
+      'deadbeef'
+    )
+    expect(JSON.parse(merged)).toEqual({ updated_at: 100, content_hash: 'deadbeef' })
+    expect(extractEmbedContentHashFromMetadata(merged)).toBe('deadbeef')
+  })
+
+  it('merges legacy numeric and scoped diary source ids and recovers hashes', () => {
+    const rows = aggregateEmbedLedgerFromVectorRows([
+      {
+        vaultId: 'vault-a',
+        sourceType: 'diary',
+        sourceId: '12',
+        modelId: 'm1',
+        dimension: 8,
+        metadataJson: JSON.stringify({ content_hash: 'abc', updated_at: 10 })
+      },
+      {
+        vaultId: 'vault-a',
+        sourceType: 'diary',
+        sourceId: 'vault-a#12',
+        modelId: 'm1',
+        dimension: 8,
+        metadataJson: JSON.stringify({ content_hash: 'abc', updated_at: 20 })
+      }
+    ])
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      sourceId: 'vault-a#12',
+      contentHash: 'abc',
+      chunkCount: 2,
+      modelId: 'm1',
+      dimension: 8,
+      updatedAt: 20
+    })
+    expect(rows.every((row) => row.contentHash)).toBe(true)
   })
 })

@@ -1,4 +1,6 @@
 import { coerceDiaryCalendarDate, formatLocalDate } from './date.utils'
+import { logger } from './logger'
+import { sha256Pure } from './sha256-pure'
 
 /** 日记向量分块前缀：只带日期，不带元数据标签 */
 export function buildDiaryEmbeddingDatePrefix(date: Date | string): string {
@@ -81,19 +83,34 @@ export function parseDiaryEmbeddingSourceId(
 }
 
 /** 筛选尚未嵌入或日记内容已更新、需重新嵌入的条目 */
-export function filterUnindexedDiaries<T extends { id: unknown; updatedAt?: Date }>(
+export function filterUnindexedDiaries<
+  T extends { id: unknown; updatedAt?: Date; contentHash?: string }
+>(
   diaries: T[],
   embeddedIds: Set<string>,
   embeddedUpdatedAtMap: Map<string, number>,
-  options?: { resolveSourceId?: (diary: T) => string }
+  options?: {
+    resolveSourceId?: (diary: T) => string
+    embeddedContentHashMap?: Map<string, string>
+    resolveContentHash?: (diary: T) => string | undefined
+  }
 ): T[] {
   const resolveSourceId = options?.resolveSourceId ?? ((d) => String(d.id))
+  const embeddedContentHashMap = options?.embeddedContentHashMap
+  const resolveContentHash = options?.resolveContentHash
 
   return diaries.filter((d) => {
     const sId = resolveSourceId(d)
     if (!embeddedIds.has(sId)) {
       return true
     }
+
+    const ledgerHash = embeddedContentHashMap?.get(sId)?.trim() ?? ''
+    const diaryHash = (resolveContentHash?.(d) ?? d.contentHash ?? '').trim()
+    if (ledgerHash && diaryHash) {
+      return ledgerHash !== diaryHash
+    }
+
     const existingUpdatedAt = embeddedUpdatedAtMap.get(sId)
     if (existingUpdatedAt === undefined) {
       return true
@@ -103,4 +120,203 @@ export function filterUnindexedDiaries<T extends { id: unknown; updatedAt?: Date
     }
     return false
   })
+}
+
+/** 向量 metadata_json 里的内容哈希字段名，与账本 content_hash 口径一致 */
+export const EMBED_METADATA_CONTENT_HASH_KEY = 'content_hash'
+
+export type EmbedLedgerVectorRow = {
+  vaultId: string
+  sourceType: string
+  sourceId: string
+  modelId: string
+  dimension: number
+  metadataJson: string
+}
+
+export type AggregatedEmbedLedgerRow = {
+  vaultId: string
+  sourceType: string
+  sourceId: string
+  contentHash: string
+  chunkCount: number
+  modelId: string
+  dimension: number
+  updatedAt: number
+}
+
+type EmbedLedgerRebuildListener = () => Promise<void>
+
+let embedLedgerRebuildListener: EmbedLedgerRebuildListener | null = null
+
+/** 记忆侧注册：账本重建后作废 manifest 已索引哈希 */
+export function setEmbedLedgerRebuildListener(listener: EmbedLedgerRebuildListener | null): void {
+  embedLedgerRebuildListener = listener
+}
+
+export async function notifyEmbedLedgerRebuilt(): Promise<void> {
+  if (!embedLedgerRebuildListener) return
+  try {
+    await embedLedgerRebuildListener()
+  } catch (e) {
+    logger.warn('embed_ledger 重建后作废记忆索引哈希失败', { error: e })
+  }
+}
+
+export async function finishEmbedLedgerRebuild(onRebuilt?: () => Promise<void>): Promise<void> {
+  if (onRebuilt) {
+    await onRebuilt()
+    return
+  }
+  await notifyEmbedLedgerRebuilt()
+}
+
+function parseEmbedMetadataObject(metadataJson: string | undefined): Record<string, unknown> {
+  if (!metadataJson || metadataJson === '{}') return {}
+  try {
+    const parsed = JSON.parse(metadataJson) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    /* ignore malformed metadata */
+  }
+  return {}
+}
+
+export function extractEmbedContentHashFromMetadata(metadataJson: string | undefined): string {
+  const parsed = parseEmbedMetadataObject(metadataJson)
+  const hash = parsed[EMBED_METADATA_CONTENT_HASH_KEY] ?? parsed.contentHash
+  return typeof hash === 'string' ? hash.trim() : ''
+}
+
+export function extractEmbedUpdatedAtFromMetadata(metadataJson: string | undefined): number {
+  const parsed = parseEmbedMetadataObject(metadataJson)
+  const raw = parsed.updated_at ?? parsed.updatedAt
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  if (typeof raw === 'string' && raw.trim()) {
+    const n = Number(raw)
+    if (Number.isFinite(n)) return n
+  }
+  return 0
+}
+
+export function mergeEmbedContentHashIntoMetadata(
+  metadataJson: string | undefined,
+  contentHash: string | undefined
+): string {
+  const parsed = parseEmbedMetadataObject(metadataJson)
+  const hash = contentHash?.trim() ?? ''
+  if (hash) parsed[EMBED_METADATA_CONTENT_HASH_KEY] = hash
+  return JSON.stringify(parsed)
+}
+
+export function canonicalizeEmbedLedgerSourceId(
+  sourceType: string,
+  sourceId: string,
+  vaultId: string
+): string {
+  if (sourceType === 'diary' && isLegacyDiaryEmbeddingSourceId(sourceId) && vaultId.trim()) {
+    try {
+      return buildDiaryEmbeddingSourceId(vaultId, sourceId)
+    } catch {
+      return sourceId
+    }
+  }
+  return sourceId
+}
+
+export function hashEmbedSourceContent(text: string): string {
+  const bytes = sha256Pure(new TextEncoder().encode(text))
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function pickMostFrequentString(values: string[]): string {
+  const counts = new Map<string, number>()
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1)
+  }
+  let best = ''
+  let bestCount = -1
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      best = value
+      bestCount = count
+    }
+  }
+  return best
+}
+
+function pickMostFrequentNumber(values: number[]): number {
+  const counts = new Map<number, number>()
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1)
+  }
+  let best = 0
+  let bestCount = -1
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      best = value
+      bestCount = count
+    }
+  }
+  return best
+}
+
+export function aggregateEmbedLedgerFromVectorRows(
+  rows: EmbedLedgerVectorRow[]
+): AggregatedEmbedLedgerRow[] {
+  const groups = new Map<
+    string,
+    {
+      vaultId: string
+      sourceType: string
+      sourceId: string
+      hashes: string[]
+      updatedAts: number[]
+      modelIds: string[]
+      dimensions: number[]
+      chunkCount: number
+    }
+  >()
+
+  for (const row of rows) {
+    const vaultId = row.vaultId.trim()
+    const sourceType = row.sourceType.trim()
+    if (!vaultId || (sourceType !== 'diary' && sourceType !== 'memory')) continue
+    const sourceId = canonicalizeEmbedLedgerSourceId(sourceType, row.sourceId, vaultId)
+    const key = `${vaultId}\0${sourceType}\0${sourceId}`
+    let group = groups.get(key)
+    if (!group) {
+      group = {
+        vaultId,
+        sourceType,
+        sourceId,
+        hashes: [],
+        updatedAts: [],
+        modelIds: [],
+        dimensions: [],
+        chunkCount: 0
+      }
+      groups.set(key, group)
+    }
+    group.chunkCount += 1
+    const hash = extractEmbedContentHashFromMetadata(row.metadataJson)
+    if (hash) group.hashes.push(hash)
+    const updatedAt = extractEmbedUpdatedAtFromMetadata(row.metadataJson)
+    if (updatedAt > 0) group.updatedAts.push(updatedAt)
+    if (row.modelId) group.modelIds.push(row.modelId)
+    if (Number.isFinite(row.dimension)) group.dimensions.push(Number(row.dimension))
+  }
+
+  return [...groups.values()].map((group) => ({
+    vaultId: group.vaultId,
+    sourceType: group.sourceType,
+    sourceId: group.sourceId,
+    contentHash: group.hashes[0] ?? '',
+    chunkCount: group.chunkCount,
+    modelId: pickMostFrequentString(group.modelIds),
+    dimension: pickMostFrequentNumber(group.dimensions),
+    updatedAt: group.updatedAts.length > 0 ? Math.max(...group.updatedAts) : 0
+  }))
 }

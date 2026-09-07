@@ -2,7 +2,7 @@ import { ToolEmbeddingService } from '../agent.tool'
 import { IAIProvider } from '../../providers/provider.interface'
 import { embed } from 'ai'
 import { SqliteHybridSearchRepository } from '@baishou/database'
-import { logger } from '@baishou/shared'
+import { hashEmbedSourceContent, logger, mergeEmbedContentHashIntoMetadata } from '@baishou/shared'
 import { normalizeEmbeddingVector } from '../../rag/embedding-chunk'
 import { SEMANTIC_SEARCH_TIMEOUT_MS, withPromiseTimeout } from '@baishou/shared'
 
@@ -94,16 +94,23 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     if (!this.hybridRepo) {
       throw new Error('hybridRepo must be provided to store embeddings permanently.')
     }
+    if (!this.isConfigured) return
     const vaultId = options.vaultId.trim()
     if (!vaultId) {
       throw new Error('embedText: vaultId is required')
     }
     const hybridRepo = this.hybridRepo
+    const contentHash = options.contentHash?.trim() || hashEmbedSourceContent(options.text)
+    if (!options.text.trim()) {
+      await this.writeEmbedLedgerSuccess(hybridRepo, { ...options, contentHash }, vaultId, 0, 0)
+      return
+    }
 
     // 对齐原版：长文本先分块，每块独立嵌入入库（分块级有限并发）
     const chunks = splitIntoChunks(options.text)
     let successCount = 0
     let lastDimension = 0
+    const metadataJson = mergeEmbedContentHashIntoMetadata(options.metadataJson, contentHash)
 
     const embedOneChunk = async (index: number): Promise<boolean> => {
       const rawChunk = chunks[index]!
@@ -121,7 +128,7 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
         vaultId,
         chunkIndex: index,
         chunkText: chunk,
-        metadataJson: options.metadataJson || '{}',
+        metadataJson,
         embedding: embVector,
         modelId: this.modelId,
         sourceCreatedAt: options.sourceCreatedAt ?? Date.now()
@@ -154,7 +161,13 @@ export class EmbeddingAdapter implements ToolEmbeddingService {
     }
 
     if (successCount === chunks.length && chunks.length > 0) {
-      await this.writeEmbedLedgerSuccess(hybridRepo, options, vaultId, chunks.length, lastDimension)
+      await this.writeEmbedLedgerSuccess(
+        hybridRepo,
+        { ...options, contentHash },
+        vaultId,
+        chunks.length,
+        lastDimension
+      )
     }
   }
 

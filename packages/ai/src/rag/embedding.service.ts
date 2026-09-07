@@ -1,7 +1,14 @@
 // @ts-ignore
 import { v4 as uuidv4 } from 'uuid'
 import { embed } from 'ai'
-import { formatAiApiCallError, deriveLegacyVaultId, isVaultId, logger } from '@baishou/shared'
+import {
+  formatAiApiCallError,
+  deriveLegacyVaultId,
+  isVaultId,
+  logger,
+  hashEmbedSourceContent,
+  mergeEmbedContentHashIntoMetadata
+} from '@baishou/shared'
 
 import {
   IEmbeddingConfig,
@@ -203,10 +210,23 @@ export class EmbeddingService {
     skipIndexPrep?: boolean
     contentHash?: string
   }): Promise<void> {
-    if (!this.isConfigured || !params.text.trim()) return
+    if (!this.isConfigured) return
     const vaultId = params.vaultId.trim()
     if (!vaultId) {
       throw new Error('embedText: vaultId is required')
+    }
+    const contentHash = params.contentHash?.trim() || hashEmbedSourceContent(params.text)
+    if (!params.text.trim()) {
+      await this.writeEmbedLedgerSuccess({
+        vaultId,
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
+        contentHash,
+        chunkCount: 0,
+        modelId: this.config.getGlobalEmbeddingModelId() || '',
+        dimension: this.config.getGlobalEmbeddingDimension() || 0
+      })
+      return
     }
 
     try {
@@ -215,6 +235,7 @@ export class EmbeddingService {
       if (!provider) return
 
       const aiModel = provider.getEmbeddingModel(modelId)
+      const metadataJson = mergeEmbedContentHashIntoMetadata(params.metadataJson, contentHash)
 
       if (!params.skipIndexPrep) {
         await this.prepareEmbeddingIndex()
@@ -246,7 +267,7 @@ export class EmbeddingService {
               vaultId,
               chunkIndex: chunk.index,
               chunkText: embeddingInput,
-              metadataJson: params.metadataJson || '{}',
+              metadataJson,
               embedding: this.normalize(embedding),
               modelId,
               sourceCreatedAt: params.sourceCreatedAt
@@ -270,7 +291,7 @@ export class EmbeddingService {
         vaultId,
         sourceType: params.sourceType,
         sourceId: params.sourceId,
-        contentHash: params.contentHash ?? '',
+        contentHash,
         chunkCount: chunks.length,
         modelId,
         dimension: this.config.getGlobalEmbeddingDimension() || 0
