@@ -93,11 +93,6 @@ export interface RagConfig {
   ragSimilarityThreshold: number // 相似度阈值过滤（默认 0.4）
   /** 批量嵌入日记时的并行篇数（1–20，默认 20） */
   batchEmbedConcurrency?: number
-  /**
-   * 联网后是否自动消费日记嵌入欠账（默认 true）。
-   * false 时仍可手动「全量扫描未索引日记」。
-   */
-  autoResumeEmbedOnOnline?: boolean
   /** 最近一次日记自动嵌入失败的时间戳（毫秒），用于 RAG 页非阻塞提示 */
   lastDiaryEmbedFailureAt?: number
   /** 最近一次日记自动嵌入失败的原因（用户可读） */
