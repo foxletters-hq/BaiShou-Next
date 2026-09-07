@@ -162,11 +162,13 @@ export async function runControlledDiaryBatchEmbedCore(
             ? await deps.diaryService.listAll({ limit: 10000 })
             : []
       )
-      const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultId)
+      const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
+        await loadEmbeddedDiaryIndex(deps, vaultId)
       const resolveSourceId = (meta: { id: unknown }) =>
         buildDiaryEmbeddingSourceId(vaultId, meta.id as number)
       const diariesToEmbed = filterUnindexedDiaries(allDiaries, embeddedIds, embeddedUpdatedAtMap, {
-        resolveSourceId
+        resolveSourceId,
+        embeddedContentHashMap
       })
       if (diariesToEmbed.length === 0) continue
       vaultPlans.push({
@@ -239,7 +241,7 @@ export async function runControlledDiaryBatchEmbedCore(
 
           const diary = diaryById.get(meta.id)
           const content = diary && 'content' in diary ? diary.content : undefined
-          if (!diary || !content?.trim()) {
+          if (!diary) {
             progress.loadSkipped++
             return
           }
@@ -250,7 +252,7 @@ export async function runControlledDiaryBatchEmbedCore(
             deps,
             {
               diaryId: meta.id,
-              content,
+              content: content ?? '',
               tags: meta.tags ?? [],
               date: d,
               updatedAt:
@@ -261,6 +263,11 @@ export async function runControlledDiaryBatchEmbedCore(
             },
             { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
           )
+
+          if (!content?.trim()) {
+            progress.loadSkipped++
+            return
+          }
 
           progress.embedded++
         } catch (error) {

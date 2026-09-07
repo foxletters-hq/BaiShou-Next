@@ -3,7 +3,9 @@ import {
   buildDiaryEmbeddingSourceId,
   buildDiaryEmbeddingTextArgs,
   coerceDiaryCalendarDate,
-  diaryDateToSourceCreatedSeconds
+  diaryDateToSourceCreatedSeconds,
+  hashEmbedSourceContent,
+  mergeEmbedContentHashIntoMetadata
 } from '@baishou/shared'
 
 export function resolveDesktopDiaryEmbedText(content: string, date: Date | string) {
@@ -17,6 +19,7 @@ export function buildDesktopDiaryReEmbedArgs(params: {
   diaryId: number | string
   updatedAt: Date | number
   skipIndexPrep?: boolean
+  contentHash?: string
 }): {
   text: string
   chunkPrefix: string
@@ -26,12 +29,14 @@ export function buildDesktopDiaryReEmbedArgs(params: {
   vaultId: string
   metadataJson: string
   sourceCreatedAt: number
+  contentHash: string
   skipIndexPrep?: boolean
 } {
   const { text, chunkPrefix } = resolveDesktopDiaryEmbedText(params.content, params.date)
   const d = coerceDiaryCalendarDate(params.date)
   const updatedAtMs =
     params.updatedAt instanceof Date ? params.updatedAt.getTime() : params.updatedAt
+  const contentHash = params.contentHash?.trim() || hashEmbedSourceContent(params.content)
 
   return {
     text,
@@ -40,8 +45,12 @@ export function buildDesktopDiaryReEmbedArgs(params: {
     sourceId: buildDiaryEmbeddingSourceId(params.vaultId, params.diaryId),
     groupId: buildDiaryEmbeddingGroupId(),
     vaultId: params.vaultId,
-    metadataJson: JSON.stringify({ updated_at: updatedAtMs }),
+    metadataJson: mergeEmbedContentHashIntoMetadata(
+      JSON.stringify({ updated_at: updatedAtMs }),
+      contentHash
+    ),
     sourceCreatedAt: d ? diaryDateToSourceCreatedSeconds(d) * 1000 : Date.now(),
+    contentHash,
     ...(params.skipIndexPrep ? { skipIndexPrep: true } : {})
   }
 }

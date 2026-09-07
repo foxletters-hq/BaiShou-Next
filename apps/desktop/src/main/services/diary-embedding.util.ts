@@ -95,10 +95,7 @@ export async function countDiaryEmbeddingsForVault(vaultId: string): Promise<num
 export async function countUnindexedDiariesForActiveVault(): Promise<number> {
   const { vaultService, resolveActiveVaultId } = await import('../ipc/vault.ipc')
   const { getDiaryManagerForVault } = await import('./diary-vault.factory')
-  const {
-    buildDiaryEmbeddingSourceId,
-    filterUnindexedDiaries
-  } = await import('@baishou/shared')
+  const { buildDiaryEmbeddingSourceId, filterUnindexedDiaries } = await import('@baishou/shared')
 
   const vault = vaultService.getActiveVault()
   if (!vault) return 0
@@ -107,11 +104,15 @@ export async function countUnindexedDiariesForActiveVault(): Promise<number> {
   const diaries = await diaryManager.listAll({ limit: 10000 })
   if (diaries.length === 0) return 0
 
+  const storage = new DesktopEmbeddingStorage()
+  await storage.reconcileEmbedLedger({ vaultId, sourceType: 'diary' })
+
   const db = getAppDb()
   const existingRows = await db
     .select({
       sourceId: memoryEmbeddingsTable.sourceId,
-      maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`
+      maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`,
+      contentHash: sql<string>`MAX(COALESCE(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.content_hash'), ''))`
     })
     .from(memoryEmbeddingsTable)
     .where(
@@ -125,14 +126,19 @@ export async function countUnindexedDiariesForActiveVault(): Promise<number> {
 
   const embeddedIds = new Set(existingRows.map((row) => row.sourceId))
   const embeddedUpdatedAtMap = new Map<string, number>()
+  const embeddedContentHashMap = new Map<string, string>()
   for (const row of existingRows) {
     if (row.sourceId && Number.isFinite(row.maxUpdatedAt)) {
       embeddedUpdatedAtMap.set(row.sourceId, Number(row.maxUpdatedAt))
     }
+    if (row.sourceId && typeof row.contentHash === 'string' && row.contentHash.trim()) {
+      embeddedContentHashMap.set(row.sourceId, row.contentHash.trim())
+    }
   }
 
   const unindexed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
-    resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string)
+    resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string),
+    embeddedContentHashMap
   })
   return unindexed.length
 }

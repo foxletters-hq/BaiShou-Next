@@ -17,6 +17,7 @@ import {
 import { buildDesktopDiaryReEmbedArgs } from './diary-embed-text.util'
 
 import { getAppDb } from '../db'
+import { DesktopEmbeddingStorage } from '../ipc/rag.storage'
 import { getEmbeddingService, getEmbeddingConfig } from '../ipc/rag.ipc'
 import { settingsManager } from '../ipc/settings.ipc'
 import { vaultService } from '../ipc/vault.ipc'
@@ -56,12 +57,17 @@ let rerunRequested = false
 async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
+  embeddedContentHashMap: Map<string, string>
 }> {
+  const storage = new DesktopEmbeddingStorage()
+  await storage.reconcileEmbedLedger({ vaultId, sourceType: 'diary' })
+
   const db = getAppDb()
   const existingRows = await db
     .select({
       sourceId: memoryEmbeddingsTable.sourceId,
-      maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`
+      maxUpdatedAt: sql<number>`MAX(CAST(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.updated_at') AS INTEGER))`,
+      contentHash: sql<string>`MAX(COALESCE(json_extract(${memoryEmbeddingsTable.metadataJson}, '$.content_hash'), ''))`
     })
     .from(memoryEmbeddingsTable)
     .where(
@@ -75,14 +81,18 @@ async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
 
   const embeddedIds = new Set(existingRows.map((row) => row.sourceId))
   const embeddedUpdatedAtMap = new Map<string, number>()
+  const embeddedContentHashMap = new Map<string, string>()
 
   for (const row of existingRows) {
     if (typeof row.maxUpdatedAt === 'number' && row.maxUpdatedAt > 0) {
       embeddedUpdatedAtMap.set(row.sourceId, row.maxUpdatedAt)
     }
+    if (row.sourceId && typeof row.contentHash === 'string' && row.contentHash.trim()) {
+      embeddedContentHashMap.set(row.sourceId, row.contentHash.trim())
+    }
   }
 
-  return { embeddedIds, embeddedUpdatedAtMap }
+  return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
 }
 
 function broadcastRagProgress(payload: Record<string, unknown>): void {
@@ -176,11 +186,15 @@ export async function runControlledDiaryBatchEmbed(
   for (const vault of vaults) {
     const diaryManager = await getDiaryManagerForVault(vault.name)
     const diaries = await diaryManager.listAll({ limit: 10000 })
-    const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(vault.id)
+    const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
+      await loadEmbeddedDiaryIndex(vault.id)
     const resolveSourceId = (meta: { id: unknown }) =>
       buildDiaryEmbeddingSourceId(vault.id, meta.id as number | string)
     const diariesToEmbed = sortDiariesByDateAsc(
-      filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, { resolveSourceId })
+      filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
+        resolveSourceId,
+        embeddedContentHashMap
+      })
     )
     if (diariesToEmbed.length === 0) continue
     vaultPlans.push({
@@ -311,10 +325,10 @@ async function embedVaultDiaries(
       )
 
     const diary = (await diaryManager.findByIdsForEmbedding([meta.id])).get(meta.id)
-    if (!diary?.id || !diary.content?.trim()) {
+    if (!diary?.id) {
       loadSkipped++
       ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
-      logger.warn('[ControlledDiaryBatchEmbed] 跳过无正文日记', {
+      logger.warn('[ControlledDiaryBatchEmbed] 跳过无法读取的日记', {
         vaultName,
         diaryId: meta.id,
         date: dateLabel
@@ -326,7 +340,7 @@ async function embedVaultDiaries(
       await deleteDiaryEmbeddingAliases(vaultId, diary.id)
       await ctx.embeddingService.reEmbedText(
         buildDesktopDiaryReEmbedArgs({
-          content: diary.content,
+          content: diary.content ?? '',
           date: diary.date,
           vaultId,
           diaryId: diary.id,
@@ -334,6 +348,10 @@ async function embedVaultDiaries(
           skipIndexPrep: true
         })
       )
+      if (!diary.content?.trim()) {
+        loadSkipped++
+        return
+      }
       embedded++
     } catch (error) {
       failed++

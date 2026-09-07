@@ -1,8 +1,8 @@
-import * as Crypto from 'expo-crypto'
 import type { IEmbeddingCallback } from '@baishou/core-mobile'
 import {
   deriveLegacyVaultId,
   formatAiApiCallError,
+  hashEmbedSourceContent,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
@@ -58,10 +58,6 @@ export function notifyDiaryEmbedFailure(message?: string): void {
   }
 }
 
-async function md5Hex(content: string): Promise<string> {
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.MD5, content)
-}
-
 async function resolveVaultId(explicit?: string): Promise<string> {
   const deps = embeddingDeps
   if (explicit?.trim()) {
@@ -83,7 +79,7 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
     if (!deps) return false
 
     const vaultId = await resolveVaultId(params.vaultName)
-    const contentHash = await md5Hex(params.content)
+    const contentHash = hashEmbedSourceContent(params.content)
 
     try {
       const ragConfig = await loadRagConfig(deps.settingsManager)
