@@ -85,7 +85,7 @@ describe('buildExternalMcpVercelTools', () => {
         userConfig: {},
         agentGate: {
           probeEffect: () => AgentGateEffect.Deny
-        } as ToolContext['agentGate']
+        } as unknown as ToolContext['agentGate']
       }
     })
 
@@ -123,7 +123,7 @@ describe('buildExternalMcpVercelTools', () => {
       }
     })
 
-    const id = Object.keys(tools)[0]
+    const id = Object.keys(tools)[0] ?? ''
     expect(id).toBe('mcp_local_baishou_memory_delete')
     const vercelTool = tools[id] as { execute: (args: Record<string, unknown>) => Promise<string> }
     const result = await vercelTool.execute({ memory_id: 'mem-1' })

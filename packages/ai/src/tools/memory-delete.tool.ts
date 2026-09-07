@@ -41,7 +41,7 @@ export function collectMemoryDeleteIds(args: {
   return ids
 }
 
-function memoryShardMonth(createdAt?: number): string | undefined {
+function memoryShardMonth(createdAt?: number | null): string | undefined {
   if (createdAt == null || !Number.isFinite(createdAt)) return undefined
   return formatLocalDate(new Date(createdAt)).slice(0, 7)
 }
@@ -58,7 +58,7 @@ function previewText(text: string): string {
 async function tombstoneMemoryIfNeeded(
   rawManager: ToolRawDataSourceManager | undefined,
   sourceId: string,
-  createdAt?: number
+  createdAt?: number | null
 ): Promise<'tombstoned' | 'absent'> {
   if (!rawManager) return 'absent'
   try {

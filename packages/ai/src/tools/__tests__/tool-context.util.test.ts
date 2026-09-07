@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { deriveLegacyVaultId } from '@baishou/shared'
 import { ToolRegistry } from '../tool-registry'
 import { AgentGateEffect } from '@baishou/shared'
-import { hasEmbeddingCapability, isNamedToolDenied, syncMcpToolUserConfig } from '../tool-context.util'
+import {
+  hasEmbeddingCapability,
+  isNamedToolDenied,
+  syncMcpToolUserConfig
+} from '../tool-context.util'
 import { MCP_EXTERNAL_SESSION_ID } from '../mcp-tool.util'
 import type { ToolContext } from '../agent.tool'
 
@@ -64,7 +68,7 @@ describe('tool-context.util', () => {
         userConfig: { baishou_agent_gate_config: { hideDeniedTools: true } },
         agentGate: {
           probeEffect: () => AgentGateEffect.Deny
-        } as ToolContext['agentGate']
+        } as unknown as ToolContext['agentGate']
       })
     ).toBe(true)
   })
