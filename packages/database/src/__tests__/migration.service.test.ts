@@ -272,6 +272,18 @@ describe('MigrationService', () => {
       expect(indexNames).toContain('embed_ledger_read_idx')
     })
 
+    it('_ensureGraphTables should create graph_nodes_vault_embed_state index', async () => {
+      await (service as any)._ensureGraphTables()
+      await (service as any)._ensureGraphTables()
+
+      const db = dbManager.getDb()
+      const indexes = await db.all(sql`
+        SELECT name FROM sqlite_master
+        WHERE type='index' AND name='graph_nodes_vault_embed_state'
+      `)
+      expect(indexes).toHaveLength(1)
+    })
+
     it('_ensureEmbedLedgerTable should upgrade a legacy db that only has memory_embeddings', async () => {
       const db = dbManager.getDb()
       await db.run(sql`
