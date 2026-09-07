@@ -430,7 +430,8 @@ export class GraphExtractQueueEngine {
           if (task.status !== 'running') return
           const nextPhase = update.phase ?? task.phase
           const nextProgress = graphExtractPhaseProgress(nextPhase) || task.progress
-          const nextDetail = nextPhase === 'waiting_pool' ? update.detail ?? task.phaseDetail : undefined
+          const nextDetail =
+            nextPhase === 'waiting_pool' ? (update.detail ?? task.phaseDetail) : undefined
           if (
             nextPhase === task.phase &&
             nextDetail === task.phaseDetail &&
@@ -441,7 +442,7 @@ export class GraphExtractQueueEngine {
           task.phase = nextPhase
           task.phaseDetail = nextDetail
           task.progress = nextProgress
-          this.broadcast()
+          this.broadcastProgress()
         }
       })
 
