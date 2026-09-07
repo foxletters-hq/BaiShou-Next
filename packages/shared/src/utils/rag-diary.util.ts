@@ -145,6 +145,9 @@ export type AggregatedEmbedLedgerRow = {
   updatedAt: number
 }
 
+/** 重建整本账时用的保存点名；用 SAVEPOINT 而非 BEGIN，外层已有事务时也能安全嵌套。 */
+export const EMBED_LEDGER_REBUILD_SAVEPOINT = 'embed_ledger_rebuild'
+
 type EmbedLedgerRebuildListener = () => Promise<void>
 
 let embedLedgerRebuildListener: EmbedLedgerRebuildListener | null = null
