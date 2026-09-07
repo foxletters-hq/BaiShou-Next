@@ -126,4 +126,30 @@ describe('RecallRelationsTool path rendering', () => {
     expect(text).toContain('小明 —located_at→ 杭州')
     expect(text).toContain('去了杭州')
   })
+
+  it('uses the same limit for neighbor edges instead of a hardcoded 24', async () => {
+    const tool = new RecallRelationsTool()
+    const subgraph = Array.from({ length: 8 }, (_, i) => ({
+      id: `e${i}`,
+      fromId: 'a',
+      toId: `n${i}`,
+      edgeType: 'relates_to',
+      sourceExcerpt: `摘录${i}`
+    }))
+    const nodes = [
+      { id: 'a', name: '小明', nodeType: 'person' },
+      ...subgraph.map((_, i) => ({ id: `n${i}`, name: `邻${i}`, nodeType: 'person' }))
+    ]
+    const recallRelations = vi.fn().mockResolvedValue({
+      anchors: [{ id: 'a', name: '小明', nodeType: 'person' }],
+      subgraph,
+      nodes
+    })
+    const context = { graphReader: { recallRelations } } as unknown as ToolContext
+    const text = await tool.execute({ entity: '小明', mode: 'neighbors', limit: 3 }, context)
+    expect(text).toContain('邻0')
+    expect(text).toContain('邻2')
+    expect(text).not.toContain('邻3')
+    expect(text).not.toContain('邻7')
+  })
 })

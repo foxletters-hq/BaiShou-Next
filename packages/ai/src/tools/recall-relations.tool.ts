@@ -47,7 +47,7 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
     '- search: list matching entities when you only have a name or type\n' +
     '- neighbors: who/what sits next to an entity (1 hop by default)\n' +
     '- network: shortest relation paths with diary excerpts (default)\n' +
-    '- timeline: the same entity\'s relations ordered by time\n\n' +
+    "- timeline: the same entity's relations ordered by time\n\n" +
     'Call this when the user refers to someone or somewhere as if you already know them, ' +
     'asks how two things relate, or you need to check who is already in the graph before writing. ' +
     'Read-only; approved relations only. Do not invent connections that are not returned.'
@@ -109,8 +109,9 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
 
       if (mode === 'neighbors') {
         const center = result.anchors[0]
+        const limit = args.limit ?? 12
         const edgeLines = result.subgraph
-          .slice(0, 24)
+          .slice(0, limit)
           .map((e) => {
             const from = result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
             const to = result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)
