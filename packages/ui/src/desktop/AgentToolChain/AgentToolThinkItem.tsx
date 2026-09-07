@@ -24,7 +24,8 @@ import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import {
   getToolDisplayName,
   getToolRowSubtitle,
-  resolveCompanionAskPresentation
+  resolveCompanionAskPresentation,
+  type ToolCopyTranslate
 } from '../../shared/tool-result.util'
 import { AgentGateReply } from '@baishou/shared'
 import { CompanionAskResultCard } from './CompanionAskResultCard'
@@ -102,7 +103,7 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   }, [invocation, model.toolName, t])
 
   const subtitle = useMemo(
-    () => getToolRowSubtitle(invocation, model.status, (key, fallback) => t(key, fallback)),
+    () => getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
     [invocation, model.status, t]
   )
 
@@ -204,7 +205,9 @@ function ToolRowIcon({
   status: AgentToolChainItemModel['status']
 }) {
   if (status === 'loading') {
-    return <Loader2 className={styles.spin} size={ROW_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} />
+    return (
+      <Loader2 className={styles.spin} size={ROW_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} />
+    )
   }
   if (status === 'error') {
     return <CircleX size={ROW_ICON_SIZE} strokeWidth={DEFAULT_STROKE_WIDTH} />

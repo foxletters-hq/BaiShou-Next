@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { FileChangeDiff } from '../../agent-workspace/FileChangeDiff'
 import {
   localizeToolResultText,
-  resolveToolResultPresentation
+  resolveToolResultPresentation,
+  type ToolCopyTranslate
 } from '../../shared/tool-result.util'
 import { AgentMarkdownRenderer } from '../AgentMarkdown/AgentMarkdownRenderer'
 import { CompanionAskResultCard } from './CompanionAskResultCard'
@@ -22,11 +23,15 @@ export const ToolResultContent = React.memo(function ToolResultContent({
     () =>
       presentation.mode === 'structured' || presentation.mode === 'companion_ask'
         ? ''
-        : localizeToolResultText(presentation.text, t),
+        : // i18next 的 t 键类型是收窄的泛型，与接受任意字符串键的 ToolCopyTranslate 无法结构赋值
+          localizeToolResultText(presentation.text, t as unknown as ToolCopyTranslate),
     [presentation, t]
   )
 
-  if (fileChange && (fileChange.diff?.trim() || fileChange.kind === 'rename' || fileChange.kind === 'delete')) {
+  if (
+    fileChange &&
+    (fileChange.diff?.trim() || fileChange.kind === 'rename' || fileChange.kind === 'delete')
+  ) {
     return <FileChangeDiff data={fileChange} />
   }
 

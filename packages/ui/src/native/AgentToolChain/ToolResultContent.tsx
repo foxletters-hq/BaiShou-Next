@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   localizeToolResultText,
   resolveToolResultPresentation,
+  type ToolCopyTranslate,
   type ToolInvocationLike
 } from '../../shared/tool-result.util'
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
@@ -25,7 +26,8 @@ export const ToolResultContent = React.memo(function ToolResultContent({
     () =>
       presentation.mode === 'structured' || presentation.mode === 'companion_ask'
         ? ''
-        : localizeToolResultText(presentation.text, t),
+        : // i18next 的 t 键类型是收窄的泛型，与接受任意字符串键的 ToolCopyTranslate 无法结构赋值
+          localizeToolResultText(presentation.text, t as unknown as ToolCopyTranslate),
     [presentation, t]
   )
   const [contentHeight, setContentHeight] = useState(0)

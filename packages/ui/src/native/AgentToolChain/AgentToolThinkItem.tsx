@@ -6,6 +6,7 @@ import {
   getToolDisplayName,
   getToolRowSubtitle,
   resolveCompanionAskPresentation,
+  type ToolCopyTranslate,
   type ToolInvocationLike
 } from '../../shared/tool-result.util'
 import { ThinkChevron, ToolStatusIcon } from '../AgentThinkSection/ThinkStatusIcon'
@@ -53,7 +54,7 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   }, [invocation, model.toolName, t])
 
   const subtitle = useMemo(
-    () => getToolRowSubtitle(invocation, model.status, t),
+    () => getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
     [invocation, model.status, t]
   )
 
