@@ -1,5 +1,6 @@
 import i18n from 'i18next'
 import { AIProviderRegistry, EmbeddingAdapter, HybridSearchService } from '@baishou/ai'
+import * as Crypto from 'expo-crypto'
 import {
   diaryDateToSourceCreatedSeconds,
   buildDiaryEmbeddingGroupId,
@@ -13,6 +14,7 @@ import {
   buildDiaryEmbeddingTextArgs,
   coerceDiaryCalendarDate,
   DIARY_EMBED_GROUP_ID,
+  mergeEmbedContentHashIntoMetadata,
   type RagConfig
 } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '@baishou/database'
@@ -223,14 +225,21 @@ export async function loadEmbeddedDiaryIndex(
 ): Promise<{
   embeddedIds: Set<string>
   embeddedUpdatedAtMap: Map<string, number>
+  embeddedContentHashMap: Map<string, string>
 }> {
   const embeddedIds = new Set<string>()
   const embeddedUpdatedAtMap = new Map<string, number>()
+  const embeddedContentHashMap = new Map<string, string>()
+  try {
+    await deps.hsRepo.reconcileEmbedLedger?.({ vaultId, sourceType: 'diary' })
+  } catch (error) {
+    logger.warn('[MobileRag] embed_ledger 自检失败', error as Error)
+  }
   const client = deps.rawSqlClient as {
     execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
   }
   if (!client?.execute) {
-    return { embeddedIds, embeddedUpdatedAtMap }
+    return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
   }
 
   const result = await client.execute({
@@ -247,19 +256,25 @@ export async function loadEmbeddedDiaryIndex(
     embeddedIds.add(sourceId)
     if (!row.metadataJson) continue
     try {
-      const meta = JSON.parse(row.metadataJson) as { updated_at?: number }
+      const meta = JSON.parse(row.metadataJson) as {
+        updated_at?: number
+        content_hash?: string
+      }
       if (typeof meta.updated_at === 'number') {
         const currentMax = embeddedUpdatedAtMap.get(sourceId) ?? 0
         if (meta.updated_at > currentMax) {
           embeddedUpdatedAtMap.set(sourceId, meta.updated_at)
         }
       }
+      if (typeof meta.content_hash === 'string' && meta.content_hash.trim()) {
+        embeddedContentHashMap.set(sourceId, meta.content_hash.trim())
+      }
     } catch {
       /* ignore malformed metadata */
     }
   }
 
-  return { embeddedIds, embeddedUpdatedAtMap }
+  return { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap }
 }
 
 export async function embedDiaryEntry(
@@ -288,7 +303,13 @@ export async function embedDiaryEntry(
   await deleteDiaryEmbeddingAliases(deps.hsRepo, resolvedVaultId, params.diaryId)
 
   const d = coerceDiaryCalendarDate(params.date)
-  const metadataJson = JSON.stringify({ updated_at: params.updatedAt.getTime() })
+  const contentHash =
+    options?.contentHash?.trim() ||
+    (await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.MD5, params.content ?? ''))
+  const metadataJson = mergeEmbedContentHashIntoMetadata(
+    JSON.stringify({ updated_at: params.updatedAt.getTime() }),
+    contentHash
+  )
   const { text, chunkPrefix } = buildDiaryEmbeddingTextArgs(params.content, params.date)
   const embedArgs = {
     text,
@@ -300,7 +321,7 @@ export async function embedDiaryEntry(
     sourceCreatedAt: d ? diaryDateToSourceCreatedSeconds(d) * 1000 : Date.now(),
     metadataJson,
     requireSuccess: true as const,
-    contentHash: options?.contentHash ?? ''
+    contentHash
   }
 
   try {

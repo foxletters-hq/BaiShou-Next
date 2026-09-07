@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveLegacyVaultId } from '@baishou/shared'
+import { deriveLegacyVaultId, hashEmbedSourceContent } from '@baishou/shared'
 import {
   buildDesktopDiaryReEmbedArgs,
   resolveDesktopDiaryEmbedText
@@ -37,8 +37,12 @@ describe('desktop diary embed text', () => {
       skipIndexPrep: true
     })
     expect(args.chunkPrefix).not.toContain('标签')
+    // 账本 content_hash 必须与 hashEmbedSourceContent 同口径，否则批量与单篇路径写出的
+    // 哈希不等，已嵌入日记会被反复判为待嵌入
+    expect(args.contentHash).toBe(hashEmbedSourceContent('开会纪要'))
     expect(JSON.parse(args.metadataJson)).toEqual({
-      updated_at: new Date(2026, 8, 1, 12, 0, 0).getTime()
+      updated_at: new Date(2026, 8, 1, 12, 0, 0).getTime(),
+      content_hash: args.contentHash
     })
   })
 })

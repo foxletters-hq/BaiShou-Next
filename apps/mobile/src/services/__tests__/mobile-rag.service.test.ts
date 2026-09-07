@@ -2,15 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   createMobileRagService,
   embedDiaryEntry,
-  isDeferredPostSyncEmbedPending,
-  isMobileRagReembedInFlight,
   resetMobileRagBatchStateForTests,
   runControlledDiaryBatchEmbed,
   type MobileRagServiceDeps
 } from '../mobile-rag.service'
 import { EmbeddingAdapter } from '@baishou/ai'
 import { mobileRagOperationControl } from '../mobile-rag-operation-control'
-import { setMobileDiaryEmbeddingDeps } from '../mobile-diary-embedding.service'
+import { runMobileIncrementalAfterSync } from '../mobile-incremental-sync-after.util'
+import * as mobilePostSyncDiaryEmbed from '../mobile-post-sync-diary-embed.service'
 
 function createDeps(overrides: Partial<MobileRagServiceDeps> = {}): MobileRagServiceDeps {
   const settingsStore: Record<string, unknown> = {
@@ -334,35 +333,37 @@ describe('createMobileRagService.reembedAll', () => {
     expect(count).toBe(1)
   })
 
-  it('defers post-sync scheduling during reembed and flushes afterward', async () => {
-    const deps = createDeps()
-    setMobileDiaryEmbeddingDeps(deps)
-    deps.diaryService.listAll = vi.fn().mockResolvedValue([])
+  it('does not auto-embed diaries after incremental sync', async () => {
+    const scheduleSpy = vi
+      .spyOn(mobilePostSyncDiaryEmbed, 'schedulePostSyncDiaryBatchEmbed')
+      .mockImplementation(() => undefined)
 
-    let releaseDetect!: () => void
-    const detectGate = new Promise<void>((resolve) => {
-      releaseDetect = resolve
-    })
+    await runMobileIncrementalAfterSync(
+      {
+        uploaded: 0,
+        downloaded: 1,
+        conflicts: 0,
+        skipped: 0,
+        deletedRemote: 0,
+        deletedLocal: 0,
+        failed: 0,
+        failedPaths: [],
+        uploadedPaths: [],
+        downloadedPaths: ['Personal/Journals/2026/07/14.md'],
+        deletedLocalPaths: [],
+        deletedRemotePaths: []
+      },
+      {
+        settingsManager: createDeps().settingsManager as never,
+        pathService: { getRootDirectory: async () => '/tmp' } as never,
+        fileSystem: {} as never,
+        reportPostSync: vi.fn(),
+        refreshCheckpointForPaths: vi.fn(async () => undefined),
+        resolveActiveUserProfileSyncRelPath: async () => null
+      }
+    )
 
-    vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockImplementation(async () => {
-      const { schedulePostSyncDiaryBatchEmbed } =
-        await import('../mobile-post-sync-diary-embed.service')
-      schedulePostSyncDiaryBatchEmbed()
-      expect(isMobileRagReembedInFlight()).toBe(true)
-      expect(isDeferredPostSyncEmbedPending()).toBe(true)
-      await detectGate
-      return [0.1, 0.2, 0.3]
-    })
-
-    const service = createMobileRagService(deps)
-    const reembedPromise = service.reembedAll()
-    await Promise.resolve()
-
-    releaseDetect()
-    await reembedPromise
-    await new Promise((resolve) => setImmediate(resolve))
-
-    expect(isDeferredPostSyncEmbedPending()).toBe(false)
-    resetMobileRagBatchStateForTests()
+    expect(scheduleSpy).not.toHaveBeenCalled()
+    scheduleSpy.mockRestore()
   })
 })

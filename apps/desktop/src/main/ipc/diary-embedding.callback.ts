@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto'
 import { BrowserWindow } from 'electron'
 import type { IEmbeddingCallback } from '@baishou/core-desktop'
 import {
   formatAiApiCallError,
+  hashEmbedSourceContent,
   isRagMemoryEnabled,
   markRagDiaryEmbedFailure,
   clearRagDiaryEmbedFailure,
@@ -53,7 +53,7 @@ function resolveVaultId(explicit?: string): string {
 export const embeddingCallback: IEmbeddingCallback = {
   async reEmbedDiary(params) {
     const vaultId = resolveVaultId(params.vaultName)
-    const contentHash = createHash('md5').update(params.content, 'utf8').digest('hex')
+    const contentHash = hashEmbedSourceContent(params.content)
     try {
       const { settingsManager } = await import('./settings.ipc')
       const ragConfig = (await settingsManager.get<any>('rag_config')) || {}
@@ -71,16 +71,16 @@ export const embeddingCallback: IEmbeddingCallback = {
       }
 
       await deleteDiaryEmbeddingAliases(vaultId, params.diaryId)
-      await embeddingService.reEmbedText({
-        ...buildDesktopDiaryReEmbedArgs({
+      await embeddingService.reEmbedText(
+        buildDesktopDiaryReEmbedArgs({
           content: params.content,
           date: params.date,
           vaultId,
           diaryId: params.diaryId,
-          updatedAt: params.updatedAt
-        }),
-        contentHash
-      })
+          updatedAt: params.updatedAt,
+          contentHash
+        })
+      )
       await deleteDiaryEmbedJob(vaultId, params.diaryId)
       await clearDiaryEmbedFailureIfSet()
       return true
