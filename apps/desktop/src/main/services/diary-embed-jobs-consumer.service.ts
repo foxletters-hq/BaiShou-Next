@@ -1,6 +1,5 @@
 import {
   formatLocalDate,
-  isAutoResumeEmbedOnOnline,
   isRagMemoryEnabled,
   logger,
   normalizeDiaryTags,
@@ -16,13 +15,11 @@ import { vaultService } from '../ipc/vault.ipc'
 let consumeInFlight: Promise<{ processed: number; failed: number; skipped?: string }> | null = null
 
 /**
- * 消费日记嵌入欠账：联网自动恢复 / 启动空闲时调用。
+ * 消费日记嵌入欠账：仅由用户手动触发。
  */
 export async function consumeDiaryEmbedJobs(options?: {
   limit?: number
   reason?: string
-  /** 为 true 时忽略「联网自动恢复」开关（手动触发用） */
-  force?: boolean
 }): Promise<{ processed: number; failed: number; skipped?: string }> {
   if (consumeInFlight) {
     return consumeInFlight
@@ -34,9 +31,6 @@ export async function consumeDiaryEmbedJobs(options?: {
 
     if (!isRagMemoryEnabled(ragConfig)) {
       return { processed: 0, failed: 0, skipped: 'rag-disabled' }
-    }
-    if (!options?.force && !isAutoResumeEmbedOnOnline(ragConfig)) {
-      return { processed: 0, failed: 0, skipped: 'auto-resume-disabled' }
     }
 
     const { getEmbeddingService } = await import('../ipc/rag.ipc')
