@@ -11,7 +11,7 @@ import {
   shouldKeepIncomingGraphNodeId
 } from '../graph-identity.util'
 import { graphDiaryInstant } from '../graph-time.util'
-import { GRAPH_GLOBAL_MAX_NODES } from '../graph-view.constants'
+import { GRAPH_GLOBAL_MAX_NODES, GRAPH_MAX_NEIGHBORS_PER_HOP } from '../graph-view.constants'
 
 describe('normalizeGraphName', () => {
   it('trims, collapses whitespace, lowercases', () => {
@@ -108,6 +108,12 @@ describe('graphDiaryInstant', () => {
 describe('GRAPH_GLOBAL_MAX_NODES', () => {
   it('is 200', () => {
     expect(GRAPH_GLOBAL_MAX_NODES).toBe(200)
+  })
+})
+
+describe('GRAPH_MAX_NEIGHBORS_PER_HOP', () => {
+  it('matches hubDegreeThreshold default of 40', () => {
+    expect(GRAPH_MAX_NEIGHBORS_PER_HOP).toBe(40)
   })
 })
 

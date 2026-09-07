@@ -8,11 +8,7 @@ import type {
 
 /** Name / id lookup only — extract, chat, find-or-create. */
 export interface GraphNodeLookup {
-  findNodeByNameOrAlias(
-    vaultId: string,
-    name: string,
-    type?: string
-  ): Promise<GraphNodeRow | null>
+  findNodeByNameOrAlias(vaultId: string, name: string, type?: string): Promise<GraphNodeRow | null>
   getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null>
 }
 
@@ -34,7 +30,12 @@ export interface GraphQuery extends GraphNodeLookup {
     vaultId: string,
     centerId: string,
     depth: 1 | 2 | 3,
-    opts?: { approvedOnly?: boolean }
+    opts?: {
+      approvedOnly?: boolean
+      queryVector?: number[]
+      resolveQueryVector?: () => Promise<number[] | null | undefined>
+      maxNeighborsPerHop?: number
+    }
   ): Promise<{ nodes: GraphNodeRow[]; edges: GraphEdgeRow[] }>
   listEntityTimeline(
     vaultId: string,

@@ -9,6 +9,12 @@ export const GRAPH_SQL_IN_CHUNK = 400
 /** JS cosine fallback must not load the whole vault. */
 export const GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT = 2000
 
+/**
+ * Per-hop neighbor cap for traverse prune — same value as hubDegreeThreshold
+ * on findShortestPath / findPathsFrom.
+ */
+export const GRAPH_MAX_NEIGHBORS_PER_HOP = 40
+
 /** Review queue listing cap (pending nodes / edges). */
 export const GRAPH_PENDING_LIST_LIMIT = 400
 
