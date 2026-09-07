@@ -148,7 +148,20 @@ export class EmbeddingService {
     }
   }
 
+  /**
+   * 就地替换单个切片的向量，不动同来源的其他切片。
+   *
+   * 只允许不进账本的来源类型（chat 等）。日记与伙伴记忆必须走 reEmbedText：
+   * 就地替换不改变切片总数，计数自检因此抓不到任何异常，而账本的 content_hash
+   * 与 model_id 会停在旧值——换过模型之后这一个切片会静默变成异构向量。
+   */
   public async updateMemoryChunk(params: { entry: any; newText: string }): Promise<void> {
+    const entrySourceType = String(params.entry?.source_type ?? '')
+    if (this.isLedgerSourceType(entrySourceType)) {
+      throw new Error(
+        `updateMemoryChunk 不支持 ${entrySourceType}：日记与伙伴记忆必须走 reEmbedText，否则账本会停在旧的内容哈希与模型上`
+      )
+    }
     if (!this.isConfigured || !params.newText.trim()) return
 
     const modelId = this.config.getGlobalEmbeddingModelId()

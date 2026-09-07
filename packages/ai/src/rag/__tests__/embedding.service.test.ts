@@ -120,4 +120,41 @@ describe('EmbeddingService', () => {
       expect(mockStorage.recordEmbedded).not.toHaveBeenCalled()
     })
   })
+
+  describe('updateMemoryChunk guard', () => {
+    it.each(['diary', 'memory'])('refuses to update a %s chunk in place', async (sourceType) => {
+      await expect(
+        service.updateMemoryChunk({
+          entry: {
+            embedding_id: 'emb-1',
+            source_type: sourceType,
+            source_id: 'vault-a#1',
+            group_id: 'g',
+            vault_id: 'vault-a',
+            chunk_index: 0
+          },
+          newText: '改过的正文'
+        })
+      ).rejects.toThrow('reEmbedText')
+
+      expect(mockStorage.insertEmbedding).not.toHaveBeenCalled()
+    })
+
+    it('lets source types that stay out of the ledger through the guard', async () => {
+      // 走到真实的取模型一步才失败，说明守卫没有挡住 chat 这类不进账本的来源
+      await expect(
+        service.updateMemoryChunk({
+          entry: {
+            embedding_id: 'emb-2',
+            source_type: 'chat',
+            source_id: 'msg-1',
+            group_id: 'session-1',
+            vault_id: 'vault-a',
+            chunk_index: 0
+          },
+          newText: '改过的对话'
+        })
+      ).rejects.toThrow('getEmbeddingModel')
+    })
+  })
 })
