@@ -254,6 +254,53 @@ describe('MigrationService', () => {
       expect(tables).toHaveLength(1)
     })
 
+    it('_ensureEmbedLedgerTable should create table and indexes and stay idempotent', async () => {
+      await (service as any)._ensureEmbedLedgerTable()
+      await (service as any)._ensureEmbedLedgerTable()
+
+      const db = dbManager.getDb()
+      const tables = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='embed_ledger'
+      `)
+      expect(tables).toHaveLength(1)
+
+      const indexes = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='embed_ledger'
+      `)
+      const indexNames = indexes.map((row) => (row as { name: string }).name)
+      expect(indexNames).toContain('embed_ledger_source_unique')
+      expect(indexNames).toContain('embed_ledger_read_idx')
+    })
+
+    it('_ensureEmbedLedgerTable should upgrade a legacy db that only has memory_embeddings', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE memory_embeddings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          embedding_id TEXT NOT NULL,
+          source_type TEXT NOT NULL,
+          source_id TEXT NOT NULL,
+          group_id TEXT NOT NULL,
+          vault_id TEXT,
+          chunk_index INTEGER DEFAULT 0 NOT NULL,
+          chunk_text TEXT NOT NULL,
+          metadata_json TEXT DEFAULT '{}' NOT NULL,
+          embedding BLOB NOT NULL,
+          dimension INTEGER NOT NULL,
+          model_id TEXT DEFAULT '' NOT NULL,
+          created_at INTEGER NOT NULL,
+          source_created_at INTEGER
+        )
+      `)
+
+      await expect((service as any)._ensureEmbedLedgerTable()).resolves.not.toThrow()
+
+      const tables = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='embed_ledger'
+      `)
+      expect(tables).toHaveLength(1)
+    })
+
     it('_ensureSystemSettingsTable should create missing settings table on legacy agent db', async () => {
       const db = dbManager.getDb()
       await db.run(sql`
