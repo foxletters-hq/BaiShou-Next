@@ -466,6 +466,18 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       const sourceId = String(row.source_id)
       const trimmed = newText.trim()
 
+      // 日记的向量由日记正文生成，正文是唯一事实来源。原先这里会删掉该日记的全部切片、
+      // 再用被编辑的这一段重嵌，多切片日记的其余切片会一起消失；而下一次补齐又会按正文
+      // 重新生成、覆盖掉这次手改。直接挡住，让用户去改日记本身。
+      if (sourceType === 'diary') {
+        throw new Error(
+          i18n.t(
+            'settings.rag_edit_diary_blocked',
+            '日记的记忆片段由日记正文生成，请直接编辑对应日记，然后在记忆中心重新补齐嵌入。'
+          )
+        )
+      }
+
       if (sourceType !== MEMORY_SOURCE_TYPE && sourceType !== 'manual') {
         const vaultScope = await resolveVaultScope(deps)
         const vaultId =
@@ -630,8 +642,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         const { enqueueDiaryEmbedJob } = await import('./mobile-diary-embed-jobs.service')
         const vaultScope = await resolveVaultScope(deps)
         const parsed = parseDiaryEmbeddingSourceId(sourceId)
-        const vaultId =
-          parsed?.vaultId?.trim() || (await vaultScope.resolveActiveVaultId())
+        const vaultId = parsed?.vaultId?.trim() || (await vaultScope.resolveActiveVaultId())
         const diaryIdRaw = parsed?.diaryId ?? sourceId
         const diaryId = Number(diaryIdRaw)
         if (Number.isFinite(diaryId)) {

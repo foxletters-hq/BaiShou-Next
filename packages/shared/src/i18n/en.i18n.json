@@ -892,6 +892,7 @@
     "rag_updated_at": "Updated",
     "rag_edit_prompt": "Edit the memory fragment below:",
     "rag_edit_manual": "Edit memory",
+    "rag_edit_diary_blocked": "Diary memory fragments are generated from the diary text. Edit the diary itself, then re-run the pending embedding in the memory center.",
     "rag_search_semantic_hint": "Semantic search memory...",
     "rag_search_text_hint": "Text search memory...",
     "rag_search_semantic": "Semantic Search",

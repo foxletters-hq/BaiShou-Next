@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import i18n from 'i18next'
 import { shardMonthFromInstant } from '@baishou/core-desktop'
 import {
   createSqlExecutorFromDrizzleDb,
@@ -306,9 +307,7 @@ export function registerRagQueryIPC() {
 
       const parsed = parseDiaryEmbeddingSourceId(sourceId)
       const vaultId =
-        parsed?.vaultId?.trim() ||
-        String(record.vaultId ?? '').trim() ||
-        resolveActiveVaultId()
+        parsed?.vaultId?.trim() || String(record.vaultId ?? '').trim() || resolveActiveVaultId()
       const diaryIdRaw = parsed?.diaryId ?? sourceId
       const diaryId = Number(diaryIdRaw)
       if (Number.isFinite(diaryId)) {
@@ -350,6 +349,17 @@ export function registerRagQueryIPC() {
     if (!record) throw new Error('Memory not found')
 
     const newText = params.newText.trim()
+    // 日记的向量由日记正文生成，正文是唯一事实来源。就地改切片会让账本的内容哈希与
+    // 模型停在旧值，而切片总数没变、计数自检抓不到；下一次补齐又会按正文重新生成、
+    // 覆盖掉这次手改。直接挡住，让用户去改日记本身。
+    if (record.sourceType === 'diary') {
+      throw new Error(
+        i18n.t(
+          'settings.rag_edit_diary_blocked',
+          '日记的记忆片段由日记正文生成，请直接编辑对应日记，然后在记忆中心重新补齐嵌入。'
+        )
+      )
+    }
     if (record.sourceType !== MEMORY_SOURCE_TYPE && record.sourceType !== 'manual') {
       await embeddingService.updateMemoryChunk({
         entry: {

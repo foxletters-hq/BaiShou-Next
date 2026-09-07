@@ -853,6 +853,7 @@
     "rag_updated_at": "更新",
     "rag_edit_prompt": "以下の記憶フラグメントを編集してください：",
     "rag_edit_manual": "記憶を編集",
+    "rag_edit_diary_blocked": "日記の記憶フラグメントは日記本文から生成されます。日記本体を編集したうえで、記憶センターで埋め込みを再実行してください。",
     "dimension_detected": "検出完了。モデルのベクトル次元数は",
     "dimension_detection_error": "検出中にエラーが発生しました",
     "rag_search_semantic_hint": "セマンティック検索 - 意味的に類似した内容を検索",

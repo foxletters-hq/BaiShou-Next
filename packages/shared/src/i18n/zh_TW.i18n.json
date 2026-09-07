@@ -921,6 +921,7 @@
     "rag_meta_model_unset": "未配置嵌入模型",
     "rag_edit_prompt": "請修改下方的記憶片段內容：",
     "rag_edit_manual": "編輯記憶內容",
+    "rag_edit_diary_blocked": "日記的記憶片段由日記正文生成，請直接編輯對應日記，然後在記憶中心重新補齊嵌入。",
     "rag_search_semantic_hint": "語意搜尋 - 搜尋語義相似的內容",
     "rag_search_text_hint": "文字搜尋 - 關鍵字完全匹配搜尋",
     "rag_search_semantic": "語意搜尋",

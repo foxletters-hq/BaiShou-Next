@@ -925,6 +925,7 @@
     "rag_meta_model_unset": "未配置嵌入模型",
     "rag_edit_prompt": "请修改下方的记忆片段内容：",
     "rag_edit_manual": "编辑记忆内容",
+    "rag_edit_diary_blocked": "日记的记忆片段由日记正文生成，请直接编辑对应日记，然后在记忆中心重新补齐嵌入。",
     "rag_search_semantic_hint": "语义搜索记忆内容...",
     "rag_search_text_hint": "文本搜索记忆内容...",
     "rag_search_semantic": "语义搜索",
