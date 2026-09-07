@@ -6,7 +6,6 @@ import {
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
   cloneBaishouAgentGateConfig,
-  cloneWorkspaceToolManagementConfig,
   applyWorkspacePolicyPatch,
   resolveWorkspacePolicyFields,
   type AgentWorkspacePolicy,

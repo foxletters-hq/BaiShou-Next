@@ -633,7 +633,11 @@ export async function listAgentSkillsCatalogForWorkspace(
     listAgentSkillsCatalog(),
     listWorkspaceSkillsFromFolder(folderRoot.trim())
   ])
-  return mergeSkillCatalogEntries(software, workspace)
+  // 合并结果的 description 可缺省（例如工作区技能没写描述），catalog 对外统一成空串
+  return mergeSkillCatalogEntries(software, workspace).map((entry) => ({
+    name: entry.name,
+    description: entry.description ?? ''
+  }))
 }
 
 /** 管理 UI / 全量内容：内置 AI/skills + 用户 `.agents/skills` */
