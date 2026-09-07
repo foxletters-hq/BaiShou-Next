@@ -31,6 +31,18 @@ export type MigrationLifecycle = {
   markCompleted: () => Promise<void>
   markInterrupted: () => Promise<void>
   markIdle: () => Promise<void>
+  invalidateIndexedHashes?: () => Promise<void>
+}
+
+async function rebuildEmbedLedgerAfterMigration(deps: EmbeddingMigrationDeps): Promise<void> {
+  if (!deps.db.rebuildEmbedLedger) return
+  try {
+    await deps.db.rebuildEmbedLedger({
+      onRebuilt: deps.lifecycle?.invalidateIndexedHashes
+    })
+  } catch (e) {
+    logger.warn('[EmbeddingMigration] 迁移结束后重建 embed_ledger 失败', { error: e })
+  }
 }
 
 type BackupChunkRow = Record<string, unknown>
@@ -279,6 +291,7 @@ export async function* continueMigration(
         return
       }
       const [, noStale] = await deps.db.verifyMigrationComplete(modelId)
+      await rebuildEmbedLedgerAfterMigration(deps)
       await deps.db.dropRollbackSnapshot()
       if (!noStale) {
         await deps.lifecycle?.markInterrupted()
@@ -296,6 +309,7 @@ export async function* continueMigration(
 
     if (remaining === 0) {
       const [allMigrated, noStale] = await deps.db.verifyMigrationComplete(modelId)
+      await rebuildEmbedLedgerAfterMigration(deps)
       await deps.db.dropMigrationBackup()
       if (allMigrated && noStale) {
         await deps.db.dropRollbackSnapshot()
@@ -362,6 +376,7 @@ async function* abortMigration(
     logger.error('Failed to restore embedding migration rollback snapshot', { error: e })
   }
 
+  await rebuildEmbedLedgerAfterMigration(deps)
   await deps.lifecycle?.markIdle()
 
   yield {
@@ -517,6 +532,7 @@ async function* reEmbedFromBackup(
   }
 
   const [allMigrated, noStale] = await deps.db.verifyMigrationComplete(modelId)
+  await rebuildEmbedLedgerAfterMigration(deps)
 
   if (allMigrated && noStale) {
     await deps.db.dropMigrationBackup()
