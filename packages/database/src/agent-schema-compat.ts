@@ -67,6 +67,32 @@ export const DIARY_EMBED_JOBS_INDEXES_SQL = [
    ON diary_embed_jobs (status, next_retry_at)`
 ] as const
 
+/** 本机嵌入账本；记录这台设备把哪个来源的哪个版本嵌入过，不参与同步 */
+export const EMBED_LEDGER_CREATE_SQL = `
+  CREATE TABLE IF NOT EXISTS embed_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    vault_id TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    content_hash TEXT NOT NULL DEFAULT '',
+    chunk_count INTEGER NOT NULL DEFAULT 0,
+    model_id TEXT NOT NULL DEFAULT '',
+    dimension INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'embedded',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    embedded_at INTEGER,
+    updated_at INTEGER NOT NULL
+  )
+`
+
+export const EMBED_LEDGER_INDEXES_SQL = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS embed_ledger_source_unique
+   ON embed_ledger (vault_id, source_type, source_id)`,
+  `CREATE INDEX IF NOT EXISTS embed_ledger_read_idx
+   ON embed_ledger (vault_id, source_type, source_id, content_hash, chunk_count, status)`
+] as const
+
 /** 原 0000 迁移内容；Flutter v3 agent.sqlite 无此表，但迁移记录可能被误标为已执行 */
 export const SYSTEM_SETTINGS_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS system_settings (

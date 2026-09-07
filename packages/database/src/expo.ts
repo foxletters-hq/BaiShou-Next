@@ -14,6 +14,7 @@ export * from './schema/knowledge'
 export * from './knowledge-schema.shared'
 export * from './schema/diary-embed-jobs'
 export * from './diary-embed-jobs.ops'
+export * from './schema/embed-ledger'
 
 export * from './repositories/diary.repository'
 export * from './repositories/agent.repository'
