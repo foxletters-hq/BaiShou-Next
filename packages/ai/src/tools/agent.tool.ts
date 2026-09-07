@@ -28,6 +28,8 @@ export interface ToolEmbeddingService {
     metadataJson?: string
     sourceCreatedAt?: number
     chunkPrefix?: string
+    /** 写入嵌入账本的内容哈希；不传时由实现按正文补算 */
+    contentHash?: string
   }): Promise<void>
 }
 
@@ -56,7 +58,8 @@ export interface VectorSourceLookup {
   sourceType: string
   sourceId: string
   chunkText: string
-  createdAt?: number
+  /** 向量表未记录来源时间时为 null */
+  createdAt?: number | null
 }
 
 export interface ToolVectorStore {
