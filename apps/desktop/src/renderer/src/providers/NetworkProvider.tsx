@@ -46,8 +46,6 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<NetworkStatus>(DEFAULT_STATUS)
 
   useEffect(() => {
-    let wasOnline: boolean | null = null
-
     const applyState = () => {
       const next = resolveNetworkStatus()
       setStatus((prev) =>
@@ -59,13 +57,6 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           ? prev
           : next
       )
-      // 仅离线→在线（或首次在线）时消费欠账，避免 mount 时重复触发
-      if (next.isOnline && wasOnline !== true) {
-        void (window as any).api?.rag?.consumeEmbedJobs?.(
-          wasOnline === false ? 'network-online' : 'network-ready'
-        )
-      }
-      wasOnline = next.isOnline
     }
 
     applyState()
