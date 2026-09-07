@@ -267,12 +267,6 @@ async function afterIncrementalSync(
     return
   }
 
-  if (cls.journals) {
-    const { schedulePostSyncDiaryBatchEmbed } =
-      await import('../services/controlled-diary-batch-embed.service')
-    schedulePostSyncDiaryBatchEmbed()
-  }
-
   if (cls.notebooks) {
     const { runKnowledgeHydrationAfterSync, runNotebookGraphIndexAfterSync } =
       await import('../services/raw-data-source.runtime')

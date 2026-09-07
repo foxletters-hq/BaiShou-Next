@@ -203,4 +203,76 @@ describe('MemorySyncService', () => {
       expect.objectContaining({ sourceId: 'm1', text: 'old content' })
     )
   })
+
+  it('embedMissing false skips embedText but still deletes tombstones and orphans, keeps pending shards', async () => {
+    const now = Date.now()
+    await memoryManager.writeRecord({
+      id: 'a',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'hello',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+    await memoryManager.writeRecord({
+      id: 'b',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'bye',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now + 1,
+      deletedAt: now + 1
+    })
+
+    const embedText = vi.fn().mockResolvedValue(undefined)
+    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const listSourceIdsByType = vi.fn().mockResolvedValue(['a', 'b', 'orphan'])
+
+    const sync = new MemorySyncService(memoryManager, {
+      embedText,
+      deleteBySource,
+      listSourceIdsByType
+    })
+    const result = await sync.syncPendingIndex({ embedMissing: false })
+
+    expect(embedText).not.toHaveBeenCalled()
+    expect(result.upserted).toBe(0)
+    expect(deleteBySource).toHaveBeenCalledWith('memory', 'b')
+    expect(deleteBySource).toHaveBeenCalledWith('memory', 'orphan')
+    expect(await memoryManager.listPendingIndex()).toHaveLength(1)
+  })
+
+  it('embedMissing false still commits shards that only contain tombstones', async () => {
+    const now = Date.now()
+    await memoryManager.writeRecord({
+      id: 'gone',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'forget me',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: now
+    })
+
+    const embedText = vi.fn().mockResolvedValue(undefined)
+    const deleteBySource = vi.fn().mockResolvedValue(undefined)
+    const listSourceIdsByType = vi.fn().mockResolvedValue(['gone'])
+    const sync = new MemorySyncService(memoryManager, {
+      embedText,
+      deleteBySource,
+      listSourceIdsByType
+    })
+    await sync.syncPendingIndex({ embedMissing: false })
+
+    expect(embedText).not.toHaveBeenCalled()
+    expect(deleteBySource).toHaveBeenCalledWith('memory', 'gone')
+    expect(await memoryManager.listPendingIndex()).toHaveLength(0)
+  })
 })

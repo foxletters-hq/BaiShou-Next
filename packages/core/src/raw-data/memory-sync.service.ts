@@ -76,7 +76,13 @@ export class MemorySyncService {
   async syncPendingIndex(options?: {
     vaultName?: string
     vaultId?: string
+    /**
+     * 默认 true，保持手动补齐路径仍嵌入缺失行。
+     * 同步下载传 false：跳过 embedText，含待嵌入活行的分片不 commitIndexed。
+     */
+    embedMissing?: boolean
   }): Promise<{ shards: number; upserted: number; deleted: number }> {
+    const embedMissing = options?.embedMissing !== false
     const pending = await this.memoryManager.listPendingIndex()
     let upserted = 0
     let deleted = 0
@@ -87,12 +93,17 @@ export class MemorySyncService {
         (await this.memoryManager.readShardRecords(shard.relativePath)) as MemoryRawRecord[]
       )
 
+      let hasPendingLiveRows = false
       for (const row of rows) {
         if (!row?.id) continue
         if (!inferredVault && row.vaultName) inferredVault = row.vaultName
         if (row.deletedAt != null) {
           await this.sink.deleteBySource?.(MEMORY_SOURCE_TYPE, row.id)
           deleted += 1
+          continue
+        }
+        if (!embedMissing) {
+          hasPendingLiveRows = true
           continue
         }
         await this.sink.embedText({
@@ -111,7 +122,9 @@ export class MemorySyncService {
         upserted += 1
       }
 
-      await this.memoryManager.commitIndexed(shard.relativePath, shard.contentHash)
+      if (embedMissing || !hasPendingLiveRows) {
+        await this.memoryManager.commitIndexed(shard.relativePath, shard.contentHash)
+      }
     }
 
     const orphansCleaned = await this.sweepOrphans({

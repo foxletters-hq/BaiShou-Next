@@ -198,20 +198,23 @@ export async function syncMemoryPendingIndex(options: {
   memoryManager?: MemoryRawManager
   vaultId?: string
   vaultName?: string
+  embedMissing?: boolean
 }): Promise<{ shards: number; upserted: number; deleted: number }> {
   const memoryManager = options.memoryManager ?? ensureRawDataRuntime().memoryManager
   const { hsRepo, embeddingAdapter } = options
-  if (!embeddingAdapter?.isConfigured) {
+  const embedMissing = options.embedMissing !== false
+  if (embedMissing && !embeddingAdapter?.isConfigured) {
     return { shards: 0, upserted: 0, deleted: 0 }
   }
   const sync = new MemorySyncService(memoryManager, createMemoryEmbedSink(hsRepo, embeddingAdapter))
   return sync.syncPendingIndex({
     vaultId: options.vaultId,
-    vaultName: options.vaultName
+    vaultName: options.vaultName,
+    embedMissing: options.embedMissing
   })
 }
 
-/** V1.6：遗留手动记忆复制到除原件外的各仓库，并排队嵌入。 */
+/** V1.6：遗留手动记忆复制到除原件外的各仓库；复制出的记忆留待手动补齐嵌入。 */
 async function copyLegacyManualMemoriesAcrossVaults(options: {
   hsRepo: SqliteHybridSearchRepository
   embeddingAdapter?: EmbeddingAdapter | null
@@ -241,7 +244,8 @@ async function copyLegacyManualMemoriesAcrossVaults(options: {
         embeddingAdapter: options.embeddingAdapter,
         memoryManager: manager,
         vaultId: vault.id,
-        vaultName: vault.name
+        vaultName: vault.name,
+        embedMissing: false
       })
     }
   })
@@ -339,6 +343,12 @@ export async function syncGraphPendingIndexWithDeps(options: {
   vaultId?: string
   absentSweep?: 'shard-present' | 'off'
   deletedShardPaths?: string[]
+  /**
+   * 默认 true，保持代理写入图谱后仍即时嵌入新节点。
+   * 同步下载传 false：节点照常入库，但不调用嵌入接口，留给手动补齐。
+   * 不传嵌入器时 upsertNode 不会写 embedding/dimension/model_id，已有节点的向量不受影响。
+   */
+  embedMissing?: boolean
 }): Promise<{
   shards: number
   nodesUpserted: number
@@ -347,11 +357,13 @@ export async function syncGraphPendingIndexWithDeps(options: {
   skippedNoVaultId: number
 }> {
   const { graphManager } = ensureRawDataRuntime()
+  const embedMissing = options.embedMissing !== false
   const sync = new GraphSyncService(graphManager, options.graphRepo, {
-    embedQuery: options.embeddingAdapter?.isConfigured
-      ? (text) => options.embeddingAdapter!.embedQuery(text)
-      : undefined,
-    modelId: options.embeddingAdapter?.embeddingModelId
+    embedQuery:
+      embedMissing && options.embeddingAdapter?.isConfigured
+        ? (text) => options.embeddingAdapter!.embedQuery(text)
+        : undefined,
+    modelId: embedMissing ? options.embeddingAdapter?.embeddingModelId : undefined
   })
   return sync.syncPendingIndex({
     vaultId: options.vaultId,
@@ -435,13 +447,15 @@ export async function runDerivedIndexHydration(
       hsRepo,
       embeddingAdapter,
       vaultId: activeVault.id,
-      vaultName: activeVault.name
+      vaultName: activeVault.name,
+      embedMissing: false
     })
     const graph = await syncGraphPendingIndexWithDeps({
       graphRepo,
       embeddingAdapter,
       vaultId: activeVault.id,
-      deletedShardPaths: opts?.deletedShardPaths
+      deletedShardPaths: opts?.deletedShardPaths,
+      embedMissing: false
     })
 
     logger.info(

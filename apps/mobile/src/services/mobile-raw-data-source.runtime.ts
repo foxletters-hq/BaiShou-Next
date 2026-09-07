@@ -265,27 +265,26 @@ export async function runMobileDerivedIndexHydration(options: {
           manager,
           createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
         )
-        await memorySync.syncPendingIndex({ vaultId: vault.id, vaultName: vault.name })
+        await memorySync.syncPendingIndex({
+          vaultId: vault.id,
+          vaultName: vault.name,
+          embedMissing: false
+        })
       }
     })
 
-    if (embeddingAdapter?.isConfigured) {
-      const memorySync = new MemorySyncService(
-        runtime.memoryManager,
-        createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
-      )
-      await memorySync.syncPendingIndex({
-        vaultId: options.vaultId,
-        vaultName: options.vaultName
-      })
-    }
-
-    const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {
-      embedQuery: embeddingAdapter?.isConfigured
-        ? (text) => embeddingAdapter!.embedQuery(text)
-        : undefined,
-      modelId: embeddingAdapter?.embeddingModelId
+    const memorySync = new MemorySyncService(
+      runtime.memoryManager,
+      createMobileMemoryEmbedSink(hsRepo, embeddingAdapter)
+    )
+    await memorySync.syncPendingIndex({
+      vaultId: options.vaultId,
+      vaultName: options.vaultName,
+      embedMissing: false
     })
+
+    // 同步下载后图谱节点照常入库，但不调用嵌入接口；缺向量的节点计入待嵌入项目，由手动补齐处理
+    const graphSync = new GraphSyncService(runtime.graphManager, graphRepo, {})
     await graphSync.syncPendingIndex({
       vaultId: options.vaultId,
       deletedShardPaths: options.deletedShardPaths
