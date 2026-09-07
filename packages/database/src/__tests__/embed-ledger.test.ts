@@ -315,4 +315,80 @@ describe('embed_ledger write path', () => {
     expect(empty).toMatchObject({ chunk_count: 0, content_hash: 'empty-hash', status: 'embedded' })
     expect(kept).toMatchObject({ chunk_count: 1, content_hash: 'keep-hash' })
   })
+
+  it('clearEmbeddings drops ledger rows together with the vectors', async () => {
+    await repo.insertEmbedding({
+      id: 'emb-clear',
+      sourceType: 'diary',
+      sourceId: 'vault-a#20',
+      groupId: 'diary',
+      vaultId: 'vault-a',
+      chunkIndex: 0,
+      chunkText: 'clear me',
+      embedding: [1, 0],
+      modelId: 'm1'
+    })
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      sourceId: 'vault-a#20',
+      contentHash: 'h20',
+      chunkCount: 1,
+      modelId: 'm1',
+      dimension: 2
+    })
+    expect(await readLedger()).toHaveLength(1)
+
+    await repo.clearEmbeddings()
+
+    expect(await readLedger()).toHaveLength(0)
+    const reconciled = await repo.reconcileEmbedLedger({ vaultId: 'vault-a' })
+    expect(reconciled.rebuilt).toBe(false)
+  })
+
+  it('rebuild leaves the ledger untouched when an insert fails midway', async () => {
+    for (const suffix of ['30', '31', '32']) {
+      await repo.insertEmbedding({
+        id: `emb-${suffix}`,
+        sourceType: 'diary',
+        sourceId: `vault-a#${suffix}`,
+        groupId: 'diary',
+        vaultId: 'vault-a',
+        chunkIndex: 0,
+        chunkText: `text ${suffix}`,
+        metadataJson: JSON.stringify({ content_hash: `h${suffix}` }),
+        embedding: [1, 0],
+        modelId: 'm1'
+      })
+    }
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      sourceId: 'vault-a#stale',
+      contentHash: 'stale',
+      chunkCount: 4,
+      modelId: 'm1',
+      dimension: 2
+    })
+    const before = await readLedger()
+    expect(before).toHaveLength(1)
+
+    const realExecute = db.execute.bind(db)
+    let inserts = 0
+    const spy = vi.spyOn(db, 'execute').mockImplementation((async (query: unknown) => {
+      const text = typeof query === 'string' ? query : String((query as { sql: string }).sql)
+      if (text.includes('INSERT INTO embed_ledger')) {
+        inserts += 1
+        if (inserts === 2) throw new Error('boom')
+      }
+      return realExecute(query as never)
+    }) as never)
+
+    await expect(
+      repo.rebuildEmbedLedger({ vaultId: 'vault-a', sourceType: 'diary' })
+    ).rejects.toThrow('boom')
+    spy.mockRestore()
+
+    expect(await readLedger()).toEqual(before)
+  })
 })

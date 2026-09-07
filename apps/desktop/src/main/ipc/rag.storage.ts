@@ -12,6 +12,7 @@ import type {
 import { getAppDb } from '../db'
 import {
   aggregateEmbedLedgerFromVectorRows,
+  EMBED_LEDGER_REBUILD_SAVEPOINT,
   finishEmbedLedgerRebuild,
   mapMigrationBackupRow,
   logger,
@@ -295,19 +296,30 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
     })
 
     const aggregated = aggregateEmbedLedgerFromVectorRows(vectorRows)
-    await db.run(sql`DELETE FROM embed_ledger WHERE ${scope}`)
-
     const seen = new Set(
       aggregated.map((row) => `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`)
     )
-    for (const row of aggregated) {
-      await this.insertRebuiltLedgerRow(row)
-    }
-    for (const row of zeroRows) {
-      const key = `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`
-      if (!seen.has(key)) {
+    const pending = aggregated.concat(
+      zeroRows.filter((row) => !seen.has(`${row.vaultId}\0${row.sourceType}\0${row.sourceId}`))
+    )
+
+    // 整本账要么全换成新的，要么原样不动：中途崩溃留下「删完了但只插了一半」的账本，
+    // 虽然下一次自检还会再纠正，但那一轮的待嵌入计数会偏小、提醒会漏报。
+    await db.run(sql.raw(`SAVEPOINT ${EMBED_LEDGER_REBUILD_SAVEPOINT}`))
+    try {
+      await db.run(sql`DELETE FROM embed_ledger WHERE ${scope}`)
+      for (const row of pending) {
         await this.insertRebuiltLedgerRow(row)
       }
+      await db.run(sql.raw(`RELEASE ${EMBED_LEDGER_REBUILD_SAVEPOINT}`))
+    } catch (e) {
+      try {
+        await db.run(sql.raw(`ROLLBACK TO ${EMBED_LEDGER_REBUILD_SAVEPOINT}`))
+        await db.run(sql.raw(`RELEASE ${EMBED_LEDGER_REBUILD_SAVEPOINT}`))
+      } catch {
+        // 保存点已经不存在时忽略：原始异常才是要往上抛的那个
+      }
+      throw e
     }
 
     await finishEmbedLedgerRebuild(params?.onRebuilt)
@@ -392,6 +404,14 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
   async clearEmbeddings(): Promise<void> {
     const db = getAppDb()
     await db.delete(memoryEmbeddingsTable)
+    // 账本必须跟着清，否则清空后账本仍声称全部已嵌入，要等下一次计数自检才纠正，
+    // 而那一次纠正是整本账的全量重建。
+    try {
+      await db.delete(embedLedgerTable)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[RAG] 清空 embed_ledger 失败（非阻塞）:', message)
+    }
   }
 
   // ── 清空前自动备份 ──────────────────────────

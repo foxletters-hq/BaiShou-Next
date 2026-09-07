@@ -1,6 +1,7 @@
 import {
   aggregateEmbedLedgerFromVectorRows,
   embeddingVectorToBytes,
+  EMBED_LEDGER_REBUILD_SAVEPOINT,
   finishEmbedLedgerRebuild,
   logger,
   mapMigrationBackupRow,
@@ -173,6 +174,11 @@ export class HybridSearchEmbeddingStore {
   }
 
   async rebuildEmbedLedger(params?: EmbedLedgerReconcileParams): Promise<void> {
+    await this.rebuildEmbedLedgerRows(params)
+    await finishEmbedLedgerRebuild(params?.onRebuilt)
+  }
+
+  private async rebuildEmbedLedgerRows(params?: EmbedLedgerReconcileParams): Promise<void> {
     const { clause, args } = buildEmbedLedgerScopeClause(params)
     const vectorResult = await this.db.execute({
       sql: `
@@ -219,25 +225,30 @@ export class HybridSearchEmbeddingStore {
     })
 
     const aggregated = aggregateEmbedLedgerFromVectorRows(vectorRows)
-    await this.db.execute({
-      sql: `DELETE FROM ${EMBED_LEDGER_TABLE} WHERE ${clause}`,
-      args
-    })
-
     const seen = new Set(
       aggregated.map((row) => `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`)
     )
-    for (const row of aggregated) {
-      await this.insertRebuiltLedgerRow(row)
-    }
-    for (const row of zeroRows) {
-      const key = `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`
-      if (!seen.has(key)) {
+    const pending = aggregated.concat(
+      zeroRows.filter((row) => !seen.has(`${row.vaultId}\0${row.sourceType}\0${row.sourceId}`))
+    )
+
+    // 整本账要么全换成新的，要么原样不动：中途崩溃留下「删完了但只插了一半」的账本，
+    // 虽然下一次自检还会再纠正，但那一轮的待嵌入计数会偏小、提醒会漏报。
+    await this.db.execute(`SAVEPOINT ${EMBED_LEDGER_REBUILD_SAVEPOINT}`)
+    try {
+      await this.db.execute({
+        sql: `DELETE FROM ${EMBED_LEDGER_TABLE} WHERE ${clause}`,
+        args
+      })
+      for (const row of pending) {
         await this.insertRebuiltLedgerRow(row)
       }
+      await this.db.execute(`RELEASE ${EMBED_LEDGER_REBUILD_SAVEPOINT}`)
+    } catch (e) {
+      await this.db.execute(`ROLLBACK TO ${EMBED_LEDGER_REBUILD_SAVEPOINT}`).catch(() => undefined)
+      await this.db.execute(`RELEASE ${EMBED_LEDGER_REBUILD_SAVEPOINT}`).catch(() => undefined)
+      throw e
     }
-
-    await finishEmbedLedgerRebuild(params?.onRebuilt)
   }
 
   private async readEmbedLedgerCountGap(params?: EmbedLedgerReconcileParams): Promise<{
@@ -538,6 +549,14 @@ export class HybridSearchEmbeddingStore {
 
   async clearEmbeddings(): Promise<void> {
     await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
+    // 账本必须跟着清，否则清空后账本仍声称全部已嵌入，要等下一次计数自检才纠正，
+    // 而那一次纠正是整本账的全量重建。
+    try {
+      await this.db.execute(`DELETE FROM ${EMBED_LEDGER_TABLE}`)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[VectorSearch] 清空 embed_ledger 失败（非阻塞）:', message)
+    }
   }
 
   async clearAndReinitEmbeddings(dimension: number): Promise<void> {
