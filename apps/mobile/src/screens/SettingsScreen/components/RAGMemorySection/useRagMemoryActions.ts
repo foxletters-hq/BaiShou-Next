@@ -224,7 +224,6 @@ export function useRagMemoryActions(
         await import('../../../../services/mobile-diary-embed-jobs-consumer.service')
       await consumeDiaryEmbedJobs({
         reason: 'after-manual-batch-embed',
-        force: true,
         limit: 50
       })
       toast.showSuccess(t('settings.rag_batch_embed_done', { count: String(count) }))
