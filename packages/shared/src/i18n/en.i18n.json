@@ -886,6 +886,7 @@
     "rag_consistency_orphans_cleaned": "Cleaned {{count}} orphan indexes",
     "rag_consistency_restored": "Restored {{count}} indexes",
     "rag_consistency_tombstoned": "Confirmed delete (tombstone) for {{count}}",
+    "rag_source_diary": "Diary",
     "rag_source_manual": "Manual",
     "rag_source_partner": "Partner",
     "rag_source_session": "Source session",

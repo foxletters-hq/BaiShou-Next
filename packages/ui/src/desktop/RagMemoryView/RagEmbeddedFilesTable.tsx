@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { isDiaryRagEntry, isRagEntryEditable } from '@baishou/shared'
 import { RagEntry } from './index'
 import styles from './RagMemoryView.module.css'
 import { EllipsisVertical, Library } from 'lucide-react'
@@ -58,6 +59,11 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
           <div className={styles.memoryEntryContentBlock}>
             <div className={styles.memoryEntryText}>{e.text}</div>
             <div className={styles.memoryEntryFooter}>
+              {isDiaryRagEntry(e.sourceType) && (
+                <span className={styles.memoryMetaBadge}>
+                  {t('settings.rag_source_diary', '日记')}
+                </span>
+              )}
               {e.isManual && (
                 <span className={styles.memoryMetaBadge}>
                   {t('settings.rag_source_manual', '手动')}
@@ -121,16 +127,19 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
               <>
                 <div className={styles.entryMenuBackdrop} onClick={() => setActiveMenuId(null)} />
                 <div className={styles.entryMenu}>
-                  <button
-                    type="button"
-                    className={styles.entryMenuItem}
-                    onClick={() => {
-                      setActiveMenuId(null)
-                      onEditEntry?.(e)
-                    }}
-                  >
-                    {t('common.edit', '编辑片段')}
-                  </button>
+                  {/* 日记切片不给编辑：正文才是事实来源，改切片不会回写日记 */}
+                  {isRagEntryEditable(e.sourceType) && (
+                    <button
+                      type="button"
+                      className={styles.entryMenuItem}
+                      onClick={() => {
+                        setActiveMenuId(null)
+                        onEditEntry?.(e)
+                      }}
+                    >
+                      {t('common.edit', '编辑片段')}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={`${styles.entryMenuItem} ${styles.entryMenuItemDanger}`}

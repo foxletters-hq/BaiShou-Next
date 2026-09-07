@@ -9,7 +9,7 @@ import {
   useWindowDimensions
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { formatRagEntryTimestamp } from '@baishou/shared'
+import { formatRagEntryTimestamp, isDiaryRagEntry, isRagEntryEditable } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Pagination as RagPagination } from '../Pagination'
 import { PageSizeSelector } from '../PageSizeSelector'
@@ -85,7 +85,8 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
               { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
             ]}
           >
-            {onEdit && (
+            {/* 日记切片不给编辑：正文才是事实来源，改切片不会回写日记 */}
+            {onEdit && isRagEntryEditable(item.sourceType) && (
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
@@ -111,6 +112,11 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
           {item.text}
         </Text>
         <View style={styles.entryMetaRow}>
+          {isDiaryRagEntry(item.sourceType) ? (
+            <Text style={[styles.entryMetaBadge, { color: colors.textSecondary }]}>
+              {t('settings.rag_source_diary', '日记')}
+            </Text>
+          ) : null}
           {item.isManual ? (
             <Text style={[styles.entryMetaBadge, { color: colors.textSecondary }]}>
               {t('settings.rag_source_manual', '手动')}

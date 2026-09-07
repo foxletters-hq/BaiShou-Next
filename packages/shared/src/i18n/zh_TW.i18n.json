@@ -835,6 +835,7 @@
     "rag_consistency_orphans_cleaned": "已清理 {{count}} 筆孤兒索引",
     "rag_consistency_restored": "已還原索引 {{count}} 筆",
     "rag_consistency_tombstoned": "已確認刪除（tombstone）{{count}} 筆",
+    "rag_source_diary": "日記",
     "rag_source_manual": "手動",
     "rag_source_partner": "夥伴",
     "rag_source_session": "來源工作階段",

@@ -148,6 +148,22 @@ export type AggregatedEmbedLedgerRow = {
 /** 重建整本账时用的保存点名；用 SAVEPOINT 而非 BEGIN，外层已有事务时也能安全嵌套。 */
 export const EMBED_LEDGER_REBUILD_SAVEPOINT = 'embed_ledger_rebuild'
 
+/** 记忆中心的条目是否来自日记 */
+export function isDiaryRagEntry(sourceType?: string): boolean {
+  return sourceType === 'diary'
+}
+
+/**
+ * 记忆中心的条目能不能直接编辑。
+ *
+ * 伙伴记忆可以：编辑会把新内容写回 Memory JSONL 再重新嵌入，那一行 JSONL 就是事实来源。
+ * 日记不行：日记正文才是事实来源，改切片不会回写正文，下一次补齐又会按正文重新生成、
+ * 覆盖掉这次手改，而且账本的内容哈希会停在旧值。
+ */
+export function isRagEntryEditable(sourceType?: string): boolean {
+  return !isDiaryRagEntry(sourceType)
+}
+
 type EmbedLedgerRebuildListener = () => Promise<void>
 
 let embedLedgerRebuildListener: EmbedLedgerRebuildListener | null = null
