@@ -176,6 +176,7 @@ export const GRAPH_INDEXES_SQL = [
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_name_norm ON graph_nodes(vault_id, name_normalized)`,
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_mention ON graph_nodes(vault_id, mention_count)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS graph_nodes_vault_type_name_live ON graph_nodes(vault_id, node_type, name_normalized) WHERE deleted_at IS NULL AND node_type != 'entry'`,
+  `CREATE INDEX IF NOT EXISTS graph_nodes_vault_embed_state ON graph_nodes (vault_id, model_id, dimension) WHERE deleted_at IS NULL`,
   `CREATE INDEX IF NOT EXISTS graph_node_aliases_vault_alias ON graph_node_aliases(vault_id, alias_normalized)`,
   `CREATE INDEX IF NOT EXISTS graph_node_aliases_node ON graph_node_aliases(node_id)`,
   `CREATE INDEX IF NOT EXISTS graph_edges_from ON graph_edges(from_id)`,

@@ -76,7 +76,10 @@ export const graphNodesTable = sqliteTable(
     // Partial unique for non-entry live entities (SQLite via raw DDL in compat/migration).
     uniqueIndex('graph_nodes_vault_type_name_live')
       .on(t.vaultId, t.nodeType, t.nameNormalized)
-      .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'entry'`)
+      .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'entry'`),
+    index('graph_nodes_vault_embed_state')
+      .on(t.vaultId, t.modelId, t.dimension)
+      .where(sql`${t.deletedAt} is null`)
   ]
 )
 
