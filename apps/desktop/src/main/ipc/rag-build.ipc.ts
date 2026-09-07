@@ -225,12 +225,11 @@ export function registerRagBuildIPC() {
           })
         }
       })
-      // 手动全量扫描后也清一轮欠账（强制，不受自动恢复开关限制）
+      // 手动全量扫描后也清一轮欠账
       const { consumeDiaryEmbedJobs } =
         await import('../services/diary-embed-jobs-consumer.service')
       const consumeResult = await consumeDiaryEmbedJobs({
         reason: 'after-manual-batch-embed',
-        force: true,
         limit: 50
       })
 
@@ -264,14 +263,6 @@ export function registerRagBuildIPC() {
       })
       throw err
     }
-  })
-
-  ipcMain.handle('rag:consume-embed-jobs', async (_event, reason?: string) => {
-    const { consumeDiaryEmbedJobs } = await import('../services/diary-embed-jobs-consumer.service')
-    return consumeDiaryEmbedJobs({
-      reason: typeof reason === 'string' && reason.trim() ? reason.trim() : 'ipc',
-      limit: 30
-    })
   })
 
   ipcMain.handle('rag:embed-jobs-pending-count', async () => {

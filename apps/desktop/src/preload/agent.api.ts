@@ -215,7 +215,6 @@ export const agentApi = {
     detectDimension: () => ipcRenderer.invoke('rag:detect-dimension'),
     clearDimension: () => ipcRenderer.invoke('rag:clear-dimension'),
     triggerBatchEmbed: () => ipcRenderer.invoke('rag:trigger-batch-embed'),
-    consumeEmbedJobs: (reason?: string) => ipcRenderer.invoke('rag:consume-embed-jobs', reason),
     getEmbedJobsPendingCount: () => ipcRenderer.invoke('rag:embed-jobs-pending-count'),
     getUnindexedDiaryCount: () => ipcRenderer.invoke('rag:unindexed-diary-count'),
     addManualMemory: (text: string) => ipcRenderer.invoke('rag:add-manual-memory', text),
