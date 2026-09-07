@@ -57,7 +57,7 @@ describe('KnowledgeGraphExtractionService force re-extract', () => {
       })
     )
     const deleteSourceShards = vi.fn(async () => undefined)
-    const syncPendingIndex = vi.fn(async () => undefined)
+    const syncPendingIndex = vi.fn(async (_opts?: Record<string, unknown>) => undefined)
     const service = new KnowledgeGraphExtractionService({
       raw: {
         getExtractState: vi.fn(async () => ({
@@ -244,7 +244,9 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
       llm: async () => {
         calls += 1
-        return calls === 1 ? 'not-json' : JSON.stringify({ entities: [{ name: '甲', type: 'person' }], edges: [] })
+        return calls === 1
+          ? 'not-json'
+          : JSON.stringify({ entities: [{ name: '甲', type: 'person' }], edges: [] })
       },
       getVaultName: () => 'Personal'
     })
@@ -266,9 +268,11 @@ describe('KnowledgeGraphExtractionService source shards', () => {
     const service = new KnowledgeGraphExtractionService({
       raw: {
         getExtractState: vi.fn(async () => null),
-        replaceSourceGraph: vi.fn(async (input: { extractState: { windowsDone: number; windowsTotal: number } }) => {
-          states.push(input.extractState)
-        })
+        replaceSourceGraph: vi.fn(
+          async (input: { extractState: { windowsDone: number; windowsTotal: number } }) => {
+            states.push(input.extractState)
+          }
+        )
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),

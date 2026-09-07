@@ -8,7 +8,7 @@ function attr(tag: string, name: string): string {
 }
 
 function resolveZipPath(baseDir: string, href: string): string {
-  const raw = href.split('#')[0].replace(/\\/g, '/').replace(/^\.\//, '')
+  const raw = (href.split('#')[0] ?? '').replace(/\\/g, '/').replace(/^\.\//, '')
   const joined = baseDir ? `${baseDir}/${raw}` : raw
   const parts: string[] = []
   for (const part of joined.split('/')) {
@@ -53,7 +53,10 @@ function xhtmlToMarkdown(html: string): string {
     (_, __, content) => `**${content}**`
   )
   result = result.replace(/<(em|i)[^>]*>([\s\S]*?)<\/\1>/gi, (_, __, content) => `*${content}*`)
-  result = result.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, content) => `- ${stripTags(content)}\n`)
+  result = result.replace(
+    /<li[^>]*>([\s\S]*?)<\/li>/gi,
+    (_, content) => `- ${stripTags(content)}\n`
+  )
   result = stripTags(result)
   return decodeEntities(result)
     .replace(/\n{3,}/g, '\n\n')
