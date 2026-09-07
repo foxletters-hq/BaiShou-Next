@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { GraphExtractQueueEngine, type GraphExtractQueueRunner } from '../graph-extract-queue-engine'
+import {
+  GraphExtractQueueEngine,
+  type GraphExtractQueueRunner
+} from '../graph-extract-queue-engine'
+import type { GraphExtractQueuePhase } from '../graph-extract-batch.util'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -53,7 +57,9 @@ describe('GraphExtractQueueEngine', () => {
     first.resolve({ done: 1, failed: 0, errors: [] })
     await flush()
 
-    expect(engine.getQueueState().items.find((i) => i.id.endsWith('a.md'))?.status).toBe('completed')
+    expect(engine.getQueueState().items.find((i) => i.id.endsWith('a.md'))?.status).toBe(
+      'completed'
+    )
     expect(engine.getQueueState().items.find((i) => i.id.endsWith('b.md'))?.status).toBe('running')
     expect(calls).toBe(2)
 
@@ -136,7 +142,9 @@ describe('GraphExtractQueueEngine', () => {
 
     second.resolve({ done: 1, failed: 0, errors: [] })
     await flush()
-    expect(engine.getQueueState().items.find((i) => i.id.endsWith('c.md'))?.status).toBe('completed')
+    expect(engine.getQueueState().items.find((i) => i.id.endsWith('c.md'))?.status).toBe(
+      'completed'
+    )
   })
 
   it('does not let a late aborted runner replace a re-enqueued same path', async () => {
@@ -352,7 +360,12 @@ describe('GraphExtractQueueEngine', () => {
   })
 
   it('marks finished drafts as waiting for the align pool', async () => {
-    const second = deferred<{ done: number; failed: number; errors: []; draft: { filePath: string } }>()
+    const second = deferred<{
+      done: number
+      failed: number
+      errors: []
+      draft: { filePath: string }
+    }>()
     const engine = new GraphExtractQueueEngine({
       watchdogMs: 0,
       cleanupMs: 0,
@@ -380,7 +393,7 @@ describe('GraphExtractQueueEngine', () => {
 
   it('moves waiting drafts through recall, align, then writing', async () => {
     const flushHold = deferred<Array<{ filePath: string }>>()
-    let onPhase: ((phase: string, detail?: string) => void) | undefined
+    let onPhase: ((phase: GraphExtractQueuePhase, detail?: string) => void) | undefined
     const engine = new GraphExtractQueueEngine({
       watchdogMs: 0,
       cleanupMs: 0,
