@@ -152,7 +152,7 @@ describe('Agent 3: RAG 记忆管理验证', () => {
 describe('Agent 4: 设置与 UI 细节验证', () => {
   it('任务1: Ctrl+- 缩小功能已实现', () => {
     const ts = readFile('apps/desktop/src/renderer/src/hooks/useZoom.ts')
-    expect(ts).toContain("key === '-'")
+    // 按键判断已收进 shared 的 resolvePageZoomShortcut，由 ui-font-size.util 的单测覆盖
     // zoom 通过 preload bridge 调用，不是直接 webFrame
     expect(ts).toContain('api.zoom.setFactor')
     expect(ts).toContain('resolvePageZoomShortcut')
