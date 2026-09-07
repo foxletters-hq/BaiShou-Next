@@ -847,6 +847,7 @@
     "rag_consistency_orphans_cleaned": "孤児索引を {{count}} 件削除しました",
     "rag_consistency_restored": "索引を {{count}} 件復元しました",
     "rag_consistency_tombstoned": "削除（tombstone）を {{count}} 件確認しました",
+    "rag_source_diary": "日記",
     "rag_source_manual": "手動",
     "rag_source_partner": "パートナー",
     "rag_source_session": "元セッション",

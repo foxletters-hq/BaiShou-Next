@@ -10,8 +10,28 @@ import {
   buildDiaryEmbeddingTextArgs,
   aggregateEmbedLedgerFromVectorRows,
   extractEmbedContentHashFromMetadata,
-  mergeEmbedContentHashIntoMetadata
+  mergeEmbedContentHashIntoMetadata,
+  isDiaryRagEntry,
+  isRagEntryEditable
 } from '../rag-diary.util'
+
+describe('记忆中心条目的来源判断', () => {
+  it('只有 diary 算日记来源', () => {
+    expect(isDiaryRagEntry('diary')).toBe(true)
+    expect(isDiaryRagEntry('memory')).toBe(false)
+    expect(isDiaryRagEntry('manual')).toBe(false)
+    expect(isDiaryRagEntry('chat')).toBe(false)
+    expect(isDiaryRagEntry(undefined)).toBe(false)
+  })
+
+  it('日记切片不可编辑，其余来源可编辑', () => {
+    expect(isRagEntryEditable('diary')).toBe(false)
+    expect(isRagEntryEditable('memory')).toBe(true)
+    expect(isRagEntryEditable('manual')).toBe(true)
+    expect(isRagEntryEditable('chat')).toBe(true)
+    expect(isRagEntryEditable(undefined)).toBe(true)
+  })
+})
 
 describe('sortDiariesByDateAsc', () => {
   it('sorts diaries oldest first for batch embed without mutating input', () => {
