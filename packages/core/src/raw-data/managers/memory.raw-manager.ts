@@ -2,7 +2,7 @@ import type { IFileSystem } from '../../fs/file-system.types'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 import { shardMonthFromInstant } from '../raw-data-month.util'
 import { MonthlyJsonlStore, collapseJsonlById } from '../stores/monthly-jsonl.store'
-import type { MemoryRawRecord } from '@baishou/shared'
+import { setEmbedLedgerRebuildListener, type MemoryRawRecord } from '@baishou/shared'
 import type { RecordCollectionKindManager, ShardInfo, WriteOpts } from '../raw-data-source.types'
 import type { DerivedFreshnessService } from '../derived-freshness.service'
 
@@ -16,7 +16,9 @@ export class MemoryRawManager implements RecordCollectionKindManager {
     private readonly pathService: IStoragePathService,
     private readonly fs: IFileSystem,
     private readonly freshness: DerivedFreshnessService
-  ) {}
+  ) {
+    setEmbedLedgerRebuildListener(() => this.invalidateIndexedHashes())
+  }
 
   private async getStore(): Promise<MonthlyJsonlStore> {
     if (this.store) return this.store
@@ -92,6 +94,10 @@ export class MemoryRawManager implements RecordCollectionKindManager {
 
   async commitIndexed(relativePath: string, contentHash: string): Promise<void> {
     await (await this.getStore()).markIndexed(relativePath, contentHash)
+  }
+
+  async invalidateIndexedHashes(): Promise<void> {
+    await (await this.getStore()).invalidateIndexedHashes()
   }
 
   /** Atomically rewrite a monthly shard (e.g. sync LWW merge). Keeps pending-index dirty. */

@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createClient, Client } from '@libsql/client'
+import { setEmbedLedgerRebuildListener } from '@baishou/shared'
 import { SqliteHybridSearchRepository } from '../repositories/hybrid-search.repository'
 import { EMBED_LEDGER_CREATE_SQL, EMBED_LEDGER_INDEXES_SQL } from '../agent-schema-compat'
 import * as fs from 'node:fs/promises'
@@ -41,6 +42,7 @@ describe('embed_ledger write path', () => {
   })
 
   afterEach(async () => {
+    setEmbedLedgerRebuildListener(null)
     db.close()
     try {
       await fs.rm(tempDir, { recursive: true, force: true })
@@ -182,5 +184,135 @@ describe('embed_ledger write path', () => {
     })
 
     expect(await readLedger()).toHaveLength(0)
+  })
+
+  it('reconcileEmbedLedger rebuilds when SUM(chunk_count) != COUNT(*)', async () => {
+    await repo.insertEmbedding({
+      id: 'emb-3',
+      sourceType: 'diary',
+      sourceId: 'vault-a#7',
+      groupId: 'diary',
+      vaultId: 'vault-a',
+      chunkIndex: 0,
+      chunkText: 'body',
+      metadataJson: JSON.stringify({ content_hash: 'hash-7', updated_at: 99 }),
+      embedding: [1, 0],
+      modelId: 'm1'
+    })
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      sourceId: 'vault-a#7',
+      contentHash: 'stale',
+      chunkCount: 5,
+      modelId: 'old',
+      dimension: 2
+    })
+
+    await db.execute(`DELETE FROM memory_embeddings`)
+
+    const onRebuilt = vi.fn().mockResolvedValue(undefined)
+    const result = await repo.reconcileEmbedLedger({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      onRebuilt
+    })
+
+    expect(result.rebuilt).toBe(true)
+    expect(result.ledgerChunkSum).toBe(5)
+    expect(result.vectorCount).toBe(0)
+    expect(onRebuilt).toHaveBeenCalledTimes(1)
+    expect(await readLedger()).toHaveLength(0)
+  })
+
+  it('rebuilds ledger from metadata_json hashes and merges legacy plus scoped source ids', async () => {
+    await repo.insertEmbedding({
+      id: 'emb-legacy',
+      sourceType: 'diary',
+      sourceId: '9',
+      groupId: 'diary',
+      vaultId: 'vault-a',
+      chunkIndex: 0,
+      chunkText: 'legacy',
+      metadataJson: JSON.stringify({ content_hash: 'from-meta', updated_at: 11 }),
+      embedding: [1, 0],
+      modelId: 'm2'
+    })
+    await repo.insertEmbedding({
+      id: 'emb-scoped',
+      sourceType: 'diary',
+      sourceId: 'vault-a#9',
+      groupId: 'diary',
+      vaultId: 'vault-a',
+      chunkIndex: 0,
+      chunkText: 'scoped',
+      metadataJson: JSON.stringify({ content_hash: 'from-meta', updated_at: 22 }),
+      embedding: [0, 1],
+      modelId: 'm2'
+    })
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      sourceId: 'vault-a#9',
+      contentHash: '',
+      chunkCount: 1,
+      modelId: 'old',
+      dimension: 2
+    })
+
+    const result = await repo.reconcileEmbedLedger({ vaultId: 'vault-a', sourceType: 'diary' })
+    expect(result.rebuilt).toBe(true)
+
+    const rows = await readLedger()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      vault_id: 'vault-a',
+      source_type: 'diary',
+      source_id: 'vault-a#9',
+      content_hash: 'from-meta',
+      status: 'embedded'
+    })
+    expect(Number(rows[0]!.chunk_count)).toBe(2)
+    expect(rows[0]!.content_hash).not.toBe('')
+  })
+
+  it('keeps explicit zero-chunk ledger rows after rebuild', async () => {
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      sourceId: 'vault-a#empty',
+      contentHash: 'empty-hash',
+      chunkCount: 0,
+      modelId: 'm1',
+      dimension: 0
+    })
+    await repo.insertEmbedding({
+      id: 'emb-keep',
+      sourceType: 'diary',
+      sourceId: 'vault-a#10',
+      groupId: 'diary',
+      vaultId: 'vault-a',
+      chunkIndex: 0,
+      chunkText: 'keep',
+      metadataJson: JSON.stringify({ content_hash: 'keep-hash' }),
+      embedding: [1, 0],
+      modelId: 'm1'
+    })
+    await repo.recordEmbedded({
+      vaultId: 'vault-a',
+      sourceType: 'diary',
+      sourceId: 'vault-a#10',
+      contentHash: 'wrong',
+      chunkCount: 9,
+      modelId: 'm1',
+      dimension: 2
+    })
+
+    await repo.rebuildEmbedLedger({ vaultId: 'vault-a', sourceType: 'diary' })
+    const rows = await readLedger()
+    const empty = rows.find((row) => row.source_id === 'vault-a#empty')
+    const kept = rows.find((row) => row.source_id === 'vault-a#10')
+    expect(empty).toMatchObject({ chunk_count: 0, content_hash: 'empty-hash', status: 'embedded' })
+    expect(kept).toMatchObject({ chunk_count: 1, content_hash: 'keep-hash' })
   })
 })

@@ -126,6 +126,19 @@ export interface EmbedLedgerFailureParams {
   lastError: string
 }
 
+export interface EmbedLedgerReconcileParams {
+  vaultId?: string
+  sourceType?: string
+  /** 重建完成后的回调；不传则走全局监听（记忆侧作废已索引哈希） */
+  onRebuilt?: () => Promise<void>
+}
+
+export interface EmbedLedgerReconcileResult {
+  rebuilt: boolean
+  ledgerChunkSum: number
+  vectorCount: number
+}
+
 export interface IEmbeddingStorage {
   initVectorIndex(dimension: number): Promise<void>
 
@@ -149,6 +162,10 @@ export interface IEmbeddingStorage {
   recordEmbedded?(params: EmbedLedgerRecordParams): Promise<void>
   /** 嵌入失败时记 failed 并累加 attempts，不改 chunk_count */
   recordEmbedFailure?(params: EmbedLedgerFailureParams): Promise<void>
+  /** 比较账本 SUM(chunk_count) 与向量表 COUNT(*)，不相等则从向量表重建账本 */
+  reconcileEmbedLedger?(params?: EmbedLedgerReconcileParams): Promise<EmbedLedgerReconcileResult>
+  /** 从向量表按 source_id 聚合重建账本（换模型迁移后必须调用） */
+  rebuildEmbedLedger?(params?: EmbedLedgerReconcileParams): Promise<void>
   clearEmbeddings(): Promise<void>
 
   // --- 迁移用的 ---

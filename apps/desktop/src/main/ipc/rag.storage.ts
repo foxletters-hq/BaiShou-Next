@@ -1,9 +1,22 @@
 import i18n from 'i18next'
 import { IEmbeddingStorage } from '@baishou/ai'
 import { embedLedgerTable, memoryEmbeddingsTable } from '@baishou/database-desktop'
-import type { EmbedLedgerFailureParams, EmbedLedgerRecordParams } from '@baishou/shared'
+import type {
+  AggregatedEmbedLedgerRow,
+  EmbedLedgerFailureParams,
+  EmbedLedgerReconcileParams,
+  EmbedLedgerReconcileResult,
+  EmbedLedgerRecordParams,
+  EmbedLedgerVectorRow
+} from '@baishou/shared'
 import { getAppDb } from '../db'
-import { mapMigrationBackupRow, logger, normalizeUnixToSeconds } from '@baishou/shared'
+import {
+  aggregateEmbedLedgerFromVectorRows,
+  finishEmbedLedgerRebuild,
+  mapMigrationBackupRow,
+  logger,
+  normalizeUnixToSeconds
+} from '@baishou/shared'
 import { eq, and, sql } from 'drizzle-orm'
 
 /** 嵌入迁移备份表名 */
@@ -144,7 +157,11 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
           updatedAt: now
         })
         .onConflictDoUpdate({
-          target: [embedLedgerTable.vaultId, embedLedgerTable.sourceType, embedLedgerTable.sourceId],
+          target: [
+            embedLedgerTable.vaultId,
+            embedLedgerTable.sourceType,
+            embedLedgerTable.sourceId
+          ],
           set: {
             contentHash: params.contentHash,
             chunkCount: params.chunkCount,
@@ -158,6 +175,178 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
           }
         })
     })
+  }
+
+  async reconcileEmbedLedger(
+    params?: EmbedLedgerReconcileParams
+  ): Promise<EmbedLedgerReconcileResult> {
+    return withEmbeddingWriteLock(async () => {
+      const { ledgerChunkSum, vectorCount, mismatch } = await this.readEmbedLedgerCountGap(params)
+      if (!mismatch) {
+        return { rebuilt: false, ledgerChunkSum, vectorCount }
+      }
+      await this.rebuildEmbedLedgerUnlocked(params)
+      return { rebuilt: true, ledgerChunkSum, vectorCount }
+    })
+  }
+
+  async rebuildEmbedLedger(params?: EmbedLedgerReconcileParams): Promise<void> {
+    await withEmbeddingWriteLock(() => this.rebuildEmbedLedgerUnlocked(params))
+  }
+
+  private embedLedgerScopeSql(params?: EmbedLedgerReconcileParams) {
+    const parts = [sql`source_type IN ('diary', 'memory')`]
+    const sourceType = params?.sourceType?.trim()
+    if (sourceType === 'diary' || sourceType === 'memory') {
+      parts[0] = sql`source_type = ${sourceType}`
+    }
+    const vaultId = params?.vaultId?.trim()
+    if (vaultId) parts.push(sql`vault_id = ${vaultId}`)
+    return sql.join(parts, sql` AND `)
+  }
+
+  private async readEmbedLedgerCountGap(params?: EmbedLedgerReconcileParams): Promise<{
+    ledgerChunkSum: number
+    vectorCount: number
+    mismatch: boolean
+  }> {
+    const db = getAppDb()
+    const scope = this.embedLedgerScopeSql(params)
+    const ledgerRows = await db.all(sql`
+      SELECT vault_id AS vaultId, source_type AS sourceType,
+             COALESCE(SUM(chunk_count), 0) AS chunkSum
+      FROM embed_ledger
+      WHERE ${scope}
+      GROUP BY vault_id, source_type
+    `)
+    const vectorRows = await db.all(sql`
+      SELECT vault_id AS vaultId, source_type AS sourceType, COUNT(*) AS vectorCount
+      FROM memory_embeddings
+      WHERE ${scope}
+      GROUP BY vault_id, source_type
+    `)
+
+    const ledgerMap = new Map<string, number>()
+    for (const raw of ledgerRows) {
+      const row = raw as Record<string, unknown>
+      const key = `${String(row.vaultId ?? '')}\0${String(row.sourceType ?? '')}`
+      ledgerMap.set(key, Number(row.chunkSum ?? 0))
+    }
+    const vectorMap = new Map<string, number>()
+    for (const raw of vectorRows) {
+      const row = raw as Record<string, unknown>
+      const key = `${String(row.vaultId ?? '')}\0${String(row.sourceType ?? '')}`
+      vectorMap.set(key, Number(row.vectorCount ?? 0))
+    }
+
+    const keys = new Set([...ledgerMap.keys(), ...vectorMap.keys()])
+    let ledgerChunkSum = 0
+    let vectorCount = 0
+    let mismatch = false
+    for (const key of keys) {
+      const sum = ledgerMap.get(key) ?? 0
+      const count = vectorMap.get(key) ?? 0
+      ledgerChunkSum += sum
+      vectorCount += count
+      if (sum !== count) mismatch = true
+    }
+    return { ledgerChunkSum, vectorCount, mismatch }
+  }
+
+  private async rebuildEmbedLedgerUnlocked(params?: EmbedLedgerReconcileParams): Promise<void> {
+    const db = getAppDb()
+    const scope = this.embedLedgerScopeSql(params)
+    const rawVectors = await db.all(sql`
+      SELECT vault_id AS vaultId, source_type AS sourceType, source_id AS sourceId,
+             model_id AS modelId, dimension, metadata_json AS metadataJson
+      FROM memory_embeddings
+      WHERE ${scope}
+    `)
+    const vectorRows: EmbedLedgerVectorRow[] = rawVectors.map((raw) => {
+      const row = raw as Record<string, unknown>
+      return {
+        vaultId: String(row.vaultId ?? ''),
+        sourceType: String(row.sourceType ?? ''),
+        sourceId: String(row.sourceId ?? ''),
+        modelId: String(row.modelId ?? ''),
+        dimension: Number(row.dimension ?? 0),
+        metadataJson: String(row.metadataJson ?? '{}')
+      }
+    })
+
+    const rawZeros = await db.all(sql`
+      SELECT vault_id AS vaultId, source_type AS sourceType, source_id AS sourceId,
+             content_hash AS contentHash, model_id AS modelId, dimension, updated_at AS updatedAt
+      FROM embed_ledger
+      WHERE ${scope} AND status = 'embedded' AND chunk_count = 0
+    `)
+    const zeroRows: AggregatedEmbedLedgerRow[] = rawZeros.map((raw) => {
+      const row = raw as Record<string, unknown>
+      return {
+        vaultId: String(row.vaultId ?? ''),
+        sourceType: String(row.sourceType ?? ''),
+        sourceId: String(row.sourceId ?? ''),
+        contentHash: String(row.contentHash ?? ''),
+        chunkCount: 0,
+        modelId: String(row.modelId ?? ''),
+        dimension: Number(row.dimension ?? 0),
+        updatedAt: Number(row.updatedAt ?? 0)
+      }
+    })
+
+    const aggregated = aggregateEmbedLedgerFromVectorRows(vectorRows)
+    await db.run(sql`DELETE FROM embed_ledger WHERE ${scope}`)
+
+    const seen = new Set(
+      aggregated.map((row) => `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`)
+    )
+    for (const row of aggregated) {
+      await this.insertRebuiltLedgerRow(row)
+    }
+    for (const row of zeroRows) {
+      const key = `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`
+      if (!seen.has(key)) {
+        await this.insertRebuiltLedgerRow(row)
+      }
+    }
+
+    await finishEmbedLedgerRebuild(params?.onRebuilt)
+  }
+
+  private async insertRebuiltLedgerRow(row: AggregatedEmbedLedgerRow): Promise<void> {
+    const now = Date.now()
+    const stamp = row.updatedAt > 0 ? row.updatedAt : now
+    const db = getAppDb()
+    await db
+      .insert(embedLedgerTable)
+      .values({
+        vaultId: row.vaultId,
+        sourceType: row.sourceType,
+        sourceId: row.sourceId,
+        contentHash: row.contentHash,
+        chunkCount: row.chunkCount,
+        modelId: row.modelId,
+        dimension: row.dimension,
+        status: 'embedded',
+        attempts: 0,
+        lastError: null,
+        embeddedAt: stamp,
+        updatedAt: stamp
+      })
+      .onConflictDoUpdate({
+        target: [embedLedgerTable.vaultId, embedLedgerTable.sourceType, embedLedgerTable.sourceId],
+        set: {
+          contentHash: row.contentHash,
+          chunkCount: row.chunkCount,
+          modelId: row.modelId,
+          dimension: row.dimension,
+          status: 'embedded',
+          attempts: 0,
+          lastError: null,
+          embeddedAt: stamp,
+          updatedAt: stamp
+        }
+      })
   }
 
   async recordEmbedFailure(params: EmbedLedgerFailureParams): Promise<void> {
@@ -185,7 +374,11 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
           updatedAt: now
         })
         .onConflictDoUpdate({
-          target: [embedLedgerTable.vaultId, embedLedgerTable.sourceType, embedLedgerTable.sourceId],
+          target: [
+            embedLedgerTable.vaultId,
+            embedLedgerTable.sourceType,
+            embedLedgerTable.sourceId
+          ],
           set: {
             status: 'failed',
             attempts: sql`${embedLedgerTable.attempts} + 1`,

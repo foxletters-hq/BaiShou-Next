@@ -1,16 +1,23 @@
 import {
+  aggregateEmbedLedgerFromVectorRows,
   embeddingVectorToBytes,
+  finishEmbedLedgerRebuild,
   logger,
   mapMigrationBackupRow,
-  MEMORY_EMBED_GROUP_ID
+  MEMORY_EMBED_GROUP_ID,
+  type AggregatedEmbedLedgerRow,
+  type EmbedLedgerVectorRow
 } from '@baishou/shared'
 import type {
   ISqlExecutor,
   EmbeddingSnapshotMeta,
   EmbedLedgerFailureParams,
+  EmbedLedgerReconcileParams,
+  EmbedLedgerReconcileResult,
   EmbedLedgerRecordParams
 } from '@baishou/shared'
 import {
+  buildEmbedLedgerScopeClause,
   EMBED_LEDGER_TABLE,
   HYBRID_SEARCH_BACKUP_TABLE,
   HYBRID_SEARCH_INDEX_NAME,
@@ -150,6 +157,172 @@ export class HybridSearchEmbeddingStore {
         params.dimension,
         now,
         now
+      ]
+    })
+  }
+
+  async reconcileEmbedLedger(
+    params?: EmbedLedgerReconcileParams
+  ): Promise<EmbedLedgerReconcileResult> {
+    const { ledgerChunkSum, vectorCount, mismatch } = await this.readEmbedLedgerCountGap(params)
+    if (!mismatch) {
+      return { rebuilt: false, ledgerChunkSum, vectorCount }
+    }
+    await this.rebuildEmbedLedger(params)
+    return { rebuilt: true, ledgerChunkSum, vectorCount }
+  }
+
+  async rebuildEmbedLedger(params?: EmbedLedgerReconcileParams): Promise<void> {
+    const { clause, args } = buildEmbedLedgerScopeClause(params)
+    const vectorResult = await this.db.execute({
+      sql: `
+        SELECT vault_id AS vaultId, source_type AS sourceType, source_id AS sourceId,
+               model_id AS modelId, dimension, metadata_json AS metadataJson
+        FROM ${HYBRID_SEARCH_TABLE}
+        WHERE ${clause}
+      `,
+      args
+    })
+    const vectorRows: EmbedLedgerVectorRow[] = vectorResult.rows.map((raw) => {
+      const row = raw as Record<string, unknown>
+      return {
+        vaultId: String(row.vaultId ?? row.vault_id ?? ''),
+        sourceType: String(row.sourceType ?? row.source_type ?? ''),
+        sourceId: String(row.sourceId ?? row.source_id ?? ''),
+        modelId: String(row.modelId ?? row.model_id ?? ''),
+        dimension: Number(row.dimension ?? 0),
+        metadataJson: String(row.metadataJson ?? row.metadata_json ?? '{}')
+      }
+    })
+
+    const zeroResult = await this.db.execute({
+      sql: `
+        SELECT vault_id AS vaultId, source_type AS sourceType, source_id AS sourceId,
+               content_hash AS contentHash, model_id AS modelId, dimension, updated_at AS updatedAt
+        FROM ${EMBED_LEDGER_TABLE}
+        WHERE ${clause} AND status = 'embedded' AND chunk_count = 0
+      `,
+      args
+    })
+    const zeroRows: AggregatedEmbedLedgerRow[] = zeroResult.rows.map((raw) => {
+      const row = raw as Record<string, unknown>
+      return {
+        vaultId: String(row.vaultId ?? row.vault_id ?? ''),
+        sourceType: String(row.sourceType ?? row.source_type ?? ''),
+        sourceId: String(row.sourceId ?? row.source_id ?? ''),
+        contentHash: String(row.contentHash ?? row.content_hash ?? ''),
+        chunkCount: 0,
+        modelId: String(row.modelId ?? row.model_id ?? ''),
+        dimension: Number(row.dimension ?? 0),
+        updatedAt: Number(row.updatedAt ?? row.updated_at ?? 0)
+      }
+    })
+
+    const aggregated = aggregateEmbedLedgerFromVectorRows(vectorRows)
+    await this.db.execute({
+      sql: `DELETE FROM ${EMBED_LEDGER_TABLE} WHERE ${clause}`,
+      args
+    })
+
+    const seen = new Set(
+      aggregated.map((row) => `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`)
+    )
+    for (const row of aggregated) {
+      await this.insertRebuiltLedgerRow(row)
+    }
+    for (const row of zeroRows) {
+      const key = `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`
+      if (!seen.has(key)) {
+        await this.insertRebuiltLedgerRow(row)
+      }
+    }
+
+    await finishEmbedLedgerRebuild(params?.onRebuilt)
+  }
+
+  private async readEmbedLedgerCountGap(params?: EmbedLedgerReconcileParams): Promise<{
+    ledgerChunkSum: number
+    vectorCount: number
+    mismatch: boolean
+  }> {
+    const { clause, args } = buildEmbedLedgerScopeClause(params)
+    const ledgerResult = await this.db.execute({
+      sql: `
+        SELECT vault_id AS vaultId, source_type AS sourceType,
+               COALESCE(SUM(chunk_count), 0) AS chunkSum
+        FROM ${EMBED_LEDGER_TABLE}
+        WHERE ${clause}
+        GROUP BY vault_id, source_type
+      `,
+      args
+    })
+    const vectorResult = await this.db.execute({
+      sql: `
+        SELECT vault_id AS vaultId, source_type AS sourceType, COUNT(*) AS vectorCount
+        FROM ${HYBRID_SEARCH_TABLE}
+        WHERE ${clause}
+        GROUP BY vault_id, source_type
+      `,
+      args
+    })
+
+    const ledgerMap = new Map<string, number>()
+    for (const raw of ledgerResult.rows) {
+      const row = raw as Record<string, unknown>
+      const key = `${String(row.vaultId ?? row.vault_id ?? '')}\0${String(row.sourceType ?? row.source_type ?? '')}`
+      ledgerMap.set(key, Number(row.chunkSum ?? row.chunk_sum ?? 0))
+    }
+    const vectorMap = new Map<string, number>()
+    for (const raw of vectorResult.rows) {
+      const row = raw as Record<string, unknown>
+      const key = `${String(row.vaultId ?? row.vault_id ?? '')}\0${String(row.sourceType ?? row.source_type ?? '')}`
+      vectorMap.set(key, Number(row.vectorCount ?? row.vector_count ?? row.c ?? 0))
+    }
+
+    const keys = new Set([...ledgerMap.keys(), ...vectorMap.keys()])
+    let ledgerChunkSum = 0
+    let vectorCount = 0
+    let mismatch = false
+    for (const key of keys) {
+      const sum = ledgerMap.get(key) ?? 0
+      const count = vectorMap.get(key) ?? 0
+      ledgerChunkSum += sum
+      vectorCount += count
+      if (sum !== count) mismatch = true
+    }
+    return { ledgerChunkSum, vectorCount, mismatch }
+  }
+
+  private async insertRebuiltLedgerRow(row: AggregatedEmbedLedgerRow): Promise<void> {
+    const now = Date.now()
+    const stamp = row.updatedAt > 0 ? row.updatedAt : now
+    await this.db.execute({
+      sql: `
+        INSERT INTO ${EMBED_LEDGER_TABLE}
+        (vault_id, source_type, source_id, content_hash, chunk_count,
+         model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'embedded', 0, NULL, ?, ?)
+        ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
+          content_hash = excluded.content_hash,
+          chunk_count = excluded.chunk_count,
+          model_id = excluded.model_id,
+          dimension = excluded.dimension,
+          status = 'embedded',
+          attempts = 0,
+          last_error = NULL,
+          embedded_at = excluded.embedded_at,
+          updated_at = excluded.updated_at
+      `,
+      args: [
+        row.vaultId,
+        row.sourceType,
+        row.sourceId,
+        row.contentHash,
+        row.chunkCount,
+        row.modelId,
+        row.dimension,
+        stamp,
+        stamp
       ]
     })
   }
