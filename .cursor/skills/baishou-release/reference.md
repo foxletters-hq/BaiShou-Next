@@ -15,7 +15,7 @@
 | 本地 CI                  | `pnpm ci:check` → `scripts/ci-check.ps1` / `ci-check.sh`  |
 | CI 发版工作流            | `.github/workflows/release.yml`                           |
 | 下载清单                 | `releases/channel.json`                                   |
-| 官网                     | https://baishou.foxletters.com                            |
+| 官网                     | https://foxletters.com                                    |
 
 ## Tag 与 CI
 
