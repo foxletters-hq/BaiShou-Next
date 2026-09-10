@@ -30,12 +30,28 @@ describe('appendImagePartToContentParts', () => {
     await appendImagePartToContentParts(
       parts,
       { fileName: 'photo.png', filePath: 'D:\\a.png' },
-      { modelId: 'deepseek-v4-flash' }
+      { modelId: 'deepseek-chat' }
     )
 
     expect(parts).toHaveLength(1)
     expect((parts[0] as { type: string }).type).toBe('text')
     expect((parts[0] as { text: string }).text).toContain('不支持识图')
+  })
+
+  it('encodes image for DeepSeek Flash after it gained native vision', async () => {
+    const parts: unknown[] = []
+    await appendImagePartToContentParts(
+      parts,
+      { fileName: 'photo.png', filePath: 'D:\\vault\\attachments\\s1\\photo.png' },
+      { modelId: 'deepseek-flash' }
+    )
+
+    expect(parts).toHaveLength(1)
+    expect(parts[0]).toEqual({
+      type: 'image',
+      image: 'ZmFrZQ==',
+      mediaType: 'image/png'
+    })
   })
 
   it('encodes image for vision models after normalization', async () => {
