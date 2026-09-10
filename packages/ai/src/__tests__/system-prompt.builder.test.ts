@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { SystemPromptBuilder } from '../agent/system-prompt.builder'
-import {
-  formatHostTimezoneOffset,
-  MESSAGE_CONTENT_TAG,
-  MESSAGE_TIME_TAG
-} from '@baishou/shared'
+import { formatHostTimezoneOffset, MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from '@baishou/shared'
 
 function sectionOrder(prompt: string, tags: string[]): number[] {
   return tags.map((tag) => prompt.indexOf(`<${tag}>`))
