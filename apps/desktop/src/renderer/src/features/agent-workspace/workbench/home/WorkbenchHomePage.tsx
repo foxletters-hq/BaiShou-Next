@@ -39,6 +39,7 @@ import {
   formatReasoningControlPreview
 } from '../../../agent/format-reasoning-control-preview'
 import chromeStyles from '../../../agent/components/AgentChatChrome.module.css'
+import { AssistantCreateModal } from '../../../agent/components/AssistantCreateModal'
 import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
 import { WorkbenchHomeSidebar } from './WorkbenchHomeSidebar'
 import { WorkbenchHomeComposer } from './WorkbenchHomeComposer'
@@ -676,7 +677,15 @@ export const WorkbenchHomePage: React.FC = () => {
             await chrome.fetchAssistants()
           }
         }}
-        onCreateNew={() => chrome.setShowAssistantPicker(false)}
+        onCreateNew={chrome.openCreateAssistant}
+      />
+
+      <AssistantCreateModal
+        isOpen={chrome.isCreateAssistantOpen}
+        assistantCount={chrome.assistants.length}
+        onClose={() => chrome.setIsCreateAssistantOpen(false)}
+        onBackToPicker={() => chrome.setShowAssistantPicker(true)}
+        onCreated={chrome.fetchAssistants}
       />
 
       {chrome.showModelSwitcher ? (

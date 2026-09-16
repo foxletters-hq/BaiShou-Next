@@ -376,6 +376,11 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
       if (!confirmed) return
       try {
         await window.api.agentWorkspace.deleteEntry(folderRoot, node.relativePath)
+        window.dispatchEvent(
+          new CustomEvent('baishou:workspace-entry-deleted', {
+            detail: { relativePath: node.relativePath }
+          })
+        )
         const parentDir = parentRelativePath(node.relativePath)
         await tree.refreshPath(parentDir)
         if (tree.selectedPath === node.relativePath) {

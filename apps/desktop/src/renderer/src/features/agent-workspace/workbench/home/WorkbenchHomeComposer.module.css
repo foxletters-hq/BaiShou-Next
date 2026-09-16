@@ -66,11 +66,12 @@
   }
 }
 
-/* 工作路径 / 权限：落在输入框底部延伸条内 */
+/* 工作路径 / 权限 / 模型：落在输入框底部延伸条内，相邻排列 */
 .metaRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-xs) var(--spacing-sm);
   width: 100%;
   min-width: 0;
 }
@@ -79,20 +80,17 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 12px;
+  gap: var(--spacing-xs) var(--spacing-sm);
   min-width: 0;
-  flex: 0 0 auto;
-  max-width: calc(50% - 4px);
+  flex: 0 1 auto;
 }
 
 .metaTrailing {
-  margin-left: auto;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: var(--spacing-xs);
   min-width: 0;
-  max-width: calc(50% - 4px);
 }
 
 .metaChip {

@@ -87,6 +87,7 @@
   width: 100%;
   box-sizing: border-box;
   min-height: 22px;
+  user-select: none;
 }
 
 .indentGuides {
@@ -201,6 +202,7 @@
   padding: 2px 8px 2px 4px;
   text-align: left;
   font-size: var(--ui-fs-md);
+  user-select: none;
 }
 
 .rowIcon {

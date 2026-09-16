@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Select, toast } from '@baishou/ui'
+import { Select, Switch, toast } from '@baishou/ui'
 import {
   knowledgeImportProcessSelectOptions,
   normalizeKnowledgeImportProcessMode,
@@ -110,15 +110,11 @@ export const WorkbenchGeneralSettingsPane: React.FC<WorkbenchGeneralSettingsPane
                 )}
               </span>
             </div>
-            <label className="settings-switch-label">
-              <input
-                type="checkbox"
-                checked={personalMemoryReadEnabled}
-                onChange={(event) => void handlePersonalMemoryChange(event.target.checked)}
-                aria-label={t('workbench.personal_memory_access', '允许读取个人记忆')}
-              />
-              <span className="settings-switch-slider" />
-            </label>
+            <Switch
+              checked={personalMemoryReadEnabled}
+              aria-label={t('workbench.personal_memory_access', '允许读取个人记忆')}
+              onChange={(event) => void handlePersonalMemoryChange(event.target.checked)}
+            />
           </div>
         </section>
       </div>

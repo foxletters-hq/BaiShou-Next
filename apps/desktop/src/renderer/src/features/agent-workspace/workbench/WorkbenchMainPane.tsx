@@ -33,6 +33,11 @@ import {
   resolveWorkbenchCommentPopoverPosition
 } from './workbench-comment-popover.util'
 import { useWorkbenchIdleCaption } from '../utils/workbench-idle-caption'
+import { shouldApplyWorkspaceFsChange } from './workbench-path.util'
+import {
+  isMissingWorkbenchFileError,
+  isWorkbenchTabPathDeleted
+} from './workbench-tab-close.util'
 import { WorkbenchStatusBranchMenu } from './WorkbenchStatusBranchMenu'
 import { useDismissOnOutsideClick } from './GitWorkbenchMenus'
 import workbenchMascot from './assets/workbench-mascot.png'
@@ -126,12 +131,14 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
       activeTabId,
       setActiveTabId,
       closeTab,
+      closeTabsForDeletedPath,
       reorderTabs,
       updateTabContent,
       reloadOpenFileContents,
       clearTabScrollTarget
     } = tabsState
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const savePathRef = useRef<string | null>(null)
     const markdownEditorRef = useRef<WorkbenchEditorSelectionHandle>(null)
     const gitDiffEditorRef = useRef<WorkbenchEditorSelectionHandle>(null)
     const mergeDiffEditorRef = useRef<WorkbenchEditorSelectionHandle>(null)
@@ -238,11 +245,36 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
         onTabContentChange?.(tabId, content, relativePath)
         if (!folderRoot) return
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        savePathRef.current = relativePath
         saveTimerRef.current = setTimeout(() => {
+          savePathRef.current = null
           void window.api.agentWorkspace.writeFile(folderRoot, relativePath, content)
         }, 600)
       },
       [folderRoot, onTabContentChange, updateTabContent]
+    )
+
+    const cancelPendingSaveForDeletedPath = useCallback((deletedPath: string) => {
+      if (
+        !savePathRef.current ||
+        !isWorkbenchTabPathDeleted(savePathRef.current, deletedPath)
+      ) {
+        return
+      }
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      savePathRef.current = null
+    }, [])
+
+    const handleDeletedPath = useCallback(
+      (deletedPath: string) => {
+        if (!deletedPath) return
+        cancelPendingSaveForDeletedPath(deletedPath)
+        closeTabsForDeletedPath(deletedPath)
+      },
+      [cancelPendingSaveForDeletedPath, closeTabsForDeletedPath]
     )
 
     useEffect(() => {
@@ -252,13 +284,26 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
           clearTimeout(saveTimerRef.current)
           saveTimerRef.current = null
         }
+        savePathRef.current = null
         void reloadOpenFileContents()
       }
-      window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
-      return () => {
-        window.removeEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+      const onEntryDeleted = (event: Event) => {
+        const relativePath = (event as CustomEvent<{ relativePath?: string }>).detail?.relativePath
+        if (relativePath) handleDeletedPath(relativePath)
       }
-    }, [folderRoot, reloadOpenFileContents])
+      const unsubscribeFs = window.api.agentWorkspace.onFsChanged?.((payload) => {
+        if (!shouldApplyWorkspaceFsChange(folderRoot, payload.folderRoot)) return
+        if (payload.kind !== 'delete') return
+        handleDeletedPath(payload.path)
+      })
+      window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+      window.addEventListener('baishou:workspace-entry-deleted', onEntryDeleted)
+      return () => {
+        unsubscribeFs?.()
+        window.removeEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+        window.removeEventListener('baishou:workspace-entry-deleted', onEntryDeleted)
+      }
+    }, [folderRoot, handleDeletedPath, reloadOpenFileContents])
 
     const handleTabMouseDown = useCallback(
       (event: React.MouseEvent, tabId: string, closable: boolean) => {
@@ -481,7 +526,11 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
           ) : activeTab.loading ? (
             <p className={styles.status}>{t('workbench.loading_file', '正在加载文件…')}</p>
           ) : activeTab.error ? (
-            <p className={styles.error}>{t('workbench.load_file_failed', '无法加载文件')}</p>
+            <p className={styles.missingFile}>
+              {isMissingWorkbenchFileError(activeTab.error)
+                ? t('workbench.file_not_found', '文件不存在')
+                : t('workbench.load_file_failed', '无法加载文件')}
+            </p>
           ) : activeTab.kind === 'git-diff' && activeTab.loading ? (
             <p className={styles.status}>{t('workbench.loading_diff', '正在加载 diff…')}</p>
           ) : activeTab.kind === 'git-diff' &&
