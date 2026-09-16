@@ -117,6 +117,36 @@ export const agentWorkspaceApi = {
     ipcRenderer.invoke('agent-workspace:pin-session', sessionId, isPinned),
   deleteSession: (sessionId: string): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('agent-workspace:delete-session', sessionId),
+  watchFolder: (folderRoot: string): Promise<boolean> =>
+    ipcRenderer.invoke('agent-workspace:watch-folder', folderRoot),
+  unwatchFolder: (folderRoot: string): Promise<boolean> =>
+    ipcRenderer.invoke('agent-workspace:unwatch-folder', folderRoot),
+  onFsChanged: (
+    callback: (payload: {
+      folderRoot?: string
+      sessionId?: string
+      path: string
+      kind: 'create' | 'modify' | 'delete' | 'rename'
+      previousPath?: string
+    }) => void
+  ): (() => void) => {
+    const handler = (
+      _: unknown,
+      payload: {
+        folderRoot?: string
+        sessionId?: string
+        path: string
+        kind: 'create' | 'modify' | 'delete' | 'rename'
+        previousPath?: string
+      }
+    ) => {
+      callback(payload)
+    }
+    ipcRenderer.on('agent-workspace:fs-changed', handler)
+    return () => {
+      ipcRenderer.removeListener('agent-workspace:fs-changed', handler)
+    }
+  },
   chat: (params: {
     sessionId: string
     text: string
