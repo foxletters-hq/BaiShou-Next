@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveGlobalGraphModelIds } from '../global-graph-model.util'
-import { buildMemoryReadinessRows } from '../memory-readiness.util'
+import { buildMemoryReadinessRows, memoryReadinessNeedsBelowTitle } from '../memory-readiness.util'
 
 const EMBEDDED = {
   globalEmbeddingProviderId: 'openai',
@@ -76,5 +76,50 @@ describe('buildMemoryReadinessRows', () => {
       pendingGraphCount: 0
     })
     expect(rows[1]?.modelId).toBe(resolveGlobalGraphModelIds(models).modelId)
+  })
+})
+
+describe('memoryReadinessNeedsBelowTitle', () => {
+  const readyRows = buildMemoryReadinessRows({
+    globalModels: EMBEDDED,
+    ragConfig: { ragEnabled: true },
+    unindexedDiaryCount: 0,
+    pendingGraphCount: 0
+  })
+  const pendingRows = buildMemoryReadinessRows({
+    globalModels: EMBEDDED,
+    ragConfig: { ragEnabled: true },
+    unindexedDiaryCount: 3,
+    pendingGraphCount: 0
+  })
+
+  it('keeps the ready badge on the title row when visible rows are ready', () => {
+    expect(
+      memoryReadinessNeedsBelowTitle(readyRows, { omit: ['extract', 'embedding', 'graph'] })
+    ).toBe(false)
+  })
+
+  it('moves pending or indexing status below the title', () => {
+    expect(
+      memoryReadinessNeedsBelowTitle(pendingRows, { omit: ['extract', 'embedding', 'graph'] })
+    ).toBe(true)
+    expect(
+      memoryReadinessNeedsBelowTitle(readyRows, {
+        omit: ['extract', 'embedding', 'graph'],
+        indexing: true
+      })
+    ).toBe(true)
+  })
+
+  it('ignores omitted pending rows', () => {
+    const graphPending = buildMemoryReadinessRows({
+      globalModels: EMBEDDED,
+      ragConfig: { ragEnabled: true },
+      unindexedDiaryCount: 0,
+      pendingGraphCount: 2
+    })
+    expect(
+      memoryReadinessNeedsBelowTitle(graphPending, { omit: ['extract', 'embedding', 'graph'] })
+    ).toBe(false)
   })
 })

@@ -9,7 +9,9 @@ export type MemoryReadinessState = 'ready' | 'missing' | 'blocked' | 'pending'
 export type MemoryReadinessInput = {
   globalModels: Partial<GlobalModelsConfig> | null
   ragConfig: Pick<RagConfig, 'ragEnabled'> | null
-  unindexedDiaryCount: number
+  /** 四分项待嵌入合计；兼容旧调用方可传 unindexedDiaryCount */
+  pendingEmbedCount?: number
+  unindexedDiaryCount?: number
   pendingGraphCount: number
 }
 
@@ -39,7 +41,7 @@ export function buildMemoryReadinessRows(input: MemoryReadinessInput): MemoryRea
   const extractConfigured = hasGraphModelConfigured(input.globalModels)
   const extractIds = resolveGlobalGraphModelIds(input.globalModels)
   const ragEnabled = isRagMemoryEnabled(input.ragConfig)
-  const unindexed = nonNegativeCount(input.unindexedDiaryCount)
+  const unindexed = nonNegativeCount(input.pendingEmbedCount ?? input.unindexedDiaryCount ?? 0)
   const pendingGraph = nonNegativeCount(input.pendingGraphCount)
   const embeddingModelId = input.globalModels?.globalEmbeddingModelId?.trim() || undefined
 
@@ -71,4 +73,17 @@ export function isEmbeddingConfiguredForMemory(
   models: Partial<GlobalModelsConfig> | null | undefined
 ): boolean {
   return isEmbeddingModelConfigured(models)
+}
+
+/** 可见行尚未就绪或正在索引时，状态条换到标题下方，避免挤在标题行里。 */
+export function memoryReadinessNeedsBelowTitle(
+  rows: MemoryReadinessRow[],
+  options?: {
+    omit?: MemoryReadinessRowId[]
+    indexing?: boolean
+  }
+): boolean {
+  if (options?.indexing) return true
+  const hidden = new Set(options?.omit ?? [])
+  return rows.some((row) => !hidden.has(row.id) && row.state !== 'ready')
 }

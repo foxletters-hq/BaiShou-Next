@@ -1,4 +1,4 @@
-import { coerceDiaryCalendarDate, formatLocalDate } from './date.utils'
+import { coerceDiaryCalendarDate, formatLocalDate, parseDateStr } from './date.utils'
 import { logger } from './logger'
 import { sha256Pure } from './sha256-pure'
 
@@ -82,6 +82,54 @@ export function parseDiaryEmbeddingSourceId(
   }
 }
 
+/**
+ * 日记待嵌入检测行。
+ * `contentHash` 必须是正文 `hashEmbedSourceContent`，不能用 journals_index.content_hash（整份 Markdown 的 MD5）。
+ */
+export interface DiaryEmbedDetectionRow {
+  id: number
+  date: Date
+  updatedAt?: Date
+  contentHash: string
+}
+
+/** 从影子索引瘦行生成检测行：只哈希 raw_content 正文，忽略文件级 content_hash。 */
+export function toDiaryEmbedDetectionRow(input: {
+  id: number
+  date: string | Date
+  updatedAt?: string | Date | null
+  rawContent?: string | null
+}): DiaryEmbedDetectionRow {
+  const date =
+    typeof input.date === 'string' ? parseDateStr(String(input.date).split('T')[0]!) : input.date
+  const updatedAt = input.updatedAt
+    ? input.updatedAt instanceof Date
+      ? input.updatedAt
+      : new Date(input.updatedAt)
+    : undefined
+  return {
+    id: input.id,
+    date,
+    updatedAt: updatedAt && !Number.isNaN(updatedAt.getTime()) ? updatedAt : undefined,
+    contentHash: hashEmbedSourceContent(input.rawContent ?? '')
+  }
+}
+
+export function countPendingMemoriesAgainstLedger(
+  liveRows: Array<{ id: string; content: string }>,
+  ledgerBySourceId: Map<string, { contentHash: string; status: string }>
+): number {
+  let pending = 0
+  for (const row of liveRows) {
+    const hash = hashEmbedSourceContent(row.content)
+    const ledger = ledgerBySourceId.get(row.id)
+    if (!ledger || ledger.status !== 'embedded' || ledger.contentHash.trim() !== hash) {
+      pending += 1
+    }
+  }
+  return pending
+}
+
 /** 筛选尚未嵌入或日记内容已更新、需重新嵌入的条目 */
 export function filterUnindexedDiaries<
   T extends { id: unknown; updatedAt?: Date; contentHash?: string }
@@ -161,7 +209,7 @@ export function isDiaryRagEntry(sourceType?: string): boolean {
  * 覆盖掉这次手改，而且账本的内容哈希会停在旧值。
  */
 export function isRagEntryEditable(sourceType?: string): boolean {
-  return !isDiaryRagEntry(sourceType)
+  return !isDiaryRagEntry(sourceType) && sourceType !== 'graph_node'
 }
 
 type EmbedLedgerRebuildListener = () => Promise<void>
