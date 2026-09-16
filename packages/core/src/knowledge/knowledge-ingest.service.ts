@@ -1,5 +1,6 @@
 import { splitTextIntoChunks } from '@baishou/ai'
 import {
+  hashEmbedSourceContent,
   knowledgeImportProcessTargets,
   logger,
   normalizeKnowledgeImportProcessMode,
@@ -749,10 +750,32 @@ export class KnowledgeIngestService {
     return { resetSources, reclaimedEmbedJobs, droppedExtractJobs: 0 }
   }
 
+  async rebuildNotebookVectors(notebookId: string): Promise<number> {
+    const vaultId = requireVaultId(this.deps.getVaultId)
+    const sources = await this.deps.repo.listSources(notebookId)
+    await this.deps.repo.deleteChunksByNotebook(notebookId)
+    await this.deps.repo.rebuildEmbedLedger({ vaultId })
+    let queued = 0
+    for (const source of sources) {
+      if (source.status === 'stored') continue
+      if (!source.extractedTextHash && source.status === 'needs_ocr') continue
+      await this.deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
+      await this.deps.repo.enqueueIngestJob({
+        notebookId,
+        sourceId: source.id,
+        stage: 'embed',
+        vaultId: source.vaultId?.trim() || vaultId
+      })
+      queued += 1
+    }
+    return queued
+  }
+
   async rebuildIndex(notebookId: string): Promise<void> {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const sources = await this.deps.repo.listSources(notebookId)
     await this.deps.repo.deleteChunksByNotebook(notebookId)
+    await this.deps.repo.rebuildEmbedLedger({ vaultId })
     for (const source of sources) {
       if (source.status === 'stored') continue
       if (!source.extractedTextHash && source.status === 'needs_ocr') continue
@@ -774,9 +797,50 @@ export class KnowledgeIngestService {
     }
   }
 
-  async rebuildNotebookGraph(notebookId: string): Promise<void> {
+  async manageNotebookData(
+    notebookId: string,
+    input: { action: 'clear' | 'reprocess'; vector?: boolean; graph?: boolean }
+  ): Promise<{
+    action: 'clear' | 'reprocess'
+    vector: boolean
+    graph: boolean
+    sourceCount: number
+    vectorQueued: number
+    graphQueued: number
+  }> {
+    const id = String(notebookId || '').trim()
+    if (!id) throw new Error('notebookId required')
+    const vector = Boolean(input.vector)
+    const graph = Boolean(input.graph)
+    if (!vector && !graph) throw new Error('select at least one target')
+    const action = input.action === 'clear' ? 'clear' : 'reprocess'
+    const sources = await this.deps.repo.listSources(id)
+    const sourceCount = sources.length
+
+    if (action === 'clear') {
+      if (vector) {
+        const vaultId = requireVaultId(this.deps.getVaultId)
+        await this.deps.repo.deleteChunksByNotebook(id)
+        await this.deps.repo.rebuildEmbedLedger({ vaultId })
+      }
+      if (graph) {
+        for (const source of sources) {
+          await this.deps.deleteNotebookGraphSource?.({ notebookId: id, sourceId: source.id })
+        }
+        await this.deps.repo.clearNotebookGraph(id)
+      }
+      return { action, vector, graph, sourceCount, vectorQueued: 0, graphQueued: 0 }
+    }
+
+    const vectorQueued = vector ? await this.rebuildNotebookVectors(id) : 0
+    const graphQueued = graph ? await this.rebuildNotebookGraph(id) : 0
+    return { action, vector, graph, sourceCount, vectorQueued, graphQueued }
+  }
+
+  async rebuildNotebookGraph(notebookId: string): Promise<number> {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const sources = await this.deps.repo.listSources(notebookId)
+    let queued = 0
     for (const source of sources) {
       if (!source.extractedTextHash) continue
       markGraphExtractForce(source.id)
@@ -786,7 +850,9 @@ export class KnowledgeIngestService {
         stage: 'graph',
         vaultId: source.vaultId?.trim() || vaultId
       })
+      queued += 1
     }
+    return queued
   }
 
   async processExtractJob(
@@ -1004,6 +1070,9 @@ export class KnowledgeIngestService {
       result.pages
     )
     await revertIfExtractAborted(this.deps.repo, sourceId, signal)
+    if (source.extractedTextHash && source.extractedTextHash !== textHash) {
+      await this.deps.repo.deleteEmbedLedgerBySource(sourceId)
+    }
 
     const targets = takeProcessTargets(sourceId)
     const nextStatus =
@@ -1073,9 +1142,16 @@ export class KnowledgeIngestService {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
+    const chunkVaultId = source.vaultId?.trim() || vaultId
 
     const text = await this.deps.notebookManager.readExtractedText(source.notebookId, sourceId)
     if (!text?.trim()) {
+      await this.deps.repo.recordEmbedFailure({
+        vaultId: chunkVaultId,
+        sourceId,
+        lastError: 'extracted text missing',
+        chunkCount: 0
+      })
       await this.deps.repo.updateSourceStatus(sourceId, 'failed', {
         errorMessage: 'extracted text missing'
       })
@@ -1092,43 +1168,62 @@ export class KnowledgeIngestService {
     const modelId = embeddingCfg?.getModelId() ?? 'mock'
     const chunks = splitTextIntoChunks(text)
     let charCursor = 0
-    const chunkVaultId = source.vaultId?.trim() || vaultId
+    let lastDimension = 0
 
-    for (const chunk of chunks) {
-      let vector: number[]
-      if (this.deps.embedText) {
-        vector = await this.deps.embedText(chunk.text, modelId)
-      } else {
-        const provider = await embeddingCfg!.getProviderInstance()
-        if (!provider) throw new Error('embedding provider unavailable')
-        const { embed } = await import('ai')
-        const aiModel = provider.getEmbeddingModel(modelId) as never
-        const { embedding } = await embed({ model: aiModel, value: chunk.text })
-        vector = Array.from(embedding)
+    try {
+      for (const chunk of chunks) {
+        let vector: number[]
+        if (this.deps.embedText) {
+          vector = await this.deps.embedText(chunk.text, modelId)
+        } else {
+          const provider = await embeddingCfg!.getProviderInstance()
+          if (!provider) throw new Error('embedding provider unavailable')
+          const { embed } = await import('ai')
+          const aiModel = provider.getEmbeddingModel(modelId) as never
+          const { embedding } = await embed({ model: aiModel, value: chunk.text })
+          vector = Array.from(embedding)
+        }
+        lastDimension = vector.length
+
+        const offset = text.indexOf(chunk.text, charCursor)
+        const resolvedOffset = offset >= 0 ? offset : charCursor
+        charCursor = resolvedOffset + chunk.text.length
+
+        await this.deps.insertChunk({
+          chunkId: `${sourceId}_${chunk.index}`,
+          notebookId: source.notebookId,
+          sourceId,
+          chunkIndex: chunk.index,
+          chunkText: chunk.text,
+          metadataJson: JSON.stringify({
+            offset: resolvedOffset,
+            len: chunk.text.length,
+            chunker: 'tiktoken-1024-128'
+          }),
+          embedding: vector,
+          modelId,
+          vaultId: chunkVaultId
+        })
       }
 
-      const offset = text.indexOf(chunk.text, charCursor)
-      const resolvedOffset = offset >= 0 ? offset : charCursor
-      charCursor = resolvedOffset + chunk.text.length
+      await this.deps.repo.deleteChunksBySourceFromIndex(sourceId, chunks.length)
 
-      await this.deps.insertChunk({
-        chunkId: `${sourceId}_${chunk.index}`,
-        notebookId: source.notebookId,
+      await this.deps.repo.recordEmbedded({
+        vaultId: chunkVaultId,
         sourceId,
-        chunkIndex: chunk.index,
-        chunkText: chunk.text,
-        metadataJson: JSON.stringify({
-          offset: resolvedOffset,
-          len: chunk.text.length,
-          chunker: 'tiktoken-1024-128'
-        }),
-        embedding: vector,
+        contentHash: hashEmbedSourceContent(text),
+        chunkCount: chunks.length,
         modelId,
-        vaultId: chunkVaultId
+        dimension: lastDimension
       })
+    } catch (error) {
+      await this.deps.repo.recordEmbedFailure({
+        vaultId: chunkVaultId,
+        sourceId,
+        lastError: error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500)
+      })
+      throw error
     }
-
-    await this.deps.repo.deleteChunksBySourceFromIndex(sourceId, chunks.length)
 
     const pageCount = source.pageCount
     const textPageCount = source.textPageCount

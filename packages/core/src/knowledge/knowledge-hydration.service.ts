@@ -1,5 +1,6 @@
 import { splitTextIntoChunks } from '@baishou/ai'
 import {
+  hashEmbedSourceContent,
   logger,
   notebookCoverImageCandidates,
   normalizeNotebookCoverIcon,
@@ -37,6 +38,8 @@ export interface KnowledgeHydrationDeps {
   /** 有则按 extract-state 差集排 graph job；缺省时有正文就排 */
   graphRaw?: NotebookGraphRawManager
   graphIndex?: Pick<NotebookGraphIndexService, 'syncPendingIndex'>
+  currentEmbeddingModelId?: () => string
+  currentEmbeddingDimension?: () => number
 }
 
 /**
@@ -49,7 +52,7 @@ export interface KnowledgeHydrationDeps {
 export class KnowledgeHydrationService {
   constructor(private readonly deps: KnowledgeHydrationDeps) {}
 
-  async hydrate(): Promise<KnowledgeHydrationResult> {
+  async hydrate(options?: { embedMissing?: boolean }): Promise<KnowledgeHydrationResult> {
     const vaultId = this.deps.vaultId.trim()
     if (!vaultId) {
       logger.warn('[KnowledgeHydration] skip: vaultId empty')
@@ -64,6 +67,7 @@ export class KnowledgeHydrationService {
     }
 
     const embeddingOk = this.deps.isEmbeddingConfigured()
+    const embedMissing = options?.embedMissing !== false
     let notebooksUpserted = 0
     let sourcesUpserted = 0
     let embedJobsEnqueued = 0
@@ -147,12 +151,19 @@ export class KnowledgeHydrationService {
           existing?.status,
           extracted
         )
+        const ledger = await this.deps.repo.getEmbedLedger(vaultId, src.id)
         const decision = resolveHydrationSourceDecision({
           existingStatus: existing?.status,
           extractedHash,
           hashChanged,
           chunkCount,
-          expectedChunkCount
+          expectedChunkCount,
+          ledger,
+          extractedContentHash: extracted.text
+            ? hashEmbedSourceContent(extracted.text)
+            : ledger?.contentHash,
+          currentModelId: this.deps.currentEmbeddingModelId?.(),
+          currentDimension: this.deps.currentEmbeddingDimension?.()
         })
 
         await this.deps.repo.upsertSource({
@@ -170,7 +181,7 @@ export class KnowledgeHydrationService {
         })
         sourcesUpserted += 1
 
-        if (decision.needsEmbed && embeddingOk) {
+        if (decision.needsEmbed && embeddingOk && embedMissing) {
           await this.deps.repo.updateSourceStatus(src.id, 'pending', {
             extractedTextHash: extractedHash,
             errorMessage: null
@@ -185,6 +196,7 @@ export class KnowledgeHydrationService {
         }
 
         if (
+          embedMissing &&
           resolveHydrationGraphDecision({
             extractedHash,
             extractState: extractStateBySource.get(src.id) ?? null
@@ -202,6 +214,19 @@ export class KnowledgeHydrationService {
     }
 
     const orphansCleaned = await this.sweepOrphans(vaultId, liveSourceIds, liveNotebookIds)
+
+    if (this.deps.graphIndex) {
+      for (const notebookId of liveNotebookIds) {
+        try {
+          await this.deps.graphIndex.syncPendingIndex({ vaultId, notebookId })
+        } catch (error) {
+          logger.warn('[KnowledgeHydration] graph pending-index failed', {
+            notebookId,
+            error: error instanceof Error ? error.message : String(error)
+          })
+        }
+      }
+    }
 
     const result: KnowledgeHydrationResult = {
       notebooksUpserted,
