@@ -12,6 +12,7 @@ interface AssistantPickerProps {
   selectedAssistantId?: string
   assistants: MockAgentAssistant[]
   onAssistantsChanged?: () => void
+  onCreatePress?: () => void
 }
 
 export const AssistantPicker: React.FC<AssistantPickerProps> = ({
@@ -20,7 +21,8 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
   onSelect,
   selectedAssistantId,
   assistants,
-  onAssistantsChanged
+  onAssistantsChanged,
+  onCreatePress
 }) => {
   const router = useRouter()
 
@@ -40,7 +42,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
         onAssistantsChanged?.()
       }}
       onSettingsPress={openAssistants}
-      onCreatePress={openAssistants}
+      onCreatePress={onCreatePress ?? openAssistants}
     />
   )
 }

@@ -28,6 +28,7 @@ import {
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
 import type { ToolRegistry, ToolDiarySearcher, AIProviderRegistry, IAIProvider } from '@baishou/ai'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
+import { applyMobileSessionReasoningEffort } from '../../services/mobile-reasoning-effort-session'
 
 export function createStartAgentChat(deps: {
   agentService: AgentSessionService
@@ -54,6 +55,7 @@ export function createStartAgentChat(deps: {
       providerId?: string
       modelId?: string
       searchMode?: boolean
+      reasoningEffort?: string
       abortSignal?: AbortSignal
       userMessageId?: string
       skipUserMessageRecording?: boolean
@@ -88,10 +90,13 @@ export function createStartAgentChat(deps: {
         resolveAssistantContextWindow(sessionId, runtime.sessionRepo, runtime.assistantManager),
         resolveAssistantEmojiPrefs(sessionId, runtime.sessionRepo, runtime.assistantManager)
       ])
-      const userConfig = await buildMobileStreamUserConfig(runtime.settingsManager, searchMode, {
-        assistantContextWindow,
-        assistantEmojiPrefs
-      })
+      const userConfig = applyMobileSessionReasoningEffort(
+        (await buildMobileStreamUserConfig(runtime.settingsManager, searchMode, {
+          assistantContextWindow,
+          assistantEmojiPrefs
+        })) as Record<string, unknown>,
+        overrides?.reasoningEffort
+      ) as Awaited<ReturnType<typeof buildMobileStreamUserConfig>>
 
       const embeddingProviderId = globalModels?.globalEmbeddingProviderId
       const embeddingModelId = globalModels?.globalEmbeddingModelId

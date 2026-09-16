@@ -1,6 +1,8 @@
 import {
   mapAttachmentsFromParts,
+  normalizeFileCiteRefs,
   normalizePartData,
+  normalizeSkillCiteRefs,
   resolveAttachmentAbsolutePath,
   unwrapMessageMetadataForDisplay
 } from '@baishou/shared'
@@ -10,6 +12,11 @@ import { resolveMobileAttachmentFilePath } from './mobile-attachment-ui.util'
 
 function textFromPartData(data: unknown): string {
   const normalized = normalizePartData(data)
+  const display =
+    typeof normalized.displayText === 'string' && normalized.displayText.trim()
+      ? normalized.displayText
+      : null
+  if (display) return unwrapMessageMetadataForDisplay(display)
   if (typeof normalized.text === 'string') {
     return unwrapMessageMetadataForDisplay(normalized.text)
   }
@@ -17,6 +24,24 @@ function textFromPartData(data: unknown): string {
     return unwrapMessageMetadataForDisplay(normalized.content)
   }
   return ''
+}
+
+function citesFromParts(parts: Array<{ type: string; data?: unknown }>) {
+  for (const part of parts) {
+    if (part.type !== 'text') continue
+    const data = normalizePartData(part.data)
+    const skillRefs = normalizeSkillCiteRefs(
+      data.skillRefs as Array<{ command?: string; content?: string }> | undefined
+    )
+    const fileRefs = normalizeFileCiteRefs(data.fileRefs)
+    if (skillRefs.length || fileRefs.length) {
+      return {
+        skillRefs: skillRefs.length ? skillRefs : undefined,
+        fileRefs: fileRefs.length ? fileRefs : undefined
+      }
+    }
+  }
+  return {}
 }
 
 /** local://（桌面）或裸路径 → React Native Image 可用的 file:// */
@@ -130,6 +155,7 @@ export function mapSessionMessageFromDb(
     cacheWriteInputTokens: msg.cacheWriteInputTokens,
     costMicros: msg.costMicros,
     compactionRecord,
-    parts: parts.length > 0 ? (stripBinaryFromParts(parts) as AgentMessagePart[]) : undefined
+    parts: parts.length > 0 ? (stripBinaryFromParts(parts) as AgentMessagePart[]) : undefined,
+    ...citesFromParts(parts)
   }
 }
