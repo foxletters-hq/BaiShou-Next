@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import styles from './ChatAppBar.module.css'
 import { useTranslation } from 'react-i18next'
-import { Trash2, Database, Settings, Bot, MoreVertical, Edit2 } from 'lucide-react'
+import { Trash2, Database, Settings, Bot, Edit2 } from 'lucide-react'
 
 export interface AgentProfile {
   name: string
@@ -31,7 +31,7 @@ export const ChatAppBar: React.FC<ChatAppBarProps> = ({
   const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(profile.name)
-  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [, setShowMoreMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 

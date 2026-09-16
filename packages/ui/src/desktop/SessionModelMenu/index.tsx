@@ -122,7 +122,11 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
 
   const effortLabel = (opt: ReasoningEffortSetting) => formatReasoningEffortLabel(opt)
 
-  const formatPreview = (preview?: ModelReasoningPreview, providerType?: string, modelId?: string) => {
+  const formatPreview = (
+    preview?: ModelReasoningPreview,
+    providerType?: string,
+    modelId?: string
+  ) => {
     const ctl = getReasoningControlForModel(modelId || '', providerType)
     const effort = normalizeReasoningEffortSetting(preview?.effort ?? 'auto')
     if (ctl.mode === 'effort' && ctl.efforts?.length) {
@@ -274,9 +278,7 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
                           <span className={styles.modelIdText}>
                             <span className={styles.modelIdPrimary}>{modelId}</span>
                             <ModelVisionBadge modelId={modelId} providerKey={provider.id} />
-                            {suffix ? (
-                              <span className={styles.modelIdEffort}>{suffix}</span>
-                            ) : null}
+                            {suffix ? <span className={styles.modelIdEffort}>{suffix}</span> : null}
                           </span>
                           {isSelected ? (
                             <span className={styles.check} aria-hidden>
@@ -313,30 +315,31 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
         </div>
 
         {showReasoningPanel ? (
-        <div className={`${styles.panel} ${styles.effortPanel}`}>
-          <div className={styles.sectionLabel}>
-            {t('agent.reasoning.effort_section', '思考强度')}
+          <div className={`${styles.panel} ${styles.effortPanel}`}>
+            <div className={styles.sectionLabel}>
+              {t('agent.reasoning.effort_section', '思考强度')}
+            </div>
+            {effortOptions.map((opt) => {
+              const selected =
+                opt === effortValue || (opt === 'auto' && !effortOptions.includes(effortValue))
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`${styles.row} ${selected ? styles.rowActive : ''}`}
+                  disabled={closing}
+                  onClick={() => onReasoningEffortChange?.(opt)}
+                >
+                  <span className={styles.rowLabel}>{effortLabel(opt)}</span>
+                  {selected ? (
+                    <span className={styles.check} aria-hidden>
+                      <Check size={14} />
+                    </span>
+                  ) : null}
+                </button>
+              )
+            })}
           </div>
-          {effortOptions.map((opt) => {
-            const selected = opt === effortValue || (opt === 'auto' && !effortOptions.includes(effortValue))
-            return (
-              <button
-                key={opt}
-                type="button"
-                className={`${styles.row} ${selected ? styles.rowActive : ''}`}
-                disabled={closing}
-                onClick={() => onReasoningEffortChange?.(opt)}
-              >
-                <span className={styles.rowLabel}>{effortLabel(opt)}</span>
-                {selected ? (
-                  <span className={styles.check} aria-hidden>
-                    <Check size={14} />
-                  </span>
-                ) : null}
-              </button>
-            )
-          })}
-        </div>
         ) : null}
       </div>
     </>,

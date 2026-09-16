@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 上下文链面板：列表、选中、滚动与压缩同文件 */
 import i18n from 'i18next'
 import React from 'react'
 import { ListTree } from 'lucide-react'
@@ -49,7 +50,7 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
   compressedContent,
   systemPrompt,
   sessionId,
-  onCompressionSummaryUpdated,
+  onCompressionSummaryUpdated: _onCompressionSummaryUpdated,
   recompressBusy = false,
   recompressError = null,
   recompressStreamText = '',
@@ -133,6 +134,8 @@ export const ContextChainPanel: React.FC<ContextChainPanelProps> = ({
       const targetTop = header.offsetTop + header.offsetHeight - pane.clientHeight + 8
       pane.scrollTop = Math.max(0, targetTop)
     }
+    // view 每轮都是新对象，只跟 resolveDefaultActiveRound 走
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelActive, view.resolveDefaultActiveRound])
 
   React.useLayoutEffect(() => {

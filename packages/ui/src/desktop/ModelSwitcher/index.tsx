@@ -12,8 +12,7 @@ import {
   Banknote,
   Settings,
   Blocks,
-  Sparkles,
-  PlusCircle
+  Sparkles
 } from 'lucide-react'
 
 interface ModelSwitcherProps {
