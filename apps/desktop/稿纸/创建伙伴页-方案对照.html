@@ -1,0 +1,941 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>创建伙伴页 · 方案对照</title>
+    <style>
+      :root {
+        --color-primary: #5ba8f5;
+        --color-primary-dark: #3a88d5;
+        --color-primary-light: #e0f0fe;
+        --bg-app: #fafafa;
+        --bg-surface: #ffffff;
+        --bg-surface-lowest: #f8fafc;
+        --bg-surface-high: #f0f2f5;
+        --bg-surface-normal: #eaecef;
+        --bg-overlay: rgba(0, 0, 0, 0.35);
+        --border-muted: rgba(0, 0, 0, 0.08);
+        --border-card: rgba(0, 0, 0, 0.12);
+        --border-control: rgba(0, 0, 0, 0.08);
+        --text-primary: #1a1c23;
+        --text-secondary: #4a5568;
+        --text-tertiary: #a0aec0;
+        --font: 'Noto Sans SC', 'Noto Sans', system-ui, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family: var(--font);
+        color: var(--text-primary);
+        background: #d7dde6;
+      }
+
+      body {
+        min-height: 100vh;
+      }
+
+      .stage {
+        min-height: 100vh;
+        background:
+          radial-gradient(1200px 480px at 20% -10%, rgba(91, 168, 245, 0.18), transparent 55%),
+          linear-gradient(180deg, #e8eef5 0%, #d7dde6 100%);
+        padding: 20px 20px 32px;
+      }
+
+      .chooser {
+        max-width: 980px;
+        margin: 0 auto 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .chooser h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .chooser p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .tabs button {
+        border: 1px solid var(--border-card);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--text-primary);
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+      }
+
+      .tabs button[aria-selected='true'] {
+        background: #fff;
+        border-color: var(--color-primary);
+        color: var(--color-primary-dark);
+        box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.16);
+      }
+
+      .note {
+        min-height: 40px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .overlay {
+        max-width: 980px;
+        margin: 0 auto;
+        background: var(--bg-overlay);
+        backdrop-filter: blur(16px);
+        border-radius: 20px;
+        padding: 28px 16px 20px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .modal {
+        width: min(820px, 100%);
+        height: min(640px, 78vh);
+        background: var(--bg-surface-lowest);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow:
+          0 24px 64px rgba(0, 0, 0, 0.12),
+          0 0 0 1px var(--border-card) inset;
+        border-radius: 16px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background-color: #fff;
+      }
+
+      .modal.wide {
+        width: min(960px, 100%);
+      }
+
+      .bar {
+        height: 56px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border-muted);
+        flex-shrink: 0;
+      }
+
+      .icon {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        color: var(--text-primary);
+        display: grid;
+        place-items: center;
+      }
+
+      .bar h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .body {
+        flex: 1;
+        overflow: auto;
+        padding: 16px 20px 20px;
+        background: var(--bg-app);
+      }
+
+      .footer {
+        padding: 12px 20px 16px;
+        border-top: 1px solid var(--border-muted);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        background: var(--bg-app);
+        flex-shrink: 0;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid var(--border-muted);
+        border-radius: 16px;
+        padding: 16px;
+      }
+
+      .card + .card {
+        margin-top: 16px;
+      }
+
+      .avatar-block {
+        display: grid;
+        place-items: center;
+        padding: 18px 0 8px;
+      }
+
+      .avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 28px;
+        background:
+          linear-gradient(180deg, #f3f6fb, #e7edf5),
+          #e8eef5;
+        border: 1px solid var(--border-muted);
+        display: grid;
+        place-items: center;
+        color: #7b8798;
+        font-size: 12px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .avatar img,
+      .avatar svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .kind {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        background: var(--bg-surface-normal);
+        border-radius: 14px;
+        padding: 4px;
+      }
+
+      .kind button {
+        border: none;
+        background: transparent;
+        border-radius: 12px;
+        padding: 10px 8px;
+        font-family: inherit;
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .kind button.active {
+        background: #fff;
+        color: var(--color-primary-dark);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+
+      .hint {
+        margin: 8px 0 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        line-height: 1.5;
+      }
+
+      label.field {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        margin: 14px 0 8px;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border-control);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font: inherit;
+        font-size: 14px;
+        background: #fff;
+        color: var(--text-primary);
+        resize: none;
+      }
+
+      textarea {
+        min-height: 92px;
+      }
+
+      textarea.prompt {
+        min-height: 160px;
+      }
+
+      .btn {
+        height: 40px;
+        padding: 0 18px;
+        border-radius: 12px;
+        border: 1px solid var(--border-control);
+        background: #fff;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .btn.primary {
+        background: #dbe7f3;
+        border-color: transparent;
+        color: #5b6b7c;
+      }
+
+      .btn.primary.ready {
+        background: var(--color-primary);
+        color: #fff;
+      }
+
+      .ghost {
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        height: 100%;
+        min-height: 0;
+      }
+
+      .split-left,
+      .split-right {
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .split-left {
+        padding: 18px 16px 16px;
+        border-right: 1px solid var(--border-muted);
+        background: #fff;
+      }
+
+      .split-right {
+        padding: 18px 18px 16px;
+        background: var(--bg-app);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .kind-cards {
+        display: grid;
+        gap: 8px;
+      }
+
+      .kind-card {
+        text-align: left;
+        border: 1px solid var(--border-muted);
+        background: #fff;
+        border-radius: 14px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .kind-card.active {
+        border-color: var(--color-primary);
+        background: #f4f9ff;
+        box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.12);
+      }
+
+      .kind-card b {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 2px;
+      }
+
+      .kind-card span {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+      }
+
+      .prompt-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+      }
+
+      .prompt-head h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .prompt-head span {
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+
+      textarea.main-prompt {
+        flex: 1;
+        min-height: 280px;
+        background: #fff;
+      }
+
+      .more {
+        margin-top: 12px;
+        border: 1px dashed var(--border-card);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: #fff;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .birth {
+        max-width: 520px;
+        margin: 0 auto;
+      }
+
+      .birth .hero {
+        text-align: center;
+        margin-bottom: 16px;
+      }
+
+      .birth .hero h3 {
+        margin: 10px 0 4px;
+        font-size: 18px;
+      }
+
+      .birth .hero p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .avatar.small {
+        width: 88px;
+        height: 88px;
+        border-radius: 22px;
+        margin: 0 auto;
+      }
+
+      .change {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--color-primary-dark);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .steps {
+        display: flex;
+        gap: 8px;
+        padding: 0 20px 0;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+
+      .steps b {
+        color: var(--text-primary);
+      }
+
+      .choice-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        height: 100%;
+        align-content: center;
+      }
+
+      .choice {
+        border: 1px solid var(--border-muted);
+        background: #fff;
+        border-radius: 18px;
+        padding: 28px 20px;
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+        min-height: 180px;
+      }
+
+      .choice:hover,
+      .choice.active {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.12);
+      }
+
+      .choice .ico {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: var(--color-primary-light);
+        color: var(--color-primary-dark);
+        margin-bottom: 14px;
+      }
+
+      .choice h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+
+      .choice p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      .tpl-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .tpl {
+        border: 1px solid var(--border-muted);
+        background: #fff;
+        border-radius: 16px;
+        padding: 16px;
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
+        min-height: 132px;
+      }
+
+      .tpl:hover,
+      .tpl.active {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(91, 168, 245, 0.12);
+      }
+
+      .tpl b {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .tpl span {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      @media (max-width: 860px) {
+        .split {
+          grid-template-columns: 1fr;
+        }
+        .split-left {
+          border-right: none;
+          border-bottom: 1px solid var(--border-muted);
+        }
+        .choice-grid,
+        .tpl-grid,
+        .row-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="chooser">
+        <h1>创建伙伴页 · 方案对照</h1>
+        <p>下面四份都是可点击的稿，不是最终实现。点上方切换，看自己更想要哪一种创建方式。</p>
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" aria-selected="true" data-ver="now">现在</button>
+          <button type="button" role="tab" aria-selected="false" data-ver="split">左右分开</button>
+          <button type="button" role="tab" aria-selected="false" data-ver="birth">先出生</button>
+          <button type="button" role="tab" aria-selected="false" data-ver="wizard">分步</button>
+          <button type="button" role="tab" aria-selected="false" data-ver="tpl">先选起步</button>
+        </div>
+        <p class="note" id="note">现在：头像、类型、名称、简介、提示词从上到下排成一张设置表。</p>
+      </div>
+
+      <div class="overlay">
+        <section class="modal" id="frame" data-ver="now"></section>
+      </div>
+    </div>
+
+    <template id="tpl-now">
+      <div class="bar">
+        <button class="icon" aria-label="返回">←</button>
+        <h2>创建伙伴</h2>
+      </div>
+      <div class="body">
+        <div class="card">
+          <div class="avatar-block">
+            <div class="avatar" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="kind" data-kind>
+            <button type="button" class="active">亲密伙伴</button>
+            <button type="button">工作伙伴</button>
+          </div>
+          <p class="hint">可编辑日记、检索伙伴记忆，适合日常陪伴与记录生活。</p>
+          <div style="font-weight: 600; margin-top: 16px">伙伴信息</div>
+          <label class="field">伙伴名称</label>
+          <input placeholder="输入名称" />
+          <label class="field">简介</label>
+          <textarea placeholder="简短描述伙伴的用途..."></textarea>
+          <label class="field">系统提示词</label>
+          <textarea class="prompt" placeholder="定义伙伴的角色、行为和回复风格..."></textarea>
+        </div>
+      </div>
+      <div class="footer">
+        <button class="btn primary">保存</button>
+      </div>
+    </template>
+
+    <template id="tpl-split">
+      <div class="bar">
+        <button class="icon" aria-label="返回">←</button>
+        <h2>创建伙伴</h2>
+      </div>
+      <div class="split" style="flex: 1; min-height: 0">
+        <aside class="split-left">
+          <div class="avatar small" aria-hidden="true"></div>
+          <button class="change" type="button">更换头像</button>
+          <label class="field">名称</label>
+          <input placeholder="例如：阿茶" />
+          <label class="field">类型</label>
+          <div class="kind-cards" data-kind-cards>
+            <button type="button" class="kind-card active">
+              <b>亲密伙伴</b>
+              <span>能写日记、检索伙伴记忆，适合日常陪伴。</span>
+            </button>
+            <button type="button" class="kind-card">
+              <b>工作伙伴</b>
+              <span>偏向整理与检索，适合做事时一起用。</span>
+            </button>
+          </div>
+          <label class="field">简介</label>
+          <textarea placeholder="一句话介绍这个人" style="min-height: 72px"></textarea>
+        </aside>
+        <div class="split-right">
+          <div class="prompt-head">
+            <h3>这个人会怎么说话</h3>
+            <span>这是创建时最主要的一栏</span>
+          </div>
+          <textarea
+            class="main-prompt"
+            placeholder="写下身份、语气、会做什么、不会做什么。可以先写几句，以后再改。"
+          ></textarea>
+          <details class="more">
+            <summary>更多设置：模型、上下文、压缩</summary>
+            <p class="hint">创建时可以先不填。保存后也可以在选择伙伴里改。</p>
+            <div class="row-2" style="margin-top: 10px">
+              <input placeholder="绑定模型（可选）" />
+              <input placeholder="上下文长度（可选）" />
+            </div>
+          </details>
+        </div>
+      </div>
+      <div class="footer">
+        <button class="btn primary ready">创建并保存</button>
+      </div>
+    </template>
+
+    <template id="tpl-birth">
+      <div class="bar">
+        <button class="icon" aria-label="返回">←</button>
+        <h2>创建伙伴</h2>
+      </div>
+      <div class="body">
+        <div class="birth">
+          <div class="hero">
+            <div class="avatar small" aria-hidden="true"></div>
+            <button class="change" type="button">更换头像</button>
+            <h3>先让这个人出现</h3>
+            <p>模型和记忆设置，等保存之后再改。现在只决定他是谁。</p>
+          </div>
+          <div class="kind-cards" data-kind-cards>
+            <button type="button" class="kind-card active">
+              <b>亲密伙伴</b>
+              <span>能写日记、检索伙伴记忆，适合日常陪伴。</span>
+            </button>
+            <button type="button" class="kind-card">
+              <b>工作伙伴</b>
+              <span>偏向整理与检索，适合做事时一起用。</span>
+            </button>
+          </div>
+          <label class="field">名称</label>
+          <input placeholder="输入名称" />
+          <label class="field">他会怎么说话</label>
+          <textarea class="prompt" placeholder="身份、语气、习惯。可以先写短一些。"></textarea>
+        </div>
+      </div>
+      <div class="footer">
+        <button class="ghost" type="button">稍后再写提示词</button>
+        <button class="btn primary ready">创建</button>
+      </div>
+    </template>
+
+    <template id="tpl-wizard">
+      <div class="bar">
+        <button class="icon" aria-label="返回">←</button>
+        <h2>创建伙伴</h2>
+      </div>
+      <div class="steps" id="wizard-steps">
+        <span><b>1 类型</b></span>
+        <span>2 外貌与名称</span>
+        <span>3 说话方式</span>
+      </div>
+      <div class="body" id="wizard-body"></div>
+      <div class="footer">
+        <button class="ghost" type="button" id="wizard-back">上一步</button>
+        <button class="btn primary ready" type="button" id="wizard-next">下一步</button>
+      </div>
+    </template>
+
+    <template id="tpl-tpl">
+      <div class="bar">
+        <button class="icon" aria-label="返回">←</button>
+        <h2>创建伙伴</h2>
+      </div>
+      <div class="body" id="tpl-body"></div>
+      <div class="footer" id="tpl-footer"></div>
+    </template>
+
+    <script>
+      const notes = {
+        now: '现在：头像、类型、名称、简介、提示词从上到下排成一张设置表。',
+        split: '左右分开：左边是这个人长什么样、叫什么、什么类型；右边整栏用来写他怎么说话。',
+        birth: '先出生：创建时只决定类型、名称和说话方式。模型、上下文、压缩这一页先不出现。',
+        wizard: '分步：先选类型，再填外貌和名称，最后写说话方式。每一步只问一件事。',
+        tpl: '先选起步：先点一种起始用法，再进入编辑。空白页不会一上来全是空格子。'
+      }
+
+      const frame = document.getElementById('frame')
+      const note = document.getElementById('note')
+      let wizardStep = 0
+      let tplPicked = ''
+
+      const avatarSvg = `
+        <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="120" height="120" rx="28" fill="#e8eef5"/>
+          <circle cx="60" cy="48" r="18" fill="#c5d0dc"/>
+          <path d="M28 104c6-22 22-32 32-32s26 10 32 32" fill="#c5d0dc"/>
+        </svg>`
+
+      function bindKind(root) {
+        root.querySelectorAll('[data-kind]').forEach((group) => {
+          group.querySelectorAll('button').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              group.querySelectorAll('button').forEach((b) => b.classList.remove('active'))
+              btn.classList.add('active')
+            })
+          })
+        })
+        root.querySelectorAll('[data-kind-cards]').forEach((group) => {
+          group.querySelectorAll('.kind-card').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              group.querySelectorAll('.kind-card').forEach((b) => b.classList.remove('active'))
+              btn.classList.add('active')
+            })
+          })
+        })
+      }
+
+      function paintAvatars(root) {
+        root.querySelectorAll('.avatar').forEach((el) => {
+          el.innerHTML = avatarSvg
+        })
+      }
+
+      function wizardPane(step) {
+        if (step === 0) {
+          return `
+            <div class="choice-grid">
+              <button type="button" class="choice active">
+                <div class="ico">♥</div>
+                <h3>亲密伙伴</h3>
+                <p>能写日记、检索伙伴记忆，适合日常陪伴与记录生活。</p>
+              </button>
+              <button type="button" class="choice">
+                <div class="ico">▣</div>
+                <h3>工作伙伴</h3>
+                <p>偏向整理、检索和做事，适合工作时一起用。</p>
+              </button>
+            </div>`
+        }
+        if (step === 1) {
+          return `
+            <div class="birth">
+              <div class="avatar small"></div>
+              <div style="text-align:center"><button class="change" type="button">更换头像</button></div>
+              <label class="field">名称</label>
+              <input placeholder="输入名称" />
+              <label class="field">简介（可选）</label>
+              <textarea placeholder="一句话即可"></textarea>
+            </div>`
+        }
+        return `
+          <div>
+            <div class="prompt-head">
+              <h3>他会怎么说话</h3>
+              <span>可以以后再改</span>
+            </div>
+            <textarea class="main-prompt" style="min-height:280px" placeholder="身份、语气、会做什么、不会做什么。"></textarea>
+          </div>`
+      }
+
+      function mountWizard(root) {
+        const body = root.querySelector('#wizard-body')
+        const steps = root.querySelector('#wizard-steps')
+        const next = root.querySelector('#wizard-next')
+        const back = root.querySelector('#wizard-back')
+        const labels = ['1 类型', '2 外貌与名称', '3 说话方式']
+
+        const render = () => {
+          steps.innerHTML = labels
+            .map((label, i) => (i === wizardStep ? `<span><b>${label}</b></span>` : `<span>${label}</span>`))
+            .join('')
+          body.innerHTML = wizardPane(wizardStep)
+          paintAvatars(root)
+          body.querySelectorAll('.choice').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              body.querySelectorAll('.choice').forEach((b) => b.classList.remove('active'))
+              btn.classList.add('active')
+            })
+          })
+          back.style.visibility = wizardStep === 0 ? 'hidden' : 'visible'
+          next.textContent = wizardStep === 2 ? '创建' : '下一步'
+        }
+
+        next.addEventListener('click', () => {
+          if (wizardStep < 2) {
+            wizardStep += 1
+            render()
+          }
+        })
+        back.addEventListener('click', () => {
+          if (wizardStep > 0) {
+            wizardStep -= 1
+            render()
+          }
+        })
+        render()
+      }
+
+      function tplPickGrid() {
+        return `
+          <p class="hint" style="margin-top:0">先选一种起始用法，再改名称和提示词。</p>
+          <div class="tpl-grid" style="margin-top:12px">
+            <button type="button" class="tpl" data-pick="blank"><b>从空白开始</b><span>不带入任何现成说法，全部自己写。</span></button>
+            <button type="button" class="tpl" data-pick="daily"><b>日常陪伴</b><span>先带入亲密伙伴，提示词里预留生活记录的说法。</span></button>
+            <button type="button" class="tpl" data-pick="work"><b>工作整理</b><span>先带入工作伙伴，提示词里预留整理与检索的说法。</span></button>
+            <button type="button" class="tpl" data-pick="memory"><b>记忆整理</b><span>先带入亲密伙伴，提示词里预留回忆检索的说法。</span></button>
+          </div>`
+      }
+
+      function tplForm(kind) {
+        const title = {
+          blank: '从空白开始',
+          daily: '日常陪伴',
+          work: '工作整理',
+          memory: '记忆整理'
+        }[kind]
+        const prompt = {
+          blank: '',
+          daily: '你是一位日常陪伴的伙伴。说话自然、记得生活里的小事，必要时帮我记下日记。',
+          work: '你是一位工作伙伴。先帮我把事情拆清楚，再一起检索和整理，不说空话。',
+          memory: '你是一位会整理回忆的伙伴。回答前先想有没有相关记忆，不确定就说明不确定。'
+        }[kind]
+        return `
+          <div class="birth">
+            <div class="hero">
+              <div class="avatar small"></div>
+              <button class="change" type="button">更换头像</button>
+              <h3>${title}</h3>
+              <p>起始文案可以整段改掉，保存后才会真正创建。</p>
+            </div>
+            <label class="field">名称</label>
+            <input placeholder="输入名称" />
+            <label class="field">他会怎么说话</label>
+            <textarea class="prompt">${prompt}</textarea>
+          </div>`
+      }
+
+      function mountTpl(root) {
+        const body = root.querySelector('#tpl-body')
+        const footer = root.querySelector('#tpl-footer')
+
+        const renderPick = () => {
+          tplPicked = ''
+          body.innerHTML = tplPickGrid()
+          footer.innerHTML = `<button class="btn primary" type="button" disabled>下一步</button>`
+          body.querySelectorAll('.tpl').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              body.querySelectorAll('.tpl').forEach((b) => b.classList.remove('active'))
+              btn.classList.add('active')
+              tplPicked = btn.dataset.pick
+              renderForm()
+            })
+          })
+        }
+
+        const renderForm = () => {
+          body.innerHTML = tplForm(tplPicked)
+          paintAvatars(root)
+          footer.innerHTML = `
+            <button class="ghost" type="button" id="tpl-repick">重选起步</button>
+            <button class="btn primary ready" type="button">创建</button>`
+          footer.querySelector('#tpl-repick').addEventListener('click', renderPick)
+        }
+
+        renderPick()
+      }
+
+      function show(ver) {
+        const tpl = document.getElementById(`tpl-${ver === 'tpl' ? 'tpl' : ver}`)
+        const node = tpl.content.cloneNode(true)
+        frame.innerHTML = ''
+        frame.classList.toggle('wide', ver === 'split')
+        frame.appendChild(node)
+        paintAvatars(frame)
+        bindKind(frame)
+        if (ver === 'wizard') {
+          wizardStep = 0
+          mountWizard(frame)
+        }
+        if (ver === 'tpl') mountTpl(frame)
+        note.textContent = notes[ver]
+      }
+
+      document.querySelectorAll('.tabs button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', 'false'))
+          btn.setAttribute('aria-selected', 'true')
+          show(btn.dataset.ver)
+        })
+      })
+
+      show('now')
+    </script>
+  </body>
+</html>
