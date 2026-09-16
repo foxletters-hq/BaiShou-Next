@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 编辑器主题 token 表 */
 import { EditorView } from '@codemirror/view'
 import { DIARY_EDITOR_OVERLAY_Z } from '../editorOverlayZIndex'
 import { IMAGE_SIZE_CONFIG } from '../utils/image-utils'
@@ -176,6 +177,15 @@ export const editorTheme = EditorView.baseTheme({
     userSelect: 'none',
     pointerEvents: 'none',
     verticalAlign: 'baseline'
+  },
+  '.cm-heading-mark': {
+    color: 'var(--text-tertiary)',
+    fontWeight: '500'
+  },
+  '.cm-list-number': {
+    color: 'var(--text-secondary)',
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: '500'
   },
 
   // GFM 表格 live preview
@@ -852,7 +862,8 @@ export const editorTheme = EditorView.baseTheme({
     backgroundColor: 'var(--bg-code-block, #eceef2) !important'
   },
   '.cm-line.cm-wb-properties': {
-    backgroundColor: 'color-mix(in srgb, var(--text-primary) 4%, var(--bg-surface-low, var(--bg-editor, #fff)))',
+    backgroundColor:
+      'color-mix(in srgb, var(--text-primary) 4%, var(--bg-surface-low, var(--bg-editor, #fff)))',
     padding: '4px 12px'
   },
   '.cm-line.cm-wb-properties-first': {
@@ -866,7 +877,7 @@ export const editorTheme = EditorView.baseTheme({
     borderBottomRightRadius: '8px'
   },
   '.cm-wb-property-key': {
-    color: 'var(--text-tertiary)',
+    color: 'var(--text-secondary)',
     fontWeight: '600'
   },
   '.cm-line.cm-wb-hr': {
