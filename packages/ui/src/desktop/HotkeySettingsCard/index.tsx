@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import '../shared/SettingsListTile.css'
+import { Switch } from '../Switch/Switch'
 import { ChevronDown, Keyboard, Pencil } from 'lucide-react'
 
 export interface HotkeyConfig {
@@ -198,20 +199,18 @@ export const HotkeySettingsCard: React.FC<HotkeySettingsCardProps> = ({ config, 
           </span>
         </div>
 
-        <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={config.hotkeyEnabled}
-            onChange={(e) => {
-              const checked = e.target.checked
-              onChange({ ...config, hotkeyEnabled: checked })
-              if (checked) {
-                setCollapsed(false) // Auto expand when turned ON
-              }
-            }}
-          />
-          <span className="settings-switch-slider" />
-        </label>
+        <Switch
+          checked={config.hotkeyEnabled}
+          aria-label={t('hotkey.enable_global', '启用全局快捷键唤出')}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            const checked = e.target.checked
+            onChange({ ...config, hotkeyEnabled: checked })
+            if (checked) {
+              setCollapsed(false)
+            }
+          }}
+        />
 
         <span
           className={`settings-expansion-toggle ${collapsed ? '' : 'is-open'}`}
