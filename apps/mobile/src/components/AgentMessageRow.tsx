@@ -18,6 +18,8 @@ type ChatMessage = {
   timestamp?: Date
   toolInvocations?: unknown[]
   attachments?: any[]
+  skillRefs?: Array<{ command: string; content: string }>
+  fileRefs?: unknown[]
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number
@@ -144,6 +146,8 @@ export const AgentMessageRow = React.memo(function AgentMessageRow({
           timestamp: item.timestamp,
           toolInvocations: item.toolInvocations,
           attachments: item.attachments,
+          skillRefs: item.skillRefs,
+          fileRefs: item.fileRefs as any,
           inputTokens: item.inputTokens,
           outputTokens: item.outputTokens,
           cacheReadInputTokens: item.cacheReadInputTokens,
