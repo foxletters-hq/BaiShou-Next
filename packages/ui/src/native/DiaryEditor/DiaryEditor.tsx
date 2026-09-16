@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 日记编辑器：壳层、工具栏与桥接同文件 */
 import { useTranslation } from 'react-i18next'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
