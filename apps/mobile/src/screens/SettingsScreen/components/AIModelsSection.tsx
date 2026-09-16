@@ -18,19 +18,23 @@ import {
   filterProvidersForModelSwitcher,
   type ModelSwitcherProvider
 } from '@baishou/shared'
-import { ensureGlobalGraphModelsAligned, getDefaultGlobalModels } from '@baishou/store'
+import { getDefaultGlobalModels } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { ProviderBrandIcon } from './ProviderBrandIcon'
 
-type ModelSelectorKey = 'globalDialogue' | 'globalNaming' | 'globalSummary' | 'globalEmbedding'
+type ModelSelectorKey =
+  | 'globalDialogue'
+  | 'globalGraph'
+  | 'globalNaming'
+  | 'globalSummary'
+  | 'globalEmbedding'
 
 const MODEL_FIELD_META: Array<{
-  key: ModelSelectorKey | 'globalGraph'
+  key: ModelSelectorKey
   labelKey: string
   tooltipKey: string
   icon: LucideIcon
   forEmbedding: boolean
-  readOnly?: boolean
 }> = [
   {
     key: 'globalSummary',
@@ -51,8 +55,7 @@ const MODEL_FIELD_META: Array<{
     labelKey: 'ai_config.graph_model_title',
     tooltipKey: 'settings.tooltip_graph_model',
     icon: Waypoints,
-    forEmbedding: false,
-    readOnly: true
+    forEmbedding: false
   },
   {
     key: 'globalNaming',
@@ -99,12 +102,10 @@ export const AIModelsSection: React.FC = () => {
         const globalModelsConfig =
           (await services.settingsManager.get<GlobalModelsConfig>('global_models')) ||
           ({} as GlobalModelsConfig)
-        setGlobalModels(
-          ensureGlobalGraphModelsAligned({
-            ...getDefaultGlobalModels(),
-            ...globalModelsConfig
-          })
-        )
+        setGlobalModels({
+          ...getDefaultGlobalModels(),
+          ...globalModelsConfig
+        })
       } catch (e) {
         console.warn('Load models config failed', e)
       }
@@ -167,11 +168,6 @@ export const AIModelsSection: React.FC = () => {
       [providerKey]: providerId,
       [modelKey]: modelId
     }
-    if (activeSelector === 'globalDialogue') {
-      // 图关系抽取始终跟随对话模型
-      newConfig.globalGraphProviderId = providerId
-      newConfig.globalGraphModelId = modelId
-    }
     await handleSaveGlobalModels(newConfig)
     setActiveSelector(null)
   }
@@ -195,12 +191,8 @@ export const AIModelsSection: React.FC = () => {
     <View style={styles.section}>
       {MODEL_FIELD_META.map((field) => {
         const RouteIcon = field.icon
-        const displayProviderKey = (
-          field.readOnly ? 'globalDialogueProviderId' : `${field.key}ProviderId`
-        ) as keyof GlobalModelsConfig
-        const displayModelKey = (
-          field.readOnly ? 'globalDialogueModelId' : `${field.key}ModelId`
-        ) as keyof GlobalModelsConfig
+        const displayProviderKey = `${field.key}ProviderId` as keyof GlobalModelsConfig
+        const displayModelKey = `${field.key}ModelId` as keyof GlobalModelsConfig
         const isSet = Boolean(globalModels[displayProviderKey] && globalModels[displayModelKey])
         const selectedProvider = isSet
           ? providers.find((p) => p.id === globalModels[displayProviderKey])
@@ -239,13 +231,10 @@ export const AIModelsSection: React.FC = () => {
                 {
                   backgroundColor: colors.bgSurface,
                   borderColor: colors.borderControl,
-                  opacity: field.readOnly ? 0.85 : 1
                 }
               ]}
-              activeOpacity={field.readOnly ? 1 : 0.7}
-              disabled={field.readOnly}
+              activeOpacity={0.7}
               onPress={() => {
-                if (field.readOnly || field.key === 'globalGraph') return
                 openSelector(field.key, field.forEmbedding)
               }}
             >
@@ -266,14 +255,10 @@ export const AIModelsSection: React.FC = () => {
                 >
                   {isSet
                     ? getModelDisplay(displayModelKey)
-                    : field.readOnly
-                      ? t('settings.not_set', '未设置')
-                      : t('models.click_to_assign', '点击分配默认处理模型')}
+                    : t('models.click_to_assign', '点击分配默认处理模型')}
                 </Text>
               </View>
-              {!field.readOnly && (
-                <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
-              )}
+              <Text style={[styles.chevron, { color: colors.textTertiary }]}>›</Text>
             </TouchableOpacity>
           </View>
         )

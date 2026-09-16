@@ -15,14 +15,18 @@ import {
   type AgentGateNotificationPrefs,
   type BaishouAgentGateConfig,
   type AgentGateAllowlistEntry,
-  type AgentGatePermissionRule
+  type AgentGatePermissionRule,
+  resolveAgentToolActionLabel,
+  applyWorkspaceSecurityModeToConfig,
+  resolveWorkspaceSecurityMode,
+  type AgentWorkspaceSecurityMode
 } from '@baishou/shared'
 import {
   getMobileAgentGateNotificationPrefs,
   setMobileAgentGateNotificationPrefs
 } from '../../../services/mobile-agent-gate-notification-prefs.service'
 import { DEFAULT_BAISHOU_AGENT_GATE_CONFIG } from '@baishou/database'
-import { Switch, useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
+import { SegmentedControl, Switch, useNativeTheme, useNativeToast, Input } from '@baishou/ui/native'
 import { useBaishou } from '../../../providers/BaishouProvider'
 import { SettingsGroupCard } from './SettingsGroupCard'
 
@@ -244,10 +248,25 @@ export const AgentGateSettingsSection: React.FC = () => {
           rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[AgentGateProfileId.Companion]]}
           colors={colors}
         />
-        <ProfileRulesReadonly
-          title={t('agent.gate.profile_workspace', '工作区会话')}
-          rules={[...AGENT_GATE_PROFILE_DEFAULT_RULES[AgentGateProfileId.Workspace]]}
-          colors={colors}
+        <Text style={[styles.profileTitle, { color: colors.textPrimary, marginTop: 12 }]}>
+          {t('agent.gate.profile_workspace', '工作区会话')}
+        </Text>
+        <Text style={[styles.desc, { color: colors.textSecondary }]}>
+          {t(
+            'agent.gate.workspace_mobile_hint',
+            '这些规则在桌面工作台会话生效。手机没有工作台入口，也不会注册工作台运行工具。'
+          )}
+        </Text>
+        <SegmentedControl
+          value={resolveWorkspaceSecurityMode(config)}
+          onChange={(mode: AgentWorkspaceSecurityMode) => {
+            void persist(applyWorkspaceSecurityModeToConfig(config, mode))
+          }}
+          options={[
+            { value: 'full_access', label: t('settings.agent_security_full_access', '完全访问') },
+            { value: 'auto_review', label: t('settings.agent_security_auto_review', '自动审核') },
+            { value: 'allow_list', label: t('settings.agent_security_allow_list', '白名单') }
+          ]}
         />
 
         <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
@@ -344,7 +363,7 @@ export const AgentGateSettingsSection: React.FC = () => {
             >
               <View style={styles.listText}>
                 <Text style={[styles.listPrimary, { color: colors.textPrimary }]}>
-                  {entry.action}
+                  {resolveAgentToolActionLabel(entry.action, t)}
                 </Text>
                 <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
                   {entry.pattern

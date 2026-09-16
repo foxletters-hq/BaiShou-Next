@@ -10,6 +10,9 @@ export type SettingsStackPathname =
   | '/settings/tts'
   | '/graph'
   | '/knowledge'
+  | '/memory'
+  | '/settings/help-docs'
+  | '/settings/git'
 
 export type SettingsHubRoute =
   | { type: 'section'; section: string }
@@ -110,6 +113,12 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         route: { type: 'section', section: 'summary' }
       },
       {
+        id: 'memory',
+        titleKey: 'memory.title',
+        icon: 'rag',
+        route: { type: 'stack', pathname: '/memory' }
+      },
+      {
         id: 'graph',
         titleKey: 'nav.graph',
         icon: 'rag',
@@ -161,6 +170,18 @@ export const SETTINGS_HUB_GROUPS: SettingsHubGroup[] = [
         titleKey: 'version_migration.title',
         icon: 'version-migration',
         route: { type: 'stack', pathname: '/settings/version-migration' }
+      },
+      {
+        id: 'git',
+        titleKey: 'version_control.version_control',
+        icon: 'incremental-sync',
+        route: { type: 'stack', pathname: '/settings/git' }
+      },
+      {
+        id: 'help-docs',
+        titleKey: 'settings.help_docs',
+        icon: 'general',
+        route: { type: 'stack', pathname: '/settings/help-docs' }
       }
     ]
   }
