@@ -1,10 +1,33 @@
-import { eq, desc, asc, and, or, sql, inArray } from 'drizzle-orm'
+import { eq, desc, asc, and, or, sql, inArray, gte, lte } from 'drizzle-orm'
 import { AgentMessageRepository } from './agent.repository'
 import { AgentMessage, AgentPart, sortAgentMessageParts } from '@baishou/shared'
 import { AppDatabase } from '../types'
 import { agentMessagesTable } from '../schema/agent-messages'
 import { agentPartsTable } from '../schema/agent-parts'
 import { agentSessionsTable } from '../schema/agent-sessions'
+
+export function resolveLocalCalendarDayRange(
+  startDate?: string,
+  endDate?: string
+): { start: Date; end: Date } | null {
+  const parse = (value: string | undefined, endOfDay: boolean): Date | null => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec((value ?? '').trim())
+    if (!match) return null
+    const year = Number(match[1])
+    const month = Number(match[2]) - 1
+    const day = Number(match[3])
+    return endOfDay
+      ? new Date(year, month, day, 23, 59, 59, 999)
+      : new Date(year, month, day, 0, 0, 0, 0)
+  }
+  const start = parse(startDate, false)
+  const end = parse(endDate, true)
+  if (!start && !end) return null
+  return {
+    start: start ?? new Date(0),
+    end: end ?? new Date(9999, 11, 31, 23, 59, 59, 999)
+  }
+}
 
 export type InsertAgentMessageInput = Omit<AgentMessage, 'createdAt'>
 export type InsertAgentPartInput = Omit<AgentPart, 'createdAt'>
@@ -149,15 +172,17 @@ export class MessageRepository implements AgentMessageRepository {
   async searchMessagesByKeyword(
     keyword: string,
     limit: number = 10,
-    vaultId?: string | null
+    vaultId?: string | null,
+    options?: { startDate?: string; endDate?: string }
   ): Promise<any[]> {
     const trimmed = keyword.trim()
     const scopedVaultId = String(vaultId ?? '').trim()
     if (!trimmed || !scopedVaultId) return []
+    const dateRange = resolveLocalCalendarDayRange(options?.startDate, options?.endDate)
 
     const [ftsResults, likeResults] = await Promise.all([
-      this.searchMessagesViaFts(trimmed, limit, scopedVaultId),
-      this.searchMessagesViaLike(trimmed, limit, scopedVaultId)
+      this.searchMessagesViaFts(trimmed, limit, scopedVaultId, dateRange),
+      this.searchMessagesViaLike(trimmed, limit, scopedVaultId, dateRange)
     ])
 
     const seen = new Set<string>()
@@ -198,7 +223,8 @@ export class MessageRepository implements AgentMessageRepository {
   private async searchMessagesViaFts(
     keyword: string,
     limit: number,
-    vaultId: string
+    vaultId: string,
+    dateRange?: { start: Date; end: Date } | null
   ): Promise<any[]> {
     const cleanedQuery = keyword.replace(/"/g, ' ').trim()
     if (!cleanedQuery) return []
@@ -213,6 +239,12 @@ export class MessageRepository implements AgentMessageRepository {
         INNER JOIN agent_sessions s ON s.id = m.session_id
         WHERE agent_messages_fts MATCH ${`"${cleanedQuery}"`}
           AND s.vault_id = ${vaultId}
+          ${
+            dateRange
+              ? sql`AND m.created_at >= ${Math.floor(dateRange.start.getTime() / 1000)}
+                    AND m.created_at <= ${Math.floor(dateRange.end.getTime() / 1000)}`
+              : sql``
+          }
         ORDER BY rank
         LIMIT ${limit * 3}
       `
@@ -243,6 +275,16 @@ export class MessageRepository implements AgentMessageRepository {
           .limit(1)
 
         if (!messageRow) continue
+        if (dateRange) {
+          const created =
+            messageRow.createdAt instanceof Date
+              ? messageRow.createdAt.getTime()
+              : Number(messageRow.createdAt)
+          const createdMs = created < 1e12 ? created * 1000 : created
+          if (createdMs < dateRange.start.getTime() || createdMs > dateRange.end.getTime()) {
+            continue
+          }
+        }
 
         results.push({
           role: messageRow.role,
@@ -263,7 +305,8 @@ export class MessageRepository implements AgentMessageRepository {
   private async searchMessagesViaLike(
     keyword: string,
     limit: number,
-    vaultId: string
+    vaultId: string,
+    dateRange?: { start: Date; end: Date } | null
   ): Promise<any[]> {
     const pattern = this.escapeLikePattern(keyword)
     const rows = await this.db
@@ -281,6 +324,12 @@ export class MessageRepository implements AgentMessageRepository {
       .where(
         and(
           eq(agentSessionsTable.vaultId, vaultId),
+          ...(dateRange
+            ? [
+                gte(agentMessagesTable.createdAt, dateRange.start),
+                lte(agentMessagesTable.createdAt, dateRange.end)
+              ]
+            : []),
           or(
             and(
               this.isNonReasoningTextPart(),

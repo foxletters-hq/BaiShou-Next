@@ -10,6 +10,7 @@ import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
+import { compressionSnapshotsTable } from '../schema/compression-snapshots'
 import type { InsertSessionInput } from './session.repository.types'
 import { usesSyncTransaction } from './session.repository.utils'
 
@@ -304,12 +305,18 @@ export class SessionCrudOps {
         tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids)).run()
         tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids)).run()
         tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids)).run()
+        tx.delete(compressionSnapshotsTable)
+          .where(inArray(compressionSnapshotsTable.sessionId, ids))
+          .run()
       })
     } else {
       await this.db.transaction(async (tx) => {
         await tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids))
         await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids))
         await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids))
+        await tx.delete(compressionSnapshotsTable).where(
+          inArray(compressionSnapshotsTable.sessionId, ids)
+        )
       })
     }
   }

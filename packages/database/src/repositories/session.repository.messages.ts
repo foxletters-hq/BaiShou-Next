@@ -16,6 +16,31 @@ export interface CompactionMarkerInput {
   status?: 'completed' | 'failed'
 }
 
+type AgentPartRowType = (typeof partsTbl.$inferInsert)['type']
+
+function toPartInsertRows(
+  parts: InsertPartInput[],
+  messageId: string,
+  sessionId: string
+): Array<{
+  id: string
+  messageId: string
+  sessionId: string
+  type: AgentPartRowType
+  data: InsertPartInput['data']
+  createdAt: Date
+}> {
+  const baseSec = Math.floor(Date.now() / 1000)
+  return parts.map((p, index) => ({
+    id: p.id,
+    messageId,
+    sessionId,
+    type: p.type as AgentPartRowType,
+    data: p.data,
+    createdAt: new Date((baseSec + index) * 1000)
+  }))
+}
+
 export class SessionMessageOps {
   constructor(private readonly db: AppDatabase) {}
 
@@ -46,18 +71,8 @@ export class SessionMessageOps {
 
         if (parts.length > 0) {
           // integer timestamp 存秒；按 part 下标递增，避免同秒导致 ORDER BY createdAt 失序
-          const baseSec = Math.floor(Date.now() / 1000)
           tx.insert(partsTbl)
-            .values(
-              parts.map((p, index) => ({
-                id: p.id,
-                messageId: p.messageId,
-                sessionId: p.sessionId,
-                type: p.type,
-                data: p.data,
-                createdAt: new Date((baseSec + index) * 1000)
-              }))
-            )
+            .values(toPartInsertRows(parts, message.id, message.sessionId))
             .run()
         }
 
@@ -88,17 +103,7 @@ export class SessionMessageOps {
           .onConflictDoNothing()
 
         if (parts.length > 0) {
-          const baseSec = Math.floor(Date.now() / 1000)
-          await tx.insert(partsTbl).values(
-            parts.map((p, index) => ({
-              id: p.id,
-              messageId: p.messageId,
-              sessionId: p.sessionId,
-              type: p.type,
-              data: p.data,
-              createdAt: new Date((baseSec + index) * 1000)
-            }))
-          )
+          await tx.insert(partsTbl).values(toPartInsertRows(parts, message.id, message.sessionId))
         }
 
         await tx
@@ -107,6 +112,76 @@ export class SessionMessageOps {
           .where(eq(agentSessionsTable.id, message.sessionId))
       })
     }
+  }
+
+  async replaceMessageParts(
+    messageId: string,
+    sessionId: string,
+    parts: InsertPartInput[],
+    billing?: {
+      inputTokens?: number
+      outputTokens?: number
+      cacheReadInputTokens?: number
+      cacheWriteInputTokens?: number
+      costMicros?: number
+      providerId?: string
+      modelId?: string
+    }
+  ): Promise<void> {
+    const partRows = toPartInsertRows(parts, messageId, sessionId)
+
+    if (usesSyncTransaction(this.db)) {
+      await (this.db as any).transaction((tx: any) => {
+        tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId)).run()
+        if (partRows.length > 0) {
+          tx.insert(partsTbl).values(partRows).run()
+        }
+        if (billing) {
+          tx.update(messagesTbl)
+            .set({
+              inputTokens: billing.inputTokens,
+              outputTokens: billing.outputTokens,
+              cacheReadInputTokens: billing.cacheReadInputTokens,
+              cacheWriteInputTokens: billing.cacheWriteInputTokens,
+              costMicros: billing.costMicros,
+              providerId: billing.providerId,
+              modelId: billing.modelId
+            })
+            .where(eq(messagesTbl.id, messageId))
+            .run()
+        }
+        tx.update(agentSessionsTable)
+          .set({ updatedAt: new Date() })
+          .where(eq(agentSessionsTable.id, sessionId))
+          .run()
+      })
+      return
+    }
+
+    await this.db.transaction(async (tx) => {
+      await tx.delete(partsTbl).where(eq(partsTbl.messageId, messageId))
+      if (partRows.length > 0) {
+        await tx.insert(partsTbl).values(partRows)
+      }
+      if (billing) {
+        await tx
+          .update(messagesTbl)
+          .set({
+            inputTokens: billing.inputTokens,
+            outputTokens: billing.outputTokens,
+            cacheReadInputTokens: billing.cacheReadInputTokens,
+            cacheWriteInputTokens: billing.cacheWriteInputTokens,
+            costMicros: billing.costMicros,
+            providerId: billing.providerId,
+            modelId: billing.modelId
+          })
+          .where(eq(messagesTbl.id, messageId))
+      }
+      await tx
+        .update(agentSessionsTable)
+        .set({ updatedAt: new Date() })
+        .where(eq(agentSessionsTable.id, sessionId))
+    })
   }
 
   async getMessagesBySession(sessionId: string, limit: number = 50, offset: number = 0) {

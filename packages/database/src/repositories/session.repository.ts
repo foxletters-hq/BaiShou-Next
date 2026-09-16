@@ -33,6 +33,10 @@ export class SessionRepository {
     return this.run(() => this.messageOps.insertMessageWithParts(...args))
   }
 
+  replaceMessageParts(...args: Parameters<SessionMessageOps['replaceMessageParts']>) {
+    return this.run(() => this.messageOps.replaceMessageParts(...args))
+  }
+
   updateTokenUsage(...args: Parameters<SessionCrudOps['updateTokenUsage']>) {
     return this.run(() => this.crudOps.updateTokenUsage(...args))
   }
