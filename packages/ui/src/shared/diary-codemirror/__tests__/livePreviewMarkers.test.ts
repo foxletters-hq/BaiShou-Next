@@ -173,6 +173,64 @@ describe('live preview marker hiding', () => {
     expect(v.state.doc.toString()).toContain('---')
   })
 
+  it('styles heading marks when the caret is on the heading line', () => {
+    const content = '# 标题\n正文\n'
+    const v = mount(content, content.indexOf('标'), 'mouse')
+    focusEditor(v)
+    expect(parent.querySelector('.cm-heading-mark')).not.toBeNull()
+    expect(parent.querySelector('.cm-line.cm-rendered-h1')).not.toBeNull()
+  })
+
+  it('hides heading marks when the caret is on another line', () => {
+    const content = '# 标题\n正文\n'
+    const v = mount(content, content.indexOf('正'), 'mouse')
+    focusEditor(v)
+    expect(parent.querySelector('.cm-heading-mark')).toBeNull()
+  })
+
+  it('styles ordered list numbers', () => {
+    mount('1. 第一项\n2. 第二项\n')
+    expect(parent.querySelector('.cm-list-number')).not.toBeNull()
+    expect(parent.querySelector('.cm-rendered-ol')).not.toBeNull()
+  })
+
+  it('does not style ordered list numbers inside fenced code', () => {
+    const content = '```\n1. not a list\n```\n'
+    const state = EditorState.create({
+      doc: content,
+      selection: { anchor: content.indexOf('not'), head: content.indexOf('not') },
+      extensions: [markdown()]
+    })
+    ensureSyntaxTree(state, state.doc.length, 200)
+    const deco = buildMarkerHidingDecorations(
+      state,
+      { resolveAttachmentUrl: (u) => u, interactionMode: 'mouse' },
+      { hasFocus: true }
+    )
+    let listNumberCount = 0
+    deco.between(0, state.doc.length, (_from, _to, value) => {
+      if (value.spec?.class === 'cm-list-number') listNumberCount += 1
+    })
+    expect(listNumberCount).toBe(0)
+  })
+
+  it('keeps skill properties line class when the caret is on a property line', () => {
+    const content = 'name: daily-news-digest\ndescription: 整理当天新闻\n\n# 简报\n'
+    const v = mount(content, 0, 'mouse', true)
+    focusEditor(v)
+    expect(parent.querySelector('.cm-wb-properties')).not.toBeNull()
+    expect(parent.querySelector('.cm-activeLine.cm-wb-properties')).not.toBeNull()
+  })
+
+  it('keeps the description key styled when the caret is on that line', () => {
+    const content = 'name: daily-news-digest\ndescription: 整理当天新闻\n\n# 简报\n'
+    const v = mount(content, content.indexOf('整理'), 'mouse', true)
+    focusEditor(v)
+    const active = parent.querySelector('.cm-activeLine.cm-wb-properties')
+    expect(active).not.toBeNull()
+    expect(active?.querySelector('.cm-wb-property-key')?.textContent).toBe('description')
+  })
+
   it('renders skill properties header instead of a horizontal rule', () => {
     const content = 'name: daily-news-digest\ndescription: 整理当天新闻\n\n# 简报\n'
     mount(content, content.length, 'mouse', true)

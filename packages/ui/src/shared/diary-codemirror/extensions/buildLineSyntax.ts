@@ -2,6 +2,7 @@ import type { EditorState } from '@codemirror/state'
 import {
   blockquoteLineStyle,
   headingLineStyles,
+  headingMarkStyle,
   hideSyntaxReplaceSpec,
   hrLineStyle,
   hrWidgetReplaceSpec,
@@ -127,8 +128,11 @@ export function collectLineSyntaxDecorations(
     if (heading) {
       const lineStyle = headingLineStyles[heading[1].length]
       if (lineStyle) pushLineDecoration(marks, lineStyle, line.from)
+      const markTo = line.from + heading[0].length
       if (!isActiveLine) {
-        pushReplaceDecoration(marks, doc, line.from, line.from + heading[0].length, hideSpec)
+        pushReplaceDecoration(marks, doc, line.from, markTo, hideSpec)
+      } else if (line.from < markTo) {
+        marks.push(headingMarkStyle.range(line.from, markTo))
       }
       continue
     }

@@ -17,6 +17,8 @@ export function replaceEditorDocumentContent(
   content: string,
   options: ReplaceEditorDocumentOptions = {}
 ): boolean {
+  if (!view.dom?.isConnected) return false
+
   const current = view.state.doc.toString()
   if (content === current) return false
 
