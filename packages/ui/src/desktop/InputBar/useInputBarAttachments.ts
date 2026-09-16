@@ -9,10 +9,7 @@ import {
   shouldRejectOversizedTextAttachment,
   type InputBarAttachment
 } from './input-bar-attachment.util'
-import {
-  ingestDroppedAttachments,
-  type InputBarAttachmentIntake
-} from './input-bar-drop.util'
+import { ingestDroppedAttachments, type InputBarAttachmentIntake } from './input-bar-drop.util'
 
 function filterValidAttachments(
   attachments: InputBarAttachment[],
@@ -27,9 +24,16 @@ function filterValidAttachments(
   })
 }
 
-function asWorkspaceTextRef(att: InputBarAttachment): PromptFileRef | null {
+export function asWorkspaceTextRef(att: InputBarAttachment): PromptFileRef | null {
   const relativePath = att.relativePath?.trim().replace(/\\/g, '/')
   if (!relativePath || !isSafeWorkspaceRelativePath(relativePath)) return null
+  if (att.isDirectory) {
+    return {
+      relativePath,
+      origin: att.origin ?? 'explorer-drop',
+      isDirectory: true
+    }
+  }
   if (!att.isText || att.isImage || att.isPdf) return null
   return {
     relativePath,
@@ -58,9 +62,7 @@ export function useInputBarAttachments(
   setAttachments: React.Dispatch<React.SetStateAction<MockChatAttachment[]>>,
   options?: {
     attachmentIntake?: InputBarAttachmentIntake
-    resolveDropAttachments?: (
-      dataTransfer: DataTransfer
-    ) => Promise<MockChatAttachment[] | null>
+    resolveDropAttachments?: (dataTransfer: DataTransfer) => Promise<MockChatAttachment[] | null>
     promoteWorkspaceTextRefs?: boolean
     onPromotedFileRefs?: (refs: PromptFileRef[]) => void
   }
@@ -85,6 +87,8 @@ export function useInputBarAttachments(
       if (kept.length) setAttachments((prev) => [...prev, ...kept])
       if (promoted.length) options?.onPromotedFileRefs?.(promoted)
     },
+    // options 由调用方内联创建，按字段列依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [options?.onPromotedFileRefs, options?.promoteWorkspaceTextRefs, setAttachments]
   )
 
@@ -147,6 +151,8 @@ export function useInputBarAttachments(
         console.error('Failed to add dropped attachments:', e)
       }
     },
+    // options 由调用方内联创建，按字段列依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       commitAttachments,
       options?.attachmentIntake,

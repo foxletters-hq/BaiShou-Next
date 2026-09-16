@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 技能编排：解析、插入与发送文本的纯函数聚合 */
 import {
   formatFileMentionLabel,
   parseFileMentionToken,
@@ -23,6 +24,7 @@ export const FILE_REF_PATH_ATTR = 'data-file-path'
 export const FILE_REF_SELECTION_ATTR = 'data-file-selection'
 export const FILE_REF_COMMENT_ATTR = 'data-file-comment'
 export const FILE_REF_ORIGIN_ATTR = 'data-file-origin'
+export const FILE_REF_DIRECTORY_ATTR = 'data-file-directory'
 
 export type SlashToken = {
   query: string
@@ -104,7 +106,8 @@ function readFileRefChip(chipEl: HTMLElement): FileRefChip {
   }
   const comment = chipEl.getAttribute(FILE_REF_COMMENT_ATTR) || undefined
   const origin = (chipEl.getAttribute(FILE_REF_ORIGIN_ATTR) || 'mention') as FileRefChip['origin']
-  return { id, relativePath, selection, comment, origin }
+  const isDirectory = chipEl.getAttribute(FILE_REF_DIRECTORY_ATTR) === 'true'
+  return { id, relativePath, selection, comment, origin, ...(isDirectory ? { isDirectory: true } : {}) }
 }
 
 export function createFileRefChipElement(
@@ -118,6 +121,7 @@ export function createFileRefChipElement(
   if (chip.selection) el.setAttribute(FILE_REF_SELECTION_ATTR, JSON.stringify(chip.selection))
   if (chip.comment) el.setAttribute(FILE_REF_COMMENT_ATTR, chip.comment)
   if (chip.origin) el.setAttribute(FILE_REF_ORIGIN_ATTR, chip.origin)
+  if (chip.isDirectory) el.setAttribute(FILE_REF_DIRECTORY_ATTR, 'true')
   el.contentEditable = 'false'
   el.className = chipClassName
   el.setAttribute('data-file-chip', 'true')
@@ -145,7 +149,7 @@ export function serializeSkillComposer(root: HTMLElement): {
   const plainParts: string[] = []
   const sendParts: string[] = []
 
-  const walk = (node: Node, isRootChild = false) => {
+  const walk = (node: Node, _isRootChild = false) => {
     if (node.nodeType === Node.TEXT_NODE) {
       const value = node.textContent ?? ''
       plainParts.push(value)
@@ -240,7 +244,6 @@ export function getSlashTokenBeforeCaret(root: HTMLElement): SlashToken | null {
   const caretText = caretNode as Text
 
   const text = caretText.textContent ?? ''
-  const localBefore = text.slice(0, caretOffset).replace(/\u200B/g, '')
   // 用原始偏移重新匹配（忽略 zwsp 时回退到简单正则）
   const localMatch = text.slice(0, caretOffset).match(/\/[^\s/]*$/)
   if (!localMatch) return null
@@ -395,7 +398,9 @@ export function insertFileRefChipAtSelection(
 ): void {
   const sel = window.getSelection()
   if (!sel) return
-  const selectionWasInRoot = Boolean(sel.rangeCount && sel.anchorNode && root.contains(sel.anchorNode))
+  const selectionWasInRoot = Boolean(
+    sel.rangeCount && sel.anchorNode && root.contains(sel.anchorNode)
+  )
   root.focus()
 
   let insertRange: Range | null = null
@@ -447,7 +452,11 @@ export function tryDeleteSkillChipByBackspace(root: HTMLElement): boolean {
     if (isComposerChip(prev)) chip = prev as HTMLElement
   } else if (node?.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? ''
-    if (offset === 0 || (offset === 1 && text === '\u200B') || (offset > 0 && text.slice(0, offset).replace(/\u200B/g, '') === '')) {
+    if (
+      offset === 0 ||
+      (offset === 1 && text === '\u200B') ||
+      (offset > 0 && text.slice(0, offset).replace(/\u200B/g, '') === '')
+    ) {
       const prev = node.previousSibling
       if (isComposerChip(prev)) chip = prev as HTMLElement
     }
@@ -465,7 +474,10 @@ export function tryDeleteSkillChipByBackspace(root: HTMLElement): boolean {
   if (!chip) return false
   const next = chip.nextSibling
   chip.remove()
-  if (next?.nodeType === Node.TEXT_NODE && (next.textContent === '\u200B' || next.textContent === '')) {
+  if (
+    next?.nodeType === Node.TEXT_NODE &&
+    (next.textContent === '\u200B' || next.textContent === '')
+  ) {
     next.remove()
   }
   if (normalizeEmptyComposer(root)) {
@@ -512,7 +524,12 @@ export function sanitizeComposerFormatting(root: HTMLElement): boolean {
       tag === 'EM' ||
       tag === 'A'
     ) {
-      if (el.hasAttribute('style') || el.hasAttribute('color') || el.hasAttribute('bgcolor') || tag !== 'SPAN') {
+      if (
+        el.hasAttribute('style') ||
+        el.hasAttribute('color') ||
+        el.hasAttribute('bgcolor') ||
+        tag !== 'SPAN'
+      ) {
         victims.push(el)
       } else if (tag === 'SPAN' && el.attributes.length === 0) {
         victims.push(el)
@@ -532,7 +549,6 @@ export function sanitizeComposerFormatting(root: HTMLElement): boolean {
   }
   return changed
 }
-
 
 export function clearComposer(root: HTMLElement) {
   root.innerHTML = ''

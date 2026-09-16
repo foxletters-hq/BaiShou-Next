@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 输入栏：附件、技能、提及与展开同 hook */
 import { useState, useRef, useImperativeHandle, useMemo, useCallback, useEffect } from 'react'
 import type { InputBarProps, InputBarRef } from './input-bar.types'
 import { useInputBarAttachments } from './useInputBarAttachments'
@@ -76,7 +77,8 @@ function toSendFileRefs(refs: FileRefChip[]): PromptFileRef[] {
       relativePath: ref.relativePath,
       selection: ref.selection,
       comment: ref.comment,
-      origin: ref.origin ?? 'mention'
+      origin: ref.origin ?? 'mention',
+      ...(ref.isDirectory ? { isDirectory: true } : {})
     }))
     .filter((ref) => Boolean(ref.relativePath))
 }
@@ -115,7 +117,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     fileMention
   } = props
 
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
   const [skillRefs, setSkillRefs] = useState<SkillRefChip[]>([])
@@ -177,62 +179,74 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
   const localizedShortcuts = useMemo(() => {
     if (!shortcuts?.length) return undefined
     return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
-  }, [shortcuts, t, i18n.language])
+  }, [shortcuts, t])
 
   const closeSkillPicker = useCallback(() => {
     slashDismissedRef.current = true
     setSkillPickerOpen(false)
   }, [])
 
-  const handleComposerSnapshot = useCallback((snap: SkillComposerSnapshot) => {
-    setText(snap.plainText)
-    setSkillRefs(snap.skills)
-    setFileRefs(snap.fileRefs)
-    setSendTextCache(snap.sendText)
-    htmlSnapshotRef.current = snap.html
-    setSlashToken(snap.slashToken)
-    setMentionToken(snap.mentionToken)
-    if (!snap.slashToken) {
-      slashDismissedRef.current = false
-      setSkillPickerOpen(false)
-      setSkillPickerIndex(0)
-    } else if (!slashDismissedRef.current) {
-      setSkillPickerOpen(true)
-    }
-    if (!fileMention?.enabled || !snap.mentionToken) {
-      mentionDismissedRef.current = false
-      setMentionPickerOpen(false)
-      setMentionPickerIndex(0)
-      return
-    }
-    if (!mentionDismissedRef.current) {
-      setMentionPickerOpen(true)
-    }
-  }, [fileMention?.enabled])
+  const handleComposerSnapshot = useCallback(
+    (snap: SkillComposerSnapshot) => {
+      setText(snap.plainText)
+      setSkillRefs(snap.skills)
+      setFileRefs(snap.fileRefs)
+      setSendTextCache(snap.sendText)
+      htmlSnapshotRef.current = snap.html
+      setSlashToken(snap.slashToken)
+      setMentionToken(snap.mentionToken)
+      if (!snap.slashToken) {
+        slashDismissedRef.current = false
+        setSkillPickerOpen(false)
+        setSkillPickerIndex(0)
+      } else if (!slashDismissedRef.current) {
+        setSkillPickerOpen(true)
+      }
+      if (!fileMention?.enabled || !snap.mentionToken) {
+        mentionDismissedRef.current = false
+        setMentionPickerOpen(false)
+        setMentionPickerIndex(0)
+        return
+      }
+      if (!mentionDismissedRef.current) {
+        setMentionPickerOpen(true)
+      }
+    },
+    [fileMention?.enabled]
+  )
 
-  const insertSkillChip = useCallback((command: string, content: string, token?: SlashToken | null) => {
-    const normalized = command.trim().replace(/^\//, '')
-    if (!normalized) return
-    const root = editorRef.current
-    if (!root) return
-    const chip: SkillRefChip = {
-      id: makeSkillChipId(normalized),
-      command: normalized,
-      content
-    }
-    insertSkillChipAtSelection(
-      root,
-      chip,
-      styles.skillRefChip,
-      styles.skillRefText,
-      token === undefined ? null : token
-    )
-    syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
-    slashDismissedRef.current = false
-    setSlashToken(null)
-    setSkillPickerOpen(false)
-    root.focus()
-  }, [])
+  const insertSkillChip = useCallback(
+    (command: string, content: string, token?: SlashToken | null) => {
+      const normalized = command.trim().replace(/^\//, '')
+      if (!normalized) return
+      const root = editorRef.current
+      if (!root) return
+      const chip: SkillRefChip = {
+        id: makeSkillChipId(normalized),
+        command: normalized,
+        content
+      }
+      insertSkillChipAtSelection(
+        root,
+        chip,
+        styles.skillRefChip,
+        styles.skillRefText,
+        token === undefined ? null : token
+      )
+      syncEditorState(root, {
+        setText,
+        setSkillRefs,
+        setFileRefs,
+        setSendTextCache,
+        htmlSnapshotRef
+      })
+      slashDismissedRef.current = false
+      setSlashToken(null)
+      setSkillPickerOpen(false)
+      root.focus()
+    },
+    []
+  )
 
   const addSkillRef = useCallback(
     (command: string, content: string) => {
@@ -251,7 +265,8 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
         relativePath,
         selection: ref.selection,
         comment: ref.comment?.trim() || undefined,
-        origin: ref.origin ?? 'mention'
+        origin: ref.origin ?? 'mention',
+        ...(ref.isDirectory ? { isDirectory: true } : {})
       }
       const key = fileContextItemKey(nextRef)
       const existing = serializeSkillComposer(root).fileRefs
@@ -273,7 +288,13 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
         styles.skillRefText,
         token === undefined ? mentionToken : token
       )
-      syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
+      syncEditorState(root, {
+        setText,
+        setSkillRefs,
+        setFileRefs,
+        setSendTextCache,
+        htmlSnapshotRef
+      })
       mentionDismissedRef.current = false
       setMentionToken(null)
       setMentionPickerOpen(false)
@@ -290,7 +311,8 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
           relativePath: ref.relativePath,
           selection: ref.selection,
           comment: ref.comment,
-          origin: ref.origin ?? 'selection'
+          origin: ref.origin ?? 'selection',
+          ...(ref.isDirectory ? { isDirectory: true } : {})
         },
         null
       )
@@ -449,7 +471,13 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       } else {
         setComposerPlainText(root, root.textContent ? `${root.textContent}\n${newText}` : newText)
       }
-      syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
+      syncEditorState(root, {
+        setText,
+        setSkillRefs,
+        setFileRefs,
+        setSendTextCache,
+        htmlSnapshotRef
+      })
     },
     setText: (nextText) => {
       applyExternalText(nextText)
@@ -521,6 +549,7 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       addSkillRef(command, skill.content || '')
     },
     addFileContext,
+    ingestDrop: (dataTransfer) => attachmentHandlers.handleAttachmentDrop(dataTransfer),
     focus: () => editorRef.current?.focus()
   }))
 
@@ -549,7 +578,10 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
     }> = []
 
     const createMatches =
-      !q || createName.includes(q) || createDesc.toLowerCase().includes(q) || 'create skill'.includes(q)
+      !q ||
+      createName.includes(q) ||
+      createDesc.toLowerCase().includes(q) ||
+      'create skill'.includes(q)
     if (createMatches) {
       entries.push({
         id: '__create-skill__',
@@ -749,7 +781,13 @@ export function useInputBar(props: InputBarProps, ref: React.ForwardedRef<InputB
       document.execCommand('insertLineBreak')
       const root = editorRef.current
       if (root) {
-        syncEditorState(root, { setText, setSkillRefs, setFileRefs, setSendTextCache, htmlSnapshotRef })
+        syncEditorState(root, {
+          setText,
+          setSkillRefs,
+          setFileRefs,
+          setSendTextCache,
+          htmlSnapshotRef
+        })
       }
       return
     }
