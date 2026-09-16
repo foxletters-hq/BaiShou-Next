@@ -60,6 +60,10 @@ import {
   uiPageZoomFromLevel
 } from '@baishou/shared'
 import { markStartup, traceStartupStep } from './startup-trace.util'
+import {
+  installHelpDocsWebviewNavigation,
+  isHelpDocsInAppUrl
+} from './help-docs-webview-navigation.util'
 
 markStartup('main.module.loaded')
 
@@ -152,9 +156,9 @@ function createWindow(needsOnboarding: boolean): void {
    * 正确做法：Acrylic + roundedCorners，HTML 外圈半透露出磨砂。
    */
   mainWindow = new BrowserWindow({
-    width: needsOnboarding ? 860 : 1000,
+    width: needsOnboarding ? 930 : 1000,
     height: needsOnboarding ? 580 : 680,
-    minWidth: 860,
+    minWidth: 930,
     minHeight: 520,
     show: false,
     frame: false,
@@ -181,7 +185,8 @@ function createWindow(needsOnboarding: boolean): void {
           }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   })
 
@@ -357,6 +362,21 @@ async function completeFullBootstrap() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
+    delete webPreferences.preload
+    webPreferences.nodeIntegration = false
+    webPreferences.contextIsolation = true
+    webPreferences.sandbox = true
+    if (!isHelpDocsInAppUrl(params.src)) {
+      event.preventDefault()
+    }
+  })
+  installHelpDocsWebviewNavigation(contents, (url) => {
+    void shell.openExternal(url)
+  })
+})
+
 app.whenReady().then(async () => {
   markStartup('app.whenReady')
 
