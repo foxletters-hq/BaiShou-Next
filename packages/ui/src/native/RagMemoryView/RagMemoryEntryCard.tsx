@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useState } from 'react'
 import {
   View,
@@ -9,7 +10,20 @@ import {
   useWindowDimensions
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { formatRagEntryTimestamp, isDiaryRagEntry, isRagEntryEditable } from '@baishou/shared'
+import {
+  buildRagEntryListPreview,
+  formatRagEntryTimestamp,
+  isGraphNodeRagEntry,
+  isRagEntryEditable,
+  ragVectorKindLabelKey,
+  resolveRagMemoryEmptyCopy,
+  resolveRagVectorKind,
+  splitTextByKeyword,
+  type RagVectorKind,
+  type RagVectorKindFilter
+} from '@baishou/shared'
+import { Button } from '../Button'
+import { Modal } from '../Modal/Modal'
 import { useNativeTheme } from '../theme'
 import { Pagination as RagPagination } from '../Pagination'
 import { PageSizeSelector } from '../PageSizeSelector'
@@ -19,6 +33,7 @@ import { ragMemoryStyles as styles } from './rag-memory.styles'
 
 interface RagMemoryEntryCardProps {
   item: RagEntry
+  searchQuery?: string
   showSimilarity?: boolean
   activeMenuId: string | null
   setActiveMenuId: (id: string | null) => void
@@ -28,6 +43,7 @@ interface RagMemoryEntryCardProps {
 
 export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
   item,
+  searchQuery = '',
   showSimilarity = false,
   activeMenuId,
   setActiveMenuId,
@@ -37,7 +53,15 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [deleting, setDeleting] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const menuOpen = activeMenuId === item.embeddingId
+  const keyword = searchQuery.trim()
+  const { preview } = buildRagEntryListPreview(item.text, keyword || undefined)
+
+  const openPreview = () => {
+    setActiveMenuId(null)
+    setPreviewOpen(true)
+  }
 
   const handleDelete = async () => {
     if (!onDelete) return
@@ -85,6 +109,11 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
               { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
             ]}
           >
+            <TouchableOpacity style={styles.menuItem} onPress={openPreview}>
+              <Text style={{ color: colors.textPrimary }}>
+                {t('settings.rag_view_entry', '查看完整片段')}
+              </Text>
+            </TouchableOpacity>
             {/* 日记切片不给编辑：正文才是事实来源，改切片不会回写日记 */}
             {onEdit && isRagEntryEditable(item.sourceType) && (
               <TouchableOpacity
@@ -102,31 +131,53 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
                 {deleting ? (
                   <ActivityIndicator size="small" color={colors.error} />
                 ) : (
-                  <Text style={{ color: colors.error }}>{t('common.delete')}</Text>
+                  <Text style={{ color: colors.error }}>
+                    {isGraphNodeRagEntry(item.sourceType)
+                      ? t('settings.rag_clear_node_embed', '清除节点向量')
+                      : t('common.delete')}
+                  </Text>
                 )}
               </TouchableOpacity>
             )}
           </View>
         )}
-        <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
-          {item.text}
-        </Text>
+        {(() => {
+          const kind = resolveRagVectorKind(item)
+          if (!kind) return null
+          const badge = kindBadgeStyle(kind, colors)
+          return (
+            <View style={styles.entryMetaRow}>
+              <Text
+                style={[
+                  styles.entryMetaBadge,
+                  { color: badge.color, backgroundColor: badge.backgroundColor }
+                ]}
+              >
+                {t(ragVectorKindLabelKey(kind), kindFallback[kind])}
+              </Text>
+            </View>
+          )
+        })()}
+        <TouchableOpacity activeOpacity={0.7} onPress={openPreview}>
+          <Text style={[styles.entryText, { color: colors.textPrimary }]} numberOfLines={4}>
+            {splitTextByKeyword(preview, keyword || undefined).map((part, index) => (
+              <Text
+                key={`${part.kind}-${index}`}
+                style={
+                  part.kind === 'mark'
+                    ? { backgroundColor: 'rgba(91, 168, 245, 0.22)', color: colors.textPrimary }
+                    : undefined
+                }
+              >
+                {part.value}
+              </Text>
+            ))}
+          </Text>
+        </TouchableOpacity>
+        <Button variant="outlined" onPress={openPreview}>
+          {t('settings.rag_view_entry', '查看完整片段')}
+        </Button>
         <View style={styles.entryMetaRow}>
-          {isDiaryRagEntry(item.sourceType) ? (
-            <Text style={[styles.entryMetaBadge, { color: colors.textSecondary }]}>
-              {t('settings.rag_source_diary', '日记')}
-            </Text>
-          ) : null}
-          {item.isManual ? (
-            <Text style={[styles.entryMetaBadge, { color: colors.textSecondary }]}>
-              {t('settings.rag_source_manual', '手动')}
-            </Text>
-          ) : null}
-          {!item.isManual && item.sourceSessionId ? (
-            <Text style={[styles.entryMetaBadge, { color: colors.primary }]}>
-              {t('settings.rag_source_session', '来源会话')}
-            </Text>
-          ) : null}
           {item.tags && item.tags.length > 0
             ? item.tags.map((tag) => (
                 <Text key={tag} style={[styles.entryTag, { color: colors.textTertiary }]}>
@@ -154,17 +205,69 @@ export const RagMemoryEntryCard: React.FC<RagMemoryEntryCardProps> = ({
           )}
         </View>
       </View>
+      <Modal
+        visible={previewOpen}
+        title={t('settings.rag_view_entry_title', '记忆片段')}
+        onClose={() => setPreviewOpen(false)}
+      >
+        <ScrollView style={styles.entryPreviewScroll}>
+          <Text style={[styles.entryPreviewText, { color: colors.textPrimary }]}>
+            {splitTextByKeyword(item.text, keyword || undefined).map((part, index) => (
+              <Text
+                key={`${part.kind}-${index}`}
+                style={
+                  part.kind === 'mark'
+                    ? { backgroundColor: 'rgba(91, 168, 245, 0.22)', color: colors.textPrimary }
+                    : undefined
+                }
+              >
+                {part.value}
+              </Text>
+            ))}
+          </Text>
+        </ScrollView>
+        <TouchableOpacity
+          style={styles.entryPreviewClose}
+          onPress={() => setPreviewOpen(false)}
+          activeOpacity={0.7}
+        >
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>
+            {t('common.close', '关闭')}
+          </Text>
+        </TouchableOpacity>
+      </Modal>
     </View>
   )
+}
+
+const kindFallback: Record<RagVectorKind, string> = {
+  diary: i18n.t('auto.packages.ui.src.native.RagMemoryView.RagMemoryEntryCard.L244', '日记'),
+  partner: i18n.t('auto.packages.ui.src.native.RagMemoryView.RagMemoryEntryCard.L245', '伙伴'),
+  manual: i18n.t('auto.packages.ui.src.native.RagMemoryView.RagMemoryEntryCard.L246', '手动'),
+  graph_node: i18n.t('auto.packages.ui.src.native.RagMemoryView.RagMemoryEntryCard.L247', '节点')
+}
+
+function kindBadgeStyle(
+  kind: RagVectorKind,
+  colors: { primary: string; success: string }
+): { color: string; backgroundColor: string } {
+  if (kind === 'diary')
+    return { color: colors.primary, backgroundColor: 'rgba(91, 168, 245, 0.14)' }
+  if (kind === 'partner')
+    return { color: colors.success, backgroundColor: 'rgba(16, 185, 129, 0.14)' }
+  if (kind === 'manual') return { color: '#b45309', backgroundColor: 'rgba(245, 158, 11, 0.16)' }
+  return { color: '#7c3aed', backgroundColor: 'rgba(124, 58, 237, 0.12)' }
 }
 
 interface RagMemoryEntriesSectionProps {
   entries: RagEntry[]
   searchQuery?: string
   searchMode?: 'semantic' | 'text'
+  sourceKind?: RagVectorKindFilter
   totalCount?: number
   currentPage?: number
   pageSize?: number
+  isSearching?: boolean
   onDeleteEntry?: (id: string) => Promise<void>
   onEditEntry?: (entry: RagEntry) => Promise<void>
   onPageChange?: (page: number, pageSize: number) => void
@@ -174,9 +277,11 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
   entries,
   searchQuery = '',
   searchMode = 'text',
+  sourceKind = 'all',
   totalCount = 0,
   currentPage = 1,
   pageSize = 10,
+  isSearching = false,
   onDeleteEntry,
   onEditEntry,
   onPageChange
@@ -192,16 +297,28 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
   const showPagination = effectiveTotal > pageSize
   const showSimilarity = searchMode === 'semantic' && searchQuery.trim().length > 0
   const paginationInfo = t('settings.rag_pagination_info').replace('$total', String(effectiveTotal))
+  const emptyCopy = resolveRagMemoryEmptyCopy({ searchQuery, sourceKind })
+
+  if (isSearching) {
+    return (
+      <View style={styles.searchingBox} accessibilityRole="progressbar">
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={[styles.paginationInfo, { color: colors.textSecondary, marginTop: 12 }]}>
+          {t('settings.rag_searching', '正在搜索…')}
+        </Text>
+      </View>
+    )
+  }
 
   return (
     <View>
       {entries.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={[styles.paginationInfo, { color: colors.textSecondary }]}>
-            {searchQuery.trim() ? t('common.no_search_result') : t('common.no_content')}
+            {t(emptyCopy.titleKey, emptyCopy.titleFallback)}
           </Text>
           <Text style={[styles.paginationInfo, { color: colors.textTertiary, marginTop: 8 }]}>
-            {t('settings.rag_empty_desc')}
+            {t(emptyCopy.descKey, emptyCopy.descFallback)}
           </Text>
         </View>
       ) : (
@@ -209,6 +326,7 @@ export const RagMemoryEntriesSection: React.FC<RagMemoryEntriesSectionProps> = (
           <RagMemoryEntryCard
             key={item.embeddingId}
             item={item}
+            searchQuery={searchQuery}
             showSimilarity={showSimilarity}
             activeMenuId={activeMenuId}
             setActiveMenuId={setActiveMenuId}

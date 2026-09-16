@@ -1,10 +1,13 @@
-import type { EmbeddingMigrationStateView } from '@baishou/shared'
+import type { EmbeddingMigrationStateView, RagVectorKindFilter } from '@baishou/shared'
 
 export interface RagConfig {
   ragTopK: number
   ragSimilarityThreshold: number
   ragEnabled: boolean
   batchEmbedConcurrency?: number
+  lastDiaryEmbedFailureAt?: number
+  lastDiaryEmbedFailureMessage?: string
+  startupEmbedReminder?: boolean
 }
 
 export interface RagStats {
@@ -23,6 +26,8 @@ export interface RagState {
   statusText: string
   statusKey?: string
   error?: string
+  paused?: boolean
+  cancelling?: boolean
 }
 
 export interface RagEntry {
@@ -55,12 +60,19 @@ export interface RagMemoryViewProps {
   pageSize?: number
   searchQuery?: string
   searchMode?: 'semantic' | 'text'
+  /** 切换分类、改关键词或翻页时正在重新查询 */
+  isSearching?: boolean
+  sourceKind?: RagVectorKindFilter
+  onSourceKindChange?: (kind: RagVectorKindFilter) => void
   semanticAvailable?: boolean
   onSemanticUnavailable?: () => void
   migrationState?: EmbeddingMigrationStateView | null
   onChange: (config: RagConfig) => void
   onClearDimension?: () => Promise<void>
   onBatchEmbed?: () => Promise<void>
+  onPauseBatchEmbed?: () => Promise<void>
+  onResumeBatchEmbed?: () => Promise<void>
+  onCancelBatchEmbed?: () => Promise<void>
   onAddManualMemory?: () => Promise<void>
   onTriggerMigration?: () => Promise<void>
   onCancelMigration?: () => Promise<void>

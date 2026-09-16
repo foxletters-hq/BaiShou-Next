@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { Switch } from '../Switch'
+import { isStartupEmbedReminderEnabled } from '@baishou/shared'
 import { settingsCardStyles } from '../settings/settings-card.styles'
 import type { RagConfig, RagStats } from './rag-memory.types'
 import { ragMemoryStyles as styles } from './rag-memory.styles'
@@ -39,6 +40,26 @@ export const RagMemoryHeaderSection: React.FC<RagMemoryHeaderSectionProps> = ({
         <Switch
           value={config.ragEnabled}
           onValueChange={(v) => onChange({ ...config, ragEnabled: v })}
+        />
+      </View>
+
+      <View style={[settingsCardStyles.row, { marginTop: 12 }]}>
+        <View style={settingsCardStyles.rowText}>
+          <Text
+            style={[settingsCardStyles.cardTitle, { color: colors.textPrimary, marginBottom: 0 }]}
+          >
+            {t('settings.rag_startup_embed_reminder', '启动时检查待嵌入')}
+          </Text>
+          <Text style={[settingsCardStyles.hint, { color: colors.textSecondary, marginTop: 6 }]}>
+            {t(
+              'settings.rag_startup_embed_reminder_hint',
+              '启动后如果还有未嵌入的内容，会提示你去补齐。关闭后不再自动弹出。'
+            )}
+          </Text>
+        </View>
+        <Switch
+          value={isStartupEmbedReminderEnabled(config)}
+          onValueChange={(v) => onChange({ ...config, startupEmbedReminder: v })}
         />
       </View>
 
