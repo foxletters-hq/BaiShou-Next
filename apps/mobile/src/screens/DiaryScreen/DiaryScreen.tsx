@@ -3,6 +3,7 @@ import {
   View,
   StyleSheet,
   StatusBar,
+  Alert,
   Modal,
   Text,
   TouchableOpacity,
@@ -14,13 +15,21 @@ import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { deriveLegacyVaultId, logger } from '@baishou/shared'
+import {
+  deriveLegacyVaultId,
+  EMPTY_PENDING_EMBED_COUNTS,
+  logger,
+  isStartupEmbedReminderEnabled,
+  shouldShowPendingEmbedReminder,
+  type PendingEmbedCounts
+} from '@baishou/shared'
 import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryFab } from './components/DiaryFab'
+import { PendingEmbedNotice } from './PendingEmbedNotice'
 import { DiaryList, type DiaryListEntry } from './components/DiaryList'
 import { useDiaryData, type DiaryPageQuery } from './hooks/useDiaryData'
 import { useDiaryFilterState } from './hooks/useDiaryFilterState'
@@ -31,7 +40,6 @@ import { isDiaryEditorRouteActive } from './diary-editor-route.util'
 import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
 import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
 import { mobileListPendingReextract } from '../../services/mobile-graph.service'
-import { getDiaryEmbedJobsPendingCount } from '../../services/mobile-diary-embed-jobs-consumer.service'
 import {
   isRagEmbedFeatureConfigured,
   shouldShowPendingEmbed,
@@ -97,8 +105,14 @@ export const DiaryScreen: React.FC = () => {
   isListFocusedRef.current = isListFocused
   const [pendingGraphCount, setPendingGraphCount] = useState(0)
   const [pendingEmbedCount, setPendingEmbedCount] = useState(0)
+  const [pendingEmbedParts, setPendingEmbedParts] = useState<PendingEmbedCounts>(
+    EMPTY_PENDING_EMBED_COUNTS
+  )
   const [graphConfigured, setGraphConfigured] = useState(false)
   const [ragConfigured, setRagConfigured] = useState(false)
+  const [pendingNotice, setPendingNotice] = useState<{ count: number; needModel: boolean } | null>(
+    null
+  )
   const {
     isSyncing,
     isPlanning,
@@ -306,29 +320,41 @@ export const DiaryScreen: React.FC = () => {
             fileSystem: services.fileSystem
           }),
           (
-            services.ragService as { getUnindexedDiaryCount?: () => Promise<number> }
-          ).getUnindexedDiaryCount?.().catch(() => getDiaryEmbedJobsPendingCount()) ??
-            getDiaryEmbedJobsPendingCount().catch(() => 0),
+            services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> }
+          ).getPendingEmbedCounts?.().catch(() => EMPTY_PENDING_EMBED_COUNTS) ??
+            Promise.resolve(EMPTY_PENDING_EMBED_COUNTS),
           services.settingsManager.get<GlobalModelsConfig>('global_models'),
           services.settingsManager.get<RagConfig>('rag_config')
         ])
+      const counts =
+        embedCount && typeof embedCount === 'object' && 'total' in embedCount
+          ? embedCount
+          : EMPTY_PENDING_EMBED_COUNTS
       setPendingGraphCount(pending.length)
-      setPendingEmbedCount(typeof embedCount === 'number' ? embedCount : 0)
+      setPendingEmbedCount(counts.total)
+      setPendingEmbedParts(counts)
       // 有待办就显示：自称/模型缺失时由图谱页引导，避免底栏长期空白
       setGraphConfigured(true)
-      setRagConfigured(
-        isRagEmbedFeatureConfigured({
-          ragConfig,
-          globalModels
+      const embeddingReady = isRagEmbedFeatureConfigured({
+        ragConfig,
+        globalModels
+      })
+      setRagConfigured(embeddingReady)
+      if (
+        shouldShowPendingEmbedReminder(counts.total, {
+          enabled: isStartupEmbedReminderEnabled(ragConfig)
         })
-      )
+      ) {
+        setPendingNotice({ count: counts.total, needModel: !embeddingReady })
+      }
     } catch {
       setPendingGraphCount(0)
       setPendingEmbedCount(0)
+      setPendingEmbedParts(EMPTY_PENDING_EMBED_COUNTS)
       setGraphConfigured(false)
       setRagConfigured(false)
     }
-  }, [services, dbReady])
+  }, [dbReady, router, services, t])
 
   useFocusEffect(
     useCallback(() => {
@@ -467,6 +493,29 @@ export const DiaryScreen: React.FC = () => {
             onRequestStoragePermission={handleRequestStoragePermission}
           />
 
+          {pendingNotice ? (
+            <PendingEmbedNotice
+              count={pendingNotice.count}
+              needModel={pendingNotice.needModel}
+              onAction={() => {
+                setPendingNotice(null)
+                if (pendingNotice.needModel) router.push('/settings/ai-models')
+                else router.push({ pathname: '/memory', params: { tab: 'vectors' } })
+              }}
+              onDismiss={() => setPendingNotice(null)}
+              onMuteStartupReminder={() => {
+                setPendingNotice(null)
+                if (!services) return
+                void services.settingsManager.get<RagConfig>('rag_config').then((current) =>
+                  services.settingsManager.set('rag_config', {
+                    ...(current ?? {}),
+                    startupEmbedReminder: false
+                  })
+                )
+              }}
+            />
+          ) : null}
+
           <View
             style={[
               styles.statusBar,
@@ -488,6 +537,15 @@ export const DiaryScreen: React.FC = () => {
                 {t('diary.status_pending_embed', '待嵌入：{{count}}个', {
                   count: pendingEmbedCount
                 })}
+                {`（${t('memory.pending_embed_part_diaries', '日记 {{count}} 篇', {
+                  count: pendingEmbedParts.diaries
+                })} · ${t('memory.pending_embed_part_memories', '伙伴记忆 {{count}} 条', {
+                  count: pendingEmbedParts.memories
+                })} · ${t('memory.pending_embed_part_graph_nodes', '图谱节点 {{count}} 个', {
+                  count: pendingEmbedParts.graphNodes
+                })} · ${t('memory.pending_embed_part_knowledge', '知识库 {{count}} 份', {
+                  count: pendingEmbedParts.knowledgeSources
+                })}）`}
               </Text>
             ) : null}
           </View>
