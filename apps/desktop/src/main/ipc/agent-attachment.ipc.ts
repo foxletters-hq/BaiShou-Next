@@ -126,7 +126,8 @@ export function registerAttachmentIPC() {
                   mimeType: att.mimeType,
                   selection: att.selection,
                   comment: att.comment,
-                  origin: att.origin
+                  origin: att.origin,
+                  isDirectory: att.isDirectory
                 })
               }
               if (plan.mode === 'image-snapshot') {
