@@ -93,4 +93,18 @@ describe('decorateWorkspacePromptAttachment', () => {
     expect(att.comment).toBe('命名')
     expect(att.origin).toBe('mention')
   })
+
+  it('should keep a folder attachment as a directory path ref', () => {
+    const att = decorateWorkspacePromptAttachment({
+      absolutePath: path.join('D:', 'Projects', 'invoice', '设定'),
+      fileName: '设定',
+      folderRoot: path.join('D:', 'Projects', 'invoice'),
+      origin: 'explorer-drop',
+      isDirectory: true
+    })
+    expect(att.isDirectory).toBe(true)
+    expect(att.isText).toBe(false)
+    expect(att.relativePath).toBe('设定')
+    expect(att.origin).toBe('explorer-drop')
+  })
 })

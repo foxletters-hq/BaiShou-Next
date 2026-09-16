@@ -1,7 +1,7 @@
 import { BrowserWindow } from 'electron'
 import { KnowledgeGraphExtractionService, NotebookGraphIndexService, NotebookGraphRawManager } from '@baishou/core-desktop'
 import { NotebookGraphRepository, knowledgeConnectionManager } from '@baishou/database-desktop'
-import type { GlobalModelsConfig } from '@baishou/shared'
+import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
 import { fileSystem } from './node-file-system'
 import { pathService, vaultService } from '../ipc/vault.ipc'
 import { buildSummaryAiClient } from '../ipc/summary-ai-client'
@@ -41,7 +41,7 @@ export function createDesktopKnowledgeGraphExtractFn() {
       throw new Error('graph-extract-not-configured')
     }
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-    const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
+    const { modelId } = resolveGlobalGraphModelIds(globalModels)
     if (!modelId) throw new Error('graph-extract-not-configured')
 
     const raw = new NotebookGraphRawManager(pathService, fileSystem)
