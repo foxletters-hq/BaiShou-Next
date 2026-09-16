@@ -165,6 +165,8 @@ export interface AgentGateRequest {
   fingerprint?: string
   /** Consecutive same-fingerprint asserts in this session when Ask was raised. */
   repeatCount?: number
+  /** 本轮并入这张确认卡的同类工具调用次数（含当前这一次）。 */
+  coalescedCount?: number
   messageId?: string
   toolCallId?: string
   createdAt: number

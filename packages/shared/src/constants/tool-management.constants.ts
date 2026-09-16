@@ -45,7 +45,7 @@ function isAutoInjectTimeDisabled(disabledToolIds: string[]): boolean {
 }
 
 /**
- * 是否为历史消息包裹发送时刻（与系统提示里的日历日无关）。
+ * 是否为消息加发送时刻壳，并在 system 的 runtime_context 写入稳定时区。
  * 空 disabledToolIds 视为开启（兼容旧配置）；显式列入 ID 则关闭。
  */
 export function isAutoInjectCurrentTimeEnabled(disabledToolIds: string[] | undefined): boolean {

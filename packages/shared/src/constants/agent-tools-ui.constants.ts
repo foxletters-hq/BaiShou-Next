@@ -1,3 +1,5 @@
+import { resolveMcpToolLookupName } from '../utils/mcp-client-url.util'
+
 /** 工具管理页分类（伙伴内置工具） */
 export type AgentToolCategory = 'diary' | 'summary' | 'memory' | 'search' | 'general'
 
@@ -240,3 +242,26 @@ export const WORKSPACE_TOOL_CATEGORY_ORDER: readonly WorkspaceToolCategory[] = [
 
 /** 仅 UI 使用的虚拟工具（非模型可调用） */
 export const AGENT_TOOL_UI_ONLY_IDS = ['auto_inject_time'] as const
+
+/** 门控 / 工具编号对应的显示名 i18n key；未知工具仍走 agent.tools.<action> */
+export function resolveAgentToolNameKey(action: string): string {
+  const lookupName = resolveMcpToolLookupName(action).lookupName
+  const def =
+    AGENT_TOOL_UI_DEFS.find((item) => item.id === lookupName) ??
+    WORKSPACE_TOOL_UI_DEFS.find((item) => item.id === lookupName)
+  return def?.nameKey ?? `agent.tools.${lookupName}`
+}
+
+/** 把存储用的工具编号转成当前语言的显示名；没有词条时回退为编号本身 */
+export function resolveAgentToolActionLabel(
+  action: string,
+  t: (key: string, fallback?: string) => string
+): string {
+  const trimmed = action.trim()
+  if (!trimmed) return action
+  const { isMcp, lookupName } = resolveMcpToolLookupName(trimmed)
+  if (isMcp && lookupName.startsWith('baishou_')) return lookupName
+  const label = t(resolveAgentToolNameKey(lookupName), lookupName)
+  if (!isMcp) return label
+  return `${t('agent.tools.mcp_prefix', 'MCP')} · ${label}`
+}
