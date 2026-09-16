@@ -255,6 +255,15 @@ interface AgentWorkspaceAPI {
   listSessions(): Promise<import('@baishou/shared').AgentWorkspaceSessionListItem[]>
   pinSession(sessionId: string, isPinned: boolean): Promise<{ success: boolean }>
   deleteSession(sessionId: string): Promise<{ success: boolean }>
+  watchFolder(folderRoot: string): Promise<boolean>
+  unwatchFolder(folderRoot: string): Promise<boolean>
+  onFsChanged(callback: (payload: {
+    folderRoot?: string
+    sessionId?: string
+    path: string
+    kind: 'create' | 'modify' | 'delete' | 'rename'
+    previousPath?: string
+  }) => void): () => void
   chat(params: {
     sessionId: string
     text: string
@@ -489,6 +498,7 @@ interface GraphAPI {
     queued: number
     totalPending: number
     skippedNotEmbedded: string[]
+    blockedPendingEmbed?: number
   }>
   setExtractConcurrency(opts: { concurrency: number }): Promise<{ concurrency: number }>
   getQueueState(): Promise<{
@@ -589,7 +599,7 @@ interface GraphAPI {
     aliases: string[]
   } | null>
   listPendingEdges(): Promise<any[]>
-  listPending(): Promise<{ nodes: any[]; edges: any[] }>
+  listPending(): Promise<{ nodes: any[]; edges: any[]; endpointNodes?: any[] }>
   setEdgeReview(opts: {
     edgeId: string
     reviewStatus: 'approved' | 'rejected'
@@ -638,6 +648,8 @@ interface GraphAPI {
   }): Promise<{ ok: boolean; survivorId: string; loserIds: string[] }>
   getNode(id: string): Promise<any>
   meta(): Promise<{ nodeTypes: string[]; edgeTypes: string[] }>
+  resolveJournal(opts: { date: string }): Promise<{ filePath: string; date: string } | null>
+  clearLifeGraph(): Promise<{ ok: boolean; shardCount: number }>
 }
 
 interface KnowledgeAPI {
@@ -731,6 +743,19 @@ interface KnowledgeAPI {
   reprocessSource(input: { sourceId: string; target: 'embed' | 'graph' }): Promise<{ ok: boolean }>
   deleteSource(sourceId: string): Promise<{ ok: boolean }>
   rebuildIndex(notebookId: string): Promise<{ ok: boolean }>
+  manageData(input: {
+    notebookId: string
+    action: 'clear' | 'reprocess'
+    vector?: boolean
+    graph?: boolean
+  }): Promise<{
+    action: 'clear' | 'reprocess'
+    vector: boolean
+    graph: boolean
+    sourceCount: number
+    vectorQueued: number
+    graphQueued: number
+  }>
   getStats(notebookId?: string): Promise<{
     notebooks: number
     sources: number
@@ -804,6 +829,18 @@ interface KnowledgeAPI {
     sourceId: string
     maxChars?: number
   }): Promise<{ text: string | null; truncated: boolean }>
+  getExtractedWindows(input: {
+    notebookId: string
+    windows: Array<{ sourceId: string; windowIndex: number }>
+  }): Promise<{
+    items: Array<{
+      sourceId: string
+      sourceTitle: string
+      windowIndex: number
+      sourceRef: string
+      text: string | null
+    }>
+  }>
   getSourceFile(input: { sourceId: string }): Promise<{
     kind: 'pdf' | 'text' | 'url' | 'unsupported'
     fileName: string
@@ -835,6 +872,8 @@ interface KnowledgeAPI {
       toId: string
       edgeType: string
       reviewStatus?: string
+      sourceRef?: string | null
+      sourceExcerpt?: string
     }>
   }>
   graphSearch(input: {

@@ -19,7 +19,7 @@ import {
   formatIncrementalSyncPlanBytes,
   type SyncDeletePropagationChoice
 } from '@baishou/shared'
-import { Modal } from '@baishou/ui'
+import { Button, Modal } from '@baishou/ui'
 import styles from './IncrementalSyncConfirmDialog.module.css'
 
 interface IncrementalSyncConfirmDialogProps {
@@ -457,9 +457,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                 ) : (
                   <span />
                 )}
-                <button type="button" className={styles.footerCancel} onClick={onCancel}>
+                <Button type="button" onClick={onCancel}>
                   {t('common.cancel', '取消')}
-                </button>
+                </Button>
               </div>
               <div className={styles.choiceList}>
                 {renderChoiceOption(
@@ -488,17 +488,12 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
             </>
           ) : (
             <div className={styles.actionsRow}>
-              <button type="button" className={styles.btnGhost} onClick={onCancel}>
+              <Button type="button" onClick={onCancel}>
                 {t('common.cancel', '取消')}
-              </button>
-              <button
-                type="button"
-                className={styles.btnConfirm}
-                disabled={choiceDisabled}
-                onClick={() => onConfirm()}
-              >
+              </Button>
+              <Button type="button" disabled={choiceDisabled} onClick={() => onConfirm()}>
                 {primaryButtonLabel}
-              </button>
+              </Button>
             </div>
           )}
         </footer>

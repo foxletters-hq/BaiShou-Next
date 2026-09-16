@@ -13,6 +13,7 @@ import { ToastProvider } from '@baishou/ui/desktop/Toast/Toast'
 import { GlobalInputContextMenu } from '@baishou/ui/desktop/ContextMenu'
 import { RestoreBlockingOverlay } from '@baishou/ui/desktop/RestoreBlockingOverlay'
 import { useTranslation } from 'react-i18next'
+import { useRagRuntimeBridge } from './features/settings/hooks/useRagRuntimeBridge'
 import { useSettingsStore, useSyncStore } from '@baishou/store'
 import { ensureDesktopAgentGateInboxBridge } from './features/agent/agent-gate-inbox-bridge'
 import { ensureDesktopAgentGateNotificationBridge } from './features/agent/agent-gate-notification-bridge'
@@ -286,6 +287,7 @@ const AppShell: React.FC = () => {
 
 export function App() {
   useZoom()
+  useRagRuntimeBridge(true)
   const locale = useSettingsStore((s) => s.locale)
   const [archiveImporting, setArchiveImporting] = useState(false)
 
