@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 表格块 widget：渲染与交互同文件 */
 import i18n from 'i18next'
 import { WidgetType, EditorView } from '@codemirror/view'
 import { StateEffect } from '@codemirror/state'
@@ -527,7 +528,7 @@ export class TableBlockWidget extends WidgetType {
       return target instanceof Element && Boolean(target.closest('.cm-table-cell-editor'))
     }
 
-    const outlineCallbacks = (hit: { row: number; col: number }, event: PointerEvent) => ({
+    const outlineCallbacks = (hit: { row: number; col: number }, _event: PointerEvent) => ({
       onOutlineStart: (_anchor: CellLocation) => {
         liveSection = TableSection.ofCell({ row: hit.row, col: hit.col })
       },
@@ -989,8 +990,8 @@ export class TableBlockWidget extends WidgetType {
 
   private handleCellKeyAction(
     action: ReturnType<typeof resolveTableKeyAction>,
-    rowIndex: number,
-    colIndex: number
+    _rowIndex: number,
+    _colIndex: number
   ): void {
     if (!action || !this.rootEl) return
     const view = this.editorView()
@@ -1262,7 +1263,6 @@ export class TableBlockWidget extends WidgetType {
       const colIndex = Number(btn.dataset.colIndex)
       const rowIndex = Number(btn.dataset.rowIndex)
       const isCol = kind === 'col'
-      const index = isCol ? colIndex : rowIndex
       const sections = isCol
         ? buildColMenuSections(this.table, colIndex)
         : buildRowMenuSections(this.table, rowIndex)

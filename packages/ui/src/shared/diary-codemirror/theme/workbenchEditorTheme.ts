@@ -4,7 +4,8 @@ import { EditorView } from '@codemirror/view'
 export const workbenchEditorTheme = EditorView.baseTheme({
   '&.workbench-cm-editor': {
     height: '100%',
-    fontSize: 'var(--ui-fs-xl, var(--content-font-size-lg, 16px))',
+    /* 与侧栏文件树 .nameBtn 同一档，标题 inherit 后不再用 em 放大 */
+    fontSize: 'var(--ui-fs-md)',
     lineHeight: '1.5'
   },
   '&.workbench-cm-editor.cm-focused': {
@@ -49,33 +50,76 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     color: 'var(--text-secondary)',
     fontFamily: 'var(--font-family-main, var(--font-family, inherit))'
   },
+  /* 打开文档会把光标放在首行标题，不能用主色洗底，否则像默认选中 */
   '&.workbench-cm-editor .cm-activeLine': {
-    backgroundColor: 'color-mix(in srgb, var(--color-primary, #5ba8f5) 6%, transparent) !important'
+    backgroundColor: 'transparent !important'
   },
   '&.workbench-cm-editor .cm-activeLine.cm-code-line': {
     backgroundColor: 'var(--bg-surface-low) !important'
   },
+  '&.workbench-cm-editor .cm-activeLine.cm-wb-properties': {
+    backgroundColor:
+      'color-mix(in srgb, var(--text-primary) 7%, var(--bg-surface-low, var(--bg-surface))) !important'
+  },
+  '&.workbench-cm-editor ::selection, &.workbench-cm-editor .cm-content ::selection': {
+    backgroundColor: 'color-mix(in srgb, var(--color-primary) 22%, transparent) !important',
+    color: 'var(--text-primary) !important'
+  },
   '&.workbench-cm-editor .cm-line.cm-rendered-h1': {
-    fontSize: '1.45em',
+    fontSize: 'inherit',
     fontWeight: '700',
     lineHeight: '1.35'
   },
   '&.workbench-cm-editor .cm-line.cm-rendered-h2': {
-    fontSize: '1.25em',
+    fontSize: 'inherit',
     fontWeight: '700',
     lineHeight: '1.35'
   },
   '&.workbench-cm-editor .cm-line.cm-rendered-h3': {
-    fontSize: '1.12em',
+    fontSize: 'inherit',
     fontWeight: '600',
     lineHeight: '1.4'
   },
   '&.workbench-cm-editor .cm-line.cm-rendered-h4, &.workbench-cm-editor .cm-line.cm-rendered-h5, &.workbench-cm-editor .cm-line.cm-rendered-h6':
     {
+      fontSize: 'inherit',
       fontWeight: '600'
     },
+  /* 笔记正文：阅读区字号 + 行级标题放大。字号只挂 .cm-line，避免行内再放大导致点击落点偏移 */
+  '&.workbench-cm-editor.workbench-cm-doc': {
+    fontSize: 'var(--content-font-size-md)',
+    lineHeight: '1.7'
+  },
+  '&.workbench-cm-editor.workbench-cm-doc .cm-line.cm-rendered-h1': {
+    fontSize: '1.6em',
+    fontWeight: '700',
+    lineHeight: '1.3',
+    paddingTop: '0.55em'
+  },
+  '&.workbench-cm-editor.workbench-cm-doc .cm-line.cm-rendered-h2': {
+    fontSize: '1.35em',
+    fontWeight: '700',
+    lineHeight: '1.35',
+    paddingTop: '0.45em'
+  },
+  '&.workbench-cm-editor.workbench-cm-doc .cm-line.cm-rendered-h3': {
+    fontSize: '1.2em',
+    fontWeight: '600',
+    lineHeight: '1.4',
+    paddingTop: '0.35em'
+  },
+  '&.workbench-cm-editor.workbench-cm-doc .cm-line.cm-rendered-h4, &.workbench-cm-editor.workbench-cm-doc .cm-line.cm-rendered-h5, &.workbench-cm-editor.workbench-cm-doc .cm-line.cm-rendered-h6':
+    {
+      fontSize: '1.05em',
+      fontWeight: '600'
+    },
+  '&.workbench-cm-editor h1.cm-heading, &.workbench-cm-editor h2.cm-heading, &.workbench-cm-editor h3.cm-heading, &.workbench-cm-editor h4.cm-heading':
+    {
+      fontSize: 'inherit'
+    },
   '&.workbench-cm-editor .cm-line.cm-wb-properties': {
-    backgroundColor: 'color-mix(in srgb, var(--text-primary) 4%, var(--bg-surface-low, var(--bg-surface)))',
+    backgroundColor:
+      'color-mix(in srgb, var(--text-primary) 4%, var(--bg-surface-low, var(--bg-surface)))',
     padding: '4px 12px',
     fontSize: '0.92em',
     lineHeight: '1.45'
@@ -91,9 +135,8 @@ export const workbenchEditorTheme = EditorView.baseTheme({
     borderBottomRightRadius: '8px'
   },
   '&.workbench-cm-editor .cm-wb-property-key': {
-    color: 'var(--text-tertiary)',
-    fontWeight: '600',
-    fontSize: '0.92em'
+    color: 'var(--text-secondary)',
+    fontWeight: '600'
   },
   '&.workbench-cm-editor .cm-line.cm-wb-hr': {
     position: 'relative',
