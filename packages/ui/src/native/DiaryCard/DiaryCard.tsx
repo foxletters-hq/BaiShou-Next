@@ -35,7 +35,7 @@ interface DiaryCardProps {
 }
 
 export const DiaryCard: React.FC<DiaryCardProps> = memo(function DiaryCard({
-  id,
+  id: _id,
   contentSnippet,
   tags,
   createdAt,

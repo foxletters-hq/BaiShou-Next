@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useMemo, useState, memo } from 'react'
+/* eslint-disable max-lines -- 增量同步确认：各段文案与操作同对话框 */
+import React, { useEffect, useMemo, useState, memo } from 'react'
 import {
   Modal,
   View,

@@ -32,12 +32,12 @@ export const GalleryPanel: React.FC<GalleryPanelProps> = ({
   const isCompact = width < COMPACT_BREAKPOINT
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
+  const panel = useGalleryPanel({ summaries: summaryItems, onOpen, onSave })
 
   if (!isSummaryMode) {
     return <GalleryImageGrid images={images ?? []} onImagePress={onImagePress} />
   }
 
-  const panel = useGalleryPanel({ summaries: summaryItems, onOpen, onSave })
   const showBlockingLoad = loading && summaryItems.length === 0
 
   const handleListItemPress = (id: string) => {

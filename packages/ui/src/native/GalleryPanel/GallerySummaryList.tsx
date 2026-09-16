@@ -26,7 +26,7 @@ export const GallerySummaryList: React.FC<GallerySummaryListProps> = ({
   onScroll,
   onViewportLayout,
   onContentSizeChange,
-  activeTab
+  activeTab: _activeTab
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()

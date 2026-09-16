@@ -120,49 +120,51 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
               </Text>
             </TouchableOpacity>
             {normalized.groups.map((group) => (
-                <View
-                  key={group.id}
-                  style={[
-                    styles.groupCard,
-                    {
-                      backgroundColor: colors.bgSurface,
-                      borderColor: colors.borderSubtle,
-                      borderRadius: tokens.radius.lg
-                    }
-                  ]}
+              <View
+                key={group.id}
+                style={[
+                  styles.groupCard,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderSubtle,
+                    borderRadius: tokens.radius.lg
+                  }
+                ]}
+              >
+                <TouchableOpacity style={styles.groupMain} onPress={() => onOpenGroup(group.id)}>
+                  <View style={[styles.groupTile, { backgroundColor: colors.primaryContainer }]}>
+                    <Text style={[styles.groupTileText, { color: colors.primary }]}>
+                      {group.name.trim().slice(0, 1) ||
+                        t(
+                          'auto.packages.ui.src.native.EmojiSettingsView.EmojiSettingsGroupsView.L137',
+                          '组'
+                        )}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.groupName, { color: colors.textPrimary }]}>
+                      {group.name}
+                    </Text>
+                    <Text style={[styles.groupMeta, { color: colors.textTertiary }]}>
+                      {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
+                        count: group.emojis?.length ?? 0
+                      })}
+                    </Text>
+                  </View>
+                  <ChevronRight
+                    size={18}
+                    color={colors.textTertiary}
+                    strokeWidth={DEFAULT_STROKE_WIDTH}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteGroupBtn}
+                  onPress={() => void handleDeleteGroup(group.id, group.name)}
+                  accessibilityLabel={t('common.delete')}
                 >
-                  <TouchableOpacity style={styles.groupMain} onPress={() => onOpenGroup(group.id)}>
-                    <View
-                      style={[styles.groupTile, { backgroundColor: colors.primaryContainer }]}
-                    >
-                      <Text style={[styles.groupTileText, { color: colors.primary }]}>
-                        {group.name.trim().slice(0, 1) || '组'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.groupName, { color: colors.textPrimary }]}>
-                        {group.name}
-                      </Text>
-                      <Text style={[styles.groupMeta, { color: colors.textTertiary }]}>
-                        {t('agent.tools.emoji_group_count', '{{count}} 个表情', {
-                          count: group.emojis?.length ?? 0
-                        })}
-                      </Text>
-                    </View>
-                    <ChevronRight
-                      size={18}
-                      color={colors.textTertiary}
-                      strokeWidth={DEFAULT_STROKE_WIDTH}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteGroupBtn}
-                    onPress={() => void handleDeleteGroup(group.id, group.name)}
-                    accessibilityLabel={t('common.delete')}
-                  >
-                    <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                  </TouchableOpacity>
-                </View>
+                  <Trash2 size={16} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         </>

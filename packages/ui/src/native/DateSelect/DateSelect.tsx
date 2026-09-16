@@ -52,14 +52,12 @@ export const DateSelect: React.FC<DateSelectProps> = ({
   const showMonth = fields.includes('month')
   const showDay = fields.includes('day')
 
-  const yearIndex = Math.max(0, years.indexOf(value.getFullYear()))
+  const valueYear = value.getFullYear()
+  const yearIndex = Math.max(0, years.indexOf(valueYear))
   const monthIndex = value.getMonth()
   const dayIndex = value.getDate() - 1
 
-  const dayLabels = useMemo(
-    () => getDayWheelLabels(value.getFullYear(), value.getMonth()),
-    [value.getFullYear(), value.getMonth()]
-  )
+  const dayLabels = useMemo(() => getDayWheelLabels(valueYear, monthIndex), [valueYear, monthIndex])
 
   const applyParts = useCallback(
     (year: number, month: number, day: number) => {
