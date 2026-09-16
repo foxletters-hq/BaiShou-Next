@@ -3,6 +3,7 @@ import {
   classifyPromptAttachmentKind,
   isSafeWorkspaceRelativePath,
   fileContextItemKey,
+  formatPromptDirectoryAttachmentBlock,
   formatFileMentionLabel,
   formatFileMentionPathLabel,
   formatPromptFileAttachmentBlock,
@@ -162,5 +163,13 @@ describe('file mention token', () => {
         comment: 'x'
       })
     ).toBe('file:src/app.ts:12:20:c=x')
+  })
+
+  it('should use a directory key and slash label when the ref is a folder', () => {
+    expect(fileContextItemKey({ relativePath: '设定', isDirectory: true })).toBe('dir:设定')
+    expect(formatFileMentionLabel({ relativePath: '设定/人物', isDirectory: true })).toBe('@人物/')
+    expect(
+      formatPromptDirectoryAttachmentBlock('设定')
+    ).toContain('[User Uploaded Folder Attachment: 设定]')
   })
 })

@@ -17,6 +17,7 @@ export type FileCiteSegment =
       selection?: PromptFileSelection
       comment?: string
       origin?: PromptFileRefOrigin
+      isDirectory?: boolean
     }
 
 export function normalizeFileCiteRefs(
@@ -26,6 +27,7 @@ export function normalizeFileCiteRefs(
         selection?: { startLine?: number; endLine?: number } | null
         comment?: string
         origin?: PromptFileRefOrigin | string
+        isDirectory?: boolean
       } | null | undefined>
     | null
     | undefined
@@ -50,7 +52,8 @@ export function normalizeFileCiteRefs(
         relativePath,
         selection,
         comment: comment || undefined,
-        origin: ref?.origin as PromptFileRefOrigin | undefined
+        origin: ref?.origin as PromptFileRefOrigin | undefined,
+        isDirectory: ref?.isDirectory === true ? true : undefined
       }
     })
     .filter((ref) => Boolean(ref.relativePath) && isSafeWorkspaceRelativePath(ref.relativePath))
@@ -99,7 +102,8 @@ export function splitTextByFileRefs(
       relativePath: ref.relativePath,
       selection: ref.selection,
       comment: ref.comment,
-      origin: ref.origin
+      origin: ref.origin,
+      isDirectory: ref.isDirectory
     })
     cursor = found.idx + found.token.length
   }
@@ -136,7 +140,8 @@ export function resolveUserFileDisplay(
       relativePath: ref.relativePath,
       selection: ref.selection,
       comment: ref.comment,
-      origin: ref.origin
+      origin: ref.origin,
+      isDirectory: ref.isDirectory
     })),
     ...(raw.trim() ? [{ type: 'text' as const, value: raw.trim() }] : [])
   ]

@@ -69,6 +69,13 @@ export function formatLocalTime(value: Date | number | undefined | null): string
   return `${hh}:${mm}:${ss}`
 }
 
+/** 主机时区偏移，不含墙钟时刻，供 system runtime_context 使用。 */
+export function formatHostTimezoneOffset(now = new Date()): string {
+  const tzOffset = -now.getTimezoneOffset() / 60
+  const tzSign = tzOffset >= 0 ? '+' : ''
+  return `UTC${tzSign}${tzOffset}`
+}
+
 /**
  * 将日记日历日收成本地 Date。
  * `YYYY-MM-DD` 走 parseDateStr，避免 `new Date('YYYY-MM-DD')` 被当成 UTC 零点。
