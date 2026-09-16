@@ -3,7 +3,7 @@ import { clampOcrConcurrency, runPool } from '../extract-engines/pool.util'
 
 describe('clampOcrConcurrency', () => {
   it('clamps to 1–10', () => {
-    expect(clampOcrConcurrency(undefined)).toBe(1)
+    expect(clampOcrConcurrency(undefined)).toBe(3)
     expect(clampOcrConcurrency(0)).toBe(1)
     expect(clampOcrConcurrency(2)).toBe(2)
     expect(clampOcrConcurrency(9)).toBe(9)
