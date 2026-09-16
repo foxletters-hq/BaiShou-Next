@@ -1,28 +1,13 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CompanionAskPresentation } from '../../shared/tool-result.util'
 import styles from './CompanionAskResultCard.module.css'
 
-export function CompanionAskResultCard({
-  data,
-  pending = false,
-  allowCustomInput = false,
-  isReplying = false,
-  onSelectOption,
-  onSubmitCustom
-}: {
-  data: CompanionAskPresentation
-  pending?: boolean
-  allowCustomInput?: boolean
-  isReplying?: boolean
-  onSelectOption?: (optionId: string) => void
-  onSubmitCustom?: (text: string) => void
-}) {
+/** 已作答的提问结果。待回答时消息列表不渲染本卡，选项只出现在确认卡里。 */
+export function CompanionAskResultCard({ data }: { data: CompanionAskPresentation }) {
   const { t } = useTranslation()
   const selected = new Set(data.selectedOptionIds)
   const showOptions = !data.declined && data.options.length > 0
-  const [customText, setCustomText] = useState('')
-  const [showCustom, setShowCustom] = useState(false)
 
   return (
     <section className={styles.card} aria-label={t('agent.tools.companion_ask', '伙伴提问')}>
@@ -32,32 +17,14 @@ export function CompanionAskResultCard({
         <p className={styles.status}>{t('agent.tools.companion_ask_declined', '没有作答')}</p>
       ) : null}
       {showOptions ? (
-        <div className={styles.options} role={pending ? 'radiogroup' : 'list'}>
+        <div className={styles.options} role="list">
           {data.options.map((option) => {
             const isSelected = selected.has(option.id) || option.label === data.answer
-            const className = `${styles.option}${isSelected ? ` ${styles.optionSelected}` : ''}${
-              pending ? ` ${styles.optionInteractive}` : ''
-            }`
-            if (pending && onSelectOption) {
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  className={className}
-                  disabled={isReplying}
-                  onClick={() => onSelectOption(option.id)}
-                >
-                  {option.label}
-                </button>
-              )
-            }
             return (
               <div
                 key={option.id}
                 role="listitem"
-                className={className}
+                className={`${styles.option}${isSelected ? ` ${styles.optionSelected}` : ''}`}
                 aria-current={isSelected ? 'true' : undefined}
                 aria-label={
                   isSelected
@@ -73,50 +40,12 @@ export function CompanionAskResultCard({
       ) : null}
       {!data.declined && !showOptions && data.answer ? (
         <div className={styles.options} role="list">
-          <div role="listitem" className={`${styles.option} ${styles.optionSelected}`} aria-current="true">
+          <div
+            role="listitem"
+            className={`${styles.option} ${styles.optionSelected}`}
+            aria-current="true"
+          >
             {data.answer}
-          </div>
-        </div>
-      ) : null}
-      {pending && allowCustomInput && onSubmitCustom && !showCustom ? (
-        <button
-          type="button"
-          className={styles.customToggle}
-          disabled={isReplying}
-          onClick={() => setShowCustom(true)}
-        >
-          {t('agent_gate.custom_answer', '自定义回答')}
-        </button>
-      ) : null}
-      {pending && allowCustomInput && onSubmitCustom && showCustom ? (
-        <div className={styles.customBox}>
-          <textarea
-            className={styles.customInput}
-            value={customText}
-            disabled={isReplying}
-            onChange={(event) => setCustomText(event.target.value)}
-            placeholder={t('agent_gate.custom_answer_placeholder', '输入你的回答或说明…')}
-          />
-          <div className={styles.customActions}>
-            <button
-              type="button"
-              className={styles.customToggle}
-              disabled={isReplying}
-              onClick={() => {
-                setShowCustom(false)
-                setCustomText('')
-              }}
-            >
-              {t('common.cancel', '取消')}
-            </button>
-            <button
-              type="button"
-              className={styles.customSubmit}
-              disabled={isReplying || !customText.trim()}
-              onClick={() => onSubmitCustom(customText.trim())}
-            >
-              {t('agent_gate.submit_answer', '提交回答')}
-            </button>
           </div>
         </div>
       ) : null}
