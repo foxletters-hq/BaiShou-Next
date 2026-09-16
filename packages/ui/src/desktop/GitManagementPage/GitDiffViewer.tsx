@@ -55,7 +55,11 @@ const UnifiedDiffBody: React.FC<{ diff: FileDiff }> = ({ diff }) => {
   }
 
   return (
-    <div className={styles.unifiedContent} role="table" aria-label={t('workbench.diff_unified', '统一')}>
+    <div
+      className={styles.unifiedContent}
+      role="table"
+      aria-label={t('workbench.diff_unified', '统一')}
+    >
       {rows.map((row, index) => {
         if (row.kind === 'hunk') {
           return (

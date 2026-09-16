@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Cloud, CloudOff } from 'lucide-react'
 import { Modal } from '../Modal/Modal'
+import { Button } from '../Button/Button'
 import stack from '../shared/SettingsStack.module.css'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { GitConfigTab } from './GitConfigTab'
@@ -46,9 +47,9 @@ export const GitRemoteStatusSection: React.FC<GitRemoteStatusSectionProps> = ({ 
         <div className="gmp-section-body">
           {!vm.isInitialized ? (
             <div className="gmp-btn-row" style={{ marginBottom: 12 }}>
-              <button className="gmp-btn gmp-btn-primary" onClick={() => void vm.handleInit()}>
+              <Button variant="outlined" size="small" onClick={() => void vm.handleInit()}>
                 {t('version_control.init_git', '初始化 Git 仓库')}
-              </button>
+              </Button>
             </div>
           ) : null}
 
@@ -78,32 +79,34 @@ export const GitRemoteStatusSection: React.FC<GitRemoteStatusSectionProps> = ({ 
           </div>
 
           <div className="gmp-btn-row" style={{ marginTop: 16 }}>
-            <button
-              className="gmp-btn gmp-btn-primary"
+            <Button
+              variant="outlined"
+              size="small"
               onClick={() => void vm.handleSyncRemote()}
               disabled={!canClickSync}
+              isLoading={vm.isSyncingRemote}
             >
-              {vm.isSyncingRemote
-                ? t('version_control.syncing_remote', '正在同步…')
-                : t('version_control.sync_remote', '同步远程')}
-            </button>
-            <button
-              className="gmp-btn"
+              {t('version_control.sync_remote', '同步远程')}
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
               onClick={() => void vm.handlePull()}
               disabled={!canClickRemoteAction}
             >
               {t('version_control.pull', '拉取')}
-            </button>
-            <button
-              className="gmp-btn"
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
               onClick={() => void vm.handlePush()}
               disabled={!canClickRemoteAction}
             >
               {t('version_control.push', '推送')}
-            </button>
-            <button className="gmp-btn" onClick={() => setConfigOpen(true)}>
+            </Button>
+            <Button variant="outlined" size="small" onClick={() => setConfigOpen(true)}>
               {t('version_control.show_config', '配置')}
-            </button>
+            </Button>
           </div>
         </div>
       </section>

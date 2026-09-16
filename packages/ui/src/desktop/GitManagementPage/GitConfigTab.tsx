@@ -1,5 +1,6 @@
 import React from 'react'
 import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import { GitRemoteConfigHelp } from './GitRemoteConfigHelp'
 import type { GitManagementViewModel } from './useGitManagementPage'
 
@@ -58,9 +59,9 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
           placeholder={t('version_control.author_email_hint', '例如: latte@example.com')}
         />
         <div className="gmp-btn-row">
-          <button className="gmp-btn gmp-btn-primary" onClick={() => void handleSaveAuthorConfig()}>
+          <Button variant="outlined" size="small" onClick={() => void handleSaveAuthorConfig()}>
             {t('common.save', '保存')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -126,12 +127,12 @@ export const GitConfigTab: React.FC<GitConfigTabProps> = ({ vm }) => {
           }
         />
         <div className="gmp-btn-row">
-          <button className="gmp-btn gmp-btn-primary" onClick={() => void handleSaveRemoteConfig()}>
+          <Button variant="outlined" size="small" onClick={() => void handleSaveRemoteConfig()}>
             {t('common.save', '保存')}
-          </button>
-          <button className="gmp-btn" onClick={() => void handleTestRemote()}>
+          </Button>
+          <Button variant="outlined" size="small" onClick={() => void handleTestRemote()}>
             {t('version_control.test_connection', '测试连接')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
