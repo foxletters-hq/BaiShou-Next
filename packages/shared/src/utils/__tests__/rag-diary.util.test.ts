@@ -11,6 +11,9 @@ import {
   aggregateEmbedLedgerFromVectorRows,
   extractEmbedContentHashFromMetadata,
   mergeEmbedContentHashIntoMetadata,
+  hashEmbedSourceContent,
+  toDiaryEmbedDetectionRow,
+  countPendingMemoriesAgainstLedger,
   isDiaryRagEntry,
   isRagEntryEditable
 } from '../rag-diary.util'
@@ -26,6 +29,7 @@ describe('记忆中心条目的来源判断', () => {
 
   it('日记切片不可编辑，其余来源可编辑', () => {
     expect(isRagEntryEditable('diary')).toBe(false)
+    expect(isRagEntryEditable('graph_node')).toBe(false)
     expect(isRagEntryEditable('memory')).toBe(true)
     expect(isRagEntryEditable('manual')).toBe(true)
     expect(isRagEntryEditable('chat')).toBe(true)
@@ -176,6 +180,32 @@ describe('filterUnindexedDiaries', () => {
     expect(result.map((d) => d.id)).toEqual([2])
   })
 
+  it('does not treat journals_index file hash as embed body hash', () => {
+    const body = '今天写了日记'
+    const fileMarkdown = `---\nid: 1\nweather: sunny\n---\n${body}`
+    const bodyHash = hashEmbedSourceContent(body)
+    const fileHash = hashEmbedSourceContent(fileMarkdown)
+    expect(fileHash).not.toBe(bodyHash)
+
+    const detection = toDiaryEmbedDetectionRow({
+      id: 1,
+      date: '2026-05-10',
+      updatedAt: '2026-05-10T00:00:00.000Z',
+      rawContent: body
+    })
+    expect(detection.contentHash).toBe(bodyHash)
+    expect(detection.contentHash).not.toBe(fileHash)
+
+    const newer = new Date('2026-05-20T00:00:00.000Z')
+    const result = filterUnindexedDiaries(
+      [{ id: 1, updatedAt: newer, contentHash: fileHash }],
+      new Set(['1']),
+      new Map([['1', newer.getTime()]]),
+      { embeddedContentHashMap: new Map([['1', bodyHash]]) }
+    )
+    expect(result).toHaveLength(1)
+  })
+
   it('keeps matching hashes out of pending even if updatedAt shrinks', () => {
     const older = new Date('2026-05-10T00:00:00Z')
     const newer = new Date('2026-05-20T00:00:00Z')
@@ -234,5 +264,29 @@ describe('embed ledger metadata helpers', () => {
       updatedAt: 20
     })
     expect(rows.every((row) => row.contentHash)).toBe(true)
+  })
+})
+
+describe('countPendingMemoriesAgainstLedger', () => {
+  it('counts missing, hash-mismatched, and failed ledger rows', () => {
+    const live = [
+      { id: 'a', content: 'hello' },
+      { id: 'b', content: 'world' },
+      { id: 'c', content: 'same' }
+    ]
+    const ledger = new Map([
+      { sourceId: 'b', contentHash: hashEmbedSourceContent('old'), status: 'embedded' },
+      { sourceId: 'c', contentHash: hashEmbedSourceContent('same'), status: 'failed' }
+    ].map((row) => [row.sourceId, { contentHash: row.contentHash, status: row.status }]))
+
+    expect(countPendingMemoriesAgainstLedger(live, ledger)).toBe(3)
+  })
+
+  it('skips live rows whose ledger hash and status match', () => {
+    const live = [{ id: 'a', content: 'hello' }]
+    const ledger = new Map([
+      ['a', { contentHash: hashEmbedSourceContent('hello'), status: 'embedded' }]
+    ])
+    expect(countPendingMemoriesAgainstLedger(live, ledger)).toBe(0)
   })
 })

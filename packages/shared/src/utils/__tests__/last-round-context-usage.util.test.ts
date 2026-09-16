@@ -4,8 +4,10 @@ import {
   clampRingPercent,
   exclusiveInputTokens,
   formatContextTokenCount,
+  formatEstimatedCostUsd,
   lastRoundUsagePercent,
   pickLastRoundUsage,
+  resolveSessionContextUsage,
   sumLastRoundTokens
 } from '../last-round-context-usage.util'
 
@@ -108,5 +110,49 @@ describe('clampRingPercent', () => {
     expect(clampRingPercent(0)).toBe(0)
     expect(clampRingPercent(58)).toBe(58)
     expect(clampRingPercent(140)).toBe(100)
+  })
+})
+
+describe('resolveSessionContextUsage', () => {
+  it('builds last-round usage, window and exclusive cumulative totals', () => {
+    const view = resolveSessionContextUsage({
+      modelId: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'assistant',
+          inputTokens: 200,
+          outputTokens: 40,
+          cacheReadInputTokens: 15,
+          cacheWriteInputTokens: 0
+        }
+      ],
+      totals: {
+        totalInputTokens: 25_080,
+        totalOutputTokens: 1_495,
+        totalCacheReadInputTokens: 13_056,
+        totalCacheWriteInputTokens: 0,
+        estimatedCost: 0.012345678
+      }
+    })
+    expect(view.lastRound).toEqual({
+      inputTokens: 185,
+      outputTokens: 40,
+      cacheReadInputTokens: 15,
+      cacheWriteInputTokens: 0
+    })
+    expect(view.contextWindow).toBe(128_000)
+    expect(view.occupancy.length).toBeGreaterThan(0)
+    expect(view.cumulative).toEqual({
+      inputTokens: 12_024,
+      outputTokens: 1_495,
+      cacheReadTokens: 13_056,
+      cacheWriteTokens: 0,
+      estimatedCost: '$0.012346'
+    })
+  })
+
+  it('formats zero and invalid costs as $0.000000', () => {
+    expect(formatEstimatedCostUsd(0)).toBe('$0.000000')
+    expect(formatEstimatedCostUsd(Number.NaN)).toBe('$0.000000')
   })
 })

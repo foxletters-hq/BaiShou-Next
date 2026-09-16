@@ -1,3 +1,10 @@
+import {
+  estimateContextOccupancySegments,
+  type ContextOccupancyMessage,
+  type ContextOccupancySegment
+} from './context-occupancy.util'
+import { getModelContextWindow } from './model-context-window.util'
+
 export interface LastRoundTokenUsage {
   inputTokens: number
   outputTokens: number
@@ -5,8 +12,7 @@ export interface LastRoundTokenUsage {
   cacheWriteInputTokens: number
 }
 
-export interface LastRoundUsageMessage {
-  role?: string
+export interface LastRoundUsageMessage extends ContextOccupancyMessage {
   inputTokens?: number | null
   outputTokens?: number | null
   cacheReadInputTokens?: number | null
@@ -91,4 +97,59 @@ export function formatContextTokenCount(count: number): string {
 export function clampRingPercent(percent: number | null): number {
   if (percent == null || percent <= 0) return 0
   return Math.min(100, percent)
+}
+
+export interface SessionTokenTotals {
+  totalInputTokens: number
+  totalOutputTokens: number
+  totalCacheReadInputTokens: number
+  totalCacheWriteInputTokens: number
+  estimatedCost: number
+}
+
+export interface SessionContextUsageView {
+  lastRound: LastRoundTokenUsage | null
+  contextWindow: number
+  occupancy: ContextOccupancySegment[]
+  cumulative: {
+    inputTokens: number
+    outputTokens: number
+    cacheReadTokens: number
+    cacheWriteTokens: number
+    estimatedCost: string
+  }
+}
+
+export function formatEstimatedCostUsd(estimatedCost: number): string {
+  const amount = Number.isFinite(estimatedCost) ? Math.max(0, estimatedCost) : 0
+  return `$${amount.toFixed(6)}`
+}
+
+/** 伙伴页与工作台共用：上一轮占用 + 累计消耗，给用量圆圈用 */
+export function resolveSessionContextUsage(input: {
+  messages: readonly LastRoundUsageMessage[]
+  modelId?: string | null
+  totals: SessionTokenTotals
+}): SessionContextUsageView {
+  const { totals } = input
+  const lastRound = pickLastRoundUsage(input.messages)
+  return {
+    lastRound,
+    contextWindow: getModelContextWindow(input.modelId),
+    occupancy: estimateContextOccupancySegments({
+      lastRound,
+      messages: input.messages
+    }),
+    cumulative: {
+      inputTokens: exclusiveInputTokens(
+        totals.totalInputTokens,
+        totals.totalCacheReadInputTokens,
+        totals.totalCacheWriteInputTokens
+      ),
+      outputTokens: totals.totalOutputTokens,
+      cacheReadTokens: totals.totalCacheReadInputTokens,
+      cacheWriteTokens: totals.totalCacheWriteInputTokens,
+      estimatedCost: formatEstimatedCostUsd(totals.estimatedCost)
+    }
+  }
 }
