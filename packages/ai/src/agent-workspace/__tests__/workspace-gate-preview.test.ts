@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import {
   prepareWorkspaceDeleteGate,
   prepareWorkspacePatchGate,
+  prepareWorkspaceRunGate,
   prepareWorkspaceWriteGate,
   WorkspaceGateStaleError
 } from '../workspace-gate-preview'
@@ -169,5 +170,15 @@ describe('workspace-gate-preview', () => {
         requireRegistration: true
       })
     ).resolves.toBeUndefined()
+  })
+
+  it('omits default workdir from command preview', () => {
+    const prepared = prepareWorkspaceRunGate(
+      { command: 'git status', workdir: '.' },
+      { sessionId: SESSION, workspace: { folderRoot: ROOT } }
+    )
+    expect(prepared.preview.type).toBe('command')
+    if (prepared.preview.type !== 'command') return
+    expect(prepared.preview.workdir).toBeUndefined()
   })
 })

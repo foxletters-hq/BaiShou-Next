@@ -18,6 +18,7 @@ import {
   extractAgentGateResourcesFromMetadata,
   mergeAgentGateResources,
   canPermanentlyAllowShellCommand,
+  resolveAgentGateToolCoalesceKey,
   resolveCommandPrefixPatternFromCommand,
   shouldDisableAlwaysForPreview,
   type AgentGateAssertInput,
@@ -67,13 +68,18 @@ export interface IBaishouAgentGate {
   probeEffect(input: AgentGateEvaluateInput): AgentGateEffect
 }
 
+interface PendingWaiter {
+  resolve: (resolution: AgentGateResolution) => void
+  reject: (error: Error) => void
+}
+
 interface PendingEntry {
   request: AgentGateRequest
   fingerprint: string
+  coalesceKey?: string | null
   resources?: AgentGateResourceRef[]
   profileId?: AgentGateProfileId
-  resolve: (resolution: AgentGateResolution) => void
-  reject: (error: Error) => void
+  waiters: PendingWaiter[]
 }
 
 function buildTurnAllowRule(input: {
@@ -106,6 +112,13 @@ function buildTurnAllowRule(input: {
   }
 
   return { action: input.action, effect: AgentGateEffect.Allow }
+}
+
+function alwaysPatternsFromMetadata(metadata?: Record<string, unknown>): string[] | undefined {
+  if (!Array.isArray(metadata?.alwaysPatterns)) return undefined
+  return (metadata.alwaysPatterns as unknown[]).filter(
+    (item): item is string => typeof item === 'string' && item.trim().length > 0
+  )
 }
 
 function isSafeGateRisk(metadata?: Record<string, unknown>): boolean {
@@ -265,6 +278,20 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       }
     }
 
+    const coalesceKey = resolveAgentGateToolCoalesceKey({
+      kind: assertInput.kind,
+      action: assertInput.action,
+      resources: assertResources,
+      preview: assertInput.preview,
+      metadata: assertInput.metadata
+    })
+    if (effect === AgentGateEffect.Ask && coalesceKey) {
+      const existing = this.findCoalesciblePending(assertInput.sessionId, coalesceKey)
+      if (existing) {
+        return this.attachCoalescedWaiter(existing)
+      }
+    }
+
     if (effect === AgentGateEffect.Allow) {
       if (safeRisk && assertInput.kind === AgentGateKind.Tool) {
         const turnRule = buildTurnAllowRule({
@@ -290,11 +317,13 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
 
     const request = this.createRequest(assertInput, fingerprint, detailed.decisionSource)
     request.repeatCount = this.repeatTracker.getCount(assertInput.sessionId, fingerprint)
+    request.coalescedCount = 1
     return this.waitForResolution(
       request,
       fingerprint,
       assertInput.resources,
-      assertInput.profileId
+      assertInput.profileId,
+      coalesceKey
     )
   }
 
@@ -404,21 +433,18 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
                 ? { pattern: alwaysPatternsFromMeta[0] }
                 : {})
       })
-      // Resolve first so tool asserts never hang if persist fails.
+      // 先放行工具，白名单落盘放到后台，避免伙伴页卡住等写入
       this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
       this.resolveEntry(entry, resolution)
       this.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
-      try {
-        await this.allowlistStore.persist()
-        this.eventBus.publish({
-          type: 'agent_gate.allowlist_changed',
-          allowlist: this.allowlistStore.list(),
-          ...(this.configScope ? { scope: this.configScope } : {})
-        })
-      } catch (error) {
-        // In-memory allowlist already updated for this process; surface persist error to caller.
-        throw error
-      }
+      this.eventBus.publish({
+        type: 'agent_gate.allowlist_changed',
+        allowlist: this.allowlistStore.list(),
+        ...(this.configScope ? { scope: this.configScope } : {})
+      })
+      void this.allowlistStore.persist().catch(() => {
+        // 内存白名单已生效；落盘失败不挡本轮继续
+      })
       return
     }
 
@@ -455,7 +481,9 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     for (const [id, entry] of this.pending.entries()) {
       if (entry.request.sessionId !== sessionId) continue
       entry.request.status = AgentGateRequestStatus.Cancelled
-      entry.reject(new AgentGateCancelledError(reason))
+      for (const waiter of entry.waiters) {
+        waiter.reject(new AgentGateCancelledError(reason))
+      }
       this.pending.delete(id)
     }
   }
@@ -483,6 +511,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       preview: input.preview,
       scope: input.scope ?? this.configScope,
       fingerprint,
+      coalescedCount: 1,
       messageId: input.messageId,
       toolCallId: input.toolCallId,
       createdAt: Date.now()
@@ -493,35 +522,61 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     request: AgentGateRequest,
     fingerprint: string,
     resources?: AgentGateResourceRef[],
-    profileId?: AgentGateProfileId
+    profileId?: AgentGateProfileId,
+    coalesceKey?: string | null
   ): Promise<AgentGateResolution> {
     return new Promise<AgentGateResolution>((resolve, reject) => {
       this.pending.set(request.id, {
         request,
         fingerprint,
+        coalesceKey,
         resources,
         profileId,
-        resolve,
-        reject
+        waiters: [{ resolve, reject }]
       })
       this.eventBus.publish({ type: 'agent_gate.asked', request })
+    })
+  }
+
+  private findCoalesciblePending(sessionId: string, coalesceKey: string): PendingEntry | undefined {
+    for (const entry of this.pending.values()) {
+      if (entry.request.sessionId !== sessionId) continue
+      if (entry.request.kind !== AgentGateKind.Tool) continue
+      if (entry.coalesceKey === coalesceKey) return entry
+    }
+    return undefined
+  }
+
+  private attachCoalescedWaiter(entry: PendingEntry): Promise<AgentGateResolution> {
+    return new Promise<AgentGateResolution>((resolve, reject) => {
+      entry.waiters.push({ resolve, reject })
+      entry.request.coalescedCount = entry.waiters.length
+      this.eventBus.publish({ type: 'agent_gate.asked', request: entry.request })
     })
   }
 
   private resolveEntry(entry: PendingEntry, resolution: AgentGateResolution): void {
     entry.request.status = AgentGateRequestStatus.Resolved
     entry.request.resolvedAt = resolution.resolvedAt
-    entry.resolve(resolution)
+    for (const waiter of entry.waiters) {
+      waiter.resolve(resolution)
+    }
   }
 
   private rejectEntry(entry: PendingEntry, resolution: AgentGateResolution): void {
     entry.request.status = AgentGateRequestStatus.Resolved
     entry.request.resolvedAt = resolution.resolvedAt
     if (resolution.message?.trim()) {
-      entry.reject(new AgentGateCorrectedError(resolution.message.trim()))
+      const error = new AgentGateCorrectedError(resolution.message.trim())
+      for (const waiter of entry.waiters) {
+        waiter.reject(error)
+      }
       return
     }
-    entry.reject(new AgentGateRejectedError())
+    const error = new AgentGateRejectedError()
+    for (const waiter of entry.waiters) {
+      waiter.reject(error)
+    }
   }
 
   private cascadeRejectSession(
@@ -543,9 +598,15 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         selectedOptionIds: resolution.selectedOptionIds
       })
       if (resolution.message?.trim()) {
-        item.reject(new AgentGateCorrectedError(resolution.message.trim()))
+        const error = new AgentGateCorrectedError(resolution.message.trim())
+        for (const waiter of item.waiters) {
+          waiter.reject(error)
+        }
       } else {
-        item.reject(new AgentGateRejectedError())
+        const error = new AgentGateRejectedError()
+        for (const waiter of item.waiters) {
+          waiter.reject(error)
+        }
       }
     }
   }
@@ -618,7 +679,9 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         requestId: item.request.id,
         reply: AgentGateReply.Once
       })
-      item.resolve(cascaded)
+      for (const waiter of item.waiters) {
+        waiter.resolve(cascaded)
+      }
     }
   }
 }
