@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MockChatMessage } from '@baishou/shared'
@@ -39,7 +40,7 @@ export interface UseContextChainViewParams {
 }
 
 export function useContextChainView({
-  message,
+  message: _message,
   flatEntries,
   meta,
   compressedContent,
@@ -85,16 +86,25 @@ export function useContextChainView({
   const getChainRoleLabel = (role: string) => {
     switch (role) {
       case 'system':
-        return t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L88', '系统')
+        return i18n.t(
+          'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L88',
+          '系统'
+        )
       case 'user':
-        return t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L90', '用户')
+        return i18n.t(
+          'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L90',
+          '用户'
+        )
       case 'assistant':
-        return t(
+        return i18n.t(
           'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L92',
           'AI 助手'
         )
       case 'tool':
-        return t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L94', '工具')
+        return i18n.t(
+          'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L94',
+          '工具'
+        )
       default:
         return role
     }
@@ -105,20 +115,35 @@ export function useContextChainView({
 
   const getLabelBadgeClass = (label?: string) => {
     switch (label) {
-      case t(
+      case i18n.t(
         'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L105',
         '系统提示词'
       ):
         return panelStyles.roleSystem
-      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L107', '用户'):
+      case i18n.t(
+        'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L107',
+        '用户'
+      ):
         return panelStyles.roleUser
-      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L109', 'AI 思考'):
+      case i18n.t(
+        'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L109',
+        'AI 思考'
+      ):
         return panelStyles.roleThinking
-      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L111', 'AI 输出'):
+      case i18n.t(
+        'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L111',
+        'AI 输出'
+      ):
         return panelStyles.roleAssistant
-      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L113', '工具调用'):
+      case i18n.t(
+        'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L113',
+        '工具调用'
+      ):
         return panelStyles.roleTool
-      case t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L115', '对话压缩'):
+      case i18n.t(
+        'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L115',
+        '对话压缩'
+      ):
         return panelStyles.roleCompaction
       default:
         return panelStyles.roleDefault
@@ -211,7 +236,10 @@ export function useContextChainView({
     (e) =>
       e.kind === 'system-prompt' ||
       e.item?.label ===
-        t('auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L205', '系统提示词')
+        i18n.t(
+          'auto.packages.ui.src.desktop.ContextChainPanel.useContextChainView.L205',
+          '系统提示词'
+        )
   )
 
   const getRoleColorClass = (role: string) => {

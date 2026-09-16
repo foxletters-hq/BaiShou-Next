@@ -43,11 +43,6 @@ export const CompressionActivityBar: React.FC<CompressionActivityBarProps> = ({
       ? t('agent.chat.recompress_running', '压缩中…')
       : t('agent.chat.compressing_context', '正在压缩对话…')
 
-  const completedStatusLabel =
-    phase === 'manual'
-      ? t('agent.chat.recompress_completed', '重新压缩完成')
-      : t('agent.chat.compression_completed', '对话压缩完成')
-
   if (!isActive && !hasReasoning && !hasSummary) {
     return null
   }

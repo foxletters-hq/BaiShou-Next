@@ -10,7 +10,10 @@ import styles from './ThinkingBlock.module.css'
  * 处理 CJK 字符之间、英文标点周围的多余空格。
  */
 export function normalizeCJKSpacing(text: string): string {
-  const cjk = '\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff'
+  const cjk = t(
+    'auto.packages.ui.src.desktop.ThinkingBlock.index.L13',
+    '\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff'
+  )
   const punct = '\u3000-\u303f\uff00-\uffef'
 
   return (

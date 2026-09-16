@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { ListTree } from 'lucide-react'
 import { withAppContentOverlay } from '../overlay'
@@ -66,7 +67,7 @@ export const ContextChainDialog: React.FC<ContextChainDialogProps> = ({
   const systemPromptInChain = contextMessages.some(
     (m) =>
       m.role === 'system' &&
-      m.label === t('auto.packages.ui.src.desktop.ContextChainDialog.index.L66', '系统提示词')
+      m.label === i18n.t('auto.packages.ui.src.desktop.ContextChainDialog.index.L66', '系统提示词')
   )
 
   const getRoleColorClass = (role: string) => {
