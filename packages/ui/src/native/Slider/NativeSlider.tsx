@@ -203,6 +203,8 @@ export const NativeSlider: React.FC<NativeSliderProps> = ({
           emit(nativeValueRef.current, 'end')
         }
       }),
+    // emit / handleAndroidGesture 每轮新建，跟 nativeProps 一起重建即可
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [disabled, androidSliderWidth, nativeProps]
   )
 

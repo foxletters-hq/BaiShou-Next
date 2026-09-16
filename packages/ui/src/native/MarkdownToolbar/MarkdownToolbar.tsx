@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   View,
   TouchableOpacity,
