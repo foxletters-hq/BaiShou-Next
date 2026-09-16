@@ -8,10 +8,8 @@ export class CurrentTimeTool extends AgentTool<typeof currentTimeParams> {
   readonly name = 'current_time'
 
   readonly description =
-    'Get the current real-world clock time, date, and day of the week. ' +
-    'The top-level system prompt does not include date or time. ' +
-    'If a later system message already has [System Current Date / Time], use that for "now". ' +
-    'Otherwise call this tool when the user asks for the current time, elapsed time, or anything that needs hours and minutes.'
+    'Get the current real-world time, date, and day of the week. ' +
+    'Very useful for answering questions related to time calculations, age, absolute dates, etc.'
 
   readonly parameters = currentTimeParams
 

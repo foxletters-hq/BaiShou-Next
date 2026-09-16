@@ -12,14 +12,24 @@ import type { ToolContext } from './agent.tool'
 
 const messageSearchParams = z.object({
   query: z.string().describe('The search keyword or phrase to find in past conversations.'),
-  limit: z.number().optional().describe('Maximum number of results to return. Defaults to 10.')
+  limit: z.number().optional().describe('Maximum number of results to return. Defaults to 10.'),
+  start_date: z
+    .string()
+    .optional()
+    .describe('Optional local calendar start date (YYYY-MM-DD) inclusive.'),
+  end_date: z
+    .string()
+    .optional()
+    .describe('Optional local calendar end date (YYYY-MM-DD) inclusive.')
 })
 
 export class MessageSearchTool extends AgentTool<typeof messageSearchParams> {
   readonly name = 'message_search'
 
   readonly description =
-    'Search past conversation messages across all sessions by keyword. ' +
+    'Search the original pre-compression text of past conversation messages across sessions by keyword. ' +
+    'This searches original user/assistant text, not compaction summaries. ' +
+    'Optional start_date/end_date limit results to local calendar days. ' +
     'Returns matching message snippets with session title and local timestamp. ' +
     'Useful when the user references something discussed before, ' +
     'or when you need to recall previous conversations.'
@@ -44,7 +54,10 @@ export class MessageSearchTool extends AgentTool<typeof messageSearchParams> {
     const limit = args.limit ?? 10
 
     try {
-      const results = await searcher.searchMessages(args.query, limit, vaultId)
+      const results = await searcher.searchMessages(args.query, limit, vaultId, {
+        startDate: args.start_date,
+        endDate: args.end_date
+      })
 
       if (results.length === 0) {
         return `未找到包含「${args.query}」的历史消息。`

@@ -26,6 +26,7 @@ export class CompanionAskTool extends AgentTool<typeof companionAskParams> {
   readonly description =
     'Ask the user a required multiple-choice question and wait for the answer. ' +
     'You MUST call this tool for confirmation, yes/no, or naming choices. ' +
+    'Independent questions may be asked together by calling this tool multiple times in the same step. ' +
     'Never write those questions as plain chat text.'
 
   readonly parameters = companionAskParams
