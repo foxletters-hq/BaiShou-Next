@@ -1,9 +1,11 @@
-import type { MockChatAttachment } from '@baishou/shared'
+import type { FileCiteRef, MockChatAttachment, SkillCiteRef } from '@baishou/shared'
 
 export interface ChatBubbleMessage {
   id?: string
   role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
+  skillRefs?: SkillCiteRef[]
+  fileRefs?: FileCiteRef[]
   reasoning?: string
   isReasoning?: boolean
   timestamp?: Date
