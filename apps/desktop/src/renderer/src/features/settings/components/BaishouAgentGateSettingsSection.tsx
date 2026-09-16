@@ -23,9 +23,10 @@ import {
   type AgentToolScene,
   type AgentWorkspaceSecurityMode,
   type BaishouAgentGateConfig,
-  DEFAULT_AGENT_GATE_NOTIFICATION_PREFS
+  DEFAULT_AGENT_GATE_NOTIFICATION_PREFS,
+  resolveAgentToolActionLabel
 } from '@baishou/shared'
-import { HelpTooltip, Input, SegmentedControl, Select } from '@baishou/ui'
+import { Button, HelpTooltip, Input, SegmentedControl, Select, Switch } from '@baishou/ui'
 import { Check, ChevronDown } from 'lucide-react'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
 import pane from './GeneralSettingsPane.module.css'
@@ -595,14 +596,13 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                                     {dir}
                                   </span>
                                 </div>
-                                <button
+                                <Button
                                   type="button"
-                                  className="settings-text-btn"
                                   disabled={saving}
                                   onClick={() => removeTrustedDir(dir)}
                                 >
                                   {t('common.remove', '移除')}
-                                </button>
+                                </Button>
                               </div>
                             ))
                           )}
@@ -618,14 +618,13 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                               )}
                               disabled={saving}
                             />
-                            <button
+                            <Button
                               type="button"
-                              className="settings-text-btn"
                               disabled={saving}
                               onClick={addTrustedDir}
                             >
                               {t('common.add', '添加')}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ) : null}
@@ -656,14 +655,13 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                                     {entry.pattern ?? entry.action}
                                   </span>
                                 </div>
-                                <button
+                                <Button
                                   type="button"
-                                  className="settings-text-btn"
                                   disabled={saving}
                                   onClick={() => void removeAllowlistEntry(entry)}
                                 >
                                   {t('common.remove', '移除')}
-                                </button>
+                                </Button>
                               </div>
                             ))
                           )}
@@ -690,15 +688,12 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                       )}
                     </span>
                   </div>
-                  <label className={`settings-switch-label ${styles.compactSwitch}`}>
-                    <input
-                      type="checkbox"
-                      disabled={saving}
-                      checked={config.hideDeniedTools !== false}
-                      onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
-                    />
-                    <span className="settings-switch-slider" />
-                  </label>
+                  <Switch
+                    disabled={saving}
+                    checked={config.hideDeniedTools !== false}
+                    aria-label={t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
+                    onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
+                  />
                 </div>
                 <div className={pane.divider} />
 
@@ -742,15 +737,12 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                       {t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
                     </span>
                   </div>
-                  <label className={`settings-switch-label ${styles.compactSwitch}`}>
-                    <input
-                      type="checkbox"
-                      disabled={saving}
-                      checked={config.hideDeniedTools !== false}
-                      onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
-                    />
-                    <span className="settings-switch-slider" />
-                  </label>
+                  <Switch
+                    disabled={saving}
+                    checked={config.hideDeniedTools !== false}
+                    aria-label={t('settings.agent_gate_hide_denied', '隐藏被拒绝的工具')}
+                    onChange={(e) => void patchConfig({ hideDeniedTools: e.target.checked })}
+                  />
                 </div>
               </>
             )}
@@ -790,7 +782,9 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                   {index > 0 ? <div className={pane.divider} /> : null}
                   <div className="settings-list-tile settings-list-tile-noclick">
                     <div className="settings-list-tile-content">
-                      <span className="settings-list-tile-title">{entry.action}</span>
+                      <span className="settings-list-tile-title">
+                        {resolveAgentToolActionLabel(entry.action, t)}
+                      </span>
                       <span className="settings-list-tile-subtitle">
                         {entry.pattern
                           ? t('settings.agent_gate_allowlist_pattern', '模式：{{pattern}}', {
@@ -801,14 +795,13 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                         {new Date(entry.createdAt).toLocaleString()}
                       </span>
                     </div>
-                    <button
+                    <Button
                       type="button"
-                      className="settings-text-btn"
                       disabled={saving}
                       onClick={() => void removeAllowlistEntry(entry)}
                     >
                       {t('common.remove', '移除')}
-                    </button>
+                    </Button>
                   </div>
                 </React.Fragment>
               ))
@@ -881,14 +874,13 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                           {action}
                         </span>
                       </div>
-                      <button
+                      <Button
                         type="button"
-                        className="settings-text-btn"
                         disabled={saving}
                         onClick={() => removeExclusion(action)}
                       >
                         {t('common.remove', '移除')}
-                      </button>
+                      </Button>
                     </div>
                   </React.Fragment>
                 ))}
@@ -901,14 +893,13 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     placeholder="e.g. workspace_run"
                     disabled={saving}
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="settings-text-btn"
                     disabled={saving}
                     onClick={addExclusion}
                   >
                     {t('common.add', '添加')}
-                  </button>
+                  </Button>
                 </div>
 
                 <div className={styles.sectionLabel}>
@@ -935,32 +926,29 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                             )}
                           </span>
                         </div>
-                        <button
+                        <Button
                           type="button"
-                          className="settings-text-btn"
                           disabled={saving || index === 0}
                           onClick={() => movePermissionRule(index, -1)}
                           aria-label={t('settings.agent_gate_rule_move_up', '上移')}
                         >
                           ↑
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className="settings-text-btn"
                           disabled={saving || index === permissionRules.length - 1}
                           onClick={() => movePermissionRule(index, 1)}
                           aria-label={t('settings.agent_gate_rule_move_down', '下移')}
                         >
                           ↓
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className="settings-text-btn"
                           disabled={saving}
                           onClick={() => removePermissionRule(index)}
                         >
                           {t('common.remove', '移除')}
-                        </button>
+                        </Button>
                       </div>
                     </React.Fragment>
                   ))
@@ -1009,14 +997,13 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     ]}
                     onChange={(e) => setRuleEffect(e.target.value as AgentGateEffect)}
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="settings-text-btn"
                     disabled={saving}
                     onClick={addPermissionRule}
                   >
                     {t('common.add', '添加')}
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : null}
@@ -1045,15 +1032,12 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                   {t('settings.agent_gate_notify_enabled', '系统通知')}
                 </span>
               </div>
-              <label className={`settings-switch-label ${styles.compactSwitch}`}>
-                <input
-                  type="checkbox"
-                  checked={notificationPrefs.enabled}
-                  disabled={saving}
-                  onChange={(e) => void updateNotificationPrefs({ enabled: e.target.checked })}
-                />
-                <span className="settings-switch-slider" />
-              </label>
+              <Switch
+                checked={notificationPrefs.enabled}
+                disabled={saving}
+                aria-label={t('settings.agent_gate_notify_enabled', '系统通知')}
+                onChange={(e) => void updateNotificationPrefs({ enabled: e.target.checked })}
+              />
             </div>
             <div className={pane.divider} />
             <div className="settings-list-tile settings-list-tile-noclick">
@@ -1062,15 +1046,12 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                   {t('settings.agent_gate_notify_sound', '通知声音')}
                 </span>
               </div>
-              <label className={`settings-switch-label ${styles.compactSwitch}`}>
-                <input
-                  type="checkbox"
-                  checked={notificationPrefs.soundEnabled}
-                  disabled={saving || !notificationPrefs.enabled}
-                  onChange={(e) => void updateNotificationPrefs({ soundEnabled: e.target.checked })}
-                />
-                <span className="settings-switch-slider" />
-              </label>
+              <Switch
+                checked={notificationPrefs.soundEnabled}
+                disabled={saving || !notificationPrefs.enabled}
+                aria-label={t('settings.agent_gate_notify_sound', '通知声音')}
+                onChange={(e) => void updateNotificationPrefs({ soundEnabled: e.target.checked })}
+              />
             </div>
           </div>
         </section>

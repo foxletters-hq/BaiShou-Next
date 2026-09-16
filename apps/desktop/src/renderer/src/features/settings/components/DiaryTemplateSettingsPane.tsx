@@ -6,7 +6,7 @@ import {
   previewDiaryAgentWritingGuidelines,
   resolveDiaryWritingStyleSupplement
 } from '@baishou/shared'
-import { HelpTooltip, SettingsPageChrome, useToast } from '@baishou/ui'
+import { Button, HelpTooltip, SettingsPageChrome, useToast } from '@baishou/ui'
 import { useDiaryTemplateConfig } from '../hooks/useDiaryTemplateConfig'
 import styles from './DiarySettingsPane.module.css'
 import pane from './GeneralSettingsPane.module.css'
@@ -249,22 +249,25 @@ export const DiaryTemplateSettingsPane: React.FC = () => {
           </p>
 
           <div className={styles.actions}>
-            <button
+            <Button
               type="button"
-              className={styles.btn}
+              variant="outlined"
+              size="small"
               onClick={() => void handleReset()}
               disabled={!hydrated || saving}
             >
               {t('common.reset', '重置')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={`${styles.btn} ${styles.btnPrimary}`}
+              variant="outlined"
+              size="small"
               onClick={() => void handleSave()}
               disabled={!canSave}
+              isLoading={saving}
             >
-              {saving ? t('common.saving', '保存中…') : t('common.save', '保存')}
-            </button>
+              {t('common.save', '保存')}
+            </Button>
           </div>
         </div>
       </SettingsPageChrome>

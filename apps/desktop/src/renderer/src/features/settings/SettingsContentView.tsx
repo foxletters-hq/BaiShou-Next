@@ -23,10 +23,13 @@ import { WorkspaceManagementPane } from './components/WorkspaceManagementPane'
 import { IdentityCardManagementPane } from './components/IdentityCardManagementPane'
 import { LegacyMigrationPane } from './components/LegacyMigrationPane'
 import { LatteSettingsPane } from './components/LatteSettingsPane'
+import { HelpDocsPane } from './components/HelpDocsPane'
 import { MemoryCenterPage } from '../memory/MemoryCenterPage'
+import { Button } from '@baishou/ui'
 
 const FULL_HEIGHT_SEGMENTS = new Set([
   'general',
+  'help-docs',
   'mcp',
   'lan-transfer',
   'ai-services',
@@ -107,9 +110,9 @@ const SegmentConfigFailedOverlay: React.FC<{
       <p className="settings-config-failed-text">
         {t('settings.config_load_failed', '部分配置加载失败')}
       </p>
-      <button type="button" className="settings-retry-btn" onClick={onRetry}>
+      <Button type="button" variant="outlined" size="small" onClick={onRetry}>
         {t('common.retry', '重试')}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -193,6 +196,8 @@ export const SettingsContentView: React.FC<SettingsContentViewProps> = ({
     switch (segment) {
       case 'general':
         return <GeneralSettingsPane settings={settings} />
+      case 'help-docs':
+        return <HelpDocsPane />
       case 'mcp':
         return <McpSettingsPane settings={settings} />
       case 'ai-services':

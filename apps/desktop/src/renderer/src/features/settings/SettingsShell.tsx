@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Archive,
+  BookOpen,
   ArrowLeft,
   ArrowLeftRight,
   Cable,
@@ -58,6 +59,12 @@ export const SettingsShell: React.FC = () => {
         kind: 'item',
         label: t('settings.general', '常规设置'),
         icon: <Settings size={NAV_ICON_SIZE} />
+      },
+      {
+        id: 19,
+        kind: 'item',
+        label: t('settings.help_docs', '使用教程'),
+        icon: <BookOpen size={NAV_ICON_SIZE} />
       },
       {
         kind: 'section',
