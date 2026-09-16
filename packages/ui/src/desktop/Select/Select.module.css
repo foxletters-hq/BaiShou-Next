@@ -156,14 +156,14 @@
 }
 
 .sizeSmall .trigger {
-  padding: 8px 12px;
-  font-size: 13px;
-  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: var(--ui-fs-md);
+  border-radius: var(--radius-sm);
 }
 
 .sizeSmall .optionItem {
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
 }
 
 .leading {
