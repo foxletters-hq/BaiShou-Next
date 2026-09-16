@@ -1,6 +1,6 @@
 # AI 编码规范
 
-> **读者**：所有 AI 协作者，开始编码前请务必通读本文；UI 颜色与主题见 [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)；提交与 PR 见 [1-Submit-Rule.md](../2-Submit/1-Submit-Rule.md)。
+> **读者**：规则入口在 [0-README.md](./0-README.md)，按那张表在需要时打开本文。UI 颜色与主题见 [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)；组件清单见 [../../packages/ui/COMPONENTS.md](../../packages/ui/COMPONENTS.md)；提交与 PR 见 [1-Submit-Rule.md](../2-Submit/1-Submit-Rule.md)。
 
 **技术栈**：pnpm · Turborepo · Vitest · TypeScript strict。
 

@@ -67,7 +67,7 @@ BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。�
 语义状态色：`--color-success` / `--color-warning` / `--color-error`；勿用 `#2563EB` 等深蓝替代原品牌蓝。
 
 **色系约定：** 品牌蓝统一 `#5BA8F5`。选中项文字 / 图标可用 `--color-primary`；侧栏选中底仍用灰底 `--bg-surface-high`，避免大面积洗蓝。  
-**主 CTA：** 纯描边（透明底 + `--border-control` + `--text-primary`），悬停可轻微灰底；勿用深蓝实心。
+**主 CTA：** 描边（`--bg-surface` + `--border-control` + `--text-primary`），悬停可 `--bg-surface-high`；勿用深蓝实心。文字按钮同样描边，不要再做透明底。`Button` 默认 `outlined` + `size="small"`，宽度跟内容走，禁止在纵向 flex 里拉成一整行。
 
 **字体（桌面 / 移动）：** UI 统一 Noto Sans 体系（`--font-family`）。简中默认 **`Noto Sans SC`（= 思源黑体简体）**，`zh-TW`→`Noto Sans TC`，`ja`→`Noto Sans JP`，`en`→`Noto Sans`。代码 / 路径 / Diff 必须用 `--font-family-mono`（栈末含 `--font-family`，保证 CJK 仍走思源，勿写裸 `ui-monospace…`）。禁止再硬编码 Inter / Manrope / Outfit。  
 **字重阶梯：** 正文 `400`；按钮 / Tab / 次要强调 `500`；页面标题 / 卡片标题 / 标签 / Badge `600`。Chrome（顶栏、列表项、chip、设置页）禁止 `700` / `800` / `bold` / `900`；例外仅限品牌名与日记日号等展示型大数字。选中态优先主色 / 灰底，勿靠加粗制造「更粗」。  
@@ -137,6 +137,7 @@ BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。�
 4. 交互行统一 ListTile 节奏：**14/400 + 13 说明**；行图标 **20 / 18**，勿再写 24dp。
 5. 灰底上只铺一层内容卡（`--border-card`）；**禁止大卡套小卡**（内层再起白底+描边）。
 6. About 营销区、品牌名等展示型文案可例外，但普通设置行仍跟本表。
+7. 设置区单行输入与下拉对齐供应商页：`Input` 传 `fieldSize="small"`，`Select` 传 `size="small"`（内边距 `6px 10px`、字号 `--ui-fs-md`、圆角 `--radius-sm`）。不要改这两个组件的全局默认尺寸。
 
 ### 3.7 设置页分割层级
 
@@ -190,7 +191,7 @@ stackGroup
 | 锚定菜单 / 下拉弹层        | 一律 `--menu-popup-*`（§3.8）；悬停/选中灰底，选中可用主色字或 Check；禁止 `raised` 底、重阴影、主色洗底                                                                                                                                                                                                                                                                          |
 | 分段滑块                   | 只用 [`SegmentedControl`](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                                         |
 | 原生滑动条                 | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`                                                                                                                                                                                                                                      |
-| 主按钮                     | 纯描边：透明底 + `--border-control`；悬停可 `--bg-surface-high`；勿用深蓝实心                                                                                                                                                                                                                                                                                                     |
+| 主按钮                     | 描边：`--bg-surface` + `--border-control`；悬停可 `--bg-surface-high`；勿用深蓝实心。文字按钮仍透明底                                                                                                                                                                                                                                                                             |
 | 次要按钮                   | `border: 1px solid var(--border-control)`，文字 `--text-primary`                                                                                                                                                                                                                                                                                                                  |
 | 顶栏 / 侧栏选中            | 灰底 `--bg-surface-high` + 文字/图标 `--color-primary`，不用主色实心底                                                                                                                                                                                                                                                                                                            |
 
