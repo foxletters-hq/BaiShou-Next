@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
+import { Button } from '../Button/Button'
 import type { EmojiToolConfig } from '@baishou/shared'
 import {
   createEmojiGroup,
@@ -50,6 +51,12 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
     ? normalized.groups.find((group) => group.id === managingGroupId)
     : undefined
   const [coverPreviews, setCoverPreviews] = useState<Record<string, string>>({})
+  const pageCoverSignature = pageItems
+    .map(
+      (group) =>
+        `${group.id}:${group.emojis?.[0]?.id ?? ''}:${group.emojis?.[0]?.relativePath ?? ''}`
+    )
+    .join('|')
   const pageCovers = useMemo(
     () =>
       pageItems.map((group) => ({
@@ -58,11 +65,7 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
       })),
     // pageItems 每轮都是新数组，用封面签名做依赖即可
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      pageItems
-        .map((group) => `${group.id}:${group.emojis?.[0]?.id ?? ''}:${group.emojis?.[0]?.relativePath ?? ''}`)
-        .join('|')
-    ]
+    [pageCoverSignature]
   )
 
   useEffect(() => {
@@ -181,10 +184,9 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
             placeholder={t('agent.tools.emoji_group_search_placeholder', '搜索表情包组')}
           />
         </label>
-        <button type="button" className={styles.emojiInlineAddBtn} onClick={() => void handleAddGroup()}>
-          <Plus size={14} strokeWidth={2} />
+        <Button type="button" variant="outlined" size="small" onClick={() => void handleAddGroup()}>
           {t('agent.tools.emoji_group_add', '新建组')}
-        </button>
+        </Button>
       </div>
 
       {pageItems.length === 0 ? (
@@ -201,7 +203,11 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
                 {coverPreviews[group.id] ? (
                   <img src={coverPreviews[group.id]} alt="" className={styles.emojiGroupTileImg} />
                 ) : (
-                  group.name.trim().slice(0, 1) || '组'
+                  group.name.trim().slice(0, 1) ||
+                  t(
+                    'auto.packages.ui.src.desktop.EmojiSettingsView.EmojiSettingsInlinePanel.L211',
+                    '组'
+                  )
                 )}
               </div>
               <div className={styles.toolInfo}>
@@ -214,13 +220,14 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
                   })}
                 </span>
               </div>
-              <button
+              <Button
                 type="button"
-                className={styles.emojiManageBtn}
+                variant="outlined"
+                size="small"
                 onClick={() => setManagingGroupId(group.id)}
               >
                 {t('agent.tools.emoji_group_manage', '管理')}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -247,13 +254,14 @@ export const EmojiSettingsInlinePanel: React.FC<EmojiSettingsInlinePanelProps> =
           <div className={styles.emojiManageModalTitle}>
             <span>{managingGroup?.name || t('agent.tools.emoji_group_detail', '表情包组')}</span>
             {managingGroup ? (
-              <button
+              <Button
                 type="button"
-                className={styles.emojiManageDeleteBtn}
+                variant="outlined"
+                size="small"
                 onClick={() => void handleDeleteGroup(managingGroup.id, managingGroup.name)}
               >
                 {t('common.delete', '删除')}
-              </button>
+              </Button>
             ) : null}
           </div>
         }
