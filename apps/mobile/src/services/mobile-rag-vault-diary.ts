@@ -1,32 +1,13 @@
 import { ShadowIndexRepository } from '@baishou/database'
 import type { AppDatabase } from '@baishou/database'
 import {
-  normalizeDiaryPreviewMarkdown,
   parseDateStr,
   resolveDiaryTagsFromSources,
-  type DiaryMeta
+  toDiaryEmbedDetectionRow,
+  type DiaryEmbedDetectionRow
 } from '@baishou/shared'
 
-type ShadowListRow = Awaited<ReturnType<ShadowIndexRepository['listAllWithFTS']>>[number]
 type ShadowDetailRow = Awaited<ReturnType<ShadowIndexRepository['findByIds']>>[number]
-
-function mapShadowRowToMeta(s: ShadowListRow): DiaryMeta {
-  const parsedTags = resolveDiaryTagsFromSources(s.tagsStr, s.rawContent ?? '')
-  const rawContent = s.rawContent ?? ''
-
-  return {
-    id: s.id,
-    date: parseDateStr(String(s.date).split('T')[0]!),
-    preview: normalizeDiaryPreviewMarkdown(rawContent ? rawContent.substring(0, 500) : ''),
-    tags: parsedTags,
-    updatedAt: s.updatedAt ? new Date(s.updatedAt) : undefined,
-    weather: s.weather ?? undefined,
-    mood: s.mood ?? undefined,
-    location: s.location ?? undefined,
-    isFavorite: s.isFavorite,
-    hasMedia: s.hasMedia
-  }
-}
 
 export type VaultDiaryEmbedRow = {
   id: number
@@ -38,12 +19,11 @@ export type VaultDiaryEmbedRow = {
 
 export async function listVaultDiaryMetas(
   shadowDb: AppDatabase,
-  vaultId: string,
-  limit = 10000
-): Promise<DiaryMeta[]> {
+  vaultId: string
+): Promise<DiaryEmbedDetectionRow[]> {
   const repo = new ShadowIndexRepository(shadowDb, vaultId)
-  const rows = await repo.listAllWithFTS({ limit })
-  return rows.map(mapShadowRowToMeta)
+  const rows = await repo.listForEmbedDetection()
+  return rows.map((row) => toDiaryEmbedDetectionRow(row))
 }
 
 export async function loadVaultDiariesForEmbedding(

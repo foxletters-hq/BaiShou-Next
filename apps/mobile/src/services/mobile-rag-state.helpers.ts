@@ -5,7 +5,6 @@ let batchEmbedInFlight: import('./mobile-rag-core.helpers').ControlledDiaryBatch
   : never = null
 let batchEmbedRerunRequested = false
 let reembedInFlight = false
-let deferredPostSyncEmbed = false
 
 export function isMobileRagBatchBusy(): boolean {
   return batchEmbedInFlight != null || reembedInFlight
@@ -16,25 +15,21 @@ export function isMobileRagReembedInFlight(): boolean {
 }
 
 export function requestDeferredPostSyncEmbed(): void {
-  deferredPostSyncEmbed = true
+  // 同步后自动嵌入已退休
 }
 
 export function isDeferredPostSyncEmbedPending(): boolean {
-  return deferredPostSyncEmbed
+  return false
 }
 
 export async function flushDeferredPostSyncEmbed(): Promise<void> {
-  if (!deferredPostSyncEmbed) return
-  deferredPostSyncEmbed = false
-  const { schedulePostSyncDiaryBatchEmbed } = await import('./mobile-post-sync-diary-embed.service')
-  schedulePostSyncDiaryBatchEmbed()
+  // no-op：不再在 reembedAll / 同步后自动嵌入
 }
 
 export function resetMobileRagBatchStateForTests(): void {
   batchEmbedInFlight = null
   batchEmbedRerunRequested = false
   reembedInFlight = false
-  deferredPostSyncEmbed = false
   mobileRagOperationControl.reset()
 }
 

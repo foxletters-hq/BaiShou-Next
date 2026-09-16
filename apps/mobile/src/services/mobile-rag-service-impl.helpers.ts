@@ -10,7 +10,8 @@ import {
   SEMANTIC_SEARCH_TIMEOUT_MS,
   timestampToMillis,
   withPromiseTimeout,
-  type MemoryRawRecord
+  type MemoryRawRecord,
+  type RagVectorKindFilter
 } from '@baishou/shared'
 import { MobileRagAbortError, mobileRagOperationControl } from './mobile-rag-operation-control'
 import { countDiaryEmbeddingsForVault } from './mobile-diary-embedding.util'
@@ -28,7 +29,6 @@ import {
   runControlledDiaryBatchEmbedCore
 } from './mobile-rag-batch-embed.helpers'
 import {
-  flushDeferredPostSyncEmbed,
   isMobileRagBatchBusy,
   setReembedInFlight
 } from './mobile-rag-state.helpers'
@@ -37,6 +37,15 @@ import {
   getMobileRawDataSourceManager
 } from './mobile-raw-data-source.runtime'
 import { shardMonthFromInstant } from '@baishou/core-mobile'
+import {
+  clearGraphNodeEmbeddingIfNeeded,
+  filterMemoryEntryByKind,
+  includeGraphEntries,
+  includeMemoryEntries,
+  listEmbeddedGraphEntries,
+  memoryKindSql,
+  searchEmbeddedGraphEntries
+} from './mobile-rag-vector-kind.helpers'
 
 const HYBRID_SEARCH_TABLE = 'memory_embeddings'
 
@@ -249,12 +258,23 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         return await reembedAllInternal(onProgress)
       } finally {
         setReembedInFlight(false)
-        await flushDeferredPostSyncEmbed()
       }
     },
 
     requestOperationAbort(): void {
       mobileRagOperationControl.requestAbort()
+    },
+
+    requestOperationPause(): void {
+      mobileRagOperationControl.requestPause()
+    },
+
+    requestOperationResume(): void {
+      mobileRagOperationControl.requestResume()
+    },
+
+    isOperationPaused(): boolean {
+      return mobileRagOperationControl.isPaused
     },
 
     async detectDimension(): Promise<number> {
@@ -308,12 +328,17 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       withTotal?: boolean
       minSimilarity?: number
       sourceType?: string
+      sourceKind?: RagVectorKindFilter
     }): Promise<{ entries: Array<Record<string, unknown>>; total: number }> {
       const limit = params.limit ?? 10
       const offset = params.offset ?? 0
+      const sourceKind = params.sourceKind
+      const wantMemory = includeMemoryEntries(sourceKind)
+      const wantGraph = includeGraphEntries(sourceKind)
       const vaultScope = await resolveVaultScope(deps)
       const activeVaultId = await vaultScope.resolveActiveVaultId()
       const scopeFilter = vaultIdListFilterSql(activeVaultId)
+      const kindSql = memoryKindSql(sourceKind)
 
       if (params.mode === 'semantic' && params.keyword?.trim()) {
         const keyword = params.keyword.trim()
@@ -329,31 +354,43 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
               const baseLimit = Math.max(limit, 50)
               const fetchLimit =
                 params.minSimilarity != null ? Math.min(baseLimit * 4, 500) : baseLimit
-              const results = await deps.hsRepo.queryNativeVector(vector, fetchLimit, {
-                threshold: params.minSimilarity,
-                sourceType: params.sourceType,
-                vaultId: activeVaultId
-              })
-              const entriesRaw = results.map((r) => ({
-                embeddingId: r.messageId,
-                text: r.chunkText,
-                createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
-                sourceType: r.sourceType,
-                sourceId: r.sourceId,
-                similarity: r.score
-              }))
-              const metaMap = await loadMetadataMap(
-                deps.rawSqlClient as RawSqlClient | undefined,
-                entriesRaw.map((e) => e.embeddingId)
+              const memoryEntries = wantMemory
+                ? await (async () => {
+                    const results = await deps.hsRepo.queryNativeVector(vector, fetchLimit, {
+                      threshold: params.minSimilarity,
+                      sourceType: params.sourceType,
+                      vaultId: activeVaultId
+                    })
+                    const entriesRaw = results.map((r) => ({
+                      embeddingId: r.messageId,
+                      text: r.chunkText,
+                      createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
+                      sourceType: r.sourceType,
+                      sourceId: r.sourceId,
+                      similarity: r.score
+                    }))
+                    const metaMap = await loadMetadataMap(
+                      deps.rawSqlClient as RawSqlClient | undefined,
+                      entriesRaw.map((e) => e.embeddingId)
+                    )
+                    return entriesRaw
+                      .map((e) => {
+                        const meta = metaMap.get(e.embeddingId)
+                        return enrichMobileEntry({
+                          ...e,
+                          sourceId: meta?.sourceId ?? e.sourceId,
+                          metadataJson: meta?.metadataJson
+                        })
+                      })
+                      .filter((entry) => filterMemoryEntryByKind(entry, sourceKind))
+                  })()
+                : []
+              const graphEntries = wantGraph
+                ? await searchEmbeddedGraphEntries(activeVaultId, vector, fetchLimit)
+                : []
+              const entries = [...memoryEntries, ...graphEntries].sort(
+                (a, b) => (b.similarity ?? 0) - (a.similarity ?? 0)
               )
-              const entries = entriesRaw.map((e) => {
-                const meta = metaMap.get(e.embeddingId)
-                return enrichMobileEntry({
-                  ...e,
-                  sourceId: meta?.sourceId ?? e.sourceId,
-                  metadataJson: meta?.metadataJson
-                })
-              })
               const sliced = entries.slice(offset, offset + limit)
               return { entries: sliced, total: entries.length }
             })(),
@@ -368,49 +405,79 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
 
       const keyword = params.keyword?.trim()
       if (keyword) {
-        const fts = await deps.hsRepo.queryFTS(keyword, limit + offset, {
-          vaultId: activeVaultId
-        })
-        const page = fts.slice(offset, offset + limit)
-        const metaMap = await loadMetadataMap(
-          deps.rawSqlClient as RawSqlClient | undefined,
-          page.map((r) => r.messageId)
+        const memoryEntries = wantMemory
+          ? await (async () => {
+              const fts = await deps.hsRepo.queryFTS(keyword, limit + offset, {
+                vaultId: activeVaultId
+              })
+              const metaMap = await loadMetadataMap(
+                deps.rawSqlClient as RawSqlClient | undefined,
+                fts.map((r) => r.messageId)
+              )
+              return fts
+                .map((r) => {
+                  const meta = metaMap.get(r.messageId)
+                  return enrichMobileEntry({
+                    embeddingId: r.messageId,
+                    text: r.chunkText,
+                    createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
+                    sourceType: r.sourceType,
+                    sourceId: meta?.sourceId ?? r.sourceId,
+                    metadataJson: meta?.metadataJson
+                  })
+                })
+                .filter((entry) => filterMemoryEntryByKind(entry, sourceKind))
+            })()
+          : []
+        const graph = wantGraph
+          ? await listEmbeddedGraphEntries(activeVaultId, {
+              keyword,
+              limit: limit + offset,
+              offset: 0
+            })
+          : { entries: [], total: 0 }
+        const merged = [...memoryEntries, ...graph.entries].sort(
+          (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
         )
-        const entries = page.map((r) => {
-          const meta = metaMap.get(r.messageId)
-          return enrichMobileEntry({
-            embeddingId: r.messageId,
-            text: r.chunkText,
-            createdAt: timestampToMillis(r.createdAt) ?? Date.now(),
-            sourceType: r.sourceType,
-            sourceId: meta?.sourceId ?? r.sourceId,
-            metadataJson: meta?.metadataJson
-          })
-        })
-        return { entries, total: fts.length }
+        return {
+          entries: merged.slice(offset, offset + limit),
+          total: memoryEntries.length + graph.total
+        }
+      }
+
+      if (!wantMemory && wantGraph) {
+        return listEmbeddedGraphEntries(activeVaultId, { limit, offset })
       }
 
       const client = deps.rawSqlClient as RawSqlClient | undefined
-      if (!client?.execute) return { entries: [], total: 0 }
+      if (!client?.execute) {
+        if (wantGraph) return listEmbeddedGraphEntries(activeVaultId, { limit, offset })
+        return { entries: [], total: 0 }
+      }
 
       const countRes = await client.execute({
-        sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE} WHERE ${scopeFilter.clause}`,
-        args: [...scopeFilter.args]
+        sql: `SELECT COUNT(*) as count FROM ${HYBRID_SEARCH_TABLE} WHERE ${scopeFilter.clause} AND ${kindSql.clause}`,
+        args: [...scopeFilter.args, ...kindSql.args]
       })
       const countRow = countRes.rows?.[0] as Record<string, number> | undefined
-      const total = Number(countRow?.count ?? 0)
+      let total = Number(countRow?.count ?? 0)
 
       const listRes = await client.execute({
         sql: `SELECT embedding_id as embeddingId, chunk_text as text, source_type as sourceType,
               source_id as sourceId, metadata_json as metadataJson, model_id as modelId,
               ${EMBEDDING_SOURCE_SORT_MILLIS_SQL} as createdAt
               FROM ${HYBRID_SEARCH_TABLE}
-              WHERE ${scopeFilter.clause}
+              WHERE ${scopeFilter.clause} AND ${kindSql.clause}
               ORDER BY ${EMBEDDING_SOURCE_SORT_ORDER_SQL}
               LIMIT ? OFFSET ?`,
-        args: [...scopeFilter.args, limit, offset]
+        args: [
+          ...scopeFilter.args,
+          ...kindSql.args,
+          wantGraph ? limit + offset : limit,
+          wantGraph ? 0 : offset
+        ]
       })
-      const entries = ((listRes.rows || []) as Array<Record<string, unknown>>).map((row) =>
+      const memoryEntries = ((listRes.rows || []) as Array<Record<string, unknown>>).map((row) =>
         enrichMobileEntry({
           embeddingId: String(row.embeddingId ?? ''),
           text: String(row.text ?? ''),
@@ -421,7 +488,19 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
           metadataJson: (row.metadataJson as string | null) ?? null
         })
       )
-      return { entries, total }
+      if (!wantGraph) return { entries: memoryEntries, total }
+
+      const graph = await listEmbeddedGraphEntries(activeVaultId, {
+        limit: limit + offset,
+        offset: 0
+      })
+      const merged = [...memoryEntries, ...graph.entries].sort(
+        (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
+      )
+      return {
+        entries: merged.slice(offset, offset + limit),
+        total: total + graph.total
+      }
     },
 
     async editEntry(embeddingId: string, newText: string): Promise<void> {
@@ -601,6 +680,9 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     },
 
     async deleteEntry(embeddingId: string): Promise<void> {
+      const vaultScope = await resolveVaultScope(deps)
+      const activeVaultId = await vaultScope.resolveActiveVaultId()
+      if (await clearGraphNodeEmbeddingIfNeeded(embeddingId, activeVaultId)) return
       const client = deps.rawSqlClient as {
         execute?: (q: { sql: string; args: unknown[] }) => Promise<{ rows: unknown[] }>
       }
@@ -639,7 +721,6 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
       if (sourceType === 'diary') {
         const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
         const { deleteDiaryEmbeddingAliases } = await import('./mobile-diary-embedding.util')
-        const { enqueueDiaryEmbedJob } = await import('./mobile-diary-embed-jobs.service')
         const vaultScope = await resolveVaultScope(deps)
         const parsed = parseDiaryEmbeddingSourceId(sourceId)
         const vaultId = parsed?.vaultId?.trim() || (await vaultScope.resolveActiveVaultId())
@@ -647,11 +728,6 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         const diaryId = Number(diaryIdRaw)
         if (Number.isFinite(diaryId)) {
           await deleteDiaryEmbeddingAliases(deps.hsRepo, vaultId, diaryId)
-          await enqueueDiaryEmbedJob({
-            vaultId,
-            diaryId,
-            contentHash: `reembed-after-delete-${Date.now()}`
-          })
         } else {
           await client.execute({
             sql: `DELETE FROM ${HYBRID_SEARCH_TABLE} WHERE embedding_id = ?`,
@@ -680,8 +756,14 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
     },
 
     async getUnindexedDiaryCount(): Promise<number> {
-      const { countUnindexedDiariesForActiveVault } = await import('./mobile-unindexed-diary-count')
-      return countUnindexedDiariesForActiveVault(deps)
+      const { getPendingEmbedCounts } = await import('./mobile-pending-embed-counts')
+      const counts = await getPendingEmbedCounts(deps)
+      return counts.diaries
+    },
+
+    async getPendingEmbedCounts() {
+      const { getPendingEmbedCounts } = await import('./mobile-pending-embed-counts')
+      return getPendingEmbedCounts(deps)
     }
   }
 

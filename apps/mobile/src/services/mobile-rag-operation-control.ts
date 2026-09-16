@@ -1,3 +1,15 @@
+import {
+  assertBatchEmbedCanContinue,
+  beginBatchEmbedControl,
+  endBatchEmbedControl,
+  isBatchEmbedAbortRequested,
+  isBatchEmbedAbortedError,
+  isBatchEmbedPaused,
+  requestBatchEmbedCancel,
+  requestBatchEmbedPause,
+  requestBatchEmbedResume
+} from '@baishou/shared'
+
 /** 移动端 RAG 批量嵌入 / 重嵌入 共享取消标志 */
 export class MobileRagAbortError extends Error {
   constructor(public readonly embeddedCount = 0) {
@@ -7,18 +19,36 @@ export class MobileRagAbortError extends Error {
 }
 
 export class MobileRagOperationControl {
-  private aborted = false
-
   reset(): void {
-    this.aborted = false
+    endBatchEmbedControl()
+  }
+
+  begin(): void {
+    beginBatchEmbedControl()
   }
 
   requestAbort(): void {
-    this.aborted = true
+    requestBatchEmbedCancel()
+  }
+
+  requestPause(): void {
+    requestBatchEmbedPause()
+  }
+
+  requestResume(): void {
+    requestBatchEmbedResume()
+  }
+
+  end(): void {
+    endBatchEmbedControl()
   }
 
   get isAborted(): boolean {
-    return this.aborted
+    return isBatchEmbedAbortRequested()
+  }
+
+  get isPaused(): boolean {
+    return isBatchEmbedPaused()
   }
 }
 
@@ -36,9 +66,23 @@ export async function abortableMobileRagDelay(
   const step = 100
   let elapsed = 0
   while (elapsed < ms) {
-    if (control.isAborted) throw new MobileRagAbortError()
+    await assertMobileRagCanContinue(control)
     const slice = Math.min(step, ms - elapsed)
     await new Promise((resolve) => setTimeout(resolve, slice))
     elapsed += slice
   }
+}
+
+export async function assertMobileRagCanContinue(
+  control: MobileRagOperationControl = mobileRagOperationControl
+): Promise<void> {
+  try {
+    await assertBatchEmbedCanContinue()
+  } catch (error) {
+    if (isBatchEmbedAbortedError(error) || control.isAborted) {
+      throw new MobileRagAbortError()
+    }
+    throw error
+  }
+  if (control.isAborted) throw new MobileRagAbortError()
 }

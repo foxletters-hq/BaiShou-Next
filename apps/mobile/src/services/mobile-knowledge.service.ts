@@ -209,6 +209,9 @@ async function buildMobileIngestService() {
   const storage = new KnowledgeEmbeddingStorage(() => repo)
   const vaultId = await resolveMobileActiveVaultId()
 
+  const { NotebookGraphRawManager } = await import('@baishou/core-mobile')
+  const graphRaw = new NotebookGraphRawManager(runtime.pathService, fileSystem)
+
   return new KnowledgeIngestService({
     repo,
     notebookManager,
@@ -236,8 +239,61 @@ async function buildMobileIngestService() {
         modelId: params.modelId
       })
     },
-    deleteChunksBySource: (id) => repo.deleteChunksBySource(id)
+    deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
+    deleteNotebookGraphSource: ({ notebookId, sourceId }) =>
+      graphRaw.deleteSourceShards(notebookId, sourceId)
   })
+}
+
+export async function mobileGetNotebook(notebookId: string) {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  return requireRepo().getNotebook(id)
+}
+
+export async function mobileUpdateNotebook(input: {
+  notebookId: string
+  name?: string
+  description?: string
+  coverTone?: string | null
+  coverIcon?: string | null
+  coverImage?: string | null
+}) {
+  const svc = await buildMobileIngestService()
+  return svc.updateNotebook(input)
+}
+
+export async function mobileSetCoverImage(input: { notebookId: string; absolutePath: string }) {
+  const svc = await buildMobileIngestService()
+  return svc.setCoverImage(input)
+}
+
+export async function mobileManageNotebookData(
+  notebookId: string,
+  input: { action: 'clear' | 'reprocess'; vector?: boolean; graph?: boolean }
+) {
+  const svc = await buildMobileIngestService()
+  const result = await svc.manageNotebookData(notebookId, input)
+  if (input.action === 'reprocess') {
+    const { scheduleConsumeMobileKnowledgeIngestJobs } =
+      await import('./mobile-knowledge-ingest-jobs.consumer')
+    scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-manage-data')
+  }
+  return result
+}
+
+export async function mobileResolveNotebookCoverUri(relativePath: string): Promise<string | null> {
+  const rel = relativePath.trim()
+  if (!rel) return null
+  const manager = getMobileNotebookRawManager()
+  if (!manager) return null
+  try {
+    const abs = await manager.absolutePath(rel)
+    if (!abs) return null
+    return abs.startsWith('file://') ? abs : abs.startsWith('/') ? `file://${abs}` : `file:///${abs}`
+  } catch {
+    return null
+  }
 }
 
 /** K1.5：移动端粘贴文本 / URL 入库 */
