@@ -87,6 +87,8 @@ export type ResolveContextMenuPositionOptions = {
    * 用于输入框加号等需要向上展开、避免盖住输入区的场景。
    */
   preferAbove?: boolean
+  /** 将 anchorX 视为菜单右缘，向左展开（贴齐按钮右侧）。 */
+  alignEnd?: boolean
 }
 
 export function resolveContextMenuPosition(
@@ -102,7 +104,7 @@ export function resolveContextMenuPosition(
   const minY = bounds.top
   const maxY = Math.max(bounds.top, bounds.bottom - menuHeight)
 
-  let x = anchorX
+  let x = options?.alignEnd ? anchorX - menuWidth : anchorX
   if (x + menuWidth > bounds.right) {
     x = bounds.right - menuWidth
   }
