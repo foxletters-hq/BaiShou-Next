@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 日记编辑器桥接：消息、会话与附件 URL 同 hook */
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import { Platform } from 'react-native'
 import type { WebView } from 'react-native-webview'
@@ -105,21 +106,7 @@ function buildInitPayload(
 export function useDiaryCodeMirrorBridge(
   options: UseDiaryCodeMirrorBridgeOptions
 ): DiaryCodeMirrorBridgeApi {
-  const {
-    content,
-    placeholder,
-    theme,
-    editable = true,
-    onChange,
-    onSelectionChange,
-    onFocus,
-    onBlur,
-    onContentHeight,
-    onImageAction,
-    onImagePreview,
-    resolveAttachmentUrl,
-    tagColorRegistry
-  } = options
+  const { content, editable = true, tagColorRegistry } = options
 
   const webViewRef = useRef<WebView | null>(null)
   const isReadyRef = useRef(false)
@@ -380,7 +367,7 @@ export function useDiaryCodeMirrorBridge(
           return
       }
     },
-    [flushPendingOutbound, handleResolveUrlRequest, logBridge, sendInit]
+    [enqueueOrSend, flushPendingOutbound, handleResolveUrlRequest, logBridge, sendInit]
   )
 
   const onWebViewMessage = useCallback(
@@ -469,14 +456,15 @@ export function useDiaryCodeMirrorBridge(
   }, [editable, enqueueOrSend])
 
   useEffect(() => {
+    const pendingUrlRequests = pendingUrlRequestsRef.current
     return () => {
       if (loadEndRetryTimerRef.current) {
         clearTimeout(loadEndRetryTimerRef.current)
       }
-      for (const pending of pendingUrlRequestsRef.current.values()) {
+      for (const pending of pendingUrlRequests.values()) {
         clearTimeout(pending.timeoutId)
       }
-      pendingUrlRequestsRef.current.clear()
+      pendingUrlRequests.clear()
       attachmentUrlCache.clear()
       resetSession()
     }

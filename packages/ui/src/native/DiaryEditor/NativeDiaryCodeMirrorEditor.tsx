@@ -170,6 +170,8 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
 
   useEffect(() => {
     if (!active) bridge.blur()
+    // bridge 每轮新对象，只跟稳定的方法引用走
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, bridge.blur])
 
   useEffect(() => {
@@ -177,6 +179,7 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     if (bottomScrollInset > 0) {
       requestAnimationFrame(() => bridge.scrollCaretIntoView())
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomScrollInset, bridge.setScrollInsets, bridge.scrollCaretIntoView])
 
   useEffect(() => {
@@ -184,6 +187,7 @@ export const NativeDiaryCodeMirrorEditor = forwardRef<
     const delayMs = Platform.OS === 'ios' ? 120 : 220
     const timer = setTimeout(() => bridge.scrollCaretIntoView(), delayMs)
     return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyboardInset, bottomScrollInset, bridge.scrollCaretIntoView])
 
   useImperativeHandle(
