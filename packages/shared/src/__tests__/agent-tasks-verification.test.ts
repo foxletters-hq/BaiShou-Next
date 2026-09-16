@@ -40,7 +40,8 @@ describe('Agent 3: RAG i18n 验证', () => {
       'rag_search_semantic_hint',
       'rag_search_text_hint',
       'rag_search_semantic',
-      'rag_search_text'
+      'rag_search_text',
+      'rag_searching'
     ]
     for (const key of requiredKeys) {
       expect(zh.settings).toHaveProperty(key)

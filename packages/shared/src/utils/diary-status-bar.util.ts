@@ -24,13 +24,16 @@ export function isGraphSelfNameConfigured(
 }
 
 /**
- * 对话模型是否足以驱动图谱抽取。
- * 只要显式配置了 modelId（非 off/unknown）即可；provider 可缺省由运行时解析。
+ * 图抽取模型是否足以驱动图谱抽取。
+ * 优先看独立图抽取槽位；未单独配置时回退到对话模型。
  */
 export function hasGraphModelConfigured(
   models: Partial<GlobalModelsConfig> | null | undefined
 ): boolean {
-  return isConfiguredDialogueModelId(models?.globalDialogueModelId)
+  return (
+    isConfiguredDialogueModelId(models?.globalGraphModelId) ||
+    isConfiguredDialogueModelId(models?.globalDialogueModelId)
+  )
 }
 
 export function isGraphFeatureConfigured(opts: {
@@ -41,7 +44,7 @@ export function isGraphFeatureConfigured(opts: {
 }
 
 /**
- * 底栏「待抽取」就绪：仅要求对话模型已配。
+ * 底栏「待抽取」就绪：仅要求图抽取模型已配（可回退对话模型）。
  * 自称未配时仍显示数量，点击进图谱页再引导填写。
  */
 export function isGraphStatusBarReady(opts: { hasGraphModel: boolean }): boolean {

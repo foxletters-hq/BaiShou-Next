@@ -45,6 +45,16 @@ describe('buildGraphExtractEnqueueItems', () => {
     expect(result.items).toEqual([{ filePath: 'Journal/a.md', date: '2026-03-15' }])
     expect(result.skippedNotEmbedded).toEqual(['Journal/b.md'])
   })
+
+  it('enqueues a specified diary even when it is not pending-reextract', async () => {
+    const result = await buildGraphExtractEnqueueItems({
+      wanted: ['Journal/2026/08/03.md'],
+      pending: [],
+      isDiaryEmbedded: () => true
+    })
+    expect(result.items).toEqual([{ filePath: 'Journal/2026/08/03.md', date: undefined }])
+    expect(result.skippedNotEmbedded).toEqual([])
+  })
 })
 
 describe('entityAlignKey', () => {

@@ -46,12 +46,19 @@ describe('diary-status-bar.util', () => {
       ).toBe(false)
     })
 
-    it('isGraphStatusBarReady only needs dialogue model', () => {
+    it('isGraphStatusBarReady only needs a graph extract model', () => {
       expect(isGraphStatusBarReady({ hasGraphModel: true })).toBe(true)
       expect(isGraphStatusBarReady({ hasGraphModel: false })).toBe(false)
     })
 
-    it('hasGraphModelConfigured requires explicit dialogue modelId', () => {
+    it('hasGraphModelConfigured prefers the dedicated graph model', () => {
+      expect(
+        hasGraphModelConfigured({
+          globalGraphProviderId: 'deepseek',
+          globalGraphModelId: 'deepseek-chat',
+          globalDialogueModelId: 'off'
+        })
+      ).toBe(true)
       expect(
         hasGraphModelConfigured({
           globalDialogueProviderId: 'openai',
@@ -63,7 +70,8 @@ describe('diary-status-bar.util', () => {
       expect(
         hasGraphModelConfigured({
           globalDialogueProviderId: 'openai',
-          globalDialogueModelId: 'off'
+          globalDialogueModelId: 'off',
+          globalGraphModelId: 'off'
         })
       ).toBe(false)
     })

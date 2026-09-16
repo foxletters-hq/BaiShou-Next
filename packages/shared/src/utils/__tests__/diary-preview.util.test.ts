@@ -47,6 +47,12 @@ describe('formatSemanticChunkSnippet', () => {
     const raw = '[标签: 旅行] [2024-06-15 日记:]\n今天去爬山了'
     expect(formatSemanticChunkSnippet(raw)).toBe('今天去爬山了')
   })
+
+  it('strips diary embed prefix even when there is no space before 日记', () => {
+    expect(formatSemanticChunkSnippet('[2026-01-15日记:]\n今天整理了桌面书架')).toBe(
+      '今天整理了桌面书架'
+    )
+  })
 })
 
 describe('buildDiaryCardPreviewBlocks', () => {
