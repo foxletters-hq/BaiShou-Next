@@ -60,11 +60,7 @@ export const ShortcutManagerDialog: React.FC<ShortcutManagerDialogProps> = ({
           <h2 className={styles.title}>{title}</h2>
           <div className={styles.headerActions}>
             {!mgr.editingItem ? (
-              <button
-                type="button"
-                className={styles.headerBtn}
-                onClick={mgr.handleCreateNew}
-              >
+              <button type="button" className={styles.headerBtn} onClick={mgr.handleCreateNew}>
                 <Plus size={14} aria-hidden />
                 {t('shortcut.addCustomCommand', '新增 Skill')}
               </button>

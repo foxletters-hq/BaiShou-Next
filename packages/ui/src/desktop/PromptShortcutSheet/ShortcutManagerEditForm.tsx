@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
 import styles from './ShortcutManagerDialog.module.css'
 
@@ -58,17 +59,12 @@ export const ShortcutManagerEditForm: React.FC<ShortcutManagerEditFormProps> = (
         />
       </div>
       <div className={styles.formActions}>
-        <button type="button" className={styles.btnGhost} onClick={onCancel}>
+        <Button type="button" onClick={onCancel}>
           {t('common.cancel', '取消')}
-        </button>
-        <button
-          type="button"
-          className={styles.btnPrimary}
-          onClick={onSave}
-          disabled={!draftContent.trim()}
-        >
+        </Button>
+        <Button type="button" onClick={onSave} disabled={!draftContent.trim()}>
           {t('common.save', '保存')}
-        </button>
+        </Button>
       </div>
     </div>
   )
