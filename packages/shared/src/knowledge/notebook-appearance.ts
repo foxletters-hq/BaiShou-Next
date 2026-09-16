@@ -97,6 +97,31 @@ export function notebookCoverImageCandidates(notebookId: string): string[] {
   return NOTEBOOK_COVER_IMAGE_EXTS.map((ext) => `${id}/cover.${ext}`)
 }
 
+function hashNotebookId(value: string): number {
+  let hash = 2166136261
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+/** 未设置封面时按笔记本 id 散列回退色调与图标。 */
+export function getNotebookCardAppearance(
+  id: string,
+  cover?: { coverTone?: string | null; coverIcon?: string | null }
+): { tone: NotebookCardTone; icon: string } {
+  const hash = hashNotebookId(id || 'notebook')
+  return {
+    tone: isNotebookCardTone(cover?.coverTone)
+      ? cover.coverTone
+      : NOTEBOOK_CARD_TONES[hash % NOTEBOOK_CARD_TONES.length]!,
+    icon:
+      normalizeNotebookCoverIcon(cover?.coverIcon) ||
+      NOTEBOOK_CARD_ICONS[hash % NOTEBOOK_CARD_ICONS.length]!
+  }
+}
+
 /** 仅允许落在本笔记本目录下的 cover.* 图片。 */
 export function normalizeNotebookCoverImage(
   notebookId: string,
