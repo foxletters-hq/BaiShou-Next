@@ -96,8 +96,20 @@ describe('getToolDisplayName', () => {
 
   it('strips mcp server prefix before looking up the display name', () => {
     expect(getToolDisplayName({ toolCallId: 'c1', toolName: 'mcp__fs__read_file' }, t)).toBe(
-      'read_file'
+      'MCP · read_file'
     )
+  })
+
+  it('hides UUID server ids and keeps the baishou_ tool name', () => {
+    expect(
+      getToolDisplayName(
+        {
+          toolCallId: 'c2',
+          toolName: 'mcp_401e4719_6331_42be_a21c__baishou_summary_read'
+        },
+        t
+      )
+    ).toBe('baishou_summary_read')
   })
 })
 
