@@ -15,7 +15,7 @@ export interface ModelVisionBadgeProps {
 export function ModelVisionBadge({
   modelId,
   providerKey,
-  size = 13,
+  size = 18,
   className,
   style
 }: ModelVisionBadgeProps) {

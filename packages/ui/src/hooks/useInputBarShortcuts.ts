@@ -64,11 +64,16 @@ export function useInputBarShortcuts(
     [shortcuts]
   )
 
-  const clearShortcutSession = useCallback(() => {
-    setText('')
+  const endShortcutSession = useCallback(() => {
     slashSessionRef.current = false
     setShortcutModeActive(false)
-  }, [setText])
+    setSelectedIndex(0)
+  }, [])
+
+  const clearShortcutSession = useCallback(() => {
+    setText('')
+    endShortcutSession()
+  }, [endShortcutSession, setText])
 
   const moveShortcutSelection = useCallback(
     (delta: -1 | 1) => {
@@ -145,6 +150,7 @@ export function useInputBarShortcuts(
     filteredShortcuts,
     selectedIndex,
     applyShortcut,
+    endShortcutSession,
     handleTextChangeForShortcuts,
     handleShortcutKeyDown,
     tryHandleShortcutKey,

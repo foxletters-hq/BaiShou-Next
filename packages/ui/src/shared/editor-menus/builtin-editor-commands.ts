@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { undo } from '@codemirror/commands'
 import { logger } from '@baishou/shared'
 import { registerCommand } from './command-registry'
@@ -66,7 +67,10 @@ export function registerBuiltinEditorCommands(): void {
   registerCommand<EditorMenuContext>({
     id: BuiltinEditorCommandId.Cut,
     labelKey: 'common.cut',
-    defaultLabel: '剪切',
+    defaultLabel: i18n.t(
+      'auto.packages.ui.src.shared.editor.menus.builtin.editor.commands.L69',
+      '剪切'
+    ),
     iconId: 'cut',
     isEnabled: (ctx) => !ctx.readOnly && ctx.hasSelection,
     run: (ctx) => runCut(ctx)
@@ -75,7 +79,10 @@ export function registerBuiltinEditorCommands(): void {
   registerCommand<EditorMenuContext>({
     id: BuiltinEditorCommandId.Copy,
     labelKey: 'common.copy',
-    defaultLabel: '复制',
+    defaultLabel: i18n.t(
+      'auto.packages.ui.src.shared.editor.menus.builtin.editor.commands.L78',
+      '复制'
+    ),
     iconId: 'copy',
     isEnabled: (ctx) => ctx.hasSelection,
     run: () => runCopy()
@@ -84,7 +91,10 @@ export function registerBuiltinEditorCommands(): void {
   registerCommand<EditorMenuContext>({
     id: BuiltinEditorCommandId.Paste,
     labelKey: 'common.paste',
-    defaultLabel: '粘贴',
+    defaultLabel: i18n.t(
+      'auto.packages.ui.src.shared.editor.menus.builtin.editor.commands.L87',
+      '粘贴'
+    ),
     iconId: 'paste',
     isEnabled: (ctx) => !ctx.readOnly,
     run: (ctx) => runPaste(ctx)
@@ -93,7 +103,10 @@ export function registerBuiltinEditorCommands(): void {
   registerCommand<EditorMenuContext>({
     id: BuiltinEditorCommandId.Undo,
     labelKey: 'common.undo',
-    defaultLabel: '撤销',
+    defaultLabel: i18n.t(
+      'auto.packages.ui.src.shared.editor.menus.builtin.editor.commands.L96',
+      '撤销'
+    ),
     iconId: 'undo',
     isEnabled: (ctx) => !ctx.readOnly,
     run: (ctx) => runUndo(ctx)
@@ -102,7 +115,10 @@ export function registerBuiltinEditorCommands(): void {
   registerCommand<EditorMenuContext>({
     id: BuiltinEditorCommandId.SelectAll,
     labelKey: 'common.select_all',
-    defaultLabel: '全选',
+    defaultLabel: i18n.t(
+      'auto.packages.ui.src.shared.editor.menus.builtin.editor.commands.L105',
+      '全选'
+    ),
     iconId: 'selectAll',
     run: (ctx) => runSelectAll(ctx)
   })
