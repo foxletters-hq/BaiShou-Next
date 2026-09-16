@@ -105,9 +105,10 @@ export function TTSProviderSettingsFormModelFields({ vm }: { vm: TTSProviderSett
         </div>
         {onFetchModels && (
           <Button
-            variant="elevated"
+            variant="outlined"
+            size="small"
             onClick={handleFetchModels}
-            disabled={isLoadingModels}
+            isLoading={isLoadingModels}
             className={styles.fetchModelsBtn}
           >
             {isLoadingModels

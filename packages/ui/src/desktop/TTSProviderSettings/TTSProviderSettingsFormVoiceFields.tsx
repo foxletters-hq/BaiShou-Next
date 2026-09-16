@@ -178,6 +178,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
               {t('tts.settings.prompt_lang_label', '参考音频语言 (promptLang)')}
             </label>
             <Select
+              size="small"
               options={langOptions}
               value={currentConfig.promptLang || 'zh'}
               onChange={(e) => updateCurrentConfig({ promptLang: e.target.value })}
@@ -188,6 +189,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
               {t('tts.settings.text_lang_label', '合成文本语言 (textLang)')}
             </label>
             <Select
+              size="small"
               options={langOptions}
               value={currentConfig.textLang || 'zh'}
               onChange={(e) => updateCurrentConfig({ textLang: e.target.value })}
@@ -246,6 +248,7 @@ export function TTSProviderSettingsFormVoiceFields({ vm }: { vm: TTSProviderSett
       <div className={styles.section}>
         <label className={styles.label}>{t('tts.settings.format_label', '音频格式')}</label>
         <Select
+          size="small"
           options={formatOptions}
           value={currentConfig.responseFormat}
           onChange={(e) => updateCurrentConfig({ responseFormat: e.target.value })}

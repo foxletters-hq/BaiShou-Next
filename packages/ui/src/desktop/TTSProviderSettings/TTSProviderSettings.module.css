@@ -201,10 +201,6 @@
 
 .fetchModelsBtn {
   flex-shrink: 0;
-  height: 42px;
-  min-width: 110px;
-  padding: 0 16px;
-  box-sizing: border-box;
 }
 
 .comboboxContainer {
@@ -376,8 +372,6 @@
 
 .testBtn {
   flex-shrink: 0;
-  height: 38px;
-  min-width: 110px;
 }
 
 .passwordInputWrapper {
