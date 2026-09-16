@@ -1,13 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native'
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Plus, Search, X } from 'lucide-react-native'
 import type { EmojiToolConfig } from '@baishou/shared'
 import {
@@ -224,14 +217,16 @@ export const AssistantEmojiGroupPickerModal: React.FC<AssistantEmojiGroupPickerM
                     onPress={() => onToggleGroup(group.id)}
                     accessibilityLabel={group.name}
                   />
-                  <View
-                    style={[styles.tile, { backgroundColor: colors.primaryContainer }]}
-                  >
+                  <View style={[styles.tile, { backgroundColor: colors.primaryContainer }]}>
                     {coverPreviews[group.id] ? (
                       <Image source={{ uri: coverPreviews[group.id] }} style={styles.tileImg} />
                     ) : (
                       <Text style={[styles.tileText, { color: colors.primary }]}>
-                        {group.name.trim().slice(0, 1) || '组'}
+                        {group.name.trim().slice(0, 1) ||
+                          t(
+                            'auto.packages.ui.src.native.AssistantEditEmojiSection.AssistantEmojiGroupPickerModal.L225',
+                            '组'
+                          )}
                       </Text>
                     )}
                   </View>

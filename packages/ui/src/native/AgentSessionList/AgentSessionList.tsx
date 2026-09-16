@@ -35,16 +35,19 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
     }
   }, [scrollKey])
 
-  const groupLabel = (group: TimeGroup) => {
-    const labels: Record<TimeGroup, string> = {
-      pinned: t('agent.sessions.groupPinned', '已置顶'),
-      today: t('agent.sessions.groupToday', '今天'),
-      yesterday: t('agent.sessions.groupYesterday', '昨天'),
-      thisWeek: t('agent.sessions.groupWeek', '近 7 天'),
-      earlier: t('agent.sessions.groupOlder', '更早')
-    }
-    return labels[group]
-  }
+  const groupLabel = useCallback(
+    (group: TimeGroup) => {
+      const labels: Record<TimeGroup, string> = {
+        pinned: t('agent.sessions.groupPinned', '已置顶'),
+        today: t('agent.sessions.groupToday', '今天'),
+        yesterday: t('agent.sessions.groupYesterday', '昨天'),
+        thisWeek: t('agent.sessions.groupWeek', '近 7 天'),
+        earlier: t('agent.sessions.groupOlder', '更早')
+      }
+      return labels[group]
+    },
+    [t]
+  )
 
   const filteredSessions = useMemo(() => {
     if (!searchQuery.trim()) return sessions
@@ -54,7 +57,7 @@ export const AgentSessionList: React.FC<AgentSessionListProps> = ({
 
   const groupedSessions = useMemo(
     () => groupSessionsByTime(filteredSessions, groupLabel),
-    [filteredSessions, t]
+    [filteredSessions, groupLabel]
   )
 
   const endReachedLockRef = useRef(false)

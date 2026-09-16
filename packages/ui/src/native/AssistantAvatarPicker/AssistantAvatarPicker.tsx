@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react'
-import { View, Text, Image, Pressable, StyleSheet, ScrollView } from 'react-native'
+import { View, Image, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { ImagePlus, LayoutGrid } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
 import {

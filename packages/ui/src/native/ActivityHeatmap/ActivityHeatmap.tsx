@@ -39,20 +39,23 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const cardBorder = colors.borderMuted
   const [showYearPicker, setShowYearPicker] = useState(false)
 
-  const MONTHS = [
-    t('common.jan'),
-    t('common.feb'),
-    t('common.mar'),
-    t('common.apr'),
-    t('common.may'),
-    t('common.jun'),
-    t('common.jul'),
-    t('common.aug'),
-    t('common.sep'),
-    t('common.oct'),
-    t('common.nov'),
-    t('common.dec')
-  ]
+  const MONTHS = useMemo(
+    () => [
+      t('common.jan'),
+      t('common.feb'),
+      t('common.mar'),
+      t('common.apr'),
+      t('common.may'),
+      t('common.jun'),
+      t('common.jul'),
+      t('common.aug'),
+      t('common.sep'),
+      t('common.oct'),
+      t('common.nov'),
+      t('common.dec')
+    ],
+    [t]
+  )
 
   const DAYS = [
     t('common.sun'),
