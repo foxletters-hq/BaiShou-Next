@@ -15,6 +15,7 @@ export const graphApi = {
         queued: number
         totalPending: number
         skippedNotEmbedded: string[]
+        blockedPendingEmbed?: number
       }>,
     setExtractConcurrency: (opts: { concurrency: number }) =>
       ipcRenderer.invoke('graph:set-extract-concurrency', opts) as Promise<{ concurrency: number }>,
@@ -58,8 +59,12 @@ export const graphApi = {
       ipcRenderer.invoke('graph:get-view', opts),
     findPaths: (opts: { fromId: string; toId: string; maxHops?: 2 | 3 }) =>
       ipcRenderer.invoke('graph:find-paths', opts),
-    search: (opts: { query: string; nodeTypes?: string[]; limit?: number }) =>
-      ipcRenderer.invoke('graph:search', opts),
+    search: (opts: {
+      query: string
+      nodeTypes?: string[]
+      limit?: number
+      mode?: 'text' | 'semantic'
+    }) => ipcRenderer.invoke('graph:search', opts),
     findByName: (opts: { query: string; nodeType?: string }) =>
       ipcRenderer.invoke('graph:find-by-name', opts),
     listPendingEdges: () => ipcRenderer.invoke('graph:list-pending-edges'),
@@ -101,6 +106,13 @@ export const graphApi = {
     mergeNodesBatch: (opts: { survivorId: string; loserIds: string[]; reason?: string }) =>
       ipcRenderer.invoke('graph:merge-nodes-batch', opts),
     getNode: (id: string) => ipcRenderer.invoke('graph:get-node', id),
-    meta: () => ipcRenderer.invoke('graph:meta')
+    meta: () => ipcRenderer.invoke('graph:meta'),
+    resolveJournal: (opts: { date: string }) =>
+      ipcRenderer.invoke('graph:resolve-journal', opts) as Promise<{
+        filePath: string
+        date: string
+      } | null>,
+    clearLifeGraph: () =>
+      ipcRenderer.invoke('graph:clear-life-graph') as Promise<{ ok: boolean; shardCount: number }>
   }
 }

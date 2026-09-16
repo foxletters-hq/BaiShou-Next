@@ -215,10 +215,14 @@ export const agentApi = {
     detectDimension: () => ipcRenderer.invoke('rag:detect-dimension'),
     clearDimension: () => ipcRenderer.invoke('rag:clear-dimension'),
     triggerBatchEmbed: () => ipcRenderer.invoke('rag:trigger-batch-embed'),
+    pauseBatchEmbed: () => ipcRenderer.invoke('rag:pause-batch-embed'),
+    resumeBatchEmbed: () => ipcRenderer.invoke('rag:resume-batch-embed'),
+    cancelBatchEmbed: () => ipcRenderer.invoke('rag:cancel-batch-embed'),
     getEmbedJobsPendingCount: () => ipcRenderer.invoke('rag:embed-jobs-pending-count'),
     getUnindexedDiaryCount: () => ipcRenderer.invoke('rag:unindexed-diary-count'),
+    getPendingEmbedCounts: () => ipcRenderer.invoke('rag:pending-embed-counts'),
     addManualMemory: (text: string) => ipcRenderer.invoke('rag:add-manual-memory', text),
-    clearAll: () => ipcRenderer.invoke('rag:clear-all'),
+    clearAll: (opts?: { kinds?: string[] }) => ipcRenderer.invoke('rag:clear-all', opts),
     triggerMigration: (options?: { rollbackConfig?: any }) =>
       ipcRenderer.invoke('rag:trigger-migration', options),
     cancelMigration: () => ipcRenderer.invoke('rag:cancel-migration'),
@@ -229,12 +233,6 @@ export const agentApi = {
     deleteEntry: (id: string) => ipcRenderer.invoke('rag:delete-entry', id),
     editEntry: (params: { embeddingId: string; newText: string }) =>
       ipcRenderer.invoke('rag:edit-entry', params),
-    checkConsistency: () => ipcRenderer.invoke('rag:check-consistency'),
-    repairConsistency: (params: {
-      confirmDeleteIds?: string[]
-      restoreIds?: string[]
-      cleanOrphans?: boolean
-    }) => ipcRenderer.invoke('rag:repair-consistency', params),
     hasPendingMigration: () => ipcRenderer.invoke('rag:has-pending-migration'),
     hasModelMismatch: () => ipcRenderer.invoke('rag:has-model-mismatch'),
     onRagProgress: (callback: (state: any) => void) => {

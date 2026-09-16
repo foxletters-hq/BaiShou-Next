@@ -58,6 +58,20 @@ export const knowledgeApi = {
       ipcRenderer.invoke('knowledge:reprocess-source', input),
     deleteSource: (sourceId: string) => ipcRenderer.invoke('knowledge:delete-source', sourceId),
     rebuildIndex: (notebookId: string) => ipcRenderer.invoke('knowledge:rebuild-index', notebookId),
+    manageData: (input: {
+      notebookId: string
+      action: 'clear' | 'reprocess'
+      vector?: boolean
+      graph?: boolean
+    }) =>
+      ipcRenderer.invoke('knowledge:manage-data', input) as Promise<{
+        action: 'clear' | 'reprocess'
+        vector: boolean
+        graph: boolean
+        sourceCount: number
+        vectorQueued: number
+        graphQueued: number
+      }>,
     getStats: (notebookId?: string) => ipcRenderer.invoke('knowledge:get-stats', notebookId),
     hasModelMismatch: (notebookIds?: string[]) =>
       ipcRenderer.invoke('knowledge:has-model-mismatch', notebookIds),
@@ -102,6 +116,19 @@ export const knowledgeApi = {
     }) => ipcRenderer.invoke('knowledge:set-config', patch),
     getExtractedPreview: (input: { notebookId: string; sourceId: string; maxChars?: number }) =>
       ipcRenderer.invoke('knowledge:get-extracted-preview', input),
+    getExtractedWindows: (input: {
+      notebookId: string
+      windows: Array<{ sourceId: string; windowIndex: number }>
+    }) =>
+      ipcRenderer.invoke('knowledge:get-extracted-windows', input) as Promise<{
+        items: Array<{
+          sourceId: string
+          sourceTitle: string
+          windowIndex: number
+          sourceRef: string
+          text: string | null
+        }>
+      }>,
     getSourceFile: (input: { sourceId: string }) =>
       ipcRenderer.invoke('knowledge:get-source-file', input) as Promise<KnowledgeSourceFilePreview>,
     getGraphView: (input: { notebookId: string; maxNodes?: number }) =>
