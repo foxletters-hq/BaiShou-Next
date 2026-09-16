@@ -120,7 +120,11 @@ export const WorkbenchGitEditableDiff = forwardRef<
 
     return () => {
       setTextContextMenu(null)
-      view.destroy()
+      try {
+        view.destroy()
+      } catch {
+        /* 容器已卸下时，编辑器销毁可能读到空节点 */
+      }
       viewRef.current = null
     }
     // Mount once; content changes sync via the effect below (avoid recreating EditorView).
@@ -129,7 +133,7 @@ export const WorkbenchGitEditableDiff = forwardRef<
 
   useEffect(() => {
     const view = viewRef.current
-    if (!view) return
+    if (!view?.dom?.isConnected) return
     const current = view.state.doc.toString()
     if (current === content) return
     suppressEchoRef.current = true

@@ -82,6 +82,7 @@
   color: var(--text-secondary);
   cursor: default;
   flex-shrink: 0;
+  user-select: none;
 }
 
 .tab:hover {
@@ -273,16 +274,21 @@
 }
 
 .status,
-.error {
+.missingFile {
   padding: 24px;
   color: var(--text-secondary);
   font-size: var(--ui-fs-lg);
+  font-weight: 400;
   background: var(--bg-surface);
   height: 100%;
 }
 
-.error {
-  color: var(--color-error);
+.missingFile {
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .diffWrap {

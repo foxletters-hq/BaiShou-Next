@@ -123,7 +123,7 @@ export const WorkbenchLivePreviewEditor = forwardRef<
       },
       extraExtensions: [
         workbenchEditorTheme,
-        EditorView.editorAttributes.of({ class: 'workbench-cm-editor' }),
+        EditorView.editorAttributes.of({ class: 'workbench-cm-editor workbench-cm-doc' }),
         ...(readOnly ? [EditorState.readOnly.of(true)] : []),
         editorContextMenuExtension({
           readOnly,
@@ -142,14 +142,22 @@ export const WorkbenchLivePreviewEditor = forwardRef<
       placePreviewCursorAt(view, pending.line, pending.column ?? 0)
       pendingScrollRef.current = null
     }
-    requestAnimationFrame(() => {
-      if (skipHeadingPlacementRef.current || pendingScrollRef.current) return
+    let cancelled = false
+    const frame = requestAnimationFrame(() => {
+      if (cancelled || skipHeadingPlacementRef.current || pendingScrollRef.current) return
+      if (!view.dom?.isConnected) return
       placePreviewCursorPastHeading(view)
     })
 
     return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
       setTextContextMenu(null)
-      view.destroy()
+      try {
+        view.destroy()
+      } catch {
+        /* 容器已卸下时，编辑器销毁可能读到空节点 */
+      }
       viewRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recreate editor per document
@@ -157,7 +165,7 @@ export const WorkbenchLivePreviewEditor = forwardRef<
 
   useEffect(() => {
     const view = viewRef.current
-    if (!view) return
+    if (!view?.dom?.isConnected) return
     suppressEchoRef.current = true
     replaceEditorDocumentContent(view, content, { scrollIntoView: false })
     suppressEchoRef.current = false
@@ -174,7 +182,7 @@ export const WorkbenchLivePreviewEditor = forwardRef<
 
   return (
     <>
-      <div ref={containerRef} className={`workbench-cm-editor ${styles.editor}`} />
+      <div ref={containerRef} className={`workbench-cm-editor workbench-cm-doc ${styles.editor}`} />
       <EditorContextMenuHost
         menu={textContextMenu}
         onClose={() => setTextContextMenu(null)}
