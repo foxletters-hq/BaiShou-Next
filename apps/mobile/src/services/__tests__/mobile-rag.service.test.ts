@@ -45,6 +45,7 @@ function createDeps(overrides: Partial<MobileRagServiceDeps> = {}): MobileRagSer
     },
     diaryService: {
       listAll: vi.fn().mockResolvedValue([]),
+      listForEmbedDetection: vi.fn().mockResolvedValue([]),
       findByIdsForEmbedding: vi.fn().mockResolvedValue(new Map())
     },
     hsRepo: {
@@ -163,7 +164,7 @@ describe('runControlledDiaryBatchEmbed', () => {
     let calls = 0
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockResolvedValue([0.1, 0.2, 0.3])
-    deps.diaryService.listAll = vi
+    deps.diaryService.listForEmbedDetection = vi
       .fn()
       .mockResolvedValueOnce([
         { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }
@@ -206,7 +207,7 @@ describe('runControlledDiaryBatchEmbed', () => {
     let calls = 0
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockResolvedValue([0.1, 0.2, 0.3])
-    deps.diaryService.listAll = vi
+    deps.diaryService.listForEmbedDetection = vi
       .fn()
       .mockResolvedValue([
         { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }
@@ -244,7 +245,6 @@ describe('runControlledDiaryBatchEmbed', () => {
   })
 
   it('marks embed failure when prepare step fails', async () => {
-    vi.useFakeTimers()
     const settingsStore: Record<string, unknown> = {
       rag_config: { ragEnabled: true, ragTopK: 20, ragSimilarityThreshold: 0.4 },
       global_models: {
@@ -280,13 +280,10 @@ describe('runControlledDiaryBatchEmbed', () => {
 
     vi.spyOn(EmbeddingAdapter.prototype, 'embedQuery').mockResolvedValue(null)
 
-    const promise = runControlledDiaryBatchEmbed(deps)
-    await vi.runAllTimersAsync()
-    const result = await promise
-    vi.useRealTimers()
+    await expect(runControlledDiaryBatchEmbed(deps)).rejects.toThrow(
+      '嵌入接口不可用，没有写入任何向量'
+    )
 
-    expect(result.skipped).toBe(true)
-    expect(result.skipReason).toBe('prepare-failed')
     const saved = settingsStore.rag_config as {
       lastDiaryEmbedFailureAt?: number
       totalEmbeddings?: number
@@ -304,7 +301,7 @@ describe('createMobileRagService.reembedAll', () => {
 
   it('clears vectors and batch embeds without hitting migration-running guard', async () => {
     const deps = createDeps()
-    deps.diaryService.listAll = vi
+    deps.diaryService.listForEmbedDetection = vi
       .fn()
       .mockResolvedValue([
         { id: 1, date: new Date('2024-01-01'), tags: [], updatedAt: new Date('2024-01-02') }

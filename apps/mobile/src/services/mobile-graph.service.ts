@@ -2,6 +2,7 @@ import {
   GraphLlmExtractionService,
   GraphSyncService,
   GraphRagService,
+  clearLifeGraphData,
   bindPendingReextractCollaborators,
   createDefaultGraphExtractLlm,
   estimateExtractionCost,
@@ -27,8 +28,11 @@ import { AIProviderRegistry, type IAIProvider } from '@baishou/ai'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import {
   DIARY_EMBED_GROUP_ID,
+  GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR,
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
+  resolveGraphSearchMode,
+  type GraphSearchMode,
   getUserProfileFromSettings,
   isDiaryEmbeddingPresent,
   normalizeGraphFilePath,
@@ -321,9 +325,40 @@ async function buildMobileExtractionService(options: {
 export async function mobileSearchGraphNodes(
   drizzleDb: AppDatabase,
   vaultId: string,
-  query: string
+  query: string,
+  opts?: {
+    mode?: GraphSearchMode
+    limit?: number
+    settingsManager?: SettingsManagerService
+  }
 ) {
-  return new GraphRepository(drizzleDb).searchNodesByName(vaultId, query, { limit: 30 })
+  const repo = new GraphRepository(drizzleDb)
+  const limit = opts?.limit ?? 30
+  const mode = resolveGraphSearchMode(opts?.mode)
+  if (mode !== 'semantic') {
+    return repo.searchNodesByName(vaultId, query, { limit })
+  }
+  if (!opts?.settingsManager) {
+    throw new Error(GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR)
+  }
+  const { EmbeddingAdapter } = await import('@baishou/ai')
+  const { resolveMobileEmbeddingForHydration } = await import('./mobile-raw-data-source.runtime')
+  const emb = await resolveMobileEmbeddingForHydration(opts.settingsManager)
+  if (!emb.embeddingProvider || !emb.embeddingModelId) {
+    throw new Error(GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR)
+  }
+  const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId)
+  if (!adapter.isConfigured) {
+    throw new Error(GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR)
+  }
+  const vector = await adapter.embedQuery(query)
+  if (!vector?.length) return []
+  const hits = await repo.searchNodesByVector(vaultId, vector, limit, {
+    modelId: adapter.embeddingModelId
+  })
+  return hits
+    .filter((row) => row.reviewStatus !== 'rejected')
+    .map(({ distance: _distance, ...row }) => row)
 }
 
 export async function mobileFindNodeByName(
@@ -376,12 +411,7 @@ export async function mobileListPendingEdges(drizzleDb: AppDatabase, vaultId: st
 }
 
 export async function mobileListPending(drizzleDb: AppDatabase, vaultId: string) {
-  const repo = new GraphRepository(drizzleDb)
-  const [nodes, edges] = await Promise.all([
-    repo.listPendingNodes(vaultId),
-    repo.listPendingEdges(vaultId)
-  ])
-  return { nodes, edges }
+  return new GraphRepository(drizzleDb).listPendingGraph(vaultId)
 }
 
 export async function mobileEstimateExtraction(options: {
@@ -922,6 +952,38 @@ export async function mobileMergeGraphNodeGroup(options: {
     softDeleteNode: (id) => repo.softDeleteNode(id)
   })
   return result
+}
+
+export async function mobileResolveJournalForExtract(
+  dateStr: string,
+  shadowRepo: ShadowIndexRepository
+): Promise<{ filePath: string; date: string } | null> {
+  const date = String(dateStr || '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+  const shadow = await shadowRepo.findByDate(date)
+  const filePath = normalizeGraphFilePath(String(shadow?.filePath || ''))
+  if (!filePath) return null
+  return { filePath, date }
+}
+
+export async function mobileClearLifeGraph(options: {
+  vaultId: string
+  vaultName: string
+  drizzleDb: AppDatabase
+  shadowRepo: ShadowIndexRepository
+  pathService: IStoragePathService
+  fileSystem: IFileSystem
+  stopExtract?: () => void
+}): Promise<{ shardCount: number }> {
+  const freshness = ensureMobileGraphFreshnessBound(options)
+  const { graphManager } = ensureMobileRawDataRuntime(options)
+  return clearLifeGraphData({
+    vaultId: options.vaultId,
+    graphRepo: new GraphRepository(options.drizzleDb),
+    graphManager,
+    freshness,
+    stopExtract: options.stopExtract
+  })
 }
 
 export function createMobileGraphRag(drizzleDb: AppDatabase): GraphRagService {
