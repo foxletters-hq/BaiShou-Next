@@ -52,7 +52,7 @@ describeKnowledge('KnowledgeConnectionManager', () => {
 
     const db = manager.getDb()
     const tables = await db.all(
-      sql`SELECT name FROM sqlite_master WHERE type='table' AND name IN ('notebooks', 'knowledge_sources', 'knowledge_chunks', 'knowledge_ingest_jobs')`
+      sql`SELECT name FROM sqlite_master WHERE type='table' AND name IN ('notebooks', 'knowledge_sources', 'knowledge_chunks', 'knowledge_ingest_jobs', 'knowledge_embed_ledger')`
     )
     const names = tables.map((r) => (r as { name: string }).name)
     expect(names).toEqual(
@@ -60,7 +60,8 @@ describeKnowledge('KnowledgeConnectionManager', () => {
         'notebooks',
         'knowledge_sources',
         'knowledge_chunks',
-        'knowledge_ingest_jobs'
+        'knowledge_ingest_jobs',
+        'knowledge_embed_ledger'
       ])
     )
 

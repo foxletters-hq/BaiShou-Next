@@ -254,6 +254,62 @@ describe('MigrationService', () => {
       expect(tables).toHaveLength(1)
     })
 
+    it('_retireDiaryEmbedJobsTable migrates leftover jobs into embed_ledger without file hashes then drops the table', async () => {
+      const db = dbManager.getDb()
+      await (service as any)._ensureEmbedLedgerTable()
+      await db.run(sql`
+        CREATE TABLE diary_embed_jobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          vault_id TEXT NOT NULL,
+          diary_id INTEGER NOT NULL,
+          content_hash TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          next_retry_at INTEGER,
+          updated_at INTEGER NOT NULL,
+          created_at INTEGER NOT NULL
+        )
+      `)
+      await db.run(sql`
+        INSERT INTO diary_embed_jobs
+          (vault_id, diary_id, content_hash, status, attempts, last_error, updated_at, created_at)
+        VALUES
+          ('vault-a', 12, 'file-md5-should-not-copy', 'pending', 2, 'old-error', 100, 100)
+      `)
+      await db.run(sql`
+        INSERT INTO embed_ledger
+          (vault_id, source_type, source_id, content_hash, chunk_count, model_id, dimension,
+           status, attempts, last_error, embedded_at, updated_at)
+        VALUES
+          ('vault-a', 'diary', 'vault-a#99', 'already', 1, 'm', 8, 'embedded', 0, NULL, 1, 1)
+      `)
+
+      await (service as any)._retireDiaryEmbedJobsTable()
+      await (service as any)._retireDiaryEmbedJobsTable()
+
+      const jobs = await db.all(sql`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='diary_embed_jobs'
+      `)
+      expect(jobs).toHaveLength(0)
+
+      const rows = (await db.all(sql`SELECT * FROM embed_ledger ORDER BY source_id`)) as Array<{
+        source_id: string
+        content_hash: string
+      }>
+      expect(rows).toHaveLength(2)
+      const migrated = rows.find((row) => row.source_id === 'vault-a#12')
+      expect(migrated).toMatchObject({
+        vault_id: 'vault-a',
+        source_type: 'diary',
+        source_id: 'vault-a#12',
+        content_hash: '',
+        status: 'failed',
+        attempts: 2
+      })
+      expect(String(migrated?.content_hash ?? '')).not.toBe('file-md5-should-not-copy')
+    })
+
     it('_ensureEmbedLedgerTable should create table and indexes and stay idempotent', async () => {
       await (service as any)._ensureEmbedLedgerTable()
       await (service as any)._ensureEmbedLedgerTable()

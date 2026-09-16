@@ -115,6 +115,31 @@ export type KnowledgeSourceRow = typeof knowledgeSourcesTable.$inferSelect
 export type KnowledgeChunkRow = typeof knowledgeChunksTable.$inferSelect
 export type KnowledgeIngestJobRow = typeof knowledgeIngestJobsTable.$inferSelect
 
+/** 知识库本机嵌入账本（knowledge.db，不参与同步） */
+export const knowledgeEmbedLedgerTable = sqliteTable(
+  'knowledge_embed_ledger',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    vaultId: text('vault_id').notNull(),
+    sourceId: text('source_id').notNull(),
+    contentHash: text('content_hash').notNull().default(''),
+    chunkCount: integer('chunk_count').notNull().default(0),
+    modelId: text('model_id').notNull().default(''),
+    dimension: integer('dimension').notNull().default(0),
+    status: text('status').notNull().default('embedded'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    embeddedAt: integer('embedded_at'),
+    updatedAt: integer('updated_at').notNull()
+  },
+  (t) => ({
+    sourceUniq: uniqueIndex('knowledge_embed_ledger_source_unique').on(t.vaultId, t.sourceId),
+    vaultIdx: index('idx_knowledge_embed_ledger_vault').on(t.vaultId)
+  })
+)
+
+export type KnowledgeEmbedLedgerRow = typeof knowledgeEmbedLedgerTable.$inferSelect
+
 /** 知识本图谱节点（与日记 graph_nodes 隔离） */
 export const notebookGraphNodesTable = sqliteTable(
   'notebook_graph_nodes',

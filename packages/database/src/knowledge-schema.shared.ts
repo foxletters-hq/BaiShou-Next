@@ -11,8 +11,9 @@ export const KNOWLEDGE_DB_FILENAME = 'knowledge.db'
  * 3 = 每本笔记本独立图谱表 notebook_graph_*
  * 4 = notebooks 加 sort_order / cover_tone（列表排序与封面色）
  * 5 = notebooks 加 cover_icon / cover_image（封面 emoji 与上传封面）
+ * 6 = knowledge_embed_ledger（本机嵌入账本，不参与同步）
  */
-export const KNOWLEDGE_SCHEMA_VERSION = 5
+export const KNOWLEDGE_SCHEMA_VERSION = 6
 
 export const KNOWLEDGE_NOTEBOOKS_SQL = `
   CREATE TABLE IF NOT EXISTS notebooks (
@@ -218,6 +219,29 @@ export const KNOWLEDGE_INGEST_JOBS_STATUS_RETRY_IDX_SQL = `
   ON knowledge_ingest_jobs(status, next_retry_at)
 `
 
+export const KNOWLEDGE_EMBED_LEDGER_SQL = `
+  CREATE TABLE IF NOT EXISTS knowledge_embed_ledger (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    vault_id      TEXT NOT NULL,
+    source_id     TEXT NOT NULL,
+    content_hash  TEXT NOT NULL DEFAULT '',
+    chunk_count   INTEGER NOT NULL DEFAULT 0,
+    model_id      TEXT NOT NULL DEFAULT '',
+    dimension     INTEGER NOT NULL DEFAULT 0,
+    status        TEXT NOT NULL DEFAULT 'embedded',
+    attempts      INTEGER NOT NULL DEFAULT 0,
+    last_error    TEXT,
+    embedded_at   INTEGER,
+    updated_at    INTEGER NOT NULL,
+    UNIQUE(vault_id, source_id)
+  )
+`
+
+export const KNOWLEDGE_EMBED_LEDGER_VAULT_IDX_SQL = `
+  CREATE INDEX IF NOT EXISTS idx_knowledge_embed_ledger_vault
+  ON knowledge_embed_ledger(vault_id)
+`
+
 export const KNOWLEDGE_INGEST_JOBS_SQL = `
   CREATE TABLE IF NOT EXISTS knowledge_ingest_jobs (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -287,6 +311,8 @@ export async function ensureKnowledgeSchema(
   await executeRawSql(client, KNOWLEDGE_CHUNKS_SOURCE_IDX_SQL)
   await createKnowledgeFts(client, logPrefix)
   await executeRawSql(client, KNOWLEDGE_INGEST_JOBS_SQL)
+  await executeRawSql(client, KNOWLEDGE_EMBED_LEDGER_SQL)
+  await executeRawSql(client, KNOWLEDGE_EMBED_LEDGER_VAULT_IDX_SQL)
 
   // v2：存量库补 vault_id（新建表 SQL 已含列；旧库靠 ALTER）
   await ensureVaultIdColumn(client, 'notebooks', logPrefix)

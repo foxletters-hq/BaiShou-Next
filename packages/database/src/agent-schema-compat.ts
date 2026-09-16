@@ -67,6 +67,37 @@ export const DIARY_EMBED_JOBS_INDEXES_SQL = [
    ON diary_embed_jobs (status, next_retry_at)`
 ] as const
 
+/**
+ * 把剩余欠账行幂等写入 embed_ledger（failed、正文哈希留空），禁止复制文件级 MD5。
+ * 已有账本行（含 embedded）一律不覆盖。
+ */
+export const MIGRATE_DIARY_EMBED_JOBS_INTO_LEDGER_SQL = `
+  INSERT INTO embed_ledger (
+    vault_id, source_type, source_id, content_hash, chunk_count,
+    model_id, dimension, status, attempts, last_error, embedded_at, updated_at
+  )
+  SELECT
+    j.vault_id,
+    'diary',
+    j.vault_id || '#' || CAST(j.diary_id AS TEXT),
+    '',
+    0,
+    '',
+    0,
+    'failed',
+    COALESCE(j.attempts, 0),
+    COALESCE(j.last_error, 'migrated-from-diary-embed-jobs'),
+    NULL,
+    COALESCE(j.updated_at, 0)
+  FROM diary_embed_jobs j
+  WHERE NOT EXISTS (
+    SELECT 1 FROM embed_ledger e
+    WHERE e.vault_id = j.vault_id
+      AND e.source_type = 'diary'
+      AND e.source_id = j.vault_id || '#' || CAST(j.diary_id AS TEXT)
+  )
+`
+
 /** 本机嵌入账本；记录这台设备把哪个来源的哪个版本嵌入过，不参与同步 */
 export const EMBED_LEDGER_CREATE_SQL = `
   CREATE TABLE IF NOT EXISTS embed_ledger (
