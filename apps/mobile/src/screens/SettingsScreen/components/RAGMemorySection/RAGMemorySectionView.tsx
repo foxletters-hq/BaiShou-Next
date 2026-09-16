@@ -22,17 +22,22 @@ export function RAGMemorySectionView() {
     pageSize,
     searchQuery,
     searchMode,
+    sourceKind,
+    isSearching,
     semanticAvailable,
     handleSemanticUnavailable,
     saveConfig,
     handleDetectDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
     handleTriggerMigration,
     handleCancelRagOperation,
     ragCancelBusy,
     handleAddManualMemory,
     handleClearAll,
     handleSearch,
+    handleSourceKindChange,
     handleDeleteEntry,
     handleEditEntry,
     openModelSwitcher,
@@ -70,11 +75,17 @@ export function RAGMemorySectionView() {
           pageSize={pageSize}
           searchQuery={searchQuery}
           searchMode={searchMode}
+          sourceKind={sourceKind}
+          isSearching={isSearching}
+          onSourceKindChange={handleSourceKindChange}
           semanticAvailable={semanticAvailable}
           onSemanticUnavailable={() => void handleSemanticUnavailable()}
           onChange={saveConfig}
           onDetectDimension={handleDetectDimension}
           onBatchEmbed={handleBatchEmbed}
+          onPauseBatchEmbed={handlePauseBatchEmbed}
+          onResumeBatchEmbed={handleResumeBatchEmbed}
+          onCancelBatchEmbed={handleCancelRagOperation}
           onTriggerMigration={handleTriggerMigration}
           onCancelMigration={handleCancelRagOperation}
           migrationCancelBusy={ragCancelBusy}

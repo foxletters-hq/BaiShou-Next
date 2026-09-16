@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast, type RagConfig, type RagEntry } from '@baishou/ui/native'
-import { GlobalModelsConfig } from '@baishou/shared'
+import { GlobalModelsConfig, parseGraphNodeEmbeddingId, type RagVectorKindFilter } from '@baishou/shared'
 import { MobileRagAbortError } from '../../../../services/mobile-rag.service'
 import { clampMobileRagConfig } from './rag-memory-section.constants'
 import type { RagMemorySectionCtx } from './useRagMemorySection.ctx'
@@ -21,6 +21,7 @@ export function useRagMemoryActions(
       page?: number,
       size?: number
     ) => Promise<void>
+    invalidateInFlightQuery: () => void
     openModelSwitcher: () => Promise<void>
     semanticAvailable: boolean
   }
@@ -28,7 +29,8 @@ export function useRagMemoryActions(
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useNativeToast()
-  const { loadRagData, refreshEntriesOnly, openModelSwitcher, semanticAvailable } = data
+  const { loadRagData, refreshEntriesOnly, invalidateInFlightQuery, openModelSwitcher, semanticAvailable } =
+    data
   const {
     services,
     dbReady,
@@ -48,6 +50,7 @@ export function useRagMemoryActions(
     searchQuery,
     pageSize,
     setSearchQuery,
+    setSourceKind,
     setCurrentPage,
     currentPage,
     setPageSize,
@@ -61,7 +64,8 @@ export function useRagMemoryActions(
     setTotalCount,
     stats,
     setStats,
-    handleReembedAfterModelChange
+    handleReembedAfterModelChange,
+    stateRef
   } = ctx
 
   const handleSelectEmbeddingModel = useCallback(
@@ -141,10 +145,20 @@ export function useRagMemoryActions(
   }, [ragState.isRunning, setRagCancelBusy])
 
   const handleSearch = (query: string, mode: 'semantic' | 'text') => {
+    invalidateInFlightQuery()
     setSearchQuery(query)
     setSearchMode(mode)
     setCurrentPage(1)
     void loadRagData(query, mode, 1, pageSize)
+  }
+
+  const handleSourceKindChange = (kind: RagVectorKindFilter) => {
+    if (kind === stateRef.current.sourceKind && stateRef.current.currentPage === 1) return
+    invalidateInFlightQuery()
+    setSourceKind(kind)
+    stateRef.current.sourceKind = kind
+    setCurrentPage(1)
+    void loadRagData(searchQuery, searchMode, 1, pageSize)
   }
 
   useEffect(() => {
@@ -154,6 +168,8 @@ export function useRagMemoryActions(
   }, [semanticAvailable, searchMode, setSearchMode])
 
   const handlePageChange = (page: number, size: number) => {
+    if (page === stateRef.current.currentPage && size === stateRef.current.pageSize) return
+    invalidateInFlightQuery()
     setCurrentPage(page)
     setPageSize(size)
     void refreshEntriesOnly(searchQuery, searchMode, page, size)
@@ -208,23 +224,21 @@ export function useRagMemoryActions(
       type: 'batchEmbed',
       progress: 0,
       total: 0,
-      statusText: t('settings.rag_batch_embed')
+      statusText: t('settings.rag_batch_embed'),
+      paused: false,
+      cancelling: false
     })
     try {
       const count = await services.ragService.batchEmbed((p) => {
-        setRagState({
+        setRagState((prev) => ({
           isRunning: true,
           type: 'batchEmbed',
           progress: p.current,
           total: p.total,
-          statusText: p.status || t('common.processing')
-        })
-      })
-      const { consumeDiaryEmbedJobs } =
-        await import('../../../../services/mobile-diary-embed-jobs-consumer.service')
-      await consumeDiaryEmbedJobs({
-        reason: 'after-manual-batch-embed',
-        limit: 50
+          statusText: p.status || t('common.processing'),
+          paused: prev.paused,
+          cancelling: prev.cancelling
+        }))
       })
       toast.showSuccess(t('settings.rag_batch_embed_done', { count: String(count) }))
       await loadRagData()
@@ -252,6 +266,30 @@ export function useRagMemoryActions(
     }
   }
 
+  const handlePauseBatchEmbed = useCallback(async () => {
+    if (!services?.ragService) return
+    services.ragService.requestOperationPause()
+    setRagState((prev) => ({
+      ...prev,
+      isRunning: true,
+      type: prev.type || 'batchEmbed',
+      paused: true,
+      cancelling: false
+    }))
+  }, [services?.ragService, setRagState])
+
+  const handleResumeBatchEmbed = useCallback(async () => {
+    if (!services?.ragService) return
+    services.ragService.requestOperationResume()
+    setRagState((prev) => ({
+      ...prev,
+      isRunning: true,
+      type: prev.type || 'batchEmbed',
+      paused: false,
+      cancelling: false
+    }))
+  }, [services?.ragService, setRagState])
+
   const handleCancelRagOperation = useCallback(async () => {
     if (!services?.ragService) return
     const confirmed = await dialog.confirm(
@@ -271,6 +309,8 @@ export function useRagMemoryActions(
     setRagState((prev) => ({
       ...prev,
       isRunning: true,
+      paused: false,
+      cancelling: true,
       statusKey: 'settings.rag_migration_aborting',
       statusText: t('settings.rag_migration_aborting', '正在取消并停止嵌入…')
     }))
@@ -312,11 +352,22 @@ export function useRagMemoryActions(
 
   const handleDeleteEntry = async (id: string) => {
     if (!services?.ragService) return
-    const confirmed = await dialog.confirm(t('agent.assistant.delete_confirm_content'), {
-      title: t('common.delete'),
-      confirmText: t('common.delete'),
-      destructive: true
-    })
+    const isGraphNode = Boolean(parseGraphNodeEmbeddingId(id))
+    const confirmed = await dialog.confirm(
+      isGraphNode
+        ? t(
+            'settings.rag_clear_node_embed_confirm',
+            '只会清除这个节点上的向量，不会删除图谱里的实体。确定继续？'
+          )
+        : t('settings.rag_delete_entry_confirm', '确定删除这条向量片段？'),
+      {
+        title: t('common.delete'),
+        confirmText: isGraphNode
+          ? t('settings.rag_clear_node_embed', '清除节点向量')
+          : t('common.delete'),
+        destructive: true
+      }
+    )
     if (!confirmed) return
 
     const snapshotEntries = entries
@@ -399,9 +450,12 @@ export function useRagMemoryActions(
     saveConfig,
     handleSemanticUnavailable,
     handleSearch,
+    handleSourceKindChange,
     handlePageChange,
     handleDetectDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
     handleCancelRagOperation,
     handleClearAll,
     handleAddManualMemory,

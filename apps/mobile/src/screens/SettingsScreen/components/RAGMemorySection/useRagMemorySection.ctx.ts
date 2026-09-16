@@ -1,6 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { RagConfig, RagEntry, RagStats } from '@baishou/ui/native'
-import type { AIProviderConfig } from '@baishou/shared'
+import type { AIProviderConfig, RagVectorKindFilter } from '@baishou/shared'
 import type { BaishouContextValue } from '../../../../providers/baishou-provider/types'
 import type { PromptMode } from './rag-memory-section.constants'
 
@@ -25,6 +25,10 @@ export type RagMemorySectionCtx = {
   setSearchQuery: Dispatch<SetStateAction<string>>
   searchMode: 'semantic' | 'text'
   setSearchMode: Dispatch<SetStateAction<'semantic' | 'text'>>
+  sourceKind: RagVectorKindFilter
+  setSourceKind: Dispatch<SetStateAction<RagVectorKindFilter>>
+  isSearching: boolean
+  setIsSearching: Dispatch<SetStateAction<boolean>>
   embeddingModelId?: string
   embeddingProviderId?: string
   setEmbeddingModelId: Dispatch<SetStateAction<string | undefined>>
@@ -57,6 +61,7 @@ export type RagMemorySectionCtx = {
   stateRef: MutableRefObject<{
     searchQuery: string
     searchMode: 'semantic' | 'text'
+    sourceKind: RagVectorKindFilter
     currentPage: number
     pageSize: number
   }>
