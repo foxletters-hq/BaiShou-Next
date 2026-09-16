@@ -1,7 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
-  ChatCostDialog,
   AssistantPickerSheet,
   ShortcutManagerDialog,
   RecallDialog,
@@ -9,6 +8,7 @@ import {
   AgentToolsDialog,
   toast
 } from '@baishou/ui'
+import { AssistantCreateModal } from './AssistantCreateModal'
 import {
   isEmbeddingModel,
   isTtsModel,
@@ -25,8 +25,6 @@ interface AgentDialogsProps {
   t: any
   i18n: any
   // 状态控制
-  showCostDialog: boolean
-  setShowCostDialog: (v: boolean) => void
   showAssistantPicker: boolean
   setShowAssistantPicker: (v: boolean) => void
   showShortcutManager: boolean
@@ -49,13 +47,6 @@ interface AgentDialogsProps {
     selectDialogueModel: (providerId: string, modelId: string) => Promise<void>
     userManuallySetModelRef: React.MutableRefObject<boolean>
   }
-  tokens: {
-    totalInputTokens: number
-    totalOutputTokens: number
-    totalCacheReadInputTokens: number
-    totalCacheWriteInputTokens: number
-    estimatedCost: number
-  }
   assistants: any[]
   fetchAssistants: () => Promise<void>
   shortcuts: any[]
@@ -70,8 +61,6 @@ interface AgentDialogsProps {
     toggleRecallSearchMode: () => void
   }
   toolConfig: any
-  pricingLastUpdated: Date | null
-  handleRefreshPricing: () => Promise<any>
   currentAssistant: any
   providers: any[]
   inputBarRef: React.RefObject<any>
@@ -88,8 +77,6 @@ interface AgentDialogsProps {
 export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   t,
   i18n,
-  showCostDialog,
-  setShowCostDialog,
   showAssistantPicker,
   setShowAssistantPicker,
   showShortcutManager,
@@ -103,7 +90,6 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   recallLookbackMonths,
   setRecallLookbackMonths,
   model,
-  tokens,
   assistants,
   fetchAssistants,
   shortcuts,
@@ -112,8 +98,6 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
   removeShortcut,
   recall,
   toolConfig,
-  pricingLastUpdated,
-  handleRefreshPricing,
   currentAssistant: _currentAssistant,
   providers,
   inputBarRef,
@@ -131,29 +115,10 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
       userCopyPrefix: copyPrefix,
       locale: i18n.language
     })
+  const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
 
   return (
     <>
-      {/* 计费详情对话框 */}
-      <ChatCostDialog
-        isOpen={showCostDialog}
-        onClose={() => setShowCostDialog(false)}
-        details={{
-          modelName:
-            model.currentModelId === 'unknown'
-              ? t('agent.no_model_selected', '暂未选择模型')
-              : model.currentModelId,
-          promptTokens: tokens.totalInputTokens,
-          completionTokens: tokens.totalOutputTokens,
-          cacheReadTokens: tokens.totalCacheReadInputTokens,
-          cacheWriteTokens: tokens.totalCacheWriteInputTokens,
-          totalTokens: tokens.totalInputTokens + tokens.totalOutputTokens,
-          estimatedCost: `$${tokens.estimatedCost.toFixed(6)}`
-        }}
-        pricingLastUpdated={pricingLastUpdated}
-        onRefreshPricing={handleRefreshPricing}
-      />
-
       {/* 助手切换器抽屉 */}
       <AssistantPickerSheet
         isOpen={showAssistantPicker}
@@ -186,6 +151,18 @@ export const AgentDialogs: React.FC<AgentDialogsProps> = ({
             })
           }
         }}
+        onCreateNew={() => {
+          setShowAssistantPicker(false)
+          setIsCreateAssistantOpen(true)
+        }}
+      />
+
+      <AssistantCreateModal
+        isOpen={isCreateAssistantOpen}
+        assistantCount={assistants.length}
+        onClose={() => setIsCreateAssistantOpen(false)}
+        onBackToPicker={() => setShowAssistantPicker(true)}
+        onCreated={fetchAssistants}
       />
 
       {/* Skill 管理弹窗（原快捷指令） */}

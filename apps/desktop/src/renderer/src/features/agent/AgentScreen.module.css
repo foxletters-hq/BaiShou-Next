@@ -375,11 +375,12 @@
   background-color: var(--bg-surface-normal);
 }
 
-/* 输入框底部 meta 行：对齐工作台（左侧伙伴 / 右侧模型） */
+/* 输入框底部 meta 行：伙伴与模型相邻，不拉到两端 */
 .metaRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-xs) var(--spacing-sm);
   width: 100%;
   min-width: 0;
 }
@@ -388,18 +389,17 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
+  gap: var(--spacing-xs) var(--spacing-sm);
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
 }
 
 .metaTrailing {
-  margin-left: auto;
-  flex-shrink: 0;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
+  gap: var(--spacing-xs);
   min-width: 0;
-  max-width: min(300px, 62%);
 }
 
 .metaChip {

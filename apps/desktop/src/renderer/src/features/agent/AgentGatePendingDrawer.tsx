@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Shield } from 'lucide-react'
 import { selectGroupedPending, selectPendingCount, useAgentGateInboxStore } from '@baishou/store'
-import { withAppContentOverlay } from '@baishou/ui'
+import { Button, withAppContentOverlay } from '@baishou/ui'
+import { useAgentGatePendingNameMaps } from './hooks/useAgentGatePendingNameMaps'
+import { lookupAgentGatePendingName } from './utils/agent-gate-pending-labels.util'
 import styles from './AgentGatePendingDrawer.module.css'
 
 export interface AgentGatePendingDrawerProps {
@@ -20,6 +22,7 @@ export const AgentGatePendingDrawer: React.FC<AgentGatePendingDrawerProps> = ({
   const pendingCount = useAgentGateInboxStore(selectPendingCount)
   const groups = useAgentGateInboxStore(selectGroupedPending)
   const items = useMemo(() => groups, [groups])
+  const nameMaps = useAgentGatePendingNameMaps(open, items)
 
   if (!open) return null
 
@@ -51,19 +54,19 @@ export const AgentGatePendingDrawer: React.FC<AgentGatePendingDrawerProps> = ({
               <section key={group.groupKey} className={styles.group}>
                 <h3 className={styles.groupTitle}>
                   {group.scope?.kind === 'workspace'
-                    ? t('agent_gate.group_workspace', '工作区 · {{id}}', {
-                        id: group.scope.workspaceId
+                    ? t('agent_gate.group_workspace', '工作区 · {{name}}', {
+                        name: lookupAgentGatePendingName(
+                          group.scope.workspaceId,
+                          nameMaps.workspaceNames
+                        )
                       })
                     : t('agent_gate.group_companion', '伙伴 · {{name}}', {
                         name: group.vaultName || '—'
                       })}
                 </h3>
                 <p className={styles.sessionId}>
-                  {t('agent_gate.session_label', '会话 {{id}}', {
-                    id:
-                      group.sessionId.length > 12
-                        ? `${group.sessionId.slice(0, 10)}…`
-                        : group.sessionId
+                  {t('agent_gate.session_label', '会话 {{name}}', {
+                    name: lookupAgentGatePendingName(group.sessionId, nameMaps.sessionTitles)
                   })}
                 </p>
                 <ul className={styles.list}>
@@ -106,8 +109,10 @@ export function AgentGatePendingBadgeButton(props: {
   const count = useAgentGateInboxStore(selectPendingCount)
   if (count <= 0) return null
   return (
-    <button
+    <Button
       type="button"
+      variant="outlined"
+      size="small"
       className={styles.badgeBtn}
       onClick={props.onClick}
       title={t('agent_gate.pending_badge_title', '待确认操作')}
@@ -115,6 +120,6 @@ export function AgentGatePendingBadgeButton(props: {
     >
       <Shield size={14} aria-hidden />
       <span className={styles.badgeCount}>{count > 99 ? '99+' : count}</span>
-    </button>
+    </Button>
   )
 }

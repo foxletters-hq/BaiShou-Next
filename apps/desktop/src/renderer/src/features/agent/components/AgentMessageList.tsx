@@ -17,7 +17,7 @@ import {
   resolveActiveToolDisplayName
 } from '@baishou/ui'
 import type { AgentGatePartData } from '@baishou/shared'
-import { useSettingsStore } from '@baishou/store'
+import { useAgentGateInboxStore, useSettingsStore } from '@baishou/store'
 import { useMessageActions } from '../hooks/useMessageActions'
 import styles from '../AgentScreen.module.css'
 
@@ -99,6 +99,29 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
   loadSessions
 }) => {
   const settings = useSettingsStore()
+  const resolvedLiveAll = useAgentGateInboxStore((state) => state.resolvedLive)
+  const resolvedLive = useMemo(
+    () =>
+      sessionId
+        ? resolvedLiveAll.filter((item) => item.request.sessionId === sessionId)
+        : resolvedLiveAll,
+    [resolvedLiveAll, sessionId]
+  )
+  const persistedGateIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const msg of chat.messages ?? []) {
+      for (const part of msg.parts ?? []) {
+        if (part?.type !== 'agent_gate') continue
+        const requestId = (part.data as AgentGatePartData | undefined)?.request?.id
+        if (requestId) ids.add(requestId)
+      }
+    }
+    return ids
+  }, [chat.messages])
+  const liveGateParts = useMemo(
+    () => resolvedLive.filter((item) => !persistedGateIds.has(item.request.id)),
+    [persistedGateIds, resolvedLive]
+  )
 
   const actions = useMessageActions({
     t,
@@ -452,6 +475,10 @@ export const AgentMessageList: React.FC<AgentMessageListProps> = ({
               </React.Fragment>
             )
           })}
+
+          {liveGateParts.map((data) => (
+            <AgentGatePartBubble key={data.request.id} data={data} />
+          ))}
 
           {(() => {
             const showStreamingBubble =

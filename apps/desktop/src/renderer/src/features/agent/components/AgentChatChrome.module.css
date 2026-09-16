@@ -68,6 +68,7 @@
   line-height: 1;
   overflow: hidden;
   background: #fff !important;
+  justify-content: center;
 }
 
 :global(body[data-theme='dark']) .trailing .chip {
@@ -116,6 +117,7 @@
   padding: 0 12px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 
 .modelSwitcherTrigger {
