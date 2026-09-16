@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { MarkdownRenderer } from '@baishou/ui'
+import { Button, MarkdownRenderer } from '@baishou/ui'
 import {
   assessFetchedWebPage,
   fetchedWebPageIssueMessage
@@ -362,9 +362,9 @@ export const KnowledgeSourcePreviewDialog: React.FC<Props> = ({
         </div>
       ) : null}
       <div className={styles.dialogActions}>
-        <button type="button" className={styles.btnPrimary} onClick={onClose}>
+        <Button type="button" onClick={onClose}>
           {t('common.close', '关闭')}
-        </button>
+        </Button>
       </div>
     </KnowledgeDialog>
   )

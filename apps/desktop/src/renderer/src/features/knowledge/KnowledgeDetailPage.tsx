@@ -9,20 +9,17 @@ import {
   Link2,
   NotebookPen,
   Plus,
-  RefreshCw,
-  Settings,
   Cloud,
   ChevronDown,
   MoreHorizontal,
-  MessageSquare,
   X
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
   AnchoredContextMenu,
+  Button,
   Input,
   Select,
-  SessionModelMenu,
   HelpTooltip,
   getProviderIcon,
   toast,
@@ -31,31 +28,53 @@ import {
 } from '@baishou/ui'
 import {
   clampOcrConcurrency,
-  isEmbeddingModel,
-  isTtsModel,
-  isVisionModel,
+  collectNotebookGraphSourceWindows,
+  DEFAULT_OCR_CONCURRENCY,
+  RECOMMENDED_OCR_CONCURRENCY,
   listOcrConcurrencyValues,
+  normalizeKnowledgeDefaultExtractEngine,
   normalizeKnowledgeImportProcessMode,
+  resolveGlobalGraphModelIds,
   type KnowledgeExtractHint,
   type KnowledgeExtractHintChoice,
   type KnowledgeImportProcessMode
 } from '@baishou/shared'
-import { useAssistantStore, useSettingsStore } from '@baishou/store'
+import { useSettingsStore } from '@baishou/store'
 import { KnowledgeShell } from './KnowledgeShell'
 import { KnowledgeDialog } from './KnowledgeDialog'
+import { KnowledgeSourceFragmentDialog } from './KnowledgeSourceFragmentDialog'
 import {
   KnowledgeSourcePreviewDialog,
   type SourcePreviewPayload
 } from './KnowledgeSourcePreviewDialog'
+import {
+  buildGraphFragmentItems,
+  buildVectorFragmentItem,
+  type KnowledgeSourceFragment
+} from './knowledge-source-fragment.util'
 import { callKnowledgeApi } from './call-knowledge-api'
 import { KnowledgeNotebookTabBar } from './KnowledgeNotebookTabBar'
-import { KnowledgeVectorPane } from './KnowledgeVectorPane'
-import { NotebookOpenGuideDialog } from './NotebookOpenGuideDialog'
+import { KnowledgeVectorPane, type KnowledgeVectorChunkCard } from './KnowledgeVectorPane'
+import { NotebookStatusPanel } from './NotebookStatusPanel'
+import {
+  NotebookDataManageDialog,
+  type NotebookDataManageConfirm
+} from './NotebookDataManageDialog'
+import {
+  notebookDataManageFeedback,
+  notebookDataManageStatusKind,
+  notebookDataManageWatch,
+  parseNotebookDataManageResult,
+  type NotebookDataManageResult
+} from './notebook-data-manage.util'
 import { NotebookGraphPane } from './NotebookGraphPane'
+import type { NotebookGraphViewEdge } from './notebook-graph-view.util'
 import { KnowledgeHeavyConfirmDialog } from './KnowledgeHeavyConfirmDialog'
 import type { KnowledgeHeavyConfirmKind } from './KnowledgeHeavyConfirmDialog'
 import { KnowledgeExtractHintDialog } from './KnowledgeExtractHintDialog'
 import { KnowledgeImportProcessDialog } from './KnowledgeImportProcessDialog'
+import { KnowledgeModelMenu } from './KnowledgeModelMenu'
+import { useNotebookStatusModels } from './useNotebookStatusModels'
 import {
   buildKnowledgeSourceMenuActions,
   type KnowledgeSourceMenuAction
@@ -64,17 +83,18 @@ import {
   collectVisionExtractHints,
   pickVisionExtractHintReason
 } from './extract-engine-hint.util'
+import { knowledgeExtractSettingsVisibility } from './knowledge-extract-settings-visibility.util'
 import { buildNotebookOpenGuideRows } from './notebook-open-guide.util'
+import { resolveNotebookProviderIconSrc } from './notebook-status-icon.util'
 import {
   formatNotebookGraphProgress,
   notebookGraphProgressCopy
 } from './notebook-graph-progress.util'
+import { notebookJobProgressCopy } from './notebook-job-progress.util'
 import {
-  clearAllNotebookDontAskAgain,
-  hasAnyNotebookDontAskAgain,
-  dismissNotebookOpenGuide,
-  shouldShowNotebookOpenGuide
-} from './notebook-dont-ask-again.util'
+  pickSourceCardEvidence,
+  sourceMissingPageCount
+} from './source-card-evidence.util'
 import type { KnowledgeNotebookTab } from './knowledge-notebook-tab.util'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import styles from './KnowledgePage.module.css'
@@ -119,15 +139,15 @@ const OCR_LANGUAGE_PRESETS = [
 function statusLabel(t: (key: string, fallback: string) => string, status: string): string {
   switch (status) {
     case 'pending':
-      return t('knowledge.status_pending', '等待中')
+      return t('knowledge.status_pending', '等待整理')
     case 'extracting':
-      return t('knowledge.status_extracting', '提取中')
+      return t('knowledge.status_extracting', '正在提取文本')
     case 'needs_ocr':
       return t('knowledge.status_needs_ocr', '需 OCR')
     case 'partial':
       return t('knowledge.status_partial', '部分文本')
     case 'embedding':
-      return t('knowledge.status_embedding', '索引中')
+      return t('knowledge.status_embedding', '正在建立索引')
     case 'ready':
       return t('knowledge.status_ready', '就绪')
     case 'failed':
@@ -213,19 +233,6 @@ function sourceFileIcon(kind: string, fileName: string, size = 18): React.ReactN
   return <File size={size} className={styles.fileTypeIcon} />
 }
 
-function ingestProgressPercent(status: string): number | null {
-  switch (status) {
-    case 'pending':
-      return 18
-    case 'extracting':
-      return 48
-    case 'embedding':
-      return 78
-    default:
-      return null
-  }
-}
-
 export const KnowledgeDetailPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -240,8 +247,6 @@ export const KnowledgeDetailPage: React.FC = () => {
   const [sources, setSources] = useState<SourceRow[]>([])
   const [sourcesLoaded, setSourcesLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [guideOpen, setGuideOpen] = useState(false)
-  const [hasSkippedGuide, setHasSkippedGuide] = useState(hasAnyNotebookDontAskAgain)
   const [heavyConfirmKind, setHeavyConfirmKind] = useState<KnowledgeHeavyConfirmKind | null>(null)
   const [heavyConfirmSource, setHeavyConfirmSource] = useState<SourceRow | null>(null)
   const [graphBusy, setGraphBusy] = useState(false)
@@ -274,24 +279,31 @@ export const KnowledgeDetailPage: React.FC = () => {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [previewPayload, setPreviewPayload] = useState<SourcePreviewPayload | null>(null)
+  const [fragmentOpen, setFragmentOpen] = useState(false)
+  const [fragmentLoading, setFragmentLoading] = useState(false)
+  const [fragmentError, setFragmentError] = useState<string | null>(null)
+  const [fragments, setFragments] = useState<KnowledgeSourceFragment[]>([])
   const [ocrProgressBySource, setOcrProgressBySource] = useState<Record<string, OcrProgressState>>(
     {}
   )
   const [showSettings, setShowSettings] = useState(false)
-  const [showVisionModelPicker, setShowVisionModelPicker] = useState(false)
-  const [visionModelMenuAnchor, setVisionModelMenuAnchor] = useState<DOMRect | null>(null)
+  const [dataManageOpen, setDataManageOpen] = useState(false)
+  const [reprocessWatching, setReprocessWatching] = useState(false)
+  const [vectorKnownTotal, setVectorKnownTotal] = useState(0)
+  const reprocessSawWorkRef = useRef(false)
+  const settingsWasOpenRef = useRef(false)
   const visionModelTriggerRef = useRef<HTMLButtonElement>(null)
-  const [engine, setEngine] = useState<'simple' | 'ocr' | 'vision'>('simple')
+  const [engine, setEngine] = useState<'simple' | 'ocr' | 'vision'>('ocr')
   const [ocrLanguage, setOcrLanguage] = useState('chi_sim+eng')
   const [ocrUseCustom, setOcrUseCustom] = useState(false)
-  const [ocrConcurrency, setOcrConcurrency] = useState(1)
+  const [ocrConcurrency, setOcrConcurrency] = useState(DEFAULT_OCR_CONCURRENCY)
   const refreshGen = useRef(0)
   const [pendingJobs, setPendingJobs] = useState(0)
-  const hasActiveIngest =
-    pendingJobs > 0 ||
-    sources.some(
-      (s) => s.status === 'pending' || s.status === 'extracting' || s.status === 'embedding'
-    )
+  const ingestingSourceCount = sources.filter(
+    (s) => s.status === 'pending' || s.status === 'extracting' || s.status === 'embedding'
+  ).length
+  const hasActiveIngest = pendingJobs > 0 || ingestingSourceCount > 0
+  const vectorPending = ingestingSourceCount
   const [visionProviderId, setVisionProviderId] = useState<string | null>(null)
   const [visionModelId, setVisionModelId] = useState<string | null>(null)
   const [engineCaps, setEngineCaps] = useState<EngineCaps | null>(null)
@@ -320,8 +332,17 @@ export const KnowledgeDetailPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<SourceRow | null>(null)
   const providers = useSettingsStore((s) => s.providers)
   const globalModels = useSettingsStore((s) => s.globalModels)
-  const { assistants, fetchAssistants } = useAssistantStore()
   const { isDark } = useTheme()
+  const { picker, closePicker, pickStatusRow, openVisionPicker, selectModel } =
+    useNotebookStatusModels({
+      engine,
+      ocrLanguage,
+      ocrConcurrency,
+      setVisionProviderId,
+      setVisionModelId,
+      setShowSettings,
+      onError: setError
+    })
 
   const openAddSource = useCallback(() => {
     setImportMode('chooser')
@@ -369,7 +390,7 @@ export const KnowledgeDetailPage: React.FC = () => {
         globalModels?.globalEmbeddingModelId?.trim() ||
         t('knowledge.import_process_model_missing', '未配置')
       const graphModelLabel =
-        globalModels?.globalDialogueModelId?.trim() ||
+        resolveGlobalGraphModelIds(globalModels).modelId ||
         t('knowledge.import_process_model_missing', '未配置')
       return new Promise<KnowledgeImportProcessMode | null>((resolve) => {
         importProcessResolver.current = resolve
@@ -386,20 +407,18 @@ export const KnowledgeDetailPage: React.FC = () => {
   )
 
   const closeSettings = useCallback(() => {
-    setShowVisionModelPicker(false)
-    setVisionModelMenuAnchor(null)
+    closePicker()
     setShowSettings(false)
-  }, [])
+  }, [closePicker])
 
   const goBackToList = useCallback(() => {
     navigate('/agent-workspace/knowledge')
   }, [navigate])
 
   useEffect(() => {
-    if (showSettings) return
-    setShowVisionModelPicker(false)
-    setVisionModelMenuAnchor(null)
-  }, [showSettings])
+    if (settingsWasOpenRef.current && !showSettings) closePicker()
+    settingsWasOpenRef.current = showSettings
+  }, [closePicker, showSettings])
 
   const visionDisplay = useMemo(() => {
     const providerId = visionProviderId || globalModels?.globalDialogueProviderId || ''
@@ -463,45 +482,89 @@ export const KnowledgeDetailPage: React.FC = () => {
     [graphJobs, graphKnownTotal, graphWindowProgress, t]
   )
 
-  const guideAssistant = useMemo(() => {
-    const stored =
-      typeof window !== 'undefined'
-        ? window.localStorage.getItem(`baishou.notebook.assistant.${notebookId}`) || ''
-        : ''
-    return (
-      assistants.find((row) => String(row.id) === stored) ||
-      assistants.find((row) => row.isDefault) ||
-      assistants[0]
-    )
-  }, [assistants, notebookId, guideOpen])
+  const jobProgress = useMemo(() => {
+    const copy = notebookJobProgressCopy({
+      vectorActive: vectorPending,
+      vectorKnownTotal,
+      graph: {
+        pending: graphJobs.pending,
+        running: graphJobs.running,
+        failed: graphJobs.failed,
+        currentSourceTitle: graphJobs.currentSourceTitle,
+        knownTotal: graphKnownTotal,
+        windowsDone: graphWindowProgress?.done,
+        windowsTotal: graphWindowProgress?.total
+      }
+    })
+    return {
+      visible: copy.visible,
+      vector: copy.vector
+        ? {
+            detail:
+              copy.vector.detailKey === 'knowledge.job_vector_done_of'
+                ? t(
+                    'knowledge.job_vector_done_of',
+                    '已完成 {{done}} / {{total}} 份资料',
+                    copy.vector.detailParams
+                  )
+                : t(
+                    'knowledge.job_vector_active',
+                    '正在整理 {{count}} 份资料',
+                    copy.vector.detailParams
+                  ),
+            percent: copy.vector.percent
+          }
+        : null,
+      graph: copy.graph ? formatNotebookGraphProgress(copy.graph, (key, params) => t(key, params)) : null
+    }
+  }, [graphJobs, graphKnownTotal, graphWindowProgress, t, vectorKnownTotal, vectorPending])
 
-  const guideRows = useMemo(
-    () =>
-      buildNotebookOpenGuideRows({
-        embeddingModelId: globalModels?.globalEmbeddingModelId,
-        dialogueModelId: globalModels?.globalDialogueModelId,
-        assistantName: guideAssistant?.name,
-        assistantModelId: guideAssistant?.modelId,
-        visionModelId: visionModelId || globalModels?.globalDialogueModelId,
-        extractEngine: engine,
-        sourceCount: sources.length,
-        graphPending: graphJobs.pending
-      }),
-    [
-      engine,
-      globalModels,
-      graphJobs.pending,
-      guideAssistant,
-      sources.length,
-      visionModelId
-    ]
-  )
+  const statusRows = useMemo(() => {
+    const providerType = (providerId?: string | null) =>
+      providers.find((row) => row.id === providerId)?.type || null
+    const extract = resolveGlobalGraphModelIds(globalModels)
+    const visionProvider = visionProviderId || globalModels?.globalDialogueProviderId || ''
+    const embeddingProviderId = globalModels?.globalEmbeddingProviderId || ''
+    return buildNotebookOpenGuideRows({
+      embeddingModelId: globalModels?.globalEmbeddingModelId,
+      graphModelId: extract.modelId,
+      visionModelId: visionModelId || globalModels?.globalDialogueModelId,
+      extractEngine: engine,
+      sourceCount: sources.length,
+      icons: {
+        embedding: resolveNotebookProviderIconSrc({
+          providerId: embeddingProviderId,
+          providerType: providerType(embeddingProviderId),
+          isDark
+        }),
+        graphExtract: resolveNotebookProviderIconSrc({
+          providerId: extract.providerId,
+          providerType: providerType(extract.providerId),
+          isDark
+        }),
+        vision: resolveNotebookProviderIconSrc({
+          providerId: visionProvider,
+          providerType: providerType(visionProvider),
+          isDark
+        })
+      }
+    })
+  }, [
+    engine,
+    globalModels,
+    isDark,
+    providers,
+    sources.length,
+    visionModelId,
+    visionProviderId
+  ])
 
   const ocrPresetValue = ocrUseCustom
     ? '__custom__'
     : OCR_LANGUAGE_PRESETS.some((p) => p.value === ocrLanguage)
       ? ocrLanguage
       : '__custom__'
+  const { showOcrSettings, showVisionSettings } = knowledgeExtractSettingsVisibility(engine)
 
   const refresh = useCallback(async () => {
     if (!notebookId) return
@@ -558,7 +621,9 @@ export const KnowledgeDetailPage: React.FC = () => {
         window.api.knowledge.getCapabilities(),
         window.api.knowledge.getConfig()
       ])
-      if (cfg.defaultExtractEngine) setEngine(cfg.defaultExtractEngine)
+      if (cfg.defaultExtractEngine) {
+        setEngine(normalizeKnowledgeDefaultExtractEngine(cfg.defaultExtractEngine))
+      }
       if (cfg.ocrLanguage) {
         setOcrLanguage(cfg.ocrLanguage)
         setOcrUseCustom(!OCR_LANGUAGE_PRESETS.some((p) => p.value === cfg.ocrLanguage))
@@ -602,12 +667,12 @@ export const KnowledgeDetailPage: React.FC = () => {
   }, [refresh, refreshCaps])
 
   useEffect(() => {
-    if (!hasActiveIngest) return
+    if (!hasActiveIngest && !reprocessWatching) return
     const timer = window.setInterval(() => {
       void refresh().catch(() => undefined)
-    }, 4000)
+    }, reprocessWatching ? 1000 : 4000)
     return () => window.clearInterval(timer)
-  }, [hasActiveIngest, refresh])
+  }, [hasActiveIngest, refresh, reprocessWatching])
 
   useEffect(() => {
     const unsubscribe = window.api.knowledge.onOcrProgress?.((progress) => {
@@ -639,14 +704,8 @@ export const KnowledgeDetailPage: React.FC = () => {
   }, [refresh])
 
   useEffect(() => {
-    void fetchAssistants()
     void useSettingsStore.getState().ensureConfigKeys(['globalModels', 'providers'])
-  }, [fetchAssistants])
-
-  useEffect(() => {
-    setGuideOpen(shouldShowNotebookOpenGuide(notebookId))
-    setHasSkippedGuide(hasAnyNotebookDontAskAgain())
-  }, [notebookId])
+  }, [])
 
   useEffect(() => {
     const onProgress = (progress?: {
@@ -679,12 +738,32 @@ export const KnowledgeDetailPage: React.FC = () => {
   }, [refresh, refreshGraphJobs])
 
   useEffect(() => {
-    if (graphJobs.pending <= 0 && graphJobs.running <= 0 && !graphBusy) return
+    if (graphJobs.pending <= 0 && graphJobs.running <= 0 && !graphBusy && !reprocessWatching) return
     const timer = window.setInterval(() => {
       void refreshGraphJobs()
     }, 1000)
     return () => window.clearInterval(timer)
-  }, [graphBusy, graphJobs.pending, graphJobs.running, refreshGraphJobs])
+  }, [graphBusy, graphJobs.pending, graphJobs.running, refreshGraphJobs, reprocessWatching])
+
+  useEffect(() => {
+    if (!reprocessWatching) return
+    const active = hasActiveIngest || graphJobs.pending > 0 || graphJobs.running > 0
+    if (active) {
+      reprocessSawWorkRef.current = true
+      return
+    }
+    if (!reprocessSawWorkRef.current) return
+    setReprocessWatching(false)
+    setStatus(t('knowledge.data_manage_reprocess_done', '重新整理已完成'))
+  }, [graphJobs.pending, graphJobs.running, hasActiveIngest, reprocessWatching, t])
+
+  useEffect(() => {
+    if (vectorPending > 0) {
+      setVectorKnownTotal((prev) => Math.max(prev, vectorPending))
+      return
+    }
+    if (!reprocessWatching && !hasActiveIngest) setVectorKnownTotal(0)
+  }, [hasActiveIngest, reprocessWatching, vectorPending])
 
   const onOcrMissing = async (sourceId: string) => {
     setError('')
@@ -744,7 +823,7 @@ export const KnowledgeDetailPage: React.FC = () => {
     setBusy(true)
     try {
       await window.api.knowledge.setConfig({
-        defaultExtractEngine: engine,
+        defaultExtractEngine: normalizeKnowledgeDefaultExtractEngine(engine),
         ocrLanguage,
         ocrConcurrency: clampOcrConcurrency(ocrConcurrency),
         visionProviderId,
@@ -1038,6 +1117,84 @@ export const KnowledgeDetailPage: React.FC = () => {
     }
   }
 
+  const onManageNotebookData = async (input: NotebookDataManageConfirm) => {
+    if (!notebookId) return
+    setBusy(true)
+    setError('')
+    try {
+      const raw = await callKnowledgeApi<NotebookDataManageResult>(
+        'manageData',
+        'knowledge:manage-data',
+        {
+          notebookId,
+          action: input.action,
+          vector: input.vector,
+          graph: input.graph
+        }
+      )
+      const result =
+        parseNotebookDataManageResult(raw) ??
+        ({
+          action: input.action,
+          vector: input.vector,
+          graph: input.graph,
+          sourceCount: sources.length,
+          vectorQueued: input.action === 'reprocess' && input.vector ? sources.length : 0,
+          graphQueued: input.action === 'reprocess' && input.graph ? sources.length : 0
+        } satisfies NotebookDataManageResult)
+      const kind = notebookDataManageStatusKind(result)
+      const watch = notebookDataManageWatch(result)
+      setDataManageOpen(false)
+      if (watch.watch) {
+        reprocessSawWorkRef.current = false
+        setReprocessWatching(true)
+        if (watch.vectorQueued > 0) {
+          setPendingJobs((prev) => Math.max(prev, watch.vectorQueued))
+          setVectorKnownTotal((prev) => Math.max(prev, watch.vectorQueued))
+        }
+        if (watch.graphQueued > 0) {
+          setGraphKnownTotal((prev) => Math.max(prev, watch.graphQueued, sources.length))
+          setGraphJobs((prev) => ({
+            ...prev,
+            pending: Math.max(prev.pending, watch.graphQueued)
+          }))
+          if (!input.vector) setActiveTab('graph')
+        }
+      } else {
+        setReprocessWatching(false)
+      }
+      await refreshGraphJobs()
+      await refresh()
+      if (notebookDataManageFeedback(kind) === 'toast') {
+        toast.showInfo(
+          kind === 'reprocess-empty'
+            ? t(
+                'knowledge.data_manage_reprocess_empty',
+                '这本笔记本还没有资料，没有可重新整理的数据'
+              )
+            : t(
+                'knowledge.data_manage_reprocess_none',
+                '没有可重新整理的数据。需要资料已完成文本提取后才能重建向量或图谱。'
+              )
+        )
+        return
+      }
+      setStatus(
+        kind === 'cleared'
+          ? t('knowledge.data_manage_cleared', '已清除所选派生数据')
+          : t(
+              'knowledge.data_manage_reprocess_queued_counts',
+              '已开始重新整理：向量 {{vector}} 项，图谱 {{graph}} 项',
+              { vector: watch.vectorQueued, graph: watch.graphQueued }
+            )
+      )
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const onRebuildGraph = async () => {
     setGraphBusy(true)
     setError('')
@@ -1081,6 +1238,54 @@ export const KnowledgeDetailPage: React.FC = () => {
     setPreviewLoading(false)
   }
 
+  const closeFragments = () => {
+    setFragmentOpen(false)
+    setFragments([])
+    setFragmentError(null)
+    setFragmentLoading(false)
+  }
+
+  const onPreviewGraphFragments = async (edges: NotebookGraphViewEdge[]) => {
+    const windows = collectNotebookGraphSourceWindows(edges)
+    setFragmentOpen(true)
+    setFragmentError(null)
+    if (windows.length === 0) {
+      setFragments([])
+      setFragmentLoading(false)
+      return
+    }
+    setFragmentLoading(true)
+    setFragments([])
+    try {
+      const result = await callKnowledgeApi<{
+        items: Array<{
+          sourceId: string
+          sourceTitle: string
+          windowIndex: number
+          text: string | null
+        }>
+      }>('getExtractedWindows', 'knowledge:get-extracted-windows', {
+        notebookId,
+        windows: windows.map((row) => ({
+          sourceId: row.sourceId,
+          windowIndex: row.windowIndex
+        }))
+      })
+      setFragments(buildGraphFragmentItems(windows, result.items || []))
+    } catch (e: unknown) {
+      setFragmentError(String((e as Error)?.message || e))
+    } finally {
+      setFragmentLoading(false)
+    }
+  }
+
+  const onPreviewVectorFragment = (item: KnowledgeVectorChunkCard) => {
+    setFragmentOpen(true)
+    setFragmentLoading(false)
+    setFragmentError(null)
+    setFragments([buildVectorFragmentItem(item)])
+  }
+
   const dismissUploadError = (localId: string) => {
     setUploadingSources((prev) => prev.filter((row) => row.localId !== localId))
   }
@@ -1088,20 +1293,23 @@ export const KnowledgeDetailPage: React.FC = () => {
   const renderUploadingItem = (item: UploadingSource) => {
     const failed = Boolean(item.error)
     return (
-      <li key={item.localId} className={styles.sourceRow}>
-        <div className={styles.sourceRowMain}>
-          <span className={styles.sourceKindIcon} aria-hidden>
-            {sourceFileIcon('file', item.fileName)}
-          </span>
-          <div className={styles.sourceRowBody}>
-            <span className={styles.sourceTitle}>{item.fileName}</span>
-            <span className={styles.sourceStatus}>
+      <li key={item.localId} className={styles.sourceCardItem}>
+        <div className={`${styles.notebookCard} ${styles.sourceCard}`}>
+          <div className={styles.notebookCardTop} />
+          <div className={styles.notebookCardVisual}>
+            <span className={styles.sourceCardIcon} aria-hidden>
+              {sourceFileIcon('file', item.fileName, 28)}
+            </span>
+          </div>
+          <div className={styles.notebookCardBody}>
+            <h2 className={styles.notebookCardTitle}>{item.fileName}</h2>
+            <p className={styles.notebookCardMeta}>
               {failed
                 ? t('knowledge.status_upload_failed', '上传失败')
                 : t('knowledge.status_uploading', '上传中 {{progress}}%', {
                     progress: Math.round(item.progress)
                   })}
-            </span>
+            </p>
             {failed ? <span className={styles.sourceEvidence}>{item.error}</span> : null}
             <div
               className={`${styles.sourceProgressTrack}${failed ? ` ${styles.sourceProgressFailed}` : ''}`}
@@ -1115,19 +1323,17 @@ export const KnowledgeDetailPage: React.FC = () => {
                 style={{ width: `${Math.max(0, Math.min(100, item.progress))}%` }}
               />
             </div>
+            {failed ? (
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() => dismissUploadError(item.localId)}
+              >
+                {t('knowledge.dismiss_upload', '关闭')}
+              </button>
+            ) : null}
           </div>
         </div>
-        {failed ? (
-          <div className={styles.sourceActions}>
-            <button
-              type="button"
-              className={styles.linkBtn}
-              onClick={() => dismissUploadError(item.localId)}
-            >
-              {t('knowledge.dismiss_upload', '关闭')}
-            </button>
-          </div>
-        ) : null}
       </li>
     )
   }
@@ -1188,12 +1394,7 @@ export const KnowledgeDetailPage: React.FC = () => {
   }, [ocrProgressBySource, sourceMenu, sources, t])
 
   const renderSourceItem = (source: SourceRow) => {
-    const missingPages =
-      source.pageCount != null &&
-      source.textPageCount != null &&
-      source.pageCount > source.textPageCount
-        ? source.pageCount - source.textPageCount
-        : null
+    const missingPages = sourceMissingPageCount(source)
     const ocrProgress = ocrProgressBySource[source.id]
     const statusText =
       ocrProgress && ocrProgress.total > 0
@@ -1202,97 +1403,107 @@ export const KnowledgeDetailPage: React.FC = () => {
             total: ocrProgress.total
           })
         : ocrProgress
-          ? t('knowledge.status_extracting', '提取中')
+          ? t('knowledge.status_extracting', '正在提取文本')
           : statusLabel(t, source.status)
-    const progress =
+    const pageProgress =
       ocrProgress && ocrProgress.total > 0
         ? Math.max(2, Math.round((Math.max(ocrProgress.page, 0) / ocrProgress.total) * 100))
-        : ocrProgress
-          ? 8
-          : ingestProgressPercent(source.status)
+        : null
+    const evidence = pickSourceCardEvidence({
+      pageCount: source.pageCount,
+      missingPages,
+      errorMessage: source.errorMessage,
+      hideHints: Boolean(ocrProgress)
+    })
     return (
-      <li key={source.id} className={styles.sourceRow}>
-        <div className={styles.sourceRowMain}>
-          <span className={styles.sourceKindIcon} aria-hidden>
-            {sourceFileIcon(source.sourceKind, source.title)}
-          </span>
-          <div className={styles.sourceRowBody}>
-            <span className={styles.sourceTitle}>{source.title}</span>
-            <span className={styles.sourceStatus}>{statusText}</span>
-            {progress != null ? (
+      <li key={source.id} className={styles.sourceCardItem}>
+        <div
+          className={`${styles.notebookCard} ${styles.sourceCard}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => void onPreview(source)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              void onPreview(source)
+            }
+          }}
+        >
+          <div className={styles.notebookCardTop}>
+            <span aria-hidden />
+            <button
+              type="button"
+              className={styles.notebookCardMenu}
+              aria-label={t('knowledge.source_menu', '资料操作')}
+              title={t('knowledge.source_menu', '资料操作')}
+              onClick={(event) => {
+                event.stopPropagation()
+                const rect = event.currentTarget.getBoundingClientRect()
+                setSourceMenu({ sourceId: source.id, x: rect.right, y: rect.bottom })
+              }}
+            >
+              <MoreHorizontal size={16} strokeWidth={2} />
+            </button>
+          </div>
+          <div className={styles.notebookCardVisual}>
+            <span className={styles.sourceCardIcon} aria-hidden>
+              {sourceFileIcon(source.sourceKind, source.title, 28)}
+            </span>
+          </div>
+          <div className={styles.notebookCardBody}>
+            <h2 className={styles.notebookCardTitle}>{source.title}</h2>
+            <p className={styles.notebookCardMeta}>{statusText}</p>
+            {pageProgress != null ? (
               <div
-                className={`${styles.sourceProgressTrack} ${styles.sourceProgressIndeterminate}`}
+                className={styles.sourceProgressTrack}
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={progress}
+                aria-valuenow={pageProgress}
               >
-                <div className={styles.sourceProgressFill} style={{ width: `${progress}%` }} />
+                <div className={styles.sourceProgressFill} style={{ width: `${pageProgress}%` }} />
               </div>
             ) : null}
-            {missingPages != null && missingPages > 0 && !ocrProgress ? (
+            {evidence?.type === 'scan' ? (
               <span className={styles.sourceEvidence}>
                 {t('knowledge.scan_evidence', '{{total}} 页中 {{missing}} 页无文本层', {
-                  total: source.pageCount,
-                  missing: missingPages
+                  total: evidence.pageCount,
+                  missing: evidence.missingPages
                 })}
               </span>
             ) : null}
-            {source.errorMessage && !ocrProgress ? (
-              <span className={styles.sourceEvidence}>{source.errorMessage}</span>
+            {evidence?.type === 'error' ? (
+              <span className={styles.sourceEvidence}>{evidence.message}</span>
             ) : null}
           </div>
-          <button
-            type="button"
-            className={`${styles.iconGhostBtn} ${styles.sourceMenuBtn}`}
-            aria-label={t('knowledge.source_menu', '资料操作')}
-            title={t('knowledge.source_menu', '资料操作')}
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              setSourceMenu({ sourceId: source.id, x: rect.right, y: rect.bottom })
-            }}
-          >
-            <MoreHorizontal size={16} />
-          </button>
         </div>
       </li>
-    )
-  }
-
-  const renderCapRow = (
-    label: string,
-    slot: EngineCapSlot | undefined,
-    formatNote?: (note: string) => string
-  ) => {
-    if (!slot) return null
-    const ok = slot.available
-    const rawNote = ok ? slot.detail : slot.reason
-    const note = rawNote && formatNote ? formatNote(rawNote) : rawNote
-    return (
-      <div className={styles.capRow}>
-        <span className={styles.capLabel}>{label}</span>
-        <span className={ok ? styles.capOk : styles.capBad}>
-          {ok ? t('knowledge.cap_available', '可用') : t('knowledge.cap_unavailable', '不可用')}
-        </span>
-        {note ? <span className={styles.capNote}>{note}</span> : null}
-      </div>
     )
   }
 
   const renderSourcesColumn = () => (
     <section
       id="knowledge-sources-panel"
-      className={styles.detailColumn}
+      className={styles.sourcesBody}
       aria-label={t('knowledge.sources_panel', '来源')}
     >
       <div className={styles.columnHead}>
         <h2 className={styles.columnTitle}>{t('knowledge.sources_panel', '来源')}</h2>
       </div>
-      <button type="button" className={styles.addSourceBtn} onClick={openAddSource} disabled={busy}>
-        <Plus size={16} />
-        {t('knowledge.add_source', '添加来源')}
-      </button>
-      <ul className={styles.sourceList}>
+      <ul className={`${styles.listGrid} ${styles.sourceGrid}`}>
+        <li className={styles.sourceCardItem}>
+          <button
+            type="button"
+            className={styles.createCard}
+            onClick={openAddSource}
+            disabled={busy}
+          >
+            <span className={styles.createCardIcon} aria-hidden>
+              <Plus size={22} strokeWidth={2.25} />
+            </span>
+            <span className={styles.createCardLabel}>{t('knowledge.add_source', '添加来源')}</span>
+          </button>
+        </li>
         {uploadingSources.map(renderUploadingItem)}
         {sources.map(renderSourceItem)}
       </ul>
@@ -1321,89 +1532,82 @@ export const KnowledgeDetailPage: React.FC = () => {
             <h1 className={styles.detailTitle}>{notebookName || t('knowledge.title', '知识库')}</h1>
           </div>
           <KnowledgeNotebookTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className={styles.detailTopRight}>
-            <button
-              type="button"
-              className={styles.iconGhostBtn}
-              onClick={() => {
-                setHasSkippedGuide(hasAnyNotebookDontAskAgain())
-                setShowSettings(true)
-              }}
-              disabled={busy}
-              title={t('knowledge.settings', '知识库设置')}
-            >
-              <Settings size={17} />
-            </button>
-            <button
-              type="button"
-              className={styles.iconGhostBtn}
-              onClick={() => {
-                setHeavyConfirmSource(null)
-                setHeavyConfirmKind('rebuild-index')
-              }}
-              disabled={busy}
-              title={t('knowledge.rebuild_index', '重建索引')}
-            >
-              <RefreshCw size={17} />
-            </button>
-          </div>
+          <div className={styles.detailTopRight} />
         </header>
 
-        {status ? <p className={styles.bannerStatus}>{status}</p> : null}
-        {graphProgress.visible && activeTab !== 'graph' ? (
-          <div className={styles.graphProgress}>
-            <div className={styles.graphProgressText}>
-              <strong>{graphProgress.headline}</strong>
-              <span>{graphProgress.detail}</span>
-            </div>
-            <div
-              className={styles.graphProgressBar}
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={graphProgress.percent}
-            >
-              <div
-                className={styles.graphProgressFill}
-                style={{ width: `${Math.max(0, Math.min(100, graphProgress.percent))}%` }}
-              />
-            </div>
+        {jobProgress.visible && activeTab !== 'graph' ? (
+          <div className={styles.jobProgress}>
+            {jobProgress.vector ? (
+              <div className={styles.jobProgressRow}>
+                <span className={styles.jobProgressLabel}>
+                  {t('knowledge.job_vector_label', '向量整理')}
+                </span>
+                <div className={styles.jobProgressBody}>
+                  <span className={styles.jobProgressDetail}>{jobProgress.vector.detail}</span>
+                  {jobProgress.vector.percent != null ? (
+                    <div
+                      className={styles.jobProgressBar}
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={jobProgress.vector.percent}
+                    >
+                      <div
+                        className={styles.jobProgressFill}
+                        style={{
+                          width: `${Math.max(0, Math.min(100, jobProgress.vector.percent))}%`
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            {jobProgress.graph ? (
+              <div className={styles.jobProgressRow}>
+                <span className={styles.jobProgressLabel}>
+                  {t('knowledge.job_graph_label', '图谱抽取')}
+                </span>
+                <div className={styles.jobProgressBody}>
+                  <span className={styles.jobProgressDetail}>
+                    {[jobProgress.graph.headline, jobProgress.graph.detail]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  <div
+                    className={styles.jobProgressBar}
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={jobProgress.graph.percent}
+                  >
+                    <div
+                      className={styles.jobProgressFill}
+                      style={{
+                        width: `${Math.max(0, Math.min(100, jobProgress.graph.percent))}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
+        {status && !jobProgress.visible ? <p className={styles.bannerStatus}>{status}</p> : null}
         {error ? <p className={styles.bannerError}>{error}</p> : null}
 
         {activeTab === 'sources' ? (
-          <div className={styles.detailChatStage}>
-            <div className={styles.sourcesIntro}>
-              <p className={styles.sourcesIntroText}>
-                {t(
-                  'knowledge.mount_hint',
-                  '资料嵌入完成后，可以挂载到伙伴或工作台对话里检索。知识库本身不再单独保存对话。'
-                )}
-              </p>
-              <button
-                type="button"
-                className={styles.startChatBtn}
-                onClick={() => {
-                  void (async () => {
-                    try {
-                      const newId = crypto.randomUUID()
-                      await window.electron.ipcRenderer.invoke('agent:create-session', {
-                        id: newId,
-                        title: notebookName || t('knowledge.start_chat_title', '知识库对话')
-                      })
-                      await window.api.setMountedNotebooks(newId, [notebookId])
-                      navigate(`/chat/${newId}`)
-                    } catch (e: unknown) {
-                      setError(e instanceof Error ? e.message : String(e))
-                    }
-                  })()
-                }}
-              >
-                <MessageSquare size={16} strokeWidth={1.75} aria-hidden />
-                {t('knowledge.start_chat', '用这本笔记本开始对话')}
-              </button>
-            </div>
+          <div className={styles.sourcesStage}>
+            <NotebookStatusPanel
+              rows={statusRows}
+              busy={busy}
+              onOpenSettings={() => {
+                closePicker()
+                setShowSettings(true)
+              }}
+              onOpenDataManage={() => setDataManageOpen(true)}
+              onPickRow={pickStatusRow}
+            />
             {renderSourcesColumn()}
           </div>
         ) : null}
@@ -1419,10 +1623,7 @@ export const KnowledgeDetailPage: React.FC = () => {
               setHeavyConfirmSource(null)
               setHeavyConfirmKind('rebuild-graph')
             }}
-            onPreviewSource={(sourceId) => {
-              const source = sources.find((row) => row.id === sourceId)
-              if (source) void onPreview(source)
-            }}
+            onPreviewFragments={(edges) => void onPreviewGraphFragments(edges)}
           />
         ) : null}
 
@@ -1433,30 +1634,16 @@ export const KnowledgeDetailPage: React.FC = () => {
             chunkCount={chunkCount}
             storageLine={storageLine}
             busy={busy}
-            onPreviewSource={(sourceId) => {
-              const source = sources.find((row) => row.id === sourceId)
-              if (source) void onPreview(source)
-            }}
+            onPreviewFragment={onPreviewVectorFragment}
           />
         ) : null}
       </motion.div>
 
-      <NotebookOpenGuideDialog
-        open={guideOpen}
-        notebookName={notebookName}
-        rows={guideRows}
-        onBack={goBackToList}
-        onContinue={(dontAskAgain) => {
-          dismissNotebookOpenGuide(notebookId, dontAskAgain)
-          setHasSkippedGuide(hasAnyNotebookDontAskAgain())
-          setGuideOpen(false)
-        }}
-        onOpenSettings={() => {
-          dismissNotebookOpenGuide(notebookId, false)
-          setGuideOpen(false)
-          setHasSkippedGuide(hasAnyNotebookDontAskAgain())
-          setShowSettings(true)
-        }}
+      <NotebookDataManageDialog
+        open={dataManageOpen}
+        busy={busy}
+        onClose={() => setDataManageOpen(false)}
+        onConfirm={onManageNotebookData}
       />
 
       <KnowledgeExtractHintDialog
@@ -1505,24 +1692,18 @@ export const KnowledgeDetailPage: React.FC = () => {
           )}
         </p>
         <div className={styles.extractHintActions}>
-          <button
-            type="button"
-            className={styles.dialogCancelBtn}
-            disabled={busy}
-            onClick={() => setDeleteTarget(null)}
-          >
+          <Button type="button" disabled={busy} onClick={() => setDeleteTarget(null)}>
             {t('common.cancel', '取消')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={styles.dialogConfirmBtn}
             disabled={busy || !deleteTarget}
             onClick={() => {
               if (deleteTarget) void onDeleteSource(deleteTarget.id)
             }}
           >
             {t('knowledge.delete_source', '删除')}
-          </button>
+          </Button>
         </div>
       </KnowledgeDialog>
 
@@ -1565,7 +1746,7 @@ export const KnowledgeDetailPage: React.FC = () => {
                 size={14}
                 content={t(
                   'knowledge.settings_section_extract_help',
-                  '导入 PDF、EPUB 或扫描件时如何抽出文字。普通电子 PDF / EPUB 用文字层；扫描件用本地 OCR；复杂排版可用视觉模型。'
+                  '导入时先抽已有文字。缺页或乱码时，扫描件用本地 OCR，复杂排版可用视觉模型。'
                 )}
               />
             </div>
@@ -1578,20 +1759,22 @@ export const KnowledgeDetailPage: React.FC = () => {
                       size={14}
                       content={t(
                         'knowledge.default_engine_hint',
-                        '普通电子 PDF 用文字层即可；扫描件优先本地 OCR；复杂版式或图表可改用视觉模型。'
+                        '导入时先抽已有文字。缺页或乱码时，扫描件优先本地 OCR；复杂版式或图表可改用视觉模型。'
                       )}
                     />
                   </div>
+                  {engineCaps?.[engine] && !engineCaps[engine].available ? (
+                    <p className={`${styles.settingsRowHint} ${styles.settingsRowHintWarn}`}>
+                      {engineCaps[engine].reason ||
+                        t('knowledge.cap_unavailable', '不可用')}
+                    </p>
+                  ) : null}
                 </div>
                 <Select
                   className={styles.settingsControl}
                   size="small"
                   value={engine}
                   options={[
-                    {
-                      value: 'simple',
-                      label: t('knowledge.engine_simple_short', 'PDF 文字层')
-                    },
                     {
                       value: 'ocr',
                       label: t('knowledge.engine_ocr_short', '本地 OCR')
@@ -1601,289 +1784,223 @@ export const KnowledgeDetailPage: React.FC = () => {
                       label: t('knowledge.engine_vision_short', '视觉模型')
                     }
                   ]}
-                  onChange={(e) => setEngine(e.target.value as 'simple' | 'ocr' | 'vision')}
+                  onChange={(e) =>
+                    setEngine(normalizeKnowledgeDefaultExtractEngine(e.target.value))
+                  }
                   aria-label={t('knowledge.default_engine', '默认提取方式')}
                 />
               </div>
-              <div className={styles.settingsDivider} />
-              <div className={styles.settingsRow}>
-                <div className={styles.settingsRowText}>
-                  <div className={styles.settingsRowTitle}>
-                    {t('knowledge.ocr_language', 'OCR 语言')}
-                    <HelpTooltip
-                      size={14}
-                      content={t(
-                        'knowledge.ocr_language_hint',
-                        '仅本地 OCR 使用。未安装对应语言包时，会自动降级为英文。'
-                      )}
-                    />
-                  </div>
-                </div>
-                <Select
-                  className={styles.settingsControl}
-                  size="small"
-                  value={ocrPresetValue}
-                  options={[
-                    ...OCR_LANGUAGE_PRESETS.map((p) => ({
-                      value: p.value,
-                      label: t(
-                        p.labelKey,
-                        p.value === 'chi_sim+eng'
-                          ? '简体中文 + 英文'
-                          : p.value === 'chi_tra+eng'
-                            ? '繁体中文 + 英文'
-                            : p.value === 'jpn+eng'
-                              ? '日文 + 英文'
-                              : '英文'
-                      )
-                    })),
-                    { value: '__custom__', label: t('knowledge.ocr_lang_custom', '自定义…') }
-                  ]}
-                  onChange={(e) => {
-                    const next = e.target.value
-                    if (next === '__custom__') {
-                      setOcrUseCustom(true)
-                      return
-                    }
-                    setOcrUseCustom(false)
-                    setOcrLanguage(next)
-                  }}
-                  aria-label={t('knowledge.ocr_language', 'OCR 语言')}
-                />
-              </div>
-              {ocrPresetValue === '__custom__' ? (
+              {showOcrSettings ? (
                 <>
                   <div className={styles.settingsDivider} />
                   <div className={styles.settingsRow}>
-                    <Input
-                      fieldSize="small"
-                      value={ocrLanguage}
+                    <div className={styles.settingsRowText}>
+                      <div className={styles.settingsRowTitle}>
+                        {t('knowledge.ocr_language', 'OCR 语言')}
+                        <HelpTooltip
+                          size={14}
+                          content={t(
+                            'knowledge.ocr_language_hint',
+                            '仅本地 OCR 使用。未安装对应语言包时，会自动降级为英文。'
+                          )}
+                        />
+                      </div>
+                    </div>
+                    <Select
+                      className={styles.settingsControl}
+                      size="small"
+                      value={ocrPresetValue}
+                      options={[
+                        ...OCR_LANGUAGE_PRESETS.map((p) => ({
+                          value: p.value,
+                          label: t(
+                            p.labelKey,
+                            p.value === 'chi_sim+eng'
+                              ? '简体中文 + 英文'
+                              : p.value === 'chi_tra+eng'
+                                ? '繁体中文 + 英文'
+                                : p.value === 'jpn+eng'
+                                  ? '日文 + 英文'
+                                  : '英文'
+                          )
+                        })),
+                        { value: '__custom__', label: t('knowledge.ocr_lang_custom', '自定义…') }
+                      ]}
                       onChange={(e) => {
-                        setOcrUseCustom(true)
-                        setOcrLanguage(e.target.value)
+                        const next = e.target.value
+                        if (next === '__custom__') {
+                          setOcrUseCustom(true)
+                          return
+                        }
+                        setOcrUseCustom(false)
+                        setOcrLanguage(next)
                       }}
-                      placeholder="chi_sim+eng"
-                      spellCheck={false}
+                      aria-label={t('knowledge.ocr_language', 'OCR 语言')}
+                    />
+                  </div>
+                  {ocrPresetValue === '__custom__' ? (
+                    <>
+                      <div className={styles.settingsDivider} />
+                      <div className={styles.settingsRow}>
+                        <Input
+                          fieldSize="small"
+                          value={ocrLanguage}
+                          onChange={(e) => {
+                            setOcrUseCustom(true)
+                            setOcrLanguage(e.target.value)
+                          }}
+                          placeholder="chi_sim+eng"
+                          spellCheck={false}
+                        />
+                      </div>
+                    </>
+                  ) : null}
+                  <div className={styles.settingsDivider} />
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsRowText}>
+                      <div className={styles.settingsRowTitle}>
+                        {t('knowledge.ocr_concurrency', 'OCR 并发')}
+                        <HelpTooltip
+                          size={14}
+                          content={t(
+                            'knowledge.ocr_concurrency_hint',
+                            '同时处理的页数，范围 1–10。推荐 3；1 最稳，调高更快，但更占内存与 CPU。'
+                          )}
+                        />
+                      </div>
+                    </div>
+                    <Select
+                      className={styles.settingsControl}
+                      size="small"
+                      value={String(ocrConcurrency)}
+                      options={listOcrConcurrencyValues().map((n) => ({
+                        value: String(n),
+                        label:
+                          n === RECOMMENDED_OCR_CONCURRENCY
+                            ? t('knowledge.ocr_concurrency_option_recommended', '{{count}} 页（推荐）', {
+                                count: n
+                              })
+                            : t('knowledge.ocr_concurrency_option', '{{count}} 页', { count: n })
+                      }))}
+                      onChange={(e) => {
+                        setOcrConcurrency(clampOcrConcurrency(Number(e.target.value)))
+                      }}
+                      aria-label={t('knowledge.ocr_concurrency', 'OCR 并发')}
                     />
                   </div>
                 </>
               ) : null}
-              <div className={styles.settingsDivider} />
-              <div className={styles.settingsRow}>
-                <div className={styles.settingsRowText}>
-                  <div className={styles.settingsRowTitle}>
-                    {t('knowledge.ocr_concurrency', 'OCR 并发')}
-                    <HelpTooltip
-                      size={14}
-                      content={t(
-                        'knowledge.ocr_concurrency_hint',
-                        '同时处理的页数，范围 1–10。1 最稳；调高更快，但更占内存与 CPU，视觉模型还可能碰到接口限流。'
-                      )}
-                    />
+              {showVisionSettings ? (
+                <>
+                  <div className={styles.settingsDivider} />
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsRowText}>
+                      <div className={styles.settingsRowTitle}>
+                        {t('knowledge.vision_model', '视觉模型')}
+                        <HelpTooltip
+                          size={14}
+                          content={t(
+                            'knowledge.vision_model_hint',
+                            '选带看图能力的模型即可。扫描件抽字不必用最贵的，便宜的多模态模型通常够用。未指定时跟随全局对话模型。'
+                          )}
+                        />
+                      </div>
+                      <p className={`${styles.settingsRowHint} ${styles.settingsRowHintWrap}`}>
+                        {t(
+                          'knowledge.vision_model_recommend',
+                          '推荐选带看图能力的便宜多模态模型，扫描件抽字不必用最贵的。'
+                        )}
+                      </p>
+                    </div>
+                    <div className={styles.modelSelectorWrap}>
+                      <button
+                        ref={visionModelTriggerRef}
+                        type="button"
+                        className={styles.modelSelectorBtn}
+                        onClick={() => {
+                          openVisionPicker(
+                            visionModelTriggerRef.current?.getBoundingClientRect() ?? null
+                          )
+                        }}
+                        aria-label={t('knowledge.vision_model_pick', '选择')}
+                      >
+                        <span className={styles.modelSelectorIcon} aria-hidden>
+                          {visionDisplay.iconSrc ? (
+                            <img src={visionDisplay.iconSrc} alt="" />
+                          ) : (
+                            <Cloud size={16} />
+                          )}
+                        </span>
+                        <span className={styles.modelSelectorName}>
+                          {visionDisplay.isCustom
+                            ? visionDisplay.modelId
+                            : visionDisplay.modelId
+                              ? t('knowledge.vision_model_follow_named', '跟随 · {{model}}', {
+                                  model: visionDisplay.modelId
+                                })
+                              : t('knowledge.vision_model_unset_short', '跟随全局对话模型')}
+                        </span>
+                        <ChevronDown size={14} className={styles.modelSelectorChevron} aria-hidden />
+                      </button>
+                      {visionDisplay.isCustom ? (
+                        <button
+                          type="button"
+                          className={styles.modelSelectorClear}
+                          onClick={() => {
+                            setVisionProviderId(null)
+                            setVisionModelId(null)
+                          }}
+                          aria-label={t('knowledge.vision_model_clear_short', '清除')}
+                          title={t('knowledge.vision_model_clear_short', '清除')}
+                        >
+                          <X size={14} />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-                <Select
-                  className={styles.settingsControl}
-                  size="small"
-                  value={String(ocrConcurrency)}
-                  options={listOcrConcurrencyValues().map((n) => ({
-                    value: String(n),
-                    label:
-                      n === 1
-                        ? t('knowledge.ocr_concurrency_option_recommended', '{{count}} 页（推荐）', {
-                            count: n
-                          })
-                        : t('knowledge.ocr_concurrency_option', '{{count}} 页', { count: n })
-                  }))}
-                  onChange={(e) => {
-                    setOcrConcurrency(clampOcrConcurrency(Number(e.target.value)))
-                  }}
-                  aria-label={t('knowledge.ocr_concurrency', 'OCR 并发')}
-                />
-              </div>
-              <div className={styles.settingsDivider} />
-              <div className={styles.settingsRow}>
-                <div className={styles.settingsRowText}>
-                  <div className={styles.settingsRowTitle}>
-                    {t('knowledge.vision_model', '视觉模型')}
-                    <HelpTooltip
-                      size={14}
-                      content={t(
-                        'knowledge.vision_model_hint',
-                        '选带看图能力的模型即可。扫描件抽字不必用最贵的，便宜的多模态模型通常够用。未指定时跟随全局对话模型。'
-                      )}
-                    />
-                  </div>
-                </div>
-                <div className={styles.modelSelectorWrap}>
-                  <button
-                    ref={visionModelTriggerRef}
-                    type="button"
-                    className={styles.modelSelectorBtn}
-                    onClick={() => {
-                      setVisionModelMenuAnchor(
-                        visionModelTriggerRef.current?.getBoundingClientRect() ?? null
-                      )
-                      setShowVisionModelPicker(true)
-                    }}
-                    aria-label={t('knowledge.vision_model_pick', '选择')}
-                  >
-                    <span className={styles.modelSelectorIcon} aria-hidden>
-                      {visionDisplay.iconSrc ? (
-                        <img src={visionDisplay.iconSrc} alt="" />
-                      ) : (
-                        <Cloud size={16} />
-                      )}
-                    </span>
-                    <span className={styles.modelSelectorName}>
-                      {visionDisplay.isCustom
-                        ? visionDisplay.modelId
-                        : visionDisplay.modelId
-                          ? t('knowledge.vision_model_follow_named', '跟随 · {{model}}', {
-                              model: visionDisplay.modelId
-                            })
-                          : t('knowledge.vision_model_unset_short', '跟随全局对话模型')}
-                    </span>
-                    <ChevronDown size={14} className={styles.modelSelectorChevron} aria-hidden />
-                  </button>
-                  {visionDisplay.isCustom ? (
-                    <button
-                      type="button"
-                      className={styles.modelSelectorClear}
-                      onClick={() => {
-                        setVisionProviderId(null)
-                        setVisionModelId(null)
-                      }}
-                      aria-label={t('knowledge.vision_model_clear_short', '清除')}
-                      title={t('knowledge.vision_model_clear_short', '清除')}
-                    >
-                      <X size={14} />
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div className={styles.settingsGroup}>
-            <div className={styles.sectionLabelRow}>
-              <h3 className={styles.sectionLabel}>
-                {t('knowledge.reset_dont_ask_again_section', '确认提示')}
-              </h3>
-            </div>
-            <section className={styles.settingsCard}>
-              <div className={styles.settingsRow}>
-                <div className={styles.settingsRowText}>
-                  <div className={styles.settingsRowTitle}>
-                    {t('knowledge.reset_dont_ask_again', '恢复打开引导')}
-                  </div>
-                  <p className={styles.fieldHint}>
-                    {t(
-                      'knowledge.reset_dont_ask_again_desc',
-                      '恢复后，打开笔记本会再次显示当前模型和抽取状态。'
-                    )}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className={styles.btnGhost}
-                  disabled={!hasSkippedGuide}
-                  onClick={() => {
-                    const cleared = clearAllNotebookDontAskAgain()
-                    setHasSkippedGuide(hasAnyNotebookDontAskAgain())
-                    if (cleared <= 0) {
-                      toast.showInfo(
-                        t('knowledge.reset_dont_ask_again_empty', '当前没有已关闭的提示')
-                      )
-                      return
-                    }
-                    toast.showSuccess(t('knowledge.reset_dont_ask_again_done', '已恢复打开引导'))
-                  }}
-                >
-                  {t('knowledge.reset_dont_ask_again_action', '恢复')}
-                </button>
-              </div>
-            </section>
-          </div>
-
-          <div className={styles.settingsGroup}>
-            <div className={styles.sectionLabelRow}>
-              <h3 className={styles.sectionLabel}>{t('knowledge.engine_caps', '当前能力')}</h3>
-            </div>
-            <section className={styles.settingsCard}>
-              <div className={styles.capBlockCompact}>
-                {engineCaps ? (
-                  <>
-                    {renderCapRow(t('knowledge.cap_simple', 'PDF 文字层'), engineCaps.simple)}
-                    {renderCapRow(t('knowledge.cap_ocr', '本地 OCR'), engineCaps.ocr)}
-                    {renderCapRow(t('knowledge.cap_vision', '视觉模型'), engineCaps.vision, (model) =>
-                      t('knowledge.cap_vision_model', { model, defaultValue: '模型：{{model}}' })
-                    )}
-                  </>
-                ) : (
-                  <p className={styles.metaLine}>—</p>
-                )}
-                {storageLine ? <p className={styles.metaLine}>{storageLine}</p> : null}
-              </div>
+                </>
+              ) : null}
             </section>
           </div>
         </div>
 
         <div className={styles.dialogActions}>
-          <button
-            type="button"
-            className={styles.btnGhost}
-            onClick={closeSettings}
-            disabled={busy}
-          >
+          <Button type="button" onClick={closeSettings} disabled={busy}>
             {t('common.cancel', '取消')}
-          </button>
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={() => void onSaveSettings()}
-            disabled={busy}
-          >
+          </Button>
+          <Button type="button" onClick={() => void onSaveSettings()} disabled={busy}>
             {t('common.save', '保存')}
-          </button>
+          </Button>
         </div>
       </KnowledgeDialog>
 
-      {showVisionModelPicker ? (
-        <SessionModelMenu
-          onClose={() => {
-            setShowVisionModelPicker(false)
-            setVisionModelMenuAnchor(null)
+      {picker ? (
+        <KnowledgeModelMenu
+          kind={picker.kind}
+          providers={providers}
+          currentProviderId={
+            picker.field === 'embedding'
+              ? globalModels?.globalEmbeddingProviderId
+              : picker.field === 'graph'
+                ? globalModels?.globalGraphProviderId
+                : (visionProviderId ?? undefined)
+          }
+          currentModelId={
+            picker.field === 'embedding'
+              ? globalModels?.globalEmbeddingModelId
+              : picker.field === 'graph'
+                ? globalModels?.globalGraphModelId
+                : (visionModelId ?? undefined)
+          }
+          anchorRect={picker.anchor}
+          onSelect={(providerId, modelId) => {
+            void selectModel(providerId, modelId)
           }}
-          providers={providers
-            .map((p) => {
-              const modelList =
-                p.enabledModels && p.enabledModels.length > 0 ? p.enabledModels : p.models || []
-              const filteredModels = modelList.filter(
-                (m) =>
-                  !isEmbeddingModel(m) && !isTtsModel(m) && isVisionModel(m, p.type || p.id)
-              )
-              return {
-                id: p.id,
-                name: p.name || p.id,
-                type: p.type || 'custom',
-                models: p.models || [],
-                enabledModels: filteredModels
-              }
-            })
-            .filter((p) => p.enabledModels.length > 0)}
-          currentProviderId={visionProviderId ?? undefined}
-          currentModelId={visionModelId ?? undefined}
-          onSelect={(pid, mid) => {
-            setVisionProviderId(pid)
-            setVisionModelId(mid)
-          }}
+          onClose={closePicker}
           onManageProviders={() => {
             closeSettings()
             navigate(`${SETTINGS_HUB_PREFIX}/ai-services`)
           }}
-          showReasoningPanel={false}
-          anchorRect={visionModelMenuAnchor}
         />
       ) : null}
 
@@ -1924,14 +2041,9 @@ export const KnowledgeDetailPage: React.FC = () => {
           </button>
         </div>
         <div className={styles.dialogActions}>
-          <button
-            type="button"
-            className={styles.btnGhost}
-            onClick={() => setImportMode(null)}
-            disabled={busy}
-          >
+          <Button type="button" onClick={() => setImportMode(null)} disabled={busy}>
             {t('common.cancel', '取消')}
-          </button>
+          </Button>
         </div>
       </KnowledgeDialog>
 
@@ -1954,22 +2066,12 @@ export const KnowledgeDetailPage: React.FC = () => {
           })}
         </p>
         <div className={styles.dialogActions}>
-          <button
-            type="button"
-            className={styles.btnGhost}
-            onClick={() => setImportMode(null)}
-            disabled={busy}
-          >
+          <Button type="button" onClick={() => setImportMode(null)} disabled={busy}>
             {t('common.cancel', '取消')}
-          </button>
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={() => void onImportFile()}
-            disabled={busy}
-          >
+          </Button>
+          <Button type="button" onClick={() => void onImportFile()} disabled={busy}>
             {t('knowledge.choose_files', '选择文件')}
-          </button>
+          </Button>
         </div>
       </KnowledgeDialog>
 
@@ -1997,22 +2099,12 @@ export const KnowledgeDetailPage: React.FC = () => {
           />
         </label>
         <div className={styles.dialogActions}>
-          <button
-            type="button"
-            className={styles.btnGhost}
-            onClick={() => setImportMode(null)}
-            disabled={busy}
-          >
+          <Button type="button" onClick={() => setImportMode(null)} disabled={busy}>
             {t('common.cancel', '取消')}
-          </button>
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={() => void onImportText()}
-            disabled={busy || !pasteText.trim()}
-          >
+          </Button>
+          <Button type="button" onClick={() => void onImportText()} disabled={busy || !pasteText.trim()}>
             {t('knowledge.import_submit', '导入')}
-          </button>
+          </Button>
         </div>
       </KnowledgeDialog>
 
@@ -2034,22 +2126,12 @@ export const KnowledgeDetailPage: React.FC = () => {
           />
         </label>
         <div className={styles.dialogActions}>
-          <button
-            type="button"
-            className={styles.btnGhost}
-            onClick={() => setImportMode(null)}
-            disabled={busy}
-          >
+          <Button type="button" onClick={() => setImportMode(null)} disabled={busy}>
             {t('common.cancel', '取消')}
-          </button>
-          <button
-            type="button"
-            className={styles.btnPrimary}
-            onClick={() => void onImportUrl()}
-            disabled={busy || !urlValue.trim()}
-          >
+          </Button>
+          <Button type="button" onClick={() => void onImportUrl()} disabled={busy || !urlValue.trim()}>
             {t('knowledge.import_submit', '导入')}
-          </button>
+          </Button>
         </div>
       </KnowledgeDialog>
 
@@ -2064,6 +2146,13 @@ export const KnowledgeDetailPage: React.FC = () => {
         loading={previewLoading}
         error={previewError}
         payload={previewPayload}
+      />
+      <KnowledgeSourceFragmentDialog
+        open={fragmentOpen}
+        loading={fragmentLoading}
+        error={fragmentError}
+        fragments={fragments}
+        onClose={closeFragments}
       />
     </KnowledgeShell>
   )

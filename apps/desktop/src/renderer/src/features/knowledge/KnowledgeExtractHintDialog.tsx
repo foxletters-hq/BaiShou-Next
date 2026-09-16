@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { KnowledgeExtractHintChoice, VisionExtractHintReason } from '@baishou/shared'
+import { Button } from '@baishou/ui'
 import { KnowledgeDialog } from './KnowledgeDialog'
 import { describeVisionExtractHint } from './extract-engine-hint.util'
 import {
@@ -51,7 +52,6 @@ export const KnowledgeExtractHintDialog: React.FC<KnowledgeExtractHintDialogProp
     reason === 'garbled-text-layer'
       ? t('knowledge.extract_hint_title_garbled', '文字层已损坏')
       : t('knowledge.extract_hint_title', '几乎没有文字层')
-  const showKeepTextLayer = currentEngine === 'simple'
   const modelName = visionModelId || t('knowledge.extract_hint_vision_model', '视觉模型')
 
   return (
@@ -87,36 +87,26 @@ export const KnowledgeExtractHintDialog: React.FC<KnowledgeExtractHintDialogProp
         </p>
       )}
       <div className={styles.extractHintActions}>
-        <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>
+        <Button type="button" onClick={onCancel}>
           {t('common.cancel', '取消')}
-        </button>
-        {showKeepTextLayer ? (
-          <button type="button" className={styles.dialogCancelBtn} onClick={() => onChoose('keep')}>
-            {t('knowledge.extract_hint_keep', '仍用文字层')}
-          </button>
-        ) : null}
-        <button type="button" className={styles.dialogCancelBtn} onClick={() => onChoose('ocr')}>
+        </Button>
+        <Button type="button" onClick={() => onChoose('ocr')}>
           {currentEngine === 'ocr'
             ? t('knowledge.extract_hint_ocr_current', '继续用本地 OCR')
             : t('knowledge.extract_hint_ocr', '使用本地 OCR')}
-        </button>
+        </Button>
         {visionConfigured ? (
-          <button
-            type="button"
-            className={styles.dialogConfirmBtn}
-            disabled={!ready}
-            onClick={() => onChoose('vision')}
-          >
+          <Button type="button" disabled={!ready} onClick={() => onChoose('vision')}>
             {ready
               ? t('knowledge.extract_hint_vision', '使用视觉提取')
               : t('knowledge.extract_hint_vision_wait', '使用视觉提取（{{seconds}}）', {
                   seconds: secondsLeft
                 })}
-          </button>
+          </Button>
         ) : (
-          <button type="button" className={styles.dialogConfirmBtn} onClick={onOpenVisionSettings}>
+          <Button type="button" onClick={onOpenVisionSettings}>
             {t('knowledge.extract_hint_open_settings', '去配置视觉模型')}
-          </button>
+          </Button>
         )}
       </div>
     </KnowledgeDialog>

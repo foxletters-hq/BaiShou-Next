@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Select } from '@baishou/ui'
+import { Button, Select } from '@baishou/ui'
 import {
   knowledgeImportProcessSelectOptions,
   normalizeKnowledgeImportProcessMode,
@@ -102,16 +102,12 @@ export function KnowledgeImportProcessDialog({
         </div>
       </div>
       <div className={styles.extractHintActions}>
-        <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>
+        <Button type="button" onClick={onCancel}>
           {t('common.cancel', '取消')}
-        </button>
-        <button
-          type="button"
-          className={styles.dialogConfirmBtn}
-          onClick={() => onConfirm(mode)}
-        >
+        </Button>
+        <Button type="button" onClick={() => onConfirm(mode)}>
           {t('knowledge.import_process_confirm', '确认导入')}
-        </button>
+        </Button>
       </div>
     </KnowledgeDialog>
   )

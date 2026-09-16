@@ -25,7 +25,7 @@ import {
   type GraphFocusDepth,
   type GraphForceSettings
 } from '@baishou/shared'
-import { Checkbox, HelpTooltip, Input, toast, useDialog } from '@baishou/ui'
+import { Button, Checkbox, HelpTooltip, Input, toast, useDialog } from '@baishou/ui'
 import { GraphCanvasSettingsPanel } from '../graph/GraphCanvasSettingsPanel'
 import { GraphForceCanvas } from '../graph/GraphForceCanvas'
 import { usePanelResize } from '../agent-workspace/workbench/usePanelResize'
@@ -74,7 +74,7 @@ export const NotebookGraphPane: React.FC<{
   extracting: boolean
   reloadKey: string
   onStartExtract: () => void
-  onPreviewSource?: (sourceId: string) => void
+  onPreviewFragments?: (edges: NotebookGraphViewEdge[]) => void
 }> = ({
   notebookId,
   sourceCount,
@@ -82,7 +82,7 @@ export const NotebookGraphPane: React.FC<{
   extracting,
   reloadKey,
   onStartExtract,
-  onPreviewSource
+  onPreviewFragments
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
@@ -156,6 +156,11 @@ export const NotebookGraphPane: React.FC<{
     pendingItemKeys.length > 0 && pendingSelectedCount === pendingItemKeys.length
   const selectedNode = nodes.find((node) => node.id === selectedId) || null
   const showEmptyGuide = nodes.length === 0 && !dismissGuide && !extracting
+  const displayNodes = nodes
+  const displayEdges = useMemo(() => {
+    const idSet = new Set(displayNodes.map((node) => node.id))
+    return edges.filter((edge) => idSet.has(edge.fromId) && idSet.has(edge.toId))
+  }, [displayNodes, edges])
   const focusIds = useMemo(
     () =>
       selectedId
@@ -421,14 +426,13 @@ export const NotebookGraphPane: React.FC<{
                 </div>
               </div>
               <div className={graphStyles.toolbarRight}>
-                <button
+                <Button
                   type="button"
-                  className={graphStyles.btn}
                   disabled={extracting || sourceCount === 0}
                   onClick={onStartExtract}
                 >
                   {t('knowledge.rebuild_graph_short', '重新抽取')}
-                </button>
+                </Button>
               </div>
             </div>
             {progress.visible ? (
@@ -475,27 +479,22 @@ export const NotebookGraphPane: React.FC<{
                   {t('graph.legend_pending', '虚线的关系伙伴还看不到，需要你确认。')}
                 </div>
                 <div className={graphStyles.rowActions}>
-                  <button
+                  <Button
                     type="button"
-                    className={graphStyles.btnPrimary}
                     disabled={sourceCount === 0 || extracting}
                     onClick={onStartExtract}
                   >
                     {t('graph.start_organize', '开始整理')}
-                  </button>
-                  <button
-                    type="button"
-                    className={graphStyles.btn}
-                    onClick={() => setDismissGuide(true)}
-                  >
+                  </Button>
+                  <Button type="button" onClick={() => setDismissGuide(true)}>
                     {t('graph.later', '以后再说')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
               <GraphForceCanvas
-                nodes={nodes}
-                edges={edges}
+                nodes={displayNodes}
+                edges={displayEdges}
                 highlightIds={highlightIds}
                 locateIds={locateIds ?? undefined}
                 focusIds={focusIds}
@@ -542,7 +541,7 @@ export const NotebookGraphPane: React.FC<{
                   className={`${graphStyles.railBtn} ${
                     !sideCollapsed && sideMode === 'ops' ? graphStyles.railBtnActive : ''
                   }`}
-                  title={t('graph.side_ops', '操作')}
+                  title={t('graph.side_organize', '整理')}
                   onClick={() => openSide('ops')}
                 >
                   <MdTune size={18} />
@@ -562,7 +561,7 @@ export const NotebookGraphPane: React.FC<{
                   className={`${graphStyles.railBtn} ${
                     !sideCollapsed && sideMode === 'settings' ? graphStyles.railBtnActive : ''
                   }`}
-                  title={t('graph.side_settings', '设置')}
+                  title={t('graph.side_canvas', '画布')}
                   onClick={() => openSide('settings')}
                 >
                   <MdSettings size={18} />
@@ -585,18 +584,17 @@ export const NotebookGraphPane: React.FC<{
                   {sideMode === 'ops' ? (
                     <>
                       <div className={graphStyles.settingsHeader}>
-                        <div className={graphStyles.settingsTitle}>{t('graph.side_ops', '操作')}</div>
+                        <div className={graphStyles.settingsTitle}>{t('graph.side_organize', '整理')}</div>
                       </div>
                       <div className={graphStyles.panel}>
                         <div className={graphStyles.opsBlock}>
-                          <button
+                          <Button
                             type="button"
-                            className={`${graphStyles.btnPrimary} ${graphStyles.opsFullBtn}`}
                             disabled={extracting || sourceCount === 0}
                             onClick={onStartExtract}
                           >
                             {t('knowledge.rebuild_graph', '重新抽取图谱')}
-                          </button>
+                          </Button>
                           {progress.visible ? (
                             <p className={graphStyles.empty}>{progress.detail}</p>
                           ) : (
@@ -874,46 +872,48 @@ export const NotebookGraphPane: React.FC<{
                                 <div className={graphStyles.detailLabel}>
                                   {t('graph.label_name', '名称')}
                                 </div>
-                                <div className={graphStyles.itemTitle}>{selectedNode.name}</div>
+                                <div className={graphStyles.detailValue}>{selectedNode.name}</div>
                               </div>
                               <div className={graphStyles.detailBlock}>
                                 <div className={graphStyles.detailLabel}>
                                   {t('graph.label_type', '类型')}
                                 </div>
-                                <div>{translateGraphNodeType(tr, selectedNode.nodeType)}</div>
+                                <div className={graphStyles.detailValue}>
+                                  {translateGraphNodeType(tr, selectedNode.nodeType)}
+                                </div>
                               </div>
                               {selectedNode.summary ? (
                                 <div className={graphStyles.detailBlock}>
                                   <div className={graphStyles.detailLabel}>
                                     {t('graph.label_summary', '摘要')}
                                   </div>
-                                  <div>{selectedNode.summary}</div>
+                                  <div className={graphStyles.detailValue}>{selectedNode.summary}</div>
                                 </div>
                               ) : null}
                               <div className={graphStyles.detailBlock}>
                                 <div className={graphStyles.detailLabel}>
                                   {t('graph.label_mentions', '提及')}
                                 </div>
-                                <div>{selectedNode.mentionCount ?? 0}</div>
+                                <div className={graphStyles.detailValue}>
+                                  {selectedNode.mentionCount ?? 0}
+                                </div>
                               </div>
                               {selectedNode.reviewStatus === 'pending' ? (
                                 <div className={graphStyles.rowActions}>
-                                  <button
+                                  <Button
                                     type="button"
-                                    className={graphStyles.btnPrimary}
                                     disabled={reviewBusy}
                                     onClick={() => void reviewNode(selectedNode.id, 'approved')}
                                   >
                                     {t('graph.approve', '通过')}
-                                  </button>
-                                  <button
+                                  </Button>
+                                  <Button
                                     type="button"
-                                    className={graphStyles.btn}
                                     disabled={reviewBusy}
                                     onClick={() => void reviewNode(selectedNode.id, 'rejected')}
                                   >
                                     {t('graph.reject', '拒绝')}
-                                  </button>
+                                  </Button>
                                 </div>
                               ) : null}
                               {relatedEdges.length > 0 ? (
@@ -963,21 +963,15 @@ export const NotebookGraphPane: React.FC<{
                                   })}
                                 </div>
                               ) : null}
-                              {(() => {
-                                const sourceId = relatedEdges
-                                  .map((edge) => edge.sourceRef?.split('#')[0]?.trim() || '')
-                                  .find(Boolean)
-                                if (!sourceId || !onPreviewSource) return null
-                                return (
-                                  <button
-                                    type="button"
-                                    className={graphStyles.btn}
-                                    onClick={() => onPreviewSource(sourceId)}
-                                  >
-                                    {t('graph.source', '原文')}
-                                  </button>
-                                )
-                              })()}
+                              {onPreviewFragments &&
+                              relatedEdges.some((edge) => edge.sourceRef || edge.sourceExcerpt) ? (
+                                <Button
+                                  type="button"
+                                  onClick={() => onPreviewFragments(relatedEdges)}
+                                >
+                                  {t('graph.source', '原文')}
+                                </Button>
+                              ) : null}
                             </>
                           )
                         ) : null}
@@ -989,7 +983,7 @@ export const NotebookGraphPane: React.FC<{
                     <>
                       <div className={graphStyles.settingsHeader}>
                         <div className={graphStyles.settingsTitle}>
-                          {t('graph.side_settings', '设置')}
+                          {t('graph.side_canvas', '画布')}
                         </div>
                         <button
                           type="button"

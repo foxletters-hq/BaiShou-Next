@@ -13,7 +13,7 @@ import styles from './KnowledgePage.module.css'
 
 type SearchMode = 'semantic' | 'text'
 
-type ChunkCard = {
+export type KnowledgeVectorChunkCard = {
   chunkId: string
   sourceId: string
   sourceTitle: string
@@ -30,7 +30,7 @@ interface KnowledgeVectorPaneProps {
   chunkCount: number
   storageLine: string
   busy: boolean
-  onPreviewSource?: (sourceId: string) => void
+  onPreviewFragment?: (item: KnowledgeVectorChunkCard) => void
 }
 
 export const KnowledgeVectorPane: React.FC<KnowledgeVectorPaneProps> = ({
@@ -39,7 +39,7 @@ export const KnowledgeVectorPane: React.FC<KnowledgeVectorPaneProps> = ({
   chunkCount,
   storageLine,
   busy,
-  onPreviewSource
+  onPreviewFragment
 }) => {
   const { t } = useTranslation()
   const embeddingModelId = useSettingsStore((s) => s.globalModels?.globalEmbeddingModelId || '')
@@ -48,7 +48,7 @@ export const KnowledgeVectorPane: React.FC<KnowledgeVectorPaneProps> = ({
   const [searchMode, setSearchMode] = useState<SearchMode>('semantic')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
-  const [items, setItems] = useState<ChunkCard[]>([])
+  const [items, setItems] = useState<KnowledgeVectorChunkCard[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -270,11 +270,11 @@ export const KnowledgeVectorPane: React.FC<KnowledgeVectorPaneProps> = ({
                 <div className={styles.vectorCardBody}>
                   <p className={styles.vectorCardText}>{item.chunkText}</p>
                   <div className={styles.vectorCardMeta}>
-                    {onPreviewSource ? (
+                    {onPreviewFragment ? (
                       <button
                         type="button"
                         className={styles.linkBtn}
-                        onClick={() => onPreviewSource(item.sourceId)}
+                        onClick={() => onPreviewFragment(item)}
                       >
                         {item.sourceTitle}
                       </button>

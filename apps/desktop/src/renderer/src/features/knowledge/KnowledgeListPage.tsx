@@ -13,12 +13,13 @@ import {
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import type { NotebookCardTone } from '@baishou/shared'
-import { Input } from '@baishou/ui'
+import { Button, Input } from '@baishou/ui'
 import { KnowledgeShell } from './KnowledgeShell'
 import { KnowledgeDialog } from './KnowledgeDialog'
+import { NotebookCoverEditor } from './NotebookCoverEditor'
 import { NotebookCoverEmojiPicker } from './NotebookCoverEmojiPicker'
-import { NotebookCoverTonePicker } from './NotebookCoverTonePicker'
 import { SortableNotebookCard } from './SortableNotebookCard'
+import { type NotebookCoverMode } from './notebook-cover-mode'
 import { getNotebookCardAppearance } from './notebook-card-appearance'
 import {
   applyNotebookDragReorder,
@@ -89,6 +90,7 @@ export const KnowledgeListPage: React.FC = () => {
   const [iconPickerTarget, setIconPickerTarget] = useState<'create' | string | null>(null)
   const [createCoverPath, setCreateCoverPath] = useState('')
   const [createCoverName, setCreateCoverName] = useState('')
+  const [createCoverMode, setCreateCoverMode] = useState<NotebookCoverMode>('emoji')
   const [cardMenuId, setCardMenuId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const skipCardClickRef = useRef(false)
@@ -150,7 +152,7 @@ export const KnowledgeListPage: React.FC = () => {
         coverTone: createTone || undefined,
         coverIcon: createIcon || undefined
       })
-      if (createCoverPath) {
+      if (createCoverMode === 'image' && createCoverPath) {
         await window.api.knowledge.setCoverImage({
           notebookId: created.id,
           absolutePath: createCoverPath
@@ -163,6 +165,7 @@ export const KnowledgeListPage: React.FC = () => {
       setCreateIcon('')
       setCreateCoverPath('')
       setCreateCoverName('')
+      setCreateCoverMode('emoji')
       await refresh()
       navigate(`/agent-workspace/knowledge/${created.id}`)
     } catch (e: any) {
@@ -331,6 +334,7 @@ export const KnowledgeListPage: React.FC = () => {
     if (!file?.filePath) return
     setCreateCoverPath(file.filePath)
     setCreateCoverName(file.fileName || file.filePath)
+    setCreateCoverMode('image')
   }
 
   const openCardMenu = (nb: NotebookRow) => {
@@ -418,10 +422,9 @@ export const KnowledgeListPage: React.FC = () => {
                         'knowledge.notebook_name_placeholder',
                         '笔记本名称'
                       ),
-                      coverTone: t('knowledge.cover_tone', '封面颜色'),
-                      coverIcon: t('knowledge.cover_icon', '封面图标'),
+                      cover: t('knowledge.notebook_cover', '笔记本封面'),
+                      coverEmoji: t('knowledge.cover_mode_emoji', 'emoji'),
                       pickIcon: t('knowledge.pick_cover_icon', '选择图标'),
-                      coverImage: t('knowledge.cover_image', '封面图片'),
                       uploadImage: t('knowledge.upload_cover_image', '上传图片'),
                       clearImage: t('knowledge.clear_cover_image', '清除图片')
                     }}
@@ -456,6 +459,7 @@ export const KnowledgeListPage: React.FC = () => {
           setShowCreate(false)
           setCreateCoverPath('')
           setCreateCoverName('')
+          setCreateCoverMode('emoji')
         }}
         closeDisabled={busy}
         title={t('knowledge.new_notebook', '新建笔记本')}
@@ -479,75 +483,58 @@ export const KnowledgeListPage: React.FC = () => {
             onChange={(e) => setDescription(e.target.value)}
           />
         </label>
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>{t('knowledge.cover_tone', '封面颜色')}</span>
-          <NotebookCoverTonePicker value={createTone} onChange={setCreateTone} disabled={busy} />
-        </div>
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>{t('knowledge.cover_icon', '封面图标')}</span>
-          <button
-            type="button"
-            className={styles.coverIconTrigger}
-            onClick={() => setIconPickerTarget('create')}
-            disabled={busy}
-          >
-            {createIcon ? (
-              <span className={styles.coverIconPreview} aria-hidden>
-                {createIcon}
-              </span>
-            ) : null}
-            {t('knowledge.pick_cover_icon', '选择图标')}
-          </button>
-        </div>
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>{t('knowledge.cover_image', '封面图片')}</span>
-          <div className={styles.coverImageActions}>
-            <button
-              type="button"
-              className={styles.coverImageBtn}
-              onClick={() => void pickCreateCoverImage()}
-              disabled={busy}
-            >
-              {t('knowledge.upload_cover_image', '上传图片')}
-            </button>
-            {createCoverPath ? (
-              <button
-                type="button"
-                className={styles.coverImageBtn}
-                onClick={() => {
-                  setCreateCoverPath('')
-                  setCreateCoverName('')
-                }}
-                disabled={busy}
-              >
-                {t('knowledge.clear_cover_image', '清除图片')}
-              </button>
-            ) : null}
-          </div>
-          {createCoverName ? <p className={styles.coverImageName}>{createCoverName}</p> : null}
-        </div>
+        <NotebookCoverEditor
+          className={styles.field}
+          labelClassName={styles.fieldLabel}
+          mode={createCoverMode}
+          onModeChange={(mode) => {
+            setCreateCoverMode(mode)
+            if (mode === 'emoji') {
+              setCreateCoverPath('')
+              setCreateCoverName('')
+            }
+          }}
+          tone={createTone}
+          onToneChange={setCreateTone}
+          icon={createIcon}
+          onPickIcon={() => setIconPickerTarget('create')}
+          onUploadImage={() => void pickCreateCoverImage()}
+          onClearImage={() => {
+            setCreateCoverPath('')
+            setCreateCoverName('')
+          }}
+          hasImage={Boolean(createCoverPath)}
+          imageName={createCoverName}
+          disabled={busy}
+          labels={{
+            cover: t('knowledge.notebook_cover', '笔记本封面'),
+            emoji: t('knowledge.cover_mode_emoji', 'emoji'),
+            pickIcon: t('knowledge.pick_cover_icon', '选择图标'),
+            uploadImage: t('knowledge.upload_cover_image', '上传图片'),
+            clearImage: t('knowledge.clear_cover_image', '清除图片')
+          }}
+        />
         <div className={styles.dialogActions}>
-          <button
+          <Button
             type="button"
-            className={styles.btnGhost}
             onClick={() => {
               if (busy) return
               setShowCreate(false)
               setCreateCoverPath('')
               setCreateCoverName('')
+              setCreateCoverMode('emoji')
             }}
             disabled={busy}
           >
             {t('common.cancel', '取消')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={styles.btnPrimary}
             onClick={() => void onCreate()}
             disabled={busy || !name.trim()}
           >
             {t('knowledge.create_action', '创建')}
-          </button>
+          </Button>
         </div>
       </KnowledgeDialog>
       <NotebookCoverEmojiPicker
