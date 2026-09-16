@@ -51,6 +51,8 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
       i18n: i18n.language
     })
     setSelectedLanguage(language)
+    // 只跟父组件传入的 language 同步，i18n.language 仅用于调试日志
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language])
 
   useEffect(() => {
@@ -275,9 +277,7 @@ export const AppearanceSettingsCard: React.FC<AppearanceSettingsProps> = ({
                       style={{
                         fontSize: Math.round(12 * scale),
                         color:
-                          level === draftFontSizeLevel
-                            ? colors.textPrimary
-                            : colors.textSecondary,
+                          level === draftFontSizeLevel ? colors.textPrimary : colors.textSecondary,
                         fontWeight: level === draftFontSizeLevel ? '500' : '400'
                       }}
                     >

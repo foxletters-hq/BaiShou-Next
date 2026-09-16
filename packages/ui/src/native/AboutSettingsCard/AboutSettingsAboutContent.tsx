@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable, Image, ImageSourcePropType, Linking } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { GITHUB_CONTRIBUTORS_URL, GITHUB_REPO_URL } from '@baishou/shared'
+import { GITHUB_CONTRIBUTORS_URL } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 import { Button } from '../Button'
 
@@ -105,14 +105,13 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
       </Text>
 
       <Button
-        variant="secondary"
+        variant="outlined"
         onPress={() => void Linking.openURL(GITHUB_CONTRIBUTORS_URL)}
-        className="w-full"
       >
         {t('about.view_contributors', '查看项目贡献者')}
       </Button>
 
-      <Button variant="primary" onPress={onOpenGithubHost} className="w-full">
+      <Button variant="outlined" onPress={onOpenGithubHost}>
         {t('about.visit_github', '访问 GitHub 仓库')}
       </Button>
     </View>

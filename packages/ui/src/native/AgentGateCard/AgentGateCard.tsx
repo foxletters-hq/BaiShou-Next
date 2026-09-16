@@ -11,11 +11,10 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
-import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
+import { AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import { Button } from '../Button'
 import { useNativeTheme } from '../theme'
 import {
-  resolveAlwaysAllowPrefixHint,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
@@ -23,9 +22,7 @@ import {
 } from '../../agent-gate'
 import {
   formatFileChangeKindLabel,
-  formatGateQueueLabel,
-  humanizeRepeatHint,
-  resolveScopeLabel
+  formatGateQueueLabel
 } from '../../agent-gate/agent-gate-preview-copy'
 
 export interface AgentGateCardProps {
@@ -42,8 +39,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   isReplying = false,
   onReply,
   queueIndex = 0,
-  queueTotal = 0,
-  sameActionCount = 0
+  queueTotal = 0
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -53,14 +49,12 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
   const [feedback, setFeedback] = useState('')
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
   const [diffExpanded, setDiffExpanded] = useState(false)
-  const [alwaysConfirm, setAlwaysConfirm] = useState(false)
 
   useEffect(() => {
     setShowFeedback(false)
     setFeedback('')
     setSelectedOptionId(null)
     setDiffExpanded(false)
-    setAlwaysConfirm(false)
   }, [request?.id])
 
   const handleReply = useCallback(
@@ -75,11 +69,8 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
-  const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
-  const repeatHint = humanizeRepeatHint(request)
-  const scopeLabel = resolveScopeLabel(request)
   const preview = request.preview
   const numberedOptionsText =
     proactiveOptions && request.options.length > 0
@@ -87,12 +78,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
       : null
   const descriptionIsOptionsDump =
     Boolean(request.description) && request.description?.trim() === numberedOptionsText
-  const cascadeHint =
-    sameActionCount > 1
-      ? t('agent_gate.cascade_hint', '此决定将影响本会话中另外 {{count}} 个相同操作', {
-          count: sameActionCount - 1
-        })
-      : null
   const scrollMaxHeight = Math.min(height * 0.62, diffExpanded ? 520 : 360)
 
   return (
@@ -101,10 +86,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
       transparent
       animationType="fade"
       onRequestClose={() => {
-        if (alwaysConfirm) {
-          setAlwaysConfirm(false)
-          return
-        }
         if (showFeedback) {
           setShowFeedback(false)
           return
@@ -161,21 +142,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 {request.description}
               </Text>
             ) : null}
-            {repeatHint ? (
-              <Text style={[styles.hint, { color: colors.textSecondary }]}>{repeatHint}</Text>
-            ) : null}
-            {cascadeHint ? (
-              <Text style={[styles.hint, { color: colors.textSecondary }]}>{cascadeHint}</Text>
-            ) : null}
-            {request.kind === AgentGateKind.Tool ? (
-              <Text style={[styles.hint, { color: colors.textSecondary }]}>
-                {t(
-                  'agent_gate.once_turn_hint',
-                  '「本次允许」在本轮回答彻底结束前都有效；「始终允许」会一直记住。'
-                )}
-              </Text>
-            ) : null}
-
             {preview?.type === 'file_change' ? (
               <View
                 style={[
@@ -189,11 +155,15 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 </Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
                   {preview.additions > 0 ? (
-                    <Text style={{ color: '#15803d', fontWeight: '600' }}>+{preview.additions}</Text>
+                    <Text style={{ color: '#15803d', fontWeight: '600' }}>
+                      +{preview.additions}
+                    </Text>
                   ) : null}
                   {preview.additions > 0 && preview.deletions > 0 ? '  ' : null}
                   {preview.deletions > 0 ? (
-                    <Text style={{ color: '#b91c1c', fontWeight: '600' }}>-{preview.deletions}</Text>
+                    <Text style={{ color: '#b91c1c', fontWeight: '600' }}>
+                      -{preview.deletions}
+                    </Text>
                   ) : null}
                   {preview.truncated ? `  ${t('agent_gate.diff_truncated', '预览已截断')}` : ''}
                 </Text>
@@ -262,26 +232,6 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
               </View>
             ) : null}
 
-            {alwaysConfirm ? (
-              <View
-                style={[
-                  styles.previewBlock,
-                  { borderColor: colors.primary, backgroundColor: colors.primaryLight }
-                ]}
-              >
-                <Text style={{ color: colors.textPrimary, fontSize: 13, lineHeight: 20 }}>
-                  {t(
-                    'agent_gate.always_confirm_body',
-                    '始终允许将持久保存到本机（可在设置中撤销），范围：{{scope}}。匹配：{{pattern}}。',
-                    {
-                      scope: scopeLabel,
-                      pattern: alwaysPrefixHint ?? request.action
-                    }
-                  )}
-                </Text>
-              </View>
-            ) : null}
-
             {proactiveOptions && !showFeedback
               ? request.options.map((option) => {
                   const selected = selectedOptionId === option.id
@@ -330,30 +280,7 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
           </ScrollView>
 
           <View style={[styles.actions, { borderTopColor: colors.borderMuted }]}>
-            {alwaysConfirm ? (
-              <>
-                <Button
-                  variant="outline"
-                  onPress={() => setAlwaysConfirm(false)}
-                  disabled={isReplying}
-                  style={styles.actionButton}
-                  accessibilityLabel={t('common.cancel', '取消')}
-                >
-                  {t('common.cancel', '取消')}
-                </Button>
-                <Button
-                  variant="primary"
-                  onPress={() =>
-                    void handleReply({ requestId: request.id, reply: AgentGateReply.Always })
-                  }
-                  disabled={isReplying}
-                  style={styles.actionButton}
-                  accessibilityLabel={t('agent_gate.always_confirm', '确认始终允许')}
-                >
-                  {t('agent_gate.always_confirm', '确认始终允许')}
-                </Button>
-              </>
-            ) : showFeedback ? (
+            {showFeedback ? (
               <>
                 <Button
                   variant="outline"
@@ -441,7 +368,9 @@ export const AgentGateCard: React.FC<AgentGateCardProps> = ({
                 {showAlways ? (
                   <Button
                     variant="outline"
-                    onPress={() => setAlwaysConfirm(true)}
+                    onPress={() =>
+                      void handleReply({ requestId: request.id, reply: AgentGateReply.Always })
+                    }
                     disabled={isReplying}
                     style={styles.actionButton}
                     accessibilityLabel={t('agent_gate.always', '始终允许')}

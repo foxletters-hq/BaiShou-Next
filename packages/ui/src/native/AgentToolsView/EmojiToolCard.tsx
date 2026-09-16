@@ -58,7 +58,7 @@ export const EmojiToolCard: React.FC<EmojiToolCardProps> = ({
   onDelete
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const emojiConfig = config || DEFAULT_EMOJI_CONFIG
   const isEnabled = emojiConfig.enabled === true
   const [showSettingsPopup, setShowSettingsPopup] = useState(false)
