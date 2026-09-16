@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, type InputHTMLAttributes } from 'react'
 import styles from './Checkbox.module.css'
 
-export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
+export interface CheckboxProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'type' | 'size'
+> {
   indeterminate?: boolean
 }
 

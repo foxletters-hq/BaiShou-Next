@@ -4,19 +4,23 @@ import styles from './Switch.module.css'
 export interface SwitchProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
   labelOn?: string
   labelOff?: string
-  /** 默认 md（52×32）；sm 更紧凑，适合设置页标题行等 */
+  /** 默认 sm（42×24）；md 为更大的 52×32 */
   size?: 'sm' | 'md'
 }
 
 export const Switch: React.FC<SwitchProps> = ({
   labelOn,
   labelOff,
-  size = 'md',
+  size = 'sm',
   className = '',
+  onClick,
   ...props
 }) => {
   return (
-    <label className={`${styles.root} ${size === 'sm' ? styles.sizeSm : ''} ${className}`.trim()}>
+    <label
+      className={`${styles.root} ${size === 'md' ? styles.sizeMd : ''} ${className}`.trim()}
+      onClick={onClick}
+    >
       <input type="checkbox" className={styles.input} {...props} />
       <div className={styles.track}>
         <div className={styles.thumb}>

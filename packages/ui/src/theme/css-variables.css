@@ -78,6 +78,7 @@
 
   /* Typography — UI 统一 Noto Sans SC（= 思源黑体简体）；按 html[lang] 切换 CJK 区域字形 */
   --font-family: 'Noto Sans SC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-main: var(--font-family);
   /* 等宽优先；CJK 回退到 --font-family，避免 Diff/代码中文落到系统雅黑 */
   --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, var(--font-family);
   /* 用户可调阅读字号（常规设置「字体大小」）；勿用于设置页 chrome token */
@@ -285,7 +286,7 @@ html[lang='en'] {
   --font-family: 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
-:where(input, textarea, select, [contenteditable='true']) {
+:where(input, textarea, select, button, [contenteditable='true']) {
   font-family: inherit;
 }
 
