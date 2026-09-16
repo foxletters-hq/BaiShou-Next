@@ -50,9 +50,7 @@ describe('fileDiffToUnifiedRows', () => {
       kind: 'hunk',
       text: '@@ -19,7 +20,8 @@'
     })
-    const sortRemove = rows.find(
-      (row) => row.kind === 'remove' && row.text.includes('sortOrder')
-    )
+    const sortRemove = rows.find((row) => row.kind === 'remove' && row.text.includes('sortOrder'))
     const sortAdd = rows.find((row) => row.kind === 'add' && row.text.includes('sortOrder'))
     expect(sortRemove).toMatchObject({
       kind: 'remove',
@@ -67,9 +65,15 @@ describe('fileDiffToUnifiedRows', () => {
       inline: { changed: '2' }
     })
     expect(rows.some((row) => row.kind === 'meta')).toBe(true)
-    expect(rows.some((row) => row.kind !== 'hunk' && row.kind !== 'meta' && 'text' in row && row.text.includes('No newline'))).toBe(
-      false
-    )
+    expect(
+      rows.some(
+        (row) =>
+          row.kind !== 'hunk' &&
+          row.kind !== 'meta' &&
+          'text' in row &&
+          row.text.includes('No newline')
+      )
+    ).toBe(false)
   })
 })
 

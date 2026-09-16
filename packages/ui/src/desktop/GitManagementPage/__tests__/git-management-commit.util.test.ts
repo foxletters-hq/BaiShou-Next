@@ -169,6 +169,8 @@ describe('executeGitCommit', () => {
       vi.useRealTimers()
     }
 
-    expect(onCommit).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/))
+    expect(onCommit).toHaveBeenCalledWith(
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+    )
   })
 })

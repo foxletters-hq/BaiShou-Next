@@ -78,10 +78,7 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
 
   const notifyAuthorNotConfigured = useCallback(() => {
     onToast(
-      t(
-        'version_control.author_not_configured',
-        '请先在配置中填写用户名和邮箱后再提交'
-      ),
+      t('version_control.author_not_configured', '请先在配置中填写用户名和邮箱后再提交'),
       'error'
     )
   }, [onToast, t])
@@ -263,17 +260,26 @@ export function useGitManagementCommit(params: UseGitManagementCommitParams) {
   }, [])
 
   const handleManualCommit = useCallback(
-    () => runExclusive(async () => { await runLocalCommit('smart') }),
+    () =>
+      runExclusive(async () => {
+        await runLocalCommit('smart')
+      }),
     [runExclusive, runLocalCommit]
   )
 
   const handleCommitStaged = useCallback(
-    () => runExclusive(async () => { await runLocalCommit('staged') }),
+    () =>
+      runExclusive(async () => {
+        await runLocalCommit('staged')
+      }),
     [runExclusive, runLocalCommit]
   )
 
   const handleCommitAll = useCallback(
-    () => runExclusive(async () => { await runLocalCommit('all') }),
+    () =>
+      runExclusive(async () => {
+        await runLocalCommit('all')
+      }),
     [runExclusive, runLocalCommit]
   )
 

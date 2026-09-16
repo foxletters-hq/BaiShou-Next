@@ -1,5 +1,6 @@
 import React from 'react'
 import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import type { GitManagementViewModel } from './useGitManagementPage'
 import { RefreshCw } from 'lucide-react'
 
@@ -31,20 +32,22 @@ export const GitVersionCommitBar: React.FC<GitVersionCommitBarProps> = ({ vm }) 
         onChange={(e) => setCommitMessage(e.target.value)}
         placeholder={t('version_control.commit_placeholder', '输入提交消息，留空将使用时间戳')}
       />
-      <button
-        className="gmp-btn gmp-btn-primary"
+      <Button
+        variant="outlined"
+        size="small"
         onClick={handleManualCommit}
         disabled={!canCommit || isCommitActionInFlight}
       >
         {t('version_control.commit_local', '提交')}
-      </button>
-      <button
-        className="gmp-btn gmp-btn-primary"
+      </Button>
+      <Button
+        variant="outlined"
+        size="small"
         onClick={handleCommitAndPush}
         disabled={!canCommit || isCommitActionInFlight}
       >
         {t('version_control.commit_push', '提交并推送')}
-      </button>
+      </Button>
       <button
         className="gmp-btn gmp-icon-btn"
         onClick={() => {
