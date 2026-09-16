@@ -3,6 +3,7 @@ import * as nodePath from 'node:path'
 import {
   GraphLlmExtractionService,
   GraphSyncService,
+  clearLifeGraphData,
   createDefaultGraphExtractLlm,
   estimateExtractionCost,
   mergeDiaryGraphNodeGroup,
@@ -24,6 +25,7 @@ import {
 import {
   GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR,
   GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
+  normalizeGraphFilePath,
   GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
   buildGraphExtractEnqueueItems,
@@ -36,6 +38,8 @@ import {
   graphNodeIdForEntity,
   graphSameNameExistingFromRow,
   GRAPH_GLOBAL_MAX_NODES,
+  GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR,
+  resolveGraphSearchMode,
   expandApprovedGraphReviewEdgeIds,
   isGraphReviewStatus,
   uniqueNonEmptyIds,
@@ -47,7 +51,8 @@ import {
   pathService,
   vaultService,
   resolveActiveVaultId,
-  resolveVaultNameById
+  resolveVaultNameById,
+  getActiveVaultShadowRepo
 } from './vault.ipc'
 import {
   ensureRawDataRuntime,
@@ -78,16 +83,15 @@ async function resolveExtractLlm() {
   const { settingsManager } = await import('./settings.ipc')
   const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
   const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
+  if (!modelId) throw new Error('graph-extract-not-configured')
   const provider = await getActiveProvider(providerId)
   return createDefaultGraphExtractLlm({ provider, modelId })
 }
 
-async function buildExtractionService(): Promise<GraphLlmExtractionService> {
-  const { graphManager, freshness } = ensureRawDataRuntime()
-  const repo = requireGraphRepo()
-  const llm = await resolveExtractLlm()
-  let embedder: { embedQuery?: (text: string) => Promise<number[] | null>; modelId?: string } | null =
-    null
+async function resolveGraphQueryEmbedder(): Promise<{
+  embedQuery: (text: string) => Promise<number[] | null>
+  modelId?: string
+} | null> {
   try {
     const { resolveEmbeddingSystemModels } = await import('./agent-helpers')
     const { EmbeddingAdapter } = await import('@baishou/ai')
@@ -95,21 +99,26 @@ async function buildExtractionService(): Promise<GraphLlmExtractionService> {
       '@baishou/database-desktop'
     )
     const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
-    if (embeddingProvider && embeddingModelId && connectionManager.isConnected()) {
-      const hsRepo = new SqliteHybridSearchRepository(
-        createSqlExecutorFromDrizzleDb(connectionManager.getDb())
-      )
-      const adapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
-      if (adapter.isConfigured) {
-        embedder = {
-          embedQuery: (text) => adapter.embedQuery(text),
-          modelId: adapter.embeddingModelId
-        }
-      }
+    if (!embeddingProvider || !embeddingModelId || !connectionManager.isConnected()) return null
+    const hsRepo = new SqliteHybridSearchRepository(
+      createSqlExecutorFromDrizzleDb(connectionManager.getDb())
+    )
+    const adapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
+    if (!adapter.isConfigured) return null
+    return {
+      embedQuery: (text) => adapter.embedQuery(text),
+      modelId: adapter.embeddingModelId
     }
   } catch {
-    embedder = null
+    return null
   }
+}
+
+async function buildExtractionService(): Promise<GraphLlmExtractionService> {
+  const { graphManager, freshness } = ensureRawDataRuntime()
+  const repo = requireGraphRepo()
+  const llm = await resolveExtractLlm()
+  const embedder = await resolveGraphQueryEmbedder()
   const graphSync = new GraphSyncService(graphManager, repo, embedder)
   const alignDeps = await resolveDesktopGraphExtractAlignDeps(requireVaultId())
   return new GraphLlmExtractionService(
@@ -292,7 +301,12 @@ async function resolveExtractSelfName(): Promise<string> {
 async function enqueueGraphExtract(
   extractQueue: GraphExtractQueueService,
   opts?: { filePaths?: string[]; concurrency?: number }
-): Promise<{ queued: number; totalPending: number; skippedNotEmbedded: string[] }> {
+): Promise<{
+  queued: number
+  totalPending: number
+  skippedNotEmbedded: string[]
+  blockedPendingEmbed?: number
+}> {
   await resolveExtractSelfName()
   if (opts?.concurrency != null) {
     extractQueue.setConcurrency(opts.concurrency)
@@ -301,6 +315,17 @@ async function enqueueGraphExtract(
   const alignDeps = await resolveDesktopGraphExtractAlignDeps(vaultId)
   if (!(await alignDeps.isEmbeddingConfigured?.())) {
     throw new Error(GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR)
+  }
+  const { getPendingEmbedCountsForActiveVault } =
+    await import('../services/pending-embed-counts.service')
+  const pendingCounts = await getPendingEmbedCountsForActiveVault()
+  if (pendingCounts.diaries > 0) {
+    return {
+      queued: 0,
+      totalPending: 0,
+      skippedNotEmbedded: [],
+      blockedPendingEmbed: pendingCounts.diaries
+    }
   }
   const pending = await getDerivedFreshness().listPendingReextract()
   const wanted = opts?.filePaths?.length ? opts.filePaths : pending.map((p) => p.filePath)
@@ -409,6 +434,7 @@ export function registerGraphIPC(): void {
       failed: result.skippedNotEmbedded.length,
       queued: result.queued,
       skippedNotEmbedded: result.skippedNotEmbedded,
+      blockedPendingEmbed: result.blockedPendingEmbed,
       errors: result.skippedNotEmbedded.map((filePath) => ({
         filePath,
           message: GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR
@@ -461,12 +487,36 @@ export function registerGraphIPC(): void {
 
   ipcMain.handle(
     'graph:search',
-    async (_e, opts: { query: string; nodeTypes?: string[]; limit?: number }) => {
+    async (
+      _e,
+      opts: { query: string; nodeTypes?: string[]; limit?: number; mode?: string }
+    ) => {
       const repo = requireGraphRepo()
-      return repo.searchNodesByName(requireVaultId(), opts.query, {
-        nodeTypes: opts.nodeTypes,
-        limit: opts.limit ?? 20
+      const vaultId = requireVaultId()
+      const limit = opts.limit ?? 20
+      const mode = resolveGraphSearchMode(opts.mode)
+      if (mode !== 'semantic') {
+        return repo.searchNodesByName(vaultId, opts.query, {
+          nodeTypes: opts.nodeTypes,
+          limit
+        })
+      }
+      const embedder = await resolveGraphQueryEmbedder()
+      if (!embedder) {
+        throw new Error(GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR)
+      }
+      const vector = await embedder.embedQuery(opts.query)
+      if (!vector?.length) return []
+      const typeFilter =
+        opts.nodeTypes && opts.nodeTypes.length > 0 ? new Set(opts.nodeTypes) : null
+      const hits = await repo.searchNodesByVector(vaultId, vector, limit, {
+        modelId: embedder.modelId,
+        nodeType: opts.nodeTypes?.length === 1 ? opts.nodeTypes[0] : undefined
       })
+      return hits
+        .filter((row) => row.reviewStatus !== 'rejected')
+        .filter((row) => !typeFilter || typeFilter.has(row.nodeType))
+        .map(({ distance: _distance, ...row }) => row)
     }
   )
 
@@ -496,13 +546,7 @@ export function registerGraphIPC(): void {
   })
 
   ipcMain.handle('graph:list-pending', async () => {
-    const repo = requireGraphRepo()
-    const vaultId = requireVaultId()
-    const [nodes, edges] = await Promise.all([
-      repo.listPendingNodes(vaultId),
-      repo.listPendingEdges(vaultId)
-    ])
-    return { nodes, edges }
+    return requireGraphRepo().listPendingGraph(requireVaultId())
   })
 
   ipcMain.handle(
@@ -707,6 +751,31 @@ export function registerGraphIPC(): void {
     nodeTypes: [...GRAPH_NODE_TYPES],
     edgeTypes: [...GRAPH_EDGE_TYPES]
   }))
+
+  ipcMain.handle('graph:resolve-journal', async (_e, opts?: { date?: string }) => {
+    const date = String(opts?.date || '').trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+    const shadow = await getActiveVaultShadowRepo().findByDate(date)
+    const filePath = normalizeGraphFilePath(String(shadow?.filePath || ''))
+    if (!filePath) return null
+    return { filePath, date }
+  })
+
+  ipcMain.handle('graph:clear-life-graph', async () => {
+    const { graphManager, freshness } = ensureRawDataRuntime()
+    const result = await clearLifeGraphData({
+      vaultId: requireVaultId(),
+      graphRepo: requireGraphRepo(),
+      graphManager,
+      freshness,
+      stopExtract: () => extractQueue.stop()
+    })
+    const { invalidatePendingEmbedCountsCache } = await import(
+      '../services/pending-embed-counts.service'
+    )
+    invalidatePendingEmbedCountsCache()
+    return { ok: true, ...result }
+  })
 
   logger.info('[GraphIPC] Graph IPC registered')
 }

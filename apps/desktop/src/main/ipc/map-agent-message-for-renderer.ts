@@ -3,6 +3,7 @@ import {
   normalizeFileCiteRefs,
   normalizePartData,
   normalizeSkillCiteRefs,
+  readAssistantStreamStatus,
   sortAgentMessageParts,
   unwrapMessageMetadataForDisplay,
   type FileCiteRef,
@@ -27,6 +28,7 @@ export type RendererAgentMessage = AgentMessage & {
   parts?: AgentPart[]
   skillRefs?: SkillCiteRef[]
   fileRefs?: FileCiteRef[]
+  streamStatus?: 'in_progress'
 }
 
 function textFromPartData(data: unknown): string {
@@ -113,6 +115,7 @@ export function mapAgentMessageForRenderer(
   const attachments = mapAttachmentsFromParts(orderedParts)
   const compactionPart = orderedParts.find((p) => p.type === 'compaction')
   const compactionRecord = compactionPart ? parseCompactionMarkerData(compactionPart.data) : null
+  const streamStatus = readAssistantStreamStatus(orderedParts)
 
   return {
     ...msg,
@@ -124,6 +127,7 @@ export function mapAgentMessageForRenderer(
     compactionRecord,
     ...(skillRefs ? { skillRefs } : {}),
     ...(fileRefs ? { fileRefs } : {}),
+    ...(streamStatus ? { streamStatus } : {}),
     ...(includeParts ? { parts: orderedParts } : {})
   }
 }

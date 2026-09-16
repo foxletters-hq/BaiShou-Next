@@ -7,6 +7,7 @@ import {
   KnowledgeSearchService,
   NotebookGraphRawManager,
   listLiveGraphSourceIds,
+  loadExtractedKnowledgeWindows,
   probeExtractEngineCapabilities,
   probePdfPageTexts,
   recommendVisionExtract,
@@ -16,9 +17,11 @@ import {
 import { KnowledgeEmbeddingStorage, fetchUrlAsMarkdown } from '@baishou/ai'
 import {
   clampOcrConcurrency,
+  DEFAULT_OCR_CONCURRENCY,
   isVisionModel,
   logger,
   notebookCoverImageCandidates,
+  normalizeKnowledgeDefaultExtractEngine,
   normalizeKnowledgeImportProcessMode,
   normalizeNotebookCoverImage,
   type GlobalModelsConfig,
@@ -40,11 +43,11 @@ import { settingsManager } from './settings.ipc'
 import { pathService, resolveActiveVaultId } from './vault.ipc'
 
 const DEFAULT_KNOWLEDGE_CONFIG: KnowledgeConfig = {
-  defaultExtractEngine: 'simple',
+  defaultExtractEngine: 'ocr',
   importProcessMode: 'both',
   ocrLanguage: 'chi_sim+eng',
   ocrDpi: 250,
-  ocrConcurrency: 1,
+  ocrConcurrency: DEFAULT_OCR_CONCURRENCY,
   multiQueryAsk: false
 }
 
@@ -125,6 +128,9 @@ async function loadKnowledgeConfig(): Promise<KnowledgeConfig> {
   const raw = (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
   const merged = { ...DEFAULT_KNOWLEDGE_CONFIG, ...raw }
   merged.importProcessMode = normalizeKnowledgeImportProcessMode(merged.importProcessMode)
+  merged.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(
+    merged.defaultExtractEngine
+  )
   return merged
 }
 
@@ -383,7 +389,10 @@ export function registerKnowledgeIPC(): void {
       const result = await svc.importSource({
         ...payload,
         importProcessMode,
-        extractEngine: input.extractEngine || cfg.defaultExtractEngine || 'simple',
+        extractEngine:
+          input.extractEngine ||
+          cfg.defaultExtractEngine ||
+          normalizeKnowledgeDefaultExtractEngine(undefined),
         fileName:
           payload.fileName ||
           (payload.absolutePath ? path.basename(payload.absolutePath) : payload.title)
@@ -463,6 +472,30 @@ export function registerKnowledgeIPC(): void {
     scheduleConsumeKnowledgeIngestJobs('after-rebuild')
     return { ok: true }
   })
+
+  handleKnowledgeIpc(
+    'knowledge:manage-data',
+    async (
+      _e,
+      input: {
+        notebookId?: string
+        action?: 'clear' | 'reprocess'
+        vector?: boolean
+        graph?: boolean
+      }
+    ) => {
+      const svc = getKnowledgeIngestService()
+      const result = await svc.manageNotebookData(String(input?.notebookId || ''), {
+        action: input?.action === 'clear' ? 'clear' : 'reprocess',
+        vector: Boolean(input?.vector),
+        graph: Boolean(input?.graph)
+      })
+      if (input?.action !== 'clear') {
+        scheduleConsumeKnowledgeIngestJobs('after-manage-data')
+      }
+      return result
+    }
+  )
 
   handleKnowledgeIpc('knowledge:get-stats', async (_e, notebookId?: string) => {
     const repo = requireKnowledgeRepo()
@@ -692,6 +725,9 @@ export function registerKnowledgeIPC(): void {
     if (patch.importProcessMode !== undefined) {
       next.importProcessMode = normalizeKnowledgeImportProcessMode(patch.importProcessMode)
     }
+    next.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(
+      next.defaultExtractEngine
+    )
     await settingsManager.set('knowledge_config', next)
     resetKnowledgeIngestService()
     return next
@@ -706,6 +742,33 @@ export function registerKnowledgeIPC(): void {
       const max = Math.max(200, input.maxChars ?? 4000)
       if (text.length <= max) return { text, truncated: false }
       return { text: text.slice(0, max), truncated: true }
+    }
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:get-extracted-windows',
+    async (
+      _e,
+      input: {
+        notebookId: string
+        windows: Array<{ sourceId: string; windowIndex: number }>
+      }
+    ) => {
+      const notebookId = String(input?.notebookId || '').trim()
+      if (!notebookId) throw new Error('notebookId required')
+      const repo = requireKnowledgeRepo()
+      const notebookManager = getNotebookRawManager()
+      const items = await loadExtractedKnowledgeWindows({
+        notebookId,
+        windows: Array.isArray(input?.windows) ? input.windows : [],
+        readExtractedText: (nb, sourceId) => notebookManager.readExtractedText(nb, sourceId),
+        readPagesJson: (nb, sourceId) => notebookManager.readPagesJson(nb, sourceId),
+        getSource: async (sourceId) => {
+          const source = await repo.getSource(sourceId)
+          return source ? { notebookId: source.notebookId, title: source.title } : null
+        }
+      })
+      return { items }
     }
   )
 

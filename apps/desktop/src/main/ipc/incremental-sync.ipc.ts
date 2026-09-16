@@ -283,6 +283,15 @@ async function afterIncrementalSync(
     })
   }
 
+  const { invalidatePendingEmbedCountsCache } =
+    await import('../services/pending-embed-counts.service')
+  invalidatePendingEmbedCountsCache()
+  const { BrowserWindow } = await import('electron')
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('diary:sync-event', { type: 'embed-pending-changed' })
+    }
+  }
   logger.warn('[IncrementalSync][PostSync] done')
 }
 
