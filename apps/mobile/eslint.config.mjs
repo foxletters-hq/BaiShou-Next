@@ -48,6 +48,12 @@ export default [
             {
               name: '@baishou/core',
               message: '请使用 @baishou/core-mobile，避免拉入桌面 Git/导入模块。'
+            },
+            {
+              name: 'react-native',
+              importNames: ['Switch', 'Checkbox'],
+              message:
+                '请从 @baishou/ui/native 引入 Switch 或 Checkbox，不要用 react-native 自带的。见 packages/ui/COMPONENTS.md。'
             }
           ],
           patterns: [

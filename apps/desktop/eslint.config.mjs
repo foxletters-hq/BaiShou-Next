@@ -17,5 +17,26 @@ export default [
     rules: {
       '@typescript-eslint/no-require-imports': 'off'
     }
+  },
+  {
+    // 开关与勾选框只允许用 @baishou/ui 的实现，页面里不得再画一份
+    files: ['src/renderer/**/*.tsx'],
+    ignores: ['**/__tests__/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'JSXAttribute[name.name="type"][value.value="checkbox"]',
+          message:
+            '请从 @baishou/ui 引入 Checkbox 或 Switch，不要在页面里写原生 checkbox。见 packages/ui/COMPONENTS.md。'
+        },
+        {
+          selector:
+            'JSXAttribute[name.name="type"] > JSXExpressionContainer > Literal[value="checkbox"]',
+          message:
+            '请从 @baishou/ui 引入 Checkbox 或 Switch，不要在页面里写原生 checkbox。见 packages/ui/COMPONENTS.md。'
+        }
+      ]
+    }
   }
 ]
