@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { View, Text } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Sparkles } from 'lucide-react-native'
+import { useAgentIdleGreeting } from '../../../hooks/useAgentIdleGreeting'
 import { StreamingBubble } from '@baishou/ui/native'
 import {
   logAgentScrollEvent,
@@ -386,17 +387,22 @@ export function useAgentStreamingPresentation(deps: {
     return Math.max(48, Math.round((listViewportHeight - 280) / 2) - 56)
   }, [listViewportHeight])
 
+  const showIdleGreeting = !currentSessionId && messages.length === 0 && !isStreaming && !isStreamBridgeActive
+  const idleGreeting = useAgentIdleGreeting(showIdleGreeting)
+
   const renderEmptyState = () => (
     <View style={[styles.empty, { marginTop: emptyOffsetTop }]}>
       <View style={[styles.emptyIconCircle, { backgroundColor: colors.primary + '26' }]}>
         <Sparkles size={38} color={colors.primary} strokeWidth={2} style={{ opacity: 0.7 }} />
       </View>
       <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
-        {t('agent.chat.start_chat', '开始和伙伴对话')}
+        {showIdleGreeting ? idleGreeting : t('agent.chat.start_chat', '开始和伙伴对话')}
       </Text>
-      <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
-        {t('agent.chat.empty_hint', '试试问：「我这周写了什么日记？」')}
-      </Text>
+      {!showIdleGreeting ? (
+        <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
+          {t('agent.chat.empty_hint', '试试问：「我这周写了什么日记？」')}
+        </Text>
+      ) : null}
     </View>
   )
 

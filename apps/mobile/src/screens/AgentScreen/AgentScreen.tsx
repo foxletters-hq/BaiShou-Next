@@ -27,6 +27,8 @@ export const AgentScreen = () => {
           userProfile={c.userProfile}
           displayModelName={c.displayModelName}
           currentProviderId={c.currentProviderId}
+          currentModelId={c.currentModelId}
+          currentSessionId={c.currentSessionId}
           currentProviderType={c.currentProviderType}
           totalCostMicros={c.totalCostMicros}
           setDrawerOpen={c.setDrawerOpen}
@@ -113,7 +115,6 @@ export const AgentScreen = () => {
           toggleSearchMode={c.toggleSearchMode}
           ttsMode={c.ttsMode}
           toggleTtsMode={c.toggleTtsMode}
-          currentSessionId={c.currentSessionId}
         />
         <AgentGatePendingList
           currentSessionId={c.currentSessionId}

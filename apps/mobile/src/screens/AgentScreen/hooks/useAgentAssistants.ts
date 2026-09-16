@@ -150,8 +150,8 @@ export function useAgentAssistants(deps: {
 
   const handleSelectAssistantWithTracking = useCallback(
     async (assistant: AssistantSummary) => {
-      const full = assistants.find((a) => a.id === assistant.id)
-      if (!full) return
+      const full = assistants.find((a) => a.id === assistant.id) ?? assistant
+      if (!full?.id) return
 
       if (dbReady && services) {
         try {

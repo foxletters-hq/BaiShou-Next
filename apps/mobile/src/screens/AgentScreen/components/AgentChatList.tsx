@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   View,
   StyleSheet,
@@ -9,18 +9,25 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent
 } from 'react-native'
-import { InputBar } from '@baishou/ui/native'
+import { AgentGatePartCard, InputBar } from '@baishou/ui/native'
+import { useAgentGateInboxStore } from '@baishou/store'
 
 type ComposerOnSend = (
   text: string,
   attachments?: unknown[],
-  searchMode?: boolean
+  searchMode?: boolean,
+  meta?: {
+    displayText?: string
+    skillRefs?: Array<{ command: string; content: string }>
+    fileRefs?: unknown[]
+  }
 ) => boolean | Promise<boolean>
 import { mobileComposerDraftStorage } from '../../../lib/mobile-composer-draft.storage'
 import Animated from 'react-native-reanimated'
 import { ChevronDown } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import { AgentChatAppBar } from '../../../components/AgentChatAppBar'
+import { SessionReasoningSelect } from './SessionReasoningSelect'
 import { AgentMessageRow } from '../../../components/AgentMessageRow'
 import { AgentDrawerSwipeZone } from '../../../components/AgentDrawerSwipeZone'
 import { logAgentScrollEvent } from '../../../utils/agent-scroll-diagnostics'
@@ -38,6 +45,7 @@ export type AgentChatListProps = {
   userProfile: { chatBackgroundPath?: string | null }
   displayModelName: string | null
   currentProviderId: string | null
+  currentModelId?: string | null
   currentProviderType: string | undefined
   totalCostMicros: number
   setDrawerOpen: (open: boolean) => void
@@ -130,6 +138,21 @@ export type AgentChatListProps = {
 export function AgentChatList(props: AgentChatListProps) {
   const p = props
   const [notebookMountOpen, setNotebookMountOpen] = useState(false)
+  const resolvedLiveAll = useAgentGateInboxStore((state) => state.resolvedLive)
+  const liveGateParts = useMemo(() => {
+    const persisted = new Set<string>()
+    for (const msg of p.messages ?? []) {
+      for (const part of msg.parts ?? []) {
+        const requestId = part?.type === 'agent_gate' ? part.data?.request?.id : undefined
+        if (requestId) persisted.add(requestId)
+      }
+    }
+    return resolvedLiveAll.filter(
+      (item) =>
+        (!p.currentSessionId || item.request.sessionId === p.currentSessionId) &&
+        !persisted.has(item.request.id)
+    )
+  }, [p.currentSessionId, p.messages, resolvedLiveAll])
   const ChatBackgroundWrapper = (
     p.resolvedChatBackgroundUri ? ImageBackground : View
   ) as typeof View
@@ -166,6 +189,11 @@ export function AgentChatList(props: AgentChatListProps) {
           onMenuPress={() => p.setDrawerOpen(true)}
           onModelPress={() => p.setShowModelSwitcher(true)}
           onCostPress={() => p.setShowCostDialog(true)}
+        />
+        <SessionReasoningSelect
+          sessionId={p.currentSessionId ?? null}
+          providerId={p.currentProviderId}
+          modelId={p.currentModelId ?? null}
         />
 
         <AgentDrawerSwipeZone enabled={p.drawerSwipeEnabled} onOpen={() => p.setDrawerOpen(true)}>
@@ -359,6 +387,9 @@ export function AgentChatList(props: AgentChatListProps) {
                 )
               })}
 
+              {liveGateParts.map((data) => (
+                <AgentGatePartCard key={data.request.id} data={data} />
+              ))}
               {p.listFooter}
             </View>
           </ScrollView>

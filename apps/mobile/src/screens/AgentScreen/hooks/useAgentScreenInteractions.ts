@@ -20,7 +20,16 @@ export function useAgentScreenInteractions(deps: {
   flatListRef: RefObject<ScrollView | null>
   handleComposerFocus: () => void
   beginFollowIfAtBottom: (listRef: RefObject<ScrollView | null>) => void
-  handleSend: (text: string, attachments?: unknown[], sendSearchMode?: boolean) => Promise<boolean>
+  handleSend: (
+    text: string,
+    attachments?: unknown[],
+    sendSearchMode?: boolean,
+    meta?: {
+      displayText?: string
+      skillRefs?: Array<{ command: string; content: string }>
+      fileRefs?: unknown[]
+    }
+  ) => Promise<boolean>
   setShowShortcutSheet: (open: boolean) => void
   currentSessionId: string | null
   currentAssistantName: string | undefined
@@ -60,9 +69,18 @@ export function useAgentScreenInteractions(deps: {
   }, [handleComposerFocus, beginFollowIfAtBottom, flatListRef])
 
   const handleSendWithScroll = useCallback(
-    async (text: string, attachments?: unknown[], sendSearchMode?: boolean): Promise<boolean> => {
+    async (
+      text: string,
+      attachments?: unknown[],
+      sendSearchMode?: boolean,
+      meta?: {
+        displayText?: string
+        skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: unknown[]
+      }
+    ): Promise<boolean> => {
       beginFollowIfAtBottom(flatListRef)
-      return handleSend(text, attachments, sendSearchMode)
+      return handleSend(text, attachments, sendSearchMode, meta)
     },
     [beginFollowIfAtBottom, handleSend, flatListRef]
   )
