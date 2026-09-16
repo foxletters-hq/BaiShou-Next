@@ -108,7 +108,11 @@ export const EmojiSettingsGroupsView: React.FC<EmojiSettingsGroupsViewProps> = (
             <div key={group.id} className={`${styles.toolCard} ${styles.enabled}`}>
               <div className={styles.cardMain}>
                 <div className={styles.emojiGroupTile} aria-hidden>
-                  {group.name.trim().slice(0, 1) || '组'}
+                  {group.name.trim().slice(0, 1) ||
+                    t(
+                      'auto.packages.ui.src.desktop.EmojiSettingsView.EmojiSettingsGroupsView.L111',
+                      '组'
+                    )}
                 </div>
                 <div className={styles.toolInfo}>
                   <div className={styles.toolNameRow}>

@@ -4,6 +4,7 @@ import { ImagePlus, Trash2 } from 'lucide-react'
 import type { EmojiGroup, EmojiItem, EmojiToolConfig } from '@baishou/shared'
 import { findEmojiGroup, normalizeEmojiToolConfig, upsertEmojiGroup } from '@baishou/shared'
 import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import { toast } from '../Toast/useToast'
 import styles from '../AgentToolsView/AgentToolsView.module.css'
 
@@ -139,7 +140,9 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
   return (
     <div className={layout === 'dialog' ? styles.emojiDialogBody : styles.emojiSettingsPage}>
       <div className={styles.emojiDialogField}>
-        <span className={styles.emojiFieldLabel}>{t('agent.tools.emoji_group_name', '组名称')}</span>
+        <span className={styles.emojiFieldLabel}>
+          {t('agent.tools.emoji_group_name', '组名称')}
+        </span>
         <Input
           fieldSize="small"
           value={group.name}
@@ -153,15 +156,15 @@ export const EmojiGroupDetailView: React.FC<EmojiGroupDetailViewProps> = ({
         <span className={styles.emojiFieldLabel}>
           {t('agent.tools.emoji_stickers_title', '表情贴图')}
         </span>
-        <button
+        <Button
           type="button"
-          className={styles.emojiAddGroupBtn}
+          variant="outlined"
+          size="small"
           onClick={() => void handlePickAndImport()}
           disabled={isLoading}
         >
-          <ImagePlus size={16} />
           {t('agent.tools.emoji_upload', '上传表情')}
-        </button>
+        </Button>
       </div>
 
       {group.emojis && group.emojis.length > 0 ? (
