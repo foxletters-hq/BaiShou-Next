@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useEffect, useRef } from 'react'
 import { FileText, History } from 'lucide-react'
 import styles from './InputBar.module.css'
@@ -51,7 +52,11 @@ export function FileMentionPicker({
     return (
       <div className={styles.skillSlashPicker} ref={listRef}>
         <p className={styles.skillSlashEmpty}>
-          {emptyHint || '输入文件名以搜索工作区'}
+          {emptyHint ||
+            i18n.t(
+              'auto.packages.ui.src.desktop.InputBar.FileMentionPicker.L53',
+              '输入文件名以搜索工作区'
+            )}
         </p>
       </div>
     )
@@ -72,11 +77,17 @@ export function FileMentionPicker({
           onClick={() => item.onSelect()}
         >
           <span className={styles.skillSlashIcon} aria-hidden>
-            {item.group === 'recent' ? <History size={14} strokeWidth={2} /> : <FileText size={14} strokeWidth={2} />}
+            {item.group === 'recent' ? (
+              <History size={14} strokeWidth={2} />
+            ) : (
+              <FileText size={14} strokeWidth={2} />
+            )}
           </span>
           <span className={styles.skillSlashName}>{item.path}</span>
           <span className={styles.skillSlashDesc}>
-            {item.group === 'recent' ? '最近打开' : '工作区文件'}
+            {item.group === 'recent'
+              ? i18n.t('auto.packages.ui.src.desktop.InputBar.FileMentionPicker.L81', '最近打开')
+              : i18n.t('auto.packages.ui.src.desktop.InputBar.FileMentionPicker.L81', '工作区文件')}
           </span>
         </button>
       ))}
