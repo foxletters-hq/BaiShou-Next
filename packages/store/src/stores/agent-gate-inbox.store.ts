@@ -1,4 +1,12 @@
-import type { AgentGateConfigScope, AgentGateRequest } from '@baishou/shared'
+import {
+  AgentGateReply,
+  AgentGateRequestStatus,
+  collapseAgentGatePendingRequests,
+  type AgentGateConfigScope,
+  type AgentGatePartData,
+  type AgentGateRequest,
+  type AgentGateResolution
+} from '@baishou/shared'
 import { createStore } from '../create-store'
 
 function sortByCreatedAt(requests: AgentGateRequest[]): AgentGateRequest[] {
@@ -32,9 +40,13 @@ function isRepliedTombstone(requestId: string): boolean {
   return repliedTombstones.has(requestId)
 }
 
+const MAX_RESOLVED_LIVE = 12
+
 export interface AgentGateInboxState {
   /** 全局待确认队列（按 createdAt 排序后的真相源） */
   pending: AgentGateRequest[]
+  /** 本轮刚确认、尚未写入消息气泡的门控结果 */
+  resolvedLive: AgentGatePartData[]
   /** 用户在某一会话中手动聚焦的 requestId */
   focusedRequestIdBySession: Record<string, string | null>
   /** 水合是否完成（至少成功一次 listPending） */
@@ -51,7 +63,7 @@ export interface AgentGateHydrateOptions {
 
 export interface AgentGateInboxActions {
   upsertAsked: (request: AgentGateRequest) => void
-  removeReplied: (requestId: string) => void
+  removeReplied: (requestId: string, resolution?: AgentGateResolution) => void
   hydrate: (requests: AgentGateRequest[], options?: AgentGateHydrateOptions) => void
   replaceAll: (requests: AgentGateRequest[]) => void
   setFocusedRequest: (sessionId: string, requestId: string | null) => void
@@ -63,6 +75,7 @@ export type AgentGateInboxStore = AgentGateInboxState & AgentGateInboxActions
 
 const initialState: AgentGateInboxState = {
   pending: [],
+  resolvedLive: [],
   focusedRequestIdBySession: {},
   hydrated: false
 }
@@ -77,14 +90,15 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
       repliedTombstones.delete(request.id)
       set((state: AgentGateInboxState) => {
         const without = state.pending.filter((item) => item.id !== request.id)
-        return { pending: sortByCreatedAt([...without, request]) }
+        return { pending: collapseAgentGatePendingRequests(sortByCreatedAt([...without, request])) }
       })
     },
 
-    removeReplied: (requestId) => {
+    removeReplied: (requestId, resolution) => {
       if (!requestId) return
       markRepliedTombstone(requestId)
       set((state: AgentGateInboxState) => {
+        const archived = state.pending.find((item) => item.id === requestId)
         const pending = state.pending.filter((item) => item.id !== requestId)
         const focusedRequestIdBySession = { ...state.focusedRequestIdBySession }
         for (const [sessionId, focusedId] of Object.entries(focusedRequestIdBySession)) {
@@ -92,7 +106,31 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
             focusedRequestIdBySession[sessionId] = null
           }
         }
-        return { pending, focusedRequestIdBySession }
+        const resolvedAt = resolution?.resolvedAt ?? Date.now()
+        const nextResolution: AgentGateResolution = resolution ?? {
+          requestId,
+          reply: AgentGateReply.Once,
+          resolvedAt
+        }
+        let resolvedLive = state.resolvedLive
+        if (archived) {
+          resolvedLive = [
+            ...state.resolvedLive.filter((item) => item.request.id !== requestId),
+            {
+              request: {
+                ...archived,
+                status: AgentGateRequestStatus.Resolved,
+                resolvedAt
+              },
+              resolution: nextResolution
+            }
+          ].slice(-MAX_RESOLVED_LIVE)
+        } else if (resolution) {
+          resolvedLive = state.resolvedLive.map((item) =>
+            item.request.id === requestId ? { ...item, resolution } : item
+          )
+        }
+        return { pending, focusedRequestIdBySession, resolvedLive }
       })
     },
 
@@ -117,7 +155,7 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
           byId.set(item.id, item)
         }
         return {
-          pending: sortByCreatedAt([...byId.values()]),
+          pending: collapseAgentGatePendingRequests(sortByCreatedAt([...byId.values()])),
           hydrated: true
         }
       })
@@ -125,7 +163,9 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
 
     replaceAll: (requests) => {
       set({
-        pending: sortByCreatedAt(Array.isArray(requests) ? requests.filter((r) => r?.id) : []),
+        pending: collapseAgentGatePendingRequests(
+          sortByCreatedAt(Array.isArray(requests) ? requests.filter((r) => r?.id) : [])
+        ),
         hydrated: true
       })
     },
@@ -144,9 +184,10 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
       if (!sessionId) return
       set((state: AgentGateInboxState) => {
         const pending = state.pending.filter((item) => item.sessionId !== sessionId)
+        const resolvedLive = state.resolvedLive.filter((item) => item.request.sessionId !== sessionId)
         const focusedRequestIdBySession = { ...state.focusedRequestIdBySession }
         delete focusedRequestIdBySession[sessionId]
-        return { pending, focusedRequestIdBySession }
+        return { pending, resolvedLive, focusedRequestIdBySession }
       })
     },
 
@@ -215,6 +256,18 @@ export function selectActivePendingForSession(
   return queue[0] ?? null
 }
 
+export function selectQueueNeighborId(
+  state: AgentGateInboxState,
+  sessionId: string | null | undefined,
+  requestId: string | null | undefined,
+  delta: -1 | 1
+): string | null {
+  const queue = selectPendingForSession(state, sessionId)
+  const index = queue.findIndex((item) => item.id === requestId)
+  if (index < 0) return null
+  return queue[index + delta]?.id ?? null
+}
+
 export function selectQueuePosition(
   state: AgentGateInboxState,
   sessionId: string | null | undefined,
@@ -233,6 +286,27 @@ export function selectQueuePosition(
 }
 
 /** 同会话中与当前请求相同 action 的数量（含自身），用于 Always/Reject 级联提示 */
+const EMPTY_RESOLVED_LIVE: AgentGatePartData[] = []
+let resolvedLiveCacheSource: AgentGatePartData[] | null = null
+const resolvedLiveCacheBySession = new Map<string, AgentGatePartData[]>()
+
+export function selectResolvedLiveForSession(
+  state: AgentGateInboxState,
+  sessionId: string | null | undefined
+): AgentGatePartData[] {
+  if (!sessionId) return EMPTY_RESOLVED_LIVE
+  if (resolvedLiveCacheSource !== state.resolvedLive) {
+    resolvedLiveCacheBySession.clear()
+    resolvedLiveCacheSource = state.resolvedLive
+  }
+  const cached = resolvedLiveCacheBySession.get(sessionId)
+  if (cached) return cached
+  const next = state.resolvedLive.filter((item) => item.request.sessionId === sessionId)
+  const stable = next.length === 0 ? EMPTY_RESOLVED_LIVE : next
+  resolvedLiveCacheBySession.set(sessionId, stable)
+  return stable
+}
+
 export function selectSameActionCountInSession(
   state: AgentGateInboxState,
   sessionId: string | null | undefined,

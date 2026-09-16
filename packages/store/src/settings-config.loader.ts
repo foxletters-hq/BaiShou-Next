@@ -98,15 +98,6 @@ export function getDefaultGlobalModels(): GlobalModelsConfig {
   }
 }
 
-/** 图关系槽位强制与对话模型一致（只读展示，不可单独配置） */
-export function ensureGlobalGraphModelsAligned(models: GlobalModelsConfig): GlobalModelsConfig {
-  return {
-    ...models,
-    globalGraphProviderId: models.globalDialogueProviderId || '',
-    globalGraphModelId: models.globalDialogueModelId || ''
-  }
-}
-
 function getDefaultAgentBehavior(): AgentBehaviorConfig {
   return {
     agentContextWindowSize: 20,
@@ -125,7 +116,8 @@ export function getDefaultRagConfig(): RagConfig {
     ragEnabled: true,
     ragTopK: 20,
     ragSimilarityThreshold: 0.4,
-    batchEmbedConcurrency: 3
+    batchEmbedConcurrency: 3,
+    startupEmbedReminder: true
   }
 }
 
@@ -237,10 +229,10 @@ export function normalizeSettingsConfigKey(
       return { providers: (raw as AIProviderConfig[] | null) || [] }
     case 'globalModels':
       return {
-        globalModels: ensureGlobalGraphModelsAligned({
+        globalModels: {
           ...getDefaultGlobalModels(),
           ...((raw as GlobalModelsConfig | null) || {})
-        })
+        }
       }
     case 'agentBehavior': {
       const behavior = raw as AgentBehaviorConfig | null
