@@ -17,6 +17,7 @@
     "./hooks/*": "./src/hooks/*"
   },
   "scripts": {
+    "lint": "node ../../scripts/run-eslint-with-budget.mjs ui",
     "typecheck": "tsc -b --dry",
     "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.ts"
   },

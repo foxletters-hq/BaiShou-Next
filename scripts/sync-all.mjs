@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * 统一同步入口：图标、版本号、供应商图标、视觉模型快照。
+ * 统一同步入口：图标、版本号、供应商图标、视觉模型快照、UI 组件索引。
  *
  *   pnpm sync              全部同步（manifest 未变时各子脚本会快速跳过）
  *   pnpm sync:check        CI 校验生成物是否最新
- *   pnpm sync --only=icons 仅同步应用图标（逗号分隔：icons,version,providers,vision）
+ *   pnpm sync --only=icons 仅同步应用图标（逗号分隔：icons,version,providers,vision,components）
  */
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
@@ -28,14 +28,15 @@ const steps = [
   { key: 'icons', label: '应用图标', script: 'sync-app-icon.mjs' },
   { key: 'version', label: '版本号', script: 'sync-app-version.mjs' },
   { key: 'providers', label: '供应商图标', script: 'sync-provider-icons.mjs' },
-  { key: 'vision', label: '视觉模型快照', script: 'sync-vision-models.mjs' }
+  { key: 'vision', label: '视觉模型快照', script: 'sync-vision-models.mjs' },
+  { key: 'components', label: 'UI 组件索引', script: 'sync-component-index.mjs' }
 ]
 
 const selected = only ? steps.filter((s) => only.has(s.key)) : steps
 
 if (only && selected.length === 0) {
   console.error(
-    '[sync] 未知 --only 项。可用: icons, version, providers, vision\n' +
+    '[sync] 未知 --only 项。可用: icons, version, providers, vision, components\n' +
       '示例: pnpm sync --only=providers,vision'
   )
   process.exit(1)
