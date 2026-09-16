@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 总结设置：各段配置与预览同页 */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './SummarySettingsView.module.css'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +11,7 @@ import { Switch } from '../Switch/Switch'
 import { Modal } from '../Modal/Modal'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { SegmentedControl } from '../shared/SegmentedControl'
+import { Button } from '../Button/Button'
 import {
   clampSharedMemoryLookbackMonths,
   DEFAULT_SHARED_MEMORY_LOOKBACK_MONTHS,
@@ -484,23 +486,25 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
                     )}
                   />
                   <div className={styles.actionsRow}>
-                    <button
+                    <Button
                       type="button"
-                      className={styles.resetBtn}
+                      variant="outlined"
+                      size="small"
                       onClick={handleResetSystemPrompt}
                     >
                       {t('settings.restore_default', 'Restore default')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className={styles.saveBtn}
+                      variant="outlined"
+                      size="small"
                       onClick={() => {
                         emitSettings()
                         toast.showSuccess(t('settings.saved', 'Saved'))
                       }}
                     >
                       {t('common.save', 'Save')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -842,12 +846,12 @@ export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({
                   )}
                 />
                 <div className={styles.actionsRow}>
-                  <button type="button" className={styles.resetBtn} onClick={handleReset}>
+                  <Button type="button" variant="outlined" size="small" onClick={handleReset}>
                     {t('settings.restore_default', 'Restore default')}
-                  </button>
-                  <button type="button" className={styles.saveBtn} onClick={handleSave}>
+                  </Button>
+                  <Button type="button" variant="outlined" size="small" onClick={handleSave}>
                     {t('common.save', 'Save')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

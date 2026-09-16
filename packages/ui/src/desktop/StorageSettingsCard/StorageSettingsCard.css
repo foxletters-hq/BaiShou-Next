@@ -14,33 +14,6 @@
   padding: 12px 24px 16px;
 }
 
-.storage-settings-action-btn {
-  flex: 0 0 auto;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-control);
-  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.storage-settings-action-btn:hover {
-  opacity: 0.85;
-}
-
-.storage-settings-action-btn-secondary {
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.storage-settings-action-btn-secondary:hover {
-  border-color: var(--border-control);
-}
-
 .storage-settings-warning {
   color: var(--color-warning);
 }

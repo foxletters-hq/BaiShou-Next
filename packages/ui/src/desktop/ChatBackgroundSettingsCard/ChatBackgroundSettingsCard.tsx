@@ -13,8 +13,9 @@ import {
   chatBackgroundOverlayTransparencyProgress
 } from '@baishou/shared'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { Button } from '../Button/Button'
 import './ChatBackgroundSettingsCard.css'
-import { Image, Trash2 } from 'lucide-react'
+import { Image } from 'lucide-react'
 
 export interface ChatBackgroundSettingsProps {
   backgroundPath?: string | null
@@ -169,10 +170,9 @@ export const ChatBackgroundSettingsCard: React.FC<ChatBackgroundSettingsProps> =
               />
             </div>
 
-            <button type="button" className="chat-bg-reset-btn" onClick={onClearBackground}>
-              <Trash2 size={16} />
-              <span>{t('settings.chat_background_reset', '清除背景')}</span>
-            </button>
+            <Button type="button" variant="outlined" size="small" onClick={onClearBackground}>
+              {t('settings.chat_background_reset', '清除背景')}
+            </Button>
           </>
         ) : null}
       </SettingsExpansionTile>
