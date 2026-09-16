@@ -1,6 +1,5 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 import { RagMemoryView, useDialog, useToast } from '@baishou/ui'
 import { getDefaultRagConfig } from '@baishou/store'
 import { useRagSettings } from '../hooks/useRagSettings'
@@ -13,10 +12,9 @@ export const RagSettingsPane: React.FC<{
   settings: any
   showReadinessBar?: boolean
   embedded?: boolean
-}> = ({ settings, showReadinessBar: _showReadinessBar = true, embedded = false }) => {
+}> = ({ settings, showReadinessBar = true, embedded = false }) => {
   useRagStatsPrefetch()
   const settingsNav = useSettingsScopeNavigation()
-  const navigate = useNavigate()
   const { t } = useTranslation()
   const { confirm, prompt, alert } = useDialog()
   const toast = useToast()
@@ -30,14 +28,14 @@ export const RagSettingsPane: React.FC<{
     isProcessing,
     activeRagState,
     hasMismatchModel,
-    searchQuery,
-    searchMode,
-    setCurrentPage,
-    setPageSize,
-    loadRagData,
+    sourceKind,
+    isSearching,
     handleDetectDimension,
     handleClearDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
+    handleCancelBatchEmbed,
     handleAddManualMemory,
     handleTriggerMigration,
     handleCancelMigration,
@@ -45,6 +43,8 @@ export const RagSettingsPane: React.FC<{
     handleResumeMigration,
     handleClearAll,
     handleSearch,
+    handleSourceKindChange,
+    handlePageChange,
     handleDeleteEntry,
     handleEditEntry,
     handleExportEmbeddings,
@@ -59,20 +59,27 @@ export const RagSettingsPane: React.FC<{
       <RagMemoryView
         embedded={embedded}
         extraStatsChips={
-          <MemoryReadinessBar
-            rows={readiness.rows}
-            omit={['embedding', 'extract', 'graph']}
-            showLabel={false}
-            onConfigureEmbedding={() => settingsNav.goAiModels()}
-            onStartIndex={() => void handleBatchEmbed()}
-          />
+          !embedded && showReadinessBar ? (
+            <MemoryReadinessBar
+              wrap
+              rows={readiness.rows}
+              omit={['embedding', 'extract', 'graph']}
+              showLabel={false}
+              onConfigureEmbedding={() => settingsNav.goAiModels()}
+              onStartIndex={() => void handleBatchEmbed()}
+              pendingEmbedParts={readiness.pendingEmbedParts}
+              indexing={readiness.indexing}
+            />
+          ) : undefined
         }
         config={ragConfig}
         stats={ragStats}
         ragState={
           activeRagState.isRunning
             ? activeRagState
-            : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }
+            : isProcessing && activeRagState.type === 'batchEmbed'
+              ? { ...activeRagState, isRunning: true }
+              : { isRunning: isProcessing, type: 'idle', progress: 0, total: 0, statusText: '' }
         }
         hasMismatchModel={hasMismatchModel}
         migrationState={migrationState}
@@ -83,14 +90,13 @@ export const RagSettingsPane: React.FC<{
         pageSize={pageSize}
         onChange={(config) => settings.setRagConfig(config)}
         onNavigateToConfig={() => settingsNav.goAiModels()}
-        onPageChange={(page, size) => {
-          setCurrentPage(page)
-          setPageSize(size)
-          loadRagData(searchQuery, searchMode, page, size)
-        }}
+        onPageChange={handlePageChange}
         onDetectDimension={handleDetectDimension}
         onClearDimension={handleClearDimension}
         onBatchEmbed={handleBatchEmbed}
+        onPauseBatchEmbed={handlePauseBatchEmbed}
+        onResumeBatchEmbed={handleResumeBatchEmbed}
+        onCancelBatchEmbed={handleCancelBatchEmbed}
         onAddManualMemory={handleAddManualMemory}
         onTriggerMigration={handleTriggerMigration}
         onCancelMigration={handleCancelMigration}
@@ -98,16 +104,21 @@ export const RagSettingsPane: React.FC<{
         onResumeMigration={handleResumeMigration}
         onClearAll={handleClearAll}
         onSearch={handleSearch}
+        isSearching={isSearching}
+        sourceKind={sourceKind}
+        onSourceKindChange={handleSourceKindChange}
         onDeleteEntry={handleDeleteEntry}
         onEditEntry={handleEditEntry}
         onExportEmbeddings={handleExportEmbeddings}
         onManageBackups={handleManageBackups}
-        onOpenSourceSession={(sessionId) => navigate(`/chat/${sessionId}`)}
-        onCheckConsistency={async () => (window as any).api?.rag?.checkConsistency()}
-        onRepairConsistency={async (params) => (window as any).api?.rag?.repairConsistency(params)}
         migrationCancelBusy={
           isProcessing && activeRagState.isRunning && activeRagState.type === 'migration'
         }
+        graphExtract={readiness.graphExtracting}
+        graphExtractWaiting={
+          readiness.organizePipeline === 'embed' || readiness.organizePipeline === 'graph'
+        }
+        pendingGraphCount={readiness.pendingGraphCount}
       />
     </div>
   )

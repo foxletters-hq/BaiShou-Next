@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  Button,
   Input,
   Pagination,
   useDialog,
@@ -12,7 +13,7 @@ import { formatIncrementalSyncPlanBytes } from '@baishou/shared'
 import './ManagementPane.css'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
 import { switchActiveVault } from '../../../lib/vault-runtime.util'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -208,19 +209,15 @@ export const WorkspaceManagementPane: React.FC = () => {
           <ArrowLeft size={22} />
         </button>
         <h2 className="settings-management-title">{t('workspace.manage', '管理工作空间')}</h2>
-        <button
-          type="button"
-          className="settings-management-header-action"
-          onClick={() => void handleCreate()}
-        >
-          <Plus size={18} />
-          <span>{t('workspace.create_new', '创建新空间')}</span>
-        </button>
+        <Button type="button" variant="outlined" size="small" onClick={() => void handleCreate()}>
+          {t('workspace.create_new', '创建新空间')}
+        </Button>
       </div>
 
       <div className="settings-management-scroll">
         <div className="settings-management-card">
           <Input
+            fieldSize="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('workspace.search_placeholder', '搜索工作空间…')}
@@ -258,31 +255,33 @@ export const WorkspaceManagementPane: React.FC = () => {
                       {t('workspace.current_short', '当前')}
                     </span>
                   ) : (
-                    <button
+                    <Button
                       type="button"
-                      className="settings-text-btn"
+                      variant="outlined"
+                      size="small"
                       onClick={() => void handleSwitch(vault.name)}
                     >
                       {t('workspace.switch', '切换')}
-                    </button>
+                    </Button>
                   )}
                 </div>
-                <button
+                <Button
                   type="button"
-                  className="settings-text-btn"
+                  variant="outlined"
+                  size="small"
                   onClick={() => void handleRename(vault)}
                 >
                   {t('workspace.rename', '重命名')}
-                </button>
+                </Button>
                 {!isActive ? (
-                  <button
+                  <Button
                     type="button"
-                    className="settings-text-btn"
-                    style={{ color: 'var(--color-error)' }}
+                    variant="outlined"
+                    size="small"
                     onClick={() => void handleDelete(vault.name)}
                   >
                     {t('workspace.delete', '删除')}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </div>

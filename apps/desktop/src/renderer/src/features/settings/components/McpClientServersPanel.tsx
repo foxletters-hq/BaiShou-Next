@@ -14,7 +14,7 @@ import {
   type McpClientServerEntry,
   type McpClientServerStatus
 } from '@baishou/shared'
-import { Input, Modal, Switch, useToast } from '@baishou/ui'
+import { Button, Input, Modal, Switch, useToast } from '@baishou/ui'
 import styles from './McpClientServersPanel.module.css'
 
 type TestReason = McpClientProbeReason
@@ -396,14 +396,15 @@ export const McpClientServersPanel: React.FC = () => {
                       <span className={styles.cardDesc}>{subtitle}</span>
                     </span>
                   </button>
-                  <button
+                  <Button
                     type="button"
-                    className={styles.toolsBtn}
+                    variant="outlined"
+                    size="small"
                     disabled={!connected || tools.length === 0}
                     onClick={() => setToolsDialog({ name: server.name, tools })}
                   >
                     {t('settings.mcp_custom_view_tools', '查看工具')}
-                  </button>
+                  </Button>
                 </div>
 
                 {expanded ? (
@@ -465,10 +466,12 @@ export const McpClientServersPanel: React.FC = () => {
                           aria-label={t('settings.mcp_custom_enable', '启用')}
                         />
                       </label>
-                      <button
+                      <Button
                         type="button"
-                        className={styles.textBtn}
+                        variant="outlined"
+                        size="small"
                         disabled={testingId === server.id}
+                        isLoading={testingId === server.id}
                         onClick={async () => {
                           setTestingId(server.id)
                           try {
@@ -479,7 +482,7 @@ export const McpClientServersPanel: React.FC = () => {
                         }}
                       >
                         {t('settings.mcp_custom_retry', '重新连接')}
-                      </button>
+                      </Button>
                       <button
                         type="button"
                         className={styles.iconBtn}
@@ -551,10 +554,12 @@ export const McpClientServersPanel: React.FC = () => {
               />
             </label>
             <div className={styles.cardActions}>
-              <button
+              <Button
                 type="button"
-                className={styles.textBtn}
+                variant="outlined"
+                size="small"
                 disabled={testingId === 'draft'}
+                isLoading={testingId === 'draft'}
                 onClick={async () => {
                   setTestingId('draft')
                   try {
@@ -565,10 +570,15 @@ export const McpClientServersPanel: React.FC = () => {
                 }}
               >
                 {t('settings.mcp_custom_test', '测试连接')}
-              </button>
-              <button type="button" className={styles.primaryBtn} onClick={() => void handleAdd()}>
+              </Button>
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                onClick={() => void handleAdd()}
+              >
                 {t('settings.mcp_custom_add', '添加')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
