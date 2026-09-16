@@ -275,4 +275,47 @@ describe('MemorySyncService', () => {
     expect(deleteBySource).toHaveBeenCalledWith('memory', 'gone')
     expect(await memoryManager.listPendingIndex()).toHaveLength(0)
   })
+
+  it('countPendingFromShards only reads pending shards and never lists all shards', async () => {
+    const indexedAt = Date.parse('2026-01-15T00:00:00.000Z')
+    const pendingAt = Date.parse('2026-03-15T00:00:00.000Z')
+    const written = await memoryManager.writeRecord({
+      id: 'indexed',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'already indexed',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: indexedAt,
+      updatedAt: indexedAt,
+      deletedAt: null
+    })
+    await memoryManager.commitIndexed(written.relativePath, written.contentHash)
+
+    await memoryManager.writeRecord({
+      id: 'pending-live',
+      schemaVersion: 1,
+      vaultName: 'Personal',
+      content: 'need embed',
+      tags: [],
+      sourceSessionId: null,
+      createdAt: pendingAt,
+      updatedAt: pendingAt,
+      deletedAt: null
+    })
+
+    const listShards = vi.spyOn(memoryManager, 'listShards')
+    const listPendingIndex = vi.spyOn(memoryManager, 'listPendingIndex')
+    const listLedgerBySource = vi.fn().mockResolvedValue([])
+    const sync = new MemorySyncService(memoryManager, {
+      embedText: vi.fn(),
+      listLedgerBySource
+    })
+
+    const pending = await sync.countPendingFromShards()
+
+    expect(pending).toBe(1)
+    expect(listPendingIndex).toHaveBeenCalled()
+    expect(listShards).not.toHaveBeenCalled()
+  })
 })

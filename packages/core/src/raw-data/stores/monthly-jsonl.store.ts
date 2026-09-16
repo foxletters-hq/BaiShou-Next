@@ -304,6 +304,20 @@ export class MonthlyJsonlStore {
     await this.removeShardFile(shardKey)
   }
 
+  async clearAllShards(): Promise<number> {
+    await this.ensureRoot()
+    const stems = await this.listJsonlStems()
+    for (const stem of stems) {
+      await this.removeShardFile(stem)
+    }
+    await this.writeManifest({
+      schemaVersion: 1,
+      updatedAt: Date.now(),
+      shards: {}
+    })
+    return stems.length
+  }
+
   /** Delete a jsonl stem even when it is not a valid shard key (legacy YYYY-MM files). */
   async removeShardFile(stem: string): Promise<void> {
     const key = stem.trim()

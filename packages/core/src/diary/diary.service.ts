@@ -7,10 +7,12 @@ import {
   CreateDiaryInput,
   UpdateDiaryInput,
   Diary,
+  DiaryEmbedDetectionRow,
   DiaryMeta,
   DiaryListFilter,
   formatLocalDate,
   parseDateStr,
+  toDiaryEmbedDetectionRow,
   weatherMatchesFilter,
   moodMatchesFilter,
   resolveWeatherId,
@@ -382,6 +384,12 @@ export class DiaryService {
   async listAll(options?: { limit?: number; offset?: number }): Promise<DiaryMeta[]> {
     const shadows = await this.shadowRepo.listAllWithFTS(options)
     return shadows.map((s) => this.mapShadowRowToMeta(s))
+  }
+
+  /** 待嵌入检测：无条数截断，正文哈希来自 raw_content，不用文件级 content_hash。 */
+  async listForEmbedDetection(): Promise<DiaryEmbedDetectionRow[]> {
+    const rows = await this.shadowRepo.listForEmbedDetection()
+    return rows.map((row) => toDiaryEmbedDetectionRow(row))
   }
 
   async listFiltered(filter: DiaryListFilter = {}): Promise<DiaryMeta[]> {

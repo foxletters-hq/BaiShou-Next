@@ -307,6 +307,15 @@ export class GraphRawManager implements RecordCollectionKindManager, GraphIndexS
    * File-side replace: mark prior AI edges for this diary sourceRef as not current.
    * Only reads the month shard derived from sourceRef (not all edge shards).
    */
+  async wipeAllCollections(): Promise<number> {
+    let count = 0
+    for (const collection of COLLECTIONS) {
+      const store = await this.getStore(collection)
+      count += await store.clearAllShards()
+    }
+    return count
+  }
+
   async supersedeAiEdgesBySourceRef(
     sourceRef: string,
     opts?: { exceptIds?: ReadonlySet<string>; shardMonth?: string }
