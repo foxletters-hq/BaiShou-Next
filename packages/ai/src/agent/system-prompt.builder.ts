@@ -1,6 +1,7 @@
 import {
   buildContextEncodingSystemPromptLines,
   buildOutputProtocolSystemPromptLines,
+  formatHostTimezoneOffset,
   getAssistantKindLabelKey,
   translateMain,
   WORKSPACE_PERSONAL_MEMORY_READONLY_TOOL_IDS,
@@ -22,7 +23,7 @@ export interface SystemPromptBuilderOptions {
   diaryAiWritingPrompt?: string
   /** 亲密伙伴 / 工作伙伴，影响能力边界说明 */
   assistantKind?: AssistantKind
-  /** 是否为历史消息加发送时刻壳；钟点本身在 messages 尾部另插，不写进本段 */
+  /** 是否为消息加发送时刻壳，并在 runtime_context 写入稳定时区（不含具体时刻） */
   injectCurrentTime?: boolean
   /** App UI 语言，用于用户可见固定话术（如联网未开提示） */
   locale?: string
@@ -55,6 +56,9 @@ function resolveLocale(locale?: string): string | undefined {
  * skills_catalog(条件) → context_encoding(条件) →
  * user_identity → assistant_capabilities → available_tools →
  * tool_usage_guidelines → diary_writing_guidelines → behavior_guidelines
+ *
+ * 「现在几点」只写在各条消息的 <message-time> 上。
+ * system 里只保留稳定时区，避免分钟跳动破坏前缀缓存。
  */
 export class SystemPromptBuilder {
   public static build(options: SystemPromptBuilderOptions): string {
@@ -91,17 +95,17 @@ export class SystemPromptBuilder {
     // 2. output_protocol（始终存在）
     pushSection(buffer, 'output_protocol', buildOutputProtocolSystemPromptLines())
 
-    // 3. runtime_context：不写日期/时分，以免截断隐式前缀缓存
-    const runtimeLines: string[] = injectCurrentTime
-      ? [
-          'Current date and clock time are provided in a later system message after conversation history (not in this section).',
-          'Use that later message for "now". Call the **current_time** tool only if you need a fresher clock.'
-        ]
-      : [
-          'Current date and time are not injected. Use the **current_time** tool when you need "now".'
-        ]
+    // 3. runtime_context（仅含稳定字段：vault / 伙伴类型 / 时区）
+    const runtimeLines: string[] = []
     runtimeLines.push(`[Current Vault / Workspace]: ${vaultName}`)
     runtimeLines.push(`[Partner type]: ${assistantKind === 'work' ? 'work' : 'companion'}`)
+    if (injectCurrentTime) {
+      runtimeLines.push(`[Host timezone]: ${formatHostTimezoneOffset()}`)
+    } else {
+      runtimeLines.push(
+        'Note: System current time is not injected. Use the **current_time** tool when you need "now".'
+      )
+    }
     pushSection(buffer, 'runtime_context', runtimeLines)
 
     // 3b. workspace_env（工作台）

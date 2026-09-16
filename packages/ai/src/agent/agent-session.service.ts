@@ -11,7 +11,6 @@ import { StreamChunkAdapter } from './stream-chunk.adapter'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
-import { insertRuntimeClockIfEnabled } from './runtime-clock-message.util'
 import {
   isVisionModel,
   logger,
@@ -51,6 +50,9 @@ import { MemoryDeduplicationServiceImpl } from '../rag/memory-deduplication.serv
 
 import { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 import { persistResult } from './agent-session-persist'
+import { shouldPersistPartialAssistantAfterStop } from './persist-aborted-assistant.util'
+import { StreamingAssistantCheckpoint } from './streaming-assistant-checkpoint'
+import { flushReasonFromStreamChunk } from './streaming-assistant-flush.util'
 import { messageHasImageAttachments } from './attachment-content.builder'
 import {
   abortAgentStreamSession,
@@ -271,7 +273,9 @@ export class AgentSessionService {
         )) as import('./message.adapter').MessageWithParts[]
 
       let sessionMessages = await loadSessionMessages()
-      let snapshotForWindow = await snapshotRepo.getLatestSnapshot(sessionId)
+      let snapshotForWindow = await (
+        await import('./session-snapshot-restore')
+      ).ensureSessionSnapshotsRestored(sessionId, snapshotRepo, sessionRepo)
       if (forceRecompress === true && sessionMessages.length >= 4) {
         compressionConfig = { ...compressionConfig, force: true }
       }
@@ -368,7 +372,7 @@ export class AgentSessionService {
       const adaptedMessages = messageMiddlewareChain.isEmpty
         ? coreMessages
         : messageMiddlewareChain.apply(coreMessages)
-      const messagesForModel = insertRuntimeClockIfEnabled(adaptedMessages, injectMessageTime)
+      const messagesForModel = adaptedMessages
 
       // 3. 构建可用的 Tools 及其底层接续支持（静态 import，避免 Android Hermes 运行时动态打包 SyntaxError）
       const drizzleDb = (sessionRepo as any).db || (sessionRepo as any).database
@@ -619,6 +623,20 @@ export class AgentSessionService {
       })
 
       const accumulator = new StreamAccumulator()
+      const assistantCheckpoint = new StreamingAssistantCheckpoint({
+        sessionId,
+        sessionRepo,
+        userMessageId,
+        skipUserMessageRecording,
+        providerId: provider.config?.id ?? 'unknown',
+        modelId,
+        getSnapshot: () => ({
+          accumulator,
+          agentGateParts: gateSessionBuffer.buildPartDataList(),
+          fileChangeParts: workspaceSessionBuffer.buildPartDataList(),
+          userConfig: mergedUserConfig as Record<string, unknown>
+        })
+      })
       let doomTripped = false
       const doomObserver = attachDoomLoopObserver({
         sessionId,
@@ -654,6 +672,8 @@ export class AgentSessionService {
               runtimeRecorder.record(event)
             }
           }
+          const flushReason = flushReasonFromStreamChunk(chunk.type)
+          if (flushReason) assistantCheckpoint.schedule(flushReason)
         }
       })
 
@@ -758,7 +778,9 @@ export class AgentSessionService {
       const hasModelOutput =
         Boolean(accumulator.sanitizedText.trim()) ||
         Boolean(accumulator.reasoning.trim()) ||
-        accumulator.toolCalls.length > 0
+        accumulator.toolCalls.length > 0 ||
+        gateSessionBuffer.buildPartDataList().length > 0 ||
+        workspaceSessionBuffer.buildPartDataList().length > 0
 
       // 用户主动取消 / doom-loop：不要误报「模型未返回任何内容」
       if (doomTripped) {
@@ -787,42 +809,55 @@ export class AgentSessionService {
           `[AgentSessionService] Skip persist for session ${sessionId}: stream superseded`
         )
         recordRuntimeInterrupted('superseded')
+        await assistantCheckpoint.discard()
         return
       }
 
-      // 用户主动取消 / doom-loop：不落盘 partial assistant
-      if (userAborted || doomTripped) {
+      if (doomTripped) {
         logger.info(
-          `[AgentSessionService] Skip persist for session ${sessionId}: ${
-            doomTripped ? 'doom-loop' : 'user aborted'
-          }`
+          `[AgentSessionService] Skip persist for session ${sessionId}: doom-loop`
         )
-        if (doomTripped) {
-          const doomErr =
-            streamError instanceof Error
-              ? streamError
-              : new Error('检测到工具调用死循环，已中断本轮')
-          runtimeRecorder.record({
-            type: 'session.stream_finished',
-            sessionId,
-            success: false,
-            error: doomErr.message,
-            timestamp: Date.now()
-          })
-          callbacks?.onError?.(doomErr)
-        } else {
-          callbacks?.onFinish?.({
-            messageId: undefined,
-            inputTokens: 0,
-            outputTokens: 0,
-            cacheReadInputTokens: 0,
-            cacheWriteInputTokens: 0,
-            costMicros: 0
-          })
-        }
+        const doomErr =
+          streamError instanceof Error
+            ? streamError
+            : new Error('检测到工具调用死循环，已中断本轮')
+        runtimeRecorder.record({
+          type: 'session.stream_finished',
+          sessionId,
+          success: false,
+          error: doomErr.message,
+          timestamp: Date.now()
+        })
+        callbacks?.onError?.(doomErr)
+        await assistantCheckpoint.discard()
         return
       }
 
+      if (
+        userAborted &&
+        !shouldPersistPartialAssistantAfterStop({
+          userAborted: true,
+          doomTripped: false,
+          superseded: false,
+          hasModelOutput
+        })
+      ) {
+        logger.info(
+          `[AgentSessionService] Skip persist for session ${sessionId}: user aborted with no output`
+        )
+        await assistantCheckpoint.discard()
+        callbacks?.onFinish?.({
+          messageId: undefined,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheWriteInputTokens: 0,
+          costMicros: 0
+        })
+        return
+      }
+
+      const existingAssistantMessageId = (await assistantCheckpoint.drain()) ?? undefined
       const usageResult = await persistResult({
         sessionId,
         rawUserText: userText,
@@ -843,7 +878,8 @@ export class AgentSessionService {
         flushSessionToDisk,
         userConfig: mergedUserConfig,
         agentGateParts: gateSessionBuffer.buildPartDataList(),
-        fileChangeParts: workspaceSessionBuffer.buildPartDataList()
+        fileChangeParts: workspaceSessionBuffer.buildPartDataList(),
+        existingAssistantMessageId
       })
 
       if (!streamError && accumulator.toolCalls.length > 0) {
@@ -864,7 +900,7 @@ export class AgentSessionService {
           timestamp: Date.now()
         })
         callbacks?.onError?.(errObj)
-      } else if (!streamError) {
+      } else if (!streamError || userAborted) {
         runtimeRecorder.record({
           type: 'session.stream_finished',
           sessionId,

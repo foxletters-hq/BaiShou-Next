@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { SystemPromptBuilder } from '../agent/system-prompt.builder'
-import { MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from '@baishou/shared'
+import { formatHostTimezoneOffset, MESSAGE_CONTENT_TAG, MESSAGE_TIME_TAG } from '@baishou/shared'
 
 function sectionOrder(prompt: string, tags: string[]): number[] {
   return tags.map((tag) => prompt.indexOf(`<${tag}>`))
@@ -18,10 +18,9 @@ describe('SystemPromptBuilder', () => {
     expect(prompt).toContain('<output_protocol>')
     expect(prompt).toContain('<runtime_context>')
     expect(prompt).toContain('<context_encoding>')
-    expect(prompt).not.toContain('[System Current Date]')
     expect(prompt).not.toContain('[System Current Date / Time]')
-    expect(prompt).toContain('later system message after conversation history')
-    expect(prompt).toContain('**current_time** tool')
+    expect(prompt).not.toContain('<system_time>')
+    expect(prompt).toContain(`[Host timezone]: ${formatHostTimezoneOffset()}`)
     expect(prompt).toContain(`<${MESSAGE_TIME_TAG}>`)
     expect(prompt).toContain(`<${MESSAGE_CONTENT_TAG}>`)
     expect(prompt).toContain('[Forbidden in user-visible text]')
@@ -43,7 +42,7 @@ describe('SystemPromptBuilder', () => {
     }
   })
 
-  it('omits clock from the top-level system prompt when injectCurrentTime is false', () => {
+  it('omits context_encoding and system time when injectCurrentTime is false', () => {
     const prompt = SystemPromptBuilder.build({
       vaultName: 'Personal',
       tools: {},
@@ -51,9 +50,8 @@ describe('SystemPromptBuilder', () => {
     })
 
     expect(prompt).toContain('<runtime_context>')
-    expect(prompt).not.toContain('[System Current Date]')
     expect(prompt).not.toContain('[System Current Date / Time]')
-    expect(prompt).not.toContain('later system message after conversation history')
+    expect(prompt).not.toContain('[Host timezone]')
     expect(prompt).not.toContain('<context_encoding>')
     expect(prompt).not.toContain('[Historical messages]')
     expect(prompt).toContain('**current_time** tool')
@@ -247,7 +245,8 @@ describe('SystemPromptBuilder', () => {
     vi.useRealTimers()
 
     expect(morning).toBe(evening)
-    expect(morning).not.toContain('[System Current Date]')
+    expect(morning).toContain('[Host timezone]: UTC')
+    expect(morning).not.toContain('[System Current Date / Time]')
     expect(morning).not.toMatch(/\d{2}:\d{2}:\d{2}/)
   })
 

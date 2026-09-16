@@ -5,11 +5,8 @@ import { IAIProvider } from '../providers/provider.interface'
 import { ModelPricingService } from '../pricing/model-pricing.service'
 import { mergeStreamUsageFromSdk, normalizeTokenUsageForBilling } from './token-usage.util'
 import { StreamAccumulator } from './stream-accumulator'
-import {
-  resolveAssistantParentOrderIndex,
-  buildEmojiImagePartsFromToolCalls
-} from './agent-session-persist.utils'
-import { buildAssistantPartsFromTimeline } from './build-assistant-parts-from-timeline'
+import { resolveAssistantParentOrderIndex } from './agent-session-persist.utils'
+import { assembleAssistantPersistParts } from './assemble-assistant-persist-parts'
 // @ts-ignore
 import { SnapshotRepository } from '@baishou/database'
 
@@ -43,6 +40,8 @@ export interface PersistResultParams {
   userConfig?: Record<string, any>
   agentGateParts?: import('@baishou/shared').AgentGatePartData[]
   fileChangeParts?: import('@baishou/shared').FileChangePartData[]
+  /** 流式检查点已写入的同一条助手消息 */
+  existingAssistantMessageId?: string
 }
 
 /**
@@ -78,40 +77,15 @@ export async function persistResult(params: PersistResultParams): Promise<{
   })
 
   // ======== 构建 assistant 消息 Parts（按时间线：reasoning → tool → text…）========
-  const assistantMsgId = generateUUID()
-  const emojiParts = buildEmojiImagePartsFromToolCalls(
-    accumulator.toolCalls,
-    assistantMsgId,
-    sessionId,
-    params.userConfig
-  )
-  const timelineParts = buildAssistantPartsFromTimeline({
+  const assistantMsgId = params.existingAssistantMessageId || generateUUID()
+  const partsToInsert = assembleAssistantPersistParts({
     accumulator,
     assistantMsgId,
     sessionId,
-    startSeq: emojiParts.length
+    userConfig: params.userConfig,
+    agentGateParts: params.agentGateParts,
+    fileChangeParts: params.fileChangeParts
   })
-  const partsToInsert: any[] = [...emojiParts, ...timelineParts]
-
-  for (const gatePart of params.agentGateParts ?? []) {
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'agent_gate',
-      data: { ...gatePart, seq: partsToInsert.length }
-    })
-  }
-
-  for (const fileChange of params.fileChangeParts ?? []) {
-    partsToInsert.push({
-      id: generateUUID(),
-      messageId: assistantMsgId,
-      sessionId,
-      type: 'file_change',
-      data: { ...fileChange, seq: partsToInsert.length }
-    })
-  }
 
   // 从 Vercel AI SDK 获取最终 usage
   let streamUsage = mergeStreamUsageFromSdk(accumulator.usage, null)
@@ -211,22 +185,34 @@ export async function persistResult(params: PersistResultParams): Promise<{
   // 开始事务存放! — 即使流式出错，也将已累积的回复内容落盘，防止消息丢失
 
   if (partsToInsert.length > 0) {
-    await sessionRepo.insertMessageWithParts(
-      {
-        id: assistantMsgId,
+    const billing = {
+      inputTokens: finalUsage.inputTokens,
+      outputTokens: finalUsage.outputTokens,
+      cacheReadInputTokens: streamUsage.cacheReadInputTokens,
+      cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
+      costMicros: costMicros,
+      providerId: provider?.config?.id ?? 'unknown',
+      modelId: modelId
+    }
+    if (params.existingAssistantMessageId) {
+      await sessionRepo.replaceMessageParts(
+        assistantMsgId,
         sessionId,
-        role: 'assistant',
-        orderIndex: userOrderIndex + 1,
-        inputTokens: finalUsage.inputTokens,
-        outputTokens: finalUsage.outputTokens,
-        cacheReadInputTokens: streamUsage.cacheReadInputTokens,
-        cacheWriteInputTokens: streamUsage.cacheWriteInputTokens,
-        costMicros: costMicros,
-        providerId: provider?.config?.id ?? 'unknown',
-        modelId: modelId
-      },
-      partsToInsert
-    )
+        partsToInsert,
+        billing
+      )
+    } else {
+      await sessionRepo.insertMessageWithParts(
+        {
+          id: assistantMsgId,
+          sessionId,
+          role: 'assistant',
+          orderIndex: userOrderIndex + 1,
+          ...billing
+        },
+        partsToInsert
+      )
+    }
   }
 
   await sessionRepo.updateTokenUsage(
