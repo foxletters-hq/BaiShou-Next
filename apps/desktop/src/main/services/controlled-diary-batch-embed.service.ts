@@ -5,15 +5,23 @@ import {
   buildDiaryEmbeddingSourceId,
   clearRagDiaryEmbedFailure,
   filterUnindexedDiaries,
+  formatAiApiCallError,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   limitExecute,
   logger,
+  markRagDiaryEmbedFailure,
   resolveBatchEmbedConcurrency,
   sortDiariesByDateAsc,
   DIARY_EMBED_GROUP_ID,
   type RagConfig
 } from '@baishou/shared'
+import {
+  assertBatchEmbedCanContinue,
+  checkpointBatchEmbed,
+  isBatchEmbedAbortRequested,
+  throwIfBatchEmbedAborted
+} from './batch-embed-control.service'
 import { buildDesktopDiaryReEmbedArgs } from './diary-embed-text.util'
 
 import { getAppDb } from '../db'
@@ -24,9 +32,9 @@ import { vaultService } from '../ipc/vault.ipc'
 import { getDiaryManagerForVault } from './diary-vault.factory'
 import {
   deleteDiaryEmbeddingAliases,
-  purgeAllLegacyDiaryEmbeddings,
   purgeLegacyDiaryEmbeddingsForVault
 } from './diary-embedding.util'
+import { probeEmbeddingApi } from './embed-api-probe.util'
 
 export type ControlledDiaryBatchEmbedProgress = {
   completed: number
@@ -43,6 +51,7 @@ export type ControlledDiaryBatchEmbedResult = {
   total: number
   skipped: boolean
   skipReason?: string
+  lastError?: string
 }
 
 type RunControlledDiaryBatchEmbedOptions = {
@@ -51,8 +60,6 @@ type RunControlledDiaryBatchEmbedOptions = {
   groupId?: string
 }
 
-let inFlight: Promise<ControlledDiaryBatchEmbedResult> | null = null
-let rerunRequested = false
 
 async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
   embeddedIds: Set<string>
@@ -163,29 +170,25 @@ export async function runControlledDiaryBatchEmbed(
   const batchConcurrency = resolveBatchEmbedConcurrency(batchRagConfig.batchEmbedConcurrency)
 
   await embeddingService.prepareEmbeddingIndex()
+  await assertBatchEmbedCanContinue()
 
-  const purgedLegacy = await purgeAllLegacyDiaryEmbeddings()
-  if (purgedLegacy > 0) {
-    logger.info('[ControlledDiaryBatchEmbed] purged global legacy diary vectors', {
-      count: purgedLegacy
-    })
-  }
-
-  const vaults = vaultService.getAllVaults()
-  type DiaryMetaList = Awaited<
-    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
+  const activeVault = vaultService.getActiveVault()
+  const vaults = activeVault ? [activeVault] : []
+  type DiaryDetectionList = Awaited<
+    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listForEmbedDetection']>
   >
   const vaultPlans: Array<{
     vaultId: string
     vaultName: string
-    diariesToEmbed: DiaryMetaList
+    diariesToEmbed: DiaryDetectionList
     allDiaryIds: Array<number | string>
   }> = []
   let globalTotal = 0
 
   for (const vault of vaults) {
+    await assertBatchEmbedCanContinue()
     const diaryManager = await getDiaryManagerForVault(vault.name)
-    const diaries = await diaryManager.listAll({ limit: 10000 })
+    const diaries = await diaryManager.listForEmbedDetection()
     const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
       await loadEmbeddedDiaryIndex(vault.id)
     const resolveSourceId = (meta: { id: unknown }) =>
@@ -207,6 +210,7 @@ export async function runControlledDiaryBatchEmbed(
   }
 
   if (globalTotal === 0) {
+    throwIfBatchEmbedAborted()
     if (hasRagDiaryEmbedFailure(ragConfig)) {
       await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfig))
       for (const win of BrowserWindow.getAllWindows()) {
@@ -223,12 +227,38 @@ export async function runControlledDiaryBatchEmbed(
     }
   }
 
+  reportProgress(
+    options,
+    {
+      completed: 0,
+      total: globalTotal,
+      statusText: '正在嵌入日记…'
+    },
+    globalTotal
+  )
+
+  const probe = await probeEmbeddingApi((text) => embeddingService.embedQuery(text))
+  if (!probe.ok) {
+    await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig, probe.message))
+    return {
+      embedded: 0,
+      loadSkipped: 0,
+      failed: globalTotal,
+      total: globalTotal,
+      skipped: false,
+      lastError: probe.message
+    }
+  }
+
   let globalCompleted = 0
   let embedded = 0
   let loadSkipped = 0
   let failed = 0
+  let lastError: string | undefined
+  let stopAfterApiFailures = false
 
   for (const plan of vaultPlans) {
+    await assertBatchEmbedCanContinue()
     const vaultResult = await embedVaultDiaries(plan, {
       embeddingService,
       batchConcurrency,
@@ -239,12 +269,18 @@ export async function runControlledDiaryBatchEmbed(
       },
       getGlobalEmbedded: () => embedded,
       getGlobalFailed: () => failed,
+      shouldStop: () => stopAfterApiFailures,
       options
     })
     embedded += vaultResult.embedded
     loadSkipped += vaultResult.loadSkipped
     failed += vaultResult.failed
+    if (vaultResult.lastError) lastError = vaultResult.lastError
+    if (embedded === 0 && failed >= 3) {
+      stopAfterApiFailures = true
+    }
   }
+  throwIfBatchEmbedAborted()
 
   if (options?.broadcastProgress) {
     broadcastRagProgress({
@@ -256,7 +292,15 @@ export async function runControlledDiaryBatchEmbed(
   }
 
   const latestRagConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
-  if (hasRagDiaryEmbedFailure(latestRagConfig)) {
+  if (failed > 0 && embedded === 0) {
+    await settingsManager.set(
+      'rag_config',
+      markRagDiaryEmbedFailure(
+        latestRagConfig,
+        lastError || '嵌入接口不可用，没有写入任何日记向量'
+      )
+    )
+  } else if (failed === 0 && hasRagDiaryEmbedFailure(latestRagConfig)) {
     await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('diary:sync-event', { type: 'embed-failure-cleared' })
@@ -270,14 +314,14 @@ export async function runControlledDiaryBatchEmbed(
     total: globalTotal,
     vaultCount: vaultPlans.length
   })
-  return { embedded, loadSkipped, failed, total: globalTotal, skipped: false }
+  return { embedded, loadSkipped, failed, total: globalTotal, skipped: false, lastError }
 }
 
 type VaultEmbedPlan = {
   vaultId: string
   vaultName: string
   diariesToEmbed: Awaited<
-    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listAll']>
+    ReturnType<Awaited<ReturnType<typeof getDiaryManagerForVault>>['listForEmbedDetection']>
   >
   allDiaryIds: Array<number | string>
 }
@@ -290,6 +334,7 @@ type EmbedVaultDiariesContext = {
   setGlobalCompleted: (value: number) => void
   getGlobalEmbedded: () => number
   getGlobalFailed: () => number
+  shouldStop?: () => boolean
   options?: RunControlledDiaryBatchEmbedOptions
 }
 
@@ -300,6 +345,7 @@ async function embedVaultDiaries(
   embedded: number
   loadSkipped: number
   failed: number
+  lastError?: string
 }> {
   const { vaultId, vaultName, diariesToEmbed } = plan
   const diaryManager = await getDiaryManagerForVault(vaultName)
@@ -309,8 +355,14 @@ async function embedVaultDiaries(
   let embedded = 0
   let loadSkipped = 0
   let failed = 0
+  let lastError: string | undefined
+  let consecutiveApiFails = 0
 
-  await limitExecute(diariesToEmbed, ctx.batchConcurrency, async (meta) => {
+  await limitExecute(
+    diariesToEmbed,
+    ctx.batchConcurrency,
+    async (meta) => {
+    if ((await checkpointBatchEmbed()) === 'aborted') return
     const dateLabel = new Date(meta.date).toLocaleDateString()
     const completed = ctx.getGlobalCompleted()
     ctx.options &&
@@ -352,9 +404,12 @@ async function embedVaultDiaries(
         loadSkipped++
         return
       }
+      consecutiveApiFails = 0
       embedded++
     } catch (error) {
       failed++
+      consecutiveApiFails++
+      lastError = formatAiApiCallError(error)
       logger.warn('[ControlledDiaryBatchEmbed] 单篇嵌入失败', {
         vaultName,
         diaryId: meta.id,
@@ -374,59 +429,21 @@ async function embedVaultDiaries(
           ctx.globalTotal
         )
     }
-  })
+    },
+    {
+      shouldStop: () =>
+        isBatchEmbedAbortRequested() ||
+        Boolean(ctx.shouldStop?.()) ||
+        (ctx.getGlobalEmbedded() + embedded === 0 &&
+          ctx.getGlobalFailed() + failed >= 3 &&
+          consecutiveApiFails >= 3)
+    }
+  )
 
-  return { embedded, loadSkipped, failed }
+  return { embedded, loadSkipped, failed, lastError }
 }
 
-async function runPostSyncDiaryBatchEmbedLoop(): Promise<ControlledDiaryBatchEmbedResult> {
-  let lastResult: ControlledDiaryBatchEmbedResult = {
-    embedded: 0,
-    loadSkipped: 0,
-    failed: 0,
-    total: 0,
-    skipped: true,
-    skipReason: 'not-started'
-  }
-
-  do {
-    rerunRequested = false
-    lastResult = await runControlledDiaryBatchEmbed({
-      broadcastProgress: true,
-      groupId: 'diary_post_sync'
-    })
-  } while (rerunRequested)
-
-  return lastResult
-}
-
-/** 同步完成后在后台触发受控批量嵌入（单飞 + 可合并重复调度） */
+/** 同步后不再自动批量嵌入。保留导出以免旧 import 断裂。 */
 export function schedulePostSyncDiaryBatchEmbed(): void {
-  if (inFlight) {
-    rerunRequested = true
-    return
-  }
-
-  inFlight = runPostSyncDiaryBatchEmbedLoop()
-    .catch((error: unknown) => {
-      logger.warn('[ControlledDiaryBatchEmbed] post-sync batch embed failed', { error })
-      broadcastRagProgress({
-        isRunning: false,
-        type: 'idle',
-        progress: 0,
-        total: 0,
-        error: error instanceof Error ? error.message : String(error)
-      })
-      return {
-        embedded: 0,
-        loadSkipped: 0,
-        failed: 0,
-        total: 0,
-        skipped: true,
-        skipReason: 'failed'
-      } satisfies ControlledDiaryBatchEmbedResult
-    })
-    .finally(() => {
-      inFlight = null
-    })
+  // no-op
 }
