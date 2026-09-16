@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react'
-import type { EmbeddingMigrationStateView } from '@baishou/shared'
+import type {
+  EmbeddingMigrationStateView,
+  RagBatchEmbedPhaseCounts,
+  RagBatchEmbedPhaseKind,
+  RagVectorKindFilter
+} from '@baishou/shared'
 
 export interface RagConfig {
   ragTopK: number
@@ -8,6 +13,7 @@ export interface RagConfig {
   batchEmbedConcurrency?: number
   lastDiaryEmbedFailureAt?: number
   lastDiaryEmbedFailureMessage?: string
+  startupEmbedReminder?: boolean
 }
 
 export interface RagStats {
@@ -29,6 +35,10 @@ export interface RagState {
   error?: string
   aborted?: boolean
   rollbackApplied?: boolean
+  phase?: RagBatchEmbedPhaseKind
+  phases?: RagBatchEmbedPhaseCounts
+  paused?: boolean
+  cancelling?: boolean
 }
 
 export interface RagEntry {
@@ -44,23 +54,6 @@ export interface RagEntry {
   memoryCreatedAt?: number
   memoryUpdatedAt?: number
   isManual?: boolean
-}
-
-export interface MemoryConsistencyMissingItem {
-  id: string
-  content: string
-  createdAt: number
-  updatedAt: number
-  vaultName: string
-  tags: string[]
-  sourceSessionId: string | null
-}
-
-export interface MemoryConsistencyReport {
-  jsonlLiveCount: number
-  vectorCount: number
-  missing: MemoryConsistencyMissingItem[]
-  orphans: string[]
 }
 
 export interface RagMemoryViewProps {
@@ -82,12 +75,19 @@ export interface RagMemoryViewProps {
   onAddManualMemory?: () => Promise<void>
   onTriggerMigration?: () => Promise<void>
   onCancelMigration?: () => Promise<void>
+  onPauseBatchEmbed?: () => Promise<void>
+  onResumeBatchEmbed?: () => Promise<void>
+  onCancelBatchEmbed?: () => Promise<void>
   onRestoreMigration?: () => Promise<void>
   onResumeMigration?: () => Promise<void>
   migrationState?: EmbeddingMigrationStateView | null
   migrationCancelBusy?: boolean
-  onClearAll?: () => Promise<void>
+  onClearAll?: (kinds: import('@baishou/shared').MemoryClearKind[]) => Promise<void>
   onSearch?: (query: string, mode: 'semantic' | 'text') => void
+  /** 切换分类、改关键词或翻页时正在重新查询 */
+  isSearching?: boolean
+  sourceKind?: RagVectorKindFilter
+  onSourceKindChange?: (kind: RagVectorKindFilter) => void
   onDeleteEntry?: (id: string) => Promise<void>
   onEditEntry?: (entry: RagEntry) => Promise<void>
   onNavigateToConfig?: () => void
@@ -95,11 +95,7 @@ export interface RagMemoryViewProps {
   onPageChange?: (page: number, pageSize: number) => void
   onExportEmbeddings?: () => Promise<void>
   onManageBackups?: () => Promise<void>
-  onOpenSourceSession?: (sessionId: string) => void
-  onCheckConsistency?: () => Promise<MemoryConsistencyReport>
-  onRepairConsistency?: (params: {
-    confirmDeleteIds?: string[]
-    restoreIds?: string[]
-    cleanOrphans?: boolean
-  }) => Promise<{ tombstoned: number; restored: number; orphansCleaned: number }>
+  graphExtract?: { current: number; total: number; percent: number } | null
+  graphExtractWaiting?: boolean
+  pendingGraphCount?: number
 }
