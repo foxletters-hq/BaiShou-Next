@@ -42,4 +42,45 @@ describe('BaishouAgentGateSessionBuffer', () => {
     expect(parts[0]?.resolution?.reply).toBe(AgentGateReply.Once)
     unsubscribe()
   })
+
+  it('keeps a single part when the same request is asked again with a higher count', () => {
+    const buffer = new BaishouAgentGateSessionBuffer()
+    buffer.handleEvent({
+      type: 'agent_gate.asked',
+      request: {
+        id: 'bag_1',
+        sessionId: 'sess_1',
+        vaultName: 'Personal',
+        status: AgentGateRequestStatus.Pending,
+        kind: AgentGateKind.Tool,
+        action: 'recall_relations',
+        title: '回忆关系图谱',
+        options: [],
+        allowCustomInput: false,
+        metadata: {},
+        coalescedCount: 1,
+        createdAt: 1
+      }
+    })
+    buffer.handleEvent({
+      type: 'agent_gate.asked',
+      request: {
+        id: 'bag_1',
+        sessionId: 'sess_1',
+        vaultName: 'Personal',
+        status: AgentGateRequestStatus.Pending,
+        kind: AgentGateKind.Tool,
+        action: 'recall_relations',
+        title: '回忆关系图谱',
+        options: [],
+        allowCustomInput: false,
+        metadata: {},
+        coalescedCount: 3,
+        createdAt: 1
+      }
+    })
+    const parts = buffer.buildPartDataList()
+    expect(parts).toHaveLength(1)
+    expect(parts[0]?.request.coalescedCount).toBe(3)
+  })
 })

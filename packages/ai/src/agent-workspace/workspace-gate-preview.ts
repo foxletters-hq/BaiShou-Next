@@ -39,6 +39,13 @@ function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
+/** `.` / `./` 就是工作区根，确认卡片不必再写一行 */
+function isDefaultWorkspaceRunWorkdir(workdir: string | undefined): boolean {
+  if (workdir == null) return true
+  const trimmed = workdir.trim()
+  return trimmed === '' || trimmed === '.' || trimmed === './' || trimmed === '.\\'
+}
+
 function contentDigest(content: string): string {
   return agentGateSimpleHash(content.slice(0, 4096))
 }
@@ -368,11 +375,12 @@ export function prepareWorkspaceRunGate(args: unknown, ctx: unknown): AgentGateP
   const externalPaths = scan?.resources
     .filter((r) => r.kind === 'external_path')
     .map((r) => r.value)
+  const previewWorkdir = isDefaultWorkspaceRunWorkdir(workdir) ? undefined : workdir
 
   const preview: AgentGateCommandPreview = {
     type: 'command',
     command,
-    workdir,
+    workdir: previewWorkdir,
     externalPaths: externalPaths && externalPaths.length > 0 ? externalPaths : undefined,
     dangerous: scan?.dangerous || undefined,
     dangerReason: scan?.dangerous ? '检测到高风险 shell 命令模式' : undefined,

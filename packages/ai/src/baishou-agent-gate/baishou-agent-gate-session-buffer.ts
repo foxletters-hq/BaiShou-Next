@@ -11,7 +11,11 @@ export class BaishouAgentGateSessionBuffer {
 
   handleEvent(event: AgentGateEvent): void {
     if (event.type === 'agent_gate.asked') {
-      this.records.set(event.request.id, { request: event.request })
+      const existing = this.records.get(event.request.id)
+      this.records.set(event.request.id, {
+        request: event.request,
+        resolution: existing?.resolution
+      })
       return
     }
 

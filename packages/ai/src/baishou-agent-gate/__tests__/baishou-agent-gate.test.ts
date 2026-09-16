@@ -732,7 +732,9 @@ describe('BaishouAgentGateService', () => {
     })
 
     const pending = gate.listPending('sess_1')
-    expect(pending).toHaveLength(3)
+    expect(pending).toHaveLength(2)
+    expect(pending.filter((r) => r.action === 'diary_edit')).toHaveLength(1)
+    expect(pending.find((r) => r.action === 'diary_edit')?.coalescedCount).toBe(2)
 
     const diaryEditIds = pending.filter((r) => r.action === 'diary_edit').map((r) => r.id)
     await gate.reply({ requestId: diaryEditIds[0]!, reply: AgentGateReply.Always })
@@ -768,6 +770,8 @@ describe('BaishouAgentGateService', () => {
     })
 
     const pending = gate.listPending('sess_1')
+    expect(pending.filter((request) => request.action === 'url_read')).toHaveLength(1)
+    expect(pending.find((request) => request.action === 'url_read')?.coalescedCount).toBe(2)
     const urlIds = pending.filter((request) => request.action === 'url_read').map((request) => request.id)
     await gate.reply({ requestId: urlIds[0]!, reply: AgentGateReply.Once })
 
@@ -783,6 +787,64 @@ describe('BaishouAgentGateService', () => {
       reply: AgentGateReply.Once
     })
     await other
+  })
+
+  it('同类工具并行请求只出一张确认卡', async () => {
+    const { gate, eventBus } = createBaishouAgentGate()
+    const askedIds: string[] = []
+    const unsub = eventBus.subscribe((event) => {
+      if (event.type === 'agent_gate.asked') askedIds.push(event.request.id)
+    })
+
+    const first = gate.assert({
+      ...baseAssertInput,
+      action: 'recall_relations',
+      title: '回忆关系图谱 1'
+    })
+    const second = gate.assert({
+      ...baseAssertInput,
+      action: 'recall_relations',
+      title: '回忆关系图谱 2'
+    })
+    const third = gate.assert({
+      ...baseAssertInput,
+      action: 'recall_relations',
+      title: '回忆关系图谱 3'
+    })
+
+    const pending = gate.listPending('sess_1')
+    expect(pending).toHaveLength(1)
+    expect(pending[0]?.action).toBe('recall_relations')
+    expect(pending[0]?.coalescedCount).toBe(3)
+    expect(new Set(askedIds).size).toBe(1)
+
+    await gate.reply({ requestId: pending[0]!.id, reply: AgentGateReply.Once })
+    await Promise.all([first, second, third])
+    expect(gate.listPending('sess_1')).toHaveLength(0)
+    unsub()
+  })
+
+  it('伙伴提问不合并，即使连续发起多次', async () => {
+    const { gate } = createBaishouAgentGate()
+    const first = gate.assert({
+      ...baseAssertInput,
+      kind: AgentGateKind.Proactive,
+      action: 'companion_ask',
+      title: '要查图谱吗？',
+      options: [{ id: '0', label: '要' }]
+    }).catch((error) => error)
+    const second = gate.assert({
+      ...baseAssertInput,
+      kind: AgentGateKind.Proactive,
+      action: 'companion_ask',
+      title: '要从图谱里查张三吗？',
+      options: [{ id: '0', label: '要' }]
+    }).catch((error) => error)
+
+    expect(gate.listPending('sess_1')).toHaveLength(2)
+    gate.cancelSession('sess_1')
+    expect(await first).toBeInstanceOf(AgentGateCancelledError)
+    expect(await second).toBeInstanceOf(AgentGateCancelledError)
   })
 
   it('once 后本轮同类操作不再询问，回答结束后恢复询问', async () => {
@@ -1029,6 +1091,7 @@ describe('BaishouAgentGateService', () => {
     })
 
     const pending = gate.listPending('sess_1')
+    expect(pending).toHaveLength(2)
     const internalReq = pending.find((r) => r.title === '写内部')
     expect(internalReq).toBeTruthy()
     await gate.reply({ requestId: internalReq!.id, reply: AgentGateReply.Always })
@@ -1056,8 +1119,10 @@ describe('BaishouAgentGateService', () => {
     const [request] = gate.listPending('sess_1')
     await expect(
       gate.reply({ requestId: request!.id, reply: AgentGateReply.Always })
-    ).rejects.toThrow('disk full')
+    ).resolves.toBeUndefined()
     await expect(pendingAssert).resolves.toBeUndefined()
+    await Promise.resolve()
+    expect(persist).toHaveBeenCalled()
   })
 
   it('同指纹连续第 3 次即使 full_trust 也强制 ask', async () => {
