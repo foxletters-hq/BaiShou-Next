@@ -1,4 +1,10 @@
-import { parseKnowledgeSearchToolResult } from '@baishou/shared'
+/* eslint-disable max-lines -- 工具结果文案与解析聚合 */
+import i18n from 'i18next'
+import {
+  parseKnowledgeSearchToolResult,
+  resolveAgentToolActionLabel,
+  resolveMcpToolLookupName
+} from '@baishou/shared'
 
 /** 工具调用结果解析 — web / native 共用 */
 
@@ -100,8 +106,7 @@ function readCompanionAskResultObject(obj: Record<string, unknown>): {
   answer: string | null
   selectedOptionIds: string[]
 } {
-  const answer =
-    typeof obj.answer === 'string' && obj.answer.trim() ? obj.answer.trim() : null
+  const answer = typeof obj.answer === 'string' && obj.answer.trim() ? obj.answer.trim() : null
   const selectedOptionIds = Array.isArray(obj.selectedOptionIds)
     ? obj.selectedOptionIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
     : []
@@ -243,19 +248,20 @@ export function resolveToolResultPresentation(
   }
 }
 
-const MCP_TOOL_PREFIX = /^mcp__[^_]+__/
 const PATH_ARG_KEYS = ['path', 'filePath', 'file', 'target'] as const
 const TEXT_ARG_KEYS = ['query', 'pattern', 'url', 'command', 'description'] as const
 const SUBTITLE_MAX_CHARS = 56
 
-function stripMcpToolPrefix(name: string): string {
-  return name.replace(MCP_TOOL_PREFIX, '')
+function readRawInvocationToolName(invocation: ToolInvocationLike): string | undefined {
+  const raw = invocation.toolName || (invocation as { name?: string }).name
+  if (typeof raw !== 'string' || !raw.trim()) return undefined
+  return raw.trim()
 }
 
 function readInvocationToolName(invocation: ToolInvocationLike): string | undefined {
-  const raw = invocation.toolName || (invocation as { name?: string }).name
-  if (typeof raw !== 'string' || !raw.trim()) return undefined
-  return stripMcpToolPrefix(raw.trim())
+  const raw = readRawInvocationToolName(invocation)
+  if (!raw) return undefined
+  return resolveMcpToolLookupName(raw).lookupName
 }
 
 function readArgsRecord(args: unknown): Record<string, unknown> | null {
@@ -359,15 +365,15 @@ export function resolveActiveToolDisplayName(
     const engineLabel = engineKey ? t(engineKey, webSearchEngine) : webSearchEngine
     return `${t('agent.tools.web_search', '网络搜索')} (${engineLabel})`
   }
-  return t(`agent.tools.${activeTool.name}`, activeTool.name)
+  return resolveAgentToolActionLabel(activeTool.name, t)
 }
 
 export function getToolDisplayName(
   invocation: ToolInvocationLike,
   t: (key: string, fallback?: string) => string
 ): string {
-  const rawName = readInvocationToolName(invocation)
-  if (rawName) return t(`agent.tools.${rawName}`, rawName)
+  const rawName = readRawInvocationToolName(invocation)
+  if (rawName) return resolveAgentToolActionLabel(rawName, t)
   const callId = invocation.toolCallId
   if (!callId) return t('agent.tools.tool_invocation', 'tool_invocation')
   return callId
@@ -439,72 +445,134 @@ function localizeToolResultLine(
   if (!trimmed) return line
 
   if (COMPANION_ASK_DECLINED.test(trimmed)) {
-    return formatToolCopy(t, 'agent.tools.companion_ask_declined', '没有作答')
+    return formatToolCopy(
+      t,
+      'agent.tools.companion_ask_declined',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L446', '没有作答')
+    )
   }
 
   if (/^Tool execution failed\.?$/.test(trimmed)) {
-    return formatToolCopy(t, 'agent.tools.execution_failed', '工具执行失败')
+    return formatToolCopy(
+      t,
+      'agent.tools.execution_failed',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L450', '工具执行失败')
+    )
   }
 
   const execFail = /^Tool execution failed:\s*(.*)$/.exec(trimmed)
   if (execFail) {
     const detail = execFail[1].trim()
-    if (!detail) return formatToolCopy(t, 'agent.tools.execution_failed', '工具执行失败')
-    return formatToolCopy(t, 'agent.tools.execution_failed_with_detail', '工具执行失败：{{detail}}', {
-      detail
-    })
+    if (!detail)
+      return formatToolCopy(
+        t,
+        'agent.tools.execution_failed',
+        i18n.t('auto.packages.ui.src.shared.tool.result.util.L456', '工具执行失败')
+      )
+    return formatToolCopy(
+      t,
+      'agent.tools.execution_failed_with_detail',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L460', '工具执行失败：{{detail}}'),
+      {
+        detail
+      }
+    )
   }
 
   if (/^Error:\s*Skill writer is not available in this environment\.?$/.test(trimmed)) {
-    return formatToolCopy(t, 'agent.tools.skill_writer_unavailable', '当前环境无法写入技能')
+    return formatToolCopy(
+      t,
+      'agent.tools.skill_writer_unavailable',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L468', '当前环境无法写入技能')
+    )
   }
 
   const skillFail = /^Error:\s*Failed to save skill:\s*(.*)$/.exec(trimmed)
   if (skillFail) {
-    return formatToolCopy(t, 'agent.tools.skill_write_failed', '未能保存技能：{{detail}}', {
-      detail: skillFail[1].trim()
-    })
+    return formatToolCopy(
+      t,
+      'agent.tools.skill_write_failed',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L473', '未能保存技能：{{detail}}'),
+      {
+        detail: skillFail[1].trim()
+      }
+    )
   }
 
   const fetchFail = /^Failed to fetch URL:\s*(.*)$/.exec(trimmed)
   if (fetchFail) {
-    return formatToolCopy(t, 'agent.tools.fetch_url_failed', '读取网页失败：{{detail}}', {
-      detail: fetchFail[1].trim()
-    })
+    return formatToolCopy(
+      t,
+      'agent.tools.fetch_url_failed',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L480', '读取网页失败：{{detail}}'),
+      {
+        detail: fetchFail[1].trim()
+      }
+    )
   }
 
   const searchFail = /^Web search failed:\s*(.*)$/.exec(trimmed)
   if (searchFail) {
-    return formatToolCopy(t, 'agent.tools.web_search_failed', '网络搜索失败：{{detail}}', {
-      detail: searchFail[1].trim()
-    })
+    return formatToolCopy(
+      t,
+      'agent.tools.web_search_failed',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L487', '网络搜索失败：{{detail}}'),
+      {
+        detail: searchFail[1].trim()
+      }
+    )
   }
 
   const genericError = /^Error:\s*(.*)$/.exec(trimmed)
   if (genericError) {
     const detail = genericError[1].trim()
-    if (!detail) return formatToolCopy(t, 'agent.tools.execution_failed', '工具执行失败')
-    return formatToolCopy(t, 'agent.tools.error_with_detail', '出错：{{detail}}', { detail })
+    if (!detail)
+      return formatToolCopy(
+        t,
+        'agent.tools.execution_failed',
+        i18n.t('auto.packages.ui.src.shared.tool.result.util.L495', '工具执行失败')
+      )
+    return formatToolCopy(
+      t,
+      'agent.tools.error_with_detail',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L496', '出错：{{detail}}'),
+      { detail }
+    )
   }
 
   if (options.skillSave) {
     const saved = /^Saved skill "([^"]+)"\.$/.exec(trimmed)
     if (saved) {
-      return formatToolCopy(t, 'agent.tools.skill_saved', '已保存技能「{{name}}」。', {
-        name: saved[1]
-      })
+      return formatToolCopy(
+        t,
+        'agent.tools.skill_saved',
+        i18n.t('auto.packages.ui.src.shared.tool.result.util.L502', '已保存技能「{{name}}」。'),
+        {
+          name: saved[1]
+        }
+      )
     }
     const loc = /^Location:\s*(.*)$/.exec(trimmed)
     if (loc) {
-      return formatToolCopy(t, 'agent.tools.skill_saved_location', '位置：{{detail}}', {
-        detail: loc[1]
-      })
+      return formatToolCopy(
+        t,
+        'agent.tools.skill_saved_location',
+        i18n.t('auto.packages.ui.src.shared.tool.result.util.L508', '位置：{{detail}}'),
+        {
+          detail: loc[1]
+        }
+      )
     }
     const desc = /^Description:\s*(.*)$/.exec(trimmed)
     if (desc) {
-      return formatToolCopy(t, 'agent.tools.skill_saved_description', '说明：{{detail}}', {
-        detail: desc[1]
-      })
+      return formatToolCopy(
+        t,
+        'agent.tools.skill_saved_description',
+        i18n.t('auto.packages.ui.src.shared.tool.result.util.L514', '说明：{{detail}}'),
+        {
+          detail: desc[1]
+        }
+      )
     }
   }
 
@@ -529,12 +597,20 @@ export function getToolRowSubtitle(
       const first = localizeToolResultText(presentation.text, t).split('\n')[0]?.trim()
       if (first) return truncateSubtitle(first)
     }
-    return formatToolCopy(t, 'agent.tools.execution_failed', '工具执行失败')
+    return formatToolCopy(
+      t,
+      'agent.tools.execution_failed',
+      i18n.t('auto.packages.ui.src.shared.tool.result.util.L541', '工具执行失败')
+    )
   }
   if (invocation) {
     const parsed = resolveCompanionAskPresentation(invocation)
     if (parsed?.declined) {
-      return formatToolCopy(t, 'agent.tools.companion_ask_declined', '没有作答')
+      return formatToolCopy(
+        t,
+        'agent.tools.companion_ask_declined',
+        i18n.t('auto.packages.ui.src.shared.tool.result.util.L546', '没有作答')
+      )
     }
   }
   return getToolInvocationSubtitle(invocation)
