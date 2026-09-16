@@ -68,4 +68,29 @@ describe('isVisionModel', () => {
   it('falls back to regex for unmapped providers', () => {
     expect(isVisionModel('qwen-vl-max', 'doubao')).toBe(true)
   })
+
+  it('treats all kimi series as vision by default', () => {
+    expect(isVisionModel('kimi-k3', 'kimi')).toBe(true)
+    expect(isVisionModel('kimi-k3.0', 'kimi')).toBe(true)
+    expect(isVisionModel('moonshotai/Kimi-K3', 'siliconflow')).toBe(true)
+    expect(isVisionModel('kimi-latest', 'kimi')).toBe(true)
+    expect(isVisionModel('kimi-thinking-preview', 'kimi')).toBe(true)
+    expect(isVisionModel('k3p1', 'kimi')).toBe(true)
+    expect(isVisionModel('k2p5', 'kimi')).toBe(true)
+  })
+
+  it('treats DeepSeek Flash and later native-vision models as vision', () => {
+    expect(isVisionModel('deepseek-flash', 'deepseek')).toBe(true)
+    expect(isVisionModel('deepseek-v4-flash', 'deepseek')).toBe(true)
+    expect(isVisionModel('deepseek-v4-flash-vision-exp', 'deepseek')).toBe(true)
+    expect(isVisionModel('deepseek-ai/DeepSeek-V4.1-Flash', 'siliconflow')).toBe(true)
+    expect(isVisionModel('deepseek-vl', 'deepseek')).toBe(true)
+  })
+
+  it('keeps known DeepSeek text-only models as non-vision', () => {
+    expect(isVisionModel('deepseek-chat', 'deepseek')).toBe(false)
+    expect(isVisionModel('deepseek-reasoner', 'deepseek')).toBe(false)
+    expect(isVisionModel('deepseek-v4-pro', 'deepseek')).toBe(false)
+    expect(isVisionModel('deepseek-ai/DeepSeek-V3', 'siliconflow')).toBe(false)
+  })
 })

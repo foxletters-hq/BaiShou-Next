@@ -2,6 +2,8 @@
 
 export const GRAPH_APPEARANCE_DEFAULTS = {
   showArrows: false,
+  /** Isolated nodes (no edges in the current view) show their names. */
+  showIsolatedNodes: true,
   textOpacity: 1,
   nodeSize: 1,
   lineThickness: 1,
@@ -25,6 +27,7 @@ export const GRAPH_APPEARANCE_STORAGE_KEY = STORAGE_KEY
 
 export type GraphAppearanceSettings = {
   showArrows: boolean
+  showIsolatedNodes: boolean
   textOpacity: number
   nodeSize: number
   lineThickness: number
@@ -36,13 +39,49 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
 }
 
-/** Global-view default name: degree or mentionCount reaches the matching threshold. */
+export function collectGraphConnectedNodeIds(
+  edges: Array<{ fromId?: string | null; toId?: string | null }>
+): Set<string> {
+  const ids = new Set<string>()
+  for (const edge of edges) {
+    if (edge.fromId) ids.add(edge.fromId)
+    if (edge.toId) ids.add(edge.toId)
+  }
+  return ids
+}
+
+/** Hide isolated nodes unless the switch is on, or the node is selected / highlighted / located. */
+export function filterGraphIsolatedDisplayNodes<T extends { id: string }>(
+  nodes: T[],
+  input: {
+    showIsolatedNodes: boolean
+    edges: Array<{ fromId?: string | null; toId?: string | null }>
+    keepIds?: Iterable<string | null | undefined>
+  }
+): T[] {
+  if (input.showIsolatedNodes) return nodes
+  const connected = collectGraphConnectedNodeIds(input.edges)
+  const keep = new Set<string>()
+  if (input.keepIds) {
+    for (const id of input.keepIds) {
+      if (id) keep.add(id)
+    }
+  }
+  return nodes.filter((node) => connected.has(node.id) || keep.has(node.id))
+}
+
+/**
+ * Global-view default name: isolated nodes follow showIsolatedLabels;
+ * connected nodes show when degree or mentionCount reaches the matching threshold.
+ */
 export function isGraphHubLabelVisible(input: {
   degree: number
   mentionCount: number
   hubLabelMinDegree: number
   hubLabelMinMentions: number
+  showIsolatedLabels?: boolean
 }): boolean {
+  if (input.degree <= 0) return input.showIsolatedLabels !== false
   return (
     input.degree >= input.hubLabelMinDegree ||
     input.mentionCount >= input.hubLabelMinMentions
@@ -59,6 +98,10 @@ export function clampGraphAppearanceSettings(
   const hubLabelMinMentions = Number(partial?.hubLabelMinMentions)
   return {
     showArrows: Boolean(partial?.showArrows),
+    showIsolatedNodes:
+      partial?.showIsolatedNodes === undefined
+        ? GRAPH_APPEARANCE_DEFAULTS.showIsolatedNodes
+        : Boolean(partial.showIsolatedNodes),
     textOpacity: clamp(
       Number.isFinite(textOpacity) ? textOpacity : GRAPH_APPEARANCE_DEFAULTS.textOpacity,
       GRAPH_APPEARANCE_RANGES.textOpacity.min,

@@ -8,7 +8,7 @@ const MODEL_CONTEXT_WINDOW_TABLE: Array<{ match: RegExp; window: number }> = [
   { match: /gpt-4\.1|gpt-4o|gpt-4-turbo|o1|o3|o4/i, window: 128_000 },
   { match: /gpt-4(?![.\d])/i, window: 8_192 },
   { match: /gpt-3\.5/i, window: 16_385 },
-  { match: /deepseek.*v4|deepseek-v4/i, window: 1_000_000 },
+  { match: /deepseek.*v4|deepseek-v4|deepseek-flash/i, window: 1_000_000 },
   { match: /deepseek.*(v3|r1|reasoner)|deepseek-chat/i, window: 128_000 },
   { match: /deepseek/i, window: 64_000 },
   { match: /qwen.*(max|plus|turbo|2\.5|3)|qwen2|qwen3/i, window: 128_000 },

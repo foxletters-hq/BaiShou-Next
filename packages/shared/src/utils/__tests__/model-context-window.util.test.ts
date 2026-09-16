@@ -7,6 +7,7 @@ import {
 describe('getModelContextWindow', () => {
   it('maps known models and defaults otherwise', () => {
     expect(getModelContextWindow('deepseek-v4-flash')).toBe(1_000_000)
+    expect(getModelContextWindow('deepseek-flash')).toBe(1_000_000)
     expect(getModelContextWindow('deepseek-chat')).toBe(128_000)
     expect(getModelContextWindow('deepseek-coder')).toBe(64_000)
     expect(getModelContextWindow('claude-3-5-sonnet')).toBe(200_000)

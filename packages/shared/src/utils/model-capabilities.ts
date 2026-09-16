@@ -47,16 +47,17 @@ const visionAllowedModels = [
   'o1(?:-[\\w-]+)?',
   'o3(?:-[\\w-]+)?',
   'o4(?:-[\\w-]+)?',
-  'deepseek-vl(?:[\\w-]+)?',
-  'kimi-k2(?:\\.\\d+)?(?:-[\\w-]+)?',
-  'kimi-latest',
+  // DeepSeek：V4.1-Flash 起官方 API 原生识图；旧 Flash / Vision-Exp 别名会路由到该模型。
+  // 后续新架构型号默认视为视觉多模态，已知纯文本型号走排除列表。
+  'deepseek(?:[-_.][\\w.-]+)?',
+  // Kimi / Moonshot：全系列默认视为视觉多模态（含 k2/k3 及官方短名 k2p5 等）
+  'kimi(?:[-_][\\w.-]+)?',
+  'k\\d+p\\d+(?:-[\\w-]+)?',
   'gemma-?[3-4](?:[-.\\w]+)?',
   'doubao-seed-1[.-][68](?:-[\\w-]+)?',
   'doubao-seed-2[.-]0(?:-[\\w-]+)?',
   'doubao-seed-code(?:-[\\w-]+)?',
-  'kimi-thinking-preview',
   `gemma3(?:[-:\\w]+)?`,
-  'kimi-vl-a3b-thinking(?:-[\\w-]+)?',
   'llama-guard-4(?:-[\\w-]+)?',
   'llama-4(?:-[\\w-]+)?',
   'step-1o(?:.*vision)?',
@@ -78,7 +79,15 @@ const visionExcludedModels = [
   'o1-mini',
   'o3-mini',
   'o1-preview',
-  'AIDC-AI/Marco-o1'
+  'AIDC-AI/Marco-o1',
+  'deepseek-chat(?:-[\\w-]+)?',
+  'deepseek-reasoner(?:-[\\w-]+)?',
+  'deepseek-coder(?:-[\\w-]+)?',
+  'deepseek-v2(?:[.-][\\w-]+)?',
+  'deepseek-v3(?:[.-][\\w-]+)?',
+  'deepseek-r1(?:[.-][\\w-]+)?',
+  // V4-Pro 官方仍标为不支持识图；9 月 14 日起请求会改走 V4.1-Flash，届时可再放开
+  'deepseek-v4-pro(?:-[\\w-]+)?'
 ]
 
 const VISION_REGEX = new RegExp(
