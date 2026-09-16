@@ -12,7 +12,6 @@ import { buildDesktopDiaryReEmbedArgs } from '../services/diary-embed-text.util'
 
 import { vaultService, resolveActiveVaultId, resolveVaultIdByName } from './vault.ipc'
 import { deleteDiaryEmbeddingAliases } from '../services/diary-embedding.util'
-import { deleteDiaryEmbedJob, enqueueDiaryEmbedJob } from '../services/diary-embed-jobs.service'
 
 function broadcastDiaryEmbedFailed(message: string): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -62,11 +61,6 @@ export const embeddingCallback: IEmbeddingCallback = {
       const embeddingService = getEmbeddingService()
 
       if (!isRagMemoryEnabled(ragConfig) || !embeddingService.isConfigured) {
-        await enqueueDiaryEmbedJob({
-          vaultId,
-          diaryId: params.diaryId,
-          contentHash
-        })
         return false
       }
 
@@ -81,31 +75,20 @@ export const embeddingCallback: IEmbeddingCallback = {
           contentHash
         })
       )
-      await deleteDiaryEmbedJob(vaultId, params.diaryId)
       await clearDiaryEmbedFailureIfSet()
+      const { invalidatePendingEmbedCountsCache } =
+        await import('../services/pending-embed-counts.service')
+      invalidatePendingEmbedCountsCache()
       return true
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)
-      await enqueueDiaryEmbedJob(
-        {
-          vaultId,
-          diaryId: params.diaryId,
-          contentHash
-        },
-        formatAiApiCallError(e)
-      )
       await persistDiaryEmbedFailure(e)
       return false
     }
   },
 
-  async enqueueDiaryEmbed(params) {
-    const vaultId = resolveVaultId(params.vaultName)
-    await enqueueDiaryEmbedJob({
-      vaultId,
-      diaryId: params.diaryId,
-      contentHash: params.contentHash
-    })
+  async enqueueDiaryEmbed(_params) {
+    // diary_embed_jobs 已退休：待嵌入由账本检测，不再入队
   },
 
   async deleteEmbeddingsBySource(sourceType, sourceId) {
@@ -113,13 +96,6 @@ export const embeddingCallback: IEmbeddingCallback = {
       const { DesktopEmbeddingStorage } = await import('./rag.storage')
       const storage = new DesktopEmbeddingStorage()
       await storage.deleteEmbeddingsBySource(sourceType, sourceId)
-      if (sourceType === 'diary' && sourceId.includes('#')) {
-        const [vaultId, idPart] = sourceId.split('#')
-        const diaryId = Number(idPart)
-        if (vaultId && Number.isFinite(diaryId)) {
-          await deleteDiaryEmbedJob(vaultId, diaryId)
-        }
-      }
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 清理发生异常:', e)
     }

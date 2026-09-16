@@ -101,7 +101,7 @@ export async function countUnindexedDiariesForActiveVault(): Promise<number> {
   if (!vault) return 0
   const vaultId = resolveActiveVaultId()
   const diaryManager = await getDiaryManagerForVault(vault.name)
-  const diaries = await diaryManager.listAll({ limit: 10000 })
+  const diaries = await diaryManager.listForEmbedDetection()
   if (diaries.length === 0) return 0
 
   const storage = new DesktopEmbeddingStorage()
