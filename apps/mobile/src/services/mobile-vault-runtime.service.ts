@@ -64,6 +64,7 @@ export function createUnavailableDiaryService(): DiaryService {
   }
   return {
     listAll: emptyList,
+    listForEmbedDetection: emptyList,
     listFiltered: emptyList,
     count: emptyCount,
     countFiltered: emptyCount,
