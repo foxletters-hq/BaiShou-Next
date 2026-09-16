@@ -92,6 +92,7 @@ let force = Object.assign({}, FORCE_DEFAULTS, DATA.force || {});
 
 let appearance = Object.assign({
   showArrows: false,
+  showIsolatedNodes: true,
   textOpacity: 1,
   nodeSize: 1,
   lineThickness: 1,
@@ -373,9 +374,12 @@ function draw(){
     const highlighted = highlightIds.has(n.id) || n.id===selectedId;
     const inFocus = !focusing || focusIds.has(n.id);
     const dim = focusing && !inFocus;
+    const degree = degreeById.get(n.id)||0;
     const isHub =
-      (degreeById.get(n.id)||0) >= (appearance.hubLabelMinDegree||3) ||
-      (n.mentionCount||0) >= (appearance.hubLabelMinMentions||5);
+      degree <= 0
+        ? appearance.showIsolatedNodes !== false
+        : degree >= (appearance.hubLabelMinDegree||3) ||
+          (n.mentionCount||0) >= (appearance.hubLabelMinMentions||5);
 
     ctx.globalAlpha = dim ? 0.1 : (pending && !highlighted) ? 0.45 : 1;
     ctx.beginPath();

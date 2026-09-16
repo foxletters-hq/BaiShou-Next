@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
-  Switch,
   Animated,
   ScrollView,
   useWindowDimensions
@@ -22,12 +21,15 @@ import {
   MarkdownRenderer,
   NativeSlider,
   Checkbox,
+  Switch,
+  useDialog,
   useNativeTheme,
   useNativeToast
 } from '@baishou/ui/native'
 import {
   deriveLegacyVaultId,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
+  formatLocalDate,
   parseDateStr,
   translateGraphEdgeType,
   translateGraphNodeType,
@@ -67,6 +69,8 @@ import {
   GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR,
   GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
   GRAPH_GLOBAL_MAX_NODES,
+  isGraphSearchEmbeddingRequiredError,
+  type GraphSearchMode,
   describeGraphExtractPhase,
   describeGraphExtractQueueError,
   emptyGraphExtractQueueSnapshot,
@@ -75,6 +79,8 @@ import {
   isGraphExtractBusyStatus,
   isGraphNodeSameNameConflict,
   graphPendingItemKey,
+  buildGraphNodeNameMap,
+  resolveGraphNodeDisplayName,
   applyGraphLocalEdgeDelete,
   applyGraphLocalNodeDelete,
   omitInFlightGraphDeletes,
@@ -89,13 +95,16 @@ import { GRAPH_EDGE_TYPES, ShadowIndexRepository, shadowConnectionManager } from
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
+import { invalidateMobilePendingEmbedCountsCache } from '@/src/services/mobile-pending-embed-counts'
 import {
+  mobileClearLifeGraph,
   mobileEstimateExtraction,
   mobileGetNode,
   mobileGetView,
   mobileListPending,
   mobileListPendingReextract,
   mobileLoadGlobalGraph,
+  mobileResolveJournalForExtract,
   mobileSearchGraphNodes,
   mobileSetEdgeReview,
   mobileSetNodeReview,
@@ -177,15 +186,19 @@ export function GraphScreen() {
   const { colors } = useNativeTheme()
   const { width: screenWidth } = useWindowDimensions()
   const toast = useNativeToast()
+  const dialog = useDialog()
   const insets = useSafeAreaInsets()
   const chrome = getStackScreenChrome(colors)
   const { services, dbReady } = useBaishou()
   const [tab, setTab] = useState<Tab>('graph')
   const [query, setQuery] = useState('')
+  const [searchMode, setSearchMode] = useState<GraphSearchMode>('text')
+  const [searching, setSearching] = useState(false)
   const [hits, setHits] = useState<any[]>([])
   const [pending, setPending] = useState<any[]>([])
   const [pendingNodes, setPendingNodes] = useState<any[]>([])
   const [pendingEdges, setPendingEdges] = useState<any[]>([])
+  const [pendingEndpointNodes, setPendingEndpointNodes] = useState<any[]>([])
   const [pendingSelected, setPendingSelected] = useState<Set<string>>(() => new Set())
   const [graphNodes, setGraphNodes] = useState<any[]>([])
   const [graphEdges, setGraphEdges] = useState<any[]>([])
@@ -206,9 +219,10 @@ export function GraphScreen() {
   )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsSection, setSettingsSection] = useState({
-    ops: true,
+    organize: true,
     profile: false,
-    view: true,
+    data: false,
+    canvas: true,
     appearance: true,
     forces: true
   })
@@ -227,6 +241,7 @@ export function GraphScreen() {
   const [extractConcurrency, setExtractConcurrency] = useState(() =>
     mobileGraphExtractQueue.getConcurrency()
   )
+  const [extractDate, setExtractDate] = useState(() => formatLocalDate(new Date()))
   const [extractQueue, setExtractQueue] = useState<GraphExtractQueueSnapshot | null>(null)
   const [queueModalOpen, setQueueModalOpen] = useState(false)
   const [status, setStatus] = useState('')
@@ -336,6 +351,11 @@ export function GraphScreen() {
     })
     setPendingNodes(visible.pendingNodes)
     setPendingEdges(visible.pendingEdges)
+    setPendingEndpointNodes(
+      (pendingBundle.endpointNodes || []).filter(
+        (node) => !inFlightDeletedNodeIdsRef.current.has(node.id)
+      )
+    )
     setGraphNodes(visible.nodes)
     setGraphEdges(visible.edges)
     try {
@@ -603,25 +623,43 @@ export function GraphScreen() {
       return true
     }
 
+    const viewEdges = pinNeighborhood
+      ? localView?.edges || []
+      : selectedId && !graphNodes.some((n) => n.id === selectedId)
+        ? [...graphEdges, ...(localView?.edges || [])]
+        : graphEdges
+    const visibleEdges = viewEdges.filter((e) => {
+      if (e.reviewStatus === 'rejected') return false
+      if (!pinNeighborhood && approvedOnly && e.reviewStatus === 'pending') return false
+      return true
+    })
+
+    let next: any[]
     if (pinNeighborhood && localView?.nodes?.length) {
-      return localView.nodes.filter((n) => filterNode(n, true))
+      next = localView.nodes.filter((n) => filterNode(n, true))
+    } else {
+      const base = graphNodes.filter((n) => filterNode(n, true))
+      if (!selectedId || base.some((n) => n.id === selectedId)) {
+        next = base
+      } else {
+        const byId = new Map(base.map((n) => [n.id as string, n]))
+        const extras = [
+          ...(localView?.nodes || []),
+          ...(selectedNode && selectedNode.id === selectedId ? [selectedNode] : [])
+        ]
+        for (const n of extras) {
+          if (!n?.id || byId.has(n.id)) continue
+          if (!filterNode(n, true)) continue
+          byId.set(n.id, n)
+        }
+        next = [...byId.values()]
+      }
     }
 
-    const base = graphNodes.filter((n) => filterNode(n, true))
-    if (!selectedId || base.some((n) => n.id === selectedId)) return base
-    const byId = new Map(base.map((n) => [n.id as string, n]))
-    const extras = [
-      ...(localView?.nodes || []),
-      ...(selectedNode && selectedNode.id === selectedId ? [selectedNode] : [])
-    ]
-    for (const n of extras) {
-      if (!n?.id || byId.has(n.id)) continue
-      if (!filterNode(n, true)) continue
-      byId.set(n.id, n)
-    }
-    return [...byId.values()]
+    return next
   }, [
     graphNodes,
+    graphEdges,
     hideEntry,
     approvedOnly,
     enabledNodeTypes,
@@ -630,7 +668,8 @@ export function GraphScreen() {
     selectedNode,
     pinNeighborhood,
     highlightIds,
-    highlightedEdgeIds
+    highlightedEdgeIds,
+    locateIds
   ])
 
   const displayEdges = useMemo(() => {
@@ -658,9 +697,19 @@ export function GraphScreen() {
   const showMonthEmpty =
     selfNameReady === true && !showEmptyGuide && canvasNodeCount === 0 && !pinNeighborhood
 
+  const graphNodeNameById = useMemo(
+    () =>
+      buildGraphNodeNameMap([
+        ...graphNodes,
+        ...pendingNodes,
+        ...pendingEndpointNodes,
+        ...(localView?.nodes || [])
+      ]),
+    [graphNodes, pendingNodes, pendingEndpointNodes, localView]
+  )
+
   const detailEdges = useMemo(() => {
     if (!selectedId) return []
-    const nodeById = new Map((localView?.nodes || graphNodes).map((n: any) => [n.id as string, n]))
     const seen = new Set<string>()
     const list: Array<{ edge: any; partnerName: string }> = []
     const edgeSource = localView?.edges?.length ? localView.edges : graphEdges
@@ -670,14 +719,17 @@ export function GraphScreen() {
       seen.add(e.id)
       if (e.reviewStatus === 'rejected') continue
       const partnerId = e.fromId === selectedId ? e.toId : e.fromId
-      const partner = nodeById.get(partnerId) || graphNodes.find((n: any) => n.id === partnerId)
       list.push({
         edge: e,
-        partnerName: partner?.name || String(partnerId).slice(0, 8)
+        partnerName: resolveGraphNodeDisplayName(
+          graphNodeNameById,
+          partnerId,
+          t('graph.unknown_node', '未知节点')
+        )
       })
     }
     return list
-  }, [localView, selectedId, graphNodes, graphEdges])
+  }, [localView, selectedId, graphEdges, graphNodeNameById, t])
 
   const updateForce = useCallback((patch: Partial<GraphForceSettings>) => {
     setForceSettings((prev) => {
@@ -928,34 +980,51 @@ export function GraphScreen() {
     setLocateSeq((n) => n + 1)
   }
 
-  const onSearch = async () => {
-    const runtime = getAgentDbRuntime()
-    const q = query.trim()
-    if (!runtime?.drizzleDb || !q) {
-      setHits([])
-      setHighlightIds(new Set())
-      setHighlightedEdgeIds(new Set())
+  const applySearchHits = (found: any[]) => {
+    const list = (found || []).filter((item) => item?.id && item.reviewStatus !== 'rejected')
+    setHits(list)
+    const ids = list.map((item) => item.id as string)
+    setHighlightIds(new Set(ids))
+    setHighlightedEdgeIds(new Set())
+    setSelectedId(null)
+    setSelectedNode(null)
+    if (list.length === 0) {
+      setLocalView(null)
+      setPinNeighborhood(false)
       setLocateIds(null)
       return
     }
-    const found = await mobileSearchGraphNodes(runtime.drizzleDb, vaultId, q)
-    setHits(found)
-    if (found?.[0]) {
-      const hit = found[0]
-      setTab('graph')
-      setSelectedId(hit.id)
-      setHighlightedEdgeIds(new Set())
-      setLocateIds(null)
-      setHighlightIds(new Set([hit.id]))
-      const view = await mobileGetView(runtime.drizzleDb, vaultId, {
-        centerNodeId: hit.id,
-        depth: viewDepthFor(focusDepth)
+    setLocalView({ nodes: list, edges: [] })
+    setPinNeighborhood(true)
+    setLocateIds(ids)
+    setLocateSeq((n) => n + 1)
+  }
+
+  const onSearch = async (nextMode: GraphSearchMode = searchMode) => {
+    const runtime = getAgentDbRuntime()
+    const q = query.trim()
+    if (!runtime?.drizzleDb || !q) {
+      applySearchHits([])
+      return
+    }
+    setSearching(true)
+    try {
+      const found = await mobileSearchGraphNodes(runtime.drizzleDb, vaultId, q, {
+        mode: nextMode,
+        settingsManager: services?.settingsManager
       })
-      setLocalView(view)
-      setPinNeighborhood(false)
-      const node = await mobileGetNode(runtime.drizzleDb, vaultId, hit.id)
-      setSelectedNode(node || hit)
-      setLocateSeq((n) => n + 1)
+      applySearchHits(found)
+    } catch (error) {
+      applySearchHits([])
+      const message = isGraphSearchEmbeddingRequiredError(error)
+        ? t('graph.search_embedding_required', '请先配置嵌入模型，才能用语义搜索节点')
+        : error instanceof Error
+          ? error.message
+          : String(error)
+      setStatus(message)
+      toast.showError(message)
+    } finally {
+      setSearching(false)
     }
   }
 
@@ -972,7 +1041,7 @@ export function GraphScreen() {
       depth: viewDepthFor(focusDepth)
     })
     setLocalView(view)
-    setPinNeighborhood(false)
+    setPinNeighborhood(true)
     const node = await mobileGetNode(runtime.drizzleDb, vaultId, item.id)
     setSelectedNode(node || item)
     setLocateSeq((n) => n + 1)
@@ -1068,6 +1137,22 @@ export function GraphScreen() {
     setSelfNameReady(true)
     setDismissGuide(true)
     try {
+      const pendingCounts = await (
+        services.ragService as { getPendingEmbedCounts?: () => Promise<{ diaries?: number }> }
+      ).getPendingEmbedCounts?.()
+      if ((pendingCounts?.diaries ?? 0) > 0) {
+        toast.showInfo(
+          t('graph.extract_blocked_pending_embed', '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系', {
+            count: pendingCounts!.diaries
+          })
+        )
+        setStatus(
+          t('graph.extract_blocked_pending_embed', '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系', {
+            count: pendingCounts!.diaries
+          })
+        )
+        return
+      }
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
       const result = await mobileGraphExtractQueue.enqueue(
         { filePaths, concurrency: extractConcurrency },
@@ -1134,6 +1219,87 @@ export function GraphScreen() {
               : message
       setStatus(friendly)
       toast.showError(friendly)
+    }
+  }
+
+  const runExtractOne = async () => {
+    if (!services) return
+    const date = extractDate.trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      toast.showError(t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。'))
+      return
+    }
+    try {
+      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+      const resolved = await mobileResolveJournalForExtract(date, shadowRepo)
+      if (!resolved?.filePath) {
+        toast.showError(t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。'))
+        return
+      }
+      const ok = await dialog.confirm(
+        t(
+          'graph.confirm_extract_one',
+          '将把 {{date}} 这篇日记加入整理队列。系统写出的关系会被这次结果替换；你手改过的边会留下。',
+          { date }
+        ),
+        t('graph.extract_one_title', '重新梳理这篇日记')
+      )
+      if (!ok) return
+      await runExtract([resolved.filePath])
+    } catch (e: any) {
+      toast.showError(e?.message || String(e))
+    }
+  }
+
+  const clearLifeGraph = async () => {
+    if (!services) return
+    const runtime = getAgentDbRuntime()
+    if (!runtime?.drizzleDb) return
+    const phrase = t('graph.clear_life_confirm_phrase', '确认清空')
+    const input = await dialog.prompt(
+      t(
+        'graph.clear_life_confirm_input',
+        '将删除本工作区人生关系图的全部节点、连线和抽取记录，包括你手改过的内容。同步后其他设备上的人生关系图也会变空。笔记本关系图不会被改动。请输入「{{phrase}}」以确认：',
+        { phrase }
+      ),
+      '',
+      t('graph.clear_life_title', '清空人生关系图')
+    )
+    if (input !== phrase) {
+      if (input !== null) {
+        toast.showError(t('graph.clear_life_mismatch', '输入内容不匹配，操作已取消。'))
+      }
+      return
+    }
+    setBusy(true)
+    try {
+      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
+      await mobileClearLifeGraph({
+        vaultId,
+        vaultName,
+        drizzleDb: runtime.drizzleDb,
+        shadowRepo,
+        pathService: services.pathService,
+        fileSystem: services.fileSystem,
+        stopExtract: () => mobileGraphExtractQueue.stop()
+      })
+      invalidateMobilePendingEmbedCountsCache()
+      setSelectedId(null)
+      setSelectedNode(null)
+      setLocalView(null)
+      setPinNeighborhood(false)
+      setHighlightIds(new Set())
+      setHighlightedEdgeIds(new Set())
+      setLocateIds(null)
+      setExtractRunning(false)
+      setExtractQueue(emptyGraphExtractQueueSnapshot())
+      setQueueModalOpen(false)
+      toast.showSuccess(t('graph.clear_life_done', '已清空人生关系图'))
+      await refreshRef.current()
+    } catch (e: any) {
+      toast.showError(e?.message || String(e))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -2348,7 +2514,11 @@ export function GraphScreen() {
                   <Input
                     value={query}
                     onChangeText={setQuery}
-                    placeholder={t('graph.search_placeholder', '搜索实体')}
+                    placeholder={
+                      searchMode === 'semantic'
+                        ? t('graph.search_placeholder_semantic', '按意思搜索节点…')
+                        : t('graph.search_placeholder_text', '按名称 / 别名搜索')
+                    }
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="search"
@@ -2361,13 +2531,54 @@ export function GraphScreen() {
                     </Text>
                   </Pressable>
                 </View>
+                <View style={styles.searchModeRow}>
+                  {(['semantic', 'text'] as const).map((mode) => {
+                    const active = searchMode === mode
+                    return (
+                      <Pressable
+                        key={mode}
+                        onPress={() => {
+                          setSearchMode(mode)
+                          if (query.trim()) void onSearch(mode)
+                        }}
+                        style={[
+                          styles.searchModeChip,
+                          {
+                            backgroundColor: active ? colors.bgSurfaceHigh : colors.bgSurface,
+                            borderColor: active ? colors.primary : colors.borderSubtle
+                          }
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: active ? colors.primary : colors.textSecondary,
+                            fontWeight: active ? '600' : '400'
+                          }}
+                        >
+                          {mode === 'semantic'
+                            ? t('graph.search_semantic', '语义搜索')
+                            : t('graph.search_text', '文本搜索')}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
                 <FlatList
                   data={hits}
                   keyExtractor={(item) => item.id}
                   contentContainerStyle={listPad}
                   ListEmptyComponent={
                     <Text style={{ color: colors.textSecondary }}>
-                      {t('graph.search_empty', '输入关键词搜索图谱实体')}
+                      {searching
+                        ? t('graph.searching', '正在搜索…')
+                        : query.trim()
+                          ? searchMode === 'semantic'
+                            ? t(
+                                'graph.search_semantic_empty',
+                                '没有语义相近的节点。没做向量的节点不会出现在语义搜索里。'
+                              )
+                            : t('graph.search_no_hits', '没有找到匹配的节点')
+                          : t('graph.search_empty', '输入关键词搜索图谱实体')}
                     </Text>
                   }
                   renderItem={({ item }) => (
@@ -2654,8 +2865,23 @@ export function GraphScreen() {
                                   {item.data.confidence}
                                 </Text>
                                 <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
-                                  {item.data.sourceExcerpt || item.data.sourceRef || item.data.id}
+                                  {resolveGraphNodeDisplayName(
+                                    graphNodeNameById,
+                                    item.data.fromId,
+                                    t('graph.unknown_node', '未知节点')
+                                  )}{' '}
+                                  →{' '}
+                                  {resolveGraphNodeDisplayName(
+                                    graphNodeNameById,
+                                    item.data.toId,
+                                    t('graph.unknown_node', '未知节点')
+                                  )}
                                 </Text>
+                                {item.data.sourceExcerpt || item.data.sourceRef ? (
+                                  <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
+                                    {item.data.sourceExcerpt || item.data.sourceRef}
+                                  </Text>
+                                ) : null}
                                 <View style={styles.row}>
                                   <Pressable
                                     onPress={() =>
@@ -2920,16 +3146,98 @@ export function GraphScreen() {
           </Text>
 
           <Pressable
-            onPress={() => setSettingsSection((s) => ({ ...s, ops: !s.ops }))}
+            onPress={() => setSettingsSection((s) => ({ ...s, organize: !s.organize }))}
             style={styles.settingsHead}
           >
             <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-              {settingsSection.ops ? '▾ ' : '▸ '}
-              {t('graph.side_ops', '操作')}
+              {settingsSection.organize ? '▾ ' : '▸ '}
+              {t('graph.side_organize', '整理')}
             </Text>
           </Pressable>
-          {settingsSection.ops ? (
+          {settingsSection.organize ? (
             <View style={styles.settingsBody}>
+              <Pressable
+                onPress={() => setSettingsSection((s) => ({ ...s, profile: !s.profile }))}
+                style={styles.settingsHead}
+              >
+                <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                  {settingsSection.profile ? '▾ ' : '▸ '}
+                  {t('graph.profile_section', '身份资料')}
+                </Text>
+              </Pressable>
+              {settingsSection.profile ? (
+                <View style={styles.settingsBody}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
+                    {t(
+                      'graph.profile_hint',
+                      '用于识别日记中的「我」。修改昵称会同步更新图谱中的自称节点，旧昵称保留为别名，无需重建整图。'
+                    )}
+                  </Text>
+                  <TextInput
+                    value={profileForm.nickname}
+                    onChangeText={(v) => setProfileForm((p) => ({ ...p, nickname: v }))}
+                    placeholder={t('graph.awaken_nickname_label', '昵称')}
+                    placeholderTextColor={colors.textSecondary}
+                    style={[
+                      styles.renameInput,
+                      {
+                        color: colors.textPrimary,
+                        borderColor: profileErrors.nickname ? colors.error : colors.borderSubtle
+                      }
+                    ]}
+                  />
+                  <TextInput
+                    value={profileForm.birthday}
+                    onChangeText={(v) => setProfileForm((p) => ({ ...p, birthday: v }))}
+                    placeholder={t('graph.awaken_birthday_label', '生日 YYYY-MM-DD')}
+                    placeholderTextColor={colors.textSecondary}
+                    style={[
+                      styles.renameInput,
+                      {
+                        color: colors.textPrimary,
+                        borderColor: profileErrors.birthday ? colors.error : colors.borderSubtle
+                      }
+                    ]}
+                  />
+                  <View style={styles.typeChipRow}>
+                    {USER_GENDER_OPTIONS.map((g) => {
+                      const active = profileForm.gender === g
+                      return (
+                        <Pressable
+                          key={g}
+                          onPress={() => setProfileForm((p) => ({ ...p, gender: g }))}
+                          style={[
+                            styles.edgeTypeChip,
+                            {
+                              backgroundColor: active ? colors.primary : colors.bgSurfaceNormal,
+                              borderColor: active
+                                ? colors.primary
+                                : profileErrors.gender
+                                  ? colors.error
+                                  : colors.borderSubtle
+                            }
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              color: active ? '#fff' : colors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: active ? '700' : '500'
+                            }}
+                          >
+                            {t(`graph.awaken_gender_${g}`, g)}
+                          </Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                  <Pressable disabled={profileBusy} onPress={() => void saveProfileFromSettings()}>
+                    <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                      {t('graph.profile_save', '保存身份资料')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
               <Pressable
                 onPress={() => void runExtract()}
                 disabled={busy || pending.length === 0}
@@ -2991,6 +3299,46 @@ export function GraphScreen() {
                   </Pressable>
                 ))}
               </View>
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 12 }}>
+                {t('graph.extract_one_date', '日记日期')}
+              </Text>
+              <TextInput
+                value={extractDate}
+                onChangeText={setExtractDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.textSecondary}
+                style={[
+                  styles.renameInput,
+                  {
+                    color: colors.textPrimary,
+                    borderColor: colors.borderSubtle
+                  }
+                ]}
+              />
+              <Pressable
+                onPress={() => void runExtractOne()}
+                disabled={busy}
+                style={[
+                  styles.toolBtn,
+                  {
+                    borderColor: colors.borderSubtle,
+                    backgroundColor: colors.bgSurfaceNormal,
+                    opacity: busy ? 0.5 : 1,
+                    marginTop: 8
+                  }
+                ]}
+              >
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: '600',
+                    textAlign: 'center'
+                  }}
+                >
+                  {t('graph.extract_one_action', '重新梳理这篇')}
+                </Text>
+              </Pressable>
               <View style={styles.opsBtnRow}>
                 <Pressable
                   onPress={() => {
@@ -3045,6 +3393,62 @@ export function GraphScreen() {
                   </Text>
                 </Pressable>
               </View>
+              <Pressable
+                onPress={() => setSettingsSection((s) => ({ ...s, data: !s.data }))}
+                style={styles.settingsHead}
+              >
+                <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                  {settingsSection.data ? '▾ ' : '▸ '}
+                  {t('graph.data_ops', '数据操作')}
+                </Text>
+              </Pressable>
+              {settingsSection.data ? (
+                <View style={styles.settingsBody}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
+                    {t(
+                      'graph.clear_life_hint',
+                      '删除本工作区人生关系图的全部节点、连线和抽取记录。笔记本关系图不会被改动。'
+                    )}
+                  </Text>
+                  <Pressable
+                    onPress={() => void clearLifeGraph()}
+                    disabled={busy}
+                    style={[
+                      styles.toolBtn,
+                      {
+                        borderColor: colors.borderSubtle,
+                        backgroundColor: colors.bgSurfaceNormal,
+                        opacity: busy ? 0.5 : 1
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: '600',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {t('graph.clear_life_action', '清空人生关系图')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={() => setSettingsSection((s) => ({ ...s, canvas: !s.canvas }))}
+            style={styles.settingsHead}
+          >
+            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+              {settingsSection.canvas ? '▾ ' : '▸ '}
+              {t('graph.side_canvas', '画布')}
+            </Text>
+          </Pressable>
+          {settingsSection.canvas ? (
+            <View style={styles.settingsBody}>
               <View style={styles.filterSectionHead}>
                 <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 13 }}>
                   {t('graph.filter', '筛选')}
@@ -3125,105 +3529,7 @@ export function GraphScreen() {
                   )
                 })}
               </View>
-            </View>
-          ) : null}
-
-          <Pressable
-            onPress={() => setSettingsSection((s) => ({ ...s, profile: !s.profile }))}
-            style={styles.settingsHead}
-          >
-            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-              {settingsSection.profile ? '▾ ' : '▸ '}
-              {t('graph.profile_section', '身份资料')}
-            </Text>
-          </Pressable>
-          {settingsSection.profile ? (
-            <View style={styles.settingsBody}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
-                {t(
-                  'graph.profile_hint',
-                  '用于识别日记中的「我」。修改昵称会同步更新图谱中的自称节点，旧昵称保留为别名，无需重建整图。'
-                )}
-              </Text>
-              <TextInput
-                value={profileForm.nickname}
-                onChangeText={(v) => setProfileForm((p) => ({ ...p, nickname: v }))}
-                placeholder={t('graph.awaken_nickname_label', '昵称')}
-                placeholderTextColor={colors.textSecondary}
-                style={[
-                  styles.renameInput,
-                  {
-                    color: colors.textPrimary,
-                    borderColor: profileErrors.nickname ? colors.error : colors.borderSubtle
-                  }
-                ]}
-              />
-              <TextInput
-                value={profileForm.birthday}
-                onChangeText={(v) => setProfileForm((p) => ({ ...p, birthday: v }))}
-                placeholder={t('graph.awaken_birthday_label', '生日 YYYY-MM-DD')}
-                placeholderTextColor={colors.textSecondary}
-                style={[
-                  styles.renameInput,
-                  {
-                    color: colors.textPrimary,
-                    borderColor: profileErrors.birthday ? colors.error : colors.borderSubtle
-                  }
-                ]}
-              />
-              <View style={styles.typeChipRow}>
-                {USER_GENDER_OPTIONS.map((g) => {
-                  const active = profileForm.gender === g
-                  return (
-                    <Pressable
-                      key={g}
-                      onPress={() => setProfileForm((p) => ({ ...p, gender: g }))}
-                      style={[
-                        styles.edgeTypeChip,
-                        {
-                          backgroundColor: active ? colors.primary : colors.bgSurfaceNormal,
-                          borderColor: active
-                            ? colors.primary
-                            : profileErrors.gender
-                              ? colors.error
-                              : colors.borderSubtle
-                        }
-                      ]}
-                    >
-                      <Text
-                        style={{
-                          color: active ? '#fff' : colors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: active ? '700' : '500'
-                        }}
-                      >
-                        {t(`graph.awaken_gender_${g}`, g)}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
-              <Pressable disabled={profileBusy} onPress={() => void saveProfileFromSettings()}>
-                <Text style={{ color: colors.primary, fontWeight: '700' }}>
-                  {t('graph.profile_save', '保存身份资料')}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          <Pressable
-            onPress={() => setSettingsSection((s) => ({ ...s, view: !s.view }))}
-            style={styles.settingsHead}
-          >
-            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-              {settingsSection.view ? '▾ ' : '▸ '}
-              {t('graph.view_section', '浏览')}
-            </Text>
-          </Pressable>
-          {settingsSection.view ? (
-            <View style={styles.settingsBody}>{renderDepthChips()}</View>
-          ) : null}
-
+              {renderDepthChips()}
           <Pressable
             onPress={() => setSettingsSection((s) => ({ ...s, appearance: !s.appearance }))}
             style={styles.settingsHead}
@@ -3242,6 +3548,15 @@ export function GraphScreen() {
                 <Switch
                   value={appearanceSettings.showArrows}
                   onValueChange={(v) => updateAppearance({ showArrows: v })}
+                />
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+                  {t('graph.show_isolated_nodes', '独立节点')}
+                </Text>
+                <Switch
+                  value={appearanceSettings.showIsolatedNodes}
+                  onValueChange={(v) => updateAppearance({ showIsolatedNodes: v })}
                 />
               </View>
               {(
@@ -3291,6 +3606,8 @@ export function GraphScreen() {
           </Pressable>
           {settingsSection.forces ? (
             <View style={styles.settingsBody}>{renderForceSliders()}</View>
+          ) : null}
+            </View>
           ) : null}
 
           <Pressable
@@ -3566,6 +3883,19 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     marginBottom: 8
+  },
+  searchModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    marginBottom: 10
+  },
+  searchModeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1
   },
   card: {
     paddingVertical: 10,
