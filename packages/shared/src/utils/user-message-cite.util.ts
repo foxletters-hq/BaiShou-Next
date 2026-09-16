@@ -11,6 +11,7 @@ export type UserCiteSegment =
       selection?: PromptFileSelection
       comment?: string
       origin?: PromptFileRefOrigin
+      isDirectory?: boolean
     }
 
 export function resolveUserComposerCites(
@@ -38,7 +39,8 @@ export function resolveUserComposerCites(
           relativePath: ref.relativePath,
           selection: ref.selection,
           comment: ref.comment,
-          origin: ref.origin
+          origin: ref.origin,
+          isDirectory: ref.isDirectory
         })),
         ...segments
       ],

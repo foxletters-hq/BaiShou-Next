@@ -1,3 +1,4 @@
+import { resolveMcpToolLookupName } from '../utils/mcp-client-url.util'
 import type { FileChangeKind, FileChangePartData } from './file-change.types'
 
 export type FileMutateInvocationLike = {
@@ -14,10 +15,8 @@ const FILE_MUTATE_TOOLS = new Set([
   'workspace_rename'
 ])
 
-const MCP_TOOL_PREFIX = /^mcp__[^_]+__/
-
 export function stripWorkspaceToolPrefix(name: string): string {
-  return name.replace(MCP_TOOL_PREFIX, '')
+  return resolveMcpToolLookupName(name).lookupName
 }
 
 export function isWorkspaceFileMutateTool(name: string | undefined): boolean {

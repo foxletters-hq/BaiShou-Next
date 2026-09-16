@@ -1,6 +1,8 @@
 export const OCR_CONCURRENCY_MIN = 1
 export const OCR_CONCURRENCY_MAX = 10
-export const DEFAULT_OCR_CONCURRENCY = 1
+/** 下拉「推荐」项，也是未配置时的默认并发页数。 */
+export const RECOMMENDED_OCR_CONCURRENCY = 3
+export const DEFAULT_OCR_CONCURRENCY = RECOMMENDED_OCR_CONCURRENCY
 
 /** 将用户配置的 OCR / 视觉识图并发限制在 1–10。 */
 export function clampOcrConcurrency(value: number | undefined | null): number {
@@ -69,7 +71,8 @@ export async function withPromiseTimeout<T>(
 export async function limitExecute<T, R>(
   items: T[],
   concurrencyLimit: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
+  options?: { shouldStop?: () => boolean }
 ): Promise<R[]> {
   if (items.length === 0) return []
 
@@ -78,6 +81,7 @@ export async function limitExecute<T, R>(
 
   const worker = async () => {
     while (nextIndex < items.length) {
+      if (options?.shouldStop?.()) break
       const currentIndex = nextIndex++
       const item = items[currentIndex]!
       results[currentIndex] = await fn(item, currentIndex)

@@ -102,6 +102,7 @@ export type PromptFileRef = {
   selection?: PromptFileSelection
   comment?: string
   origin?: PromptFileRefOrigin
+  isDirectory?: boolean
 }
 
 function fileNameFrom(fileName: string): string {
@@ -294,6 +295,10 @@ export function formatPromptUnsupportedAttachmentHint(displayPath: string): stri
   return `\n\n[User Uploaded File Attachment: ${displayPath}]\n（该文件不是文本、图片或 PDF，无法直接放入对话。请改用工作区工具读取，或改选文本文件。）\n`
 }
 
+export function formatPromptDirectoryAttachmentBlock(displayPath: string): string {
+  return `\n\n[User Uploaded Folder Attachment: ${displayPath}]\n（用户挂入了这个文件夹，请用工作区工具列出并读取其中需要的文件，不要假定正文已经全部附上。）\n`
+}
+
 export function parseFileMentionToken(raw: string): {
   relativePath: string
   selection?: PromptFileSelection
@@ -323,11 +328,18 @@ function formatFileMentionRangeSuffix(selection?: PromptFileSelection): string {
   return `#L${selection.startLine}-${selection.endLine}`
 }
 
-/** 输入框 / 气泡展示：`@文件名#L12-20` */
+function formatDirectoryMentionName(relativePath: string): string {
+  const base = fileMentionBaseName(relativePath)
+  return base.endsWith('/') ? base : `${base}/`
+}
+
+/** 输入框 / 气泡展示：`@文件名#L12-20`；目录为 `@文件夹/` */
 export function formatFileMentionLabel(params: {
   relativePath: string
   selection?: PromptFileSelection
+  isDirectory?: boolean
 }): string {
+  if (params.isDirectory) return `@${formatDirectoryMentionName(params.relativePath)}`
   return `@${fileMentionBaseName(params.relativePath)}${formatFileMentionRangeSuffix(params.selection)}`
 }
 
@@ -335,19 +347,26 @@ export function formatFileMentionLabel(params: {
 export function formatFileMentionPathLabel(params: {
   relativePath: string
   selection?: PromptFileSelection
+  isDirectory?: boolean
 }): string {
   const path = params.relativePath.replace(/\\/g, '/')
+  if (params.isDirectory) {
+    const withSlash = path.endsWith('/') ? path : `${path}/`
+    return `@${withSlash}`
+  }
   return `@${path}${formatFileMentionRangeSuffix(params.selection)}`
 }
 
 export function fileMentionDisplayLabels(params: {
   relativePath: string
   selection?: PromptFileSelection
+  isDirectory?: boolean
 }): string[] {
   return [...new Set([formatFileMentionLabel(params), formatFileMentionPathLabel(params)])]
 }
 
 export function fileContextItemKey(ref: PromptFileRef): string {
+  if (ref.isDirectory) return `dir:${ref.relativePath}`
   const start = ref.selection?.startLine ?? ''
   const end = ref.selection?.endLine ?? ''
   const comment = ref.comment?.trim() ? `:c=${ref.comment.trim()}` : ''
