@@ -128,6 +128,8 @@ export function useCodeMirrorEditorView(
       view?.destroy()
       viewRef.current = null
     }
+    // 编辑器只在挂载时创建一次，placeholder / resolveUrl 等经 ref 读取
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

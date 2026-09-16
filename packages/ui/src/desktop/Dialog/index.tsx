@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { Modal } from '../Modal/Modal'
 import { Input } from '../Input/Input'
 import { Checkbox } from '../Checkbox/Checkbox'
+import { Button } from '../Button/Button'
 import styles from './Dialog.module.css'
 
 /** 须高于业务 Modal（如会话历史 1300），避免确认框被压在下层 */
@@ -145,6 +146,8 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         else state.resolve(undefined)
       }
     }
+    // state 按字段列依赖，避免整个对象引用变化时误关弹窗
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isOpen, state.resolve, state.type])
 
   useEffect(() => {
@@ -326,12 +329,13 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                   autoFocus
                   value={promptValue}
                   onChange={(e) => setPromptValue(e.target.value)}
-                  className={`baishou-form-field ${styles.promptInput}`}
+                  className={`baishou-form-field baishou-form-field--small ${styles.promptInput}`}
                   rows={6}
                 />
               ) : (
                 <Input
                   autoFocus
+                  fieldSize="small"
                   value={promptValue}
                   onChange={(e) => setPromptValue(e.target.value)}
                   onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -396,15 +400,16 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             <div className={styles.actions}>
               {isChooseType(state.type) ? (
-                <button type="button" className={styles.cancelBtn} onClick={() => closeDialog(null)}>
+                <Button type="button" variant="outlined" size="small" onClick={() => closeDialog(null)}>
                   {t('common.cancel', '取消')}
-                </button>
+                </Button>
               ) : (
                 <>
                   {state.type !== 'alert' ? (
-                    <button
+                    <Button
                       type="button"
-                      className={styles.cancelBtn}
+                      variant="outlined"
+                      size="small"
                       onClick={() =>
                         closeDialog(
                           state.type === 'prompt'
@@ -416,11 +421,12 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                       }
                     >
                       {t('common.cancel', '取消')}
-                    </button>
+                    </Button>
                   ) : null}
-                  <button
+                  <Button
                     type="button"
-                    className={styles.confirmBtn}
+                    variant="outlined"
+                    size="small"
                     onClick={() =>
                       closeDialog(
                         state.type === 'prompt'
@@ -432,7 +438,7 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     }
                   >
                     {t('common.confirm', '确定')}
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

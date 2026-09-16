@@ -61,11 +61,7 @@ export const Modal: React.FC<ModalProps> = ({
   )
 
   return createPortal(
-    <div
-      className={overlayClasses}
-      style={{ zIndex }}
-      onPointerDown={handleOverlayPointerDown}
-    >
+    <div className={overlayClasses} style={{ zIndex }} onPointerDown={handleOverlayPointerDown}>
       <div
         className={`${styles.modal} ${animation === 'fade' ? styles.modalFade : ''} ${className}`.trim()}
         style={{ zIndex: zIndex + 1 }}

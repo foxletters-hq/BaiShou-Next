@@ -16,7 +16,7 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
 }) => {
   const { t } = useTranslation()
   // A simplistic mock for the wheel picker since Native wheel is complex to recreate in bare React CSS
-  const [selectedDate, setSelectedDate] = useState<Date>(initialDate)
+  const [selectedDate] = useState<Date>(initialDate)
 
   const handleConfirm = () => {
     onConfirm(selectedDate)

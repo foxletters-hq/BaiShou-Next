@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Loader2, Volume2 } from 'lucide-react'
@@ -77,7 +78,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   attachmentBasePath: attachmentBasePathProp
 }) => {
   const { t } = useTranslation()
-  const [attachments, setAttachments] = useState<DiaryAttachmentItem[]>([])
+  const [, setAttachments] = useState<DiaryAttachmentItem[]>([])
   const [attachmentBasePathState, setAttachmentBasePathState] = useState('')
   const attachmentBasePath = attachmentBasePathProp ?? attachmentBasePathState
   const editorRef = useRef<CodeMirrorEditorHandle>(null)
@@ -178,28 +179,26 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     [selectedDate, onMediaPathsChange]
   )
 
-  const weatherLabelFallback: Record<WeatherId, string> = {
-    sunny: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L179', '晴'),
-    cloudy: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L180', '多云'),
-    overcast: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L181', '阴'),
-    light_rain: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L182', '小雨'),
-    heavy_rain: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L183', '大雨'),
-    snow: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L184', '雪'),
-    fog: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L185', '雾'),
-    windy: t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L186', '风')
-  }
-
-  const WEATHER_OPTIONS = useMemo(
-    () => [
+  const WEATHER_OPTIONS = useMemo(() => {
+    const weatherLabelFallback: Record<WeatherId, string> = {
+      sunny: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L179', '晴'),
+      cloudy: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L180', '多云'),
+      overcast: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L181', '阴'),
+      light_rain: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L182', '小雨'),
+      heavy_rain: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L183', '大雨'),
+      snow: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L184', '雪'),
+      fog: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L185', '雾'),
+      windy: i18n.t('auto.packages.ui.src.desktop.DiaryEditor.DiaryEditor.L186', '风')
+    }
+    return [
       { value: '', label: t('diary.weather.default', '天气') },
       ...WEATHER_IDS.map((id) => ({
         value: id,
         iconSrc: WEATHER_FLUENT_ICON_SRC[id],
         label: t(`diary.weather.${weatherI18nKey(id)}`, weatherLabelFallback[id])
       }))
-    ],
-    [t]
-  )
+    ]
+  }, [t])
 
   const normalizedWeather = normalizeWeatherId(weather)
 

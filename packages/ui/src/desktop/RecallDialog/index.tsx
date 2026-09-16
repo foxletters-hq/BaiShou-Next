@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, X, ArrowUpCircle, BookOpen, Loader2, Copy } from 'lucide-react'
+import { Search, X, ArrowUpCircle, Loader2, Copy } from 'lucide-react'
 import { Input } from '../Input/Input'
 import { withAppContentOverlay } from '../overlay'
 import { Checkbox } from '../Checkbox/Checkbox'
@@ -88,7 +88,7 @@ export const RecallDialog: React.FC<RecallDialogProps> = ({
     if (!isOpen || activeTab !== 'diary') return undefined
     onSearch('', 'diary')
     return undefined
-  }, [activeTab, isOpen])
+  }, [activeTab, isOpen, onSearch])
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {

@@ -12,6 +12,8 @@ export interface ResizableMarkdownEditorProps {
   minHeight?: number
   maxHeight?: number
   onBlur?: () => void
+  /** 与表单小输入框同一套描边、圆角和内边距 */
+  variant?: 'default' | 'formField'
 }
 
 export const ResizableMarkdownEditor: React.FC<ResizableMarkdownEditorProps> = ({
@@ -21,7 +23,8 @@ export const ResizableMarkdownEditor: React.FC<ResizableMarkdownEditorProps> = (
   defaultHeight = 180,
   minHeight = 100,
   maxHeight = 480,
-  onBlur
+  onBlur,
+  variant = 'default'
 }) => {
   const { t } = useTranslation()
   const { height, onResizeMouseDown } = useVerticalDragResize({
@@ -31,7 +34,10 @@ export const ResizableMarkdownEditor: React.FC<ResizableMarkdownEditorProps> = (
   })
 
   return (
-    <div className={styles.shell} style={{ height }}>
+    <div
+      className={`${styles.shell} ${variant === 'formField' ? styles.shellFormField : ''}`}
+      style={{ height }}
+    >
       <div
         className={styles.body}
         onBlur={(event) => {
