@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '../Button/Button'
 import { withAppContentOverlay } from '../overlay'
 import styles from './SessionManagementPage.module.css'
 
@@ -18,7 +19,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   title,
   message,
   confirmLabel,
-  isDanger = false,
+  isDanger: _isDanger = false,
   onConfirm,
   onCancel
 }) => {
@@ -30,15 +31,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         <div className={styles.dialogTitle}>{title}</div>
         <div className={styles.dialogText}>{message}</div>
         <div className={styles.dialogActions}>
-          <button className={`${styles.actionBtn} ${styles.actionBtnOutline}`} onClick={onCancel}>
+          <Button type="button" onClick={onCancel}>
             {t('common.cancel', '取消')}
-          </button>
-          <button
-            className={`${styles.actionBtn} ${isDanger ? styles.actionBtnDanger : styles.actionBtnPrimary}`}
-            onClick={onConfirm}
-          >
+          </Button>
+          <Button type="button" onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
