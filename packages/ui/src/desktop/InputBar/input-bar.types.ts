@@ -53,9 +53,7 @@ export interface InputBarProps {
   /**
    * 工作台：把文件树内部拖放解析成附件。返回 null 时回退为系统文件列表。
    */
-  resolveDropAttachments?: (
-    dataTransfer: DataTransfer
-  ) => Promise<MockChatAttachment[] | null>
+  resolveDropAttachments?: (dataTransfer: DataTransfer) => Promise<MockChatAttachment[] | null>
   /** 工作台：输入 `@` 后按打开标签与文件名搜索附加文件 */
   fileMention?: {
     enabled: boolean
@@ -84,5 +82,7 @@ export interface InputBarRef {
   applySkillRef: (skill: { command?: string; name?: string; id?: string; content: string }) => void
   /** 将选区或行评论作为输入框内 `@文件名#L` 引用芯片加入下一轮发送 */
   addFileContext: (ref: PromptFileRef & { filePath?: string }) => void
+  /** 把拖到 AI 栏的文件/文件夹交给输入框解析（与输入框自身 drop 同一条路） */
+  ingestDrop: (dataTransfer: DataTransfer) => Promise<void>
   focus: () => void
 }
