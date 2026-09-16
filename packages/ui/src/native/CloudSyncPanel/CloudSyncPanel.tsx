@@ -1,6 +1,6 @@
 import i18n from 'i18next'
 import React from 'react'
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
+import { Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { useNativeTheme } from '../theme'
 import type { CloudSyncPanelProps } from './cloud-sync-panel.types'
 import { useCloudSyncPanel } from './useCloudSyncPanel'

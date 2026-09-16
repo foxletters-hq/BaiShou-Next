@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 共享记忆卡片：状态与展示同文件 */
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {

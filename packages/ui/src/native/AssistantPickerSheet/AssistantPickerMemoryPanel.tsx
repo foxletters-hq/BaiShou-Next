@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { View, Text, StyleSheet, Switch, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
@@ -7,6 +7,7 @@ import {
   getDefaultCompressionSystemPrompt
 } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
+import { Switch } from '../Switch'
 import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { SettingsSliderRow } from '../settings/SettingsSliderRow'
 import type {

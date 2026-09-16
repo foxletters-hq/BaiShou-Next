@@ -6,8 +6,7 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
-  ActivityIndicator
+  ScrollView
 } from 'react-native'
 import { Plus, Settings, Sparkles, X } from 'lucide-react-native'
 import { useTranslation } from 'react-i18next'
@@ -16,10 +15,7 @@ import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { AssistantAvatar } from '../AssistantAvatar'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import { AssistantPickerMemoryPanel } from './AssistantPickerMemoryPanel'
-import type {
-  AssistantPickerSheetAssistant,
-  AssistantPickerSheetProps
-} from './assistant-picker-sheet.types'
+import type { AssistantPickerSheetProps } from './assistant-picker-sheet.types'
 
 export type {
   AssistantPickerSheetAssistant,
@@ -38,7 +34,7 @@ export const AssistantPickerSheet: React.FC<AssistantPickerSheetProps> = ({
   onCreatePress
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { colors, maxModalWidth } = useNativeTheme()
   const [selectedId, setSelectedId] = useState<string | null>(currentAssistantId ?? null)
   const [isSavingMemory, setIsSavingMemory] = useState(false)
 
