@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useMemo, useState } from 'react'
 import {
   View,
@@ -38,15 +39,60 @@ const EMOJI_CATEGORY_TABS: Array<{
   labelKey: string
   fallback: string
 }> = [
-  { id: 0, icon: '😀', labelKey: 'emoji.category_smileys', fallback: '表情与情绪' },
-  { id: 1, icon: '👋', labelKey: 'emoji.category_people', fallback: '人物与身体' },
-  { id: 3, icon: '🐱', labelKey: 'emoji.category_animals', fallback: '动物与自然' },
-  { id: 4, icon: '🍎', labelKey: 'emoji.category_food', fallback: '食物与饮料' },
-  { id: 5, icon: '🏠️', labelKey: 'emoji.category_travel', fallback: '旅行与地点' },
-  { id: 6, icon: '⚽', labelKey: 'emoji.category_activities', fallback: '活动' },
-  { id: 7, icon: '📝', labelKey: 'emoji.category_objects', fallback: '物品' },
-  { id: 8, icon: '⛔️', labelKey: 'emoji.category_symbols', fallback: '符号' },
-  { id: 9, icon: '🏁', labelKey: 'emoji.category_flags', fallback: '旗帜' }
+  {
+    id: 0,
+    icon: '😀',
+    labelKey: 'emoji.category_smileys',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L41', '表情与情绪')
+  },
+  {
+    id: 1,
+    icon: '👋',
+    labelKey: 'emoji.category_people',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L42', '人物与身体')
+  },
+  {
+    id: 3,
+    icon: '🐱',
+    labelKey: 'emoji.category_animals',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L43', '动物与自然')
+  },
+  {
+    id: 4,
+    icon: '🍎',
+    labelKey: 'emoji.category_food',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L44', '食物与饮料')
+  },
+  {
+    id: 5,
+    icon: '🏠️',
+    labelKey: 'emoji.category_travel',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L45', '旅行与地点')
+  },
+  {
+    id: 6,
+    icon: '⚽',
+    labelKey: 'emoji.category_activities',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L46', '活动')
+  },
+  {
+    id: 7,
+    icon: '📝',
+    labelKey: 'emoji.category_objects',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L47', '物品')
+  },
+  {
+    id: 8,
+    icon: '⛔️',
+    labelKey: 'emoji.category_symbols',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L48', '符号')
+  },
+  {
+    id: 9,
+    icon: '🏁',
+    labelKey: 'emoji.category_flags',
+    fallback: i18n.t('auto.packages.ui.src.native.EmojiPicker.EmojiPicker.L49', '旗帜')
+  }
 ]
 
 const ALL_EMOJIS = (emojiData as EmojiRecord[]).filter((e) => e.emoji && e.group !== 2)

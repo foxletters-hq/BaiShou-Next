@@ -34,7 +34,7 @@ interface StepperProps {
 
 const Stepper: React.FC<StepperProps> = ({
   label,
-  value,
+  value: _value,
   displayValue,
   onIncrement,
   onDecrement,
@@ -68,7 +68,7 @@ export const DatetimePickerSheet: React.FC<DatetimePickerSheetProps> = ({
   value,
   onChange,
   mode = 'datetime',
-  style,
+  style: _style,
   ...props
 }) => {
   const { colors, tokens } = useNativeTheme()

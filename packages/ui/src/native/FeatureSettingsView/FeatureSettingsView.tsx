@@ -1,7 +1,8 @@
 import React from 'react'
-import { View, Text, Switch, StyleSheet, type ViewProps } from 'react-native'
+import { View, Text, StyleSheet, type ViewProps } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
+import { Switch } from '../Switch'
 
 export interface FeatureItem {
   id: string
@@ -21,7 +22,7 @@ export const FeatureSettingsView: React.FC<FeatureSettingsViewProps> = ({
   style,
   ...props
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
   const { t } = useTranslation()
 
   const handleToggle = (id: string) => {
