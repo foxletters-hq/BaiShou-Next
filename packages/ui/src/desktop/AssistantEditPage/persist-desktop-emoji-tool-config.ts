@@ -21,8 +21,6 @@ export async function persistDesktopEmojiToolConfig(
   const merged = normalizeToolManagementConfig(current ?? DEFAULT_TOOL_MANAGEMENT_CONFIG)
   const emojiConfig = normalizeEmojiToolConfig(next)
   await api.setToolManagementConfig({ ...merged, emojiConfig })
-  window.dispatchEvent(
-    new CustomEvent(EMOJI_TOOL_CONFIG_UPDATED_EVENT, { detail: emojiConfig })
-  )
+  window.dispatchEvent(new CustomEvent(EMOJI_TOOL_CONFIG_UPDATED_EVENT, { detail: emojiConfig }))
   return emojiConfig
 }

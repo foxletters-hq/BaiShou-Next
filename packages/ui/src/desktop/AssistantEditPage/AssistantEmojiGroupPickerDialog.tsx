@@ -56,6 +56,12 @@ export const AssistantEmojiGroupPickerDialog: React.FC<AssistantEmojiGroupPicker
   const managingGroup = managingGroupId
     ? normalized.groups.find((group) => group.id === managingGroupId)
     : undefined
+  const pageCoverSignature = pageItems
+    .map(
+      (group) =>
+        `${group.id}:${group.emojis?.[0]?.id ?? ''}:${group.emojis?.[0]?.relativePath ?? ''}`
+    )
+    .join('|')
   const pageCovers = useMemo(
     () =>
       pageItems.map((group) => ({
@@ -64,14 +70,7 @@ export const AssistantEmojiGroupPickerDialog: React.FC<AssistantEmojiGroupPicker
       })),
     // pageItems 每轮都是新数组，用封面签名做依赖即可
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      pageItems
-        .map(
-          (group) =>
-            `${group.id}:${group.emojis?.[0]?.id ?? ''}:${group.emojis?.[0]?.relativePath ?? ''}`
-        )
-        .join('|')
-    ]
+    [pageCoverSignature]
   )
 
   useEffect(() => {
@@ -224,7 +223,11 @@ export const AssistantEmojiGroupPickerDialog: React.FC<AssistantEmojiGroupPicker
                           className={emojiStyles.emojiGroupTileImg}
                         />
                       ) : (
-                        group.name.trim().slice(0, 1) || '组'
+                        group.name.trim().slice(0, 1) ||
+                        t(
+                          'auto.packages.ui.src.desktop.AssistantEditPage.AssistantEmojiGroupPickerDialog.L227',
+                          '组'
+                        )
                       )}
                     </div>
                     <button
