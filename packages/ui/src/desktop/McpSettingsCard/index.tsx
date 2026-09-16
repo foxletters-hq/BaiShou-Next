@@ -5,7 +5,9 @@ import {
   isSettingsInlineHelpTarget,
   settingsInlineHelpHostProps
 } from '../shared/settingsInlineHelpBlock'
+import { Switch } from '../Switch/Switch'
 import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import { withAppContentOverlay } from '../overlay'
 import styles from './McpSettingsCard.module.css'
 import { McpHelpButton } from './McpHelpButton'
@@ -91,14 +93,12 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
             : t('settings.mcp_desc', '允许外部 AI 通过 MCP 协议调用白守工具')}
         </span>
       </div>
-      <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
-        <input
-          type="checkbox"
-          checked={config.mcpEnabled}
-          onChange={(e) => onChange({ ...config, mcpEnabled: e.target.checked })}
-        />
-        <span className="settings-switch-slider" />
-      </label>
+      <Switch
+        checked={config.mcpEnabled}
+        aria-label={t('settings.mcp_enable', '启用 MCP 服务')}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => onChange({ ...config, mcpEnabled: e.target.checked })}
+      />
     </div>
   )
 
@@ -138,20 +138,22 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
           )}
         </div>
         <div className={styles.confirmActions}>
-          <button
+          <Button
             type="button"
-            className={styles.confirmCancelBtn}
+            variant="outlined"
+            size="small"
             onClick={() => setShowRefreshConfirm(false)}
           >
             {t('common.cancel', '取消')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={styles.confirmDangerBtn}
+            variant="outlined"
+            size="small"
             onClick={() => void handleConfirmRefreshToken()}
           >
             {t('settings.mcp_refresh_token_confirm', '刷新令牌')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -225,14 +227,12 @@ export const McpSettingsCard: React.FC<McpSettingsCardProps> = ({
             )}
           </span>
         </div>
-        <label className="settings-switch-label" onClick={(e) => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={authEnabled}
-            onChange={(e) => onChange({ ...config, mcpAuthEnabled: e.target.checked })}
-          />
-          <span className="settings-switch-slider" />
-        </label>
+        <Switch
+          checked={authEnabled}
+          aria-label={t('settings.mcp_auth_enable', '启用鉴权')}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => onChange({ ...config, mcpAuthEnabled: e.target.checked })}
+        />
       </div>
       {authEnabled && config.mcpAuthToken ? (
         <div className={styles.endpointRow}>
