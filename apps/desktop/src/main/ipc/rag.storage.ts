@@ -7,18 +7,39 @@ import type {
   EmbedLedgerReconcileParams,
   EmbedLedgerReconcileResult,
   EmbedLedgerRecordParams,
-  EmbedLedgerVectorRow
+  EmbedLedgerVectorRow,
+  RagVectorKind
 } from '@baishou/shared'
 import { getAppDb } from '../db'
 import {
   aggregateEmbedLedgerFromVectorRows,
   EMBED_LEDGER_REBUILD_SAVEPOINT,
   finishEmbedLedgerRebuild,
+  GRAPH_NODE_SOURCE_TYPE,
+  MEMORY_SOURCE_TYPE,
   mapMigrationBackupRow,
   logger,
   normalizeUnixToSeconds
 } from '@baishou/shared'
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and, or, sql } from 'drizzle-orm'
+
+function embeddingKindFilter(kind: RagVectorKind) {
+  if (kind === 'diary') return eq(memoryEmbeddingsTable.sourceType, 'diary')
+  if (kind === 'graph_node') return eq(memoryEmbeddingsTable.sourceType, GRAPH_NODE_SOURCE_TYPE)
+  if (kind === 'manual') {
+    return or(
+      eq(memoryEmbeddingsTable.sourceType, 'manual'),
+      and(
+        eq(memoryEmbeddingsTable.sourceType, MEMORY_SOURCE_TYPE),
+        sql`json_extract(${memoryEmbeddingsTable.metadataJson}, '$.sourceSessionId') IS NULL`
+      )
+    )
+  }
+  return and(
+    eq(memoryEmbeddingsTable.sourceType, MEMORY_SOURCE_TYPE),
+    sql`json_extract(${memoryEmbeddingsTable.metadataJson}, '$.sourceSessionId') IS NOT NULL`
+  )
+}
 
 /** 嵌入迁移备份表名 */
 const BACKUP_TABLE = 'memory_embeddings_backup'
@@ -131,6 +152,38 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
         logger.warn('[RAG] 删除 embed_ledger 行失败（非阻塞）:', message)
       }
     })
+  }
+
+  async listLedgerBySource(
+    sourceType: string,
+    options?: { vaultId?: string }
+  ): Promise<Array<{ sourceId: string; contentHash: string; status: string }>> {
+    const db = getAppDb()
+    const vaultId = options?.vaultId?.trim()
+    const rows = vaultId
+      ? await db
+          .select({
+            sourceId: embedLedgerTable.sourceId,
+            contentHash: embedLedgerTable.contentHash,
+            status: embedLedgerTable.status
+          })
+          .from(embedLedgerTable)
+          .where(
+            and(eq(embedLedgerTable.sourceType, sourceType), eq(embedLedgerTable.vaultId, vaultId))
+          )
+      : await db
+          .select({
+            sourceId: embedLedgerTable.sourceId,
+            contentHash: embedLedgerTable.contentHash,
+            status: embedLedgerTable.status
+          })
+          .from(embedLedgerTable)
+          .where(eq(embedLedgerTable.sourceType, sourceType))
+    return rows.map((row) => ({
+      sourceId: row.sourceId,
+      contentHash: row.contentHash,
+      status: row.status
+    }))
   }
 
   async recordEmbedded(params: EmbedLedgerRecordParams): Promise<void> {
@@ -399,6 +452,38 @@ export class DesktopEmbeddingStorage implements IEmbeddingStorage {
           }
         })
     })
+  }
+
+  async countEmbeddings(): Promise<number> {
+    const db = getAppDb()
+    const countRows = await db.all(sql`SELECT count(*) as c FROM memory_embeddings`)
+    return Number((countRows[0] as { c?: number } | undefined)?.c ?? 0)
+  }
+
+  async clearEmbeddingsByKinds(kinds: RagVectorKind[]): Promise<void> {
+    const unique = [...new Set(kinds)]
+    if (unique.length === 0) return
+    if (unique.length === 4) {
+      await this.clearEmbeddings()
+      return
+    }
+    const filters = unique.map((kind) => embeddingKindFilter(kind))
+    const db = getAppDb()
+    await db.delete(memoryEmbeddingsTable).where(or(...filters))
+    try {
+      await db.run(sql`
+        DELETE FROM embed_ledger
+        WHERE NOT EXISTS (
+          SELECT 1 FROM memory_embeddings e
+          WHERE e.vault_id = embed_ledger.vault_id
+            AND e.source_type = embed_ledger.source_type
+            AND e.source_id = embed_ledger.source_id
+        )
+      `)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e)
+      logger.warn('[RAG] 按类型清空后修剪 embed_ledger 失败（非阻塞）:', message)
+    }
   }
 
   async clearEmbeddings(): Promise<void> {

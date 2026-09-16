@@ -3,11 +3,12 @@ import i18n from 'i18next'
 import { shardMonthFromInstant } from '@baishou/core-desktop'
 import {
   createSqlExecutorFromDrizzleDb,
+  GraphRepository,
   memoryEmbeddingsTable,
   SqliteHybridSearchRepository
 } from '@baishou/database-desktop'
 import { getAppDb } from '../db'
-import { eq, desc, like, sql, and } from 'drizzle-orm'
+import { eq, desc, like, sql, and, or } from 'drizzle-orm'
 import {
   buildMemoryMetadataJson,
   EMBEDDING_SOURCE_SORT_MILLIS_SQL,
@@ -15,16 +16,60 @@ import {
   MEMORY_SOURCE_TYPE,
   parseMemoryMetadataJson,
   timestampToMillis,
-  type MemoryRawRecord
+  type MemoryRawRecord,
+  type RagVectorKindFilter,
+  GRAPH_NODE_SOURCE_TYPE,
+  graphNodeEmbeddingId,
+  parseGraphNodeEmbeddingId
 } from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
 import {
-  checkMemoryConsistency,
   getMemoryRawManager,
-  getRawDataSourceManager,
-  repairMemoryConsistency
+  getRawDataSourceManager
 } from '../services/raw-data-source.runtime'
 import { vaultService, resolveActiveVaultId } from './vault.ipc'
+
+function memorySourceKindFilter(sourceKind?: RagVectorKindFilter) {
+  if (!sourceKind || sourceKind === 'all' || sourceKind === 'graph_node') return undefined
+  if (sourceKind === 'diary') return eq(memoryEmbeddingsTable.sourceType, 'diary')
+  if (sourceKind === 'manual') {
+    return or(
+      eq(memoryEmbeddingsTable.sourceType, 'manual'),
+      and(
+        eq(memoryEmbeddingsTable.sourceType, MEMORY_SOURCE_TYPE),
+        sql`json_extract(${memoryEmbeddingsTable.metadataJson}, '$.sourceSessionId') IS NULL`
+      )
+    )
+  }
+  return and(
+    eq(memoryEmbeddingsTable.sourceType, MEMORY_SOURCE_TYPE),
+    sql`json_extract(${memoryEmbeddingsTable.metadataJson}, '$.sourceSessionId') IS NOT NULL`
+  )
+}
+
+function graphNodeToEntry(row: {
+  id: string
+  name: string
+  summary: string
+  modelId: string
+  updatedAt: number
+  similarity?: number
+}) {
+  return {
+    embeddingId: graphNodeEmbeddingId(row.id),
+    text: `${row.name}\n${row.summary || ''}`.trim(),
+    modelId: row.modelId || 'unknown',
+    createdAt: row.updatedAt,
+    sourceType: GRAPH_NODE_SOURCE_TYPE,
+    sourceId: row.id,
+    tags: [] as string[],
+    sourceSessionId: undefined,
+    memoryCreatedAt: undefined,
+    memoryUpdatedAt: undefined,
+    isManual: false,
+    similarity: row.similarity
+  }
+}
 
 function embeddingInstantMs(value: unknown): number | undefined {
   if (value instanceof Date) return value.getTime()
@@ -114,12 +159,20 @@ export function registerRagQueryIPC() {
         offset?: number
         mode?: 'semantic' | 'text'
         withTotal?: boolean
+        sourceKind?: RagVectorKindFilter
       }
     ) => {
       await config.load()
       const db = getAppDb()
       const activeVaultId = resolveActiveVaultId()
-      const vaultScopeFilter = eq(memoryEmbeddingsTable.vaultId, activeVaultId)
+      const sourceKind = params.sourceKind
+      const includeMemory = sourceKind !== 'graph_node'
+      const includeGraph = sourceKind === 'all' || sourceKind === 'graph_node'
+      const kindFilter = memorySourceKindFilter(sourceKind ?? 'all')
+      const vaultScopeFilter = and(
+        eq(memoryEmbeddingsTable.vaultId, activeVaultId),
+        ...(kindFilter ? [kindFilter] : [])
+      )
 
       // ── 语义检索分支（Semantic Search Mode） ──
       if (params.mode === 'semantic' && params.keyword && params.keyword.trim() !== '') {
@@ -164,30 +217,64 @@ export function registerRagQueryIPC() {
 
                 const hybridRepo = new SqliteHybridSearchRepository(mockClient as any)
                 const limit = params.limit || 30
-                const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit, {
-                  vaultId: activeVaultId
-                })
+                const memoryEntries = includeMemory
+                  ? await (async () => {
+                      const vectorResults = await hybridRepo.queryNativeVector(queryVector, limit, {
+                        vaultId: activeVaultId
+                      })
+                      const metaMap = await loadMetadataByEmbeddingIds(
+                        vectorResults.map((r) => r.messageId).filter(Boolean)
+                      )
+                      return vectorResults
+                        .map((r) => {
+                          const metaRow = metaMap.get(r.messageId)
+                          return enrichEntryFromMetadata({
+                            embeddingId: r.messageId,
+                            text: r.chunkText,
+                            modelId: config.getGlobalEmbeddingModelId() || 'unknown',
+                            createdAt:
+                              timestampToMillis(
+                                typeof r.createdAt === 'number' ? r.createdAt : undefined
+                              ) ?? Date.now(),
+                            sourceType: r.sourceType,
+                            similarity: r.score,
+                            sourceId: metaRow?.sourceId,
+                            metadataJson: metaRow?.metadataJson
+                          })
+                        })
+                        .filter((entry) => {
+                          if (sourceKind === 'diary') return entry.sourceType === 'diary'
+                          if (sourceKind === 'manual') return entry.isManual
+                          if (sourceKind === 'partner') {
+                            return entry.sourceType === MEMORY_SOURCE_TYPE && !entry.isManual
+                          }
+                          return true
+                        })
+                    })()
+                  : []
 
-                const metaMap = await loadMetadataByEmbeddingIds(
-                  vectorResults.map((r) => r.messageId).filter(Boolean)
-                )
+                const graphEntries = includeGraph
+                  ? (
+                      await new GraphRepository(db).searchNodesByVector(
+                        activeVaultId,
+                        queryVector,
+                        limit
+                      )
+                    ).map((row) =>
+                      graphNodeToEntry({
+                        id: row.id,
+                        name: row.name,
+                        summary: row.summary ?? '',
+                        modelId: row.modelId ?? '',
+                        updatedAt: row.updatedAt,
+                        similarity: Number.isFinite(row.distance) ? 1 - row.distance : undefined
+                      })
+                    )
+                  : []
 
-                const entries = vectorResults.map((r) => {
-                  const metaRow = metaMap.get(r.messageId)
-                  return enrichEntryFromMetadata({
-                    embeddingId: r.messageId,
-                    text: r.chunkText,
-                    modelId: config.getGlobalEmbeddingModelId() || 'unknown',
-                    createdAt:
-                      timestampToMillis(
-                        typeof r.createdAt === 'number' ? r.createdAt : undefined
-                      ) ?? Date.now(),
-                    sourceType: r.sourceType,
-                    similarity: r.score,
-                    sourceId: metaRow?.sourceId,
-                    metadataJson: metaRow?.metadataJson
-                  })
-                })
+                const entries = [...memoryEntries, ...graphEntries]
+                  .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0))
+                  .slice(0, limit)
 
                 if (params.withTotal) {
                   return {
@@ -205,12 +292,25 @@ export function registerRagQueryIPC() {
       }
 
       // ── 传统文本检索分支（Keyword/Text Search Mode, or fallback） ──
-      const listFilter =
-        params.keyword && params.keyword.trim() !== ''
-          ? and(vaultScopeFilter, like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`))
-          : vaultScopeFilter
+      const keyword = params.keyword?.trim() || ''
+      const limit = params.limit || 10
+      const offset = params.offset || 0
+      const graphRepo = new GraphRepository(db)
 
-      const query = db
+      if (!includeMemory && includeGraph) {
+        const [nodeRows, total] = await Promise.all([
+          graphRepo.listEmbeddedLiveNodesPage(activeVaultId, { keyword, limit, offset }),
+          graphRepo.countEmbeddedLiveNodes(activeVaultId, keyword || undefined)
+        ])
+        const entries = nodeRows.map((row) => graphNodeToEntry(row))
+        return params.withTotal ? { entries, total } : entries
+      }
+
+      const listFilter = keyword
+        ? and(vaultScopeFilter, like(memoryEmbeddingsTable.chunkText, `%${keyword}%`))
+        : vaultScopeFilter
+
+      const memoryQuery = db
         .select({
           embeddingId: memoryEmbeddingsTable.embeddingId,
           text: memoryEmbeddingsTable.chunkText,
@@ -223,15 +323,15 @@ export function registerRagQueryIPC() {
         .from(memoryEmbeddingsTable)
         .where(listFilter)
 
-      const results = await query
+      const memoryResults = await memoryQuery
         .orderBy(
           sql.raw(`${EMBEDDING_SOURCE_SORT_MILLIS_SQL} DESC`),
           desc(memoryEmbeddingsTable.embeddingId)
         )
-        .limit(params.limit || 10)
-        .offset(params.offset || 0)
+        .limit(includeGraph ? limit + offset : limit)
+        .offset(includeGraph ? 0 : offset)
 
-      const entries = results.map((r) =>
+      const memoryEntries = memoryResults.map((r) =>
         enrichEntryFromMetadata({
           embeddingId: r.embeddingId,
           text: r.text,
@@ -243,27 +343,33 @@ export function registerRagQueryIPC() {
         })
       )
 
+      let entries = memoryEntries
+      let total = 0
+      const memoryCountRes = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(memoryEmbeddingsTable)
+        .where(listFilter)
+      total = Number(memoryCountRes[0]?.count || 0)
+
+      if (includeGraph) {
+        const [nodeRows, nodeTotal] = await Promise.all([
+          graphRepo.listEmbeddedLiveNodesPage(activeVaultId, {
+            keyword,
+            limit: limit + offset,
+            offset: 0
+          }),
+          graphRepo.countEmbeddedLiveNodes(activeVaultId, keyword || undefined)
+        ])
+        const merged = [
+          ...memoryEntries,
+          ...nodeRows.map((row) => graphNodeToEntry(row))
+        ].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+        entries = merged.slice(offset, offset + limit)
+        total += nodeTotal
+      }
+
       if (params.withTotal) {
-        let total = 0
-        if (params.keyword && params.keyword.trim() !== '') {
-          const countRes = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(memoryEmbeddingsTable)
-            .where(
-              and(vaultScopeFilter, like(memoryEmbeddingsTable.chunkText, `%${params.keyword}%`))
-            )
-          total = countRes[0]?.count || 0
-        } else {
-          const countRes = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(memoryEmbeddingsTable)
-            .where(vaultScopeFilter)
-          total = countRes[0]?.count || 0
-        }
-        return {
-          entries,
-          total
-        }
+        return { entries, total }
       }
 
       return entries
@@ -272,6 +378,16 @@ export function registerRagQueryIPC() {
 
   ipcMain.handle('rag:delete-entry', async (_, embeddingId: string) => {
     const db = getAppDb()
+    const graphNodeId = parseGraphNodeEmbeddingId(embeddingId)
+    if (graphNodeId) {
+      const graphRepo = new GraphRepository(db)
+      await graphRepo.clearNodeEmbedding(graphNodeId, resolveActiveVaultId())
+      const { invalidatePendingEmbedCountsCache } = await import(
+        '../services/pending-embed-counts.service'
+      )
+      invalidatePendingEmbedCountsCache()
+      return true
+    }
     const records = await db
       .select()
       .from(memoryEmbeddingsTable)
@@ -302,7 +418,6 @@ export function registerRagQueryIPC() {
     if (sourceType === 'diary') {
       const { parseDiaryEmbeddingSourceId } = await import('@baishou/shared')
       const { deleteDiaryEmbeddingAliases } = await import('../services/diary-embedding.util')
-      const { enqueueDiaryEmbedJob } = await import('../services/diary-embed-jobs.service')
       const { BrowserWindow } = await import('electron')
 
       const parsed = parseDiaryEmbeddingSourceId(sourceId)
@@ -312,11 +427,6 @@ export function registerRagQueryIPC() {
       const diaryId = Number(diaryIdRaw)
       if (Number.isFinite(diaryId)) {
         await deleteDiaryEmbeddingAliases(vaultId, diaryId)
-        await enqueueDiaryEmbedJob({
-          vaultId,
-          diaryId,
-          contentHash: `reembed-after-delete-${Date.now()}`
-        })
         for (const win of BrowserWindow.getAllWindows()) {
           win.webContents.send('diary:sync-event', {
             type: 'embed-pending-changed',
@@ -428,46 +538,4 @@ export function registerRagQueryIPC() {
     await memoryMgr.commitIndexed(written.relativePath, written.contentHash)
     return true
   })
-
-  ipcMain.handle('rag:check-consistency', async () => {
-    const hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(getAppDb()))
-    const vaultId = resolveActiveVaultId()
-    return checkMemoryConsistency({ hsRepo, vaultId })
-  })
-
-  ipcMain.handle(
-    'rag:repair-consistency',
-    async (
-      _,
-      params: {
-        confirmDeleteIds?: string[]
-        restoreIds?: string[]
-        cleanOrphans?: boolean
-      }
-    ) => {
-      const hsRepo = new SqliteHybridSearchRepository(createSqlExecutorFromDrizzleDb(getAppDb()))
-      const vaultId = resolveActiveVaultId()
-      let embeddingAdapter = null as import('@baishou/ai').EmbeddingAdapter | null
-      if (params.restoreIds && params.restoreIds.length > 0) {
-        try {
-          const { resolveEmbeddingSystemModels } = await import('./agent-helpers')
-          const { EmbeddingAdapter } = await import('@baishou/ai')
-          const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
-          if (embeddingProvider && embeddingModelId) {
-            embeddingAdapter = new EmbeddingAdapter(embeddingProvider, embeddingModelId, hsRepo)
-          }
-        } catch {
-          // restore will fail clearly below if adapter missing
-        }
-      }
-      return repairMemoryConsistency({
-        hsRepo,
-        embeddingAdapter,
-        vaultId,
-        confirmDeleteIds: params.confirmDeleteIds,
-        restoreIds: params.restoreIds,
-        cleanOrphans: params.cleanOrphans
-      })
-    }
-  )
 }

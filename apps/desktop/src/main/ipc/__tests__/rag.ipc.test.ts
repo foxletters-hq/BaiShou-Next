@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { filterUnindexedDiaries } from '@baishou/shared'
 
@@ -64,5 +67,23 @@ describe('filterUnindexedDiaries', () => {
     const result = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap)
 
     expect(result).toHaveLength(2)
+  })
+})
+
+describe('desktop embedding provider reuse', () => {
+  it('should reuse the registry instance instead of removing it before every embed', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../rag.ipc.ts'), 'utf8')
+    expect(src).toContain('getOrUpdateProvider(normalized)')
+    expect(src).not.toContain('removeProvider(providerId)')
+    expect(src).not.toContain('Resolving embedding provider for migration')
+  })
+})
+
+describe('rag batch embed progress wiring', () => {
+  it('freezes diary totals from the planned batch instead of growing them with completed', () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../rag-build.ipc.ts'), 'utf8')
+    expect(src).toContain('applyFrozenPhaseProgress')
+    expect(src).not.toContain('Math.max(counts.diaries, completed)')
+    expect(src).toContain('const diaryResult = await runControlledDiaryBatchEmbed')
   })
 })

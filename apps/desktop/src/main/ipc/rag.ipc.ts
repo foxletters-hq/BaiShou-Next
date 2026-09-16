@@ -59,7 +59,7 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
     const providers = await getAutoFixedProviders()
     const raw = providers.find((p) => p.id === providerId)
     const storedApiKey = raw ? readStoredApiKey(raw) : ''
-    logger.info('[RAG] Resolving embedding provider for migration', {
+    logger.debug('[RAG] Resolving embedding provider', {
       providerId,
       modelId: this.getGlobalEmbeddingModelId(),
       hasStoredApiKey: storedApiKey.length > 0
@@ -79,9 +79,7 @@ class DesktopEmbeddingConfig implements IEmbeddingConfig {
       throw e
     }
 
-    const registry = AIProviderRegistry.getInstance()
-    registry.removeProvider(providerId)
-    return registry.getOrUpdateProvider(normalized)
+    return AIProviderRegistry.getInstance().getOrUpdateProvider(normalized)
   }
 }
 
