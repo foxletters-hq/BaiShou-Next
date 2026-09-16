@@ -7,6 +7,7 @@ import { NotebookRawManager } from '../../raw-data/managers/notebook.raw-manager
 import { KnowledgeHydrationService } from '../knowledge-hydration.service'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 import { md5Hex } from '../../fs/md5'
+import { hashEmbedSourceContent } from '@baishou/shared'
 
 function canOpenBetterSqlite3(): boolean {
   try {
@@ -110,6 +111,14 @@ describeHydration('KnowledgeHydrationService', () => {
       vaultId: 'vault_test'
     })
     await repo.updateSourceStatus('src1', 'ready', { extractedTextHash: md5Hex(text) })
+    await repo.recordEmbedded({
+      vaultId: 'vault_test',
+      sourceId: 'src1',
+      contentHash: hashEmbedSourceContent(text),
+      chunkCount: 1,
+      modelId: 'mock',
+      dimension: 4
+    })
     for (const job of jobs) {
       await repo.completeIngestJob(job.id)
     }
@@ -117,6 +126,41 @@ describeHydration('KnowledgeHydrationService', () => {
     const again = await withEmbed.hydrate()
     expect(again.embedJobsEnqueued).toBe(0)
     expect(again.graphJobsEnqueued).toBe(1)
+  })
+
+  it('embedMissing false 只灌结构不入队 embed/graph', async () => {
+    const now = Date.now()
+    await notebookManager.appendNotebookRecord({
+      id: 'nb_noauto',
+      name: '不同步嵌',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+    await notebookManager.appendSourceRecord('nb_noauto', {
+      id: 'src_noauto',
+      title: '笔记',
+      kind: 'text',
+      path: 'sources/src_noauto.txt',
+      contentHash: 'abc',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null
+    })
+    await notebookManager.writeExtracted('nb_noauto', 'src_noauto', '同步后不要自动嵌入')
+
+    const svc = new KnowledgeHydrationService({
+      repo,
+      notebookManager,
+      vaultId: 'vault_test',
+      isEmbeddingConfigured: () => true
+    })
+    const result = await svc.hydrate({ embedMissing: false })
+    expect(result.sourcesUpserted).toBe(1)
+    expect(result.embedJobsEnqueued).toBe(0)
+    expect(result.graphJobsEnqueued).toBe(0)
+    const jobs = await repo.listIngestJobs()
+    expect(jobs.some((j) => j.sourceId === 'src_noauto')).toBe(false)
   })
 
   it('半成品 chunk 不得标 ready', async () => {
@@ -414,5 +458,49 @@ describe('KnowledgeHydrationService orphan graph wiring', () => {
         'Notebooks/nb1/graph/edges/orphan.jsonl'
       ]
     })
+  })
+
+  it('embedMissing false 不入队 embed/graph，仍灌 pending-index', async () => {
+    const enqueueIngestJob = vi.fn()
+    const syncPendingIndex = vi.fn().mockResolvedValue({ shards: 0, nodes: 0, edges: 0 })
+    const repo = {
+      getNotebook: vi.fn().mockResolvedValue(null),
+      createNotebook: vi.fn().mockResolvedValue({ id: 'nb1' }),
+      getSource: vi.fn().mockResolvedValue(null),
+      countChunksBySource: vi.fn().mockResolvedValue(0),
+      getEmbedLedger: vi.fn().mockResolvedValue(null),
+      upsertSource: vi.fn(),
+      updateSourceStatus: vi.fn(),
+      enqueueIngestJob,
+      listDistinctSourceIds: vi.fn().mockResolvedValue([]),
+      listNotebooks: vi.fn().mockResolvedValue([{ id: 'nb1', vaultId: 'vault_test' }])
+    }
+    const notebookManager = {
+      listNotebookRecords: vi.fn().mockResolvedValue([{ id: 'nb1', name: '本' }]),
+      listSourceRecords: vi.fn().mockResolvedValue([
+        {
+          id: 'src1',
+          title: '资料',
+          kind: 'text',
+          path: 'sources/src1.txt',
+          contentHash: 'abc'
+        }
+      ]),
+      statExtracted: vi.fn().mockResolvedValue({ mtimeMs: Date.now() }),
+      readExtractedText: vi.fn().mockResolvedValue('正文')
+    }
+
+    const svc = new KnowledgeHydrationService({
+      repo: repo as never,
+      notebookManager: notebookManager as never,
+      vaultId: 'vault_test',
+      isEmbeddingConfigured: () => true,
+      graphIndex: { syncPendingIndex }
+    })
+    const result = await svc.hydrate({ embedMissing: false })
+    expect(result.embedJobsEnqueued).toBe(0)
+    expect(result.graphJobsEnqueued).toBe(0)
+    expect(enqueueIngestJob).not.toHaveBeenCalled()
+    expect(syncPendingIndex).toHaveBeenCalledWith({ vaultId: 'vault_test', notebookId: 'nb1' })
   })
 })

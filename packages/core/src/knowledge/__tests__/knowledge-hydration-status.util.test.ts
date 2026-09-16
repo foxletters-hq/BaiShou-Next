@@ -105,6 +105,58 @@ describe('resolveHydrationSourceDecision', () => {
     expect(d.status).toBe('pending')
     expect(d.needsEmbed).toBe(true)
   })
+
+  it('账本匹配且 ready 才算完成', () => {
+    const d = resolveHydrationSourceDecision({
+      existingStatus: 'ready',
+      extractedHash: 'abc',
+      hashChanged: false,
+      chunkCount: 0,
+      ledger: {
+        contentHash: 'sha',
+        modelId: 'm1',
+        dimension: 8,
+        status: 'embedded'
+      },
+      extractedContentHash: 'sha',
+      currentModelId: 'm1',
+      currentDimension: 8
+    })
+    expect(d.status).toBe('ready')
+    expect(d.needsEmbed).toBe(false)
+  })
+
+  it('账本 failed 计入待嵌入但不自动重试', () => {
+    const d = resolveHydrationSourceDecision({
+      existingStatus: 'failed',
+      extractedHash: 'abc',
+      hashChanged: false,
+      chunkCount: 2,
+      ledger: {
+        contentHash: 'sha',
+        modelId: 'm1',
+        dimension: 8,
+        status: 'failed'
+      },
+      extractedContentHash: 'sha',
+      currentModelId: 'm1',
+      currentDimension: 8
+    })
+    expect(d.status).toBe('failed')
+    expect(d.needsEmbed).toBe(false)
+  })
+
+  it('无账本时有正文要重嵌', () => {
+    const d = resolveHydrationSourceDecision({
+      existingStatus: 'ready',
+      extractedHash: 'abc',
+      hashChanged: false,
+      chunkCount: 4,
+      ledger: null
+    })
+    expect(d.status).toBe('pending')
+    expect(d.needsEmbed).toBe(true)
+  })
 })
 
 describe('resolveHydrationGraphDecision', () => {

@@ -50,6 +50,7 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     insertChunk: (p: any) => Promise<void>
     deleteChunksBySource: (id: string) => Promise<void>
     searchChunksLike: (nb: string, q: string) => Promise<any[]>
+    getEmbedLedger: (vaultId: string, sourceId: string) => Promise<any>
   }
 
   beforeEach(async () => {
@@ -140,6 +141,12 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     const hits = await repo.searchChunksLike(notebookId, 'knowledge.db')
     expect(hits.length).toBeGreaterThan(0)
     expect(hits[0]?.chunkText).toContain('knowledge.db')
+
+    const { hashEmbedSourceContent } = await import('@baishou/shared')
+    const ledger = await repo.getEmbedLedger('vault_test', sourceId)
+    expect(ledger?.status).toBe('embedded')
+    expect(ledger?.chunkCount).toBeGreaterThan(0)
+    expect(ledger?.contentHash).toBe(hashEmbedSourceContent(body))
   })
 
   it('同名文件导入使用 sourceId 前缀避免覆盖', async () => {
@@ -514,5 +521,50 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('ready')
     await svc.processGraphJob(sourceId)
     expect(graphExtractCalls).toEqual([{ sourceId, force: true }])
+  })
+
+  it('should return zero queued jobs when reprocessing an empty notebook', async () => {
+    const { id: notebookId } = await svc.createNotebook({ name: '空本' })
+    const result = await svc.manageNotebookData(notebookId, {
+      action: 'reprocess',
+      vector: true,
+      graph: true
+    })
+    expect(result).toMatchObject({
+      action: 'reprocess',
+      sourceCount: 0,
+      vectorQueued: 0,
+      graphQueued: 0
+    })
+  })
+
+  it('should return queued counts when reprocessing extracted sources', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '整本重整理' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '已经有正文的资料'
+    })
+    await svc.processExtractJob(sourceId)
+    await knowledgeRepo.deleteIngestJobsForSource(sourceId)
+    await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
+
+    const result = await svc.manageNotebookData(notebookId, {
+      action: 'reprocess',
+      vector: true,
+      graph: true
+    })
+    expect(result).toMatchObject({
+      action: 'reprocess',
+      sourceCount: 1,
+      vectorQueued: 1,
+      graphQueued: 1
+    })
+    const jobs = (await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)
+    expect(jobs.sort()).toEqual(['embed', 'graph'])
+    expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('pending')
   })
 })
