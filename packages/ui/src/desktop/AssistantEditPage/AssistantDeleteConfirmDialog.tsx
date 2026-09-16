@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import { withAppContentOverlay } from '../overlay'
+import { Button } from '../Button/Button'
 import styles from './AssistantEditPage.module.css'
 
 interface AssistantDeleteConfirmDialogProps {
@@ -38,12 +39,12 @@ export const AssistantDeleteConfirmDialog: React.FC<AssistantDeleteConfirmDialog
         <div className={styles.dialogTitle}>{t('agent.assistant.delete_confirm_title')}</div>
         <div className={styles.dialogText}>{t('agent.assistant.delete_confirm_content')}</div>
         <div className={styles.dialogActions}>
-          <button className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`} onClick={onCancel}>
+          <Button variant="outlined" size="small" onClick={onCancel}>
             {t('common.cancel')}
-          </button>
-          <button className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`} onClick={onConfirm}>
+          </Button>
+          <Button variant="outlined" size="small" onClick={onConfirm}>
             {t('common.delete')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>,
