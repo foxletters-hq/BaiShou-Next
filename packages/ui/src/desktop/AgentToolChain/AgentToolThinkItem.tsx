@@ -17,7 +17,7 @@ import {
   Terminal,
   Wrench
 } from 'lucide-react'
-import type { MockToolInvocation } from '@baishou/shared'
+import { resolveAgentToolActionLabel, type MockToolInvocation } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { formatToolDurationMs, type AgentToolChainItemModel } from '../../shared/agent-tool-chain'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
@@ -27,13 +27,11 @@ import {
   resolveCompanionAskPresentation,
   type ToolCopyTranslate
 } from '../../shared/tool-result.util'
-import { AgentGateReply } from '@baishou/shared'
 import { CompanionAskResultCard } from './CompanionAskResultCard'
-import { useCompanionAskInteraction } from './companion-ask-interaction'
 import {
-  matchCompanionAskPendingRequest,
-  presentationFromCompanionAskRequest
-} from './companion-ask-interaction.util'
+  isCompanionAskAwaitingAnswer,
+  shouldRenderCompanionAskResultInList
+} from '../../shared/companion-ask-list.util'
 import { ToolResultContent } from './ToolResultContent'
 import styles from './AgentToolChainSection.module.css'
 
@@ -70,24 +68,19 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
 }: AgentToolThinkItemProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  const askInteraction = useCompanionAskInteraction()
 
   const isLoading = model.status === 'loading'
   const invocation = model.invocation as MockToolInvocation | undefined
   const askPresentation = useMemo(() => {
-    if (model.status === 'error') return null
-    if (invocation) return resolveCompanionAskPresentation(invocation)
-    if (model.toolName === 'companion_ask' && askInteraction?.pending) {
-      return presentationFromCompanionAskRequest(askInteraction.pending)
-    }
-    return null
-  }, [askInteraction?.pending, invocation, model.status, model.toolName])
-  const pendingAsk = matchCompanionAskPendingRequest(
-    askInteraction?.pending,
-    askPresentation,
-    model.toolName
+    if (model.status === 'error' || !invocation) return null
+    return resolveCompanionAskPresentation(invocation)
+  }, [invocation, model.status])
+  const awaitingAsk =
+    model.toolName === 'companion_ask' &&
+    (isLoading || isCompanionAskAwaitingAnswer(askPresentation))
+  const canExpand = Boolean(
+    model.hasContent && invocation && !isLoading && !askPresentation && !awaitingAsk
   )
-  const canExpand = Boolean(model.hasContent && invocation && !isLoading && !askPresentation)
 
   useEffect(() => {
     if (autoExpand && canExpand) {
@@ -96,15 +89,21 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   }, [autoExpand, canExpand])
 
   const displayTitle = useMemo(() => {
+    if (awaitingAsk) {
+      return t('agent.tools.companion_ask_asking', '正在提问...')
+    }
     if (invocation != null) {
       return getToolDisplayName(invocation, (key, fallback) => t(key, fallback))
     }
-    return t(`agent.tools.${model.toolName}`, model.toolName)
-  }, [invocation, model.toolName, t])
+    return resolveAgentToolActionLabel(model.toolName, (key, fallback) => t(key, fallback))
+  }, [awaitingAsk, invocation, model.toolName, t])
 
   const subtitle = useMemo(
-    () => getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
-    [invocation, model.status, t]
+    () =>
+      awaitingAsk
+        ? undefined
+        : getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
+    [awaitingAsk, invocation, model.status, t]
   )
 
   const handleToggle = useCallback(() => {
@@ -112,35 +111,10 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
     setExpanded((prev) => !prev)
   }, [canExpand])
 
-  if (askPresentation) {
+  if (shouldRenderCompanionAskResultInList(askPresentation, model.status)) {
     return (
       <div className={styles.item}>
-        <CompanionAskResultCard
-          data={askPresentation}
-          pending={Boolean(pendingAsk)}
-          allowCustomInput={Boolean(pendingAsk?.allowCustomInput)}
-          isReplying={Boolean(askInteraction?.isReplying)}
-          onSelectOption={
-            pendingAsk
-              ? (optionId) =>
-                  void askInteraction?.onReply({
-                    requestId: pendingAsk.id,
-                    reply: AgentGateReply.Once,
-                    selectedOptionIds: [optionId]
-                  })
-              : undefined
-          }
-          onSubmitCustom={
-            pendingAsk
-              ? (text) =>
-                  void askInteraction?.onReply({
-                    requestId: pendingAsk.id,
-                    reply: AgentGateReply.Reject,
-                    message: text
-                  })
-              : undefined
-          }
-        />
+        <CompanionAskResultCard data={askPresentation} />
       </div>
     )
   }
@@ -155,10 +129,12 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
         onClick={handleToggle}
       >
         <span className={`${styles.icon} ${model.status === 'error' ? styles.errorIcon : ''}`}>
-          <ToolRowIcon toolName={model.toolName} status={model.status} />
+          <ToolRowIcon toolName={model.toolName} status={awaitingAsk ? 'loading' : model.status} />
         </span>
         <span className={styles.labels}>
-          <span className={`${styles.title} ${isLoading ? styles.titleLoading : ''}`}>
+          <span
+            className={`${styles.title} ${isLoading || awaitingAsk ? styles.titleLoading : ''}`}
+          >
             {displayTitle}
           </span>
           {subtitle ? (

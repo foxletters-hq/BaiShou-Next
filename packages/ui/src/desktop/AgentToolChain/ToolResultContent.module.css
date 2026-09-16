@@ -1,8 +1,6 @@
 .resultViewport {
-  max-height: min(320px, 42vh);
   overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow-y: visible;
   padding-right: 2px;
 }
 
@@ -22,6 +20,7 @@
 
 .markdownBody:global(.x-markdown) {
   width: 100% !important;
+  font-family: var(--font-family) !important;
   font-size: 13px !important;
   line-height: 1.55 !important;
   color: var(--text-secondary);
@@ -37,7 +36,7 @@
 
 .resultTextLog {
   margin: 0;
-  font-family: var(--font-family-mono, var(--font-mono, monospace));
+  font-family: var(--font-family-mono);
   font-size: 12px;
   color: var(--text-secondary);
   white-space: pre-wrap;
@@ -116,7 +115,7 @@
 
 .structVal {
   color: var(--text-secondary);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-family-mono);
   text-align: right;
   word-break: break-all;
 }
