@@ -449,7 +449,8 @@ export const GraphForceCanvas: React.FC<{
           degree: degreeById.get(n.id) ?? 0,
           mentionCount: n.mentionCount ?? 0,
           hubLabelMinDegree: appearance.hubLabelMinDegree,
-          hubLabelMinMentions: appearance.hubLabelMinMentions
+          hubLabelMinMentions: appearance.hubLabelMinMentions,
+          showIsolatedLabels: appearance.showIsolatedNodes
         })
         ctx.globalAlpha = dim ? 0.1 : pending && !highlighted ? 0.45 : 1
         ctx.beginPath()

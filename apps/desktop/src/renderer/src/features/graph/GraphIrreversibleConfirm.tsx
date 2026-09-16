@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Modal } from '@baishou/ui'
+import { Button, Modal } from '@baishou/ui'
 import styles from './GraphPage.module.css'
 
 const CONFIRM_DELAY_MS = 3000
@@ -47,19 +47,14 @@ export const GraphIrreversibleConfirm: React.FC<{
       <p className={styles.irreversibleWarning}>{warning}</p>
       {detail}
       <div className={styles.mergeDialogFooter}>
-        <button type="button" className={styles.btn} disabled={busy} onClick={onCancel}>
+        <Button type="button" disabled={busy} onClick={onCancel}>
           {t('common.cancel', '取消')}
-        </button>
-        <button
-          type="button"
-          className={styles.btnDanger}
-          disabled={!ready}
-          onClick={onConfirm}
-        >
+        </Button>
+        <Button type="button" disabled={!ready} onClick={onConfirm}>
           {ready
             ? (confirmLabel ?? t('graph.merge_confirm', '确认合并'))
             : t('graph.merge_confirm_wait', '请等待 {{sec}} 秒', { sec: remainSec })}
-        </button>
+        </Button>
       </div>
     </Modal>
   )

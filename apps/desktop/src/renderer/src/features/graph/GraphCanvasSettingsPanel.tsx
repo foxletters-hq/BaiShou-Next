@@ -8,10 +8,10 @@ import {
   type GraphFocusDepth,
   type GraphForceSettings
 } from '@baishou/shared'
-import { Checkbox } from '@baishou/ui'
+import { Button, Checkbox } from '@baishou/ui'
 import styles from './GraphPage.module.css'
 
-export type GraphCanvasSettingsSection = 'view' | 'appearance' | 'forces'
+export type GraphCanvasSettingsSection = 'appearance' | 'forces'
 
 export interface GraphCanvasSettingsPanelProps {
   focusDepth: GraphFocusDepth
@@ -34,7 +34,6 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
 }) => {
   const { t } = useTranslation()
   const [sectionOpen, setSectionOpen] = useState<Record<GraphCanvasSettingsSection, boolean>>({
-    view: true,
     appearance: true,
     forces: true
   })
@@ -45,50 +44,36 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
 
   return (
     <>
-      <div className={styles.settingsSection}>
-        <button
-          type="button"
-          className={styles.settingsSectionHead}
-          onClick={() => toggle('view')}
+      <div className={styles.viewField}>
+        <div className={styles.viewFieldLabel}>{t('graph.focus_depth', '展开等级')}</div>
+        <p className={styles.viewFieldHint}>
+          {t(
+            'graph.focus_depth_hint',
+            '选中节点后，高亮其周围几级关系（1=直接相连，2=再扩一层）'
+          )}
+        </p>
+        <div
+          className={styles.depthSeg}
+          role="radiogroup"
+          aria-label={t('graph.focus_depth', '展开')}
         >
-          <span className={styles.settingsChevron}>{sectionOpen.view ? '▾' : '▸'}</span>
-          {t('graph.view_section', '浏览')}
-        </button>
-        {sectionOpen.view ? (
-          <div className={styles.settingsSectionBody}>
-            <div className={styles.viewField}>
-              <div className={styles.viewFieldLabel}>{t('graph.focus_depth', '展开等级')}</div>
-              <p className={styles.viewFieldHint}>
-                {t(
-                  'graph.focus_depth_hint',
-                  '选中节点后，高亮其周围几级关系（1=直接相连，2=再扩一层）'
-                )}
-              </p>
-              <div
-                className={styles.depthSeg}
-                role="radiogroup"
-                aria-label={t('graph.focus_depth', '展开')}
+          {GRAPH_FOCUS_DEPTH_OPTIONS.map((depth) => {
+            const active = focusDepth === depth
+            return (
+              <button
+                key={depth}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                className={`${styles.depthBtn} ${active ? styles.depthBtnActive : ''}`}
+                onClick={() => onFocusDepthChange(depth)}
               >
-                {GRAPH_FOCUS_DEPTH_OPTIONS.map((depth) => {
-                  const active = focusDepth === depth
-                  return (
-                    <button
-                      key={depth}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      className={`${styles.depthBtn} ${active ? styles.depthBtnActive : ''}`}
-                      onClick={() => onFocusDepthChange(depth)}
-                    >
-                      {depth}
-                      {t('graph.focus_depth_unit', '级')}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        ) : null}
+                {depth}
+                {t('graph.focus_depth_unit', '级')}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div className={styles.settingsSection}>
@@ -107,6 +92,21 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
               <Checkbox
                 checked={appearanceSettings.showArrows}
                 onChange={(event) => onAppearanceChange({ showArrows: event.target.checked })}
+              />
+            </label>
+            <label
+              className={styles.settingsToggleRow}
+              title={t(
+                'graph.show_isolated_nodes_hint',
+                '关闭后，当前视图里没有连线的节点仍会画出来，但不显示名称。选中、搜索命中和正在查看的节点仍会显示名称。'
+              )}
+            >
+              <span>{t('graph.show_isolated_nodes', '独立节点')}</span>
+              <Checkbox
+                checked={appearanceSettings.showIsolatedNodes}
+                onChange={(event) =>
+                  onAppearanceChange({ showIsolatedNodes: event.target.checked })
+                }
               />
             </label>
             <label className={styles.settingsSliderRow}>
@@ -171,7 +171,7 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
                 }
                 title={t(
                   'graph.hub_label_degree_hint',
-                  '连接边达到该数量时，全局视图默认显示名称'
+                  '连接边达到该数量时，全局视图默认显示名称。没有连线的独立节点始终显示名称。'
                 )}
               />
             </label>
@@ -195,14 +195,13 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
                 )}
               />
             </label>
-            <button
+            <Button
               type="button"
-              className={styles.btn}
               onClick={onReplayLayout}
               title={t('graph.replay_layout_hint', '给节点一点扰动，重新跑一遍力导向布局')}
             >
               {t('graph.replay_layout', '重新布局')}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

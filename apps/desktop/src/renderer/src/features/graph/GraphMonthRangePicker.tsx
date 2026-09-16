@@ -11,7 +11,7 @@ import {
   parseGraphMonthToDate,
   type GraphMonthRange
 } from '@baishou/shared'
-import { withAppContentOverlay } from '@baishou/ui'
+import { Button, withAppContentOverlay } from '@baishou/ui'
 import styles from './GraphMonthRangePicker.module.css'
 
 export interface GraphMonthRangePickerProps {
@@ -21,6 +21,8 @@ export interface GraphMonthRangePickerProps {
   className?: string
   /** Stretch trigger to full container width (sidebar). */
   block?: boolean
+  /** 画在时间选择器同一条边框里的附加操作，例如「全局」。 */
+  trailing?: React.ReactNode
 }
 
 type EditTarget = 'start' | 'end'
@@ -49,7 +51,8 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
   value,
   onChange,
   className,
-  block
+  block,
+  trailing
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -119,33 +122,46 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
     setOpen(false)
   }
 
+  const trigger = (
+    <button
+      type="button"
+      className={`${styles.trigger} ${
+        trailing ? styles.triggerInCluster : isRecent3 ? styles.triggerDefault : styles.triggerCustom
+      }${block ? ` ${styles.triggerBlock}` : ''}${className ? ` ${className}` : ''}`}
+      title={t('graph.month_range_hint', '按日记关系所属月份筛选')}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      onClick={() => setOpen(true)}
+    >
+      <CalendarDays size={15} className={styles.triggerIcon} />
+      <span className={styles.triggerText}>
+        <span className={styles.triggerRange}>
+          {monthLabel(monthNames, value.startMonth)}
+          <span className={styles.triggerDash}>—</span>
+          {monthLabel(monthNames, value.endMonth)}
+        </span>
+        <span className={styles.triggerBadge}>
+          {isRecent3
+            ? t('graph.month_range_recent3', '近3月')
+            : t('graph.month_range_custom', '自定义')}
+        </span>
+      </span>
+      <ChevronRight size={14} className={styles.triggerChevron} />
+    </button>
+  )
+
   return (
     <>
-      <button
-        type="button"
-        className={`${styles.trigger} ${isRecent3 ? styles.triggerDefault : styles.triggerCustom}${
-          block ? ` ${styles.triggerBlock}` : ''
-        }${className ? ` ${className}` : ''}`}
-        title={t('graph.month_range_hint', '按日记关系所属月份筛选')}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-      >
-        <CalendarDays size={15} className={styles.triggerIcon} />
-        <span className={styles.triggerText}>
-          <span className={styles.triggerRange}>
-            {monthLabel(monthNames, value.startMonth)}
-            <span className={styles.triggerDash}>—</span>
-            {monthLabel(monthNames, value.endMonth)}
-          </span>
-          <span className={styles.triggerBadge}>
-            {isRecent3
-              ? t('graph.month_range_recent3', '近3月')
-              : t('graph.month_range_custom', '自定义')}
-          </span>
-        </span>
-        <ChevronRight size={14} className={styles.triggerChevron} />
-      </button>
+      {trailing ? (
+        <div
+          className={`${styles.cluster} ${isRecent3 ? styles.clusterDefault : styles.clusterCustom}`}
+        >
+          {trigger}
+          <div className={styles.clusterTrailing}>{trailing}</div>
+        </div>
+      ) : (
+        trigger
+      )}
 
       {mounted &&
         createPortal(
@@ -283,16 +299,12 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
                   </div>
 
                   <div className={styles.footer}>
-                    <button
-                      type="button"
-                      className={styles.footerGhost}
-                      onClick={() => setOpen(false)}
-                    >
+                    <Button type="button" onClick={() => setOpen(false)}>
                       {t('common.cancel', '取消')}
-                    </button>
-                    <button type="button" className={styles.footerPrimary} onClick={applyDraft}>
+                    </Button>
+                    <Button type="button" onClick={applyDraft}>
                       {t('graph.month_range_apply', '应用')}
-                    </button>
+                    </Button>
                   </div>
                 </motion.div>
               </motion.div>

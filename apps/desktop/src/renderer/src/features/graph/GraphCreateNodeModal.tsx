@@ -5,7 +5,7 @@ import {
   isGraphNodeSameNameConflict,
   type GraphSameNameExisting
 } from '@baishou/shared'
-import { Input, Modal, Select } from '@baishou/ui'
+import { Button, Input, Modal, Select } from '@baishou/ui'
 import { findGraphSameNameNode } from './graph-same-name.lookup'
 import styles from './GraphPage.module.css'
 
@@ -151,27 +151,25 @@ export const GraphCreateNodeModal: React.FC<{
       ) : null}
       {error ? <div className={styles.sameNameBanner}>{error}</div> : null}
       <div className={styles.mergeDialogFooter}>
-        <button type="button" className={styles.btn} disabled={saving || busy} onClick={onClose}>
+        <Button type="button" disabled={saving || busy} onClick={onClose}>
           {t('common.cancel', '取消')}
-        </button>
+        </Button>
         {conflict ? (
-          <button
+          <Button
             type="button"
-            className={styles.btnPrimary}
             disabled={saving || busy}
             onClick={() => onOpenExisting(conflict.id)}
           >
             {t('graph.open_existing_node', '打开已有节点')}
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             type="button"
-            className={styles.btnPrimary}
             disabled={saving || busy || !name.trim()}
             onClick={() => void submit()}
           >
             {t('graph.create_node_submit', '创建')}
-          </button>
+          </Button>
         )}
       </div>
     </Modal>

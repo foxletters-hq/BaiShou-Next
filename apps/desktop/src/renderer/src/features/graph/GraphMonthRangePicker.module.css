@@ -92,6 +92,68 @@
   transform: rotate(90deg);
 }
 
+.cluster {
+  display: inline-flex;
+  align-items: stretch;
+  height: 32px;
+  max-width: min(420px, 56vw);
+  border-radius: 10px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-surface);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.clusterDefault {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--border-control));
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--bg-surface));
+}
+
+.clusterCustom {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-control));
+}
+
+.triggerInCluster {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  height: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.triggerInCluster:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-color: transparent;
+}
+
+.clusterTrailing {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  border-left: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--border-control));
+}
+
+.clusterTrailing button {
+  height: 100%;
+  margin: 0;
+  padding: 0 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clusterTrailing button:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -328,36 +390,4 @@
 .footer {
   display: flex;
   gap: 8px;
-}
-
-.footerGhost,
-.footerPrimary {
-  flex: 1;
-  height: 36px;
-  border-radius: 10px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.footerGhost {
-  border: 1px solid var(--border-control);
-  background: transparent;
-  color: var(--text-secondary);
-}
-
-.footerGhost:hover {
-  background: var(--bg-surface-high, var(--bg-app));
-  color: var(--text-primary);
-}
-
-.footerPrimary {
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-}
-
-.footerPrimary:hover {
-  opacity: 0.94;
 }

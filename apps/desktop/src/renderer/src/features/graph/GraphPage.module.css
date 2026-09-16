@@ -4,6 +4,7 @@
   min-height: 0;
   background: var(--bg-app);
   color: var(--text-primary);
+  font-family: var(--font-family);
   overflow: hidden;
 }
 
@@ -80,10 +81,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 0 20px 9px;
+  padding: 10px 20px 12px;
   border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface);
   box-sizing: border-box;
+  font-family: var(--font-family);
 }
 
 .chipRow:empty {
@@ -118,7 +120,7 @@
 
 .title {
   font-size: 16px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 32px;
   letter-spacing: 0.02em;
   flex-shrink: 0;
@@ -126,6 +128,7 @@
 }
 
 .searchGroup {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -155,6 +158,64 @@
 .searchBtn:hover {
   color: var(--text-primary);
   background: var(--bg-surface-high);
+}
+
+.searchHits {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 72vw);
+  max-height: min(320px, 42vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
+}
+
+.searchHitsHeader {
+  padding: 4px 8px 6px;
+  font-size: var(--ui-fs-sm, 12px);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.searchHit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.searchHit:hover {
+  background: var(--bg-surface-high);
+}
+
+.searchHitName {
+  font-size: var(--ui-fs-md, 13px);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.searchHitMeta {
+  font-size: var(--ui-fs-sm, 12px);
+  line-height: 1.4;
+  color: var(--text-tertiary);
 }
 
 .monthEmpty {
@@ -201,8 +262,8 @@
 }
 
 .depthLabel {
-  font-size: 11px;
-  font-weight: 650;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -226,8 +287,8 @@
   background: transparent;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: 11px;
-  font-weight: 650;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -258,19 +319,10 @@
   padding-bottom: 0;
 }
 
-.opsFullBtn {
-  width: 100%;
-}
-
 .opsBtnRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-}
-
-.opsBtnRow .btn {
-  width: 100%;
-  min-width: 0;
 }
 
 .opsConcurrency {
@@ -283,6 +335,19 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.opsDateInput {
+  height: 32px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-muted);
+  background: var(--bg-input, var(--bg-surface));
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
 }
 
 .opsBlock .checkLabel {
@@ -305,10 +370,8 @@
 }
 
 .filterSectionTitle {
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
@@ -317,8 +380,8 @@
   background: transparent;
   padding: 0;
   font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -339,7 +402,7 @@
   padding: 0 10px;
   border-radius: 999px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   cursor: pointer;
 }
 
@@ -365,10 +428,8 @@
 }
 
 .forceTitle {
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--ui-fs-sm);
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
@@ -377,7 +438,7 @@
   grid-template-columns: 48px 1fr 36px;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
@@ -390,17 +451,16 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--text-tertiary, var(--text-secondary));
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
 }
 
 .statusBar {
   display: block;
   width: 100%;
-  padding: 6px 32px;
+  padding: 8px 20px 2px;
   font-size: 12px;
   color: var(--text-secondary);
   border: none;
-  border-bottom: 1px solid var(--border-muted);
   background: var(--bg-surface);
   min-height: 0;
   text-align: left;
@@ -419,69 +479,14 @@
   color: var(--color-primary);
 }
 
-.btn {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-}
-
-.btn:hover:not(:disabled) {
-  background: var(--bg-surface-high, var(--bg-surface));
-}
-
-.btnPrimary {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  -webkit-font-smoothing: antialiased;
-}
-
 .btnBatchExtract {
   flex-shrink: 0;
   letter-spacing: 0;
   transform: translateZ(0);
 }
 
-.btnPrimary:hover:not(:disabled) {
-  opacity: 0.92;
-}
-
 .highlightStartOrganize {
   box-shadow: 0 0 0 2px var(--border-strong);
-}
-
-.btn:disabled,
-.btnPrimary:disabled,
-.btnDanger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btnDanger {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--color-danger, #dc2626);
-  background: var(--color-danger, #dc2626);
-  color: #fff;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
 }
 
 .btnActive {
@@ -875,6 +880,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  font-family: var(--font-family);
+  font-size: var(--ui-fs-md);
 }
 
 .settingsHeader {
@@ -888,8 +895,8 @@
 }
 
 .settingsTitle {
-  font-size: 13px;
-  font-weight: 650;
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -898,8 +905,8 @@
   background: transparent;
   padding: 0;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
   color: var(--color-primary);
   cursor: pointer;
 }
@@ -928,9 +935,8 @@
   background: transparent;
   padding: 6px 2px;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  font-size: var(--ui-fs-md);
+  font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
@@ -956,14 +962,14 @@
 }
 
 .viewFieldLabel {
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--ui-fs-md);
+  font-weight: 500;
   color: var(--text-primary);
 }
 
 .viewFieldHint {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -972,7 +978,7 @@
   margin: 0 0 10px;
   padding: 8px 10px;
   border-radius: 8px;
-  font-size: 11.5px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
   background: color-mix(in srgb, var(--color-primary) 6%, var(--bg-app));
@@ -1001,14 +1007,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .pendingSelectedCount {
-  font-size: 11.5px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
 }
 
@@ -1038,7 +1044,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
 }
 
@@ -1049,7 +1055,7 @@
   column-gap: 10px;
   row-gap: 4px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
 }
 
@@ -1079,19 +1085,19 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
 }
 
 .profileHint {
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.45;
   color: var(--text-tertiary, var(--text-secondary));
   margin: 0;
 }
 
 .profileError {
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   color: var(--color-danger, #dc2626);
 }
 
@@ -1148,7 +1154,7 @@
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   font-family: inherit;
 }
@@ -1198,7 +1204,7 @@
 }
 
 .itemTitle {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   font-weight: 600;
   color: var(--text-primary);
   min-width: 0;
@@ -1208,13 +1214,13 @@
 }
 
 .itemMeta {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   margin-top: 4px;
 }
 
 .itemMetaCompact {
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-tertiary, var(--text-secondary));
   margin-top: 2px;
   padding-left: 24px;
@@ -1244,8 +1250,8 @@
   background: transparent;
   padding: 0;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
   color: var(--color-primary);
   cursor: pointer;
   white-space: nowrap;
@@ -1266,7 +1272,7 @@
 }
 
 .empty {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   color: var(--text-secondary);
   padding: 12px 4px;
 }
@@ -1293,7 +1299,7 @@
 }
 
 .detailDepthHint {
-  font-size: 11px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -1303,22 +1309,22 @@
 }
 
 .detailLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+  line-height: 1.3;
   color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .detailValue {
-  font-size: 13px;
+  font-size: var(--ui-fs-md);
   line-height: 1.45;
   word-break: break-word;
   color: var(--text-primary);
 }
 
 .checkLabel {
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   display: flex;
   align-items: center;
   gap: 6px;
