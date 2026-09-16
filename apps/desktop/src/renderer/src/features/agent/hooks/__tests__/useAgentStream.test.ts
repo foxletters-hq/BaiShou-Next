@@ -329,6 +329,33 @@ describe('useAgentStream', () => {
       expect(result.current.completedTools.length).toBe(1)
       expect(result.current.completedTools[0].name).toBe('diary_search')
     })
+
+    it('should keep partial text as bridge when the user stops', () => {
+      vi.useFakeTimers()
+      mockRenderer.invoke.mockResolvedValue(undefined)
+      const { result } = renderHook(() => useAgentStream('s1'))
+      act(() => {
+        result.current.beginStreaming('s1')
+      })
+      act(() => {
+        emit('agent:stream-chunk', { sessionId: 's1', chunk: '一半回复' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(STREAM_LINE_REVEAL_MS)
+      })
+      act(() => {
+        result.current.stopChat()
+      })
+      expect(result.current.isStreaming).toBe(false)
+      expect(result.current.text).toBe('一半回复')
+      expect(result.current.isBridgeActive).toBe(true)
+      act(() => {
+        emit('agent:stream-finish', { sessionId: 's1', success: true, messageId: 'a-partial' })
+      })
+      expect(result.current.text).toBe('一半回复')
+      expect(result.current.isBridgeActive).toBe(true)
+      vi.useRealTimers()
+    })
   })
 
   describe('reset', () => {

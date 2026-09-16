@@ -4,6 +4,7 @@ import { toast } from '@baishou/ui'
 import type { InputBarRef } from '@baishou/ui'
 import type { AgentOutletContext } from '../agent-outlet-context'
 import {
+  useAgentGateInboxStore,
   useSettingsStore,
   useAssistantStore,
   usePromptShortcutStore,
@@ -86,13 +87,22 @@ export function useAgentChatFlow() {
     streamingReasoning: stream.reasoning
   })
   const tokens = useTokenUsage(sessionId, stream.isStreaming)
+  const resolvedLiveCount = useAgentGateInboxStore((state) => {
+    if (!sessionId) return 0
+    let count = 0
+    for (const item of state.resolvedLive ?? []) {
+      if (item.request.sessionId === sessionId) count += 1
+    }
+    return count
+  })
   const scroll = useChatScroll({
     sessionId,
     messages: chat.messages,
     streamingText: stream.text,
     streamingReasoning: stream.reasoning,
     isStreaming: stream.isStreaming,
-    activeTool: stream.activeTool
+    activeTool: stream.activeTool,
+    streamFollowKey: `${stream.completedTools.length}:${resolvedLiveCount}:${stream.pendingAgentGate?.id ?? ''}`
   })
   useStreamError(stream.error, stream.isStreaming)
   const recall = useRecallSearch()
@@ -127,7 +137,6 @@ export function useAgentChatFlow() {
 
   // ── 3. 各种 UI 弹窗与控制状态 ──
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
-  const [showCostDialog, setShowCostDialog] = useState(false)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
   const [showRecallSheet, setShowRecallSheet] = useState(false)
   const [showShortcutManager, setShowShortcutManager] = useState(false)
@@ -467,8 +476,6 @@ export function useAgentChatFlow() {
     // UI 控制状态
     showModelSwitcher,
     setShowModelSwitcher,
-    showCostDialog,
-    setShowCostDialog,
     showAssistantPicker,
     setShowAssistantPicker,
     showRecallSheet,
