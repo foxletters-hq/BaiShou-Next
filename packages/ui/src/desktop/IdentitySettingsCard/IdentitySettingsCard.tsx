@@ -8,6 +8,7 @@ import { IdentitySettingsPersonaSection } from './IdentitySettingsPersonaSection
 import { IdentityFactsList } from './IdentityFactsList'
 import { IdentityFactEditModal } from './IdentityFactEditModal'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { Button } from '../Button/Button'
 import styles from './IdentitySettingsCard.module.css'
 import { IdCard } from 'lucide-react'
 
@@ -64,14 +65,15 @@ export const IdentitySettingsCard: React.FC<IdentitySettingsCardProps> = ({
               recentPersonaIds={profile.recentPersonaIds}
               onSwitch={card.handleSwitch}
             />
-            <button
+            <Button
               type="button"
-              className={styles.identityManageButton}
+              variant="outlined"
+              size="small"
               onClick={() => onManageIdentity?.()}
               disabled={!onManageIdentity}
             >
               {t('settings.manage_identity_cards')}
-            </button>
+            </Button>
           </div>
         </div>
         {factsBody}
