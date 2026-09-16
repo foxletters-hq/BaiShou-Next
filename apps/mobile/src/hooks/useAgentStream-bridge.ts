@@ -273,6 +273,48 @@ export function useAgentStreamBridge({
     [activeToolRef, setActiveTool, setCompletedTools]
   )
 
+  /** 用户点停止：打断流，但留下已经打出来的半段，等落库后由 finishStream 交接 */
+  const keepPartialOutputAfterUserStop = useCallback(() => {
+    if (streamBridgeReleaseTimerRef.current) {
+      clearTimeout(streamBridgeReleaseTimerRef.current)
+      streamBridgeReleaseTimerRef.current = null
+    }
+    if (streamPresentationLingerTimerRef.current) {
+      clearTimeout(streamPresentationLingerTimerRef.current)
+      streamPresentationLingerTimerRef.current = null
+    }
+    if (streamBufferHoldTimerRef.current) {
+      clearTimeout(streamBufferHoldTimerRef.current)
+      streamBufferHoldTimerRef.current = null
+    }
+    streamAbortRef.current?.()
+    streamAbortRef.current = null
+    flushStreamingDisplayBuffers()
+    isStreamingRef.current = false
+    setIsStreaming(false)
+    setIsCompressing(false)
+    setLoading(false)
+    setStreamPresentationLinger(false)
+    if (hasStreamOutput()) {
+      setIsStreamBridgeActive(true)
+    } else {
+      setIsStreamBridgeActive(false)
+      resetStreamingBuffers()
+    }
+  }, [
+    streamBridgeReleaseTimerRef,
+    streamPresentationLingerTimerRef,
+    streamBufferHoldTimerRef,
+    streamAbortRef,
+    flushStreamingDisplayBuffers,
+    isStreamingRef,
+    setIsStreaming,
+    setIsCompressing,
+    setLoading,
+    hasStreamOutput,
+    resetStreamingBuffers
+  ])
+
   const interruptActiveStream = useCallback(
     (options?: { keepStreamingFlag?: boolean }) => {
       finishStreamPassRef.current += 1
@@ -314,6 +356,7 @@ export function useAgentStreamBridge({
     beginStreamBridgeHandoff,
     handleToolCallStart,
     handleToolCallResult,
+    keepPartialOutputAfterUserStop,
     interruptActiveStream
   }
 }

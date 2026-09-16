@@ -212,9 +212,7 @@ export function useAgentStream(
     setCompressionText,
     setCompressionReasoning,
     setCompressionTriggerMessageId,
-    flushStreamingDisplayBuffers: bridge.flushStreamingDisplayBuffers,
-    stopStreamingUiImmediately: bridge.stopStreamingUiImmediately,
-    resetStreamingBuffers: bridge.resetStreamingBuffers,
+    keepPartialOutputAfterUserStop: bridge.keepPartialOutputAfterUserStop,
     resetCompressionBuffers: bridge.resetCompressionBuffers,
     interruptActiveStream: bridge.interruptActiveStream,
     finishStream: finish.finishStream,
@@ -323,8 +321,14 @@ export function useAgentStream(
       }
       setIsAgentGateReplying(true)
       try {
+        useAgentGateInboxStore.getState().removeReplied(requestId, {
+          requestId,
+          reply,
+          message: extras?.message,
+          selectedOptionIds: extras?.selectedOptionIds,
+          resolvedAt: Date.now()
+        })
         await agentGate.reply({ requestId, reply, ...extras })
-        useAgentGateInboxStore.getState().removeReplied(requestId)
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         toast.showError(msg || t('agent_gate.reply_failed', '确认操作失败'))

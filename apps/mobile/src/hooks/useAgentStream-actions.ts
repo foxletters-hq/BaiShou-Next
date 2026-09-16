@@ -25,9 +25,7 @@ interface UseAgentStreamActionsOptions {
   setCompressionText: (value: string) => void
   setCompressionReasoning: (value: string) => void
   setCompressionTriggerMessageId: (value: string | null) => void
-  flushStreamingDisplayBuffers: () => void
-  stopStreamingUiImmediately: () => void
-  resetStreamingBuffers: () => void
+  keepPartialOutputAfterUserStop: () => void
   resetCompressionBuffers: () => void
   interruptActiveStream: () => void
   finishStream: (
@@ -66,9 +64,7 @@ export function useAgentStreamActions({
   setCompressionText,
   setCompressionReasoning,
   setCompressionTriggerMessageId,
-  flushStreamingDisplayBuffers,
-  stopStreamingUiImmediately,
-  resetStreamingBuffers,
+  keepPartialOutputAfterUserStop,
   resetCompressionBuffers,
   interruptActiveStream,
   finishStream,
@@ -159,9 +155,7 @@ export function useAgentStreamActions({
     userStoppedStreamRef.current = true
     finishStreamPassRef.current += 1
     setStreamError(null)
-    flushStreamingDisplayBuffers()
-    stopStreamingUiImmediately()
-    resetStreamingBuffers()
+    keepPartialOutputAfterUserStop()
     if (sessionId) {
       abortAgentStreamSession(sessionId)
     }
@@ -180,9 +174,7 @@ export function useAgentStreamActions({
     userStoppedStreamRef,
     finishStreamPassRef,
     setStreamError,
-    flushStreamingDisplayBuffers,
-    stopStreamingUiImmediately,
-    resetStreamingBuffers,
+    keepPartialOutputAfterUserStop,
     retryActionInFlightRef,
     pendingRetryReleaseEpochRef,
     releaseRetryAction,
