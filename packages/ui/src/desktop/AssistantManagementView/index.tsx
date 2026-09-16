@@ -1,6 +1,7 @@
 import React from 'react'
 import styles from './AssistantManagementView.module.css'
 import { useTranslation } from 'react-i18next'
+import { Button } from '../Button/Button'
 import { useDialog } from '../Dialog'
 import { resolveDesktopAssistantAvatarSrc } from '../assistant-avatar.util'
 import { AssistantKindBadge } from '../AssistantKindBadge'
@@ -34,7 +35,7 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
   onEdit,
   onTogglePin,
   onDelete,
-  onReorder
+  onReorder: _onReorder
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
@@ -43,10 +44,10 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.title}>{t('agent.assistant.management_title', '伙伴管理')}</h2>
-        <button className={styles.createBtn} onClick={onCreate}>
-          <Plus size={20} />
+        <Button type="button" onClick={onCreate}>
+          <Plus size={16} />
           {t('agent.assistant.create', '新建伙伴')}
-        </button>
+        </Button>
       </div>
 
       {assistants.length === 0 ? (
@@ -55,9 +56,9 @@ export const AssistantManagementView: React.FC<AssistantManagementViewProps> = (
           <div className={styles.emptyText}>
             {t('agent.assistant.empty_hint', '您还没有创建任何专属伙伴')}
           </div>
-          <button className={styles.createBtn} onClick={onCreate}>
+          <Button type="button" onClick={onCreate}>
             {t('agent.assistant.create_first', '创建第一个')}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className={styles.list}>

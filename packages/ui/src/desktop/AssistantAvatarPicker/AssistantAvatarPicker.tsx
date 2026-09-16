@@ -8,6 +8,7 @@ import {
   parseBuiltinAssistantAvatarId,
   toBuiltinAssistantAvatarPath
 } from '@baishou/shared'
+import { Button } from '../Button/Button'
 import { AvatarCropModal } from '../AvatarCropModal'
 import { Modal } from '../Modal/Modal'
 import { DESKTOP_BUILTIN_ASSISTANT_AVATAR_URLS } from '../builtin-assistant-avatar.sources'
@@ -109,14 +110,14 @@ export const AssistantAvatarPicker: React.FC<AssistantAvatarPickerProps> = ({
         className={styles.choiceModal}
       >
         <div className={styles.actionRow}>
-          <button type="button" className={styles.actionBtn} onClick={openBuiltinPicker}>
+          <Button type="button" onClick={openBuiltinPicker}>
             <LayoutGrid size={16} />
             <span>{t('agent.assistant.select_builtin_avatar', '选择内置头像')}</span>
-          </button>
-          <button type="button" className={styles.actionBtn} onClick={triggerUpload}>
+          </Button>
+          <Button type="button" onClick={triggerUpload}>
             <ImagePlus size={16} />
             <span>{t('agent.assistant.upload_avatar', '从本地上传')}</span>
-          </button>
+          </Button>
         </div>
       </Modal>
 

@@ -99,7 +99,7 @@ export const AssistantPicker: React.FC<AssistantPickerProps> = ({
           </div>
 
           <div className={styles.createBtnWrapper}>
-            <Button variant="text" className={styles.createBtn}>
+            <Button variant="outlined" size="small" className={styles.createBtn}>
               <span className={styles.createBtnIcon}>+</span>
               <span className={styles.createBtnLabel}>{t('agent.createAssistant')}</span>
             </Button>
