@@ -46,10 +46,9 @@ export const Switch: React.FC<NativeSwitchProps> = ({
   })
 
   const rThumbStyle = useAnimatedStyle(() => {
-    const translateX = progress.value * 20
     const isOn = progress.value > 0.5
     return {
-      transform: [{ translateX }],
+      transform: [{ translateX: progress.value * 18 }],
       shadowOpacity: isOn ? 0.15 : 0,
       elevation: isOn ? 3 : 0
     }
@@ -88,18 +87,18 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   track: {
-    width: 46,
-    height: 26,
-    borderRadius: 13,
-    padding: 2,
+    width: 42,
+    height: 24,
+    borderRadius: 12,
+    padding: 3.5,
     flexDirection: 'row',
     alignItems: 'center',
     overflow: 'hidden'
   },
   thumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

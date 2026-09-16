@@ -14,23 +14,10 @@ export function mapLegacyButtonVariant(
   destructive: boolean
 ): MappedButtonVariant {
   if (destructive) {
-    if (variant === 'elevated') {
-      return { variant: 'danger' }
-    }
-    if (variant === 'text') {
-      return { variant: 'ghost', labelClassName: 'text-danger' }
-    }
     return { variant: 'outline', labelClassName: 'text-danger' }
   }
 
-  switch (variant) {
-    case 'elevated':
-      return { variant: 'primary' }
-    case 'outlined':
-      return { variant: 'outline' }
-    case 'text':
-      return { variant: 'ghost' }
-  }
+  return { variant: 'outline' }
 }
 
 export function resolveNativeButtonVariant(
