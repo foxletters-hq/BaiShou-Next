@@ -123,42 +123,141 @@ const CATEGORY_LABEL_FALLBACKS: Record<AgentToolCategory, string> = {
 }
 
 const WORKSPACE_CATEGORY_LABEL_FALLBACKS: Record<WorkspaceToolCategory, string> = {
-  browse: '文件浏览',
-  mutate: '文件修改',
-  command: '命令执行',
-  utility: '交互与通用'
+  browse: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L126',
+    '文件浏览'
+  ),
+  mutate: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L127',
+    '文件修改'
+  ),
+  command: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L128',
+    '命令执行'
+  ),
+  utility: i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L129',
+    '交互与通用'
+  )
 }
 
 const TOOL_NAME_FALLBACKS: Record<string, string> = {
-  'agent.tools.diary_read': '日记读取',
-  'agent.tools.diary_write': '日记写入',
-  'agent.tools.diary_edit': '日记编辑',
-  'agent.tools.diary_delete': '日记删除',
-  'agent.tools.diary_list': '日记列表',
-  'agent.tools.diary_search': '日记搜索',
-  'agent.tools.summary_read': '总结读取',
-  'agent.tools.message_search': '消息搜索',
-  'agent.tools.vector_search': '语义搜索',
-  'agent.tools.memory_store': '记忆存储',
-  'agent.tools.memory_delete': '记忆删除',
-  'agent.tools.recall_relations': '回忆人生关系图',
-  'agent.tools.graph_upsert': '写入人生关系图',
-  'agent.tools.web_search': '网络搜索',
-  'agent.tools.url_read': '网页读取',
-  'agent.tools.auto_inject_time': '当前时间',
-  'agent.tools.current_time': '查询时间',
-  'agent.tools.param_max_results': '搜索结果上限',
-  'agent.tools.workspace_list': '列出文件',
-  'agent.tools.workspace_read': '读取文件',
-  'agent.tools.workspace_write': '写入文件',
-  'agent.tools.workspace_patch': '修补文件',
-  'agent.tools.workspace_rename': '重命名文件',
-  'agent.tools.workspace_delete': '删除文件',
-  'agent.tools.workspace_run': '运行命令',
-  'agent.tools.companion_ask': '向用户提问',
-  'agent.tools.skill_write': '保存技能',
-  'agent.tools.knowledge_search': '知识库搜索',
-  'agent.tools.knowledge_graph_search': '知识图谱搜索'
+  'agent.tools.diary_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L133',
+    '日记读取'
+  ),
+  'agent.tools.diary_write': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L134',
+    '日记写入'
+  ),
+  'agent.tools.diary_edit': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L135',
+    '日记编辑'
+  ),
+  'agent.tools.diary_delete': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L136',
+    '日记删除'
+  ),
+  'agent.tools.diary_list': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L137',
+    '日记列表'
+  ),
+  'agent.tools.diary_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L138',
+    '日记搜索'
+  ),
+  'agent.tools.summary_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L139',
+    '总结读取'
+  ),
+  'agent.tools.message_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L140',
+    '消息搜索'
+  ),
+  'agent.tools.vector_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L141',
+    '语义搜索'
+  ),
+  'agent.tools.memory_store': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L142',
+    '记忆存储'
+  ),
+  'agent.tools.memory_delete': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L143',
+    '记忆删除'
+  ),
+  'agent.tools.recall_relations': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L144',
+    '回忆人生关系图'
+  ),
+  'agent.tools.graph_upsert': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L145',
+    '写入人生关系图'
+  ),
+  'agent.tools.web_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L146',
+    '网络搜索'
+  ),
+  'agent.tools.url_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L147',
+    '网页读取'
+  ),
+  'agent.tools.auto_inject_time': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L148',
+    '当前时间'
+  ),
+  'agent.tools.current_time': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L149',
+    '查询时间'
+  ),
+  'agent.tools.param_max_results': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L150',
+    '搜索结果上限'
+  ),
+  'agent.tools.workspace_list': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L151',
+    '列出文件'
+  ),
+  'agent.tools.workspace_read': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L152',
+    '读取文件'
+  ),
+  'agent.tools.workspace_write': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L153',
+    '写入文件'
+  ),
+  'agent.tools.workspace_patch': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L154',
+    '修补文件'
+  ),
+  'agent.tools.workspace_rename': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L155',
+    '重命名文件'
+  ),
+  'agent.tools.workspace_delete': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L156',
+    '删除文件'
+  ),
+  'agent.tools.workspace_run': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L157',
+    '运行命令'
+  ),
+  'agent.tools.companion_ask': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L158',
+    '向用户提问'
+  ),
+  'agent.tools.skill_write': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L159',
+    '保存技能'
+  ),
+  'agent.tools.knowledge_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L160',
+    '知识库搜索'
+  ),
+  'agent.tools.knowledge_graph_search': i18n.t(
+    'auto.packages.ui.src.desktop.AgentToolsView.agent.tools.constants.L161',
+    '知识图谱搜索'
+  )
 }
 
 export function buildAgentTools(t: (key: string, fallback: string) => string): AgentToolDef[] {
