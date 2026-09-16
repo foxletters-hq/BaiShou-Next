@@ -51,7 +51,38 @@ describe('workspace-composer-drop.util', () => {
     ).resolves.toEqual([])
   })
 
-  it('skips directories and keeps files', async () => {
+  it('keeps a folder as one directory attachment and does not expand it', async () => {
+    const result = await resolveWorkspaceComposerDrop({
+      dataTransfer: {
+        getData: (type: string) =>
+          type === WORKBENCH_EXPLORER_DND_MIME
+            ? JSON.stringify({
+                relativePaths: ['docs', 'docs/a.md'],
+                entries: [
+                  { relativePath: 'docs', isDirectory: true },
+                  { relativePath: 'docs/a.md', isDirectory: false }
+                ]
+              })
+            : ''
+      } as unknown as DataTransfer,
+      folderRoot: '/tmp/proj'
+    })
+    expect(result).toEqual([
+      expect.objectContaining({
+        fileName: 'docs',
+        relativePath: 'docs',
+        isDirectory: true,
+        isText: false
+      }),
+      expect.objectContaining({
+        fileName: 'a.md',
+        filePath: '/tmp/proj/docs/a.md',
+        isText: true
+      })
+    ])
+  })
+
+  it('falls back to listDir when the payload has no entry flags', async () => {
     const listDir = vi.fn(async () => [
       { relativePath: 'docs', name: 'docs', isDirectory: true },
       { relativePath: 'docs/a.md', name: 'a.md', isDirectory: false }
@@ -62,11 +93,8 @@ describe('workspace-composer-drop.util', () => {
       listDir
     })
     expect(result).toEqual([
-      expect.objectContaining({
-        fileName: 'a.md',
-        filePath: '/tmp/proj/docs/a.md',
-        isText: true
-      })
+      expect.objectContaining({ relativePath: 'docs', isDirectory: true }),
+      expect.objectContaining({ fileName: 'a.md', isText: true })
     ])
   })
 })

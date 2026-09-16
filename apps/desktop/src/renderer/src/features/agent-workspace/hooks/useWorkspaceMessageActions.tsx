@@ -21,6 +21,11 @@ import {
   buildWorkspaceEditResendModelText,
   runWorkspaceEditResendPipeline
 } from './run-workspace-edit-resend.pipeline'
+import { findPrecedingUserMessageId } from '../utils/workspace-message-round.util'
+import {
+  workspaceBubbleActionCopy,
+  type WorkspaceBubbleConfirmCopy
+} from '../utils/workspace-bubble-action-copy.util'
 
 type TranslateFn = (key: string, fallback: string, options?: Record<string, unknown>) => string
 
@@ -202,16 +207,22 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
   )
 
   const handleRollback = useCallback(
-    async (userMessageId: string) => {
+    async (
+      userMessageId: string,
+      options?: { refillComposer?: boolean; confirmCopy?: WorkspaceBubbleConfirmCopy }
+    ) => {
       if (!sessionId || busyRef.current) return
 
-      const scope = await confirmRollbackScope(sessionId, userMessageId, {
+      const confirmCopy = options?.confirmCopy ?? {
         title: t('round_rollback.confirm_title', '回滚本轮变更？'),
         intro: t(
           'round_rollback.confirm_desc',
           '将恢复本轮开始前的文件状态，并删除本轮及之后的对话，此操作不可撤销。'
         )
-      })
+      }
+      const refillComposer = options?.refillComposer ?? true
+
+      const scope = await confirmRollbackScope(sessionId, userMessageId, confirmCopy)
       if (!scope) return
 
       const sourceMsg = messages.find((msg) => msg.id === userMessageId)
@@ -231,7 +242,7 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
         const dialogBody =
           summary.detailLines.length > 0 ? summary.detailLines.join('\n') : summary.headline
         await dialog.alert(dialogBody, t('round_rollback.action', '回滚本轮'))
-        if (refillText || (refillSkillRefs && refillSkillRefs.length > 0)) {
+        if (refillComposer && (refillText || (refillSkillRefs && refillSkillRefs.length > 0))) {
           setComposerRefill({
             text: refillText,
             skillRefs: refillSkillRefs,
@@ -266,7 +277,8 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
     async (
       userMessageId: string,
       newText: string,
-      meta?: { skillRefs?: SkillRef[]; fileRefs?: PromptFileRef[]; displayText?: string }
+      meta?: { skillRefs?: SkillRef[]; fileRefs?: PromptFileRef[]; displayText?: string },
+      confirmCopy?: WorkspaceBubbleConfirmCopy
     ): Promise<boolean> => {
       if (!sessionId || busyRef.current) return false
       const trimmedPlain = newText.trim()
@@ -303,13 +315,7 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
             const scope = await confirmRollbackScope(
               sessionId,
               userMessageId,
-              {
-                title: t('workspace_edit_resend.confirm_title', '用编辑后的内容重新发送？'),
-                intro: t(
-                  'workspace_edit_resend.confirm_desc',
-                  '会先撤回这一轮及之后的对话，再用你改过的内容重新发送。文件怎么处理，请选下面一项。此操作不可撤销。'
-                )
-              },
+              confirmCopy ?? workspaceBubbleActionCopy('edit_resend', t),
               { rememberSkip: true }
             )
             if (!scope) return false
@@ -387,8 +393,99 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
     ]
   )
 
+  const handleResend = useCallback(
+    async (userMessageId: string): Promise<boolean> => {
+      const sourceMsg = messages.find((msg) => msg.id === userMessageId)
+      const text = sourceMsg ? getWorkspaceUserText(sourceMsg).trim() : ''
+      if (!text) return false
+      return handleEditResend(
+        userMessageId,
+        text,
+        undefined,
+        workspaceBubbleActionCopy('resend', t)
+      )
+    },
+    [handleEditResend, messages, t]
+  )
+
+  const handleRegenerate = useCallback(
+    async (assistantMessageId: string): Promise<boolean> => {
+      const userMessageId = findPrecedingUserMessageId(messages, assistantMessageId)
+      if (!userMessageId) return false
+      const sourceMsg = messages.find((msg) => msg.id === userMessageId)
+      const text = sourceMsg ? getWorkspaceUserText(sourceMsg).trim() : ''
+      if (!text) return false
+      return handleEditResend(
+        userMessageId,
+        text,
+        undefined,
+        workspaceBubbleActionCopy('regenerate', t)
+      )
+    },
+    [handleEditResend, messages, t]
+  )
+
+  const handleDelete = useCallback(
+    async (messageId: string) => {
+      const userMessageId = findPrecedingUserMessageId(messages, messageId)
+      if (!userMessageId) return
+      await handleRollback(userMessageId, {
+        refillComposer: false,
+        confirmCopy: workspaceBubbleActionCopy('delete', t)
+      })
+    },
+    [handleRollback, messages, t]
+  )
+
+  const handleSaveAssistantEdit = useCallback(
+    async (messageId: string, newText: string): Promise<boolean> => {
+      if (!sessionId || busyRef.current) return false
+      const trimmed = newText.trim()
+      if (!trimmed) return false
+      const sourceMsg = messages.find((msg) => msg.id === messageId)
+      if (!sourceMsg || sourceMsg.role !== 'assistant') return false
+
+      busyRef.current = true
+      try {
+        await window.electron.ipcRenderer.invoke(
+          'agent:edit-message',
+          sessionId,
+          messageId,
+          trimmed,
+          currentProviderId,
+          currentModelId,
+          undefined,
+          searchModeEnabled,
+          getReasoningEffort()
+        )
+        await refreshMessages(sessionId)
+        return true
+      } catch (error) {
+        console.error('[useWorkspaceMessageActions] save assistant edit failed:', error)
+        toast.showError(t('workspace_assistant_edit.failed', '保存回复失败'))
+        return false
+      } finally {
+        busyRef.current = false
+      }
+    },
+    [
+      currentModelId,
+      currentProviderId,
+      getReasoningEffort,
+      messages,
+      refreshMessages,
+      searchModeEnabled,
+      sessionId,
+      t
+    ]
+  )
+
   return {
     handleRollback,
-    handleEditResend
+    handleEditResend,
+    handleResend,
+    handleRegenerate,
+    handleDelete,
+    handleSaveAssistantEdit
   }
 }

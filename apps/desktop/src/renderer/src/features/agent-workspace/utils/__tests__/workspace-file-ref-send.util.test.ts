@@ -34,6 +34,22 @@ describe('mergeWorkspaceFileRefsIntoAttachments', () => {
     ).toBeUndefined()
   })
 
+  it('should keep a folder ref as one directory attachment', () => {
+    const merged = mergeWorkspaceFileRefsIntoAttachments({
+      folderRoot: '/tmp/proj',
+      fileRefs: [{ relativePath: '设定', origin: 'explorer-drop', isDirectory: true }]
+    })
+    expect(merged).toEqual([
+      expect.objectContaining({
+        fileName: '设定',
+        relativePath: '设定',
+        isDirectory: true,
+        isText: false,
+        origin: 'explorer-drop'
+      })
+    ])
+  })
+
   it('skips duplicate path and selection', () => {
     const merged = mergeWorkspaceFileRefsIntoAttachments({
       folderRoot: '/tmp/proj',

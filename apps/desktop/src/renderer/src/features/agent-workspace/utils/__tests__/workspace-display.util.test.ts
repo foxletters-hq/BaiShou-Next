@@ -17,14 +17,113 @@ function workspace(
   }
 }
 
+function translateFallback(
+  _key: string,
+  fallback: string,
+  options?: { count?: number }
+): string {
+  if (options?.count == null) return fallback
+  return fallback.replaceAll('{{count}}', String(options.count))
+}
+
+function translateEnglish(
+  key: string,
+  fallback: string,
+  options?: { count?: number }
+): string {
+  const en: Record<string, string> = {
+    'common.compact_just_now': 'now',
+    'common.compact_minutes': '{{count}}m',
+    'common.compact_hours': '{{count}}h',
+    'common.compact_days': '{{count}}d'
+  }
+  return translateFallback(key, en[key] ?? fallback, options)
+}
+
+function translateJapanese(
+  key: string,
+  fallback: string,
+  options?: { count?: number }
+): string {
+  const ja: Record<string, string> = {
+    'common.compact_just_now': '今',
+    'common.compact_minutes': '{{count}}分',
+    'common.compact_hours': '{{count}}時間',
+    'common.compact_days': '{{count}}日'
+  }
+  return translateFallback(key, ja[key] ?? fallback, options)
+}
+
 describe('formatCompactRelativeTime', () => {
   const now = Date.parse('2026-08-19T18:00:00.000Z')
 
-  it('uses m and h for recent session times', () => {
-    expect(formatCompactRelativeTime('2026-08-19T17:59:30.000Z', now)).toBe('刚刚')
-    expect(formatCompactRelativeTime('2026-08-19T17:17:00.000Z', now)).toBe('43m')
-    expect(formatCompactRelativeTime('2026-08-19T11:00:00.000Z', now)).toBe('7h')
-    expect(formatCompactRelativeTime('2026-08-17T18:00:00.000Z', now)).toBe('2天')
+  it('should use the same language for all compact units when locale is Chinese', () => {
+    expect(
+      formatCompactRelativeTime('2026-08-19T17:59:30.000Z', {
+        t: translateFallback,
+        nowMs: now
+      })
+    ).toBe('刚刚')
+    expect(
+      formatCompactRelativeTime('2026-08-19T17:17:00.000Z', {
+        t: translateFallback,
+        nowMs: now
+      })
+    ).toBe('43分钟')
+    expect(
+      formatCompactRelativeTime('2026-08-19T11:00:00.000Z', {
+        t: translateFallback,
+        nowMs: now
+      })
+    ).toBe('7小时')
+    expect(
+      formatCompactRelativeTime('2026-08-17T18:00:00.000Z', {
+        t: translateFallback,
+        nowMs: now
+      })
+    ).toBe('2天')
+  })
+
+  it('should switch compact units through i18n when locale is English', () => {
+    expect(
+      formatCompactRelativeTime('2026-08-19T17:59:30.000Z', {
+        t: translateEnglish,
+        nowMs: now
+      })
+    ).toBe('now')
+    expect(
+      formatCompactRelativeTime('2026-08-19T17:17:00.000Z', {
+        t: translateEnglish,
+        nowMs: now
+      })
+    ).toBe('43m')
+    expect(
+      formatCompactRelativeTime('2026-08-19T11:00:00.000Z', {
+        t: translateEnglish,
+        nowMs: now
+      })
+    ).toBe('7h')
+    expect(
+      formatCompactRelativeTime('2026-08-17T18:00:00.000Z', {
+        t: translateEnglish,
+        nowMs: now
+      })
+    ).toBe('2d')
+  })
+
+  it('should use 今 instead of たった今 when locale is Japanese', () => {
+    expect(
+      formatCompactRelativeTime('2026-08-19T17:59:30.000Z', {
+        t: translateJapanese,
+        nowMs: now
+      })
+    ).toBe('今')
+    expect(
+      formatCompactRelativeTime('2026-08-19T11:00:00.000Z', {
+        t: translateJapanese,
+        nowMs: now
+      })
+    ).toBe('7時間')
   })
 })
 

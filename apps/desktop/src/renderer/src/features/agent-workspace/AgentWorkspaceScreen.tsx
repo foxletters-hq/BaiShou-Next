@@ -4,6 +4,7 @@ import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react
 import { useTranslation } from 'react-i18next'
 import {
   AgentGateDock,
+  ContextChainPanel,
   useDialog,
   AssistantPickerSheet,
   SessionModelMenu,
@@ -18,21 +19,19 @@ import {
   normalizeReasoningEffortSetting,
   type ReasoningEffortSetting
 } from '@baishou/shared'
-import {
-  selectQueuePosition,
-  selectSameActionCountInSession,
-  useAgentGateInboxStore,
-  useAgentStore
-} from '@baishou/store'
+import { selectSameActionCountInSession, useAgentGateInboxStore, useAgentStore } from '@baishou/store'
 import { useWorkspaceAgentStream } from './hooks/useWorkspaceAgentStream'
 import { useWorkspaceChatMessages } from './hooks/useWorkspaceChatMessages'
 import { useWorkspaceMessageActions } from './hooks/useWorkspaceMessageActions'
+import { useWorkspaceContextChain } from './hooks/useWorkspaceContextChain'
 import { useWorkspaceRuntimeRefresh } from './hooks/useWorkspaceRuntimeRefresh'
+import { AssistantCreateModal } from '../agent/components/AssistantCreateModal'
 import { useWorkspaceSessions } from './hooks/useWorkspaceSessions'
 import { useAgentWorkspaces } from './hooks/useAgentWorkspaces'
 import { useAgentWorkspaceChrome } from './hooks/useAgentWorkspaceChrome'
 import { useWorkspaceInitMessage } from './hooks/useWorkspaceInitMessage'
 import { useStreamError } from '../agent/hooks/useStreamError'
+import { useAgentGateQueuePager } from '../agent/hooks/useAgentGateQueuePager'
 import { clearStreamBridgeForSession } from '../agent/hooks/agent-stream-session-store'
 import {
   getReasoningEffortForModel,
@@ -192,12 +191,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
 
   const pendingGate = stream.pendingAgentGate
   const gateSessionId = streamBindId ?? sessionId
-  const gateQueueIndex = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, gateSessionId, pendingGate?.id).index
-  )
-  const gateQueueTotal = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, gateSessionId, pendingGate?.id).total
-  )
+  const { queueIndex: gateQueueIndex, queueTotal: gateQueueTotal, onQueuePrev, onQueueNext } =
+    useAgentGateQueuePager(gateSessionId, pendingGate?.id)
   const sameActionCount = useAgentGateInboxStore((state) =>
     selectSameActionCountInSession(state, gateSessionId, pendingGate?.action)
   )
@@ -490,6 +485,11 @@ export const AgentWorkspaceScreen: React.FC = () => {
     onCreatedNewSession: (id) => navigate(`/agent-workspace/${id}`)
   })
 
+  const contextChain = useWorkspaceContextChain({
+    sessionId: streamBindId ?? sessionId,
+    searchModeEnabled
+  })
+
   const handleSend = useCallback(
     async (
       text: string,
@@ -707,6 +707,21 @@ export const AgentWorkspaceScreen: React.FC = () => {
           onSend: (text, attachments, searchMode, meta) =>
             handleSend(text, attachments, searchMode, meta),
           onEditResend: (id, text, meta) => messageActions.handleEditResend(id, text, meta),
+          bubbleActions: {
+            onResend: (id) => {
+              void messageActions.handleResend(id)
+            },
+            onRegenerate: (id) => {
+              void messageActions.handleRegenerate(id)
+            },
+            onDelete: (id) => {
+              void messageActions.handleDelete(id)
+            },
+            onShowContext: (msg) => {
+              void contextChain.showContext(msg)
+            },
+            onSaveAssistantEdit: (id, text) => messageActions.handleSaveAssistantEdit(id, text)
+          },
           onAssistantTap: () => chrome.setShowAssistantPicker(true),
           assistantName: chrome.currentAssistant?.name || t('agent.partner_label', '伙伴'),
           composerRefill,
@@ -721,6 +736,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
               onReply={(payload) => void stream.replyAgentGate(payload)}
               queueIndex={gateQueueIndex}
               queueTotal={gateQueueTotal}
+              onQueuePrev={onQueuePrev}
+              onQueueNext={onQueueNext}
               sameActionCount={sameActionCount}
               placement="inline"
             />
@@ -781,8 +798,38 @@ export const AgentWorkspaceScreen: React.FC = () => {
             await chrome.fetchAssistants()
           }
         }}
-        onCreateNew={() => chrome.setShowAssistantPicker(false)}
+        onCreateNew={chrome.openCreateAssistant}
       />
+
+      <AssistantCreateModal
+        isOpen={chrome.isCreateAssistantOpen}
+        assistantCount={chrome.assistants.length}
+        onClose={() => chrome.setIsCreateAssistantOpen(false)}
+        onBackToPicker={() => chrome.setShowAssistantPicker(true)}
+        onCreated={chrome.fetchAssistants}
+      />
+
+      {contextChain.state.flatEntries ? (
+        <ContextChainPanel
+          key={contextChain.state.message?.id ?? 'workspace-context-chain'}
+          isOpen={contextChain.state.isOpen}
+          onClose={contextChain.close}
+          message={
+            contextChain.state.message ?? {
+              id: '',
+              sessionId: streamBindId ?? sessionId ?? '',
+              role: 'assistant',
+              content: '',
+              timestamp: new Date()
+            }
+          }
+          flatEntries={contextChain.state.flatEntries}
+          meta={contextChain.state.meta}
+          compressedContent={contextChain.state.compressedContent}
+          systemPrompt={contextChain.state.systemPrompt}
+          sessionId={contextChain.state.sessionId ?? streamBindId ?? sessionId}
+        />
+      ) : null}
     </div>
   )
 }
