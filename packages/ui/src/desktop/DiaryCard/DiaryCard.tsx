@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
 import { limitDiaryPreviewTags } from '@baishou/shared'
@@ -145,7 +146,8 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
             }}
           >
             ✏️{' '}
-            {t('common.edit') || t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L147', '编辑')}
+            {t('common.edit') ||
+              i18n.t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L147', '编辑')}
           </button>
           <button
             className="action-btn delete-btn"
@@ -156,7 +158,7 @@ export const DiaryCard: React.FC<DiaryCardProps> = ({
           >
             🗑️{' '}
             {t('common.delete') ||
-              t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L156', '删除')}
+              i18n.t('auto.packages.ui.src.desktop.DiaryCard.DiaryCard.L156', '删除')}
           </button>
         </div>
       </div>

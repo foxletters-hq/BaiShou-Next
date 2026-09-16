@@ -43,7 +43,7 @@ export function resolveDropdownLeft(
   dropdownWidth: number,
   viewportWidth: number
 ): number {
-  let left = triggerRect.left + triggerRect.width / 2 - dropdownWidth / 2
+  const left = triggerRect.left + triggerRect.width / 2 - dropdownWidth / 2
   const maxLeft = viewportWidth - dropdownWidth - VIEWPORT_MARGIN
   return Math.min(maxLeft, Math.max(VIEWPORT_MARGIN, left))
 }

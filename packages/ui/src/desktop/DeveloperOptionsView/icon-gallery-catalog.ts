@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { LucideIcon } from 'lucide-react'
 import lucideIconMeta from './lucide-icon-meta.json'
 import { USED_LUCIDE_ICON_NAMES } from './used-lucide-icons'
@@ -31,50 +32,182 @@ const USED_SET = new Set<string>(USED_LUCIDE_ICON_NAMES)
 export const LUCIDE_CATEGORY_ORDER = META.categoryOrder
 
 export const LUCIDE_CATEGORY_LABELS: Record<string, string> = {
-  used: '软件已使用',
-  uncategorized: '未分组',
-  accessibility: '无障碍',
-  account: '账户',
-  animals: '动物',
-  arrows: '箭头',
-  buildings: '建筑',
-  charts: '图表',
-  communication: '沟通',
-  connectivity: '连接',
-  cursors: '光标',
-  design: '设计',
-  development: '开发',
-  devices: '设备',
-  emoji: '表情',
-  files: '文件',
-  finance: '财务',
-  'food-beverage': '饮食',
-  gaming: '游戏',
-  home: '家居',
-  layout: '布局',
-  mail: '邮件',
-  math: '数学',
-  medical: '医疗',
-  multimedia: '多媒体',
-  nature: '自然',
-  navigation: '导航',
-  notifications: '通知',
-  people: '人物',
-  photography: '摄影',
-  science: '科学',
-  seasons: '季节',
-  security: '安全',
-  shapes: '形状',
-  shopping: '购物',
-  social: '社交',
-  sports: '运动',
-  sustainability: '可持续',
-  text: '文本',
-  time: '时间',
-  tools: '工具',
-  transportation: '交通',
-  travel: '出行',
-  weather: '天气'
+  used: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L34',
+    '软件已使用'
+  ),
+  uncategorized: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L35',
+    '未分组'
+  ),
+  accessibility: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L36',
+    '无障碍'
+  ),
+  account: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L37',
+    '账户'
+  ),
+  animals: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L38',
+    '动物'
+  ),
+  arrows: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L39',
+    '箭头'
+  ),
+  buildings: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L40',
+    '建筑'
+  ),
+  charts: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L41',
+    '图表'
+  ),
+  communication: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L42',
+    '沟通'
+  ),
+  connectivity: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L43',
+    '连接'
+  ),
+  cursors: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L44',
+    '光标'
+  ),
+  design: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L45',
+    '设计'
+  ),
+  development: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L46',
+    '开发'
+  ),
+  devices: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L47',
+    '设备'
+  ),
+  emoji: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L48',
+    '表情'
+  ),
+  files: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L49',
+    '文件'
+  ),
+  finance: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L50',
+    '财务'
+  ),
+  'food-beverage': i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L51',
+    '饮食'
+  ),
+  gaming: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L52',
+    '游戏'
+  ),
+  home: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L53',
+    '家居'
+  ),
+  layout: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L54',
+    '布局'
+  ),
+  mail: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L55',
+    '邮件'
+  ),
+  math: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L56',
+    '数学'
+  ),
+  medical: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L57',
+    '医疗'
+  ),
+  multimedia: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L58',
+    '多媒体'
+  ),
+  nature: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L59',
+    '自然'
+  ),
+  navigation: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L60',
+    '导航'
+  ),
+  notifications: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L61',
+    '通知'
+  ),
+  people: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L62',
+    '人物'
+  ),
+  photography: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L63',
+    '摄影'
+  ),
+  science: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L64',
+    '科学'
+  ),
+  seasons: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L65',
+    '季节'
+  ),
+  security: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L66',
+    '安全'
+  ),
+  shapes: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L67',
+    '形状'
+  ),
+  shopping: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L68',
+    '购物'
+  ),
+  social: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L69',
+    '社交'
+  ),
+  sports: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L70',
+    '运动'
+  ),
+  sustainability: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L71',
+    '可持续'
+  ),
+  text: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L72',
+    '文本'
+  ),
+  time: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L73',
+    '时间'
+  ),
+  tools: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L74',
+    '工具'
+  ),
+  transportation: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L75',
+    '交通'
+  ),
+  travel: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L76',
+    '出行'
+  ),
+  weather: i18n.t(
+    'auto.packages.ui.src.desktop.DeveloperOptionsView.icon.gallery.catalog.L77',
+    '天气'
+  )
 }
 
 function isLucideIcon(value: unknown): value is LucideIcon {
