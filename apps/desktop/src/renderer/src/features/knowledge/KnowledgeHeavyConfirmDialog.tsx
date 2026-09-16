@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@baishou/ui'
 import { KnowledgeDialog } from './KnowledgeDialog'
 import {
   isNotebookHeavyConfirmReady,
@@ -62,7 +63,7 @@ function heavyConfirmCopy(
       title: t('knowledge.reembed_graph_title', '重新抽取图数据'),
       message: t(
         'knowledge.reembed_graph_confirm',
-        '将按当前对话模型重新抽取「{{title}}」的关系。会先按这份资料清掉已抽出的节点和关系，再写入新结果；不会改动向量索引。可能耗时较长。',
+        '将按当前图抽取模型重新抽取「{{title}}」的关系。会先按这份资料清掉已抽出的节点和关系，再写入新结果；不会改动向量索引。可能耗时较长。',
         { title: titleText }
       )
     }
@@ -110,19 +111,14 @@ export const KnowledgeHeavyConfirmDialog: React.FC<KnowledgeHeavyConfirmDialogPr
     >
       <p className={styles.guideHint}>{message}</p>
       <div className={styles.guideActions}>
-        <button type="button" className={styles.dialogCancelBtn} onClick={onCancel}>
+        <Button type="button" onClick={onCancel}>
           {t('common.cancel', '取消')}
-        </button>
-        <button
-          type="button"
-          className={styles.dialogConfirmBtn}
-          disabled={!ready}
-          onClick={onConfirm}
-        >
+        </Button>
+        <Button type="button" disabled={!ready} onClick={onConfirm}>
           {ready
             ? t('common.confirm', '确认')
             : t('knowledge.heavy_confirm_button', '确认（{{seconds}}）', { seconds: secondsLeft })}
-        </button>
+        </Button>
       </div>
     </KnowledgeDialog>
   )

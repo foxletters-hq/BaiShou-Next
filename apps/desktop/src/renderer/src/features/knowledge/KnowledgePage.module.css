@@ -262,7 +262,7 @@
   top: calc(100% + 6px);
   right: -6px;
   z-index: 8;
-  width: 248px;
+  width: 268px;
   padding: 10px;
   border-radius: 12px;
   background: #fff;
@@ -356,6 +356,12 @@
   box-shadow:
     0 0 0 2px var(--bg-surface),
     0 0 0 4px var(--text-primary);
+}
+
+.coverEditorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .coverImageActions {
@@ -742,40 +748,6 @@
   margin-right: 6px;
 }
 
-.btn,
-.btnPrimary,
-.btnGhost {
-  border-radius: 8px;
-  border: 1px solid var(--border-default);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-.btnPrimary {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border-color: var(--border-control);
-}
-
-.btnPrimary:hover:not(:disabled) {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong, var(--border-control));
-}
-
-.btnGhost {
-  background: transparent;
-}
-
-.btn:disabled,
-.btnPrimary:disabled,
-.btnGhost:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 .statusLine {
   margin: 0 0 16px;
   font-size: 13px;
@@ -938,46 +910,24 @@
   background: color-mix(in srgb, var(--color-error, #c44) 10%, var(--bg-surface));
 }
 
-.detailChatStage {
+.sourcesStage {
   flex: 1;
   min-height: 0;
-  position: relative;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.sourcesIntro {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 8px 4px 12px;
-}
-
-.sourcesIntroText {
-  margin: 0;
+.sourcesBody {
   flex: 1;
-  font-size: var(--ui-fs-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.startChatBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  border: 1px solid var(--border-control);
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  cursor: pointer;
-  padding: 8px 12px;
-  font-size: var(--ui-fs-sm);
-}
-
-.startChatBtn:hover {
-  background: var(--bg-surface-high);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 2px 0;
+  box-sizing: border-box;
 }
 
 .detailSplitLayout {
@@ -1089,69 +1039,41 @@
   color: var(--text-secondary);
 }
 
-.addSourceBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  flex-shrink: 0;
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  font-family: var(--font-family);
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.addSourceBtn:hover:not(:disabled) {
-  background: var(--bg-surface-high);
-}
-
-.addSourceBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sourceList {
+.sourceGrid {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 8px;
   overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
+.sourceCardItem {
+  min-width: 0;
   min-height: 0;
 }
 
-.sourceRow {
-  border-radius: 12px;
-  padding: 10px;
-  background: color-mix(in srgb, var(--bg-app) 70%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.sourceCardItem .createCard,
+.sourceCardItem .sourceCard {
+  width: 100%;
+  height: 100%;
 }
 
-.sourceRowMain {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
+.sourceCard {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-surface);
 }
 
-.sourceKindIcon {
+.sourceCardIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  margin-top: 1px;
+  background: var(--bg-surface-normal);
 }
 
 .fileTypeIcon {
@@ -1172,26 +1094,6 @@
 
 .iconUrl {
   color: var(--color-primary, #3b6fd4);
-}
-
-.sourceRowBody {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.sourceTitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  word-break: break-word;
-}
-
-.sourceStatus {
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
 .sourceProgressTrack {
@@ -1218,21 +1120,11 @@
 }
 
 .sourceEvidence {
-  font-size: 11px;
+  display: block;
+  margin-top: 6px;
+  font-size: var(--ui-fs-sm);
   color: var(--text-secondary);
   line-height: 1.4;
-}
-
-.sourceActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 4px 8px;
-}
-
-.sourceMenuBtn {
-  width: 28px;
-  height: 28px;
 }
 
 .linkBtn {
@@ -1561,54 +1453,6 @@
   font-weight: 400;
   color: var(--text-tertiary);
   line-height: 1.45;
-}
-
-.capBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--bg-surface-normal);
-  border: 1px solid var(--border-subtle);
-}
-
-.capBlockTitle {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 2px;
-}
-
-.capRow {
-  display: grid;
-  grid-template-columns: max-content max-content minmax(0, 1fr);
-  gap: 8px;
-  align-items: baseline;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.capLabel {
-  color: var(--text-primary);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.capOk {
-  color: var(--color-success);
-  font-weight: 500;
-}
-
-.capBad {
-  color: var(--color-error);
-  font-weight: 500;
-}
-
-.capNote {
-  color: var(--text-secondary);
-  min-width: 0;
-  word-break: break-word;
 }
 
 :global(body[data-theme='dark']) .studioTileSky {
@@ -1950,12 +1794,22 @@
 
 .settingsRowHint {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--ui-fs-sm);
   line-height: 1.35;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.settingsRowHintWarn {
+  color: var(--color-warning);
+  white-space: normal;
+}
+
+.settingsRowHintWrap {
+  white-space: normal;
+  overflow: visible;
 }
 
 .settingsControl {
@@ -2093,13 +1947,6 @@
   background: var(--bg-surface-high);
 }
 
-.capBlockCompact {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 14px 12px;
-}
-
 .dialogTitle {
   margin: 0;
   font-size: 16px;
@@ -2156,6 +2003,58 @@
   width: min(1100px, calc(100vw - 32px));
   max-height: min(92vh, 960px);
   overflow: hidden;
+}
+
+.fragmentDialog {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(92vh, 960px);
+  overflow: hidden;
+}
+
+.fragmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  max-height: min(72vh, 760px);
+  overflow: auto;
+}
+
+.fragmentCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fragmentMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.fragmentExcerpt {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-normal);
+  border: 1px solid var(--border-muted);
+}
+
+.fragmentExcerptLabel {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.fragmentExcerptText {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
 }
 
 .previewStatus {
@@ -2382,50 +2281,6 @@
   justify-content: flex-end;
   gap: 10px;
   margin-left: auto;
-}
-
-.dialogCancelBtn,
-.dialogConfirmBtn {
-  min-width: 72px;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  font-family: inherit;
-  font-size: var(--ui-fs-md, 13px);
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    filter 0.15s ease;
-}
-
-.dialogCancelBtn {
-  background: transparent;
-  border-color: var(--border-control);
-  color: var(--text-primary);
-}
-
-.dialogCancelBtn:hover:not(:disabled) {
-  background: var(--bg-surface-high);
-}
-
-.dialogConfirmBtn {
-  background: var(--color-primary);
-  color: var(--color-on-primary, #fff);
-}
-
-.dialogConfirmBtn:hover:not(:disabled) {
-  filter: brightness(0.96);
-}
-
-.dialogCancelBtn:disabled,
-.dialogConfirmBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  filter: none;
 }
 
 .heavyConfirmCountdown {
@@ -2676,6 +2531,60 @@
   font-weight: 600;
   line-height: 1.45;
   color: var(--text-primary);
+}
+
+.jobProgress {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  box-sizing: border-box;
+}
+
+.jobProgressRow {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: start;
+}
+
+.jobProgressLabel {
+  padding-top: 1px;
+  font-size: var(--ui-fs-sm);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.jobProgressBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jobProgressDetail {
+  font-size: var(--ui-fs-md);
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.jobProgressBar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-surface-normal);
+  overflow: hidden;
+}
+
+.jobProgressFill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--color-primary);
+  transition: width 0.2s ease;
 }
 
 .graphProgress {
