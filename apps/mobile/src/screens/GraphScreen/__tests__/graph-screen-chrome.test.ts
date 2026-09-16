@@ -28,19 +28,53 @@ describe('GraphScreen chrome', () => {
     expect(toolbar).not.toContain("t('graph.extract_concurrency'")
   })
 
-  it('keeps month range out of the browse settings section', () => {
-    const view = sliceBetween("t('graph.view_section', '浏览')", "t('graph.appearance', '外观')")
-    expect(view).toContain('renderDepthChips()')
-    expect(view).not.toContain('GraphMonthRangeSheet')
+  it('keeps isolated nodes on the canvas and uses the switch only for names', () => {
+    expect(src).not.toContain('filterGraphIsolatedDisplayNodes')
+    expect(src).toContain("t('graph.show_isolated_nodes'")
+    expect(src).toContain('showIsolatedNodes')
+    expect(webviewSrc).toContain('appearance.showIsolatedNodes !== false')
   })
 
-  it('mounts extract, create, and merge in the settings ops section', () => {
-    const ops = sliceBetween("t('graph.side_ops', '操作')", "t('graph.view_section', '浏览')")
-    expect(ops).toContain("t('graph.process_pending_reextract'")
-    expect(ops).toContain("t('graph.extract_concurrency'")
-    expect(ops).toContain("t('graph.create_node'")
-    expect(ops).toContain("t('graph.merge_nodes'")
-    expect(ops).toContain('GraphExtractHelpButton')
+  it('keeps month range out of the canvas settings section', () => {
+    const canvas = sliceBetween("t('graph.side_canvas', '画布')", "t('graph.appearance', '外观')")
+    expect(canvas).toContain('renderDepthChips()')
+    expect(canvas).toContain("t('graph.filter'")
+    expect(canvas).not.toContain('GraphMonthRangeSheet')
+    expect(src).not.toContain("t('graph.view_section'")
+  })
+
+  it('mounts extract, create, merge, and identity in the organize settings section', () => {
+    const organize = sliceBetween("t('graph.side_organize', '整理')", "t('graph.side_canvas', '画布')")
+    expect(organize).toContain("t('graph.process_pending_reextract'")
+    expect(organize).toContain("t('graph.extract_concurrency'")
+    expect(organize).toContain("t('graph.create_node'")
+    expect(organize).toContain("t('graph.merge_nodes'")
+    expect(organize).toContain('GraphExtractHelpButton')
+    expect(organize).toContain("t('graph.extract_one_action'")
+    expect(organize).toContain("t('graph.profile_section'")
+    expect(organize).toContain("t('graph.data_ops'")
+    expect(organize).toContain("t('graph.clear_life_action'")
+    expect(organize).not.toContain("t('common.dangerous_action'")
+    expect(organize).not.toContain("t('graph.filter'")
+    expect(organize.indexOf("t('graph.profile_section'")).toBeLessThan(
+      organize.indexOf("t('graph.process_pending_reextract'")
+    )
+    expect(organize.indexOf("t('graph.merge_nodes'")).toBeLessThan(
+      organize.indexOf("t('graph.data_ops'")
+    )
+    expect(src).toContain('data: false')
+    expect(src).toContain('runExtractOne')
+    expect(src).toContain('clearLifeGraph')
+    expect(src).toContain('mobileClearLifeGraph')
+  })
+
+  it('keeps clear-life-graph out of account settings', () => {
+    const accountSrc = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '../../SettingsScreen/components/SettingsAccountPanel.tsx'),
+      'utf8'
+    )
+    expect(accountSrc).not.toContain('ClearLifeGraphDangerBlock')
+    expect(accountSrc).not.toContain('clearLifeGraph')
   })
 
   it('mounts pending batch review actions', () => {
@@ -51,6 +85,18 @@ describe('GraphScreen chrome', () => {
     expect(pending).toContain("t('graph.reject_all'")
     expect(pending).toContain('graphPendingItemKey')
     expect(pending).toContain('<Checkbox')
+    expect(pending).toContain('resolveGraphNodeDisplayName')
+    expect(pending).not.toContain('fromId.slice')
+    expect(pending).not.toContain('toId.slice')
+  })
+
+  it('keeps semantic and text search on the search tab and lists all hits', () => {
+    const search = sliceBetween("{tab === 'search' && (", "{tab === 'reextract' && (")
+    expect(search).toContain("t('graph.search_semantic'")
+    expect(search).toContain("t('graph.search_text'")
+    expect(src).toContain('applySearchHits')
+    expect(src).toContain('mode: nextMode')
+    expect(src).not.toContain("setTab('graph')\n      setSelectedId(hit.id)")
   })
 
   it('locates pending nodes by selection and pending edges by both endpoints', () => {
