@@ -516,10 +516,8 @@
 .toolItemContent {
   padding: 0 10px 8px 10px;
   font-size: 11px;
-  font-family: monospace;
+  font-family: var(--font-family-mono);
   color: var(--text-secondary);
-  max-height: 150px;
-  overflow-y: auto;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;

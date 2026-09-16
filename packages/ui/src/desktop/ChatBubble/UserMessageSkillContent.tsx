@@ -65,7 +65,7 @@ export function UserMessageSkillContent({
           const title = seg.comment?.trim()
             ? `${seg.relativePath}\n${seg.comment.trim()}`
             : seg.relativePath
-          if (!onOpenFile) {
+          if (!onOpenFile || seg.isDirectory) {
             return (
               <span
                 key={`f-${index}-${seg.relativePath}`}

@@ -36,10 +36,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     [message.content, message.reasoning]
   )
 
-  if (message.role === 'tool') {
-    return null
-  }
-
   const handleContextMenu = (e: React.MouseEvent) => {
     if (edit.isEditing) return
     e.preventDefault()
@@ -65,6 +61,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     },
     [onCopy, message.content, t, toast]
   )
+
+  // 工具消息不渲染气泡。这个提前返回必须留在所有 Hook 调用之后，否则 message.role 变化时 Hook 顺序会错位
+  if (message.role === 'tool') {
+    return null
+  }
 
   const aiName = aiProfile.name || t('agent.chat.ai_label', 'AI')
   const canEdit = Boolean(onSaveEdit || onResendEdit)
