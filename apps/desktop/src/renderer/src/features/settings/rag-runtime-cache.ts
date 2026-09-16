@@ -1,3 +1,5 @@
+import type { RagBatchEmbedPhaseCounts, RagBatchEmbedPhaseKind } from '@baishou/shared'
+
 export interface RagRuntimeStats {
   totalCount: number
   currentDimension: number
@@ -14,6 +16,10 @@ export interface RagRuntimeActiveState {
   error?: string
   aborted?: boolean
   rollbackApplied?: boolean
+  phase?: RagBatchEmbedPhaseKind
+  phases?: RagBatchEmbedPhaseCounts
+  paused?: boolean
+  cancelling?: boolean
 }
 
 const DEFAULT_STATS: RagRuntimeStats = {
