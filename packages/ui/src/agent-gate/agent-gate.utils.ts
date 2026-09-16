@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import {
   AgentGateKind,
   canPermanentlyAllowAgentGateAction,
@@ -24,7 +25,9 @@ export function resolveRequestGateResources(request: AgentGateRequest): AgentGat
 function resolveAlwaysPatternsFromRequest(request: AgentGateRequest): string[] | undefined {
   const raw = request.metadata?.alwaysPatterns
   if (!Array.isArray(raw)) return undefined
-  const filtered = raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+  const filtered = raw.filter(
+    (item): item is string => typeof item === 'string' && item.trim().length > 0
+  )
   // 历史实现用空数组禁止 Always；删除已允许始终允许，空数组按「未声明」处理
   if (filtered.length === 0 && request.action === 'workspace_delete') return undefined
   return filtered
@@ -54,15 +57,21 @@ export function resolveAlwaysDisabledReason(request: AgentGateRequest): string |
   if (request.kind !== AgentGateKind.Tool) return null
   if (shouldDisableAlwaysForPreview(request.preview)) {
     if (request.preview?.type === 'file_change' && request.preview.truncated) {
-      return '预览已截断，仅可本次允许'
+      return i18n.t(
+        'auto.packages.ui.src.agent.gate.agent.gate.utils.L59',
+        '预览已截断，仅可本次允许'
+      )
     }
     if (request.preview?.type === 'command' && request.preview.dangerous) {
-      return '危险命令不可始终允许'
+      return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L62', '危险命令不可始终允许')
     }
-    return '当前预览不完整，仅可本次允许'
+    return i18n.t(
+      'auto.packages.ui.src.agent.gate.agent.gate.utils.L64',
+      '当前预览不完整，仅可本次允许'
+    )
   }
   if (!canAlwaysAllowForRequest(request)) {
-    return '此操作不可始终允许'
+    return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L67', '此操作不可始终允许')
   }
   return null
 }
@@ -105,17 +114,17 @@ export function resolveDecisionSource(request: AgentGateRequest): AgentGateDecis
 }
 
 const LAYER_LABELS: Record<string, string> = {
-  profile: '场景默认',
-  user: '工作区规则',
-  remembered: '已记住',
-  session: '自动接受',
-  default: '默认'
+  profile: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L110', '场景默认'),
+  user: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L111', '工作区规则'),
+  remembered: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L112', '已记住'),
+  session: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L113', '自动接受'),
+  default: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L114', '默认')
 }
 
 const EFFECT_LABELS: Record<string, string> = {
-  allow: '允许',
-  ask: '询问',
-  deny: '拒绝'
+  allow: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L118', '允许'),
+  ask: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L119', '询问'),
+  deny: i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L120', '拒绝')
 }
 
 /** 卡片来源说明一行，如：工作区规则「workspace_run → 询问」 */
@@ -125,7 +134,10 @@ export function formatDecisionSourceLine(request: AgentGateRequest): string | nu
   const layer = LAYER_LABELS[source.layer] ?? source.layer
   const effect = EFFECT_LABELS[source.effect] ?? source.effect
   const patternPart = source.pattern ? ` ${source.pattern}` : ''
-  const clampHint = source.clampedFrom === 'allow' ? '（红线钳制）' : ''
+  const clampHint =
+    source.clampedFrom === 'allow'
+      ? i18n.t('auto.packages.ui.src.agent.gate.agent.gate.utils.L130', '（红线钳制）')
+      : ''
   return `${layer}「${source.action}${patternPart} → ${effect}」${clampHint}`
 }
 
