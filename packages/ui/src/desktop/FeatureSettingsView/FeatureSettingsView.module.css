@@ -35,38 +35,6 @@
   line-height: 1.4;
 }
 
-/* Switch */
-.switch {
-  width: 44px;
-  height: 24px;
-  border-radius: 12px;
-  background-color: rgba(var(--color-outline-rgb, 120, 120, 120), 0.3);
-  position: relative;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  flex-shrink: 0;
-}
-
-.switch[data-on='true'] {
-  background-color: var(--color-primary);
-}
-
-.switchHandle {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: var(--bg-surface);
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.switch[data-on='true'] .switchHandle {
-  transform: translateX(20px);
-}
-
 /* Range Input */
 .controlGroup {
   display: flex;

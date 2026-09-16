@@ -4,6 +4,7 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import '../shared/SettingsListTile.css'
 import { SettingsExpansionTile } from '../shared/SettingsExpansionTile'
+import { Button } from '../Button/Button'
 import { WorkspaceScopeHelpTooltip } from './WorkspaceScopeHelpTooltip'
 import { pickRecentVaults } from './workspace-settings.utils'
 import { validateWorkspaceName } from './workspace-name.validation'
@@ -144,14 +145,15 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
             </span>
           )}
         </div>
-        <button
+        <Button
           type="button"
-          className={styles.workspaceManageButton}
+          variant="outlined"
+          size="small"
           onClick={() => onManageWorkspace?.()}
           disabled={!onManageWorkspace}
         >
           {t('workspace.manage', '管理工作空间')}
-        </button>
+        </Button>
       </div>
 
       {recentVaults.length > 0 ? (
@@ -235,8 +237,9 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
               />
             ) : (
               <div style={{ display: 'flex', gap: 4 }}>
-                <button
-                  className="settings-text-btn"
+                <Button
+                  variant="outlined"
+                  size="small"
                   onMouseEnter={() => {
                     if (typeof window !== 'undefined' && (window as any).api?.vault?.preload) {
                       void (window as any).api.vault.preload(vault.name)
@@ -245,14 +248,10 @@ export const WorkspaceSettingsCard: React.FC<WorkspaceSettingsCardProps> = ({
                   onClick={() => onSwitch(vault.name)}
                 >
                   {t('workspace.switch', '切换')}
-                </button>
-                <button
-                  className="settings-text-btn"
-                  style={{ color: 'var(--color-error)' }}
-                  onClick={() => handleDelete(vault.name)}
-                >
+                </Button>
+                <Button variant="outlined" size="small" onClick={() => handleDelete(vault.name)}>
                   {t('workspace.delete', '删除')}
-                </button>
+                </Button>
               </div>
             )}
           </div>

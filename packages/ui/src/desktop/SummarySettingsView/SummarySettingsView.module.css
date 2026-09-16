@@ -367,45 +367,6 @@
   margin-top: 12px;
 }
 
-.resetBtn {
-  background: transparent;
-  border: 1px solid var(--border-control);
-  color: var(--text-tertiary);
-  font-size: var(--settings-font-desc-size);
-  padding: 8px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 500;
-}
-
-.resetBtn:hover {
-  background: var(--bg-surface-high);
-  color: var(--text-primary);
-}
-
-.saveBtn {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-control);
-  font-size: var(--settings-font-desc-size);
-  padding: 8px 28px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  box-shadow: none;
-  transition: all 0.2s ease;
-}
-
-.saveBtn:hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
-}
-
-.saveBtn:active {
-  transform: translateY(1px);
-}
-
 .infoBox {
   display: flex;
   gap: 12px;

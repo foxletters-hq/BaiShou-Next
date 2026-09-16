@@ -7,6 +7,7 @@ import { useToast } from '../Toast/useToast'
 import { DeveloperOptionsView } from '../DeveloperOptionsView'
 import { formatAppVersion, GITHUB_CONTRIBUTORS_URL } from '@baishou/shared'
 import { VersionManager } from '../VersionManager/index'
+import { Button } from '../Button/Button'
 import {
   ArrowLeft,
   ChevronRight,
@@ -186,14 +187,14 @@ export const AboutSettingsCard: React.FC<AboutSettingsCardProps> = ({
                 '白守受到社群小伙伴的支持，\n你可以直接点击这里查看代码贡献者！'
               )}
             </p>
-            <button
+            <Button
               type="button"
-              className="about-contributors-btn"
+              variant="outlined"
+              size="small"
               onClick={() => window.open(GITHUB_CONTRIBUTORS_URL, '_blank')}
             >
-              <ExternalLink size={18} />
               {t('about.view_contributors', '查看项目贡献者')}
-            </button>
+            </Button>
           </div>
         </section>
 
