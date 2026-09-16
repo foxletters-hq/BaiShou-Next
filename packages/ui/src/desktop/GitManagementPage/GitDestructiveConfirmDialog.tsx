@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
 import { withAppContentOverlay } from '../overlay'
+import { Button } from '../Button/Button'
 import type { GitRollbackAllContext } from '@baishou/shared'
 
 export type GitDestructiveConfirmRequest =
@@ -126,7 +127,10 @@ export const GitDestructiveConfirmDialog: React.FC<GitDestructiveConfirmDialogPr
   })()
 
   return createPortal(
-    <div className={withAppContentOverlay('gmp-confirm-overlay')} onClick={isConfirming ? undefined : onCancel}>
+    <div
+      className={withAppContentOverlay('gmp-confirm-overlay')}
+      onClick={isConfirming ? undefined : onCancel}
+    >
       <div
         className="gmp-confirm-dialog"
         onClick={(e) => e.stopPropagation()}
@@ -145,22 +149,24 @@ export const GitDestructiveConfirmDialog: React.FC<GitDestructiveConfirmDialogPr
           {message}
         </div>
         <div className="gmp-confirm-actions">
-          <button
+          <Button
             type="button"
-            className="gmp-btn gmp-btn-secondary"
+            variant="outlined"
+            size="small"
             onClick={onCancel}
             disabled={isConfirming}
           >
             {t('common.cancel', '取消')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="gmp-btn gmp-btn-danger"
+            variant="outlined"
+            size="small"
             onClick={onConfirm}
             disabled={isConfirming}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>,

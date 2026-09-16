@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React from 'react'
 import { Cloud, CloudOff } from 'lucide-react'
 import { PageSizeSelector } from '../PageSizeSelector'
@@ -19,7 +20,8 @@ function formatGraphTime(date: Date | string): string {
   const now = Date.now()
   const diffMs = now - value.getTime()
   const minutes = Math.floor(diffMs / 60_000)
-  if (minutes < 1) return '刚刚'
+  if (minutes < 1)
+    return i18n.t('auto.packages.ui.src.desktop.GitManagementPage.GitCommitsSection.L22', '刚刚')
   if (minutes < 60) return `${minutes} 分钟前`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours} 小时前`
