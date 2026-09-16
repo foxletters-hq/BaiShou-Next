@@ -96,7 +96,7 @@ export function createBaishouEslintConfig(options = {}) {
       }
     },
     {
-      files: ['**/app-identity.ts', '**/dev-user-data.ts'],
+      files: ['**/app-identity.ts', '**/dev-user-data.ts', '**/src/i18n.ts'],
       rules: {
         'i18n-chinese/no-hardcoded-chinese': 'off'
       }

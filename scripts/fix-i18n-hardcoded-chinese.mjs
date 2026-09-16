@@ -9,13 +9,16 @@ import ts from 'typescript'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 const DRY_RUN = process.argv.includes('--dry-run')
+const onlyArg = process.argv.find((arg) => arg.startsWith('--only='))
+const onlyRel = onlyArg ? onlyArg.slice('--only='.length) : ''
 
-const SCAN_ROOTS = [
+const DEFAULT_SCAN_ROOTS = [
   path.join(ROOT, 'apps/desktop/src'),
   path.join(ROOT, 'apps/mobile'),
   path.join(ROOT, 'packages/ui/src'),
   path.join(ROOT, 'packages/core/src')
 ]
+const SCAN_ROOTS = onlyRel ? [path.join(ROOT, onlyRel)] : DEFAULT_SCAN_ROOTS
 
 const CHINESE_REGEX = /[\u4e00-\u9fa5]/
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'out', 'build', '.turbo', 'coverage'])
