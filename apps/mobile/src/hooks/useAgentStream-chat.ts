@@ -277,10 +277,20 @@ export function useAgentStreamChat({
   )
 
   const handleSend = useCallback(
-    async (text: string, attachments?: unknown[], sendSearchMode?: boolean): Promise<boolean> => {
+    async (
+      text: string,
+      attachments?: unknown[],
+      sendSearchMode?: boolean,
+      meta?: {
+        displayText?: string
+        skillRefs?: Array<{ command: string; content: string }>
+        fileRefs?: unknown[]
+      }
+    ): Promise<boolean> => {
       const hasText = Boolean(text.trim())
       const hasAttachments = Boolean(attachments?.length)
-      if ((!hasText && !hasAttachments) || !services) return false
+      const hasCites = Boolean(meta?.skillRefs?.length || meta?.fileRefs?.length)
+      if ((!hasText && !hasAttachments && !hasCites) || !services) return false
 
       if (
         !isConfiguredProviderId(currentProviderId) ||
@@ -344,7 +354,10 @@ export function useAgentStreamChat({
           text,
           attachments,
           modelId: currentModelId || undefined,
-          providerType: currentProviderId || undefined
+          providerType: currentProviderId || undefined,
+          displayText: meta?.displayText,
+          skillRefs: meta?.skillRefs,
+          fileRefs: meta?.fileRefs
         }
       )
       if ('error' in saveResult) {
@@ -367,8 +380,10 @@ export function useAgentStreamChat({
       addMessage({
         id: saveResult.userMessageId,
         role: 'user',
-        content: text,
+        content: meta?.displayText || text,
         timestamp: new Date(),
+        skillRefs: meta?.skillRefs,
+        fileRefs: meta?.fileRefs,
         attachments: mapSavedAttachmentsForMobileUi(
           saveResult.attachments,
           await services.pathService.getRootDirectory(),
