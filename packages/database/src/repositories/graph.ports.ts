@@ -60,6 +60,12 @@ export interface GraphQuery extends GraphNodeLookup {
     fromId: string,
     opts?: { maxHops?: 2 | 3; approvedOnly?: boolean; limit?: number; hubDegreeThreshold?: number }
   ): Promise<GraphPath[]>
+  listEmbeddedLiveNodesPage(
+    vaultId: string,
+    options?: { keyword?: string; limit?: number; offset?: number }
+  ): Promise<Array<{ id: string; name: string; summary: string; modelId: string; updatedAt: number }>>
+  countEmbeddedLiveNodes(vaultId: string, keyword?: string): Promise<number>
+  getNodesByIds(vaultId: string, ids: string[]): Promise<GraphNodeRow[]>
 }
 
 /** Explicit writes — IPC / review, not JSONL sync. */
@@ -76,12 +82,21 @@ export interface GraphWrite {
     sourceRef: string,
     opts?: { keepUserOrigin?: boolean; exceptIds?: ReadonlySet<string> }
   ): Promise<void>
+  /** Clears the node vector only. The entity row stays. */
+  clearNodeEmbedding(id: string, vaultId: string): Promise<void>
+  /** Hard-delete this vault's life-graph rows. Does not touch notebook graphs. */
+  deleteAllForVault(vaultId: string): Promise<void>
 }
 
 /** Review queue listing — not a write, not RAG. */
 export interface GraphReview {
   listPendingNodes(vaultId: string): Promise<GraphNodeRow[]>
   listPendingEdges(vaultId: string): Promise<GraphEdgeRow[]>
+  listPendingGraph(vaultId: string): Promise<{
+    nodes: GraphNodeRow[]
+    edges: GraphEdgeRow[]
+    endpointNodes: GraphNodeRow[]
+  }>
 }
 
 /** pending-index apply + orphan sweep. */

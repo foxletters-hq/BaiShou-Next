@@ -7,6 +7,7 @@ export type {
   ShadowSyncFingerprint,
   UpsertShadowIndexPayload,
   ShadowFTSResult,
+  ShadowEmbedDetectionRow,
   DiaryListFilterOptions
 } from './shadow-index.repository.types'
 
@@ -111,6 +112,10 @@ export class ShadowIndexRepository {
 
   async listAllWithFTS(...args: Parameters<ShadowIndexQueryOps['listAllWithFTS']>) {
     return this.queryOps.listAllWithFTS(...args)
+  }
+
+  async listForEmbedDetection(...args: Parameters<ShadowIndexQueryOps['listForEmbedDetection']>) {
+    return this.queryOps.listForEmbedDetection(...args)
   }
 
   async listAll(...args: Parameters<ShadowIndexQueryOps['listAll']>) {

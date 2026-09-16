@@ -374,5 +374,52 @@ describe('ShadowIndexRepository', () => {
       const count = await repo.countFiltered({ moods: ['Happy'], year: 2026, month: 6 })
       expect(count).toBe(2)
     })
+
+    it('listForEmbedDetection returns more than 10000 rows and does not expose file content_hash', async () => {
+      const client = manager.getClient()
+      const stmts = Array.from({ length: 10001 }, (_, i) => {
+        const dateIso = `1990-01-01T00:00:${String(i % 60).padStart(2, '0')}.${String(i).padStart(5, '0')}Z`
+        return {
+          sql: `INSERT INTO journals_index
+            (vault_id, file_path, date, created_at, updated_at, content_hash, is_favorite, has_media, raw_content)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+          args: [
+            TEST_VAULT_NAME,
+            `journals/${i}.md`,
+            dateIso,
+            dateIso,
+            dateIso,
+            `file-md5-${i}`,
+            `body-${i}`
+          ]
+        }
+      })
+      await client.batch(stmts)
+
+      const rows = await repo.listForEmbedDetection()
+      expect(rows).toHaveLength(10001)
+      expect(rows[0]).toEqual(
+        expect.objectContaining({
+          id: expect.any(Number),
+          date: expect.any(String),
+          updatedAt: expect.any(String),
+          rawContent: expect.any(String)
+        })
+      )
+      expect(rows[0]).not.toHaveProperty('contentHash')
+      expect(rows.some((row) => row.rawContent.startsWith('body-'))).toBe(true)
+    }, 20000)
+
+    it('listForEmbedDetection excludes Archives summary files', async () => {
+      await repo.upsert(generateDummyPayload('2026-09-01T00:00:00.000Z', 'real diary'))
+      await repo.upsert({
+        ...generateDummyPayload('2026-09-02T00:00:00.000Z', 'monthly archive'),
+        filePath: 'journals/Archives/2026-09.md'
+      })
+
+      const rows = await repo.listForEmbedDetection()
+      expect(rows).toHaveLength(1)
+      expect(rows[0]?.rawContent).toBe('real diary')
+    })
   })
 })

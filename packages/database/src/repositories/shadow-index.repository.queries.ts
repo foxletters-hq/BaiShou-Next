@@ -13,6 +13,7 @@ import {
 } from './shadow-index.repository.text'
 import type {
   DiaryListFilterOptions,
+  ShadowEmbedDetectionRow,
   ShadowFTSResult,
   ShadowJournalRecord,
   ShadowJournalRow,
@@ -543,6 +544,30 @@ export class ShadowIndexQueryOps {
       console.warn('[ShadowIndex] listAllWithFTS error:', msg)
       return []
     }
+  }
+
+  /**
+   * 待嵌入检测瘦查询：只取 id / date / updated_at / raw_content，无 LIMIT，不读文件级 content_hash。
+   * 与日记统计一致，排除 Archives 等总结目录里误入影子索引的记录。
+   */
+  async listForEmbedDetection(): Promise<ShadowEmbedDetectionRow[]> {
+    const rows = await this.database
+      .select({
+        id: shadowJournalIndexTable.id,
+        date: shadowJournalIndexTable.date,
+        updatedAt: shadowJournalIndexTable.updatedAt,
+        rawContent: shadowJournalIndexTable.rawContent
+      })
+      .from(shadowJournalIndexTable)
+      .where(this.withVault(this.journalPathNotUnderSkippedDirs()))
+      .orderBy(sql`${shadowJournalIndexTable.date} ASC`)
+
+    return rows.map((row) => ({
+      id: row.id,
+      date: row.date,
+      updatedAt: row.updatedAt,
+      rawContent: row.rawContent ?? ''
+    }))
   }
 
   async listAll(options?: {
