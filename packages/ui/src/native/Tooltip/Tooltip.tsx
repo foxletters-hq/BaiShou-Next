@@ -16,7 +16,7 @@ export const Tooltip: React.FC<NativeTooltipProps> = ({
 }) => {
   const { colors, tokens, isDark } = useNativeTheme()
   const [isVisible, setIsVisible] = useState(false)
-  const [layout, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 })
+  const [, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 })
 
   const handlePress = useCallback(() => {
     setIsVisible(true)

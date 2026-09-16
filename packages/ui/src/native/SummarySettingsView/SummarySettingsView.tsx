@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, Modal } from 'react-native'
@@ -28,10 +29,38 @@ interface TemplateItem {
 }
 
 const TEMPLATES: TemplateItem[] = [
-  { key: 'weeklyTemplate', title: '周结', icon: '📋' },
-  { key: 'monthlyTemplate', title: '月结', icon: '📅' },
-  { key: 'quarterlyTemplate', title: '季结', icon: '📊' },
-  { key: 'yearlyTemplate', title: '年结', icon: '📈' }
+  {
+    key: 'weeklyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L31',
+      '周结'
+    ),
+    icon: '📋'
+  },
+  {
+    key: 'monthlyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L32',
+      '月结'
+    ),
+    icon: '📅'
+  },
+  {
+    key: 'quarterlyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L33',
+      '季结'
+    ),
+    icon: '📊'
+  },
+  {
+    key: 'yearlyTemplate',
+    title: i18n.t(
+      'auto.packages.ui.src.native.SummarySettingsView.SummarySettingsView.L34',
+      '年结'
+    ),
+    icon: '📈'
+  }
 ]
 
 export const SummarySettingsView: React.FC<SummarySettingsViewProps> = ({ config, onChange }) => {

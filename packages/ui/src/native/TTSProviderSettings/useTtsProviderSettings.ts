@@ -6,7 +6,6 @@ import {
   MINIMAX_TTS_DEFAULT_MODELS,
   MINIMAX_TTS_DEFAULT_VOICE,
   isMimoVoiceCloneModel,
-  normalizeRefAudioPath,
   parseRefAudioPick,
   validateMimoTtsSettings
 } from '@baishou/shared'
@@ -197,15 +196,19 @@ export function useTtsProviderSettings({
     skipAutoSaveRef.current = true
   }, [providerType])
 
-  const currentConfig = configs[providerType] || {
-    baseUrl: '',
-    apiKey: '',
-    modelId: '',
-    voice: '',
-    speed: 1.0,
-    responseFormat: 'mp3',
-    availableModels: []
-  }
+  const currentConfig = useMemo(
+    () =>
+      configs[providerType] || {
+        baseUrl: '',
+        apiKey: '',
+        modelId: '',
+        voice: '',
+        speed: 1.0,
+        responseFormat: 'mp3',
+        availableModels: []
+      },
+    [configs, providerType]
+  )
 
   const config = useMemo(
     (): TtsProviderConfig => ({
@@ -361,6 +364,8 @@ export function useTtsProviderSettings({
     }, AUTO_SAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(autoSaveTimerRef.current)
+    // state 按字段列依赖，避免整个对象引用变化就自动保存
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isInitialized,
     onSaveConfig,
