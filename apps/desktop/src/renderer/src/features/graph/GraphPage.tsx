@@ -31,6 +31,7 @@ import {
   defaultGraphMonthRange,
   isDefaultGraphMonthRange,
   formatGraphMonth,
+  formatLocalDate,
   parseGraphMonthToDate,
   type GraphMonthRange,
   loadGraphFocusDepth,
@@ -52,6 +53,11 @@ import {
   isGraphExtractBusyStatus,
   isGraphNodeSameNameConflict,
   graphPendingItemKey,
+  buildGraphNodeNameMap,
+  resolveGraphNodeDisplayName,
+  isGraphSearchEmbeddingRequiredError,
+  resolveGraphSearchMode,
+  type GraphSearchMode,
   applyGraphLocalEdgeDelete,
   applyGraphLocalNodeDelete,
   omitInFlightGraphDeletes,
@@ -65,6 +71,7 @@ import {
   type GraphSameNameExisting
 } from '@baishou/shared'
 import {
+  Button,
   Checkbox,
   HelpTooltip,
   Input,
@@ -74,6 +81,7 @@ import {
   useDialog,
   useToast
 } from '@baishou/ui'
+import { SegmentedControl } from '@baishou/ui/desktop/shared/SegmentedControl'
 import {
   ensureDesktopGraphSelfName,
   loadDesktopGraphAwakenSelfName,
@@ -103,13 +111,13 @@ import {
   type GraphExtractQueueSnapshot
 } from './graph-extract-queue.api'
 import { MemoryReadinessBar } from '../memory/MemoryReadinessBar'
-import { useMemoryReadiness } from '../memory/useMemoryReadiness'
+import { refreshMemoryReadiness, useMemoryReadiness } from '../memory/useMemoryReadiness'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { useNavigate } from 'react-router-dom'
 import styles from './GraphPage.module.css'
 
 type SideTab = 'reextract' | 'pending' | 'detail'
-type SideMode = 'ops' | 'content' | 'settings'
+type SideMode = 'organize' | 'canvas' | 'content'
 
 const SIDE_WIDTH_KEY = 'baishou.graph.sideWidth.v1'
 const SIDE_COLLAPSED_KEY = 'baishou.graph.sideCollapsed.v1'
@@ -168,11 +176,15 @@ type SourcePreview = {
 export type GraphPageProps = {
   embedded?: boolean
   highlightStartOrganize?: boolean
+  autoStartOrganize?: boolean
+  onAutoStartOrganizeConsumed?: () => void
 }
 
 export const GraphPage: React.FC<GraphPageProps> = ({
   embedded = false,
-  highlightStartOrganize = false
+  highlightStartOrganize = false,
+  autoStartOrganize = false,
+  onAutoStartOrganizeConsumed
 }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -183,6 +195,11 @@ export const GraphPage: React.FC<GraphPageProps> = ({
   const [nodes, setNodes] = useState<any[]>([])
   const [edges, setEdges] = useState<any[]>([])
   const [query, setQuery] = useState('')
+  const [searchMode, setSearchMode] = useState<GraphSearchMode>('text')
+  const [searchHits, setSearchHits] = useState<any[]>([])
+  const [searchAttempted, setSearchAttempted] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const searchGroupRef = useRef<HTMLDivElement>(null)
   const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set())
   const [highlightedEdgeIds, setHighlightedEdgeIds] = useState<Set<string>>(() => new Set())
   const [locateIds, setLocateIds] = useState<string[] | null>(null)
@@ -192,18 +209,21 @@ export const GraphPage: React.FC<GraphPageProps> = ({
   /** Pending「查看」：忽略月份切片，画布改用邻域子图。 */
   const [pinNeighborhood, setPinNeighborhood] = useState(false)
   const [pendingReextract, setPendingReextract] = useState<any[]>([])
+  const [graphHydrated, setGraphHydrated] = useState(false)
   const [pendingNodes, setPendingNodes] = useState<any[]>([])
   const [pendingEdges, setPendingEdges] = useState<any[]>([])
+  const [pendingEndpointNodes, setPendingEndpointNodes] = useState<any[]>([])
   const [pendingSelected, setPendingSelected] = useState<Set<string>>(() => new Set())
   const [mergeSearchOpen, setMergeSearchOpen] = useState(false)
   const [mergeConfirm, setMergeConfirm] = useState<GraphMergeConfirmTarget | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [editNameConflict, setEditNameConflict] = useState<GraphSameNameExisting | null>(null)
   const [tab, setTab] = useState<SideTab>('reextract')
-  const [sideMode, setSideMode] = useState<SideMode>('ops')
+  const [sideMode, setSideMode] = useState<SideMode>('organize')
   const [busy, setBusy] = useState(false)
   const [extractRunning, setExtractRunning] = useState(false)
   const [extractConcurrency, setExtractConcurrency] = useState(() => loadGraphExtractConcurrency())
+  const [extractDate, setExtractDate] = useState(() => formatLocalDate(new Date()))
   const [extractQueue, setExtractQueue] = useState<GraphExtractQueueSnapshot | null>(null)
   const [queueModalOpen, setQueueModalOpen] = useState(false)
   const [status, setStatus] = useState('')
@@ -218,6 +238,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     loadGraphAppearanceSettings()
   )
   const [profileSectionOpen, setProfileSectionOpen] = useState(false)
+  const [dataSectionOpen, setDataSectionOpen] = useState(false)
   const [animationTick, setAnimationTick] = useState(0)
   const [locateSeq, setLocateSeq] = useState(0)
   const [sideWidth, setSideWidth] = useState(loadSideWidth)
@@ -308,11 +329,15 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     setPendingReextract(await window.api.graph.listPendingReextract())
     setPendingNodes(visible.pendingNodes)
     setPendingEdges(visible.pendingEdges)
+    setPendingEndpointNodes(
+      (pending.endpointNodes || []).filter((node) => !inFlightDeletedNodeIdsRef.current.has(node.id))
+    )
     try {
       setEstimate(await window.api.graph.estimateExtraction())
     } catch {
       setEstimate(null)
     }
+    setGraphHydrated(true)
   }, [monthRange])
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
@@ -363,6 +388,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     setLocateIds(null)
     setSelectedId(null)
     setSelectedNode(null)
+    setSearchHits([])
+    setSearchAttempted(false)
   }
 
   const resetMonthRange = () => {
@@ -376,6 +403,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     setLocateIds(null)
     setSelectedId(null)
     setSelectedNode(null)
+    setSearchHits([])
+    setSearchAttempted(false)
   }
 
   const clearToGlobal = () => {
@@ -386,6 +415,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     setLocateIds(null)
     setSelectedId(null)
     setSelectedNode(null)
+    setSearchHits([])
+    setSearchAttempted(false)
   }
 
   /** 先判定唤醒状态；图谱数据由下方 refresh effect 拉取 */
@@ -672,25 +703,44 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     }
 
     // Pending「查看」：整图换成无月份过滤的邻域子图。
+    const viewEdges = pinNeighborhood
+      ? localView?.edges || []
+      : selectedId && !nodes.some((n) => n.id === selectedId)
+        ? [...edges, ...(localView?.edges || [])]
+        : edges
+    const visibleEdges = viewEdges.filter((e) => {
+      if (e.reviewStatus === 'rejected') return false
+      // 邻域定位时保留待审边，否则「查看」看不到待确认关系
+      if (!pinNeighborhood && approvedOnly && e.reviewStatus === 'pending') return false
+      return true
+    })
+
+    let next: any[]
     if (pinNeighborhood && localView?.nodes?.length) {
-      return localView.nodes.filter((n) => filterNode(n, true))
+      next = localView.nodes.filter((n) => filterNode(n, true))
+    } else {
+      const base = nodes.filter((n) => filterNode(n, true))
+      if (!selectedId || base.some((n) => n.id === selectedId)) {
+        next = base
+      } else {
+        const byId = new Map(base.map((n) => [n.id as string, n]))
+        const extras = [
+          ...(localView?.nodes || []),
+          ...(selectedNode && selectedNode.id === selectedId ? [selectedNode] : [])
+        ]
+        for (const n of extras) {
+          if (!n?.id || byId.has(n.id)) continue
+          if (!filterNode(n, true)) continue
+          byId.set(n.id, n)
+        }
+        next = [...byId.values()]
+      }
     }
 
-    const base = nodes.filter((n) => filterNode(n, true))
-    if (!selectedId || base.some((n) => n.id === selectedId)) return base
-    const byId = new Map(base.map((n) => [n.id as string, n]))
-    const extras = [
-      ...(localView?.nodes || []),
-      ...(selectedNode && selectedNode.id === selectedId ? [selectedNode] : [])
-    ]
-    for (const n of extras) {
-      if (!n?.id || byId.has(n.id)) continue
-      if (!filterNode(n, true)) continue
-      byId.set(n.id, n)
-    }
-    return [...byId.values()]
+    return next
   }, [
     nodes,
+    edges,
     hideEntry,
     approvedOnly,
     enabledNodeTypes,
@@ -699,7 +749,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     selectedNode,
     pinNeighborhood,
     highlightIds,
-    highlightedEdgeIds
+    highlightedEdgeIds,
+    locateIds
   ])
 
   const displayEdges = useMemo(() => {
@@ -742,9 +793,19 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     }
   }
 
+  const graphNodeNameById = useMemo(
+    () =>
+      buildGraphNodeNameMap([
+        ...nodes,
+        ...pendingNodes,
+        ...pendingEndpointNodes,
+        ...(localView?.nodes || [])
+      ]),
+    [nodes, pendingNodes, pendingEndpointNodes, localView]
+  )
+
   const detailEdges = useMemo(() => {
     if (!selectedId) return []
-    const nodeById = new Map((localView?.nodes || nodes).map((n: any) => [n.id as string, n]))
     const seen = new Set<string>()
     const list: Array<{ edge: any; partnerName: string }> = []
     const edgeSource = localView?.edges?.length ? localView.edges : edges
@@ -754,14 +815,17 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       seen.add(e.id)
       if (e.reviewStatus === 'rejected') continue
       const partnerId = e.fromId === selectedId ? e.toId : e.fromId
-      const partner = nodeById.get(partnerId) || nodes.find((n: any) => n.id === partnerId)
       list.push({
         edge: e,
-        partnerName: partner?.name || String(partnerId).slice(0, 8)
+        partnerName: resolveGraphNodeDisplayName(
+          graphNodeNameById,
+          partnerId,
+          t('graph.unknown_node', '未知节点')
+        )
       })
     }
     return list
-  }, [localView, selectedId, nodes, edges])
+  }, [localView, selectedId, edges, graphNodeNameById, t])
 
   const pendingCount = pendingNodes.length + pendingEdges.length
   const pendingItemKeys = useMemo(
@@ -775,30 +839,78 @@ export const GraphPage: React.FC<GraphPageProps> = ({
   const allPendingSelected =
     pendingItemKeys.length > 0 && pendingSelectedCount === pendingItemKeys.length
 
-  const onSearch = async () => {
-    const q = query.trim()
-    if (!q) {
-      setHighlightIds(new Set())
-      setHighlightedEdgeIds(new Set())
-      setLocateIds(null)
+  const dismissSearchPanel = () => {
+    setSearchAttempted(false)
+    setSearching(false)
+  }
+
+  useEffect(() => {
+    if (!searching && !searchAttempted) return
+    const onPointerDown = (event: MouseEvent) => {
+      const root = searchGroupRef.current
+      if (!root || root.contains(event.target as Node)) return
+      dismissSearchPanel()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dismissSearchPanel()
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [searchAttempted, searching])
+
+  const applySearchHits = (hits: any[]) => {
+    const list = (hits || []).filter(
+      (item) => item?.id && item.reviewStatus !== 'rejected'
+    )
+    setSearchHits(list)
+    const ids = list.map((item) => item.id as string)
+    setHighlightIds(new Set(ids))
+    setHighlightedEdgeIds(new Set())
+    setSelectedId(null)
+    setSelectedNode(null)
+    if (list.length === 0) {
       setLocalView(null)
+      setPinNeighborhood(false)
+      setLocateIds(null)
       return
     }
-    const hits = await window.api.graph.search({ query: q, limit: 20 })
-    const ids = new Set((hits || []).map((h: any) => h.id as string))
-    setHighlightIds(ids)
-    setHighlightedEdgeIds(new Set())
-    setLocateIds(null)
-    if (hits?.[0]) {
-      setSelectedId(hits[0].id)
-      const view = await window.api.graph.getView({
-        centerNodeId: hits[0].id,
-        depth: viewDepthFor(focusDepth)
+    setLocalView({ nodes: list, edges: [] })
+    setPinNeighborhood(true)
+    setLocateIds(ids)
+    setLocateSeq((n) => n + 1)
+  }
+
+  const onSearch = async (nextMode: GraphSearchMode = searchMode) => {
+    const q = query.trim()
+    if (!q) {
+      setSearchAttempted(false)
+      applySearchHits([])
+      return
+    }
+    setSearchAttempted(true)
+    setSearching(true)
+    try {
+      const hits = await window.api.graph.search({
+        query: q,
+        limit: 20,
+        mode: nextMode
       })
-      setLocalView(view)
-      setPinNeighborhood(false)
-      setSelectedNode(hits[0])
-      setTab('detail')
+      applySearchHits(hits || [])
+    } catch (error) {
+      applySearchHits([])
+      const message = isGraphSearchEmbeddingRequiredError(error)
+        ? t('graph.search_embedding_required', '请先配置嵌入模型，才能用语义搜索节点')
+        : error instanceof Error
+          ? error.message
+          : String(error)
+      setStatus(message)
+      toast.showError(message)
+    } finally {
+      setSearching(false)
     }
   }
 
@@ -898,7 +1010,9 @@ export const GraphPage: React.FC<GraphPageProps> = ({
             failed: state.errorCount
           })
         )
-        void refreshRef.current()
+        void refreshRef.current().finally(() => {
+          void refreshMemoryReadiness()
+        })
       }
     },
     [t]
@@ -955,14 +1069,14 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     )
   }
 
-  const runExtract = async (filePaths?: string[]) => {
+  const runExtract = async (filePaths?: string[], options?: { skipConfirm?: boolean }) => {
     const selfName = await ensureDesktopGraphSelfName()
     if (!selfName) {
       setSelfNameReady(false)
       setStatus(t('graph.self_name_required', '请先在关系图谱页完成唤醒后再抽取'))
       return
     }
-    if (!filePaths?.length) {
+    if (!filePaths?.length && !options?.skipConfirm) {
       const ok = await confirmBatchExtract()
       if (!ok) return
     }
@@ -970,6 +1084,16 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     setDismissGuide(true)
     try {
       const result = await graphQueueExtract({ filePaths, concurrency: extractConcurrency })
+      if (result.blockedPendingEmbed && result.blockedPendingEmbed > 0) {
+        const go = await dialog.confirm(
+          t('graph.extract_blocked_pending_embed', '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系', {
+            count: result.blockedPendingEmbed
+          }),
+          t('graph.extract_blocked_pending_embed_action', '去补齐')
+        )
+        if (go) navigate('/memory/vectors')
+        return
+      }
       if (result.skippedNotEmbedded?.length) {
         toast.showInfo(
           t('graph.extract_skipped_not_embedded', '有 {{count}} 篇日记尚未嵌入，已跳过', {
@@ -1027,6 +1151,87 @@ export const GraphPage: React.FC<GraphPageProps> = ({
               : message
       setStatus(friendly)
       toast.showError(friendly)
+    }
+  }
+
+  const runExtractRef = useRef(runExtract)
+  runExtractRef.current = runExtract
+  const onAutoStartOrganizeConsumedRef = useRef(onAutoStartOrganizeConsumed)
+  onAutoStartOrganizeConsumedRef.current = onAutoStartOrganizeConsumed
+
+  useEffect(() => {
+    if (!autoStartOrganize) return
+    if (selfNameReady === null) return
+    if (selfNameReady === false) return
+    if (!graphHydrated) return
+    void runExtractRef.current(undefined, { skipConfirm: true })
+    onAutoStartOrganizeConsumedRef.current?.()
+  }, [autoStartOrganize, selfNameReady, graphHydrated])
+
+  const runExtractOne = async () => {
+    const date = extractDate.trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      toast.showError(t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。'))
+      return
+    }
+    try {
+      const resolved = await window.api.graph.resolveJournal({ date })
+      if (!resolved?.filePath) {
+        toast.showError(t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。'))
+        return
+      }
+      const ok = await dialog.confirm(
+        t(
+          'graph.confirm_extract_one',
+          '将把 {{date}} 这篇日记加入整理队列。系统写出的关系会被这次结果替换；你手改过的边会留下。',
+          { date }
+        ),
+        t('graph.extract_one_title', '重新梳理这篇日记')
+      )
+      if (!ok) return
+      await runExtract([resolved.filePath])
+    } catch (e: any) {
+      const message = e?.message || String(e)
+      toast.showError(message)
+    }
+  }
+
+  const clearLifeGraph = async () => {
+    const phrase = t('graph.clear_life_confirm_phrase', '确认清空')
+    const input = await dialog.prompt(
+      t(
+        'graph.clear_life_confirm_input',
+        '将删除本工作区人生关系图的全部节点、连线和抽取记录，包括你手改过的内容。同步后其他设备上的人生关系图也会变空。笔记本关系图不会被改动。请输入「{{phrase}}」以确认：',
+        { phrase }
+      ),
+      '',
+      t('graph.clear_life_title', '清空人生关系图')
+    )
+    if (input !== phrase) {
+      if (input !== null) {
+        toast.showWarning(t('graph.clear_life_mismatch', '输入内容不匹配，操作已取消。'))
+      }
+      return
+    }
+    setBusy(true)
+    try {
+      await window.api.graph.clearLifeGraph()
+      setSelectedId(null)
+      setSelectedNode(null)
+      setLocalView(null)
+      setPinNeighborhood(false)
+      setHighlightIds(new Set())
+      setHighlightedEdgeIds(new Set())
+      setLocateIds(null)
+      setExtractRunning(false)
+      setExtractQueue(emptyGraphExtractQueueSnapshot())
+      setQueueModalOpen(false)
+      toast.showSuccess(t('graph.clear_life_done', '已清空人生关系图'))
+      await refreshRef.current()
+    } catch (e: any) {
+      toast.showError(e?.message || String(e))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -1546,15 +1751,23 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           </div>
           )}
           {!showEmptyGuide ? (
-            <div className={styles.searchGroup}>
+            <div className={styles.searchGroup} ref={searchGroupRef}>
               <div className={styles.searchField}>
                 <Input
                   fieldSize="small"
-                  placeholder={t('graph.search_placeholder', '搜索实体 / 别名')}
+                  placeholder={
+                    searchMode === 'semantic'
+                      ? t('graph.search_placeholder_semantic', '按意思搜索节点…')
+                      : t('graph.search_placeholder_text', '按名称 / 别名搜索')
+                  }
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value)
+                    setSearchAttempted(false)
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void onSearch()
+                    if (e.key === 'Escape') dismissSearchPanel()
                   }}
                   trailing={
                     <button
@@ -1569,6 +1782,55 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                   }
                 />
               </div>
+              <SegmentedControl
+                inline
+                value={searchMode}
+                aria-label={t('graph.search_mode', '搜索模式')}
+                onChange={(mode) => {
+                  const next = resolveGraphSearchMode(mode)
+                  setSearchMode(next)
+                  if (query.trim()) void onSearch(next)
+                }}
+                options={[
+                  { value: 'semantic', label: t('graph.search_semantic', '语义搜索') },
+                  { value: 'text', label: t('graph.search_text', '文本搜索') }
+                ]}
+              />
+              {searching || searchAttempted ? (
+                <div className={styles.searchHits} role="listbox" aria-label={t('graph.search_results', '搜索结果')}>
+                  <div className={styles.searchHitsHeader}>
+                    {searching
+                      ? t('graph.searching', '正在搜索…')
+                      : searchHits.length > 0
+                        ? t('graph.search_results_count', '{{count}} 个节点', {
+                            count: searchHits.length
+                          })
+                        : searchMode === 'semantic'
+                          ? t(
+                              'graph.search_semantic_empty',
+                              '没有语义相近的节点。没做向量的节点不会出现在语义搜索里。'
+                            )
+                          : t('graph.search_no_hits', '没有找到匹配的节点')}
+                  </div>
+                  {searchHits.map((hit) => (
+                    <button
+                      key={hit.id}
+                      type="button"
+                      className={styles.searchHit}
+                      onClick={() => {
+                        dismissSearchPanel()
+                        void onSelectNode(hit.id, { locate: true, bypassMonth: true })
+                      }}
+                    >
+                      <span className={styles.searchHitName}>{hit.name}</span>
+                      <span className={styles.searchHitMeta}>
+                        {translateGraphNodeType(tr, hit.nodeType)}
+                        {hit.summary ? ` · ${hit.summary}` : ''}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -1579,28 +1841,29 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                 <GraphMonthRangePicker
                   value={monthRange}
                   onChange={(next) => updateMonthRange(next)}
+                  trailing={
+                    <button
+                      type="button"
+                      title={t(
+                        'graph.global_view_hint',
+                        '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
+                      )}
+                      aria-label={t(
+                        'graph.global_view_hint',
+                        '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
+                      )}
+                      onClick={clearToGlobal}
+                    >
+                      {t('graph.global_view', '全局')}
+                    </button>
+                  }
                 />
-                <button
-                  type="button"
-                  className={styles.btn}
-                  title={t(
-                    'graph.global_view_hint',
-                    '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
-                  )}
-                  aria-label={t(
-                    'graph.global_view_hint',
-                    '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
-                  )}
-                  onClick={clearToGlobal}
-                >
-                  {t('graph.global_view', '全局')}
-                </button>
               </>
             ) : null}
             {sideCollapsed && !showEmptyGuide ? (
-              <button
+              <Button
                 type="button"
-                className={`${styles.btnPrimary} ${styles.btnBatchExtract} ${
+                className={`${styles.btnBatchExtract} ${
                   highlightStartOrganize ? styles.highlightStartOrganize : ''
                 }`}
                 disabled={pendingReextract.length === 0}
@@ -1610,12 +1873,12 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                 {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
                   count: pendingReextract.length
                 })}
-              </button>
+              </Button>
             ) : null}
             {extractRunning ? (
-              <button type="button" className={styles.btn} onClick={() => setQueueModalOpen(true)}>
+              <Button type="button" onClick={() => setQueueModalOpen(true)}>
                 {t('graph.queue_view_progress', '查看进度')}
-              </button>
+              </Button>
             ) : null}
           </div>
         ) : null}
@@ -1634,14 +1897,21 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           {status}
         </button>
       ) : null}
+      {embedded ? null : (
       <div className={styles.chipRow}>
         <MemoryReadinessBar
+          wrap
           rows={readiness.rows}
           onConfigureEmbedding={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-models`)}
           onStartIndex={() => navigate('/memory/vectors')}
           onStartOrganize={() => void runExtract()}
+          pendingEmbedParts={readiness.pendingEmbedParts}
+          indexing={readiness.indexing}
+          extracting={readiness.graphExtracting}
+          organizePipeline={readiness.organizePipeline}
         />
       </div>
+      )}
       </div>
 
       <div className={styles.canvasWrap}>
@@ -1666,18 +1936,16 @@ export const GraphPage: React.FC<GraphPageProps> = ({
               {t('graph.legend_pending', '虚线的关系伙伴还看不到，需要你确认。')}
             </div>
             <div className={styles.rowActions}>
-              <button
+              <Button
                 type="button"
-                className={`${styles.btnPrimary} ${
-                  highlightStartOrganize ? styles.highlightStartOrganize : ''
-                }`}
+                className={highlightStartOrganize ? styles.highlightStartOrganize : ''}
                 onClick={() => void runExtract()}
               >
                 {t('graph.start_organize', '开始整理')}
-              </button>
-              <button type="button" className={styles.btn} onClick={() => setDismissGuide(true)}>
+              </Button>
+              <Button type="button" onClick={() => setDismissGuide(true)}>
                 {t('graph.later', '以后再说')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -1722,12 +1990,11 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                   )}
                 </div>
                 <div className={styles.rowActions}>
-                  <button type="button" className={styles.btn} onClick={resetMonthRange}>
+                  <Button type="button" onClick={resetMonthRange}>
                     {t('graph.month_range_recent3', '近3月')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className={styles.btnPrimary}
                     onClick={() => {
                       const start = parseGraphMonthToDate(monthRange.startMonth)
                       start.setMonth(start.getMonth() - 12)
@@ -1735,7 +2002,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                     }}
                   >
                     {t('graph.month_range_earlier', '再往前一年')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}
@@ -1785,29 +2052,30 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           <button
             type="button"
             role="tab"
-            aria-selected={!sideCollapsed && sideMode === 'ops'}
+            aria-selected={!sideCollapsed && sideMode === 'organize'}
             className={`${styles.railBtn} ${
-              !sideCollapsed && sideMode === 'ops' ? styles.railBtnActive : ''
+              !sideCollapsed && sideMode === 'organize' ? styles.railBtnActive : ''
             }`}
-            title={t('graph.side_ops', '操作')}
-            onClick={() => openSide('ops')}
+            title={t('graph.side_organize', '整理')}
+            onClick={() => openSide('organize')}
           >
             <MdTune size={18} />
-            {filterActive || pendingReextract.length > 0 || extractRunning ? (
+            {pendingReextract.length > 0 || extractRunning ? (
               <span className={styles.railDot} aria-hidden />
             ) : null}
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={!sideCollapsed && sideMode === 'settings'}
+            aria-selected={!sideCollapsed && sideMode === 'canvas'}
             className={`${styles.railBtn} ${
-              !sideCollapsed && sideMode === 'settings' ? styles.railBtnActive : ''
+              !sideCollapsed && sideMode === 'canvas' ? styles.railBtnActive : ''
             }`}
-            title={t('graph.side_settings', '设置')}
-            onClick={() => openSide('settings')}
+            title={t('graph.side_canvas', '画布')}
+            onClick={() => openSide('canvas')}
           >
             <MdSettings size={18} />
+            {filterActive ? <span className={styles.railDot} aria-hidden /> : null}
           </button>
           <button
             type="button"
@@ -1837,179 +2105,10 @@ export const GraphPage: React.FC<GraphPageProps> = ({
         </div>
         {!sideCollapsed ? (
       <aside className={styles.side}>
-        {sideMode === 'ops' ? (
+        {sideMode === 'organize' ? (
           <>
             <div className={styles.settingsHeader}>
-              <div className={styles.settingsTitle}>{t('graph.side_ops', '操作')}</div>
-            </div>
-            <div className={styles.panel}>
-              <div className={styles.opsBlock}>
-                <button
-                  type="button"
-                  className={`${styles.btnPrimary} ${styles.opsFullBtn}`}
-                  disabled={pendingReextract.length === 0}
-                  title={t('graph.process_pending_reextract_hint', '把当前待重抽日记加入整理队列')}
-                  onClick={() => void runExtract()}
-                >
-                  {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
-                    count: pendingReextract.length
-                  })}
-                </button>
-                {extractRunning ? (
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${styles.opsFullBtn}`}
-                    onClick={() => setQueueModalOpen(true)}
-                  >
-                    {t('graph.queue_view_progress', '查看进度')}
-                  </button>
-                ) : null}
-                <div className={styles.opsConcurrency}>
-                  <div className={styles.opsLabelRow}>
-                    <span className={styles.viewFieldLabel}>
-                      {t('graph.extract_concurrency', '同时抽取')}
-                    </span>
-                    <GraphExtractHelpButton size={14} />
-                  </div>
-                  <Select
-                    size="small"
-                    value={String(extractConcurrency)}
-                    onChange={(e) => {
-                      const n = saveGraphExtractConcurrency(e.target.value)
-                      setExtractConcurrency(n)
-                      void graphSetExtractConcurrency(n)
-                    }}
-                    options={Array.from(
-                      { length: GRAPH_EXTRACT_CONCURRENCY_MAX - GRAPH_EXTRACT_CONCURRENCY_MIN + 1 },
-                      (_, i) => {
-                        const n = GRAPH_EXTRACT_CONCURRENCY_MIN + i
-                        return { value: String(n), label: String(n) }
-                      }
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.opsBlock}>
-                <div className={styles.viewFieldLabel}>{t('graph.ops_nodes', '节点')}</div>
-                <div className={styles.opsBtnRow}>
-                  <button
-                    type="button"
-                    className={styles.btn}
-                    disabled={busy}
-                    onClick={() => {
-                      setMergeSearchOpen(false)
-                      setCreateOpen(true)
-                    }}
-                  >
-                    {t('graph.create_node', '新建节点')}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.btn} ${mergeSearchOpen ? styles.btnActive : ''}`}
-                    disabled={busy}
-                    onClick={() => {
-                      setCreateOpen(false)
-                      setMergeSearchOpen((open) => !open)
-                    }}
-                  >
-                    {t('graph.merge_nodes', '合并节点')}
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.opsBlock}>
-                <div className={styles.filterSectionHead}>
-                  <span className={styles.viewFieldLabel}>{t('graph.filter', '筛选')}</span>
-                  {filterActive ? (
-                    <button
-                      type="button"
-                      className={styles.filterSectionAction}
-                      onClick={() => {
-                        setHideEntry(true)
-                        setApprovedOnly(false)
-                        setEnabledNodeTypes(new Set(GRAPH_FILTER_NODE_TYPES))
-                      }}
-                    >
-                      {t('graph.filter_reset', '恢复默认')}
-                    </button>
-                  ) : null}
-                </div>
-                <label className={styles.checkLabel}>
-                  <Checkbox
-                    checked={hideEntry}
-                    onChange={(e) => setHideEntry(e.target.checked)}
-                  />
-                  {t('graph.hide_entry_anchors', '隐藏日记锚点')}
-                </label>
-                <label className={styles.checkLabel}>
-                  <Checkbox
-                    checked={approvedOnly}
-                    onChange={(e) => setApprovedOnly(e.target.checked)}
-                  />
-                  {t('graph.approved_only', '只看已确认')}
-                </label>
-                <div className={styles.filterSection}>
-                  <div className={styles.filterSectionHead}>
-                    <span className={styles.filterSectionTitle}>
-                      {t('graph.filter_by_type', '按分类')}
-                    </span>
-                    <button
-                      type="button"
-                      className={styles.filterSectionAction}
-                      onClick={() =>
-                        setEnabledNodeTypes(
-                          typeFilterActive
-                            ? new Set(GRAPH_FILTER_NODE_TYPES)
-                            : new Set()
-                        )
-                      }
-                    >
-                      {typeFilterActive
-                        ? t('graph.filter_select_all_types', '全选')
-                        : t('graph.filter_clear_types', '清空')}
-                    </button>
-                  </div>
-                  <div className={styles.typeChipRow}>
-                    {GRAPH_FILTER_NODE_TYPES.map((nodeType) => {
-                      const active = enabledNodeTypes.has(nodeType)
-                      const typeColor = graphNodeTypeColor(nodeType)
-                      return (
-                        <button
-                          key={nodeType}
-                          type="button"
-                          className={active ? styles.typeChipActive : styles.typeChip}
-                          style={
-                            active
-                              ? ({ '--type-chip-color': typeColor } as React.CSSProperties)
-                              : undefined
-                          }
-                          onClick={() => toggleNodeTypeFilter(nodeType)}
-                        >
-                          {t(
-                            `graph.node_type.${nodeType}`,
-                            GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : sideMode === 'settings' ? (
-          <>
-            <div className={styles.settingsHeader}>
-              <div className={styles.settingsTitle}>{t('graph.side_settings', '设置')}</div>
-              <button
-                type="button"
-                className={styles.settingsReset}
-                title={t('graph.force_reset', '恢复默认')}
-                onClick={resetGraphSettings}
-              >
-                {t('graph.force_reset', '恢复默认')}
-              </button>
+              <div className={styles.settingsTitle}>{t('graph.side_organize', '整理')}</div>
             </div>
             <div className={styles.panel}>
               <div className={styles.settingsSection}>
@@ -2102,17 +2201,241 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                           </span>
                         ) : null}
                       </div>
-                      <button
+                      <Button
                         type="button"
-                        className={styles.btnPrimary}
                         disabled={profileBusy}
                         onClick={() => void saveProfileFromSettings()}
                       >
                         {t('graph.profile_save', '保存身份资料')}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : null}
+              </div>
+
+              <div className={styles.opsBlock}>
+                <Button
+                  type="button"
+                  disabled={pendingReextract.length === 0}
+                  title={t('graph.process_pending_reextract_hint', '把当前待重抽日记加入整理队列')}
+                  onClick={() => void runExtract()}
+                >
+                  {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
+                    count: pendingReextract.length
+                  })}
+                </Button>
+                {extractRunning ? (
+                  <Button type="button" onClick={() => setQueueModalOpen(true)}>
+                    {t('graph.queue_view_progress', '查看进度')}
+                  </Button>
+                ) : null}
+                <div className={styles.opsConcurrency}>
+                  <div className={styles.opsLabelRow}>
+                    <span className={styles.viewFieldLabel}>
+                      {t('graph.extract_concurrency', '同时抽取')}
+                    </span>
+                    <GraphExtractHelpButton size={14} />
+                  </div>
+                  <Select
+                    size="small"
+                    value={String(extractConcurrency)}
+                    onChange={(e) => {
+                      const n = saveGraphExtractConcurrency(e.target.value)
+                      setExtractConcurrency(n)
+                      void graphSetExtractConcurrency(n)
+                    }}
+                    options={Array.from(
+                      { length: GRAPH_EXTRACT_CONCURRENCY_MAX - GRAPH_EXTRACT_CONCURRENCY_MIN + 1 },
+                      (_, i) => {
+                        const n = GRAPH_EXTRACT_CONCURRENCY_MIN + i
+                        return { value: String(n), label: String(n) }
+                      }
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.opsBlock}>
+                <div className={styles.opsLabelRow}>
+                  <span className={styles.viewFieldLabel}>
+                    {t('graph.extract_one_date', '日记日期')}
+                  </span>
+                  <HelpTooltip
+                    content={t(
+                      'graph.extract_one_hint',
+                      '选一篇已有日记，强制加入整理队列。系统写出的关系会被这次结果替换；你手改过的边会留下。'
+                    )}
+                  />
+                </div>
+                <input
+                  type="date"
+                  className={styles.opsDateInput}
+                  value={extractDate}
+                  onChange={(event) => setExtractDate(event.target.value)}
+                />
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void runExtractOne()}
+                >
+                  {t('graph.extract_one_action', '重新梳理这篇')}
+                </Button>
+              </div>
+
+              <div className={styles.opsBlock}>
+                <div className={styles.viewFieldLabel}>{t('graph.ops_nodes', '节点')}</div>
+                <div className={styles.opsBtnRow}>
+                  <Button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setMergeSearchOpen(false)
+                      setCreateOpen(true)
+                    }}
+                  >
+                    {t('graph.create_node', '新建节点')}
+                  </Button>
+                  <Button
+                    type="button"
+                    className={mergeSearchOpen ? styles.btnActive : ''}
+                    disabled={busy}
+                    onClick={() => {
+                      setCreateOpen(false)
+                      setMergeSearchOpen((open) => !open)
+                    }}
+                  >
+                    {t('graph.merge_nodes', '合并节点')}
+                  </Button>
+                </div>
+              </div>
+
+              <div className={styles.settingsSection}>
+                <button
+                  type="button"
+                  className={styles.settingsSectionHead}
+                  onClick={() => setDataSectionOpen((open) => !open)}
+                >
+                  <span className={styles.settingsChevron}>
+                    {dataSectionOpen ? '▾' : '▸'}
+                  </span>
+                  {t('graph.data_ops', '数据操作')}
+                </button>
+                {dataSectionOpen ? (
+                  <div className={styles.settingsSectionBody}>
+                    <div className={styles.opsLabelRow}>
+                      <span className={styles.viewFieldLabel}>
+                        {t('graph.clear_life_title', '清空人生关系图')}
+                      </span>
+                      <HelpTooltip
+                        content={t(
+                          'graph.clear_life_hint',
+                          '删除本工作区人生关系图的全部节点、连线和抽取记录。笔记本关系图不会被改动。'
+                        )}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void clearLifeGraph()}
+                    >
+                      {t('graph.clear_life_action', '清空人生关系图')}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </>
+        ) : sideMode === 'canvas' ? (
+          <>
+            <div className={styles.settingsHeader}>
+              <div className={styles.settingsTitle}>{t('graph.side_canvas', '画布')}</div>
+              <button
+                type="button"
+                className={styles.settingsReset}
+                title={t('graph.force_reset', '恢复默认')}
+                onClick={resetGraphSettings}
+              >
+                {t('graph.force_reset', '恢复默认')}
+              </button>
+            </div>
+            <div className={styles.panel}>
+              <div className={styles.opsBlock}>
+                <div className={styles.filterSectionHead}>
+                  <span className={styles.viewFieldLabel}>{t('graph.filter', '筛选')}</span>
+                  {filterActive ? (
+                    <button
+                      type="button"
+                      className={styles.filterSectionAction}
+                      onClick={() => {
+                        setHideEntry(true)
+                        setApprovedOnly(false)
+                        setEnabledNodeTypes(new Set(GRAPH_FILTER_NODE_TYPES))
+                      }}
+                    >
+                      {t('graph.filter_reset', '恢复默认')}
+                    </button>
+                  ) : null}
+                </div>
+                <label className={styles.checkLabel}>
+                  <Checkbox
+                    checked={hideEntry}
+                    onChange={(e) => setHideEntry(e.target.checked)}
+                  />
+                  {t('graph.hide_entry_anchors', '隐藏日记锚点')}
+                </label>
+                <label className={styles.checkLabel}>
+                  <Checkbox
+                    checked={approvedOnly}
+                    onChange={(e) => setApprovedOnly(e.target.checked)}
+                  />
+                  {t('graph.approved_only', '只看已确认')}
+                </label>
+                <div className={styles.filterSection}>
+                  <div className={styles.filterSectionHead}>
+                    <span className={styles.filterSectionTitle}>
+                      {t('graph.filter_by_type', '按分类')}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.filterSectionAction}
+                      onClick={() =>
+                        setEnabledNodeTypes(
+                          typeFilterActive
+                            ? new Set(GRAPH_FILTER_NODE_TYPES)
+                            : new Set()
+                        )
+                      }
+                    >
+                      {typeFilterActive
+                        ? t('graph.filter_select_all_types', '全选')
+                        : t('graph.filter_clear_types', '清空')}
+                    </button>
+                  </div>
+                  <div className={styles.typeChipRow}>
+                    {GRAPH_FILTER_NODE_TYPES.map((nodeType) => {
+                      const active = enabledNodeTypes.has(nodeType)
+                      const typeColor = graphNodeTypeColor(nodeType)
+                      return (
+                        <button
+                          key={nodeType}
+                          type="button"
+                          className={active ? styles.typeChipActive : styles.typeChip}
+                          style={
+                            active
+                              ? ({ '--type-chip-color': typeColor } as React.CSSProperties)
+                              : undefined
+                          }
+                          onClick={() => toggleNodeTypeFilter(nodeType)}
+                        >
+                          {t(
+                            `graph.node_type.${nodeType}`,
+                            GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
 
               <GraphCanvasSettingsPanel
@@ -2352,14 +2675,17 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                   })}
                   {pendingEdges.map((edge) => {
                     const key = graphPendingItemKey('edge', edge.id)
-                    const fromName =
-                      nodes.find((n) => n.id === edge.fromId)?.name ||
-                      pendingNodes.find((n) => n.id === edge.fromId)?.name ||
-                      edge.fromId.slice(0, 8)
-                    const toName =
-                      nodes.find((n) => n.id === edge.toId)?.name ||
-                      pendingNodes.find((n) => n.id === edge.toId)?.name ||
-                      edge.toId.slice(0, 8)
+                    const unknownNode = t('graph.unknown_node', '未知节点')
+                    const fromName = resolveGraphNodeDisplayName(
+                      graphNodeNameById,
+                      edge.fromId,
+                      unknownNode
+                    )
+                    const toName = resolveGraphNodeDisplayName(
+                      graphNodeNameById,
+                      edge.toId,
+                      unknownNode
+                    )
                     return (
                       <div key={`e-${edge.id}`} className={styles.itemCompact}>
                         <div className={styles.itemRow}>
@@ -2529,39 +2855,35 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                     </div>
                   </div>
                   <div className={styles.rowActions}>
-                    <button
+                    <Button
                       type="button"
-                      className={styles.btnPrimary}
                       disabled={busy || !!editNameConflict}
                       onClick={() => void saveNodeEdit()}
                     >
                       {t('graph.save_edit', '保存修改')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className={styles.btn}
                       disabled={busy}
                       onClick={() => void deleteSelectedNode()}
                     >
                       {t('graph.delete_node', '删除节点')}
-                    </button>
+                    </Button>
                   </div>
                   {selectedNode.reviewStatus === 'pending' ? (
                     <div className={styles.rowActions}>
-                      <button
+                      <Button
                         type="button"
-                        className={styles.btnPrimary}
                         onClick={() => void reviewNode(selectedNode.id, 'approved')}
                       >
                         {t('graph.approve', '通过')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className={styles.btn}
                         onClick={() => void reviewNode(selectedNode.id, 'rejected')}
                       >
                         {t('graph.reject', '拒绝')}
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
 
@@ -2577,13 +2899,12 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                       placeholder={t('graph.add_edge_search', '搜索目标节点')}
                     />
                     <div className={styles.rowActions}>
-                      <button
+                      <Button
                         type="button"
-                        className={styles.btn}
                         onClick={() => void searchAddEdgeTarget()}
                       >
                         {t('graph.search', '搜索')}
-                      </button>
+                      </Button>
                       <div className={styles.editSelect}>
                         <Select
                           size="small"
@@ -2596,14 +2917,13 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                           }))}
                         />
                       </div>
-                      <button
+                      <Button
                         type="button"
-                        className={styles.btnPrimary}
                         disabled={busy || !addEdgeToId}
                         onClick={() => void addEdge()}
                       >
                         {t('graph.add_edge_submit', '添加')}
-                      </button>
+                      </Button>
                     </div>
                     {addEdgeHits.map((h) => (
                       <button
@@ -2644,22 +2964,20 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                         </div>
                         <div className={styles.rowActions}>
                           {e.sourceRef || e.sourceExcerpt ? (
-                            <button
+                            <Button
                               type="button"
-                              className={styles.btn}
                               onClick={() => void openSource(e.sourceRef, e.sourceExcerpt)}
                             >
                               {t('graph.open_source', '打开原文')}
-                            </button>
+                            </Button>
                           ) : null}
-                          <button
+                          <Button
                             type="button"
-                            className={styles.btn}
                             disabled={busy}
                             onClick={() => void deleteEdge(e.id)}
                           >
                             {t('graph.delete_edge', '删除')}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ))
@@ -2846,21 +3164,17 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           </div>
           <footer className={styles.queueModalFooter}>
             {extractRunning ? (
-              <button type="button" className={styles.btn} onClick={() => void cancelExtract()}>
+              <Button type="button" onClick={() => void cancelExtract()}>
                 {t('graph.stop_extract', '全部停止')}
-              </button>
+              </Button>
             ) : (
               <span />
             )}
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={() => setQueueModalOpen(false)}
-            >
+            <Button type="button" onClick={() => setQueueModalOpen(false)}>
               {extractRunning
                 ? t('graph.queue_modal_minimize', '收起，继续整理')
                 : t('common.close', '关闭')}
-            </button>
+            </Button>
           </footer>
         </div>
       </Modal>

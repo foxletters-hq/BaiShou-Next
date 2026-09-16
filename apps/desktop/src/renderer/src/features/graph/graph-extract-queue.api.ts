@@ -24,6 +24,7 @@ export function graphQueueExtract(opts?: { filePaths?: string[]; concurrency?: n
     queued: number
     totalPending: number
     skippedNotEmbedded: string[]
+    blockedPendingEmbed?: number
   }>('graph:queue-extract', opts)
 }
 
