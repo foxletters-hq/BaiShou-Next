@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { isStartupEmbedReminderEnabled } from '@baishou/shared'
 import { RefreshCw } from 'lucide-react'
 import { Switch } from '../Switch/Switch'
 import type { RagConfig, RagStats } from './rag-memory.types'
@@ -29,18 +30,43 @@ export const RagMemoryStatusStrip: React.FC<RagMemoryStatusStripProps> = ({
   const { t } = useTranslation()
   const count = stats.diaryCountForVault != null ? stats.diaryCountForVault : stats.totalCount
 
+  const ragEnabledLabel = t('settings.rag_enable_short', '向量记忆')
+  const startupReminderLabel = t('settings.rag_startup_embed_reminder', '启动时检查待嵌入')
+
   return (
     <div className={styles.statusStrip}>
-      <label className={styles.enableChip}>
+      <div className={styles.enableChip}>
         <Switch
           size="sm"
           checked={config.ragEnabled}
+          aria-label={ragEnabledLabel}
           onChange={(e) => onChange({ ...config, ragEnabled: e.target.checked })}
         />
-        <span>{t('settings.rag_enable_short', '向量记忆')}</span>
-      </label>
+        <span onClick={() => onChange({ ...config, ragEnabled: !config.ragEnabled })}>
+          {ragEnabledLabel}
+        </span>
+      </div>
 
-      {extraChips}
+      <div className={styles.enableChip}>
+        <Switch
+          size="sm"
+          checked={isStartupEmbedReminderEnabled(config)}
+          aria-label={startupReminderLabel}
+          onChange={(e) => onChange({ ...config, startupEmbedReminder: e.target.checked })}
+        />
+        <span
+          onClick={() =>
+            onChange({
+              ...config,
+              startupEmbedReminder: !isStartupEmbedReminderEnabled(config)
+            })
+          }
+        >
+          {startupReminderLabel}
+        </span>
+      </div>
+
+      {extraChips ? <div className={styles.extraChips}>{extraChips}</div> : null}
 
       <div className={styles.statusMeta}>
         <span>{t('settings.rag_meta_entries', '{{count}} 条片段', { count })}</span>
