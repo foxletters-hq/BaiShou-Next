@@ -19,9 +19,9 @@ export function useAttachmentDiaryState(
   {
     onDeleteDiaryAttachment,
     confirmKeyword,
-    toDisplayUri,
-    imagePreview,
-    setImagePreview
+    toDisplayUri: _toDisplayUri,
+    imagePreview: _imagePreview,
+    setImagePreview: _setImagePreview
   }: UseAttachmentDiaryStateOptions
 ) {
   const { t } = useTranslation()

@@ -45,7 +45,7 @@ export const ChatCostDialog: React.FC<ChatCostDialogProps> = ({
   pricingSourceUrl
 }) => {
   const { t } = useTranslation()
-  const { colors, tokens, maxModalWidth } = useNativeTheme()
+  const { colors, maxModalWidth } = useNativeTheme()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
 

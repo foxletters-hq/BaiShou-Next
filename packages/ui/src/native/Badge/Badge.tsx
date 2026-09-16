@@ -13,7 +13,7 @@ export const Badge: React.FC<NativeBadgeProps> = ({
   style,
   ...props
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   const getContainerStyle = () => {
     if (variant === 'dot') {

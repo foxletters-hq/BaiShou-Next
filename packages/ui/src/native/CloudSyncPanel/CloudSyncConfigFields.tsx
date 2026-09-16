@@ -62,7 +62,7 @@ export const CloudSyncConfigFields: React.FC<CloudSyncConfigFieldsProps> = ({
   localConfig,
   onUpdateField
 }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   const renderField = (
     label: string,
@@ -145,7 +145,7 @@ export const CloudSyncMaxBackupField: React.FC<{
   localConfig: CloudSyncConfig
   onUpdateField: (field: keyof CloudSyncConfig, value: string | number) => void
 }> = ({ localConfig, onUpdateField }) => {
-  const { colors, tokens } = useNativeTheme()
+  const { colors } = useNativeTheme()
 
   return (
     <View style={styles.fieldGroup}>
