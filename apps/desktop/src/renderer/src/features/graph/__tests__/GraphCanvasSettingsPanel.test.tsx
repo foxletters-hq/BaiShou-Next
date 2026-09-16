@@ -1,3 +1,4 @@
+import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -17,6 +18,21 @@ vi.mock('react-i18next', async (importOriginal) => {
 })
 
 vi.mock('@baishou/ui', () => ({
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    title
+  }: {
+    children?: React.ReactNode
+    onClick?: () => void
+    disabled?: boolean
+    title?: string
+  }) => (
+    <button type="button" onClick={onClick} disabled={disabled} title={title}>
+      {children}
+    </button>
+  ),
   Checkbox: ({
     checked,
     onChange
@@ -33,7 +49,7 @@ vi.mock('@baishou/ui', () => ({
 }))
 
 describe('GraphCanvasSettingsPanel', () => {
-  it('shows browse, appearance and force controls, but not identity', () => {
+  it('shows focus depth with appearance and force controls, but not a browse category or identity', () => {
     render(
       <GraphCanvasSettingsPanel
         focusDepth={1}
@@ -46,11 +62,12 @@ describe('GraphCanvasSettingsPanel', () => {
       />
     )
 
-    expect(screen.getByText('浏览')).toBeTruthy()
+    expect(screen.queryByText('浏览')).toBeNull()
     expect(screen.getByText('外观')).toBeTruthy()
     expect(screen.getByText('力度')).toBeTruthy()
     expect(screen.getByText('展开等级')).toBeTruthy()
     expect(screen.getByText('箭头')).toBeTruthy()
+    expect(screen.getByText('独立节点')).toBeTruthy()
     expect(screen.getByText('文本透明度')).toBeTruthy()
     expect(screen.getByText('节点大小')).toBeTruthy()
     expect(screen.getByText('连线粗细')).toBeTruthy()
