@@ -15,7 +15,7 @@ export interface AgentChatChromeProps {
   trailingControls?: React.ReactNode
   /**
    * full: 整条顶栏（含左侧伙伴）
-   * floatingActions: 右上角用量 + 新对话（有对话后；历史在输入栏伙伴旁）
+   * floatingActions: 右上角新对话（有对话后；历史在输入栏伙伴旁）
    */
   variant?: 'full' | 'floatingActions'
 }

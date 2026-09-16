@@ -1,9 +1,9 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
-  TokenBadge,
   InputBar,
   ContextChainPanel,
+  SessionContextUsageRing,
   useTheme,
   getProviderIcon,
   toast,
@@ -20,11 +20,7 @@ import {
   type ReasoningEffortSetting,
   normalizeReasoningEffortSetting
 } from '@baishou/shared'
-import {
-  selectQueuePosition,
-  selectSameActionCountInSession,
-  useAgentGateInboxStore
-} from '@baishou/store'
+import { selectSameActionCountInSession, useAgentGateInboxStore } from '@baishou/store'
 import { WorkbenchNotebookMountDialog } from '../agent-workspace/workbench/WorkbenchNotebookMountDialog'
 import { KnowledgeMountHint } from '../knowledge/KnowledgeMountHint'
 import { AgentDialogs } from './components/AgentDialogs'
@@ -33,6 +29,7 @@ import { AgentChatChrome } from './components/AgentChatChrome'
 import chromeStyles from './components/AgentChatChrome.module.css'
 import { useAgentChatFlow } from './hooks/useAgentChatFlow'
 import { useDesktopComposerDraftKey } from './hooks/useDesktopComposerDraftKey'
+import { useAgentGateQueuePager } from './hooks/useAgentGateQueuePager'
 import type { AgentOutletContext } from './agent-outlet-context'
 import styles from './AgentScreen.module.css'
 import { Cloud, Sparkles, ChevronDown, History } from 'lucide-react'
@@ -55,13 +52,17 @@ function isDraftChatSessionId(sessionId: string | undefined): boolean {
   return /^new-\d+$/.test(sessionId)
 }
 
+function AgentIdleGreeting() {
+  const idleGreeting = useAgentIdleGreeting()
+  return <p className={styles.emptyGreeting}>{idleGreeting}</p>
+}
+
 /**
  * Agent 大模型聊天屏幕主页面组件。
  * 本组件已彻底重构为容器组件，仅负责高层框架布局，业务逻辑与渲染控制已分别下沉至 useAgentChatFlow 和子组件中。
  */
 export const AgentScreen: React.FC = () => {
   const flow = useAgentChatFlow()
-  const idleGreeting = useAgentIdleGreeting()
   const { isDark } = useTheme()
   const {
     currentAssistant,
@@ -205,6 +206,13 @@ export const AgentScreen: React.FC = () => {
           {effortSuffix ? <span className={chromeStyles.modelEffort}>{effortSuffix}</span> : null}
           <span className={chromeStyles.chevron}>▼</span>
         </button>
+        <SessionContextUsageRing
+          messages={flow.chat.messages}
+          modelId={flow.model.currentModelId}
+          totals={flow.tokens}
+          pricingLastUpdated={flow.pricingLastUpdated}
+          onRefreshPricing={flow.handleRefreshPricing}
+        />
       </div>
     </div>
   )
@@ -213,12 +221,8 @@ export const AgentScreen: React.FC = () => {
   const composerDraftKey = useDesktopComposerDraftKey(flow.sessionId)
   const pendingGate = flow.stream.pendingAgentGate
   const hasPendingGate = Boolean(pendingGate)
-  const gateQueueIndex = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, flow.sessionId, pendingGate?.id).index
-  )
-  const gateQueueTotal = useAgentGateInboxStore(
-    (state) => selectQueuePosition(state, flow.sessionId, pendingGate?.id).total
-  )
+  const { queueIndex: gateQueueIndex, queueTotal: gateQueueTotal, onQueuePrev, onQueueNext } =
+    useAgentGateQueuePager(flow.sessionId, pendingGate?.id)
   const sameActionCount = useAgentGateInboxStore((state) =>
     selectSameActionCountInSession(state, flow.sessionId, pendingGate?.action)
   )
@@ -270,18 +274,6 @@ export const AgentScreen: React.FC = () => {
           onShowPicker={onShowAssistantPicker}
           onAssistantSwitched={(assistant) => void onAssistantSwitched?.(assistant)}
           onNewSession={() => onNewSession?.()}
-          trailingControls={
-            <div className={chromeStyles.trailing}>
-              <TokenBadge
-                variant="toolbar"
-                className={chromeStyles.chip}
-                inputTokens={flow.tokens.totalInputTokens}
-                outputTokens={flow.tokens.totalOutputTokens}
-                costMicros={flow.tokens.estimatedCost * 1000000}
-                onClick={() => flow.setShowCostDialog(true)}
-              />
-            </div>
-          }
         />
       ) : null}
 
@@ -316,7 +308,7 @@ export const AgentScreen: React.FC = () => {
                   draggable={false}
                 />
               </div>
-              <p className={styles.emptyGreeting}>{idleGreeting}</p>
+              <AgentIdleGreeting />
             </div>
           ) : null}
           {!isEmptyIdle && flow.scroll.showScrollButton ? (
@@ -346,9 +338,14 @@ export const AgentScreen: React.FC = () => {
           <AgentGateDock
             request={pendingGate}
             isReplying={flow.stream.isAgentGateReplying}
-            onReply={flow.stream.replyAgentGate}
+            onReply={async (payload) => {
+              await flow.stream.replyAgentGate(payload)
+              flow.scroll.scrollToBottom()
+            }}
             queueIndex={gateQueueIndex}
             queueTotal={gateQueueTotal}
+            onQueuePrev={onQueuePrev}
+            onQueueNext={onQueueNext}
             sameActionCount={sameActionCount}
             placement="inline"
           />
@@ -396,8 +393,6 @@ export const AgentScreen: React.FC = () => {
       <AgentDialogs
         t={flow.t}
         i18n={flow.i18n}
-        showCostDialog={flow.showCostDialog}
-        setShowCostDialog={flow.setShowCostDialog}
         showAssistantPicker={flow.showAssistantPicker}
         setShowAssistantPicker={flow.setShowAssistantPicker}
         showShortcutManager={flow.showShortcutManager}
@@ -411,7 +406,6 @@ export const AgentScreen: React.FC = () => {
         recallLookbackMonths={flow.recallLookbackMonths}
         setRecallLookbackMonths={flow.setRecallLookbackMonths}
         model={flow.model}
-        tokens={flow.tokens}
         assistants={flow.assistants}
         fetchAssistants={flow.fetchAssistants}
         shortcuts={flow.shortcuts}
@@ -420,8 +414,6 @@ export const AgentScreen: React.FC = () => {
         removeShortcut={flow.removeShortcut}
         recall={flow.recall}
         toolConfig={flow.toolConfig}
-        pricingLastUpdated={flow.pricingLastUpdated}
-        handleRefreshPricing={flow.handleRefreshPricing}
         currentAssistant={flow.currentAssistant}
         providers={flow.providers}
         inputBarRef={flow.inputBarRef}

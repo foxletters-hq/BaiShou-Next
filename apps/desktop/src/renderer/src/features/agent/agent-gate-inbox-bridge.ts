@@ -41,7 +41,11 @@ export function ensureDesktopAgentGateInboxBridge(): void {
   unsubscribeReplied =
     window.api.agentGate.onReplied?.((payload) => {
       if (!payload?.requestId) return
-      useAgentGateInboxStore.getState().removeReplied(payload.requestId)
+      useAgentGateInboxStore.getState().removeReplied(payload.requestId, {
+        requestId: payload.requestId,
+        reply: payload.reply,
+        resolvedAt: Date.now()
+      })
     }) ?? null
 
   void hydrateFromMain()

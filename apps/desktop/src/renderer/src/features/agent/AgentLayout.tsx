@@ -9,7 +9,8 @@ import {
   useUserProfileStore,
   useAgentNavigationStore
 } from '@baishou/store'
-import { useToast, AssistantPickerSheet, Modal, AssistantEditPage, useDialog } from '@baishou/ui'
+import { useToast, AssistantPickerSheet, useDialog } from '@baishou/ui'
+import { AssistantCreateModal } from './components/AssistantCreateModal'
 import styles from './AgentLayout.module.css'
 import { LATTE_ASSISTANT_NAME, buildAgentChatNavigationPath } from '@baishou/shared'
 import { useAgentSessions } from './hooks/useAgentSessions'
@@ -477,34 +478,13 @@ export const AgentLayout: React.FC = () => {
         }}
       />
 
-      {/* ─── Assistant Create Modal ─── */}
-      <Modal
+      <AssistantCreateModal
         isOpen={isCreateAssistantOpen}
-        onClose={() => {
-          setIsCreateAssistantOpen(false)
-          setIsPickerOpen(true)
-        }}
-        closeOnOverlayClick={false}
-        style={{ padding: 0 }}
-      >
-        <div style={{ width: '80vw', maxWidth: '800px', height: '85vh', overflow: 'hidden' }}>
-          <AssistantEditPage
-            assistant={null}
-            isLastAssistant={assistants.length <= 1}
-            onSave={async (data) => {
-              if (window.electron) {
-                await window.electron.ipcRenderer.invoke('agent:create-assistant', data)
-                await fetchAssistants()
-                setIsCreateAssistantOpen(false)
-              }
-            }}
-            onBack={() => {
-              setIsCreateAssistantOpen(false)
-              setIsPickerOpen(true)
-            }}
-          />
-        </div>
-      </Modal>
+        assistantCount={assistants.length}
+        onClose={() => setIsCreateAssistantOpen(false)}
+        onBackToPicker={() => setIsPickerOpen(true)}
+        onCreated={fetchAssistants}
+      />
     </div>
   )
 }
