@@ -347,6 +347,11 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
       ).detail
       if (!detail?.sessionId || detail.sessionId !== sessionId || !detail.messageId) return
 
+      if (!messageCacheRef.current.some((m) => m.id === detail.messageId)) {
+        void refreshLatestMessages(3)
+        return
+      }
+
       pendingUsageByMessageIdRef.current.set(detail.messageId, {
         inputTokens: detail.inputTokens,
         outputTokens: detail.outputTokens,
@@ -384,7 +389,7 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
 
     window.addEventListener('baishou:assistant-message-usage', onAssistantUsage)
     return () => window.removeEventListener('baishou:assistant-message-usage', onAssistantUsage)
-  }, [sessionId, syncFromCache])
+  }, [sessionId, syncFromCache, refreshLatestMessages])
 
   useEffect(() => {
     if (!sessionId) return
@@ -432,11 +437,23 @@ export function useChatMessages(params: UseChatMessagesParams): UseChatMessagesR
         return
       }
 
+      const knownAssistantIds = new Set(
+        messageCacheRef.current.filter((m) => m.role === 'assistant').map((m) => m.id)
+      )
+
       const sync = async () => {
-        const success = await refreshLatestMessages(3)
-        if (success && sessionId) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          if (attempt > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 150 * attempt))
+          }
+          const success = await refreshLatestMessages(1)
+          if (!success || !sessionId) continue
           persistSessionCache(sessionId)
-          clearStreamBridgeForSession(sessionId)
+          const last = messageCacheRef.current[messageCacheRef.current.length - 1]
+          if (last?.role === 'assistant' && !knownAssistantIds.has(last.id)) {
+            clearStreamBridgeForSession(sessionId)
+            return
+          }
         }
       }
       void sync()

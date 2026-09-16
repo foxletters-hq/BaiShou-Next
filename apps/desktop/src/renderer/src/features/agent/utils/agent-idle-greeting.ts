@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUserProfileStore } from '@baishou/store'
+import { MainPageCacheActiveContext } from '../../../layouts/main-page-cache.context'
 
 export const AGENT_IDLE_GREETING_KEYS = [
   'agent.idle_greeting_1',
@@ -28,11 +29,32 @@ export const AGENT_IDLE_GREETING_FALLBACKS = [
   '嗨 {{name}}，今天想从哪一段感受开始聊？'
 ] as const
 
+/** 随机一条空态标语下标；再次抽取时避开上一句，避免保活回来看起来没变。 */
+export function pickAgentIdleGreetingIndex(length: number, previous?: number): number {
+  if (length <= 1) return 0
+  if (previous == null || previous < 0 || previous >= length) {
+    return Math.floor(Math.random() * length)
+  }
+  const offset = 1 + Math.floor(Math.random() * (length - 1))
+  return (previous + offset) % length
+}
+
 /** 伙伴页空态：Latte 右侧随机一句邀请分享感受（i18n） */
 export function useAgentIdleGreeting(): string {
   const { t } = useTranslation()
   const nickname = useUserProfileStore((s) => s.profile?.nickname)
-  const [index] = useState(() => Math.floor(Math.random() * AGENT_IDLE_GREETING_KEYS.length))
+  const isPageActive = useContext(MainPageCacheActiveContext)
+  const [index, setIndex] = useState(() =>
+    pickAgentIdleGreetingIndex(AGENT_IDLE_GREETING_KEYS.length)
+  )
+  const wasActiveRef = useRef(isPageActive)
+
+  useEffect(() => {
+    if (isPageActive && !wasActiveRef.current) {
+      setIndex((prev) => pickAgentIdleGreetingIndex(AGENT_IDLE_GREETING_KEYS.length, prev))
+    }
+    wasActiveRef.current = isPageActive
+  }, [isPageActive])
 
   return useMemo(() => {
     const name =

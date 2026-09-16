@@ -366,14 +366,13 @@ function registerGlobalStreamIpcListeners(): () => void {
     const userStopped = userStoppedSessions.has(sId)
     if (userStopped) {
       userStoppedSessions.delete(sId)
-      resetStreamDisplayBuffers(sId)
     }
     updateSessionState(sId, (state) => {
       state.isStreaming = false
-      // 用户取消后不要因残留 buffer 重新点亮 bridge
-      state.isBridgeActive = userStopped
-        ? false
-        : Boolean(fullText.trim() || fullReasoning.trim() || state.timeline.length > 0)
+      const hasContent = Boolean(
+        fullText.trim() || fullReasoning.trim() || state.timeline.length > 0
+      )
+      state.isBridgeActive = hasContent
       if (!userStopped && payload?.error && !isAgentStreamAbortError(payload.error)) {
         state.error = payload.error
       } else {
@@ -381,8 +380,6 @@ function registerGlobalStreamIpcListeners(): () => void {
       }
       state.activeTool = null
     })
-
-    if (userStopped) return
 
     if (payload?.messageId) {
       window.dispatchEvent(
@@ -519,4 +516,5 @@ export function __resetAgentStreamIpcForTests(): void {
   for (const key of Object.keys(compressionReasoningDisplayBuffers)) {
     delete compressionReasoningDisplayBuffers[key]
   }
+  userStoppedSessions.clear()
 }

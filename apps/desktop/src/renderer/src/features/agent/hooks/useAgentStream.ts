@@ -329,8 +329,14 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       }
 
       try {
+        useAgentGateInboxStore.getState().removeReplied(input.requestId, {
+          requestId: input.requestId,
+          reply: input.reply,
+          message: input.message,
+          selectedOptionIds: input.selectedOptionIds,
+          resolvedAt: Date.now()
+        })
         await window.api.agentGate.reply(input)
-        useAgentGateInboxStore.getState().removeReplied(input.requestId)
         if (sessionId) {
           updateSessionState(sessionId, (state) => {
             if (state.pendingAgentGate?.id === input.requestId) {
@@ -357,15 +363,16 @@ export function useAgentStream(currentSessionId?: string): UseAgentStreamResult 
       markAgentStreamUserStopped(sessionId)
       flushStreamDisplayBuffers(sessionId)
       flushCompressionDisplayBuffers(sessionId)
-      resetStreamDisplayBuffers(sessionId)
       updateSessionState(sessionId, (state) => {
         state.isStreaming = false
-        state.isBridgeActive = false
         state.isCompressing = false
         state.error = null
         state.activeTool = null
         clearCompressionStreamState(state)
-        clearStreamBridgeState(state)
+        const hasContent = Boolean(
+          state.text.trim() || state.reasoning.trim() || state.timeline.length > 0
+        )
+        state.isBridgeActive = hasContent
       })
     }
     if (typeof window !== 'undefined' && window.electron) {
