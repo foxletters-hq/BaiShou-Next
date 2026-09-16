@@ -1,27 +1,40 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
+  EMPTY_PENDING_EMBED_COUNTS,
   isRagEmbedFeatureConfigured,
   normalizeWeatherId,
   normalizeMoodIdForFilter,
   normalizeDiaryTags,
   shouldShowPendingEmbed,
+  isStartupEmbedReminderEnabled,
+  shouldShowPendingEmbedReminder,
   shouldShowPendingExtract,
   type WeatherId,
   type MoodId,
   type GlobalModelsConfig,
+  type PendingEmbedCounts,
   type RagConfig
 } from '@baishou/shared'
 import { WEATHER_IDS } from '@baishou/shared'
 import { useDiaryData } from './hooks/useDiaryData'
 import { useStorageIndexing } from './hooks/useStorageIndexing'
 import type { DiaryEntry } from './DiaryCard'
+import { useSettingsStore, getDefaultRagConfig } from '@baishou/store'
 import { useDialog, useToast } from '@baishou/ui'
 import { DiaryAppBar } from './components/DiaryAppBar'
 import { DiaryGrid } from './components/DiaryGrid'
 import { DiaryStatusBar } from './components/DiaryStatusBar'
+import { PendingEmbedNotice } from './components/PendingEmbedNotice'
+import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
+import {
+  getCachedRagActiveState,
+  patchCachedRagActiveState,
+  subscribeRagRuntime
+} from '../settings/rag-runtime-cache'
+import { ragIndexingSnapshotFromState } from '../settings/rag-indexing-snapshot'
 import './DiaryPage.css'
 
 export const DiaryPage: React.FC = () => {
@@ -98,41 +111,67 @@ export const DiaryPage: React.FC = () => {
   const gridScrollRef = useRef<HTMLDivElement>(null)
   const [pendingGraphCount, setPendingGraphCount] = useState(0)
   const [pendingEmbedCount, setPendingEmbedCount] = useState(0)
+  const [pendingEmbedParts, setPendingEmbedParts] = useState<PendingEmbedCounts>(
+    EMPTY_PENDING_EMBED_COUNTS
+  )
   const [graphConfigured, setGraphConfigured] = useState(false)
   const [ragConfigured, setRagConfigured] = useState(false)
+  const [embedNotice, setEmbedNotice] = useState<{ count: number; needModel: boolean } | null>(
+    null
+  )
+  const ragState = useSyncExternalStore(
+    subscribeRagRuntime,
+    getCachedRagActiveState,
+    getCachedRagActiveState
+  )
+  const indexing = ragIndexingSnapshotFromState(ragState)
 
   const refreshStatusBar = useCallback(async () => {
     try {
       const ragApi = (
         window.api as {
           rag?: {
+            getPendingEmbedCounts?: () => Promise<PendingEmbedCounts>
             getUnindexedDiaryCount?: () => Promise<number>
             getEmbedJobsPendingCount?: () => Promise<number>
           }
         }
       ).rag
-      const [pending, unindexedCount, globalModels, ragConfig] = await Promise.all([
+      const [pending, embedCounts, globalModels, ragConfig] = await Promise.all([
           window.api.graph.listPendingReextract().catch(() => []),
-          (ragApi?.getUnindexedDiaryCount?.() ??
-            ragApi?.getEmbedJobsPendingCount?.() ??
-            Promise.resolve(0)
-          ).catch(() => 0),
+          (ragApi?.getPendingEmbedCounts?.() ??
+            Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)
+          ).catch(() => EMPTY_PENDING_EMBED_COUNTS),
           window.api.settings.getGlobalModels().catch(() => null),
           window.api.settings.getRagConfig().catch(() => null) as Promise<RagConfig | null>
         ])
+      const counts =
+        embedCounts && typeof embedCounts === 'object' && 'total' in embedCounts
+          ? embedCounts
+          : EMPTY_PENDING_EMBED_COUNTS
       setPendingGraphCount(Array.isArray(pending) ? pending.length : 0)
-      setPendingEmbedCount(typeof unindexedCount === 'number' ? unindexedCount : 0)
+      setPendingEmbedCount(counts.total)
+      setPendingEmbedParts(counts)
       // 有待办就显示：模型/自称缺失时由目标页引导配置，避免底栏长期空白
       setGraphConfigured(true)
-      setRagConfigured(
-        isRagEmbedFeatureConfigured({
-          ragConfig: ragConfig as RagConfig | null,
-          globalModels: globalModels as GlobalModelsConfig | null
+      const embeddingReady = isRagEmbedFeatureConfigured({
+        ragConfig: ragConfig as RagConfig | null,
+        globalModels: globalModels as GlobalModelsConfig | null
+      })
+      setRagConfigured(embeddingReady)
+      if (counts.total <= 0) {
+        setEmbedNotice(null)
+      } else if (
+        shouldShowPendingEmbedReminder(counts.total, {
+          enabled: isStartupEmbedReminderEnabled(ragConfig as RagConfig | null)
         })
-      )
+      ) {
+        setEmbedNotice({ count: counts.total, needModel: !embeddingReady })
+      }
     } catch {
       setPendingGraphCount(0)
       setPendingEmbedCount(0)
+      setPendingEmbedParts(EMPTY_PENDING_EMBED_COUNTS)
       setGraphConfigured(false)
       setRagConfigured(false)
     }
@@ -304,6 +343,20 @@ export const DiaryPage: React.FC = () => {
     }
   }
 
+  const muteStartupEmbedReminder = useCallback(async () => {
+    const current =
+      useSettingsStore.getState().ragConfig ??
+      ((await window.api.settings.getRagConfig().catch(() => null)) as RagConfig | null) ??
+      getDefaultRagConfig()
+    const next = { ...current, startupEmbedReminder: false }
+    const setRagConfig = useSettingsStore.getState().setRagConfig
+    if (setRagConfig) {
+      await setRagConfig(next)
+      return
+    }
+    await window.api.settings.setRagConfig(next)
+  }, [])
+
   const displayEntries = useMemo(() => {
     if (!entries || entries.length === 0) return []
     return entries.map(
@@ -378,9 +431,54 @@ export const DiaryPage: React.FC = () => {
         pendingExtractCount={pendingGraphCount}
         showPendingEmbed={showPendingEmbed}
         pendingEmbedCount={pendingEmbedCount}
+        pendingEmbedParts={pendingEmbedParts}
+        indexing={indexing}
         onPendingExtractClick={() => navigate('/memory/graph')}
         onPendingEmbedClick={() => navigate('/memory/vectors')}
+        onPauseIndexing={() => {
+          patchCachedRagActiveState({ paused: true, cancelling: false })
+          void (window as any).api?.rag?.pauseBatchEmbed?.()
+        }}
+        onResumeIndexing={() => {
+          patchCachedRagActiveState({ paused: false, cancelling: false })
+          void (window as any).api?.rag?.resumeBatchEmbed?.()
+        }}
+        onCancelIndexing={() => {
+          void (async () => {
+            if (
+              !(await dialog.confirm(
+                t(
+                  'settings.rag_batch_embed_cancel_confirm',
+                  '取消后将停止尚未开始的嵌入，已经写入的向量会保留。确定取消？'
+                ),
+                t('common.warning', '警告')
+              ))
+            ) {
+              return
+            }
+            patchCachedRagActiveState({ cancelling: true, paused: false })
+            await (window as any).api?.rag?.cancelBatchEmbed?.()
+          })()
+        }}
       />
+
+      {embedNotice && !indexing ? (
+        <PendingEmbedNotice
+          count={embedNotice.count}
+          needModel={embedNotice.needModel}
+          onAction={() => {
+            setEmbedNotice(null)
+            navigate(
+              embedNotice.needModel ? `${SETTINGS_HUB_PREFIX}/ai-models` : '/memory/vectors'
+            )
+          }}
+          onDismiss={() => setEmbedNotice(null)}
+          onMuteStartupReminder={() => {
+            void muteStartupEmbedReminder()
+            setEmbedNotice(null)
+          }}
+        />
+      ) : null}
     </motion.div>
   )
 }

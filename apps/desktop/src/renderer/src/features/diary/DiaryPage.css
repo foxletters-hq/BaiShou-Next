@@ -1030,6 +1030,12 @@
   white-space: nowrap;
 }
 
+.diary-status-bar-indexing {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .diary-status-bar-item--action {
   border: none;
   background: transparent;
