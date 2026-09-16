@@ -72,7 +72,9 @@ describe('unifiedDiffToDocuments', () => {
     const docs = unifiedDiffToDocuments(MODIFY_DIFF)
     expect(docs).not.toBeNull()
     expect(docs!.original).toBe('const a = 1\nconst b = 2\nconst c = 3\nconst d = 4\nconst e = 5\n')
-    expect(docs!.modified).toBe('const a = 1\nconst b = 20\nconst c = 3\nconst d = 4\nconst e = 5\n')
+    expect(docs!.modified).toBe(
+      'const a = 1\nconst b = 20\nconst c = 3\nconst d = 4\nconst e = 5\n'
+    )
   })
 
   it('returns null for empty diff', () => {

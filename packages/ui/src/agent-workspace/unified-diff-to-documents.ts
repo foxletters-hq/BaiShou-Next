@@ -20,7 +20,11 @@ export interface UnifiedDiffDocuments {
 
 export type ResolveFileChangeDocumentsResult =
   | { mode: 'merge'; original: string; modified: string; truncated: boolean }
-  | { mode: 'fallback'; truncated: boolean; reason: 'empty' | 'truncated' | 'parse_failed' | 'reverse_failed' }
+  | {
+      mode: 'fallback'
+      truncated: boolean
+      reason: 'empty' | 'truncated' | 'parse_failed' | 'reverse_failed'
+    }
 
 const TRUNCATION_MARKERS = ['… (diff truncated)', '...(diff truncated)', '(diff truncated)']
 
@@ -194,17 +198,17 @@ export function documentsFromHunks(hunks: UnifiedDiffHunk[]): UnifiedDiffDocumen
   }
 }
 
-function reverseApplyHunksAtRecordedStarts(
-  lines: string[],
-  hunks: UnifiedDiffHunk[]
-): boolean {
+function reverseApplyHunksAtRecordedStarts(lines: string[], hunks: UnifiedDiffHunk[]): boolean {
   for (let i = hunks.length - 1; i >= 0; i--) {
     const hunk = hunks[i]!
     const oldLines = hunkSideLines(hunk, 'old')
     const newLines = hunkSideLines(hunk, 'new')
 
     if (hunk.newCount === 0 && newLines.length === 0) {
-      const insertAt = Math.max(0, Math.min(lines.length, hunk.newStart > 0 ? hunk.newStart - 1 : 0))
+      const insertAt = Math.max(
+        0,
+        Math.min(lines.length, hunk.newStart > 0 ? hunk.newStart - 1 : 0)
+      )
       lines.splice(insertAt, 0, ...oldLines)
       continue
     }
@@ -258,7 +262,9 @@ export function reverseApplyHunksToModified(
   return { original: '', ok: false }
 }
 
-export function unifiedDiffToDocuments(diff: string): (UnifiedDiffDocuments & { truncated: boolean }) | null {
+export function unifiedDiffToDocuments(
+  diff: string
+): (UnifiedDiffDocuments & { truncated: boolean }) | null {
   const parsed = parseUnifiedDiff(diff)
   if (!parsed) return null
   return { ...documentsFromHunks(parsed.hunks), truncated: parsed.truncated }

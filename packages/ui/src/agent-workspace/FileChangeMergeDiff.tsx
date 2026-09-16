@@ -52,8 +52,8 @@ export interface FileChangeMergeDiffProps {
 const mergeTheme = EditorView.theme({
   '&': {
     height: '100%',
-    // Match WorkbenchLivePreviewEditor / workbenchEditorTheme
-    fontSize: 'var(--ui-fs-xl, var(--content-font-size-lg, 16px))'
+    // 与 workbenchEditorTheme / 侧栏文件树同一档
+    fontSize: 'var(--ui-fs-md)'
   },
   '.cm-scroller': {
     fontFamily: 'var(--font-family-main, var(--font-family, inherit))',
