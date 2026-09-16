@@ -8,8 +8,7 @@ import { withExpoAgentDatabaseLock } from './expo-agent-db.lock'
 import { isAgentMigrationArchiveImport } from './migration-context'
 import {
   AGENT_DB_COLUMN_PATCHES,
-  DIARY_EMBED_JOBS_CREATE_SQL,
-  DIARY_EMBED_JOBS_INDEXES_SQL,
+  MIGRATE_DIARY_EMBED_JOBS_INTO_LEDGER_SQL,
   EMBED_LEDGER_CREATE_SQL,
   EMBED_LEDGER_INDEXES_SQL,
   GRAPH_EDGES_CREATE_SQL,
@@ -125,8 +124,8 @@ export class MigrationService {
               await this._ensureSystemSettingsTable()
               await this._ensureMemoryEmbeddingsTable()
               await this._ensureGraphTables()
-              await this._ensureDiaryEmbedJobsTable()
               await this._ensureEmbedLedgerTable()
+              await this._retireDiaryEmbedJobsTable()
             }
           }
         } catch (e: any) {
@@ -140,8 +139,8 @@ export class MigrationService {
         await this._ensureSystemSettingsTable()
         await this._ensureMemoryEmbeddingsTable()
         await this._ensureGraphTables()
-        await this._ensureDiaryEmbedJobsTable()
         await this._ensureEmbedLedgerTable()
+        await this._retireDiaryEmbedJobsTable()
         await this._ensureAgentSchemaColumns()
         await this._ensureMemoryEmbeddingsVaultIndex()
         await this._backfillMemoryEmbeddingsVaultName()
@@ -216,8 +215,8 @@ export class MigrationService {
       await this._ensureSystemSettingsTable()
       await this._ensureMemoryEmbeddingsTable()
       await this._ensureGraphTables()
-      await this._ensureDiaryEmbedJobsTable()
       await this._ensureEmbedLedgerTable()
+      await this._retireDiaryEmbedJobsTable()
       await this._ensureAgentSchemaColumns()
       await this._ensureMemoryEmbeddingsVaultIndex()
       await this._backfillMemoryEmbeddingsVaultName()
@@ -427,22 +426,20 @@ export class MigrationService {
     }
   }
 
-  /** 确保日记 RAG 嵌入欠账表存在。 */
-  private async _ensureDiaryEmbedJobsTable(): Promise<void> {
+  /** 将 diary_embed_jobs 幂等迁入 embed_ledger 后整表退休。 */
+  private async _retireDiaryEmbedJobsTable(): Promise<void> {
     try {
       const table = await this._executeSql(
         `SELECT name FROM sqlite_master WHERE type='table' AND name='diary_embed_jobs'`
       )
-      if (table.rows.length === 0) {
-        logger.info('[MigrationService] 创建缺失的 diary_embed_jobs 表...')
-        await this._executeSql(DIARY_EMBED_JOBS_CREATE_SQL)
-      }
-      for (const ddl of DIARY_EMBED_JOBS_INDEXES_SQL) {
-        await this._executeSql(ddl)
-      }
+      if (table.rows.length === 0) return
+      logger.info('[MigrationService] 将 diary_embed_jobs 迁入 embed_ledger 后删除该表...')
+      await this._ensureEmbedLedgerTable()
+      await this._executeSql(MIGRATE_DIARY_EMBED_JOBS_INTO_LEDGER_SQL)
+      await this._executeSql(`DROP TABLE IF EXISTS diary_embed_jobs`)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e)
-      logger.warn('[MigrationService] diary_embed_jobs 表检查失败（非阻塞）:', message)
+      logger.warn('[MigrationService] diary_embed_jobs 退休失败（非阻塞）:', message)
     }
   }
 
