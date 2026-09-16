@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildExternalMcpToolId,
+  extractExternalMcpRemoteToolName,
   formatMcpClientToolResult,
   isMcpClientTimeoutMessage,
   mcpClientProbeReasonFromError,
   normalizeMcpStreamableUrl,
   resolveMcpClientCardStatusKind,
+  resolveMcpToolLookupName,
   sanitizeMcpClientConfig,
   toMcpClientListedTools,
   upsertMcpClientServerStatus
@@ -45,6 +47,23 @@ describe('mcp client helpers', () => {
     expect(buildExternalMcpToolId('my-server', 'browser.navigate')).toBe(
       'mcp_my_server_browser_navigate'
     )
+  })
+
+  it('strips UUID server ids and keeps the baishou_ tool name', () => {
+    const registered = buildExternalMcpToolId(
+      '401e4719-6331-42be-a21c-aaaaaaaaaaaa',
+      'baishou_summary_read'
+    )
+    expect(registered).toBe('mcp_401e4719_6331_42be_a21c__baishou_summary_read')
+    expect(extractExternalMcpRemoteToolName(registered)).toBe('baishou_summary_read')
+    expect(resolveMcpToolLookupName(registered)).toEqual({
+      isMcp: true,
+      lookupName: 'baishou_summary_read'
+    })
+    expect(extractExternalMcpRemoteToolName('mcp_local_baishou_diary_list')).toBe(
+      'baishou_diary_list'
+    )
+    expect(extractExternalMcpRemoteToolName('mcp__fs__read_file')).toBe('read_file')
   })
 
   it('formats text content and error flags', () => {

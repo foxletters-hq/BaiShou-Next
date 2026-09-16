@@ -60,6 +60,49 @@ export function buildExternalMcpToolId(serverId: string, toolName: string): stri
   return `mcp_${sanitizeMcpNamePart(serverId, 24)}_${sanitizeMcpNamePart(toolName, 48)}`
 }
 
+/** 旧式 Anthropic 前缀：mcp__server__tool */
+const MCP_ANTHROPIC_PREFIX = /^mcp__[^_]+__/
+/** buildExternalMcpToolId 在 serverId 为 UUID 时留下的 8_4_4_4 段 */
+const MCP_SANITIZED_UUID_PREFIX =
+  /^mcp_([0-9a-fA-F]{8}_[0-9a-fA-F]{4}_[0-9a-fA-F]{4}_[0-9a-fA-F]{4})_+(.*)$/
+
+/** 从注册用工具编号里取出远端工具名，去掉服务端随机 id */
+export function extractExternalMcpRemoteToolName(rawName: string): string | null {
+  const name = rawName.trim()
+  if (!name) return null
+
+  if (MCP_ANTHROPIC_PREFIX.test(name)) {
+    const stripped = name.replace(MCP_ANTHROPIC_PREFIX, '').trim()
+    return stripped || null
+  }
+
+  const uuidMatch = name.match(MCP_SANITIZED_UUID_PREFIX)
+  if (uuidMatch?.[2]) return uuidMatch[2]
+
+  if (name.startsWith('mcp_')) {
+    const baishouAt = name.indexOf('baishou_')
+    if (baishouAt > 3) return name.slice(baishouAt)
+  }
+
+  return null
+}
+
+export function resolveMcpToolLookupName(rawName: string): {
+  isMcp: boolean
+  lookupName: string
+} {
+  const trimmed = rawName.trim()
+  const extracted = extractExternalMcpRemoteToolName(trimmed)
+  if (extracted) {
+    return { isMcp: true, lookupName: extracted }
+  }
+  if (trimmed.startsWith('mcp_') || trimmed.startsWith('mcp__')) {
+    const rest = trimmed.replace(/^mcp_+/, '')
+    return { isMcp: true, lookupName: rest || trimmed }
+  }
+  return { isMcp: false, lookupName: trimmed }
+}
+
 export function formatMcpClientToolResult(result: unknown): string {
   if (result == null) return ''
   if (typeof result === 'string') return result
