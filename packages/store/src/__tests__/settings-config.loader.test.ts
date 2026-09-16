@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   getConfigKeysForSegment,
+  getDefaultGlobalModels,
+  normalizeSettingsConfigKey,
   segmentNeedsConfigLoading,
   segmentHasConfigFailure,
   SETTINGS_SEGMENT_CONFIG_KEYS
@@ -22,5 +24,20 @@ describe('settings-config.loader', () => {
     expect(segmentHasConfigFailure('mcp', ['mcpServerConfig'])).toBe(true)
     expect(segmentHasConfigFailure('mcp', ['providers'])).toBe(false)
     expect(segmentHasConfigFailure('general', ['hotkeyConfig'])).toBe(false)
+  })
+
+  it('should keep an independently configured graph model when loading global models', () => {
+    const patch = normalizeSettingsConfigKey('globalModels', {
+      ...getDefaultGlobalModels(),
+      globalDialogueProviderId: 'gemini',
+      globalDialogueModelId: 'gemini-pro',
+      globalGraphProviderId: 'deepseek',
+      globalGraphModelId: 'deepseek-chat'
+    })
+    expect(patch.globalModels).toMatchObject({
+      globalDialogueModelId: 'gemini-pro',
+      globalGraphProviderId: 'deepseek',
+      globalGraphModelId: 'deepseek-chat'
+    })
   })
 })
