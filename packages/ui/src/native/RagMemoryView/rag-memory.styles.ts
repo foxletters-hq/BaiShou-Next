@@ -75,6 +75,12 @@ export const ragMemoryStyles = StyleSheet.create({
     borderWidth: 1,
     alignSelf: 'flex-start'
   },
+  batchEmbedActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginLeft: 'auto'
+  },
   progressBox: {
     marginBottom: 12
   },
@@ -139,7 +145,15 @@ export const ragMemoryStyles = StyleSheet.create({
     marginBottom: 6
   },
   entryModel: { fontSize: 12, fontWeight: '600', flex: 1 },
-  entryText: { fontSize: 13, lineHeight: 19, marginBottom: 8 },
+  entryText: { fontSize: 13, lineHeight: 19, marginBottom: 4 },
+  entryViewLink: { fontSize: 12, marginBottom: 8 },
+  entryPreviewScroll: { maxHeight: 360 },
+  entryPreviewText: { fontSize: 14, lineHeight: 22 },
+  entryPreviewClose: {
+    alignSelf: 'flex-end',
+    paddingTop: 12,
+    paddingHorizontal: 4
+  },
   entryMetaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -166,6 +180,11 @@ export const ragMemoryStyles = StyleSheet.create({
   emptyBox: {
     paddingVertical: 24,
     alignItems: 'center'
+  },
+  searchingBox: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   menuOverlay: {
     ...StyleSheet.absoluteFillObject,

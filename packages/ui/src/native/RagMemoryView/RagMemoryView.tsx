@@ -34,10 +34,16 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
   pageSize = 10,
   searchQuery = '',
   searchMode = 'semantic',
+  isSearching = false,
+  sourceKind = 'all',
+  onSourceKindChange,
   semanticAvailable = true,
   onSemanticUnavailable,
   onChange,
   onBatchEmbed,
+  onPauseBatchEmbed,
+  onResumeBatchEmbed,
+  onCancelBatchEmbed,
   onAddManualMemory,
   onClearAll,
   onSearch,
@@ -103,6 +109,9 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             hasMismatchModel={hasMismatchModel}
             onTriggerMigration={onTriggerMigration}
             onCancelMigration={onCancelMigration}
+            onPauseBatchEmbed={onPauseBatchEmbed}
+            onResumeBatchEmbed={onResumeBatchEmbed}
+            onCancelBatchEmbed={onCancelBatchEmbed}
             migrationCancelBusy={migrationCancelBusy}
           />
 
@@ -131,6 +140,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
           <RagMemorySearchSection
             searchQuery={searchQuery}
             searchMode={searchMode}
+            sourceKind={sourceKind}
+            onSourceKindChange={onSourceKindChange}
             onSearch={onSearch}
             semanticAvailable={semanticAvailable}
             onSemanticUnavailable={onSemanticUnavailable}
@@ -142,6 +153,8 @@ export const RagMemoryView: React.FC<RagMemoryViewProps> = ({
             entries={entries}
             searchQuery={searchQuery}
             searchMode={searchMode}
+            sourceKind={sourceKind}
+            isSearching={isSearching}
             totalCount={totalCount}
             currentPage={currentPage}
             pageSize={pageSize}
