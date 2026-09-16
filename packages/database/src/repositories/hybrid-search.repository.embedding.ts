@@ -125,6 +125,35 @@ export class HybridSearchEmbeddingStore {
     }
   }
 
+  async listLedgerBySource(
+    sourceType: string,
+    options?: { vaultId?: string }
+  ): Promise<Array<{ sourceId: string; contentHash: string; status: string }>> {
+    const conditions = ['source_type = ?']
+    const args: Array<string | number> = [sourceType]
+    const vaultId = options?.vaultId?.trim()
+    if (vaultId) {
+      conditions.push('vault_id = ?')
+      args.push(vaultId)
+    }
+    const result = await this.db.execute({
+      sql: `
+        SELECT source_id AS sourceId, content_hash AS contentHash, status
+        FROM ${EMBED_LEDGER_TABLE}
+        WHERE ${conditions.join(' AND ')}
+      `,
+      args
+    })
+    return result.rows.map((raw) => {
+      const row = raw as Record<string, unknown>
+      return {
+        sourceId: String(row.sourceId ?? row.source_id ?? ''),
+        contentHash: String(row.contentHash ?? row.content_hash ?? ''),
+        status: String(row.status ?? '')
+      }
+    })
+  }
+
   async recordEmbedded(params: EmbedLedgerRecordParams): Promise<void> {
     const vaultId = params.vaultId.trim()
     if (!vaultId) {
