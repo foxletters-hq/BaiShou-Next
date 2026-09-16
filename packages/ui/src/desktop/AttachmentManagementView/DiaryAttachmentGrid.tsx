@@ -3,6 +3,7 @@ import { FolderMinus, Trash2, FolderSearch, Maximize2 } from 'lucide-react'
 import { Checkbox } from '../Checkbox/Checkbox'
 import styles from './AttachmentManagementView.module.css'
 import { Pagination } from '../Pagination'
+import { Button } from '../Button/Button'
 import { PageSizeSelector } from '../PageSizeSelector'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 
@@ -51,9 +52,9 @@ export const DiaryAttachmentGrid: React.FC<DiaryAttachmentGridProps> = ({ vm }) 
               : t('settings.diary_no_attachments', '当前还没有日记附件')}
           </span>
           {isFilterEmpty && (
-            <button type="button" className={styles.emptyActionBtn} onClick={clearDiaryFilters}>
+            <Button type="button" variant="outlined" size="small" onClick={clearDiaryFilters}>
               {t('settings.attachment_clear_filters', '清除筛选')}
-            </button>
+            </Button>
           )}
         </div>
       </div>

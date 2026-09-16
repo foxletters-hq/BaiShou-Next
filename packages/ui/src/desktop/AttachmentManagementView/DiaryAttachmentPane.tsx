@@ -1,7 +1,8 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Folder, Tag, ChevronDown, Trash2, CheckSquare } from 'lucide-react'
+import { Calendar, Folder, Tag, ChevronDown } from 'lucide-react'
 import styles from './AttachmentManagementView.module.css'
+import { Button } from '../Button/Button'
 import type { AttachmentManagementViewModel } from './useAttachmentManagementView'
 import { DiaryAttachmentGrid } from './DiaryAttachmentGrid'
 
@@ -255,31 +256,26 @@ export const DiaryAttachmentPane: React.FC<DiaryAttachmentPaneProps> = ({ vm }) 
 
         <div className={styles.tabsRow}>
           {pagedDiaryAttachments.length > 0 && selectedDiaryPaths.size > 0 && (
-            <button
+            <Button
               type="button"
-              className={`${styles.actionBtn} ${styles.btnDangerFilled}`}
+              variant="outlined"
+              size="small"
               onClick={handleDeleteDiarySelected}
               disabled={isDeleting}
             >
-              <Trash2 size={16} />
               {t('settings.attachment_delete_selected', '删除已选 ($count)').replace(
                 '$count',
                 selectedDiaryPaths.size.toString()
               )}
-            </button>
+            </Button>
           )}
 
           {pagedDiaryAttachments.length > 0 && (
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.btnOutlined}`}
-              onClick={toggleSelectAllDiary}
-            >
-              <CheckSquare size={16} />
+            <Button type="button" variant="outlined" size="small" onClick={toggleSelectAllDiary}>
               {selectedDiaryPaths.size === pagedDiaryAttachments.length
                 ? t('settings.attachment_deselect_all', '取消全选')
                 : t('settings.attachment_select_all_page', '全选本页')}
-            </button>
+            </Button>
           )}
         </div>
       </div>

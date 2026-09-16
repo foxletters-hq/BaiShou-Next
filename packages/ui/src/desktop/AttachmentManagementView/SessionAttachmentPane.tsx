@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Trash2, CheckSquare } from 'lucide-react'
 import styles from './AttachmentManagementView.module.css'
+import { Button } from '../Button/Button'
 import { Pagination } from '../Pagination'
 import { PageSizeSelector } from '../PageSizeSelector'
 import { SegmentedControl } from '../shared/SegmentedControl'
@@ -85,30 +85,25 @@ export const SessionAttachmentPane: React.FC<SessionAttachmentPaneProps> = ({ vm
         />
         <div className={styles.tabsRow}>
           {displayList.length > 0 && selectedIds.size > 0 && (
-            <button
+            <Button
               type="button"
-              className={`${styles.actionBtn} ${styles.btnDangerFilled}`}
+              variant="outlined"
+              size="small"
               onClick={handleDeleteGroups}
               disabled={isDeleting}
             >
-              <Trash2 size={16} />
               {t('settings.attachment_delete_selected', '删除已选 ($count)').replace(
                 '$count',
                 selectedIds.size.toString()
               )}
-            </button>
+            </Button>
           )}
           {displayList.length > 0 && (
-            <button
-              type="button"
-              className={`${styles.actionBtn} ${styles.btnOutlined}`}
-              onClick={handleSelectAll}
-            >
-              <CheckSquare size={16} />
+            <Button type="button" variant="outlined" size="small" onClick={handleSelectAll}>
               {selectedIds.size === pagedSessionList.length
                 ? t('settings.attachment_deselect_all', '取消全选')
                 : t('settings.attachment_select_all_page', '全选本页')}
-            </button>
+            </Button>
           )}
         </div>
       </div>
