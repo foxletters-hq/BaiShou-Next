@@ -2,17 +2,79 @@ import { describe, expect, it } from 'vitest'
 import type { FileChangePartData } from '@baishou/shared'
 import {
   buildFileOpEntries,
+  buildWorkspaceAssistantTimeline,
   collectWorkspaceFileChanges,
   extractToolInvocations,
   groupStreamTimelineItems,
   groupWorkspaceAssistantTimeline,
-  isFileChangeData
+  isFileChangeData,
+  parseFileChangePartData
 } from '../workspace-message-parts.util'
 
 describe('workspace-message-parts.util', () => {
   it('detects file change data', () => {
     expect(isFileChangeData({ path: 'a.ts', kind: 'modify' })).toBe(true)
     expect(isFileChangeData({ path: 'a.ts' })).toBe(false)
+  })
+
+  it('should parse file change when part data is a JSON string', () => {
+    const parsed = parseFileChangePartData(
+      JSON.stringify({
+        path: 'templates/outline.md',
+        kind: 'create',
+        additions: 12,
+        deletions: 0
+      })
+    )
+    expect(parsed).toMatchObject({
+      path: 'templates/outline.md',
+      kind: 'create',
+      additions: 12,
+      deletions: 0
+    })
+    expect(
+      isFileChangeData(
+        JSON.stringify({ path: 'templates/outline.md', kind: 'create', additions: 1, deletions: 0 })
+      )
+    ).toBe(true)
+  })
+
+  it('should keep assistant text and file changes when part payload uses content or a JSON string', () => {
+    const timeline = buildWorkspaceAssistantTimeline([
+      {
+        id: 'p-text',
+        messageId: 'm1',
+        sessionId: 's1',
+        type: 'text',
+        data: { content: '模板已经写好。' }
+      },
+      {
+        id: 'p-file',
+        messageId: 'm1',
+        sessionId: 's1',
+        type: 'file_change',
+        data: JSON.stringify({
+          path: 'templates/outline.md',
+          kind: 'create',
+          additions: 8,
+          deletions: 0
+        })
+      }
+    ])
+
+    expect(timeline).toEqual([
+      { kind: 'text', key: 'p-text', text: '模板已经写好。' },
+      {
+        kind: 'file_change',
+        key: 'p-file',
+        data: {
+          path: 'templates/outline.md',
+          kind: 'create',
+          additions: 8,
+          deletions: 0
+        }
+      }
+    ])
   })
 
   it('extracts tool invocations from assistant parts', () => {

@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@baishou/ui'
 import styles from './WorkbenchEmptyState.module.css'
 
 export interface WorkbenchEmptyStateProps {
@@ -19,9 +20,9 @@ export const WorkbenchEmptyState: React.FC<WorkbenchEmptyStateProps> = ({ onOpen
             '选择一个文件夹作为工作台根目录，浏览文件并与 Agent 协作。'
           )}
         </p>
-        <button type="button" className={styles.btn} onClick={onOpenFolder}>
+        <Button type="button" onClick={onOpenFolder}>
           {t('agent_workspace.open_folder', '打开文件夹')}
-        </button>
+        </Button>
       </div>
     </div>
   )

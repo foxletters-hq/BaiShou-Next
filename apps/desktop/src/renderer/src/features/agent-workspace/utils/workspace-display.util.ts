@@ -52,24 +52,40 @@ export function isWorkspacePinned(entry: AgentWorkspaceEntry): boolean {
   return Boolean(entry.pinnedAt)
 }
 
-/** 会话行短相对时间：43m / 7h / 2天 */
-export function formatCompactRelativeTime(updatedAt: string, nowMs = Date.now()): string {
+export type CompactRelativeTimeTranslate = (
+  key: string,
+  fallback: string,
+  options?: { count: number }
+) => string
+
+export interface FormatCompactRelativeTimeOptions {
+  t: CompactRelativeTimeTranslate
+  nowMs?: number
+  locale?: string
+}
+
+/** 会话行短相对时间：单位随当前语言切换，避免中英混用 */
+export function formatCompactRelativeTime(
+  updatedAt: string,
+  options: FormatCompactRelativeTimeOptions
+): string {
+  const { t, nowMs = Date.now(), locale } = options
   const ts = Date.parse(updatedAt)
   if (Number.isNaN(ts)) return ''
   const diffMs = nowMs - ts
   const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return '刚刚'
-  if (mins < 60) return `${mins}m`
+  if (mins < 1) return t('common.compact_just_now', '刚刚')
+  if (mins < 60) return t('common.compact_minutes', '{{count}}分钟', { count: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h`
+  if (hours < 24) return t('common.compact_hours', '{{count}}小时', { count: hours })
   const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}天`
+  if (days < 30) return t('common.compact_days', '{{count}}天', { count: days })
   const date = new Date(ts)
   const now = new Date(nowMs)
   if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
+    return date.toLocaleDateString(locale, { month: 'numeric', day: 'numeric' })
   }
-  return date.toLocaleDateString()
+  return date.toLocaleDateString(locale)
 }
 
 /** 置顶项目在前，其次最近活跃，再按 updatedAt。 */

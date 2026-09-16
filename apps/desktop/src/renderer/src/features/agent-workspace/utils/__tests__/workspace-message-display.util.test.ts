@@ -1,11 +1,39 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getWorkspaceAssistantText,
   getWorkspaceBubbleAttachments,
   getWorkspaceUserAttachments,
   getWorkspaceUserFileRefs,
   hasWorkspaceComposerPayload,
-  normalizeWorkspaceSendAttachments
+  normalizeWorkspaceSendAttachments,
+  readWorkspacePartText
 } from '../workspace-message-display.util'
+
+describe('readWorkspacePartText', () => {
+  it('should read text from content when text is missing', () => {
+    expect(readWorkspacePartText({ content: '助手正文' })).toBe('助手正文')
+  })
+})
+
+describe('getWorkspaceAssistantText', () => {
+  it('should recover assistant text from part content when message.content is empty', () => {
+    expect(
+      getWorkspaceAssistantText({
+        id: 'm1',
+        role: 'assistant',
+        parts: [
+          {
+            id: 'p1',
+            messageId: 'm1',
+            sessionId: 's1',
+            type: 'text',
+            data: { content: '已经初始化写作模板。' }
+          }
+        ]
+      })
+    ).toBe('已经初始化写作模板。')
+  })
+})
 
 describe('normalizeWorkspaceSendAttachments', () => {
   it('drops empty arrays', () => {

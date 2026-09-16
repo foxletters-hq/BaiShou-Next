@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Cloud, ChevronDown, MessagesSquare, Plus, Sparkles } from 'lucide-react'
 import type {
@@ -9,16 +9,13 @@ import type {
   WorkspaceChangeEntry
 } from '@baishou/shared'
 import {
-  exclusiveInputTokens,
   formatDialogueModelLabel,
-  getModelContextWindow,
   isConfiguredProviderId,
-  pickLastRoundUsage,
   skillToPromptShortcut
 } from '@baishou/shared'
 import {
-  ContextUsageRing,
   InputBar,
+  SessionContextUsageRing,
   ShortcutManagerDialog,
   getProviderIcon,
   resolveDesktopAssistantAvatarSrc,
@@ -31,9 +28,11 @@ import { usePromptShortcutStore } from '@baishou/store'
 import { usePersistedSearchMode } from '../../agent/hooks/usePersistedSearchMode'
 import chromeStyles from '../../agent/components/AgentChatChrome.module.css'
 import { AgentWorkspaceMessageList, type AgentWorkspaceMessageListHandle } from '../components/AgentWorkspaceMessageList'
+import type { WorkspaceBubbleActions } from '../components/workspace-bubble-actions.types'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 import { useWorkbenchInputPlaceholder } from '../utils/workbench-input-placeholder'
 import { createWorkspaceComposerDropResolver } from '../utils/workspace-composer-drop.util'
+import { useWorkbenchAgentPanelDrop } from './useWorkbenchAgentPanelDrop'
 import { searchWorkspaceFileNames } from '../utils/workspace-file-mention-search.util'
 import { WorkbenchSessionView } from './WorkbenchSessionView'
 import { KnowledgeMountHint } from '../../knowledge/KnowledgeMountHint'
@@ -115,6 +114,7 @@ export interface WorkbenchAgentPanelProps {
     newText: string,
     meta?: { skillRefs?: Array<{ command: string; content: string }>; fileRefs?: PromptFileRef[] }
   ) => boolean | Promise<boolean>
+  bubbleActions?: WorkspaceBubbleActions
   onAssistantTap: () => void
   assistantName: string
   /** 回滚成功后回填输入框 */
@@ -161,6 +161,7 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
   assistantProfile,
   onSend,
   onEditResend,
+  bubbleActions,
   onAssistantTap,
   assistantName,
   composerRefill = null,
@@ -192,6 +193,14 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
     () => createWorkspaceComposerDropResolver(workspace?.folderRoot ?? null),
     [workspace?.folderRoot]
   )
+  const ingestPanelDrop = useCallback((dataTransfer: DataTransfer) => {
+    return inputBarRef.current?.ingestDrop(dataTransfer)
+  }, [])
+  const { panelDropActive, panelDropProps } = useWorkbenchAgentPanelDrop({
+    enabled: hasWorkspace && !sessionsViewActive,
+    ingestDrop: ingestPanelDrop
+  })
+
   const fileMention = useMemo(
     () =>
       workspace?.folderRoot
@@ -331,8 +340,6 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
   const displayModelName =
     formatDialogueModelLabel(chrome.currentModelId) ?? t('agent.no_model_selected', '暂未选择模型')
   const noModelSelected = !isConfiguredProviderId(chrome.currentProviderId) || !chrome.currentModelId
-  const lastRoundUsage = useMemo(() => pickLastRoundUsage(workspaceMessages), [workspaceMessages])
-  const contextWindow = getModelContextWindow(chrome.currentModelId)
   const assistantAvatar = resolveDesktopAssistantAvatarSrc(chrome.currentAssistant?.avatarPath)
   const displayAssistantName = chrome.currentAssistant?.name || assistantName
   const headerTitle = useMemo(() => {
@@ -394,31 +401,35 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
           ) : null}
           <span className={chromeStyles.chevron}>▼</span>
         </button>
-        {hasWorkspace ? (
-          <ContextUsageRing
-            lastRound={lastRoundUsage}
-            contextWindow={contextWindow}
-            cumulative={{
-              inputTokens: exclusiveInputTokens(
-                chrome.totalInputTokens,
-                chrome.totalCacheReadInputTokens,
-                chrome.totalCacheWriteInputTokens
-              ),
-              outputTokens: chrome.totalOutputTokens,
-              cacheReadTokens: chrome.totalCacheReadInputTokens,
-              cacheWriteTokens: chrome.totalCacheWriteInputTokens,
-              estimatedCost: `$${chrome.estimatedCost.toFixed(6)}`
-            }}
-            pricingLastUpdated={chrome.pricingLastUpdated}
-            onRefreshPricing={chrome.onRefreshPricing}
-          />
-        ) : null}
+        <SessionContextUsageRing
+          hidden={!hasWorkspace}
+          messages={workspaceMessages}
+          modelId={chrome.currentModelId}
+          totals={{
+            totalInputTokens: chrome.totalInputTokens,
+            totalOutputTokens: chrome.totalOutputTokens,
+            totalCacheReadInputTokens: chrome.totalCacheReadInputTokens,
+            totalCacheWriteInputTokens: chrome.totalCacheWriteInputTokens,
+            estimatedCost: chrome.estimatedCost
+          }}
+          pricingLastUpdated={chrome.pricingLastUpdated}
+          onRefreshPricing={chrome.onRefreshPricing}
+        />
       </div>
     </div>
   )
 
   return (
-    <aside className={styles.panel} style={{ width }}>
+    <aside
+      className={`${styles.panel}${panelDropActive ? ` ${styles.panelDropActive}` : ''}`}
+      style={{ width }}
+      {...panelDropProps}
+    >
+      {panelDropActive ? (
+        <div className={styles.panelDropOverlay} aria-hidden>
+          {t('workbench.drop_into_chat', '放到对话中')}
+        </div>
+      ) : null}
       <div className={styles.header}>
         <span className={styles.headerTitle} title={headerTitle}>
           {headerTitle}
@@ -487,6 +498,7 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
                 hasMore={chat.hasMore}
                 onLoadMore={chat.loadMore}
                 onEditResend={onEditResend}
+                bubbleActions={bubbleActions}
                 onOpenFile={onOpenFile}
                 onSelectChange={onSelectChange}
                 onReviewAll={onReviewAll}
