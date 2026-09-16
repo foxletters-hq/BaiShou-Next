@@ -98,7 +98,7 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
   onTogglePinWorkspace,
   onTogglePinSession
 }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const dialog = useDialog()
@@ -462,7 +462,10 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
                                           t('workbench.untitled_session', '未命名会话')}
                                       </span>
                                       <span className={styles.sessionTime}>
-                                        {formatCompactRelativeTime(session.updatedAt)}
+                                        {formatCompactRelativeTime(session.updatedAt, {
+                                          t,
+                                          locale: i18n.language
+                                        })}
                                       </span>
                                     </button>
                                     <button

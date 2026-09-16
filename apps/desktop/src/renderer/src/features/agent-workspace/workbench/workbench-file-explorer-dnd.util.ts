@@ -2,8 +2,14 @@ import { normalizeRelativePath, parentRelativePath } from './workbench-path.util
 
 export const WORKBENCH_EXPLORER_DND_MIME = 'application/x-baishou-explorer-entry'
 
+export interface WorkbenchExplorerDndEntry {
+  relativePath: string
+  isDirectory: boolean
+}
+
 export interface WorkbenchExplorerDndPayload {
   relativePaths: string[]
+  entries?: WorkbenchExplorerDndEntry[]
 }
 
 export function isCopyDragModifier(event: { ctrlKey: boolean; altKey: boolean; metaKey: boolean }): boolean {
@@ -18,11 +24,22 @@ export function parseExplorerDndPayload(dataTransfer: DataTransfer | null): Work
   try {
     const parsed = JSON.parse(raw) as WorkbenchExplorerDndPayload
     if (!Array.isArray(parsed.relativePaths)) return null
+    const relativePaths = parsed.relativePaths
+      .filter((p): p is string => typeof p === 'string')
+      .map(normalizeRelativePath)
+      .filter(Boolean)
+    const entries = Array.isArray(parsed.entries)
+      ? parsed.entries
+          .filter((entry): entry is WorkbenchExplorerDndEntry => Boolean(entry) && typeof entry.relativePath === 'string')
+          .map((entry) => ({
+            relativePath: normalizeRelativePath(entry.relativePath),
+            isDirectory: entry.isDirectory === true
+          }))
+          .filter((entry) => Boolean(entry.relativePath))
+      : undefined
     return {
-      relativePaths: parsed.relativePaths
-        .filter((p): p is string => typeof p === 'string')
-        .map(normalizeRelativePath)
-        .filter(Boolean)
+      relativePaths,
+      ...(entries && entries.length > 0 ? { entries } : {})
     }
   } catch {
     return null

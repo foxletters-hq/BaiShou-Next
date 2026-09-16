@@ -1,6 +1,11 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
 import { basenameFromPath } from '@baishou/ui'
+import {
+  applyDeletedPathToWorkbenchTabs,
+  closeWorkbenchTabs,
+  isMissingWorkbenchFileError
+} from './workbench-tab-close.util'
 
 export type WorkbenchTabKind = 'markdown' | 'text' | 'diff' | 'git-diff'
 
@@ -58,6 +63,8 @@ function diffTabId(changeId: string): string {
 export function useWorkbenchTabs(folderRoot: string | null) {
   const [tabs, setTabs] = useState<WorkbenchTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
+  const activeTabIdRef = useRef(activeTabId)
+  activeTabIdRef.current = activeTabId
 
   const activeTab = useMemo(
     () => (activeTabId ? tabs.find((tab) => tab.id === activeTabId) : undefined) ?? tabs[0],
@@ -323,17 +330,30 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     [folderRoot, tabs]
   )
 
+  const closeTabsByIds = useCallback((tabIds: Iterable<string>) => {
+    setTabs((prev) => {
+      const next = closeWorkbenchTabs(prev, activeTabIdRef.current, tabIds)
+      activeTabIdRef.current = next.activeTabId
+      return next.tabs === prev ? prev : next.tabs
+    })
+    setActiveTabId(() => activeTabIdRef.current)
+  }, [])
+
   const closeTab = useCallback(
     (tabId: string) => {
-      setTabs((prev) => prev.filter((tab) => tab.id !== tabId))
-      setActiveTabId((current) => {
-        if (current !== tabId) return current
-        const remaining = tabs.filter((tab) => tab.id !== tabId)
-        return remaining[remaining.length - 1]?.id ?? null
-      })
+      closeTabsByIds([tabId])
     },
-    [tabs]
+    [closeTabsByIds]
   )
+
+  const closeTabsForDeletedPath = useCallback((deletedPath: string) => {
+    setTabs((prev) => {
+      const next = applyDeletedPathToWorkbenchTabs(prev, activeTabIdRef.current, deletedPath)
+      activeTabIdRef.current = next.activeTabId
+      return next.tabs === prev ? prev : next.tabs
+    })
+    setActiveTabId(() => activeTabIdRef.current)
+  }, [])
 
   const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return
@@ -364,15 +384,19 @@ export function useWorkbenchTabs(folderRoot: string | null) {
         } catch (error) {
           return {
             id: tab.id,
+            missing: isMissingWorkbenchFileError(error),
             error: error instanceof Error ? error.message : 'Failed to load'
           }
         }
       })
     )
 
-    setTabs((prev) =>
-      prev.map((tab) => {
-        const update = updates.find((item) => item.id === tab.id)
+    const missingIds = updates.filter((item) => item.missing).map((item) => item.id)
+    setTabs((prev) => {
+      const closed = closeWorkbenchTabs(prev, activeTabIdRef.current, missingIds)
+      activeTabIdRef.current = closed.activeTabId
+      return closed.tabs.map((tab) => {
+        const update = updates.find((item) => item.id === tab.id && !item.missing)
         if (!update) return tab
         return {
           ...tab,
@@ -381,7 +405,8 @@ export function useWorkbenchTabs(folderRoot: string | null) {
           error: update.error
         }
       })
-    )
+    })
+    setActiveTabId(() => activeTabIdRef.current)
   }, [folderRoot, tabs])
 
   const resetTabs = useCallback(() => {
@@ -407,6 +432,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
     openDiffs,
     openGitDiff,
     closeTab,
+    closeTabsForDeletedPath,
     reorderTabs,
     updateTabContent,
     reloadOpenFileContents,

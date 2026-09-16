@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FolderOpen } from 'lucide-react'
 import type { AgentWorkspaceEntry } from '@baishou/shared'
-import { Modal } from '@baishou/ui'
+import { Button, Modal } from '@baishou/ui'
 import { orderSkillLaunchWorkspaces } from '../../utils/workspace-skill-launch.util'
 import styles from './WorkbenchSkillLaunchDialog.module.css'
 
@@ -78,13 +78,13 @@ export const WorkbenchSkillLaunchDialog: React.FC<{
           </ul>
         )}
         <div className={styles.footer}>
-          <button type="button" className={styles.secondaryBtn} disabled={busy} onClick={onClose}>
+          <Button type="button" disabled={busy} onClick={onClose}>
             {t('common.cancel', '取消')}
-          </button>
-          <button type="button" className={styles.secondaryBtn} disabled={busy} onClick={onOpenFolder}>
+          </Button>
+          <Button type="button" disabled={busy} onClick={onOpenFolder}>
             <FolderOpen size={14} strokeWidth={2} aria-hidden />
             {t('workbench.skills_use_open_folder', '打开文件夹')}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>
