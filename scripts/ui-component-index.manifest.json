@@ -1,0 +1,262 @@
+{
+  "desktop": {
+    "输入与选择": [
+      "Button",
+      "Input",
+      "Select",
+      "Switch",
+      "Checkbox",
+      "SegmentedControl",
+      "DatePicker",
+      "TagInput",
+      "ColorPicker"
+    ],
+    "展示与反馈": [
+      "Badge",
+      "Card",
+      "Tooltip",
+      "HelpTooltip",
+      "SettingsHelpIconButton",
+      "Toast",
+      "Modal",
+      "Dialog",
+      "ContextMenu",
+      "RestoreBlockingOverlay"
+    ],
+    "分页": ["Pagination", "PageSizeSelector"],
+    "页面骨架与设置区": ["SettingsPageChrome", "SettingsSection", "SettingsItem"],
+    "日记": [
+      "DiaryCard",
+      "DiaryMetaCard",
+      "DiaryEditor",
+      "DiaryEditorAppBarTitle",
+      "MarkdownRenderer",
+      "TimelineNode",
+      "MoodIcon",
+      "WeatherIcon"
+    ],
+    "总结与统计": [
+      "SummaryCard",
+      "MissingSummaryCard",
+      "SummaryDashboard",
+      "StatisticCard",
+      "ActivityHeatmap",
+      "GalleryPanel"
+    ],
+    "仪表盘": ["DashboardHeroBanner", "DashboardStatsCard", "DashboardSharedMemoryCard"],
+    "聊天消息流": [
+      "ChatAppBar",
+      "ChatBubble",
+      "StreamingBubble",
+      "AgentMarkdown",
+      "ThinkingBlock",
+      "MessageActionBar",
+      "KnowledgeCitationBlock"
+    ],
+    "工具与压缩": [
+      "AgentToolChain",
+      "ToolResultGroupCard",
+      "CompressionDivider",
+      "CompressionActivityBar"
+    ],
+    "输入与用量": [
+      "InputBar",
+      "TokenBadge",
+      "ContextUsageRing",
+      "SessionContextUsageRing",
+      "ReasoningEffortSelect"
+    ],
+    "会话与弹窗": [
+      "AgentSessionList",
+      "SessionListItem",
+      "EmojiPicker",
+      "RecallDialog",
+      "ChatCostDialog",
+      "ContextChainDialog",
+      "ContextChainPanel"
+    ],
+    "AgentGate": ["AgentGateDock", "AgentGatePartBubble"],
+    "模型": ["ModelSwitcher", "ModelSwitcherPopup", "SessionModelMenu", "ModelVisionBadge"],
+    "助手": [
+      "AssistantPicker",
+      "AssistantPickerSheet",
+      "PromptShortcutSheet",
+      "AssistantAvatar",
+      "AssistantAvatarPicker",
+      "AssistantKindTabBar",
+      "AssistantKindBadge",
+      "AvatarEditor",
+      "AvatarCropModal"
+    ],
+    "管理页与开发者选项": [
+      "SessionManagementPage",
+      "AssistantManagementPage",
+      "AssistantManagementView",
+      "AssistantEditPage",
+      "AssistantMatrixCard",
+      "GitManagementPage",
+      "VersionHistorySidebar",
+      "AttachmentManagementView",
+      "DeveloperOptionsView"
+    ],
+    "同步与存储": [
+      "IncrementalSyncPanel",
+      "IncrementalSyncScopeList",
+      "SyncModeComparisonNotice",
+      "BackupScopeList",
+      "LanSyncCard",
+      "CloudSyncPanel",
+      "DataManagementCard",
+      "StorageSettingsCard",
+      "WorkspaceSettingsCard"
+    ],
+    "外观与身份设置": [
+      "AppearanceSettingsCard",
+      "ProfileSettingsCard",
+      "IdentitySettingsCard",
+      "ChatBackgroundSettingsCard",
+      "AboutSettingsCard"
+    ],
+    "模型与工具设置": [
+      "AIModelServicesView",
+      "AIGlobalModelsView",
+      "TTSProviderSettings",
+      "AgentBehaviorSettingsCard",
+      "AgentToolsView",
+      "WebSearchSettingsView",
+      "McpSettingsCard",
+      "HotkeySettingsCard"
+    ],
+    "记忆与总结设置": ["RagMemoryView", "SummarySettingsView", "EmojiSettingsView"],
+    "更新": ["UpdateChecker", "VersionManager"]
+  },
+  "native": {
+    "输入与选择": [
+      "Button",
+      "Input",
+      "Select",
+      "Switch",
+      "Checkbox",
+      "SegmentedControl",
+      "Slider",
+      "DatePicker",
+      "DateSelect",
+      "YearMonthPicker",
+      "DatetimePickerSheet",
+      "TagInput",
+      "ColorPicker",
+      "MoodPicker",
+      "WeatherPicker"
+    ],
+    "展示与反馈": [
+      "Badge",
+      "Card",
+      "Tooltip",
+      "Toast",
+      "Modal",
+      "FloatingModal",
+      "Dialog",
+      "ContextMenu",
+      "RestoreBlockingOverlay"
+    ],
+    "分页与滚动": ["Pagination", "PageSizeSelector", "KeyboardAwareScrollView"],
+    "设置区骨架": [
+      "SettingsSection",
+      "SettingsItem",
+      "SettingsExpansionTile",
+      "SettingsListLeadingIcon",
+      "SettingsGroupCard",
+      "SettingsGroupDivider",
+      "SettingsCardDivider",
+      "SettingsSliderRow"
+    ],
+    "日记": [
+      "DiaryCard",
+      "DiaryMetaCard",
+      "DiaryEditor",
+      "DiaryEditorAppBarTitle",
+      "MarkdownRenderer",
+      "MarkdownToolbar",
+      "TimelineNode",
+      "MoodIcon",
+      "WeatherIcon"
+    ],
+    "总结与统计": [
+      "SummaryCard",
+      "MissingSummaryCard",
+      "SummaryDashboard",
+      "StatisticCard",
+      "ActivityHeatmap",
+      "GalleryPanel"
+    ],
+    "仪表盘": ["DashboardHeroBanner", "DashboardStatsCard", "DashboardSharedMemoryCard"],
+    "聊天消息流": [
+      "ChatAppBar",
+      "ChatBubble",
+      "StreamingBubble",
+      "AgentMarkdown",
+      "ThinkingBlock",
+      "AgentThinkSection",
+      "MessageActionBar",
+      "KnowledgeCitationBlock"
+    ],
+    "工具与压缩": [
+      "AgentToolChain",
+      "ToolResultGroupCard",
+      "CompressionDivider",
+      "CompressionActivityBar"
+    ],
+    "输入与用量": ["InputBar", "TokenBadge"],
+    "会话与弹窗": [
+      "AgentSessionList",
+      "EmojiPicker",
+      "RecallDialog",
+      "ChatCostDialog",
+      "ContextChainDialog"
+    ],
+    "AgentGate": ["AgentGateCard", "AgentGatePartCard"],
+    "模型": ["ModelSwitcher", "ModelSwitcherPopup", "ModelVisionBadge", "ProviderBrandIcon"],
+    "助手": [
+      "AssistantPicker",
+      "AssistantPickerSheet",
+      "PromptShortcutSheet",
+      "AssistantAvatar",
+      "AssistantAvatarPicker",
+      "AssistantKindTabBar",
+      "AssistantKindBadge",
+      "AssistantManagementView",
+      "AssistantMatrixCard",
+      "AssistantEditEmojiSection"
+    ],
+    "同步与存储": [
+      "IncrementalSyncPanel",
+      "IncrementalSyncProgressOverlay",
+      "IncrementalSyncConfirmDialog",
+      "IncrementalSyncScopeList",
+      "SyncModeComparisonNotice",
+      "BackupScopeList",
+      "LanSyncCard",
+      "CloudSyncPanel",
+      "DataManagementCard",
+      "StorageSettingsCard",
+      "StoragePermissionPrompt",
+      "WorkspaceSettingsCard",
+      "AttachmentManagementView"
+    ],
+    "外观与身份设置": [
+      "AppearanceSettingsCard",
+      "ProfileSettingsCard",
+      "IdentitySettingsCard",
+      "ChatBackgroundSettingsCard",
+      "AboutSettingsCard"
+    ],
+    "模型与工具设置": [
+      "TTSProviderSettings",
+      "AgentBehaviorSettingsCard",
+      "AgentToolsView",
+      "McpSettingsCard",
+      "FeatureSettingsView"
+    ],
+    "记忆与总结设置": ["RagMemoryView", "SummarySettingsView", "EmojiSettingsView"]
+  }
+}
