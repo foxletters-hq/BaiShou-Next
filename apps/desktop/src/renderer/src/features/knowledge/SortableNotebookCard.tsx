@@ -1,11 +1,13 @@
 import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, ImagePlus, MoreHorizontal, Trash2 } from 'lucide-react'
+import { GripVertical, MoreHorizontal } from 'lucide-react'
 import type { NotebookCardTone } from '@baishou/shared'
 import { Input } from '@baishou/ui'
+import { NotebookCoverEditor } from './NotebookCoverEditor'
 import { NotebookCoverIcon } from './NotebookCoverIcon'
-import { NotebookCoverTonePicker, TONE_CLASS } from './NotebookCoverTonePicker'
+import { TONE_CLASS } from './NotebookCoverTonePicker'
+import { resolveNotebookCoverMode, type NotebookCoverMode } from './notebook-cover-mode'
 import styles from './KnowledgePage.module.css'
 
 export type SortableNotebookCardModel = {
@@ -26,10 +28,9 @@ export const SortableNotebookCard: React.FC<{
     menu: string
     name: string
     namePlaceholder: string
-    coverTone: string
-    coverIcon: string
+    cover: string
+    coverEmoji: string
     pickIcon: string
-    coverImage: string
     uploadImage: string
     clearImage: string
   }
@@ -59,8 +60,12 @@ export const SortableNotebookCard: React.FC<{
     id: notebook.id
   })
   const [coverBroken, setCoverBroken] = React.useState(false)
+  const [coverMode, setCoverMode] = React.useState<NotebookCoverMode>(() =>
+    resolveNotebookCoverMode(Boolean(notebook.imageUrl))
+  )
   React.useEffect(() => {
     setCoverBroken(false)
+    setCoverMode(resolveNotebookCoverMode(Boolean(notebook.imageUrl)))
   }, [notebook.imageUrl])
   const showCover = Boolean(notebook.imageUrl) && !coverBroken
 
@@ -138,28 +143,27 @@ export const SortableNotebookCard: React.FC<{
                     autoFocus
                   />
                 </label>
-                <p className={styles.coverMenuTitle}>{labels.coverTone}</p>
-                <NotebookCoverTonePicker value={notebook.tone} onChange={onChangeCover} />
-                <p className={styles.coverMenuTitle}>{labels.coverIcon}</p>
-                <button type="button" className={styles.coverIconTrigger} onClick={onPickIcon}>
-                  <span className={styles.coverIconPreview} aria-hidden>
-                    {notebook.icon}
-                  </span>
-                  {labels.pickIcon}
-                </button>
-                <p className={styles.coverMenuTitle}>{labels.coverImage}</p>
-                <div className={styles.coverImageActions}>
-                  <button type="button" className={styles.coverImageBtn} onClick={onUploadImage}>
-                    <ImagePlus size={14} />
-                    {labels.uploadImage}
-                  </button>
-                  {notebook.imageUrl ? (
-                    <button type="button" className={styles.coverImageBtn} onClick={onClearImage}>
-                      <Trash2 size={14} />
-                      {labels.clearImage}
-                    </button>
-                  ) : null}
-                </div>
+                <NotebookCoverEditor
+                  className={styles.coverMenuField}
+                  labelClassName={styles.coverMenuTitle}
+                  mode={coverMode}
+                  onModeChange={setCoverMode}
+                  tone={notebook.tone}
+                  onToneChange={onChangeCover}
+                  icon={notebook.icon}
+                  onPickIcon={onPickIcon}
+                  onUploadImage={onUploadImage}
+                  onClearImage={onClearImage}
+                  hasImage={Boolean(notebook.imageUrl)}
+                  disabled={false}
+                  labels={{
+                    cover: labels.cover,
+                    emoji: labels.coverEmoji,
+                    pickIcon: labels.pickIcon,
+                    uploadImage: labels.uploadImage,
+                    clearImage: labels.clearImage
+                  }}
+                />
               </div>
             ) : null}
           </div>
