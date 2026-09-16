@@ -359,24 +359,6 @@
   min-height: 20px;
 }
 
-.footerCancel {
-  flex-shrink: 0;
-  height: auto;
-  padding: 2px 4px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.footerCancel:hover {
-  color: var(--text-primary);
-}
-
 .actionsRow {
   display: flex;
   justify-content: flex-end;
@@ -384,43 +366,3 @@
   gap: 10px;
 }
 
-.btnGhost,
-.btnConfirm {
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  outline: none;
-}
-
-.btnGhost {
-  align-self: center;
-  color: var(--text-secondary);
-}
-
-.btnGhost:hover {
-  background: var(--bg-surface-high);
-  color: var(--text-primary);
-}
-
-.btnConfirm {
-  min-width: 88px;
-  color: var(--color-on-primary, #fff);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.btnConfirm:hover:not(:disabled) {
-  filter: brightness(0.96);
-}
-
-.btnConfirm:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  filter: none;
-}
