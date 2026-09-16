@@ -142,24 +142,8 @@
   margin-top: 8px;
 }
 
-.addButton {
+.fullWidthButton {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--text-primary);
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.addButton:hover {
-  background: var(--bg-surface-high);
 }
 
 /* === RIGHT PANE === */
@@ -278,23 +262,6 @@
   font-family: var(--font-family);
 }
 
-.resetBtnInline {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: transparent;
-  border: none;
-  color: var(--color-error);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-.resetBtnInline:hover {
-  background: rgba(239, 68, 68, 0.1);
-}
-
 .inputGroup {
   display: flex;
   flex-direction: column;
@@ -311,32 +278,6 @@
 }
 .revealButton:hover {
   color: var(--text-primary);
-}
-
-.testBtnBlock {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  border: 1px solid var(--border-strong);
-  cursor: pointer;
-  transition: background 0.2s;
-  margin-top: 8px;
-}
-.testBtnBlock:hover:not(:disabled) {
-  background: var(--bg-surface-high);
-}
-.testBtnBlock:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 /* === ProviderModelList Section === */
@@ -368,34 +309,6 @@
   letter-spacing: 0;
   color: var(--text-primary);
   font-family: var(--font-family);
-}
-
-.fetchBtnLine {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-control);
-  border-radius: 8px;
-  font-size: var(--settings-font-label-size);
-  font-weight: var(--settings-font-label-weight);
-  font-family: inherit;
-  cursor: pointer;
-  box-sizing: border-box;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-.fetchBtnLine:hover:not(:disabled) {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
-}
-.fetchBtnLine:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .modelSearchWrap {
@@ -453,8 +366,8 @@
   overflow: hidden;
 }
 
-.modelLineItemLeft img,
-.modelLineItemLeft svg {
+.modelLineItemLeft > img,
+.modelLineItemLeft > svg {
   width: 20px;
   height: 20px;
 }
@@ -507,99 +420,6 @@
 .bottomBarContainer {
   display: flex;
   justify-content: flex-end;
-}
-
-.saveBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  border: 1px solid var(--border-control);
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.saveBtn:hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
-}
-
-/* Switch UI */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-}
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--color-outline-variant);
-  transition: 0.3s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: '';
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background: var(--bg-surface);
-  transition: 0.3s;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-input:checked + .slider {
-  background-color: var(--color-primary);
-}
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
-/* Spinners */
-.loadingSpinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--border-muted);
-  border-top-color: var(--text-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.loadingSpinnerSmall {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--border-muted);
-  border-top-color: var(--text-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* === Add Modal === */
@@ -724,39 +544,6 @@ input:checked + .slider:before {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-}
-
-.addModalCancel {
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: transparent;
-  border: none;
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.addModalCancel:hover {
-  background: var(--color-primary-light);
-}
-
-.addModalConfirm {
-  padding: 8px 16px;
-  border-radius: 8px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-control);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-.addModalConfirm:hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
 }
 
 /* Custom Select in Modal */

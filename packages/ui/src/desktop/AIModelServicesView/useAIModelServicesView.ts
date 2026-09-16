@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSensors, useSensor, PointerSensor } from '@dnd-kit/core'
 import { resolveProviderDisplayName } from '@baishou/shared'
 import { arrayMove } from '@dnd-kit/sortable'
@@ -7,7 +7,6 @@ import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { getProviderIcon } from '../../utils/provider-icons'
 import { useTheme } from '../../hooks'
-import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewProps } from './ai-model-services.types'
 import { useAIModelProviderActions } from './useAIModelProviderActions'
 import {
@@ -15,6 +14,10 @@ import {
   PROVIDER_NAME_I18N_MAP,
   PROVIDER_TYPES
 } from './ai-model-services.constants'
+import {
+  buildSortedProvidersList,
+  nextLocalProvidersList
+} from './sorted-providers-list.util'
 
 export function useAIModelServicesView(props: AIModelServicesViewProps) {
   const {
@@ -30,39 +33,36 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
   const toast = useToast()
   const { isDark } = useTheme()
 
-  const BASE_KNOWN_PROVIDERS = BASE_KNOWN_PROVIDERS_CONFIG.map((p) => ({
-    ...p,
-    name: PROVIDER_NAME_I18N_MAP[p.id] ? t(PROVIDER_NAME_I18N_MAP[p.id], p.name) : p.name,
-    iconUrl: getProviderIcon(p.id, isDark)
-  }))
-
-  const getCombinedProviders = Object.keys(providers).filter(
-    (id) => !BASE_KNOWN_PROVIDERS.find((b) => b.id === id)
+  const BASE_KNOWN_PROVIDERS = useMemo(
+    () =>
+      BASE_KNOWN_PROVIDERS_CONFIG.map((p) => ({
+        ...p,
+        name: PROVIDER_NAME_I18N_MAP[p.id] ? t(PROVIDER_NAME_I18N_MAP[p.id], p.name) : p.name,
+        iconUrl: getProviderIcon(p.id, isDark)
+      })),
+    [t, isDark]
   )
 
-  const allProvidersList = [
-    ...BASE_KNOWN_PROVIDERS,
-    ...getCombinedProviders.map((id) => ({
-      id,
-      name: providers[id]?.name || resolveProviderDisplayName(id),
-      iconUrl: getProviderIcon(id, isDark),
-      defaultBase: providers[id]?.apiBaseUrl || '',
-      isSystem: false,
-      sortOrder: providers[id]?.sortOrder ?? 999
-    }))
-  ]
+  const allProvidersList = useMemo(() => {
+    const knownIds = new Set(BASE_KNOWN_PROVIDERS.map((item) => item.id))
+    const customIds = Object.keys(providers).filter((id) => !knownIds.has(id))
+    return [
+      ...BASE_KNOWN_PROVIDERS,
+      ...customIds.map((id) => ({
+        id,
+        name: providers[id]?.name || resolveProviderDisplayName(id),
+        iconUrl: getProviderIcon(id, isDark),
+        defaultBase: providers[id]?.apiBaseUrl || '',
+        isSystem: false,
+        sortOrder: providers[id]?.sortOrder ?? 999
+      }))
+    ]
+  }, [BASE_KNOWN_PROVIDERS, providers, isDark])
 
-  const sortedProvidersList = [...allProvidersList]
-    .map((p) => ({
-      ...p,
-      sortOrder: providers[p.id]?.sortOrder ?? (p as any).sortOrder ?? 999,
-      enabled: providers[p.id]?.enabled ?? false
-    }))
-    .sort((a, b) => {
-      // 已启用的排在前面，未启用的排在后面
-      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
-      return a.sortOrder - b.sortOrder
-    })
+  const sortedProvidersList = useMemo(
+    () => buildSortedProvidersList(allProvidersList, providers),
+    [allProvidersList, providers]
+  )
 
   const firstProviderId = sortedProvidersList[0]?.id
   const [selectedProviderId, setSelectedProviderId] = useState<string>(firstProviderId || '')
@@ -81,8 +81,8 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
 
   const [localProvidersList, setLocalProvidersList] = useState(sortedProvidersList)
   useEffect(() => {
-    setLocalProvidersList(sortedProvidersList)
-  }, [providers])
+    setLocalProvidersList((prev) => nextLocalProvidersList(prev, sortedProvidersList))
+  }, [sortedProvidersList])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -189,6 +189,8 @@ export function useAIModelServicesView(props: AIModelServicesViewProps) {
   useEffect(() => {
     if (!selectedProviderId) return
     actions.populateControllers(selectedProviderId)
+    // actions 每轮都是新对象，只在供应商变化时回填表单
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProviderId, providers])
 
   return {
