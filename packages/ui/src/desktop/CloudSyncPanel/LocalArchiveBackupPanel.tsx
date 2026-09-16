@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Loader2, Upload } from 'lucide-react'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
+import { Button } from '../Button/Button'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import { formatExportErrorMessage } from '../archive-export.util'
 import panelStyles from './LocalArchiveBackupPanel.module.css'
-import styles from './CloudSyncPanel.module.css'
 
 function formatImportProgressDetail(detail: string): string {
   const vaultMatch = /^vault:(\d+)\/(\d+):(.+)$/.exec(detail)
@@ -113,32 +112,26 @@ export const LocalArchiveBackupPanel: React.FC<LocalArchiveBackupPanelProps> = (
           )}
         </p>
         <div className={panelStyles.actions}>
-          <button
+          <Button
             type="button"
-            className={`${styles.actionBtn} ${styles.btnOutlined} ${panelStyles.btn}`}
+            variant="outlined"
+            size="small"
             onClick={() => void handleExport()}
             disabled={busy}
+            isLoading={isExporting}
           >
-            {isExporting ? (
-              <Loader2 size={16} className={panelStyles.spinIcon} />
-            ) : (
-              <Download size={16} />
-            )}
             {t('settings.export_data', '导出数据')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={`${styles.actionBtn} ${styles.btnOutlined} ${panelStyles.btn}`}
+            variant="outlined"
+            size="small"
             onClick={() => void handleImport()}
             disabled={busy}
+            isLoading={isImporting}
           >
-            {isImporting ? (
-              <Loader2 size={16} className={panelStyles.spinIcon} />
-            ) : (
-              <Upload size={16} />
-            )}
             {t('settings.import_data', '导入数据')}
-          </button>
+          </Button>
         </div>
       </div>
     </>

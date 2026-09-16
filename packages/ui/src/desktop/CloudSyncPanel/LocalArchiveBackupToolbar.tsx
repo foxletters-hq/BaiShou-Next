@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Loader2, Upload } from 'lucide-react'
 import { useDialog } from '../Dialog'
 import { useToast } from '../Toast/useToast'
 import { Tooltip } from '../Tooltip/Tooltip'
 import { HelpTooltip } from '../HelpTooltip'
+import { Button } from '../Button/Button'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import { formatExportErrorMessage } from '../archive-export.util'
 import styles from './CloudSyncPanel.module.css'
@@ -89,32 +89,30 @@ export const LocalArchiveBackupToolbar: React.FC<LocalArchiveBackupToolbarProps>
           )}
         />
         <Tooltip content={t('settings.export_desc', '将所有数据导出为 ZIP 压缩包')}>
-          <button
+          <Button
             type="button"
-            className={`${styles.actionBtn} ${styles.btnOutlined} ${styles.localArchiveBtn}`}
+            variant="outlined"
+            size="small"
             onClick={() => void handleExport()}
             disabled={busy}
+            isLoading={isExporting}
             aria-label={t('settings.export_data', '导出数据')}
           >
-            {isExporting ? (
-              <Loader2 size={16} className={styles.spinIcon} />
-            ) : (
-              <Download size={16} />
-            )}
             {t('settings.export_data', '导出数据')}
-          </button>
+          </Button>
         </Tooltip>
         <Tooltip content={t('settings.import_desc', '从 ZIP 备份文件恢复数据（将覆盖当前数据）')}>
-          <button
+          <Button
             type="button"
-            className={`${styles.actionBtn} ${styles.btnOutlined} ${styles.localArchiveBtn}`}
+            variant="outlined"
+            size="small"
             onClick={() => void handleImport()}
             disabled={busy}
+            isLoading={isImporting}
             aria-label={t('settings.import_data', '导入数据')}
           >
-            {isImporting ? <Loader2 size={16} className={styles.spinIcon} /> : <Upload size={16} />}
             {t('settings.import_data', '导入数据')}
-          </button>
+          </Button>
         </Tooltip>
       </div>
     </>

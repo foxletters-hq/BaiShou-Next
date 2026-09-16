@@ -4,6 +4,7 @@ import { ArrowLeft, Cloud, Folder, Globe, Home } from 'lucide-react'
 import styles from './CloudSyncPanel.module.css'
 import stack from '../shared/SettingsStack.module.css'
 import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import { labelStyle } from './cloud-sync.styles'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 import type { SyncConfig } from './cloud-sync.types'
@@ -228,13 +229,9 @@ export const CloudSyncConfigForm: React.FC<CloudSyncConfigFormProps> = ({ vm }) 
                 )}
 
                 <div className={styles.configSectionFooter}>
-                  <button
-                    type="button"
-                    className={`${styles.actionBtn} ${styles.btnSave}`}
-                    onClick={handleSaveConfig}
-                  >
+                  <Button type="button" variant="outlined" size="small" onClick={handleSaveConfig}>
                     {t('data_sync.save_config_button', '保存配置')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </section>
