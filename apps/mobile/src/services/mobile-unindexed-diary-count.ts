@@ -1,8 +1,4 @@
-import {
-  buildDiaryEmbeddingSourceId,
-  filterUnindexedDiaries,
-  type DiaryMeta
-} from '@baishou/shared'
+import { buildDiaryEmbeddingSourceId, filterUnindexedDiaries } from '@baishou/shared'
 import {
   loadEmbeddedDiaryIndex,
   resolveVaultScope,
@@ -15,11 +11,13 @@ export async function countUnindexedDiariesForActiveVault(
 ): Promise<number> {
   const vaultScope = await resolveVaultScope(deps)
   const vaultId = await vaultScope.resolveActiveVaultId()
-  const diaries = (await deps.diaryService.listAll({ limit: 10000 })) as DiaryMeta[]
+  const diaries = await deps.diaryService.listForEmbedDetection()
   if (!diaries.length) return 0
-  const { embeddedIds, embeddedUpdatedAtMap } = await loadEmbeddedDiaryIndex(deps, vaultId)
+  const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
+    await loadEmbeddedDiaryIndex(deps, vaultId)
   const unindexed = filterUnindexedDiaries(diaries, embeddedIds, embeddedUpdatedAtMap, {
-    resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string)
+    resolveSourceId: (meta) => buildDiaryEmbeddingSourceId(vaultId, meta.id as number | string),
+    embeddedContentHashMap
   })
   return unindexed.length
 }

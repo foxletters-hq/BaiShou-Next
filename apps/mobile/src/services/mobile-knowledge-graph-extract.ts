@@ -1,6 +1,6 @@
 import { KnowledgeGraphExtractionService, NotebookGraphIndexService, NotebookGraphRawManager } from '@baishou/core-mobile'
 import { NotebookGraphRepository, expoKnowledgeConnectionManager } from '@baishou/database/expo'
-import type { GlobalModelsConfig } from '@baishou/shared'
+import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { MobileStoragePathService } from './path.service'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
@@ -25,7 +25,7 @@ export function createMobileKnowledgeGraphExtractFn() {
       throw new Error('graph-extract-not-configured')
     }
     const globalModels = await runtime.settingsManager.get<GlobalModelsConfig>('global_models')
-    const modelId = globalModels?.globalDialogueModelId || globalModels?.globalSummaryModelId
+    const { modelId } = resolveGlobalGraphModelIds(globalModels)
     if (!modelId) throw new Error('graph-extract-not-configured')
 
     const fileSystem = createMobileFileSystem()

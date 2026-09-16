@@ -1,14 +1,20 @@
 import i18n from 'i18next'
 import {
+  EMBED_API_PROBE_FAILURE_MESSAGE,
   filterUnindexedDiaries,
   formatLocalDate,
   isRagMemoryEnabled,
   limitExecute,
   logger,
+  probeEmbeddingApi,
   resolveMobileBatchEmbedConcurrency,
   sortDiariesByDateAsc
 } from '@baishou/shared'
-import { MobileRagAbortError, mobileRagOperationControl } from './mobile-rag-operation-control'
+import {
+  MobileRagAbortError,
+  assertMobileRagCanContinue,
+  mobileRagOperationControl
+} from './mobile-rag-operation-control'
 import {
   purgeAllLegacyDiaryEmbeddings,
   purgeLegacyDiaryEmbeddingsForVault
@@ -16,7 +22,7 @@ import {
 import { buildDiaryEmbeddingSourceId } from '@baishou/shared'
 import { listVaultDiaryMetas, loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
 import { resetCachedMobileRagActiveState } from './mobile-rag-runtime-cache'
-import type { DiaryMeta } from '@baishou/shared'
+import type { DiaryEmbedDetectionRow } from '@baishou/shared'
 import {
   chainRagProgressCallback,
   embedDiaryEntry,
@@ -88,6 +94,7 @@ export async function runControlledDiaryBatchEmbedCore(
   }
 ): Promise<ControlledDiaryBatchEmbedResult> {
   mobileRagOperationControl.reset()
+  mobileRagOperationControl.begin()
   const progressType = options?.progressType ?? 'batchEmbed'
   const onProgress = chainRagProgressCallback(progressType, options?.onProgress)
   try {
@@ -105,6 +112,12 @@ export async function runControlledDiaryBatchEmbedCore(
         skipped: true,
         skipReason: 'embedding-not-configured'
       }
+    }
+
+    const probe = await probeEmbeddingApi((text) => adapter.embedQuery(text))
+    if (!probe.ok) {
+      await finalizeBatchEmbedRagConfig(deps, true)
+      throw new Error(probe.message || EMBED_API_PROBE_FAILURE_MESSAGE)
     }
 
     try {
@@ -140,7 +153,7 @@ export async function runControlledDiaryBatchEmbedCore(
     type VaultEmbedPlan = {
       vaultId: string
       vaultName: string
-      diariesToEmbed: DiaryMeta[]
+      diariesToEmbed: DiaryEmbedDetectionRow[]
       allDiaryIds: number[]
     }
 
@@ -159,7 +172,7 @@ export async function runControlledDiaryBatchEmbedCore(
         shadowDb
           ? await listVaultDiaryMetas(shadowDb, vaultId)
           : vaultName === activeVaultName
-            ? await deps.diaryService.listAll({ limit: 10000 })
+            ? await deps.diaryService.listForEmbedDetection()
             : []
       )
       const { embeddedIds, embeddedUpdatedAtMap, embeddedContentHashMap } =
@@ -182,6 +195,9 @@ export async function runControlledDiaryBatchEmbedCore(
 
     if (globalTotal === 0) {
       await finalizeBatchEmbedRagConfig(deps, false)
+      const { invalidateMobilePendingEmbedCountsCache } =
+        await import('./mobile-pending-embed-counts')
+      invalidateMobilePendingEmbedCountsCache()
       return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
     }
 
@@ -205,6 +221,7 @@ export async function runControlledDiaryBatchEmbedCore(
       })
     }
 
+    try {
     for (const plan of vaultPlans) {
       const { vaultId, vaultName, diariesToEmbed, allDiaryIds } = plan
       await purgeLegacyDiaryEmbeddingsForVault(
@@ -221,7 +238,11 @@ export async function runControlledDiaryBatchEmbedCore(
           )
         : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
 
-      await limitExecute(diariesToEmbed, batchConcurrency, async (meta) => {
+      await limitExecute(
+        diariesToEmbed,
+        batchConcurrency,
+        async (meta) => {
+        await assertMobileRagCanContinue()
         if (mobileRagOperationControl.isAborted) {
           return
         }
@@ -287,7 +308,16 @@ export async function runControlledDiaryBatchEmbedCore(
             `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
           )
         }
-      })
+        },
+        { shouldStop: () => mobileRagOperationControl.isAborted }
+      )
+    }
+    } catch (error) {
+      if (error instanceof MobileRagAbortError) {
+        await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)
+        throw new MobileRagAbortError(progress.embedded)
+      }
+      throw error
     }
 
     await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)
@@ -308,6 +338,12 @@ export async function runControlledDiaryBatchEmbedCore(
       total: globalTotal,
       vaultCount: vaultPlans.length
     })
+    try {
+      const { runMobileManualPendingEmbedFill } = await import('./mobile-pending-embed-fill')
+      await runMobileManualPendingEmbedFill(deps)
+    } catch (error) {
+      logger.warn('[MobileRag] pending embed fill after diary batch failed', error as Error)
+    }
     return {
       embedded: progress.embedded,
       failed: progress.failed,
@@ -316,6 +352,7 @@ export async function runControlledDiaryBatchEmbedCore(
       skipped: false
     }
   } finally {
+    mobileRagOperationControl.end()
     resetCachedMobileRagActiveState()
   }
 }

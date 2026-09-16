@@ -113,9 +113,12 @@ export function resetMobileRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
   runtime = null
+  void import('./mobile-pending-embed-counts').then((m) =>
+    m.invalidateMobilePendingEmbedCountsCache()
+  )
 }
 
-function createMobileMemoryEmbedSink(
+export function createMobileMemoryEmbedSink(
   hsRepo: SqliteHybridSearchRepository,
   embeddingAdapter?: EmbeddingAdapter | null
 ) {
@@ -140,6 +143,8 @@ function createMobileMemoryEmbedSink(
     },
     deleteBySource: (sourceType: string, sourceId: string) =>
       hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
+    listLedgerBySource: (sourceType: string, options?: { vaultId?: string }) =>
+      hsRepo.listLedgerBySource(sourceType, options),
     listSourceIdsByType: (sourceType: string, options?: { groupId?: string; vaultId?: string }) =>
       hsRepo.listSourceIdsByType(sourceType, {
         groupId: options?.groupId ?? MEMORY_EMBED_GROUP_ID,
@@ -355,13 +360,7 @@ export async function runMobileKnowledgeHydration(options: {
       graphRaw,
       graphIndex
     })
-    const result = await hydration.hydrate()
-
-    if (result.embedJobsEnqueued > 0 || result.graphJobsEnqueued > 0) {
-      const { scheduleConsumeMobileKnowledgeIngestJobs } =
-        await import('./mobile-knowledge-ingest-jobs.consumer')
-      scheduleConsumeMobileKnowledgeIngestJobs(options.reason)
-    }
+    const result = await hydration.hydrate({ embedMissing: false })
 
     logger.info(`[KnowledgeHydration] mobile done (${options.reason})`, { ...result })
   } catch (e) {
