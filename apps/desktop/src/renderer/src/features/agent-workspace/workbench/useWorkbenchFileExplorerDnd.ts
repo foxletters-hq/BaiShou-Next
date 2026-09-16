@@ -82,7 +82,13 @@ export function useWorkbenchFileExplorerDnd({
         draggingPaths.includes(node.relativePath) && draggingPaths.length > 0
           ? draggingPaths
           : [node.relativePath]
-      const payload: WorkbenchExplorerDndPayload = { relativePaths: paths }
+      const payload: WorkbenchExplorerDndPayload = {
+        relativePaths: paths,
+        entries: paths.map((relativePath) => ({
+          relativePath,
+          isDirectory: relativePath === node.relativePath ? node.isDirectory : false
+        }))
+      }
       writeExplorerDndPayload(event.dataTransfer, payload)
       event.dataTransfer.setData('text/plain', paths.join('\n'))
       setDraggingPaths(paths)

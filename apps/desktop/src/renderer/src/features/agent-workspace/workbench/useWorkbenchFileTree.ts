@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentWorkspaceDirEntry } from '@baishou/shared'
-import { parentRelativePath } from './workbench-path.util'
+import {
+  collectTouchedDirPaths,
+  parentRelativePath,
+  shouldApplyWorkspaceFsChange
+} from './workbench-path.util'
 import {
   collapsedExplorerExpandedPaths,
   explorerHasCollapsibleFolders,
@@ -118,28 +122,76 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
     }
   }, [expandedPaths, folderRoot, loadPath])
 
+  const loadPathRef = useRef(loadPath)
+  const softRefreshExpandedRef = useRef(softRefreshExpanded)
+  loadPathRef.current = loadPath
+  softRefreshExpandedRef.current = softRefreshExpanded
+
   useEffect(() => {
     void refreshRoot()
   }, [refreshRoot])
 
-  // AI 写盘 / 回滚后刷新树（与聊天 refresh 解耦）
+  // 只随当前目录启停监听与订阅；展开集合变化不得重建 chokidar
   useEffect(() => {
     if (!folderRoot) return
     let timer: ReturnType<typeof setTimeout> | null = null
-    const onTreeRefresh = () => {
+    let cancelled = false
+    let pending: Set<string> | 'all' = new Set()
+    const flush = () => {
+      timer = null
+      const queued = pending
+      pending = new Set()
+      if (queued === 'all') {
+        void softRefreshExpandedRef.current()
+        return
+      }
+      const dirs = collectTouchedDirPaths(queued)
+      if (dirs.length === 0) {
+        void softRefreshExpandedRef.current()
+        return
+      }
+      void Promise.all(dirs.map((dir) => loadPathRef.current(dir))).catch(() => {
+        /* 保留现有节点 */
+      })
+    }
+    const queueRefresh = (relativePath?: string, previousPath?: string) => {
+      if (!relativePath && !previousPath) {
+        pending = 'all'
+      } else if (pending !== 'all') {
+        if (relativePath) pending.add(relativePath)
+        if (previousPath) pending.add(previousPath)
+      }
       if (timer) clearTimeout(timer)
-      // 流结束可能连发多次；合并为一次静默刷新，避免侧栏抖动
-      timer = setTimeout(() => {
-        timer = null
-        void softRefreshExpanded()
+      timer = setTimeout(flush, 80)
+    }
+    const onTreeRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ relativePath?: string; previousPath?: string }>)
+        .detail
+      queueRefresh(detail?.relativePath, detail?.previousPath)
+    }
+    const unsubscribeFs = window.api.agentWorkspace.onFsChanged?.((payload) => {
+      if (!shouldApplyWorkspaceFsChange(folderRoot, payload.folderRoot)) return
+      queueRefresh(payload.path, payload.previousPath)
+    })
+    window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    const startWatch = async () => {
+      const ok = await window.api.agentWorkspace.watchFolder?.(folderRoot)
+      if (cancelled || ok !== false) return
+      retryTimer = setTimeout(() => {
+        if (!cancelled) void window.api.agentWorkspace.watchFolder?.(folderRoot)
       }, 100)
     }
-    window.addEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+    void startWatch()
     return () => {
+      cancelled = true
       if (timer) clearTimeout(timer)
+      if (retryTimer) clearTimeout(retryTimer)
+      unsubscribeFs?.()
       window.removeEventListener('baishou:workspace-tree-refresh', onTreeRefresh)
+      void window.api.agentWorkspace.unwatchFolder?.(folderRoot)
     }
-  }, [folderRoot, softRefreshExpanded])
+  }, [folderRoot])
 
   const toggleExpanded = useCallback(
     (relativePath: string) => {
