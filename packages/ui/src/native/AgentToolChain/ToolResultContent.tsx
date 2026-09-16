@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
+import React, { useMemo } from 'react'
+import { Linking, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   localizeToolResultText,
@@ -10,8 +10,6 @@ import {
 import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { useNativeTheme } from '../theme'
 import { CompanionAskResultCard } from './CompanionAskResultCard'
-
-const RESULT_MAX_HEIGHT = 320
 
 export const ToolResultContent = React.memo(function ToolResultContent({
   invocation
@@ -30,9 +28,6 @@ export const ToolResultContent = React.memo(function ToolResultContent({
           localizeToolResultText(presentation.text, t as unknown as ToolCopyTranslate),
     [presentation, t]
   )
-  const [contentHeight, setContentHeight] = useState(0)
-  const viewportHeight = Math.min(contentHeight || RESULT_MAX_HEIGHT, RESULT_MAX_HEIGHT)
-  const scrollEnabled = contentHeight > RESULT_MAX_HEIGHT
 
   if (presentation.mode === 'companion_ask') {
     return <CompanionAskResultCard data={presentation} />
@@ -43,53 +38,41 @@ export const ToolResultContent = React.memo(function ToolResultContent({
       style={[
         styles.viewport,
         {
-          height: viewportHeight,
           backgroundColor: isError ? 'rgba(244, 67, 54, 0.06)' : colors.bgSurfaceNormal,
           borderColor: isError ? 'rgba(244, 67, 54, 0.3)' : colors.borderSubtle
         }
       ]}
     >
-      <ScrollView
-        style={{ height: viewportHeight }}
-        contentContainerStyle={styles.scrollInner}
-        nestedScrollEnabled
-        scrollEnabled={scrollEnabled}
-        showsVerticalScrollIndicator={scrollEnabled}
-        onContentSizeChange={(_, height) => {
-          if (height !== contentHeight) setContentHeight(height)
-        }}
-      >
-        {presentation.mode === 'structured' ? (
-          <StructuredToolResult data={presentation.data} colors={colors} />
-        ) : (
-          <>
-            {presentation.mode === 'plain' && presentation.sourceUrl ? (
-              <Text
-                style={[styles.sourceUrl, { color: colors.primary }]}
-                onPress={() => {
-                  const url = presentation.sourceUrl
-                  if (url) void Linking.openURL(url).catch(() => {})
-                }}
-              >
-                {presentation.sourceUrl}
-              </Text>
-            ) : null}
-            {presentation.mode === 'plain' && presentation.renderAsMarkdown ? (
-              <AgentMarkdownRenderer content={displayText} variant="ancillary" />
-            ) : (
-              <Text
-                style={[
-                  isError ? styles.statusText : styles.plainText,
-                  { color: isError ? colors.error : colors.textSecondary }
-                ]}
-                selectable
-              >
-                {displayText}
-              </Text>
-            )}
-          </>
-        )}
-      </ScrollView>
+      {presentation.mode === 'structured' ? (
+        <StructuredToolResult data={presentation.data} colors={colors} />
+      ) : (
+        <>
+          {presentation.mode === 'plain' && presentation.sourceUrl ? (
+            <Text
+              style={[styles.sourceUrl, { color: colors.primary }]}
+              onPress={() => {
+                const url = presentation.sourceUrl
+                if (url) void Linking.openURL(url).catch(() => {})
+              }}
+            >
+              {presentation.sourceUrl}
+            </Text>
+          ) : null}
+          {presentation.mode === 'plain' && presentation.renderAsMarkdown ? (
+            <AgentMarkdownRenderer content={displayText} variant="ancillary" />
+          ) : (
+            <Text
+              style={[
+                isError ? styles.statusText : styles.plainText,
+                { color: isError ? colors.error : colors.textSecondary }
+              ]}
+              selectable
+            >
+              {displayText}
+            </Text>
+          )}
+        </>
+      )}
     </View>
   )
 })
@@ -188,9 +171,7 @@ const styles = StyleSheet.create({
   viewport: {
     borderWidth: 1,
     borderRadius: 8,
-    overflow: 'hidden'
-  },
-  scrollInner: {
+    overflow: 'hidden',
     padding: 10
   },
   sourceUrl: {

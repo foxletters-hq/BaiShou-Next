@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { resolveAgentToolActionLabel } from '@baishou/shared'
 import { formatToolDurationMs, type AgentToolChainItemModel } from '../../shared/agent-tool-chain'
 import {
   getToolDisplayName,
@@ -13,6 +14,10 @@ import { ThinkChevron, ToolStatusIcon } from '../AgentThinkSection/ThinkStatusIc
 import { CollapsibleHeight } from '../CollapsibleHeight'
 import { useNativeTheme } from '../theme'
 import { CompanionAskResultCard } from './CompanionAskResultCard'
+import {
+  isCompanionAskAwaitingAnswer,
+  shouldRenderCompanionAskResultInList
+} from '../../shared/companion-ask-list.util'
 import { ToolResultContent } from './ToolResultContent'
 
 export interface AgentToolThinkItemProps {
@@ -32,10 +37,15 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   const isLoading = model.status === 'loading'
   const invocation = model.invocation as ToolInvocationLike | undefined
   const askPresentation = useMemo(() => {
-    if (!invocation || isLoading || model.status === 'error') return null
+    if (!invocation || model.status === 'error') return null
     return resolveCompanionAskPresentation(invocation)
-  }, [invocation, isLoading, model.status])
-  const canExpand = Boolean(model.hasContent && invocation && !isLoading && !askPresentation)
+  }, [invocation, model.status])
+  const awaitingAsk =
+    model.toolName === 'companion_ask' &&
+    (isLoading || isCompanionAskAwaitingAnswer(askPresentation))
+  const canExpand = Boolean(
+    model.hasContent && invocation && !isLoading && !askPresentation && !awaitingAsk
+  )
 
   useEffect(() => {
     if (autoExpand && canExpand) {
@@ -45,17 +55,25 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
   }, [autoExpand, canExpand])
 
   const displayTitle = useMemo(() => {
+    if (awaitingAsk) {
+      return String(t('agent.tools.companion_ask_asking', { defaultValue: '正在提问...' }))
+    }
     if (invocation != null) {
       return getToolDisplayName(invocation, (key, fallback) =>
         String(t(key, { defaultValue: fallback ?? key }))
       )
     }
-    return t(`agent.tools.${model.toolName}`, model.toolName)
-  }, [invocation, model.toolName, t])
+    return resolveAgentToolActionLabel(model.toolName, (key, fallback) =>
+      String(t(key, { defaultValue: fallback ?? key }))
+    )
+  }, [awaitingAsk, invocation, model.toolName, t])
 
   const subtitle = useMemo(
-    () => getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
-    [invocation, model.status, t]
+    () =>
+      awaitingAsk
+        ? undefined
+        : getToolRowSubtitle(invocation, model.status, t as unknown as ToolCopyTranslate),
+    [awaitingAsk, invocation, model.status, t]
   )
 
   const handleToggle = useCallback(() => {
@@ -67,7 +85,7 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
     })
   }, [canExpand])
 
-  if (askPresentation) {
+  if (shouldRenderCompanionAskResultInList(askPresentation, model.status)) {
     return <CompanionAskResultCard data={askPresentation} />
   }
 
@@ -81,7 +99,7 @@ export const AgentToolThinkItem = React.memo(function AgentToolThinkItem({
         accessibilityState={{ expanded: canExpand ? expanded : undefined }}
       >
         <ToolStatusIcon
-          loading={isLoading}
+          loading={isLoading || awaitingAsk}
           status={model.status}
           color={colors.textSecondary}
           errorColor={colors.error}

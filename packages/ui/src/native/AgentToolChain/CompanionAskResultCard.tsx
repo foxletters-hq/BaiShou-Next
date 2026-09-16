@@ -12,10 +12,7 @@ export function CompanionAskResultCard({ data }: { data: CompanionAskPresentatio
 
   return (
     <View
-      style={[
-        styles.card,
-        { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }
-      ]}
+      style={[styles.card, { borderColor: colors.borderSubtle, backgroundColor: colors.bgSurface }]}
       accessibilityLabel={t('agent.tools.companion_ask', '伙伴提问')}
     >
       <Text style={[styles.label, { color: colors.textTertiary }]}>
@@ -39,9 +36,11 @@ export function CompanionAskResultCard({ data }: { data: CompanionAskPresentatio
                   styles.option,
                   {
                     borderColor: isSelected
-                      ? colors.borderStrong ?? colors.primary
+                      ? (colors.borderStrong ?? colors.primary)
                       : colors.borderSubtle,
-                    backgroundColor: isSelected ? colors.bgSurfaceHigh ?? colors.bgSurface : 'transparent'
+                    backgroundColor: isSelected
+                      ? (colors.bgSurfaceHigh ?? colors.bgSurface)
+                      : 'transparent'
                   }
                 ]}
               >
