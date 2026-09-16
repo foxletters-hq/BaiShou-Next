@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useState, useCallback } from 'react'
 import {
   View,
@@ -21,14 +22,14 @@ export interface NativeWeatherPickerProps {
 }
 
 const weatherLabelFallback: Record<WeatherId, string> = {
-  sunny: '晴',
-  cloudy: '多云',
-  overcast: '阴',
-  light_rain: '小雨',
-  heavy_rain: '大雨',
-  snow: '雪',
-  fog: '雾',
-  windy: '风'
+  sunny: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L24', '晴'),
+  cloudy: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L25', '多云'),
+  overcast: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L26', '阴'),
+  light_rain: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L27', '小雨'),
+  heavy_rain: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L28', '大雨'),
+  snow: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L29', '雪'),
+  fog: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L30', '雾'),
+  windy: i18n.t('auto.packages.ui.src.native.WeatherPicker.WeatherPicker.L31', '风')
 }
 
 const TRIGGER_HEIGHT = 38
