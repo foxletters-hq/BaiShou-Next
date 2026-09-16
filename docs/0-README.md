@@ -12,4 +12,6 @@
 | [发版流程.md](./发版流程.md)                                              | —                                                        | 发版速查清单                                                                                          |
 | [打包须知.md](./打包须知.md)                                              | —                                                        | Android / Windows 打包与 CI 发版详情                                                                  |
 
+AI 协作规则入口：[1-AI-Code/0-README.md](./1-AI-Code/0-README.md)（说明什么工作该打开哪一份规则）。组件清单：[../packages/ui/COMPONENTS.md](../packages/ui/COMPONENTS.md)。
+
 仓库主页（简体中文完整介绍）：[../README.md](../README.md)
