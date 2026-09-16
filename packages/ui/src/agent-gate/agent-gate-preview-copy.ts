@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import type { AgentGatePreview, AgentGateRequest } from '@baishou/shared'
 
 export function formatGateQueueLabel(index: number, total: number): string | null {
@@ -5,16 +6,22 @@ export function formatGateQueueLabel(index: number, total: number): string | nul
   return `第 ${index} / 共 ${total} 项`
 }
 
+export function canFlipGateQueue(index: number, total: number, direction: -1 | 1): boolean {
+  if (total <= 1 || index <= 0) return false
+  if (direction < 0) return index > 1
+  return index < total
+}
+
 export function formatFileChangeKindLabel(kind: string): string {
   switch (kind) {
     case 'create':
-      return '新建'
+      return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.preview.copy.L17', '新建')
     case 'modify':
-      return '修改'
+      return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.preview.copy.L19', '修改')
     case 'delete':
-      return '删除'
+      return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.preview.copy.L21', '删除')
     case 'rename':
-      return '重命名'
+      return i18n.t('auto.packages.ui.src.agent.gate.agent.gate.preview.copy.L23', '重命名')
     default:
       return kind
   }
@@ -54,5 +61,7 @@ export function resolveScopeLabel(request: AgentGateRequest): string {
   if (request.scope?.kind === 'workspace') {
     return `工作区 ${request.scope.workspaceId}`
   }
-  return request.vaultName ? `伙伴 ${request.vaultName}` : '当前伙伴'
+  return request.vaultName
+    ? `伙伴 ${request.vaultName}`
+    : i18n.t('auto.packages.ui.src.agent.gate.agent.gate.preview.copy.L63', '当前伙伴')
 }
