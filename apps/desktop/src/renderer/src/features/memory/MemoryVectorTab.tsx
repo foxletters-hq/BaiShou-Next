@@ -5,9 +5,7 @@ import { RagSettingsPane } from '../settings/components/RagSettingsPane'
 import { useRagRuntimeBridge } from '../settings/hooks/useRagRuntimeBridge'
 import styles from './MemoryCenterPage.module.css'
 
-export const MemoryVectorTab: React.FC<{ highlightBatchEmbed?: boolean }> = ({
-  highlightBatchEmbed = false
-}) => {
+export const MemoryVectorTab: React.FC = () => {
   const { t } = useTranslation()
   const settings = useSettingsPaneApi()
   const ensureConfigForSegment = useSettingsStore((s) => s.ensureConfigForSegment)
@@ -34,9 +32,7 @@ export const MemoryVectorTab: React.FC<{ highlightBatchEmbed?: boolean }> = ({
   }
 
   return (
-    <div
-      className={`${styles.vectorHost} ${highlightBatchEmbed ? styles.highlightBatchEmbed : ''}`}
-    >
+    <div className={styles.vectorHost}>
       <RagSettingsPane settings={settings} showReadinessBar={false} embedded />
     </div>
   )
