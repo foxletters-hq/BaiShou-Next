@@ -7,6 +7,7 @@ import { useToast } from '../Toast/useToast'
 import { HelpTooltip } from '../HelpTooltip'
 import { RestoreBlockingOverlay } from '../RestoreBlockingOverlay'
 import { SettingsPageChrome } from '../shared/SettingsPageChrome'
+import { Button } from '../Button/Button'
 import {
   LAN_DEVICE_STALE_MS,
   formatLanReceivedBackupContent,
@@ -332,8 +333,10 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                       <span className={styles.bubbleIp}>{d.ip}</span>
                     </div>
 
-                    <button
+                    <Button
                       className={styles.sendOverlayBtn}
+                      variant="outlined"
+                      size="small"
                       disabled={sendingTo !== null}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -341,7 +344,7 @@ export const LanSyncCard: React.FC<LanSyncCardProps> = ({
                       }}
                     >
                       {isSending ? `${progress}%` : t('common.export', '发送')}
-                    </button>
+                    </Button>
                   </div>
                 )
               })}

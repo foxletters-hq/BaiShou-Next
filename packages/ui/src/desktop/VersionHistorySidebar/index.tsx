@@ -19,7 +19,7 @@ export const VersionHistorySidebar: React.FC<VersionHistorySidebarProps> = ({
   filePath,
   onGetHistory,
   onGetFileDiff,
-  onGetCommitChanges,
+  onGetCommitChanges: _onGetCommitChanges,
   onRollback,
   isOpen,
   onClose

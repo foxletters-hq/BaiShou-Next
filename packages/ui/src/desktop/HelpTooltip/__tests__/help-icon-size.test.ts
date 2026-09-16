@@ -11,10 +11,7 @@ describe('help icon size', () => {
     expect(HELP_ICON_SIZE).toBe(16)
     const tooltip = readFileSync(join(here, '../index.tsx'), 'utf8')
     const button = readFileSync(join(here, '../SettingsHelpIconButton.tsx'), 'utf8')
-    const native = readFileSync(
-      join(here, '../../../native/Tooltip/HelpTooltip.tsx'),
-      'utf8'
-    )
+    const native = readFileSync(join(here, '../../../native/Tooltip/HelpTooltip.tsx'), 'utf8')
     expect(tooltip).toContain('size={HELP_ICON_SIZE}')
     expect(button).toContain('size={HELP_ICON_SIZE}')
     expect(native).toContain('size={HELP_ICON_SIZE}')

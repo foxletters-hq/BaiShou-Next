@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useUpdaterStore, UpdateStatus } from '@baishou/store'
 import '../shared/SettingsListTile.css'
 import './UpdateChecker.css'
+import { Switch } from '../Switch/Switch'
 import { CheckCircle, CircleX, Download, ExternalLink, Hourglass } from 'lucide-react'
 
 export interface UpdateCheckerProps {
@@ -187,14 +188,11 @@ export const UpdateChecker: React.FC<UpdateCheckerProps> = ({ version }) => {
             {t('updater.auto_check_desc', '启动时自动检查是否有新版本')}
           </span>
         </div>
-        <label className="update-toggle-switch">
-          <input
-            type="checkbox"
-            checked={autoCheck}
-            onChange={(e) => setAutoCheck(e.target.checked)}
-          />
-          <span className="update-toggle-slider" />
-        </label>
+        <Switch
+          checked={autoCheck}
+          aria-label={t('updater.auto_check', '自动检查更新')}
+          onChange={(e) => setAutoCheck(e.target.checked)}
+        />
       </div>
     </div>
   )
