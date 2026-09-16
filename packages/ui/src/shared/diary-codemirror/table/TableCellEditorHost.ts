@@ -1,5 +1,5 @@
 import type { EditorView } from '@codemirror/view'
-import type { Extension, Transaction } from '@codemirror/state'
+import type { Extension } from '@codemirror/state'
 import { createTableCellEditor } from './tableCellEditor'
 import { encodeTableCellText, normalizeTableCellDisplay } from './tableCellText'
 import type { KeyBinding } from '@codemirror/view'

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 表格编辑插件：命令与按键绑定聚合 */
 import { EditorView, ViewPlugin, type ViewUpdate, Decoration } from '@codemirror/view'
 import { EditorSelection, Prec, Transaction, type StateEffect } from '@codemirror/state'
 import { keymap } from '@codemirror/view'

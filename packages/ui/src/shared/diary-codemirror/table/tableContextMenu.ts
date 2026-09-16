@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 表格右键菜单：动作与定位聚合 */
 import i18n from 'i18next'
 import type { StateEffect } from '@codemirror/state'
 import type { EditorView } from '@codemirror/view'
@@ -980,7 +981,7 @@ function isTouchTableBlock(trigger: HTMLElement): boolean {
   return Boolean(trigger.closest('.cm-table-block--touch'))
 }
 
-function isRowOrColHandle(trigger: HTMLElement): boolean {
+function _isRowOrColHandle(trigger: HTMLElement): boolean {
   return (
     trigger.classList.contains('cm-table-row-handle') ||
     trigger.classList.contains('cm-table-col-handle')

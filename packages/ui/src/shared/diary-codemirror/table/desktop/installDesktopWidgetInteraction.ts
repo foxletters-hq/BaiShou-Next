@@ -11,7 +11,7 @@ import { DesktopOutlineSession } from './actions/desktopOutlineSession'
 import { matchDesktopNavigateKey, runDesktopNavigate } from './actions/desktopNavigateActions'
 import type { CellLocation } from './models/cellLocation'
 import { cellEquals } from './models/cellLocation'
-import { domRowToParsedRow, parsedRowToDomRow } from './models/cellLocation'
+import { domRowToParsedRow } from './models/cellLocation'
 import { DesktopTableSection } from './models/desktopTableSection'
 import { cellAtPoint } from './cellAtPoint'
 import { commitDesktopTableToDoc } from './tableDescription'
@@ -196,7 +196,7 @@ export function installDesktopWidgetInteraction(
           liveSection = section
           paintSection(section)
         },
-        onOutlineEnd: (section, dragged, pointer) => {
+        onOutlineEnd: (section, dragged, _pointer) => {
           liveSection = null
           block.classList.remove('cm-table-block--range-dragging')
           paintSection(section)
