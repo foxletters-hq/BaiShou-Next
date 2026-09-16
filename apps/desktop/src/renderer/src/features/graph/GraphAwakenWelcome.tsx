@@ -8,7 +8,7 @@ import {
   type UserGender,
   type UserProfile
 } from '@baishou/shared'
-import { Input } from '@baishou/ui'
+import { Button, Input } from '@baishou/ui'
 import { GraphAwakenBirthdayField } from './GraphAwakenBirthdayField'
 import styles from './GraphAwakenWelcome.module.css'
 
@@ -97,14 +97,9 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
                   '从日记里整理出人与人的联结。先告诉我们「我」是谁，伙伴才能准确认出你。'
                 )}
               </p>
-              <button
-                type="button"
-                className={styles.cta}
-                disabled={busy}
-                onClick={() => setStep('profile')}
-              >
+              <Button type="button" disabled={busy} onClick={() => setStep('profile')}>
                 {t('graph.awaken_welcome_cta', '唤醒人生关系图')}
-              </button>
+              </Button>
             </motion.div>
           ) : (
             <motion.div key="profile" className={styles.step} {...stepMotion}>
@@ -172,22 +167,12 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
               </div>
 
               <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.secondary}
-                  disabled={busy}
-                  onClick={() => setStep('welcome')}
-                >
+                <Button type="button" disabled={busy} onClick={() => setStep('welcome')}>
                   {t('graph.awaken_back', '返回')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.cta}
-                  disabled={busy}
-                  onClick={() => void handleSubmit()}
-                >
+                </Button>
+                <Button type="button" disabled={busy} onClick={() => void handleSubmit()}>
                   {t('graph.awaken_submit', '开始使用')}
-                </button>
+                </Button>
               </div>
             </motion.div>
           )}

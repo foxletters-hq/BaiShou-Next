@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { translateGraphNodeType, asGraphTranslateFn } from '@baishou/shared'
-import { Input, Modal } from '@baishou/ui'
+import { Button, Input, Modal } from '@baishou/ui'
 import type { GraphMergeConfirmTarget } from './GraphIrreversibleConfirm'
 import styles from './GraphPage.module.css'
 
@@ -260,17 +260,12 @@ export const GraphMergeSearchModal: React.FC<{
       {error ? <div className={styles.sameNameBanner}>{error}</div> : null}
 
       <div className={styles.mergeDialogFooter}>
-        <button type="button" className={styles.btn} disabled={busy} onClick={onClose}>
+        <Button type="button" disabled={busy} onClick={onClose}>
           {t('common.cancel', '取消')}
-        </button>
-        <button
-          type="button"
-          className={styles.btnPrimary}
-          disabled={!canMerge}
-          onClick={submit}
-        >
+        </Button>
+        <Button type="button" disabled={!canMerge} onClick={submit}>
           {t('graph.merge_selected', '合并所选')}
-        </button>
+        </Button>
       </div>
     </Modal>
   )
