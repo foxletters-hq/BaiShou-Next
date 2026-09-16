@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { resolveGitCommitMessage } from '@baishou/shared'
 import { interpretCommitResult } from './git-management.utils'
 
@@ -37,18 +38,27 @@ export function resolveCommitSuccessToast(params: {
       return stagedOnly
         ? {
             key: 'version_control.commit_staged_success_count_pushing',
-            fallback: '已提交 {{count}} 个暂存文件，正在推送...',
+            fallback: i18n.t(
+              'auto.packages.ui.src.desktop.GitManagementPage.git.management.commit.util.L40',
+              '已提交 {{count}} 个暂存文件，正在推送...'
+            ),
             interpolation: { count: params.fileCount }
           }
         : {
             key: 'version_control.commit_all_success_count_pushing',
-            fallback: '已暂存并提交 {{count}} 个文件，正在推送...',
+            fallback: i18n.t(
+              'auto.packages.ui.src.desktop.GitManagementPage.git.management.commit.util.L45',
+              '已暂存并提交 {{count}} 个文件，正在推送...'
+            ),
             interpolation: { count: params.fileCount }
           }
     }
     return {
       key: 'version_control.commit_success_pushing',
-      fallback: '提交成功，正在推送...'
+      fallback: i18n.t(
+        'auto.packages.ui.src.desktop.GitManagementPage.git.management.commit.util.L51',
+        '提交成功，正在推送...'
+      )
     }
   }
 
@@ -56,17 +66,29 @@ export function resolveCommitSuccessToast(params: {
     return stagedOnly
       ? {
           key: 'version_control.commit_staged_success_count',
-          fallback: '已提交 {{count}} 个暂存文件',
+          fallback: i18n.t(
+            'auto.packages.ui.src.desktop.GitManagementPage.git.management.commit.util.L59',
+            '已提交 {{count}} 个暂存文件'
+          ),
           interpolation: { count: params.fileCount }
         }
       : {
           key: 'version_control.commit_all_success_count',
-          fallback: '已暂存并提交 {{count}} 个文件',
+          fallback: i18n.t(
+            'auto.packages.ui.src.desktop.GitManagementPage.git.management.commit.util.L64',
+            '已暂存并提交 {{count}} 个文件'
+          ),
           interpolation: { count: params.fileCount }
         }
   }
 
-  return { key: 'version_control.commit_success', fallback: '提交成功' }
+  return {
+    key: 'version_control.commit_success',
+    fallback: i18n.t(
+      'auto.packages.ui.src.desktop.GitManagementPage.git.management.commit.util.L69',
+      '提交成功'
+    )
+  }
 }
 
 export async function executeGitCommit(params: {
