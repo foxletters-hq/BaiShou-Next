@@ -4,7 +4,5 @@ export type {
   RagStats,
   RagState,
   RagEntry,
-  RagMemoryViewProps,
-  MemoryConsistencyReport,
-  MemoryConsistencyMissingItem
+  RagMemoryViewProps
 } from './rag-memory.types'
