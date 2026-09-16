@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { HelpTooltip, RestoreBlockingOverlay, SettingsPageChrome } from '@baishou/ui'
+import { Button, HelpTooltip, RestoreBlockingOverlay, SettingsPageChrome } from '@baishou/ui'
 import pane from './GeneralSettingsPane.module.css'
 import { formatMigrationMegabytes } from '@baishou/shared'
 import type {
@@ -115,14 +115,15 @@ function SectionCard({
       ))}
 
       <div className="legacy-migration-section-footer">
-        <button
+        <Button
           type="button"
-          className="legacy-migration-btn legacy-migration-btn--primary legacy-migration-btn--compact"
+          variant="outlined"
+          size="small"
           disabled={!available || importing}
           onClick={onImport}
         >
           {t('version_migration.import_action', '导入')}
-        </button>
+        </Button>
       </div>
     </article>
   )
@@ -216,34 +217,36 @@ export const LegacyMigrationPane: React.FC = () => {
             <section className={`${pane.cardSection} legacy-migration-source-card`}>
               <div className="legacy-migration-source-body">
                 <div className="legacy-migration-actions">
-                  <button
+                  <Button
                     type="button"
-                    className="legacy-migration-btn legacy-migration-btn--primary"
+                    variant="outlined"
+                    size="small"
                     onClick={() => void handlePickSource()}
                     disabled={scanning}
                   >
                     {t('version_migration.choose_legacy_directory', '选择旧版目录')}
-                  </button>
+                  </Button>
                   {customSourceRoot ? (
-                    <button
+                    <Button
                       type="button"
-                      className="legacy-migration-btn"
+                      variant="outlined"
+                      size="small"
                       onClick={() => void handleClearCustomSource()}
                       disabled={scanning}
                     >
                       {t('version_migration.clear_custom_legacy_directory', '恢复自动检测')}
-                    </button>
+                    </Button>
                   ) : null}
-                  <button
+                  <Button
                     type="button"
-                    className="legacy-migration-btn"
+                    variant="outlined"
+                    size="small"
                     onClick={() => void refreshScan()}
                     disabled={scanning}
+                    isLoading={scanning}
                   >
-                    {scanning
-                      ? t('version_migration.scanning', '正在扫描…')
-                      : t('version_migration.rescan', '重新扫描')}
-                  </button>
+                    {t('version_migration.rescan', '重新扫描')}
+                  </Button>
                 </div>
 
                 {scanResult ? (
@@ -331,14 +334,15 @@ export const LegacyMigrationPane: React.FC = () => {
                   </h3>
                 </div>
                 {importableWorkspaces.length > 1 ? (
-                  <button
+                  <Button
                     type="button"
-                    className="legacy-migration-btn"
+                    variant="outlined"
+                    size="small"
                     disabled={importingSection != null}
                     onClick={() => void handleImportAllWorkspaces()}
                   >
                     {t('version_migration.import_all_workspaces', '导入全部工作空间')}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
               <div className="legacy-migration-section-grid">

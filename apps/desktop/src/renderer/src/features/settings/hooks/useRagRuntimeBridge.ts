@@ -48,8 +48,9 @@ async function refreshRagStats(): Promise<void> {
 }
 
 /**
- * 在设置页可见时监听 RAG 进度，避免切换 Tab 后状态丢失。
- * `active=false` 时不注册 IPC，防止 overlay 隐藏后仍占用内存。
+ * 监听主进程 RAG 进度并写入运行时缓存。
+ * 应用根节点会常驻订阅；设置页 / 向量页也可再订阅，重复写入同一份缓存。
+ * `active=false` 时不注册 IPC。
  */
 export function useRagRuntimeBridge(active: boolean): void {
   const { t } = useTranslation()
@@ -86,12 +87,18 @@ export function useRagRuntimeBridge(active: boolean): void {
             )
           : undefined
 
+      const previous = getCachedRagActiveState()
+      const keepBatchProgress = state.type === 'batchEmbed' || previous.type === 'batchEmbed'
       setCachedRagActiveState({
-        ...getCachedRagActiveState(),
+        ...previous,
         ...state,
         statusText,
         statusKey: state.statusKey,
-        error: errorText
+        error: errorText,
+        phase: state.phase ?? (keepBatchProgress ? previous.phase : undefined),
+        phases: state.phases ?? (keepBatchProgress ? previous.phases : undefined),
+        paused: Boolean(state.isRunning && state.paused),
+        cancelling: Boolean(state.isRunning && state.cancelling)
       })
 
       if (state.isRunning) {

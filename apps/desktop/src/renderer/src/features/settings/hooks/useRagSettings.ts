@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef, useSyncExternalStore, useCallback } from 'react'
+import type { RagVectorKindFilter } from '@baishou/shared'
 import { useRagSystem } from './useRagSystem'
 import { useRagActions } from './useRagActions'
-import { getCachedRagStats, setCachedRagStats, subscribeRagRuntime } from '../rag-runtime-cache'
+import {
+  getCachedRagActiveState,
+  getCachedRagStats,
+  setCachedRagStats,
+  subscribeRagRuntime
+} from '../rag-runtime-cache'
 
 interface UseRagSettingsProps {
   settings: any
@@ -39,15 +45,17 @@ export function useRagSettings({
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchMode, setSearchMode] = useState<'semantic' | 'text'>('semantic')
+  const [sourceKind, setSourceKind] = useState<RagVectorKindFilter>('all')
+  const [isSearching, setIsSearching] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
-  const stateRef = useRef({ searchQuery, searchMode, currentPage, pageSize })
+  const stateRef = useRef({ searchQuery, searchMode, sourceKind, currentPage, pageSize })
   const dataGenerationRef = useRef(0)
   const checkMigrationStatusRef = useRef<() => Promise<void>>(async () => {})
   useEffect(() => {
-    stateRef.current = { searchQuery, searchMode, currentPage, pageSize }
-  }, [searchQuery, searchMode, currentPage, pageSize])
+    stateRef.current = { searchQuery, searchMode, sourceKind, currentPage, pageSize }
+  }, [searchQuery, searchMode, sourceKind, currentPage, pageSize])
 
   const isDataRequestStale = (generation: number) => generation !== dataGenerationRef.current
 
@@ -57,12 +65,14 @@ export function useRagSettings({
       mode: 'semantic' | 'text',
       page: number,
       size: number,
-      generation = dataGenerationRef.current
+      generation = dataGenerationRef.current,
+      kind: RagVectorKindFilter = stateRef.current.sourceKind
     ) => {
+      setIsSearching(true)
       try {
         const limit = size
         const offset = (page - 1) * limit
-        const params: any = { limit, offset, mode, withTotal: true }
+        const params: any = { limit, offset, mode, withTotal: true, sourceKind: kind }
 
         if (q && q.trim() !== '') {
           params.keyword = q
@@ -92,7 +102,7 @@ export function useRagSettings({
             if (total > 0 && (page - 1) * size >= total) {
               const maxPage = Math.max(1, Math.ceil(total / size))
               setCurrentPage(maxPage)
-              loadRagData(q, mode, maxPage, size, generation)
+              await loadRagData(q, mode, maxPage, size, generation)
               return
             }
             if (q && q.trim() !== '' && mode === 'semantic') {
@@ -118,9 +128,14 @@ export function useRagSettings({
         }
 
         if (isDataRequestStale(generation)) return
+        setIsSearching(false)
         await checkMigrationStatusRef.current()
       } catch (err) {
         console.error('[SettingsPage] loadRagData failed:', err)
+      } finally {
+        if (!isDataRequestStale(generation)) {
+          setIsSearching(false)
+        }
       }
     },
     []
@@ -147,6 +162,9 @@ export function useRagSettings({
     handleDetectDimension,
     handleClearDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
+    handleCancelBatchEmbed,
     handleTriggerMigration,
     handleCancelMigration,
     handleRestoreMigration,
@@ -171,24 +189,35 @@ export function useRagSettings({
   } = useRagActions(t, toast, confirm, prompt, alert, fetchRagInfo, setIsProcessing)
 
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setRagTotalCount(ragStats.totalCount)
-    }
-  }, [ragStats.totalCount, searchQuery])
-
-  useEffect(() => {
     const generation = ++dataGenerationRef.current
-    void loadRagData(searchQuery, searchMode, currentPage, pageSize, generation)
+    void loadRagData(searchQuery, searchMode, currentPage, pageSize, generation, sourceKind)
     return () => {
       dataGenerationRef.current += 1
     }
-  }, [loadRagData, searchQuery, searchMode, currentPage, pageSize])
+  }, [loadRagData, searchQuery, searchMode, sourceKind, currentPage, pageSize])
+
+  const reloadRagList = useCallback(() => {
+    const generation = ++dataGenerationRef.current
+    void loadRagData(
+      stateRef.current.searchQuery,
+      stateRef.current.searchMode,
+      stateRef.current.currentPage,
+      stateRef.current.pageSize,
+      generation,
+      stateRef.current.sourceKind
+    )
+  }, [loadRagData])
 
   useEffect(() => {
     const api = (window as any).api
     if (!api?.diary?.onSyncEvent) return
 
     const unsubscribe = api.diary.onSyncEvent((event: { type?: string }) => {
+      if (event?.type === 'embed-pending-changed') {
+        if (getCachedRagActiveState().isRunning) return
+        reloadRagList()
+        return
+      }
       if (event?.type !== 'embed-failed' && event?.type !== 'embed-failure-cleared') return
       // 必须强制重拉：loadConfig() 对已缓存键是 no-op，否则失败条清了 UI 仍残留
       if (typeof settings.reloadConfigKeys === 'function') {
@@ -199,13 +228,44 @@ export function useRagSettings({
     })
 
     return unsubscribe
-  }, [settings])
+  }, [reloadRagList, settings])
+
+  const wasBatchEmbedRef = useRef(false)
+  useEffect(() => {
+    const running = activeRagState.isRunning && activeRagState.type === 'batchEmbed'
+    if (running) {
+      wasBatchEmbedRef.current = true
+      return
+    }
+    if (!wasBatchEmbedRef.current) return
+    wasBatchEmbedRef.current = false
+    reloadRagList()
+  }, [activeRagState.isRunning, activeRagState.type, reloadRagList])
+
+  const invalidateInFlightListQuery = () => {
+    dataGenerationRef.current += 1
+    setIsSearching(true)
+  }
 
   const handleSearch = (q: string, mode: 'semantic' | 'text') => {
+    invalidateInFlightListQuery()
     setSearchQuery(q)
     setSearchMode(mode)
     setCurrentPage(1)
-    loadRagData(q, mode, 1, pageSize)
+  }
+
+  const handleSourceKindChange = (kind: RagVectorKindFilter) => {
+    if (kind === stateRef.current.sourceKind && stateRef.current.currentPage === 1) return
+    invalidateInFlightListQuery()
+    setSourceKind(kind)
+    setCurrentPage(1)
+  }
+
+  const handlePageChange = (page: number, size: number) => {
+    if (page === stateRef.current.currentPage && size === stateRef.current.pageSize) return
+    invalidateInFlightListQuery()
+    setCurrentPage(page)
+    setPageSize(size)
   }
 
   return {
@@ -220,19 +280,26 @@ export function useRagSettings({
     migrationState,
     searchQuery,
     searchMode,
+    sourceKind,
+    isSearching,
     setCurrentPage,
     setPageSize,
     loadRagData,
     handleDetectDimension,
     handleClearDimension,
     handleBatchEmbed,
+    handlePauseBatchEmbed,
+    handleResumeBatchEmbed,
+    handleCancelBatchEmbed,
     handleAddManualMemory,
     handleTriggerMigration,
     handleCancelMigration,
     handleRestoreMigration,
     handleResumeMigration,
-    handleClearAll: () => handleClearAll(prompt),
+    handleClearAll,
     handleSearch,
+    handleSourceKindChange,
+    handlePageChange,
     handleDeleteEntry,
     handleEditEntry,
     handleExportEmbeddings,

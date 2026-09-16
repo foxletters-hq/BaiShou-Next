@@ -1,4 +1,4 @@
-import { formatLocalDate } from '@baishou/shared'
+import { formatLocalDate, parseGraphNodeEmbeddingId } from '@baishou/shared'
 
 export function useRagActions(
   t: any,
@@ -28,7 +28,17 @@ export function useRagActions(
   }
 
   const handleDeleteEntry = async (id: string) => {
-    if (!(await confirm(t('common.delete', '删除') + '?', t('common.warning', '警告')))) return
+    const isGraphNode = Boolean(parseGraphNodeEmbeddingId(id))
+    const confirmed = await confirm(
+      isGraphNode
+        ? t(
+            'settings.rag_clear_node_embed_confirm',
+            '只会清除这个节点上的向量，不会删除图谱里的实体。确定继续？'
+          )
+        : t('settings.rag_delete_entry_confirm', '确定删除这条向量片段？'),
+      t('common.warning', '警告')
+    )
+    if (!confirmed) return
     setIsProcessing(true)
     try {
       await (window as any).api?.rag?.deleteEntry(id)

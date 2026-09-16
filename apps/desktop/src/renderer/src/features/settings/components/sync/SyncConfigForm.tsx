@@ -5,7 +5,7 @@ import {
   SYNC_DIVERGENCE_THRESHOLD_OPTIONS,
   DEFAULT_INCREMENTAL_SYNC_CLOUD_PATH
 } from '@baishou/shared'
-import { Switch, useDialog, Select, useToast } from '@baishou/ui'
+import { Button, Switch, useDialog, Select, useToast } from '@baishou/ui'
 import { S3SyncForm } from './S3SyncForm'
 import { WebDavSyncForm } from './WebDavSyncForm'
 import { notifyIncrementalSyncConfigChanged } from '../../../../lib/incremental-sync-config-events'
@@ -344,17 +344,18 @@ export const SyncConfigForm: React.FC<SyncConfigFormProps> = ({
       </div>
 
       <div className={styles.actionsRow}>
-        <button type="button" onClick={handleSaveConfig} className={styles.actionBtn}>
+        <Button type="button" variant="outlined" size="small" onClick={handleSaveConfig}>
           {t('data_sync.save_config', 'Save Config')}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outlined"
+          size="small"
           onClick={handleTestConnection}
           disabled={isTesting}
-          className={styles.actionBtn}
         >
           {t('data_sync.test_connection', 'Test Connection')}
-        </button>
+        </Button>
         {afterTestAction}
       </div>
 

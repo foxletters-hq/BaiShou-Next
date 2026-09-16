@@ -8,7 +8,7 @@ import {
   type AgentWorkspaceSecurityMode,
   type BaishouAgentGateConfig
 } from '@baishou/shared'
-import { HelpTooltip } from '@baishou/ui'
+import { Button, HelpTooltip, Switch } from '@baishou/ui'
 import { ArrowLeft, Check, ChevronRight } from 'lucide-react'
 import '@baishou/ui/desktop/shared/SettingsListTile.css'
 import pane from './GeneralSettingsPane.module.css'
@@ -147,14 +147,13 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
                           {new Date(entry.createdAt).toLocaleString()}
                         </span>
                       </div>
-                      <button
+                      <Button
                         type="button"
-                        className="settings-text-btn"
                         disabled={saving}
                         onClick={() => void onRemoveAllowlistEntry(entry)}
                       >
                         {t('common.remove', '移除')}
-                      </button>
+                      </Button>
                     </div>
                   </React.Fragment>
                 ))
@@ -295,15 +294,12 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
                   {t('settings.agent_gate_notify_enabled', '系统通知')}
                 </span>
               </div>
-              <label className={`settings-switch-label ${styles.compactSwitch}`}>
-                <input
-                  type="checkbox"
-                  checked={notificationPrefs.enabled}
-                  disabled={saving}
-                  onChange={(e) => void onUpdateNotificationPrefs({ enabled: e.target.checked })}
-                />
-                <span className="settings-switch-slider" />
-              </label>
+              <Switch
+                checked={notificationPrefs.enabled}
+                disabled={saving}
+                aria-label={t('settings.agent_gate_notify_enabled', '系统通知')}
+                onChange={(e) => void onUpdateNotificationPrefs({ enabled: e.target.checked })}
+              />
             </div>
             <div className={pane.divider} />
             <div className="settings-list-tile settings-list-tile-noclick">
@@ -312,17 +308,12 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
                   {t('settings.agent_gate_notify_sound', '通知声音')}
                 </span>
               </div>
-              <label className={`settings-switch-label ${styles.compactSwitch}`}>
-                <input
-                  type="checkbox"
-                  checked={notificationPrefs.soundEnabled}
-                  disabled={saving || !notificationPrefs.enabled}
-                  onChange={(e) =>
-                    void onUpdateNotificationPrefs({ soundEnabled: e.target.checked })
-                  }
-                />
-                <span className="settings-switch-slider" />
-              </label>
+              <Switch
+                checked={notificationPrefs.soundEnabled}
+                disabled={saving || !notificationPrefs.enabled}
+                aria-label={t('settings.agent_gate_notify_sound', '通知声音')}
+                onChange={(e) => void onUpdateNotificationPrefs({ soundEnabled: e.target.checked })}
+              />
             </div>
           </div>
         </section>
