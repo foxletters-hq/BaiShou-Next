@@ -7,4 +7,3 @@ export * from './EditorContextMenuHost'
 export * from './editor-context-menu-icons'
 export { getContextMenuBoundsForAnchor } from './context-menu-placement.util'
 export type { ContextMenuBounds } from './context-menu-placement.util'
-

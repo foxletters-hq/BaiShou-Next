@@ -21,6 +21,8 @@ export interface AnchoredContextMenuProps {
   bounds?: ContextMenuBounds
   /** 将 y 视为菜单底边，优先在锚点上方展开（避免盖住输入框） */
   preferAbove?: boolean
+  /** 将 x 视为菜单右缘，向左展开 */
+  alignEnd?: boolean
 }
 
 /**
@@ -38,16 +40,17 @@ export function AnchoredContextMenu({
   itemClassName = 'context-menu-item',
   dividerClassName = 'context-menu-divider',
   bounds,
-  preferAbove = false
+  preferAbove = false,
+  alignEnd = false
 }: AnchoredContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [placed, setPlaced] = useState(false)
 
   useLayoutEffect(() => {
     if (!menuRef.current) return
-    applyFixedContextMenuLayout(menuRef.current, x, y, bounds, { preferAbove })
+    applyFixedContextMenuLayout(menuRef.current, x, y, bounds, { preferAbove, alignEnd })
     setPlaced(true)
-  }, [x, y, items, bounds, preferAbove])
+  }, [x, y, items, bounds, preferAbove, alignEnd])
 
   useEffect(() => {
     const handleClose = () => onClose()
