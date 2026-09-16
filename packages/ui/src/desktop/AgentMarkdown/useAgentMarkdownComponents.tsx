@@ -45,14 +45,14 @@ export function useAgentMarkdownComponents() {
           <pre className={markdownStyles.codeWrapper}>
             <div className={markdownStyles.codeHeader}>
               {language ? <span>{language}</span> : null}
-              <button
-                type="button"
-                onClick={() => navigator.clipboard.writeText(String(children))}
-              >
+              <button type="button" onClick={() => navigator.clipboard.writeText(String(children))}>
                 {t('markdown.copy', '复制')}
               </button>
             </div>
-            <code className={className || (language ? `language-${language}` : undefined)} {...props}>
+            <code
+              className={className || (language ? `language-${language}` : undefined)}
+              {...props}
+            >
               {children}
             </code>
           </pre>
@@ -69,9 +69,7 @@ export function useAgentMarkdownComponents() {
       domNode: _domNode,
       streamStatus: _streamStatus,
       ...props
-    }: XMarkdownComponentProps) => (
-      <blockquote className={markdownStyles.blockquote} {...props} />
-    )
+    }: XMarkdownComponentProps) => <blockquote className={markdownStyles.blockquote} {...props} />
 
     return {
       ...agentIncompleteMarkdownComponents,

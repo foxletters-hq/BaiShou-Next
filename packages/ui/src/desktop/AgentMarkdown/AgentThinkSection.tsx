@@ -28,6 +28,8 @@ export const AgentThinkSection: React.FC<AgentThinkSectionProps> = ({
     () => ({
       algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
       token: {
+        fontFamily: 'var(--font-family)',
+        fontFamilyCode: 'var(--font-family-mono)',
         colorText: 'var(--text-secondary)',
         colorTextSecondary: 'var(--text-secondary)',
         colorTextTertiary: 'var(--text-tertiary)',

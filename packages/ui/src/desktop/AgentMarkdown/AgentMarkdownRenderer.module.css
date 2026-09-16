@@ -3,9 +3,29 @@
 .ancillary:global(.x-markdown) {
   width: fit-content !important;
   max-width: 100%;
-  font-family: var(--font-family);
+  font-family: var(--font-family) !important;
   font-size: var(--content-font-size-md, 15px);
   line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* 标题 UA 默认 700，未加载该字重时中文会落到系统黑体 */
+.root:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6),
+.ancillary:global(.x-markdown) :is(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit !important;
+  font-weight: 600;
+}
+
+.root:global(.x-markdown) :is(p, div, span, li, ul, ol, strong, em, a, td, th),
+.ancillary:global(.x-markdown) :is(p, div, span, li, ul, ol, strong, em, a, td, th) {
+  font-family: inherit !important;
+}
+
+/* 宽表只允许横向滚动，避免竖向滚轮被表格滚动口吃掉 */
+.root:global(.x-markdown) :global(table),
+.ancillary:global(.x-markdown) :global(table) {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .ancillary:global(.x-markdown) {
