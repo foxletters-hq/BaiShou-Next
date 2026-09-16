@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -5,8 +6,9 @@ import {
   cacheHitPercent,
   clampRingPercent,
   formatContextTokenCount,
+  lastRoundPromptTokens,
   lastRoundUsagePercent,
-  sumLastRoundTokens,
+  type ContextOccupancySegment,
   type LastRoundTokenUsage
 } from '@baishou/shared'
 import { withAppContentOverlay } from '../overlay'
@@ -29,6 +31,7 @@ export interface ContextUsageCumulative {
 export interface ContextUsageRingProps {
   lastRound: LastRoundTokenUsage | null
   contextWindow: number
+  occupancy?: ContextOccupancySegment[]
   cumulative: ContextUsageCumulative
   pricingLastUpdated?: Date | null
   onRefreshPricing?: () => Promise<{ success: boolean; error?: string }>
@@ -54,18 +57,31 @@ function computePanelCoords(anchorRect: DOMRect, height: number): { left: number
   return { left, top }
 }
 
-function formatPricingUpdated(
-  date: Date | null | undefined,
-  unknownLabel: string
-): string {
+function formatPricingUpdated(date: Date | null | undefined, unknownLabel: string): string {
   if (!date) return unknownLabel
   const pad = (n: number) => n.toString().padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
+const OCCUPANCY_LABELS: Record<ContextOccupancySegment['id'], { key: string; fallback: string }> = {
+  conversation: {
+    key: 'agent.context_usage_segment_conversation',
+    fallback: i18n.t('auto.packages.ui.src.desktop.ContextUsageRing.index.L66', '对话')
+  },
+  tools: {
+    key: 'agent.context_usage_segment_tools',
+    fallback: i18n.t('auto.packages.ui.src.desktop.ContextUsageRing.index.L67', '工具结果')
+  },
+  system: {
+    key: 'agent.context_usage_segment_system',
+    fallback: i18n.t('auto.packages.ui.src.desktop.ContextUsageRing.index.L68', '系统与其它')
+  }
+}
+
 export const ContextUsageRing: React.FC<ContextUsageRingProps> = ({
   lastRound,
   contextWindow,
+  occupancy = [],
   cumulative,
   pricingLastUpdated,
   onRefreshPricing,
@@ -79,9 +95,10 @@ export const ContextUsageRing: React.FC<ContextUsageRingProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
 
-  const usedTokens = lastRound ? sumLastRoundTokens(lastRound) : 0
+  const usedTokens = lastRound ? lastRoundPromptTokens(lastRound) : 0
   const hitPercent = lastRound ? cacheHitPercent(lastRound) : null
   const percent = lastRoundUsagePercent(usedTokens, contextWindow)
+  const occupancySegments = occupancy.filter((segment) => segment.tokens > 0)
   const ringPercent = clampRingPercent(percent)
   const tone = ringTone(ringPercent)
   const radius = (RING_SIZE - RING_STROKE) / 2
@@ -108,7 +125,7 @@ export const ContextUsageRing: React.FC<ContextUsageRingProps> = ({
   useLayoutEffect(() => {
     if (!open) return
     placePanel()
-  }, [open, placePanel, lastRound, cumulative, pricingLastUpdated, refreshError])
+  }, [open, placePanel, lastRound, occupancy, cumulative, pricingLastUpdated, refreshError])
 
   useEffect(() => {
     if (!open) return
@@ -133,9 +150,7 @@ export const ContextUsageRing: React.FC<ContextUsageRingProps> = ({
       if (!result.success && result.error) setRefreshError(result.error)
     } catch (error) {
       setRefreshError(
-        error instanceof Error
-          ? error.message
-          : t('agent.chat.pricing_refresh_failed', '刷新失败')
+        error instanceof Error ? error.message : t('agent.chat.pricing_refresh_failed', '刷新失败')
       )
     } finally {
       setIsRefreshing(false)
@@ -217,8 +232,48 @@ export const ContextUsageRing: React.FC<ContextUsageRingProps> = ({
                       : `${formatContextTokenCount(usedTokens)} / ${formatContextTokenCount(contextWindow)}`}
                 </p>
                 <div className={styles.barTrack} aria-hidden>
-                  <div className={`${styles.barFill} ${styles[tone]}`} style={{ width: `${ringPercent}%` }} />
+                  {occupancySegments.length > 0 && contextWindow > 0 ? (
+                    occupancySegments.map((segment) => (
+                      <div
+                        key={segment.id}
+                        className={`${styles.barSegment} ${styles[`barSegment_${segment.id}`]}`}
+                        style={{
+                          width: `${(segment.tokens / Math.max(usedTokens, 1)) * ringPercent}%`
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <div
+                      className={`${styles.barFill} ${styles[tone]}`}
+                      style={{ width: `${ringPercent}%` }}
+                    />
+                  )}
                 </div>
+                {occupancySegments.length > 0 ? (
+                  <>
+                    {occupancySegments.map((segment) => (
+                      <div className={styles.row} key={segment.id}>
+                        <span className={styles.legendLabel}>
+                          <span
+                            className={`${styles.legendSwatch} ${styles[`barSegment_${segment.id}`]}`}
+                            aria-hidden
+                          />
+                          {t(
+                            OCCUPANCY_LABELS[segment.id].key,
+                            OCCUPANCY_LABELS[segment.id].fallback
+                          )}
+                        </span>
+                        <span>{formatContextTokenCount(segment.tokens)}</span>
+                      </div>
+                    ))}
+                    <p className={styles.occupancyHint}>
+                      {t(
+                        'agent.context_usage_segment_hint',
+                        '分段按上一轮提示总量摊开，系统与其它含人设、工具定义和技能目录等估算余量。'
+                      )}
+                    </p>
+                  </>
+                ) : null}
 
                 <h3 className={styles.sectionTitle}>
                   {t('agent.context_usage_last_round', '上一轮用量')}
@@ -270,13 +325,15 @@ export const ContextUsageRing: React.FC<ContextUsageRingProps> = ({
                 <div className={styles.row}>
                   <span>{t('agent.chat.cost_cumulative_input', '累计输入')}</span>
                   <span>
-                    {cumulative.inputTokens.toLocaleString()} {t('agent.chat.tokens_unit', 'tokens')}
+                    {cumulative.inputTokens.toLocaleString()}{' '}
+                    {t('agent.chat.tokens_unit', 'tokens')}
                   </span>
                 </div>
                 <div className={styles.row}>
                   <span>{t('agent.chat.cost_cumulative_output', '累计输出')}</span>
                   <span>
-                    {cumulative.outputTokens.toLocaleString()} {t('agent.chat.tokens_unit', 'tokens')}
+                    {cumulative.outputTokens.toLocaleString()}{' '}
+                    {t('agent.chat.tokens_unit', 'tokens')}
                   </span>
                 </div>
                 {cumulative.cacheReadTokens > 0 ? (

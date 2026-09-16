@@ -60,8 +60,12 @@
   padding: 18px 18px 22px;
   border-radius: 12px;
   border: 1px solid var(--border-card);
-  background: var(--bg-surface-highest);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  background: var(--bg-glass-surface);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.12),
+    0 1px 0 var(--bg-glass-inset) inset;
   box-sizing: border-box;
 }
 
@@ -96,14 +100,56 @@
   height: 6px;
   border-radius: 999px;
   background: var(--bg-surface-normal);
+  box-shadow: inset 0 0 0 1px var(--border-muted);
   overflow: hidden;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: stretch;
 }
 
 .barFill {
   height: 100%;
   border-radius: 999px;
   background: var(--color-primary);
+}
+
+.barSegment {
+  height: 100%;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.barSegment_conversation {
+  background: var(--color-primary);
+}
+
+.barSegment_tools {
+  background: var(--color-accent-purple);
+}
+
+.barSegment_system {
+  background: var(--color-secondary);
+}
+
+.legendLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.legendSwatch {
+  width: var(--spacing-sm);
+  height: var(--spacing-sm);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.occupancyHint {
+  margin: 0 0 12px;
+  font-size: var(--ui-fs-sm);
+  line-height: 1.45;
+  color: var(--text-tertiary);
 }
 
 .sectionTitle {
@@ -164,7 +210,7 @@
 }
 
 .refreshButton {
-  background: var(--bg-surface);
+  background: var(--bg-glass-inset);
   border: 1px solid var(--border-control);
   color: var(--text-primary);
   font-size: 12px;
@@ -175,7 +221,7 @@
 }
 
 .refreshButton:hover:not(:disabled) {
-  background: var(--bg-surface-high);
+  background: color-mix(in srgb, var(--bg-glass-inset) 70%, var(--bg-surface));
 }
 
 .refreshButton:disabled {
