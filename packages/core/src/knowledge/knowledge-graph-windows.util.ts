@@ -73,3 +73,15 @@ export function splitKnowledgeGraphWindows(
   }
   return { windows, truncated: offset < body.length }
 }
+
+/** 按抽取时的切窗规则回读第 n 个窗口；越界返回 null */
+export function resolveKnowledgeGraphWindow(input: {
+  text: string
+  sourceId: string
+  windowIndex: number
+  pages?: Array<{ page: number; start: number; end: number }> | null
+}): KnowledgeGraphWindow | null {
+  if (!Number.isInteger(input.windowIndex) || input.windowIndex < 0) return null
+  const { windows } = splitKnowledgeGraphWindows(input.text, input.sourceId, input.pages)
+  return windows[input.windowIndex] ?? null
+}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { splitKnowledgeGraphWindows } from '../knowledge-graph-windows.util'
+import {
+  resolveKnowledgeGraphWindow,
+  splitKnowledgeGraphWindows
+} from '../knowledge-graph-windows.util'
 
 describe('splitKnowledgeGraphWindows', () => {
   it('按页边界合并，超出上限记 truncated', () => {
@@ -27,5 +30,26 @@ describe('splitKnowledgeGraphWindows', () => {
     expect(windows.length).toBe(3)
     expect(truncated).toBe(false)
     expect(windows[2]?.sourceRef).toBe('src2#2')
+  })
+
+  it('should return the nth window when resolving by index', () => {
+    const text = 'x'.repeat(12_000)
+    const window = resolveKnowledgeGraphWindow({
+      text,
+      sourceId: 'src2',
+      windowIndex: 2
+    })
+    expect(window?.sourceRef).toBe('src2#2')
+    expect(window?.text).toBe('x'.repeat(2000))
+  })
+
+  it('should return null when window index is out of range', () => {
+    expect(
+      resolveKnowledgeGraphWindow({
+        text: 'short',
+        sourceId: 'src1',
+        windowIndex: 3
+      })
+    ).toBeNull()
   })
 })
