@@ -22,7 +22,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const thumbRef = useRef<HTMLDivElement>(null)
-  const [scrollRatio, setScrollRatio] = useState(0)
+  const [, setScrollRatio] = useState(0)
   const [thumbRatio, setThumbRatio] = useState(1)
   const [isOverflow, setIsOverflow] = useState(false)
   const [showYearPicker, setShowYearPicker] = useState(false)
@@ -238,7 +238,10 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
       </div>
 
       {showYearPicker && (
-        <div className={withAppContentOverlay(styles.yearOverlay)} onClick={() => setShowYearPicker(false)}>
+        <div
+          className={withAppContentOverlay(styles.yearOverlay)}
+          onClick={() => setShowYearPicker(false)}
+        >
           <div className={styles.yearModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.yearModalTitle}>{t('activity.select_year', '选择年份')}</div>
             <div className={styles.yearGrid}>

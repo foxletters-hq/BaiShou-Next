@@ -48,7 +48,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   isStreaming = false,
   basePath,
-  plainText = false
+  plainText: _plainText = false
 }) => {
   const { t } = useTranslation()
   const toast = useToast()
@@ -93,16 +93,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         remarkPlugins={remarkPlugins}
         rehypePlugins={[rehypeHighlight, rehypeKatex]}
         components={{
-          ul: ({ node, ...props }) => <ul className={styles.list} {...props} />,
-          ol: ({ node, ...props }) => <ol className={styles.list} {...props} />,
-          li: ({ node, ...props }) => <li className={styles.listItem} {...props} />,
-          p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
+          ul: ({ node: _node, ...props }) => <ul className={styles.list} {...props} />,
+          ol: ({ node: _node, ...props }) => <ol className={styles.list} {...props} />,
+          li: ({ node: _node, ...props }) => <li className={styles.listItem} {...props} />,
+          p: ({ node: _node, ...props }) => <p className={styles.paragraph} {...props} />,
           hr: () => <hr className={styles.hr} />,
-          em: ({ node, ...props }) => <em className={styles.italicAnnotation} {...props} />,
-          a: ({ node, ...props }) => (
+          em: ({ node: _node, ...props }) => <em className={styles.italicAnnotation} {...props} />,
+          a: ({ node: _node, ...props }) => (
             <a className={styles.link} target="_blank" rel="noopener noreferrer" {...props} />
           ),
-          img: ({ node, ...props }) => {
+          img: ({ node: _node, ...props }) => {
             const { src: cleanSrc, width } = parseImgWidth(props.src)
             const resolvedSrc = resolveAttachment(cleanSrc)
             const isLocal = cleanSrc && basePath && cleanSrc.startsWith('attachment/')
@@ -195,7 +195,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
             return renderImg()
           },
-          video: ({ node, ...props }) => (
+          video: ({ node: _node, ...props }) => (
             <video
               {...props}
               src={resolveAttachment(props.src)}
@@ -203,7 +203,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               controls
             />
           ),
-          audio: ({ node, ...props }) => (
+          audio: ({ node: _node, ...props }) => (
             <audio
               {...props}
               src={resolveAttachment(props.src)}
@@ -212,7 +212,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             />
           ),
           pre: ({ children }) => <>{children}</>,
-          code({ node, className, children, inline, ...props }: any) {
+          code({ node: _node, className, children, inline, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '')
             if (inline) {
               return (
@@ -245,7 +245,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               </div>
             )
           },
-          blockquote: ({ node, ...props }) => (
+          blockquote: ({ node: _node, ...props }) => (
             <blockquote className={styles.blockquote} {...props} />
           )
         }}

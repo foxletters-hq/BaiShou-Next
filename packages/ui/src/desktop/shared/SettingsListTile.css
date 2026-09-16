@@ -316,55 +316,6 @@
   background-color: rgba(var(--color-primary-rgb), 0.08);
 }
 
-/* ---- Switch 开关 (复制 Flutter Switch 外观) ---- */
-.settings-switch-label {
-  position: relative;
-  display: inline-block;
-  width: 52px;
-  height: 28px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.settings-switch-label input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.settings-switch-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(148, 163, 184, 0.4);
-  transition: 0.3s;
-  border-radius: 28px;
-}
-
-.settings-switch-slider:before {
-  position: absolute;
-  content: '';
-  height: 22px;
-  width: 22px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--bg-surface);
-  transition: 0.3s;
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.settings-switch-label input:checked + .settings-switch-slider {
-  background-color: var(--color-primary);
-}
-
-.settings-switch-label input:checked + .settings-switch-slider:before {
-  transform: translateX(24px);
-}
-
 /* ---- Number input (for port fields etc.) ---- */
 .settings-number-input {
   width: 100px;

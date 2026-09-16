@@ -1,16 +1,9 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  formatKnowledgeCitationLocation,
-  type KnowledgeCitationView
-} from '@baishou/shared'
+import { formatKnowledgeCitationLocation, type KnowledgeCitationView } from '@baishou/shared'
 import styles from './KnowledgeCitationBlock.module.css'
 
-export function KnowledgeCitationBlock({
-  citations
-}: {
-  citations: KnowledgeCitationView[]
-}) {
+export function KnowledgeCitationBlock({ citations }: { citations: KnowledgeCitationView[] }) {
   const { t } = useTranslation()
   if (citations.length === 0) return null
 
