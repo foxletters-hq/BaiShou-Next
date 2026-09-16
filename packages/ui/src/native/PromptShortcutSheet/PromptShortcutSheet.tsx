@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 快捷指令：列表、编辑与分页同文件 */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
@@ -210,6 +211,8 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     } finally {
       setSaving(false)
     }
+    // shortcuts 只取 length，避免整表引用变化就重建保存回调
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     draftContent,
     draftName,

@@ -269,7 +269,9 @@ export const McpSettingsCard: React.FC<NativeMcpSettingsCardProps> = ({
             '将下方配置粘贴到 mcpServers 中（推荐 /mcp；若客户端仅支持旧版 SSE，改用 /sse），保存后重启 Cursor 或刷新 MCP 列表。'
           )}
         </Text>
-        <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 6 }}>
+        <Text
+          style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginTop: 6 }}
+        >
           {t('settings.mcp_help_streamable_title', '推荐：Streamable HTTP（/mcp）')}
         </Text>
         <Text

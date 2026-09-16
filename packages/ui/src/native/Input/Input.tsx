@@ -62,7 +62,6 @@ export interface NativeInputProps extends Omit<HeroInputProps, 'children'> {
 /**
  * 统一的白守 Input —— TextField + Input，并带 RN 场域样式兜底（不依赖 Uniwind）。
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Input = forwardRef<any, NativeInputProps>(
   (
     {

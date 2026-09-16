@@ -1,17 +1,10 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import {
-  formatKnowledgeCitationLocation,
-  type KnowledgeCitationView
-} from '@baishou/shared'
+import { formatKnowledgeCitationLocation, type KnowledgeCitationView } from '@baishou/shared'
 import { useNativeTheme } from '../theme'
 
-export function KnowledgeCitationBlock({
-  citations
-}: {
-  citations: KnowledgeCitationView[]
-}) {
+export function KnowledgeCitationBlock({ citations }: { citations: KnowledgeCitationView[] }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   if (citations.length === 0) return null
@@ -32,7 +25,9 @@ export function KnowledgeCitationBlock({
               {location ? `（${location}）` : ''}
             </Text>
             {citation.excerpt ? (
-              <Text style={[styles.excerpt, { color: colors.textSecondary }]}>{citation.excerpt}</Text>
+              <Text style={[styles.excerpt, { color: colors.textSecondary }]}>
+                {citation.excerpt}
+              </Text>
             ) : null}
           </View>
         )

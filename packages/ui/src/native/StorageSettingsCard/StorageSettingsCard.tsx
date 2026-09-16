@@ -101,8 +101,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
         <View style={styles.actions}>
           {onMigrateFromFlutterLegacy ? (
             <Button
-              variant="primary"
-              className="w-full"
+              variant="outlined"
               onPress={() => void onMigrateFromFlutterLegacy()}
             >
               {migrateFromFlutterLegacyLabel ??
@@ -110,14 +109,13 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
             </Button>
           ) : null}
           {onMigrateDirectory ? (
-            <Button variant="primary" className="w-full" onPress={() => void onMigrateDirectory()}>
+            <Button variant="outlined" onPress={() => void onMigrateDirectory()}>
               {migrateDirectoryLabel ?? t('storage.migrate_directory', '迁移数据目录')}
             </Button>
           ) : null}
           {onChangeDirectory ? (
             <Button
-              variant="outline"
-              className="w-full"
+              variant="outlined"
               style={{ backgroundColor: colors.bgSurface }}
               onPress={() => void onChangeDirectory()}
             >
@@ -165,8 +163,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
           <View style={styles.actions}>
             {onChangeExternalJournalsDirectory ? (
               <Button
-                variant="outline"
-                className="w-full"
+                variant="outlined"
                 style={{ backgroundColor: colors.bgSurface }}
                 onPress={() => void onChangeExternalJournalsDirectory()}
               >
@@ -175,8 +172,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
             ) : null}
             {externalJournalsPath && onClearExternalJournalsDirectory ? (
               <Button
-                variant="outline"
-                className="w-full"
+                variant="outlined"
                 style={{ backgroundColor: colors.bgSurface }}
                 onPress={() => void onClearExternalJournalsDirectory()}
               >
@@ -237,8 +233,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
           <View style={styles.actions}>
             {onChangeExternalSummariesDirectory ? (
               <Button
-                variant="outline"
-                className="w-full"
+                variant="outlined"
                 style={{ backgroundColor: colors.bgSurface }}
                 onPress={() => void onChangeExternalSummariesDirectory()}
               >
@@ -247,8 +242,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
             ) : null}
             {externalSummariesPath && onClearExternalSummariesDirectory ? (
               <Button
-                variant="outline"
-                className="w-full"
+                variant="outlined"
                 style={{ backgroundColor: colors.bgSurface }}
                 onPress={() => void onClearExternalSummariesDirectory()}
               >

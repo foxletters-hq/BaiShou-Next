@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useMemo } from 'react'
-import { useColorScheme } from 'react-native'
 import { lightColors, darkColors, sharedTokens } from '../theme'
 
 type ThemeColors = typeof lightColors
