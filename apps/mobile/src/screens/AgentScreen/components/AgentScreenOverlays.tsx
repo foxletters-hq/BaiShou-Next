@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import * as Clipboard from 'expo-clipboard'
 import type { PromptShortcut, SharedMemoryCopyPreview } from '@baishou/shared'
 import {
@@ -10,6 +10,7 @@ import {
 } from '@baishou/ui/native'
 import { AgentDrawer } from '../../../components/AgentDrawer'
 import { AssistantPicker } from '../../../components/AssistantPicker'
+import { AssistantCreateSheet } from './AssistantCreateSheet'
 import { ModelSwitcher } from '../../../components/ModelSwitcher'
 import {
   ContextChainDialog,
@@ -107,6 +108,7 @@ export type AgentScreenOverlaysProps = {
 }
 
 export function AgentScreenOverlays(props: AgentScreenOverlaysProps) {
+  const [showCreateAssistant, setShowCreateAssistant] = useState(false)
   const {
     drawerOpen,
     setDrawerOpen,
@@ -235,6 +237,17 @@ export function AgentScreenOverlays(props: AgentScreenOverlaysProps) {
         selectedAssistantId={currentAssistant?.id}
         assistants={pickerAssistants}
         onAssistantsChanged={() => void loadAssistants()}
+        onCreatePress={() => {
+          setShowAssistantPicker(false)
+          setShowCreateAssistant(true)
+        }}
+      />
+      <AssistantCreateSheet
+        visible={showCreateAssistant}
+        onClose={() => setShowCreateAssistant(false)}
+        onCreated={(assistant) => {
+          void loadAssistants().then(() => handleSelectAssistantWithTracking(assistant))
+        }}
       />
 
       <ModelSwitcher
