@@ -430,19 +430,23 @@
 .skillEditorWrap {
   width: 100%;
   min-width: 0;
+  /* 先在包装层算出对话正文字号，编辑器与提示语用 inherit，避免 contenteditable 落到页面默认 16px */
+  font-size: var(--ui-fs-lg);
+  font-family: var(--font-family);
 }
 
 .skillEditor {
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: var(--font-family);
+  font-family: inherit;
+  font-size: inherit;
 }
 
 /* 禁止粘贴/IME 残留的内联底色盖在普通文字上（引用芯片除外） */
 .skillEditor
-  :where(span, font, mark, b, i, u, strong, em, a):not([data-skill-chip]):not([data-skill-ref]):not(
-    [data-file-chip]
-  ):not([data-file-ref]) {
+  :where(span, font, mark, b, i, u, strong, em, a, div, p):not([data-skill-chip]):not(
+    [data-skill-ref]
+  ):not([data-file-chip]):not([data-file-ref]) {
   background: transparent !important;
   background-color: transparent !important;
   color: inherit !important;
@@ -455,7 +459,9 @@
   content: attr(data-placeholder);
   color: var(--text-tertiary);
   font-weight: 400;
-  line-height: 22px;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: inherit;
   pointer-events: none;
 }
 
@@ -553,8 +559,8 @@
   outline: none;
   /* 未达最大行数时隐藏滚动条，由 JS 在顶满后切到 auto */
   overflow-y: hidden;
-  font-family: var(--font-family, sans-serif);
-  font-size: var(--content-font-size, 14px);
+  font-family: inherit;
+  font-size: inherit;
   font-weight: 400;
   color: var(--text-primary);
   padding: 5px 4px;
@@ -585,7 +591,9 @@
 .textarea::placeholder {
   color: var(--text-tertiary);
   font-weight: 400;
-  line-height: 22px;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: inherit;
   opacity: 1;
 }
 

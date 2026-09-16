@@ -18,8 +18,9 @@ describe('input-bar-attachment.util', () => {
   it('resolves path via getPathForFile when file.path is missing', () => {
     const file = new File(['x'], 'shot.png', { type: 'image/png' })
     const getPathForFile = vi.fn(() => 'D:/shots/shot.png')
-    ;(window as Window & { api?: { agentWorkspace?: { getPathForFile?: (next: File) => string } } }).api =
-      { agentWorkspace: { getPathForFile } }
+    ;(
+      window as Window & { api?: { agentWorkspace?: { getPathForFile?: (next: File) => string } } }
+    ).api = { agentWorkspace: { getPathForFile } }
     expect(resolveDroppedFilePath(file)).toBe('D:/shots/shot.png')
     expect(getPathForFile).toHaveBeenCalledWith(file)
     delete (window as Window & { api?: unknown }).api

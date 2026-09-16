@@ -1,9 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import styles from './InputBar.module.css'
-import {
-  getInputBarTextareaMinHeight,
-  INPUT_BAR_TEXTAREA_MAX_HEIGHT
-} from './useInputBarExpand'
+import { getInputBarTextareaMinHeight, INPUT_BAR_TEXTAREA_MAX_HEIGHT } from './useInputBarExpand'
 import {
   getAtTokenBeforeCaret,
   getSlashTokenBeforeCaret,

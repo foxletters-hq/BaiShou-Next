@@ -1,7 +1,4 @@
-import {
-  fileToChatAttachment,
-  type InputBarAttachment
-} from './input-bar-attachment.util'
+import { fileToChatAttachment, type InputBarAttachment } from './input-bar-attachment.util'
 
 export type InputBarAttachmentIntake = 'companion' | 'workspace'
 

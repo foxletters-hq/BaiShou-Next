@@ -74,8 +74,7 @@ function buildSkillMenuItems(options: {
       const command = getShortcutCommand(skill)
       const displayName = skill.name?.trim()
       items.push({
-        icon:
-          skill.source === 'workspace' ? <FolderOpen size={15} /> : <Sparkles size={15} />,
+        icon: skill.source === 'workspace' ? <FolderOpen size={15} /> : <Sparkles size={15} />,
         label: displayName ? `${displayName}` : `/${command}`,
         onClick: () => applyShortcut(skill)
       })
@@ -309,8 +308,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
   const placeholder =
     skillRefs.length > 0
       ? t('shortcut.skill_ref_placeholder', '补充说明（可选）…')
-      : (vm.placeholder ??
-        t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line'))
+      : (vm.placeholder ?? t('agent.chat.input_hint', 'Type a message… Shift+Enter for new line'))
 
   const mentionPickerItems = useMemo(
     () =>
@@ -332,8 +330,7 @@ export function InputBarView({ vm }: { vm: InputBarViewModel }) {
     allowSendWhileLoading,
     hasStopHandler: Boolean(onStop)
   })
-  const sendDisabled =
-    isSending || !canSend || (isLoading && !allowSendWhileLoading)
+  const sendDisabled = isSending || !canSend || (isLoading && !allowSendWhileLoading)
 
   return (
     <div

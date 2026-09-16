@@ -187,6 +187,23 @@ describe('skill-composer.util', () => {
     root.remove()
   })
 
+  it('should persist a directory chip as a folder mention', () => {
+    const root = mountEditor()
+    root.appendChild(
+      createFileRefChipElement(
+        { id: 'd1', relativePath: '设定', origin: 'explorer-drop', isDirectory: true },
+        'chip',
+        'chipText'
+      )
+    )
+    const snap = serializeSkillComposer(root)
+    expect(snap.fileRefs).toEqual([
+      expect.objectContaining({ relativePath: '设定', isDirectory: true, origin: 'explorer-drop' })
+    ])
+    expect(snap.plainText).toContain('@设定/')
+    root.remove()
+  })
+
   it('removes adjacent file chip on backspace', () => {
     const root = mountEditor()
     const chip = createFileRefChipElement(
