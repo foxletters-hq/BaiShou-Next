@@ -59,7 +59,6 @@ export function collectSkillPropertyDecorations(
       }
       return
     }
-    if (isActive) return
     const keyMatch = line.text.match(PROPERTY_KEY_RE)
     if (!keyMatch) return
     const keyTo = line.from + keyMatch[1]!.length

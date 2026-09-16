@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest'
-import { EditorView } from '@codemirror/view'
 import { createDiaryCodeMirror } from '../createDiaryCodeMirror'
 import { replaceEditorDocumentContent } from '../editorContentSync'
 
@@ -44,6 +43,21 @@ describe('replaceEditorDocumentContent', () => {
     expect(view.state.selection.main.anchor).toBe(6)
 
     view.destroy()
+    parent.remove()
+  })
+
+  it('should skip replace when the editor view has been destroyed', () => {
+    const parent = document.createElement('div')
+    document.body.appendChild(parent)
+
+    const view = createDiaryCodeMirror(parent, {
+      content: 'hello',
+      platform: { resolveAttachmentUrl: (s) => s, interactionMode: 'mouse' }
+    })
+
+    view.destroy()
+    expect(replaceEditorDocumentContent(view, 'next')).toBe(false)
+
     parent.remove()
   })
 })
