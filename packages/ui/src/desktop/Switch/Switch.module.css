@@ -1,6 +1,10 @@
 .root {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
+  line-height: 0;
+  vertical-align: middle;
   cursor: pointer;
 }
 
@@ -9,24 +13,28 @@
   opacity: 0;
   width: 0;
   height: 0;
+  margin: 0;
+  pointer-events: none;
 }
 
 .track {
-  width: 52px;
-  height: 32px;
+  box-sizing: border-box;
+  width: 42px;
+  height: 24px;
   background-color: var(--bg-surface-high);
   border-radius: var(--radius-full);
   position: relative;
   transition: background-color var(--duration-fast) ease;
-  border: 2px solid var(--border-muted);
+  border: 1.5px solid var(--border-muted);
 }
 
 .thumb {
   position: absolute;
-  top: 2px;
+  top: 50%;
   left: 2px;
-  width: 24px;
-  height: 24px;
+  width: 17px;
+  height: 17px;
+  transform: translateY(-50%);
   background-color: var(--text-secondary);
   border-radius: 50%;
   transition:
@@ -44,13 +52,13 @@
 }
 
 .input:checked + .track .thumb {
-  transform: translateX(20px);
+  transform: translate(18px, -50%);
   background-color: var(--bg-surface);
 }
 
 .labelOn,
 .labelOff {
-  font-size: 10px;
+  font-size: 9px;
   font-family: var(--font-family);
   position: absolute;
   transition: opacity var(--duration-fast) ease;
@@ -77,25 +85,25 @@
   cursor: not-allowed;
 }
 
-/* Compact size for dense chrome (e.g. provider enable) */
-.sizeSm .track {
-  width: 42px;
-  height: 24px;
-  border-width: 1.5px;
+.sizeMd .track {
+  width: 52px;
+  height: 32px;
+  border-width: 2px;
 }
 
-.sizeSm .thumb {
+.sizeMd .thumb {
   top: 2px;
   left: 2px;
-  width: 17px;
-  height: 17px;
+  width: 24px;
+  height: 24px;
+  transform: none;
 }
 
-.sizeSm .input:checked + .track .thumb {
-  transform: translateX(18px);
+.sizeMd .input:checked + .track .thumb {
+  transform: translateX(20px);
 }
 
-.sizeSm .labelOn,
-.sizeSm .labelOff {
-  font-size: 9px;
+.sizeMd .labelOn,
+.sizeMd .labelOff {
+  font-size: 10px;
 }

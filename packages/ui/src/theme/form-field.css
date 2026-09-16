@@ -63,7 +63,7 @@ textarea.baishou-form-field:disabled {
 .baishou-form-field--small {
   padding: 6px 10px;
   font-size: var(--ui-fs-md);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .baishou-form-field--error {
