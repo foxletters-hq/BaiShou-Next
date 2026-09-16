@@ -1,81 +1,31 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-  View,
-  Text,
-  Pressable,
-  FlatList,
-  StyleSheet,
-  ActivityIndicator,
-  TextInput,
-  Alert,
-  ScrollView
-} from 'react-native'
+import { View, Text, Pressable, FlatList, StyleSheet, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { getNotebookCardAppearance } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import {
-  mobileGetKnowledgeStats,
-  mobileGetNotebookGraphView,
-  mobileHasKnowledgeModelMismatch,
-  mobileImportSource,
   mobileListNotebooks,
-  mobileListNotebookStats,
-  mobileListSources,
-  mobileRebuildKnowledgeIndex
+  mobileListNotebookStats
 } from '@/src/services/mobile-knowledge.service'
-import { scheduleConsumeMobileKnowledgeIngestJobs } from '@/src/services/mobile-knowledge-ingest-jobs.consumer'
+import {
+  formatKnowledgeBytesMb,
+  NOTEBOOK_TONE_COLORS,
+  type KnowledgeNotebookStats
+} from './knowledge-screen.util'
 
 type NotebookRow = {
   id: string
   name: string
   description?: string
-}
-
-type SourceRow = {
-  id: string
-  title: string
-  status: string
-  errorMessage?: string | null
-}
-
-type NotebookStats = {
-  sources: number
-  chunks: number
-  pendingJobs: number
-  originalBytes: number
-  totalBytes: number
-}
-
-function formatMb(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0'
-  return (bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 1 : 2)
-}
-
-function statusLabel(status: string, t: (k: string, f: string) => string): string {
-  switch (status) {
-    case 'pending':
-      return t('knowledge.status_pending', '等待中')
-    case 'extracting':
-      return t('knowledge.status_extracting', '提取中')
-    case 'needs_ocr':
-      return t('knowledge.status_needs_ocr', '需 OCR')
-    case 'partial':
-      return t('knowledge.status_partial', '部分文本')
-    case 'embedding':
-      return t('knowledge.status_embedding', '索引中')
-    case 'ready':
-      return t('knowledge.status_ready', '就绪')
-    case 'failed':
-      return t('knowledge.status_failed', '失败')
-    case 'stored':
-      return t('knowledge.status_stored', '仅原文')
-    default:
-      return status
-  }
+  coverTone?: string
+  coverIcon?: string
+  coverImage?: string
 }
 
 export function KnowledgeScreen() {
@@ -85,29 +35,14 @@ export function KnowledgeScreen() {
   const router = useRouter()
   const chrome = getStackScreenChrome(colors)
   const { dbReady } = useBaishou()
-
   const [notebooks, setNotebooks] = useState<NotebookRow[]>([])
-  const [statsById, setStatsById] = useState<Record<string, NotebookStats>>({})
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [sources, setSources] = useState<SourceRow[]>([])
-  const [busy, setBusy] = useState(false)
+  const [statsById, setStatsById] = useState<Record<string, KnowledgeNotebookStats>>({})
   const [error, setError] = useState('')
-  const [modelMismatch, setModelMismatch] = useState(false)
-  const [pasteTitle, setPasteTitle] = useState('')
-  const [pasteText, setPasteText] = useState('')
-  const [urlValue, setUrlValue] = useState('')
-  const [showImport, setShowImport] = useState<'text' | 'url' | null>(null)
-  const [graphNodes, setGraphNodes] = useState<Array<{ id: string; name: string; nodeType: string }>>(
-    []
-  )
-  const [graphEdges, setGraphEdges] = useState<
-    Array<{ id: string; fromId: string; toId: string; edgeType: string }>
-  >([])
 
   const refreshList = useCallback(async () => {
     const list = (await mobileListNotebooks()) as NotebookRow[]
     setNotebooks(list || [])
-    const next: Record<string, NotebookStats> = {}
+    const next: Record<string, KnowledgeNotebookStats> = {}
     try {
       const statsList = await mobileListNotebookStats()
       for (const row of statsList) {
@@ -123,347 +58,31 @@ export function KnowledgeScreen() {
       /* 列表统计失败时卡片仍可点进 */
     }
     setStatsById(next)
-    try {
-      setModelMismatch(await mobileHasKnowledgeModelMismatch())
-    } catch {
-      setModelMismatch(false)
-    }
   }, [])
 
-  const refreshDetail = useCallback(async (notebookId: string) => {
-    const list = (await mobileListSources(notebookId)) as SourceRow[]
-    setSources(list || [])
-    try {
-      const stats = await mobileGetKnowledgeStats(notebookId)
-      setStatsById((prev) => ({
-        ...prev,
-        [notebookId]: {
-          sources: stats.sources,
-          chunks: stats.chunks,
-          pendingJobs: stats.pendingJobs,
-          originalBytes: stats.originalBytes ?? 0,
-          totalBytes: stats.totalBytes ?? 0
-        }
-      }))
-    } catch {
-      /* 统计失败时仍刷新资料与图 */
-    }
-    try {
-      const view = await mobileGetNotebookGraphView(notebookId, 80)
-      setGraphNodes((view.nodes || []).map((n) => ({ id: n.id, name: n.name, nodeType: n.nodeType })))
-      setGraphEdges(
-        (view.edges || []).map((e) => ({
-          id: e.id,
-          fromId: e.fromId,
-          toId: e.toId,
-          edgeType: e.edgeType
-        }))
-      )
-    } catch {
-      setGraphNodes([])
-      setGraphEdges([])
-    }
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      if (!dbReady) return
+      void refreshList().catch((e) => setError(String((e as Error)?.message || e)))
+    }, [dbReady, refreshList])
+  )
 
   useEffect(() => {
     if (!dbReady) return
     void refreshList().catch((e) => setError(String((e as Error)?.message || e)))
-    scheduleConsumeMobileKnowledgeIngestJobs('knowledge-screen-open')
   }, [dbReady, refreshList])
-
-  const hasActiveIngest =
-    sources.some(
-      (s) => s.status === 'pending' || s.status === 'extracting' || s.status === 'embedding'
-    ) || (selectedId ? (statsById[selectedId]?.pendingJobs ?? 0) > 0 : false)
-
-  useEffect(() => {
-    if (!selectedId) return
-    void refreshDetail(selectedId).catch(() => undefined)
-  }, [selectedId, refreshDetail])
-
-  useEffect(() => {
-    if (!selectedId || !hasActiveIngest) return
-    const timer = setInterval(() => {
-      void refreshDetail(selectedId).catch(() => undefined)
-    }, 4000)
-    return () => clearInterval(timer)
-  }, [selectedId, hasActiveIngest, refreshDetail])
-
-  const onImportText = async () => {
-    if (!selectedId || !pasteText.trim()) return
-    setBusy(true)
-    setError('')
-    try {
-      await mobileImportSource({
-        notebookId: selectedId,
-        title: pasteTitle.trim() || t('knowledge.pasted_text', '粘贴文本'),
-        kind: 'text',
-        textContent: pasteText
-      })
-      setPasteTitle('')
-      setPasteText('')
-      setShowImport(null)
-      await refreshDetail(selectedId)
-      await refreshList()
-      Alert.alert(t('knowledge.import_queued', '已加入摄入队列'))
-    } catch (e) {
-      setError(String((e as Error)?.message || e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const onImportUrl = async () => {
-    const originUrl = urlValue.trim()
-    if (!selectedId || !originUrl) return
-    setBusy(true)
-    setError('')
-    try {
-      await mobileImportSource({
-        notebookId: selectedId,
-        title: '',
-        kind: 'url',
-        originUrl
-      })
-      setUrlValue('')
-      setShowImport(null)
-      await refreshDetail(selectedId)
-      await refreshList()
-      Alert.alert(t('knowledge.import_queued', '已加入摄入队列'))
-    } catch (e) {
-      setError(String((e as Error)?.message || e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const selected = notebooks.find((n) => n.id === selectedId)
-  const selectedStats = selectedId ? statsById[selectedId] : null
 
   return (
     <StackScreenLayout
       title={t('knowledge.title', '知识库')}
       {...chrome}
-      onBack={() => (selectedId ? setSelectedId(null) : router.back())}
+      onBack={() => router.back()}
       contentStyle={{ flex: 1 }}
     >
       {!dbReady ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
-      ) : selectedId && selected ? (
-        <ScrollView
-          contentContainerStyle={[styles.pad, { paddingBottom: insets.bottom + 24 }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={[styles.h1, { color: colors.textPrimary }]}>{selected.name}</Text>
-          {selectedStats ? (
-            <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>
-              {t('knowledge.storage_usage', '本笔记本 {{total}} MB，其中原文 {{original}} MB', {
-                total: formatMb(selectedStats.totalBytes),
-                original: formatMb(selectedStats.originalBytes)
-              })}
-              {selectedStats.pendingJobs > 0
-                ? ` · ${t('knowledge.indexing', '索引中')} ${selectedStats.pendingJobs}`
-                : ''}
-            </Text>
-          ) : null}
-
-          {modelMismatch ? (
-            <View
-              style={[
-                styles.banner,
-                { backgroundColor: colors.bgSurface, borderColor: colors.error }
-              ]}
-            >
-              <Text style={{ color: colors.error, fontWeight: '600' }}>
-                {t('knowledge.model_mismatch_title', '嵌入模型不一致')}
-              </Text>
-              <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
-                {t(
-                  'knowledge.model_mismatch_hard_block',
-                  '提问已硬拦截。请重建索引后再问，否则答案会错得很像样。'
-                )}
-              </Text>
-              <Pressable
-                style={[styles.btn, { backgroundColor: colors.primary, marginTop: 8 }]}
-                disabled={busy}
-                onPress={() => {
-                  void (async () => {
-                    setBusy(true)
-                    try {
-                      await mobileRebuildKnowledgeIndex(selectedId)
-                      setModelMismatch(await mobileHasKnowledgeModelMismatch())
-                    } catch (e) {
-                      setError(String((e as Error)?.message || e))
-                    } finally {
-                      setBusy(false)
-                    }
-                  })()
-                }}
-              >
-                <Text style={styles.btnText}>{t('knowledge.rebuild_index', '重建索引')}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            <Pressable
-              style={[styles.btn, { backgroundColor: colors.primary, paddingHorizontal: 12 }]}
-              disabled={busy}
-              onPress={() => setShowImport('text')}
-            >
-              <Text style={styles.btnText}>{t('knowledge.import_text', '粘贴文本')}</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.btn, { backgroundColor: colors.primary, paddingHorizontal: 12 }]}
-              disabled={busy}
-              onPress={() => setShowImport('url')}
-            >
-              <Text style={styles.btnText}>{t('knowledge.import_url', '导入 URL')}</Text>
-            </Pressable>
-          </View>
-
-          {showImport === 'text' ? (
-            <View style={{ marginBottom: 16 }}>
-              <TextInput
-                value={pasteTitle}
-                onChangeText={setPasteTitle}
-                placeholder={t('knowledge.source_title', '标题')}
-                placeholderTextColor={colors.textSecondary}
-                style={[
-                  styles.input,
-                  {
-                    minHeight: 40,
-                    color: colors.textPrimary,
-                    borderColor: colors.borderSubtle,
-                    backgroundColor: colors.bgSurface
-                  }
-                ]}
-              />
-              <TextInput
-                value={pasteText}
-                onChangeText={setPasteText}
-                placeholder={t('knowledge.source_body', '正文')}
-                placeholderTextColor={colors.textSecondary}
-                style={[
-                  styles.input,
-                  {
-                    color: colors.textPrimary,
-                    borderColor: colors.borderSubtle,
-                    backgroundColor: colors.bgSurface
-                  }
-                ]}
-                multiline
-              />
-              <Pressable
-                style={[styles.btn, { backgroundColor: colors.primary }]}
-                disabled={busy || !pasteText.trim()}
-                onPress={() => void onImportText()}
-              >
-                <Text style={styles.btnText}>{t('knowledge.import_submit', '导入')}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {showImport === 'url' ? (
-            <View style={{ marginBottom: 16 }}>
-              <TextInput
-                value={urlValue}
-                onChangeText={setUrlValue}
-                placeholder="https://"
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="none"
-                style={[
-                  styles.input,
-                  {
-                    minHeight: 40,
-                    color: colors.textPrimary,
-                    borderColor: colors.borderSubtle,
-                    backgroundColor: colors.bgSurface
-                  }
-                ]}
-              />
-              <Pressable
-                style={[styles.btn, { backgroundColor: colors.primary }]}
-                disabled={busy || !urlValue.trim()}
-                onPress={() => void onImportUrl()}
-              >
-                <Text style={styles.btnText}>{t('knowledge.import_submit', '导入')}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          <Text style={[styles.section, { color: colors.textPrimary }]}>
-            {t('knowledge.sources', '资料')}
-          </Text>
-          {sources.length === 0 ? (
-            <Text style={{ color: colors.textSecondary }}>
-              {t(
-                'knowledge.empty_sources_mobile',
-                '暂无资料。可粘贴文本 / 导入 URL，或在桌面端导入后同步。'
-              )}
-            </Text>
-          ) : (
-            sources.map((s) => (
-              <View
-                key={s.id}
-                style={[styles.sourceRow, { borderBottomColor: colors.borderSubtle }]}
-              >
-                <Text style={{ color: colors.textPrimary, flex: 1 }}>{s.title}</Text>
-                <Text style={{ color: colors.textSecondary }}>{statusLabel(s.status, t)}</Text>
-              </View>
-            ))
-          )}
-
-          <Text style={[styles.section, { color: colors.textPrimary, marginTop: 20 }]}>
-            {t('knowledge.graph_panel', '本笔记本图谱')}
-          </Text>
-          {graphNodes.length === 0 ? (
-            <Text style={{ color: colors.textSecondary, marginBottom: 12 }}>
-              {t('knowledge.graph_empty', '导入资料并完成抽取后，这里会显示本笔记本的实体关系。')}
-            </Text>
-          ) : (
-            <View style={{ marginBottom: 16 }}>
-              <View style={styles.graphCanvas}>
-                {graphNodes.slice(0, 12).map((n, i) => (
-                  <View
-                    key={n.id}
-                    style={[
-                      styles.graphDot,
-                      {
-                        backgroundColor: colors.primary,
-                        left: 12 + (i % 4) * 78,
-                        top: 10 + Math.floor(i / 4) * 46
-                      }
-                    ]}
-                  >
-                    <Text style={styles.graphDotText} numberOfLines={1}>
-                      {n.name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-              {graphEdges.slice(0, 8).map((e) => {
-                const from = graphNodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 6)
-                const to = graphNodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 6)
-                return (
-                  <Text key={e.id} style={{ color: colors.textSecondary, marginTop: 4 }}>
-                    {from} —{e.edgeType}→ {to}
-                  </Text>
-                )
-              })}
-            </View>
-          )}
-
-          <Text style={[styles.mountHint, { color: colors.textSecondary }]}>
-            {t(
-              'knowledge.mount_hint',
-              '资料嵌入完成后，可以挂载到伙伴对话里检索。知识库本身不再单独保存对话。'
-            )}
-          </Text>
-          {error ? <Text style={{ color: colors.error, marginTop: 8 }}>{error}</Text> : null}
-        </ScrollView>
       ) : (
         <FlatList
           data={notebooks}
@@ -479,16 +98,23 @@ export function KnowledgeScreen() {
           }
           renderItem={({ item }) => {
             const stats = statsById[item.id]
+            const appearance = getNotebookCardAppearance(item.id, item)
+            const toneColor = NOTEBOOK_TONE_COLORS[appearance.tone] || colors.primaryLight
             return (
               <Pressable
-                onPress={() => setSelectedId(item.id)}
+                onPress={() => router.push(`/knowledge/${encodeURIComponent(item.id)}`)}
                 style={[
                   styles.card,
-                  { backgroundColor: colors.bgSurface, borderColor: colors.borderSubtle }
+                  { backgroundColor: colors.bgSurface, borderColor: colors.borderMuted }
                 ]}
               >
-                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{item.name}</Text>
-                <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
+                <View style={styles.cardHead}>
+                  <View style={[styles.cover, { backgroundColor: toneColor }]}>
+                    <Text style={styles.coverIcon}>{appearance.icon}</Text>
+                  </View>
+                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{item.name}</Text>
+                </View>
+                <Text style={{ color: colors.textSecondary, marginTop: 8 }}>
                   {t('knowledge.notebook_meta', '{{sources}} 份资料 · {{chunks}} 片段', {
                     sources: stats?.sources ?? '…',
                     chunks: stats?.chunks ?? '…'
@@ -500,8 +126,8 @@ export function KnowledgeScreen() {
                       'knowledge.storage_usage',
                       '本笔记本 {{total}} MB，其中原文 {{original}} MB',
                       {
-                        total: formatMb(stats.totalBytes),
-                        original: formatMb(stats.originalBytes)
+                        total: formatKnowledgeBytesMb(stats.totalBytes),
+                        original: formatKnowledgeBytesMb(stats.originalBytes)
                       }
                     )}
                   </Text>
@@ -523,56 +149,20 @@ export function KnowledgeScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   pad: { padding: 16 },
-  h1: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
-  section: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
-  mountHint: { fontSize: 13, lineHeight: 20, marginTop: 16, marginBottom: 8 },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 10
   },
-  cardTitle: { fontSize: 17, fontWeight: '600' },
-  sourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth
-  },
-  input: {
-    minHeight: 80,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    padding: 10,
-    textAlignVertical: 'top',
-    marginBottom: 10
-  },
-  btn: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center'
-  },
-  btnText: { color: '#fff', fontWeight: '600' },
-  banner: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12
-  },
-  graphCanvas: {
-    height: 150,
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cover: {
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.04)',
-    marginBottom: 8,
-    position: 'relative'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  graphDot: {
-    position: 'absolute',
-    maxWidth: 72,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 8
-  },
-  graphDotText: { color: '#fff', fontSize: 11, fontWeight: '600' }
+  coverIcon: { fontSize: 20 },
+  cardTitle: { fontSize: 17, fontWeight: '600', flex: 1 }
 })
