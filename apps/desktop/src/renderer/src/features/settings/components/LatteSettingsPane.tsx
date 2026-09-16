@@ -4,7 +4,7 @@ import {
   SYSTEM_LATTE_ASSISTANT_ID,
   getDefaultLatteAssistantSystemPrompt
 } from '@baishou/shared'
-import { HelpTooltip, SettingsPageChrome, useDialog, useToast } from '@baishou/ui'
+import { Button, HelpTooltip, SettingsPageChrome, useDialog, useToast } from '@baishou/ui'
 import { useAssistantStore } from '@baishou/store'
 import styles from './DiarySettingsPane.module.css'
 import pane from './GeneralSettingsPane.module.css'
@@ -110,13 +110,9 @@ export const LatteSettingsPane: React.FC = () => {
               {t('settings.latte_ensure_failed', '无法创建或读取系统伙伴 Latte')}
             </div>
             <div className={styles.actions}>
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => void loadLatte()}
-              >
+              <Button type="button" variant="outlined" size="small" onClick={() => void loadLatte()}>
                 {t('common.retry', '重试')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -149,22 +145,25 @@ export const LatteSettingsPane: React.FC = () => {
                     disabled={saving}
                   />
                   <div className={styles.actions}>
-                    <button
+                    <Button
                       type="button"
-                      className={styles.btn}
+                      variant="outlined"
+                      size="small"
                       onClick={() => void handleFetchLatest()}
                       disabled={saving}
                     >
                       {t('settings.latte_fetch_latest', '获取最新')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className={`${styles.btn} ${styles.btnPrimary}`}
+                      variant="outlined"
+                      size="small"
                       onClick={() => void handleSave()}
                       disabled={saving || !dirty}
+                      isLoading={saving}
                     >
-                      {saving ? t('common.saving', '保存中…') : t('common.save', '保存')}
-                    </button>
+                      {t('common.save', '保存')}
+                    </Button>
                   </div>
                 </div>
               </section>
@@ -203,14 +202,16 @@ export const LatteSettingsPane: React.FC = () => {
             </div>
 
             <div className={styles.actions}>
-              <button
+              <Button
                 type="button"
-                className={`${styles.btn} ${styles.btnPrimary}`}
+                variant="outlined"
+                size="small"
                 onClick={() => void handleSave()}
                 disabled={saving || !dirty}
+                isLoading={saving}
               >
-                {saving ? t('common.saving', '保存中…') : t('common.save', '保存')}
-              </button>
+                {t('common.save', '保存')}
+              </Button>
             </div>
           </>
         ) : null}

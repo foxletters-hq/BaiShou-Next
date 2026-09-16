@@ -2,15 +2,18 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AgentToolsCommunityTab,
+  Button,
   Input,
   SegmentedControl,
-  SettingsPageChrome
+  SettingsPageChrome,
+  Switch
 } from '@baishou/ui'
 import { getDefaultToolManagementConfig } from '@baishou/store'
 import {
   AGENT_TOOL_CATEGORY_ORDER,
   AGENT_TOOL_UI_DEFS,
   AgentGateEffect,
+  resolveAgentToolActionLabel,
   applyCapabilityToConfig,
   capabilityStateFromConfig,
   companionToolEffectOptions,
@@ -226,17 +229,14 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                           )}
                         </span>
                       </div>
-                      <label className={`settings-switch-label ${gateStyles.compactSwitch}`}>
-                        <input
-                          type="checkbox"
-                          checked={restoreLastSessionOnReturn}
-                          disabled={!behaviorReady}
-                          onChange={(e) =>
-                            patchBehavior({ restoreLastSessionOnReturn: e.target.checked })
-                          }
-                        />
-                        <span className="settings-switch-slider" />
-                      </label>
+                      <Switch
+                        checked={restoreLastSessionOnReturn}
+                        disabled={!behaviorReady}
+                        aria-label={t('settings.restore_last_session_on_return', '返回后继续上次会话')}
+                        onChange={(e) =>
+                          patchBehavior({ restoreLastSessionOnReturn: e.target.checked })
+                        }
+                      />
                     </div>
                     <div className={pane.divider} />
                     <div className="settings-list-tile settings-list-tile-noclick">
@@ -251,15 +251,12 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                           )}
                         </span>
                       </div>
-                      <label className={`settings-switch-label ${gateStyles.compactSwitch}`}>
-                        <input
-                          type="checkbox"
-                          checked={notificationPrefs.enabled}
-                          disabled={saving}
-                          onChange={(e) => void updateNotificationPrefs({ enabled: e.target.checked })}
-                        />
-                        <span className="settings-switch-slider" />
-                      </label>
+                      <Switch
+                        checked={notificationPrefs.enabled}
+                        disabled={saving}
+                        aria-label={t('settings.agent_gate_notify_enabled', '系统通知')}
+                        onChange={(e) => void updateNotificationPrefs({ enabled: e.target.checked })}
+                      />
                     </div>
                     <div className={pane.divider} />
                     <div className="settings-list-tile settings-list-tile-noclick">
@@ -268,17 +265,14 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                           {t('settings.agent_gate_notify_sound', '通知声音')}
                         </span>
                       </div>
-                      <label className={`settings-switch-label ${gateStyles.compactSwitch}`}>
-                        <input
-                          type="checkbox"
-                          checked={notificationPrefs.soundEnabled}
-                          disabled={saving || !notificationPrefs.enabled}
-                          onChange={(e) =>
-                            void updateNotificationPrefs({ soundEnabled: e.target.checked })
-                          }
-                        />
-                        <span className="settings-switch-slider" />
-                      </label>
+                      <Switch
+                        checked={notificationPrefs.soundEnabled}
+                        disabled={saving || !notificationPrefs.enabled}
+                        aria-label={t('settings.agent_gate_notify_sound', '通知声音')}
+                        onChange={(e) =>
+                          void updateNotificationPrefs({ soundEnabled: e.target.checked })
+                        }
+                      />
                     </div>
                   </div>
                 </section>
@@ -402,7 +396,9 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                           {index > 0 ? <div className={pane.divider} /> : null}
                           <div className="settings-list-tile settings-list-tile-noclick">
                             <div className="settings-list-tile-content">
-                              <span className="settings-list-tile-title">{entry.action}</span>
+                              <span className="settings-list-tile-title">
+                                {resolveAgentToolActionLabel(entry.action, t)}
+                              </span>
                               <span className="settings-list-tile-subtitle">
                                 {entry.pattern
                                   ? t('settings.agent_gate_allowlist_pattern', '模式：{{pattern}}', {
@@ -411,9 +407,10 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                                   : t('settings.agent_gate_allowlist_whole_action', '整工具放行')}
                               </span>
                             </div>
-                            <button
+                            <Button
                               type="button"
-                              className="settings-text-btn"
+                              variant="outlined"
+                              size="small"
                               disabled={saving}
                               onClick={() => {
                                 void (async () => {
@@ -444,7 +441,7 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                               }}
                             >
                               {t('common.remove', '移除')}
-                            </button>
+                            </Button>
                           </div>
                         </React.Fragment>
                       ))}

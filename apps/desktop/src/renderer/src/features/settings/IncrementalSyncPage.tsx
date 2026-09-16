@@ -1,8 +1,8 @@
-import { RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isIncrementalSyncReady } from '@baishou/shared'
 import {
+  Button,
   HelpTooltip,
   formatSyncProgressStatus,
   IncrementalSyncScopeList,
@@ -43,24 +43,23 @@ export const IncrementalSyncPage: React.FC = () => {
   const formatDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`)
 
   const syncButton = (
-    <button
+    <Button
       type="button"
-      className={styles.syncButton}
+      variant="outlined"
+      size="small"
       onClick={() => void startSync()}
-      disabled={isSyncing || isPlanning || !syncReady}
+      disabled={!syncReady}
+      isLoading={isSyncing || isPlanning}
       title={
         syncReady
           ? t('data_sync.sync_now', 'Sync')
           : t('data_sync.error_sync_disabled', '请先在上方开启「文件同步」开关后再同步')
       }
     >
-      <RefreshCw size={14} className={isSyncing || isPlanning ? styles.spinning : undefined} />
-      {isSyncing
-        ? t('data_sync.syncing', 'Syncing...')
-        : isPlanning
-          ? t('data_sync.planning', 'Analyzing sync changes…')
-          : t('data_sync.sync_now', 'Sync')}
-    </button>
+      {isPlanning
+        ? t('data_sync.planning', 'Analyzing sync changes…')
+        : t('data_sync.sync_now', 'Sync')}
+    </Button>
   )
 
   const syncStatusSlot = (

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useUserProfileStore } from '@baishou/store'
 import { useTranslation } from 'react-i18next'
 import {
+  Button,
   Input,
   Pagination,
   useDialog,
@@ -12,7 +13,7 @@ import {
 } from '@baishou/ui'
 import './ManagementPane.css'
 import { useSettingsScopeNavigation } from '../hooks/useSettingsScopeNavigation'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 const PAGE_SIZE = 10
 
@@ -203,20 +204,16 @@ export const IdentityCardManagementPane: React.FC = () => {
           <ArrowLeft size={22} />
         </button>
         <h2 className="settings-management-title">{t('settings.manage_identity_cards')}</h2>
-        <button
-          type="button"
-          className="settings-management-header-action"
-          onClick={() => void handleCreate()}
-        >
-          <Plus size={18} />
-          <span>{t('settings.create_new_identity')}</span>
-        </button>
+        <Button type="button" variant="outlined" size="small" onClick={() => void handleCreate()}>
+          {t('settings.create_new_identity')}
+        </Button>
       </div>
 
       <div className="settings-management-scroll">
         <div className="settings-management-card settings-management-list-card">
           <div className="settings-management-search">
             <Input
+              fieldSize="small"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('settings.search_identity_placeholder')}
@@ -250,32 +247,33 @@ export const IdentityCardManagementPane: React.FC = () => {
                         {t('settings.identity_active_mark')}
                       </span>
                     ) : (
-                      <button
+                      <Button
                         type="button"
-                        className="settings-text-btn"
+                        variant="outlined"
+                        size="small"
                         onClick={() => void handleSwitch(persona.id)}
                       >
                         {t('workspace.switch', '切换')}
-                      </button>
+                      </Button>
                     )}
                   </div>
-                  <button
+                  <Button
                     type="button"
-                    className="settings-text-btn"
-                    style={{ color: 'var(--text-secondary)' }}
+                    variant="outlined"
+                    size="small"
                     onClick={() => void handleRename(persona.id)}
                   >
                     {t('common.rename', '重命名')}
-                  </button>
+                  </Button>
                   {personas.length > 1 ? (
-                    <button
+                    <Button
                       type="button"
-                      className="settings-text-btn"
-                      style={{ color: 'var(--color-error)' }}
+                      variant="outlined"
+                      size="small"
                       onClick={() => void handleDelete(persona.id)}
                     >
                       {t('workspace.delete', '删除')}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               </div>
