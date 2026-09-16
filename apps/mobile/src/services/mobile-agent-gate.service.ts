@@ -15,7 +15,13 @@ function applyLifecycleToInbox(event: AgentGateLifecycleEvent): void {
     return
   }
   if (event.type === 'agent_gate.replied') {
-    useAgentGateInboxStore.getState().removeReplied(event.requestId)
+    useAgentGateInboxStore.getState().removeReplied(event.requestId, {
+      requestId: event.requestId,
+      reply: event.reply,
+      message: event.message,
+      selectedOptionIds: event.selectedOptionIds,
+      resolvedAt: Date.now()
+    })
   }
 }
 

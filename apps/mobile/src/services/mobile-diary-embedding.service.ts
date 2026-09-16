@@ -1,6 +1,5 @@
 import type { IEmbeddingCallback } from '@baishou/core-mobile'
 import {
-  deriveLegacyVaultId,
   formatAiApiCallError,
   hashEmbedSourceContent,
   isRagMemoryEnabled,
@@ -13,11 +12,6 @@ import {
 
 import type { AppDatabase } from '@baishou/database'
 import { embedDiaryEntry, type MobileRagServiceDeps } from './mobile-rag.service'
-import {
-  bindMobileDiaryEmbedJobsDb,
-  deleteDiaryEmbedJob,
-  enqueueDiaryEmbedJob
-} from './mobile-diary-embed-jobs.service'
 import { resolveEmbeddingAdapter } from './mobile-rag-core.helpers'
 
 const failureListeners = new Set<(message?: string) => void>()
@@ -25,16 +19,9 @@ let embeddingDeps: MobileRagServiceDeps | null = null
 
 export function setMobileDiaryEmbeddingDeps(
   deps: MobileRagServiceDeps | null,
-  options?: { agentDb?: AppDatabase | null }
+  _options?: { agentDb?: AppDatabase | null }
 ): void {
   embeddingDeps = deps
-  if (deps === null) {
-    bindMobileDiaryEmbedJobsDb(null)
-    return
-  }
-  if (options && 'agentDb' in options) {
-    bindMobileDiaryEmbedJobsDb(options.agentDb ?? null)
-  }
 }
 
 export function getMobileDiaryEmbeddingDeps(): MobileRagServiceDeps | null {
@@ -58,27 +45,11 @@ export function notifyDiaryEmbedFailure(message?: string): void {
   }
 }
 
-async function resolveVaultId(explicit?: string): Promise<string> {
-  const deps = embeddingDeps
-  if (explicit?.trim()) {
-    const trimmed = explicit.trim()
-    if (deps?.vaultScope) {
-      return deps.vaultScope.resolveVaultIdByName(trimmed)
-    }
-    return deriveLegacyVaultId(trimmed)
-  }
-  if (deps?.vaultScope) {
-    return deps.vaultScope.resolveActiveVaultId()
-  }
-  return deriveLegacyVaultId('Personal')
-}
-
 const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
   async reEmbedDiary(params) {
     const deps = embeddingDeps
     if (!deps) return false
 
-    const vaultId = await resolveVaultId(params.vaultName)
     const contentHash = hashEmbedSourceContent(params.content)
 
     try {
@@ -86,11 +57,6 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
       const adapter = await resolveEmbeddingAdapter(deps)
 
       if (!isRagMemoryEnabled(ragConfig) || !adapter) {
-        await enqueueDiaryEmbedJob({
-          vaultId,
-          diaryId: params.diaryId,
-          contentHash
-        })
         return false
       }
 
@@ -106,7 +72,6 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
         },
         { contentHash }
       )
-      await deleteDiaryEmbedJob(vaultId, params.diaryId)
       const ragConfigAfter = await loadRagConfig(deps.settingsManager)
       if (hasRagDiaryEmbedFailure(ragConfigAfter)) {
         await deps.settingsManager.set('rag_config', clearRagDiaryEmbedFailure(ragConfigAfter))
@@ -114,14 +79,6 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
       return true
     } catch (e) {
       logger.warn('[MobileDiaryEmbed] RAG 嵌入失败', e as Error)
-      await enqueueDiaryEmbedJob(
-        {
-          vaultId,
-          diaryId: params.diaryId,
-          contentHash
-        },
-        formatAiApiCallError(e)
-      )
       const ragConfig = await loadRagConfig(deps.settingsManager)
       if (!isRagMemoryEnabled(ragConfig)) return false
       const message = formatAiApiCallError(e)
@@ -131,26 +88,14 @@ const mobileDiaryEmbeddingCallback: IEmbeddingCallback = {
     }
   },
 
-  async enqueueDiaryEmbed(params) {
-    const vaultId = await resolveVaultId(params.vaultName)
-    await enqueueDiaryEmbedJob({
-      vaultId,
-      diaryId: params.diaryId,
-      contentHash: params.contentHash
-    })
+  async enqueueDiaryEmbed(_params) {
+    // diary_embed_jobs 已退休：待嵌入由账本检测，不再入队
   },
 
   async deleteEmbeddingsBySource(sourceType, sourceId) {
     const deps = embeddingDeps
     if (!deps) return
     await deps.hsRepo.deleteEmbeddingsBySource(sourceType, sourceId)
-    if (sourceType === 'diary' && sourceId.includes('#')) {
-      const [vaultId, idPart] = sourceId.split('#')
-      const diaryId = Number(idPart)
-      if (vaultId && Number.isFinite(diaryId)) {
-        await deleteDiaryEmbedJob(vaultId, diaryId)
-      }
-    }
   }
 }
 

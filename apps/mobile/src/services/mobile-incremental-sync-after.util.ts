@@ -224,6 +224,9 @@ export async function runMobileIncrementalAfterSync(
       }
     }
 
+    const { invalidateMobilePendingEmbedCountsCache } =
+      await import('./mobile-pending-embed-counts')
+    invalidateMobilePendingEmbedCountsCache()
     deps.reportPostSync('data_sync.progress_finalizing', totalSteps, totalSteps)
     console.warn('[IncrementalSync][PostSync] done', {
       checkpointRefreshCount: checkpointRefreshPaths.length

@@ -33,6 +33,9 @@ async function executeSaveUserMessage(
     attachments?: unknown[]
     modelId?: string
     providerType?: string
+    displayText?: string
+    skillRefs?: Array<{ command: string; content: string }>
+    fileRefs?: unknown[]
   }
 ): Promise<SaveUserMessageResult> {
   const existing = await sessionRepo.getSessionById(args.sessionId)
@@ -69,7 +72,14 @@ async function executeSaveUserMessage(
       messageId: userMsgId,
       sessionId: args.sessionId,
       type: 'text',
-      data: { text: args.text }
+      data: {
+        text: args.text,
+        ...(args.displayText ? { displayText: args.displayText } : {}),
+        ...(args.skillRefs?.length ? { skillRefs: args.skillRefs } : {}),
+        ...(args.fileRefs && Array.isArray(args.fileRefs) && args.fileRefs.length
+          ? { fileRefs: args.fileRefs }
+          : {})
+      }
     }
   ]
 
@@ -107,6 +117,9 @@ export async function saveUserMessage(
     attachments?: unknown[]
     modelId?: string
     providerType?: string
+    displayText?: string
+    skillRefs?: Array<{ command: string; content: string }>
+    fileRefs?: unknown[]
   }
 ): Promise<SaveUserMessageResult> {
   try {

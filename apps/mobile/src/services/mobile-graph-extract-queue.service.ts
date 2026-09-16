@@ -165,7 +165,12 @@ class MobileGraphExtractQueue {
   async enqueue(
     opts?: { filePaths?: string[]; concurrency?: number },
     ctx?: MobileGraphExtractContext
-  ): Promise<{ queued: number; totalPending: number; skippedNotEmbedded: string[] }> {
+  ): Promise<{
+    queued: number
+    totalPending: number
+    skippedNotEmbedded: string[]
+    blockedPendingEmbed?: number
+  }> {
     if (ctx) this.context = ctx
     if (!this.context) {
       throw new Error(i18n.t('graph.extract_queue_no_context', '图谱抽取队列未就绪'))
