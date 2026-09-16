@@ -11,6 +11,12 @@
   box-sizing: border-box;
 }
 
+.shellFormField {
+  border: 1px solid var(--form-field-border);
+  border-radius: 8px;
+  background: var(--form-field-bg);
+}
+
 .body {
   flex: 1;
   min-height: 0;
@@ -43,6 +49,16 @@
 .body :global(.cm-content) {
   padding-bottom: 28px;
   padding-right: 20px;
+}
+
+.shell.shellFormField .body :global(.cm-content) {
+  padding: 6px 10px 22px;
+}
+
+.shell.shellFormField .body :global(.cm-editor),
+.shell.shellFormField .body :global(.cm-scroller),
+.shell.shellFormField .body :global(.cm-gutters) {
+  background: var(--form-field-bg) !important;
 }
 
 .resizeHandle {
