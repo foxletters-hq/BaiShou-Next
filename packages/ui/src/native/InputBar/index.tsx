@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 移动端输入栏：附件、技能与展开同文件 */
 import React, {
   useState,
   useCallback,
@@ -45,6 +46,8 @@ import {
 } from 'lucide-react-native'
 import type { MockChatAttachment, PromptShortcut } from '@baishou/shared'
 import { getDefaultShortcutLabelsFromT, localizePromptShortcuts } from '@baishou/shared'
+import type { ComposerSendSkillRef } from '../../shared/composer-draft'
+import { buildNativeComposerSend, isSkillShortcut } from './composer-send-meta.util'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../../native/theme'
 import { Input } from '../Input/Input'
@@ -142,8 +145,8 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       onSend,
       isLoading,
       onStop,
-      assistantName = 'Assistant',
-      onAssistantTap,
+      assistantName: _assistantName = 'Assistant',
+      onAssistantTap: _onAssistantTap,
       onRecall,
       onOpenNotebookMount,
       shortcuts,
@@ -164,7 +167,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     },
     ref
   ) => {
-    const { t, i18n } = useTranslation()
+    const { t } = useTranslation()
     const dialog = useDialog()
     const toast = useNativeToast()
     const { colors, isDark } = useNativeTheme()
@@ -173,6 +176,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const contentHeightRef = useRef(INPUT_MIN_HEIGHT)
     const [text, setText] = useState('')
     const [attachments, setAttachments] = useState<MockChatAttachment[]>([])
+    const [skillRefs, setSkillRefs] = useState<ComposerSendSkillRef[]>([])
     const [isSending, setIsSending] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
     const [inputHeight, setInputHeight] = useState(INPUT_MIN_HEIGHT)
@@ -197,8 +201,30 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
     const localizedShortcuts = useMemo(() => {
       if (!shortcuts?.length) return undefined
       return localizePromptShortcuts(shortcuts, getDefaultShortcutLabelsFromT(t))
-    }, [shortcuts, t, i18n.language])
+    }, [shortcuts, t])
     const shortcutHandlers = useInputBarShortcuts(text, setText, localizedShortcuts)
+
+    const applyComposerShortcut = useCallback(
+      (shortcut: PromptShortcut) => {
+        if (isSkillShortcut(shortcut) && shortcut.command) {
+          const command = shortcut.command.replace(/^\//, '')
+          setSkillRefs((prev) =>
+            prev.some((item) => item.command === command)
+              ? prev
+              : [...prev, { command, content: shortcut.content }]
+          )
+          setText((prev) => {
+            const rest = prev.startsWith('/') ? '' : prev
+            const token = `/${command}`
+            return rest.includes(token) ? rest : `${rest}${rest ? ' ' : ''}${token}`.trim()
+          })
+          shortcutHandlers.endShortcutSession()
+          return
+        }
+        shortcutHandlers.applyShortcut(shortcut)
+      },
+      [shortcutHandlers]
+    )
 
     const animateInputHeight = useCallback(
       (nextHeight: number, animated: boolean) => {
@@ -344,7 +370,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
 
     const handleSend = useCallback(async () => {
       if (shortcutHandlers.shortcutModeActive && text.startsWith('/')) return
-      if (!text.trim() && attachments.length === 0) return
+      if (!text.trim() && attachments.length === 0 && skillRefs.length === 0) return
       if (isLoading || isSending) return
 
       if (composerBlocked) {
@@ -354,9 +380,16 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
 
       const pendingText = text
       const pendingAttachments = attachments.length > 0 ? [...attachments] : []
+      const pendingSkills = [...skillRefs]
+      const composed = buildNativeComposerSend({
+        text: pendingText,
+        skillRefs: pendingSkills,
+        attachments: pendingAttachments
+      })
 
       setText('')
       setAttachments([])
+      setSkillRefs([])
       setIsExpanded(false)
       contentHeightRef.current = INPUT_MIN_HEIGHT
       setInputScrollEnabled(false)
@@ -365,11 +398,17 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       setIsSending(true)
       try {
         const accepted = await Promise.resolve(
-          onSend(pendingText.trim(), pendingAttachments.length > 0 ? pendingAttachments : undefined)
+          onSend(
+            composed.modelText,
+            pendingAttachments.length > 0 ? pendingAttachments : undefined,
+            undefined,
+            composed.meta
+          )
         )
         if (accepted === false) {
           setText(pendingText)
           setAttachments(pendingAttachments)
+          setSkillRefs(pendingSkills)
         } else {
           await clearDraft()
         }
@@ -386,6 +425,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
       onComposerBlocked,
       onSend,
       shortcutHandlers.shortcutModeActive,
+      skillRefs,
       text
     ])
 
@@ -472,7 +512,7 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
               visible={shortcutHandlers.shortcutModeActive}
               shortcuts={shortcutHandlers.filteredShortcuts}
               selectedIndex={shortcutHandlers.selectedIndex}
-              onSelect={shortcutHandlers.applyShortcut}
+              onSelect={applyComposerShortcut}
               onHeightChange={setShortcutPanelHeight}
             />
 
@@ -485,6 +525,26 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                 }
               ]}
             >
+              {skillRefs.length > 0 ? (
+                <View style={styles.attachmentList}>
+                  {skillRefs.map((skill) => (
+                    <View
+                      key={skill.command}
+                      style={[
+                        styles.attachmentChip,
+                        {
+                          borderColor: colors.borderMuted,
+                          backgroundColor: colors.bgSurfaceHigh
+                        }
+                      ]}
+                    >
+                      <Text style={{ color: colors.primary }} numberOfLines={1}>
+                        /{skill.command}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
               {attachments.length > 0 && (
                 <ScrollView
                   horizontal
@@ -684,7 +744,8 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                           styles.sendBtn,
                           { backgroundColor: colors.primary },
                           !text.trim() &&
-                            attachments.length === 0 && {
+                            attachments.length === 0 &&
+                            skillRefs.length === 0 && {
                               backgroundColor: colors.textTertiary
                             },
                           isSending && {
@@ -692,7 +753,10 @@ export const InputBar = forwardRef<InputBarRef, InputBarProps>(
                           }
                         ]}
                         onPress={handleSend}
-                        disabled={isSending || (!text.trim() && attachments.length === 0)}
+                        disabled={
+                          isSending ||
+                          (!text.trim() && attachments.length === 0 && skillRefs.length === 0)
+                        }
                         accessibilityLabel={t('common.send', '发送')}
                       >
                         <LucideIcon icon={Send} size={18} color={colors.textOnPrimary} />
