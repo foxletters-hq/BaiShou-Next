@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Image, StyleSheet } from 'react-native'
 import { useNativeTheme } from '../theme'
-import { isCustomUserAvatar, resolveNativeUserAvatarSource } from '../user-avatar.util'
+import { resolveNativeUserAvatarSource } from '../user-avatar.util'
 import {
   resolveNativeAssistantAvatarSource,
   shouldShowAssistantEmoji
@@ -20,7 +20,7 @@ export const ChatBubbleAvatar: React.FC<ChatBubbleAvatarProps> = ({
   emoji,
   avatarPath,
   resolvedAvatarUri,
-  nickname,
+  nickname: _nickname,
   variant,
   style
 }) => {

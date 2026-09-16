@@ -8,10 +8,7 @@ import { AgentMarkdownRenderer } from '../AgentMarkdown'
 import { AgentThinkSection } from '../AgentThinkSection'
 import { NativeImagePreviewModal } from '../DiaryEditor/NativeImagePreviewModal'
 import { ToolResultGroupCard } from '../ToolResultGroupCard/ToolResultGroupCard'
-import {
-  collectKnowledgeCitationsFromInvocations,
-  type MockChatAttachment
-} from '@baishou/shared'
+import { collectKnowledgeCitationsFromInvocations, type MockChatAttachment } from '@baishou/shared'
 import { KnowledgeCitationBlock } from '../KnowledgeCitationBlock'
 import type { ChatBubbleProps } from './chat-bubble.types'
 import { chatBubbleStyles as styles } from './chat-bubble.styles'
@@ -89,11 +86,15 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     ? userProfile?.nickname || t('agent.chat.you_label', '你')
     : aiProfile?.name || t('agent.chat.ai_label', 'AI')
 
-  const toolInvocations = (message.toolInvocations || []) as Array<{
-    toolCallId: string
-    toolName: string
-    result: unknown
-  }>
+  const toolInvocations = useMemo(
+    () =>
+      (message.toolInvocations || []) as Array<{
+        toolCallId: string
+        toolName: string
+        result: unknown
+      }>,
+    [message.toolInvocations]
+  )
   const knowledgeCitations = useMemo(
     () => collectKnowledgeCitationsFromInvocations(toolInvocations),
     [toolInvocations]
@@ -255,10 +256,32 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                     onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
                   />
                 </View>
-              ) : !isAssistant && message.content ? (
-                <Text style={[styles.text, { color: colors.textPrimary }]} selectable>
-                  {message.content}
-                </Text>
+              ) : !isAssistant && (message.content || message.skillRefs?.length || message.fileRefs?.length) ? (
+                <View>
+                  {message.skillRefs?.length ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                      {message.skillRefs.map((ref) => (
+                        <Text key={ref.command} style={{ color: colors.primary }}>
+                          /{ref.command}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                  {message.fileRefs?.length ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                      {message.fileRefs.map((ref) => (
+                        <Text key={ref.relativePath} style={{ color: colors.textSecondary }}>
+                          @{ref.relativePath}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                  {message.content ? (
+                    <Text style={[styles.text, { color: colors.textPrimary }]} selectable>
+                      {message.content}
+                    </Text>
+                  ) : null}
+                </View>
               ) : null}
             </View>
           )}
