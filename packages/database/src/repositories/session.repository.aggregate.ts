@@ -3,6 +3,7 @@ import {
   deriveLegacyVaultId,
   isVaultId,
   parseMountedNotebookIds,
+  resolveAggregateSnapshots,
   serializeMountedNotebookIds
 } from '@baishou/shared'
 import { runWithSqliteBusyRetry } from '../sqlite-busy.util'
@@ -10,6 +11,7 @@ import type { AppDatabase } from '../types'
 import { agentSessionsTable } from '../schema/agent-sessions'
 import { agentMessagesTable as messagesTbl } from '../schema/agent-messages'
 import { agentPartsTable as partsTbl } from '../schema/agent-parts'
+import { compressionSnapshotsTable } from '../schema/compression-snapshots'
 
 function resolveSessionVaultId(session: {
   vaultId?: string | null
@@ -56,7 +58,23 @@ export class SessionAggregateSync {
       parts: parts.filter((p) => p.messageId === m.id)
     }))
 
-    return { session, messages: enrichedMessages }
+    const snapshotRows = await this.db
+      .select()
+      .from(compressionSnapshotsTable)
+      .where(eq(compressionSnapshotsTable.sessionId, sessionId))
+    const snapshots = resolveAggregateSnapshots({
+      snapshots: snapshotRows.map((row) => ({
+        coveredUpToMessageId: row.coveredUpToMessageId,
+        tailStartMessageId: row.tailStartMessageId ?? null,
+        summaryText: row.summaryText,
+        messageCount: row.messageCount,
+        tokenCount: row.tokenCount ?? null,
+        createdAt: row.createdAt instanceof Date ? row.createdAt.getTime() : Number(row.createdAt)
+      })),
+      messages: enrichedMessages
+    })
+
+    return { session, messages: enrichedMessages, snapshots }
   }
 
   async upsertAggregate(aggregate: any): Promise<void> {
@@ -125,6 +143,7 @@ export class SessionAggregateSync {
 
   private async _upsertAggregateInternal(aggregate: any): Promise<void> {
     const { session, messages } = aggregate
+    const snapshots = resolveAggregateSnapshots(aggregate)
     const rawClient = (this.db as any).$client || (this.db as any).session?.client
 
     const toUnixSec = (ts: any): number => {
@@ -200,6 +219,28 @@ export class SessionAggregateSync {
           }
         }
       }
+    }
+
+    stmts.push({
+      sql: 'DELETE FROM compression_snapshots WHERE session_id = ?',
+      args: [session.id]
+    })
+    for (const snap of snapshots) {
+      stmts.push({
+        sql: `INSERT INTO compression_snapshots
+                (session_id, summary_text, covered_up_to_message_id, tail_start_message_id,
+                 message_count, token_count, created_at)
+                VALUES (?,?,?,?,?,?,?)`,
+        args: [
+          session.id,
+          snap.summaryText,
+          snap.coveredUpToMessageId,
+          snap.tailStartMessageId,
+          snap.messageCount,
+          snap.tokenCount,
+          toUnixSec(snap.createdAt)
+        ]
+      })
     }
 
     if (rawClient && typeof rawClient.batch === 'function') {

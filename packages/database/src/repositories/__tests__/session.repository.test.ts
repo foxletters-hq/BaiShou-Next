@@ -151,6 +151,15 @@ describe('SessionRepository', () => {
     })
   })
 
+  describe('replaceMessageParts', () => {
+    it('should delete existing parts then insert the new snapshot', async () => {
+      await repo.replaceMessageParts('m1', 's1', [
+        { id: 'p2', messageId: 'm1', sessionId: 's1', type: 'text', data: { text: '半成品' } }
+      ])
+      expect((db as any).transaction).toHaveBeenCalled()
+    })
+  })
+
   describe('deleteMessage', () => {
     it('should delete a specific message and its parts', async () => {
       await repo.deleteMessage('s1', 'm1')
