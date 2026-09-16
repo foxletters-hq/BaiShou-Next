@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AgentPart, MockChatAttachment, PromptFileRef } from '@baishou/shared'
 import { clearStreamBridgeForSession } from '../../agent/hooks/agent-stream-session-store'
+import { hasPersistedAssistantTail } from '../utils/workspace-persisted-assistant.util'
 import {
   prependOlderWorkspaceMessages,
   WORKSPACE_MESSAGE_PAGE_SIZE,
@@ -17,6 +18,7 @@ export interface WorkspaceChatMessage {
   skillRefs?: Array<{ command: string; content: string }>
   fileRefs?: PromptFileRef[]
   createdAt?: Date | string
+  streamStatus?: 'in_progress'
   inputTokens?: number
   outputTokens?: number
   cacheReadInputTokens?: number
@@ -84,19 +86,19 @@ export function useWorkspaceChatMessages(params: {
   }, [])
 
   const refresh = useCallback(
-    async (overrideSessionId?: string) => {
+    async (overrideSessionId?: string): Promise<WorkspaceChatMessage[] | null> => {
       const sid = overrideSessionId ?? sessionId
       if (!sid || sid === 'new-session') {
         resetPagination(setMessages, setHasMore, loadedFromEndRef, hasMoreRef)
-        return false
+        return null
       }
       const limit = Math.max(loadedFromEndRef.current, WORKSPACE_MESSAGE_PAGE_SIZE)
       const rows = await fetchWorkspaceMessages(sid, limit, 0)
       const stillCurrent =
         sessionIdRef.current === sid || streamSessionIdRef.current === sid
-      if (!stillCurrent) return false
+      if (!stillCurrent) return null
       applyLatestPage(rows, limit)
-      return true
+      return rows
     },
     [applyLatestPage, sessionId]
   )
@@ -171,11 +173,17 @@ export function useWorkspaceChatMessages(params: {
         }
 
         const sync = async () => {
-          await new Promise((resolve) => setTimeout(resolve, 120))
-          const ok = await refresh(sid)
-          if (ok) {
-            clearStreamBridgeForSession(sid)
-            setPendingAssistantMsg(null)
+          for (let attempt = 0; attempt < 5; attempt++) {
+            if (attempt > 0) {
+              await new Promise((resolve) => setTimeout(resolve, 150 * attempt))
+            }
+            const rows = await refresh(sid)
+            if (!rows) continue
+            if (hasPersistedAssistantTail(rows)) {
+              clearStreamBridgeForSession(sid)
+              setPendingAssistantMsg(null)
+              return
+            }
           }
         }
         void sync()

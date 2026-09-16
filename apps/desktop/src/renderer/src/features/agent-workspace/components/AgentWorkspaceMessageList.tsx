@@ -16,14 +16,12 @@ import {
   AgentToolChainSection,
   ChatBubbleAttachments,
   CompanionAskInteractionProvider,
-  KnowledgeCitationBlock,
   MessageActionBar,
   UserMessageSkillContent,
   parseRedactedThinking,
   type AgentGateReplyPayload
 } from '@baishou/ui'
 import {
-  collectKnowledgeCitationsFromInvocations,
   type AgentGateRequest,
   type AgentStreamTimelineItem,
   type MockToolInvocation,
@@ -36,20 +34,20 @@ import type {
 } from '../hooks/useWorkspaceChatMessages'
 import type { WorkspaceToolError } from '../hooks/useWorkspaceAgentStream'
 import {
-  getWorkspaceAssistantText,
   getWorkspaceBubbleAttachments,
   getWorkspaceUserFileRefs,
   getWorkspaceUserSkillRefs,
   getWorkspaceUserText
 } from '../utils/workspace-message-display.util'
+import { copyWorkspaceBubbleText } from '../utils/workspace-copy-text.util'
 import {
   buildFileOpEntries,
-  buildWorkspaceAssistantTimeline,
   formatWorkspaceToolDisplayName,
   groupStreamTimelineItems,
-  groupWorkspaceAssistantTimeline,
   type WorkspaceStreamTimelineGroup
 } from '../utils/workspace-message-parts.util'
+import { WorkspaceAssistantTurn } from './WorkspaceAssistantTurn'
+import type { WorkspaceBubbleActions } from './workspace-bubble-actions.types'
 import { shouldStartWorkspaceBubbleEdit } from '../utils/workspace-rollback-hover.util'
 import {
   shouldShowStreamWaitingDots,
@@ -86,6 +84,7 @@ export interface AgentWorkspaceMessageListProps {
       fileRefs?: PromptFileRef[]
     }
   ) => boolean | Promise<boolean>
+  bubbleActions?: WorkspaceBubbleActions
   onOpenFile?: (relativePath: string, options?: { line?: number }) => void
   onSelectChange?: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
@@ -99,14 +98,6 @@ export interface AgentWorkspaceMessageListProps {
 export interface AgentWorkspaceMessageListHandle {
   beginFollowIfAtBottom: () => void
   scrollToBottom: () => void
-}
-
-function copyText(text: string) {
-  const value = text.trim()
-  if (!value) return
-  void navigator.clipboard.writeText(value).catch((error) => {
-    console.error('[AgentWorkspaceMessageList] copy failed:', error)
-  })
 }
 
 function BouncingDots() {
@@ -132,6 +123,7 @@ function WorkspaceUserTurn(props: {
       fileRefs?: PromptFileRef[]
     }
   ) => boolean | Promise<boolean>
+  bubbleActions?: WorkspaceBubbleActions
   onOpenFile?: (relativePath: string, options?: { line?: number }) => void
 }) {
   const { t } = useTranslation()
@@ -141,6 +133,7 @@ function WorkspaceUserTurn(props: {
     editingActive,
     onEditingChange,
     onEditResend,
+    bubbleActions,
     onOpenFile
   } = props
   const userText = getWorkspaceUserText(msg)
@@ -268,7 +261,22 @@ function WorkspaceUserTurn(props: {
             ) : null}
           </div>
           <div className={styles.turnActions}>
-            <MessageActionBar isAI={false} onCopy={() => copyText(userText)} />
+            <MessageActionBar
+              isAI={false}
+              onCopy={() => copyWorkspaceBubbleText(userText)}
+              onEdit={onEditResend ? startEdit : undefined}
+              onRetry={
+                bubbleActions?.onResend ? () => bubbleActions.onResend?.(msg.id) : undefined
+              }
+              onDelete={
+                bubbleActions?.onDelete ? () => bubbleActions.onDelete?.(msg.id) : undefined
+              }
+              onShowContext={
+                bubbleActions?.onShowContext
+                  ? () => bubbleActions.onShowContext?.(msg)
+                  : undefined
+              }
+            />
           </div>
         </>
       )}
@@ -392,6 +400,7 @@ export const AgentWorkspaceMessageList = forwardRef<
     completedTools = [],
     failedTools = [],
     onEditResend,
+    bubbleActions,
     onOpenFile,
     onSelectChange,
     onReviewAll,
@@ -436,6 +445,12 @@ export const AgentWorkspaceMessageList = forwardRef<
   useEffect(() => {
     setEditingMessageId(null)
   }, [sessionId])
+
+  useEffect(() => {
+    if (editingMessageId && !messages.some((msg) => msg.id === editingMessageId)) {
+      setEditingMessageId(null)
+    }
+  }, [editingMessageId, messages])
 
   const loadMoreLockRef = useRef(false)
   const [showLoadMoreButton, setShowLoadMoreButton] = useState(false)
@@ -544,7 +559,7 @@ export const AgentWorkspaceMessageList = forwardRef<
   if (!sessionId || sessionId === 'new-session') {
     return (
       <div className={styles.scrollWrap}>
-        <div className={styles.scroll} ref={scroll.scrollRef}>
+        <div className={styles.scroll} ref={scroll.scrollRef} data-workspace-chat-scroll="">
           <div className={styles.list} />
         </div>
       </div>
@@ -602,7 +617,7 @@ export const AgentWorkspaceMessageList = forwardRef<
       onReply={handleAskReply}
     >
     <div className={styles.scrollWrap}>
-      <div className={styles.scroll} ref={scroll.scrollRef}>
+      <div className={styles.scroll} ref={scroll.scrollRef} data-workspace-chat-scroll="">
         <div className={styles.list}>
           {showLoadMoreButton ? (
             <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
@@ -624,77 +639,22 @@ export const AgentWorkspaceMessageList = forwardRef<
                 editingActive={editingMessageId === msg.id}
                 onEditingChange={setEditingMessageId}
                 onEditResend={onEditResend}
+                bubbleActions={bubbleActions}
                 onOpenFile={onOpenFile}
               />
             )
           }
 
-          const timeline = buildWorkspaceAssistantTimeline(msg.parts)
-          const timelineGroups = groupWorkspaceAssistantTimeline(timeline)
-          const assistantText =
-            timeline
-              .filter((item) => item.kind === 'text')
-              .map((item) => (item.kind === 'text' ? item.text : ''))
-              .join('\n')
-              .trim() || getWorkspaceAssistantText(msg)
-          const knowledgeCitations = collectKnowledgeCitationsFromInvocations(
-            timeline
-              .filter((item): item is Extract<typeof item, { kind: 'tool' }> => item.kind === 'tool')
-              .map((item) => item.invocation)
-          )
-
           return (
-            <div
+            <WorkspaceAssistantTurn
               key={msg.id}
-              className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
-                editingIndex >= 0 && index > editingIndex ? ` ${styles.turnDimmed}` : ''
-              }`}
-            >
-              {timelineGroups.length > 0
-                ? timelineGroups.map((item) => {
-                    if (item.kind === 'reasoning') {
-                      return <AgentThinkSection key={item.key} content={item.text} />
-                    }
-                    if (item.kind === 'text') {
-                      return <AgentMarkdownRenderer key={item.key} content={item.text} />
-                    }
-                    if (item.kind === 'tools') {
-                      return (
-                        <AgentToolChainSection
-                          key={item.key}
-                          invocations={item.invocations}
-                        />
-                      )
-                    }
-                    if (item.kind === 'file_change_failed') {
-                      return (
-                        <div key={item.key} className={styles.fileChangeError}>
-                          {t('file_change.failed', '文件变更失败')}: {item.data.path}
-                        </div>
-                      )
-                    }
-                    return (
-                      <WorkspaceFileChangeList
-                        key={item.key}
-                        changes={buildFileOpEntries(
-                          msg.id,
-                          item.invocations,
-                          item.items.map((entry) => entry.data)
-                        )}
-                        onSelectChange={(change) => onSelectChange?.(change)}
-                      />
-                    )
-                  })
-                : null}
-              {knowledgeCitations.length > 0 ? (
-                <KnowledgeCitationBlock citations={knowledgeCitations} />
-              ) : null}
-              {assistantText ? (
-                <div className={styles.turnActions}>
-                  <MessageActionBar isAI onCopy={() => copyText(assistantText)} />
-                </div>
-              ) : null}
-            </div>
+              msg={msg}
+              dimmed={editingIndex >= 0 && index > editingIndex}
+              editingActive={editingMessageId === msg.id}
+              onEditingChange={setEditingMessageId}
+              onSelectChange={onSelectChange}
+              bubbleActions={bubbleActions}
+            />
           )
         })}
 
@@ -745,14 +705,17 @@ export const AgentWorkspaceMessageList = forwardRef<
             {streamShowPlaceholder || streamShowWaiting ? <BouncingDots /> : null}
             {failedTools.length > 0 || streamingCompletedTools.some((tool) => tool.error) ? (
               <ul className={styles.streamToolErrors}>
-                {[
+                    {[
                   ...failedTools.map((tool) => ({
-                    name: formatWorkspaceToolDisplayName(tool.name),
+                    name: formatWorkspaceToolDisplayName(tool.name, t),
                     error: tool.error
                   })),
                   ...streamingCompletedTools
                     .filter((tool) => tool.error)
-                    .map((tool) => ({ name: tool.name, error: tool.error! }))
+                    .map((tool) => ({
+                      name: formatWorkspaceToolDisplayName(tool.name, t),
+                      error: tool.error!
+                    }))
                 ].map((tool, index) => (
                   <li key={`${tool.name}-stream-err-${index}`}>
                     {tool.name}: {tool.error}
@@ -779,7 +742,7 @@ export const AgentWorkspaceMessageList = forwardRef<
               <div className={styles.turnActions}>
                 <MessageActionBar
                   isAI
-                  onCopy={() => copyText(pendingAssistantMsg.content)}
+                  onCopy={() => copyWorkspaceBubbleText(pendingAssistantMsg.content)}
                 />
               </div>
             ) : null}

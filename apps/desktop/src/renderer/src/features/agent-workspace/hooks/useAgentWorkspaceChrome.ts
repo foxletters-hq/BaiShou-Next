@@ -35,6 +35,7 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
   )
   const [showModelSwitcher, setShowModelSwitcher] = useState(false)
   const [showAssistantPicker, setShowAssistantPicker] = useState(false)
+  const [isCreateAssistantOpen, setIsCreateAssistantOpen] = useState(false)
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null)
   const pricingBootWarnShownRef = useRef(false)
 
@@ -115,6 +116,11 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
     }
   }, [fetchPricingLastUpdated])
 
+  const openCreateAssistant = useCallback(() => {
+    setShowAssistantPicker(false)
+    setIsCreateAssistantOpen(true)
+  }, [])
+
   const handleAssistantSelected = useCallback(
     (assistant: { id: string }) => {
       const id = String(assistant.id)
@@ -143,6 +149,9 @@ export function useAgentWorkspaceChrome(sessionId?: string) {
     setShowModelSwitcher,
     showAssistantPicker,
     setShowAssistantPicker,
+    isCreateAssistantOpen,
+    setIsCreateAssistantOpen,
+    openCreateAssistant,
     pricingLastUpdated,
     handleRefreshPricing,
     handleAssistantSelected,

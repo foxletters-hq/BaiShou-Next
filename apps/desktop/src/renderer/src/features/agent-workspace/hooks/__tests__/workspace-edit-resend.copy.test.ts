@@ -29,7 +29,10 @@ describe('workspace edit-resend / rollback copy', () => {
       attributedDesc: 'round_rollback.scope_attributed_desc',
       all: 'round_rollback.scope_all',
       allDesc: 'round_rollback.scope_all_desc',
-      failed: 'workspace_edit_resend.failed'
+      failed: 'workspace_edit_resend.failed',
+      resendTitle: 'workspace_resend.confirm_title',
+      regenerateTitle: 'workspace_regenerate.confirm_title',
+      deleteTitle: 'workspace_delete_round.confirm_title'
     }
     expect(Object.values(keys).every((k) => k.includes('.'))).toBe(true)
   })
