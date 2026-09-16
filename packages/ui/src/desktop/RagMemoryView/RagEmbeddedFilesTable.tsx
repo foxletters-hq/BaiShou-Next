@@ -1,19 +1,46 @@
-import React from 'react'
+import i18n from 'i18next'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isDiaryRagEntry, isRagEntryEditable } from '@baishou/shared'
+import {
+  buildRagEntryListPreview,
+  isGraphNodeRagEntry,
+  isRagEntryEditable,
+  ragVectorKindLabelKey,
+  resolveRagMemoryEmptyCopy,
+  resolveRagVectorKind,
+  type RagVectorKind,
+  type RagVectorKindFilter
+} from '@baishou/shared'
 import { RagEntry } from './index'
+import { RagMemoryEntryPreviewModal } from './RagMemoryEntryPreviewModal'
+import { RagMemoryHighlightedText } from './RagMemoryHighlightedText'
 import styles from './RagMemoryView.module.css'
+import { Button } from '../Button/Button'
 import { EllipsisVertical, Library } from 'lucide-react'
 
 interface RagEmbeddedFilesTableProps {
   entries: RagEntry[]
   searchQuery: string
+  sourceKind?: RagVectorKindFilter
   activeMenuId: string | null
   setActiveMenuId: (id: string | null) => void
   onEditEntry?: (entry: RagEntry) => void
   onDeleteEntry?: (id: string) => void
-  onOpenSourceSession?: (sessionId: string) => void
   formatDate: (entry: RagEntry) => string
+}
+
+const KIND_BADGE_CLASS: Record<RagVectorKind, string> = {
+  diary: styles.kindBadgeDiary,
+  partner: styles.kindBadgePartner,
+  manual: styles.kindBadgeManual,
+  graph_node: styles.kindBadgeGraph
+}
+
+const KIND_FALLBACK: Record<RagVectorKind, string> = {
+  diary: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagEmbeddedFilesTable.L38', '日记'),
+  partner: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagEmbeddedFilesTable.L39', '伙伴'),
+  manual: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagEmbeddedFilesTable.L40', '手动'),
+  graph_node: i18n.t('auto.packages.ui.src.desktop.RagMemoryView.RagEmbeddedFilesTable.L41', '节点')
 }
 
 /**
@@ -22,140 +49,154 @@ interface RagEmbeddedFilesTableProps {
 export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
   entries,
   searchQuery,
+  sourceKind = 'all',
   activeMenuId,
   setActiveMenuId,
   onEditEntry,
   onDeleteEntry,
-  onOpenSourceSession,
   formatDate
 }) => {
   const { t } = useTranslation()
+  const [previewEntry, setPreviewEntry] = useState<RagEntry | null>(null)
+  const keyword = searchQuery.trim()
 
   if (entries.length === 0) {
+    const emptyCopy = resolveRagMemoryEmptyCopy({ searchQuery, sourceKind })
     return (
       <div className={styles.emptyStateContainer}>
         <div className={styles.emptyIconBig}>
           <Library size={48} />
         </div>
         <div className={styles.emptyTitleLarge}>
-          {searchQuery
-            ? t('common.no_search_result', '没有找到相关结果')
-            : t('common.no_content', '暂无内容')}
+          {t(emptyCopy.titleKey, emptyCopy.titleFallback)}
         </div>
-        <div className={styles.emptyDescSub}>
-          {t(
-            'settings.rag_empty_desc',
-            '当 AI 阅读日记或生成内容时，底层向量数据将在这里自动生成并被管理。'
-          )}
-        </div>
+        <div className={styles.emptyDescSub}>{t(emptyCopy.descKey, emptyCopy.descFallback)}</div>
       </div>
     )
   }
 
   return (
     <div className={styles.entriesWaterfall}>
-      {entries.map((e) => (
-        <div key={e.embeddingId} className={styles.memoryEntryCard}>
-          <div className={styles.memoryEntryContentBlock}>
-            <div className={styles.memoryEntryText}>{e.text}</div>
-            <div className={styles.memoryEntryFooter}>
-              {isDiaryRagEntry(e.sourceType) && (
-                <span className={styles.memoryMetaBadge}>
-                  {t('settings.rag_source_diary', '日记')}
-                </span>
-              )}
-              {e.isManual && (
-                <span className={styles.memoryMetaBadge}>
-                  {t('settings.rag_source_manual', '手动')}
-                </span>
-              )}
-              {!e.isManual &&
-                e.sourceSessionId &&
-                (onOpenSourceSession ? (
-                  <button
-                    type="button"
-                    className={styles.memorySessionLink}
-                    onClick={() => onOpenSourceSession(e.sourceSessionId!)}
-                  >
-                    {t('settings.rag_source_session', '来源会话')}
-                  </button>
-                ) : (
-                  <span className={styles.memoryMetaBadge}>
-                    {t('settings.rag_source_partner', '伙伴')}
+      {entries.map((e) => {
+        const kind = resolveRagVectorKind(e)
+        const isGraphNode = isGraphNodeRagEntry(e.sourceType)
+        const { preview } = buildRagEntryListPreview(e.text, keyword || undefined)
+        return (
+          <div key={e.embeddingId} className={styles.memoryEntryCard}>
+            <div className={styles.memoryEntryContentBlock}>
+              {kind ? (
+                <div className={styles.memoryEntryKindRow}>
+                  <span className={`${styles.kindBadge} ${KIND_BADGE_CLASS[kind]}`}>
+                    {t(ragVectorKindLabelKey(kind), KIND_FALLBACK[kind])}
                   </span>
-                ))}
-              {e.tags && e.tags.length > 0 && (
-                <span className={styles.memoryTags}>
-                  {e.tags.map((tag) => (
-                    <span key={tag} className={styles.memoryTag}>
-                      {tag}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className={styles.memoryEntryText}
+                aria-label={t('settings.rag_view_entry', '查看完整片段')}
+                onClick={() => setPreviewEntry(e)}
+              >
+                <span className={styles.memoryEntryTextInner}>
+                  <RagMemoryHighlightedText text={preview} keyword={keyword || undefined} />
+                </span>
+              </button>
+              <Button type="button" variant="outlined" size="small" onClick={() => setPreviewEntry(e)}>
+                {t('settings.rag_view_entry', '查看完整片段')}
+              </Button>
+              <div className={styles.memoryEntryFooter}>
+                {e.tags && e.tags.length > 0 && (
+                  <span className={styles.memoryTags}>
+                    {e.tags.map((tag) => (
+                      <span key={tag} className={styles.memoryTag}>
+                        {tag}
+                      </span>
+                    ))}
+                  </span>
+                )}
+                <span>{formatDate(e)}</span>
+                {e.memoryUpdatedAt != null && e.memoryUpdatedAt !== e.memoryCreatedAt && (
+                  <>
+                    <span className={styles.metaSep}>·</span>
+                    <span>
+                      {t('settings.rag_updated_at', '修改')}{' '}
+                      {formatDate({ ...e, createdAt: e.memoryUpdatedAt })}
                     </span>
-                  ))}
+                  </>
+                )}
+                <span className={styles.metaSep}>·</span>
+                <span className={styles.memoryEntryModel} title={e.modelId}>
+                  {e.modelId}
                 </span>
-              )}
-              <span>{formatDate(e)}</span>
-              {e.memoryUpdatedAt != null && e.memoryUpdatedAt !== e.memoryCreatedAt && (
-                <>
-                  <span className={styles.metaSep}>·</span>
-                  <span>
-                    {t('settings.rag_updated_at', '修改')}{' '}
-                    {formatDate({ ...e, createdAt: e.memoryUpdatedAt })}
+                {e.similarity !== undefined && (
+                  <span className={styles.similarityTag}>
+                    {t('recall.similarity', '相似度')} {Math.round(e.similarity * 100)}%
                   </span>
-                </>
-              )}
-              <span className={styles.metaSep}>·</span>
-              <span className={styles.memoryEntryModel} title={e.modelId}>
-                {e.modelId}
-              </span>
-              {e.similarity !== undefined && (
-                <span className={styles.similarityTag}>
-                  {t('recall.similarity', '相似度')} {Math.round(e.similarity * 100)}%
-                </span>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-          <div className={styles.memoryEntryActionsBlock}>
-            <button
-              type="button"
-              className={styles.memoryMoreBtn}
-              aria-label={t('common.more', '更多')}
-              onClick={() => setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)}
-            >
-              <EllipsisVertical size={16} />
-            </button>
-            {activeMenuId === e.embeddingId && (
-              <>
-                <div className={styles.entryMenuBackdrop} onClick={() => setActiveMenuId(null)} />
-                <div className={styles.entryMenu}>
-                  {/* 日记切片不给编辑：正文才是事实来源，改切片不会回写日记 */}
-                  {isRagEntryEditable(e.sourceType) && (
+            <div className={styles.memoryEntryActionsBlock}>
+              <button
+                type="button"
+                className={styles.memoryMoreBtn}
+                aria-label={t('common.more', '更多')}
+                onClick={() =>
+                  setActiveMenuId(activeMenuId === e.embeddingId ? null : e.embeddingId)
+                }
+              >
+                <EllipsisVertical size={16} />
+              </button>
+              {activeMenuId === e.embeddingId && (
+                <>
+                  <div className={styles.entryMenuBackdrop} onClick={() => setActiveMenuId(null)} />
+                  <div className={styles.entryMenu}>
                     <button
                       type="button"
                       className={styles.entryMenuItem}
                       onClick={() => {
                         setActiveMenuId(null)
-                        onEditEntry?.(e)
+                        setPreviewEntry(e)
                       }}
                     >
-                      {t('common.edit', '编辑片段')}
+                      {t('settings.rag_view_entry', '查看完整片段')}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className={`${styles.entryMenuItem} ${styles.entryMenuItemDanger}`}
-                    onClick={() => {
-                      setActiveMenuId(null)
-                      onDeleteEntry?.(e.embeddingId)
-                    }}
-                  >
-                    {t('common.delete', '删除片段')}
-                  </button>
-                </div>
-              </>
-            )}
+                    {isRagEntryEditable(e.sourceType) && (
+                      <button
+                        type="button"
+                        className={styles.entryMenuItem}
+                        onClick={() => {
+                          setActiveMenuId(null)
+                          onEditEntry?.(e)
+                        }}
+                      >
+                        {t('common.edit', '编辑片段')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`${styles.entryMenuItem} ${styles.entryMenuItemDanger}`}
+                      onClick={() => {
+                        setActiveMenuId(null)
+                        onDeleteEntry?.(e.embeddingId)
+                      }}
+                    >
+                      {isGraphNode
+                        ? t('settings.rag_clear_node_embed', '清除节点向量')
+                        : t('common.delete', '删除片段')}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
+      <RagMemoryEntryPreviewModal
+        open={previewEntry != null}
+        text={previewEntry?.text ?? ''}
+        keyword={keyword || undefined}
+        onClose={() => setPreviewEntry(null)}
+      />
     </div>
   )
 }
