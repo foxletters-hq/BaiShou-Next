@@ -9,7 +9,8 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { restrictToWindowEdges } from '@dnd-kit/modifiers'
-import { Plus, Sparkles, Trash2, Search } from 'lucide-react'
+import { Sparkles, Trash2, Search } from 'lucide-react'
+import { Button } from '../Button/Button'
 import { isSystemLatteAssistantId } from '@baishou/shared'
 import { Input } from '../Input/Input'
 import { withAppContentOverlay } from '../overlay'
@@ -107,10 +108,9 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
               />
             </div>
           ) : null}
-          <button className={styles.createBtn} onClick={onCreate}>
-            <Plus size={18} />
+          <Button variant="outlined" size="small" onClick={onCreate}>
             {t('agent.assistant.create_new', '新增伙伴')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -123,10 +123,9 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
             <span className={styles.emptyText}>
               {t('agent.assistant.empty_hint', '全列阵空爆：您的矩阵里还没有服役的心智')}
             </span>
-            <button className={styles.emptyBtn} onClick={onCreate}>
-              <Plus size={18} />
+            <Button variant="outlined" size="small" onClick={onCreate}>
               {t('agent.assistant.create_first', '执行首建协议')}
-            </button>
+            </Button>
           </div>
         ) : vm.visibleAssistants.length === 0 ? (
           <div className={styles.emptyState}>
@@ -191,7 +190,10 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
       {deleteTargetId !== null &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div className={withAppContentOverlay(styles.dialogOverlay)} onClick={() => setDeleteTargetId(null)}>
+          <div
+            className={withAppContentOverlay(styles.dialogOverlay)}
+            onClick={() => setDeleteTargetId(null)}
+          >
             <div className={styles.dialogBox} onClick={(e) => e.stopPropagation()}>
               <div className={styles.dialogHeaderIcon}>
                 <Trash2 size={32} color="var(--color-error)" />
@@ -206,18 +208,12 @@ export const AssistantManagementPage: React.FC<AssistantManagementPageProps> = (
                 )}
               </div>
               <div className={styles.dialogActions}>
-                <button
-                  className={`${styles.dialogBtn} ${styles.dialogBtnCancel}`}
-                  onClick={() => setDeleteTargetId(null)}
-                >
+                <Button variant="outlined" size="small" onClick={() => setDeleteTargetId(null)}>
                   {t('common.cancel', '暂缓')}
-                </button>
-                <button
-                  className={`${styles.dialogBtn} ${styles.dialogBtnDanger}`}
-                  onClick={handleConfirmDelete}
-                >
+                </Button>
+                <Button variant="outlined" size="small" onClick={handleConfirmDelete}>
                   {t('common.delete', '授权粉碎')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>,

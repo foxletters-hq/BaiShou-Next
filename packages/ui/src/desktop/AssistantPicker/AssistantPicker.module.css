@@ -178,21 +178,9 @@
 }
 
 .createBtn {
-  width: 100%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 0;
-  background: transparent;
-  border: 1px solid var(--border-control);
-  border-radius: 10px;
-  cursor: pointer;
-  color: var(--text-primary);
-  transition: background-color 0.2s;
-}
-
-.createBtn:hover {
-  background-color: color-mix(in srgb, var(--bg-surface-highest) 30%, transparent);
 }
 
 .createBtnIcon {

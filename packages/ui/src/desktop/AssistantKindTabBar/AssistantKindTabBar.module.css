@@ -66,3 +66,55 @@
   line-height: 1.45;
   color: var(--text-secondary);
 }
+
+.cards {
+  display: flex;
+  flex-direction: column;
+}
+
+.kindCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kindCard + .kindCard {
+  border-top: 1px solid var(--border-muted);
+}
+
+.kindCard:hover {
+  background: var(--bg-surface-high);
+}
+
+.kindCardActive {
+  background: var(--bg-surface-high);
+}
+
+.kindCardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--settings-font-row-size);
+  font-weight: var(--settings-font-row-weight);
+}
+
+.kindCardActive .kindCardTitle {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.kindCardHint {
+  font-size: var(--settings-font-desc-size);
+  font-weight: var(--settings-font-desc-weight);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
