@@ -48,7 +48,7 @@ export function useAttachmentDiaryState(
   {
     onDeleteDiaryAttachment,
     confirmKeyword,
-    imagePreview,
+    imagePreview: _imagePreview,
     setImagePreview,
     imagePreviewLoading,
     setImagePreviewLoading,
