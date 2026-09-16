@@ -1,7 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentGateReply, type AgentGatePartData, type AgentGateRequest } from '@baishou/shared'
-import { resolveAlwaysAllowPrefixHint } from '../../agent-gate'
 import { summarizePreviewForHistory } from '../../agent-gate/agent-gate-preview-copy'
 import styles from './AgentGatePartBubble.module.css'
 
@@ -49,9 +48,6 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
   const { request, resolution } = data
   const resolved = Boolean(resolution)
   const optionLabel = selectedOptionLabel(request, resolution?.selectedOptionIds)
-  const alwaysScopeHint = resolveAlwaysAllowPrefixHint(request)
-  const showPendingScopeHint = !resolved && alwaysScopeHint
-  const showResolvedAlwaysScope = resolution?.reply === AgentGateReply.Always && alwaysScopeHint
   const previewSummary = summarizePreviewForHistory(request.preview)
   const numberedOptionsText =
     request.options.length > 0
@@ -88,25 +84,11 @@ export const AgentGatePartBubble: React.FC<AgentGatePartBubbleProps> = ({ data }
       !request.description.startsWith(`${request.title}:`) ? (
         <div className={styles.description}>{request.description}</div>
       ) : null}
-      {showPendingScopeHint ? (
-        <div className={styles.scopeHint}>
-          {t('agent_gate.always_prefix_hint', '始终允许将记住：{{pattern}}', {
-            pattern: alwaysScopeHint
-          })}
-        </div>
-      ) : null}
       {resolved ? (
         <div className={styles.meta}>
           {replyLabel(t, resolution?.reply)}
           {optionLabel ? ` · ${optionLabel}` : null}
           {resolution?.message ? ` · ${resolution.message}` : null}
-        </div>
-      ) : null}
-      {showResolvedAlwaysScope ? (
-        <div className={styles.scopeHint}>
-          {t('agent_gate.always_remembered', '已记住：{{pattern}}', {
-            pattern: alwaysScopeHint
-          })}
         </div>
       ) : null}
     </div>

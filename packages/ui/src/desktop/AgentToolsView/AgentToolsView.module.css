@@ -503,63 +503,7 @@
   margin: 0;
 }
 
-/* Material Design Switch */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 52px;
-  height: 32px;
-  margin-left: 12px;
-}
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--theme-surface-variant);
-  transition: 0.2s;
-  border-radius: 32px;
-  border: 2px solid var(--theme-outline);
-}
-.slider:before {
-  position: absolute;
-  content: '';
-  height: 16px;
-  width: 16px;
-  left: 6px;
-  bottom: 6px;
-  background-color: var(--theme-outline);
-  transition: 0.2s;
-  border-radius: 50%;
-}
-input:checked + .slider {
-  background-color: var(--theme-primary);
-  border-color: var(--theme-primary);
-}
-input:checked + .slider:before {
-  transform: translateX(20px);
-  background-color: var(--theme-on-primary);
-  height: 24px;
-  width: 24px;
-  left: 2px;
-  bottom: 2px;
-}
 @media (prefers-color-scheme: dark) {
-  .slider {
-    background-color: rgba(148, 163, 184, 0.2);
-    border-color: var(--border-control);
-  }
-  .slider:before {
-    background-color: rgba(148, 163, 184, 0.4);
-  }
-
   .toolCard.disabled {
     background-color: rgba(255, 255, 255, 0.05);
     opacity: 0.8;

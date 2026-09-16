@@ -1,18 +1,18 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '../Button/Button'
 import { AgentGateKind, AgentGateReply, type AgentGateRequest } from '@baishou/shared'
 import {
-  resolveAlwaysAllowPrefixHint,
   shouldShowAlwaysAllow,
   shouldShowCustomRejectInput,
   shouldShowProactiveOptions,
   type AgentGateReplyPayload
 } from '../../agent-gate'
 import {
+  canFlipGateQueue,
   formatFileChangeKindLabel,
-  formatGateQueueLabel,
-  humanizeRepeatHint,
-  resolveScopeLabel
+  formatGateQueueLabel
 } from '../../agent-gate/agent-gate-preview-copy'
 import styles from './AgentGateDock.module.css'
 
@@ -23,6 +23,8 @@ export interface AgentGateDockProps {
   /** 队列位置（1-based）；与 queueTotal 一起显示 */
   queueIndex?: number
   queueTotal?: number
+  onQueuePrev?: () => void
+  onQueueNext?: () => void
   /** Always / Once / Reject 将影响的同 action 数量（含当前） */
   sameActionCount?: number
   /** inline：嵌入输入区上方；overlay：兼容旧浮层 */
@@ -57,7 +59,8 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   onReply,
   queueIndex = 0,
   queueTotal = 0,
-  sameActionCount = 0,
+  onQueuePrev,
+  onQueueNext,
   placement = 'inline'
 }) => {
   const { t } = useTranslation()
@@ -67,42 +70,27 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
   const [feedback, setFeedback] = useState('')
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
   const [diffExpanded, setDiffExpanded] = useState(false)
-  const [alwaysConfirm, setAlwaysConfirm] = useState(false)
 
   useEffect(() => {
     setShowFeedback(false)
     setFeedback('')
     setSelectedOptionId(null)
     setDiffExpanded(false)
-    setAlwaysConfirm(false)
   }, [request?.id])
 
   useEffect(() => {
     if (!request) return
     titleRef.current?.focus()
+    // 只在请求身份变化时聚焦标题
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.id])
-
-  useEffect(() => {
-    if (!request || !alwaysConfirm) return undefined
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        setAlwaysConfirm(false)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [alwaysConfirm, request])
 
   if (!request) return null
 
   const proactiveOptions = shouldShowProactiveOptions(request)
   const showAlways = shouldShowAlwaysAllow(request)
-  const alwaysPrefixHint = resolveAlwaysAllowPrefixHint(request)
   const allowCustomInput = shouldShowCustomRejectInput(request)
   const queueLabel = formatGateQueueLabel(queueIndex, queueTotal)
-  const repeatHint = humanizeRepeatHint(request)
-  const scopeLabel = resolveScopeLabel(request)
   const preview = request.preview
   const questionText = request.title?.trim() || ''
   const descriptionText = request.description?.trim() || ''
@@ -112,12 +100,6 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
       : null
   const descriptionIsOptionsDump =
     Boolean(numberedOptionsText) && descriptionText === numberedOptionsText
-  const cascadeHint =
-    sameActionCount > 1
-      ? t('agent_gate.cascade_hint', '此决定将影响本会话中另外 {{count}} 个相同操作', {
-          count: sameActionCount - 1
-        })
-      : null
 
   const handleReject = () => {
     if (allowCustomInput) {
@@ -161,7 +143,33 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
         <h2 id={titleId} ref={titleRef} tabIndex={-1} className={styles.title}>
           {t('agent_gate.dock_title', '需要确认')}
         </h2>
-        {queueLabel ? <p className={styles.queueLabel}>{queueLabel}</p> : null}
+        {queueLabel ? (
+          <div className={styles.queueNav}>
+            {onQueuePrev || onQueueNext ? (
+              <button
+                type="button"
+                className={styles.queueNavBtn}
+                disabled={!canFlipGateQueue(queueIndex, queueTotal, -1) || isReplying}
+                onClick={onQueuePrev}
+                aria-label={t('agent_gate.queue_prev', '上一题')}
+              >
+                <ChevronLeft size={16} strokeWidth={2} aria-hidden />
+              </button>
+            ) : null}
+            <p className={styles.queueLabel}>{queueLabel}</p>
+            {onQueuePrev || onQueueNext ? (
+              <button
+                type="button"
+                className={styles.queueNavBtn}
+                disabled={!canFlipGateQueue(queueIndex, queueTotal, 1) || isReplying}
+                onClick={onQueueNext}
+                aria-label={t('agent_gate.queue_next', '下一题')}
+              >
+                <ChevronRight size={16} strokeWidth={2} aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {preview ? (
@@ -193,14 +201,6 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
       !descriptionIsOptionsDump &&
       descriptionText !== questionText ? (
         <p className={styles.hint}>{descriptionText}</p>
-      ) : null}
-
-      {repeatHint ? <p className={styles.hint}>{repeatHint}</p> : null}
-      {cascadeHint ? <p className={styles.hint}>{cascadeHint}</p> : null}
-      {request.kind === AgentGateKind.Tool ? (
-        <p className={styles.hint}>
-          {t('agent_gate.once_turn_hint', '「本次允许」在本轮回答彻底结束前都有效；「始终允许」会一直记住。')}
-        </p>
       ) : null}
 
       {preview?.type === 'file_change' ? (
@@ -273,40 +273,6 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
         </div>
       ) : null}
 
-      {alwaysConfirm ? (
-        <div className={styles.confirmPanel}>
-          <p className={styles.description}>
-            {t(
-              'agent_gate.always_confirm_body',
-              '始终允许将持久保存到本机（可在设置中撤销），范围：{{scope}}。匹配：{{pattern}}。',
-              {
-                scope: scopeLabel,
-                pattern: alwaysPrefixHint ?? request.action
-              }
-            )}
-          </p>
-          {cascadeHint ? <p className={styles.hint}>{cascadeHint}</p> : null}
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnSecondary}`}
-              disabled={isReplying}
-              onClick={() => setAlwaysConfirm(false)}
-            >
-              {t('common.cancel', '取消')}
-            </button>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              disabled={isReplying}
-              onClick={() => void onReply({ requestId: request.id, reply: AgentGateReply.Always })}
-            >
-              {t('agent_gate.always_confirm', '确认始终允许')}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       {proactiveOptions && !showFeedback ? (
         <div className={styles.options} role="radiogroup" aria-label={request.title}>
           {request.options.map((option) => (
@@ -339,9 +305,8 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
             autoFocus
           />
           <div className={styles.feedbackActions}>
-            <button
+            <Button
               type="button"
-              className={`${styles.btn} ${styles.btnSecondary}`}
               disabled={isReplying}
               onClick={() => {
                 setShowFeedback(false)
@@ -349,79 +314,71 @@ export const AgentGateDock: React.FC<AgentGateDockProps> = ({
               }}
             >
               {t('common.cancel', '取消')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={`${styles.btn} ${proactiveOptions ? styles.btnPrimary : styles.btnReject}`}
+              className={proactiveOptions ? undefined : styles.btnReject}
               disabled={isReplying}
               onClick={submitRejectWithFeedback}
             >
               {proactiveOptions
                 ? t('agent_gate.submit_answer', '提交回答')
                 : t('agent_gate.reject', '拒绝')}
-            </button>
+            </Button>
           </div>
         </div>
-      ) : alwaysConfirm ? null : proactiveOptions ? (
+      ) : proactiveOptions ? (
         <div className={styles.actions}>
           {allowCustomInput ? (
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnSecondary}`}
-              disabled={isReplying}
-              onClick={() => setShowFeedback(true)}
-            >
+            <Button type="button" disabled={isReplying} onClick={() => setShowFeedback(true)}>
               {t('agent_gate.custom_answer', '自定义回答')}
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
-            className={`${styles.btn} ${styles.btnReject}`}
+            className={styles.btnReject}
             disabled={isReplying}
             onClick={handleReject}
           >
             {t('agent_gate.reject', '拒绝')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={`${styles.btn} ${styles.btnPrimary}`}
             disabled={isReplying || !selectedOptionId}
             onClick={submitProactiveConfirm}
           >
             {t('agent_gate.confirm', '确认')}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className={styles.actions}>
-          <button
+          <Button
             type="button"
-            className={`${styles.btn} ${styles.btnReject}`}
+            className={styles.btnReject}
             disabled={isReplying}
             onClick={handleReject}
             aria-label={t('agent_gate.reject', '拒绝')}
           >
             {t('agent_gate.reject', '拒绝')}
-          </button>
+          </Button>
           {showAlways ? (
-            <button
+            <Button
               type="button"
-              className={`${styles.btn} ${styles.btnSecondary}`}
               disabled={isReplying}
-              onClick={() => setAlwaysConfirm(true)}
+              onClick={() => void onReply({ requestId: request.id, reply: AgentGateReply.Always })}
               aria-label={t('agent_gate.always', '始终允许')}
             >
               {t('agent_gate.always', '始终允许')}
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
-            className={`${styles.btn} ${styles.btnPrimary}`}
             disabled={isReplying}
             onClick={() => void onReply({ requestId: request.id, reply: AgentGateReply.Once })}
             aria-label={t('agent_gate.once', '本次允许')}
           >
             {t('agent_gate.once', '本次允许')}
-          </button>
+          </Button>
         </div>
       )}
     </section>

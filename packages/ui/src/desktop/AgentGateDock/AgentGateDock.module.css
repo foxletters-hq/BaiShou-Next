@@ -63,6 +63,36 @@
   outline: none;
 }
 
+.queueNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queueNavBtn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.queueNavBtn:hover:not(:disabled) {
+  background: var(--bg-surface-high);
+  color: var(--text-primary);
+}
+
+.queueNavBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .queueLabel {
   margin: 0;
   font-size: 12px;
@@ -294,18 +324,6 @@
 .btnReject:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-error, #ef4444) 22%, transparent);
   border-color: color-mix(in srgb, var(--color-error, #ef4444) 45%, transparent);
-}
-
-.btnSecondary {
-  color: var(--text-primary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-control);
-}
-
-.btnPrimary {
-  color: var(--text-primary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-control);
 }
 
 .feedback {
