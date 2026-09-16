@@ -2,7 +2,7 @@ import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import styles from './AIModelServicesView.module.css'
-import { Cloud, GripVertical } from 'lucide-react'
+import { GripVertical } from 'lucide-react'
 
 export const ProviderStaticItem: React.FC<{
   p: { id: string; name: string; iconUrl?: string; isSystem?: boolean }

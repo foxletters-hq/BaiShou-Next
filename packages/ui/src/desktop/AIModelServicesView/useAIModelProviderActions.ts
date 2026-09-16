@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import type { TFunction } from 'i18next'
 import { renderProviderIcon, renderProviderTypeIcon } from './ai-model-services.icons'
 import { isChatModelForConnectionTest, resolveProviderBaseUrl } from '@baishou/shared'
@@ -69,8 +69,7 @@ export function useAIModelProviderActions(params: UseAIModelProviderActionsParam
     addModalData,
     setAddModalData,
     firstProviderId,
-    localProvidersList,
-    BASE_KNOWN_PROVIDERS
+    localProvidersList
   } = params
 
   const persistProviderUpdate = (providerId: string, updates: Partial<AIProviderConfig>) =>

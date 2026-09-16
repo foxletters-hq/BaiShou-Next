@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import styles from './AIModelServicesView.module.css'
+import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
 import { Switch } from '../Switch/Switch'
 import { HelpTooltip } from '../HelpTooltip'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
-import { Eye, EyeOff, Key, Link, List, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Key, Link, List, Search, Trash2 } from 'lucide-react'
 
 export interface AIModelServicesConfigPaneProps {
   vm: AIModelServicesViewModel
@@ -94,10 +95,9 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                   size={14}
                 />
               </div>
-              <button className={styles.resetBtnInline} onClick={handleResetCurrentProvider}>
-                <RotateCcw size={14} />
-                <span>{t('settings.reset_default', '恢复默认')}</span>
-              </button>
+              <Button variant="outlined" size="small" onClick={handleResetCurrentProvider}>
+                {t('settings.reset_default', '恢复默认')}
+              </Button>
             </div>
 
             <div className={styles.inputGroup}>
@@ -142,18 +142,17 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
               />
             </div>
 
-            <button
-              className={styles.testBtnBlock}
+            <Button
+              variant="outlined"
+              size="small"
+              className={styles.fullWidthButton}
               onClick={handleTestConnection}
-              disabled={isTesting}
+              isLoading={isTesting}
             >
-              {isTesting && <span className={styles.loadingSpinner}></span>}
-              <span>
-                {isTesting
-                  ? t('settings.testing_connection', '正在测试连接...')
-                  : t('settings.test_connection', '测试连接')}
-              </span>
-            </button>
+              {isTesting
+                ? t('settings.testing_connection', '正在测试连接...')
+                : t('settings.test_connection', '测试连接')}
+            </Button>
           </div>
 
           {/* ProviderModelList Section */}
@@ -167,18 +166,14 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
                     .replace('$total', String(activeConfig.models?.length || 0))}
                 </span>
               </div>
-              <button
-                className={styles.fetchBtnLine}
+              <Button
+                variant="outlined"
+                size="small"
                 onClick={handleFetchModels}
-                disabled={isFetchingModels}
+                isLoading={isFetchingModels}
               >
-                {isFetchingModels ? (
-                  <span className={styles.loadingSpinnerSmall}></span>
-                ) : (
-                  <RefreshCw size={16} />
-                )}
                 {t('settings.fetch_models', '获取模型')}
-              </button>
+              </Button>
             </div>
 
             {activeConfig.models && activeConfig.models.length > 0 ? (
@@ -248,9 +243,9 @@ export const AIModelServicesConfigPane: React.FC<AIModelServicesConfigPaneProps>
       </div>
       <div className={styles.bottomBarArea}>
         <div className={styles.bottomBarContainer}>
-          <button className={styles.saveBtn} onClick={handleSaveCurrentProviderConfig}>
-            <span>{t('ai_config.save_changes_button', '保存修改')}</span>
-          </button>
+          <Button variant="outlined" size="small" onClick={handleSaveCurrentProviderConfig}>
+            {t('ai_config.save_changes_button', '保存修改')}
+          </Button>
         </div>
       </div>
     </div>

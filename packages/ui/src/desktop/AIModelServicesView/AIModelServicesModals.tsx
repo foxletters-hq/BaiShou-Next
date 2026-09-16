@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { withAppContentOverlay } from '../overlay'
+import { Button } from '../Button/Button'
 import { Input } from '../Input/Input'
 import styles from './AIModelServicesView.module.css'
 import type { AIModelServicesViewModel } from './useAIModelServicesView'
 import { resolveProviderTypeLabel } from './ai-model-services.constants'
-import { Blocks, CheckCircle2, ChevronDown, Cpu, Search, Sparkles, X } from 'lucide-react'
+import { Blocks, CheckCircle2, ChevronDown, Search, Sparkles, X } from 'lucide-react'
 
 export interface AIModelServicesModalsProps {
   vm: AIModelServicesViewModel
@@ -30,8 +31,6 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
     testModelId,
     setTestModelId,
     testModelOptions,
-    isTestModelDropdownOpen,
-    setIsTestModelDropdownOpen,
     confirmTestConnection,
     activeProviderMeta,
     renderIcon
@@ -120,12 +119,12 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                 </div>
               </div>
               <div className={styles.addModalFooter}>
-                <button className={styles.addModalCancel} onClick={() => setIsAddModalOpen(false)}>
+                <Button variant="outlined" size="small" onClick={() => setIsAddModalOpen(false)}>
                   {t('common.cancel', '取消')}
-                </button>
-                <button className={styles.addModalConfirm} onClick={submitAddCustomProvider}>
+                </Button>
+                <Button variant="outlined" size="small" onClick={submitAddCustomProvider}>
                   {t('agent.provider.add_button', '添加')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>,
@@ -241,18 +240,19 @@ export const AIModelServicesModals: React.FC<AIModelServicesModalsProps> = ({ vm
                 </div>
               </div>
               <div className={styles.addModalFooter}>
-                <button
-                  className={styles.addModalCancel}
+                <Button
+                  variant="outlined"
+                  size="small"
                   onClick={() => {
                     setIsTestModalOpen(false)
                     setSearchQuery('')
                   }}
                 >
                   {t('common.cancel', '取消')}
-                </button>
-                <button className={styles.addModalConfirm} onClick={confirmTestConnection}>
+                </Button>
+                <Button variant="outlined" size="small" onClick={confirmTestConnection}>
                   {t('ai_config.start_test', '开始测试')}
-                </button>
+                </Button>
               </div>
             </div>
           </div>,
