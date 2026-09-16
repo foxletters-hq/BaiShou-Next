@@ -1,6 +1,7 @@
 import React from 'react'
 import { History, Minimize2 } from 'lucide-react'
 import { HelpTooltip } from '../HelpTooltip'
+import { Switch } from '../Switch/Switch'
 import {
   DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD,
   getDefaultCompressionSystemPrompt
@@ -88,18 +89,19 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
               ? t('agent.assistant.context_unlimited', '无限制')
               : t('agent.assistant.context_limited', '轮转')}
           </span>
-          <label className={styles.toggleSwitch}>
-            <input
-              type="checkbox"
-              checked={editingContextWindow < 0}
-              onChange={(e) => {
-                const newVal = e.target.checked ? -1 : 20
-                setEditingContextWindow(newVal)
-                saveConfig({ contextWindow: newVal })
-              }}
-            />
-            <span className={styles.toggleSlider}></span>
-          </label>
+          <Switch
+            checked={editingContextWindow < 0}
+            aria-label={
+              editingContextWindow < 0
+                ? t('agent.assistant.context_unlimited', '无限制')
+                : t('agent.assistant.context_limited', '轮转')
+            }
+            onChange={(e) => {
+              const newVal = e.target.checked ? -1 : 20
+              setEditingContextWindow(newVal)
+              saveConfig({ contextWindow: newVal })
+            }}
+          />
         </div>
         {editingContextWindow >= 0 && (
           <input
@@ -177,25 +179,22 @@ export function AssistantPickerMemoryTab({ vm }: { vm: AssistantPickerSheetViewM
                 : editingCompressThreshold}
             </span>
           )}
-          <label className={styles.toggleSwitch}>
-            <input
-              type="checkbox"
-              checked={editingCompressEnabled}
-              onChange={(e) => {
-                const val = e.target.checked
-                setEditingCompressEnabled(val)
-                if (val && editingCompressThreshold <= 0) {
-                  setEditingCompressThreshold(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
-                  saveConfig({ compressTokenThreshold: DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD })
-                } else {
-                  saveConfig({
-                    compressTokenThreshold: val ? editingCompressThreshold : 0
-                  })
-                }
-              }}
-            />
-            <span className={styles.toggleSlider}></span>
-          </label>
+          <Switch
+            checked={editingCompressEnabled}
+            aria-label={t('agent.assistant.compress_label', 'Auto Compress')}
+            onChange={(e) => {
+              const val = e.target.checked
+              setEditingCompressEnabled(val)
+              if (val && editingCompressThreshold <= 0) {
+                setEditingCompressThreshold(DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD)
+                saveConfig({ compressTokenThreshold: DEFAULT_ASSISTANT_COMPRESS_TOKEN_THRESHOLD })
+              } else {
+                saveConfig({
+                  compressTokenThreshold: val ? editingCompressThreshold : 0
+                })
+              }
+            }}
+          />
         </div>
         {editingCompressEnabled && (
           <>

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { isSystemLatteAssistantId } from '@baishou/shared'
+import { Button } from '../Button/Button'
 import { AssistantKindBadge } from '../AssistantKindBadge'
 import { AssistantAvatar } from '../AssistantAvatar'
 import styles from './AssistantPickerSheet.module.css'
@@ -116,14 +117,14 @@ export function AssistantPickerSidebar({
       </div>
 
       <div className={styles.bottomArea}>
-        <button
-          className={styles.createBtn}
+        <Button
+          type="button"
           onClick={() => {
             if (onCreateNew) onCreateNew()
           }}
         >
           <Plus size={14} /> {t('agent.assistant.create_title', 'Create Companion')}
-        </button>
+        </Button>
       </div>
     </div>
   )
