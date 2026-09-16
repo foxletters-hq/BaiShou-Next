@@ -9,9 +9,11 @@ import {
   fileChangeFromMutateInvocation,
   isWorkspaceFileMutateTool,
   normalizePartData,
+  resolveAgentToolActionLabel,
   sortAgentMessageParts
 } from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
+import { readWorkspacePartText } from './workspace-message-display.util'
 
 export interface WorkspaceToolPartData {
   callId?: string
@@ -224,18 +226,8 @@ export function buildWorkspaceAssistantTimeline(
   const items: WorkspaceAssistantTimelineItem[] = []
   for (const part of ordered) {
     if (part.type === 'text') {
-      const data = normalizePartData(part.data) as {
-        text?: string
-        displayText?: string
-        isReasoning?: boolean
-      }
-      const text = String(
-        (typeof data.displayText === 'string' && data.displayText.trim()
-          ? data.displayText
-          : null) ??
-          data.text ??
-          ''
-      )
+      const data = normalizePartData(part.data)
+      const text = readWorkspacePartText(part.data)
       if (!text.trim()) continue
       items.push({
         kind: data.isReasoning ? 'reasoning' : 'text',
@@ -267,25 +259,40 @@ export function buildWorkspaceAssistantTimeline(
       })
       continue
     }
-    if (part.type === 'file_change' && isFileChangeData(part.data)) {
+    if (part.type === 'file_change') {
+      const fileChange = parseFileChangePartData(part.data)
+      if (!fileChange) continue
       items.push({
         kind: 'file_change',
         key: part.id,
-        data: part.data as FileChangePartData
+        data: fileChange
       })
     }
   }
   return items
 }
 
-export function isFileChangeData(data: unknown): data is FileChangePartData {
-  if (!data || typeof data !== 'object') return false
-  const record = data as Record<string, unknown>
-  return typeof record.path === 'string' && typeof record.kind === 'string'
+export function parseFileChangePartData(data: unknown): FileChangePartData | null {
+  const record = normalizePartData(data)
+  if (typeof record.path !== 'string' || typeof record.kind !== 'string') return null
+  return {
+    ...(record as FileChangePartData),
+    path: record.path,
+    kind: record.kind as FileChangePartData['kind'],
+    additions: Number(record.additions) || 0,
+    deletions: Number(record.deletions) || 0
+  }
 }
 
-export function formatWorkspaceToolDisplayName(name: string): string {
-  return name.replace(/^mcp__[^_]+__/, '').replace(/_/g, ' ')
+export function isFileChangeData(data: unknown): data is FileChangePartData {
+  return parseFileChangePartData(data) != null
+}
+
+export function formatWorkspaceToolDisplayName(
+  name: string,
+  t?: (key: string, fallback?: string) => string
+): string {
+  return resolveAgentToolActionLabel(name, t ?? ((_key, fallback) => fallback ?? _key))
 }
 
 export function extractToolInvocations(parts: AgentPart[] | undefined): MockToolInvocation[] {
@@ -303,23 +310,22 @@ export function collectWorkspaceFileChanges(
   const changes: WorkspaceChangeEntry[] = []
   for (const msg of messages) {
     for (const part of sortWorkspaceMessageParts(msg.parts)) {
-      if (part.type === 'file_change' && isFileChangeData(part.data)) {
-        const status = (part.data as FileChangePartData & { status?: string }).status
-        if (status === 'failed') continue
-        changes.push({
-          id: `${msg.id}:${part.data.path}`,
-          path: part.data.path,
-          kind: part.data.kind,
-          additions: part.data.additions,
-          deletions: part.data.deletions,
-          data: part.data
-        })
-      }
+      if (part.type !== 'file_change') continue
+      const parsed = parseFileChangePartData(part.data)
+      if (!parsed || isFileChangePartFailed(parsed)) continue
+      changes.push({
+        id: `${msg.id}:${parsed.path}`,
+        path: parsed.path,
+        kind: parsed.kind,
+        additions: parsed.additions,
+        deletions: parsed.deletions,
+        data: parsed
+      })
     }
   }
   return changes
 }
 
-export function isFileChangePartFailed(data: FileChangePartData & { status?: string }): boolean {
+export function isFileChangePartFailed(data: { status?: string }): boolean {
   return data.status === 'failed'
 }

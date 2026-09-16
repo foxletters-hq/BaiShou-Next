@@ -19,12 +19,13 @@ export function fileRefToWorkspaceAttachment(
     fileName,
     filePath,
     relativePath: ref.relativePath,
-    isImage: flags.isImage,
-    isPdf: flags.isPdf,
-    isText: flags.isText,
+    isImage: ref.isDirectory ? false : flags.isImage,
+    isPdf: ref.isDirectory ? false : flags.isPdf,
+    isText: ref.isDirectory ? false : flags.isText,
     selection: ref.selection,
     comment: ref.comment,
-    origin: ref.origin ?? 'mention'
+    origin: ref.origin ?? 'mention',
+    ...(ref.isDirectory ? { isDirectory: true } : {})
   }
 }
 
@@ -46,7 +47,8 @@ export function mergeWorkspaceFileRefsIntoAttachments(params: {
       return fileContextItemKey({
         relativePath,
         selection: att.selection,
-        comment: att.comment
+        comment: att.comment,
+        isDirectory: att.isDirectory
       })
     })
   )

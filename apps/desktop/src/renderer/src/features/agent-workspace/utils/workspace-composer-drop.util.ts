@@ -51,6 +51,31 @@ export function collectWorkspaceExplorerRelativePaths(
   return payload.relativePaths
 }
 
+async function resolveDroppedPathIsDirectory(params: {
+  relativePath: string
+  markedDirectory?: boolean
+  folderRoot: string
+  listDir?: (
+    rootPath: string,
+    relativePath?: string
+  ) => Promise<Array<{ relativePath: string; name: string; isDirectory: boolean }>>
+}): Promise<boolean> {
+  if (params.markedDirectory === true) return true
+  if (params.markedDirectory === false) return false
+  if (!params.listDir) return false
+  const parent = parentRelativePath(params.relativePath)
+  try {
+    const entries = await params.listDir(params.folderRoot, parent || undefined)
+    const entry = entries.find(
+      (item) => item.relativePath === params.relativePath || item.name === params.relativePath.split('/').pop()
+    )
+    if (!entry) return true
+    return entry.isDirectory
+  } catch {
+    return true
+  }
+}
+
 export async function resolveWorkspaceComposerDrop(params: {
   dataTransfer: DataTransfer
   folderRoot: string | null
@@ -59,32 +84,42 @@ export async function resolveWorkspaceComposerDrop(params: {
     relativePath?: string
   ) => Promise<Array<{ relativePath: string; name: string; isDirectory: boolean }>>
 }): Promise<MockChatAttachment[] | null> {
-  const relativePaths = collectWorkspaceExplorerRelativePaths(params.dataTransfer)
-  if (!relativePaths) return null
+  const payload = parseExplorerDndPayload(params.dataTransfer)
+  if (!payload) return null
   if (!params.folderRoot) return []
 
+  const markedByPath = new Map(
+    (payload.entries ?? []).map((entry) => [entry.relativePath, entry.isDirectory])
+  )
   const attachments: MockChatAttachment[] = []
-  for (const relativePath of relativePaths) {
+  for (const relativePath of payload.relativePaths) {
     const rel = normalizeRelativePath(relativePath)
     if (!rel || !isSafeWorkspaceRelativePath(rel)) continue
-    if (params.listDir) {
-      const parent = parentRelativePath(rel)
-      let isDirectory = false
-      try {
-        const entries = await params.listDir(params.folderRoot, parent || undefined)
-        const entry = entries.find((item) => item.relativePath === rel || item.name === rel.split('/').pop())
-        if (!entry || entry.isDirectory) {
-          isDirectory = true
-        }
-      } catch {
-        isDirectory = true
-      }
-      if (isDirectory) continue
-    }
+    const isDirectory = await resolveDroppedPathIsDirectory({
+      relativePath: rel,
+      markedDirectory: markedByPath.get(rel),
+      folderRoot: params.folderRoot,
+      listDir: params.listDir
+    })
     const fileName = rel.split('/').pop() || rel
+    const absolutePath = joinWorkspaceAbsolutePath(params.folderRoot, rel)
+    if (isDirectory) {
+      attachments.push({
+        id: Math.random().toString(36).substring(7),
+        fileName,
+        filePath: absolutePath,
+        relativePath: rel,
+        isImage: false,
+        isPdf: false,
+        isText: false,
+        isDirectory: true,
+        origin: 'explorer-drop'
+      })
+      continue
+    }
     attachments.push(
       attachmentFromWorkspaceFilePath({
-        absolutePath: joinWorkspaceAbsolutePath(params.folderRoot, rel),
+        absolutePath,
         fileName,
         relativePath: rel
       })

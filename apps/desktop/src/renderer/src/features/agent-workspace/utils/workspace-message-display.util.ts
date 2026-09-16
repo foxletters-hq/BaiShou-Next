@@ -4,7 +4,8 @@ import {
   composerExtraPlain,
   mapAttachmentsFromParts,
   normalizeFileCiteRefs,
-  normalizePartData
+  normalizePartData,
+  unwrapMessageMetadataForDisplay
 } from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 
@@ -121,17 +122,29 @@ export function getWorkspaceAssistantReasoning(message: WorkspaceChatMessage): s
   return extractTextFromParts(message.parts, true)
 }
 
+/** 与 IPC 映射一致：displayText → text → content，并脱去误带的 message 元数据 */
+export function readWorkspacePartText(data: unknown): string {
+  const normalized = normalizePartData(data)
+  const display =
+    typeof normalized.displayText === 'string' && normalized.displayText.trim()
+      ? normalized.displayText
+      : null
+  const raw =
+    display ??
+    (typeof normalized.text === 'string'
+      ? normalized.text
+      : typeof normalized.content === 'string'
+        ? normalized.content
+        : '')
+  return unwrapMessageMetadataForDisplay(String(raw ?? ''))
+}
+
 function extractTextFromParts(parts: AgentPart[] | undefined, reasoningOnly: boolean): string {
   if (!parts?.length) return ''
   return parts
     .filter((part) => part.type === 'text')
     .filter((part) => Boolean(normalizePartData(part.data).isReasoning) === reasoningOnly)
-    .map((part) => {
-      const data = normalizePartData(part.data)
-      const display =
-        typeof data.displayText === 'string' && data.displayText.trim() ? data.displayText : null
-      return String(display ?? data.text ?? '')
-    })
+    .map((part) => readWorkspacePartText(part.data))
     .join('\n')
     .trim()
 }
