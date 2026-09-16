@@ -1,4 +1,4 @@
-﻿.overlay {
+.overlay {
   position: fixed;
   top: 48px;
   left: 0;
@@ -299,29 +299,6 @@
   padding: 10px 12px;
   border-top: 1px solid var(--border-muted);
   background: var(--bg-surface-lowest);
-}
-
-.createBtn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 7px 10px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-control);
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-weight: 500;
-  font-size: var(--settings-font-label-size, 13px);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.createBtn:hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-control);
-  color: var(--text-primary);
 }
 
 .memoryOptionCard {
@@ -801,47 +778,4 @@
   flex: 1;
   width: 100%;
   margin: 0 16px 0 0;
-}
-
-.toggleSwitch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 22px;
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-.toggleSwitch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.toggleSlider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(var(--color-outline-variant-rgb), 0.5);
-  transition: 0.4s;
-  border-radius: 24px;
-}
-.toggleSlider:before {
-  position: absolute;
-  content: '';
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--bg-surface);
-  transition: 0.4s;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-.toggleSwitch input:checked + .toggleSlider {
-  background-color: var(--color-primary);
-}
-.toggleSwitch input:checked + .toggleSlider:before {
-  transform: translateX(18px);
 }
