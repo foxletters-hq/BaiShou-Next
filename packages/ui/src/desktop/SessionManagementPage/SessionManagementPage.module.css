@@ -280,56 +280,6 @@
   background: rgba(var(--color-error-rgb), 0.1);
 }
 
-/* --- Buttons --- */
-.actionBtn {
-  padding: 10px 20px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.actionBtnOutline {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-control);
-  color: var(--text-primary);
-}
-.actionBtnOutline:hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
-}
-
-.actionBtnPrimary {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-control);
-  color: var(--text-primary);
-  box-shadow: none;
-}
-.actionBtnPrimary:hover {
-  background: var(--bg-surface-high);
-  border-color: var(--border-strong);
-}
-
-.actionBtnDanger {
-  background: rgba(var(--color-error-rgb), 0.1);
-  color: var(--color-error);
-}
-.actionBtnDanger:hover {
-  background: var(--color-error);
-  color: var(--text-on-primary);
-  box-shadow: 0 4px 12px rgba(var(--color-error-rgb), 0.3);
-  transform: translateY(-1px);
-}
-
 /* --- Empty State --- */
 .emptyState {
   flex: 1;
