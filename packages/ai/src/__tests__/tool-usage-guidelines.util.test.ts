@@ -44,7 +44,8 @@ describe('buildToolUsageGuidelines', () => {
     const guidelines = buildToolUsageGuidelines(['companion_ask', 'workspace_list'])
     expect(guidelines).toContain('向用户提问')
     expect(guidelines).toContain('companion_ask')
-    expect(guidelines).toContain('禁止')
+    expect(guidelines).toContain('多次调用')
+    expect(guidelines).toContain('不要把问题写在普通回复里')
   })
 
   it('requires unique memory id when memory_delete is available', () => {

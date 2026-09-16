@@ -163,7 +163,12 @@ export class ContextCompressorService {
         return false
       }
 
-      const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
+      const { ensureSessionSnapshotsRestored } = await import('./session-snapshot-restore')
+      const latestSnapshot = await ensureSessionSnapshotsRestored(
+        sessionId,
+        snapshotRepo,
+        sessionRepo
+      )
 
       const contextTokens = estimateContextTokensForTrigger(allMessages, latestSnapshot, {
         recentCount: runOptions?.recentCount,

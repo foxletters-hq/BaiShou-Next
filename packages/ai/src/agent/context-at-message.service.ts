@@ -85,7 +85,12 @@ export class ContextAtMessageService {
       allMessages: allMessages as any
     })
 
-    const latestSnapshot = await snapshotRepo.getLatestSnapshot(sessionId)
+    const { ensureSessionSnapshotsRestored } = await import('./session-snapshot-restore')
+    const latestSnapshot = await ensureSessionSnapshotsRestored(
+      sessionId,
+      snapshotRepo,
+      sessionRepo
+    )
     const compactionMeta = ContextAtMessageService.resolveCompactionMeta(
       allMessages as MessageWithParts[],
       latestSnapshot

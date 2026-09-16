@@ -1,6 +1,7 @@
 import {
   classifyPromptAttachmentKind,
   formatPromptFileAttachmentBlock,
+  formatPromptDirectoryAttachmentBlock,
   formatPromptUnsupportedAttachmentHint,
   looksLikeBinaryText,
   PROMPT_TEXT_ATTACHMENT_READ_MAX_BYTES,
@@ -35,6 +36,7 @@ export type AttachmentLike = {
   textContent?: string
   selection?: PromptFileSelection
   comment?: string
+  isDirectory?: boolean
 }
 
 export function inferAttachmentFlags(att: AttachmentLike): {
@@ -119,6 +121,14 @@ export async function appendFileAttachmentToContentParts(
 ): Promise<void> {
   const flags = inferAttachmentFlags(att)
   const displayName = att.name || att.fileName || 'Attachment'
+
+  if (att.isDirectory) {
+    contentParts.push({
+      type: 'text',
+      text: formatPromptDirectoryAttachmentBlock(resolveAttachmentDisplayPath(att) || displayName)
+    })
+    return
+  }
 
   if (flags.isImage) {
     await appendImagePartToContentParts(contentParts, att, {

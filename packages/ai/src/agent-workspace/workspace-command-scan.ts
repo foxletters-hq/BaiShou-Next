@@ -6,8 +6,21 @@ import {
 } from '@baishou/shared'
 import { classifyWorkspacePathForGate } from '../baishou-agent-gate/agent-gate-workspace-path.util'
 
-function looksAbsolutePath(value: string): boolean {
-  return /^(?:[a-zA-Z]:[\\/]|\\\\|\/)/.test(value)
+function resolveScanPlatform(platform?: string): string {
+  return platform ?? process.platform
+}
+
+/** Windows cmd 开关：/a、/all、/a:h、/?，没有第二段路径 */
+function isWindowsSwitchToken(value: string): boolean {
+  return /^\/[A-Za-z?][A-Za-z0-9]*([:+][A-Za-z0-9._-]*)?$/.test(value)
+}
+
+function looksAbsolutePath(value: string, platform: string): boolean {
+  if (/^(?:[a-zA-Z]:[\\/]|\\\\)/.test(value)) return true
+  if (!value.startsWith('/')) return false
+  // 本机是 Windows 时，/a 是 dir 这类命令的开关，不是 Unix 根路径
+  if (platform === 'win32' && isWindowsSwitchToken(value)) return false
+  return true
 }
 
 function pushUnique(resources: AgentGateResourceRef[], resource: AgentGateResourceRef): void {
@@ -20,6 +33,8 @@ export interface ScanWorkspaceRunCommandInput {
   command: string
   workdir?: string
   folderRoot: string
+  /** 命令在本机执行；测试可指定，避免把 Windows 开关当成 Unix 路径 */
+  platform?: string
 }
 
 export interface ScanWorkspaceRunCommandResult {
@@ -36,6 +51,7 @@ export function scanWorkspaceRunCommand(
 ): ScanWorkspaceRunCommandResult {
   const command = typeof input.command === 'string' ? input.command : ''
   const folderRoot = input.folderRoot
+  const platform = resolveScanPlatform(input.platform)
   const resources: AgentGateResourceRef[] = []
 
   if (command.trim()) {
@@ -48,7 +64,7 @@ export function scanWorkspaceRunCommand(
   }
 
   for (const token of tokenizeCommand(command)) {
-    if (!looksAbsolutePath(token)) continue
+    if (!looksAbsolutePath(token, platform)) continue
     pushUnique(resources, classifyWorkspacePathForGate(token, folderRoot))
   }
 

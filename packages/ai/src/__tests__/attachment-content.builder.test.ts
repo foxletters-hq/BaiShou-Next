@@ -39,12 +39,28 @@ describe('appendImagePartToContentParts', () => {
     await appendImagePartToContentParts(
       parts,
       { fileName: 'photo.png', filePath: 'D:\\a.png' },
-      { modelId: 'deepseek-v4-flash' }
+      { modelId: 'deepseek-chat' }
     )
 
     expect(parts).toHaveLength(1)
     expect((parts[0] as { type: string }).type).toBe('text')
     expect((parts[0] as { text: string }).text).toContain('不支持识图')
+  })
+
+  it('encodes image for DeepSeek Flash after it gained native vision', async () => {
+    const parts: unknown[] = []
+    await appendImagePartToContentParts(
+      parts,
+      { fileName: 'photo.png', filePath: 'D:\\vault\\attachments\\s1\\photo.png' },
+      { modelId: 'deepseek-flash' }
+    )
+
+    expect(parts).toHaveLength(1)
+    expect(parts[0]).toEqual({
+      type: 'image',
+      image: 'ZmFrZQ==',
+      mediaType: 'image/png'
+    })
   })
 
   it('encodes image for vision models after normalization', async () => {
@@ -110,6 +126,22 @@ describe('appendFileAttachmentToContentParts', () => {
       { modelId: 'deepseek-v4-flash' }
     )
     expect((parts[0] as { text: string }).text).toContain('无法直接放入对话')
+  })
+
+  it('should tell the model to use workspace tools for a folder attachment', async () => {
+    const parts: unknown[] = []
+    await appendFileAttachmentToContentParts(
+      parts,
+      {
+        fileName: '设定',
+        relativePath: '设定',
+        filePath: 'D:\\proj\\设定',
+        isDirectory: true
+      },
+      { modelId: 'deepseek-v4-flash' }
+    )
+    expect((parts[0] as { text: string }).text).toContain('[User Uploaded Folder Attachment: 设定]')
+    expect((parts[0] as { text: string }).text).toContain('工作区工具')
   })
 
   it('writes a visible hint for unsupported binary files', async () => {
