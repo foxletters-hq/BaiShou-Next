@@ -1,13 +1,6 @@
 import React from 'react'
-import {
-  Archive,
-  CheckSquare,
-  CloudUpload,
-  Loader2,
-  RefreshCw,
-  Settings,
-  Trash2
-} from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
+import { Button } from '../Button/Button'
 import styles from './CloudSyncPanel.module.css'
 import { SegmentedControl } from '../shared/SegmentedControl'
 import { HelpTooltip } from '../HelpTooltip'
@@ -112,9 +105,10 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
           <div className={styles.actionsGroup}>
             {manageMode ? (
               <>
-                <button
+                <Button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.btnOutlined}`}
+                  variant="outlined"
+                  size="small"
                   onClick={() => {
                     if (selected.size === records.length) {
                       setSelected(new Set())
@@ -126,94 +120,76 @@ export const CloudSyncHeaderActions: React.FC<CloudSyncHeaderActionsProps> = ({ 
                   {selected.size === records.length
                     ? t('settings.attachment_deselect_all', '取消全选')
                     : t('settings.attachment_select_all', '全选')}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.textBtn}`}
+                  variant="outlined"
+                  size="small"
                   onClick={() => {
                     setManageMode(false)
                     setSelected(new Set())
                   }}
                 >
                   {t('common.cancel', '取消')}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.btnDangerFilled}`}
+                  variant="outlined"
+                  size="small"
                   onClick={handleBatchDelete}
                   disabled={selected.size === 0}
                 >
-                  <Trash2 size={14} /> {t('common.delete', '删除')} ({selected.size})
-                </button>
+                  {t('common.delete', '删除')} ({selected.size})
+                </Button>
               </>
             ) : (
-              <button
+              <Button
                 type="button"
-                className={`${styles.actionBtn} ${styles.btnOutlined}`}
+                variant="outlined"
+                size="small"
                 onClick={() => setManageMode(true)}
                 disabled={records.length === 0 || isLoading}
               >
-                <CheckSquare size={14} /> {t('data_sync.batch_manage', '批量管理')}
-              </button>
+                {t('data_sync.batch_manage', '批量管理')}
+              </Button>
             )}
 
             {activeTab === 'snapshot' && (
-              <button
-                type="button"
-                className={`${styles.actionBtn} ${styles.btnOutlined}`}
-                onClick={openCountModal}
-              >
-                <Archive size={14} />{' '}
+              <Button type="button" variant="outlined" size="small" onClick={openCountModal}>
                 {config.maxSnapshotCount === -1
                   ? t('data_sync.no_limit', '不限制数量')
                   : t('data_sync.max_backup_count_value', '保留: $count').replace(
                       '$count',
                       config.maxSnapshotCount!.toString()
                     )}
-              </button>
+              </Button>
             )}
 
             {activeTab === 'cloud' && (
               <>
-                <button
-                  type="button"
-                  className={`${styles.actionBtn} ${styles.btnOutlined}`}
-                  onClick={openSettings}
-                >
-                  <Settings size={14} /> {t('data_sync.sync_settings_button', '备份设置')}
-                </button>
+                <Button type="button" variant="outlined" size="small" onClick={openSettings}>
+                  {t('data_sync.sync_settings_button', '备份设置')}
+                </Button>
 
-                <button
-                  type="button"
-                  className={`${styles.actionBtn} ${styles.btnOutlined}`}
-                  onClick={openCountModal}
-                >
-                  <Archive size={14} />{' '}
+                <Button type="button" variant="outlined" size="small" onClick={openCountModal}>
                   {config.maxBackupCount === -1
                     ? t('data_sync.no_limit', '不限制数量')
                     : t('data_sync.max_backup_count_value', '保留: $count').replace(
                         '$count',
                         config.maxBackupCount.toString()
                       )}
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.btnFilled}`}
+                  variant="outlined"
+                  size="small"
                   onClick={handleSync}
-                  disabled={isSyncing || config.target === 'local'}
+                  disabled={config.target === 'local'}
+                  isLoading={isSyncing}
                 >
-                  {isSyncing ? (
-                    <>
-                      <Loader2 size={14} style={{ animation: 'spin 1.5s linear infinite' }} />{' '}
-                      {t('data_sync.syncing_status', '备份中...')}
-                    </>
-                  ) : (
-                    <>
-                      <CloudUpload size={14} /> {t('data_sync.sync_now_button', '立即备份')}
-                    </>
-                  )}
-                </button>
+                  {t('data_sync.sync_now_button', '立即备份')}
+                </Button>
               </>
             )}
           </div>

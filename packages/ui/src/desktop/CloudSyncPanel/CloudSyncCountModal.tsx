@@ -3,6 +3,7 @@ import React from 'react'
 import { Archive } from 'lucide-react'
 import { withAppContentOverlay } from '../overlay'
 import { Input } from '../Input/Input'
+import { Button } from '../Button/Button'
 import styles from './CloudSyncPanel.module.css'
 import type { CloudSyncPanelViewModel } from './useCloudSyncPanel'
 
@@ -22,7 +23,10 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
   } = vm
 
   return (
-    <div className={withAppContentOverlay(styles.modalOverlay)} onClick={() => setShowCountModal(false)}>
+    <div
+      className={withAppContentOverlay(styles.modalOverlay)}
+      onClick={() => setShowCountModal(false)}
+    >
       <div className={styles.countModal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.countModalHeader}>
           <div
@@ -161,20 +165,12 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
           className={styles.countModalFooter}
           style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}
         >
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.btnOutlined}`}
-            onClick={() => setShowCountModal(false)}
-          >
+          <Button type="button" variant="outlined" size="small" onClick={() => setShowCountModal(false)}>
             {t('common.cancel', '取消')}
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.btnFilled}`}
-            onClick={confirmCountModal}
-          >
+          </Button>
+          <Button type="button" variant="outlined" size="small" onClick={confirmCountModal}>
             {t('common.confirm', '确定')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
