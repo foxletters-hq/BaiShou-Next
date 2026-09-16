@@ -45,7 +45,11 @@ describe('GraphRepository keyed queries', () => {
     id: string,
     fromId: string,
     toId: string,
-    opts?: { shardMonth?: string; vaultId?: string }
+    opts?: {
+      shardMonth?: string
+      vaultId?: string
+      reviewStatus?: 'approved' | 'pending' | 'rejected'
+    }
   ) {
     await repo.upsertEdge({
       id,
@@ -58,7 +62,7 @@ describe('GraphRepository keyed queries', () => {
       sourceKind: 'diary',
       sourceRef: '2026-03-15',
       origin: 'ai',
-      reviewStatus: 'approved'
+      reviewStatus: opts?.reviewStatus ?? 'approved'
     })
   }
 
@@ -385,6 +389,23 @@ describe('GraphRepository keyed queries', () => {
     expect(leftoverEdge.rows).toHaveLength(0)
   })
 
+  it('deleteAllForVault removes only this vault and leaves the other vault', async () => {
+    await seedNode('n-a', { name: '甲' })
+    await seedNode('n-b', { name: '乙' })
+    await seedEdge('e-ab', 'n-a', 'n-b')
+    await seedNode('n-other', { vaultId: OTHER, name: '另一库' })
+    await seedEdge('e-other', 'n-other', 'n-other', { vaultId: OTHER })
+    await repo.deleteAllForVault(VAULT)
+    expect(await repo.getNodeById('n-a', VAULT)).toBeNull()
+    expect(await repo.getEdgeById('e-ab', VAULT)).toBeNull()
+    expect(await repo.getNodeById('n-other', OTHER)).not.toBeNull()
+    expect(await repo.getEdgeById('e-other', OTHER)).not.toBeNull()
+    const leftoverAlias = await client.execute(
+      `SELECT id FROM graph_node_aliases WHERE vault_id = '${VAULT}'`
+    )
+    expect(leftoverAlias.rows).toHaveLength(0)
+  })
+
   it('softDeleteEdge removes the edge row', async () => {
     await seedNode('n-a', { name: '甲' })
     await seedNode('n-b', { name: '乙' })
@@ -393,6 +414,21 @@ describe('GraphRepository keyed queries', () => {
     const leftover = await client.execute("SELECT id FROM graph_edges WHERE id = 'e-ab'")
     expect(leftover.rows).toHaveLength(0)
     expect(await repo.getNodeById('n-a', VAULT)).not.toBeNull()
+  })
+
+  it('listPendingGraph includes approved endpoint names for pending edges', async () => {
+    await seedNode('n-from', { name: '海边小屋', reviewStatus: 'approved' })
+    await seedNode('n-to', { name: '小明', reviewStatus: 'approved' })
+    await seedNode('n-pending', { name: '待审人', reviewStatus: 'pending' })
+    await seedNode('n-other-vault', { vaultId: OTHER, name: '别馆节点' })
+    await seedEdge('e-pending', 'n-from', 'n-to', { reviewStatus: 'pending' })
+    await seedEdge('e-approved', 'n-from', 'n-pending', { reviewStatus: 'approved' })
+
+    const pending = await repo.listPendingGraph(VAULT)
+    expect(pending.edges.map((edge) => edge.id)).toEqual(['e-pending'])
+    expect(pending.nodes.map((node) => node.id)).toEqual(['n-pending'])
+    expect(pending.endpointNodes.map((node) => node.name).sort()).toEqual(['小明', '海边小屋'])
+    expect(pending.endpointNodes.some((node) => node.id === 'n-other-vault')).toBe(false)
   })
 
   it('applyRawNode with deletedAt removes the row instead of marking deleted_at', async () => {

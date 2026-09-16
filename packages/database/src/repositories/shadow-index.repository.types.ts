@@ -76,6 +76,14 @@ export type ShadowJournalRow = ShadowJournalRecord & {
   tagColors?: string | null
 }
 
+/** 待嵌入检测瘦行：不含 journals_index.content_hash，正文只取 raw_content */
+export interface ShadowEmbedDetectionRow {
+  id: number
+  date: string
+  updatedAt: string
+  rawContent: string
+}
+
 export interface DiaryListFilterOptions {
   year?: number
   month?: number

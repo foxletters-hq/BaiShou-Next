@@ -138,4 +138,45 @@ describe('SnapshotRepository', () => {
     expect(remaining).toHaveLength(1)
     expect(remaining[0]!.summaryText).toBe('Valid')
   })
+
+  it('replaceSnapshotsForSession deletes then inserts portable rows', async () => {
+    await repo.appendSnapshot({
+      sessionId: 'sess-r',
+      summaryText: 'old',
+      coveredUpToMessageId: 'old',
+      messageCount: 1,
+      tokenCount: 1
+    })
+    await repo.replaceSnapshotsForSession('sess-r', [
+      {
+        coveredUpToMessageId: 'm2',
+        tailStartMessageId: 'm3',
+        summaryText: 'new',
+        messageCount: 2,
+        tokenCount: 8,
+        createdAt: 1_700_000_000_000
+      }
+    ])
+    const rows = await repo.listSnapshotsBySession('sess-r')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      coveredUpToMessageId: 'm2',
+      tailStartMessageId: 'm3',
+      summaryText: 'new',
+      messageCount: 2,
+      tokenCount: 8
+    })
+  })
+
+  it('deleteBySessionId removes all snapshots of that session', async () => {
+    await repo.appendSnapshot({
+      sessionId: 'sess-d',
+      summaryText: 'gone',
+      coveredUpToMessageId: 'm1',
+      messageCount: 1,
+      tokenCount: null
+    })
+    await repo.deleteBySessionId('sess-d')
+    expect(await repo.getLatestSnapshot('sess-d')).toBeNull()
+  })
 })
