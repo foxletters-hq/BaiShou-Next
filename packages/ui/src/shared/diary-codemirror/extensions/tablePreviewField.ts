@@ -8,16 +8,9 @@ import {
 } from '@codemirror/state'
 import { Decoration, DecorationSet, EditorView } from '@codemirror/view'
 import { forceTableRefresh, allowTableStructureEdit } from '../table/tableEffects'
-import {
-  activeTableCellField,
-  readActiveTableCellFor,
-  setActiveTableCell
-} from '../table/tableActiveCell'
-import { readTableChromeSelectionFor, setTableChromeSelection } from '../table/tableChromeSelection'
-import {
-  readTableCellRangeSelectionFor,
-  setTableCellRangeSelection
-} from '../table/tableRangeSelection'
+import { activeTableCellField, readActiveTableCellFor } from '../table/tableActiveCell'
+import { readTableChromeSelectionFor } from '../table/tableChromeSelection'
+import { readTableCellRangeSelectionFor } from '../table/tableRangeSelection'
 import { resolveTableSurfaceRange, tableSyntaxTreeTablesChanged } from '../table/tableBounds'
 import { TableBlockWidget } from '../widgets/TableBlockWidget'
 import { TableDesktopWidget } from '../widgets/TableDesktopWidget'

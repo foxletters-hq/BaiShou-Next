@@ -1,4 +1,4 @@
-import { EditorState, type Transaction, type Range } from '@codemirror/state'
+import { EditorState, type Transaction } from '@codemirror/state'
 import type { Text } from '@codemirror/state'
 import { allowTableStructureEdit } from '../table/tableEffects'
 import { collectTableMarkdownRanges, rangeOverlapsTableMarkdown } from '../table/tableBounds'

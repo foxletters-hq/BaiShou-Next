@@ -1,9 +1,5 @@
 import type { DiaryCmTableSheetRequestPayload, DiaryCmTableSheetResponsePayload } from '../types'
-import {
-  dismissKeyboardForSheetInteraction,
-  markTableSheetClosed,
-  markTableSheetOpen
-} from './tableSheetInteraction'
+import { markTableSheetClosed, markTableSheetOpen } from './tableSheetInteraction'
 
 type NativeSheetSection = {
   items: {

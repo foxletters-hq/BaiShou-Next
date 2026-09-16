@@ -89,6 +89,13 @@ export const headingLineStyles: Record<number, Decoration> = {
   6: Decoration.line({ class: 'cm-rendered-h6' })
 }
 
+/** 光标在标题行时保留 #，但降成次要色，避免整行看起来像未渲染源码 */
+export const headingMarkStyle = Decoration.mark({ class: 'cm-heading-mark' })
+
+export const listNumberMark = Decoration.mark({ class: 'cm-list-number' })
+
+export const orderedListLineStyle = Decoration.line({ class: 'cm-rendered-ol' })
+
 /** @deprecated 使用 headingLineStyles */
 export const headingStyles = headingLineStyles
 
