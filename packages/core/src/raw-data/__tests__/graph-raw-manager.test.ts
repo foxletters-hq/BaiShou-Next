@@ -359,4 +359,51 @@ describe('GraphRawManager', () => {
     expect(committed).toBe(0)
     expect((await manager.listPendingIndex('nodes')).length).toBeGreaterThan(0)
   })
+
+  it('wipeAllCollections removes nodes, edges and extract-state shards', async () => {
+    const now = Date.now()
+    await manager.writeRecord(
+      {
+        id: 'n1',
+        schemaVersion: 1,
+        vaultId: 'vlt_test',
+        vaultName: 'Personal',
+        nodeType: 'person',
+        name: 'Anson',
+        aliases: [],
+        summary: '',
+        props: {},
+        mentionCount: 1,
+        firstSeenAt: now,
+        lastSeenAt: now,
+        origin: 'ai',
+        shardMonth: '2026-07',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        reviewStatus: 'pending'
+      },
+      { collection: 'nodes' }
+    )
+    await manager.writeRecord(
+      {
+        id: 'extract:Journal/2026/07/01.md',
+        schemaVersion: 1,
+        vaultId: 'vlt_test',
+        vaultName: 'Personal',
+        filePath: 'Journal/2026/07/01.md',
+        sourceContentHash: 'abc',
+        extractedAt: now,
+        updatedAt: now,
+        deletedAt: null
+      },
+      { collection: 'extract-state' }
+    )
+    expect((await manager.listPendingIndex()).length).toBeGreaterThan(0)
+    const wiped = await manager.wipeAllCollections()
+    expect(wiped).toBeGreaterThan(0)
+    expect(await manager.listPendingIndex()).toEqual([])
+    expect(await manager.readAllCollapsedExtractStates()).toEqual([])
+    expect(fs.existsSync(path.join(tmp, 'Graph', 'nodes', '2026-07.jsonl'))).toBe(false)
+  })
 })

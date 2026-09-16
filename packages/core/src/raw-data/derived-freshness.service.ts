@@ -69,6 +69,10 @@ export class DerivedFreshnessService {
     this.reextractMarks.set(key, contentHash)
   }
 
+  clearReextractMarks(): void {
+    this.reextractMarks.clear()
+  }
+
   /**
    * Diaries that exist and whose body hash ≠ extract-state cursor (or never extracted).
    * Edited-but-unchanged body stays extracted. Missing graph rows do not enqueue.

@@ -5,7 +5,7 @@ import { VaultIndexService } from '../vault-index.service'
 import { ShadowIndexSyncService } from '../../shadow-index/shadow-index-sync.service'
 import { ShadowIndexRepository } from '@baishou/database'
 import { DiaryDateConflictError } from '../diary.types'
-import { Diary, parseDateStr, formatLocalDate } from '@baishou/shared'
+import { Diary, parseDateStr, formatLocalDate, hashEmbedSourceContent } from '@baishou/shared'
 
 const TEST_VAULT_ID = 'vlt_test'
 
@@ -28,6 +28,7 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       findById: vi.fn(),
       findByDate: vi.fn(),
       listAll: vi.fn().mockResolvedValue([]),
+      listForEmbedDetection: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0)
     } as any
 
@@ -646,5 +647,23 @@ describe('DiaryService - Single Source of Truth architecture', () => {
       expect(result?.tags).toBe('a,b')
       expect(result?.isFavorite).toBe(true)
     })
+  })
+
+  it('listForEmbedDetection hashes raw_content and ignores file-level content_hash', async () => {
+    mockShadowRepo.listForEmbedDetection = vi.fn().mockResolvedValue([
+      {
+        id: 7,
+        date: '2026-05-10',
+        updatedAt: '2026-05-10T08:00:00.000Z',
+        rawContent: '正文'
+      }
+    ])
+
+    const rows = await service.listForEmbedDetection()
+
+    expect(mockShadowRepo.listForEmbedDetection).toHaveBeenCalledTimes(1)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.contentHash).toBe(hashEmbedSourceContent('正文'))
+    expect(rows[0]?.contentHash).not.toBe('file-md5')
   })
 })
