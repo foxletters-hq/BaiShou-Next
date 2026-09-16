@@ -12,8 +12,6 @@ import {
   type IVersionManager,
   type RawDataSourceManager,
   type GraphRawManager,
-  type MemoryConsistencyReport,
-  type MemoryConsistencyRepairResult,
   type IStoragePathService
 } from '@baishou/core-desktop'
 import { VaultScopedStoragePathService } from './vault-scoped-path.service'
@@ -131,6 +129,7 @@ export function resetRawDataRuntime(): void {
   runtime?.memoryManager.resetCache()
   runtime?.graphManager.resetCache()
   runtime = null
+  void import('./pending-embed-counts.service').then((m) => m.invalidatePendingEmbedCountsCache())
 }
 
 function createMemoryEmbedSink(
@@ -158,6 +157,8 @@ function createMemoryEmbedSink(
     },
     deleteBySource: (sourceType: string, sourceId: string) =>
       hsRepo.deleteEmbeddingsBySource(sourceType, sourceId),
+    listLedgerBySource: (sourceType: string, options?: { vaultId?: string }) =>
+      hsRepo.listLedgerBySource(sourceType, options),
     listSourceIdsByType: (sourceType: string, options?: { groupId?: string; vaultId?: string }) => {
       if (
         options &&
@@ -292,49 +293,6 @@ export async function backfillMemoryJsonlFromEmbeddings(options: {
     normalized: manual.normalized + leftoverNormalized,
     metadataPatched
   }
-}
-
-export async function checkMemoryConsistency(options: {
-  hsRepo: SqliteHybridSearchRepository
-  vaultId?: string
-}): Promise<MemoryConsistencyReport> {
-  const { memoryManager } = ensureRawDataRuntime()
-  const sync = new MemorySyncService(memoryManager, createMemoryEmbedSink(options.hsRepo))
-  const activeVault = vaultService.getActiveVault()
-  const vaultName =
-    activeVault?.name ??
-    (options.vaultId
-      ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name
-      : undefined)
-  return sync.checkConsistency({ vaultName: vaultName ?? options.vaultId })
-}
-
-export async function repairMemoryConsistency(options: {
-  hsRepo: SqliteHybridSearchRepository
-  embeddingAdapter?: EmbeddingAdapter | null
-  vaultId?: string
-  confirmDeleteIds?: string[]
-  restoreIds?: string[]
-  cleanOrphans?: boolean
-}): Promise<MemoryConsistencyRepairResult> {
-  const { memoryManager } = ensureRawDataRuntime()
-  const embeddingAdapter = options.embeddingAdapter
-  const sync = new MemorySyncService(
-    memoryManager,
-    createMemoryEmbedSink(options.hsRepo, embeddingAdapter)
-  )
-  const activeVault = vaultService.getActiveVault()
-  const vaultName =
-    activeVault?.name ??
-    (options.vaultId
-      ? vaultService.getAllVaults().find((v) => v.id === options.vaultId)?.name
-      : undefined)
-  return sync.repairConsistency({
-    confirmDeleteIds: options.confirmDeleteIds,
-    restoreIds: options.restoreIds,
-    cleanOrphans: options.cleanOrphans,
-    vaultName: vaultName ?? options.vaultId
-  })
 }
 
 export async function syncGraphPendingIndexWithDeps(options: {
@@ -500,13 +458,7 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
       graphRaw,
       graphIndex
     })
-    const result = await hydration.hydrate()
-
-    if (result.embedJobsEnqueued > 0 || result.graphJobsEnqueued > 0) {
-      const { scheduleConsumeKnowledgeIngestJobs } =
-        await import('./knowledge-ingest-jobs.consumer')
-      scheduleConsumeKnowledgeIngestJobs(reason)
-    }
+    const result = await hydration.hydrate({ embedMissing: false })
 
     logger.info(`[KnowledgeHydration] done (${reason})`, { ...result })
   } catch (e) {

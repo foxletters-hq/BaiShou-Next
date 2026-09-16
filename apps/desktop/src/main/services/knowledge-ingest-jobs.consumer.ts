@@ -1,8 +1,10 @@
 import { BrowserWindow } from 'electron'
 import {
   clampOcrConcurrency,
+  DEFAULT_OCR_CONCURRENCY,
   logger,
   isVisionModel,
+  normalizeKnowledgeDefaultExtractEngine,
   type GlobalModelsConfig,
   type KnowledgeConfig,
   type AIProviderConfig
@@ -84,13 +86,14 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
       const { settingsManager } = await import('../ipc/settings.ipc')
       const raw = (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
       const cfg = {
-        defaultExtractEngine: 'simple' as const,
+        defaultExtractEngine: normalizeKnowledgeDefaultExtractEngine(undefined),
         ocrLanguage: 'chi_sim+eng',
         ocrDpi: 250,
-        ocrConcurrency: 1,
+        ocrConcurrency: DEFAULT_OCR_CONCURRENCY,
         multiQueryAsk: false,
         ...raw
       }
+      cfg.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(cfg.defaultExtractEngine)
       const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
       const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
       const modelId =

@@ -60,6 +60,7 @@ export function decorateWorkspacePromptAttachment(params: {
   selection?: PromptFileSelection
   comment?: string
   origin?: PromptFileRefOrigin
+  isDirectory?: boolean
 }): Record<string, unknown> {
   const flags = classifyPromptAttachmentFlags(params.fileName, params.mimeType)
   const relativePath = params.folderRoot
@@ -77,10 +78,11 @@ export function decorateWorkspacePromptAttachment(params: {
     ...(params.selection ? { selection: params.selection } : {}),
     ...(comment ? { comment } : {}),
     ...(params.origin ? { origin: params.origin } : {}),
-    isImage: flags.isImage,
-    isPdf: flags.isPdf,
-    isText: flags.isText,
-    type: flags.isImage ? 'image' : flags.isText ? 'text' : 'file',
+    ...(params.isDirectory ? { isDirectory: true } : {}),
+    isImage: params.isDirectory ? false : flags.isImage,
+    isPdf: params.isDirectory ? false : flags.isPdf,
+    isText: params.isDirectory ? false : flags.isText,
+    type: params.isDirectory ? 'directory' : flags.isImage ? 'image' : flags.isText ? 'text' : 'file',
     mimeType: mimeTypeForFlags(params.fileName, flags, params.mimeType)
   })
 }
@@ -104,6 +106,7 @@ export function planWorkspacePromptAttachment(att: {
   name?: string
   mimeType?: string
   isImage?: boolean
+  isDirectory?: boolean
 }):
   | { mode: 'ephemeral' }
   | { mode: 'image-snapshot'; absolutePath: string; fileName: string }
@@ -114,6 +117,9 @@ export function planWorkspacePromptAttachment(att: {
   }
   if (att.filePath && !isEphemeralAttachmentPath(att.filePath)) {
     const fileName = att.fileName || att.name || path.basename(att.filePath)
+    if (att.isDirectory) {
+      return { mode: 'path-ref', absolutePath: att.filePath, fileName }
+    }
     if (isWorkspacePromptImage({ ...att, fileName })) {
       return { mode: 'image-snapshot', absolutePath: att.filePath, fileName }
     }

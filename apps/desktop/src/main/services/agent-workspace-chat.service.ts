@@ -76,6 +76,7 @@ import { AgentChatService } from '../ipc/AgentChatService'
 import { resolveActiveVaultId } from '../ipc/vault.ipc'
 import { drainSessionInbox, waitForSessionInboxDrainLock } from './session-inbox-drain'
 import { initDesktopSessionInboxStore } from './session-inbox.store'
+import { broadcastWorkspaceFsChanged } from './workspace-folder-watcher.service'
 
 const checkpointService = new AgentRoundCheckpointService(
   createNodeWorkspaceFs(),
@@ -382,7 +383,16 @@ export async function runWorkspaceStreamChat(params: {
         },
         fs: createNodeWorkspaceFs(),
         roundCheckpointService: checkpointService,
-        roundCheckpointId
+        roundCheckpointId,
+        onFileChange: (change) => {
+          broadcastWorkspaceFsChanged({
+            folderRoot,
+            sessionId: params.sessionId,
+            path: change.path,
+            kind: change.kind,
+            previousPath: change.previousPath
+          })
+        }
       }
     })
 
