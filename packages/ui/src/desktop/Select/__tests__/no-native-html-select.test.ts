@@ -22,7 +22,9 @@ function listTsx(dir: string): string[] {
 
 describe('desktop Select', () => {
   it('does not use native html select in desktop UI', () => {
-    const hits = listTsx(desktopRoot).filter((file) => readFileSync(file, 'utf8').includes('<select'))
+    const hits = listTsx(desktopRoot).filter((file) =>
+      readFileSync(file, 'utf8').includes('<select')
+    )
     expect(hits).toEqual([])
   })
 })

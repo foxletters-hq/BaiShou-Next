@@ -7,22 +7,20 @@ import {
 
 describe('resolveSelectDropdownBox', () => {
   it('opens below the trigger when there is room', () => {
-    const box = resolveSelectDropdownBox(
-      { top: 80, bottom: 112, left: 40, width: 160 },
-      120,
-      { width: 800, height: 600 }
-    )
+    const box = resolveSelectDropdownBox({ top: 80, bottom: 112, left: 40, width: 160 }, 120, {
+      width: 800,
+      height: 600
+    })
     expect(box.top).toBeGreaterThanOrEqual(112)
     expect(box.left).toBe(40)
     expect(box.width).toBe(160)
   })
 
   it('opens above the trigger when the bottom space is tight', () => {
-    const box = resolveSelectDropdownBox(
-      { top: 520, bottom: 552, left: 40, width: 160 },
-      180,
-      { width: 800, height: 600 }
-    )
+    const box = resolveSelectDropdownBox({ top: 520, bottom: 552, left: 40, width: 160 }, 180, {
+      width: 800,
+      height: 600
+    })
     expect(box.top + 180).toBeLessThanOrEqual(552)
     expect(box.top).toBeGreaterThanOrEqual(SELECT_DROPDOWN_MARGIN)
   })
