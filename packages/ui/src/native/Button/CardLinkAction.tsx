@@ -13,26 +13,18 @@ export interface CardLinkActionProps {
   style?: StyleProp<ViewStyle>
 }
 
-/** 设置页卡片内统一的 HeroUI 全宽操作按钮 */
+/** 设置页卡片内统一的描边操作按钮，宽度跟内容走 */
 export const CardLinkAction: React.FC<CardLinkActionProps> = ({
   onPress,
   children,
-  variant = 'card',
   disabled,
   isDisabled,
   style
 }) => {
   const mergedDisabled = Boolean(disabled ?? isDisabled)
-  const buttonVariant = variant === 'footer' ? 'ghost' : 'primary'
 
   return (
-    <Button
-      variant={buttonVariant}
-      className="w-full"
-      onPress={onPress}
-      isDisabled={mergedDisabled}
-      style={style}
-    >
+    <Button variant="outlined" onPress={onPress} isDisabled={mergedDisabled} style={style}>
       {children}
     </Button>
   )
