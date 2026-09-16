@@ -27,4 +27,44 @@ describe('AIProviderRegistry', () => {
     registry.removeProvider('openai')
     expect(registry.hasProvider('openai')).toBe(false)
   })
+
+  it('should reuse the same instance when provider config is unchanged', () => {
+    const config = {
+      id: 'siliconflow',
+      name: 'siliconflow',
+      type: 'siliconflow',
+      apiKey: 'sk-test',
+      baseUrl: 'https://example.test',
+      models: [],
+      enabledModels: [],
+      defaultDialogueModel: '',
+      defaultNamingModel: '',
+      isEnabled: true,
+      isSystem: false,
+      sortOrder: 0
+    }
+    const first = registry.getOrUpdateProvider(config)
+    const second = registry.getOrUpdateProvider({ ...config, models: [] })
+    expect(second).toBe(first)
+  })
+
+  it('should rebuild when api key or base url changes', () => {
+    const config = {
+      id: 'siliconflow',
+      name: 'siliconflow',
+      type: 'siliconflow',
+      apiKey: 'sk-old',
+      baseUrl: 'https://example.test',
+      models: [],
+      enabledModels: [],
+      defaultDialogueModel: '',
+      defaultNamingModel: '',
+      isEnabled: true,
+      isSystem: false,
+      sortOrder: 0
+    }
+    const first = registry.getOrUpdateProvider(config)
+    const second = registry.getOrUpdateProvider({ ...config, apiKey: 'sk-new' })
+    expect(second).not.toBe(first)
+  })
 })
