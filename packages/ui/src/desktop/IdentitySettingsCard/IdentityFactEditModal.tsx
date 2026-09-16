@@ -42,6 +42,7 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
         <div className={styles.modalField}>
           <label>{t('settings.identity_key', '标签')}</label>
           <Input
+            fieldSize="small"
             value={editKeyInput}
             onChange={(e) => onKeyChange(e.target.value)}
             placeholder={t('settings.identity_key_hint', '如：生日、职业')}
@@ -51,6 +52,7 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
         <div className={styles.modalField}>
           <label>{t('settings.identity_value', '内容')}</label>
           <Input
+            fieldSize="small"
             value={editValInput}
             onChange={(e) => onValueChange(e.target.value)}
             placeholder={t('settings.identity_value_hint', '如：2000-05-20')}
@@ -60,10 +62,10 @@ export const IdentityFactEditModal: React.FC<IdentityFactEditModalProps> = ({
           />
         </div>
         <div className={styles.modalActions}>
-          <Button variant="text" onClick={onClose}>
+          <Button variant="outlined" size="small" onClick={onClose}>
             {t('common.cancel', '取消')}
           </Button>
-          <Button variant="elevated" onClick={onSave}>
+          <Button variant="outlined" size="small" onClick={onSave}>
             {t('common.save', '保存')}
           </Button>
         </div>

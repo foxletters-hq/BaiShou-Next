@@ -1,7 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './IdentitySettingsCard.module.css'
-import { Plus, X } from 'lucide-react'
+import { Button } from '../Button/Button'
+import { X } from 'lucide-react'
 
 interface IdentityPersonaChipsProps {
   allPersonas: Record<string, { id: string; facts: Record<string, string> }>
@@ -40,10 +41,9 @@ export const IdentityPersonaChips: React.FC<IdentityPersonaChipsProps> = ({
             </div>
           )
         })}
-        <div className={styles.actionChip} onClick={onAddPersona}>
-          <Plus size={16} />
-          <span>{t('settings.new_identity', '新身份')}</span>
-        </div>
+        <Button variant="outlined" size="small" onClick={onAddPersona}>
+          {t('settings.new_identity', '新身份')}
+        </Button>
       </div>
     </div>
   )
