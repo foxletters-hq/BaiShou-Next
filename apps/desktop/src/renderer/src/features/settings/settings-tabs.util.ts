@@ -3,6 +3,7 @@ import { getSettingsRouteSegment } from './settings-route.util'
 /** 设置侧栏 tab id → 路由 segment（hub / overlay 共用） */
 export const SETTINGS_TAB_SEGMENTS: Record<number, string> = {
   0: 'general',
+  19: 'help-docs',
   13: 'mcp',
   1: 'ai-services',
   2: 'ai-models',
