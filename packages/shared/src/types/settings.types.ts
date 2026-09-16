@@ -45,7 +45,7 @@ export interface TtsProviderConnectionConfig {
 export interface GlobalModelsConfig {
   globalDialogueProviderId: string
   globalDialogueModelId: string
-  /** 日记图关系抽取；始终与对话模型一致，不可单独配置 */
+  /** 日记与笔记本图关系抽取；可单独配置，未配置时运行时回退到对话模型 */
   globalGraphProviderId: string
   globalGraphModelId: string
   globalNamingProviderId: string
@@ -97,6 +97,8 @@ export interface RagConfig {
   lastDiaryEmbedFailureAt?: number
   /** 最近一次日记自动嵌入失败的原因（用户可读） */
   lastDiaryEmbedFailureMessage?: string
+  /** 启动时是否检查并提示待嵌入。未写时视为开启。 */
+  startupEmbedReminder?: boolean
 }
 
 /**
@@ -105,7 +107,7 @@ export interface RagConfig {
 export type KnowledgeImportProcessMode = 'vector' | 'graph' | 'both'
 
 export interface KnowledgeConfig {
-  /** 默认提取引擎：simple | ocr | vision */
+  /** 默认提取引擎：ocr | vision。旧值 simple 读入时按 ocr 走。 */
   defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
   /** 导入后默认：向量、图关系，或两者都做 */
   importProcessMode?: KnowledgeImportProcessMode

@@ -11,6 +11,7 @@ export type MockChatAttachment = {
   selection?: { startLine: number; endLine: number }
   comment?: string
   origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+  isDirectory?: boolean
 }
 
 export type MockToolInvocation = {
@@ -44,6 +45,7 @@ export type MockChatMessage = {
     selection?: { startLine: number; endLine: number }
     comment?: string
     origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
+    isDirectory?: boolean
   }>
   inputTokens?: number
   outputTokens?: number
