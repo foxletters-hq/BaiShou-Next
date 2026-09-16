@@ -131,7 +131,7 @@ export class RecallRelationsTool extends AgentTool<typeof params> {
       if (mode === 'timeline') {
         const edgeSource = result.timeline || result.subgraph
         const edgeLines = edgeSource
-          .slice(0, 24)
+          .slice(0, args.limit ?? 12)
           .map((e) => {
             const from = result.nodes.find((n) => n.id === e.fromId)?.name || e.fromId.slice(0, 8)
             const to = result.nodes.find((n) => n.id === e.toId)?.name || e.toId.slice(0, 8)

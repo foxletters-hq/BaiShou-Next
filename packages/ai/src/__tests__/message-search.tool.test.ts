@@ -27,7 +27,10 @@ describe('MessageSearchTool', () => {
       messageSearcher: searcher
     } as ToolContext)
 
-    expect(searcher.searchMessages).toHaveBeenCalledWith('噩梦', 10, deriveLegacyVaultId('/tmp'))
+    expect(searcher.searchMessages).toHaveBeenCalledWith('噩梦', 10, deriveLegacyVaultId('/tmp'), {
+      startDate: undefined,
+      endDate: undefined
+    })
     expect(output).toContain(`会话「6月17日更新后」(${localTs})`)
     expect(output).toContain('2025-06-21 01:30')
     expect(output).not.toMatch(/\(2025-06-20\)/)
@@ -63,5 +66,22 @@ describe('MessageSearchTool', () => {
       messageSearcher: { searchMessages: vi.fn().mockResolvedValue([]) }
     } as ToolContext)
     expect(output).toContain('未找到')
+  })
+
+  it('forwards local calendar date range to the searcher', async () => {
+    const searcher = { searchMessages: vi.fn().mockResolvedValue([]) }
+    await tool.execute(
+      { query: '原文', start_date: '2026-09-01', end_date: '2026-09-07' },
+      {
+        sessionId: 's1',
+        vaultId: deriveLegacyVaultId('/tmp'),
+        vaultName: '/tmp',
+        messageSearcher: searcher
+      } as ToolContext
+    )
+    expect(searcher.searchMessages).toHaveBeenCalledWith('原文', 10, deriveLegacyVaultId('/tmp'), {
+      startDate: '2026-09-01',
+      endDate: '2026-09-07'
+    })
   })
 })

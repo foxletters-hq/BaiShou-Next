@@ -1,4 +1,10 @@
-import type { IEmbeddingStorage } from '@baishou/shared'
+import type {
+  EmbedLedgerFailureParams,
+  EmbedLedgerReconcileParams,
+  EmbedLedgerReconcileResult,
+  EmbedLedgerRecordParams,
+  IEmbeddingStorage
+} from '@baishou/shared'
 import type { KnowledgeRepository } from '@baishou/database/shared'
 
 /**
@@ -48,6 +54,35 @@ export class KnowledgeEmbeddingStorage implements IEmbeddingStorage {
 
   async deleteEmbeddingsBySource(_sourceType: string, sourceId: string): Promise<void> {
     await this.getRepo().deleteChunksBySource(sourceId)
+  }
+
+  async recordEmbedded(params: EmbedLedgerRecordParams): Promise<void> {
+    await this.getRepo().recordEmbedded({
+      vaultId: params.vaultId,
+      sourceId: params.sourceId,
+      contentHash: params.contentHash,
+      chunkCount: params.chunkCount,
+      modelId: params.modelId,
+      dimension: params.dimension
+    })
+  }
+
+  async recordEmbedFailure(params: EmbedLedgerFailureParams): Promise<void> {
+    await this.getRepo().recordEmbedFailure({
+      vaultId: params.vaultId,
+      sourceId: params.sourceId,
+      lastError: params.lastError
+    })
+  }
+
+  async reconcileEmbedLedger(
+    params?: EmbedLedgerReconcileParams
+  ): Promise<EmbedLedgerReconcileResult> {
+    return this.getRepo().reconcileEmbedLedger({ vaultId: params?.vaultId })
+  }
+
+  async rebuildEmbedLedger(params?: EmbedLedgerReconcileParams): Promise<void> {
+    await this.getRepo().rebuildEmbedLedger({ vaultId: params?.vaultId })
   }
 
   async clearEmbeddings(): Promise<void> {

@@ -107,7 +107,8 @@ export interface ToolMessageSearcher {
     query: string,
     limit: number,
     /** 活跃仓库 ID；缺省时由实现方 fail-closed */
-    vaultId?: string
+    vaultId?: string,
+    options?: { startDate?: string; endDate?: string }
   ): Promise<
     Array<{
       role: string
