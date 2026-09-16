@@ -67,4 +67,41 @@ describe('scanWorkspaceRunCommand', () => {
     })
     expect(result.resources.some((r) => r.kind === 'external_path')).toBe(true)
   })
+
+  it('does not treat Windows dir switches as external paths on win32', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'dir /a',
+      workdir: '.',
+      folderRoot: ROOT,
+      platform: 'win32'
+    })
+    expect(result.resources.some((r) => r.kind === 'external_path')).toBe(false)
+  })
+
+  it('does not treat Windows /all and /a:h switches as external paths on win32', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'ipconfig /all && dir /a:h',
+      folderRoot: ROOT,
+      platform: 'win32'
+    })
+    expect(result.resources.some((r) => r.kind === 'external_path')).toBe(false)
+  })
+
+  it('still treats multi-segment Unix paths as external on win32', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'type /etc/passwd',
+      folderRoot: ROOT,
+      platform: 'win32'
+    })
+    expect(result.resources.some((r) => r.kind === 'external_path')).toBe(true)
+  })
+
+  it('treats a single-segment Unix root token as external on linux', () => {
+    const result = scanWorkspaceRunCommand({
+      command: 'cat /a',
+      folderRoot: ROOT,
+      platform: 'linux'
+    })
+    expect(result.resources.some((r) => r.kind === 'external_path')).toBe(true)
+  })
 })

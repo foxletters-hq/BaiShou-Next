@@ -32,7 +32,7 @@ export function buildWorkspaceEnvLines(env: WorkspaceEnvInfo): string[] {
   )
   lines.push('Only use workspace_* tools to read/write files inside this folder.')
   lines.push(
-    'When the user must choose or confirm (create files, pick a folder name, proceed or stop), call companion_ask. Do not ask that question in plain chat text.'
+    'When the user must choose or confirm (create files, pick a folder name, proceed or stop), call companion_ask. Independent questions may be asked together with multiple companion_ask calls in the same step. Do not ask those questions in plain chat text.'
   )
   return lines
 }
