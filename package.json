@@ -29,6 +29,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "turbo run lint",
+    "lint:css": "stylelint \"apps/**/*.css\" \"packages/**/*.css\"",
     "lint:baseline": "node scripts/print-lint-warning-baseline.mjs",
     "clean": "turbo run clean",
     "db:generate": "turbo run db:generate --filter=@baishou/database",
@@ -50,6 +51,7 @@
     "@types/uuid": "^11.0.0",
     "eslint": "^10.2.0",
     "prettier": "^3.8.1",
+    "stylelint": "^17.15.0",
     "turbo": "^2.9.3",
     "typescript": "^6.0.2"
   },

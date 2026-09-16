@@ -27,6 +27,9 @@ try {
   pnpm lint
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+  pnpm lint:css
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   pnpm format:check
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

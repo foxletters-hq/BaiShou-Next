@@ -35,6 +35,7 @@ pnpm audit:cache-invalidation
 pnpm test
 pnpm --filter @baishou/mobile run build:diary-editor
 pnpm lint
+pnpm lint:css
 pnpm format:check
 
 # 单测可能把 better-sqlite3 编成系统 Node ABI；收尾按 Electron ABI 恢复，减少下次开桌面时的重编。

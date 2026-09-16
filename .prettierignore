@@ -19,3 +19,5 @@ release/**
 coverage/**
 **/*.bundle
 .lint-count-*.json
+# 图标元数据：438 KB 纯数据，重排会产生上万行无意义 diff
+packages/ui/src/desktop/DeveloperOptionsView/lucide-icon-meta.json
