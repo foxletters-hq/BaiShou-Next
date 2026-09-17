@@ -312,20 +312,19 @@ export const DiaryScreen: React.FC = () => {
       const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
       const [pending, embedCount, globalModels, ragConfig] = await Promise.all([
-          mobileListPendingReextract({
-            vaultName,
-            vaultId,
-            shadowRepo,
-            pathService: services.pathService,
-            fileSystem: services.fileSystem
-          }),
-          (
-            services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> }
-          ).getPendingEmbedCounts?.().catch(() => EMPTY_PENDING_EMBED_COUNTS) ??
-            Promise.resolve(EMPTY_PENDING_EMBED_COUNTS),
-          services.settingsManager.get<GlobalModelsConfig>('global_models'),
-          services.settingsManager.get<RagConfig>('rag_config')
-        ])
+        mobileListPendingReextract({
+          vaultName,
+          vaultId,
+          shadowRepo,
+          pathService: services.pathService,
+          fileSystem: services.fileSystem
+        }),
+        (services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> })
+          .getPendingEmbedCounts?.()
+          .catch(() => EMPTY_PENDING_EMBED_COUNTS) ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS),
+        services.settingsManager.get<GlobalModelsConfig>('global_models'),
+        services.settingsManager.get<RagConfig>('rag_config')
+      ])
       const counts =
         embedCount && typeof embedCount === 'object' && 'total' in embedCount
           ? embedCount
@@ -543,7 +542,13 @@ export const DiaryScreen: React.FC = () => {
                   count: pendingEmbedParts.memories
                 })} · ${t('memory.pending_embed_part_graph_nodes', '图谱节点 {{count}} 个', {
                   count: pendingEmbedParts.graphNodes
-                })} · ${t('memory.pending_embed_part_knowledge', '知识库 {{count}} 份', {
+                })} · ${t(
+                  'memory.pending_embed_part_notebook_graph_nodes',
+                  '笔记本图节点 {{count}} 个',
+                  {
+                    count: pendingEmbedParts.notebookGraphNodes
+                  }
+                )} · ${t('memory.pending_embed_part_knowledge', '知识库 {{count}} 份', {
                   count: pendingEmbedParts.knowledgeSources
                 })}）`}
               </Text>

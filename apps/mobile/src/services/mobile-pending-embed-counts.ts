@@ -1,5 +1,6 @@
 import {
   buildPendingEmbedCounts,
+  countPendingFromUnembeddedList,
   createPendingEmbedCountCache,
   EMPTY_PENDING_EMBED_COUNTS,
   type PendingEmbedCounts
@@ -7,10 +8,7 @@ import {
 import { MemorySyncService } from '@baishou/core-mobile'
 import { GraphRepository } from '@baishou/database'
 import { countUnindexedDiariesForActiveVault } from './mobile-unindexed-diary-count'
-import {
-  resolveVaultScope,
-  type MobileRagServiceDeps
-} from './mobile-rag-core.helpers'
+import { resolveVaultScope, type MobileRagServiceDeps } from './mobile-rag-core.helpers'
 import { getMobileMemoryRawManager } from './mobile-raw-data-source.runtime'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 
@@ -28,25 +26,26 @@ export async function getPendingEmbedCounts(
     const vaultId = await vaultScope.resolveActiveVaultId()
     if (!vaultId) return EMPTY_PENDING_EMBED_COUNTS
 
-    const [diaries, memories, graphNodes, knowledgeSources] = await Promise.all([
-      countUnindexedDiariesForActiveVault(deps),
-      countPendingMemories(deps, vaultId),
-      countPendingGraphNodes(vaultId),
-      countPendingKnowledgeSources(vaultId)
-    ])
+    const [diaries, memories, graphNodes, knowledgeSources, notebookGraphNodes] = await Promise.all(
+      [
+        countUnindexedDiariesForActiveVault(deps),
+        countPendingMemories(deps, vaultId),
+        countPendingGraphNodes(vaultId),
+        countPendingKnowledgeSources(vaultId),
+        countPendingNotebookGraphNodes(vaultId)
+      ]
+    )
     return buildPendingEmbedCounts({
       unindexedDiaryCount: diaries,
       missingMemoryCount: memories,
       missingGraphNodeCount: graphNodes,
-      missingKnowledgeSourceCount: knowledgeSources
+      missingKnowledgeSourceCount: knowledgeSources,
+      missingNotebookGraphNodeCount: notebookGraphNodes
     })
   })
 }
 
-async function countPendingMemories(
-  deps: MobileRagServiceDeps,
-  vaultId: string
-): Promise<number> {
+async function countPendingMemories(deps: MobileRagServiceDeps, vaultId: string): Promise<number> {
   try {
     const memoryManager = getMobileMemoryRawManager()
     const sync = new MemorySyncService(memoryManager, {
@@ -80,6 +79,18 @@ async function countPendingKnowledgeSources(vaultId: string): Promise<number> {
     if (!expoKnowledgeConnectionManager.isConnected()) return 0
     const repo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
     return await repo.countPendingEmbedSources(vaultId)
+  } catch {
+    return 0
+  }
+}
+
+async function countPendingNotebookGraphNodes(vaultId: string): Promise<number> {
+  try {
+    const { expoKnowledgeConnectionManager, NotebookGraphRepository } =
+      await import('@baishou/database/expo')
+    if (!expoKnowledgeConnectionManager.isConnected()) return 0
+    const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+    return await countPendingFromUnembeddedList(() => repo.listUnembeddedLiveNodes(vaultId))
   } catch {
     return 0
   }
