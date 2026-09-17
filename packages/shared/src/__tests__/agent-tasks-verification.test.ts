@@ -26,8 +26,8 @@ describe('Agent 3: RAG i18n 验证', () => {
   })
 
   it('任务13: rag_clear_all 四语言一致更新', () => {
-    expect(zh.settings.rag_clear_all).toBe('清空现有记忆')
-    expect(en.settings.rag_clear_all).toContain('Existing Memory')
+    expect(zh.settings.rag_clear_all).toBe('清除记忆')
+    expect(en.settings.rag_clear_all).toContain('memory')
     // ja 和 zh_TW 已更新为本地化文案（不再是旧的中文）
     expect(ja.settings.rag_clear_all).not.toContain('向量')
     expect(ja.settings.rag_clear_all).not.toBe('清空所有向量数据')
