@@ -3,6 +3,8 @@ export interface PendingEmbedCounts {
   memories: number
   graphNodes: number
   knowledgeSources: number
+  /** 笔记本图节点向量，与资料分块向量分开计。 */
+  notebookGraphNodes: number
   total: number
 }
 
@@ -11,6 +13,7 @@ export const EMPTY_PENDING_EMBED_COUNTS: PendingEmbedCounts = {
   memories: 0,
   graphNodes: 0,
   knowledgeSources: 0,
+  notebookGraphNodes: 0,
   total: 0
 }
 
@@ -25,17 +28,33 @@ export function buildPendingEmbedCounts(input: {
   missingMemoryCount: number
   missingGraphNodeCount: number
   missingKnowledgeSourceCount?: number
+  missingNotebookGraphNodeCount?: number
 }): PendingEmbedCounts {
   const diaries = nonNegativeCount(input.unindexedDiaryCount)
   const memories = nonNegativeCount(input.missingMemoryCount)
   const graphNodes = nonNegativeCount(input.missingGraphNodeCount)
   const knowledgeSources = nonNegativeCount(input.missingKnowledgeSourceCount ?? 0)
+  const notebookGraphNodes = nonNegativeCount(input.missingNotebookGraphNodeCount ?? 0)
   return {
     diaries,
     memories,
     graphNodes,
     knowledgeSources,
-    total: diaries + memories + graphNodes + knowledgeSources
+    notebookGraphNodes,
+    total: diaries + memories + graphNodes + knowledgeSources + notebookGraphNodes
+  }
+}
+
+/** listUnembeddedLiveNodes 的计数口径：空列表或抛错都记 0，不把资料计数混进来。 */
+export async function countPendingFromUnembeddedList(
+  listUnembeddedLiveNodes: () => Promise<ReadonlyArray<unknown> | null | undefined>
+): Promise<number> {
+  try {
+    const rows = await listUnembeddedLiveNodes()
+    if (!Array.isArray(rows)) return 0
+    return rows.length
+  } catch {
+    return 0
   }
 }
 

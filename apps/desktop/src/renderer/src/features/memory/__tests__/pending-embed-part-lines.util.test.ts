@@ -9,7 +9,8 @@ describe('listPendingEmbedPartLines', () => {
         memories: 0,
         graphNodes: 2,
         knowledgeSources: 1,
-        total: 84
+        notebookGraphNodes: 4,
+        total: 88
       },
       3
     )
@@ -18,6 +19,7 @@ describe('listPendingEmbedPartLines', () => {
       ['memory.pending_embed_part_diaries', 81],
       ['memory.pending_embed_part_memories', 0],
       ['memory.pending_embed_part_graph_nodes', 2],
+      ['memory.pending_embed_part_notebook_graph_nodes', 4],
       ['memory.pending_embed_part_knowledge', 1],
       ['memory.pending_embed_part_graph_extract', 3]
     ])

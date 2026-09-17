@@ -1,5 +1,6 @@
 import {
   buildPendingEmbedCounts,
+  countPendingFromUnembeddedList,
   createPendingEmbedCountCache,
   EMPTY_PENDING_EMBED_COUNTS,
   logger,
@@ -57,6 +58,18 @@ async function countPendingKnowledgeSources(vaultId: string): Promise<number> {
   }
 }
 
+async function countPendingNotebookGraphNodes(vaultId: string): Promise<number> {
+  try {
+    const { NotebookGraphRepository, knowledgeConnectionManager } =
+      await import('@baishou/database-desktop')
+    if (!knowledgeConnectionManager.isConnected?.()) return 0
+    const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
+    return await countPendingFromUnembeddedList(() => repo.listUnembeddedLiveNodes(vaultId))
+  } catch {
+    return 0
+  }
+}
+
 export async function getPendingEmbedCountsForActiveVault(): Promise<PendingEmbedCounts> {
   const vault = vaultService.getActiveVault()
   if (!vault) return EMPTY_PENDING_EMBED_COUNTS
@@ -73,16 +86,18 @@ export async function getPendingEmbedCountsForActiveVault(): Promise<PendingEmbe
         logger.warn('[PendingEmbedCounts] graph node count failed', error as Error)
       }
     }
-    const [diaries, memories, knowledgeSources] = await Promise.all([
+    const [diaries, memories, knowledgeSources, notebookGraphNodes] = await Promise.all([
       countUnindexedDiariesForActiveVault(),
       countPendingMemories(vaultId),
-      countPendingKnowledgeSources(vaultId)
+      countPendingKnowledgeSources(vaultId),
+      countPendingNotebookGraphNodes(vaultId)
     ])
     return buildPendingEmbedCounts({
       unindexedDiaryCount: diaries,
       missingMemoryCount: memories,
       missingGraphNodeCount: graphNodes,
-      missingKnowledgeSourceCount: knowledgeSources
+      missingKnowledgeSourceCount: knowledgeSources,
+      missingNotebookGraphNodeCount: notebookGraphNodes
     })
   }
 

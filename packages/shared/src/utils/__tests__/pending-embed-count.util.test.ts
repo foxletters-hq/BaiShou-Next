@@ -1,24 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPendingEmbedCounts,
+  countPendingFromUnembeddedList,
   createPendingEmbedCountCache
 } from '../pending-embed-count.util'
 
 describe('buildPendingEmbedCounts', () => {
-  it('keeps all four parts and sums them into total', () => {
+  it('keeps notebook graph nodes separate from knowledge sources and sums them into total', () => {
     expect(
       buildPendingEmbedCounts({
         unindexedDiaryCount: 2,
         missingMemoryCount: 3,
         missingGraphNodeCount: 4,
-        missingKnowledgeSourceCount: 5
+        missingKnowledgeSourceCount: 5,
+        missingNotebookGraphNodeCount: 6
       })
     ).toEqual({
       diaries: 2,
       memories: 3,
       graphNodes: 4,
       knowledgeSources: 5,
-      total: 14
+      notebookGraphNodes: 6,
+      total: 20
     })
   })
 
@@ -35,6 +38,7 @@ describe('buildPendingEmbedCounts', () => {
       memories: 0,
       graphNodes: 0,
       knowledgeSources: 0,
+      notebookGraphNodes: 0,
       total: 0
     })
 
@@ -49,8 +53,34 @@ describe('buildPendingEmbedCounts', () => {
       memories: 1,
       graphNodes: 0,
       knowledgeSources: 0,
+      notebookGraphNodes: 0,
       total: 1
     })
+  })
+})
+
+describe('countPendingFromUnembeddedList', () => {
+  it('should count unembedded notebook graph nodes without mixing knowledge sources', async () => {
+    await expect(
+      countPendingFromUnembeddedList(async () => [
+        { id: 'n1', notebookId: 'nb1' },
+        { id: 'n2', notebookId: 'nb2' }
+      ])
+    ).resolves.toBe(2)
+  })
+
+  it('should return zero when the list is empty or missing', async () => {
+    await expect(countPendingFromUnembeddedList(async () => [])).resolves.toBe(0)
+    await expect(countPendingFromUnembeddedList(async () => null)).resolves.toBe(0)
+    await expect(countPendingFromUnembeddedList(async () => undefined)).resolves.toBe(0)
+  })
+
+  it('should return zero when listing throws', async () => {
+    await expect(
+      countPendingFromUnembeddedList(async () => {
+        throw new Error('db-not-ready')
+      })
+    ).resolves.toBe(0)
   })
 })
 
