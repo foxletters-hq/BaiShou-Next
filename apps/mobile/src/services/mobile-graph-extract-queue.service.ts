@@ -200,6 +200,15 @@ class MobileGraphExtractQueue {
     const queued = this.engine.enqueue(items)
     return { queued, totalPending: items.length, skippedNotEmbedded }
   }
+
+  enqueueAfterEmbed(
+    items: Array<{ filePath: string; date?: string; contentHash?: string }>,
+    ctx?: MobileGraphExtractContext
+  ): number {
+    if (ctx) this.context = ctx
+    if (!this.context || items.length === 0) return 0
+    return this.engine.enqueueAfterEmbed(items)
+  }
 }
 
 export const mobileGraphExtractQueue = new MobileGraphExtractQueue()

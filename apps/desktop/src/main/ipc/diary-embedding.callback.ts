@@ -79,6 +79,17 @@ export const embeddingCallback: IEmbeddingCallback = {
       const { invalidatePendingEmbedCountsCache } =
         await import('../services/pending-embed-counts.service')
       invalidatePendingEmbedCountsCache()
+      try {
+        const { scheduleDiaryGraphAfterEmbed } =
+          await import('../services/diary-graph-follow-after-embed.service')
+        await scheduleDiaryGraphAfterEmbed({
+          vaultId,
+          diaryId: params.diaryId,
+          contentHash
+        })
+      } catch {
+        /* 接续失败不回滚已完成的向量 */
+      }
       return true
     } catch (e: any) {
       console.error('[DiaryIPC] RAG 嵌入发生异常:', e)

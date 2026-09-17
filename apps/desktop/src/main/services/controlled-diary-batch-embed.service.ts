@@ -6,6 +6,7 @@ import {
   clearRagDiaryEmbedFailure,
   filterUnindexedDiaries,
   formatAiApiCallError,
+  hashEmbedSourceContent,
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   limitExecute,
@@ -59,7 +60,6 @@ type RunControlledDiaryBatchEmbedOptions = {
   broadcastProgress?: boolean
   groupId?: string
 }
-
 
 async function loadEmbeddedDiaryIndex(vaultId: string): Promise<{
   embeddedIds: Set<string>
@@ -295,10 +295,7 @@ export async function runControlledDiaryBatchEmbed(
   if (failed > 0 && embedded === 0) {
     await settingsManager.set(
       'rag_config',
-      markRagDiaryEmbedFailure(
-        latestRagConfig,
-        lastError || '嵌入接口不可用，没有写入任何日记向量'
-      )
+      markRagDiaryEmbedFailure(latestRagConfig, lastError || '嵌入接口不可用，没有写入任何日记向量')
     )
   } else if (failed === 0 && hasRagDiaryEmbedFailure(latestRagConfig)) {
     await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))
@@ -362,73 +359,84 @@ async function embedVaultDiaries(
     diariesToEmbed,
     ctx.batchConcurrency,
     async (meta) => {
-    if ((await checkpointBatchEmbed()) === 'aborted') return
-    const dateLabel = new Date(meta.date).toLocaleDateString()
-    const completed = ctx.getGlobalCompleted()
-    ctx.options &&
-      reportProgress(
-        ctx.options,
-        {
-          completed,
-          total: ctx.globalTotal,
-          statusText: `[${vaultName}] 已嵌入 ${ctx.getGlobalEmbedded() + embedded}/${ctx.globalTotal}${ctx.getGlobalFailed() + failed > 0 ? `（失败 ${ctx.getGlobalFailed() + failed}）` : ''}（${dateLabel}）`
-        },
-        ctx.globalTotal
-      )
-
-    const diary = (await diaryManager.findByIdsForEmbedding([meta.id])).get(meta.id)
-    if (!diary?.id) {
-      loadSkipped++
-      ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
-      logger.warn('[ControlledDiaryBatchEmbed] 跳过无法读取的日记', {
-        vaultName,
-        diaryId: meta.id,
-        date: dateLabel
-      })
-      return
-    }
-
-    try {
-      await deleteDiaryEmbeddingAliases(vaultId, diary.id)
-      await ctx.embeddingService.reEmbedText(
-        buildDesktopDiaryReEmbedArgs({
-          content: diary.content ?? '',
-          date: diary.date,
-          vaultId,
-          diaryId: diary.id,
-          updatedAt: diary.updatedAt ?? Date.now(),
-          skipIndexPrep: true
-        })
-      )
-      if (!diary.content?.trim()) {
-        loadSkipped++
-        return
-      }
-      consecutiveApiFails = 0
-      embedded++
-    } catch (error) {
-      failed++
-      consecutiveApiFails++
-      lastError = formatAiApiCallError(error)
-      logger.warn('[ControlledDiaryBatchEmbed] 单篇嵌入失败', {
-        vaultName,
-        diaryId: meta.id,
-        date: dateLabel,
-        error
-      })
-    } finally {
-      ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
+      if ((await checkpointBatchEmbed()) === 'aborted') return
+      const dateLabel = new Date(meta.date).toLocaleDateString()
+      const completed = ctx.getGlobalCompleted()
       ctx.options &&
         reportProgress(
           ctx.options,
           {
-            completed: ctx.getGlobalCompleted(),
+            completed,
             total: ctx.globalTotal,
             statusText: `[${vaultName}] 已嵌入 ${ctx.getGlobalEmbedded() + embedded}/${ctx.globalTotal}${ctx.getGlobalFailed() + failed > 0 ? `（失败 ${ctx.getGlobalFailed() + failed}）` : ''}（${dateLabel}）`
           },
           ctx.globalTotal
         )
-    }
+
+      const diary = (await diaryManager.findByIdsForEmbedding([meta.id])).get(meta.id)
+      if (!diary?.id) {
+        loadSkipped++
+        ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
+        logger.warn('[ControlledDiaryBatchEmbed] 跳过无法读取的日记', {
+          vaultName,
+          diaryId: meta.id,
+          date: dateLabel
+        })
+        return
+      }
+
+      try {
+        await deleteDiaryEmbeddingAliases(vaultId, diary.id)
+        await ctx.embeddingService.reEmbedText(
+          buildDesktopDiaryReEmbedArgs({
+            content: diary.content ?? '',
+            date: diary.date,
+            vaultId,
+            diaryId: diary.id,
+            updatedAt: diary.updatedAt ?? Date.now(),
+            skipIndexPrep: true
+          })
+        )
+        if (!diary.content?.trim()) {
+          loadSkipped++
+          return
+        }
+        consecutiveApiFails = 0
+        embedded++
+        try {
+          const { scheduleDiaryGraphAfterEmbed } =
+            await import('./diary-graph-follow-after-embed.service')
+          await scheduleDiaryGraphAfterEmbed({
+            vaultId,
+            diaryId: diary.id,
+            contentHash: hashEmbedSourceContent(diary.content ?? '')
+          })
+        } catch (followError) {
+          logger.warn('[ControlledDiaryBatchEmbed] 向量完成后自动接抽图失败', followError as Error)
+        }
+      } catch (error) {
+        failed++
+        consecutiveApiFails++
+        lastError = formatAiApiCallError(error)
+        logger.warn('[ControlledDiaryBatchEmbed] 单篇嵌入失败', {
+          vaultName,
+          diaryId: meta.id,
+          date: dateLabel,
+          error
+        })
+      } finally {
+        ctx.setGlobalCompleted(ctx.getGlobalCompleted() + 1)
+        ctx.options &&
+          reportProgress(
+            ctx.options,
+            {
+              completed: ctx.getGlobalCompleted(),
+              total: ctx.globalTotal,
+              statusText: `[${vaultName}] 已嵌入 ${ctx.getGlobalEmbedded() + embedded}/${ctx.globalTotal}${ctx.getGlobalFailed() + failed > 0 ? `（失败 ${ctx.getGlobalFailed() + failed}）` : ''}（${dateLabel}）`
+            },
+            ctx.globalTotal
+          )
+      }
     },
     {
       shouldStop: () =>
