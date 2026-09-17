@@ -1,13 +1,18 @@
-import { and, desc, eq, inArray, isNull, like, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import {
   GRAPH_GLOBAL_MAX_NODES,
   GRAPH_SQL_IN_CHUNK,
+  GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT,
+  logger,
   normalizeGraphEdgeReviewFields,
   normalizeGraphName,
   shouldKeepIncomingNotebookGraphNodeId
 } from '@baishou/shared'
 import type { ApplyRawNodeResult } from './graph.repository'
-import { isSqliteUniqueConstraintError } from '../utils/sqlite-function-error.util'
+import {
+  isMissingSqliteFunctionError,
+  isSqliteUniqueConstraintError
+} from '../utils/sqlite-function-error.util'
 import type { AppDatabase } from '../types'
 import {
   notebookGraphAliasesTable,
@@ -24,7 +29,35 @@ function requireNotebookId(notebookId: string): string {
   return id
 }
 
-function mergeNotebookAliases(existingRaw: string | string[] | undefined, extra: string[]): string[] {
+function serializeVector(vector: number[]): Buffer {
+  return Buffer.from(new Float32Array(vector).buffer)
+}
+
+function cosineDistance(a: Float32Array, b: Float32Array): number {
+  let dot = 0
+  let na = 0
+  let nb = 0
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i]!
+    const y = b[i]!
+    dot += x * y
+    na += x * x
+    nb += y * y
+  }
+  if (na === 0 || nb === 0) return 1
+  const sim = dot / (Math.sqrt(na) * Math.sqrt(nb))
+  return 1 - sim
+}
+
+function omitNodeEmbedding(row: NotebookGraphNodeRow): Omit<NotebookGraphNodeRow, 'embedding'> {
+  const { embedding: _embedding, ...rest } = row
+  return rest
+}
+
+function mergeNotebookAliases(
+  existingRaw: string | string[] | undefined,
+  extra: string[]
+): string[] {
   let existing: string[] = []
   if (Array.isArray(existingRaw)) existing = existingRaw
   else if (typeof existingRaw === 'string' && existingRaw.trim()) {
@@ -629,10 +662,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
           eq(notebookGraphEdgesTable.notebookId, notebookId),
           eq(notebookGraphEdgesTable.isCurrent, 1),
           isNull(notebookGraphEdgesTable.deletedAt),
-          or(
-            eq(notebookGraphEdgesTable.fromId, nodeId),
-            eq(notebookGraphEdgesTable.toId, nodeId)
-          )
+          or(eq(notebookGraphEdgesTable.fromId, nodeId), eq(notebookGraphEdgesTable.toId, nodeId))
         )
       )
 
@@ -689,10 +719,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
               eq(notebookGraphEdgesTable.notebookId, notebookId),
               eq(notebookGraphEdgesTable.isCurrent, 1),
               isNull(notebookGraphEdgesTable.deletedAt),
-              or(
-                eq(notebookGraphEdgesTable.fromId, tip),
-                eq(notebookGraphEdgesTable.toId, tip)
-              )
+              or(eq(notebookGraphEdgesTable.fromId, tip), eq(notebookGraphEdgesTable.toId, tip))
             )
           )
         for (const e of neighbors) {
@@ -782,7 +809,9 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
 
   async deleteAllForNotebook(notebookId: string): Promise<void> {
     const nb = requireNotebookId(notebookId)
-    await this.db.delete(notebookGraphAliasesTable).where(eq(notebookGraphAliasesTable.notebookId, nb))
+    await this.db
+      .delete(notebookGraphAliasesTable)
+      .where(eq(notebookGraphAliasesTable.notebookId, nb))
     await this.db.delete(notebookGraphEdgesTable).where(eq(notebookGraphEdgesTable.notebookId, nb))
     await this.db.delete(notebookGraphNodesTable).where(eq(notebookGraphNodesTable.notebookId, nb))
   }
@@ -805,6 +834,156 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
         and(
           eq(notebookGraphEdgesTable.notebookId, nb),
           like(notebookGraphEdgesTable.sourceRef, `${prefix.replace(/%/g, '')}%`)
+        )
+      )
+  }
+
+  async updateNodeEmbedding(
+    id: string,
+    vaultId: string,
+    notebookId: string,
+    embedding: number[],
+    modelId: string
+  ): Promise<void> {
+    if (!embedding.length) return
+    const nb = requireNotebookId(notebookId)
+    const vid = vaultId.trim()
+    if (!id.trim() || !vid) return
+    await this.db
+      .update(notebookGraphNodesTable)
+      .set({
+        embedding: serializeVector(embedding),
+        dimension: embedding.length,
+        modelId,
+        updatedAt: Date.now()
+      })
+      .where(
+        and(
+          eq(notebookGraphNodesTable.id, id),
+          eq(notebookGraphNodesTable.vaultId, vid),
+          eq(notebookGraphNodesTable.notebookId, nb),
+          isNull(notebookGraphNodesTable.deletedAt)
+        )
+      )
+  }
+
+  async listUnembeddedLiveNodes(
+    vaultId: string,
+    notebookId?: string
+  ): Promise<Array<{ id: string; notebookId: string; name: string; summary: string }>> {
+    const vid = vaultId.trim()
+    if (!vid) throw new Error('listUnembeddedLiveNodes: vaultId required')
+    const filters = [
+      eq(notebookGraphNodesTable.vaultId, vid),
+      isNull(notebookGraphNodesTable.deletedAt),
+      sql`${notebookGraphNodesTable.embedding} is null`
+    ]
+    const nb = notebookId?.trim()
+    if (nb) filters.push(eq(notebookGraphNodesTable.notebookId, nb))
+    const rows = await this.db
+      .select({
+        id: notebookGraphNodesTable.id,
+        notebookId: notebookGraphNodesTable.notebookId,
+        name: notebookGraphNodesTable.name,
+        summary: notebookGraphNodesTable.summary
+      })
+      .from(notebookGraphNodesTable)
+      .where(and(...filters))
+    return rows.map((row) => ({
+      id: row.id,
+      notebookId: row.notebookId,
+      name: row.name,
+      summary: row.summary ?? ''
+    }))
+  }
+
+  async searchNodesByVector(
+    vaultId: string,
+    notebookId: string,
+    vector: number[],
+    topK: number,
+    opts?: { nodeType?: string; modelId?: string }
+  ): Promise<Array<Omit<NotebookGraphNodeRow, 'embedding'> & { distance: number }>> {
+    const nb = requireNotebookId(notebookId)
+    const vid = vaultId.trim()
+    if (!vid) throw new Error('searchNodesByVector: vaultId required')
+    const query = new Float32Array(vector)
+    const buf = serializeVector(vector)
+
+    try {
+      const conditions = [
+        eq(notebookGraphNodesTable.vaultId, vid),
+        eq(notebookGraphNodesTable.notebookId, nb),
+        isNull(notebookGraphNodesTable.deletedAt),
+        sql`${notebookGraphNodesTable.embedding} is not null`,
+        eq(notebookGraphNodesTable.dimension, query.length)
+      ]
+      if (opts?.nodeType) conditions.push(eq(notebookGraphNodesTable.nodeType, opts.nodeType))
+      if (opts?.modelId) conditions.push(eq(notebookGraphNodesTable.modelId, opts.modelId))
+
+      const rows = await this.db
+        .select({
+          row: notebookGraphNodesTable,
+          distance:
+            sql<number>`vec_distance_cosine(${notebookGraphNodesTable.embedding}, ${buf})`.as(
+              'distance'
+            )
+        })
+        .from(notebookGraphNodesTable)
+        .where(and(...conditions))
+        .orderBy(sql`vec_distance_cosine(${notebookGraphNodesTable.embedding}, ${buf}) ASC`)
+        .limit(topK)
+
+      return rows.map((r) => ({ ...omitNodeEmbedding(r.row), distance: Number(r.distance) }))
+    } catch (e) {
+      if (!isMissingSqliteFunctionError(e)) throw e
+    }
+
+    const filters = [
+      eq(notebookGraphNodesTable.vaultId, vid),
+      eq(notebookGraphNodesTable.notebookId, nb),
+      isNull(notebookGraphNodesTable.deletedAt),
+      ...(opts?.nodeType ? [eq(notebookGraphNodesTable.nodeType, opts.nodeType)] : [])
+    ]
+    const rows = await this.db
+      .select()
+      .from(notebookGraphNodesTable)
+      .where(and(...filters))
+      .limit(GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT)
+    if (rows.length >= GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT) {
+      logger.warn(
+        `[NotebookGraphRepository] searchNodesByVector JS fallback scanned ${GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT} rows`
+      )
+    }
+    const scored: Array<Omit<NotebookGraphNodeRow, 'embedding'> & { distance: number }> = []
+    for (const row of rows) {
+      if (!row.embedding || !row.dimension || row.dimension !== query.length) continue
+      if (opts?.modelId && row.modelId && row.modelId !== opts.modelId) continue
+      const embBuf = row.embedding as Buffer
+      const emb = new Float32Array(embBuf.buffer, embBuf.byteOffset, row.dimension)
+      scored.push({ ...omitNodeEmbedding(row), distance: cosineDistance(query, emb) })
+    }
+    scored.sort((a, b) => a.distance - b.distance)
+    return scored.slice(0, topK)
+  }
+
+  async clearNodeEmbedding(id: string, vaultId: string, notebookId: string): Promise<void> {
+    const nb = requireNotebookId(notebookId)
+    if (!id.trim() || !vaultId.trim()) return
+    await this.db
+      .update(notebookGraphNodesTable)
+      .set({
+        embedding: null,
+        dimension: null,
+        modelId: '',
+        updatedAt: Date.now()
+      })
+      .where(
+        and(
+          eq(notebookGraphNodesTable.id, id),
+          eq(notebookGraphNodesTable.vaultId, vaultId.trim()),
+          eq(notebookGraphNodesTable.notebookId, nb),
+          isNull(notebookGraphNodesTable.deletedAt)
         )
       )
   }

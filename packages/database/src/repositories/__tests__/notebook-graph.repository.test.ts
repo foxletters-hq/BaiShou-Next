@@ -20,6 +20,9 @@ describe('NotebookGraphRepository fail-closed', () => {
     await expect(repo.searchNodes({ vaultId: 'v1', notebookId: '  ', query: 'x' })).rejects.toThrow(
       /notebookId/
     )
+    await expect(repo.searchNodesByVector('v1', '', [1, 0, 0, 0], 3)).rejects.toThrow(/notebookId/)
+    await expect(repo.updateNodeEmbedding('n1', 'v1', '  ', [1], 'm')).rejects.toThrow(/notebookId/)
+    await expect(repo.clearNodeEmbedding('n1', 'v1', '')).rejects.toThrow(/notebookId/)
   })
 
   it('跨本身份不碰撞', () => {
@@ -183,7 +186,11 @@ const describeGraph = canOpenBetterSqlite3() ? describe : describe.skip
 
 describeGraph('NotebookGraphRepository supersede', () => {
   let tempDir: string
-  let dbManager: { connect: (d: string) => Promise<void>; disconnect: () => void; getDb: () => unknown }
+  let dbManager: {
+    connect: (d: string) => Promise<void>
+    disconnect: () => void
+    getDb: () => unknown
+  }
 
   beforeEach(async () => {
     const { KnowledgeConnectionManager } = await import('../../knowledge.connection.manager')

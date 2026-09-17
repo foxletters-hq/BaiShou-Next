@@ -12,8 +12,9 @@ export const KNOWLEDGE_DB_FILENAME = 'knowledge.db'
  * 4 = notebooks 加 sort_order / cover_tone（列表排序与封面色）
  * 5 = notebooks 加 cover_icon / cover_image（封面 emoji 与上传封面）
  * 6 = knowledge_embed_ledger（本机嵌入账本，不参与同步）
+ * 7 = notebook_graph_nodes 加 embedding / dimension / model_id（节点向量，不参与同步）
  */
-export const KNOWLEDGE_SCHEMA_VERSION = 6
+export const KNOWLEDGE_SCHEMA_VERSION = 7
 
 export const KNOWLEDGE_NOTEBOOKS_SQL = `
   CREATE TABLE IF NOT EXISTS notebooks (
@@ -143,6 +144,9 @@ export const NOTEBOOK_GRAPH_NODES_SQL = `
     aliases         TEXT NOT NULL DEFAULT '[]',
     summary         TEXT NOT NULL DEFAULT '',
     props_json      TEXT NOT NULL DEFAULT '{}',
+    embedding       BLOB,
+    dimension       INTEGER,
+    model_id        TEXT NOT NULL DEFAULT '',
     mention_count   INTEGER NOT NULL DEFAULT 0,
     first_seen_at   INTEGER,
     last_seen_at    INTEGER,
@@ -205,6 +209,9 @@ export const NOTEBOOK_GRAPH_INDEXES_SQL = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_nb_graph_nodes_live_name
     ON notebook_graph_nodes(vault_id, notebook_id, node_type, name_normalized)
     WHERE deleted_at IS NULL AND node_type != 'source'`,
+  `CREATE INDEX IF NOT EXISTS idx_nb_graph_nodes_embed_state
+    ON notebook_graph_nodes(vault_id, notebook_id, model_id, dimension)
+    WHERE deleted_at IS NULL`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_aliases_lookup
     ON notebook_graph_aliases(vault_id, notebook_id, alias_normalized)`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_aliases_node ON notebook_graph_aliases(node_id)`,
@@ -283,6 +290,28 @@ async function ensureVaultIdColumn(
   logger.info(`${logPrefix} ${table}.vault_id 已补齐`)
 }
 
+/** 存量库补节点向量列。必须在 embed_state 索引之前执行。 */
+async function ensureNotebookGraphNodeEmbeddingColumns(
+  client: unknown,
+  logPrefix: string
+): Promise<void> {
+  if (!(await tableHasColumn(client, 'notebook_graph_nodes', 'embedding'))) {
+    await executeRawSql(client, `ALTER TABLE notebook_graph_nodes ADD COLUMN embedding BLOB`)
+    logger.info(`${logPrefix} notebook_graph_nodes.embedding 已补齐`)
+  }
+  if (!(await tableHasColumn(client, 'notebook_graph_nodes', 'dimension'))) {
+    await executeRawSql(client, `ALTER TABLE notebook_graph_nodes ADD COLUMN dimension INTEGER`)
+    logger.info(`${logPrefix} notebook_graph_nodes.dimension 已补齐`)
+  }
+  if (!(await tableHasColumn(client, 'notebook_graph_nodes', 'model_id'))) {
+    await executeRawSql(
+      client,
+      `ALTER TABLE notebook_graph_nodes ADD COLUMN model_id TEXT NOT NULL DEFAULT ''`
+    )
+    logger.info(`${logPrefix} notebook_graph_nodes.model_id 已补齐`)
+  }
+}
+
 async function createKnowledgeFts(client: unknown, logPrefix: string): Promise<void> {
   try {
     await executeRawSql(client, KNOWLEDGE_CHUNKS_FTS5_SQL)
@@ -327,6 +356,8 @@ export async function ensureKnowledgeSchema(
   await executeRawSql(client, NOTEBOOK_GRAPH_NODES_SQL)
   await executeRawSql(client, NOTEBOOK_GRAPH_ALIASES_SQL)
   await executeRawSql(client, NOTEBOOK_GRAPH_EDGES_SQL)
+  // v7：存量库补节点向量列（须在 embed_state 索引之前）
+  await ensureNotebookGraphNodeEmbeddingColumns(client, logPrefix)
   for (const stmt of NOTEBOOK_GRAPH_INDEXES_SQL) {
     await executeRawSql(client, stmt)
   }
@@ -343,11 +374,17 @@ export async function ensureKnowledgeSchema(
     logger.info(`${logPrefix} notebooks.sort_order 已补齐`)
   }
   if (!(await tableHasColumn(client, 'notebooks', 'cover_tone'))) {
-    await executeRawSql(client, `ALTER TABLE notebooks ADD COLUMN cover_tone TEXT NOT NULL DEFAULT ''`)
+    await executeRawSql(
+      client,
+      `ALTER TABLE notebooks ADD COLUMN cover_tone TEXT NOT NULL DEFAULT ''`
+    )
     logger.info(`${logPrefix} notebooks.cover_tone 已补齐`)
   }
   if (!(await tableHasColumn(client, 'notebooks', 'cover_icon'))) {
-    await executeRawSql(client, `ALTER TABLE notebooks ADD COLUMN cover_icon TEXT NOT NULL DEFAULT ''`)
+    await executeRawSql(
+      client,
+      `ALTER TABLE notebooks ADD COLUMN cover_icon TEXT NOT NULL DEFAULT ''`
+    )
     logger.info(`${logPrefix} notebooks.cover_icon 已补齐`)
   }
   if (!(await tableHasColumn(client, 'notebooks', 'cover_image'))) {

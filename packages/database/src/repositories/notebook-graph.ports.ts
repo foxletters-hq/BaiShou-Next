@@ -37,11 +37,7 @@ export interface NotebookGraphQuery {
     toId: string
     maxHops?: number
   }): Promise<NotebookGraphPath | null>
-  getEdgeById(
-    id: string,
-    vaultId: string,
-    notebookId: string
-  ): Promise<NotebookGraphEdgeRow | null>
+  getEdgeById(id: string, vaultId: string, notebookId: string): Promise<NotebookGraphEdgeRow | null>
   listPendingNodes(vaultId: string, notebookId: string): Promise<NotebookGraphNodeRow[]>
   listPendingEdges(vaultId: string, notebookId: string): Promise<NotebookGraphEdgeRow[]>
 }
@@ -130,5 +126,33 @@ export interface NotebookGraphExtractStore {
   }): Promise<number>
 }
 
+/** 节点向量：只存本机 SQLite，不进 JSONL。 */
+export interface NotebookGraphEmbedding {
+  updateNodeEmbedding(
+    id: string,
+    vaultId: string,
+    notebookId: string,
+    embedding: number[],
+    modelId: string
+  ): Promise<void>
+  listUnembeddedLiveNodes(
+    vaultId: string,
+    notebookId?: string
+  ): Promise<Array<{ id: string; notebookId: string; name: string; summary: string }>>
+  searchNodesByVector(
+    vaultId: string,
+    notebookId: string,
+    vector: number[],
+    topK: number,
+    opts?: { nodeType?: string; modelId?: string }
+  ): Promise<Array<Omit<NotebookGraphNodeRow, 'embedding'> & { distance: number }>>
+  clearNodeEmbedding(id: string, vaultId: string, notebookId: string): Promise<void>
+}
+
 export interface NotebookGraphRepositoryPort
-  extends NotebookGraphQuery, NotebookGraphSyncApply, NotebookGraphWrite, NotebookGraphExtractStore {}
+  extends
+    NotebookGraphQuery,
+    NotebookGraphSyncApply,
+    NotebookGraphWrite,
+    NotebookGraphExtractStore,
+    NotebookGraphEmbedding {}

@@ -153,6 +153,9 @@ export const notebookGraphNodesTable = sqliteTable(
     aliases: text('aliases').notNull().default('[]'),
     summary: text('summary').notNull().default(''),
     propsJson: text('props_json').notNull().default('{}'),
+    embedding: sqliteVecBlob('embedding'),
+    dimension: integer('dimension'),
+    modelId: text('model_id').notNull().default(''),
     mentionCount: integer('mention_count').notNull().default(0),
     firstSeenAt: integer('first_seen_at'),
     lastSeenAt: integer('last_seen_at'),
@@ -168,7 +171,10 @@ export const notebookGraphNodesTable = sqliteTable(
     vaultNotebookIdx: index('idx_nb_graph_nodes_vault_nb').on(t.vaultId, t.notebookId),
     liveName: uniqueIndex('idx_nb_graph_nodes_live_name')
       .on(t.vaultId, t.notebookId, t.nodeType, t.nameNormalized)
-      .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'source'`)
+      .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'source'`),
+    embedState: index('idx_nb_graph_nodes_embed_state')
+      .on(t.vaultId, t.notebookId, t.modelId, t.dimension)
+      .where(sql`${t.deletedAt} is null`)
   })
 )
 
