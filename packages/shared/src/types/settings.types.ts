@@ -3,6 +3,8 @@ import { ProviderType } from './ai-provider.types'
 export { ProviderType }
 import type { TtsSettings } from './tts.types'
 export type { TtsSettings }
+import type { ReasoningEffortSetting } from '../utils/reasoning-effort'
+import type { ReasoningEffortBySlot } from '../utils/reasoning-effort-slot'
 
 /**
  * AI 供应商配置模型
@@ -61,9 +63,12 @@ export interface GlobalModelsConfig {
   /** 各 TTS 供应商的 baseUrl / apiKey，key 为 openai-tts、mimo-tts 等 */
   globalTtsProviderConfigs?: Record<string, TtsProviderConnectionConfig>
   monthlySummarySource: 'weeklies' | 'diaries' // 月报：'weeklies' 仅本月周记；'diaries' 本月周记 + 本月日记
+  /**
+   * 按模型用途记录的思考强度。缺省或未写的用途一律 Default（auto）。
+   * 升级时不从旧的全局 reasoningEffortDefault 或其它用途拷贝。
+   */
+  reasoningEffortBySlot?: ReasoningEffortBySlot
 }
-
-import type { ReasoningEffortSetting } from '../utils/reasoning-effort'
 
 /**
  * Agent 行为与陪伴模式配置
@@ -78,8 +83,8 @@ export interface AgentBehaviorConfig {
   /** 返回伙伴页时是否默认打开上次对话（默认 true） */
   restoreLastSessionOnReturn?: boolean
   /**
-   * 默认思考强度。auto = 不显式传 effort（OpenAI 系约 medium）。
-   * 对话页可临时覆盖并写入 userConfig.reasoningEffort。
+   * 旧版全局默认思考强度。读取对话用途时不再使用本字段，
+   * 改读 GlobalModelsConfig.reasoningEffortBySlot.dialogue。
    */
   reasoningEffortDefault?: ReasoningEffortSetting
 }
@@ -104,12 +109,12 @@ export interface RagConfig {
 /**
  * 知识库提取引擎配置（K1.5）
  */
-export type KnowledgeImportProcessMode = 'vector' | 'graph' | 'both'
+export type KnowledgeImportProcessMode = 'vector' | 'both' | 'later'
 
 export interface KnowledgeConfig {
   /** 默认提取引擎：ocr | vision。旧值 simple 读入时按 ocr 走。 */
   defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
-  /** 导入后默认：向量、图关系，或两者都做 */
+  /** 导入后默认：向量、向量和图关系，或稍后整理。旧值 graph 读入时按 both 走。 */
   importProcessMode?: KnowledgeImportProcessMode
   /** tesseract 语言，如 chi_sim+eng；无语言包时引擎会降级 eng */
   ocrLanguage?: string
