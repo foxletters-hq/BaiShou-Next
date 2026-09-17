@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { graphNodeIdForEntity } from '@baishou/shared'
-import { alignEntityPool, parseEntityAlignDecisions } from '../graph-entity-align'
+import {
+  alignEntityPool,
+  alignedEmbeddingForNodeCard,
+  parseEntityAlignDecisions
+} from '../graph-entity-align'
 
 const VAULT = 'vlt_aaaaaaaaaaaaaaaa'
 
@@ -9,21 +13,20 @@ describe('alignEntityPool', () => {
     const embedQuery = vi.fn()
     const judgeMerges = vi.fn()
     const existingId = graphNodeIdForEntity(VAULT, 'person', '小明')
-    const out = await alignEntityPool(
-      [{ name: '小明', nodeType: 'person', summary: '同学' }],
-      {
-        findByNameOrAlias: async () => ({
-          id: existingId,
-          name: '小明',
-          aliases: ['小明同学']
-        }),
-        embedQuery,
-        judgeMerges,
-        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
-      }
-    )
+    const out = await alignEntityPool([{ name: '小明', nodeType: 'person', summary: '同学' }], {
+      findByNameOrAlias: async () => ({
+        id: existingId,
+        name: '小明',
+        aliases: ['小明同学']
+      }),
+      embedQuery,
+      judgeMerges,
+      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+    })
     expect(out.get('person\0小明')?.id).toBe(existingId)
     expect(out.get('person\0小明')?.mergedBy).toBe('name')
+    expect(out.get('person\0小明')?.embedding).toBeUndefined()
+    expect(out.get('person\0小明')?.embedText).toBeUndefined()
     expect(embedQuery).not.toHaveBeenCalled()
     expect(judgeMerges).not.toHaveBeenCalled()
   })
@@ -46,6 +49,8 @@ describe('alignEntityPool', () => {
     expect(out.get('person\0张三')?.mergedBy).toBe('create')
     expect(out.get('person\0小张')?.id).not.toBe(dbId)
     expect(out.get('person\0张三')?.id).toBe(graphNodeIdForEntity(VAULT, 'person', '张三'))
+    expect(out.get('person\0小张')?.embedding).toEqual([1, 0])
+    expect(out.get('person\0小张')?.embedText).toBe('小张\n同事')
   })
 
   it('lets a second LLM call merge incoming names onto an existing node', async () => {
@@ -81,7 +86,11 @@ describe('alignEntityPool', () => {
     expect(out.get('person\0小张')?.id).toBe(dbId)
     expect(out.get('person\0张三丰')?.id).toBe(dbId)
     expect(out.get('person\0小张')?.mergedBy).toBe('llm')
-    expect(out.get('person\0小张')?.aliases).toEqual(expect.arrayContaining(['小张', '张三丰', '三哥']))
+    expect(out.get('person\0小张')?.aliases).toEqual(
+      expect.arrayContaining(['小张', '张三丰', '三哥'])
+    )
+    expect(out.get('person\0小张')?.embedding).toEqual([1, 0])
+    expect(out.get('person\0小张')?.embedText).toBe('小张\n同事')
   })
 
   it('does not recall a 50% vector hit for the judge', async () => {
@@ -106,16 +115,13 @@ describe('alignEntityPool', () => {
 
   it('creates a new node when the judge leaves a close vector hit out of merges', async () => {
     const dbId = graphNodeIdForEntity(VAULT, 'person', '张三')
-    const out = await alignEntityPool(
-      [{ name: '小张', nodeType: 'person', summary: '同事' }],
-      {
-        findByNameOrAlias: async () => null,
-        embedQuery: async () => [1, 0],
-        searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
-        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
-        judgeMerges: async () => []
-      }
-    )
+    const out = await alignEntityPool([{ name: '小张', nodeType: 'person', summary: '同事' }], {
+      findByNameOrAlias: async () => null,
+      embedQuery: async () => [1, 0],
+      searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
+      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
+      judgeMerges: async () => []
+    })
     expect(out.get('person\0小张')?.mergedBy).toBe('create')
     expect(out.get('person\0小张')?.id).toBe(graphNodeIdForEntity(VAULT, 'person', '小张'))
     expect(out.get('person\0小张')?.id).not.toBe(dbId)
@@ -139,6 +145,27 @@ describe('alignEntityPool', () => {
     expect(out.get('person\0小张')?.mergedBy).toBe('create')
     expect(out.get('person\0张三')?.mergedBy).toBe('create')
     expect(out.get('person\0小张')?.id).not.toBe(dbId)
+  })
+})
+
+describe('alignedEmbeddingForNodeCard', () => {
+  it('should return the vector when embed text equals the node card', () => {
+    expect(
+      alignedEmbeddingForNodeCard({ embedding: [1, 0], embedText: '小张\n同事' }, '小张', '同事')
+    ).toEqual({ embedding: [1, 0], text: '小张\n同事' })
+  })
+
+  it('should return null when the node card differs', () => {
+    expect(
+      alignedEmbeddingForNodeCard({ embedding: [1, 0], embedText: '小张\n同事' }, '张三', '同事')
+    ).toBeNull()
+  })
+
+  it('should return null when alignment did not compute a vector', () => {
+    expect(alignedEmbeddingForNodeCard(undefined, '小张', '同事')).toBeNull()
+    expect(
+      alignedEmbeddingForNodeCard({ embedding: undefined, embedText: undefined }, '小张', '同事')
+    ).toBeNull()
   })
 })
 

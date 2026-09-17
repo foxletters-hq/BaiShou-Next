@@ -4,6 +4,7 @@ import {
   graphEdgeId,
   graphNodeIdForEntity,
   legacyEntryNodeIdForFilePath,
+  graphNodeCardText,
   normalizeGraphName,
   pickExactGraphNameHit,
   preferGraphOrigin,
@@ -16,6 +17,17 @@ import { GRAPH_GLOBAL_MAX_NODES, GRAPH_MAX_NEIGHBORS_PER_HOP } from '../graph-vi
 describe('normalizeGraphName', () => {
   it('trims, collapses whitespace, lowercases', () => {
     expect(normalizeGraphName('  Xiao  Ming ')).toBe('xiao ming')
+  })
+})
+
+describe('graphNodeCardText', () => {
+  it('should join name and summary then trim', () => {
+    expect(graphNodeCardText('小张', '同事')).toBe('小张\n同事')
+  })
+
+  it('should drop the trailing newline when summary is empty', () => {
+    expect(graphNodeCardText('小张', '')).toBe('小张')
+    expect(graphNodeCardText('小张')).toBe('小张')
   })
 })
 

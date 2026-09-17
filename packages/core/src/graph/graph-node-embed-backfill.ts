@@ -1,3 +1,5 @@
+import { graphNodeCardText } from '@baishou/shared'
+
 export const EMBED_API_UNAVAILABLE = 'EMBED_API_UNAVAILABLE'
 const CONSECUTIVE_EMBED_FAILURE_LIMIT = 3
 
@@ -32,7 +34,7 @@ export async function backfillUnembeddedGraphNodes(options: {
   let consecutiveApiFails = 0
   for (const node of nodes) {
     await options.onBeforeItem?.()
-    const text = `${node.name}\n${node.summary || ''}`.trim()
+    const text = graphNodeCardText(node.name, node.summary)
     if (!text) {
       failed += 1
       completed += 1

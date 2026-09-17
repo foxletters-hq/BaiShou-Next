@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { createRandomVaultId } from '@baishou/shared'
+import { createRandomVaultId, graphNodeCardText } from '@baishou/shared'
 import { NodeFileSystem } from '../../fs/node-file-system'
 import { DerivedFreshnessService } from '../derived-freshness.service'
 import { GraphRawManager } from '../managers/graph.raw-manager'
@@ -10,7 +10,13 @@ import { GraphSyncService } from '../graph-sync.service'
 import type { IStoragePathService } from '../../vault/storage-path.types'
 import type { GraphRepository } from '@baishou/database'
 
-function nodeRecord(opts: { id: string; vaultId: string; name: string; now: number; shardMonth?: string }) {
+function nodeRecord(opts: {
+  id: string
+  vaultId: string
+  name: string
+  now: number
+  shardMonth?: string
+}) {
   return {
     id: opts.id,
     schemaVersion: 1 as const,
@@ -79,7 +85,9 @@ describe('GraphSyncService write→index order', () => {
     const result = await sync.syncPendingIndex()
 
     expect(result.nodesUpserted).toBe(1)
-    expect(applyRawNode).toHaveBeenCalledWith(expect.objectContaining({ id: 'n1', name: 'Anson', vaultId }))
+    expect(applyRawNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'n1', name: 'Anson', vaultId })
+    )
     expect(listLiveNodeRefs).toHaveBeenCalledWith(vaultId)
     expect(softDeleteNode).toHaveBeenCalledWith('orphan')
     expect(result.deleted).toBe(1)
@@ -134,9 +142,7 @@ describe('GraphSyncService write→index order', () => {
       { id: 'ghost-present', shardMonth: '2026-07' },
       { id: 'ghost-unseen', shardMonth: '2026-01' }
     ])
-    const listLiveEdgeRefs = vi.fn().mockResolvedValue([
-      { id: 'e-unseen', shardMonth: '2026-01' }
-    ])
+    const listLiveEdgeRefs = vi.fn().mockResolvedValue([{ id: 'e-unseen', shardMonth: '2026-01' }])
     const repo = {
       applyRawNode: vi.fn(),
       softDeleteNode,
@@ -273,13 +279,86 @@ describe('GraphSyncService write→index order', () => {
       listLiveEdgeRefs: vi.fn().mockResolvedValue([])
     } as unknown as GraphRepository
 
-    await new GraphSyncService(graphManager, repo, { embedQuery, modelId: 'embed-v1' }).syncPendingIndex({
+    await new GraphSyncService(graphManager, repo, {
+      embedQuery,
+      modelId: 'embed-v1'
+    }).syncPendingIndex({
       absentSweep: 'off'
     })
     expect(embedQuery).not.toHaveBeenCalled()
     expect(applyRawNode).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'n1', embedding: undefined, modelId: 'embed-v1' })
     )
+  })
+
+  it('uses a precomputed embedding when the card text matches', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    await graphManager.writeRecord(nodeRecord({ id: 'n1', vaultId, name: 'Anson', now }), {
+      collection: 'nodes'
+    })
+    const embedQuery = vi.fn().mockResolvedValue([0.1, 0.2])
+    const applyRawNode = vi.fn().mockResolvedValue({ id: 'n1' })
+    const repo = {
+      getNodeById: vi.fn().mockResolvedValue(null),
+      applyRawNode,
+      softDeleteNode: vi.fn(),
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      listLiveNodeRefs: vi.fn().mockResolvedValue([{ id: 'n1', shardMonth: '2026-07' }]),
+      listLiveEdgeRefs: vi.fn().mockResolvedValue([])
+    } as unknown as GraphRepository
+
+    await new GraphSyncService(graphManager, repo, {
+      embedQuery,
+      modelId: 'embed-v1'
+    }).syncPendingIndex({
+      absentSweep: 'off',
+      precomputedNodeEmbeddings: new Map([
+        ['n1', { embedding: [1, 0], text: graphNodeCardText('Anson', '') }]
+      ])
+    })
+    expect(embedQuery).not.toHaveBeenCalled()
+    expect(applyRawNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'n1', embedding: [1, 0] })
+    )
+  })
+
+  it('should fall back to embedQuery when the precomputed card text does not match', async () => {
+    const vaultId = createRandomVaultId()
+    const now = Date.now()
+    await graphManager.writeRecord(nodeRecord({ id: 'n1', vaultId, name: 'Anson', now }), {
+      collection: 'nodes'
+    })
+    const embedQuery = vi.fn().mockResolvedValue([0.3, 0.4])
+    const applyRawNode = vi.fn().mockResolvedValue({ id: 'n1' })
+    const repo = {
+      getNodeById: vi.fn().mockResolvedValue(null),
+      applyRawNode,
+      softDeleteNode: vi.fn(),
+      applyRawEdge: vi.fn(),
+      softDeleteEdge: vi.fn(),
+      listNodeIds: vi.fn(),
+      listEdgeIds: vi.fn(),
+      listLiveNodeRefs: vi.fn().mockResolvedValue([{ id: 'n1', shardMonth: '2026-07' }]),
+      listLiveEdgeRefs: vi.fn().mockResolvedValue([])
+    } as unknown as GraphRepository
+
+    await new GraphSyncService(graphManager, repo, {
+      embedQuery,
+      modelId: 'embed-v1'
+    }).syncPendingIndex({
+      absentSweep: 'off',
+      precomputedNodeEmbeddings: new Map([['n1', { embedding: [9, 9], text: '别人\n不对' }]])
+    })
+    expect(embedQuery).toHaveBeenCalledTimes(1)
+    expect(embedQuery).toHaveBeenCalledWith(graphNodeCardText('Anson', ''))
+    expect(applyRawNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'n1', embedding: [0.3, 0.4] })
+    )
+    expect(applyRawNode).not.toHaveBeenCalledWith(expect.objectContaining({ embedding: [9, 9] }))
   })
 
   it('unique-index loser is removed from the month shard without deletedAt', async () => {
