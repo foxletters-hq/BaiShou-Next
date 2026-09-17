@@ -1,4 +1,5 @@
 import {
+  entityAlignKey,
   notebookGraphEdgeId,
   notebookGraphExtractStateId,
   notebookGraphNodeIdForEntity,
@@ -10,8 +11,22 @@ import {
   type NotebookGraphExtractStateRawRecord,
   type NotebookGraphNodeRawRecord
 } from '@baishou/shared'
-import { GRAPH_EDGE_TYPES, GRAPH_NODE_TYPES, type NotebookGraphExtractStore } from '@baishou/database/shared'
+import {
+  GRAPH_EDGE_TYPES,
+  GRAPH_NODE_TYPES,
+  type NotebookGraphEmbedding,
+  type NotebookGraphExtractStore
+} from '@baishou/database/shared'
 import { logger } from '@baishou/shared'
+import {
+  alignEntityPool,
+  alignedEmbeddingForNodeCard,
+  buildEntityAlignPrompt,
+  parseEntityAlignDecisions,
+  type AlignedEntity,
+  type AlignedEntityHit,
+  type EntityAlignLookup
+} from '../graph/graph-entity-align'
 import { extractFirstJsonObject } from '../graph/graph-llm-extraction.service'
 import type { NotebookGraphExtractRaw } from './notebook-graph-extract-raw'
 import type { NotebookGraphIndexService } from './notebook-graph-index.service'
@@ -37,14 +52,21 @@ export interface KnowledgeGraphExtractLlm {
   (input: { system: string; user: string }): Promise<string | null>
 }
 
+/** 嵌入未配置时不要传 embedQuery，对齐会退化成只按名字命中。 */
+export type KnowledgeGraphExtractAlignDeps = {
+  embedQuery?: (text: string) => Promise<number[] | null>
+  modelId?: string
+}
+
 export class KnowledgeGraphExtractionService {
   constructor(
     private readonly deps: {
       raw: NotebookGraphExtractRaw
-      repo: NotebookGraphExtractStore
+      repo: NotebookGraphExtractStore & Partial<NotebookGraphEmbedding>
       index: Pick<NotebookGraphIndexService, 'syncPendingIndex'>
       llm: KnowledgeGraphExtractLlm
       getVaultName: () => string
+      align?: KnowledgeGraphExtractAlignDeps | null
     }
   ) {}
 
@@ -75,7 +97,11 @@ export class KnowledgeGraphExtractionService {
       existing.windowsDone >= existing.windowsTotal &&
       existing.windowsTotal > 0
     ) {
-      return { windows: existing.windowsDone, truncated: Boolean(existing.truncated), skipped: 'unchanged' }
+      return {
+        windows: existing.windowsDone,
+        truncated: Boolean(existing.truncated),
+        skipped: 'unchanged'
+      }
     }
 
     const { windows, truncated } = splitKnowledgeGraphWindows(
@@ -91,6 +117,7 @@ export class KnowledgeGraphExtractionService {
     const nameToIds = new Map<string, Map<string, string>>()
     const writtenNodes = new Map<string, NotebookGraphNodeRawRecord>()
     const writtenEdges = new Map<string, NotebookGraphEdgeRawRecord>()
+    const pendingEmbeddings = new Map<string, number[]>()
 
     const sourceNode = this.buildSourceNode({
       vaultId,
@@ -111,6 +138,13 @@ export class KnowledgeGraphExtractionService {
     for (const win of windows) {
       const payload = await this.extractWindow(win.text)
       if (!payload) continue
+      const windowEntities: Array<{
+        name: string
+        nodeType: string
+        incomingAliases: string[]
+        summary: string
+        confidence: number
+      }> = []
       for (const ent of payload.entities) {
         const name = String(ent.name || '').trim()
         if (!name) continue
@@ -119,16 +153,35 @@ export class KnowledgeGraphExtractionService {
         const incomingAliases = Array.isArray(ent.aliases)
           ? ent.aliases.filter((a): a is string => typeof a === 'string')
           : []
-        const existingId =
-          resolveTypedName(nameToIds, name, nodeType) ||
-          (await this.lookupId(vaultId, notebookId, name, nodeType))
+        windowEntities.push({
+          name,
+          nodeType,
+          incomingAliases,
+          summary: typeof ent.summary === 'string' ? ent.summary : '',
+          confidence: normalizeGraphExtractConfidence(ent.confidence, 80)
+        })
+      }
+
+      const aligned = await alignEntityPool(
+        windowEntities.map((ent) => ({
+          name: ent.name,
+          nodeType: ent.nodeType,
+          aliases: ent.incomingAliases,
+          summary: ent.summary
+        })),
+        this.buildAlignLookup(vaultId, notebookId, nameToIds, writtenNodes)
+      )
+
+      for (const ent of windowEntities) {
+        const hit = aligned.get(entityAlignKey(ent.nodeType, ent.name))
+        const existingId = hit?.id || resolveTypedName(nameToIds, ent.name, ent.nodeType)
         const prior = existingId ? writtenNodes.get(existingId) : undefined
         const priorRow =
           !prior && existingId
-            ? await this.deps.repo.findNodeByName(vaultId, notebookId, name, nodeType)
+            ? await this.lookupPriorRow(vaultId, notebookId, hit, ent.name, ent.nodeType)
             : null
-        const id = existingId ?? notebookGraphNodeIdForEntity(vaultId, notebookId, nodeType, name)
-        const confidence = normalizeGraphExtractConfidence(ent.confidence, 80)
+        const id =
+          existingId ?? notebookGraphNodeIdForEntity(vaultId, notebookId, ent.nodeType, ent.name)
         const firstSeenAt = Math.min(prior?.firstSeenAt ?? priorRow?.firstSeenAt ?? now, now)
         const record: NotebookGraphNodeRawRecord = {
           id,
@@ -136,16 +189,16 @@ export class KnowledgeGraphExtractionService {
           vaultId,
           vaultName,
           notebookId,
-          nodeType,
-          name: prior?.name ?? priorRow?.name ?? name,
+          nodeType: ent.nodeType,
+          name: prior?.name ?? priorRow?.name ?? hit?.canonicalName ?? ent.name,
           aliases: mergeAliasList(prior?.aliases ?? parseRowAliases(priorRow?.aliases), [
-            name,
-            ...incomingAliases
+            ent.name,
+            ...ent.incomingAliases,
+            ...(hit?.aliases ?? [])
           ]),
-          summary:
-            typeof ent.summary === 'string' && ent.summary.trim()
-              ? ent.summary
-              : (prior?.summary ?? priorRow?.summary ?? ''),
+          summary: ent.summary.trim()
+            ? ent.summary
+            : (prior?.summary ?? priorRow?.summary ?? hit?.summary ?? ''),
           props: prior?.props ?? {},
           mentionCount: (prior?.mentionCount ?? priorRow?.mentionCount ?? 0) + 1,
           firstSeenAt,
@@ -157,12 +210,17 @@ export class KnowledgeGraphExtractionService {
           deletedAt: null,
           reviewStatus: preferNotebookReviewStatus(
             prior?.reviewStatus ?? priorRow?.reviewStatus,
-            graphReviewStatusFromConfidence(confidence)
+            graphReviewStatusFromConfidence(ent.confidence)
           )
         }
         writtenNodes.set(id, record)
-        registerTypedName(nameToIds, nodeType, name, id)
-        for (const alias of record.aliases) registerTypedName(nameToIds, nodeType, alias, id)
+        registerTypedName(nameToIds, ent.nodeType, ent.name, id)
+        if (hit?.canonicalName) registerTypedName(nameToIds, ent.nodeType, hit.canonicalName, id)
+        for (const alias of record.aliases) registerTypedName(nameToIds, ent.nodeType, alias, id)
+        const reusable = alignedEmbeddingForNodeCard(hit, record.name, record.summary)
+        if (reusable && !pendingEmbeddings.has(id)) {
+          pendingEmbeddings.set(id, reusable.embedding)
+        }
       }
 
       for (const edge of payload.edges) {
@@ -173,8 +231,7 @@ export class KnowledgeGraphExtractionService {
           resolveTypedName(nameToIds, fromName) ||
           (await this.lookupId(vaultId, notebookId, fromName))
         const toId =
-          resolveTypedName(nameToIds, toName) ||
-          (await this.lookupId(vaultId, notebookId, toName))
+          resolveTypedName(nameToIds, toName) || (await this.lookupId(vaultId, notebookId, toName))
         if (!fromId || !toId) continue
         const edgeType = clampEdgeType(String(edge.type || 'relates_to'))
         const confidence = normalizeGraphExtractConfidence(edge.confidence, 75)
@@ -256,12 +313,83 @@ export class KnowledgeGraphExtractionService {
       })
     }
     await this.deps.index.syncPendingIndex({ vaultId, notebookId })
+    await this.writeAlignedEmbeddings(vaultId, notebookId, pendingEmbeddings)
     logger.info('[KnowledgeGraphExtract] done', {
       sourceId: input.sourceId,
       windows: done,
       truncated
     })
     return { windows: done, truncated }
+  }
+
+  /**
+   * 对齐查找只闭包当前资料的 notebookId。跨本同名实体绝不能从这里漏进去。
+   */
+  private buildAlignLookup(
+    vaultId: string,
+    notebookId: string,
+    nameToIds: Map<string, Map<string, string>>,
+    writtenNodes: Map<string, NotebookGraphNodeRawRecord>
+  ): EntityAlignLookup {
+    const sessionHit = (name: string, type: string): AlignedEntityHit | null => {
+      const id = resolveTypedName(nameToIds, name, type)
+      if (!id) return null
+      const rec = writtenNodes.get(id)
+      if (!rec) return null
+      return { id: rec.id, name: rec.name, aliases: rec.aliases, summary: rec.summary }
+    }
+    return {
+      findByNameOrAlias: async (name, type) => {
+        const fromSession = sessionHit(name, type)
+        if (fromSession) return fromSession
+        const row = await this.deps.repo.findNodeByName(vaultId, notebookId, name, type)
+        if (!row) return null
+        return {
+          id: row.id,
+          name: row.name,
+          aliases: parseRowAliases(row.aliases),
+          summary: row.summary ?? ''
+        }
+      },
+      searchByVector:
+        this.deps.align?.embedQuery && this.deps.repo.searchNodesByVector
+          ? async (vector, type, topK) => {
+              const hits = await this.deps.repo.searchNodesByVector!(
+                vaultId,
+                notebookId,
+                vector,
+                topK ?? 5,
+                { nodeType: type, modelId: this.deps.align?.modelId }
+              )
+              return hits.map((hit) => ({
+                id: hit.id,
+                name: hit.name,
+                aliases: parseRowAliases(hit.aliases),
+                summary: hit.summary ?? '',
+                nodeType: hit.nodeType,
+                distance: hit.distance
+              }))
+            }
+          : undefined,
+      embedQuery: this.deps.align?.embedQuery,
+      nodeIdForEntity: (type, name) =>
+        notebookGraphNodeIdForEntity(vaultId, notebookId, type, name),
+      judgeMerges: async (input) => {
+        const prompt = buildEntityAlignPrompt(input)
+        const text = await this.deps.llm(prompt)
+        return parseEntityAlignDecisions(text)
+      }
+    }
+  }
+
+  private async lookupPriorRow(
+    vaultId: string,
+    notebookId: string,
+    hit: AlignedEntity | undefined,
+    name: string,
+    nodeType: string
+  ) {
+    return this.deps.repo.findNodeByName(vaultId, notebookId, hit?.canonicalName || name, nodeType)
   }
 
   private async lookupId(
@@ -272,6 +400,24 @@ export class KnowledgeGraphExtractionService {
   ): Promise<string | null> {
     const row = await this.deps.repo.findNodeByName(vaultId, notebookId, name, nodeType)
     return row?.id ?? null
+  }
+
+  /** 向量只写本机 SQLite；名片对不上的不会进 pendingEmbeddings。 */
+  private async writeAlignedEmbeddings(
+    vaultId: string,
+    notebookId: string,
+    embeddings: Map<string, number[]>
+  ): Promise<void> {
+    const modelId = this.deps.align?.modelId?.trim()
+    const update = this.deps.repo.updateNodeEmbedding
+    if (!modelId || !update || embeddings.size === 0) return
+    for (const [id, embedding] of embeddings) {
+      try {
+        await update(id, vaultId, notebookId, embedding, modelId)
+      } catch (error) {
+        logger.warn('[KnowledgeGraphExtract] updateNodeEmbedding failed', error as Error)
+      }
+    }
   }
 
   private buildSourceNode(input: {
@@ -335,8 +481,20 @@ export class KnowledgeGraphExtractionService {
   }
 
   private async extractWindow(text: string): Promise<{
-    entities: Array<{ name?: string; type?: string; aliases?: string[]; summary?: string; confidence?: number }>
-    edges: Array<{ from?: string; to?: string; type?: string; excerpt?: string; confidence?: number }>
+    entities: Array<{
+      name?: string
+      type?: string
+      aliases?: string[]
+      summary?: string
+      confidence?: number
+    }>
+    edges: Array<{
+      from?: string
+      to?: string
+      type?: string
+      excerpt?: string
+      confidence?: number
+    }>
   } | null> {
     const raw = await this.deps.llm({
       system:
@@ -425,7 +583,13 @@ function parseRowAliases(raw: string | string[] | null | undefined): string[] {
 }
 
 function parseExtractJson(text: string | null): {
-  entities: Array<{ name?: string; type?: string; aliases?: string[]; summary?: string; confidence?: number }>
+  entities: Array<{
+    name?: string
+    type?: string
+    aliases?: string[]
+    summary?: string
+    confidence?: number
+  }>
   edges: Array<{ from?: string; to?: string; type?: string; excerpt?: string; confidence?: number }>
 } | null {
   if (!text?.trim()) return null

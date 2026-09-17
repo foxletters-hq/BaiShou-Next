@@ -1,6 +1,14 @@
-import { KnowledgeGraphExtractionService, NotebookGraphIndexService, NotebookGraphRawManager } from '@baishou/core-mobile'
+import {
+  KnowledgeGraphExtractionService,
+  NotebookGraphIndexService,
+  NotebookGraphRawManager
+} from '@baishou/core-mobile'
 import { NotebookGraphRepository, expoKnowledgeConnectionManager } from '@baishou/database/expo'
-import { resolveGlobalGraphModelIds, type GlobalModelsConfig } from '@baishou/shared'
+import {
+  resolveGlobalGraphModelIds,
+  resolveReasoningEffortForSlot,
+  type GlobalModelsConfig
+} from '@baishou/shared'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { MobileStoragePathService } from './path.service'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
@@ -37,13 +45,37 @@ export function createMobileKnowledgeGraphExtractFn() {
     const summaryClient = buildMobileSummaryAiClient(runtime.settingsManager)
     const vaultName =
       (await pathService.getActiveVaultNameForContext?.().catch(() => 'Personal')) || 'Personal'
+    let embedQuery: ((text: string) => Promise<number[] | null>) | undefined
+    let embedModelId: string | undefined
+    try {
+      const { EmbeddingAdapter } = await import('@baishou/ai')
+      const { resolveMobileEmbeddingForHydration } =
+        await import('./mobile-raw-data-source.runtime')
+      const emb = await resolveMobileEmbeddingForHydration(runtime.settingsManager)
+      if (emb.embeddingProvider && emb.embeddingModelId) {
+        const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId)
+        if (adapter.isConfigured) {
+          embedQuery = (text) => adapter.embedQuery(text)
+          embedModelId = adapter.embeddingModelId
+        }
+      }
+    } catch {
+      // 没配嵌入时按名字对齐，抽图本身不能失败
+    }
     const svc = new KnowledgeGraphExtractionService({
       raw,
       repo,
       index,
       getVaultName: () => vaultName,
+      align: { embedQuery, modelId: embedModelId },
       llm: async ({ system, user }) => {
-        const text = await summaryClient.generateContent(user, modelId, { system })
+        const text = await summaryClient.generateContent(user, modelId, {
+          system,
+          reasoningEffort: resolveReasoningEffortForSlot(
+            globalModels?.reasoningEffortBySlot,
+            'graph'
+          )
+        })
         return text ?? null
       }
     })
