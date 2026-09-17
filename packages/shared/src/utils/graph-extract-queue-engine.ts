@@ -1,4 +1,5 @@
 import { normalizeGraphFilePath } from './graph-identity.util'
+import { isDiaryGraphFollowCancelled } from './diary-graph-follow-after-embed.util'
 import {
   GRAPH_EXTRACT_ALIGN_POOL_SIZE,
   GRAPH_EXTRACT_CONCURRENCY_DEFAULT,
@@ -15,6 +16,8 @@ export interface GraphExtractQueueItem {
   id: string
   filePath: string
   date?: string
+  /** 自动接续时记下正文哈希，取消后只拦截同一版正文 */
+  contentHash?: string
   progress: number
   status: GraphExtractQueueStatus
   phase?: GraphExtractQueuePhase
@@ -129,6 +132,8 @@ export class GraphExtractQueueEngine {
   private flushing = false
   private flushAbort: AbortController | null = null
   private flushGeneration = 0
+  /** filePath → 取消时的正文哈希；空字符串表示拦截该路径直到用户手动再入队 */
+  private cancelledFollow = new Map<string, string>()
 
   constructor(private readonly options: GraphExtractQueueEngineOptions = {}) {
     this.concurrency = resolveGraphExtractConcurrency(
@@ -175,6 +180,7 @@ export class GraphExtractQueueEngine {
     this.flushing = false
     this.alignPool = []
     for (const item of this.queue) {
+      this.rememberCancelledFollow(item)
       if (item.status === 'running') item.status = 'pending'
     }
     for (const ac of this.taskAborts.values()) ac.abort()
@@ -189,6 +195,7 @@ export class GraphExtractQueueEngine {
     const item = this.queue.find((q) => q.id === key || normalizeGraphFilePath(q.filePath) === key)
     if (!item) return false
     if (item.status === 'pending' || item.status === 'aligning') {
+      this.rememberCancelledFollow(item)
       this.alignPool = this.alignPool.filter((d) => d.filePath !== item.filePath)
       this.queue = this.queue.filter((q) => q.id !== item.id)
       this.persistPending()
@@ -196,6 +203,7 @@ export class GraphExtractQueueEngine {
       return true
     }
     if (item.status === 'running') {
+      this.rememberCancelledFollow(item)
       item.status = 'pending'
       this.taskAborts.get(item.id)?.abort()
       this.queue = this.queue.filter((q) => q.id !== item.id)
@@ -206,16 +214,52 @@ export class GraphExtractQueueEngine {
     return false
   }
 
-  enqueue(items: Array<{ filePath: string; date?: string }>): number {
+  enqueue(items: Array<{ filePath: string; date?: string; contentHash?: string }>): number {
+    return this.enqueueItems(items, { afterEmbed: false })
+  }
+
+  /**
+   * 向量完成后的自动接续。忙碌中的不重复入队；用户刚取消的同正文不自己再排上。
+   */
+  enqueueAfterEmbed(
+    items: Array<{ filePath: string; date?: string; contentHash?: string }>
+  ): number {
+    return this.enqueueItems(items, { afterEmbed: true })
+  }
+
+  private rememberCancelledFollow(item: GraphExtractQueueItem): void {
+    const key = normalizeGraphFilePath(item.filePath) || item.id
+    if (!key) return
+    this.cancelledFollow.set(key, String(item.contentHash || '').trim())
+  }
+
+  private enqueueItems(
+    items: Array<{ filePath: string; date?: string; contentHash?: string }>,
+    opts: { afterEmbed: boolean }
+  ): number {
     if (!this.runner) {
       throw new Error('Graph extract queue runner not configured')
     }
-    this.stopped = false
+    if (!opts.afterEmbed) {
+      this.stopped = false
+    }
 
     let added = 0
     for (const item of items) {
       const filePath = normalizeGraphFilePath(String(item.filePath || '').trim())
       if (!filePath) continue
+      const contentHash = String(item.contentHash || '').trim() || undefined
+      if (!opts.afterEmbed) {
+        this.cancelledFollow.delete(filePath)
+      } else if (
+        isDiaryGraphFollowCancelled({
+          filePath,
+          contentHash,
+          cancelled: this.cancelledFollow
+        })
+      ) {
+        continue
+      }
       const existing = this.queue.find((q) => q.id === filePath)
       if (existing) {
         if (isGraphExtractBusyStatus(existing.status)) continue
@@ -225,6 +269,7 @@ export class GraphExtractQueueEngine {
         id: filePath,
         filePath,
         date: item.date,
+        contentHash,
         progress: 0,
         status: 'pending',
         phase: 'queued'
@@ -233,11 +278,14 @@ export class GraphExtractQueueEngine {
     }
 
     if (added > 0) {
+      this.stopped = false
       this.persistPending()
       this.broadcast()
     }
-    this.armWatchdog()
-    this.scheduleNext()
+    if (!opts.afterEmbed || added > 0) {
+      this.armWatchdog()
+      this.scheduleNext()
+    }
     return added
   }
 

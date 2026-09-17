@@ -450,4 +450,24 @@ describe('GraphExtractQueueEngine', () => {
       vi.useRealTimers()
     }
   })
+
+  it('should not re-enqueue a busy path after embed', () => {
+    const hold = deferred<{ done: number; failed: number; errors: [] }>()
+    const engine = createEngine(async () => hold.promise)
+    expect(engine.enqueueAfterEmbed([{ filePath: 'Journal/a.md', contentHash: 'h1' }])).toBe(1)
+    expect(engine.enqueueAfterEmbed([{ filePath: 'Journal\\a.md', contentHash: 'h1' }])).toBe(0)
+    hold.resolve({ done: 1, failed: 0, errors: [] })
+  })
+
+  it('should not auto-enqueue a cancelled diary with the same content hash', async () => {
+    const hold = deferred<{ done: number; failed: number; errors: [] }>()
+    const engine = createEngine(async () => hold.promise)
+    engine.enqueueAfterEmbed([{ filePath: 'Journal/a.md', contentHash: 'h1' }])
+    await flush()
+    engine.stop()
+    expect(engine.enqueueAfterEmbed([{ filePath: 'Journal/a.md', contentHash: 'h1' }])).toBe(0)
+    expect(engine.getQueueState().pendingCount).toBe(0)
+    expect(engine.enqueueAfterEmbed([{ filePath: 'Journal/a.md', contentHash: 'h2' }])).toBe(1)
+    hold.resolve({ done: 1, failed: 0, errors: [] })
+  })
 })
