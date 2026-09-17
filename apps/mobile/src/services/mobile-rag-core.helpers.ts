@@ -340,4 +340,16 @@ export async function embedDiaryEntry(
     }
     throw error
   }
+
+  try {
+    const { scheduleMobileDiaryGraphAfterEmbed } =
+      await import('./mobile-diary-graph-follow-after-embed')
+    await scheduleMobileDiaryGraphAfterEmbed({
+      vaultId: resolvedVaultId,
+      diaryId: params.diaryId,
+      contentHash
+    })
+  } catch (followError) {
+    logger.warn('[MobileDiaryEmbed] 向量完成后自动接抽图失败', followError as Error)
+  }
 }

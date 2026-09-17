@@ -134,8 +134,14 @@ export class GraphExtractQueueService {
     return this.engine.cancelItem(filePath)
   }
 
-  enqueue(items: Array<{ filePath: string; date?: string }>): number {
+  enqueue(items: Array<{ filePath: string; date?: string; contentHash?: string }>): number {
     return this.engine.enqueue(items)
+  }
+
+  enqueueAfterEmbed(
+    items: Array<{ filePath: string; date?: string; contentHash?: string }>
+  ): number {
+    return this.engine.enqueueAfterEmbed(items)
   }
 }
 
