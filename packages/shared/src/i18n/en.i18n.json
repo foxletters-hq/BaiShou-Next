@@ -2084,6 +2084,7 @@
       "companion_ask_tooltip": "Ask the user a clarifying question with optional choices; blocks until the user responds.",
       "companion_ask_card_label": "Question",
       "companion_ask_declined": "No answer",
+      "companion_ask_cancelled": "The user cancelled this operation.",
       "companion_ask_selected": "Selected",
       "workspace_list": "List files",
       "workspace_list_tooltip": "List files and folders inside the workspace.",
@@ -3662,6 +3663,7 @@
     "pending_embed_part_graph_nodes": "{{count}} graph nodes",
     "pending_embed_part_graph_extract": "{{count}} graph diaries",
     "pending_embed_part_knowledge": "{{count}} knowledge sources",
+    "pending_embed_part_notebook_graph_nodes": "{{count}} notebook graph nodes",
     "pending_embed_reminder": "{{count}} items are not embedded yet, so search and recall cannot use them",
     "pending_embed_reminder_action": "Fill in now",
     "pending_embed_reminder_need_model": "{{count}} items are not embedded yet. Configure an embedding model before filling them in.",
@@ -4168,6 +4170,7 @@
     "data_manage_cleared": "Derived data cleared",
     "data_manage_queued": "Reprocess queued",
     "data_manage_none": "Nothing to reprocess",
-    "data_manage_failed": "Data management did not finish"
+    "data_manage_failed": "Data management did not finish",
+    "source_not_embedded": "This source has not finished embedding yet. Complete the embedding first, then extract the graph."
   }
 }
