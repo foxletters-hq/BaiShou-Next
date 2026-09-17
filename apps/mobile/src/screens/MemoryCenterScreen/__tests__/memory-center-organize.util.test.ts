@@ -8,6 +8,7 @@ describe('snapshotMemoryEmbedPhases', () => {
       memories: 1,
       graphNodes: 0,
       knowledgeSources: 2,
+      notebookGraphNodes: 0,
       total: 6
     })
     expect(snapshot.phase).toBe('diary')
@@ -21,6 +22,7 @@ describe('snapshotMemoryEmbedPhases', () => {
       memories: 0,
       graphNodes: 0,
       knowledgeSources: 0,
+      notebookGraphNodes: 0,
       total: 0
     })
     expect(snapshot.phase).toBe('finishing')
