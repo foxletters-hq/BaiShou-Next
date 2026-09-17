@@ -119,8 +119,8 @@ describe('Agent 3: RAG 记忆管理验证', () => {
     )
     // 确认没有 JSX 中使用 onClearDimension 的按钮
     expect(jsxUsageLines.every((line: string) => !line.includes('<button'))).toBe(true)
-    // 确认按钮文字为 "清空现有记忆"
-    expect(tsx).toContain("'清空现有记忆'")
+    // 文案已迁到 i18n，按钮不再硬编码中文
+    expect(tsx).toContain("t('settings.rag_clear_all'")
   })
 
   it('任务14: 搜索支持语义/文本切换，默认语义', () => {
