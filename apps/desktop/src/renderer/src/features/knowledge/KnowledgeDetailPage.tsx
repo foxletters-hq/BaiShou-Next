@@ -21,6 +21,7 @@ import {
   Input,
   Select,
   HelpTooltip,
+  Tooltip,
   getProviderIcon,
   toast,
   useTheme,
@@ -35,6 +36,7 @@ import {
   normalizeKnowledgeDefaultExtractEngine,
   normalizeKnowledgeImportProcessMode,
   resolveGlobalGraphModelIds,
+  resolveReasoningEffortForSlot,
   type KnowledgeExtractHint,
   type KnowledgeExtractHintChoice,
   type KnowledgeImportProcessMode
@@ -73,16 +75,14 @@ import { KnowledgeHeavyConfirmDialog } from './KnowledgeHeavyConfirmDialog'
 import type { KnowledgeHeavyConfirmKind } from './KnowledgeHeavyConfirmDialog'
 import { KnowledgeExtractHintDialog } from './KnowledgeExtractHintDialog'
 import { KnowledgeImportProcessDialog } from './KnowledgeImportProcessDialog'
+import { KnowledgeExtractProbeSection } from './KnowledgeExtractProbeSection'
 import { KnowledgeModelMenu } from './KnowledgeModelMenu'
 import { useNotebookStatusModels } from './useNotebookStatusModels'
 import {
   buildKnowledgeSourceMenuActions,
   type KnowledgeSourceMenuAction
 } from './knowledge-source-menu.util'
-import {
-  collectVisionExtractHints,
-  pickVisionExtractHintReason
-} from './extract-engine-hint.util'
+import { collectVisionExtractHints, pickVisionExtractHintReason } from './extract-engine-hint.util'
 import { knowledgeExtractSettingsVisibility } from './knowledge-extract-settings-visibility.util'
 import { buildNotebookOpenGuideRows } from './notebook-open-guide.util'
 import { resolveNotebookProviderIconSrc } from './notebook-status-icon.util'
@@ -93,8 +93,11 @@ import {
 import { notebookJobProgressCopy } from './notebook-job-progress.util'
 import {
   pickSourceCardEvidence,
+  sourceCardFailureReason,
   sourceMissingPageCount
 } from './source-card-evidence.util'
+import { knowledgeIngestUserMessage } from './knowledge-ingest-user-error.util'
+import { knowledgeSourceShowsPendingOrganizeHelp } from './knowledge-source-status.util'
 import type { KnowledgeNotebookTab } from './knowledge-notebook-tab.util'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import styles from './KnowledgePage.module.css'
@@ -113,6 +116,7 @@ type SourceRow = {
   textPageCount?: number | null
   originUrl?: string | null
   extractEngine?: string | null
+  relativePath?: string | null
 }
 
 type ImportMode = 'chooser' | 'file' | 'text' | 'url' | null
@@ -153,7 +157,7 @@ function statusLabel(t: (key: string, fallback: string) => string, status: strin
     case 'failed':
       return t('knowledge.status_failed', '失败')
     case 'stored':
-      return t('knowledge.status_stored', '仅原文')
+      return t('knowledge.status_stored', '待整理')
     default:
       return status
   }
@@ -216,7 +220,8 @@ function fileExtension(name: string): string {
 }
 
 function sourceFileIcon(kind: string, fileName: string, size = 18): React.ReactNode {
-  if (kind === 'url') return <Link2 size={size} className={`${styles.fileTypeIcon} ${styles.iconUrl}`} />
+  if (kind === 'url')
+    return <Link2 size={size} className={`${styles.fileTypeIcon} ${styles.iconUrl}`} />
   if (kind === 'note' || kind === 'text') {
     return <FileText size={size} className={`${styles.fileTypeIcon} ${styles.iconText}`} />
   }
@@ -333,16 +338,22 @@ export const KnowledgeDetailPage: React.FC = () => {
   const providers = useSettingsStore((s) => s.providers)
   const globalModels = useSettingsStore((s) => s.globalModels)
   const { isDark } = useTheme()
-  const { picker, closePicker, pickStatusRow, openVisionPicker, selectModel } =
-    useNotebookStatusModels({
-      engine,
-      ocrLanguage,
-      ocrConcurrency,
-      setVisionProviderId,
-      setVisionModelId,
-      setShowSettings,
-      onError: setError
-    })
+  const {
+    picker,
+    closePicker,
+    pickStatusRow,
+    openVisionPicker,
+    selectModel,
+    persistReasoningSlot
+  } = useNotebookStatusModels({
+    engine,
+    ocrLanguage,
+    ocrConcurrency,
+    setVisionProviderId,
+    setVisionModelId,
+    setShowSettings,
+    onError: setError
+  })
 
   const openAddSource = useCallback(() => {
     setImportMode('chooser')
@@ -515,7 +526,9 @@ export const KnowledgeDetailPage: React.FC = () => {
             percent: copy.vector.percent
           }
         : null,
-      graph: copy.graph ? formatNotebookGraphProgress(copy.graph, (key, params) => t(key, params)) : null
+      graph: copy.graph
+        ? formatNotebookGraphProgress(copy.graph, (key, params) => t(key, params))
+        : null
     }
   }, [graphJobs, graphKnownTotal, graphWindowProgress, t, vectorKnownTotal, vectorPending])
 
@@ -549,15 +562,7 @@ export const KnowledgeDetailPage: React.FC = () => {
         })
       }
     })
-  }, [
-    engine,
-    globalModels,
-    isDark,
-    providers,
-    sources.length,
-    visionModelId,
-    visionProviderId
-  ])
+  }, [engine, globalModels, isDark, providers, sources.length, visionModelId, visionProviderId])
 
   const ocrPresetValue = ocrUseCustom
     ? '__custom__'
@@ -569,8 +574,10 @@ export const KnowledgeDetailPage: React.FC = () => {
   const refresh = useCallback(async () => {
     if (!notebookId) return
     const gen = ++refreshGen.current
-    const nb = await window.api.knowledge.getNotebook(notebookId)
-    const list = (await window.api.knowledge.listSources(notebookId)) as SourceRow[]
+    const [nb, list] = await Promise.all([
+      window.api.knowledge.getNotebook(notebookId),
+      window.api.knowledge.listSources(notebookId) as Promise<SourceRow[]>
+    ])
     if (gen !== refreshGen.current) return
     setNotebookName(nb?.name || notebookId)
     setSources(list || [])
@@ -655,22 +662,19 @@ export const KnowledgeDetailPage: React.FC = () => {
   }, [notebookId])
 
   useEffect(() => {
-    void (async () => {
-      try {
-        await callKnowledgeApi('recoverStale', 'knowledge:recover-stale')
-      } catch {
-        /* ignore */
-      }
-      void refresh().catch((e) => setError(String(e?.message || e)))
-      void refreshCaps()
-    })()
+    void refresh().catch((e) => setError(String(e?.message || e)))
+    void refreshCaps()
+    void callKnowledgeApi('recoverStale', 'knowledge:recover-stale').catch(() => undefined)
   }, [refresh, refreshCaps])
 
   useEffect(() => {
     if (!hasActiveIngest && !reprocessWatching) return
-    const timer = window.setInterval(() => {
-      void refresh().catch(() => undefined)
-    }, reprocessWatching ? 1000 : 4000)
+    const timer = window.setInterval(
+      () => {
+        void refresh().catch(() => undefined)
+      },
+      reprocessWatching ? 1000 : 4000
+    )
     return () => window.clearInterval(timer)
   }, [hasActiveIngest, refresh, reprocessWatching])
 
@@ -708,10 +712,7 @@ export const KnowledgeDetailPage: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    const onProgress = (progress?: {
-      windowsDone?: number
-      windowsTotal?: number
-    }) => {
+    const onProgress = (progress?: { windowsDone?: number; windowsTotal?: number }) => {
       if (typeof progress?.windowsTotal === 'number' && progress.windowsTotal > 0) {
         setGraphWindowProgress({
           done: Number(progress.windowsDone ?? 0),
@@ -924,7 +925,10 @@ export const KnowledgeDetailPage: React.FC = () => {
           setUploadingSources((prev) =>
             prev.map((row) => {
               if (row.localId !== item.localId || row.progress >= 90 || row.error) return row
-              const step = Math.max(2, Math.round(100 / Math.max(8, (row.fileSize || 1) / (256 * 1024))))
+              const step = Math.max(
+                2,
+                Math.round(100 / Math.max(8, (row.fileSize || 1) / (256 * 1024)))
+              )
               return { ...row, progress: Math.min(90, row.progress + step) }
             })
           )
@@ -937,8 +941,7 @@ export const KnowledgeDetailPage: React.FC = () => {
             kind: 'file',
             absolutePath: item.filePath,
             fileName: item.fileName,
-            extractEngine:
-              item.filePath && hintedPaths.has(item.filePath) ? hintedEngine : engine,
+            extractEngine: item.filePath && hintedPaths.has(item.filePath) ? hintedEngine : engine,
             importProcessMode: processChoice
           })
           imported += 1
@@ -962,7 +965,11 @@ export const KnowledgeDetailPage: React.FC = () => {
 
       await refresh()
       if (imported > 0) {
-        setStatus(t('knowledge.import_queued', '已加入摄入队列'))
+        setStatus(
+          processChoice === 'later'
+            ? t('knowledge.import_stored', '已保存为待整理')
+            : t('knowledge.import_queued', '已加入摄入队列')
+        )
       }
     } catch (e: any) {
       setError(String(e?.message || e))
@@ -991,7 +998,11 @@ export const KnowledgeDetailPage: React.FC = () => {
       setPasteTitle('')
       setPasteText('')
       await refresh()
-      setStatus(t('knowledge.import_queued', '已加入摄入队列'))
+      setStatus(
+        processChoice === 'later'
+          ? t('knowledge.import_stored', '已保存为待整理')
+          : t('knowledge.import_queued', '已加入摄入队列')
+      )
     } catch (e: any) {
       setError(String(e?.message || e))
     } finally {
@@ -1020,7 +1031,11 @@ export const KnowledgeDetailPage: React.FC = () => {
       setImportMode(null)
       setUrlValue('')
       await refresh()
-      setStatus(t('knowledge.import_queued', '已加入摄入队列'))
+      setStatus(
+        processChoice === 'later'
+          ? t('knowledge.import_stored', '已保存为待整理')
+          : t('knowledge.import_queued', '已加入摄入队列')
+      )
     } catch (e: any) {
       setError(String(e?.message || e))
     } finally {
@@ -1412,71 +1427,102 @@ export const KnowledgeDetailPage: React.FC = () => {
     const evidence = pickSourceCardEvidence({
       pageCount: source.pageCount,
       missingPages,
-      errorMessage: source.errorMessage,
       hideHints: Boolean(ocrProgress)
     })
+    const failureReason = sourceCardFailureReason({
+      status: source.status,
+      errorMessage: source.errorMessage
+    })
+    const card = (
+      <div
+        className={`${styles.notebookCard} ${styles.sourceCard}`}
+        role="button"
+        tabIndex={0}
+        aria-label={
+          failureReason
+            ? `${source.title} ${statusText}。${knowledgeIngestUserMessage(failureReason, t)}`
+            : undefined
+        }
+        onClick={() => void onPreview(source)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            void onPreview(source)
+          }
+        }}
+      >
+        <div className={styles.notebookCardTop}>
+          <span aria-hidden />
+          <button
+            type="button"
+            className={styles.notebookCardMenu}
+            aria-label={t('knowledge.source_menu', '资料操作')}
+            title={t('knowledge.source_menu', '资料操作')}
+            onClick={(event) => {
+              event.stopPropagation()
+              const rect = event.currentTarget.getBoundingClientRect()
+              setSourceMenu({ sourceId: source.id, x: rect.right, y: rect.bottom })
+            }}
+          >
+            <MoreHorizontal size={16} strokeWidth={2} />
+          </button>
+        </div>
+        <div className={styles.notebookCardVisual}>
+          <span className={styles.sourceCardIcon} aria-hidden>
+            {sourceFileIcon(source.sourceKind, source.title, 28)}
+          </span>
+        </div>
+        <div className={styles.notebookCardBody}>
+          <h2 className={styles.notebookCardTitle}>{source.title}</h2>
+          <p
+            className={
+              knowledgeSourceShowsPendingOrganizeHelp(source.status)
+                ? `${styles.notebookCardMeta} ${styles.sourceCardStatus}`
+                : styles.notebookCardMeta
+            }
+          >
+            <span>{statusText}</span>
+            {knowledgeSourceShowsPendingOrganizeHelp(source.status) ? (
+              <HelpTooltip
+                content={t('knowledge.status_stored_help', '未整理之前，AI 无法使用这份资料。')}
+              />
+            ) : null}
+          </p>
+          {pageProgress != null ? (
+            <div
+              className={styles.sourceProgressTrack}
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={pageProgress}
+            >
+              <div className={styles.sourceProgressFill} style={{ width: `${pageProgress}%` }} />
+            </div>
+          ) : null}
+          {evidence?.type === 'scan' ? (
+            <span className={styles.sourceEvidence}>
+              {t('knowledge.scan_evidence', '{{total}} 页中 {{missing}} 页无文本层', {
+                total: evidence.pageCount,
+                missing: evidence.missingPages
+              })}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    )
     return (
       <li key={source.id} className={styles.sourceCardItem}>
-        <div
-          className={`${styles.notebookCard} ${styles.sourceCard}`}
-          role="button"
-          tabIndex={0}
-          onClick={() => void onPreview(source)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              void onPreview(source)
-            }
-          }}
-        >
-          <div className={styles.notebookCardTop}>
-            <span aria-hidden />
-            <button
-              type="button"
-              className={styles.notebookCardMenu}
-              aria-label={t('knowledge.source_menu', '资料操作')}
-              title={t('knowledge.source_menu', '资料操作')}
-              onClick={(event) => {
-                event.stopPropagation()
-                const rect = event.currentTarget.getBoundingClientRect()
-                setSourceMenu({ sourceId: source.id, x: rect.right, y: rect.bottom })
-              }}
-            >
-              <MoreHorizontal size={16} strokeWidth={2} />
-            </button>
-          </div>
-          <div className={styles.notebookCardVisual}>
-            <span className={styles.sourceCardIcon} aria-hidden>
-              {sourceFileIcon(source.sourceKind, source.title, 28)}
-            </span>
-          </div>
-          <div className={styles.notebookCardBody}>
-            <h2 className={styles.notebookCardTitle}>{source.title}</h2>
-            <p className={styles.notebookCardMeta}>{statusText}</p>
-            {pageProgress != null ? (
-              <div
-                className={styles.sourceProgressTrack}
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={pageProgress}
-              >
-                <div className={styles.sourceProgressFill} style={{ width: `${pageProgress}%` }} />
-              </div>
-            ) : null}
-            {evidence?.type === 'scan' ? (
-              <span className={styles.sourceEvidence}>
-                {t('knowledge.scan_evidence', '{{total}} 页中 {{missing}} 页无文本层', {
-                  total: evidence.pageCount,
-                  missing: evidence.missingPages
-                })}
-              </span>
-            ) : null}
-            {evidence?.type === 'error' ? (
-              <span className={styles.sourceEvidence}>{evidence.message}</span>
-            ) : null}
-          </div>
-        </div>
+        {failureReason ? (
+          <Tooltip
+            content={knowledgeIngestUserMessage(failureReason, t)}
+            className={styles.sourceCardFailWrap}
+            tooltipClassName={styles.sourceFailTooltip}
+          >
+            {card}
+          </Tooltip>
+        ) : (
+          card
+        )}
       </li>
     )
   }
@@ -1594,7 +1640,9 @@ export const KnowledgeDetailPage: React.FC = () => {
           </div>
         ) : null}
         {status && !jobProgress.visible ? <p className={styles.bannerStatus}>{status}</p> : null}
-        {error ? <p className={styles.bannerError}>{error}</p> : null}
+        {error ? (
+          <p className={styles.bannerError}>{knowledgeIngestUserMessage(error, t)}</p>
+        ) : null}
 
         {activeTab === 'sources' ? (
           <div className={styles.sourcesStage}>
@@ -1687,7 +1735,7 @@ export const KnowledgeDetailPage: React.FC = () => {
         <p className={styles.guideHint}>
           {t(
             'knowledge.delete_source_confirm',
-            '将删除「{{title}}」的原文、提取结果、向量和关系。此操作不能恢复。',
+            '将删除「{{title}}」的原文和提取结果，并清空这份资料对应的图关系和向量数据。此操作不能恢复。',
             { title: deleteTarget?.title || '' }
           )}
         </p>
@@ -1765,8 +1813,7 @@ export const KnowledgeDetailPage: React.FC = () => {
                   </div>
                   {engineCaps?.[engine] && !engineCaps[engine].available ? (
                     <p className={`${styles.settingsRowHint} ${styles.settingsRowHintWarn}`}>
-                      {engineCaps[engine].reason ||
-                        t('knowledge.cap_unavailable', '不可用')}
+                      {engineCaps[engine].reason || t('knowledge.cap_unavailable', '不可用')}
                     </p>
                   ) : null}
                 </div>
@@ -1877,9 +1924,13 @@ export const KnowledgeDetailPage: React.FC = () => {
                         value: String(n),
                         label:
                           n === RECOMMENDED_OCR_CONCURRENCY
-                            ? t('knowledge.ocr_concurrency_option_recommended', '{{count}} 页（推荐）', {
-                                count: n
-                              })
+                            ? t(
+                                'knowledge.ocr_concurrency_option_recommended',
+                                '{{count}} 页（推荐）',
+                                {
+                                  count: n
+                                }
+                              )
                             : t('knowledge.ocr_concurrency_option', '{{count}} 页', { count: n })
                       }))}
                       onChange={(e) => {
@@ -1940,7 +1991,11 @@ export const KnowledgeDetailPage: React.FC = () => {
                                 })
                               : t('knowledge.vision_model_unset_short', '跟随全局对话模型')}
                         </span>
-                        <ChevronDown size={14} className={styles.modelSelectorChevron} aria-hidden />
+                        <ChevronDown
+                          size={14}
+                          className={styles.modelSelectorChevron}
+                          aria-hidden
+                        />
                       </button>
                       {visionDisplay.isCustom ? (
                         <button
@@ -1962,6 +2017,20 @@ export const KnowledgeDetailPage: React.FC = () => {
               ) : null}
             </section>
           </div>
+          <KnowledgeExtractProbeSection
+            notebookId={notebookId}
+            sources={sources}
+            engine={engine === 'vision' ? 'vision' : 'ocr'}
+            engineAvailable={Boolean(
+              engineCaps?.[engine === 'vision' ? 'vision' : 'ocr']?.available
+            )}
+            engineUnavailableReason={engineCaps?.[engine === 'vision' ? 'vision' : 'ocr']?.reason}
+            disabled={busy}
+            ocrLanguage={ocrLanguage}
+            ocrConcurrency={ocrConcurrency}
+            visionProviderId={visionProviderId || globalModels?.globalDialogueProviderId || null}
+            visionModelId={visionModelId || globalModels?.globalDialogueModelId || null}
+          />
         </div>
 
         <div className={styles.dialogActions}>
@@ -1997,6 +2066,17 @@ export const KnowledgeDetailPage: React.FC = () => {
             void selectModel(providerId, modelId)
           }}
           onClose={closePicker}
+          reasoningEffort={
+            picker.field === 'graph'
+              ? resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'graph')
+              : picker.field === 'vision'
+                ? resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'vision')
+                : 'auto'
+          }
+          onReasoningEffortChange={(value) => {
+            if (picker.field === 'graph') void persistReasoningSlot('graph', value)
+            if (picker.field === 'vision') void persistReasoningSlot('vision', value)
+          }}
           onManageProviders={() => {
             closeSettings()
             navigate(`${SETTINGS_HUB_PREFIX}/ai-services`)
@@ -2102,7 +2182,11 @@ export const KnowledgeDetailPage: React.FC = () => {
           <Button type="button" onClick={() => setImportMode(null)} disabled={busy}>
             {t('common.cancel', '取消')}
           </Button>
-          <Button type="button" onClick={() => void onImportText()} disabled={busy || !pasteText.trim()}>
+          <Button
+            type="button"
+            onClick={() => void onImportText()}
+            disabled={busy || !pasteText.trim()}
+          >
             {t('knowledge.import_submit', '导入')}
           </Button>
         </div>
@@ -2129,7 +2213,11 @@ export const KnowledgeDetailPage: React.FC = () => {
           <Button type="button" onClick={() => setImportMode(null)} disabled={busy}>
             {t('common.cancel', '取消')}
           </Button>
-          <Button type="button" onClick={() => void onImportUrl()} disabled={busy || !urlValue.trim()}>
+          <Button
+            type="button"
+            onClick={() => void onImportUrl()}
+            disabled={busy || !urlValue.trim()}
+          >
             {t('knowledge.import_submit', '导入')}
           </Button>
         </div>

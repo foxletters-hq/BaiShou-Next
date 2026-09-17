@@ -2115,6 +2115,7 @@
       "companion_ask_tooltip": "向用户提出澄清问题，可附带选项；在用户回答前会阻塞等待确认。",
       "companion_ask_card_label": "提问",
       "companion_ask_declined": "没有作答",
+      "companion_ask_cancelled": "用户取消了这一次操作",
       "companion_ask_selected": "已选择",
       "workspace_list": "列出文件",
       "workspace_list_tooltip": "列出工作区内目录内容。",
@@ -3694,6 +3695,7 @@
     "pending_embed_part_graph_nodes": "图谱节点 {{count}} 个",
     "pending_embed_part_graph_extract": "关系图谱 {{count}} 篇",
     "pending_embed_part_knowledge": "知识库 {{count}} 份",
+    "pending_embed_part_notebook_graph_nodes": "笔记本图节点 {{count}} 个",
     "pending_embed_reminder": "有 {{count}} 项内容还没有嵌入，搜索和伙伴回忆暂时用不到它们",
     "pending_embed_reminder_action": "去补齐",
     "pending_embed_reminder_need_model": "有 {{count}} 项内容还没有嵌入，需要先配置嵌入模型才能补齐",
@@ -4200,6 +4202,11 @@
     "data_manage_cleared": "已清除所选派生数据",
     "data_manage_queued": "已加入重整理队列",
     "data_manage_none": "没有可重整理的资料",
-    "data_manage_failed": "数据管理未完成"
+    "data_manage_failed": "数据管理未完成",
+    "delete_source": "删除",
+    "delete_source_title": "删除资料",
+    "delete_source_confirm": "将删除「{{title}}」的原文和提取结果，并清空这份资料对应的图关系和向量数据。此操作不能恢复。",
+    "source_deleted": "已删除资料",
+    "source_not_embedded": "这份资料还没有完成向量。请先完成向量，再抽取图关系。"
   }
 }

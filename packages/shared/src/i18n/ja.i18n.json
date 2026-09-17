@@ -1963,6 +1963,7 @@
       "companion_ask_desc": "ユーザーに確認質問をし、必要なら選択肢を提示します。回答までブロックします。",
       "companion_ask_card_label": "質問",
       "companion_ask_declined": "未回答",
+      "companion_ask_cancelled": "ユーザーはこの操作をキャンセルしました。",
       "companion_ask_selected": "選択済み",
       "skill_write": "スキルを保存",
       "skill_write_tooltip": "ソフトウェアレベルのスキル説明を作成または更新します。",
@@ -3442,6 +3443,7 @@
     "pending_embed_part_graph_nodes": "グラフノード {{count}} 件",
     "pending_embed_part_graph_extract": "関係グラフ {{count}} 件",
     "pending_embed_part_knowledge": "知識ベース {{count}} 件",
+    "pending_embed_part_notebook_graph_nodes": "ノートのグラフノード {{count}} 件",
     "pending_embed_reminder": "{{count}} 件がまだ埋め込まれていないため、検索と振り返りでは使えません",
     "pending_embed_reminder_action": "補完する",
     "pending_embed_reminder_need_model": "{{count}} 件がまだ埋め込まれていません。先に埋め込みモデルを設定してください。",
@@ -3947,6 +3949,7 @@
     "data_manage_cleared": "派生データをクリアしました",
     "data_manage_queued": "再整理をキューに入れました",
     "data_manage_none": "再整理する資料はありません",
-    "data_manage_failed": "データ管理が完了しませんでした"
+    "data_manage_failed": "データ管理が完了しませんでした",
+    "source_not_embedded": "この資料はまだベクトル化が完了していません。先にベクトルを完了してから、図関係を抽出できます。"
   }
 }
