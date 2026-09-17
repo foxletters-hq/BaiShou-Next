@@ -93,10 +93,10 @@ describeHydration('KnowledgeHydrationService', () => {
     })
     const result = await withEmbed.hydrate()
     expect(result.embedJobsEnqueued).toBe(1)
-    expect(result.graphJobsEnqueued).toBe(1)
+    expect(result.graphJobsEnqueued).toBe(0)
     const jobs = await repo.listIngestJobs()
     expect(jobs.some((j) => j.sourceId === 'src1' && j.stage === 'embed')).toBe(true)
-    expect(jobs.some((j) => j.sourceId === 'src1' && j.stage === 'graph')).toBe(true)
+    expect(jobs.some((j) => j.sourceId === 'src1' && j.stage === 'graph')).toBe(false)
 
     // 模拟已嵌入：写入 chunk 后再次 hydrate 不应重复排 embed；无 extract-state 仍排 graph
     await repo.insertChunk({
@@ -427,9 +427,9 @@ describe('KnowledgeHydrationService orphan graph wiring', () => {
       listNotebooks: vi.fn().mockResolvedValue([{ id: 'nb1', vaultId: 'vault_test' }])
     }
     const notebookManager = {
-      listNotebookRecords: vi.fn().mockResolvedValue([
-        { id: 'nb1', name: '研究', description: null }
-      ]),
+      listNotebookRecords: vi
+        .fn()
+        .mockResolvedValue([{ id: 'nb1', name: '研究', description: null }]),
       listSourceRecords: vi.fn().mockResolvedValue([])
     }
     const graphRaw = {
@@ -502,5 +502,48 @@ describe('KnowledgeHydrationService orphan graph wiring', () => {
     expect(result.graphJobsEnqueued).toBe(0)
     expect(enqueueIngestJob).not.toHaveBeenCalled()
     expect(syncPendingIndex).toHaveBeenCalledWith({ vaultId: 'vault_test', notebookId: 'nb1' })
+  })
+
+  it('should queue embed only when extracted text also needs graph', async () => {
+    const enqueueIngestJob = vi.fn()
+    const repo = {
+      getNotebook: vi.fn().mockResolvedValue(null),
+      createNotebook: vi.fn().mockResolvedValue({ id: 'nb1' }),
+      updateNotebook: vi.fn(),
+      getSource: vi.fn().mockResolvedValue(null),
+      countChunksBySource: vi.fn().mockResolvedValue(0),
+      getEmbedLedger: vi.fn().mockResolvedValue(null),
+      upsertSource: vi.fn(),
+      updateSourceStatus: vi.fn(),
+      enqueueIngestJob,
+      listDistinctSourceIds: vi.fn().mockResolvedValue([]),
+      listNotebooks: vi.fn().mockResolvedValue([{ id: 'nb1', vaultId: 'vault_test' }])
+    }
+    const notebookManager = {
+      listNotebookRecords: vi.fn().mockResolvedValue([{ id: 'nb1', name: '本' }]),
+      listSourceRecords: vi.fn().mockResolvedValue([
+        {
+          id: 'src1',
+          title: '资料',
+          kind: 'text',
+          path: 'sources/src1.txt',
+          contentHash: 'abc'
+        }
+      ]),
+      statExtracted: vi.fn().mockResolvedValue({ mtimeMs: Date.now() }),
+      readExtractedText: vi.fn().mockResolvedValue('正文需要向量后再抽图'),
+      findCoverImageOnDisk: vi.fn().mockResolvedValue('')
+    }
+
+    const svc = new KnowledgeHydrationService({
+      repo: repo as never,
+      notebookManager: notebookManager as never,
+      vaultId: 'vault_test',
+      isEmbeddingConfigured: () => true
+    })
+    const result = await svc.hydrate()
+    expect(result.embedJobsEnqueued).toBe(1)
+    expect(result.graphJobsEnqueued).toBe(0)
+    expect(enqueueIngestJob.mock.calls.map((call) => call[0].stage)).toEqual(['embed'])
   })
 })

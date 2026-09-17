@@ -4,6 +4,7 @@ import {
   knowledgeImportProcessTargets,
   logger,
   normalizeKnowledgeImportProcessMode,
+  shouldDeferKnowledgeImportOrganize,
   normalizeNotebookCoverIcon,
   normalizeNotebookCoverImage,
   normalizeNotebookCoverTone,
@@ -91,6 +92,11 @@ const pendingExtractOverrides = new Map<
 /** 用户点重新抽取图数据时，消费端另建 service 实例，用模块级标记跨实例传 force */
 const pendingGraphExtractForce = new Set<string>()
 
+/** 抽完正文 / 重试 / 整本重排：embed 完成后再排 graph，跨 consumer 实例传递 */
+const pendingGraphFollowAfterEmbed = new Set<string>()
+
+export const KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR = 'source-not-embedded'
+
 function markGraphExtractForce(sourceId: string): void {
   const id = sourceId.trim()
   if (id) pendingGraphExtractForce.add(id)
@@ -102,6 +108,32 @@ function peekGraphExtractForce(sourceId: string): boolean {
 
 function clearGraphExtractForce(sourceId: string): void {
   pendingGraphExtractForce.delete(sourceId.trim())
+}
+
+export function markGraphFollowAfterEmbed(sourceId: string): void {
+  const id = sourceId.trim()
+  if (id) pendingGraphFollowAfterEmbed.add(id)
+}
+
+function takeGraphFollowAfterEmbed(sourceId: string): boolean {
+  const id = sourceId.trim()
+  const hit = pendingGraphFollowAfterEmbed.has(id)
+  pendingGraphFollowAfterEmbed.delete(id)
+  return hit
+}
+
+function clearGraphFollowAfterEmbed(sourceId: string): void {
+  pendingGraphFollowAfterEmbed.delete(sourceId.trim())
+}
+
+async function sourceHasChunkEmbeddings(
+  repo: KnowledgeRepository,
+  vaultId: string,
+  sourceId: string
+): Promise<boolean> {
+  const ledger = await repo.getEmbedLedger(vaultId, sourceId)
+  if (ledger?.status === 'embedded' && ledger.chunkCount > 0) return true
+  return (await repo.countChunksBySource(sourceId)) > 0
 }
 
 /** 导入时指定提取完成后入队哪些后续任务；缺省两边都做 */
@@ -452,8 +484,8 @@ export class KnowledgeIngestService {
     fileName?: string
     originUrl?: string
     extractEngine?: ExtractEngineId
-    /** 导入后处理：向量、图关系，或两者。 */
-    importProcessMode?: KnowledgeImportProcessMode
+    /** 导入后处理：向量、向量和图关系，或稍后整理。旧值 graph 按 both 走。 */
+    importProcessMode?: KnowledgeImportProcessMode | string
   }): Promise<{ sourceId: string }> {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const notebook = await this.deps.repo.getNotebook(input.notebookId)
@@ -471,8 +503,14 @@ export class KnowledgeIngestService {
     let originUrl: string | null = input.originUrl ?? null
     const extractEngine = input.extractEngine ?? 'simple'
     const sourceKind = input.kind === 'note' ? 'note' : input.kind
+    const rawImportProcessMode = String(input.importProcessMode ?? '').trim()
     const importProcessMode = normalizeKnowledgeImportProcessMode(input.importProcessMode)
     const processTargets = knowledgeImportProcessTargets(importProcessMode)
+    const deferOrganize =
+      shouldDeferKnowledgeImportOrganize(importProcessMode) ||
+      rawImportProcessMode === 'later' ||
+      rawImportProcessMode === 'none' ||
+      rawImportProcessMode === 'save-only'
 
     if (input.kind === 'file') {
       if (!input.absolutePath) throw new Error('import file requires absolutePath')
@@ -523,7 +561,7 @@ export class KnowledgeIngestService {
       relativePath,
       originUrl,
       contentHash,
-      status: 'pending',
+      status: deferOrganize || !processTargets.extract ? 'stored' : 'pending',
       byteSize,
       extractEngine
     })
@@ -539,6 +577,14 @@ export class KnowledgeIngestService {
       updatedAt: now,
       deletedAt: null
     })
+
+    if (deferOrganize || !processTargets.extract) {
+      logger.info('[KnowledgeIngest] import stored for later organize', {
+        sourceId,
+        importProcessMode
+      })
+      return { sourceId }
+    }
 
     rememberProcessTargets(sourceId, {
       embed: processTargets.embed,
@@ -556,6 +602,8 @@ export class KnowledgeIngestService {
 
   async deleteSource(sourceId: string): Promise<void> {
     requestExtractAbort(sourceId)
+    clearGraphFollowAfterEmbed(sourceId)
+    clearGraphExtractForce(sourceId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
     const now = Date.now()
@@ -616,12 +664,7 @@ export class KnowledgeIngestService {
       vaultId: source.vaultId?.trim() || vaultId
     })
     if (source.extractedTextHash) {
-      await this.deps.repo.enqueueIngestJob({
-        notebookId: source.notebookId,
-        sourceId,
-        stage: 'graph',
-        vaultId: source.vaultId?.trim() || vaultId
-      })
+      markGraphFollowAfterEmbed(sourceId)
     }
   }
 
@@ -642,12 +685,16 @@ export class KnowledgeIngestService {
       })
       return
     }
+    const chunkVaultId = source.vaultId?.trim() || vaultId
+    if (!(await sourceHasChunkEmbeddings(this.deps.repo, chunkVaultId, sourceId))) {
+      throw new Error(KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR)
+    }
     markGraphExtractForce(sourceId)
     await this.deps.repo.enqueueIngestJob({
       notebookId: source.notebookId,
       sourceId,
       stage: 'graph',
-      vaultId: source.vaultId?.trim() || vaultId
+      vaultId: chunkVaultId
     })
   }
 
@@ -690,6 +737,8 @@ export class KnowledgeIngestService {
    */
   async cancelExtract(sourceId: string): Promise<{ cancelled: true; status: string }> {
     requestExtractAbort(sourceId)
+    clearGraphFollowAfterEmbed(sourceId)
+    clearGraphExtractForce(sourceId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
 
@@ -729,14 +778,18 @@ export class KnowledgeIngestService {
 
     let resetSources = 0
     const extracting = await this.deps.repo.listSourcesByStatus('extracting', { vaultId })
+    const extractJobs =
+      extracting.length > 0
+        ? await this.deps.repo.listIngestJobs({ vaultId, stage: 'extract' })
+        : []
+    const activeExtract = new Set(
+      extractJobs
+        .filter((job) => job.status === 'pending' || job.status === 'running')
+        .map((job) => job.sourceId)
+    )
     for (const source of extracting) {
       if (isExtractProtected(source.id)) continue
-      const jobs = await this.deps.repo.listIngestJobsBySource(source.id)
-      const hasExtract = jobs.some(
-        (job) =>
-          job.stage === 'extract' && (job.status === 'pending' || job.status === 'running')
-      )
-      if (hasExtract) continue
+      if (activeExtract.has(source.id)) continue
       await this.deps.repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
       await this.deps.repo.enqueueIngestJob({
         notebookId: source.notebookId,
@@ -750,7 +803,10 @@ export class KnowledgeIngestService {
     return { resetSources, reclaimedEmbedJobs, droppedExtractJobs: 0 }
   }
 
-  async rebuildNotebookVectors(notebookId: string): Promise<number> {
+  async rebuildNotebookVectors(
+    notebookId: string,
+    options?: { followGraph?: boolean }
+  ): Promise<number> {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const sources = await this.deps.repo.listSources(notebookId)
     await this.deps.repo.deleteChunksByNotebook(notebookId)
@@ -766,6 +822,9 @@ export class KnowledgeIngestService {
         stage: 'embed',
         vaultId: source.vaultId?.trim() || vaultId
       })
+      if (options?.followGraph && source.extractedTextHash) {
+        markGraphFollowAfterEmbed(source.id)
+      }
       queued += 1
     }
     return queued
@@ -787,12 +846,7 @@ export class KnowledgeIngestService {
         vaultId: source.vaultId?.trim() || vaultId
       })
       if (source.extractedTextHash) {
-        await this.deps.repo.enqueueIngestJob({
-          notebookId,
-          sourceId: source.id,
-          stage: 'graph',
-          vaultId: source.vaultId?.trim() || vaultId
-        })
+        markGraphFollowAfterEmbed(source.id)
       }
     }
   }
@@ -832,8 +886,8 @@ export class KnowledgeIngestService {
       return { action, vector, graph, sourceCount, vectorQueued: 0, graphQueued: 0 }
     }
 
-    const vectorQueued = vector ? await this.rebuildNotebookVectors(id) : 0
-    const graphQueued = graph ? await this.rebuildNotebookGraph(id) : 0
+    const vectorQueued = vector ? await this.rebuildNotebookVectors(id, { followGraph: graph }) : 0
+    const graphQueued = graph ? (vector ? vectorQueued : await this.rebuildNotebookGraph(id)) : 0
     return { action, vector, graph, sourceCount, vectorQueued, graphQueued }
   }
 
@@ -843,12 +897,16 @@ export class KnowledgeIngestService {
     let queued = 0
     for (const source of sources) {
       if (!source.extractedTextHash) continue
+      const chunkVaultId = source.vaultId?.trim() || vaultId
+      if (!(await sourceHasChunkEmbeddings(this.deps.repo, chunkVaultId, source.id))) {
+        continue
+      }
       markGraphExtractForce(source.id)
       await this.deps.repo.enqueueIngestJob({
         notebookId,
         sourceId: source.id,
         stage: 'graph',
-        vaultId: source.vaultId?.trim() || vaultId
+        vaultId: chunkVaultId
       })
       queued += 1
     }
@@ -1075,8 +1133,9 @@ export class KnowledgeIngestService {
     }
 
     const targets = takeProcessTargets(sourceId)
+    const shouldQueueEmbed = targets.embed || targets.graph
     const nextStatus =
-      result.quality === 'partial' ? 'partial' : targets.embed ? 'embedding' : 'ready'
+      result.quality === 'partial' ? 'partial' : shouldQueueEmbed ? 'embedding' : 'ready'
     await this.deps.repo.updateSourceStatus(sourceId, nextStatus, {
       extractedTextHash: textHash,
       pageCount: result.pageCount,
@@ -1086,19 +1145,14 @@ export class KnowledgeIngestService {
     })
     await revertIfExtractAborted(this.deps.repo, sourceId, signal)
 
-    if (targets.embed) {
+    if (targets.graph) {
+      markGraphFollowAfterEmbed(sourceId)
+    }
+    if (shouldQueueEmbed) {
       await this.deps.repo.enqueueIngestJob({
         notebookId: source.notebookId,
         sourceId,
         stage: 'embed',
-        vaultId: source.vaultId?.trim() || vaultId
-      })
-    }
-    if (targets.graph) {
-      await this.deps.repo.enqueueIngestJob({
-        notebookId: source.notebookId,
-        sourceId,
-        stage: 'graph',
         vaultId: source.vaultId?.trim() || vaultId
       })
     }
@@ -1111,6 +1165,10 @@ export class KnowledgeIngestService {
     const vaultId = requireVaultId(this.deps.getVaultId)
     const source = await this.deps.repo.getSource(sourceId)
     if (!source) throw new Error(`source not found: ${sourceId}`)
+    const chunkVaultId = source.vaultId?.trim() || vaultId
+    if (!(await sourceHasChunkEmbeddings(this.deps.repo, chunkVaultId, sourceId))) {
+      throw new Error(KNOWLEDGE_SOURCE_NOT_EMBEDDED_ERROR)
+    }
     const text = await this.deps.notebookManager.readExtractedText(source.notebookId, sourceId)
     if (!text?.trim()) {
       throw new Error('extracted text missing')
@@ -1220,7 +1278,8 @@ export class KnowledgeIngestService {
       await this.deps.repo.recordEmbedFailure({
         vaultId: chunkVaultId,
         sourceId,
-        lastError: error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500)
+        lastError:
+          error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500)
       })
       throw error
     }
@@ -1238,6 +1297,7 @@ export class KnowledgeIngestService {
       logger.info('[KnowledgeIngest] embed done but pageCount unknown → needs_ocr', {
         sourceId
       })
+      await this.enqueueGraphFollowIfNeeded(source, vaultId, sourceId)
       return
     }
 
@@ -1249,5 +1309,22 @@ export class KnowledgeIngestService {
     })
 
     logger.info('[KnowledgeIngest] embed done', { sourceId, chunks: chunks.length })
+    await this.enqueueGraphFollowIfNeeded(source, vaultId, sourceId)
+  }
+
+  private async enqueueGraphFollowIfNeeded(
+    source: { notebookId: string; vaultId?: string | null },
+    vaultId: string,
+    sourceId: string
+  ): Promise<void> {
+    if (!takeGraphFollowAfterEmbed(sourceId)) return
+    const latest = await this.deps.repo.getSource(sourceId)
+    if (!latest || latest.errorMessage === 'cancelled') return
+    await this.deps.repo.enqueueIngestJob({
+      notebookId: source.notebookId,
+      sourceId,
+      stage: 'graph',
+      vaultId: source.vaultId?.trim() || vaultId
+    })
   }
 }

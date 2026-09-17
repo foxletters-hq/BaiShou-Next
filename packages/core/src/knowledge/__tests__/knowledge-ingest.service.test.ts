@@ -225,10 +225,7 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
 
   it('recoverStale 跳过 live guard 保护的 extract', async () => {
     const { KnowledgeRepository } = await import('@baishou/database')
-    const {
-      markExtractJobLive,
-      unmarkExtractJobLive
-    } = await import('../knowledge-ingest.service')
+    const { markExtractJobLive, unmarkExtractJobLive } = await import('../knowledge-ingest.service')
     const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
     const { id: notebookId } = await svc.createNotebook({ name: '恢复本' })
     const { sourceId } = await svc.importSource({
@@ -441,6 +438,23 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     await expect(fs.access(path.join(notebooksDir, a.id, 'cover.png'))).rejects.toBeTruthy()
   })
 
+  it('导入时可稍后整理：只保存文件，不入队提取或嵌入', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '稍后整理本' })
+
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'later',
+      kind: 'text',
+      textContent: '这份正文先不整理',
+      importProcessMode: 'later'
+    })
+    expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('stored')
+    expect(await knowledgeRepo.listIngestJobsBySource(sourceId)).toHaveLength(0)
+    expect((await knowledgeRepo.getSource(sourceId))?.extractedTextHash).toBeFalsy()
+  })
+
   it('导入时可只入队向量或只入队图关系', async () => {
     const { KnowledgeRepository } = await import('@baishou/database')
     const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
@@ -470,9 +484,13 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
     })
     await svc.processExtractJob(graphId)
     const graphJobs = (await knowledgeRepo.listIngestJobsBySource(graphId)).map((job) => job.stage)
-    expect(graphJobs.filter((stage) => stage !== 'extract')).toEqual(['graph'])
-    expect((await knowledgeRepo.getSource(graphId))?.status).toBe('ready')
+    expect(graphJobs.filter((stage) => stage !== 'extract')).toEqual(['embed'])
+    expect((await knowledgeRepo.getSource(graphId))?.status).toBe('embedding')
     expect((await knowledgeRepo.getSource(graphId))?.extractedTextHash).toBeTruthy()
+    await svc.processEmbedJob(graphId)
+    expect((await knowledgeRepo.listIngestJobsBySource(graphId)).map((job) => job.stage)).toEqual(
+      expect.arrayContaining(['embed', 'graph'])
+    )
   })
 
   it('删除资料会去掉原文和任务', async () => {
@@ -515,12 +533,8 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
 
     await knowledgeRepo.deleteIngestJobsForSource(sourceId)
     await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
-    await svc.reprocessSource(sourceId, 'graph')
-    const afterGraph = await knowledgeRepo.listIngestJobsBySource(sourceId)
-    expect(afterGraph.map((job) => job.stage)).toEqual(['graph'])
-    expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('ready')
-    await svc.processGraphJob(sourceId)
-    expect(graphExtractCalls).toEqual([{ sourceId, force: true }])
+    await expect(svc.reprocessSource(sourceId, 'graph')).rejects.toThrow('source-not-embedded')
+    expect(await knowledgeRepo.listIngestJobsBySource(sourceId)).toHaveLength(0)
   })
 
   it('should return zero queued jobs when reprocessing an empty notebook', async () => {
@@ -564,7 +578,147 @@ describeIngest('KnowledgeIngestService import → retrieve', () => {
       graphQueued: 1
     })
     const jobs = (await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)
-    expect(jobs.sort()).toEqual(['embed', 'graph'])
+    expect(jobs).toEqual(['embed'])
     expect((await knowledgeRepo.getSource(sourceId))?.status).toBe('pending')
+    await svc.processEmbedJob(sourceId)
+    expect((await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)).toEqual(
+      expect.arrayContaining(['embed', 'graph'])
+    )
+  })
+
+  it('should queue embed only after extract when both organize targets are on', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '串行本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '抽出正文后先向量再抽图'
+    })
+    await svc.processExtractJob(sourceId)
+    const afterExtract = (await knowledgeRepo.listIngestJobsBySource(sourceId)).map(
+      (job) => job.stage
+    )
+    expect(afterExtract.filter((stage) => stage !== 'extract')).toEqual(['embed'])
+    expect(afterExtract).not.toContain('graph')
+  })
+
+  it('should queue graph only after embed succeeds', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '接续本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '向量完成后再排抽图'
+    })
+    await svc.processExtractJob(sourceId)
+    await knowledgeRepo.deleteIngestJobsForSource(sourceId, 'extract')
+    await svc.processEmbedJob(sourceId)
+    const stages = (await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)
+    expect(stages).toContain('graph')
+    expect(stages.filter((stage) => stage === 'graph')).toHaveLength(1)
+  })
+
+  it('should not queue graph when embed fails', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { createNodeFileSystem } = await import('../../fs/create-node-file-system')
+    const { NotebookRawManager } = await import('../../raw-data/managers/notebook.raw-manager')
+    const { KnowledgeIngestService } = await import('../knowledge-ingest.service')
+    const { id: notebookId } = await svc.createNotebook({ name: '失败本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '嵌入失败不应排抽图'
+    })
+    await svc.processExtractJob(sourceId)
+    const failSvc = new KnowledgeIngestService({
+      repo: knowledgeRepo,
+      notebookManager: new NotebookRawManager(
+        {
+          getNotebooksBaseDirectory: async () => notebooksDir,
+          getActiveVaultPath: async () => tempDir
+        } as unknown as IStoragePathService,
+        createNodeFileSystem()
+      ),
+      fs: createNodeFileSystem(),
+      getVaultId: () => 'vault_test',
+      embedding: {
+        isConfigured: true,
+        getModelId: () => 'mock-emb',
+        getProviderInstance: async () => null
+      },
+      embedText: async () => {
+        throw new Error('embed boom')
+      },
+      insertChunk: async () => undefined,
+      deleteChunksBySource: (id) => knowledgeRepo.deleteChunksBySource(id),
+      extractNotebookGraph: async () => undefined
+    })
+    await expect(failSvc.processEmbedJob(sourceId)).rejects.toThrow('embed boom')
+    expect(
+      (await knowledgeRepo.listIngestJobsBySource(sourceId)).some((job) => job.stage === 'graph')
+    ).toBe(false)
+  })
+
+  it('should throw when reprocessing graph before chunks are embedded', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '门槛本' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '还没有分块向量'
+    })
+    await svc.processExtractJob(sourceId)
+    await knowledgeRepo.deleteIngestJobsForSource(sourceId)
+    await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
+    await expect(svc.reprocessSource(sourceId, 'graph')).rejects.toThrow('source-not-embedded')
+  })
+
+  it('should skip unembedded sources when rebuilding notebook graph', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '整本图门槛' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '整本重建时跳过未嵌入'
+    })
+    await svc.processExtractJob(sourceId)
+    await knowledgeRepo.deleteIngestJobsForSource(sourceId)
+    await knowledgeRepo.updateSourceStatus(sourceId, 'ready')
+    const queued = await svc.rebuildNotebookGraph(notebookId)
+    expect(queued).toBe(0)
+    expect(await knowledgeRepo.listIngestJobsBySource(sourceId)).toHaveLength(0)
+  })
+
+  it('should queue graph when reprocessing after embed is done', async () => {
+    const { KnowledgeRepository } = await import('@baishou/database')
+    const knowledgeRepo = repo as InstanceType<typeof KnowledgeRepository>
+    const { id: notebookId } = await svc.createNotebook({ name: '已嵌入重抽' })
+    const { sourceId } = await svc.importSource({
+      notebookId,
+      title: 'paste',
+      kind: 'text',
+      textContent: '先嵌入再维护重抽图'
+    })
+    await svc.processExtractJob(sourceId)
+    await svc.processEmbedJob(sourceId)
+    await knowledgeRepo.deleteIngestJobsForSource(sourceId)
+    await svc.reprocessSource(sourceId, 'graph')
+    expect((await knowledgeRepo.listIngestJobsBySource(sourceId)).map((job) => job.stage)).toEqual([
+      'graph'
+    ])
+    await svc.processGraphJob(sourceId)
+    expect(
+      graphExtractCalls.some((call) => call.sourceId === sourceId && call.force === true)
+    ).toBe(true)
   })
 })

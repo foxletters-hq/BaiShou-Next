@@ -27,7 +27,9 @@ import { fileSystem } from './node-file-system'
 type IngestLane = 'index' | 'graph'
 type ConsumeResult = { processed: number; failed: number; skipped?: string }
 
+/** 提取与分块向量。同一资料的 graph 等 embed 完成后再入队，不在这条车道并行。 */
 const INDEX_STAGES = ['extract', 'embed'] as const
+/** 抽图单独车道：避免图谱模型堵住其他资料的提取/嵌入，不再与同一资料的 embed 并行。 */
 const GRAPH_STAGES = ['graph'] as const
 
 const laneInFlight: Record<IngestLane, Promise<ConsumeResult> | null> = {
@@ -35,7 +37,9 @@ const laneInFlight: Record<IngestLane, Promise<ConsumeResult> | null> = {
   graph: null
 }
 
-function stagesForLane(lane: IngestLane): Array<(typeof INDEX_STAGES)[number] | (typeof GRAPH_STAGES)[number]> {
+function stagesForLane(
+  lane: IngestLane
+): Array<(typeof INDEX_STAGES)[number] | (typeof GRAPH_STAGES)[number]> {
   return lane === 'index' ? [...INDEX_STAGES] : [...GRAPH_STAGES]
 }
 
@@ -141,12 +145,15 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
       })
     },
     deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
-    extractNotebookGraph: (await import('./desktop-knowledge-graph-extract')).createDesktopKnowledgeGraphExtractFn()
+    extractNotebookGraph: (
+      await import('./desktop-knowledge-graph-extract')
+    ).createDesktopKnowledgeGraphExtractFn()
   })
 }
 
 /**
- * 消费知识库摄入欠账。提取/嵌入与图谱分车道，避免图谱 LLM 堵住 PDF 嵌入。
+ * 消费知识库摄入欠账。
+ * 同一资料顺序是 extract → embed → graph；图谱仍单独车道，以免堵住其他资料的提取/嵌入。
  */
 export async function consumeKnowledgeIngestJobs(options?: {
   limit?: number
@@ -244,6 +251,13 @@ async function consumeKnowledgeLane(
           }
           await repo.completeIngestJob(job.id)
           processed++
+          if (job.stage === 'embed') {
+            void consumeKnowledgeLane('graph', { reason: 'after-embed' }).catch((e) => {
+              logger.warn('[KnowledgeIngestJobs] after-embed graph lane failed', {
+                error: e instanceof Error ? e.message : String(e)
+              })
+            })
+          }
         } catch (e: unknown) {
           const message = e instanceof Error ? e.message : String(e)
           if (message.includes('knowledge-extract-cancelled')) {
@@ -251,7 +265,10 @@ async function consumeKnowledgeLane(
             processed++
             continue
           }
-          if (message === 'embedding-not-configured' || message === 'graph-extract-not-configured') {
+          if (
+            message === 'embedding-not-configured' ||
+            message === 'graph-extract-not-configured'
+          ) {
             await repo.failIngestJob(job.id, message, { backoffMs: 5 * 60_000 })
             failed++
             continue

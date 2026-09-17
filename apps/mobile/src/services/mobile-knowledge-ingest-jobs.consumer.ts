@@ -21,7 +21,9 @@ import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 
 type ConsumeResult = { processed: number; failed: number; skipped?: string }
 
+/** 提取与分块向量。同一资料的 graph 等 embed 完成后再入队。 */
 const INDEX_STAGES = ['extract', 'embed'] as const
+/** 抽图单独车道：避免图谱模型堵住其他资料的嵌入，不再与同一资料的 embed 并行。 */
 const GRAPH_STAGES = ['graph'] as const
 
 let ingestInFlight: Promise<ConsumeResult> | null = null
@@ -79,13 +81,15 @@ async function buildMobileKnowledgeIngestService(): Promise<KnowledgeIngestServi
       })
     },
     deleteChunksBySource: (id) => repo.deleteChunksBySource(id),
-    extractNotebookGraph: (await import('./mobile-knowledge-graph-extract')).createMobileKnowledgeGraphExtractFn()
+    extractNotebookGraph: (
+      await import('./mobile-knowledge-graph-extract')
+    ).createMobileKnowledgeGraphExtractFn()
   })
 }
 
 /**
  * 消费知识库 embed 欠账（移动端消费端：只跑 embed，一般不跑 extract）。
- * 提取/嵌入与图谱分车道，避免图谱 LLM 堵住嵌入。
+ * 同一资料顺序是 extract → embed → graph；图谱仍单独车道，以免堵住其他资料的嵌入。
  */
 export async function consumeMobileKnowledgeIngestJobs(options?: {
   limit?: number
@@ -174,9 +178,17 @@ async function consumeMobileKnowledgeLane(
           await svc.processEmbedJob(job.sourceId)
           await repo.completeIngestJob(job.id)
           processed++
+          void consumeMobileKnowledgeLane('graph', { reason: 'after-embed' }).catch((e) => {
+            logger.warn('[MobileKnowledgeIngestJobs] after-embed graph lane failed', {
+              error: e instanceof Error ? e.message : String(e)
+            })
+          })
         } catch (e: unknown) {
           const message = e instanceof Error ? e.message : String(e)
-          if (message === 'embedding-not-configured' || message === 'graph-extract-not-configured') {
+          if (
+            message === 'embedding-not-configured' ||
+            message === 'graph-extract-not-configured'
+          ) {
             await repo.failIngestJob(job.id, message, { backoffMs: 5 * 60_000 })
             failed++
             continue
@@ -203,7 +215,37 @@ async function consumeMobileKnowledgeLane(
 
   if (lane === 'index') ingestInFlight = run
   else graphInFlight = run
-  return run
+  const result = await run
+  try {
+    if (expoKnowledgeConnectionManager.isConnected()) {
+      const drainRepo = new KnowledgeRepository(expoKnowledgeConnectionManager.getDb())
+      const runtime = agentDbRuntimeRef.current
+      const drainVaultId =
+        (await runtime?.pathService?.getLocalActiveVaultId()) ||
+        deriveLegacyVaultId(
+          (await runtime?.pathService?.getActiveVaultNameForContext().catch(() => 'Personal')) ||
+            'Personal'
+        )
+      const remaining = await drainRepo.countIngestJobs({
+        vaultId: drainVaultId,
+        stages,
+        claimableOnly: true
+      })
+      if (remaining > 0) {
+        setTimeout(() => {
+          void consumeMobileKnowledgeLane(lane, { reason: 'drain' }).catch((e) => {
+            logger.warn('[MobileKnowledgeIngestJobs] drain failed', {
+              lane,
+              error: e instanceof Error ? e.message : String(e)
+            })
+          })
+        }, 0)
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return result
 }
 
 export function scheduleConsumeMobileKnowledgeIngestJobs(reason: string): void {
