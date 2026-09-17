@@ -1,47 +1,77 @@
 import { describe, expect, it } from 'vitest'
 import {
+  KNOWLEDGE_IMPORT_PROCESS_MODES,
   knowledgeImportProcessModeLabel,
+  knowledgeImportProcessSelectOptions,
   knowledgeImportProcessTargets,
-  normalizeKnowledgeImportProcessMode
+  normalizeKnowledgeImportProcessMode,
+  shouldDeferKnowledgeImportOrganize
 } from '../import-process-mode.util'
 
 describe('normalizeKnowledgeImportProcessMode', () => {
-  it('识别三项，旧的只保存和只提取当成两者都做', () => {
+  it('should keep the three current modes and map old save-only to later', () => {
     expect(normalizeKnowledgeImportProcessMode('vector')).toBe('vector')
-    expect(normalizeKnowledgeImportProcessMode('graph')).toBe('graph')
     expect(normalizeKnowledgeImportProcessMode('both')).toBe('both')
+    expect(normalizeKnowledgeImportProcessMode('later')).toBe('later')
+    expect(normalizeKnowledgeImportProcessMode('none')).toBe('later')
+    expect(normalizeKnowledgeImportProcessMode('save-only')).toBe('later')
     expect(normalizeKnowledgeImportProcessMode('process')).toBe('both')
-    expect(normalizeKnowledgeImportProcessMode('save-only')).toBe('both')
     expect(normalizeKnowledgeImportProcessMode('extract-only')).toBe('both')
     expect(normalizeKnowledgeImportProcessMode('')).toBe('both')
     expect(normalizeKnowledgeImportProcessMode(null)).toBe('both')
   })
+
+  it('should map legacy graph-only import mode to both', () => {
+    expect(normalizeKnowledgeImportProcessMode('graph')).toBe('both')
+  })
 })
 
 describe('knowledgeImportProcessModeLabel', () => {
-  it('给出中文名称', () => {
+  it('should give chinese names including later organize', () => {
     expect(knowledgeImportProcessModeLabel('vector')).toBe('向量')
-    expect(knowledgeImportProcessModeLabel('graph')).toBe('图关系')
     expect(knowledgeImportProcessModeLabel('both')).toBe('向量和图关系')
+    expect(knowledgeImportProcessModeLabel('later')).toBe('稍后整理')
   })
 })
 
 describe('knowledgeImportProcessTargets', () => {
-  it('三项都会提取正文', () => {
+  it('should extract for vector and both, and skip all work when later', () => {
     expect(knowledgeImportProcessTargets('vector')).toEqual({
       extract: true,
       embed: true,
       graph: false
-    })
-    expect(knowledgeImportProcessTargets('graph')).toEqual({
-      extract: true,
-      embed: false,
-      graph: true
     })
     expect(knowledgeImportProcessTargets('both')).toEqual({
       extract: true,
       embed: true,
       graph: true
     })
+    expect(knowledgeImportProcessTargets('later')).toEqual({
+      extract: false,
+      embed: false,
+      graph: false
+    })
+  })
+})
+
+describe('knowledgeImportProcessSelectOptions', () => {
+  it('should not offer graph-only as a current import mode', () => {
+    expect(KNOWLEDGE_IMPORT_PROCESS_MODES).toEqual(['vector', 'both', 'later'])
+    expect(knowledgeImportProcessSelectOptions().map((item) => item.value)).toEqual([
+      'vector',
+      'both',
+      'later'
+    ])
+  })
+})
+
+describe('shouldDeferKnowledgeImportOrganize', () => {
+  it('should defer only the later organize mode', () => {
+    expect(shouldDeferKnowledgeImportOrganize('later')).toBe(true)
+    expect(shouldDeferKnowledgeImportOrganize('both')).toBe(false)
+    expect(shouldDeferKnowledgeImportOrganize('vector')).toBe(false)
+    expect(shouldDeferKnowledgeImportOrganize(normalizeKnowledgeImportProcessMode('graph'))).toBe(
+      false
+    )
   })
 })
