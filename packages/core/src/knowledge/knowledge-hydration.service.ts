@@ -18,6 +18,7 @@ import {
 import { notebookGraphDeletedShardPaths } from '../raw-data/notebook-graph-shard-key.util'
 import type { NotebookGraphIndexService } from './notebook-graph-index.service'
 import type { NotebookGraphRawManager } from './notebook-graph-raw.manager'
+import { markGraphFollowAfterEmbed } from './knowledge-ingest.service'
 
 export interface KnowledgeHydrationResult {
   notebooksUpserted: number
@@ -80,8 +81,7 @@ export class KnowledgeHydrationService {
     for (const nb of diskNotebooks) {
       liveNotebookIds.add(nb.id)
       const existingNb = await this.deps.repo.getNotebook(nb.id)
-      const diskHasSort =
-        typeof nb.sortOrder === 'number' && Number.isFinite(nb.sortOrder)
+      const diskHasSort = typeof nb.sortOrder === 'number' && Number.isFinite(nb.sortOrder)
       const diskHasTone = typeof nb.coverTone === 'string'
       const diskHasIcon = typeof nb.coverIcon === 'string'
       const diskHasImage = typeof nb.coverImage === 'string'
@@ -181,6 +181,13 @@ export class KnowledgeHydrationService {
         })
         sourcesUpserted += 1
 
+        const needsGraph =
+          embedMissing &&
+          resolveHydrationGraphDecision({
+            extractedHash,
+            extractState: extractStateBySource.get(src.id) ?? null
+          })
+
         if (decision.needsEmbed && embeddingOk && embedMissing) {
           await this.deps.repo.updateSourceStatus(src.id, 'pending', {
             extractedTextHash: extractedHash,
@@ -193,15 +200,10 @@ export class KnowledgeHydrationService {
             vaultId
           })
           embedJobsEnqueued += 1
-        }
-
-        if (
-          embedMissing &&
-          resolveHydrationGraphDecision({
-            extractedHash,
-            extractState: extractStateBySource.get(src.id) ?? null
-          })
-        ) {
+          if (needsGraph) {
+            markGraphFollowAfterEmbed(src.id)
+          }
+        } else if (needsGraph && !decision.needsEmbed) {
           await this.deps.repo.enqueueIngestJob({
             notebookId: nb.id,
             sourceId: src.id,
