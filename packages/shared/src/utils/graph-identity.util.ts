@@ -112,8 +112,8 @@ function md51(s: string): number[] {
   }
   s = s.substring(i - 64)
   const tail = new Array<number>(16).fill(0)
-  for (i = 0; i < s.length; i++) tail[i >> 2]! |= s.charCodeAt(i) << (i % 4) * 8
-  tail[i >> 2]! |= 0x80 << (i % 4) * 8
+  for (i = 0; i < s.length; i++) tail[i >> 2]! |= s.charCodeAt(i) << ((i % 4) * 8)
+  tail[i >> 2]! |= 0x80 << ((i % 4) * 8)
   if (i > 55) {
     md5cycle(state, tail)
     for (let j = 0; j < 16; j++) tail[j] = 0
@@ -163,6 +163,14 @@ export function graphIdFromDigest(hex: string): string {
 /** Trim, collapse whitespace, lower-case — logical key for entity nodes. */
 export function normalizeGraphName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+/**
+ * 节点向量用的名片文本。对齐召回、同步入库、集中补齐必须用同一份；
+ * 各写一份的话预计算向量会因空格或空摘要处理不同而静默失效。
+ */
+export function graphNodeCardText(name: string, summary?: string): string {
+  return `${name}\n${summary || ''}`.trim()
 }
 
 export type GraphExactNameHit = {

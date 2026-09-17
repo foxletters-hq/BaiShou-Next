@@ -1,7 +1,15 @@
 import { streamText } from 'ai'
-import { GRAPH_EDGE_TYPES, GRAPH_NODE_TYPES, type GraphExtractStore } from '@baishou/database/shared'
+import {
+  GRAPH_EDGE_TYPES,
+  GRAPH_NODE_TYPES,
+  type GraphExtractStore
+} from '@baishou/database/shared'
 import type { IAIProvider } from '@baishou/ai'
-import { wrapLanguageModelWithMiddlewares } from '@baishou/ai'
+import {
+  buildDefaultReasoningOptions,
+  runWithOpenAiThinkingInjectAsync,
+  wrapLanguageModelWithMiddlewares
+} from '@baishou/ai'
 import {
   logger,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
@@ -23,7 +31,9 @@ import {
   preferGraphOrigin,
   graphExtractPhaseProgress,
   type GraphExtractQueuePhase,
-  type GraphExtractQueueProgressUpdate
+  type GraphExtractQueueProgressUpdate,
+  normalizeReasoningEffortSetting,
+  type ReasoningEffortSetting
 } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
@@ -33,12 +43,10 @@ import type { DerivedFreshnessService } from '../raw-data/derived-freshness.serv
 import type { GraphEdgeRawRecord, GraphNodeRawRecord } from '../raw-data/raw-data-source.types'
 import type { GraphPendingIndexSync } from '../raw-data/graph-sync.service'
 import type { GraphExtractRawWriter } from '../raw-data/graph-extract-raw'
-import {
-  findOrCreateGraphNode,
-  resolveGraphEndpointId
-} from './find-or-create-graph-node'
+import { findOrCreateGraphNode, resolveGraphEndpointId } from './find-or-create-graph-node'
 import {
   alignEntityPool,
+  alignedEmbeddingForNodeCard,
   buildEntityAlignPrompt,
   parseEntityAlignDecisions
 } from './graph-entity-align'
@@ -96,7 +104,11 @@ type GraphExtractStreamReaderSource = {
 
 function asGraphExtractTextChunk(value: unknown): string {
   if (typeof value === 'string') return value
-  if (value && typeof value === 'object' && typeof (value as { text?: unknown }).text === 'string') {
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof (value as { text?: unknown }).text === 'string'
+  ) {
     return (value as { text: string }).text
   }
   return ''
@@ -121,7 +133,11 @@ function isGraphExtractReasoningPart(part: GraphExtractStreamPart): boolean {
 
 function isNoOutputGeneratedError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
-  if ((error as { [key: symbol]: unknown })[Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')] === true) {
+  if (
+    (error as { [key: symbol]: unknown })[
+      Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')
+    ] === true
+  ) {
     return true
   }
   const name = 'name' in error ? String(error.name) : ''
@@ -136,8 +152,8 @@ function isAsyncIterableStream(value: unknown): value is AsyncIterable<unknown> 
 function isStreamReaderSource(value: unknown): value is GraphExtractStreamReaderSource {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      typeof (value as GraphExtractStreamReaderSource).getReader === 'function'
+    typeof value === 'object' &&
+    typeof (value as GraphExtractStreamReaderSource).getReader === 'function'
   )
 }
 
@@ -208,7 +224,9 @@ export async function collectGraphExtractStreamText(opts: {
       for await (const chunk of opts.textStream!) {
         throwIfGraphExtractAborted(opts.signal)
         const piece =
-          typeof chunk === 'string' ? chunk : readGraphExtractPartText((chunk ?? {}) as GraphExtractStreamPart)
+          typeof chunk === 'string'
+            ? chunk
+            : readGraphExtractPartText((chunk ?? {}) as GraphExtractStreamPart)
         if (!piece) continue
         text += piece
         opts.onDelta?.(text.length)
@@ -275,6 +293,7 @@ export async function resolveGraphExtractLlmText(opts: {
 export interface GraphExtractLlmDeps {
   provider: IAIProvider
   modelId: string
+  reasoningEffort?: ReasoningEffortSetting
 }
 
 export type GraphExtractLlmFn = (prompt: {
@@ -549,26 +568,37 @@ export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphEx
       providerId: deps.provider.config?.id,
       modelId: deps.modelId
     })
-    const streamResult = streamText({
-      model,
-      system,
-      messages: [{ role: 'user', content: user }],
-      temperature: 0.1,
-      abortSignal: signal
+    const builtReasoning = buildDefaultReasoningOptions({
+      modelId: deps.modelId,
+      providerType: deps.provider.config?.type || 'openai',
+      baseUrl: deps.provider.config?.baseUrl,
+      effort: normalizeReasoningEffortSetting(deps.reasoningEffort)
     })
-    const textPromise = Promise.resolve(streamResult.text)
-    void textPromise.catch(() => undefined)
-    void Promise.resolve(streamResult.usage).catch(() => undefined)
-    void Promise.resolve(streamResult.response).catch(() => undefined)
-    const text = await resolveGraphExtractLlmText({
-      fullStream: streamResult.fullStream,
-      textStream: streamResult.textStream,
-      textPromise,
-      signal,
-      onDelta,
-      onReasoning
+    return runWithOpenAiThinkingInjectAsync(builtReasoning.openAiThinkingInject, async () => {
+      const streamResult = streamText({
+        model,
+        system,
+        messages: [{ role: 'user', content: user }],
+        temperature: 0.1,
+        abortSignal: signal,
+        ...(builtReasoning.providerOptions
+          ? { providerOptions: builtReasoning.providerOptions as never }
+          : {})
+      })
+      const textPromise = Promise.resolve(streamResult.text)
+      void textPromise.catch(() => undefined)
+      void Promise.resolve(streamResult.usage).catch(() => undefined)
+      void Promise.resolve(streamResult.response).catch(() => undefined)
+      const text = await resolveGraphExtractLlmText({
+        fullStream: streamResult.fullStream,
+        textStream: streamResult.textStream,
+        textPromise,
+        signal,
+        onDelta,
+        onReasoning
+      })
+      return text?.trim() || null
     })
-    return text?.trim() || null
   }
 }
 
@@ -838,13 +868,15 @@ export class GraphLlmExtractionService {
 
     const results: Array<{ filePath: string; error?: string }> = []
     const touchedNodeIds: string[] = []
+    const alignedEmbeddings: Array<{ id: string; embedding: number[]; text: string }> = []
     const shardMonths = new Set<string>()
 
     for (const draft of drafts) {
       throwIfGraphExtractAborted(signal)
       try {
-        const ids = await this.persistDraft(draft, aligned, now)
-        touchedNodeIds.push(...ids)
+        const persisted = await this.persistDraft(draft, aligned, now)
+        touchedNodeIds.push(...persisted.nodeIds)
+        alignedEmbeddings.push(...persisted.embeddings)
         shardMonths.add(draft.shardMonth)
         results.push({ filePath: draft.filePath })
       } catch (e) {
@@ -859,7 +891,15 @@ export class GraphLlmExtractionService {
       await this.graphManager.compactShard('edges', month)
     }
 
-    await this.graphSync.syncPendingIndex({ absentSweep: 'shard-present' })
+    const precomputedNodeEmbeddings = new Map<string, { embedding: number[]; text: string }>()
+    for (const item of alignedEmbeddings) {
+      if (precomputedNodeEmbeddings.has(item.id)) continue
+      precomputedNodeEmbeddings.set(item.id, { embedding: item.embedding, text: item.text })
+    }
+    await this.graphSync.syncPendingIndex({
+      absentSweep: 'shard-present',
+      precomputedNodeEmbeddings
+    })
     if (touchedNodeIds.length > 0) {
       const uniqueIds = [...new Set(touchedNodeIds)]
       await this.repo.recountMentions(vaultId, uniqueIds)
@@ -879,13 +919,17 @@ export class GraphLlmExtractionService {
     draft: GraphExtractDraft,
     aligned: Awaited<ReturnType<typeof alignEntityPool>>,
     now: number
-  ): Promise<string[]> {
+  ): Promise<{
+    nodeIds: string[]
+    embeddings: Array<{ id: string; embedding: number[]; text: string }>
+  }> {
     const { vaultId, vaultName, filePath, hash, dateStr, shardMonth, validFrom } = draft
     const sourceRef = dateStr || filePath
     const nameToId = new Map<string, string>()
     const nodeRecords: GraphNodeRawRecord[] = []
     const edgeRecords: GraphEdgeRawRecord[] = []
     const touchedNodeIds: string[] = []
+    const alignedEmbeddings: Array<{ id: string; embedding: number[]; text: string }> = []
 
     const entryName = dateStr || '日记'
     const legacyEntryId = legacyEntryNodeIdForFilePath(filePath)
@@ -928,6 +972,8 @@ export class GraphLlmExtractionService {
       touchedNodeIds.push(created.id)
       nameToId.set(normalizeGraphName(ent.name), created.id)
       if (hit?.canonicalName) nameToId.set(normalizeGraphName(hit.canonicalName), created.id)
+      const reusable = alignedEmbeddingForNodeCard(hit, created.record.name, created.record.summary)
+      if (reusable) alignedEmbeddings.push({ id: created.id, ...reusable })
     }
 
     const typeByName = new Map<string, string>()
@@ -1047,7 +1093,7 @@ export class GraphLlmExtractionService {
       exceptIds: newEdgeIds,
       shardMonth
     })
-    return touchedNodeIds
+    return { nodeIds: touchedNodeIds, embeddings: alignedEmbeddings }
   }
 
   private async assertEmbeddingConfigured(): Promise<void> {

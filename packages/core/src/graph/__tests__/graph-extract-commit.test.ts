@@ -1,18 +1,26 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as fs from 'node:fs/promises'
+import * as os from 'node:os'
+import * as path from 'node:path'
 import {
   GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR,
   GRAPH_EXTRACT_EMBEDDING_REQUIRED_ERROR,
   GRAPH_EXTRACT_EMPTY_RESPONSE_ERROR,
   entryNodeIdForFilePath,
+  graphNodeCardText,
   graphNodeIdForEntity,
   legacyEntryNodeIdForFilePath
 } from '@baishou/shared'
+import { NodeFileSystem } from '../../fs/node-file-system'
+import { DerivedFreshnessService } from '../../raw-data/derived-freshness.service'
+import { GraphSyncService } from '../../raw-data/graph-sync.service'
+import { GraphRawManager } from '../../raw-data/managers/graph.raw-manager'
 import { GraphLlmExtractionService } from '../graph-llm-extraction.service'
 
 const FILE = 'Journal/2026/03/15.md'
 
 function createService(overrides?: {
-    llm?: (input: {
+  llm?: (input: {
     system: string
     user: string
     signal?: AbortSignal
@@ -65,8 +73,12 @@ function createService(overrides?: {
     overrides?.llm ??
       (async () =>
         JSON.stringify({
-          entities: [{ name: '小张', type: 'person', aliases: [], summary: '同事', confidence: 90 }],
-          edges: [{ from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }]
+          entities: [
+            { name: '小张', type: 'person', aliases: [], summary: '同事', confidence: 90 }
+          ],
+          edges: [
+            { from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }
+          ]
         })),
     overrides?.alignDeps
   )
@@ -79,6 +91,15 @@ function createService(overrides?: {
     recountMentions,
     getNodeById
   }
+}
+
+function precomputedFromSync(
+  syncPendingIndex: ReturnType<typeof vi.fn>
+): Map<string, { embedding: number[]; text: string }> {
+  const opts = syncPendingIndex.mock.calls[0]?.[0] as
+    | { precomputedNodeEmbeddings?: Map<string, { embedding: number[]; text: string }> }
+    | undefined
+  return opts?.precomputedNodeEmbeddings ?? new Map()
 }
 
 describe('GraphLlmExtractionService draft/commit', () => {
@@ -111,7 +132,9 @@ describe('GraphLlmExtractionService draft/commit', () => {
       }
       return JSON.stringify({
         entities: [{ name: '小张', type: 'person', aliases: [], summary: '同事', confidence: 90 }],
-        edges: [{ from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }]
+        edges: [
+          { from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }
+        ]
       })
     })
     const { service, writeRecord } = createService({
@@ -210,8 +233,12 @@ describe('GraphLlmExtractionService draft/commit', () => {
         onDelta?.(12)
         onDelta?.(40)
         return JSON.stringify({
-          entities: [{ name: '小张', type: 'person', aliases: [], summary: '同事', confidence: 90 }],
-          edges: [{ from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }]
+          entities: [
+            { name: '小张', type: 'person', aliases: [], summary: '同事', confidence: 90 }
+          ],
+          edges: [
+            { from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }
+          ]
         })
       }
     })
@@ -354,7 +381,222 @@ describe('GraphLlmExtractionService draft/commit', () => {
     const remapped = writeRecord.mock.calls
       .map((call) => call[0] as { id?: string; fromId?: string; toId?: string })
       .find((record) => record.id === 'e-user')
-    expect(remapped).toEqual(expect.objectContaining({ id: 'e-user', fromId: 'person-1', toId: entryId }))
+    expect(remapped).toEqual(
+      expect.objectContaining({ id: 'e-user', fromId: 'person-1', toId: entryId })
+    )
     expect(removeRecordsFromShard).toHaveBeenCalledWith('nodes', '2026-03', [legacyId])
+  })
+
+  it('should pass the alignment vector to sync when creating a new node', async () => {
+    const vaultId = 'vlt_aaaaaaaaaaaaaaaa'
+    const personId = graphNodeIdForEntity(vaultId, 'person', '小张')
+    const embedQuery = vi.fn(async () => [1, 0])
+    const { service, syncPendingIndex } = createService({
+      alignDeps: {
+        embedQuery,
+        modelId: 'embed-v1'
+      }
+    })
+    const draft = await service.extractDraft({
+      vaultId,
+      vaultName: 'Personal',
+      filePath: FILE,
+      contentHash: 'hash-1',
+      selfName: '小明'
+    })
+    const results = await service.commitDrafts([draft])
+    expect(results[0]?.error).toBeUndefined()
+    expect(precomputedFromSync(syncPendingIndex).get(personId)).toEqual({
+      embedding: [1, 0],
+      text: graphNodeCardText('小张', '同事')
+    })
+  })
+
+  it('should not pass the incoming vector when merging onto a node whose card changed', async () => {
+    const vaultId = 'vlt_aaaaaaaaaaaaaaaa'
+    const existingId = graphNodeIdForEntity(vaultId, 'person', '张三')
+    const llm = vi.fn(async (input: { system: string; user: string }) => {
+      if (input.system.includes('实体对齐')) {
+        return JSON.stringify({ merges: [{ incoming: 'i1', existing: 'e1' }] })
+      }
+      return JSON.stringify({
+        entities: [{ name: '小张', type: 'person', aliases: [], summary: '同事', confidence: 90 }],
+        edges: [
+          { from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }
+        ]
+      })
+    })
+    const { service, syncPendingIndex } = createService({
+      llm,
+      alignDeps: {
+        embedQuery: async () => [1, 0],
+        modelId: 'embed-v1'
+      },
+      searchNodesByVector: vi.fn(async () => [
+        {
+          id: existingId,
+          name: '张三',
+          aliases: ['三哥'],
+          summary: '老朋友',
+          nodeType: 'person',
+          distance: 0.35
+        }
+      ]),
+      getNodeById: vi.fn(async (id: string) => {
+        if (id !== existingId) return null
+        return {
+          id: existingId,
+          vaultId,
+          nodeType: 'person',
+          name: '张三',
+          aliases: ['三哥'],
+          summary: '老朋友',
+          propsJson: '{}',
+          mentionCount: 1,
+          firstSeenAt: 1,
+          lastSeenAt: 1,
+          origin: 'ai',
+          shardMonth: '2026-03',
+          reviewStatus: 'approved',
+          createdAt: 1,
+          updatedAt: 1,
+          deletedAt: null
+        }
+      })
+    })
+    const draft = await service.extractDraft({
+      vaultId,
+      vaultName: 'Personal',
+      filePath: FILE,
+      contentHash: 'hash-1',
+      selfName: '小明'
+    })
+    const results = await service.commitDrafts([draft])
+    expect(results[0]?.error).toBeUndefined()
+    expect(precomputedFromSync(syncPendingIndex).has(existingId)).toBe(false)
+  })
+
+  it('should skip precomputed embedding when a name hit never computed a vector', async () => {
+    const vaultId = 'vlt_aaaaaaaaaaaaaaaa'
+    const personId = graphNodeIdForEntity(vaultId, 'person', '小张')
+    const embedQuery = vi.fn()
+    const existing = {
+      id: personId,
+      vaultId,
+      nodeType: 'person',
+      name: '小张',
+      aliases: ['小张'],
+      summary: '同事',
+      propsJson: '{}',
+      mentionCount: 1,
+      firstSeenAt: 1,
+      lastSeenAt: 1,
+      origin: 'ai',
+      shardMonth: '2026-03',
+      reviewStatus: 'approved',
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null
+    }
+    const { service, syncPendingIndex } = createService({
+      alignDeps: {
+        embedQuery,
+        modelId: 'embed-v1'
+      },
+      findNodeByNameOrAlias: vi.fn(async () => existing),
+      getNodeById: vi.fn(async (id: string) => (id === personId ? existing : null))
+    })
+    const draft = await service.extractDraft({
+      vaultId,
+      vaultName: 'Personal',
+      filePath: FILE,
+      contentHash: 'hash-1',
+      selfName: '小明'
+    })
+    const results = await service.commitDrafts([draft])
+    expect(results[0]?.error).toBeUndefined()
+    expect(embedQuery).not.toHaveBeenCalled()
+    expect(precomputedFromSync(syncPendingIndex).has(personId)).toBe(false)
+  })
+})
+
+describe('GraphLlmExtractionService commitDrafts embed count', () => {
+  let tmpDir: string
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'graph-extract-embed-'))
+  })
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true })
+  })
+
+  it('should call embedQuery only once for the same new node during one commitDrafts', async () => {
+    const vaultId = 'vlt_aaaaaaaaaaaaaaaa'
+    const personId = graphNodeIdForEntity(vaultId, 'person', '小张')
+    const personCard = graphNodeCardText('小张', '同事')
+    const embedQuery = vi.fn(async (_text: string) => [1, 0])
+    const freshness = new DerivedFreshnessService()
+    freshness.bindPendingReextract({
+      loadExtractHashes: async () => new Map(),
+      listJournals: async () => [],
+      writeExtractState: async () => undefined
+    })
+    const pathService = {
+      getGraphBaseDirectory: async () => path.join(tmpDir, 'Graph'),
+      getActiveVaultPath: async () => path.join(tmpDir, 'vault')
+    }
+    const graphManager = new GraphRawManager(pathService as never, new NodeFileSystem(), freshness)
+    const applyRawNode = vi.fn(async (row: { id: string }) => ({ id: row.id }))
+    const repo = {
+      findNodeByNameOrAlias: vi.fn(async () => null),
+      getNodeById: vi.fn(async () => null),
+      searchNodesByVector: vi.fn(async () => []),
+      recountMentions: vi.fn(async () => undefined),
+      applyRawNode,
+      applyRawEdge: vi.fn(async () => undefined),
+      softDeleteNode: vi.fn(async () => undefined),
+      softDeleteEdge: vi.fn(async () => undefined),
+      listLiveNodeRefs: vi.fn(async () => []),
+      listLiveEdgeRefs: vi.fn(async () => []),
+      listNodeIds: vi.fn(async () => []),
+      listEdgeIds: vi.fn(async () => [])
+    }
+    const service = new GraphLlmExtractionService(
+      graphManager,
+      freshness,
+      repo as never,
+      new GraphSyncService(graphManager, repo as never, { embedQuery, modelId: 'embed-v1' }),
+      pathService as never,
+      {
+        exists: async () => true,
+        readFile: async () => '今天和小张吃饭'
+      } as never,
+      async () =>
+        JSON.stringify({
+          entities: [
+            { name: '小张', type: 'person', aliases: [], summary: '同事', confidence: 90 }
+          ],
+          edges: [
+            { from: '小张', to: '2026-03-15', type: 'mentions', excerpt: '吃饭', confidence: 80 }
+          ]
+        }),
+      { embedQuery, modelId: 'embed-v1' }
+    )
+
+    const draft = await service.extractDraft({
+      vaultId,
+      vaultName: 'Personal',
+      filePath: FILE,
+      contentHash: 'hash-1',
+      selfName: '小明'
+    })
+    const results = await service.commitDrafts([draft])
+    expect(results[0]?.error).toBeUndefined()
+    const personEmbedCalls = embedQuery.mock.calls.filter((call) => call[0] === personCard)
+    expect(personEmbedCalls).toHaveLength(1)
+    expect(applyRawNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: personId, embedding: [1, 0] })
+    )
   })
 })

@@ -1,5 +1,5 @@
 import type { GraphSyncApply } from '@baishou/database/shared'
-import { isVaultId } from '@baishou/shared'
+import { graphNodeCardText, isVaultId } from '@baishou/shared'
 import type { GraphEdgeRawRecord, GraphNodeRawRecord } from './raw-data-source.types'
 import { collapseJsonlById } from './stores/monthly-jsonl.store'
 import type { GraphIndexSource } from './graph-index-source'
@@ -14,10 +14,17 @@ export interface GraphSyncEmbedder {
   modelId?: string
 }
 
+export type GraphPrecomputedNodeEmbedding = {
+  embedding: number[]
+  text: string
+}
+
 export interface GraphPendingIndexSyncOpts {
   absentSweep?: GraphAbsentSweepMode
   deletedShardPaths?: string[]
   vaultId?: string
+  /** 对齐阶段已算出的节点向量。名片文本对得上才用，对不上当没传。 */
+  precomputedNodeEmbeddings?: ReadonlyMap<string, GraphPrecomputedNodeEmbedding>
 }
 
 export interface GraphPendingIndexSync {
@@ -99,20 +106,27 @@ export class GraphSyncService implements GraphPendingIndexSync {
             continue
           }
           let embedding: number[] | null | undefined
-          const existing =
-            typeof this.repo.getNodeById === 'function'
-              ? await this.repo.getNodeById(raw.id, vaultId)
-              : null
-          const reuseEmbed =
-            !!existing &&
-            !!this.embedder?.modelId &&
-            existing.modelId === this.embedder.modelId &&
-            (existing.dimension ?? 0) > 0
-          if (this.embedder?.embedQuery && !reuseEmbed) {
-            try {
-              embedding = await this.embedder.embedQuery(`${raw.name}\n${raw.summary || ''}`.trim())
-            } catch {
-              embedding = null
+          const cardText = graphNodeCardText(raw.name, raw.summary)
+          const precomputed = opts?.precomputedNodeEmbeddings?.get(raw.id)
+          const precomputedMatch = !!precomputed?.embedding.length && precomputed.text === cardText
+          if (precomputedMatch) {
+            embedding = precomputed.embedding
+          } else {
+            const existing =
+              typeof this.repo.getNodeById === 'function'
+                ? await this.repo.getNodeById(raw.id, vaultId)
+                : null
+            const reuseEmbed =
+              !!existing &&
+              !!this.embedder?.modelId &&
+              existing.modelId === this.embedder.modelId &&
+              (existing.dimension ?? 0) > 0
+            if (this.embedder?.embedQuery && !reuseEmbed) {
+              try {
+                embedding = await this.embedder.embedQuery(cardText)
+              } catch {
+                embedding = null
+              }
             }
           }
           const applied = await this.repo.applyRawNode({

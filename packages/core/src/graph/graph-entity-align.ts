@@ -1,4 +1,6 @@
-import { entityAlignKey, graphCosineDistanceToSimilarity } from '@baishou/shared'
+import { entityAlignKey, graphCosineDistanceToSimilarity, graphNodeCardText } from '@baishou/shared'
+
+export { graphNodeCardText }
 
 /** 只把相似度大于 50% 的库内节点给模型看；合不合并由二次 LLM 决定。 */
 const CANDIDATE_MIN_SIMILARITY = 0.5
@@ -28,6 +30,10 @@ export type AlignedEntity = {
   summary: string
   reused: boolean
   mergedBy: 'name' | 'llm' | 'create'
+  /** 对齐阶段为召回算出的向量；名字命中快路没有算过，不带。 */
+  embedding?: number[]
+  /** 算上述向量时用的名片文本。与节点最终名片逐字相同才允许落库。 */
+  embedText?: string
 }
 
 export type EntityAlignJudgeIncoming = {
@@ -86,7 +92,22 @@ function mergeAliasList(existing: string[], incoming: string[]): string[] {
 }
 
 function embedText(entity: AlignableEntity): string {
-  return `${entity.name}\n${entity.summary || ''}`.trim()
+  return graphNodeCardText(entity.name, entity.summary)
+}
+
+/**
+ * 对齐算出的向量只有在名片文本与节点最终落库名片逐字相同时才能交给同步。
+ * 合并到已有节点时规范名或摘要可能已变，这时必须交给后面的集中补齐，不能把旧称呼的向量写进去。
+ */
+export function alignedEmbeddingForNodeCard(
+  aligned: Pick<AlignedEntity, 'embedding' | 'embedText'> | undefined,
+  nodeName: string,
+  nodeSummary: string
+): { embedding: number[]; text: string } | null {
+  if (!aligned?.embedding?.length || aligned.embedText == null) return null
+  const card = graphNodeCardText(nodeName, nodeSummary)
+  if (aligned.embedText !== card) return null
+  return { embedding: aligned.embedding, text: aligned.embedText }
 }
 
 function clipSummary(text: string): string {
@@ -100,7 +121,10 @@ function uniqueEntities(entities: AlignableEntity[]): Map<string, AlignableEntit
   for (const raw of entities) {
     const name = String(raw.name || '').trim()
     if (!name) continue
-    const nodeType = String(raw.nodeType || 'topic').trim().toLowerCase() || 'topic'
+    const nodeType =
+      String(raw.nodeType || 'topic')
+        .trim()
+        .toLowerCase() || 'topic'
     const key = entityAlignKey(nodeType, name)
     const prev = unique.get(key)
     if (!prev) {
@@ -139,36 +163,38 @@ export function buildEntityAlignPrompt(input: EntityAlignJudgeInput): {
 
 ## incoming
 ${JSON.stringify(
-      input.incoming.map((item) => ({
-        ref: item.ref,
-        type: item.nodeType,
-        name: item.name,
-        aliases: item.aliases,
-        summary: clipSummary(item.summary)
-      })),
-      null,
-      0
-    )}
+  input.incoming.map((item) => ({
+    ref: item.ref,
+    type: item.nodeType,
+    name: item.name,
+    aliases: item.aliases,
+    summary: clipSummary(item.summary)
+  })),
+  null,
+  0
+)}
 
 ## existing
 ${JSON.stringify(
-      input.existing.map((item) => ({
-        ref: item.ref,
-        type: item.nodeType,
-        name: item.name,
-        aliases: item.aliases,
-        summary: clipSummary(item.summary)
-      })),
-      null,
-      0
-    )}
+  input.existing.map((item) => ({
+    ref: item.ref,
+    type: item.nodeType,
+    name: item.name,
+    aliases: item.aliases,
+    summary: clipSummary(item.summary)
+  })),
+  null,
+  0
+)}
 
 ## 输出格式（严格 JSON）
 {"merges":[{"incoming":"i1","existing":"e1"},{"incoming":"i2","same_as":"i1"}]}`
   }
 }
 
-export function parseEntityAlignDecisions(text: string | null | undefined): EntityAlignJudgeDecision[] | null {
+export function parseEntityAlignDecisions(
+  text: string | null | undefined
+): EntityAlignJudgeDecision[] | null {
   if (!text?.trim()) return null
   const json = extractFirstJsonObject(text)
   if (!json) return null
@@ -283,7 +309,7 @@ export async function alignEntityPool(
   }
 
   for (const item of unresolved) {
-    if (!out.has(item.key)) assignCreate(item, lookup, out)
+    if (!out.has(item.key)) assignCreate(item, lookup, out, vectors)
   }
   return out
 }
@@ -340,7 +366,7 @@ async function alignWithLlm(
   }))
 
   if (incoming.length === 1 && existing.length === 0) {
-    assignCreate(unresolved[0]!, lookup, out)
+    assignCreate(unresolved[0]!, lookup, out, vectors)
     return true
   }
 
@@ -425,7 +451,10 @@ async function alignWithLlm(
           mergedBy: cluster.length > 1 ? 'llm' : 'create'
         }
     for (const item of cluster) {
-      out.set(item.key, { ...aligned, key: item.key })
+      out.set(
+        item.key,
+        withAlignEmbedding({ ...aligned, key: item.key }, item.entity, vectors.get(item.key))
+      )
     }
   }
   return true
@@ -434,17 +463,34 @@ async function alignWithLlm(
 function assignCreate(
   item: { key: string; entity: AlignableEntity },
   lookup: EntityAlignLookup,
-  out: Map<string, AlignedEntity>
+  out: Map<string, AlignedEntity>,
+  vectors?: Map<string, number[]>
 ) {
-  out.set(item.key, {
-    key: item.key,
-    id: lookup.nodeIdForEntity(item.entity.nodeType, item.entity.name),
-    canonicalName: item.entity.name,
-    aliases: mergeAliasList([], [item.entity.name, ...(item.entity.aliases ?? [])]),
-    summary: item.entity.summary ?? '',
-    reused: false,
-    mergedBy: 'create'
-  })
+  out.set(
+    item.key,
+    withAlignEmbedding(
+      {
+        key: item.key,
+        id: lookup.nodeIdForEntity(item.entity.nodeType, item.entity.name),
+        canonicalName: item.entity.name,
+        aliases: mergeAliasList([], [item.entity.name, ...(item.entity.aliases ?? [])]),
+        summary: item.entity.summary ?? '',
+        reused: false,
+        mergedBy: 'create'
+      },
+      item.entity,
+      vectors?.get(item.key)
+    )
+  )
+}
+
+function withAlignEmbedding(
+  aligned: AlignedEntity,
+  entity: AlignableEntity,
+  vector: number[] | undefined
+): AlignedEntity {
+  if (!vector?.length) return aligned
+  return { ...aligned, embedding: vector, embedText: embedText(entity) }
 }
 
 function shouldRecallAlignCandidate(distance: number): boolean {
