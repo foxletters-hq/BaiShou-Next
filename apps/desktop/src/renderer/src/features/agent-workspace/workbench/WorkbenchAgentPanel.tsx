@@ -8,144 +8,44 @@ import React, {
   useState
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Cloud, ChevronDown, MessagesSquare, Plus, Sparkles } from 'lucide-react'
-import type {
-  AgentGateRequest,
-  AgentWorkspaceEntry,
-  AgentWorkspaceSessionListItem,
-  PromptFileRef,
-  WorkspaceChangeEntry
-} from '@baishou/shared'
 import {
   formatDialogueModelLabel,
   isConfiguredProviderId,
   skillToPromptShortcut
 } from '@baishou/shared'
 import {
-  InputBar,
-  SessionContextUsageRing,
   ShortcutManagerDialog,
   getProviderIcon,
   resolveDesktopAssistantAvatarSrc,
   useTheme,
-  type AgentGateReplyPayload,
   type InputBarRef,
   type PromptShortcut
 } from '@baishou/ui'
 import { usePromptShortcutStore } from '@baishou/store'
 import { usePersistedSearchMode } from '../../agent/hooks/usePersistedSearchMode'
-import chromeStyles from '../../agent/components/AgentChatChrome.module.css'
 import {
   AgentWorkspaceMessageList,
   type AgentWorkspaceMessageListHandle
 } from '../components/AgentWorkspaceMessageList'
-import type { WorkspaceBubbleActions } from '../components/workspace-bubble-actions.types'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 import { useWorkbenchInputPlaceholder } from '../utils/workbench-input-placeholder'
 import { createWorkspaceComposerDropResolver } from '../utils/workspace-composer-drop.util'
-import { useWorkbenchAgentPanelDrop } from './useWorkbenchAgentPanelDrop'
 import { searchWorkspaceFileNames } from '../utils/workspace-file-mention-search.util'
+import type {
+  WorkbenchAgentPanelHandle,
+  WorkbenchAgentPanelProps
+} from './WorkbenchAgentPanel.types'
+import { useWorkbenchAgentPanelDrop } from './useWorkbenchAgentPanelDrop'
 import { WorkbenchSessionView } from './WorkbenchSessionView'
-import { KnowledgeMountHint } from '../../knowledge/KnowledgeMountHint'
 import { WorkbenchNotebookMountDialog } from './WorkbenchNotebookMountDialog'
+import { WorkbenchAgentPanelHeader } from './WorkbenchAgentPanelHeader'
+import { WorkbenchAgentComposer, WorkbenchAgentComposerFooter } from './WorkbenchAgentComposer'
 import styles from './WorkbenchAgentPanel.module.css'
 
-export interface WorkbenchAgentPanelProps {
-  width: number
-  workspace: AgentWorkspaceEntry | null
-  hasWorkspace: boolean
-  hasConfiguredModel: boolean
-  sessionId?: string
-  sessions: AgentWorkspaceSessionListItem[]
-  loadingSessions?: boolean
-  onSelectChange: (change: WorkspaceChangeEntry) => void
-  onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
-  sessionsViewActive?: boolean
-  onToggleSessionsView?: () => void
-  onNewSession: () => void
-  onSelectSession: (sessionId: string) => void
-  onDeleteSession: (sessionId: string) => void
-  onRenameSession?: (sessionId: string, title: string) => void
-  recentFilePaths?: string[]
-  onOpenFile?: (relativePath: string, options?: { line?: number; isDirectory?: boolean }) => void
-  chrome: {
-    currentAssistant?: { id: string; name: string; avatarPath?: string | null }
-    currentProviderId: string
-    currentModelId: string
-    providers: Array<{
-      id: string
-      name?: string
-      type?: string
-      models?: string[]
-      enabledModels?: string[]
-    }>
-    totalInputTokens: number
-    totalOutputTokens: number
-    totalCacheReadInputTokens: number
-    totalCacheWriteInputTokens: number
-    estimatedCost: number
-    onAssistantClick: () => void
-    onModelClick: (anchorRect?: DOMRect | null) => void
-    effortSuffix?: string | null
-    pricingLastUpdated?: Date | null
-    onRefreshPricing?: () => Promise<{ success: boolean; error?: string }>
-  }
-  chat: {
-    messages: unknown[]
-    pendingAssistantMsg: unknown
-    hasMore?: boolean
-    loadMore?: () => Promise<void>
-  }
-  stream: {
-    text: string
-    reasoning: string
-    timeline?: import('@baishou/shared').AgentStreamTimelineItem[]
-    isStreaming: boolean
-    isBridgeActive?: boolean
-    error: string | null
-    activeToolName: string | null
-    completedTools: unknown[]
-    failedTools: unknown[]
-    stopChat: () => void
-  }
-  assistantProfile?: { name: string; avatarPath?: string | null; emoji?: string | null }
-  onSend: (
-    text: string,
-    attachments?: unknown[],
-    searchMode?: boolean,
-    meta?: {
-      displayText?: string
-      skillRefs?: Array<{ command: string; content: string }>
-      fileRefs?: PromptFileRef[]
-      delivery?: 'steer' | 'queue'
-    }
-  ) => boolean | void | Promise<boolean | void>
-  onEditResend?: (
-    userMessageId: string,
-    newText: string,
-    meta?: { skillRefs?: Array<{ command: string; content: string }>; fileRefs?: PromptFileRef[] }
-  ) => boolean | Promise<boolean>
-  bubbleActions?: WorkspaceBubbleActions
-  onAssistantTap: () => void
-  assistantName: string
-  /** 回滚成功后回填输入框 */
-  composerRefill?: {
-    text: string
-    skillRefs?: Array<{ command: string; content: string }>
-    nonce: number
-  } | null
-  /** 输入区上方插槽（如 Agent Gate Dock） */
-  gateSlot?: React.ReactNode
-  /** 有待确认 Gate 时禁用 composer */
-  gateBlocksComposer?: boolean
-  pendingAsk?: AgentGateRequest | null
-  isAskReplying?: boolean
-  onAskReply?: (payload: AgentGateReplyPayload) => void | Promise<void>
-}
-
-export interface WorkbenchAgentPanelHandle {
-  addFileContext: (ref: PromptFileRef & { filePath?: string }) => void
-}
+export type {
+  WorkbenchAgentPanelHandle,
+  WorkbenchAgentPanelProps
+} from './WorkbenchAgentPanel.types'
 
 export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, WorkbenchAgentPanelProps>(
   function WorkbenchAgentPanel(
@@ -371,71 +271,25 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
     }, [sessionId, sessions, sessionsViewActive, t])
 
     const footer = (
-      <div className={styles.metaRow}>
-        <div className={styles.metaLeading}>
-          <button
-            type="button"
-            className={styles.metaChip}
-            onClick={onAssistantTap}
-            aria-haspopup="dialog"
-            aria-label={t('agent.select_assistant', '选择伙伴')}
-            title={t('agent.select_assistant', '选择伙伴')}
-          >
-            <span className={styles.assistantAvatar} aria-hidden>
-              <img
-                key={
-                  chrome.currentAssistant?.avatarPath ?? chrome.currentAssistant?.id ?? 'default'
-                }
-                src={assistantAvatar}
-                alt=""
-              />
-            </span>
-            <span className={styles.metaChipLabel}>{displayAssistantName}</span>
-            <ChevronDown size={12} strokeWidth={2} aria-hidden />
-          </button>
-        </div>
-        <div className={styles.metaTrailing}>
-          <button
-            ref={modelBtnRef}
-            type="button"
-            className={`${chromeStyles.modelSwitcherTrigger} ${chromeStyles.modelSwitcherInMeta}`}
-            onClick={() =>
-              chrome.onModelClick(modelBtnRef.current?.getBoundingClientRect() ?? null)
-            }
-            aria-label={t('models.switch_model', '切换模型')}
-            title={displayModelName}
-          >
-            <span className={chromeStyles.modelProviderIcon} aria-hidden>
-              {providerIconUrl ? (
-                <img src={providerIconUrl} alt="" />
-              ) : noModelSelected ? (
-                <Sparkles size={15} />
-              ) : (
-                <Cloud size={15} />
-              )}
-            </span>
-            <span className={chromeStyles.modelName}>{displayModelName}</span>
-            {chrome.effortSuffix ? (
-              <span className={chromeStyles.modelEffort}>{chrome.effortSuffix}</span>
-            ) : null}
-            <span className={chromeStyles.chevron}>▼</span>
-          </button>
-          <SessionContextUsageRing
-            hidden={!hasWorkspace}
-            messages={workspaceMessages}
-            modelId={chrome.currentModelId}
-            totals={{
-              totalInputTokens: chrome.totalInputTokens,
-              totalOutputTokens: chrome.totalOutputTokens,
-              totalCacheReadInputTokens: chrome.totalCacheReadInputTokens,
-              totalCacheWriteInputTokens: chrome.totalCacheWriteInputTokens,
-              estimatedCost: chrome.estimatedCost
-            }}
-            pricingLastUpdated={chrome.pricingLastUpdated}
-            onRefreshPricing={chrome.onRefreshPricing}
-          />
-        </div>
-      </div>
+      <WorkbenchAgentComposerFooter
+        onAssistantTap={onAssistantTap}
+        assistantAvatar={assistantAvatar}
+        assistantAvatarKey={
+          chrome.currentAssistant?.avatarPath ?? chrome.currentAssistant?.id ?? 'default'
+        }
+        displayAssistantName={displayAssistantName}
+        modelBtnRef={modelBtnRef}
+        onModelClick={() =>
+          chrome.onModelClick(modelBtnRef.current?.getBoundingClientRect() ?? null)
+        }
+        providerIconUrl={providerIconUrl}
+        noModelSelected={noModelSelected}
+        displayModelName={displayModelName}
+        effortSuffix={chrome.effortSuffix}
+        hasWorkspace={hasWorkspace}
+        workspaceMessages={workspaceMessages}
+        chrome={chrome}
+      />
     )
 
     return (
@@ -449,34 +303,13 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
             {t('workbench.drop_into_chat', '放到对话中')}
           </div>
         ) : null}
-        <div className={styles.header}>
-          <span className={styles.headerTitle} title={headerTitle}>
-            {headerTitle}
-          </span>
-          {hasWorkspace ? (
-            <div className={styles.headerActions}>
-              <button
-                type="button"
-                className={styles.headerIconBtn}
-                title={t('agent_workspace.new_session', '新建会话')}
-                onClick={onNewSession}
-              >
-                <Plus size={16} strokeWidth={1.75} aria-hidden />
-              </button>
-              {onToggleSessionsView ? (
-                <button
-                  type="button"
-                  className={`${styles.headerIconBtn} ${sessionsViewActive ? styles.headerIconBtnActive : ''}`}
-                  title={t('workbench.session_history', '历史会话')}
-                  aria-pressed={sessionsViewActive}
-                  onClick={onToggleSessionsView}
-                >
-                  <MessagesSquare size={16} strokeWidth={1.75} aria-hidden />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        <WorkbenchAgentPanelHeader
+          headerTitle={headerTitle}
+          hasWorkspace={hasWorkspace}
+          sessionsViewActive={sessionsViewActive}
+          onNewSession={onNewSession}
+          onToggleSessionsView={onToggleSessionsView}
+        />
 
         {sessionsViewActive ? (
           <div className={styles.sessionsBody}>
@@ -529,81 +362,26 @@ export const WorkbenchAgentPanel = forwardRef<WorkbenchAgentPanelHandle, Workben
             </div>
 
             {hasWorkspace ? (
-              <div className={styles.inputArea}>
-                {!hasConfiguredModel ? (
-                  <p className={styles.noModelHint} role="status">
-                    {t(
-                      'agent_workspace.no_model_send_hint',
-                      '请先选择一个对话模型，然后才能发送消息。'
-                    )}
-                  </p>
-                ) : null}
-                {gateSlot}
-                {pendingQueue.length > 0 ? (
-                  <div className={styles.runtimeQueueBar} role="status">
-                    <ul className={styles.pendingList}>
-                      {pendingQueue.map((item) => (
-                        <li key={item.id} className={styles.pendingItem}>
-                          <span className={styles.pendingText}>
-                            {item.text.trim()
-                              ? item.text.slice(0, 80)
-                              : t('input.upload_attachment', '上传附件')}
-                          </span>
-                          <button
-                            type="button"
-                            className={styles.pendingCancel}
-                            onClick={async () => {
-                              await window.api.agentWorkspace.cancelPendingInput(item.id)
-                              window.dispatchEvent(
-                                new CustomEvent('baishou:workspace-pending-inputs-changed', {
-                                  detail: { sessionId }
-                                })
-                              )
-                              window.dispatchEvent(
-                                new CustomEvent('baishou:workspace-messages-changed', {
-                                  detail: { sessionId }
-                                })
-                              )
-                            }}
-                          >
-                            {t('common.cancel', '取消')}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                <KnowledgeMountHint
-                  sessionId={sessionId}
-                  onOpen={() => setNotebookMountOpen(true)}
-                />
-                <InputBar
-                  ref={inputBarRef}
-                  isLoading={stream.isStreaming}
-                  allowSendWhileLoading
-                  attachmentIntake="workspace"
-                  resolveDropAttachments={resolveDropAttachments}
-                  fileMention={fileMention}
-                  composerBlocked={!hasConfiguredModel || gateBlocksComposer}
-                  onSend={async (text, attachments, searchMode, meta) => {
-                    messageListRef.current?.beginFollowIfAtBottom()
-                    const accepted = await onSend(text, attachments, searchMode, {
-                      ...meta,
-                      delivery: stream.isStreaming ? 'queue' : undefined
-                    })
-                    return accepted !== false
-                  }}
-                  onStop={stream.stopChat}
-                  shortcuts={composerShortcuts}
-                  createSkillScope="workspace"
-                  onManageShortcuts={() => setShowShortcutManager(true)}
-                  searchMode={searchMode}
-                  onToggleSearchMode={toggleSearchMode}
-                  placeholder={inputPlaceholder}
-                  onOpenNotebookMount={() => setNotebookMountOpen(true)}
-                  footer={footer}
-                />
-              </div>
+              <WorkbenchAgentComposer
+                hasConfiguredModel={hasConfiguredModel}
+                gateSlot={gateSlot}
+                pendingQueue={pendingQueue}
+                sessionId={sessionId}
+                onOpenNotebookMount={() => setNotebookMountOpen(true)}
+                inputBarRef={inputBarRef}
+                messageListRef={messageListRef}
+                stream={stream}
+                resolveDropAttachments={resolveDropAttachments}
+                fileMention={fileMention}
+                gateBlocksComposer={gateBlocksComposer}
+                onSend={onSend}
+                composerShortcuts={composerShortcuts}
+                onManageShortcuts={() => setShowShortcutManager(true)}
+                searchMode={searchMode}
+                onToggleSearchMode={toggleSearchMode}
+                inputPlaceholder={inputPlaceholder}
+                footer={footer}
+              />
             ) : null}
           </>
         )}
