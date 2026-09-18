@@ -1,26 +1,17 @@
-/* eslint-disable max-lines -- 日记编辑器：壳层、工具栏与桥接同文件 */
 import { useTranslation } from 'react-i18next'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import {
   View,
-  StyleSheet,
-  TouchableOpacity,
   Text,
   Keyboard,
   LayoutAnimation,
   Platform,
-  Pressable,
   ActivityIndicator,
   Alert
 } from 'react-native'
-import { ArrowLeft, Heart, Volume2 } from 'lucide-react-native'
 import { MarkdownToolbar } from '../MarkdownToolbar/MarkdownToolbar'
 import type { MarkdownToolbarToolId } from '../MarkdownToolbar/markdown-toolbar.types'
-import { DiaryEditorAppBarTitle } from '../DiaryEditorAppBarTitle/DiaryEditorAppBarTitle'
-import { WeatherPicker } from '../WeatherPicker/WeatherPicker'
-import { MoodPicker } from '../MoodPicker/MoodPicker'
 import { useNativeTheme } from '../theme'
-import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
 import {
   NativeDiaryCodeMirrorEditor,
@@ -30,13 +21,13 @@ import {
 import { NativeImagePreviewModal } from './NativeImagePreviewModal'
 import type {
   DiaryTagColorRegistry,
-  DiaryCmImageActionPayload,
-  DiaryCmTableSheetRequestPayload,
-  DiaryCmTableSheetResponsePayload
+  DiaryCmImageActionPayload
 } from '../../shared/diary-codemirror/types'
-import { confirmMessageForDestructiveItem } from '../../shared/diary-codemirror/table/tableConfirm'
-import { useDialog } from '../Dialog/Dialog'
 import { TableChromeBottomSheet } from './TableChromeBottomSheet'
+import { DiaryEditorChrome } from './DiaryEditorChrome'
+import { useDiaryEditorInsert } from './useDiaryEditorInsert'
+import { useDiaryEditorTableSheet } from './useDiaryEditorTableSheet'
+import { diaryEditorStyles as styles } from './diary-editor.styles'
 
 interface DiaryEditorProps {
   content: string
@@ -55,16 +46,11 @@ interface DiaryEditorProps {
   onFavoriteChange?: (isFavorite: boolean) => void
   onSave?: (content: string, tags: string[], date: Date) => void
   onCancel?: () => void
-  /** 保存按钮阶段：idle / saving / leaving */
   savePhase?: 'idle' | 'saving' | 'leaving'
-  /** 从相册选取并上传图片，返回要插入的 Markdown 片段 */
   onPickImages?: () => Promise<string[]>
   pickingImages?: boolean
-  /** WebView 文档（由宿主 app 预加载后传入） */
   editorWebViewSource: DiaryEditorWebViewDocument | null
-  /** WebView 页面是否处于聚焦态（离开页面时卸载 WebView，P-5） */
   webViewActive?: boolean
-  /** attachment/xxx → data: 或 file: URI（异步桥接） */
   resolveAttachmentUrl?: (src: string) => Promise<string | null>
   markdownToolbarOrder?: MarkdownToolbarToolId[]
   onMarkdownToolbarOrderChange?: (order: MarkdownToolbarToolId[]) => void
@@ -74,10 +60,6 @@ interface DiaryEditorProps {
 
 /** 工具栏遮挡 + 额外留白，供 WebView 内计算安全滚动区域 */
 const EDITOR_BOTTOM_SCROLL_INSET_BUFFER = 20
-
-type ActiveTableSheet = DiaryCmTableSheetRequestPayload & {
-  respond: (response: DiaryCmTableSheetResponsePayload) => void
-}
 
 export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   content,
@@ -109,16 +91,10 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
-  const dialog = useDialog()
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null)
   const [toolbarHeight, setToolbarHeight] = useState(61)
-  const [tableSheet, setTableSheet] = useState<ActiveTableSheet | null>(null)
-  const tableSheetRef = useRef<ActiveTableSheet | null>(null)
   const editorRef = useRef<NativeDiaryCodeMirrorEditorHandle>(null)
   const keyboardInsetLockedRef = useRef(false)
-  const contentRef = useRef(content)
-  const selectionRef = useRef({ start: 0, end: 0 })
-  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null)
   const toolbarInsertingRef = useRef(false)
 
   const { keyboardHeight, syncFromMetrics, resetKeyboard } = useKeyboardHeight({
@@ -134,124 +110,45 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     return () => resetKeyboard()
   }, [resetKeyboard])
 
-  contentRef.current = content
-  tableSheetRef.current = tableSheet
-
-  const syncSelection = useCallback((sel: { start: number; end: number }) => {
-    selectionRef.current = sel
-  }, [])
-
-  const prevContentLenRef = useRef(0)
-  const contentHydratedRef = useRef(false)
-  useEffect(() => {
-    const grew = content.length > prevContentLenRef.current
-    prevContentLenRef.current = content.length
-    if (toolbarInsertingRef.current) return
-    if (!contentHydratedRef.current) {
-      if (content.length > 0) {
-        contentHydratedRef.current = true
-      }
-      return
-    }
-    if (
-      grew &&
-      content.length > 0 &&
-      selectionRef.current.start === 0 &&
-      selectionRef.current.end === 0
-    ) {
-      syncSelection({ start: content.length, end: content.length })
-    }
-  }, [content, syncSelection])
-
-  const refocusEditor = useCallback(
-    (sel: { start: number; end: number }) => {
-      requestAnimationFrame(() => {
-        editorRef.current?.focusAtOffset(sel.start)
-        if (Platform.OS === 'android') {
-          requestAnimationFrame(syncFromMetrics)
-        }
-      })
-    },
-    [syncFromMetrics]
-  )
-
-  const insertAtPosition = useCallback(
-    (start: number, end: number, snippet: string) => {
-      const current = contentRef.current
-      const safeStart = Math.max(0, Math.min(start, current.length))
-      const safeEnd = Math.max(safeStart, Math.min(end, current.length))
-      const cursor = safeStart + snippet.length
-      const sel = { start: cursor, end: cursor }
-
-      toolbarInsertingRef.current = true
-      pendingSelectionRef.current = sel
-      editorRef.current?.insertAtRange(safeStart, safeEnd, snippet)
-      syncSelection(sel)
-      refocusEditor(sel)
-      requestAnimationFrame(() => {
-        toolbarInsertingRef.current = false
-      })
-    },
-    [syncSelection, refocusEditor]
-  )
-
-  const handleInsertText = useCallback(
-    (prefix: string, suffix: string = '') => {
-      const { start, end } = selectionRef.current
-      const current = contentRef.current
-      const selectedText = current.substring(start, end)
-      insertAtPosition(start, end, prefix + selectedText + suffix)
-    },
-    [insertAtPosition]
-  )
-
-  const runEditorCommand = useCallback((command: () => void) => {
-    toolbarInsertingRef.current = true
-    command()
-    requestAnimationFrame(() => {
-      toolbarInsertingRef.current = false
-    })
-  }, [])
+  const insert = useDiaryEditorInsert({
+    content,
+    editorRef,
+    toolbarInsertingRef,
+    syncFromMetrics
+  })
+  const tableSheet = useDiaryEditorTableSheet(keyboardInsetLockedRef)
 
   const handleUndo = useCallback(() => {
-    runEditorCommand(() => editorRef.current?.undo())
-  }, [runEditorCommand])
+    insert.runEditorCommand(() => editorRef.current?.undo())
+  }, [insert])
 
   const handleRedo = useCallback(() => {
-    runEditorCommand(() => editorRef.current?.redo())
-  }, [runEditorCommand])
+    insert.runEditorCommand(() => editorRef.current?.redo())
+  }, [insert])
 
   const handleToggleMark = useCallback(
     (marker: '**' | '*' | '`' | '~~') => {
-      runEditorCommand(() => editorRef.current?.toggleMarkdownMark(marker))
+      insert.runEditorCommand(() => editorRef.current?.toggleMarkdownMark(marker))
     },
-    [runEditorCommand]
+    [insert]
   )
 
   const handlePickImages = async () => {
     if (!onPickImages) return
-    const anchor = { ...selectionRef.current }
+    const anchor = { ...insert.selectionRef.current }
     const markdowns = await onPickImages()
     if (!markdowns.length) return
     const block = (markdowns.length > 1 ? '\n\n' : '') + markdowns.join('\n\n') + '\n'
-    insertAtPosition(anchor.start, anchor.end, block)
+    insert.insertAtPosition(anchor.start, anchor.end, block)
   }
 
   const handleSelectionChange = useCallback(
     (start: number, end: number) => {
       if (toolbarInsertingRef.current) return
-      syncSelection({ start, end })
+      insert.syncSelection({ start, end })
     },
-    [syncSelection]
+    [insert]
   )
-
-  useEffect(() => {
-    if (pendingSelectionRef.current) {
-      const sel = pendingSelectionRef.current
-      pendingSelectionRef.current = null
-      syncSelection(sel)
-    }
-  }, [content, syncSelection])
 
   const snapKeyboardChromeAway = useCallback(() => {
     keyboardInsetLockedRef.current = true
@@ -289,158 +186,32 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
   )
 
   const toolbarDockBottom = keyboardHeight
-
   const handleDismissEditorKeyboard = useCallback(() => {
     Keyboard.dismiss()
   }, [])
-
-  const handleTableSheetRequest = useCallback(
-    (
-      payload: DiaryCmTableSheetRequestPayload,
-      respond: (response: DiaryCmTableSheetResponsePayload) => void
-    ) => {
-      Keyboard.dismiss()
-      keyboardInsetLockedRef.current = true
-      setTableSheet((prev) => {
-        if (prev) {
-          prev.respond({ requestId: prev.requestId, action: 'dismiss' })
-        }
-        return { ...payload, respond }
-      })
-    },
-    []
-  )
-
-  const closeTableSheet = useCallback(() => {
-    setTableSheet((current) => {
-      if (current) {
-        current.respond({ requestId: current.requestId, action: 'dismiss' })
-      }
-      keyboardInsetLockedRef.current = false
-      return null
-    })
-  }, [])
-
-  const handleTableSheetPick = useCallback(
-    async (itemId: string) => {
-      const sheet = tableSheetRef.current
-      if (!sheet) return
-      const item = sheet.sections.flatMap((section) => section.items).find((i) => i.id === itemId)
-      if (item?.destructive) {
-        const confirmed = await dialog.confirm(confirmMessageForDestructiveItem(item), {
-          title: t('common.confirm_delete', '确认删除'),
-          confirmText: t('common.delete', '删除'),
-          cancelText: t('common.cancel', '取消'),
-          destructive: true
-        })
-        if (!confirmed) return
-      }
-      const { requestId, respond } = sheet
-      keyboardInsetLockedRef.current = false
-      setTableSheet(null)
-      respond({ requestId, action: 'pick', itemId })
-    },
-    [dialog, t]
-  )
   const editorPlaceholder = t('diary.tag_editor_hint', '首行输入 #标签 后按回车，再写正文…')
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgSurface }]}>
-      <View style={[styles.appBar, { borderBottomColor: colors.borderSubtle }]}>
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => {
-            snapKeyboardChromeAway()
-            onCancel?.()
-          }}
-        >
-          <ArrowLeft size={24} color={colors.textPrimary} strokeWidth={DEFAULT_STROKE_WIDTH} />
-        </TouchableOpacity>
-
-        <View style={styles.appBarCenter}>
-          <DiaryEditorAppBarTitle
-            isSummaryMode={isSummaryMode}
-            selectedDate={selectedDate}
-            onDateChanged={onDateChange}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.saveBtn,
-            {
-              backgroundColor: colors.primary,
-              opacity: savePhase === 'idle' ? 1 : 0.85
-            }
-          ]}
-          disabled={savePhase !== 'idle'}
-          onPress={() => {
-            snapKeyboardChromeAway()
-            onSave?.(content, tags, selectedDate)
-          }}
-        >
-          {savePhase === 'saving' || savePhase === 'leaving' ? (
-            <ActivityIndicator size="small" color={colors.textOnPrimary} />
-          ) : (
-            <Text style={[styles.saveBtnText, { color: colors.textOnPrimary }]}>
-              {t('common.save')}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {!isSummaryMode && (onWeatherChange || onMoodChange || onReadAloud) && (
-        <View style={[styles.metaBar, { borderBottomColor: colors.borderSubtle }]}>
-          <View style={styles.metaPickers}>
-            {onWeatherChange ? <WeatherPicker value={weather} onChange={onWeatherChange} /> : null}
-            {onMoodChange ? <MoodPicker value={mood} onChange={onMoodChange} /> : null}
-            {onReadAloud ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.ttsBtn,
-                  {
-                    opacity: pressed ? 0.85 : 1,
-                    backgroundColor: isTtsPlaying ? colors.primaryLight : colors.bgSurface,
-                    borderColor: isTtsPlaying ? colors.primary : colors.borderSubtle
-                  }
-                ]}
-                onPress={onReadAloud}
-                disabled={!content.trim() && !isTtsPlaying}
-                accessibilityLabel={t('agent.chat.readAloud', '语音朗读')}
-              >
-                {isTtsPlaying ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Volume2
-                    size={20}
-                    color={content.trim() ? colors.textSecondary : colors.textTertiary}
-                    strokeWidth={DEFAULT_STROKE_WIDTH}
-                  />
-                )}
-              </Pressable>
-            ) : null}
-          </View>
-          <Pressable
-            style={({ pressed }) => [
-              styles.favBtn,
-              {
-                opacity: pressed ? 0.85 : 1,
-                backgroundColor: isFavorite ? colors.primaryLight : colors.bgSurface,
-                borderColor: isFavorite ? colors.warning : colors.borderSubtle
-              }
-            ]}
-            onPress={() => onFavoriteChange?.(!isFavorite)}
-            accessibilityLabel={isFavorite ? t('diary.unfavorite') : t('diary.favorite')}
-          >
-            <Heart
-              size={20}
-              color={isFavorite ? colors.warning : colors.textTertiary}
-              strokeWidth={DEFAULT_STROKE_WIDTH}
-              fill={isFavorite ? colors.warning : 'transparent'}
-            />
-          </Pressable>
-        </View>
-      )}
+      <DiaryEditorChrome
+        colors={colors}
+        isSummaryMode={isSummaryMode}
+        selectedDate={selectedDate}
+        onDateChange={onDateChange}
+        savePhase={savePhase}
+        weather={weather}
+        mood={mood}
+        isFavorite={isFavorite}
+        content={content}
+        isTtsPlaying={isTtsPlaying}
+        onCancel={onCancel}
+        onSave={() => onSave?.(content, tags, selectedDate)}
+        onWeatherChange={onWeatherChange}
+        onMoodChange={onMoodChange}
+        onFavoriteChange={onFavoriteChange}
+        onReadAloud={onReadAloud}
+        snapKeyboardChromeAway={snapKeyboardChromeAway}
+      />
 
       <View style={styles.editorBody}>
         <View style={styles.editorPane}>
@@ -469,7 +240,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
               fillViewport
               style={styles.editorFill}
               onDismissKeyboard={handleDismissEditorKeyboard}
-              onTableSheetRequest={handleTableSheetRequest}
+              onTableSheetRequest={tableSheet.handleTableSheetRequest}
             />
           ) : (
             <View style={styles.editorLoadFallback}>
@@ -481,14 +252,14 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           )}
         </View>
 
-        {tableSheet ? (
+        {tableSheet.tableSheet ? (
           <TableChromeBottomSheet
             visible
-            title={tableSheet.title}
-            sections={tableSheet.sections}
+            title={tableSheet.tableSheet.title}
+            sections={tableSheet.tableSheet.sections}
             bottomOffset={toolbarDockBottom}
-            onPick={(itemId) => void handleTableSheetPick(itemId)}
-            onDismiss={closeTableSheet}
+            onPick={(itemId) => void tableSheet.handleTableSheetPick(itemId)}
+            onDismiss={tableSheet.closeTableSheet}
           />
         ) : null}
 
@@ -500,7 +271,7 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
           }}
         >
           <MarkdownToolbar
-            onInsertText={handleInsertText}
+            onInsertText={insert.handleInsertText}
             onUndo={handleUndo}
             onRedo={handleRedo}
             onToggleMark={handleToggleMark}
@@ -516,86 +287,3 @@ export const DiaryEditor: React.FC<DiaryEditorProps> = ({
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  appBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 12,
-    borderBottomWidth: 1
-  },
-  iconBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  appBarCenter: { flex: 1, alignItems: 'center', minWidth: 0 },
-  saveBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20 },
-  saveBtnText: { fontWeight: '600', fontSize: 14 },
-  metaBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1
-  },
-  metaPickers: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    flexWrap: 'wrap'
-  },
-  favBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0
-  },
-  ttsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0
-  },
-  editorBody: {
-    flex: 1,
-    position: 'relative',
-    overflow: 'hidden'
-  },
-  editorPane: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8
-  },
-  editorFill: {
-    flex: 1
-  },
-  toolbarDock: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    elevation: 10
-  },
-  editorLoadFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingVertical: 48
-  },
-  editorLoadHint: {
-    fontSize: 13,
-    textAlign: 'center',
-    paddingHorizontal: 24
-  }
-})

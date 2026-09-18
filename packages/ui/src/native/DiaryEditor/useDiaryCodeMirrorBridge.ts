@@ -1,5 +1,4 @@
-/* eslint-disable max-lines -- 日记编辑器桥接：消息、会话与附件 URL 同 hook */
-import { useCallback, useEffect, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import type { WebView } from 'react-native-webview'
 import {
@@ -7,15 +6,7 @@ import {
   parseDiaryCmFromWebViewMessage,
   serializeDiaryCmToWebViewMessage,
   type DiaryCmFromWebViewMessage,
-  type DiaryCmImageActionPayload,
-  type DiaryCmInitPayload,
-  type DiaryCmConfirmRequestPayload,
-  type DiaryCmTableSheetRequestPayload,
-  type DiaryCmTableSheetResponsePayload,
-  type DiaryCmTheme,
-  type DiaryCmToWebViewMessage,
-  type DiaryCmMarkdownMark,
-  type DiaryTagColorRegistry
+  type DiaryCmToWebViewMessage
 } from '../../shared/diary-codemirror/types'
 import { DiaryCmAttachmentUrlCache } from './diary-cm-attachment-url-cache'
 import {
@@ -23,84 +14,20 @@ import {
   isStaleControlledContentEcho,
   looksLikeExternalContentReplace
 } from './diary-cm-content.util'
+import { handleDiaryCmInboundMessage } from './diary-cm-bridge-inbound'
+import { buildInitPayload, shouldInjectDiaryBridgeMessage } from './diary-cm-bridge-session'
+import type {
+  DiaryCodeMirrorBridgeApi,
+  UseDiaryCodeMirrorBridgeOptions
+} from './diary-cm-bridge.types'
+
+export type {
+  DiaryCodeMirrorBridgeApi,
+  UseDiaryCodeMirrorBridgeOptions
+} from './diary-cm-bridge.types'
 
 interface PendingUrlRequest {
   timeoutId: ReturnType<typeof setTimeout>
-}
-
-export interface UseDiaryCodeMirrorBridgeOptions {
-  content: string
-  placeholder?: string
-  theme: DiaryCmTheme
-  /** 默认 true；false 时 WebView 内 CM 为只读预览 */
-  editable?: boolean
-  onChange?: (content: string) => void
-  onSelectionChange?: (start: number, end: number) => void
-  onFocus?: () => void
-  onBlur?: () => void
-  onContentHeight?: (height: number) => void
-  /** 光标在编辑器内的纵向位置，供 RN 外层滚动 */
-  onCaretViewport?: (top: number, bottom: number) => void
-  /** WebView 内滑动手势转发给 RN 外层 ScrollView */
-  onPanScroll?: (deltaY: number) => void
-  tagColorRegistry?: DiaryTagColorRegistry
-  onImageAction?: (payload: DiaryCmImageActionPayload) => void
-  onImagePreview?: (srcRaw: string, resolvedUrl: string) => void
-  /** attachment/xxx → data: 或 file: URI */
-  resolveAttachmentUrl?: (srcRaw: string) => Promise<string | null>
-  /** WebView 内滚动时需预留的底部遮挡高度（如 RN 浮动工具栏） */
-  bottomScrollInset?: number
-  /** 表格把手菜单等场景：收起系统输入法 */
-  onDismissKeyboard?: () => void
-  /** 表格删除等破坏性操作确认 */
-  onConfirmRequest?: (
-    payload: DiaryCmConfirmRequestPayload,
-    respond: (confirmed: boolean) => void
-  ) => void
-  /** 表格把手菜单（RN 原生底部抽屉，显示在 Markdown 工具栏之上） */
-  onTableSheetRequest?: (
-    payload: DiaryCmTableSheetRequestPayload,
-    respond: (response: DiaryCmTableSheetResponsePayload) => void
-  ) => void
-}
-
-export interface DiaryCodeMirrorBridgeApi {
-  webViewRef: RefObject<WebView | null>
-  onWebViewMessage: (event: { nativeEvent: { data: string } }) => void
-  onWebViewLoadStart: () => void
-  onWebViewLoadEnd: () => void
-  focusAtOffset: (offset: number) => void
-  blur: () => void
-  insertAtCursor: (text: string) => void
-  insertAtRange: (start: number, end: number, text: string) => void
-  undo: () => void
-  redo: () => void
-  toggleMarkdownMark: (marker: DiaryCmMarkdownMark) => void
-  isReady: () => boolean
-  setScrollInsets: (bottom: number, keyboardVisible?: boolean) => void
-  scrollCaretIntoView: () => void
-  deleteRange: (from: number, to: number) => void
-}
-
-function buildInitPayload(
-  content: string,
-  placeholder: string | undefined,
-  theme: DiaryCmTheme,
-  editable: boolean,
-  tagColorRegistry: DiaryTagColorRegistry | undefined,
-  bottomScrollInset: number
-): DiaryCmInitPayload {
-  return {
-    content,
-    placeholder,
-    theme,
-    interactionMode: 'touch',
-    editable,
-    scrollMode: 'viewport',
-    tagLineMode: true,
-    tagColorRegistry,
-    scrollInsets: { bottom: Math.max(0, bottomScrollInset) }
-  }
 }
 
 export function useDiaryCodeMirrorBridge(
@@ -144,10 +71,7 @@ export function useDiaryCodeMirrorBridge(
 
   const postToWebView = useCallback((message: DiaryCmToWebViewMessage) => {
     const serialized = serializeDiaryCmToWebViewMessage(message)
-    const needsInjectDelivery =
-      Platform.OS === 'android' &&
-      (message.type === 'tableSheetResponse' || message.type === 'confirmResponse')
-    if (needsInjectDelivery) {
+    if (shouldInjectDiaryBridgeMessage(Platform.OS, message)) {
       const encoded = JSON.stringify(serialized)
       webViewRef.current?.injectJavaScript(
         `;(function(){try{var h=window.__diaryCmOnNativeMessage;if(h)h(${encoded});}catch(e){}})();true;`
@@ -250,122 +174,23 @@ export function useDiaryCodeMirrorBridge(
 
   const handleFromWebView = useCallback(
     (message: DiaryCmFromWebViewMessage) => {
-      switch (message.type) {
-        case 'ready':
-          logBridge('received ready')
-          isReadyRef.current = true
-          if (!initSentForLoadRef.current && editorMountedRef.current) {
-            logBridge('skip init — editor already mounted')
-            flushPendingOutbound()
-            return
-          }
-          if (!initSentForLoadRef.current) {
-            initSentForLoadRef.current = true
-            logBridge('send init')
-            sendInit()
-          }
-          flushPendingOutbound()
-          return
-        case 'change': {
-          if (!editorMountedRef.current) return
-          const next = message.payload.content
-          if (isLikelyEditorBundleLeak(next)) return
-          lastWebViewContentRef.current = next
-          webViewOwnsContentRef.current = true
-          if (echoSuppressContentRef.current !== null && next === echoSuppressContentRef.current) {
-            echoSuppressContentRef.current = null
-            return
-          }
-          echoSuppressContentRef.current = null
-          optionsRef.current.onChange?.(next)
-          return
+      handleDiaryCmInboundMessage({
+        message,
+        options: optionsRef.current,
+        logBridge,
+        enqueueOrSend,
+        flushPendingOutbound,
+        sendInit,
+        handleResolveUrlRequest,
+        refs: {
+          isReadyRef,
+          editorMountedRef,
+          initSentForLoadRef,
+          lastWebViewContentRef,
+          webViewOwnsContentRef,
+          echoSuppressContentRef
         }
-        case 'selectionChange':
-          if (!editorMountedRef.current) return
-          optionsRef.current.onSelectionChange?.(message.payload.start, message.payload.end)
-          return
-        case 'resolveUrlRequest':
-          handleResolveUrlRequest(message.payload.requestId, message.payload.srcRaw)
-          return
-        case 'imageAction':
-          optionsRef.current.onImageAction?.(message.payload)
-          return
-        case 'imagePreview':
-          optionsRef.current.onImagePreview?.(message.payload.srcRaw, message.payload.resolvedUrl)
-          return
-        case 'contentHeight': {
-          const height = message.payload.height
-          if (height === -1) {
-            logBridge('boot probe: bundle script not loaded')
-            return
-          }
-          if (height === 1) {
-            logBridge('boot probe: bridge OK')
-            return
-          }
-          logBridge(`contentHeight ${height}`)
-          optionsRef.current.onContentHeight?.(height)
-          return
-        }
-        case 'caretViewport':
-          optionsRef.current.onCaretViewport?.(message.payload.top, message.payload.bottom)
-          return
-        case 'panScroll':
-          optionsRef.current.onPanScroll?.(message.payload.deltaY)
-          return
-        case 'debug': {
-          const { scope, tag, detail } = message.payload
-          const extra = detail ? ` ${JSON.stringify(detail)}` : ''
-          logBridge(`${scope ?? 'webview'}: ${tag}${extra}`)
-          return
-        }
-        case 'dismissKeyboard':
-          optionsRef.current.onDismissKeyboard?.()
-          return
-        case 'confirmRequest': {
-          const { requestId } = message.payload
-          const respond = (confirmed: boolean) => {
-            enqueueOrSend({
-              type: 'confirmResponse',
-              payload: { requestId, confirmed }
-            })
-          }
-          const handler = optionsRef.current.onConfirmRequest
-          if (handler) {
-            handler(message.payload, respond)
-          } else {
-            respond(false)
-          }
-          return
-        }
-        case 'tableSheetRequest': {
-          const handler = optionsRef.current.onTableSheetRequest
-          if (handler) {
-            handler(message.payload, (response) => {
-              if (typeof __DEV__ !== 'undefined' && __DEV__) {
-                logBridge(
-                  `tableSheetResponse ${response.action}${response.itemId ? ` item=${response.itemId}` : ''}`
-                )
-              }
-              enqueueOrSend({ type: 'tableSheetResponse', payload: response })
-            })
-          } else {
-            enqueueOrSend({
-              type: 'tableSheetResponse',
-              payload: { requestId: message.payload.requestId, action: 'dismiss' }
-            })
-          }
-          return
-        }
-        case 'focus':
-          optionsRef.current.onFocus?.()
-          return
-        case 'blur':
-          optionsRef.current.onBlur?.()
-          return
-        default:
-          return
-      }
+      })
     },
     [enqueueOrSend, flushPendingOutbound, handleResolveUrlRequest, logBridge, sendInit]
   )
@@ -537,7 +362,7 @@ export function useDiaryCodeMirrorBridge(
   }, [enqueueOrSend])
 
   const toggleMarkdownMark = useCallback(
-    (marker: DiaryCmMarkdownMark) => {
+    (marker: import('../../shared/diary-codemirror/types').DiaryCmMarkdownMark) => {
       enqueueOrSend({ type: 'toggleMarkdownMark', payload: { marker } })
     },
     [enqueueOrSend]
