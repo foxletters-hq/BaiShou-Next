@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   ancestorDirPaths,
   collectTouchedDirPaths,
-  shouldApplyWorkspaceFsChange
+  resolveExplorerParentDir,
+  shouldApplyWorkspaceFsChange,
+  toAbsoluteWorkspacePath
 } from '../workbench-path.util'
 
 describe('ancestorDirPaths', () => {
@@ -24,6 +26,24 @@ describe('collectTouchedDirPaths', () => {
       'docs',
       'src'
     ])
+  })
+})
+
+describe('toAbsoluteWorkspacePath', () => {
+  it('should join a relative path when the folder root has a trailing slash', () => {
+    expect(toAbsoluteWorkspacePath('D:/proj/', 'src\\a.ts')).toBe('D:/proj/src/a.ts')
+    expect(toAbsoluteWorkspacePath('D:/proj/', undefined)).toBe('D:/proj')
+  })
+})
+
+describe('resolveExplorerParentDir', () => {
+  it('should use the folder itself when the selection is a directory', () => {
+    expect(resolveExplorerParentDir({ relativePath: 'src', isDirectory: true })).toBe('src')
+  })
+
+  it('should use the parent when the selection is a file', () => {
+    expect(resolveExplorerParentDir({ relativePath: 'src/a.ts', isDirectory: false })).toBe('src')
+    expect(resolveExplorerParentDir(null)).toBe('')
   })
 })
 
