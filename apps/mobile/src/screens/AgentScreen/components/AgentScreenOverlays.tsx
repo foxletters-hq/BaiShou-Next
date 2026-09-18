@@ -246,7 +246,10 @@ export function AgentScreenOverlays(props: AgentScreenOverlaysProps) {
         visible={showCreateAssistant}
         onClose={() => setShowCreateAssistant(false)}
         onCreated={(assistant) => {
-          void loadAssistants().then(() => handleSelectAssistantWithTracking(assistant))
+          // loadAssistants 声明为同步或异步都可能；对非 Promise 调 .then 会在运行时崩溃
+          void Promise.resolve(loadAssistants()).then(() =>
+            handleSelectAssistantWithTracking(assistant)
+          )
         }}
       />
 

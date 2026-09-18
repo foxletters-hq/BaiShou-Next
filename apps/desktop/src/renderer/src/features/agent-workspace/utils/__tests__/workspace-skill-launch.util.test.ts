@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { AgentSkillSource } from '@baishou/shared'
 import {
   buildSkillSendMeta,
   ensureOfficialCreateSkill,
@@ -12,6 +13,8 @@ import {
   resolveWorkbenchSkillSection,
   resolveWorkbenchSkillsPageTab
 } from '../workspace-skill-launch.util'
+
+type SkillFixture = { name: string; source: AgentSkillSource }
 
 describe('workspace-skill-launch.util', () => {
   it('builds the same payload as a composer skill chip', () => {
@@ -60,13 +63,13 @@ describe('workspace-skill-launch.util', () => {
   })
 
   it('keeps create-skill in the official list even when the file is missing', () => {
-    const fallback = { name: 'create-skill', source: 'software' as const }
+    const fallback: SkillFixture = { name: 'create-skill', source: 'software' }
     expect(ensureOfficialCreateSkill([], fallback)).toEqual([fallback])
     expect(
-      ensureOfficialCreateSkill([{ name: 'create-skill', source: 'user' as const }], fallback)
+      ensureOfficialCreateSkill([{ name: 'create-skill', source: 'user' }], fallback)
     ).toEqual([{ name: 'create-skill', source: 'user', description: 'create-skill' }])
     expect(
-      ensureOfficialCreateSkill([{ name: 'translate', source: 'software' as const }], fallback).map(
+      ensureOfficialCreateSkill([{ name: 'translate', source: 'software' }], fallback).map(
         (item) => item.name
       )
     ).toEqual(['create-skill', 'translate'])
@@ -84,9 +87,9 @@ describe('workspace-skill-launch.util', () => {
   })
 
   it('shows user skills for the global scope and only workspace skills for a project', () => {
-    const writer = { name: 'writer', source: 'software' as const }
-    const daily = { name: 'daily-digest', source: 'user' as const }
-    const review = { name: 'repo-review', source: 'workspace' as const }
+    const writer: SkillFixture = { name: 'writer', source: 'software' }
+    const daily: SkillFixture = { name: 'daily-digest', source: 'user' }
+    const review: SkillFixture = { name: 'repo-review', source: 'workspace' }
     expect(
       resolveScopedWorkbenchSkills({
         scope: 'global',

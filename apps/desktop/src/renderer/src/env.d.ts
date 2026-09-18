@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@testing-library/jest-dom/vitest" />
 
 /** Vite / 构建资源模块（与 packages/ui/src/env.d.ts 保持一致） */
 declare module '*.module.css' {

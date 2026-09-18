@@ -2,7 +2,6 @@ import { ipcMain } from 'electron'
 import i18n from 'i18next'
 import { shardMonthFromInstant } from '@baishou/core-desktop'
 import {
-  createSqlExecutorFromDrizzleDb,
   GraphRepository,
   memoryEmbeddingsTable,
   SqliteHybridSearchRepository

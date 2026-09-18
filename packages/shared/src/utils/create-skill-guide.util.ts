@@ -1,3 +1,5 @@
+import type { FallbackTranslateFn } from '../i18n/i18n.types'
+
 /**
  * 「创建 Skill」入口注入的引导提示：让 Agent 按问答方式帮用户写 SKILL.md，
  * 并用 skill_write 落盘到当前范围的 `.agents/skills/`。
@@ -35,7 +37,7 @@ export const CREATE_SKILL_GUIDE_PROMPT_WORKSPACE = `请引导我创建一个项�
 export const CREATE_SKILL_SLASH_COMMAND = 'create-skill'
 
 export function getCreateSkillGuidePrompt(
-  t?: (key: string, defaultValue?: string) => string,
+  t?: FallbackTranslateFn,
   scope: CreateSkillGuideScope = 'software'
 ): string {
   if (scope === 'workspace') {

@@ -3,6 +3,7 @@ import {
   CHROMIUM_ERR_ABORTED,
   isHelpDocsMainFrameFailure,
   isHelpDocsSuccessfulDocumentUrl,
+  isHelpDocsWebviewHost,
   readHelpDocsWebviewUrl
 } from '../help-docs-webview.util'
 
@@ -37,6 +38,16 @@ describe('isHelpDocsSuccessfulDocumentUrl', () => {
     expect(isHelpDocsSuccessfulDocumentUrl('chrome-error://chromewebdata/')).toBe(false)
     expect(isHelpDocsSuccessfulDocumentUrl('')).toBe(false)
     expect(isHelpDocsSuccessfulDocumentUrl(undefined)).toBe(false)
+  })
+})
+
+describe('isHelpDocsWebviewHost', () => {
+  it('should accept an object with getURL and reject values without that function', () => {
+    expect(isHelpDocsWebviewHost({ getURL: () => 'https://foxletters.com/docs/' })).toBe(true)
+    expect(isHelpDocsWebviewHost({})).toBe(false)
+    expect(isHelpDocsWebviewHost({ getURL: 'https://foxletters.com/docs/' })).toBe(false)
+    expect(isHelpDocsWebviewHost(null)).toBe(false)
+    expect(isHelpDocsWebviewHost(document.createElement('div'))).toBe(false)
   })
 })
 

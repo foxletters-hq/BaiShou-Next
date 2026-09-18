@@ -1,3 +1,4 @@
+import type { FallbackTranslateFn } from '../i18n/i18n.types'
 import { resolveMcpToolLookupName } from '../utils/mcp-client-url.util'
 
 /** 工具管理页分类（伙伴内置工具） */
@@ -253,10 +254,7 @@ export function resolveAgentToolNameKey(action: string): string {
 }
 
 /** 把存储用的工具编号转成当前语言的显示名；没有词条时回退为编号本身 */
-export function resolveAgentToolActionLabel(
-  action: string,
-  t: (key: string, fallback?: string) => string
-): string {
+export function resolveAgentToolActionLabel(action: string, t: FallbackTranslateFn): string {
   const trimmed = action.trim()
   if (!trimmed) return action
   const { isMcp, lookupName } = resolveMcpToolLookupName(trimmed)

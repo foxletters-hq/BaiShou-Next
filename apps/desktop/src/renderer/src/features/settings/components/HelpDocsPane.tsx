@@ -6,6 +6,7 @@ import { Button, SettingsPageChrome } from '@baishou/ui'
 import {
   isHelpDocsMainFrameFailure,
   isHelpDocsSuccessfulDocumentUrl,
+  isHelpDocsWebviewHost,
   readHelpDocsWebviewUrl,
   type HelpDocsWebviewFailLoad
 } from '../help-docs-webview.util'
@@ -33,7 +34,10 @@ export const HelpDocsPane: React.FC = () => {
       }
     }
     const onLoaded = () => {
-      if (isHelpDocsSuccessfulDocumentUrl(readHelpDocsWebviewUrl(webview))) {
+      if (
+        isHelpDocsWebviewHost(webview) &&
+        isHelpDocsSuccessfulDocumentUrl(readHelpDocsWebviewUrl(webview))
+      ) {
         setFailed(false)
       }
     }

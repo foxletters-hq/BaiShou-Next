@@ -72,10 +72,10 @@ export class WorkspaceFolderWatcherService {
       watch:
         deps?.watch ??
         ((folderRoot) =>
+          // 当前监视库已去掉 glob 解析，不再有 disableGlobbing；传入的是 resolve 后的绝对目录
           chokidar.watch(folderRoot, {
             ignored: (fullPath: string) => shouldIgnoreWorkspaceWatchPath(folderRoot, fullPath),
-            ignoreInitial: true,
-            disableGlobbing: true
+            ignoreInitial: true
           })),
       stat: deps?.stat ?? statFolder,
       broadcast: deps?.broadcast ?? broadcastWorkspaceFsChanged,

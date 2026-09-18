@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import type { NotebookGraphWrite } from './notebook-graph.ports'
 import {
@@ -1162,9 +1162,26 @@ export class KnowledgeRepository {
     return [...byId.values()]
   }
 
-  /** 暴露底层 job 行（调试） */
-  async listIngestJobs(): Promise<KnowledgeIngestJobRow[]> {
-    return this.db.select().from(knowledgeIngestJobsTable)
+  /** 列出摄入任务；打开笔记本时必须带 notebookId / stage，禁止全表扫。 */
+  async listIngestJobs(options?: {
+    notebookId?: string
+    vaultId?: string
+    stage?: KnowledgeIngestStage
+  }): Promise<KnowledgeIngestJobRow[]> {
+    const notebookId = options?.notebookId?.trim()
+    const vaultId = options?.vaultId?.trim()
+    const stage = options?.stage
+    const filters: SQL[] = []
+    if (notebookId) filters.push(eq(knowledgeIngestJobsTable.notebookId, notebookId))
+    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
+    if (stage) filters.push(eq(knowledgeIngestJobsTable.stage, stage))
+    if (filters.length === 0) {
+      return this.db.select().from(knowledgeIngestJobsTable)
+    }
+    return this.db
+      .select()
+      .from(knowledgeIngestJobsTable)
+      .where(and(...filters))
   }
 
   // ── embed ledger ───────────────────────────────────────

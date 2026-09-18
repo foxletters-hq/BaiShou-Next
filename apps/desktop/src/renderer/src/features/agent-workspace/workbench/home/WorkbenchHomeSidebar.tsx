@@ -214,7 +214,7 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
   )
 
   const handlePinClick = useCallback(
-    (e: React.MouseEvent, ws: AgentWorkspaceEntry) => {
+    (e: React.MouseEvent<HTMLButtonElement>, ws: AgentWorkspaceEntry) => {
       e.stopPropagation()
       e.preventDefault()
       e.currentTarget.blur()
@@ -241,7 +241,7 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
   )
 
   const handlePinSessionClick = useCallback(
-    (e: React.MouseEvent, sessionId: string, pinned: boolean) => {
+    (e: React.MouseEvent<HTMLButtonElement>, sessionId: string, pinned: boolean) => {
       e.stopPropagation()
       e.preventDefault()
       e.currentTarget.blur()
