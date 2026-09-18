@@ -117,6 +117,49 @@ describe('NotebookGraphRepository embeddings (libsql)', () => {
     expect(onlyA.map((r) => r.id)).toEqual(['n-empty'])
   })
 
+  it('should persist embedding when applyRawNode receives a new vector', async () => {
+    await seedNode('n-a', NB_A, '甲')
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-a',
+      vaultId: VAULT,
+      notebookId: NB_A,
+      nodeType: 'person',
+      name: '甲',
+      summary: '大学同学',
+      createdAt: now,
+      updatedAt: now,
+      shardMonth: 'src1',
+      embedding: [0.25, 0.5, 0.75, 1],
+      modelId: 'mock-embed'
+    })
+    const row = await repo.getNodeById('n-a', VAULT, NB_A)
+    expect(row?.summary).toBe('大学同学')
+    expect(row?.modelId).toBe('mock-embed')
+    expect(readEmbedding(row?.embedding, row?.dimension ?? null)).toEqual([0.25, 0.5, 0.75, 1])
+  })
+
+  it('should keep the old vector when applyRawNode omits embedding', async () => {
+    await seedNode('n-a', NB_A, '甲')
+    await repo.updateNodeEmbedding('n-a', VAULT, NB_A, [1, 0, 0, 0], 'mock-embed')
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-a',
+      vaultId: VAULT,
+      notebookId: NB_A,
+      nodeType: 'person',
+      name: '甲',
+      summary: '只改摘要',
+      createdAt: now,
+      updatedAt: now,
+      shardMonth: 'src1'
+    })
+    const row = await repo.getNodeById('n-a', VAULT, NB_A)
+    expect(row?.summary).toBe('只改摘要')
+    expect(row?.modelId).toBe('mock-embed')
+    expect(readEmbedding(row?.embedding, row?.dimension ?? null)).toEqual([1, 0, 0, 0])
+  })
+
   it('should 保留实体行 when 清掉向量', async () => {
     await seedNode('n-a', NB_A, '甲')
     await repo.updateNodeEmbedding('n-a', VAULT, NB_A, [1, 0, 0, 0], 'mock-embed')
