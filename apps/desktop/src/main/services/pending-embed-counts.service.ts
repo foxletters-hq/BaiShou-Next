@@ -58,6 +58,40 @@ async function countPendingKnowledgeSources(vaultId: string): Promise<number> {
   }
 }
 
+async function countPendingGraphExtract(vaultId: string): Promise<number> {
+  let diary = 0
+  try {
+    const { getDerivedFreshness } = await import('./raw-data-source.runtime')
+    diary = (await getDerivedFreshness().listPendingReextract()).length
+  } catch {
+    diary = 0
+  }
+  let knowledge = 0
+  try {
+    const { KnowledgeRepository, knowledgeConnectionManager } =
+      await import('@baishou/database-desktop')
+    if (!knowledgeConnectionManager.isConnected?.()) return diary
+    const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
+    knowledge = await repo.countIngestJobs({
+      vaultId,
+      stages: ['graph'],
+      claimableOnly: true
+    })
+  } catch {
+    knowledge = 0
+  }
+  return diary + knowledge
+}
+
+export async function getOrganizePendingSnapshot(): Promise<
+  PendingEmbedCounts & { graphExtract: number }
+> {
+  const embed = await getPendingEmbedCountsForActiveVault()
+  const vaultId = resolveActiveVaultId()
+  const graphExtract = vaultId ? await countPendingGraphExtract(vaultId) : 0
+  return { ...embed, graphExtract }
+}
+
 async function countPendingNotebookGraphNodes(vaultId: string): Promise<number> {
   try {
     const { NotebookGraphRepository, knowledgeConnectionManager } =

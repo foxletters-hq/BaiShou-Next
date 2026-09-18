@@ -74,6 +74,7 @@ export const NotebookGraphPane: React.FC<{
   extracting: boolean
   reloadKey: string
   onStartExtract: () => void
+  onRebuildGraph?: () => void
   onPreviewFragments?: (edges: NotebookGraphViewEdge[]) => void
 }> = ({
   notebookId,
@@ -82,6 +83,7 @@ export const NotebookGraphPane: React.FC<{
   extracting,
   reloadKey,
   onStartExtract,
+  onRebuildGraph,
   onPreviewFragments
 }) => {
   const { t } = useTranslation()
@@ -429,7 +431,7 @@ export const NotebookGraphPane: React.FC<{
                 <Button
                   type="button"
                   disabled={extracting || sourceCount === 0}
-                  onClick={onStartExtract}
+                  onClick={onRebuildGraph ?? onStartExtract}
                 >
                   {t('knowledge.rebuild_graph_short', '重新抽取')}
                 </Button>
@@ -591,7 +593,7 @@ export const NotebookGraphPane: React.FC<{
                           <Button
                             type="button"
                             disabled={extracting || sourceCount === 0}
-                            onClick={onStartExtract}
+                            onClick={onRebuildGraph ?? onStartExtract}
                           >
                             {t('knowledge.rebuild_graph', '重新抽取图谱')}
                           </Button>

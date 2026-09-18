@@ -23,6 +23,24 @@ describe('rag-batch-embed-progress', () => {
         diaries: 0,
         memories: 0,
         graphNodes: 0,
+        knowledgeSources: 0,
+        notebookGraphNodes: 2
+      })
+    ).toBe('graph_node')
+    expect(
+      firstActivePhase({
+        diaries: 0,
+        memories: 0,
+        graphNodes: 0,
+        knowledgeSources: 0,
+        graphExtract: 5
+      })
+    ).toBe('graph_extract')
+    expect(
+      firstActivePhase({
+        diaries: 0,
+        memories: 0,
+        graphNodes: 0,
         knowledgeSources: 0
       })
     ).toBe('finishing')
@@ -64,14 +82,34 @@ describe('rag-batch-embed-progress', () => {
     expect(phases.diaries).toEqual({ completed: 1, total: 1 })
   })
 
-  it('sums overall progress from the four types', () => {
+  it('sums overall progress from embed types and graph extract', () => {
     expect(
       overallFromPhaseCounts({
         diaries: { completed: 0, total: 0 },
         memories: { completed: 1, total: 1 },
         graphNodes: { completed: 12, total: 328 },
-        knowledgeSources: { completed: 0, total: 0 }
+        knowledgeSources: { completed: 0, total: 0 },
+        graphExtract: { completed: 2, total: 5 }
       })
-    ).toEqual({ completed: 13, total: 329 })
+    ).toEqual({ completed: 15, total: 334 })
+  })
+
+  it('folds notebook graph nodes into the graph_node total', () => {
+    expect(
+      phaseCountsFromPending({
+        diaries: 0,
+        memories: 0,
+        graphNodes: 2,
+        knowledgeSources: 0,
+        notebookGraphNodes: 4,
+        graphExtract: 3
+      })
+    ).toEqual({
+      diaries: { completed: 0, total: 0 },
+      memories: { completed: 0, total: 0 },
+      graphNodes: { completed: 0, total: 6 },
+      knowledgeSources: { completed: 0, total: 0 },
+      graphExtract: { completed: 0, total: 3 }
+    })
   })
 })

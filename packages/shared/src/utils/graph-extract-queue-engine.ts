@@ -168,6 +168,31 @@ export class GraphExtractQueueEngine {
     return this.flushing || this.queue.some((q) => isGraphExtractBusyStatus(q.status))
   }
 
+  /**
+   * 等到队列不再忙碌。入队后立刻调用即可把抽图收进同一条整理流水。
+   * shouldContinue 返回 false 时停止等待（不改队列内容，由调用方决定是否 stop）。
+   */
+  async waitUntilIdle(options?: {
+    pollMs?: number
+    shouldContinue?: () => boolean | Promise<boolean>
+    onProgress?: (state: GraphExtractQueueSnapshot) => void
+  }): Promise<GraphExtractQueueSnapshot> {
+    const pollMs = Math.max(0, options?.pollMs ?? 80)
+    for (;;) {
+      const state = this.snapshot()
+      options?.onProgress?.(state)
+      if (!this.isRunning) return state
+      if (options?.shouldContinue && !(await options.shouldContinue())) return state
+      if (pollMs === 0) {
+        await Promise.resolve()
+      } else {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, pollMs)
+        })
+      }
+    }
+  }
+
   stop() {
     this.stopped = true
     this.clearKick()

@@ -14,5 +14,8 @@ describe('mobile memory center chrome', () => {
     expect(page).toContain('batchEmbed')
     expect(page).toContain('resolveMemoryOrganizeAction')
     expect(page).toContain('writeMemoryOnboardingDismissed')
+    expect(page).toContain('readActiveVaultSafely')
+    expect(page).toContain('normalizeMemoryCenterRagConfig')
+    expect(page).not.toContain('getActiveVault().catch')
   })
 })

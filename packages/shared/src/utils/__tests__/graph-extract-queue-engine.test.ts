@@ -459,6 +459,18 @@ describe('GraphExtractQueueEngine', () => {
     hold.resolve({ done: 1, failed: 0, errors: [] })
   })
 
+  it('should resolve waitUntilIdle after the last item completes', async () => {
+    const hold = deferred<{ done: number; failed: number; errors: [] }>()
+    const engine = createEngine(async () => hold.promise)
+    engine.enqueue([{ filePath: 'Journal/a.md' }])
+    await flush()
+    const idle = engine.waitUntilIdle({ pollMs: 0 })
+    hold.resolve({ done: 1, failed: 0, errors: [] })
+    const state = await idle
+    expect(state.completedCount).toBe(1)
+    expect(engine.isRunning).toBe(false)
+  })
+
   it('should not auto-enqueue a cancelled diary with the same content hash', async () => {
     const hold = deferred<{ done: number; failed: number; errors: [] }>()
     const engine = createEngine(async () => hold.promise)

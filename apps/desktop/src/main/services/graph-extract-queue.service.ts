@@ -126,6 +126,12 @@ export class GraphExtractQueueService {
     return this.engine.isRunning
   }
 
+  waitUntilIdle(
+    options?: Parameters<GraphExtractQueueEngine['waitUntilIdle']>[0]
+  ): Promise<GraphExtractQueueSnapshot> {
+    return this.engine.waitUntilIdle(options)
+  }
+
   stop() {
     this.engine.stop()
   }

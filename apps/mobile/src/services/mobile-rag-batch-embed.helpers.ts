@@ -20,6 +20,7 @@ import {
   purgeLegacyDiaryEmbeddingsForVault
 } from './mobile-diary-embedding.util'
 import { buildDiaryEmbeddingSourceId } from '@baishou/shared'
+import { resolveDiaryEmbedTagsFromLoadedRow } from './mobile-rag-diary-embed-tags.util'
 import { listVaultDiaryMetas, loadVaultDiariesForEmbedding } from './mobile-rag-vault-diary'
 import { resetCachedMobileRagActiveState } from './mobile-rag-runtime-cache'
 import type { DiaryEmbedDetectionRow } from '@baishou/shared'
@@ -274,7 +275,7 @@ export async function runControlledDiaryBatchEmbedCore(
             {
               diaryId: meta.id,
               content: content ?? '',
-              tags: meta.tags ?? [],
+              tags: resolveDiaryEmbedTagsFromLoadedRow(diary),
               date: d,
               updatedAt:
                 ('updatedAt' in diary && diary.updatedAt instanceof Date

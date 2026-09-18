@@ -83,7 +83,9 @@ describe('rag batch embed progress wiring', () => {
   it('freezes diary totals from the planned batch instead of growing them with completed', () => {
     const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../rag-build.ipc.ts'), 'utf8')
     expect(src).toContain('applyFrozenPhaseProgress')
+    expect(src).toContain('overallFromPhaseCounts(phases).total')
     expect(src).not.toContain('Math.max(counts.diaries, completed)')
+    expect(src).not.toContain('Math.max(counts.total, 1)')
     expect(src).toContain('const diaryResult = await runControlledDiaryBatchEmbed')
   })
 })

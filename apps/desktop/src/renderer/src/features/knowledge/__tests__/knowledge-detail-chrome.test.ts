@@ -111,4 +111,12 @@ describe('knowledge detail chrome', () => {
     expect(pane).toContain('graphStyles.detailLabel')
     expect(pane).not.toContain('graphStyles.itemTitle}>{selectedNode.name}')
   })
+
+  it('should start unified organize from the empty graph guide and keep rebuild as maintenance', () => {
+    const page = readKnowledge('KnowledgeDetailPage.tsx')
+    const pane = readKnowledge('NotebookGraphPane.tsx')
+    expect(page).toContain('triggerBatchEmbed')
+    expect(page).toContain('onRebuildGraph={() => {')
+    expect(pane).toContain('onRebuildGraph ?? onStartExtract')
+  })
 })

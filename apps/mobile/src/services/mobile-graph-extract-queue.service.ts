@@ -134,6 +134,12 @@ class MobileGraphExtractQueue {
     return this.engine.isRunning
   }
 
+  waitUntilIdle(
+    options?: Parameters<GraphExtractQueueEngine['waitUntilIdle']>[0]
+  ): ReturnType<GraphExtractQueueEngine['waitUntilIdle']> {
+    return this.engine.waitUntilIdle(options)
+  }
+
   setContext(ctx: MobileGraphExtractContext) {
     this.context = ctx
     void this.restoreFromStorage()
