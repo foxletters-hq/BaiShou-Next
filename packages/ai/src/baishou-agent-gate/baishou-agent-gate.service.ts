@@ -1,17 +1,12 @@
 import {
   AgentGateDeniedError,
-  AgentGateRejectedError,
-  AgentGateCorrectedError,
-  AgentGateNotFoundError,
-  AgentGateCancelledError,
   AgentGateAlwaysNotAllowedError,
+  AgentGateNotFoundError,
   AgentGateEffect,
   AgentGateKind,
   AgentGateReply,
   AgentGateRequestStatus,
-  AgentGateRiskLevel,
   DEFAULT_AGENT_GATE_REPEAT_ASSERT_ASK_THRESHOLD,
-  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   buildAgentGateAssertFingerprint,
   canPermanentlyAllowAgentGateAction,
   createAgentGateRequestId,
@@ -24,102 +19,34 @@ import {
   type AgentGateAssertInput,
   type AgentGateConfigScope,
   type AgentGateEvaluateInput,
-  type AgentGatePermissionRule,
-  type AgentGatePreview,
-  type AgentGateProfileId,
   type AgentGateReplyInput,
   type AgentGateRequest,
   type AgentGateResolution,
-  type AgentGateResourceRef,
-  type BaishouAgentGateConfig,
-  i18n
+  DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
+  type BaishouAgentGateConfig
 } from '@baishou/shared'
+import { BaishouAgentGatePolicyService } from './baishou-agent-gate-policy.service'
+import { BaishouAgentGateAllowlistStore } from './baishou-agent-gate-allowlist.store'
+import type { CreateBaishouAgentGateOptions } from './baishou-agent-gate.types'
 import { BaishouAgentGateEventBus } from './baishou-agent-gate-event-bus'
-import {
-  BaishouAgentGatePolicyService,
-  type IAgentGatePolicy
-} from './baishou-agent-gate-policy.service'
-import {
-  BaishouAgentGateAllowlistStore,
-  type IAgentGateAllowlistStore
-} from './baishou-agent-gate-allowlist.store'
+import type { IAgentGatePolicy } from './baishou-agent-gate-policy.service'
+import type { IAgentGateAllowlistStore } from './baishou-agent-gate-allowlist.store'
 import { AgentGateRepeatTracker } from './baishou-agent-gate-repeat.tracker'
 import { AgentGateTurnAllowStore } from './baishou-agent-gate-turn-allow'
 import type { AgentGateRiskClassifier } from './agent-gate-risk-classifier.types'
+import type { EvaluatePolicyInput, IBaishouAgentGate } from './baishou-agent-gate.types'
+import { AgentGatePendingRegistry } from './baishou-agent-gate-pending'
+import { buildTurnAllowRule, isSafeGateRisk } from './baishou-agent-gate-turn-rule'
+import {
+  applyAutoReviewClassification,
+  applyAutoReviewClassifierFailed,
+  shouldApplyAutoReview
+} from './baishou-agent-gate-auto-review'
 
-/** 常规读写跳过二次审核；命令等 Allow 项才调模型 */
-const AUTO_REVIEW_SKIP_ACTIONS = new Set([
-  'workspace_list',
-  'workspace_read',
-  'workspace_write',
-  'workspace_patch',
-  'workspace_rename'
-])
-
-export interface IBaishouAgentGate {
-  assert(input: AgentGateAssertInput): Promise<void>
-  assertWithResolution(input: AgentGateAssertInput): Promise<AgentGateResolution>
-  ask(input: AgentGateAssertInput): Promise<AgentGateRequest>
-  reply(input: AgentGateReplyInput): Promise<void>
-  get(requestId: string): AgentGateRequest | undefined
-  listPending(sessionId?: string): AgentGateRequest[]
-  cancelSession(sessionId: string, reason?: string): void
-  /** Non-blocking policy probe (e.g. hideDeniedTools). */
-  probeEffect(input: AgentGateEvaluateInput): AgentGateEffect
-}
-
-interface PendingWaiter {
-  resolve: (resolution: AgentGateResolution) => void
-  reject: (error: Error) => void
-}
-
-interface PendingEntry {
-  request: AgentGateRequest
-  fingerprint: string
-  coalesceKey?: string | null
-  resources?: AgentGateResourceRef[]
-  profileId?: AgentGateProfileId
-  waiters: PendingWaiter[]
-}
-
-function buildTurnAllowRule(input: {
-  action: string
-  resources: AgentGateResourceRef[]
-  alwaysPatterns?: string[]
-  preview?: AgentGatePreview
-}): AgentGatePermissionRule | null {
-  const declared = input.alwaysPatterns?.find((item) => item.trim().length > 0)?.trim()
-  const shellResource = input.resources.find((item) => item.kind === 'shell_command')
-  const commandFromPreview =
-    input.preview?.type === 'command' ? input.preview.prefixPattern || input.preview.command : null
-  const commandPattern =
-    declared ||
-    (shellResource ? resolveCommandPrefixPatternFromCommand(shellResource.value) : null) ||
-    (typeof commandFromPreview === 'string' && commandFromPreview.trim()
-      ? (resolveCommandPrefixPatternFromCommand(commandFromPreview) ?? commandFromPreview.trim())
-      : null)
-
-  if (input.action === 'workspace_run') {
-    if (!commandPattern) return null
-    return { action: input.action, effect: AgentGateEffect.Allow, pattern: commandPattern }
-  }
-
-  if (input.action === 'external_directory') {
-    const external = input.resources.find((item) => item.kind === 'external_path')
-    const pattern = declared || (external ? external.value.replace(/\\/g, '/') : null)
-    if (!pattern) return null
-    return { action: input.action, effect: AgentGateEffect.Allow, pattern }
-  }
-
-  return { action: input.action, effect: AgentGateEffect.Allow }
-}
-
-function isSafeGateRisk(metadata?: Record<string, unknown>): boolean {
-  return metadata?.riskLevel === AgentGateRiskLevel.Safe
-}
+export type { IBaishouAgentGate, CreateBaishouAgentGateOptions } from './baishou-agent-gate.types'
 
 export class BaishouAgentGateService implements IBaishouAgentGate {
-  private readonly pending = new Map<string, PendingEntry>()
+  private readonly pending: AgentGatePendingRegistry
   private readonly repeatTracker: AgentGateRepeatTracker
   private readonly turnAllow = new AgentGateTurnAllowStore()
   private readonly configScope?: AgentGateConfigScope
@@ -139,6 +66,9 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     this.configScope = configScope
     this.isAutoAccept = isAutoAccept
     this.riskClassifier = riskClassifier
+    this.pending = new AgentGatePendingRegistry(eventBus, this.repeatTracker, (input) =>
+      this.evaluatePolicy(input)
+    )
   }
 
   probeEffect(input: AgentGateEvaluateInput): AgentGateEffect {
@@ -196,20 +126,22 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       throw new AgentGateDeniedError(assertInput.action)
     }
 
-    // Count only non-deny asserts (Allow / Ask) toward repeat protection.
     this.repeatTracker.record(assertInput.sessionId, fingerprint)
 
-    // auto_review：规则已 Allow 且非黑名单时，再交给模型判断是否仍需人工确认
+    // 仅在确实要调分类器时才 await，避免普通 Ask 在登记挂起前让出事件循环
     if (
-      effect === AgentGateEffect.Allow &&
-      assertInput.kind !== AgentGateKind.Proactive &&
-      !turnAllowed &&
-      this.policy.getConfig().securityMode === 'auto_review' &&
-      this.isAutoAccept?.() !== true &&
       this.riskClassifier &&
-      !safeRisk &&
-      !AUTO_REVIEW_SKIP_ACTIONS.has(assertInput.action)
+      shouldApplyAutoReview({
+        assertInput,
+        effect,
+        turnAllowed,
+        safeRisk,
+        securityMode: this.policy.getConfig().securityMode,
+        isAutoAccept: this.isAutoAccept,
+        riskClassifier: this.riskClassifier
+      })
     ) {
+      let reviewed
       try {
         const classified = await this.riskClassifier({
           action: assertInput.action,
@@ -219,54 +151,17 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
           resources: assertInput.resources,
           sessionId: assertInput.sessionId
         })
-        if (classified.verdict === 'ask') {
-          effect = AgentGateEffect.Ask
-          detailed = {
-            ...detailed,
-            effect,
-            decisionSource: {
-              layer: 'session',
-              action: 'auto_review',
-              effect: AgentGateEffect.Ask,
-              clampedFrom: AgentGateEffect.Allow
-            }
-          }
-          if (classified.reason?.trim()) {
-            assertInput = {
-              ...assertInput,
-              description: classified.reason.trim(),
-              metadata: {
-                ...(assertInput.metadata ?? {}),
-                autoReviewReason: classified.reason.trim()
-              }
-            }
-          }
-        }
+        reviewed = applyAutoReviewClassification(assertInput, effect, classified)
       } catch {
-        // fail-closed：分类失败一律升为 Ask
-        effect = AgentGateEffect.Ask
+        reviewed = applyAutoReviewClassifierFailed(assertInput)
+      }
+      assertInput = reviewed.assertInput
+      effect = reviewed.effect
+      if (reviewed.detailedOverride) {
         detailed = {
           ...detailed,
-          effect,
-          decisionSource: {
-            layer: 'session',
-            action: 'auto_review',
-            effect: AgentGateEffect.Ask,
-            clampedFrom: AgentGateEffect.Allow
-          }
-        }
-        assertInput = {
-          ...assertInput,
-          description:
-            assertInput.description ??
-            i18n.t(
-              'settings.agent_gate_auto_review_incomplete',
-              '自动审核未能完成，已改为需要你确认。'
-            ),
-          metadata: {
-            ...(assertInput.metadata ?? {}),
-            autoReviewReason: 'classifier_failed'
-          }
+          effect: reviewed.detailedOverride.effect,
+          decisionSource: reviewed.detailedOverride.decisionSource
         }
       }
     }
@@ -279,9 +174,9 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       metadata: assertInput.metadata
     })
     if (effect === AgentGateEffect.Ask && coalesceKey) {
-      const existing = this.findCoalesciblePending(assertInput.sessionId, coalesceKey)
+      const existing = this.pending.findCoalesciblePending(assertInput.sessionId, coalesceKey)
       if (existing) {
-        return this.attachCoalescedWaiter(existing)
+        return this.pending.attachCoalescedWaiter(existing)
       }
     }
 
@@ -311,7 +206,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     const request = this.createRequest(assertInput, fingerprint, detailed.decisionSource)
     request.repeatCount = this.repeatTracker.getCount(assertInput.sessionId, fingerprint)
     request.coalescedCount = 1
-    return this.waitForResolution(
+    return this.pending.waitForResolution(
       request,
       fingerprint,
       assertInput.resources,
@@ -397,8 +292,8 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
 
     if (input.reply === AgentGateReply.Reject) {
       this.repeatTracker.clearSession(request.sessionId)
-      this.rejectEntry(entry, resolution)
-      this.cascadeRejectSession(request.sessionId, request.id, resolution)
+      this.pending.rejectEntry(entry, resolution)
+      this.pending.cascadeRejectSession(request.sessionId, request.id, resolution)
       return
     }
 
@@ -428,8 +323,8 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       })
       // 先放行工具，白名单落盘放到后台，避免伙伴页卡住等写入
       this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
-      this.resolveEntry(entry, resolution)
-      this.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
+      this.pending.resolveEntry(entry, resolution)
+      this.pending.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
       this.eventBus.publish({
         type: 'agent_gate.allowlist_changed',
         allowlist: this.allowlistStore.list(),
@@ -441,7 +336,6 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       return
     }
 
-    // Once：本轮回答结束前，同类操作保持允许
     this.repeatTracker.clearFingerprint(request.sessionId, entry.fingerprint)
     if (request.kind === AgentGateKind.Tool) {
       const turnRule = buildTurnAllowRule({
@@ -454,8 +348,8 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         this.turnAllow.add(request.sessionId, turnRule)
       }
     }
-    this.resolveEntry(entry, resolution)
-    this.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
+    this.pending.resolveEntry(entry, resolution)
+    this.pending.cascadeAllowSession(request.sessionId, request.id, request.action, resolution)
   }
 
   get(requestId: string): AgentGateRequest | undefined {
@@ -463,24 +357,13 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   }
 
   listPending(sessionId?: string): AgentGateRequest[] {
-    const all = [...this.pending.values()].map((entry) => entry.request)
-    if (!sessionId) return all
-    return all.filter((request) => request.sessionId === sessionId)
+    return this.pending.list(sessionId)
   }
 
   cancelSession(sessionId: string, reason?: string): void {
     this.repeatTracker.clearSession(sessionId)
     this.turnAllow.clearSession(sessionId)
-    const requestIds: string[] = []
-    for (const [id, entry] of this.pending.entries()) {
-      if (entry.request.sessionId !== sessionId) continue
-      entry.request.status = AgentGateRequestStatus.Cancelled
-      for (const waiter of entry.waiters) {
-        waiter.reject(new AgentGateCancelledError(reason))
-      }
-      this.pending.delete(id)
-      requestIds.push(id)
-    }
+    const requestIds = this.pending.cancelSession(sessionId, reason)
     if (requestIds.length === 0) return
     this.eventBus.publish({
       type: 'agent_gate.cancelled',
@@ -520,107 +403,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
     }
   }
 
-  private waitForResolution(
-    request: AgentGateRequest,
-    fingerprint: string,
-    resources?: AgentGateResourceRef[],
-    profileId?: AgentGateProfileId,
-    coalesceKey?: string | null
-  ): Promise<AgentGateResolution> {
-    return new Promise<AgentGateResolution>((resolve, reject) => {
-      this.pending.set(request.id, {
-        request,
-        fingerprint,
-        coalesceKey,
-        resources,
-        profileId,
-        waiters: [{ resolve, reject }]
-      })
-      this.eventBus.publish({ type: 'agent_gate.asked', request })
-    })
-  }
-
-  private findCoalesciblePending(sessionId: string, coalesceKey: string): PendingEntry | undefined {
-    for (const entry of this.pending.values()) {
-      if (entry.request.sessionId !== sessionId) continue
-      if (entry.request.kind !== AgentGateKind.Tool) continue
-      if (entry.coalesceKey === coalesceKey) return entry
-    }
-    return undefined
-  }
-
-  private attachCoalescedWaiter(entry: PendingEntry): Promise<AgentGateResolution> {
-    return new Promise<AgentGateResolution>((resolve, reject) => {
-      entry.waiters.push({ resolve, reject })
-      entry.request.coalescedCount = entry.waiters.length
-      this.eventBus.publish({ type: 'agent_gate.asked', request: entry.request })
-    })
-  }
-
-  private resolveEntry(entry: PendingEntry, resolution: AgentGateResolution): void {
-    entry.request.status = AgentGateRequestStatus.Resolved
-    entry.request.resolvedAt = resolution.resolvedAt
-    for (const waiter of entry.waiters) {
-      waiter.resolve(resolution)
-    }
-  }
-
-  private rejectEntry(entry: PendingEntry, resolution: AgentGateResolution): void {
-    entry.request.status = AgentGateRequestStatus.Resolved
-    entry.request.resolvedAt = resolution.resolvedAt
-    if (resolution.message?.trim()) {
-      const error = new AgentGateCorrectedError(resolution.message.trim())
-      for (const waiter of entry.waiters) {
-        waiter.reject(error)
-      }
-      return
-    }
-    const error = new AgentGateRejectedError()
-    for (const waiter of entry.waiters) {
-      waiter.reject(error)
-    }
-  }
-
-  private cascadeRejectSession(
-    sessionId: string,
-    skipRequestId: string,
-    resolution: AgentGateResolution
-  ): void {
-    for (const [id, item] of this.pending.entries()) {
-      if (item.request.sessionId !== sessionId || id === skipRequestId) continue
-      item.request.status = AgentGateRequestStatus.Resolved
-      item.request.resolvedAt = resolution.resolvedAt
-      this.pending.delete(id)
-      this.eventBus.publish({
-        type: 'agent_gate.replied',
-        sessionId: item.request.sessionId,
-        requestId: item.request.id,
-        reply: AgentGateReply.Reject,
-        message: resolution.message,
-        selectedOptionIds: resolution.selectedOptionIds
-      })
-      if (resolution.message?.trim()) {
-        const error = new AgentGateCorrectedError(resolution.message.trim())
-        for (const waiter of item.waiters) {
-          waiter.reject(error)
-        }
-      } else {
-        const error = new AgentGateRejectedError()
-        for (const waiter of item.waiters) {
-          waiter.reject(error)
-        }
-      }
-    }
-  }
-
-  private evaluatePolicy(input: {
-    sessionId: string
-    action: string
-    resources?: AgentGateResourceRef[]
-    metadata?: Record<string, unknown>
-    profileId?: AgentGateProfileId
-    preview?: AgentGatePreview
-  }) {
+  private evaluatePolicy(input: EvaluatePolicyInput) {
     return this.policy.evaluateDetailed({
       action: input.action,
       toolDisabled: false,
@@ -632,73 +415,6 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
       sessionRules: this.turnAllow.list(input.sessionId)
     })
   }
-
-  /**
-   * After Always / Once: auto-resolve same-session pending with the same action,
-   * only when re-evaluation yields Allow (external_path / Deny must not cascade).
-   */
-  private cascadeAllowSession(
-    sessionId: string,
-    skipRequestId: string,
-    action: string,
-    resolution: AgentGateResolution
-  ): void {
-    for (const [id, item] of this.pending.entries()) {
-      if (item.request.sessionId !== sessionId || id === skipRequestId) continue
-      if (item.request.action !== action) continue
-
-      // 截断/危险预览必须显式确认，不可被 Always / Once 级联盲放行
-      if (shouldDisableAlwaysForPreview(item.request.preview)) {
-        continue
-      }
-
-      const effect = this.evaluatePolicy({
-        sessionId,
-        action: item.request.action,
-        resources: item.resources,
-        metadata: item.request.metadata,
-        profileId: item.profileId,
-        preview: item.request.preview
-      }).effect
-      if (effect !== AgentGateEffect.Allow) {
-        continue
-      }
-
-      item.request.status = AgentGateRequestStatus.Resolved
-      item.request.resolvedAt = resolution.resolvedAt
-      this.pending.delete(id)
-      this.repeatTracker.clearFingerprint(sessionId, item.fingerprint)
-
-      const cascaded: AgentGateResolution = {
-        requestId: item.request.id,
-        reply: AgentGateReply.Once,
-        resolvedAt: resolution.resolvedAt
-      }
-
-      this.eventBus.publish({
-        type: 'agent_gate.replied',
-        sessionId: item.request.sessionId,
-        requestId: item.request.id,
-        reply: AgentGateReply.Once
-      })
-      for (const waiter of item.waiters) {
-        waiter.resolve(cascaded)
-      }
-    }
-  }
-}
-
-export interface CreateBaishouAgentGateOptions {
-  config: BaishouAgentGateConfig
-  persistConfig?: () => Promise<void>
-  eventBus?: BaishouAgentGateEventBus
-  repeatTracker?: AgentGateRepeatTracker
-  /** 写入 allowlist_changed 事件，便于 UI 按场景刷新 */
-  configScope?: AgentGateConfigScope
-  /** G4：工作区自动接受（运行时查询，不进配置） */
-  isAutoAccept?: () => boolean
-  /** G5：auto_review 模式下的模型风险分类（可选） */
-  riskClassifier?: AgentGateRiskClassifier
 }
 
 function cloneDefaultConfig(): BaishouAgentGateConfig {
