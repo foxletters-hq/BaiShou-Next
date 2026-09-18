@@ -53,10 +53,7 @@ export function KnowledgeImportProcessDialog({
               'knowledge.import_process_hint_later',
               '只保存文件，显示为待整理。整理之前 AI 无法使用。之后可在资料上选择嵌入。'
             )
-          : t(
-              'knowledge.import_process_hint',
-              '会先提取正文，再按选择写入向量、图关系或两者。'
-            )}
+          : t('knowledge.import_process_hint', '会先提取正文，再按选择写入向量、图关系或两者。')}
       </p>
       {prompt && prompt.fileNames.length > 0 ? (
         <ul className={styles.extractHintFiles}>
@@ -74,9 +71,7 @@ export function KnowledgeImportProcessDialog({
           size="small"
           value={mode}
           options={knowledgeImportProcessSelectOptions()}
-          onChange={(e) =>
-            setMode(normalizeKnowledgeImportProcessMode(e.target.value))
-          }
+          onChange={(e) => setMode(normalizeKnowledgeImportProcessMode(e.target.value))}
           aria-label={t('knowledge.import_process_mode', '本次处理')}
         />
       </div>
@@ -102,9 +97,7 @@ export function KnowledgeImportProcessDialog({
             <span className={styles.importProcessMetaLabel}>
               {t('knowledge.import_process_graph', '关系抽取模型')}
             </span>
-            <span className={styles.importProcessMetaValue}>
-              {prompt?.graphModelLabel || '—'}
-            </span>
+            <span className={styles.importProcessMetaValue}>{prompt?.graphModelLabel || '—'}</span>
           </div>
         </div>
       ) : null}

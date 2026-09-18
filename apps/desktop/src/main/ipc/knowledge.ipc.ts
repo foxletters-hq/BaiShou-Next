@@ -72,7 +72,10 @@ async function resolveCoverRelativePath(
   const manager = getNotebookRawManager()
   const recordedRel = normalizeNotebookCoverImage(notebookId, recorded)
   const candidates = recordedRel
-    ? [recordedRel, ...notebookCoverImageCandidates(notebookId).filter((rel) => rel !== recordedRel)]
+    ? [
+        recordedRel,
+        ...notebookCoverImageCandidates(notebookId).filter((rel) => rel !== recordedRel)
+      ]
     : notebookCoverImageCandidates(notebookId)
   for (const rel of candidates) {
     try {
@@ -131,9 +134,7 @@ async function loadKnowledgeConfig(): Promise<KnowledgeConfig> {
   const raw = (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
   const merged = { ...DEFAULT_KNOWLEDGE_CONFIG, ...raw }
   merged.importProcessMode = normalizeKnowledgeImportProcessMode(merged.importProcessMode)
-  merged.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(
-    merged.defaultExtractEngine
-  )
+  merged.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(merged.defaultExtractEngine)
   return merged
 }
 
@@ -249,10 +250,7 @@ function buildSearchService(): KnowledgeSearchService {
   })
 }
 
-function handleKnowledgeIpc(
-  channel: string,
-  listener: Parameters<typeof ipcMain.handle>[1]
-): void {
+function handleKnowledgeIpc(channel: string, listener: Parameters<typeof ipcMain.handle>[1]): void {
   ipcMain.removeHandler(channel)
   ipcMain.handle(channel, listener)
 }
@@ -513,25 +511,22 @@ export function registerKnowledgeIPC(): void {
     return repo.getStats(notebookId, requireActiveVaultId())
   })
 
-  handleKnowledgeIpc(
-    'knowledge:has-model-mismatch',
-    async (_e, notebookIds?: string[]) => {
-      const repo = requireKnowledgeRepo()
-      const embeddingService = getEmbeddingService()
-      const { getEmbeddingConfig } = await import('./rag.ipc')
-      const embeddingConfig = getEmbeddingConfig()
-      await embeddingConfig.load()
-      const modelId = embeddingConfig.getGlobalEmbeddingModelId()
-      if (!modelId || !embeddingService.isConfigured) return false
-      const vaultId = requireActiveVaultId()
-      const ids = (notebookIds ?? []).map((id) => String(id).trim()).filter(Boolean)
-      const count = await repo.countHeterogeneousEmbeddings(modelId, {
-        vaultId,
-        ...(ids.length > 0 ? { notebookIds: ids } : {})
-      })
-      return count > 0
-    }
-  )
+  handleKnowledgeIpc('knowledge:has-model-mismatch', async (_e, notebookIds?: string[]) => {
+    const repo = requireKnowledgeRepo()
+    const embeddingService = getEmbeddingService()
+    const { getEmbeddingConfig } = await import('./rag.ipc')
+    const embeddingConfig = getEmbeddingConfig()
+    await embeddingConfig.load()
+    const modelId = embeddingConfig.getGlobalEmbeddingModelId()
+    if (!modelId || !embeddingService.isConfigured) return false
+    const vaultId = requireActiveVaultId()
+    const ids = (notebookIds ?? []).map((id) => String(id).trim()).filter(Boolean)
+    const count = await repo.countHeterogeneousEmbeddings(modelId, {
+      vaultId,
+      ...(ids.length > 0 ? { notebookIds: ids } : {})
+    })
+    return count > 0
+  })
 
   handleKnowledgeIpc('knowledge:list-sources', async (_e, notebookId: string) => {
     const repo = requireKnowledgeRepo()
@@ -540,10 +535,7 @@ export function registerKnowledgeIPC(): void {
 
   handleKnowledgeIpc(
     'knowledge:list-chunks',
-    async (
-      _e,
-      input: { notebookId: string; limit?: number; offset?: number; query?: string }
-    ) => {
+    async (_e, input: { notebookId: string; limit?: number; offset?: number; query?: string }) => {
       const notebookId = String(input?.notebookId || '').trim()
       if (!notebookId) throw new Error('notebookId required')
       const repo = requireKnowledgeRepo()
@@ -592,7 +584,8 @@ export function registerKnowledgeIPC(): void {
     }))
     const running = items.find((item) => item.status === 'running')
     return {
-      pending: items.filter((item) => item.status === 'pending' || item.status === 'running').length,
+      pending: items.filter((item) => item.status === 'pending' || item.status === 'running')
+        .length,
       running: items.filter((item) => item.status === 'running').length,
       failed: items.filter((item) => item.status === 'failed').length,
       currentSourceId: running?.sourceId ?? null,
@@ -649,63 +642,37 @@ export function registerKnowledgeIPC(): void {
     return result
   })
 
-  handleKnowledgeIpc(
-    'knowledge:get-source-file',
-    async (_e, input: { sourceId: string }) => {
-      const repo = requireKnowledgeRepo()
-      const source = await repo.getSource(input.sourceId)
-      if (!source) throw new Error(`source not found: ${input.sourceId}`)
+  handleKnowledgeIpc('knowledge:get-source-file', async (_e, input: { sourceId: string }) => {
+    const repo = requireKnowledgeRepo()
+    const source = await repo.getSource(input.sourceId)
+    if (!source) throw new Error(`source not found: ${input.sourceId}`)
 
-      const notebookManager = getNotebookRawManager()
-      const fileNameFromPath = source.relativePath
-        ? path.basename(source.relativePath)
-        : source.title
-      const ext = path.extname(fileNameFromPath || '').toLowerCase()
+    const notebookManager = getNotebookRawManager()
+    const fileNameFromPath = source.relativePath ? path.basename(source.relativePath) : source.title
+    const ext = path.extname(fileNameFromPath || '').toLowerCase()
 
-      if (!source.relativePath) {
-        return {
-          kind: 'unsupported' as const,
-          fileName: source.title,
-          localUrl: null as string | null,
-          fileBytes: null as Uint8Array | null,
-          textContent: null as string | null,
-          originUrl: source.originUrl ?? null
-        }
-      }
-
-      const abs = await notebookManager.absolutePath(source.relativePath)
-      const localUrl = toLocalProtocolFileUrl(abs)
-      const isTextLike =
-        source.sourceKind === 'text' ||
-        source.sourceKind === 'note' ||
-        source.sourceKind === 'url' ||
-        ['.md', '.txt', '.markdown'].includes(ext)
-
-      if (ext === '.pdf') {
-        return {
-          kind: 'pdf' as const,
-          fileName: fileNameFromPath || source.title,
-          localUrl,
-          fileBytes: null as Uint8Array | null,
-          textContent: null as string | null,
-          originUrl: source.originUrl ?? null
-        }
-      }
-
-      if (isTextLike) {
-        const textContent = await fileSystem.readFile(abs, 'utf8')
-        return {
-          kind: (source.sourceKind === 'url' ? 'url' : 'text') as 'url' | 'text',
-          fileName: fileNameFromPath || source.title,
-          localUrl,
-          fileBytes: null as Uint8Array | null,
-          textContent,
-          originUrl: source.originUrl ?? null
-        }
-      }
-
+    if (!source.relativePath) {
       return {
         kind: 'unsupported' as const,
+        fileName: source.title,
+        localUrl: null as string | null,
+        fileBytes: null as Uint8Array | null,
+        textContent: null as string | null,
+        originUrl: source.originUrl ?? null
+      }
+    }
+
+    const abs = await notebookManager.absolutePath(source.relativePath)
+    const localUrl = toLocalProtocolFileUrl(abs)
+    const isTextLike =
+      source.sourceKind === 'text' ||
+      source.sourceKind === 'note' ||
+      source.sourceKind === 'url' ||
+      ['.md', '.txt', '.markdown'].includes(ext)
+
+    if (ext === '.pdf') {
+      return {
+        kind: 'pdf' as const,
         fileName: fileNameFromPath || source.title,
         localUrl,
         fileBytes: null as Uint8Array | null,
@@ -713,7 +680,28 @@ export function registerKnowledgeIPC(): void {
         originUrl: source.originUrl ?? null
       }
     }
-  )
+
+    if (isTextLike) {
+      const textContent = await fileSystem.readFile(abs, 'utf8')
+      return {
+        kind: (source.sourceKind === 'url' ? 'url' : 'text') as 'url' | 'text',
+        fileName: fileNameFromPath || source.title,
+        localUrl,
+        fileBytes: null as Uint8Array | null,
+        textContent,
+        originUrl: source.originUrl ?? null
+      }
+    }
+
+    return {
+      kind: 'unsupported' as const,
+      fileName: fileNameFromPath || source.title,
+      localUrl,
+      fileBytes: null as Uint8Array | null,
+      textContent: null as string | null,
+      originUrl: source.originUrl ?? null
+    }
+  })
 
   handleKnowledgeIpc(
     'knowledge:probe-extract-sample',
@@ -776,9 +764,7 @@ export function registerKnowledgeIPC(): void {
     if (patch.importProcessMode !== undefined) {
       next.importProcessMode = normalizeKnowledgeImportProcessMode(patch.importProcessMode)
     }
-    next.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(
-      next.defaultExtractEngine
-    )
+    next.defaultExtractEngine = normalizeKnowledgeDefaultExtractEngine(next.defaultExtractEngine)
     await settingsManager.set('knowledge_config', next)
     resetKnowledgeIngestService()
     return next

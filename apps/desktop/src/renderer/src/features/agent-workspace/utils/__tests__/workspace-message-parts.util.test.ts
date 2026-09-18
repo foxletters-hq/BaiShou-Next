@@ -200,7 +200,14 @@ describe('workspace-message-parts.util', () => {
       {
         kind: 'file_change',
         key: 'f1',
-        data: { path: 'a.md', kind: 'create', additions: 1, deletions: 0, toolCallId: 'c1', diff: '+hi' }
+        data: {
+          path: 'a.md',
+          kind: 'create',
+          additions: 1,
+          deletions: 0,
+          toolCallId: 'c1',
+          diff: '+hi'
+        }
       },
       {
         kind: 'tool',
@@ -313,7 +320,16 @@ describe('workspace-message-parts.util', () => {
           result: 'ok'
         }
       ],
-      [{ path: 'a.md', kind: 'create', additions: 3, deletions: 0, toolCallId: 'c1', diff: '+a\n+b\n+c' }]
+      [
+        {
+          path: 'a.md',
+          kind: 'create',
+          additions: 3,
+          deletions: 0,
+          toolCallId: 'c1',
+          diff: '+a\n+b\n+c'
+        }
+      ]
     )
 
     expect(entries).toHaveLength(1)

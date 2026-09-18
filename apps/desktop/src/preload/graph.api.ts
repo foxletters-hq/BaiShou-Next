@@ -117,7 +117,8 @@ export const graphApi = {
       ipcRenderer.invoke('graph:revert-node-split', opts),
     listNameCandidates: (opts: { nodeId: string }) =>
       ipcRenderer.invoke('graph:list-name-candidates', opts),
-    listSplitEdges: (opts: { nodeId: string }) => ipcRenderer.invoke('graph:list-split-edges', opts),
+    listSplitEdges: (opts: { nodeId: string }) =>
+      ipcRenderer.invoke('graph:list-split-edges', opts),
     getNode: (id: string) => ipcRenderer.invoke('graph:get-node', id),
     meta: () => ipcRenderer.invoke('graph:meta'),
     resolveJournal: (opts: { date: string }) =>

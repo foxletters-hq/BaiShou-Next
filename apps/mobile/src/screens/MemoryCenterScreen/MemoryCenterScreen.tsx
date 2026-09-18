@@ -20,13 +20,7 @@ import {
   type RagBatchEmbedPhaseId,
   type RagConfig
 } from '@baishou/shared'
-import {
-  Button,
-  Card,
-  SegmentedControl,
-  useNativeTheme,
-  useNativeToast
-} from '@baishou/ui/native'
+import { Button, Card, SegmentedControl, useNativeTheme, useNativeToast } from '@baishou/ui/native'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useBaishou } from '@/src/providers/BaishouProvider'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
@@ -39,10 +33,7 @@ import {
   readMemoryOnboardingDismissed,
   writeMemoryOnboardingDismissed
 } from './memory-center-onboarding.storage'
-import {
-  normalizeMemoryCenterRagConfig,
-  readActiveVaultSafely
-} from './memory-center-data.util'
+import { normalizeMemoryCenterRagConfig, readActiveVaultSafely } from './memory-center-data.util'
 import { snapshotMemoryEmbedPhases } from './memory-center-organize.util'
 
 function rowLabel(
@@ -82,7 +73,9 @@ export function MemoryCenterScreen() {
   const chrome = getStackScreenChrome(colors)
   const { dbReady, services } = useBaishou()
   const params = useLocalSearchParams<{ tab?: string }>()
-  const initialTab = isMemoryCenterTab(String(params.tab ?? '')) ? (params.tab as MemoryCenterTab) : 'vectors'
+  const initialTab = isMemoryCenterTab(String(params.tab ?? ''))
+    ? (params.tab as MemoryCenterTab)
+    : 'vectors'
   const [tab, setTab] = useState<MemoryCenterTab>(initialTab)
   const [pendingEmbedParts, setPendingEmbedParts] = useState<PendingEmbedCounts>(
     EMPTY_PENDING_EMBED_COUNTS
@@ -105,9 +98,7 @@ export function MemoryCenterScreen() {
       services.settingsManager.get<Record<string, unknown>>('global_models'),
       services.settingsManager.get<{ ragEnabled?: boolean }>('rag_config'),
       readMemoryOnboardingDismissed(),
-      (
-        services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> }
-      )
+      (services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> })
         .getPendingEmbedCounts?.()
         .catch(() => EMPTY_PENDING_EMBED_COUNTS) ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)
     ])
@@ -141,7 +132,10 @@ export function MemoryCenterScreen() {
 
   const pendingEmbedCount = pendingEmbedParts.total
   const embeddingConfigured = isEmbeddingConfiguredForMemory(globalModels)
-  const embedSnapshot = useMemo(() => snapshotMemoryEmbedPhases(pendingEmbedParts), [pendingEmbedParts])
+  const embedSnapshot = useMemo(
+    () => snapshotMemoryEmbedPhases(pendingEmbedParts),
+    [pendingEmbedParts]
+  )
   const rows = useMemo(
     () =>
       buildMemoryReadinessRows({
@@ -224,7 +218,11 @@ export function MemoryCenterScreen() {
   }
 
   return (
-    <StackScreenLayout title={t('memory.title', '全局 AI 记忆')} {...chrome} onBack={() => router.back()}>
+    <StackScreenLayout
+      title={t('memory.title', '全局 AI 记忆')}
+      {...chrome}
+      onBack={() => router.back()}
+    >
       {!dbReady ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />

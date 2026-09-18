@@ -798,7 +798,9 @@ describe('BaishouAgentGateService', () => {
     const pending = gate.listPending('sess_1')
     expect(pending.filter((request) => request.action === 'url_read')).toHaveLength(1)
     expect(pending.find((request) => request.action === 'url_read')?.coalescedCount).toBe(2)
-    const urlIds = pending.filter((request) => request.action === 'url_read').map((request) => request.id)
+    const urlIds = pending
+      .filter((request) => request.action === 'url_read')
+      .map((request) => request.id)
     await gate.reply({ requestId: urlIds[0]!, reply: AgentGateReply.Once })
 
     await first
@@ -852,20 +854,24 @@ describe('BaishouAgentGateService', () => {
 
   it('伙伴提问不合并，即使连续发起多次', async () => {
     const { gate } = createBaishouAgentGate()
-    const first = gate.assert({
-      ...baseAssertInput,
-      kind: AgentGateKind.Proactive,
-      action: 'companion_ask',
-      title: '要查图谱吗？',
-      options: [{ id: '0', label: '要' }]
-    }).catch((error) => error)
-    const second = gate.assert({
-      ...baseAssertInput,
-      kind: AgentGateKind.Proactive,
-      action: 'companion_ask',
-      title: '要从图谱里查张三吗？',
-      options: [{ id: '0', label: '要' }]
-    }).catch((error) => error)
+    const first = gate
+      .assert({
+        ...baseAssertInput,
+        kind: AgentGateKind.Proactive,
+        action: 'companion_ask',
+        title: '要查图谱吗？',
+        options: [{ id: '0', label: '要' }]
+      })
+      .catch((error) => error)
+    const second = gate
+      .assert({
+        ...baseAssertInput,
+        kind: AgentGateKind.Proactive,
+        action: 'companion_ask',
+        title: '要从图谱里查张三吗？',
+        options: [{ id: '0', label: '要' }]
+      })
+      .catch((error) => error)
 
     expect(gate.listPending('sess_1')).toHaveLength(2)
     gate.cancelSession('sess_1')

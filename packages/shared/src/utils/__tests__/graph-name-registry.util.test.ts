@@ -63,12 +63,15 @@ describe('readGraphNameRegistry', () => {
 
 describe('upsertGraphNameRegistryEntry', () => {
   it('should overwrite the existing item when discriminator already exists', () => {
-    const next = upsertGraphNameRegistryEntry({ nameRegistry: [ENTRY_WORK, ENTRY_SCHOOL] }, {
-      discriminator: 'WORK',
-      label: '公司同事',
-      nodeId: 'node-work-2',
-      registeredAt: 300
-    })
+    const next = upsertGraphNameRegistryEntry(
+      { nameRegistry: [ENTRY_WORK, ENTRY_SCHOOL] },
+      {
+        discriminator: 'WORK',
+        label: '公司同事',
+        nodeId: 'node-work-2',
+        registeredAt: 300
+      }
+    )
     expect(readGraphNameRegistry(next)).toEqual([
       {
         discriminator: 'work',
@@ -95,10 +98,7 @@ describe('removeGraphNameRegistryEntry', () => {
   })
 
   it('should keep remaining entries when only one discriminator is removed', () => {
-    const next = removeGraphNameRegistryEntry(
-      { nameRegistry: [ENTRY_WORK, ENTRY_SCHOOL] },
-      'work'
-    )
+    const next = removeGraphNameRegistryEntry({ nameRegistry: [ENTRY_WORK, ENTRY_SCHOOL] }, 'work')
     expect(readGraphNameRegistry(next)).toEqual([ENTRY_SCHOOL])
   })
 })

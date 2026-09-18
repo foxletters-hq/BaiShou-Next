@@ -42,7 +42,9 @@ describe('agent-gate-inbox.store', () => {
       .upsertAsked(req({ id: 'a', sessionId: 's1', createdAt: 10, action: 'workspace_write' }))
     useAgentGateInboxStore
       .getState()
-      .upsertAsked(req({ id: 'b', sessionId: 's1', createdAt: 20, action: 'diary_edit', title: 'updated' }))
+      .upsertAsked(
+        req({ id: 'b', sessionId: 's1', createdAt: 20, action: 'diary_edit', title: 'updated' })
+      )
     const pending = useAgentGateInboxStore.getState().pending
     expect(pending.map((r) => r.id)).toEqual(['a', 'b'])
     expect(pending[1]?.title).toBe('updated')
@@ -65,18 +67,16 @@ describe('agent-gate-inbox.store', () => {
   })
 
   it('should drop cancelled requests without treating them as answered', () => {
-    useAgentGateInboxStore
-      .getState()
-      .hydrate([
-        req({
-          id: 'ask',
-          sessionId: 's1',
-          createdAt: 1,
-          kind: AgentGateKind.Proactive,
-          action: 'companion_ask'
-        }),
-        req({ id: 'keep', sessionId: 's1', createdAt: 2, action: 'workspace_write' })
-      ])
+    useAgentGateInboxStore.getState().hydrate([
+      req({
+        id: 'ask',
+        sessionId: 's1',
+        createdAt: 1,
+        kind: AgentGateKind.Proactive,
+        action: 'companion_ask'
+      }),
+      req({ id: 'keep', sessionId: 's1', createdAt: 2, action: 'workspace_write' })
+    ])
     useAgentGateInboxStore.getState().removeCancelled(['ask'])
     const next = useAgentGateInboxStore.getState()
     expect(next.pending.map((item) => item.id)).toEqual(['keep'])

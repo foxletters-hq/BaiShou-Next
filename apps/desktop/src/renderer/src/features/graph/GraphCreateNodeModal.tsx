@@ -139,12 +139,7 @@ export const GraphCreateNodeModal: React.FC<{
     >
       <div className={styles.detailBlock}>
         <div className={styles.detailLabel}>{t('graph.label_name', '名称')}</div>
-        <Input
-          fieldSize="small"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoFocus
-        />
+        <Input fieldSize="small" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </div>
       <div className={styles.detailBlock}>
         <div className={styles.detailLabel}>{t('graph.label_type', '类型')}</div>

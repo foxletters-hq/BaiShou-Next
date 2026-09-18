@@ -344,7 +344,9 @@ export class GraphRepository implements GraphRepositoryPort {
       seen.set(node.id, node)
     }
 
-    return [...seen.values()].sort((a, b) => compareDiscriminatorAsc(a.discriminator, b.discriminator))
+    return [...seen.values()].sort((a, b) =>
+      compareDiscriminatorAsc(a.discriminator, b.discriminator)
+    )
   }
 
   async findNodeByNameOrAlias(
@@ -494,9 +496,9 @@ export class GraphRepository implements GraphRepositoryPort {
     const createdAt = input.createdAt ?? now
 
     if (!input.forceId) {
-      const existing = (await this.findNodesByNameOrAlias(input.vaultId, name, input.nodeType)).find(
-        (row) => row.discriminator === discriminator
-      )
+      const existing = (
+        await this.findNodesByNameOrAlias(input.vaultId, name, input.nodeType)
+      ).find((row) => row.discriminator === discriminator)
       if (existing) {
         await this.touchNode(existing.id, {
           aliases: mergeAliases(existing.aliases, input.aliases ?? [name]),
@@ -1398,7 +1400,9 @@ export class GraphRepository implements GraphRepositoryPort {
   async listEmbeddedLiveNodesPage(
     vaultId: string,
     options?: { keyword?: string; limit?: number; offset?: number }
-  ): Promise<Array<{ id: string; name: string; summary: string; modelId: string; updatedAt: number }>> {
+  ): Promise<
+    Array<{ id: string; name: string; summary: string; modelId: string; updatedAt: number }>
+  > {
     const vid = vaultId.trim()
     if (!vid) return []
     const keyword = options?.keyword?.trim()
@@ -1450,7 +1454,10 @@ export class GraphRepository implements GraphRepositoryPort {
     ]
     if (trimmed) {
       filters.push(
-        or(like(graphNodesTable.name, `%${trimmed}%`), like(graphNodesTable.summary, `%${trimmed}%`))!
+        or(
+          like(graphNodesTable.name, `%${trimmed}%`),
+          like(graphNodesTable.summary, `%${trimmed}%`)
+        )!
       )
     }
     const rows = await this.database
@@ -1797,9 +1804,9 @@ export class GraphRepository implements GraphRepositoryPort {
     } catch (error) {
       if (row.nodeType === 'entry' || !isSqliteUniqueConstraintError(error)) throw error
       const incomingDisc = normalizeGraphDiscriminator(row.discriminator)
-      const existing = (await this.findNodesByNameOrAlias(row.vaultId, row.name, row.nodeType)).find(
-        (candidate) => candidate.discriminator === incomingDisc
-      )
+      const existing = (
+        await this.findNodesByNameOrAlias(row.vaultId, row.name, row.nodeType)
+      ).find((candidate) => candidate.discriminator === incomingDisc)
       if (!existing || existing.id === row.id) throw error
       const keepIncoming = shouldKeepIncomingGraphNodeId({
         vaultId: row.vaultId,

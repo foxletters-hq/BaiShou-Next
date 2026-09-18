@@ -96,7 +96,7 @@ function buildTurnAllowRule(input: {
     declared ||
     (shellResource ? resolveCommandPrefixPatternFromCommand(shellResource.value) : null) ||
     (typeof commandFromPreview === 'string' && commandFromPreview.trim()
-      ? resolveCommandPrefixPatternFromCommand(commandFromPreview) ?? commandFromPreview.trim()
+      ? (resolveCommandPrefixPatternFromCommand(commandFromPreview) ?? commandFromPreview.trim())
       : null)
 
   if (input.action === 'workspace_run') {

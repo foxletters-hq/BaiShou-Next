@@ -24,74 +24,75 @@ const OCR_PROMPT = `请识别这张 PDF 页面图片中的全部文字，按原�
  * 注册视觉 OCR：优先知识库专用多模态模型，否则回退全局对话/总结模型。
  */
 export function registerDesktopVisionPageRecognizer(): void {
-  registerVisionPageRecognizer(async ({ pngBase64, page, providerId: overrideProviderId, modelId: overrideModelId }) => {
-    const knowledgeConfig =
-      (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
-    const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
-    const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
+  registerVisionPageRecognizer(
+    async ({ pngBase64, page, providerId: overrideProviderId, modelId: overrideModelId }) => {
+      const knowledgeConfig = (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
+      const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+      const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
-    const modelId =
-      overrideModelId ||
-      knowledgeConfig.visionModelId ||
-      globalModels?.globalDialogueModelId ||
-      globalModels?.globalSummaryModelId
-    const providerId =
-      overrideProviderId ||
-      knowledgeConfig.visionProviderId ||
-      globalModels?.globalDialogueProviderId ||
-      globalModels?.globalSummaryProviderId
-    const providerConfig =
-      (providerId ? providers.find((p) => p.id === providerId) : undefined) ||
-      providers.find((p) => p.isEnabled)
+      const modelId =
+        overrideModelId ||
+        knowledgeConfig.visionModelId ||
+        globalModels?.globalDialogueModelId ||
+        globalModels?.globalSummaryModelId
+      const providerId =
+        overrideProviderId ||
+        knowledgeConfig.visionProviderId ||
+        globalModels?.globalDialogueProviderId ||
+        globalModels?.globalSummaryProviderId
+      const providerConfig =
+        (providerId ? providers.find((p) => p.id === providerId) : undefined) ||
+        providers.find((p) => p.isEnabled)
 
-    if (!modelId || !providerConfig) {
-      throw new Error(
-        i18n.t(
-          'auto.apps.desktop.src.main.services.register.desktop.vision.ocr.no_model',
-          '未配置多模态模型，无法使用视觉提取'
+      if (!modelId || !providerConfig) {
+        throw new Error(
+          i18n.t(
+            'auto.apps.desktop.src.main.services.register.desktop.vision.ocr.no_model',
+            '未配置多模态模型，无法使用视觉提取'
+          )
         )
-      )
-    }
-    if (!isVisionModel(modelId, providerConfig.type || providerConfig.id)) {
-      throw new Error(`当前模型不是多模态视觉模型：${modelId}`)
-    }
+      }
+      if (!isVisionModel(modelId, providerConfig.type || providerConfig.id)) {
+        throw new Error(`当前模型不是多模态视觉模型：${modelId}`)
+      }
 
-    const registry = AIProviderRegistry.getInstance()
-    const provider = registry.getOrUpdateProvider(prepareProviderConfigForRuntime(providerConfig))
-    const model = provider.getLanguageModel(modelId)
+      const registry = AIProviderRegistry.getInstance()
+      const provider = registry.getOrUpdateProvider(prepareProviderConfigForRuntime(providerConfig))
+      const model = provider.getLanguageModel(modelId)
 
-    try {
-      const builtReasoning = buildDefaultReasoningOptions({
-        modelId,
-        providerType: providerConfig.type || providerConfig.id,
-        baseUrl: providerConfig.baseUrl,
-        effort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'vision')
-      })
-      const result = await runWithOpenAiThinkingInjectAsync(
-        builtReasoning.openAiThinkingInject,
-        async () =>
-          generateText({
-            model,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` },
-                  { type: 'image', image: `data:image/png;base64,${pngBase64}` }
-                ]
-              }
-            ],
-            ...(builtReasoning.providerOptions
-              ? { providerOptions: builtReasoning.providerOptions as never }
-              : {})
-          })
-      )
-      return result.text || ''
-    } catch (e) {
-      logger.warn('[VisionOCR] failed', e as Error)
-      throw new Error(
-        `视觉 OCR 失败（第 ${page} 页）：${e instanceof Error ? e.message : String(e)}`
-      )
+      try {
+        const builtReasoning = buildDefaultReasoningOptions({
+          modelId,
+          providerType: providerConfig.type || providerConfig.id,
+          baseUrl: providerConfig.baseUrl,
+          effort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'vision')
+        })
+        const result = await runWithOpenAiThinkingInjectAsync(
+          builtReasoning.openAiThinkingInject,
+          async () =>
+            generateText({
+              model,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` },
+                    { type: 'image', image: `data:image/png;base64,${pngBase64}` }
+                  ]
+                }
+              ],
+              ...(builtReasoning.providerOptions
+                ? { providerOptions: builtReasoning.providerOptions as never }
+                : {})
+            })
+        )
+        return result.text || ''
+      } catch (e) {
+        logger.warn('[VisionOCR] failed', e as Error)
+        throw new Error(
+          `视觉 OCR 失败（第 ${page} 页）：${e instanceof Error ? e.message : String(e)}`
+        )
+      }
     }
-  })
+  )
 }

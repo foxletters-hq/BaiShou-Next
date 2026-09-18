@@ -297,7 +297,11 @@ export async function mobileResolveNotebookCoverUri(relativePath: string): Promi
   try {
     const abs = await manager.absolutePath(rel)
     if (!abs) return null
-    return abs.startsWith('file://') ? abs : abs.startsWith('/') ? `file://${abs}` : `file:///${abs}`
+    return abs.startsWith('file://')
+      ? abs
+      : abs.startsWith('/')
+        ? `file://${abs}`
+        : `file:///${abs}`
   } catch {
     return null
   }

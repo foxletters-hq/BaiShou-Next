@@ -38,10 +38,7 @@ type Props = {
   onSnapshot: (snap: SkillComposerSnapshot) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
   onPaste: (e: React.ClipboardEvent<HTMLDivElement>) => void
-  onOpenFileRef?: (
-    relativePath: string,
-    options?: { line?: number; isDirectory?: boolean }
-  ) => void
+  onOpenFileRef?: (relativePath: string, options?: { line?: number; isDirectory?: boolean }) => void
 }
 
 function readSnapshot(root: HTMLElement): SkillComposerSnapshot {

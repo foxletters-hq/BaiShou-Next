@@ -3,10 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-const src = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '..', 'index.tsx'),
-  'utf8'
-)
+const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'index.tsx'), 'utf8')
 
 describe('AIGlobalModelsView graph slot', () => {
   it('should let the graph extract model be chosen independently of dialogue', () => {
@@ -15,7 +12,7 @@ describe('AIGlobalModelsView graph slot', () => {
     expect(src).toContain('config.globalGraphProviderId')
     expect(src).toContain('config.globalGraphModelId')
     expect(src).not.toContain('图关系抽取始终跟随对话模型')
-    expect(src).not.toContain("{ readOnly: true }")
+    expect(src).not.toContain('{ readOnly: true }')
   })
 
   it('should persist reasoning effort by model use on non-embedding pickers', () => {

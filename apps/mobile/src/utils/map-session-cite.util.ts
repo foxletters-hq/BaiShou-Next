@@ -26,15 +26,14 @@ type FileCiteRefsInput = Parameters<typeof normalizeFileCiteRefs>[0]
 export function parseUnknownFileCiteRefs(value: unknown): FileCiteRefsInput {
   if (value == null) return value
   if (!Array.isArray(value)) return undefined
-  const refs: Array<
-    Exclude<NonNullable<FileCiteRefsInput>[number], null | undefined>
-  > = []
+  const refs: Array<Exclude<NonNullable<FileCiteRefsInput>[number], null | undefined>> = []
   for (const item of value) {
     if (!isPlainObject(item)) continue
     const selectionRaw = item.selection
     const selection = isPlainObject(selectionRaw)
       ? {
-          startLine: typeof selectionRaw.startLine === 'number' ? selectionRaw.startLine : undefined,
+          startLine:
+            typeof selectionRaw.startLine === 'number' ? selectionRaw.startLine : undefined,
           endLine: typeof selectionRaw.endLine === 'number' ? selectionRaw.endLine : undefined
         }
       : undefined

@@ -612,7 +612,10 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
       isNull(notebookGraphNodesTable.deletedAt)
     ]
     if (type) filters.push(eq(notebookGraphNodesTable.nodeType, type))
-    const byName = await this.db.select().from(notebookGraphNodesTable).where(and(...filters))
+    const byName = await this.db
+      .select()
+      .from(notebookGraphNodesTable)
+      .where(and(...filters))
     const seen = new Map<string, NotebookGraphNodeRow>()
     for (const row of byName) seen.set(row.id, row)
 

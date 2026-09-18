@@ -59,10 +59,7 @@ import { shouldPersistPartialAssistantAfterStop } from './persist-aborted-assist
 import { StreamingAssistantCheckpoint } from './streaming-assistant-checkpoint'
 import { flushReasonFromStreamChunk } from './streaming-assistant-flush.util'
 import { messageHasImageAttachments } from './attachment-content.builder'
-import {
-  abortAgentStreamSession,
-  isAgentStreamSessionClaimActive
-} from './stream-session-guard'
+import { abortAgentStreamSession, isAgentStreamSessionClaimActive } from './stream-session-guard'
 import { buildToolCallRepairHandler } from './tool-call-repair.util'
 import { resolveSessionAgentGate } from '../baishou-agent-gate/baishou-agent-gate-session.util'
 import { runCompressionSaveDiaryLifecycle } from '../baishou-agent-gate/compression-save-diary.lifecycle'
@@ -774,8 +771,7 @@ export class AgentSessionService {
       }
 
       // doom-loop 自触发 abort 时 abortSignal 也会 aborted，不可伪装成普通用户取消
-      const streamAborted =
-        Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError)
+      const streamAborted = Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError)
       const userAborted = streamAborted && !doomTripped
 
       // 记录性能指标
@@ -810,7 +806,12 @@ export class AgentSessionService {
         applyRejectedCompanionAskResults(accumulator.timeline)
       }
 
-      if (streamError && !userAborted && !doomTripped && shouldReportAgentStreamAsError(streamError)) {
+      if (
+        streamError &&
+        !userAborted &&
+        !doomTripped &&
+        shouldReportAgentStreamAsError(streamError)
+      ) {
         logger.warn(
           '[AgentSessionService] Stream encountered a fatal error:',
           streamError instanceof Error ? streamError.message : String(streamError)
@@ -831,13 +832,9 @@ export class AgentSessionService {
       }
 
       if (doomTripped) {
-        logger.info(
-          `[AgentSessionService] Skip persist for session ${sessionId}: doom-loop`
-        )
+        logger.info(`[AgentSessionService] Skip persist for session ${sessionId}: doom-loop`)
         const doomErr =
-          streamError instanceof Error
-            ? streamError
-            : new Error('检测到工具调用死循环，已中断本轮')
+          streamError instanceof Error ? streamError : new Error('检测到工具调用死循环，已中断本轮')
         runtimeRecorder.record({
           type: 'session.stream_finished',
           sessionId,
@@ -907,13 +904,8 @@ export class AgentSessionService {
       }
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
-      if (
-        streamError &&
-        shouldReportAgentStreamAsError(streamError) &&
-        !abortSignal?.aborted
-      ) {
-        const errObj =
-          streamError instanceof Error ? streamError : new Error(String(streamError))
+      if (streamError && shouldReportAgentStreamAsError(streamError) && !abortSignal?.aborted) {
+        const errObj = streamError instanceof Error ? streamError : new Error(String(streamError))
         runtimeRecorder.record({
           type: 'session.stream_finished',
           sessionId,

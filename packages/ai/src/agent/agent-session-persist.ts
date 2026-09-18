@@ -193,12 +193,7 @@ export async function persistResult(params: PersistResultParams): Promise<{
       modelId: modelId
     }
     if (params.existingAssistantMessageId) {
-      await sessionRepo.replaceMessageParts(
-        assistantMsgId,
-        sessionId,
-        partsToInsert,
-        billing
-      )
+      await sessionRepo.replaceMessageParts(assistantMsgId, sessionId, partsToInsert, billing)
     } else {
       await sessionRepo.insertMessageWithParts(
         {

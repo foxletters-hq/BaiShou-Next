@@ -89,9 +89,9 @@ export function KnowledgeDetailScreen() {
   const [pasteText, setPasteText] = useState('')
   const [urlValue, setUrlValue] = useState('')
   const [showImport, setShowImport] = useState<'text' | 'url' | null>(null)
-  const [graphNodes, setGraphNodes] = useState<Array<{ id: string; name: string; nodeType: string }>>(
-    []
-  )
+  const [graphNodes, setGraphNodes] = useState<
+    Array<{ id: string; name: string; nodeType: string }>
+  >([])
   const [graphEdges, setGraphEdges] = useState<
     Array<{ id: string; fromId: string; toId: string; edgeType: string }>
   >([])
@@ -133,7 +133,9 @@ export function KnowledgeDetailScreen() {
     }
     try {
       const view = await mobileGetNotebookGraphView(notebookId, 80)
-      setGraphNodes((view.nodes || []).map((n) => ({ id: n.id, name: n.name, nodeType: n.nodeType })))
+      setGraphNodes(
+        (view.nodes || []).map((n) => ({ id: n.id, name: n.name, nodeType: n.nodeType }))
+      )
       setGraphEdges(
         (view.edges || []).map((e) => ({
           id: e.id,
@@ -188,7 +190,9 @@ export function KnowledgeDetailScreen() {
       setCoverTone(updated.coverTone || '')
       setCoverIcon(updated.coverIcon || '')
       setCoverImage(updated.coverImage || '')
-      setCoverUri(updated.coverImage ? await mobileResolveNotebookCoverUri(updated.coverImage) : null)
+      setCoverUri(
+        updated.coverImage ? await mobileResolveNotebookCoverUri(updated.coverImage) : null
+      )
     } catch (e) {
       setError(String((e as Error)?.message || e))
     } finally {
@@ -283,7 +287,8 @@ export function KnowledgeDetailScreen() {
       const parsed = parseNotebookDataManageResult(raw)
       if (!parsed) throw new Error(t('knowledge.data_manage_failed', '数据管理未完成'))
       const kind = notebookDataManageStatusKind(parsed)
-      if (kind === 'cleared') toast.showSuccess(t('knowledge.data_manage_cleared', '已清除派生数据'))
+      if (kind === 'cleared')
+        toast.showSuccess(t('knowledge.data_manage_cleared', '已清除派生数据'))
       else if (kind === 'reprocess-queued') {
         toast.showSuccess(t('knowledge.data_manage_queued', '已加入重整理队列'))
       } else {
@@ -412,7 +417,11 @@ export function KnowledgeDetailScreen() {
               {t('knowledge.upload_cover_image', '上传图片')}
             </Button>
             {coverImage ? (
-              <Button variant="outlined" isDisabled={busy} onPress={() => void saveCover({ coverImage: '' })}>
+              <Button
+                variant="outlined"
+                isDisabled={busy}
+                onPress={() => void saveCover({ coverImage: '' })}
+              >
                 {t('knowledge.clear_cover_image', '清除图片')}
               </Button>
             ) : null}
@@ -508,7 +517,10 @@ export function KnowledgeDetailScreen() {
             </Text>
           ) : (
             sources.map((s) => (
-              <View key={s.id} style={[styles.sourceRow, { borderBottomColor: colors.borderSubtle }]}>
+              <View
+                key={s.id}
+                style={[styles.sourceRow, { borderBottomColor: colors.borderSubtle }]}
+              >
                 <Text style={{ color: colors.textPrimary, flex: 1 }}>{s.title}</Text>
                 <View style={styles.sourceStatus}>
                   {s.status === 'failed' && s.errorMessage?.trim() ? (
@@ -531,11 +543,7 @@ export function KnowledgeDetailScreen() {
                     />
                   ) : null}
                 </View>
-                <Button
-                  isDisabled={busy}
-                  destructive
-                  onPress={() => void onDeleteSource(s)}
-                >
+                <Button isDisabled={busy} destructive onPress={() => void onDeleteSource(s)}>
                   {t('knowledge.delete_source', '删除')}
                 </Button>
               </View>

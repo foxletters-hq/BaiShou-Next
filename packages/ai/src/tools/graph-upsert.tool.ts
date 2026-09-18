@@ -41,7 +41,10 @@ const edgeItem = z
   .object({
     from: z.string().optional().describe('Source entity name or id.'),
     to: z.string().optional().describe('Target entity name or id.'),
-    type: z.string().optional().describe('Relation type, e.g. knows / located_at / participates_in.'),
+    type: z
+      .string()
+      .optional()
+      .describe('Relation type, e.g. knows / located_at / participates_in.'),
     excerpt: z.string().optional().describe('Short diary excerpt that supports this edge.'),
     id: z
       .string()
@@ -165,7 +168,9 @@ function graphUpsertReusedFromHit(
 }
 
 function resolveEdgeAction(obj: Record<string, unknown>): 'write' | 'update' | 'delete' {
-  const raw = String(obj.action ?? '').trim().toLowerCase()
+  const raw = String(obj.action ?? '')
+    .trim()
+    .toLowerCase()
   if (raw === 'delete' || raw === 'remove') return 'delete'
   if (raw === 'update' || raw === 'patch') return 'update'
   if (raw === 'write' || raw === 'upsert' || raw === 'create') return 'write'
@@ -406,10 +411,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           sourceExcerpt:
             typeof obj.excerpt === 'string' ? obj.excerpt : (existing?.sourceExcerpt ?? ''),
           sourceContentHash: existing?.sourceContentHash ?? null,
-          confidence: normalizeGraphExtractConfidence(
-            obj.confidence,
-            existing?.confidence ?? 70
-          ),
+          confidence: normalizeGraphExtractConfidence(obj.confidence, existing?.confidence ?? 70),
           origin: preferGraphOrigin(existing?.origin, 'ai'),
           reviewStatus,
           shardMonth: existing?.shardMonth || shardMonth,

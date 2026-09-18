@@ -39,9 +39,7 @@ function createService(overrides?: {
 }) {
   const nodes: Array<Record<string, unknown>> = []
   const edges: Array<Record<string, unknown>> = []
-  const findNodeByName = vi.fn(
-    overrides?.findNodeByName ?? (async () => null)
-  )
+  const findNodeByName = vi.fn(overrides?.findNodeByName ?? (async () => null))
   const findNodesByNameOrAlias = vi.fn(
     overrides?.findNodesByNameOrAlias ??
       (async (vaultId: string, notebookId: string, name: string, nodeType?: string) => {
@@ -55,7 +53,10 @@ function createService(overrides?: {
     raw: {
       getExtractState: vi.fn(async () => null),
       replaceSourceGraph: vi.fn(
-        async (input: { nodes: Array<Record<string, unknown>>; edges?: Array<Record<string, unknown>> }) => {
+        async (input: {
+          nodes: Array<Record<string, unknown>>
+          edges?: Array<Record<string, unknown>>
+        }) => {
           nodes.length = 0
           edges.length = 0
           for (const record of input.nodes) {
@@ -338,7 +339,9 @@ describe('KnowledgeGraphExtractionService entity align', () => {
         throw new Error('多候选时不应再调二次判定')
       }
       return JSON.stringify({
-        entities: [{ name: '张三', type: 'person', aliases: [], summary: '资料里的张三', confidence: 90 }],
+        entities: [
+          { name: '张三', type: 'person', aliases: [], summary: '资料里的张三', confidence: 90 }
+        ],
         edges: [{ from: '张三', to: '资料', type: 'mentions', excerpt: '出现了', confidence: 90 }]
       })
     })

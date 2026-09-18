@@ -105,13 +105,10 @@ describe('nextExplorerSelection', () => {
 describe('resolveExplorerDragEntries', () => {
   it('should drag the whole selection when the dragged node is selected', () => {
     expect(
-      resolveExplorerDragEntries(
+      resolveExplorerDragEntries({ relativePath: 'a.md', isDirectory: false }, [
         { relativePath: 'a.md', isDirectory: false },
-        [
-          { relativePath: 'a.md', isDirectory: false },
-          { relativePath: 'docs', isDirectory: true }
-        ]
-      )
+        { relativePath: 'docs', isDirectory: true }
+      ])
     ).toEqual([
       { relativePath: 'a.md', isDirectory: false },
       { relativePath: 'docs', isDirectory: true }
@@ -120,10 +117,9 @@ describe('resolveExplorerDragEntries', () => {
 
   it('should drag only the clicked node when it is outside the selection', () => {
     expect(
-      resolveExplorerDragEntries(
-        { relativePath: 'b.md', isDirectory: false },
-        [{ relativePath: 'a.md', isDirectory: false }]
-      )
+      resolveExplorerDragEntries({ relativePath: 'b.md', isDirectory: false }, [
+        { relativePath: 'a.md', isDirectory: false }
+      ])
     ).toEqual([{ relativePath: 'b.md', isDirectory: false }])
   })
 })
@@ -131,22 +127,18 @@ describe('resolveExplorerDragEntries', () => {
 describe('resolveExplorerAddToChatEntries', () => {
   it('should add every selected entry when the menu target is in the selection', () => {
     expect(
-      resolveExplorerAddToChatEntries(
-        { relativePath: 'docs', isDirectory: true },
-        [
-          { relativePath: 'a.md', isDirectory: false },
-          { relativePath: 'docs', isDirectory: true }
-        ]
-      )
+      resolveExplorerAddToChatEntries({ relativePath: 'docs', isDirectory: true }, [
+        { relativePath: 'a.md', isDirectory: false },
+        { relativePath: 'docs', isDirectory: true }
+      ])
     ).toHaveLength(2)
   })
 
   it('should add only the target when it is not selected', () => {
     expect(
-      resolveExplorerAddToChatEntries(
-        { relativePath: 'b.md', isDirectory: false },
-        [{ relativePath: 'a.md', isDirectory: false }]
-      )
+      resolveExplorerAddToChatEntries({ relativePath: 'b.md', isDirectory: false }, [
+        { relativePath: 'a.md', isDirectory: false }
+      ])
     ).toEqual([{ relativePath: 'b.md', isDirectory: false }])
   })
 })
@@ -170,6 +162,8 @@ describe('readWorkbenchRevealPath', () => {
   })
 
   it('should ignore an empty reveal path', () => {
-    expect(readWorkbenchRevealPath(new CustomEvent('x', { detail: { relativePath: '' } }))).toBeNull()
+    expect(
+      readWorkbenchRevealPath(new CustomEvent('x', { detail: { relativePath: '' } }))
+    ).toBeNull()
   })
 })

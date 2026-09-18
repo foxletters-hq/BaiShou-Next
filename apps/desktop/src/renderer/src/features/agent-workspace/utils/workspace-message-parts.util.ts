@@ -256,7 +256,10 @@ export function buildWorkspaceAssistantTimeline(
           toolName,
           state: failed ? 'call' : awaitingAsk ? 'partial-call' : 'result',
           args: (data.arguments as Record<string, unknown>) ?? {},
-          result: data.result ?? data.error ?? (failed && !awaitingAsk ? 'Tool execution failed' : undefined)
+          result:
+            data.result ??
+            data.error ??
+            (failed && !awaitingAsk ? 'Tool execution failed' : undefined)
         }
       })
       continue

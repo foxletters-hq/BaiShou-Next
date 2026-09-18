@@ -14,9 +14,7 @@ describe('vision extract persistCache', () => {
 
   it('should skip the in-process page cache when persistCache is false', async () => {
     const absolutePath = `/tmp/probe-${Date.now()}.pdf`
-    registerPdfPageBitmapRenderer(async () => [
-      { page: 1, pngBase64: 'x', width: 8, height: 8 }
-    ])
+    registerPdfPageBitmapRenderer(async () => [{ page: 1, pngBase64: 'x', width: 8, height: 8 }])
     registerVisionPageRecognizer(async () => '试抽正文')
 
     await visionExtractEngine.extract({

@@ -3,10 +3,7 @@ import { resolveDiaryEmbedTagsFromLoadedRow } from '../mobile-rag-diary-embed-ta
 
 describe('resolveDiaryEmbedTagsFromLoadedRow', () => {
   it('should use tags from the loaded diary row', () => {
-    expect(resolveDiaryEmbedTagsFromLoadedRow({ tags: ['工作', '灵感'] })).toEqual([
-      '工作',
-      '灵感'
-    ])
+    expect(resolveDiaryEmbedTagsFromLoadedRow({ tags: ['工作', '灵感'] })).toEqual(['工作', '灵感'])
   })
 
   it('should parse a diary-service string tags field', () => {

@@ -169,11 +169,7 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     await Promise.resolve(
       onChange({
         ...config,
-        reasoningEffortBySlot: setReasoningEffortForSlot(
-          config.reasoningEffortBySlot,
-          slot,
-          value
-        )
+        reasoningEffortBySlot: setReasoningEffortForSlot(config.reasoningEffortBySlot, slot, value)
       })
     )
   }
@@ -190,7 +186,9 @@ export const AIGlobalModelsView: React.FC<AIGlobalModelsViewProps> = ({
     const isModelSet = Boolean(currentProvider && currentModel)
     const slot = selectorReasoningSlot(key as ModelSelectorKey)
     const effortLabel = slot
-      ? formatReasoningEffortLabel(resolveReasoningEffortForSlot(config.reasoningEffortBySlot, slot))
+      ? formatReasoningEffortLabel(
+          resolveReasoningEffortForSlot(config.reasoningEffortBySlot, slot)
+        )
       : null
     const providerMeta = availableProviders[currentProvider]
     const providerIconUrl =

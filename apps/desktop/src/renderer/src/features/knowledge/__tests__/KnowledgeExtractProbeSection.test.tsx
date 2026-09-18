@@ -21,10 +21,9 @@ vi.mock('react-i18next', async (importOriginal) => {
 })
 
 vi.mock('@baishou/ui', () => ({
-  Button: ({
-    children,
-    ...props
-  }: ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>{children}</button>
+  ),
   Select: ({
     value,
     options,

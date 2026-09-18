@@ -6,10 +6,7 @@ import { describe, expect, it } from 'vitest'
 const dir = dirname(fileURLToPath(import.meta.url))
 const src = readFileSync(join(dir, '../graph.ipc.ts'), 'utf8')
 const agentSrc = readFileSync(join(dir, '../AgentChatService.ts'), 'utf8')
-const notebookReviewSrc = readFileSync(
-  join(dir, '../../services/notebook-graph-review.ts'),
-  'utf8'
-)
+const notebookReviewSrc = readFileSync(join(dir, '../../services/notebook-graph-review.ts'), 'utf8')
 
 function sliceBetween(source: string, start: string, end: string): string {
   const from = source.indexOf(start)
@@ -57,7 +54,11 @@ describe('graph split ipc', () => {
   })
 
   it('should include discriminator on both GraphNodeRawRecord writes when rewriting a node', () => {
-    const review = sliceBetween(src, 'async function writeNodeReview', 'async function writeEdgeReview')
+    const review = sliceBetween(
+      src,
+      'async function writeNodeReview',
+      'async function writeEdgeReview'
+    )
     expect(review).toContain('const record: GraphNodeRawRecord')
     expect(review).toContain('discriminator: node.discriminator')
     const upsert = sliceBetween(src, "'graph:upsert-node'", "'graph:upsert-edge'")

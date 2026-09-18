@@ -107,7 +107,14 @@ function readFileRefChip(chipEl: HTMLElement): FileRefChip {
   const comment = chipEl.getAttribute(FILE_REF_COMMENT_ATTR) || undefined
   const origin = (chipEl.getAttribute(FILE_REF_ORIGIN_ATTR) || 'mention') as FileRefChip['origin']
   const isDirectory = chipEl.getAttribute(FILE_REF_DIRECTORY_ATTR) === 'true'
-  return { id, relativePath, selection, comment, origin, ...(isDirectory ? { isDirectory: true } : {}) }
+  return {
+    id,
+    relativePath,
+    selection,
+    comment,
+    origin,
+    ...(isDirectory ? { isDirectory: true } : {})
+  }
 }
 
 export function createFileRefChipElement(

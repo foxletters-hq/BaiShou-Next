@@ -223,96 +223,96 @@ export async function runControlledDiaryBatchEmbedCore(
     }
 
     try {
-    for (const plan of vaultPlans) {
-      const { vaultId, vaultName, diariesToEmbed, allDiaryIds } = plan
-      await purgeLegacyDiaryEmbeddingsForVault(
-        deps.rawSqlClient as RawSqlClient | undefined,
-        vaultId,
-        allDiaryIds
-      )
+      for (const plan of vaultPlans) {
+        const { vaultId, vaultName, diariesToEmbed, allDiaryIds } = plan
+        await purgeLegacyDiaryEmbeddingsForVault(
+          deps.rawSqlClient as RawSqlClient | undefined,
+          vaultId,
+          allDiaryIds
+        )
 
-      const diaryById = shadowDb
-        ? await loadVaultDiariesForEmbedding(
-            shadowDb,
-            vaultId,
-            diariesToEmbed.map((meta) => meta.id)
-          )
-        : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
+        const diaryById = shadowDb
+          ? await loadVaultDiariesForEmbedding(
+              shadowDb,
+              vaultId,
+              diariesToEmbed.map((meta) => meta.id)
+            )
+          : await deps.diaryService.findByIdsForEmbedding(diariesToEmbed.map((meta) => meta.id))
 
-      await limitExecute(
-        diariesToEmbed,
-        batchConcurrency,
-        async (meta) => {
-        await assertMobileRagCanContinue()
-        if (mobileRagOperationControl.isAborted) {
-          return
-        }
+        await limitExecute(
+          diariesToEmbed,
+          batchConcurrency,
+          async (meta) => {
+            await assertMobileRagCanContinue()
+            if (mobileRagOperationControl.isAborted) {
+              return
+            }
 
-        const dateLabel = meta.date
-          ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
-          : ''
+            const dateLabel = meta.date
+              ? formatLocalDate(meta.date instanceof Date ? meta.date : new Date(meta.date))
+              : ''
 
-        try {
-          reportProgress(
-            `[${vaultName}] 处理日记: ${dateLabel}（${progress.completed}/${globalTotal}）`
-          )
+            try {
+              reportProgress(
+                `[${vaultName}] 处理日记: ${dateLabel}（${progress.completed}/${globalTotal}）`
+              )
 
-          if (mobileRagOperationControl.isAborted) {
-            return
-          }
+              if (mobileRagOperationControl.isAborted) {
+                return
+              }
 
-          const diary = diaryById.get(meta.id)
-          const content = diary && 'content' in diary ? diary.content : undefined
-          if (!diary) {
-            progress.loadSkipped++
-            return
-          }
+              const diary = diaryById.get(meta.id)
+              const content = diary && 'content' in diary ? diary.content : undefined
+              if (!diary) {
+                progress.loadSkipped++
+                return
+              }
 
-          const d =
-            diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
-          await embedDiaryEntry(
-            deps,
-            {
-              diaryId: meta.id,
-              content: content ?? '',
-              tags: resolveDiaryEmbedTagsFromLoadedRow(diary),
-              date: d,
-              updatedAt:
-                ('updatedAt' in diary && diary.updatedAt instanceof Date
-                  ? diary.updatedAt
-                  : meta.updatedAt) ?? new Date(),
-              vaultName
-            },
-            { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
-          )
+              const d =
+                diary.date instanceof Date ? diary.date : new Date(String(diary.date ?? meta.date))
+              await embedDiaryEntry(
+                deps,
+                {
+                  diaryId: meta.id,
+                  content: content ?? '',
+                  tags: resolveDiaryEmbedTagsFromLoadedRow(diary),
+                  date: d,
+                  updatedAt:
+                    ('updatedAt' in diary && diary.updatedAt instanceof Date
+                      ? diary.updatedAt
+                      : meta.updatedAt) ?? new Date(),
+                  vaultName
+                },
+                { adapter, skipIndexPrep: true, skipRagEnabledCheck: true }
+              )
 
-          if (!content?.trim()) {
-            progress.loadSkipped++
-            return
-          }
+              if (!content?.trim()) {
+                progress.loadSkipped++
+                return
+              }
 
-          progress.embedded++
-        } catch (error) {
-          if (mobileRagOperationControl.isAborted) {
-            return
-          }
-          progress.failed++
-          logger.warn('[MobileRag] diary embed failed', {
-            vaultName,
-            diaryId: meta.id,
-            date: dateLabel,
-            error
-          })
-        } finally {
-          progress.completed++
-          reportProgress(
-            `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
-          )
-        }
-        },
-        { shouldStop: () => mobileRagOperationControl.isAborted }
-      )
-    }
+              progress.embedded++
+            } catch (error) {
+              if (mobileRagOperationControl.isAborted) {
+                return
+              }
+              progress.failed++
+              logger.warn('[MobileRag] diary embed failed', {
+                vaultName,
+                diaryId: meta.id,
+                date: dateLabel,
+                error
+              })
+            } finally {
+              progress.completed++
+              reportProgress(
+                `[${vaultName}] 已嵌入 ${progress.embedded}/${globalTotal}${progress.failed > 0 ? `（失败 ${progress.failed}）` : ''}${progress.loadSkipped > 0 ? `（跳过 ${progress.loadSkipped}）` : ''}（${dateLabel}）`
+              )
+            }
+          },
+          { shouldStop: () => mobileRagOperationControl.isAborted }
+        )
+      }
     } catch (error) {
       if (error instanceof MobileRagAbortError) {
         await finalizeBatchEmbedRagConfig(deps, progress.failed > 0)

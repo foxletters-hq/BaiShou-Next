@@ -34,10 +34,7 @@ import {
 } from './workbench-comment-popover.util'
 import { useWorkbenchIdleCaption } from '../utils/workbench-idle-caption'
 import { shouldApplyWorkspaceFsChange } from './workbench-path.util'
-import {
-  isMissingWorkbenchFileError,
-  isWorkbenchTabPathDeleted
-} from './workbench-tab-close.util'
+import { isMissingWorkbenchFileError, isWorkbenchTabPathDeleted } from './workbench-tab-close.util'
 import { shouldEnableWorkbenchTabReorder } from './workbench-tab-reorder.util'
 import { WorkbenchStatusBranchMenu } from './WorkbenchStatusBranchMenu'
 import { useDismissOnOutsideClick } from './GitWorkbenchMenus'
@@ -256,10 +253,7 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
     )
 
     const cancelPendingSaveForDeletedPath = useCallback((deletedPath: string) => {
-      if (
-        !savePathRef.current ||
-        !isWorkbenchTabPathDeleted(savePathRef.current, deletedPath)
-      ) {
+      if (!savePathRef.current || !isWorkbenchTabPathDeleted(savePathRef.current, deletedPath)) {
         return
       }
       if (saveTimerRef.current) {
@@ -746,7 +740,9 @@ export const WorkbenchMainPane = forwardRef<WorkbenchMainPaneHandle, WorkbenchMa
             >
               <MessageSquarePlus size={14} strokeWidth={1.9} aria-hidden />
               <span>{t('workbench.add_to_chat', '加入对话')}</span>
-              <kbd className={styles.selectionAffordanceShortcut}>{addSelectionShortcutLabel()}</kbd>
+              <kbd className={styles.selectionAffordanceShortcut}>
+                {addSelectionShortcutLabel()}
+              </kbd>
             </button>
             <button
               type="button"

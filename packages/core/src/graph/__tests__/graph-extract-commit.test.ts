@@ -45,9 +45,7 @@ function createService(overrides?: {
   const commitReextract = vi.fn(async () => undefined)
   const recountMentions = overrides?.recountMentions ?? vi.fn(async () => undefined)
   const getNodeById = overrides?.getNodeById ?? vi.fn(async () => null)
-  const findNodeByNameOrAlias = vi.fn(
-    overrides?.findNodeByNameOrAlias ?? (async () => null)
-  )
+  const findNodeByNameOrAlias = vi.fn(overrides?.findNodeByNameOrAlias ?? (async () => null))
   const findNodesByNameOrAlias = vi.fn(
     overrides?.findNodesByNameOrAlias ??
       (async (vaultId: string, name: string, type?: string) => {
@@ -575,7 +573,9 @@ describe('GraphLlmExtractionService draft/commit', () => {
         throw new Error('多候选时不应再调二次判定')
       }
       return JSON.stringify({
-        entities: [{ name: '张三', type: 'person', aliases: [], summary: '日记里的张三', confidence: 90 }],
+        entities: [
+          { name: '张三', type: 'person', aliases: [], summary: '日记里的张三', confidence: 90 }
+        ],
         edges: [
           { from: '张三', to: '2026-03-15', type: 'mentions', excerpt: '见面', confidence: 90 }
         ]
@@ -607,7 +607,8 @@ describe('GraphLlmExtractionService draft/commit', () => {
     expect(personWrites.length).toBeGreaterThan(0)
     expect(personWrites[0]?.discriminator).toBe('')
     expect(
-      (personWrites[0]?.props as { ambiguousSourceRefs?: string[] } | undefined)?.ambiguousSourceRefs
+      (personWrites[0]?.props as { ambiguousSourceRefs?: string[] } | undefined)
+        ?.ambiguousSourceRefs
     ).toEqual(['2026-03-15'])
 
     const splitWrites = records.filter((record) => record.id === splitId)

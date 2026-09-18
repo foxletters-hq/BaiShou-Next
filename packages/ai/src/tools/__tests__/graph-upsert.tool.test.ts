@@ -7,17 +7,21 @@ const VAULT = 'vlt_aaaaaaaaaaaaaaaa'
 
 describe('GraphUpsertTool write semantics', () => {
   it('reuses existing 小明 and skips edges whose endpoints cannot be resolved', async () => {
-    const writes: Array<{ collection?: string; record: { id: string; fromId?: string; toId?: string; name?: string; mentionCount?: number } }> =
-      []
+    const writes: Array<{
+      collection?: string
+      record: { id: string; fromId?: string; toId?: string; name?: string; mentionCount?: number }
+    }> = []
     const existingId = graphNodeIdForEntity(VAULT, 'person', '小明')
     const tool = new GraphUpsertTool()
     const context = {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async (opts: { name: string; nodeType?: string }) => {
@@ -61,8 +65,16 @@ describe('GraphUpsertTool write semantics', () => {
   })
 
   it('writes a content-addressable edge when both ends resolve', async () => {
-    const writes: Array<{ collection?: string; record: { id: string; fromId?: string; toId?: string; validFrom?: number; shardMonth?: string } }> =
-      []
+    const writes: Array<{
+      collection?: string
+      record: {
+        id: string
+        fromId?: string
+        toId?: string
+        validFrom?: number
+        shardMonth?: string
+      }
+    }> = []
     const ming = graphNodeIdForEntity(VAULT, 'person', '小明')
     const hangzhou = graphNodeIdForEntity(VAULT, 'place', '杭州')
     const tool = new GraphUpsertTool()
@@ -70,9 +82,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async (opts: { name: string }) => {
@@ -114,9 +128,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, _record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, _record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async (opts: { name: string }) => {
@@ -152,9 +168,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async () => null)
@@ -182,9 +200,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async () => ({
@@ -215,9 +235,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       }
     } as unknown as ToolContext
 
@@ -241,9 +263,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async () => ({
@@ -252,9 +276,7 @@ describe('GraphUpsertTool write semantics', () => {
           nodeType: 'person'
         })),
         findNodeById: vi.fn(async (id: string) =>
-          id === colleagueId
-            ? { id: colleagueId, name: '同事小明', nodeType: 'person' }
-            : null
+          id === colleagueId ? { id: colleagueId, name: '同事小明', nodeType: 'person' } : null
         )
       }
     } as unknown as ToolContext
@@ -262,7 +284,9 @@ describe('GraphUpsertTool write semantics', () => {
     await tool.execute(
       {
         summary: '补同事摘要',
-        entities: JSON.stringify([{ id: colleagueId, name: '小明', type: 'person', summary: '同事' }])
+        entities: JSON.stringify([
+          { id: colleagueId, name: '小明', type: 'person', summary: '同事' }
+        ])
       },
       context
     )
@@ -274,7 +298,8 @@ describe('GraphUpsertTool write semantics', () => {
   })
 
   it('updates an existing edge in place when identity stays the same', async () => {
-    const writes: Array<{ collection?: string; record: { id: string; sourceExcerpt?: string } }> = []
+    const writes: Array<{ collection?: string; record: { id: string; sourceExcerpt?: string } }> =
+      []
     const tombstones: string[] = []
     const ming = graphNodeIdForEntity(VAULT, 'person', '小明')
     const hangzhou = graphNodeIdForEntity(VAULT, 'place', '杭州')
@@ -284,9 +309,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        }),
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        ),
         tombstone: vi.fn(async (_kind: string, id: string) => {
           tombstones.push(id)
         })
@@ -337,9 +364,11 @@ describe('GraphUpsertTool write semantics', () => {
         deleted.push(input)
       }),
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        }),
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        ),
         tombstone
       },
       graphEdgeLookup: {
@@ -383,9 +412,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        }),
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        ),
         tombstone: vi.fn(async (_kind: string, id: string) => {
           tombstones.push(id)
         })
@@ -499,16 +530,19 @@ describe('GraphUpsertTool write semantics', () => {
   })
 
   it('should keep the existing discriminator when findNodeByName returns a split node', async () => {
-    const writes: Array<{ collection?: string; record: { id: string; discriminator?: string } }> = []
+    const writes: Array<{ collection?: string; record: { id: string; discriminator?: string } }> =
+      []
     const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
     const tool = new GraphUpsertTool()
     const context = {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async () => ({
@@ -542,9 +576,11 @@ describe('GraphUpsertTool write semantics', () => {
       vaultId: VAULT,
       vaultName: 'Personal',
       rawDataSourceManager: {
-        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
-          writes.push({ collection: opts?.collection, record: record as never })
-        })
+        writeRecord: vi.fn(
+          async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+            writes.push({ collection: opts?.collection, record: record as never })
+          }
+        )
       },
       graphNodeLookup: {
         findNodeByName: vi.fn(async () => ({

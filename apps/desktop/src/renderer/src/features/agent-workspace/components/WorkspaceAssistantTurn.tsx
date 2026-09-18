@@ -71,10 +71,10 @@ export function WorkspaceAssistantTurn(props: {
   const canEdit = Boolean(bubbleActions?.onSaveAssistantEdit)
   const showActionBar = Boolean(
     bubbleActions?.onRegenerate ||
-      bubbleActions?.onDelete ||
-      bubbleActions?.onShowContext ||
-      canEdit ||
-      assistantText
+    bubbleActions?.onDelete ||
+    bubbleActions?.onShowContext ||
+    canEdit ||
+    assistantText
   )
 
   const saveEdit = async () => {
@@ -92,60 +92,60 @@ export function WorkspaceAssistantTurn(props: {
         dimmed ? ` ${styles.turnDimmed}` : ''
       }`}
     >
-      {timelineGroups.length > 0
-        ? timelineGroups.map((item) => {
-            if (item.kind === 'text' && editingActive) return null
-            if (item.kind === 'reasoning') {
-              return <AgentThinkSection key={item.key} content={item.text} />
-            }
-            if (item.kind === 'text') {
-              const parsed = parseRedactedThinking(item.text)
-              return (
-                <React.Fragment key={item.key}>
-                  {parsed.cleanReasoning ? (
-                    <AgentThinkSection content={parsed.cleanReasoning} />
-                  ) : null}
-                  {parsed.cleanContent ? (
-                    <AgentMarkdownRenderer content={parsed.cleanContent} />
-                  ) : !parsed.cleanReasoning ? (
-                    <AgentMarkdownRenderer content={item.text} />
-                  ) : null}
-                </React.Fragment>
-              )
-            }
-            if (item.kind === 'tools') {
-              return <AgentToolChainSection key={item.key} invocations={item.invocations} />
-            }
-            if (item.kind === 'file_change_failed') {
-              return (
-                <div key={item.key} className={styles.fileChangeError}>
-                  {t('file_change.failed', '文件变更失败')}: {item.data.path}
-                </div>
-              )
-            }
+      {timelineGroups.length > 0 ? (
+        timelineGroups.map((item) => {
+          if (item.kind === 'text' && editingActive) return null
+          if (item.kind === 'reasoning') {
+            return <AgentThinkSection key={item.key} content={item.text} />
+          }
+          if (item.kind === 'text') {
+            const parsed = parseRedactedThinking(item.text)
             return (
-              <WorkspaceFileChangeList
-                key={item.key}
-                changes={buildFileOpEntries(
-                  msg.id,
-                  item.invocations,
-                  item.items.map((entry) => entry.data)
-                )}
-                onSelectChange={(change) => onSelectChange?.(change)}
-                onReviewAll={onReviewAll}
-              />
+              <React.Fragment key={item.key}>
+                {parsed.cleanReasoning ? (
+                  <AgentThinkSection content={parsed.cleanReasoning} />
+                ) : null}
+                {parsed.cleanContent ? (
+                  <AgentMarkdownRenderer content={parsed.cleanContent} />
+                ) : !parsed.cleanReasoning ? (
+                  <AgentMarkdownRenderer content={item.text} />
+                ) : null}
+              </React.Fragment>
             )
-          })
-        : fallbackParsed ? (
-            <>
-              {fallbackParsed.cleanReasoning ? (
-                <AgentThinkSection content={fallbackParsed.cleanReasoning} />
-              ) : null}
-              {fallbackParsed.cleanContent ? (
-                <AgentMarkdownRenderer content={fallbackParsed.cleanContent} />
-              ) : null}
-            </>
+          }
+          if (item.kind === 'tools') {
+            return <AgentToolChainSection key={item.key} invocations={item.invocations} />
+          }
+          if (item.kind === 'file_change_failed') {
+            return (
+              <div key={item.key} className={styles.fileChangeError}>
+                {t('file_change.failed', '文件变更失败')}: {item.data.path}
+              </div>
+            )
+          }
+          return (
+            <WorkspaceFileChangeList
+              key={item.key}
+              changes={buildFileOpEntries(
+                msg.id,
+                item.invocations,
+                item.items.map((entry) => entry.data)
+              )}
+              onSelectChange={(change) => onSelectChange?.(change)}
+              onReviewAll={onReviewAll}
+            />
+          )
+        })
+      ) : fallbackParsed ? (
+        <>
+          {fallbackParsed.cleanReasoning ? (
+            <AgentThinkSection content={fallbackParsed.cleanReasoning} />
           ) : null}
+          {fallbackParsed.cleanContent ? (
+            <AgentMarkdownRenderer content={fallbackParsed.cleanContent} />
+          ) : null}
+        </>
+      ) : null}
       {editingActive ? (
         <ChatBubbleInlineEditor
           isUser={false}
@@ -186,13 +186,9 @@ export function WorkspaceAssistantTurn(props: {
             onCopy={() => copyWorkspaceBubbleText(assistantText)}
             onEdit={canEdit ? () => onEditingChange(msg.id) : undefined}
             onRetry={
-              bubbleActions?.onRegenerate
-                ? () => bubbleActions.onRegenerate?.(msg.id)
-                : undefined
+              bubbleActions?.onRegenerate ? () => bubbleActions.onRegenerate?.(msg.id) : undefined
             }
-            onDelete={
-              bubbleActions?.onDelete ? () => bubbleActions.onDelete?.(msg.id) : undefined
-            }
+            onDelete={bubbleActions?.onDelete ? () => bubbleActions.onDelete?.(msg.id) : undefined}
             onShowContext={
               bubbleActions?.onShowContext ? () => bubbleActions.onShowContext?.(msg) : undefined
             }

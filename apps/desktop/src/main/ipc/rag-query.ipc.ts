@@ -22,10 +22,7 @@ import {
   parseGraphNodeEmbeddingId
 } from '@baishou/shared'
 import { getEmbeddingService, getEmbeddingConfig } from './rag.ipc'
-import {
-  getMemoryRawManager,
-  getRawDataSourceManager
-} from '../services/raw-data-source.runtime'
+import { getMemoryRawManager, getRawDataSourceManager } from '../services/raw-data-source.runtime'
 import { vaultService, resolveActiveVaultId } from './vault.ipc'
 
 function memorySourceKindFilter(sourceKind?: RagVectorKindFilter) {
@@ -359,10 +356,9 @@ export function registerRagQueryIPC() {
           }),
           graphRepo.countEmbeddedLiveNodes(activeVaultId, keyword || undefined)
         ])
-        const merged = [
-          ...memoryEntries,
-          ...nodeRows.map((row) => graphNodeToEntry(row))
-        ].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+        const merged = [...memoryEntries, ...nodeRows.map((row) => graphNodeToEntry(row))].sort(
+          (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)
+        )
         entries = merged.slice(offset, offset + limit)
         total += nodeTotal
       }
@@ -381,9 +377,8 @@ export function registerRagQueryIPC() {
     if (graphNodeId) {
       const graphRepo = new GraphRepository(db)
       await graphRepo.clearNodeEmbedding(graphNodeId, resolveActiveVaultId())
-      const { invalidatePendingEmbedCountsCache } = await import(
-        '../services/pending-embed-counts.service'
-      )
+      const { invalidatePendingEmbedCountsCache } =
+        await import('../services/pending-embed-counts.service')
       invalidatePendingEmbedCountsCache()
       return true
     }

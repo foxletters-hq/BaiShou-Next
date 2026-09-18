@@ -8,9 +8,5 @@ export type KnowledgeRecoverStaleResult = {
 export function shouldKickKnowledgeIngestAfterRecover(
   result: KnowledgeRecoverStaleResult
 ): boolean {
-  return (
-    result.resetSources > 0 ||
-    result.reclaimedEmbedJobs > 0 ||
-    result.droppedExtractJobs > 0
-  )
+  return result.resetSources > 0 || result.reclaimedEmbedJobs > 0 || result.droppedExtractJobs > 0
 }
