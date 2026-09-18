@@ -10,9 +10,40 @@ function readKnowledge(fileName: string): string {
   return readFileSync(join(knowledgeDir, fileName), 'utf8')
 }
 
+function readKnowledgeDetailChrome(): string {
+  return [
+    'KnowledgeDetailPage.tsx',
+    'KnowledgeSourceCards.tsx',
+    'KnowledgeSourceFileIcon.tsx',
+    'KnowledgeDetailJobBanner.tsx',
+    'KnowledgeDetailSettingsDialog.tsx',
+    'KnowledgeDetailImportDialogs.tsx',
+    'KnowledgeDetailHostDialogs.tsx',
+    'knowledge-detail-labels.util.ts',
+    'useKnowledgeDetailRefresh.ts',
+    'useKnowledgeDetailImport.ts',
+    'useKnowledgeDetailActions.ts',
+    'useKnowledgeDetailPreview.ts',
+    'knowledge-detail-source-menu.util.ts'
+  ]
+    .map(readKnowledge)
+    .join('\n')
+}
+
+function readNotebookGraphChrome(): string {
+  return [
+    'NotebookGraphPane.tsx',
+    'NotebookGraphToolbar.tsx',
+    'NotebookGraphDetailTab.tsx',
+    'NotebookGraphSidePanel.tsx'
+  ]
+    .map(readKnowledge)
+    .join('\n')
+}
+
 describe('knowledge detail chrome', () => {
   it('should keep model status in the sources page instead of an open dialog', () => {
-    const page = readKnowledge('KnowledgeDetailPage.tsx')
+    const page = readKnowledgeDetailChrome()
     const css = readKnowledge('KnowledgePage.module.css')
 
     const panel = readKnowledge('NotebookStatusPanel.tsx')
@@ -106,15 +137,15 @@ describe('knowledge detail chrome', () => {
   })
 
   it('should render notebook graph inspector values with chrome classes', () => {
-    const pane = readKnowledge('NotebookGraphPane.tsx')
+    const pane = readNotebookGraphChrome()
     expect(pane).toContain('graphStyles.detailValue')
     expect(pane).toContain('graphStyles.detailLabel')
     expect(pane).not.toContain('graphStyles.itemTitle}>{selectedNode.name}')
   })
 
   it('should start unified organize from the empty graph guide and keep rebuild as maintenance', () => {
-    const page = readKnowledge('KnowledgeDetailPage.tsx')
-    const pane = readKnowledge('NotebookGraphPane.tsx')
+    const page = readKnowledgeDetailChrome()
+    const pane = readNotebookGraphChrome()
     expect(page).toContain('triggerBatchEmbed')
     expect(page).toContain('onRebuildGraph={() => {')
     expect(pane).toContain('onRebuildGraph ?? onStartExtract')

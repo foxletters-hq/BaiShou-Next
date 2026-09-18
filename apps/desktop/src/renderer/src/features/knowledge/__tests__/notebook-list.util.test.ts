@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyNotebookDragReorder,
+  asNotebookRows,
+  formatNotebookDate,
   moveNotebookIndex,
   resolveNotebookCoverPreviewUrl,
   resolveNotebookRename,
@@ -44,6 +46,19 @@ describe('notebook-list.util', () => {
     expect(resolveNotebookRename('研究本', '  安全笔记  ')).toBe('安全笔记')
     expect(resolveNotebookRename('研究本', '研究本')).toBeNull()
     expect(resolveNotebookRename('研究本', '   ')).toBeNull()
+  })
+
+  it('should keep only notebook rows that already have an id', () => {
+    expect(asNotebookRows(null)).toEqual([])
+    expect(asNotebookRows([{ id: 'nb-1', name: '研究' }, { name: '无 id' }])).toEqual([
+      { id: 'nb-1', name: '研究' }
+    ])
+  })
+
+  it('should format a finite timestamp and ignore empty values', () => {
+    expect(formatNotebookDate(undefined, 'en-US')).toBe('')
+    expect(formatNotebookDate(Number.NaN, 'en-US')).toBe('')
+    expect(formatNotebookDate(new Date(2024, 0, 15).getTime(), 'en-US')).toMatch(/January/)
   })
 
   it('appends a cache-busting stamp to the cover image url', () => {
