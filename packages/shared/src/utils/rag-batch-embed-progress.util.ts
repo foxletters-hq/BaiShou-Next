@@ -3,9 +3,10 @@ import type { PendingEmbedCounts } from './pending-embed-count.util'
 export const RAG_BATCH_EMBED_PHASE_IDS = [
   'diary',
   'memory',
-  'graph_node',
   'knowledge',
-  'graph_extract'
+  'graph_extract',
+  'graph_node',
+  'graph_disambiguate'
 ] as const
 
 export type RagBatchEmbedPhaseId = (typeof RAG_BATCH_EMBED_PHASE_IDS)[number]
@@ -25,6 +26,7 @@ export type RagBatchEmbedPhaseCounts = {
   graphNodes: RagBatchEmbedPhaseCount
   knowledgeSources: RagBatchEmbedPhaseCount
   graphExtract: RagBatchEmbedPhaseCount
+  graphDisambiguate: RagBatchEmbedPhaseCount
 }
 
 export const EMPTY_RAG_BATCH_EMBED_PHASES: RagBatchEmbedPhaseCounts = {
@@ -32,7 +34,8 @@ export const EMPTY_RAG_BATCH_EMBED_PHASES: RagBatchEmbedPhaseCounts = {
   memories: { completed: 0, total: 0 },
   graphNodes: { completed: 0, total: 0 },
   knowledgeSources: { completed: 0, total: 0 },
-  graphExtract: { completed: 0, total: 0 }
+  graphExtract: { completed: 0, total: 0 },
+  graphDisambiguate: { completed: 0, total: 0 }
 }
 
 const PHASE_COUNT_KEY: Record<RagBatchEmbedPhaseId, keyof RagBatchEmbedPhaseCounts> = {
@@ -40,7 +43,8 @@ const PHASE_COUNT_KEY: Record<RagBatchEmbedPhaseId, keyof RagBatchEmbedPhaseCoun
   memory: 'memories',
   graph_node: 'graphNodes',
   knowledge: 'knowledgeSources',
-  graph_extract: 'graphExtract'
+  graph_extract: 'graphExtract',
+  graph_disambiguate: 'graphDisambiguate'
 }
 
 function clampCount(value: number): number {
@@ -62,6 +66,7 @@ export type OrganizePhaseCountInput = Pick<
 > & {
   notebookGraphNodes?: number
   graphExtract?: number
+  graphDisambiguate?: number
 }
 
 export function phaseCountsFromPending(counts: OrganizePhaseCountInput): RagBatchEmbedPhaseCounts {
@@ -71,7 +76,8 @@ export function phaseCountsFromPending(counts: OrganizePhaseCountInput): RagBatc
     memories: createPhaseCount(0, counts.memories),
     graphNodes: createPhaseCount(0, graphNodes),
     knowledgeSources: createPhaseCount(0, counts.knowledgeSources),
-    graphExtract: createPhaseCount(0, counts.graphExtract ?? 0)
+    graphExtract: createPhaseCount(0, counts.graphExtract ?? 0),
+    graphDisambiguate: createPhaseCount(0, counts.graphDisambiguate ?? 0)
   }
 }
 
@@ -122,22 +128,25 @@ export function overallFromPhaseCounts(phases: RagBatchEmbedPhaseCounts): {
     phases.memories.total +
     phases.graphNodes.total +
     phases.knowledgeSources.total +
-    phases.graphExtract.total
+    phases.graphExtract.total +
+    (phases.graphDisambiguate?.total ?? 0)
   const completed =
     phases.diaries.completed +
     phases.memories.completed +
     phases.graphNodes.completed +
     phases.knowledgeSources.completed +
-    phases.graphExtract.completed
+    phases.graphExtract.completed +
+    (phases.graphDisambiguate?.completed ?? 0)
   return { completed, total: Math.max(total, 1) }
 }
 
 export function firstActivePhase(counts: OrganizePhaseCountInput): RagBatchEmbedPhaseKind {
   if (counts.diaries > 0) return 'diary'
   if (counts.memories > 0) return 'memory'
-  if (counts.graphNodes > 0 || (counts.notebookGraphNodes ?? 0) > 0) return 'graph_node'
   if (counts.knowledgeSources > 0) return 'knowledge'
   if ((counts.graphExtract ?? 0) > 0) return 'graph_extract'
+  if (counts.graphNodes > 0 || (counts.notebookGraphNodes ?? 0) > 0) return 'graph_node'
+  if ((counts.graphDisambiguate ?? 0) > 0) return 'graph_disambiguate'
   return 'finishing'
 }
 
@@ -153,6 +162,8 @@ export function ragBatchEmbedPhaseLabelKey(id: RagBatchEmbedPhaseId): string {
       return 'settings.rag_phase_knowledge'
     case 'graph_extract':
       return 'settings.rag_phase_graph_extract'
+    case 'graph_disambiguate':
+      return 'settings.rag_phase_graph_disambiguate'
   }
 }
 
@@ -160,7 +171,7 @@ export function phaseCountForId(
   phases: RagBatchEmbedPhaseCounts,
   id: RagBatchEmbedPhaseId
 ): RagBatchEmbedPhaseCount {
-  return phases[PHASE_COUNT_KEY[id]]
+  return phases[PHASE_COUNT_KEY[id]] ?? { completed: 0, total: 0 }
 }
 
 export function currentPhaseProgress(

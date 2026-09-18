@@ -4,13 +4,14 @@ import {
   type RagBatchEmbedPhaseId
 } from './rag-batch-embed-progress.util'
 
-/** 整理流水的待办快照：嵌入四类 + 笔记本图节点 + 抽图。 */
+/** 整理流水的待办快照：嵌入四类 + 笔记本图节点 + 抽图 + 可疑节点扫描。 */
 export type OrganizePendingInput = Pick<
   PendingEmbedCounts,
   'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources'
 > & {
   notebookGraphNodes?: number
   graphExtract?: number
+  graphDisambiguate?: number
 }
 
 export function graphNodePhaseTotal(input: OrganizePendingInput): number {
@@ -24,9 +25,10 @@ export function listRunnableOrganizePhases(input: OrganizePendingInput): RagBatc
   const ids: RagBatchEmbedPhaseId[] = []
   if (input.diaries > 0) ids.push('diary')
   if (input.memories > 0) ids.push('memory')
-  if (graphNodePhaseTotal(input) > 0) ids.push('graph_node')
   if (input.knowledgeSources > 0) ids.push('knowledge')
   if ((input.graphExtract ?? 0) > 0) ids.push('graph_extract')
+  if (graphNodePhaseTotal(input) > 0) ids.push('graph_node')
+  if ((input.graphDisambiguate ?? 0) > 0) ids.push('graph_disambiguate')
   return ids
 }
 
