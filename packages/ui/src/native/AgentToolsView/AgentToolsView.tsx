@@ -1,198 +1,22 @@
-/* eslint-disable max-lines -- 工具设置：分类、开关与参数同页 */
-import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import React, { useMemo } from 'react'
-import {
-  AgentGateEffect,
-  companionToolEffectOptions,
-  normalizeToolManagementConfig,
-  type EmojiToolConfig,
-  AGENT_TOOL_CATEGORY_ORDER,
-  AGENT_TOOL_UI_DEFS
-} from '@baishou/shared'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Platform
-} from 'react-native'
-import { ListOrdered, Minus, Plus, Smile } from 'lucide-react-native'
+import { AGENT_TOOL_CATEGORY_ORDER, normalizeToolManagementConfig } from '@baishou/shared'
+import { View, Text, StyleSheet, ScrollView } from 'react-native'
+import { Smile } from 'lucide-react-native'
 import { useNativeTheme } from '../theme'
-import { Switch } from '../Switch'
-import { HelpTooltip } from '../Tooltip/HelpTooltip'
 import { EmojiSettingsEntryRow } from '../EmojiSettingsView'
-import { AgentToolCategoryIcon, AgentToolIcon } from '../icons/agent-tools-icons'
-import { AGENT_TOOL_ICON_SIZE, DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { AgentToolCategoryIcon } from '../icons/agent-tools-icons'
+import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
+import { AgentToolCard } from './AgentToolCard'
+import { getAgentTools, getCategoryMeta } from './agent-tools.constants'
+import type { AgentToolDef, AgentToolsViewProps, ToolConfigParam } from './agent-tools.types'
 
-export interface ToolManagementConfig {
-  disabledToolIds: string[]
-  customConfigs: Record<string, Record<string, unknown>>
-  emojiConfig?: EmojiToolConfig
-}
-
-export interface AgentToolsViewProps {
-  config: ToolManagementConfig
-  onChange: (config: ToolManagementConfig) => void
-  /** 传入后按伙伴对话允许 / 询问 / 拒绝展示，不再只用开关 */
-  resolveToolEffect?: (toolId: string) => AgentGateEffect
-  onToolEffectChange?: (toolId: string, effect: AgentGateEffect) => void
-  disableScroll?: boolean
-  /** Mobile: pick and import emoji images via image picker */
-  onPickAndImportEmojis?: () => Promise<
-    { relativePath: string; originalName: string; error: string | null }[]
-  >
-  /** Mobile: resolve a relativePath to a displayable URI */
-  onResolveEmojiPath?: (relativePath: string) => Promise<string>
-  /** Mobile: delete an emoji file */
-  onDeleteEmoji?: (relativePath: string) => Promise<boolean>
-  /** 打开独立表情包设置页 */
-  onOpenEmojiSettings?: () => void
-}
-
-export interface ToolConfigParam {
-  key: string
-  label: string
-  type: 'integer' | 'boolean' | 'string' | 'select'
-  defaultValue: unknown
-  min?: number
-  max?: number
-  icon?: string
-}
-
-export interface AgentToolDef {
-  id: string
-  category: string
-  name: string
-  tooltipKey: string
-  configurableParams?: ToolConfigParam[]
-  canBeDisabled?: boolean
-}
-
-const TOOL_NAME_FALLBACKS: Record<string, string> = {
-  'agent.tools.diary_read': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L73',
-    '日记读取'
-  ),
-  'agent.tools.diary_write': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L74',
-    '日记写入'
-  ),
-  'agent.tools.diary_edit': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L75',
-    '日记编辑'
-  ),
-  'agent.tools.diary_delete': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L76',
-    '日记删除'
-  ),
-  'agent.tools.diary_list': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L77',
-    '日记列表'
-  ),
-  'agent.tools.diary_search': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L78',
-    '日记搜索'
-  ),
-  'agent.tools.summary_read': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L79',
-    '总结读取'
-  ),
-  'agent.tools.message_search': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L80',
-    '消息搜索'
-  ),
-  'agent.tools.vector_search': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L81',
-    '语义搜索'
-  ),
-  'agent.tools.memory_store': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L82',
-    '记忆存储'
-  ),
-  'agent.tools.memory_delete': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L83',
-    '记忆删除'
-  ),
-  'agent.tools.recall_relations': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L84',
-    '回忆人生关系图'
-  ),
-  'agent.tools.graph_upsert': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L85',
-    '写入人生关系图'
-  ),
-  'agent.tools.skill_write': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L86',
-    '保存技能'
-  ),
-  'agent.tools.web_search': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L87',
-    '网络搜索'
-  ),
-  'agent.tools.url_read': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L88',
-    '网页读取'
-  ),
-  'agent.tools.auto_inject_time': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L89',
-    '当前时间'
-  ),
-  'agent.tools.current_time': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L90',
-    '查询时间'
-  ),
-  'agent.tools.param_max_results': i18n.t(
-    'auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L91',
-    '搜索结果上限'
-  )
-}
-
-const CATEGORY_LABEL_KEYS: Record<string, string> = {
-  diary: 'settings.agent_tools_category_diary',
-  summary: 'settings.agent_tools_category_summary',
-  memory: 'settings.agent_tools_category_memory',
-  search: 'settings.agent_tools_category_search',
-  general: 'settings.agent_tools_category_general'
-}
-
-const CATEGORY_LABEL_FALLBACKS: Record<string, string> = {
-  diary: i18n.t('auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L103', '日记工具'),
-  summary: i18n.t('auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L104', '总结工具'),
-  memory: i18n.t('auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L105', '记忆工具'),
-  search: i18n.t('auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L106', '搜索工具'),
-  general: i18n.t('auto.packages.ui.src.native.AgentToolsView.AgentToolsView.L107', '通用工具')
-}
-
-const getAgentTools = (t: (key: string, fallback: string) => string): AgentToolDef[] =>
-  AGENT_TOOL_UI_DEFS.map((def) => ({
-    id: def.id,
-    category: def.category,
-    name: t(def.nameKey, TOOL_NAME_FALLBACKS[def.nameKey] ?? def.id),
-    tooltipKey: def.tooltipKey,
-    canBeDisabled: def.canBeDisabled,
-    configurableParams: def.configurableParams?.map((param) => ({
-      key: param.key,
-      label: t(param.labelKey, TOOL_NAME_FALLBACKS[param.labelKey] ?? param.key),
-      type: param.type,
-      defaultValue: param.defaultValue,
-      min: param.min,
-      max: param.max,
-      icon: param.icon
-    }))
-  }))
-
-const getCategoryMeta = (t: (key: string, fallback: string) => string) =>
-  Object.fromEntries(
-    AGENT_TOOL_CATEGORY_ORDER.map((category) => [
-      category,
-      {
-        label: t(CATEGORY_LABEL_KEYS[category], CATEGORY_LABEL_FALLBACKS[category])
-      }
-    ])
-  )
+export type {
+  AgentToolDef,
+  AgentToolsViewProps,
+  ToolConfigParam,
+  ToolManagementConfig
+} from './agent-tools.types'
 
 export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   config,
@@ -205,12 +29,6 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const usePermissionMatrix = Boolean(resolveToolEffect && onToolEffectChange)
-
-  const effectLabel = (effect: AgentGateEffect) => {
-    if (effect === AgentGateEffect.Allow) return t('settings.agent_gate_effect_allow', '允许')
-    if (effect === AgentGateEffect.Deny) return t('settings.agent_gate_effect_deny', '拒绝')
-    return t('settings.agent_gate_effect_ask', '询问')
-  }
 
   const normalizedConfig = useMemo(() => normalizeToolManagementConfig(config), [config])
   const allTools = useMemo(() => getAgentTools(t), [t])
@@ -258,191 +76,6 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
       {} as Record<string, AgentToolDef[]>
     )
   }, [allTools])
-
-  const renderToolCard = (tool: AgentToolDef, isLastInGroup: boolean) => {
-    const toggleable = tool.canBeDisabled !== false
-    const currentEffect = resolveToolEffect?.(tool.id)
-    const isEnabled = usePermissionMatrix
-      ? currentEffect !== AgentGateEffect.Deny
-      : toggleable
-        ? !(normalizedConfig.disabledToolIds || []).includes(tool.id)
-        : true
-    const hasParams = tool.configurableParams && tool.configurableParams.length > 0
-    const effectOptions = companionToolEffectOptions(tool.id)
-
-    return (
-      <View
-        key={tool.id}
-        style={
-          !isLastInGroup
-            ? {
-                borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: colors.borderSubtle
-              }
-            : undefined
-        }
-      >
-        <View style={usePermissionMatrix ? styles.cardStack : styles.cardMain}>
-          <View style={styles.cardMain}>
-            <View style={styles.cardMainLeading}>
-              <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
-                <AgentToolIcon
-                  toolId={tool.id}
-                  size={AGENT_TOOL_ICON_SIZE}
-                  color={colors.primary}
-                />
-              </View>
-              <View style={styles.toolInfo}>
-                <View style={styles.toolNameRow}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]} numberOfLines={1}>
-                    {tool.name}
-                  </Text>
-                  <HelpTooltip
-                    content={t(tool.tooltipKey, t(`agent.tools.${tool.id}_desc`, ''))}
-                    size={16}
-                  />
-                  <View style={[styles.toolIdTag, { backgroundColor: colors.bgSurfaceNormal }]}>
-                    <Text
-                      style={[styles.toolIdText, { color: colors.textSecondary }]}
-                      numberOfLines={1}
-                    >
-                      {tool.id}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-            {usePermissionMatrix ? null : (
-              <View style={styles.switchSlot}>
-                <Switch
-                  value={isEnabled}
-                  disabled={!toggleable}
-                  onValueChange={() => toggleTool(tool.id)}
-                />
-              </View>
-            )}
-          </View>
-          {usePermissionMatrix && currentEffect && onToolEffectChange ? (
-            <View style={styles.effectRow}>
-              {effectOptions.map((effect) => {
-                const active = currentEffect === effect
-                return (
-                  <TouchableOpacity
-                    key={effect}
-                    style={[
-                      styles.effectChip,
-                      {
-                        borderColor: active ? colors.primary : colors.borderMuted,
-                        backgroundColor: active ? colors.primaryLight : 'transparent'
-                      }
-                    ]}
-                    onPress={() => onToolEffectChange(tool.id, effect)}
-                  >
-                    <Text
-                      style={{
-                        color: active ? colors.primary : colors.textSecondary,
-                        fontWeight: active ? '600' : '400',
-                        fontSize: 12
-                      }}
-                    >
-                      {effectLabel(effect)}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          ) : null}
-        </View>
-
-        {hasParams && isEnabled && (
-          <>
-            <View style={[styles.paramsDivider, { backgroundColor: colors.borderSubtle }]} />
-            {tool.configurableParams?.map((param) => {
-              const val = getToolParam(tool.id, param) as number
-              return (
-                <View key={param.key} style={[styles.cardMain, styles.paramRow]}>
-                  <View style={[styles.toolIconWrapper, { backgroundColor: colors.primaryLight }]}>
-                    {param.icon === 'ListOrdered' ? (
-                      <ListOrdered
-                        size={16}
-                        color={colors.primary}
-                        strokeWidth={DEFAULT_STROKE_WIDTH}
-                      />
-                    ) : null}
-                  </View>
-                  <View style={[styles.toolInfo, styles.paramInfoRow]}>
-                    <Text style={[styles.paramLabel, { color: colors.textPrimary }]}>
-                      {param.label}
-                    </Text>
-                    <HelpTooltip
-                      content={t(
-                        'agent.tools.param_max_results_tooltip',
-                        t('agent.tools.param_max_results_desc', '')
-                      )}
-                      size={14}
-                    />
-                  </View>
-                  <View style={[styles.stepperContainer, { borderColor: colors.borderMuted }]}>
-                    <TouchableOpacity
-                      style={[
-                        styles.stepperBtn,
-                        val <= (param.min ?? 1) && styles.stepperBtnDisabled
-                      ]}
-                      disabled={val <= (param.min ?? 1)}
-                      onPress={() => setToolParam(tool.id, param.key, val - 1)}
-                    >
-                      <Minus
-                        size={16}
-                        color={colors.textSecondary}
-                        strokeWidth={DEFAULT_STROKE_WIDTH}
-                      />
-                    </TouchableOpacity>
-                    <TextInput
-                      style={[
-                        styles.stepperInput,
-                        {
-                          color: colors.textPrimary,
-                          borderLeftColor: colors.borderMuted,
-                          borderRightColor: colors.borderMuted
-                        }
-                      ]}
-                      keyboardType="number-pad"
-                      value={String(val)}
-                      selectTextOnFocus
-                      onChangeText={(text) => {
-                        const parsed = parseInt(text, 10)
-                        if (!isNaN(parsed)) {
-                          const clamped = Math.min(
-                            Math.max(parsed, param.min ?? 1),
-                            param.max ?? 50
-                          )
-                          setToolParam(tool.id, param.key, clamped)
-                        }
-                      }}
-                    />
-                    <TouchableOpacity
-                      style={[
-                        styles.stepperBtn,
-                        val >= (param.max ?? 50) && styles.stepperBtnDisabled
-                      ]}
-                      disabled={val >= (param.max ?? 50)}
-                      onPress={() => setToolParam(tool.id, param.key, val + 1)}
-                    >
-                      <Plus
-                        size={16}
-                        color={colors.textSecondary}
-                        strokeWidth={DEFAULT_STROKE_WIDTH}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )
-            })}
-          </>
-        )}
-      </View>
-    )
-  }
 
   const emojiConfig = config.emojiConfig || { enabled: false, groups: [] }
   const visibleCategoryKeys = AGENT_TOOL_CATEGORY_ORDER.filter(
@@ -500,7 +133,20 @@ export const AgentToolsView: React.FC<AgentToolsViewProps> = ({
               </Text>
             </View>
             <View style={styles.categoryList}>
-              {list.map((tool, index) => renderToolCard(tool, index === list.length - 1))}
+              {list.map((tool, index) => (
+                <AgentToolCard
+                  key={tool.id}
+                  tool={tool}
+                  isLastInGroup={index === list.length - 1}
+                  config={normalizedConfig}
+                  usePermissionMatrix={usePermissionMatrix}
+                  resolveToolEffect={resolveToolEffect}
+                  onToolEffectChange={onToolEffectChange}
+                  onToggleTool={toggleTool}
+                  onSetToolParam={setToolParam}
+                  getToolParam={getToolParam}
+                />
+              ))}
             </View>
           </View>
         )
@@ -564,120 +210,5 @@ const styles = StyleSheet.create({
   },
   categoryList: {
     backgroundColor: 'transparent'
-  },
-  cardStack: {
-    paddingBottom: 8
-  },
-  cardMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 10,
-    gap: 12
-  },
-  cardMainLeading: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minWidth: 0
-  },
-  switchSlot: {
-    flexShrink: 0
-  },
-  effectRow: {
-    flexDirection: 'row',
-    flexShrink: 0,
-    gap: 6,
-    paddingHorizontal: 4,
-    paddingBottom: 6
-  },
-  effectChip: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 5
-  },
-  toolIconWrapper: {
-    padding: 6,
-    borderRadius: 8,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  toolInfo: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: 'center'
-  },
-  toolNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minWidth: 0
-  },
-  toolName: {
-    fontSize: 14,
-    fontWeight: '600',
-    flexShrink: 1
-  },
-  toolIdTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-    flexShrink: 0,
-    maxWidth: 120
-  },
-  toolIdText: {
-    fontSize: 10,
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace'
-  },
-  paramsDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginHorizontal: 4
-  },
-  paramRow: {
-    paddingTop: 8,
-    paddingBottom: 12
-  },
-  paramInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
-  },
-  paramLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    flexShrink: 1
-  },
-  stepperContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 32,
-    borderRadius: 8,
-    borderWidth: 1,
-    overflow: 'hidden'
-  },
-  stepperBtn: {
-    width: 32,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  stepperBtnDisabled: {
-    opacity: 0.2
-  },
-  stepperInput: {
-    width: 40,
-    height: 32,
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderRightWidth: StyleSheet.hairlineWidth,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    includeFontPadding: false
   }
 })
