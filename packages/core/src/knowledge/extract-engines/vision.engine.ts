@@ -44,7 +44,9 @@ export const visionExtractEngine: ExtractEngine = {
       ctx.existingPageTexts ??
       getRegisteredSimplePageTexts(ctx.absolutePath) ??
       (await extractPdfPageTexts(ctx.absolutePath))
-    rememberSimplePageTexts(ctx.absolutePath, existing)
+    if (ctx.persistCache !== false) {
+      rememberSimplePageTexts(ctx.absolutePath, existing)
+    }
 
     const pageCount = await resolvePdfNumPages(ctx.absolutePath, existing.length)
     if (pageCount == null || pageCount <= 0) {
@@ -87,7 +89,14 @@ export const visionExtractEngine: ExtractEngine = {
         if (ctx.signal?.aborted) throw new Error('knowledge-extract-cancelled')
         const bmp = bitmaps[0]
         if (!bmp) return
-        const text = (await recognizer({ pngBase64: bmp.pngBase64, page: bmp.page })).trim()
+        const text = (
+          await recognizer({
+            pngBase64: bmp.pngBase64,
+            page: bmp.page,
+            providerId: ctx.visionProviderId,
+            modelId: ctx.visionModelId
+          })
+        ).trim()
         while (merged.length < bmp.page) merged.push('')
         merged[bmp.page - 1] = text
         processed.push(bmp.page)
@@ -103,7 +112,9 @@ export const visionExtractEngine: ExtractEngine = {
     }
 
     processed.sort((a, b) => a - b)
-    rememberSimplePageTexts(ctx.absolutePath, merged.slice(0, pageCount))
+    if (ctx.persistCache !== false) {
+      rememberSimplePageTexts(ctx.absolutePath, merged.slice(0, pageCount))
+    }
     return {
       ...analyzePageTexts(merged.slice(0, pageCount)),
       extractEngine: 'vision',

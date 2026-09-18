@@ -1,6 +1,11 @@
 import { useCallback, useState } from 'react'
 import { useDialog } from '@baishou/ui'
-import { clampOcrConcurrency, normalizeKnowledgeDefaultExtractEngine } from '@baishou/shared'
+import {
+  clampOcrConcurrency,
+  normalizeKnowledgeDefaultExtractEngine,
+  setReasoningEffortForSlot,
+  type ReasoningEffortSetting
+} from '@baishou/shared'
 import { getDefaultGlobalModels, useSettingsStore } from '@baishou/store'
 import type { KnowledgeModelMenuKind } from './notebook-model-menu.util'
 import {
@@ -119,6 +124,18 @@ export function useNotebookStatusModels(input: {
     [dialog, onError, setGlobalModels]
   )
 
+  const persistReasoningSlot = useCallback(
+    async (slot: 'graph' | 'vision', value: ReasoningEffortSetting) => {
+      const current = useSettingsStore.getState().globalModels
+      const next = { ...getDefaultGlobalModels(), ...current }
+      await setGlobalModels({
+        ...next,
+        reasoningEffortBySlot: setReasoningEffortForSlot(next.reasoningEffortBySlot, slot, value)
+      })
+    },
+    [setGlobalModels]
+  )
+
   const selectModel = useCallback(
     async (providerId: string, modelId: string) => {
       if (!picker) return
@@ -146,6 +163,7 @@ export function useNotebookStatusModels(input: {
     closePicker,
     pickStatusRow,
     openVisionPicker,
-    selectModel
+    selectModel,
+    persistReasoningSlot
   }
 }

@@ -1,8 +1,8 @@
 import { createRequire } from 'node:module'
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { registerPdfPageBitmapRenderer } from '@baishou/core-desktop'
+import { registerPdfPageBitmapRenderer, yieldEventLoop } from '@baishou/core-desktop'
 import { logger } from '@baishou/shared'
 
 const nodeRequire = createRequire(import.meta.url)
@@ -102,7 +102,7 @@ async function getPdfDocument(absolutePath: string): Promise<PdfDocument> {
   }
   await releaseDocCache()
   const pdfjs = await loadPdfJs()
-  const data = new Uint8Array(fs.readFileSync(absolutePath))
+  const data = new Uint8Array(await fs.readFile(absolutePath))
   const doc = await pdfjs.getDocument({
     data,
     disableWorker: true,
@@ -160,6 +160,7 @@ export function registerDesktopPdfPageBitmapRenderer(): void {
           width: canvas.width,
           height: canvas.height
         })
+        await yieldEventLoop()
       }
 
       // 保持文档缓存，供下一页 OCR 复用；空闲后自动 destroy

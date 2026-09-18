@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isTextLayerHint,
   pickSourceCardEvidence,
+  sourceCardFailureReason,
   sourceMissingPageCount
 } from '../source-card-evidence.util'
 
@@ -21,20 +22,31 @@ describe('source card evidence', () => {
     expect(
       pickSourceCardEvidence({
         pageCount: 1033,
-        missingPages: 1,
-        errorMessage: '1033 页中有 1 页没有文本层'
+        missingPages: 1
       })
     ).toEqual({ type: 'scan', pageCount: 1033, missingPages: 1 })
   })
 
-  it('should keep a real error when there is no scan hint', () => {
+  it('should keep errors off the card face and only expose them for failed sources', () => {
     expect(
       pickSourceCardEvidence({
         pageCount: 3,
-        missingPages: null,
+        missingPages: null
+      })
+    ).toBeNull()
+    expect(
+      sourceCardFailureReason({
+        status: 'failed',
         errorMessage: 'embedding-not-configured'
       })
-    ).toEqual({ type: 'error', message: 'embedding-not-configured' })
+    ).toBe('embedding-not-configured')
+    expect(
+      sourceCardFailureReason({
+        status: 'ready',
+        errorMessage: 'embedding-not-configured'
+      })
+    ).toBeNull()
+    expect(sourceCardFailureReason({ status: 'failed', errorMessage: '  ' })).toBeNull()
   })
 
   it('should hide hints while OCR is running', () => {
@@ -42,7 +54,6 @@ describe('source card evidence', () => {
       pickSourceCardEvidence({
         pageCount: 10,
         missingPages: 2,
-        errorMessage: '10 页中有 2 页没有文本层',
         hideHints: true
       })
     ).toBeNull()

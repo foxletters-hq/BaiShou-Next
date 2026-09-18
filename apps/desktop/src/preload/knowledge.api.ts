@@ -49,7 +49,7 @@ export const knowledgeApi = {
       fileName?: string
       originUrl?: string
       extractEngine?: 'simple' | 'ocr' | 'vision'
-      importProcessMode?: 'vector' | 'graph' | 'both'
+      importProcessMode?: import('@baishou/shared').KnowledgeImportProcessMode
     }) => ipcRenderer.invoke('knowledge:import-source', input),
     probeExtractHint: (input: { absolutePath?: string; sourceId?: string }) =>
       ipcRenderer.invoke('knowledge:probe-extract-hint', input),
@@ -102,11 +102,28 @@ export const knowledgeApi = {
         reclaimedEmbedJobs: number
         droppedExtractJobs: number
       }>,
+    probeExtractSample: (input: {
+      notebookId?: string
+      sourceId: string
+      engine: 'simple' | 'ocr' | 'vision'
+      ocrLanguage?: string
+      ocrConcurrency?: number
+      visionProviderId?: string | null
+      visionModelId?: string | null
+    }) =>
+      ipcRenderer.invoke('knowledge:probe-extract-sample', input) as Promise<{
+        sourceId: string
+        title: string
+        engine: 'simple' | 'ocr' | 'vision'
+        pageCount: number
+        sampledPages: number[]
+        pages: Array<{ page: number; text: string }>
+      }>,
     getCapabilities: () => ipcRenderer.invoke('knowledge:get-capabilities'),
     getConfig: () => ipcRenderer.invoke('knowledge:get-config'),
     setConfig: (patch: {
       defaultExtractEngine?: 'simple' | 'ocr' | 'vision'
-      importProcessMode?: 'vector' | 'graph' | 'both'
+      importProcessMode?: import('@baishou/shared').KnowledgeImportProcessMode
       ocrLanguage?: string
       ocrDpi?: number
       ocrConcurrency?: number

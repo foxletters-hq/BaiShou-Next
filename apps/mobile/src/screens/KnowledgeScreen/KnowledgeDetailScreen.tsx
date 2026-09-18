@@ -24,7 +24,9 @@ import {
 import {
   Button,
   Checkbox,
+  HelpTooltip,
   Input,
+  Tooltip,
   SegmentedControl,
   useDialog,
   useNativeTheme,
@@ -34,6 +36,7 @@ import { useBaishou } from '@/src/providers/BaishouProvider'
 import { StackScreenLayout } from '../../components/StackScreenLayout'
 import { getStackScreenChrome } from '../../components/stackScreenChrome'
 import {
+  mobileDeleteSource,
   mobileGetKnowledgeStats,
   mobileGetNotebook,
   mobileGetNotebookGraphView,
@@ -232,6 +235,34 @@ export function KnowledgeDetailScreen() {
       setShowImport(null)
       await refreshDetail()
       toast.showSuccess(t('knowledge.import_queued', '已加入摄入队列'))
+    } catch (e) {
+      setError(String((e as Error)?.message || e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onDeleteSource = async (source: SourceRow) => {
+    const ok = await dialog.confirm(
+      t(
+        'knowledge.delete_source_confirm',
+        '将删除「{{title}}」的原文和提取结果，并清空这份资料对应的图关系和向量数据。此操作不能恢复。',
+        { title: source.title }
+      ),
+      {
+        title: t('knowledge.delete_source_title', '删除资料'),
+        confirmText: t('knowledge.delete_source', '删除'),
+        cancelText: t('common.cancel', '取消'),
+        destructive: true
+      }
+    )
+    if (!ok) return
+    setBusy(true)
+    setError('')
+    try {
+      await mobileDeleteSource(source.id)
+      await refreshDetail()
+      toast.showSuccess(t('knowledge.source_deleted', '已删除资料'))
     } catch (e) {
       setError(String((e as Error)?.message || e))
     } finally {
@@ -479,9 +510,34 @@ export function KnowledgeDetailScreen() {
             sources.map((s) => (
               <View key={s.id} style={[styles.sourceRow, { borderBottomColor: colors.borderSubtle }]}>
                 <Text style={{ color: colors.textPrimary, flex: 1 }}>{s.title}</Text>
-                <Text style={{ color: colors.textSecondary }}>
-                  {knowledgeSourceStatusLabel(s.status, t)}
-                </Text>
+                <View style={styles.sourceStatus}>
+                  {s.status === 'failed' && s.errorMessage?.trim() ? (
+                    <Tooltip content={s.errorMessage.trim()}>
+                      <Text style={{ color: colors.textSecondary }}>
+                        {knowledgeSourceStatusLabel(s.status, t)}
+                      </Text>
+                    </Tooltip>
+                  ) : (
+                    <Text style={{ color: colors.textSecondary }}>
+                      {knowledgeSourceStatusLabel(s.status, t)}
+                    </Text>
+                  )}
+                  {s.status === 'stored' ? (
+                    <HelpTooltip
+                      content={t(
+                        'knowledge.status_stored_help',
+                        '未整理之前，AI 无法使用这份资料。'
+                      )}
+                    />
+                  ) : null}
+                </View>
+                <Button
+                  isDisabled={busy}
+                  destructive
+                  onPress={() => void onDeleteSource(s)}
+                >
+                  {t('knowledge.delete_source', '删除')}
+                </Button>
               </View>
             ))
           )}
@@ -609,6 +665,11 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  sourceStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
   },
   banner: {
     borderWidth: StyleSheet.hairlineWidth,

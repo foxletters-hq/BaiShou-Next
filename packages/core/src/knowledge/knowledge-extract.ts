@@ -73,6 +73,18 @@ export function buildPageBoundaryTable(pageTexts: string[]): PageBoundaryTable {
 }
 
 /** 拼接页文本；页间 `\n\n`，并同步调整 pages 边界 */
+/** 按页码从拼接后的提取结果里取出对应页正文。 */
+export function sliceExtractedPageTexts(
+  result: { text: string; pages: PageBoundaryTable },
+  pageNumbers: number[]
+): Array<{ page: number; text: string }> {
+  return pageNumbers.map((page) => {
+    const bound = result.pages.pages.find((row) => row.page === page)
+    const text = bound ? result.text.slice(bound.start, bound.end) : ''
+    return { page, text }
+  })
+}
+
 export function joinPageTexts(pageTexts: string[]): {
   text: string
   pages: PageBoundaryTable
