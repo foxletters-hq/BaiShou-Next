@@ -11,8 +11,10 @@ import {
   parseExplorerDndPayload,
   resolveDropTargetDir,
   writeExplorerDndPayload,
+  type WorkbenchExplorerDndEntry,
   type WorkbenchExplorerDndPayload
 } from './workbench-file-explorer-dnd.util'
+import { resolveExplorerDragEntries } from './workbench-explorer-selection.util'
 
 const AUTO_EXPAND_MS = 600
 
@@ -76,24 +78,22 @@ export function useWorkbenchFileExplorerDnd({
   )
 
   const handleDragStart = useCallback(
-    (event: DragEvent, node: FileTreeNode) => {
+    (event: DragEvent, node: FileTreeNode, selected: WorkbenchExplorerDndEntry[] = []) => {
       if (!folderRoot) return
-      const paths =
-        draggingPaths.includes(node.relativePath) && draggingPaths.length > 0
-          ? draggingPaths
-          : [node.relativePath]
+      const entries = resolveExplorerDragEntries(
+        { relativePath: node.relativePath, isDirectory: node.isDirectory },
+        selected
+      )
+      const paths = entries.map((entry) => entry.relativePath)
       const payload: WorkbenchExplorerDndPayload = {
         relativePaths: paths,
-        entries: paths.map((relativePath) => ({
-          relativePath,
-          isDirectory: relativePath === node.relativePath ? node.isDirectory : false
-        }))
+        entries
       }
       writeExplorerDndPayload(event.dataTransfer, payload)
       event.dataTransfer.setData('text/plain', paths.join('\n'))
       setDraggingPaths(paths)
     },
-    [draggingPaths, folderRoot]
+    [folderRoot]
   )
 
   const handleDragEnd = useCallback(() => {

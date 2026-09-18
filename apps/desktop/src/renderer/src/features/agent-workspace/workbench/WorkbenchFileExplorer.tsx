@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- 工作区文件树：节点渲染与内联新建/重命名同页 */
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ChevronRight,
@@ -16,7 +16,7 @@ import {
 import { getFileTypeIcon, useDialog, toast } from '@baishou/ui'
 import { useWorkbenchFileTree, type FileTreeNode } from './useWorkbenchFileTree'
 import { workbenchTreeTwistieOffset } from './workbench-file-tree.util'
-import { joinRelativePath, parentRelativePath } from './workbench-path.util'
+import { ancestorDirPaths, joinRelativePath, parentRelativePath } from './workbench-path.util'
 import { suggestUniqueEntryName } from './workbench-inline-name.util'
 import {
   buildFileExplorerMenuItems,
@@ -26,26 +26,20 @@ import {
 } from './WorkbenchFileExplorerContextMenu'
 import { InlineTreeNameRow, type InlineTreeEditState } from './WorkbenchFileExplorerInlineEdit'
 import { useWorkbenchFileExplorerDnd } from './useWorkbenchFileExplorerDnd'
+import {
+  findExplorerNode,
+  flattenVisibleExplorerNodes,
+  nextExplorerSelection,
+  readWorkbenchRevealPath,
+  resolveExplorerAddToChatEntries,
+  WORKBENCH_REVEAL_PATH_EVENT
+} from './workbench-explorer-selection.util'
 import styles from './WorkbenchFileExplorer.module.css'
 
 export interface WorkbenchFileExplorerProps {
   folderRoot: string | null
   onOpenFile: (relativePath: string) => void
-}
-
-function findNodeInTree(
-  nodes: FileTreeNode[],
-  relativePath: string,
-  getChildren: (path: string) => FileTreeNode[]
-): FileTreeNode | undefined {
-  for (const node of nodes) {
-    if (node.relativePath === relativePath) return node
-    if (node.isDirectory) {
-      const nested = findNodeInTree(getChildren(node.relativePath), relativePath, getChildren)
-      if (nested) return nested
-    }
-  }
-  return undefined
+  onAddToChat?: (entries: Array<{ relativePath: string; isDirectory: boolean }>) => void
 }
 
 function toAbsolutePath(folderRoot: string, relativePath?: string): string {
@@ -57,7 +51,7 @@ function toAbsolutePath(folderRoot: string, relativePath?: string): string {
 function TreeNode({
   node,
   depth,
-  selectedPath,
+  selectedPaths,
   isExpanded,
   getChildren,
   onToggle,
@@ -75,11 +69,11 @@ function TreeNode({
 }: {
   node: FileTreeNode
   depth: number
-  selectedPath: string | null
+  selectedPaths: ReadonlySet<string>
   isExpanded: (path: string) => boolean
   getChildren: (path: string) => FileTreeNode[]
   onToggle: (path: string) => void
-  onSelect: (relativePath: string) => void
+  onSelect: (relativePath: string, event: React.MouseEvent) => void
   onContextMenu: (event: React.MouseEvent, node: FileTreeNode) => void
   inlineEdit: InlineTreeEditState | null
   onCommitInline: (name: string) => void
@@ -93,7 +87,7 @@ function TreeNode({
 }) {
   const expanded = node.isDirectory && isExpanded(node.relativePath)
   const children = expanded ? getChildren(node.relativePath) : []
-  const isSelected = selectedPath === node.relativePath
+  const isSelected = selectedPaths.has(node.relativePath)
   const isRenaming = inlineEdit?.mode === 'rename' && inlineEdit.relativePath === node.relativePath
   const pendingCreate = inlineEdit?.mode === 'create' && inlineEdit.parentDir === node.relativePath
   const isDragging = draggingPaths.includes(node.relativePath)
@@ -150,13 +144,7 @@ function TreeNode({
           <button
             type="button"
             className={styles.nameBtn}
-            onClick={() => {
-              if (node.isDirectory) {
-                onToggle(node.relativePath)
-              } else {
-                onSelect(node.relativePath)
-              }
-            }}
+            onClick={(event) => onSelect(node.relativePath, event)}
           >
             <span className={styles.rowIcon}>
               {node.isDirectory ? (
@@ -180,7 +168,7 @@ function TreeNode({
               key={child.relativePath}
               node={child}
               depth={depth + 1}
-              selectedPath={selectedPath}
+              selectedPaths={selectedPaths}
               isExpanded={isExpanded}
               getChildren={getChildren}
               onToggle={onToggle}
@@ -215,13 +203,16 @@ function TreeNode({
 
 export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
   folderRoot,
-  onOpenFile
+  onOpenFile,
+  onAddToChat
 }) => {
   const { t } = useTranslation()
   const dialog = useDialog()
   const tree = useWorkbenchFileTree(folderRoot)
   const [contextMenu, setContextMenu] = useState<FileExplorerContextMenuState | null>(null)
   const [inlineEdit, setInlineEdit] = useState<InlineTreeEditState | null>(null)
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([])
+  const [anchorPath, setAnchorPath] = useState<string | null>(null)
   const dnd = useWorkbenchFileExplorerDnd({
     folderRoot,
     isExpanded: tree.isExpanded,
@@ -233,16 +224,54 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
   const closeContextMenu = useCallback(() => setContextMenu(null), [])
   useCloseOnScroll(closeContextMenu, Boolean(contextMenu))
 
+  const selectedPathSet = useMemo(() => new Set(selectedPaths), [selectedPaths])
+  const visibleNodes = useMemo(
+    () => flattenVisibleExplorerNodes(tree.rootChildren, tree.getChildren, tree.isExpanded),
+    [tree]
+  )
+
+  const replaceSelection = useCallback(
+    (relativePath: string) => {
+      setSelectedPaths([relativePath])
+      setAnchorPath(relativePath)
+      tree.selectPath(relativePath)
+    },
+    [tree]
+  )
+
+  const resolveNode = useCallback(
+    (relativePath: string): FileTreeNode =>
+      findExplorerNode(tree.rootChildren, relativePath, tree.getChildren) ?? {
+        relativePath,
+        name: relativePath.split('/').pop() ?? relativePath,
+        isDirectory: false
+      },
+    [tree]
+  )
+
+  useEffect(() => {
+    setSelectedPaths([])
+    setAnchorPath(null)
+  }, [folderRoot])
+
+  useEffect(() => {
+    const onReveal = (event: Event) => {
+      const detail = readWorkbenchRevealPath(event)
+      if (!detail) return
+      for (const dir of ancestorDirPaths(detail.relativePath)) {
+        if (dir) tree.ensureExpanded(dir)
+      }
+      if (detail.isDirectory) tree.ensureExpanded(detail.relativePath)
+      replaceSelection(detail.relativePath)
+    }
+    window.addEventListener(WORKBENCH_REVEAL_PATH_EVENT, onReveal)
+    return () => window.removeEventListener(WORKBENCH_REVEAL_PATH_EVENT, onReveal)
+  }, [replaceSelection, tree])
+
   const resolveSelectedNode = useCallback((): FileTreeNode | null => {
     if (!tree.selectedPath) return null
-    return (
-      findNodeInTree(tree.rootChildren, tree.selectedPath, tree.getChildren) ?? {
-        relativePath: tree.selectedPath,
-        name: tree.selectedPath.split('/').pop() ?? tree.selectedPath,
-        isDirectory: false
-      }
-    )
-  }, [tree])
+    return resolveNode(tree.selectedPath)
+  }, [resolveNode, tree.selectedPath])
 
   const getParentDir = useCallback(() => {
     const selected = resolveSelectedNode()
@@ -251,11 +280,51 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
   }, [resolveSelectedNode])
 
   const handleSelect = useCallback(
-    (relativePath: string) => {
+    (relativePath: string, event?: React.MouseEvent) => {
+      const additive = Boolean(event?.ctrlKey || event?.metaKey)
+      const range = Boolean(event?.shiftKey)
+      const next = nextExplorerSelection({
+        visiblePaths: visibleNodes.map((node) => node.relativePath),
+        current: selectedPaths,
+        clicked: relativePath,
+        additive,
+        range,
+        anchor: anchorPath
+      })
+      setSelectedPaths(next.selected)
+      setAnchorPath(next.anchor)
       tree.selectPath(relativePath)
+      if (additive || range) return
+      const node = resolveNode(relativePath)
+      if (node.isDirectory) {
+        tree.toggleExpanded(relativePath)
+        return
+      }
       onOpenFile(relativePath)
     },
-    [onOpenFile, tree]
+    [anchorPath, onOpenFile, resolveNode, selectedPaths, tree, visibleNodes]
+  )
+
+  const handleOpenFromMenu = useCallback(
+    (relativePath: string) => {
+      replaceSelection(relativePath)
+      onOpenFile(relativePath)
+    },
+    [onOpenFile, replaceSelection]
+  )
+
+  const handleAddToChat = useCallback(
+    (target: FileTreeNode) => {
+      if (!onAddToChat) return
+      const selectedNodes = selectedPaths.map(resolveNode)
+      onAddToChat(resolveExplorerAddToChatEntries(target, selectedNodes))
+    },
+    [onAddToChat, resolveNode, selectedPaths]
+  )
+
+  const selectedDragEntries = useMemo(
+    () => selectedPaths.map(resolveNode),
+    [resolveNode, selectedPaths]
   )
 
   const startCreate = useCallback(
@@ -426,14 +495,18 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
     (event: React.MouseEvent, node: FileTreeNode) => {
       event.preventDefault()
       event.stopPropagation()
-      tree.selectPath(node.relativePath)
+      if (!selectedPathSet.has(node.relativePath)) {
+        replaceSelection(node.relativePath)
+      } else {
+        tree.selectPath(node.relativePath)
+      }
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
         target: { kind: 'node', node }
       })
     },
-    [tree]
+    [replaceSelection, selectedPathSet, tree]
   )
 
   const handleTreeContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -451,7 +524,8 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
     return buildFileExplorerMenuItems({
       target: contextMenu.target,
       t,
-      onOpenFile: handleSelect,
+      onOpenFile: handleOpenFromMenu,
+      onAddToChat: handleAddToChat,
       onExpandFolder: (relativePath) => {
         if (!tree.isExpanded(relativePath)) {
           tree.toggleExpanded(relativePath)
@@ -468,13 +542,14 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
     })
   }, [
     contextMenu,
+    handleAddToChat,
     handleCopyPath,
     handleDelete,
     handleNewFile,
     handleNewFolder,
+    handleOpenFromMenu,
     handleRename,
     handleRevealInExplorer,
-    handleSelect,
     t,
     tree
   ])
@@ -570,7 +645,7 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
                 key={node.relativePath}
                 node={node}
                 depth={0}
-                selectedPath={tree.selectedPath}
+                selectedPaths={selectedPathSet}
                 isExpanded={tree.isExpanded}
                 getChildren={tree.getChildren}
                 onToggle={tree.toggleExpanded}
@@ -581,7 +656,9 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
                 onCancelInline={cancelInlineEdit}
                 draggingPaths={dnd.draggingPaths}
                 dropTargetDir={dnd.dropTargetDir}
-                onDragStart={dnd.handleDragStart}
+                onDragStart={(event, node) =>
+                  dnd.handleDragStart(event, node, selectedDragEntries)
+                }
                 onDragEnd={dnd.handleDragEnd}
                 onDragOver={dnd.handleDragOverNode}
                 onDrop={dnd.handleDropOnNode}
