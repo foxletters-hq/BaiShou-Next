@@ -138,4 +138,20 @@ describe('KnowledgeIngestService graph order', () => {
     const stages = repo.enqueueIngestJob.mock.calls.map((call) => call[0].stage)
     expect(stages).toEqual(['embed'])
   })
+
+  it('should mark graph follow after rebuildIndex so embed can queue graph', async () => {
+    repo.listSources.mockResolvedValue([extractedSource])
+    await svc.rebuildIndex('nb1')
+    repo.enqueueIngestJob.mockClear()
+    await svc.processEmbedJob('src_order')
+    const stages = repo.enqueueIngestJob.mock.calls.map((call) => call[0].stage)
+    expect(stages).toEqual(['graph'])
+  })
+
+  it('should skip stored sources when rebuilding the notebook index', async () => {
+    repo.listSources.mockResolvedValue([{ ...extractedSource, status: 'stored' }])
+    await svc.rebuildIndex('nb1')
+    expect(repo.enqueueIngestJob).not.toHaveBeenCalled()
+    expect(repo.rebuildEmbedLedger).toHaveBeenCalled()
+  })
 })
