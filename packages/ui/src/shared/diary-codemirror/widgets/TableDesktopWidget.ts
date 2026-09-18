@@ -100,6 +100,7 @@ export class TableDesktopWidget extends WidgetType {
     )
 
     requestAnimationFrame(() => {
+      if (!this.rootEl || this.rootEl !== root || !root.isConnected) return
       this.observeHeight(root)
       this.cacheWidgetHeight(root)
       this.wireDesktopHandles(root)

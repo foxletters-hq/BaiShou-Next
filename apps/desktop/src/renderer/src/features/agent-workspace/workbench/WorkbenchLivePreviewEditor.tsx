@@ -146,7 +146,11 @@ export const WorkbenchLivePreviewEditor = forwardRef<
     const frame = requestAnimationFrame(() => {
       if (cancelled || skipHeadingPlacementRef.current || pendingScrollRef.current) return
       if (!view.dom?.isConnected) return
-      placePreviewCursorPastHeading(view)
+      try {
+        placePreviewCursorPastHeading(view)
+      } catch {
+        /* 首帧装饰未就绪时，挪光标可能读到空节点 */
+      }
     })
 
     return () => {
@@ -167,7 +171,11 @@ export const WorkbenchLivePreviewEditor = forwardRef<
     const view = viewRef.current
     if (!view?.dom?.isConnected) return
     suppressEchoRef.current = true
-    replaceEditorDocumentContent(view, content, { scrollIntoView: false })
+    try {
+      replaceEditorDocumentContent(view, content, { scrollIntoView: false })
+    } catch {
+      /* 打开文件时正文同步可能撞上正在卸下的装饰节点 */
+    }
     suppressEchoRef.current = false
   }, [content])
 

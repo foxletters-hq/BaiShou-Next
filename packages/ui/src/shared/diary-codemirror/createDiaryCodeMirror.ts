@@ -189,11 +189,15 @@ export function createDiaryCodeMirror(
     })
     // WebView 首帧：同步 + 多帧补刷装饰
     const refreshDecorations = () => {
-      if (!view.dom.isConnected) return
-      view.dispatch({
-        effects: diarySyntaxTreeGrowthEffect.of(null),
-        scrollIntoView: false
-      })
+      if (!view.dom?.isConnected) return
+      try {
+        view.dispatch({
+          effects: diarySyntaxTreeGrowthEffect.of(null),
+          scrollIntoView: false
+        })
+      } catch {
+        /* 打开文档后立刻卸下时，补刷装饰可能读到空节点 */
+      }
     }
     refreshDecorations()
     requestAnimationFrame(refreshDecorations)
