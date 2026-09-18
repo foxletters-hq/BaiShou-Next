@@ -77,6 +77,31 @@ describe('workspace-message-parts.util', () => {
     ])
   })
 
+  it('should keep a running companion_ask waiting instead of marking it failed', () => {
+    const timeline = buildWorkspaceAssistantTimeline([
+      {
+        id: 'p-ask',
+        messageId: 'm1',
+        sessionId: 's1',
+        type: 'tool',
+        data: {
+          callId: 'ask-1',
+          name: 'companion_ask',
+          status: 'running',
+          arguments: { question: '继续吗？', options: ['是', '否'] }
+        }
+      }
+    ])
+    expect(timeline[0]).toMatchObject({
+      kind: 'tool',
+      invocation: {
+        toolName: 'companion_ask',
+        state: 'partial-call',
+        result: undefined
+      }
+    })
+  })
+
   it('extracts tool invocations from assistant parts', () => {
     const invocations = extractToolInvocations([
       {
@@ -294,5 +319,23 @@ describe('workspace-message-parts.util', () => {
     expect(entries).toHaveLength(1)
     expect(entries[0]?.data.diff).toBe('+a\n+b\n+c')
     expect(entries[0]?.additions).toBe(3)
+  })
+
+  it('should keep one entry for each distinct write path', () => {
+    const invocations = Array.from({ length: 3 }, (_, index) => ({
+      toolCallId: `c${index}`,
+      toolName: 'workspace_write',
+      state: 'result' as const,
+      args: { path: `设定/${index}/规范.md`, content: 'x' },
+      result: 'ok'
+    }))
+
+    const entries = buildFileOpEntries('m1', invocations, [])
+    expect(entries.map((entry) => entry.path)).toEqual([
+      '设定/0/规范.md',
+      '设定/1/规范.md',
+      '设定/2/规范.md'
+    ])
+    expect(new Set(entries.map((entry) => entry.id)).size).toBe(3)
   })
 })

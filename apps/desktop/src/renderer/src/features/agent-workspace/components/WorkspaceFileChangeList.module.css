@@ -11,6 +11,14 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
   margin: 0;
   padding: 2px 0;
   border: 0;
@@ -21,8 +29,20 @@
   cursor: pointer;
 }
 
-.header:hover .headerTitle {
+.headerMain:hover .headerTitle {
   color: var(--text-secondary);
+}
+
+.headerToggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 
 .headerTitle {

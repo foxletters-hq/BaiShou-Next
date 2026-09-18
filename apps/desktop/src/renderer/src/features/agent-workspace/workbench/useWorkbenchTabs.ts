@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { WorkspaceChangeEntry } from '@baishou/shared'
-import { basenameFromPath } from '@baishou/ui'
+import { basenameFromPath, formatFileChangeListPath } from '@baishou/ui'
 import {
   applyDeletedPathToWorkbenchTabs,
   closeWorkbenchTabs,
@@ -179,7 +179,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
               ...existing,
               change,
               relativePath: change.path,
-              title: `Δ ${basenameFromPath(change.path)}`
+              title: `Δ ${formatFileChangeListPath(change.path)}`
             }
           }
           continue
@@ -191,7 +191,7 @@ export function useWorkbenchTabs(folderRoot: string | null) {
         next.push({
           id,
           kind: 'diff',
-          title: `Δ ${basenameFromPath(change.path)}`,
+          title: `Δ ${formatFileChangeListPath(change.path)}`,
           change,
           relativePath: change.path
         })
