@@ -75,9 +75,9 @@ export function useWorkbenchStatusGit(folderRoot: string | null) {
   }, [refresh])
 
   const notify = useCallback(
-    (result: { success: boolean; message?: string }, successKey: string, fallback: string) => {
+    (result: { success: boolean; message?: string }, successKey: string) => {
       if (result.success) {
-        toast.showSuccess(t(successKey, fallback))
+        toast.showSuccess(t(successKey))
         return true
       }
       toast.showError(result.message || t('common.error', '操作失败'))
@@ -90,7 +90,7 @@ export function useWorkbenchStatusGit(folderRoot: string | null) {
     async (branch: string) => {
       if (!folderRoot) return
       const result = await window.api.agentWorkspace.git.checkoutBranch(folderRoot, branch)
-      if (notify(result, 'workbench.git_checkout_success', '已切换分支')) {
+      if (notify(result, 'workbench.git_checkout_success')) {
         await refresh()
       }
     },
@@ -103,7 +103,7 @@ export function useWorkbenchStatusGit(folderRoot: string | null) {
       const name = branch.trim()
       if (!name) return
       const result = await window.api.agentWorkspace.git.createBranch(folderRoot, name)
-      if (notify(result, 'workbench.git_create_branch_success', '已创建分支')) {
+      if (notify(result, 'workbench.git_create_branch_success')) {
         await refresh()
       }
     },
@@ -122,7 +122,7 @@ export function useWorkbenchStatusGit(folderRoot: string | null) {
   const publish = useCallback(async () => {
     if (!folderRoot) return
     const result = await window.api.agentWorkspace.git.publishBranch(folderRoot)
-    if (notify(result, 'workbench.git_publish_success', '已发布分支')) {
+    if (notify(result, 'workbench.git_publish_success')) {
       await refresh()
     }
   }, [folderRoot, notify, refresh])

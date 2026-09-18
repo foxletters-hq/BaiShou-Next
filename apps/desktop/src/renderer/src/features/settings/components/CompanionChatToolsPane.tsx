@@ -52,42 +52,12 @@ const FALLBACK_BEHAVIOR: AgentBehaviorConfig = {
   reasoningEffortDefault: 'auto'
 }
 
-const TOOL_NAME_FALLBACKS: Record<string, string> = {
-  'agent.tools.diary_read': '日记读取',
-  'agent.tools.diary_write': '日记写入',
-  'agent.tools.diary_edit': '日记编辑',
-  'agent.tools.diary_delete': '日记删除',
-  'agent.tools.diary_list': '日记列表',
-  'agent.tools.diary_search': '日记搜索',
-  'agent.tools.summary_read': '总结读取',
-  'agent.tools.message_search': '消息搜索',
-  'agent.tools.vector_search': '语义搜索',
-  'agent.tools.memory_store': '记忆存储',
-  'agent.tools.memory_delete': '记忆删除',
-  'agent.tools.recall_relations': '回忆人生关系图',
-  'agent.tools.graph_upsert': '写入人生关系图',
-  'agent.tools.web_search': '网络搜索',
-  'agent.tools.url_read': '网页读取',
-  'agent.tools.skill_write': '保存技能',
-  'agent.tools.auto_inject_time': '当前时间',
-  'agent.tools.current_time': '查询时间'
-}
-
-const TOOL_HINT_FALLBACKS: Record<string, string> = {
-  'agent.tools.recall_relations_tooltip':
-    '按人名、地点或事件查找人生关系图：可搜索实体、查看邻居，或走关系路径并带回日记摘录。只读，不含笔记本内关系。',
-  'agent.tools.graph_upsert_tooltip':
-    '把人物、地点、事件及其关系写入人生关系图，写完立即生效。精确同名会更新该节点，不会把两个节点合并。可以改或删已有关系。合并请在图页自己操作。',
-  'agent.tools.skill_write_tooltip':
-    '创建或更新软件级技能说明，写入用户主目录的技能目录。默认每次保存前询问。'
-}
-
-const CATEGORY_LABEL: Record<AgentToolCategory, [string, string]> = {
-  diary: ['settings.agent_tools_category_diary', '日记工具'],
-  summary: ['settings.agent_tools_category_summary', '总结工具'],
-  memory: ['settings.agent_tools_category_memory', '记忆工具'],
-  search: ['settings.agent_tools_category_search', '搜索工具'],
-  general: ['settings.agent_tools_category_general', '通用工具']
+const CATEGORY_LABEL: Record<AgentToolCategory, string> = {
+  diary: 'settings.agent_tools_category_diary',
+  summary: 'settings.agent_tools_category_summary',
+  memory: 'settings.agent_tools_category_memory',
+  search: 'settings.agent_tools_category_search',
+  general: 'settings.agent_tools_category_general'
 }
 
 function scopesMatch(
@@ -296,11 +266,11 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
               {AGENT_TOOL_CATEGORY_ORDER.map((category) => {
                 const tools = AGENT_TOOL_UI_DEFS.filter((tool) => tool.category === category)
                 if (tools.length === 0) return null
-                const [labelKey, labelFallback] = CATEGORY_LABEL[category]
+                const labelKey = CATEGORY_LABEL[category]
                 return (
                   <div key={category} className={pane.stackGroup}>
                     <div className={pane.sectionLabelRow}>
-                      <h3 className={pane.sectionLabel}>{t(labelKey, labelFallback)}</h3>
+                      <h3 className={pane.sectionLabel}>{t(labelKey)}</h3>
                     </div>
                     <section className={pane.cardSection}>
                       <div className={`${pane.cardBody} ${gateStyles.paddedBody}`}>
@@ -315,18 +285,11 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                               {index > 0 ? <div className={pane.divider} /> : null}
                               <div className={gateStyles.matrixRow}>
                                 <div className={gateStyles.matrixText}>
-                                  <div className={gateStyles.matrixTitle}>
-                                    {t(tool.nameKey, TOOL_NAME_FALLBACKS[tool.nameKey] ?? tool.id)}
-                                  </div>
-                                  <div className={gateStyles.matrixHint}>
-                                    {t(tool.tooltipKey, TOOL_HINT_FALLBACKS[tool.tooltipKey] ?? '')}
-                                  </div>
+                                  <div className={gateStyles.matrixTitle}>{t(tool.nameKey)}</div>
+                                  <div className={gateStyles.matrixHint}>{t(tool.tooltipKey)}</div>
                                 </div>
                                 <SegmentedControl
-                                  aria-label={t(
-                                    tool.nameKey,
-                                    TOOL_NAME_FALLBACKS[tool.nameKey] ?? tool.id
-                                  )}
+                                  aria-label={t(tool.nameKey)}
                                   value={current}
                                   options={options.map((effect) => ({
                                     value: effect,

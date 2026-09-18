@@ -198,7 +198,7 @@ export const MemoryReadinessBar: React.FC<MemoryReadinessBarProps> = ({
           onClose={() => setMenuAt(null)}
           items={[
             ...listPendingEmbedPartLines(pendingEmbedParts, pendingGraphCount).map((line) => ({
-              label: t(line.key, line.fallback, { count: line.count }),
+              label: t(line.key, { count: line.count }),
               disabled: true
             })),
             { label: '', divider: true },

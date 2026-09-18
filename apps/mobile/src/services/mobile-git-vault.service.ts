@@ -1,4 +1,4 @@
-import type { GitSyncConfig } from '@baishou/shared'
+import { i18n, type GitSyncConfig } from '@baishou/shared'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
 import { createMobileFileSystem } from './create-mobile-file-system'
 import { isMobileGitHttpRemote } from './mobile-git-vault.util'
@@ -62,10 +62,18 @@ export async function mobileGitInit(): Promise<void> {
 
 export async function mobileGitTestRemote(url?: string): Promise<{ ok: boolean; message: string }> {
   const target = (url || (await mobileGitGetConfig()).remote?.url || '').trim()
-  if (!target) return { ok: false, message: '未填写远程地址' }
+  if (!target) {
+    return {
+      ok: false,
+      message: i18n.t('version_control.remote_url_required', '未填写远程地址')
+    }
+  }
   try {
     if (!isMobileGitHttpRemote(target)) {
-      return { ok: false, message: '仅支持 http/https 远程探测' }
+      return {
+        ok: false,
+        message: i18n.t('version_control.remote_probe_http_only', '仅支持 http/https 远程探测')
+      }
     }
     const res = await fetch(target, { method: 'HEAD' })
     return res.ok || res.status === 401 || res.status === 403

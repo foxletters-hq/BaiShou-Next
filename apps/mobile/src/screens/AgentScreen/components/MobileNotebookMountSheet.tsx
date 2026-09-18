@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native'
 import {
   canToggleMountedNotebook,
@@ -18,6 +19,7 @@ export function MobileNotebookMountSheet({
   sessionId?: string | null
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [candidates, setCandidates] = useState<NotebookMountCandidate[]>([])
   const [error, setError] = useState('')
@@ -55,11 +57,11 @@ export function MobileNotebookMountSheet({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => undefined}>
-          <Text style={styles.title}>知识库笔记本</Text>
-          <Text style={styles.hint}>最多挂载 3 本，向量维度必须相同</Text>
+          <Text style={styles.title}>{t('knowledge.notebook_mount_title')}</Text>
+          <Text style={styles.hint}>{t('knowledge.notebook_mount_hint')}</Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {!sessionId ? (
-            <Text style={styles.empty}>请先打开一个会话</Text>
+            <Text style={styles.empty}>{t('knowledge.notebook_mount_need_session')}</Text>
           ) : (
             <ScrollView style={styles.list}>
               {candidates.map((row) => {
@@ -69,7 +71,10 @@ export function MobileNotebookMountSheet({
                   candidate: row,
                   candidates
                 })
-                const dim = row.dimension != null ? `${row.dimension} 维` : '尚未嵌入'
+                const dim =
+                  row.dimension != null
+                    ? t('knowledge.notebook_mount_dimension', { count: row.dimension })
+                    : t('knowledge.notebook_mount_not_embedded')
                 return (
                   <Pressable
                     key={row.id}
@@ -90,7 +95,7 @@ export function MobileNotebookMountSheet({
                   >
                     <Text style={styles.name}>{row.name}</Text>
                     <Text style={styles.meta}>
-                      {row.sources} 份资料 · {dim}
+                      {t('knowledge.notebook_mount_meta', { count: row.sources, dim })}
                     </Text>
                     {!selected && gate.reason ? (
                       <Text style={styles.warn}>{gate.reason}</Text>
@@ -101,7 +106,7 @@ export function MobileNotebookMountSheet({
             </ScrollView>
           )}
           <Pressable style={styles.close} onPress={onClose}>
-            <Text style={styles.closeText}>关闭</Text>
+            <Text style={styles.closeText}>{t('common.close')}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

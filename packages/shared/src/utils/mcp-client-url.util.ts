@@ -1,3 +1,4 @@
+import { MCP_CLIENT_TIMEOUT_TOKEN } from '../constants/mcp-client-wire.constants'
 import type {
   McpClientConfig,
   McpClientListedTool,
@@ -163,7 +164,7 @@ export function toMcpClientListedTools(tools: unknown): McpClientListedTool[] {
 
 export function isMcpClientTimeoutMessage(message: string | undefined): boolean {
   if (!message?.trim()) return false
-  return message.includes('超时') || /timed?\s*out/i.test(message)
+  return message.includes(MCP_CLIENT_TIMEOUT_TOKEN) || /timed?\s*out/i.test(message)
 }
 
 export function mcpClientProbeReasonFromError(

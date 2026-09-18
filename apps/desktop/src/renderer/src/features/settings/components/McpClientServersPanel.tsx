@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import {
+  MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE,
   isMcpClientTimeoutMessage,
   mcpClientProbeReasonFromError,
   normalizeMcpStreamableUrl,
@@ -27,7 +28,7 @@ async function withStatusFetchTimeout<T>(promise: Promise<T>, ms: number): Promi
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('获取工具超时')), ms)
+        timer = setTimeout(() => reject(new Error(MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE)), ms)
       })
     ])
   } finally {
@@ -163,7 +164,7 @@ export const McpClientServersPanel: React.FC = () => {
             connected: false,
             tools: [],
             reason: server.enabled ? 'timeout' : undefined,
-            error: '获取工具超时'
+            error: MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE
           }))
         )
       }

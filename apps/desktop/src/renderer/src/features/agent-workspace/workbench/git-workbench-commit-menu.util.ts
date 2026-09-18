@@ -16,39 +16,33 @@ export interface GitWorkbenchCommitMenuHandlers {
 export const GIT_WORKBENCH_COMMIT_MENU_ITEMS: readonly {
   id: GitWorkbenchCommitMenuActionId
   labelKey: string
-  labelFallback: string
   requiresStaged: boolean
   dividerBefore?: boolean
 }[] = [
   {
     id: 'commit',
     labelKey: 'version_control.commit',
-    labelFallback: '提交',
     requiresStaged: false
   },
   {
     id: 'commitStaged',
     labelKey: 'workbench.git_commit_staged',
-    labelFallback: '提交（仅暂存）',
     requiresStaged: true
   },
   {
     id: 'commitAll',
     labelKey: 'workbench.git_commit_all',
-    labelFallback: '全部提交',
     requiresStaged: false
   },
   {
     id: 'commitAndPush',
     labelKey: 'version_control.commit_push',
-    labelFallback: '提交并推送',
     requiresStaged: false,
     dividerBefore: true
   },
   {
     id: 'commitAllAndPush',
     labelKey: 'workbench.git_commit_all_push',
-    labelFallback: '全部提交并推送',
     requiresStaged: false
   }
 ]
