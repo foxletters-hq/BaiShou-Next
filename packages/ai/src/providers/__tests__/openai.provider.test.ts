@@ -105,8 +105,9 @@ describe('OpenAIAdaptedProvider', () => {
     provider.getEmbeddingModel('Qwen/Qwen3-Embedding-4B')
 
     expect(openaiCompatibleSdk.createOpenAICompatible).toHaveBeenCalled()
-    const mockProvider = vi.mocked(openaiCompatibleSdk.createOpenAICompatible).mock.results.at(-1)!
-      .value
+    const mockProvider = vi
+      .mocked(openaiCompatibleSdk.createOpenAICompatible)
+      .mock.results.at(-1)!.value
     expect(mockProvider.textEmbeddingModel).toHaveBeenCalledWith('Qwen/Qwen3-Embedding-4B')
     expect(openaiSdk.createOpenAI).not.toHaveBeenCalled()
   })

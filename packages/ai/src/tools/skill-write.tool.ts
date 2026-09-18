@@ -4,7 +4,9 @@ import { AgentTool, type ToolContext } from './agent.tool'
 const skillWriteParams = z.object({
   name: z
     .string()
-    .describe('Skill name in kebab-case (lowercase letters, numbers, hyphens). Also used as directory name.'),
+    .describe(
+      'Skill name in kebab-case (lowercase letters, numbers, hyphens). Also used as directory name.'
+    ),
   description: z
     .string()
     .describe('Short third-person description of what the skill does and when to use it.'),

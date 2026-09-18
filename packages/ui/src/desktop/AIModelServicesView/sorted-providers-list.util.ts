@@ -28,7 +28,10 @@ export function buildSortedProvidersList(
     })
 }
 
-export function areSameProviderRows(left: SortedProviderRow[], right: SortedProviderRow[]): boolean {
+export function areSameProviderRows(
+  left: SortedProviderRow[],
+  right: SortedProviderRow[]
+): boolean {
   if (left.length !== right.length) return false
   return left.every((row, index) => {
     const other = right[index]

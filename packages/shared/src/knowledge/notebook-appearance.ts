@@ -123,10 +123,7 @@ export function getNotebookCardAppearance(
 }
 
 /** 仅允许落在本笔记本目录下的 cover.* 图片。 */
-export function normalizeNotebookCoverImage(
-  notebookId: string,
-  value: unknown
-): string {
+export function normalizeNotebookCoverImage(notebookId: string, value: unknown): string {
   if (typeof value !== 'string' || !notebookId.trim()) return ''
   const norm = value.replace(/\\/g, '/').replace(/^\/+/, '')
   if (norm.includes('..')) return ''

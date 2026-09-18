@@ -17,7 +17,10 @@ export function includeGraphEntries(sourceKind?: RagVectorKindFilter): boolean {
   return sourceKind === 'all' || sourceKind === 'graph_node'
 }
 
-export function memoryKindSql(sourceKind?: RagVectorKindFilter): { clause: string; args: unknown[] } {
+export function memoryKindSql(sourceKind?: RagVectorKindFilter): {
+  clause: string
+  args: unknown[]
+} {
   if (!sourceKind || sourceKind === 'all' || sourceKind === 'graph_node') {
     return { clause: '1=1', args: [] }
   }

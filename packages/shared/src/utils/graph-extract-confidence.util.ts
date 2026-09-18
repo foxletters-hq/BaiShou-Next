@@ -4,11 +4,7 @@ export const GRAPH_EXTRACT_LOW_CONFIDENCE = 70
 
 export function normalizeGraphExtractConfidence(raw: unknown, fallback: number): number {
   const parsed =
-    typeof raw === 'number'
-      ? raw
-      : typeof raw === 'string' && raw.trim()
-        ? Number(raw)
-        : Number.NaN
+    typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw) : Number.NaN
   const base = Number.isFinite(parsed) ? parsed : fallback
   const scaled = base > 0 && base <= 1 ? base * 100 : base
   return Math.max(0, Math.min(100, Math.round(scaled)))
@@ -18,9 +14,7 @@ export function looksLikeUnitIntervalConfidence(value: unknown): boolean {
   return typeof value === 'number' && Number.isFinite(value) && value <= 1
 }
 
-export function graphReviewStatusFromConfidence(
-  confidence: number
-): 'approved' | 'pending' {
+export function graphReviewStatusFromConfidence(confidence: number): 'approved' | 'pending' {
   return confidence < GRAPH_EXTRACT_LOW_CONFIDENCE ? 'pending' : 'approved'
 }
 
@@ -59,10 +53,7 @@ export function normalizeGraphEdgeReviewFields(input: {
 export function remapGraphViewReviewForDisplay<
   N extends { reviewStatus?: string },
   E extends { reviewStatus?: string; confidence?: number }
->(
-  nodes: N[],
-  edges: E[]
-): { nodes: N[]; edges: E[] } {
+>(nodes: N[], edges: E[]): { nodes: N[]; edges: E[] } {
   const nextEdges = edges.map((edge) => {
     const next = normalizeGraphEdgeReviewFields({
       confidence: edge.confidence,
@@ -77,8 +68,7 @@ export function remapGraphViewReviewForDisplay<
   return {
     nodes: nodes.map((node) => ({
       ...node,
-      reviewStatus:
-        misScaled && node.reviewStatus === 'pending' ? 'approved' : node.reviewStatus
+      reviewStatus: misScaled && node.reviewStatus === 'pending' ? 'approved' : node.reviewStatus
     })),
     edges: nextEdges
   }

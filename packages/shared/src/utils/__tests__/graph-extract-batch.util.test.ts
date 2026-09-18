@@ -83,9 +83,9 @@ describe('graph extract progress copy', () => {
     expect(graphExtractPhaseProgress('model')).toBe(40)
     expect(graphExtractPhaseProgress('parsing')).toBe(55)
     expect(graphExtractBarPercent({ status: 'running', phase: 'model', progress: 99 })).toBe(40)
-    expect(graphExtractBarPercent({ status: 'running', phase: 'waiting_model', progress: 99 })).toBe(
-      40
-    )
+    expect(
+      graphExtractBarPercent({ status: 'running', phase: 'waiting_model', progress: 99 })
+    ).toBe(40)
   })
 
   it('averages item progress for the overall bar', () => {
@@ -113,7 +113,9 @@ describe('graph extract progress copy', () => {
     expect(describeGraphExtractPhase({ status: 'running', phase: 'waiting_model' })).toMatchObject({
       key: 'graph.queue_phase_model'
     })
-    expect(describeGraphExtractPhase({ status: 'running', phase: 'thinking', phaseDetail: '32' })).toMatchObject({
+    expect(
+      describeGraphExtractPhase({ status: 'running', phase: 'thinking', phaseDetail: '32' })
+    ).toMatchObject({
       key: 'graph.queue_phase_model'
     })
     expect(describeGraphExtractPhase({ status: 'running' })).toMatchObject({

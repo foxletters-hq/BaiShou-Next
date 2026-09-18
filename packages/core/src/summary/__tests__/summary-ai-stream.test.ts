@@ -8,9 +8,7 @@ import {
   suppressUnusedSummaryStreamSettlements
 } from '../summary-ai-stream'
 
-function createFullStream(
-  parts: Array<{ delayMs?: number; value?: unknown; done?: boolean }>
-): {
+function createFullStream(parts: Array<{ delayMs?: number; value?: unknown; done?: boolean }>): {
   getReader: () => {
     read: () => Promise<{ done: boolean; value?: unknown }>
     releaseLock: () => void
@@ -250,7 +248,9 @@ describe('collectSummaryStreamText', () => {
   it('throws when the stream emits an error part', async () => {
     await expect(
       collectSummaryStreamText({
-        fullStream: createFullStream([{ value: { type: 'error', error: new Error('provider down') } }]),
+        fullStream: createFullStream([
+          { value: { type: 'error', error: new Error('provider down') } }
+        ]),
         abortController: new AbortController(),
         firstOutputTimeoutMs: 1_000
       })

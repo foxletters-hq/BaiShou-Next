@@ -156,12 +156,7 @@ export const NotebookDataManageDialog: React.FC<NotebookDataManageDialogProps> =
         <Button type="button" variant="outlined" disabled={busy} onClick={resetAndClose}>
           {t('common.cancel', '取消')}
         </Button>
-        <Button
-          type="button"
-          disabled={!canSubmit}
-          isLoading={busy}
-          onClick={() => void submit()}
-        >
+        <Button type="button" disabled={!canSubmit} isLoading={busy} onClick={() => void submit()}>
           {action === 'clear'
             ? t('knowledge.data_manage_clear', '清除数据')
             : t('knowledge.data_manage_reprocess', '重整理数据')}

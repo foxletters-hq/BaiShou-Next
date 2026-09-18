@@ -1,9 +1,6 @@
 import { logger } from '@baishou/shared'
 import type { NotebookGraphSyncApply } from '@baishou/database/shared'
-import type {
-  NotebookGraphEdgeRawRecord,
-  NotebookGraphNodeRawRecord
-} from '@baishou/shared'
+import type { NotebookGraphEdgeRawRecord, NotebookGraphNodeRawRecord } from '@baishou/shared'
 import { collapseJsonlById } from '../raw-data/stores/monthly-jsonl.store'
 import {
   collectAbsentDeleteIds,
@@ -47,7 +44,12 @@ export class NotebookGraphIndexService {
 
     for (const shard of pending) {
       if (shard.collection === 'extract-state') {
-        await this.raw.commitIndexed(notebookId, shard.collection, shard.shardMonth, shard.contentHash)
+        await this.raw.commitIndexed(
+          notebookId,
+          shard.collection,
+          shard.shardMonth,
+          shard.contentHash
+        )
         continue
       }
       const rawRows = (await this.raw.readShardRecords(
@@ -72,13 +74,23 @@ export class NotebookGraphIndexService {
           edges += 1
         }
       }
-      await this.raw.commitIndexed(notebookId, shard.collection, shard.shardMonth, shard.contentHash)
+      await this.raw.commitIndexed(
+        notebookId,
+        shard.collection,
+        shard.shardMonth,
+        shard.contentHash
+      )
     }
 
     if (opts.absentSweep !== 'off') {
       await this.sweepOrphans(vaultId, notebookId, opts.deletedShardPaths)
     }
-    logger.info('[NotebookGraphIndex] pending-index', { notebookId, shards: pending.length, nodes, edges })
+    logger.info('[NotebookGraphIndex] pending-index', {
+      notebookId,
+      shards: pending.length,
+      nodes,
+      edges
+    })
     return { shards: pending.length, nodes, edges }
   }
 

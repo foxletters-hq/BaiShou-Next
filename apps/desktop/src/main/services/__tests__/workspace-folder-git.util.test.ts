@@ -44,8 +44,16 @@ describe('toWorkspaceHistoryEntries', () => {
   it('marks the HEAD commit and keeps short hashes', () => {
     const entries = toWorkspaceHistoryEntries(
       [
-        { hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', message: '最新', date: '2026-09-01T00:00:00Z' },
-        { hash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', message: '更早', date: '2026-08-01T00:00:00Z' }
+        {
+          hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          message: '最新',
+          date: '2026-09-01T00:00:00Z'
+        },
+        {
+          hash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          message: '更早',
+          date: '2026-08-01T00:00:00Z'
+        }
       ],
       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     )

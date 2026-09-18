@@ -30,8 +30,8 @@ export const WORKBENCH_INPUT_PLACEHOLDER_FALLBACKS = [
 /** 每次挂载随机选一条工作台输入框 placeholder（i18n） */
 export function useWorkbenchInputPlaceholder(): string {
   const { t } = useTranslation()
-  const [index] = useState(
-    () => Math.floor(Math.random() * WORKBENCH_INPUT_PLACEHOLDER_KEYS.length)
+  const [index] = useState(() =>
+    Math.floor(Math.random() * WORKBENCH_INPUT_PLACEHOLDER_KEYS.length)
   )
   return useMemo(() => {
     const key = WORKBENCH_INPUT_PLACEHOLDER_KEYS[index]!

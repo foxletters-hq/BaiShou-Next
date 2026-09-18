@@ -8,12 +8,7 @@ import type {
   ContextEpochStore
 } from './types'
 
-const SOURCE_ORDER = [
-  'runtime/time',
-  'runtime/vault',
-  'workspace/env',
-  'skills/catalog'
-] as const
+const SOURCE_ORDER = ['runtime/time', 'runtime/vault', 'workspace/env', 'skills/catalog'] as const
 
 export function fingerprint(content: string): string {
   let hash = 0
@@ -135,7 +130,10 @@ export class ContextEpoch {
    * 同一次 stream 内 fullSystemPrompt 未变时跳过 regex/compose，直接返回缓存。
    * 调用方（prepareSystemPromptWithEpoch）可据此避免抽取 tagged sections。
    */
-  peekUnchangedPrepare(sessionId: string, fullSystemPrompt: string): ContextEpochPrepareResult | null {
+  peekUnchangedPrepare(
+    sessionId: string,
+    fullSystemPrompt: string
+  ): ContextEpochPrepareResult | null {
     const existing = this.store.load(sessionId)
     if (!existing?.composedSystemPrompt || !existing.fullSystemPromptFingerprint) return null
     if (existing.fullSystemPromptFingerprint !== fingerprint(fullSystemPrompt)) return null
@@ -147,10 +145,7 @@ export class ContextEpoch {
     const existing = this.store.load(input.sessionId)
 
     // 全量 prompt 指纹未变且已有 composed：零成本复用（sources 必然一致）
-    if (
-      existing?.composedSystemPrompt &&
-      existing.fullSystemPromptFingerprint === fullFp
-    ) {
+    if (existing?.composedSystemPrompt && existing.fullSystemPromptFingerprint === fullFp) {
       return toResult(existing, [], false)
     }
 

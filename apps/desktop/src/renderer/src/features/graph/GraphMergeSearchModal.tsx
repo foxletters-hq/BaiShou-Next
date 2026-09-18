@@ -143,7 +143,10 @@ export const GraphMergeSearchModal: React.FC<{
       zIndex={1850}
     >
       <p className={styles.mergeDialogLead}>
-        {t('graph.merge_search_hint', '当前选中的节点会保留。搜索并加入要合并进来的节点，不需要的可以移出。')}
+        {t(
+          'graph.merge_search_hint',
+          '当前选中的节点会保留。搜索并加入要合并进来的节点，不需要的可以移出。'
+        )}
       </p>
 
       <Input
@@ -227,10 +230,7 @@ export const GraphMergeSearchModal: React.FC<{
             picks.map((p) => {
               const kept = p.id === survivorId
               return (
-                <div
-                  key={p.id}
-                  className={kept ? styles.mergePickRowActive : styles.mergePickRow}
-                >
+                <div key={p.id} className={kept ? styles.mergePickRowActive : styles.mergePickRow}>
                   <div className={styles.mergePickMain}>
                     <span className={styles.mergeHitName}>{p.name}</span>
                     <span className={styles.mergeHitType}>

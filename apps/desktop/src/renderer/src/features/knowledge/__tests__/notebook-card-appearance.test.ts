@@ -20,8 +20,8 @@ describe('getNotebookCardAppearance', () => {
   it('falls back to the hashed appearance when cover fields are empty', () => {
     const hashed = getNotebookCardAppearance('nb_auto')
     expect(getNotebookCardAppearance('nb_auto', { coverTone: '', coverIcon: '' })).toEqual(hashed)
-    expect(getNotebookCardAppearance('nb_auto', { coverTone: 'navy', coverIcon: 'book-open/x' })).toEqual(
-      hashed
-    )
+    expect(
+      getNotebookCardAppearance('nb_auto', { coverTone: 'navy', coverIcon: 'book-open/x' })
+    ).toEqual(hashed)
   })
 })

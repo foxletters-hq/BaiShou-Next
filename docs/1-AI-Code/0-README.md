@@ -4,13 +4,13 @@
 
 ## 按工作打开
 
-| 当前工作                                           | 打开这一份                                                         |
-| -------------------------------------------------- | ------------------------------------------------------------------ |
-| 写界面、找现成组件、新增或重命名或删除公开组件     | [../../packages/ui/COMPONENTS.md](../../packages/ui/COMPONENTS.md) |
-| 改颜色、顶栏、卡片、表单描边、页面布局             | [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)                         |
-| 写逻辑、测试、包边界、文件拆分                     | [1-AI-Code-Rule.md](./1-AI-Code-Rule.md)                           |
-| 提交、PR                                           | [../2-Submit/1-Submit-Rule.md](../2-Submit/1-Submit-Rule.md)       |
-| 给自己的 AI 编码工具配置长期指令                   | [3-AI-Prompt.md](./3-AI-Prompt.md)                                 |
+| 当前工作                                       | 打开这一份                                                         |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| 写界面、找现成组件、新增或重命名或删除公开组件 | [../../packages/ui/COMPONENTS.md](../../packages/ui/COMPONENTS.md) |
+| 改颜色、顶栏、卡片、表单描边、页面布局         | [2-UI-Theme-Rule.md](./2-UI-Theme-Rule.md)                         |
+| 写逻辑、测试、包边界、文件拆分                 | [1-AI-Code-Rule.md](./1-AI-Code-Rule.md)                           |
+| 提交、PR                                       | [../2-Submit/1-Submit-Rule.md](../2-Submit/1-Submit-Rule.md)       |
+| 给自己的 AI 编码工具配置长期指令               | [3-AI-Prompt.md](./3-AI-Prompt.md)                                 |
 
 ## 本目录文档
 

@@ -341,9 +341,9 @@ describe('GitSyncService', () => {
     it('decodes unquoted octal-escaped paths from diff --numstat', async () => {
       const { unquoteGitPath } = await import('../git-sync.helpers')
       expect(unquoteGitPath('\\345\\260\\217\\350\\257\\264.md')).toBe('小说.md')
-      expect(unquoteGitPath('"\\345\\260\\217\\350\\257\\264\\350\\247\\204\\350\\214\\203.md"')).toBe(
-        '小说规范.md'
-      )
+      expect(
+        unquoteGitPath('"\\345\\260\\217\\350\\257\\264\\350\\247\\204\\350\\214\\203.md"')
+      ).toBe('小说规范.md')
     })
   })
 
@@ -692,9 +692,7 @@ describe('GitSyncService', () => {
       } as any)
       const mockGit = {
         revparse: vi.fn().mockResolvedValue('aaaaaaaaaaaaaaaa'),
-        raw: vi.fn().mockResolvedValue(
-          'bbbbbbbbbbbbbbbb\x1folder\x1f2026-08-01T00:00:00.000Z'
-        ),
+        raw: vi.fn().mockResolvedValue('bbbbbbbbbbbbbbbb\x1folder\x1f2026-08-01T00:00:00.000Z'),
         diffSummary: vi.fn()
       }
       vi.spyOn(impl as any, 'ensureGit').mockResolvedValue(mockGit)
@@ -772,9 +770,7 @@ describe('GitSyncService', () => {
   describe('parseGitHistoryLog', () => {
     it('splits hash, subject and date with unit separator', async () => {
       const { parseGitHistoryLog } = await import('../git-sync.helpers')
-      expect(
-        parseGitHistoryLog('abc1234deadbeef\x1f第一页\x1f2026-08-01T00:00:00.000Z')
-      ).toEqual([
+      expect(parseGitHistoryLog('abc1234deadbeef\x1f第一页\x1f2026-08-01T00:00:00.000Z')).toEqual([
         {
           hash: 'abc1234deadbeef',
           message: '第一页',

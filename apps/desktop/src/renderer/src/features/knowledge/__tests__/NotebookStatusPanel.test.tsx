@@ -34,9 +34,7 @@ const rows: NotebookOpenGuideRow[] = [
 
 describe('NotebookStatusPanel', () => {
   it('should render model cards and stacked manage buttons without a start-chat action', () => {
-    render(
-      <NotebookStatusPanel rows={rows} onOpenSettings={vi.fn()} onOpenDataManage={vi.fn()} />
-    )
+    render(<NotebookStatusPanel rows={rows} onOpenSettings={vi.fn()} onOpenDataManage={vi.fn()} />)
 
     expect(screen.getByLabelText('当前模型与抽取状态')).toBeInTheDocument()
     expect(screen.getByText('嵌入模型')).toBeInTheDocument()

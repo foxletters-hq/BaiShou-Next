@@ -49,9 +49,11 @@ export const GraphAwakenWelcome: React.FC<GraphAwakenWelcomeProps> = ({
   const [gender, setGender] = useState<UserGender | ''>(
     (initialProfile?.gender as UserGender | undefined) || ''
   )
-  const [errors, setErrors] = useState<{ nickname?: boolean; birthday?: boolean; gender?: boolean }>(
-    {}
-  )
+  const [errors, setErrors] = useState<{
+    nickname?: boolean
+    birthday?: boolean
+    gender?: boolean
+  }>({})
 
   const genderLabel = (g: UserGender) => {
     switch (g) {

@@ -235,7 +235,10 @@ export class NotebookGraphRawManager implements NotebookGraphIndexSource, Notebo
     return collapseJsonlById(rows).filter((r) => !r.deletedAt)
   }
 
-  async listShardMonths(notebookId: string, collection: NotebookGraphCollection): Promise<string[]> {
+  async listShardMonths(
+    notebookId: string,
+    collection: NotebookGraphCollection
+  ): Promise<string[]> {
     await this.migrateLegacyMonthShards(notebookId)
     const store = await this.getStore(notebookId, collection)
     const shards = await store.listShards()
@@ -252,7 +255,9 @@ export class NotebookGraphRawManager implements NotebookGraphIndexSource, Notebo
 
   async listPendingIndex(
     notebookId: string
-  ): Promise<Array<{ collection: NotebookGraphCollection; shardMonth: string; contentHash: string }>> {
+  ): Promise<
+    Array<{ collection: NotebookGraphCollection; shardMonth: string; contentHash: string }>
+  > {
     await this.migrateLegacyMonthShards(notebookId)
     const out: Array<{
       collection: NotebookGraphCollection
@@ -355,12 +360,9 @@ export class NotebookGraphRawManager implements NotebookGraphIndexSource, Notebo
     const store = await this.getStore(notebookId, collection)
     for (const shard of [...(await store.listShards())].reverse()) {
       if (hint && shard.shardMonth === hint) continue
-      const removed = await this.removeRecordsFromShard(
-        notebookId,
-        collection,
-        shard.shardMonth,
-        [id]
-      )
+      const removed = await this.removeRecordsFromShard(notebookId, collection, shard.shardMonth, [
+        id
+      ])
       if (removed > 0) return
     }
     throw new Error(`Notebook graph delete: id not found: ${id}`)

@@ -38,12 +38,10 @@ describe('diary-status-bar.util', () => {
 
   describe('feature configured', () => {
     it('requires self name and graph model', () => {
-      expect(
-        isGraphFeatureConfigured({ selfNameConfigured: true, hasGraphModel: true })
-      ).toBe(true)
-      expect(
-        isGraphFeatureConfigured({ selfNameConfigured: false, hasGraphModel: true })
-      ).toBe(false)
+      expect(isGraphFeatureConfigured({ selfNameConfigured: true, hasGraphModel: true })).toBe(true)
+      expect(isGraphFeatureConfigured({ selfNameConfigured: false, hasGraphModel: true })).toBe(
+        false
+      )
     })
 
     it('isGraphStatusBarReady only needs a graph extract model', () => {

@@ -171,9 +171,7 @@ export const agentWorkspaceApi = {
     started: boolean
     queued: boolean
   }> => ipcRenderer.invoke('agent-workspace:admit', params),
-  listPendingInputs: (
-    sessionId: string
-  ): Promise<import('@baishou/shared').SessionInputRecord[]> =>
+  listPendingInputs: (sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]> =>
     ipcRenderer.invoke('agent-workspace:list-pending-inputs', sessionId),
   cancelPendingInput: (
     inputId: string
@@ -213,12 +211,7 @@ export const agentWorkspaceApi = {
       ipcRenderer.invoke('agent-workspace:git-commit-staged', folderRoot, message),
     commitAll: (folderRoot: string, message: string) =>
       ipcRenderer.invoke('agent-workspace:git-commit-all', folderRoot, message),
-    getHistory: (
-      folderRoot: string,
-      filePath?: string | null,
-      limit?: number,
-      offset?: number
-    ) =>
+    getHistory: (folderRoot: string, filePath?: string | null, limit?: number, offset?: number) =>
       ipcRenderer.invoke(
         'agent-workspace:git-get-history',
         folderRoot,

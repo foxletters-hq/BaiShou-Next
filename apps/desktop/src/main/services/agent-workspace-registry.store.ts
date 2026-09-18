@@ -153,7 +153,11 @@ export async function updateAgentWorkspace(
     entry.pinnedAt = patch.pinnedAt
   }
   // 仅改置顶状态时不刷新 updatedAt，避免打乱「最近」排序
-  if (patch.displayName !== undefined || patch.avatarPath !== undefined || patch.kind !== undefined) {
+  if (
+    patch.displayName !== undefined ||
+    patch.avatarPath !== undefined ||
+    patch.kind !== undefined
+  ) {
     entry.updatedAt = new Date().toISOString()
   }
   await saveRegistry()

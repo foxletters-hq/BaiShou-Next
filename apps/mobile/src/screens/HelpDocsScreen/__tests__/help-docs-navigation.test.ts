@@ -3,9 +3,9 @@ import { decideHelpDocsNavigation } from '@baishou/shared'
 
 describe('mobile help docs navigation', () => {
   it('should keep official docs inside the webview', () => {
-    expect(decideHelpDocsNavigation('https://foxletters.com/docs/getting-started/quick-start/')).toBe(
-      'allow'
-    )
+    expect(
+      decideHelpDocsNavigation('https://foxletters.com/docs/getting-started/quick-start/')
+    ).toBe('allow')
   })
 
   it('should keep javascript urls out of the webview', () => {

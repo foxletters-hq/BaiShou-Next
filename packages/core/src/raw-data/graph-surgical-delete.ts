@@ -20,9 +20,7 @@ function normalizeShardRelativePath(relativePath: string): string {
   return relativePath.replace(/\\/g, '/')
 }
 
-export function graphCollectionFromShardRelativePath(
-  relativePath: string
-): GraphCollection | null {
+export function graphCollectionFromShardRelativePath(relativePath: string): GraphCollection | null {
   const [collection] = normalizeShardRelativePath(relativePath).split('/')
   if (collection === 'nodes' || collection === 'edges' || collection === 'extract-state') {
     return collection
@@ -39,7 +37,9 @@ export async function commitNewlyDirtyGraphShardsIndexed(
   manager: GraphSurgicalIndexCommitter,
   pendingBefore: ReadonlyArray<{ relativePath: string }>
 ): Promise<number> {
-  const before = new Set(pendingBefore.map((shard) => normalizeShardRelativePath(shard.relativePath)))
+  const before = new Set(
+    pendingBefore.map((shard) => normalizeShardRelativePath(shard.relativePath))
+  )
   const pendingAfter = await manager.listPendingIndex()
   let committed = 0
   for (const shard of pendingAfter) {

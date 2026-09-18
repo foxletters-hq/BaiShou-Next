@@ -29,9 +29,7 @@ vi.mock('@baishou/ui', () => ({
     title?: ReactNode
     children: ReactNode
   }) => (isOpen ? <div aria-label={String(title)}>{children}</div> : null),
-  Button: ({ children, ...rest }: { children: ReactNode }) => (
-    <button {...rest}>{children}</button>
-  )
+  Button: ({ children, ...rest }: { children: ReactNode }) => <button {...rest}>{children}</button>
 }))
 
 describe('KnowledgeSourceFragmentDialog', () => {

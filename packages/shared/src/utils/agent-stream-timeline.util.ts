@@ -13,10 +13,7 @@ export type AgentStreamTimelineItem =
       durationMs?: number
     }
 
-export function appendTimelineReasoning(
-  timeline: AgentStreamTimelineItem[],
-  delta: string
-): void {
+export function appendTimelineReasoning(timeline: AgentStreamTimelineItem[], delta: string): void {
   if (!delta) return
   const last = timeline[timeline.length - 1]
   if (last?.kind === 'reasoning') {

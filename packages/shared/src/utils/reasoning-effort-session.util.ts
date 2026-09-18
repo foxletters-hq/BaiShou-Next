@@ -41,7 +41,9 @@ export function nextReasoningEffortMap(
   return next
 }
 
-export function resolveSessionReasoningEffort(raw: string | null): ReasoningEffortSetting | undefined {
+export function resolveSessionReasoningEffort(
+  raw: string | null
+): ReasoningEffortSetting | undefined {
   if (!raw) return undefined
   return normalizeReasoningEffortSetting(raw)
 }

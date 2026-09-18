@@ -62,10 +62,7 @@ export function resolveHydrationSourceDecision(input: {
         input.currentDimension <= 0 ||
         ledger.dimension === input.currentDimension)
     const embedComplete =
-      hasText &&
-      !input.hashChanged &&
-      COMPLETE_STATUSES.has(existing) &&
-      ledgerMatch
+      hasText && !input.hashChanged && COMPLETE_STATUSES.has(existing) && ledgerMatch
     if (embedComplete) {
       return { status: existing, needsEmbed: false }
     }
@@ -77,14 +74,9 @@ export function resolveHydrationSourceDecision(input: {
 
   const hasChunks = input.chunkCount > 0
   const expected = input.expectedChunkCount
-  const chunksComplete =
-    expected == null || expected <= 0 || input.chunkCount >= expected
+  const chunksComplete = expected == null || expected <= 0 || input.chunkCount >= expected
   const embedComplete =
-    hasText &&
-    hasChunks &&
-    chunksComplete &&
-    !input.hashChanged &&
-    COMPLETE_STATUSES.has(existing)
+    hasText && hasChunks && chunksComplete && !input.hashChanged && COMPLETE_STATUSES.has(existing)
 
   if (embedComplete) {
     return { status: existing, needsEmbed: false }

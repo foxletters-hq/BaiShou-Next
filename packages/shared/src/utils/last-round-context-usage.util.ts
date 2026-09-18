@@ -42,8 +42,7 @@ export function normalizeInclusiveRoundUsage(usage: LastRoundTokenUsage): LastRo
 }
 
 export function cacheHitPercent(usage: LastRoundTokenUsage): number | null {
-  const prompt =
-    usage.inputTokens + usage.cacheReadInputTokens + usage.cacheWriteInputTokens
+  const prompt = usage.inputTokens + usage.cacheReadInputTokens + usage.cacheWriteInputTokens
   if (prompt <= 0) return null
   return Math.round((usage.cacheReadInputTokens / prompt) * 100)
 }

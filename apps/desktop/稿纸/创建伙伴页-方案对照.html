@@ -196,9 +196,7 @@
         width: 120px;
         height: 120px;
         border-radius: 28px;
-        background:
-          linear-gradient(180deg, #f3f6fb, #e7edf5),
-          #e8eef5;
+        background: linear-gradient(180deg, #f3f6fb, #e7edf5), #e8eef5;
         border: 1px solid var(--border-muted);
         display: grid;
         place-items: center;
@@ -813,7 +811,9 @@
 
         const render = () => {
           steps.innerHTML = labels
-            .map((label, i) => (i === wizardStep ? `<span><b>${label}</b></span>` : `<span>${label}</span>`))
+            .map((label, i) =>
+              i === wizardStep ? `<span><b>${label}</b></span>` : `<span>${label}</span>`
+            )
             .join('')
           body.innerHTML = wizardPane(wizardStep)
           paintAvatars(root)
@@ -929,7 +929,9 @@
 
       document.querySelectorAll('.tabs button').forEach((btn) => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', 'false'))
+          document
+            .querySelectorAll('.tabs button')
+            .forEach((b) => b.setAttribute('aria-selected', 'false'))
           btn.setAttribute('aria-selected', 'true')
           show(btn.dataset.ver)
         })

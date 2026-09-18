@@ -75,4 +75,3 @@ export async function mobileGitTestRemote(url?: string): Promise<{ ok: boolean; 
     return { ok: false, message: error instanceof Error ? error.message : String(error) }
   }
 }
-

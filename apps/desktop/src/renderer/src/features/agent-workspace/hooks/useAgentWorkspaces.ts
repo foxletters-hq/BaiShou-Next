@@ -176,9 +176,7 @@ export function useAgentWorkspaces() {
       if (updated) {
         setWorkspaces((prev) =>
           prev.map((item) =>
-            item.id === updated.id
-              ? { ...updated, pinnedAt: updated.pinnedAt ?? pinnedAt }
-              : item
+            item.id === updated.id ? { ...updated, pinnedAt: updated.pinnedAt ?? pinnedAt } : item
           )
         )
       }

@@ -115,9 +115,7 @@ describe('classifyMonthlyJsonlPath', () => {
       shardFile: '2026-07.jsonl',
       shardMonth: '2026-07'
     })
-    expect(
-      classifyMonthlyJsonlPath('Personal/Notebooks/nb1/graph/nodes/src_abc.jsonl')
-    ).toEqual({
+    expect(classifyMonthlyJsonlPath('Personal/Notebooks/nb1/graph/nodes/src_abc.jsonl')).toEqual({
       kind: 'notebook-graph',
       notebookId: 'nb1',
       collection: 'nodes',

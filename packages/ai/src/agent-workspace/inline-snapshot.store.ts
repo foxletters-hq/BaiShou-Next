@@ -1,6 +1,10 @@
 import type { AgentRoundCheckpointFileEntry } from '@baishou/shared'
 import { normalizeWorkspaceRelativePath, resolveWorkspacePath } from './workspace-path.sandbox'
-import { createNodeWorkspaceFs, hashWorkspaceContent, type WorkspaceFsAdapter } from './workspace-fs'
+import {
+  createNodeWorkspaceFs,
+  hashWorkspaceContent,
+  type WorkspaceFsAdapter
+} from './workspace-fs'
 import {
   emptyRestoreResult,
   isInlineSnapshotHandle,

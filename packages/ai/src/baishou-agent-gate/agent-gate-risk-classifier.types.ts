@@ -1,7 +1,4 @@
-import type {
-  AgentGatePreview,
-  AgentGateResourceRef
-} from '@baishou/shared'
+import type { AgentGatePreview, AgentGateResourceRef } from '@baishou/shared'
 
 /** auto_review 模型风险分类结果 */
 export type AgentGateRiskVerdict = 'allow' | 'ask'

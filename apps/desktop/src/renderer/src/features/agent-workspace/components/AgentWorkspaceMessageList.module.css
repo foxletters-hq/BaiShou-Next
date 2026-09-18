@@ -136,7 +136,9 @@
 
 .userAnchorEditable {
   cursor: pointer;
-  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .userAnchorEditable:hover {

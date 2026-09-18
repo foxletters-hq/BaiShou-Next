@@ -25,30 +25,30 @@ BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。�
 
 主层级：**壳 `app` → 页面/顶栏 `surface` → 抬起 `raised`**。其余为交互 / 内凹 / 浮层。
 
-| 用途                             | Token                  | 说明                              |
-| -------------------------------- | ---------------------- | --------------------------------- |
-| 壳 / 侧栏下画布 / 页面内容区画布 | `--bg-app`             | 浅色中性灰 `#fafafa`（衬白卡）    |
-| 窗口外圈磨砂罩（非页面 chrome）  | `--bg-window-shell`    | 半透 `bg-app`，配合系统 Acrylic   |
-| 主工作区、**页面顶栏**、列表底   | `--bg-surface`         | 浅色实色白；顶栏禁止 glass        |
+| 用途                             | Token                  | 说明                                                |
+| -------------------------------- | ---------------------- | --------------------------------------------------- |
+| 壳 / 侧栏下画布 / 页面内容区画布 | `--bg-app`             | 浅色中性灰 `#fafafa`（衬白卡）                      |
+| 窗口外圈磨砂罩（非页面 chrome）  | `--bg-window-shell`    | 半透 `bg-app`，配合系统 Acrylic                     |
+| 主工作区、**页面顶栏**、列表底   | `--bg-surface`         | 浅色实色白；顶栏禁止 glass                          |
 | 卡片 / 抬起块                    | `--bg-surface-raised`  | 浅色可与 surface 同色，靠边框区分；**锚定菜单勿用** |
-| 悬停                             | `--bg-surface-high`    | 仅交互态（含菜单项悬停 / 选中灰底）               |
-| 内凹次级区                       | `--bg-surface-normal`  | 分段轨道、灰底分组                                |
-| 居中 Modal / Dialog              | `--bg-surface-highest` | 全屏遮罩上的居中卡片；**锚定菜单勿用**            |
+| 悬停                             | `--bg-surface-high`    | 仅交互态（含菜单项悬停 / 选中灰底）                 |
+| 内凹次级区                       | `--bg-surface-normal`  | 分段轨道、灰底分组                                  |
+| 居中 Modal / Dialog              | `--bg-surface-highest` | 全屏遮罩上的居中卡片；**锚定菜单勿用**              |
 
 辅助（存量兼容，新代码尽量不用）：`--bg-surface-low`、`--bg-surface-lowest`、`--bg-surface-highlight`（≈ `high`）。
 
 ### 3.2 边框
 
-| 用途                    | Token                                                        |
-| ----------------------- | ------------------------------------------------------------ |
-| 极淡分割                | `--border-subtle`                                            |
-| 分割线 / **顶栏底边**   | `--border-muted`                                             |
-| 灰底上的内容卡片外框    | `--border-card`                                              |
-| 可见控件 / 次要按钮描边 | `--border-control`（默认 `1px solid`）                       |
-| Focus / 强调描边        | `--border-strong`                                            |
+| 用途                    | Token                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| 极淡分割                | `--border-subtle`                                                                                    |
+| 分割线 / **顶栏底边**   | `--border-muted`                                                                                     |
+| 灰底上的内容卡片外框    | `--border-card`                                                                                      |
+| 可见控件 / 次要按钮描边 | `--border-control`（默认 `1px solid`）                                                               |
+| Focus / 强调描边        | `--border-strong`                                                                                    |
 | 表单输入聚焦描边        | `--form-field-border-focus`（浅色 `0.18` / 深色 `0.24` 浅灰加深；禁止再写 `0.32` / `0.42` 级重描边） |
-| 表单输入聚焦外圈        | `--form-field-focus-ring`（默认 `none`，不用光晕）           |
-| 锚定菜单外壳            | `--menu-popup-*`（见 §3.8；对齐 ContextMenu）                |
+| 表单输入聚焦外圈        | `--form-field-focus-ring`（默认 `none`，不用光晕）                                                   |
+| 锚定菜单外壳            | `--menu-popup-*`（见 §3.8；对齐 ContextMenu）                                                        |
 
 **勿**用 `--border-subtle` 充当按钮或卡片的「看得见」描边（浅色下几乎不可见）。
 
@@ -77,22 +77,22 @@ BaiShou-Next 桌面 / 移动 UI 使用**同一套语义色与布局口径**。�
 
 工作台、伙伴页、通用 chrome **新代码**必须用下列 token，禁止再写散落 `11px` / `15px` / `18px` / `20px` 平行字号（图标字号、展示型大数字除外）。
 
-| Token | 默认 | 用途 |
-| --- | --- | --- |
-| `--ui-fs-sm` | **12px** | hint、路径、角标、Diff 正文 |
-| `--ui-fs-md` | **13px** | 列表、树、工具条、表单标签 |
-| `--ui-fs-lg` | **`var(--content-font-size)`**（14×用户缩放） | 说明、对话、一般正文 |
-| `--ui-fs-xl` | **`var(--content-font-size-lg)`**（16×用户缩放） | 区块 / 页内标题 |
+| Token        | 默认                                             | 用途                        |
+| ------------ | ------------------------------------------------ | --------------------------- |
+| `--ui-fs-sm` | **12px**                                         | hint、路径、角标、Diff 正文 |
+| `--ui-fs-md` | **13px**                                         | 列表、树、工具条、表单标签  |
+| `--ui-fs-lg` | **`var(--content-font-size)`**（14×用户缩放）    | 说明、对话、一般正文        |
+| `--ui-fs-xl` | **`var(--content-font-size-lg)`**（16×用户缩放） | 区块 / 页内标题             |
 
 阅读区可继续直接用 `--content-font-size*`；设置页继续用 §3.6 的 `--settings-font-*`。
 
 ### 3.4 Glass 政策
 
-| 场景                                                      | 政策                                                    |
-| --------------------------------------------------------- | ------------------------------------------------------- |
-| 页面顶栏、设置/管理子页顶栏、伙伴聊天顶栏、工作台聊天顶栏 | **实色** `--bg-surface`，禁止 glass / `backdrop-filter` |
-| 窗口 TitleBar                                             | `--titlebar-glass-bg` 已映射为 `--bg-surface`（实色）   |
-| 锚定菜单 / 下拉弹层（ContextMenu、Select 下拉等）         | **实色** `--menu-popup-bg`，禁止 glass                  |
+| 场景                                                      | 政策                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------- |
+| 页面顶栏、设置/管理子页顶栏、伙伴聊天顶栏、工作台聊天顶栏 | **实色** `--bg-surface`，禁止 glass / `backdrop-filter`       |
+| 窗口 TitleBar                                             | `--titlebar-glass-bg` 已映射为 `--bg-surface`（实色）         |
+| 锚定菜单 / 下拉弹层（ContextMenu、Select 下拉等）         | **实色** `--menu-popup-bg`，禁止 glass                        |
 | 输入条等非页面 chrome 的临时悬浮质感                      | 可使用 `--bg-glass-*`；**新页面 chrome / 菜单不得新增 glass** |
 
 ### 3.5 双源与遗留别名
@@ -164,15 +164,15 @@ stackGroup
 
 视觉基准：**工作台输入框「选择工作空间」菜单** = [`ContextMenu`](../../packages/ui/src/desktop/ContextMenu/ContextMenu.css)。所有锚定下拉 / 上下文菜单 / 小型锚定浮层外壳与此项对齐。
 
-| Token | 默认 | 用途 |
-| --- | --- | --- |
-| `--menu-popup-bg` | `--bg-surface` | 外壳背景（禁止 `raised` / `highest` / glass） |
-| `--menu-popup-border` | `--border-muted` | 外壳描边 |
-| `--menu-popup-radius` | `8px` | 外壳圆角 |
-| `--menu-popup-shadow` | `--shadow-md` | 外壳阴影（禁止自写更重阴影） |
-| `--menu-popup-padding` | `4px` | 外壳内边距 |
-| `--menu-popup-item-radius` | `5px` | 菜单项圆角 |
-| `--menu-popup-item-hover-bg` | `--bg-surface-high` | 悬停灰底 |
+| Token                           | 默认                | 用途                                                     |
+| ------------------------------- | ------------------- | -------------------------------------------------------- |
+| `--menu-popup-bg`               | `--bg-surface`      | 外壳背景（禁止 `raised` / `highest` / glass）            |
+| `--menu-popup-border`           | `--border-muted`    | 外壳描边                                                 |
+| `--menu-popup-radius`           | `8px`               | 外壳圆角                                                 |
+| `--menu-popup-shadow`           | `--shadow-md`       | 外壳阴影（禁止自写更重阴影）                             |
+| `--menu-popup-padding`          | `4px`               | 外壳内边距                                               |
+| `--menu-popup-item-radius`      | `5px`               | 菜单项圆角                                               |
+| `--menu-popup-item-hover-bg`    | `--bg-surface-high` | 悬停灰底                                                 |
 | `--menu-popup-item-selected-bg` | `--bg-surface-high` | 选中灰底（可用主色字/图标；**禁止主色洗底 / 主色实底**） |
 
 全局工具类：`.baishou-menu-popup`（`packages/ui/src/theme/menu-popup.css`）。
@@ -183,17 +183,17 @@ stackGroup
 
 ## 4. 布局约定（桌面）
 
-| 区域                       | 规则                                                                                                                                                                                                                                                                                                                                                                              |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 页面顶栏                   | `padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`；可 `position: sticky; top: 0`                                                                                                                                                                                                                                              |
-| 设置 / 管理内容区          | 顶栏下内容间距 `--settings-page-content-gap`（24px）；卡片 `border-radius: 12px`；外框用 `border: 1px solid var(--border-card)`；背景 `--bg-surface`（参照 `GeneralSettingsPane` / `SettingsPageChrome`）；**禁止大卡套小卡**；板块分割见 §3.7（卡外标题 + 卡片间距，卡内细线）；**设置白卡禁止 `overflow: hidden`**（会裁切绝对定位的 Select / Combobox 下拉）                   |
+| 区域                       | 规则                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 页面顶栏                   | `padding: 12px 32px`；`background: var(--bg-surface)`；`border-bottom: 1px solid var(--border-muted)`；可 `position: sticky; top: 0`                                                                                                                                                                                                                                                                               |
+| 设置 / 管理内容区          | 顶栏下内容间距 `--settings-page-content-gap`（24px）；卡片 `border-radius: 12px`；外框用 `border: 1px solid var(--border-card)`；背景 `--bg-surface`（参照 `GeneralSettingsPane` / `SettingsPageChrome`）；**禁止大卡套小卡**；板块分割见 §3.7（卡外标题 + 卡片间距，卡内细线）；**设置白卡禁止 `overflow: hidden`**（会裁切绝对定位的 Select / Combobox 下拉）                                                    |
 | 表单输入框 / Select 触发器 | 白底 `--form-field-bg`（=`--bg-surface`）+ 描边 `--form-field-border`（=`--border-control`）；禁止用 `--bg-surface-low` / `--bg-surface-normal` 作输入底；**仅** `:focus` / `:focus-within` 用 `--form-field-border-focus`（浅灰加深）+ `--form-field-focus-ring: none`，**禁止 `:hover` 加深描边**；描边变色过渡用 `--form-field-transition`；禁止主色描边或外圈 glow；Select `ghost` 仅 `focus-visible` 时有反馈 |
-| 锚定菜单 / 下拉弹层        | 一律 `--menu-popup-*`（§3.8）；悬停/选中灰底，选中可用主色字或 Check；禁止 `raised` 底、重阴影、主色洗底                                                                                                                                                                                                                                                                          |
-| 分段滑块                   | 只用 [`SegmentedControl`](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                                         |
-| 原生滑动条                 | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`                                                                                                                                                                                                                                      |
-| 主按钮                     | 描边：`--bg-surface` + `--border-control`；悬停可 `--bg-surface-high`；勿用深蓝实心。文字按钮仍透明底                                                                                                                                                                                                                                                                             |
-| 次要按钮                   | `border: 1px solid var(--border-control)`，文字 `--text-primary`                                                                                                                                                                                                                                                                                                                  |
-| 顶栏 / 侧栏选中            | 灰底 `--bg-surface-high` + 文字/图标 `--color-primary`，不用主色实心底                                                                                                                                                                                                                                                                                                            |
+| 锚定菜单 / 下拉弹层        | 一律 `--menu-popup-*`（§3.8）；悬停/选中灰底，选中可用主色字或 Check；禁止 `raised` 底、重阴影、主色洗底                                                                                                                                                                                                                                                                                                           |
+| 分段滑块                   | 只用 [`SegmentedControl`](../../packages/ui/src/desktop/shared/SegmentedControl.tsx)（`packages/ui` 导出）；选中为白底指示器**滑动**切换 + 文字 `--color-primary`，禁止实心主色块与蓝色 glow；勿再手写 `group` / `btn` / `btnActive` 拼装                                                                                                                                                                          |
+| 原生滑动条                 | 统一 `theme/range-slider.css`（3px 轨道 + 14px 圆拇指 + `--color-primary`）；勿在组件内再写一套 thumb/track；进度可用 `style.backgroundSize`                                                                                                                                                                                                                                                                       |
+| 主按钮                     | 描边：`--bg-surface` + `--border-control`；悬停可 `--bg-surface-high`；勿用深蓝实心。文字按钮仍透明底                                                                                                                                                                                                                                                                                                              |
+| 次要按钮                   | `border: 1px solid var(--border-control)`，文字 `--text-primary`                                                                                                                                                                                                                                                                                                                                                   |
+| 顶栏 / 侧栏选中            | 灰底 `--bg-surface-high` + 文字/图标 `--color-primary`，不用主色实心底                                                                                                                                                                                                                                                                                                                                             |
 
 ### 4.1 壳层几何与全屏遮罩（桌面）
 
@@ -201,23 +201,23 @@ stackGroup
 
 **壳层几何 token（SSOT：`css-variables.css` `:root`）：**
 
-| Token | 默认 | 用途 |
-| --- | --- | --- |
-| `--app-titlebar-height` | `52px` | TitleBar / `AppShell` 顶垫 |
-| `--app-content-inset-inline` | `8px` | 内容卡左右外边距 |
-| `--app-content-inset-bottom` | `8px` | 内容卡底外边距 |
-| `--app-content-radius` | `var(--radius-md)`（12px） | 内容卡圆角 |
+| Token                        | 默认                       | 用途                       |
+| ---------------------------- | -------------------------- | -------------------------- |
+| `--app-titlebar-height`      | `52px`                     | TitleBar / `AppShell` 顶垫 |
+| `--app-content-inset-inline` | `8px`                      | 内容卡左右外边距           |
+| `--app-content-inset-bottom` | `8px`                      | 内容卡底外边距             |
+| `--app-content-radius`       | `var(--radius-md)`（12px） | 内容卡圆角                 |
 
 `AppShell` / `MainLayout` / `SettingsOverlayHost` / TitleBar **必须**引用上述 token，禁止再写散落的 `52px` / `8px` / `12px` 平行值。
 
 **全屏 portal 遮罩政策：**
 
-| 场景 | 政策 |
-| --- | --- |
+| 场景                                             | 政策                                         |
+| ------------------------------------------------ | -------------------------------------------- |
 | Dialog / Modal / Confirm / Sheet 类全屏 backdrop | **裁到主内容圆角卡**：勿盖 TitleBar / 窗外圈 |
-| 大图预览等全窗沉浸 | 允许铺满视口（显式退出裁切） |
-| Tooltip / ContextMenu / Toast / 锚定 popover | 不适用本条（非全屏 backdrop） |
-| 已在内容卡内 `position: absolute` 的遮罩 | 已天然限于卡片，勿再套一层全屏裁切 |
+| 大图预览等全窗沉浸                               | 允许铺满视口（显式退出裁切）                 |
+| Tooltip / ContextMenu / Toast / 锚定 popover     | 不适用本条（非全屏 backdrop）                |
+| 已在内容卡内 `position: absolute` 的遮罩         | 已天然限于卡片，勿再套一层全屏裁切           |
 
 **实现（唯一入口）：**
 

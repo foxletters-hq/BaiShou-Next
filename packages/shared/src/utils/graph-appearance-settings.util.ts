@@ -82,10 +82,7 @@ export function isGraphHubLabelVisible(input: {
   showIsolatedLabels?: boolean
 }): boolean {
   if (input.degree <= 0) return input.showIsolatedLabels !== false
-  return (
-    input.degree >= input.hubLabelMinDegree ||
-    input.mentionCount >= input.hubLabelMinMentions
-  )
+  return input.degree >= input.hubLabelMinDegree || input.mentionCount >= input.hubLabelMinMentions
 }
 
 export function clampGraphAppearanceSettings(
@@ -113,9 +110,7 @@ export function clampGraphAppearanceSettings(
       GRAPH_APPEARANCE_RANGES.nodeSize.max
     ),
     lineThickness: clamp(
-      Number.isFinite(lineThickness)
-        ? lineThickness
-        : GRAPH_APPEARANCE_DEFAULTS.lineThickness,
+      Number.isFinite(lineThickness) ? lineThickness : GRAPH_APPEARANCE_DEFAULTS.lineThickness,
       GRAPH_APPEARANCE_RANGES.lineThickness.min,
       GRAPH_APPEARANCE_RANGES.lineThickness.max
     ),

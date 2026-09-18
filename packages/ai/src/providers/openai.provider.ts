@@ -16,14 +16,8 @@ import {
   sanitizeRequestHeaders,
   sanitizeRequestInit
 } from './fetch-header.util'
-import {
-  extractApiErrorMessage,
-  formatModelNotAvailableMessage
-} from './provider-api-error.util'
-import {
-  probeProviderConnection,
-  wrapConnectionTestError
-} from './provider-connection-test.util'
+import { extractApiErrorMessage, formatModelNotAvailableMessage } from './provider-api-error.util'
+import { probeProviderConnection, wrapConnectionTestError } from './provider-connection-test.util'
 import {
   shouldUseOpenAiCompatibleChatSdk,
   shouldUseOpenAiResponsesLanguageModel
@@ -112,7 +106,11 @@ function createOpenAICompatFetchInterceptor(
     const safeInit = sanitizeRequestInit(init)
 
     const urlStr = typeof url === 'string' ? url : url.toString()
-    if (urlStr.includes('/chat/completions') && safeInit?.body && typeof safeInit.body === 'string') {
+    if (
+      urlStr.includes('/chat/completions') &&
+      safeInit?.body &&
+      typeof safeInit.body === 'string'
+    ) {
       try {
         const body = JSON.parse(safeInit.body)
         let mutated = applyChatCompletionsReasoningEffortForTools(body)

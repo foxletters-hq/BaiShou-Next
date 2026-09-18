@@ -9,9 +9,7 @@ import {
 } from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 
-export function normalizeWorkspaceSendAttachments(
-  attachments?: unknown[]
-): unknown[] | undefined {
+export function normalizeWorkspaceSendAttachments(attachments?: unknown[]): unknown[] | undefined {
   return Array.isArray(attachments) && attachments.length > 0 ? attachments : undefined
 }
 
@@ -23,9 +21,9 @@ export function hasWorkspaceComposerPayload(params: {
 }): boolean {
   return Boolean(
     params.text.trim() ||
-      normalizeWorkspaceSendAttachments(params.attachments) ||
-      (Array.isArray(params.skillRefs) && params.skillRefs.length > 0) ||
-      (Array.isArray(params.fileRefs) && params.fileRefs.length > 0)
+    normalizeWorkspaceSendAttachments(params.attachments) ||
+    (Array.isArray(params.skillRefs) && params.skillRefs.length > 0) ||
+    (Array.isArray(params.fileRefs) && params.fileRefs.length > 0)
   )
 }
 
@@ -33,16 +31,12 @@ export function isInlineWorkspaceFileAttachment(att: MockChatAttachment): boolea
   return Boolean(att.relativePath && att.isText && !att.isImage && !att.isPdf)
 }
 
-export function getWorkspaceUserAttachments(
-  message: WorkspaceChatMessage
-): MockChatAttachment[] {
+export function getWorkspaceUserAttachments(message: WorkspaceChatMessage): MockChatAttachment[] {
   if (message.attachments?.length) return message.attachments
   return mapAttachmentsFromParts(message.parts) ?? []
 }
 
-export function getWorkspaceBubbleAttachments(
-  message: WorkspaceChatMessage
-): MockChatAttachment[] {
+export function getWorkspaceBubbleAttachments(message: WorkspaceChatMessage): MockChatAttachment[] {
   return getWorkspaceUserAttachments(message).filter((att) => !isInlineWorkspaceFileAttachment(att))
 }
 

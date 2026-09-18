@@ -18,10 +18,7 @@ async function refreshAssistantsAfterMutation(loadAssistants: () => Promise<void
   await useAssistantStore.getState().fetchAssistants()
 }
 
-type DeleteAssistantResult =
-  | { success: true }
-  | { success: false; errorCode?: string }
-  | undefined
+type DeleteAssistantResult = { success: true } | { success: false; errorCode?: string } | undefined
 
 export const AssistantManagementScreen: React.FC = () => {
   const { t } = useTranslation()

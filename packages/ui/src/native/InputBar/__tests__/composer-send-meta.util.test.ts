@@ -41,9 +41,7 @@ describe('buildNativeComposerSend', () => {
         }
       ]
     })
-    expect(result.meta?.fileRefs).toEqual([
-      expect.objectContaining({ relativePath: 'notes.md' })
-    ])
+    expect(result.meta?.fileRefs).toEqual([expect.objectContaining({ relativePath: 'notes.md' })])
     expect(result.meta?.displayText).toContain('看这个附件')
   })
 })

@@ -1,6 +1,11 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { McpSettingsCard, McpToolsListPanel, SegmentedControl, SettingsPageChrome } from '@baishou/ui'
+import {
+  McpSettingsCard,
+  McpToolsListPanel,
+  SegmentedControl,
+  SettingsPageChrome
+} from '@baishou/ui'
 import { McpClientServersPanel } from './McpClientServersPanel'
 import styles from './GeneralSettingsPane.module.css'
 

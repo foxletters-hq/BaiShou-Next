@@ -97,19 +97,16 @@ export function registerSkillIPC() {
     } satisfies PromptShortcut
   })
 
-  tracedIpcHandle(
-    'shortcuts:update',
-    async (_, id: string, payload: Partial<PromptShortcut>) => {
-      const current = (await listAgentSkills()).find((s) => s.name === id)
-      if (!current) return
-      await updateAgentSkill({
-        previousName: id,
-        name: payload.command || id,
-        description: payload.description || payload.name || payload.tag || current.description,
-        content: payload.content ?? current.content
-      })
-    }
-  )
+  tracedIpcHandle('shortcuts:update', async (_, id: string, payload: Partial<PromptShortcut>) => {
+    const current = (await listAgentSkills()).find((s) => s.name === id)
+    if (!current) return
+    await updateAgentSkill({
+      previousName: id,
+      name: payload.command || id,
+      description: payload.description || payload.name || payload.tag || current.description,
+      content: payload.content ?? current.content
+    })
+  })
 
   tracedIpcHandle('shortcuts:delete', async (_, id: string) => {
     await removeAgentSkill(id)

@@ -63,10 +63,7 @@ export type CompanionGraphNodeRow = Parameters<typeof toToolGraphNodeHit>[0]
 export type CompanionGraphEdgeRow = Parameters<typeof toToolGraphEdgeHit>[0]
 
 export type CompanionGraphVaultRepo = {
-  findByNameOrAlias: (
-    name: string,
-    nodeType?: string
-  ) => Promise<CompanionGraphNodeRow | null>
+  findByNameOrAlias: (name: string, nodeType?: string) => Promise<CompanionGraphNodeRow | null>
   getNodeById: (id: string) => Promise<CompanionGraphNodeRow | null>
   getEdgeById: (id: string) => Promise<CompanionGraphEdgeRow | null>
 }
@@ -75,7 +72,9 @@ export type CompanionGraphVaultRepo = {
  * Partner graph_upsert lookups. Both hosts must pass getNodeById and getEdgeById;
  * omitting edge lookup makes in-place edge updates skip.
  */
-export function createCompanionGraphLookups(loadVaultRepo: () => Promise<CompanionGraphVaultRepo>): {
+export function createCompanionGraphLookups(
+  loadVaultRepo: () => Promise<CompanionGraphVaultRepo>
+): {
   graphNodeLookup: ToolGraphNodeLookup
   graphEdgeLookup: ToolGraphEdgeLookup
 } {

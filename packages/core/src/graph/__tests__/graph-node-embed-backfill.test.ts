@@ -18,7 +18,8 @@ describe('backfillUnembeddedGraphNodes', () => {
       ],
       updateNodeEmbedding: async () => {},
       embedQuery: async (text) => (text.includes('乙') ? null : [1, 2]),
-      onProgress: (progress) => ticks.push({ completed: progress.completed, updated: progress.updated })
+      onProgress: (progress) =>
+        ticks.push({ completed: progress.completed, updated: progress.updated })
     })
     expect(result).toEqual({ updated: 1, failed: 2, total: 3 })
     expect(ticks).toEqual([

@@ -69,8 +69,7 @@ export function MobileNotebookMountSheet({
                   candidate: row,
                   candidates
                 })
-                const dim =
-                  row.dimension != null ? `${row.dimension} 维` : '尚未嵌入'
+                const dim = row.dimension != null ? `${row.dimension} 维` : '尚未嵌入'
                 return (
                   <Pressable
                     key={row.id}

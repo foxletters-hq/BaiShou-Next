@@ -9,7 +9,9 @@ describe('graphCollectionFromShardRelativePath', () => {
   it('reads the collection prefix', () => {
     expect(graphCollectionFromShardRelativePath('nodes/2026-08.jsonl')).toBe('nodes')
     expect(graphCollectionFromShardRelativePath('edges\\2026-08.jsonl')).toBe('edges')
-    expect(graphCollectionFromShardRelativePath('extract-state/2026-08.jsonl')).toBe('extract-state')
+    expect(graphCollectionFromShardRelativePath('extract-state/2026-08.jsonl')).toBe(
+      'extract-state'
+    )
     expect(graphCollectionFromShardRelativePath('other/2026-08.jsonl')).toBeNull()
   })
 })

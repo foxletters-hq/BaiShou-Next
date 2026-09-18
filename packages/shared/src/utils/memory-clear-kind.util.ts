@@ -11,7 +11,9 @@ export function isMemoryClearKind(value: unknown): value is MemoryClearKind {
 }
 
 export function isMemoryClearVectorKind(value: unknown): value is RagVectorKind {
-  return typeof value === 'string' && (MEMORY_CLEAR_VECTOR_KINDS as readonly string[]).includes(value)
+  return (
+    typeof value === 'string' && (MEMORY_CLEAR_VECTOR_KINDS as readonly string[]).includes(value)
+  )
 }
 
 /** IPC 未传 kinds 时保持旧行为：清全部向量片段，不动人生关系图。 */

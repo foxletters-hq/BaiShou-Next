@@ -8,7 +8,9 @@ import {
 
 describe('skill-invoke.util', () => {
   it('wraps a skill body as an immediate invocation', () => {
-    expect(buildSkillInvocationBody({ command: 'daily-news-digest', content: '先搜索再写入' })).toBe(
+    expect(
+      buildSkillInvocationBody({ command: 'daily-news-digest', content: '先搜索再写入' })
+    ).toBe(
       [
         '用户已启用技能「daily-news-digest」。现在按下列说明执行；不要复述或改写技能文件，除非说明要求这样做。',
         '',
@@ -30,35 +32,41 @@ describe('skill-invoke.util', () => {
   })
 
   it('joins invocation bodies with extra user text', () => {
-    expect(
-      buildSkillSendText([{ command: 'writer', content: '先看目录' }], '只要设定')
-    ).toContain('只要设定')
+    expect(buildSkillSendText([{ command: 'writer', content: '先看目录' }], '只要设定')).toContain(
+      '只要设定'
+    )
   })
 
   it('strips skill chip labels from composer plain text', () => {
-    expect(composerExtraPlain('/daily-news-digest 只要科技', [{ command: 'daily-news-digest' }])).toBe(
-      '只要科技'
-    )
+    expect(
+      composerExtraPlain('/daily-news-digest 只要科技', [{ command: 'daily-news-digest' }])
+    ).toBe('只要科技')
   })
 
   it('strips file mention labels so the model only gets the attachment body', () => {
     expect(
-      composerExtraPlain('看一下 @app.ts#L12-20 这里', [], [
-        { relativePath: 'src/app.ts', selection: { startLine: 12, endLine: 20 } }
-      ])
+      composerExtraPlain(
+        '看一下 @app.ts#L12-20 这里',
+        [],
+        [{ relativePath: 'src/app.ts', selection: { startLine: 12, endLine: 20 } }]
+      )
     ).toBe('看一下 这里')
     expect(
-      composerExtraPlain('看一下 @src/app.ts#L12-20 这里', [], [
-        { relativePath: 'src/app.ts', selection: { startLine: 12, endLine: 20 } }
-      ])
+      composerExtraPlain(
+        '看一下 @src/app.ts#L12-20 这里',
+        [],
+        [{ relativePath: 'src/app.ts', selection: { startLine: 12, endLine: 20 } }]
+      )
     ).toBe('看一下 这里')
   })
 
   it('does not strip a longer path that only shares a prefix', () => {
     expect(
-      composerExtraPlain('对照 @src/app.ts 和 @src/app.ts.bak', [], [
-        { relativePath: 'src/app.ts' }
-      ])
+      composerExtraPlain(
+        '对照 @src/app.ts 和 @src/app.ts.bak',
+        [],
+        [{ relativePath: 'src/app.ts' }]
+      )
     ).toBe('对照 和 @src/app.ts.bak')
     expect(
       composerExtraPlain('对照 @app.ts 和 @app.ts.bak', [], [{ relativePath: 'src/app.ts' }])

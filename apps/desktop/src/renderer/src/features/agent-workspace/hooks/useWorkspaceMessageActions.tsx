@@ -1,6 +1,10 @@
 import { useCallback, useRef } from 'react'
 import { useDialog, toast } from '@baishou/ui'
-import type { PromptFileRef, WorkspaceRollbackPreview, WorkspaceRollbackScope } from '@baishou/shared'
+import type {
+  PromptFileRef,
+  WorkspaceRollbackPreview,
+  WorkspaceRollbackScope
+} from '@baishou/shared'
 import { WorkspaceRollbackPreviewBody } from '../components/WorkspaceRollbackPreviewBody'
 import {
   buildWorkspaceRollbackPreviewCopy,
@@ -50,10 +54,7 @@ export interface UseWorkspaceMessageActionsOptions {
     userMessageId: string,
     scope?: WorkspaceRollbackScope
   ) => Promise<{ restored: string[]; deleted: string[]; skipped: string[] }>
-  previewRollback?: (
-    sessionId: string,
-    userMessageId: string
-  ) => Promise<WorkspaceRollbackPreview>
+  previewRollback?: (sessionId: string, userMessageId: string) => Promise<WorkspaceRollbackPreview>
   prepareWorkspaceTurn: (
     sessionId: string | undefined,
     text: string,
@@ -77,11 +78,13 @@ export interface UseWorkspaceMessageActionsOptions {
   }) => Promise<void>
   refreshMessages: (sessionId?: string) => Promise<void> | void
   notifySessionsChanged: () => void
-  setComposerRefill: (value: {
-    text: string
-    skillRefs?: SkillRef[]
-    nonce: number
-  } | null) => void
+  setComposerRefill: (
+    value: {
+      text: string
+      skillRefs?: SkillRef[]
+      nonce: number
+    } | null
+  ) => void
   onCreatedNewSession?: (sessionId: string) => void
 }
 
@@ -190,11 +193,7 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
       }
 
       if (options?.rememberSkip) {
-        const result = await dialog.confirmWithDontAskAgain(
-          body,
-          copyKeys.title,
-          dontAskAgainLabel
-        )
+        const result = await dialog.confirmWithDontAskAgain(body, copyKeys.title, dontAskAgainLabel)
         if (!result.confirmed) return null
         if (result.dontAskAgain) writeSkipEditResendConfirm('attributed')
         return 'attributed'
@@ -228,7 +227,7 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
       const sourceMsg = messages.find((msg) => msg.id === userMessageId)
       const refillText = sourceMsg ? getWorkspaceUserText(sourceMsg).trim() : ''
       const refillSkillRefs = sourceMsg
-        ? getWorkspaceUserSkillRefs(sourceMsg) ?? sourceMsg.skillRefs
+        ? (getWorkspaceUserSkillRefs(sourceMsg) ?? sourceMsg.skillRefs)
         : undefined
 
       busyRef.current = true
@@ -299,7 +298,7 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
       const sourceMsg = messages.find((msg) => msg.id === userMessageId)
       const skillRefs =
         meta?.skillRefs ??
-        (sourceMsg ? getWorkspaceUserSkillRefs(sourceMsg) ?? sourceMsg.skillRefs : undefined)
+        (sourceMsg ? (getWorkspaceUserSkillRefs(sourceMsg) ?? sourceMsg.skillRefs) : undefined)
       const fileRefs =
         meta?.fileRefs ?? (sourceMsg ? getWorkspaceUserFileRefs(sourceMsg) : undefined)
       // 展示用明文；LLM 正文经 skillRefs / fileRefs 重建（勿只发 plain）

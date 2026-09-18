@@ -11,9 +11,9 @@ describe('buildKnowledgeSourceMenuActions', () => {
   })
 
   it('提取中提供预览、取消和删除', () => {
-    expect(
-      buildKnowledgeSourceMenuActions({ status: 'extracting', extractEngine: 'ocr' })
-    ).toEqual(['preview', 'cancel', 'delete'])
+    expect(buildKnowledgeSourceMenuActions({ status: 'extracting', extractEngine: 'ocr' })).toEqual(
+      ['preview', 'cancel', 'delete']
+    )
   })
 
   it('失败时提供预览、重试和删除', () => {

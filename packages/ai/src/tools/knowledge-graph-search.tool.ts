@@ -9,7 +9,9 @@ import type { ToolContext } from './agent.tool'
 import { resolveKnowledgeToolNotebookIds } from './knowledge-tool-scope.util'
 
 const params = z.object({
-  query: z.string().describe('Entity or topic to look up in the mounted knowledge notebook graphs.'),
+  query: z
+    .string()
+    .describe('Entity or topic to look up in the mounted knowledge notebook graphs.'),
   notebookId: z
     .string()
     .optional()

@@ -8,7 +8,9 @@ import {
 const t = (_key: string, fallback: string, options?: Record<string, unknown>): string =>
   fallback.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options?.[name] ?? ''))
 
-function createPreview(overrides: Partial<WorkspaceRollbackPreview> = {}): WorkspaceRollbackPreview {
+function createPreview(
+  overrides: Partial<WorkspaceRollbackPreview> = {}
+): WorkspaceRollbackPreview {
   return {
     snapshotKind: 'git',
     rounds: 1,

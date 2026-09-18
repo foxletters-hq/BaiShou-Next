@@ -56,7 +56,11 @@ export function GraphCreateNodeSheet(props: {
     const timer = setTimeout(() => {
       void mobileFindNodeByName(props.drizzleDb!, props.vaultId, trimmed, nodeType).then((hit) => {
         if (cancelled) return
-        setConflict(hit && hit.id ? { id: hit.id, name: hit.name, nodeType: hit.nodeType, summary: hit.summary } : null)
+        setConflict(
+          hit && hit.id
+            ? { id: hit.id, name: hit.name, nodeType: hit.nodeType, summary: hit.summary }
+            : null
+        )
       })
     }, 300)
     return () => {
@@ -141,7 +145,9 @@ export function GraphCreateNodeSheet(props: {
                   borderColor: active ? colors.primary : colors.borderSubtle
                 }}
               >
-                <Text style={{ color: active ? colors.primary : colors.textSecondary, fontSize: 12 }}>
+                <Text
+                  style={{ color: active ? colors.primary : colors.textSecondary, fontSize: 12 }}
+                >
                   {t(`graph.node_type.${type}`, GRAPH_NODE_TYPE_LABEL_FALLBACKS[type] ?? type)}
                 </Text>
               </Pressable>
@@ -166,14 +172,16 @@ export function GraphCreateNodeSheet(props: {
         />
         {conflict ? (
           <Text style={{ color: colors.textPrimary, fontSize: 12, lineHeight: 18 }}>
-            {t('graph.same_name_exists', '已有同类型同名节点「{{name}}」。请打开该节点，或换一个名称。', {
-              name: conflict.name
-            })}
+            {t(
+              'graph.same_name_exists',
+              '已有同类型同名节点「{{name}}」。请打开该节点，或换一个名称。',
+              {
+                name: conflict.name
+              }
+            )}
           </Text>
         ) : null}
-        {error ? (
-          <Text style={{ color: colors.error, fontSize: 12 }}>{error}</Text>
-        ) : null}
+        {error ? <Text style={{ color: colors.error, fontSize: 12 }}>{error}</Text> : null}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 16 }}>
           <Pressable disabled={saving || props.busy} onPress={props.onClose}>
             <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
@@ -187,7 +195,10 @@ export function GraphCreateNodeSheet(props: {
               </Text>
             </Pressable>
           ) : (
-            <Pressable disabled={saving || props.busy || !name.trim()} onPress={() => void submit()}>
+            <Pressable
+              disabled={saving || props.busy || !name.trim()}
+              onPress={() => void submit()}
+            >
               <Text style={{ color: colors.primary, fontWeight: '700' }}>
                 {t('graph.create_node_submit', '创建')}
               </Text>

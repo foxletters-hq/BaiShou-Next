@@ -214,7 +214,9 @@ describe('agent-gate-capability.util', () => {
       capabilityId: 'diary_read',
       effect: AgentGateEffect.Ask
     })
-    expect(capabilityStateFromConfig(next, 'companion').effects.diary_read).toBe(AgentGateEffect.Ask)
+    expect(capabilityStateFromConfig(next, 'companion').effects.diary_read).toBe(
+      AgentGateEffect.Ask
+    )
     expect(next.permissionRules).toEqual(
       expect.arrayContaining([{ action: 'diary_read', effect: AgentGateEffect.Ask }])
     )

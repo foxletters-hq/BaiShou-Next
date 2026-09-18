@@ -73,13 +73,8 @@ export const AgentLayout: React.FC = () => {
   const dialog = useDialog()
   const { t } = useTranslation()
 
-  const {
-    sessions,
-    hasMoreSessions,
-    isLoadingMoreSessions,
-    sidebarScrollKey,
-    loadSessions
-  } = useAgentSessions(resolvedAssistantId, searchQuery)
+  const { sessions, hasMoreSessions, isLoadingMoreSessions, sidebarScrollKey, loadSessions } =
+    useAgentSessions(resolvedAssistantId, searchQuery)
 
   // 加载独立会话文档（通过 URL 直接访问时使用）
   useEffect(() => {

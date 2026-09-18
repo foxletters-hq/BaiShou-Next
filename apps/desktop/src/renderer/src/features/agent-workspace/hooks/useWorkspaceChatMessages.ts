@@ -94,8 +94,7 @@ export function useWorkspaceChatMessages(params: {
       }
       const limit = Math.max(loadedFromEndRef.current, WORKSPACE_MESSAGE_PAGE_SIZE)
       const rows = await fetchWorkspaceMessages(sid, limit, 0)
-      const stillCurrent =
-        sessionIdRef.current === sid || streamSessionIdRef.current === sid
+      const stillCurrent = sessionIdRef.current === sid || streamSessionIdRef.current === sid
       if (!stillCurrent) return null
       applyLatestPage(rows, limit)
       return rows

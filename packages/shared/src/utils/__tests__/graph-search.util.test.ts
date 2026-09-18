@@ -16,9 +16,9 @@ describe('graph-search.util', () => {
   })
 
   it('detects the embedding-required error code', () => {
-    expect(isGraphSearchEmbeddingRequiredError(new Error(GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR))).toBe(
-      true
-    )
+    expect(
+      isGraphSearchEmbeddingRequiredError(new Error(GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR))
+    ).toBe(true)
     expect(isGraphSearchEmbeddingRequiredError('other')).toBe(false)
   })
 })

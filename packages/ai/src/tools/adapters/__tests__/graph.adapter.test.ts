@@ -31,9 +31,7 @@ describe('createCompanionGraphLookups', () => {
 
   it('resolves exact name hits through findByNameOrAlias', async () => {
     const findByNameOrAlias = vi.fn(async (name: string, nodeType?: string) =>
-      name === '杭州' && nodeType === 'place'
-        ? { id: 'p1', name: '杭州', nodeType: 'place' }
-        : null
+      name === '杭州' && nodeType === 'place' ? { id: 'p1', name: '杭州', nodeType: 'place' } : null
     )
     const { graphNodeLookup } = createCompanionGraphLookups(async () => ({
       findByNameOrAlias,

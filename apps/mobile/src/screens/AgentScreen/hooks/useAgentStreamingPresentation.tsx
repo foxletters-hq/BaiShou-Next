@@ -387,7 +387,8 @@ export function useAgentStreamingPresentation(deps: {
     return Math.max(48, Math.round((listViewportHeight - 280) / 2) - 56)
   }, [listViewportHeight])
 
-  const showIdleGreeting = !currentSessionId && messages.length === 0 && !isStreaming && !isStreamBridgeActive
+  const showIdleGreeting =
+    !currentSessionId && messages.length === 0 && !isStreaming && !isStreamBridgeActive
   const idleGreeting = useAgentIdleGreeting(showIdleGreeting)
 
   const renderEmptyState = () => (

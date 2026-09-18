@@ -157,9 +157,8 @@ describe('ThreeWaySyncManifestMixin.downloadFile', () => {
     )
     const { MonthlyJsonlStore } = await import('../../raw-data/stores/monthly-jsonl.store')
     const { createNodeFileSystem } = await import('../../fs/create-node-file-system')
-    const { isValidNotebookGraphShardKey } = await import(
-      '../../raw-data/notebook-graph-shard-key.util'
-    )
+    const { isValidNotebookGraphShardKey } =
+      await import('../../raw-data/notebook-graph-shard-key.util')
     const store = new MonthlyJsonlStore({
       fs: createNodeFileSystem(),
       rootDir: nodesDir,

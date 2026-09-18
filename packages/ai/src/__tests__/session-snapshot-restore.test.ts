@@ -21,10 +21,7 @@ describe('ensureSessionSnapshotsRestored', () => {
   it('restores from compaction parts when the table is empty', async () => {
     const restored = { id: 2, summaryText: '恢复', coveredUpToMessageId: 'm2' }
     const snapshotRepo = {
-      getLatestSnapshot: vi
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(restored),
+      getLatestSnapshot: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(restored),
       replaceSnapshotsForSession: vi.fn().mockResolvedValue(undefined)
     }
     const sessionRepo = {

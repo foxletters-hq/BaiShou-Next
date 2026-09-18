@@ -46,7 +46,6 @@ const COMPOSER_GREETING_FALLBACKS = [
   '{{name}}，欢迎回来，随时在下方输入你想做的事。'
 ] as const
 
-
 type MetaMenuState = {
   kind: 'workspace' | 'security'
   x: number
@@ -138,9 +137,7 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
   const resolvedShortcuts = shortcuts ?? storeShortcuts
   const inputBarRef = useRef<InputBarRef>(null)
   const [showShortcutManager, setShowShortcutManager] = useState(false)
-  const [greetingIndex] = useState(
-    () => Math.floor(Math.random() * COMPOSER_GREETING_KEYS.length)
-  )
+  const [greetingIndex] = useState(() => Math.floor(Math.random() * COMPOSER_GREETING_KEYS.length))
   const [metaMenu, setMetaMenu] = useState<MetaMenuState | null>(null)
   const inputPlaceholder = useWorkbenchInputPlaceholder()
   const resolveDropAttachments = useMemo(

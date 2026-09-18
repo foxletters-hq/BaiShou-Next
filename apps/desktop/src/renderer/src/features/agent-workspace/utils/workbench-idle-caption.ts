@@ -30,9 +30,7 @@ export const WORKBENCH_IDLE_CAPTION_FALLBACKS = [
 /** 打开项目后、尚未打开文件时，Latte 下方随机一句引导（i18n） */
 export function useWorkbenchIdleCaption(): string {
   const { t } = useTranslation()
-  const [index] = useState(
-    () => Math.floor(Math.random() * WORKBENCH_IDLE_CAPTION_KEYS.length)
-  )
+  const [index] = useState(() => Math.floor(Math.random() * WORKBENCH_IDLE_CAPTION_KEYS.length))
   return useMemo(() => {
     const key = WORKBENCH_IDLE_CAPTION_KEYS[index]!
     const fallback = WORKBENCH_IDLE_CAPTION_FALLBACKS[index]!

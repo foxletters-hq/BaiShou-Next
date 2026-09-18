@@ -34,10 +34,6 @@ describe('StreamingAssistantCheckpoint', () => {
     accumulator.add({ type: 'text-delta', text: '第二段' })
     checkpoint.schedule('token', 3000)
     await checkpoint.drain()
-    expect(sessionRepo.replaceMessageParts).toHaveBeenCalledWith(
-      firstId,
-      's1',
-      expect.any(Array)
-    )
+    expect(sessionRepo.replaceMessageParts).toHaveBeenCalledWith(firstId, 's1', expect.any(Array))
   })
 })

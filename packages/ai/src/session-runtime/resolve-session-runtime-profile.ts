@@ -62,10 +62,7 @@ function resolveMaxSteps(userConfig: unknown, optionOverride: number | undefined
   return clampMaxSteps(optionOverride ?? fromConfig, 10)
 }
 
-function resolveDoomLoopThreshold(
-  userConfig: unknown,
-  optionOverride: number | undefined
-): number {
+function resolveDoomLoopThreshold(userConfig: unknown, optionOverride: number | undefined): number {
   const fromConfig = readFiniteNumber(
     userConfig && typeof userConfig === 'object'
       ? (userConfig as Record<string, unknown>)['doomLoopThreshold']

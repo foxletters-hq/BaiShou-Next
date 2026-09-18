@@ -1,6 +1,4 @@
-export type PdfPreviewSource =
-  | { type: 'url'; url: string }
-  | { type: 'data'; data: Uint8Array }
+export type PdfPreviewSource = { type: 'url'; url: string } | { type: 'data'; data: Uint8Array }
 
 export type PdfPreviewBytesInput =
   | ArrayBuffer
@@ -87,7 +85,10 @@ export function pdfSpreadStep(page: number, pageCount: number, delta: -1 | 1): n
   return Math.max(1, (spread[0] ?? page) - 1)
 }
 
-export function formatPdfPreviewPageLabel(pages: number[], pageCount: number): {
+export function formatPdfPreviewPageLabel(
+  pages: number[],
+  pageCount: number
+): {
   page: string
   total: number
 } {

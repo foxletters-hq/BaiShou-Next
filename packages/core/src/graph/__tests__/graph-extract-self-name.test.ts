@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { GRAPH_SELF_NAME_REQUIRED_ERROR } from '@baishou/shared'
-import {
-  buildExtractPrompt,
-  GraphLlmExtractionService
-} from '../graph-llm-extraction.service'
+import { buildExtractPrompt, GraphLlmExtractionService } from '../graph-llm-extraction.service'
 
 describe('buildExtractPrompt', () => {
   it('injects selfName and forbids placeholder author labels', () => {
@@ -17,7 +14,9 @@ describe('buildExtractPrompt', () => {
 describe('GraphLlmExtractionService.extractDiaries selfName gate', () => {
   it('rejects empty selfName before touching pending list', async () => {
     const freshness = {
-      listPendingReextract: vi.fn(async () => [{ filePath: 'Journal/2026/08/04.md', contentHash: 'x' }])
+      listPendingReextract: vi.fn(async () => [
+        { filePath: 'Journal/2026/08/04.md', contentHash: 'x' }
+      ])
     }
     const service = new GraphLlmExtractionService(
       {} as never,

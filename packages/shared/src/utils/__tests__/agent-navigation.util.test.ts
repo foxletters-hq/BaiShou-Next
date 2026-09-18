@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildAgentChatNavigationPath,
-  resolveCompanionReturnPath
-} from '../agent-navigation.util'
+import { buildAgentChatNavigationPath, resolveCompanionReturnPath } from '../agent-navigation.util'
 
 describe('resolveCompanionReturnPath', () => {
   it('opens last session when restore is on', () => {

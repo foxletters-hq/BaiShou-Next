@@ -43,9 +43,7 @@ export function attachmentFromWorkspaceFilePath(params: {
   }
 }
 
-export function collectWorkspaceExplorerRelativePaths(
-  dataTransfer: DataTransfer
-): string[] | null {
+export function collectWorkspaceExplorerRelativePaths(dataTransfer: DataTransfer): string[] | null {
   const payload: WorkbenchExplorerDndPayload | null = parseExplorerDndPayload(dataTransfer)
   if (!payload) return null
   return payload.relativePaths
@@ -67,7 +65,9 @@ async function resolveDroppedPathIsDirectory(params: {
   try {
     const entries = await params.listDir(params.folderRoot, parent || undefined)
     const entry = entries.find(
-      (item) => item.relativePath === params.relativePath || item.name === params.relativePath.split('/').pop()
+      (item) =>
+        item.relativePath === params.relativePath ||
+        item.name === params.relativePath.split('/').pop()
     )
     if (!entry) return true
     return entry.isDirectory
@@ -133,7 +133,6 @@ export function createWorkspaceComposerDropResolver(folderRoot: string | null) {
     resolveWorkspaceComposerDrop({
       dataTransfer,
       folderRoot,
-      listDir: (rootPath, relativePath) =>
-        window.api.agentWorkspace.listDir(rootPath, relativePath)
+      listDir: (rootPath, relativePath) => window.api.agentWorkspace.listDir(rootPath, relativePath)
     })
 }

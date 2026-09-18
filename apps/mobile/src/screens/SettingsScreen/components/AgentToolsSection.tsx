@@ -45,8 +45,7 @@ export const AgentToolsSection: React.FC = () => {
   )
 
   const resolveToolEffect = useCallback(
-    (toolId: string) =>
-      resolveCompanionToolEffect(toolId, config.disabledToolIds, capabilityState),
+    (toolId: string) => resolveCompanionToolEffect(toolId, config.disabledToolIds, capabilityState),
     [config.disabledToolIds, capabilityState]
   )
 
@@ -68,9 +67,8 @@ export const AgentToolsSection: React.FC = () => {
       setGateConfig(nextConfig)
       try {
         await services.settingsManager.set(BAISHOU_AGENT_GATE_CONFIG_KEY, nextConfig)
-        const { invalidateMobileMcpToolContextCache } = await import(
-          '../../../services/mobile-mcp-context.service'
-        )
+        const { invalidateMobileMcpToolContextCache } =
+          await import('../../../services/mobile-mcp-context.service')
         invalidateMobileMcpToolContextCache()
         await reloadAgentGateConfig?.()
       } catch {

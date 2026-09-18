@@ -23,7 +23,9 @@ export const DEFAULT_SNAPSHOT_EXCLUDE_RULES: readonly string[] = [
   'Thumbs.db'
 ]
 
-export function buildSnapshotExcludeFile(rules: readonly string[] = DEFAULT_SNAPSHOT_EXCLUDE_RULES): string {
+export function buildSnapshotExcludeFile(
+  rules: readonly string[] = DEFAULT_SNAPSHOT_EXCLUDE_RULES
+): string {
   return `${['# 由工作台快照自动生成，请勿手工编辑', ...rules].join('\n')}\n`
 }
 

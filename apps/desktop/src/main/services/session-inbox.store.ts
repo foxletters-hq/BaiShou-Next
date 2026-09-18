@@ -2,11 +2,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { app } from 'electron'
 import type { SessionInputRecord } from '@baishou/shared'
-import {
-  MemorySessionInboxStore,
-  setSessionInboxStore,
-  type SessionInboxStore
-} from '@baishou/ai'
+import { MemorySessionInboxStore, setSessionInboxStore, type SessionInboxStore } from '@baishou/ai'
 
 const PERSIST_DEBOUNCE_MS = 75
 

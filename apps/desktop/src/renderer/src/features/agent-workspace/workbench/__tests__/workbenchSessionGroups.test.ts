@@ -6,11 +6,7 @@ import {
   sortWorkspaceSessions
 } from '../workbenchSessionGroups'
 
-function session(
-  id: string,
-  updatedAt: string,
-  isPinned = false
-): AgentWorkspaceSessionListItem {
+function session(id: string, updatedAt: string, isPinned = false): AgentWorkspaceSessionListItem {
   return {
     sessionId: id,
     title: id,
@@ -29,12 +25,7 @@ describe('workbenchSessionGroups', () => {
       session('new', '2026-08-10T00:00:00.000Z'),
       session('pinned-new', '2026-08-11T00:00:00.000Z', true)
     ])
-    expect(sorted.map((row) => row.sessionId)).toEqual([
-      'pinned-new',
-      'pinned-old',
-      'new',
-      'old'
-    ])
+    expect(sorted.map((row) => row.sessionId)).toEqual(['pinned-new', 'pinned-old', 'new', 'old'])
   })
 
   it('keeps all pinned sessions in the preview', () => {

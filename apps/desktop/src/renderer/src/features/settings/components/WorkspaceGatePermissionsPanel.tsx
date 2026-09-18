@@ -215,9 +215,7 @@ export const WorkspaceGatePermissionsPanel: React.FC<WorkspaceGatePermissionsPan
                 aria-pressed={securityMode === mode.value}
                 onClick={() => void onSaveSecurityMode(mode.value)}
                 style={
-                  securityMode === mode.value
-                    ? { background: 'var(--bg-surface-high)' }
-                    : undefined
+                  securityMode === mode.value ? { background: 'var(--bg-surface-high)' } : undefined
                 }
               >
                 <div className="settings-list-tile-content">

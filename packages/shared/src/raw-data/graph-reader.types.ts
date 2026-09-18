@@ -107,10 +107,7 @@ export interface ToolGraphRecaller {
 }
 
 export interface ToolGraphNodeLookup {
-  findNodeByName(opts: {
-    name: string
-    nodeType?: string
-  }): Promise<ToolGraphNodeHit | null>
+  findNodeByName(opts: { name: string; nodeType?: string }): Promise<ToolGraphNodeHit | null>
   findNodeById?(id: string): Promise<ToolGraphNodeHit | null>
 }
 

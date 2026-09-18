@@ -25,7 +25,7 @@ function resolveWorkspaceRunPattern(input: {
     declared ||
     (shell ? resolveCommandPrefixPatternFromCommand(shell.value) : null) ||
     (typeof fromPreview === 'string' && fromPreview.trim()
-      ? resolveCommandPrefixPatternFromCommand(fromPreview) ?? fromPreview.trim()
+      ? (resolveCommandPrefixPatternFromCommand(fromPreview) ?? fromPreview.trim())
       : null)
   )
 }

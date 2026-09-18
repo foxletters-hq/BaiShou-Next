@@ -58,10 +58,9 @@ describe('isGraphHubLabelVisible', () => {
   })
 
   it('collects endpoints from current-view edges', () => {
-    expect([...collectGraphConnectedNodeIds([{ fromId: 'a', toId: 'b' }, { fromId: 'b' }])].sort()).toEqual([
-      'a',
-      'b'
-    ])
+    expect(
+      [...collectGraphConnectedNodeIds([{ fromId: 'a', toId: 'b' }, { fromId: 'b' }])].sort()
+    ).toEqual(['a', 'b'])
   })
 
   it('keeps isolated nodes when the switch is on', () => {

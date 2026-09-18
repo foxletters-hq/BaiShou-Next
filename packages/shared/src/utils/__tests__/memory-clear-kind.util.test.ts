@@ -21,9 +21,7 @@ describe('parseMemoryClearKinds', () => {
 
 describe('shouldTombstoneMemoryRecord', () => {
   it('tombs partner rows only when partner is selected', () => {
-    expect(
-      shouldTombstoneMemoryRecord(['partner'], { sourceSessionId: 'sess-1' })
-    ).toBe(true)
+    expect(shouldTombstoneMemoryRecord(['partner'], { sourceSessionId: 'sess-1' })).toBe(true)
     expect(shouldTombstoneMemoryRecord(['partner'], { sourceSessionId: null })).toBe(false)
   })
 

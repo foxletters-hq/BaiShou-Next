@@ -22,15 +22,16 @@ export function isSummaryFirstOutputTimeoutError(error: unknown): boolean {
   const name = 'name' in error ? String(error.name) : ''
   const message = 'message' in error ? String(error.message) : ''
   return (
-    name === SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME ||
-    message.includes('waiting for first output')
+    name === SUMMARY_FIRST_OUTPUT_TIMEOUT_ERROR_NAME || message.includes('waiting for first output')
   )
 }
 
 export function isSummaryUserAbortError(error: unknown, userSignal?: AbortSignal): boolean {
   if (userSignal?.aborted) return true
   if (isSummaryFirstOutputTimeoutError(error)) return false
-  return Boolean(error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')
+  return Boolean(
+    error && typeof error === 'object' && 'name' in error && error.name === 'AbortError'
+  )
 }
 
 export function suppressUnusedSummaryStreamSettlements(streamResult: {

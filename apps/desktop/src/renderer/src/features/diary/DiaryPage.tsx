@@ -1,5 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import React, { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  useSyncExternalStore
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -116,9 +123,7 @@ export const DiaryPage: React.FC = () => {
   )
   const [graphConfigured, setGraphConfigured] = useState(false)
   const [ragConfigured, setRagConfigured] = useState(false)
-  const [embedNotice, setEmbedNotice] = useState<{ count: number; needModel: boolean } | null>(
-    null
-  )
+  const [embedNotice, setEmbedNotice] = useState<{ count: number; needModel: boolean } | null>(null)
   const ragState = useSyncExternalStore(
     subscribeRagRuntime,
     getCachedRagActiveState,
@@ -138,13 +143,13 @@ export const DiaryPage: React.FC = () => {
         }
       ).rag
       const [pending, embedCounts, globalModels, ragConfig] = await Promise.all([
-          window.api.graph.listPendingReextract().catch(() => []),
-          (ragApi?.getPendingEmbedCounts?.() ??
-            Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)
-          ).catch(() => EMPTY_PENDING_EMBED_COUNTS),
-          window.api.settings.getGlobalModels().catch(() => null),
-          window.api.settings.getRagConfig().catch(() => null) as Promise<RagConfig | null>
-        ])
+        window.api.graph.listPendingReextract().catch(() => []),
+        (ragApi?.getPendingEmbedCounts?.() ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)).catch(
+          () => EMPTY_PENDING_EMBED_COUNTS
+        ),
+        window.api.settings.getGlobalModels().catch(() => null),
+        window.api.settings.getRagConfig().catch(() => null) as Promise<RagConfig | null>
+      ])
       const counts =
         embedCounts && typeof embedCounts === 'object' && 'total' in embedCounts
           ? embedCounts
@@ -468,9 +473,7 @@ export const DiaryPage: React.FC = () => {
           needModel={embedNotice.needModel}
           onAction={() => {
             setEmbedNotice(null)
-            navigate(
-              embedNotice.needModel ? `${SETTINGS_HUB_PREFIX}/ai-models` : '/memory/vectors'
-            )
+            navigate(embedNotice.needModel ? `${SETTINGS_HUB_PREFIX}/ai-models` : '/memory/vectors')
           }}
           onDismiss={() => setEmbedNotice(null)}
           onMuteStartupReminder={() => {

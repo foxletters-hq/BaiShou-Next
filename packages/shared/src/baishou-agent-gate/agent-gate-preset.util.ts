@@ -1,8 +1,5 @@
 import { AgentGateEffect } from './agent-gate.enums'
-import type {
-  AgentWorkspaceSecurityMode,
-  BaishouAgentGateConfig
-} from './agent-gate.types'
+import type { AgentWorkspaceSecurityMode, BaishouAgentGateConfig } from './agent-gate.types'
 import { hasCatchAllAllowRule, setCatchAllAllowRule } from './agent-gate-migrate.util'
 import { applyCapabilityStateToConfig } from './agent-gate-capability.util'
 import {
@@ -81,8 +78,7 @@ export function resolveWorkspaceSecurityMode(
   const editActions = ['workspace_write', 'workspace_patch', 'workspace_rename'] as const
   const editAllowed = editActions.every((action) =>
     rules.some(
-      (rule) =>
-        rule.action === action && !rule.pattern && rule.effect === AgentGateEffect.Allow
+      (rule) => rule.action === action && !rule.pattern && rule.effect === AgentGateEffect.Allow
     )
   )
   if (editAllowed) return 'auto_review'
@@ -109,9 +105,7 @@ export function matchesCommandBlacklist(
       return haystack.includes(pattern)
     }
     // 简单 glob：`*` → .*
-    const escaped = pattern
-      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*/g, '.*')
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
     try {
       return new RegExp(escaped, 'i').test(normalized)
     } catch {

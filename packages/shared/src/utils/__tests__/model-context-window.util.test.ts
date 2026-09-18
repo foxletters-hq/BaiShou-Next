@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  DEFAULT_MODEL_CONTEXT_WINDOW,
-  getModelContextWindow
-} from '../model-context-window.util'
+import { DEFAULT_MODEL_CONTEXT_WINDOW, getModelContextWindow } from '../model-context-window.util'
 
 describe('getModelContextWindow', () => {
   it('maps known models and defaults otherwise', () => {

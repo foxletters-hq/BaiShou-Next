@@ -33,10 +33,7 @@ function yearList(now = new Date()): number[] {
   return Array.from({ length: end - start + 1 }, (_, i) => start + i)
 }
 
-function monthLabel(
-  monthNames: string[] | unknown,
-  month: string
-): string {
+function monthLabel(monthNames: string[] | unknown, month: string): string {
   const d = parseGraphMonthToDate(month)
   const names = Array.isArray(monthNames) ? (monthNames as string[]) : null
   const name = names?.[d.getMonth()] ?? `${d.getMonth() + 1}月`
@@ -59,7 +56,9 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
   const [mounted, setMounted] = useState(false)
   const [draft, setDraft] = useState<GraphMonthRange>(value)
   const [editTarget, setEditTarget] = useState<EditTarget>('start')
-  const [viewYear, setViewYear] = useState(() => parseGraphMonthToDate(value.startMonth).getFullYear())
+  const [viewYear, setViewYear] = useState(() =>
+    parseGraphMonthToDate(value.startMonth).getFullYear()
+  )
   const overlayRef = useRef<HTMLDivElement>(null)
   const yearListRef = useRef<HTMLDivElement>(null)
 
@@ -126,7 +125,11 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
     <button
       type="button"
       className={`${styles.trigger} ${
-        trailing ? styles.triggerInCluster : isRecent3 ? styles.triggerDefault : styles.triggerCustom
+        trailing
+          ? styles.triggerInCluster
+          : isRecent3
+            ? styles.triggerDefault
+            : styles.triggerCustom
       }${block ? ` ${styles.triggerBlock}` : ''}${className ? ` ${className}` : ''}`}
       title={t('graph.month_range_hint', '按日记关系所属月份筛选')}
       aria-haspopup="dialog"
@@ -283,10 +286,18 @@ export const GraphMonthRangePicker: React.FC<GraphMonthRangePickerProps> = ({
                   </div>
 
                   <div className={styles.presets}>
-                    <button type="button" className={styles.presetBtn} onClick={() => applyPreset(3)}>
+                    <button
+                      type="button"
+                      className={styles.presetBtn}
+                      onClick={() => applyPreset(3)}
+                    >
                       {t('graph.month_range_recent3', '近3月')}
                     </button>
-                    <button type="button" className={styles.presetBtn} onClick={() => applyPreset(6)}>
+                    <button
+                      type="button"
+                      className={styles.presetBtn}
+                      onClick={() => applyPreset(6)}
+                    >
                       {t('graph.month_range_recent6', '近6月')}
                     </button>
                     <button

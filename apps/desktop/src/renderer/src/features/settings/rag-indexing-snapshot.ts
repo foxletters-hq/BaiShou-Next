@@ -48,11 +48,15 @@ export function formatRagIndexingStatus(
   if (current) {
     const kind = t(ragBatchEmbedPhaseLabelKey(current.id), current.id)
     if (indexing.paused) {
-      return t('diary.status_indexing_paused_kind', '已暂停 · 正在嵌入{{kind}} {{progress}}/{{total}}', {
-        kind,
-        progress: current.completed,
-        total: current.total
-      })
+      return t(
+        'diary.status_indexing_paused_kind',
+        '已暂停 · 正在嵌入{{kind}} {{progress}}/{{total}}',
+        {
+          kind,
+          progress: current.completed,
+          total: current.total
+        }
+      )
     }
     return t('diary.status_indexing_kind', '正在嵌入{{kind}} {{progress}}/{{total}}', {
       kind,

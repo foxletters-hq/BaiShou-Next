@@ -24,7 +24,12 @@ function countChanges(status: {
   untracked: unknown[]
   conflicted: unknown[]
 }): number {
-  return status.staged.length + status.unstaged.length + status.untracked.length + status.conflicted.length
+  return (
+    status.staged.length +
+    status.unstaged.length +
+    status.untracked.length +
+    status.conflicted.length
+  )
 }
 
 export function useWorkbenchStatusGit(folderRoot: string | null) {
@@ -47,7 +52,10 @@ export function useWorkbenchStatusGit(folderRoot: string | null) {
         setChangesCount(0)
         return
       }
-      const [info, status] = await Promise.all([git.getBranchInfo(folderRoot), git.getStatus(folderRoot)])
+      const [info, status] = await Promise.all([
+        git.getBranchInfo(folderRoot),
+        git.getStatus(folderRoot)
+      ])
       setMeta({
         branch: displayGitBranchName(info.current),
         branches: info.branches ?? [],

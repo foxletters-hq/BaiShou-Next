@@ -47,22 +47,18 @@ describe('agent-skills.util', () => {
   })
 
   it('resolves .agents/skills under a base directory', () => {
-    expect(resolveAgentsSkillsRoot('D:/proj')).toBe(
-      path.join('D:/proj', AGENTS_DIR_NAME, 'skills')
-    )
+    expect(resolveAgentsSkillsRoot('D:/proj')).toBe(path.join('D:/proj', AGENTS_DIR_NAME, 'skills'))
   })
 
   it('scans skill, skills, then .agents/skills under the workspace root', () => {
     expect(WORKSPACE_SKILL_FOLDER_NAMES).toEqual(['skill', 'skills'])
-    expect(WORKSPACE_SKILL_RELATIVE_DIRS).toEqual([
-      ['skill'],
-      ['skills'],
-      ['.agents', 'skills']
-    ])
+    expect(WORKSPACE_SKILL_RELATIVE_DIRS).toEqual([['skill'], ['skills'], ['.agents', 'skills']])
   })
 
   it('keeps shortcut migration and official-to-user relocation as separate flags', () => {
-    expect(NON_OFFICIAL_SKILLS_RELOCATED_FLAG_KEY).toBe('non_official_skills_relocated_to_agents_v1')
+    expect(NON_OFFICIAL_SKILLS_RELOCATED_FLAG_KEY).toBe(
+      'non_official_skills_relocated_to_agents_v1'
+    )
     expect(LEGACY_WRITER_SKILL_REMOVED_FLAG_KEY).toBe('legacy_writer_skill_removed_v1')
     expect(RETIRED_OFFICIAL_SKILLS_REMOVED_FLAG_KEY).toBe('retired_official_skills_removed_v1')
   })

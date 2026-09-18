@@ -1,8 +1,5 @@
 import { webFrame } from 'electron'
-import {
-  UI_SETTINGS_STORAGE_KEY,
-  uiPageZoomFromPersistedSettingsJson
-} from '@baishou/shared'
+import { UI_SETTINGS_STORAGE_KEY, uiPageZoomFromPersistedSettingsJson } from '@baishou/shared'
 
 function clampPageZoom(factor: number): number {
   return Math.min(2, Math.max(0.5, Math.round(factor * 100) / 100))

@@ -1,9 +1,6 @@
 import type { MockChatMessage } from '@baishou/shared'
 import type { CallChainFlatEntry, CallChainPanelMeta } from '@baishou/ui'
-import {
-  getWorkspaceAssistantText,
-  getWorkspaceUserText
-} from './workspace-message-display.util'
+import { getWorkspaceAssistantText, getWorkspaceUserText } from './workspace-message-display.util'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 
 export type WorkspaceContextViewModelEntry = {
@@ -49,8 +46,7 @@ export function toWorkspaceContextBubbleMessage(
   sessionId: string
 ): MockChatMessage {
   const role = source.role === 'user' ? 'user' : 'assistant'
-  const content =
-    role === 'user' ? getWorkspaceUserText(source) : getWorkspaceAssistantText(source)
+  const content = role === 'user' ? getWorkspaceUserText(source) : getWorkspaceAssistantText(source)
   return {
     id: source.id,
     sessionId,

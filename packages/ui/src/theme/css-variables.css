@@ -80,7 +80,8 @@
   --font-family: 'Noto Sans SC', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-family-main: var(--font-family);
   /* 等宽优先；CJK 回退到 --font-family，避免 Diff/代码中文落到系统雅黑 */
-  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, var(--font-family);
+  --font-family-mono:
+    'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace, var(--font-family);
   /* 用户可调阅读字号（常规设置「字体大小」）；勿用于设置页 chrome token */
   --ui-font-scale: 1;
   --content-font-size: calc(14px * var(--ui-font-scale));

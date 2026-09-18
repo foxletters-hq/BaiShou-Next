@@ -135,7 +135,9 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s ease, filter 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease;
 }
 
 .batchDeleteBtn:hover:not(:disabled) {

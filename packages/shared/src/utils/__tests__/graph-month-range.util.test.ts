@@ -28,9 +28,9 @@ describe('graph-month-range.util', () => {
   it('detects default range', () => {
     const now = new Date(2026, 7, 5)
     expect(isDefaultGraphMonthRange(defaultGraphMonthRange(now), now)).toBe(true)
-    expect(
-      isDefaultGraphMonthRange({ startMonth: '2025-01', endMonth: '2026-08' }, now)
-    ).toBe(false)
+    expect(isDefaultGraphMonthRange({ startMonth: '2025-01', endMonth: '2026-08' }, now)).toBe(
+      false
+    )
   })
 
   it('parses and formats month', () => {

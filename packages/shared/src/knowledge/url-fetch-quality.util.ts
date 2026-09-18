@@ -5,8 +5,7 @@ export interface FetchedWebPageAssessment {
   issue: FetchedWebPageIssue | null
 }
 
-const LOGIN_PATH =
-  /\/(login|signin|sign-in|signup|sign-up|auth|sso|account\/login)(\/|$)/i
+const LOGIN_PATH = /\/(login|signin|sign-in|signup|sign-up|auth|sso|account\/login)(\/|$)/i
 
 const SHELL_HINT =
   /加载中|请先登录|请登录|登录后|sign in to continue|log in to continue|javascript is required/i

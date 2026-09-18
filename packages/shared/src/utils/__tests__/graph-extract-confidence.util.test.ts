@@ -52,9 +52,9 @@ describe('normalizeGraphEdgeReviewFields', () => {
   })
 
   it('does not revive rejected', () => {
-    expect(normalizeGraphEdgeReviewFields({ confidence: 1, reviewStatus: 'rejected' }).reviewStatus).toBe(
-      'rejected'
-    )
+    expect(
+      normalizeGraphEdgeReviewFields({ confidence: 1, reviewStatus: 'rejected' }).reviewStatus
+    ).toBe('rejected')
   })
 })
 

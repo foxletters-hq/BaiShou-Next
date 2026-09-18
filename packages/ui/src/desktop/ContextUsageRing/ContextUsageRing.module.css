@@ -28,7 +28,9 @@
 
 .fill {
   stroke: var(--color-primary);
-  transition: stroke-dashoffset 0.2s ease, stroke 0.2s ease;
+  transition:
+    stroke-dashoffset 0.2s ease,
+    stroke 0.2s ease;
 }
 
 .trigger.warn .fill,

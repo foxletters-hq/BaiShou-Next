@@ -228,7 +228,9 @@ export const WorkbenchSessionView: React.FC<WorkbenchSessionViewProps> = ({
                                   ? t('workbench.home_unpin_session', '取消置顶')
                                   : t('workbench.home_pin_session', '置顶对话')
                               }
-                              onClick={() => handlePinSession(session.sessionId, Boolean(session.isPinned))}
+                              onClick={() =>
+                                handlePinSession(session.sessionId, Boolean(session.isPinned))
+                              }
                             >
                               <Pin
                                 size={13}

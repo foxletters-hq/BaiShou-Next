@@ -1,10 +1,7 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  GRAPH_APPEARANCE_DEFAULTS,
-  GRAPH_FORCE_DEFAULTS
-} from '@baishou/shared'
+import { GRAPH_APPEARANCE_DEFAULTS, GRAPH_FORCE_DEFAULTS } from '@baishou/shared'
 import { GraphCanvasSettingsPanel } from '../GraphCanvasSettingsPanel'
 
 vi.mock('react-i18next', async (importOriginal) => {

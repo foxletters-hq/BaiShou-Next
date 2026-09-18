@@ -1,8 +1,5 @@
 import { generateText, type LanguageModel } from 'ai'
-import {
-  extractApiErrorMessage,
-  isBenignConnectionTestLimitError
-} from './provider-api-error.util'
+import { extractApiErrorMessage, isBenignConnectionTestLimitError } from './provider-api-error.util'
 import { buildSmallTaskReasoningOptions } from './reasoning'
 import { runWithOpenAiThinkingInjectAsync } from './reasoning/openai-thinking-inject'
 
@@ -49,9 +46,7 @@ export async function probeProviderConnection(
         prompt: CONNECTION_TEST_PROMPT,
         maxOutputTokens: CONNECTION_TEST_MAX_OUTPUT_TOKENS,
         abortSignal: abortController.signal,
-        ...(built?.providerOptions
-          ? { providerOptions: built.providerOptions as never }
-          : {})
+        ...(built?.providerOptions ? { providerOptions: built.providerOptions as never } : {})
       })
     )
   } catch (e: unknown) {

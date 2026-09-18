@@ -224,13 +224,16 @@ export const KnowledgeListPage: React.FC = () => {
     commitRenameRef.current = commitRename
   }, [commitRename])
 
-  const closeCardMenu = useCallback((commitName = true) => {
-    const id = cardMenuId
-    if (id && commitName) {
-      void commitRenameRef.current(id, renameDraftRef.current)
-    }
-    setCardMenuId(null)
-  }, [cardMenuId])
+  const closeCardMenu = useCallback(
+    (commitName = true) => {
+      const id = cardMenuId
+      if (id && commitName) {
+        void commitRenameRef.current(id, renameDraftRef.current)
+      }
+      setCardMenuId(null)
+    },
+    [cardMenuId]
+  )
 
   useEffect(() => {
     if (!cardMenuId) return undefined
@@ -252,9 +255,7 @@ export const KnowledgeListPage: React.FC = () => {
 
   const changeCoverTone = async (notebookId: string, coverTone: NotebookCardTone) => {
     const previous = notebooks
-    setNotebooks((rows) =>
-      rows.map((row) => (row.id === notebookId ? { ...row, coverTone } : row))
-    )
+    setNotebooks((rows) => rows.map((row) => (row.id === notebookId ? { ...row, coverTone } : row)))
     try {
       await window.api.knowledge.updateNotebook({ notebookId, coverTone })
     } catch (e: unknown) {
@@ -265,9 +266,7 @@ export const KnowledgeListPage: React.FC = () => {
 
   const changeCoverIcon = async (notebookId: string, coverIcon: string) => {
     const previous = notebooks
-    setNotebooks((rows) =>
-      rows.map((row) => (row.id === notebookId ? { ...row, coverIcon } : row))
-    )
+    setNotebooks((rows) => rows.map((row) => (row.id === notebookId ? { ...row, coverIcon } : row)))
     try {
       await window.api.knowledge.updateNotebook({ notebookId, coverIcon })
     } catch (e: unknown) {
@@ -367,7 +366,11 @@ export const KnowledgeListPage: React.FC = () => {
 
         {error ? <p className={styles.errorLine}>{error}</p> : null}
 
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={(event) => void onDragEnd(event)}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragEnd={(event) => void onDragEnd(event)}
+        >
           <div className={styles.listGrid}>
             <button
               type="button"
@@ -418,10 +421,7 @@ export const KnowledgeListPage: React.FC = () => {
                       reorder: t('knowledge.reorder_notebook', '拖动排序'),
                       menu: t('knowledge.notebook_card_menu', '笔记本选项'),
                       name: t('knowledge.notebook_name', '名称'),
-                      namePlaceholder: t(
-                        'knowledge.notebook_name_placeholder',
-                        '笔记本名称'
-                      ),
+                      namePlaceholder: t('knowledge.notebook_name_placeholder', '笔记本名称'),
                       cover: t('knowledge.notebook_cover', '笔记本封面'),
                       coverEmoji: t('knowledge.cover_mode_emoji', 'emoji'),
                       pickIcon: t('knowledge.pick_cover_icon', '选择图标'),
@@ -528,11 +528,7 @@ export const KnowledgeListPage: React.FC = () => {
           >
             {t('common.cancel', '取消')}
           </Button>
-          <Button
-            type="button"
-            onClick={() => void onCreate()}
-            disabled={busy || !name.trim()}
-          >
+          <Button type="button" onClick={() => void onCreate()} disabled={busy || !name.trim()}>
             {t('knowledge.create_action', '创建')}
           </Button>
         </div>

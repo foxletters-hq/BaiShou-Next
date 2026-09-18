@@ -160,8 +160,7 @@ export function registerSessionIPC() {
     const { realSessionRepo } = getAgentManagers()
     const session = await realSessionRepo.getSessionById(sessionId)
     assertSessionInActiveVault(session, resolveActiveVaultId())
-    const { readSessionMountedNotebookIds } =
-      await import('../services/session-mounted-notebooks')
+    const { readSessionMountedNotebookIds } = await import('../services/session-mounted-notebooks')
     return readSessionMountedNotebookIds(sessionId)
   })
 

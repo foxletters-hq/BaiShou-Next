@@ -26,7 +26,9 @@ export async function searchMountedKnowledgeNotebooks(opts: {
   assertCompatibleNotebookDimensions(scopedProfiles)
   assertMountedNotebookModelMatch(scopedProfiles, opts.currentModelId)
 
-  const nameById = new Map(scopedProfiles.map((row) => [row.notebookId, row.notebookName || row.notebookId]))
+  const nameById = new Map(
+    scopedProfiles.map((row) => [row.notebookId, row.notebookName || row.notebookId])
+  )
   const perNotebook = Math.max(
     1,
     opts.limitPerNotebook ??

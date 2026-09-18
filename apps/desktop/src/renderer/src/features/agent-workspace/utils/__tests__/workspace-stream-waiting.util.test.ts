@@ -20,10 +20,7 @@ describe('streamTimelineHasRunningTool', () => {
 
   it('returns false when no tool is running', () => {
     expect(
-      streamTimelineHasRunningTool([
-        { kind: 'tool', status: 'completed' },
-        { kind: 'text' }
-      ])
+      streamTimelineHasRunningTool([{ kind: 'tool', status: 'completed' }, { kind: 'text' }])
     ).toBe(false)
   })
 })

@@ -31,10 +31,7 @@ export async function withMcpHttpTimeout<T>(
   }
 }
 
-export async function connectMcpHttpClient(params: {
-  url: string
-  authToken?: string
-}): Promise<{
+export async function connectMcpHttpClient(params: { url: string; authToken?: string }): Promise<{
   client: Client
   transport: StreamableHTTPClientTransport
 }> {

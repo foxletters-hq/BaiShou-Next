@@ -7,10 +7,7 @@ export interface GraphIndexSource {
   commitIndexed(collection: string, relativePath: string, contentHash: string): Promise<void>
   listShards(): Promise<ShardInfo[]>
   invalidateIndexedHashes?(): Promise<void>
-  writeRecord?(
-    record: unknown,
-    opts?: { collection?: 'nodes' | 'edges' }
-  ): Promise<unknown>
+  writeRecord?(record: unknown, opts?: { collection?: 'nodes' | 'edges' }): Promise<unknown>
   removeRecordsFromShard?(
     collection: 'nodes' | 'edges',
     shardMonth: string,

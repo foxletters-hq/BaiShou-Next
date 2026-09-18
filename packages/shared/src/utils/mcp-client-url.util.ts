@@ -154,7 +154,8 @@ export function toMcpClientListedTools(tools: unknown): McpClientListedTool[] {
     const description = (item as { description?: unknown }).description
     listed.push({
       name: name.trim(),
-      description: typeof description === 'string' && description.trim() ? description.trim() : undefined
+      description:
+        typeof description === 'string' && description.trim() ? description.trim() : undefined
     })
   }
   return listed
@@ -165,10 +166,9 @@ export function isMcpClientTimeoutMessage(message: string | undefined): boolean 
   return message.includes('超时') || /timed?\s*out/i.test(message)
 }
 
-export function mcpClientProbeReasonFromError(error: unknown): Extract<
-  McpClientProbeReason,
-  'timeout' | 'connect'
-> {
+export function mcpClientProbeReasonFromError(
+  error: unknown
+): Extract<McpClientProbeReason, 'timeout' | 'connect'> {
   const message = error instanceof Error ? error.message : String(error)
   return isMcpClientTimeoutMessage(message) ? 'timeout' : 'connect'
 }

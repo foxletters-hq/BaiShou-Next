@@ -198,7 +198,14 @@ export function createGitShadowSnapshotStore(
       await git(
         folderRoot,
         gitDir,
-        ['rm', '--cached', '-f', '--ignore-unmatch', '--pathspec-from-file=-', '--pathspec-file-nul'],
+        [
+          'rm',
+          '--cached',
+          '-f',
+          '--ignore-unmatch',
+          '--pathspec-from-file=-',
+          '--pathspec-file-nul'
+        ],
         { stdin: joinNulSeparated(oversized) }
       )
     }

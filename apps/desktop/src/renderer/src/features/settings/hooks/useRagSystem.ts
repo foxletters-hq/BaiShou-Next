@@ -419,9 +419,10 @@ export function useRagSystem(
     if (!kinds.length) return
     setIsProcessing(true)
     try {
-      const ragKinds = kinds.includes('life_graph') && !kinds.includes('graph_node')
-        ? [...kinds, 'graph_node' as const]
-        : kinds
+      const ragKinds =
+        kinds.includes('life_graph') && !kinds.includes('graph_node')
+          ? [...kinds, 'graph_node' as const]
+          : kinds
       const needsRag =
         ragKinds.some((kind) => kind !== 'life_graph') ||
         ragKinds.includes('partner') ||

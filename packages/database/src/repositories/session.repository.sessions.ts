@@ -314,9 +314,9 @@ export class SessionCrudOps {
         await tx.delete(agentSessionsTable).where(inArray(agentSessionsTable.id, ids))
         await tx.delete(messagesTbl).where(inArray(messagesTbl.sessionId, ids))
         await tx.delete(partsTbl).where(inArray(partsTbl.sessionId, ids))
-        await tx.delete(compressionSnapshotsTable).where(
-          inArray(compressionSnapshotsTable.sessionId, ids)
-        )
+        await tx
+          .delete(compressionSnapshotsTable)
+          .where(inArray(compressionSnapshotsTable.sessionId, ids))
       })
     }
   }

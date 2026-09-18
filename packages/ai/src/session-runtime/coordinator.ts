@@ -115,10 +115,7 @@ export class RunCoordinator {
             this.recovery.delete(sessionId)
           } catch (err) {
             this.inbox.markFailed(promoted.id)
-            this.markRecovery(
-              sessionId,
-              err instanceof Error ? err.message : 'promoted_run_failed'
-            )
+            this.markRecovery(sessionId, err instanceof Error ? err.message : 'promoted_run_failed')
             throw err
           }
 

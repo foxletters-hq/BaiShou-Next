@@ -9,7 +9,5 @@ export function hasPersistedAssistantTail(
 ): boolean {
   const last = messages[messages.length - 1]
   if (!last || last.role !== 'assistant') return false
-  return Boolean(
-    last.content?.trim() || last.reasoning?.trim() || (last.parts?.length ?? 0) > 0
-  )
+  return Boolean(last.content?.trim() || last.reasoning?.trim() || (last.parts?.length ?? 0) > 0)
 }

@@ -84,9 +84,8 @@ export function useToolManagementConfig() {
       publishEmojiToolConfig(normalized.emojiConfig!)
       if (!services || !dbReady) return
       await services.settingsManager.set('tool_management_config', normalized)
-      const { invalidateMobileMcpToolContextCache } = await import(
-        '../services/mobile-mcp-context.service'
-      )
+      const { invalidateMobileMcpToolContextCache } =
+        await import('../services/mobile-mcp-context.service')
       invalidateMobileMcpToolContextCache()
     },
     [dbReady, services]

@@ -25,11 +25,11 @@ describe('agent-gate-profile.util', () => {
     expect(actions).toContain('diary_search')
     expect(actions).toContain('memory_*')
     expect(actions).toContain('graph_upsert')
-    expect(
-      rules.some((r) => r.action === 'diary_read' && r.effect === AgentGateEffect.Allow)
-    ).toBe(true)
-    expect(
-      rules.some((r) => r.action === 'diary_*' && r.effect === AgentGateEffect.Deny)
-    ).toBe(true)
+    expect(rules.some((r) => r.action === 'diary_read' && r.effect === AgentGateEffect.Allow)).toBe(
+      true
+    )
+    expect(rules.some((r) => r.action === 'diary_*' && r.effect === AgentGateEffect.Deny)).toBe(
+      true
+    )
   })
 })

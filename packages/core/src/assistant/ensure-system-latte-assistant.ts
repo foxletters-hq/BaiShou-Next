@@ -1,7 +1,4 @@
-import {
-  SYSTEM_LATTE_ASSISTANT_ID,
-  getSystemLatteAssistantSeed
-} from '@baishou/shared'
+import { SYSTEM_LATTE_ASSISTANT_ID, getSystemLatteAssistantSeed } from '@baishou/shared'
 import type { AssistantManagerService } from './assistant-manager.service'
 
 export type EnsureSystemLatteResult = {

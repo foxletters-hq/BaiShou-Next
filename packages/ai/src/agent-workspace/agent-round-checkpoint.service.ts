@@ -30,10 +30,7 @@ export class AgentRoundCheckpointService {
   private readonly checkpoints = new Map<string, AgentRoundCheckpoint>()
   private readonly store: WorkspaceSnapshotStore
 
-  constructor(
-    fs: WorkspaceFsAdapter = createNodeWorkspaceFs(),
-    store?: WorkspaceSnapshotStore
-  ) {
+  constructor(fs: WorkspaceFsAdapter = createNodeWorkspaceFs(), store?: WorkspaceSnapshotStore) {
     this.store = store ?? createInlineSnapshotStore(fs)
   }
 
@@ -192,7 +189,10 @@ export class AgentRoundCheckpointService {
     const targetUserMessageIds = new Set(userMessageIds)
     const removed: string[] = []
     for (const [id, checkpoint] of this.checkpoints) {
-      if (checkpoint.sessionId === sessionId && targetUserMessageIds.has(checkpoint.userMessageId)) {
+      if (
+        checkpoint.sessionId === sessionId &&
+        targetUserMessageIds.has(checkpoint.userMessageId)
+      ) {
         this.checkpoints.delete(id)
         removed.push(id)
       }

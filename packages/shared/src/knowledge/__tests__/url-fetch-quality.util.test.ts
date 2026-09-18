@@ -15,7 +15,8 @@ describe('assessFetchedWebPage', () => {
     const result = assessFetchedWebPage({
       requestedUrl: 'https://example.com/app',
       finalUrl: 'https://example.com/app',
-      markdown: '[发布需求](/plaza/new)\n[发布产品](/settings#products)\n\n加载中...\n开始连接\n加入社群'
+      markdown:
+        '[发布需求](/plaza/new)\n[发布产品](/settings#products)\n\n加载中...\n开始连接\n加入社群'
     })
     expect(result.usable).toBe(false)
     expect(result.issue).toBe('empty-shell')

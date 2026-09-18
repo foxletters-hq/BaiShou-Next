@@ -101,7 +101,10 @@ export async function moveWorkspaceEntry(params: {
   try {
     await fs.rename(fromAbs, toAbs)
   } catch (error: unknown) {
-    const code = error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? (error as { code?: string }).code
+        : undefined
     if (code === 'EXDEV') {
       await copyRecursive(fromAbs, toAbs)
       await fs.rm(fromAbs, { recursive: true, force: true })
