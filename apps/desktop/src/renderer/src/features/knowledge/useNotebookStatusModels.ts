@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDialog } from '@baishou/ui'
 import {
   clampOcrConcurrency,
@@ -8,10 +9,7 @@ import {
 } from '@baishou/shared'
 import { getDefaultGlobalModels, useSettingsStore } from '@baishou/store'
 import type { KnowledgeModelMenuKind } from './notebook-model-menu.util'
-import {
-  resolveNotebookStatusPicker,
-  type NotebookStatusPickKey
-} from './notebook-open-guide.util'
+import { resolveNotebookStatusPicker, type NotebookStatusPickKey } from './notebook-open-guide.util'
 
 export type NotebookModelPicker = {
   kind: KnowledgeModelMenuKind
@@ -38,6 +36,7 @@ export function useNotebookStatusModels(input: {
     setShowSettings,
     onError
   } = input
+  const { t } = useTranslation()
   const dialog = useDialog()
   const setGlobalModels = useSettingsStore((s) => s.setGlobalModels)
   const [picker, setPicker] = useState<NotebookModelPicker | null>(null)
@@ -85,14 +84,16 @@ export function useNotebookStatusModels(input: {
       if (field === 'embedding') {
         const switching = Boolean(
           next.globalEmbeddingProviderId &&
-            next.globalEmbeddingModelId &&
-            (next.globalEmbeddingProviderId !== providerId ||
-              next.globalEmbeddingModelId !== modelId)
+          next.globalEmbeddingModelId &&
+          (next.globalEmbeddingProviderId !== providerId || next.globalEmbeddingModelId !== modelId)
         )
         if (switching) {
           const confirmed = await dialog.confirm(
-            '新模型可能与现有向量不兼容，更换后将在后台重新嵌入日记数据。是否继续？',
-            '更换嵌入模型？'
+            t(
+              'agent.rag.migration_switch_warning_content',
+              '新模型可能与现有向量不兼容，更换后将在后台重新嵌入日记数据。是否继续？'
+            ),
+            t('agent.rag.migration_switch_warning_title', '更换嵌入模型？')
           )
           if (!confirmed) return
         }
@@ -121,7 +122,7 @@ export function useNotebookStatusModels(input: {
         globalGraphModelId: modelId
       })
     },
-    [dialog, onError, setGlobalModels]
+    [dialog, onError, setGlobalModels, t]
   )
 
   const persistReasoningSlot = useCallback(

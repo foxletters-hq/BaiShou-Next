@@ -10,9 +10,9 @@ import styles from './ThinkingBlock.module.css'
  * 处理 CJK 字符之间、英文标点周围的多余空格。
  */
 export function normalizeCJKSpacing(text: string): string {
-  // 这是正则字符类，不是界面文案；走译文函数会被 i18n 自动抽键，词条一改正则就坏
-  const cjk = '\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff'
-  const punct = '\u3000-\u303f\uff00-\uffef'
+  // 转义保持源码形态交给 RegExp 解析：字符串里一旦出现真实汉字，就会被 i18n 规则当成界面文案抽键
+  const cjk = '\\u4e00-\\u9fff\\u3400-\\u4dbf\\uf900-\\ufaff'
+  const punct = '\\u3000-\\u303f\\uff00-\\uffef'
 
   return (
     text

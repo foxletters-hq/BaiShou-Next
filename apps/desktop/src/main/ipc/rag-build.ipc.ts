@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { memoryEmbeddingsTable } from '@baishou/database-desktop'
 import type { EmbeddingMigrationRollbackConfig, MemoryRawRecord } from '@baishou/shared'
@@ -296,7 +297,7 @@ export function registerRagBuildIPC() {
       sendBatchProgress(last.progress, last.total, statusText ?? last.statusText, last.extras)
       return
     }
-    sendBatchProgress(0, 0, statusText ?? '正在补齐嵌入…', {
+    sendBatchProgress(0, 0, statusText ?? i18n.t('settings.rag_indexing', '正在补齐嵌入…'), {
       running: true,
       phase: 'starting'
     })
@@ -316,7 +317,7 @@ export function registerRagBuildIPC() {
 
   ipcMain.handle('rag:cancel-batch-embed', async () => {
     requestBatchEmbedCancel()
-    replayLastBatchProgress('正在取消索引…')
+    replayLastBatchProgress(i18n.t('settings.rag_batch_embed_cancelling', '正在取消索引…'))
     return { ok: true }
   })
 
@@ -343,11 +344,13 @@ export function registerRagBuildIPC() {
       const { getOrganizePendingSnapshot, invalidatePendingEmbedCountsCache } =
         await import('../services/pending-embed-counts.service')
       invalidatePendingEmbedCountsCache()
-      sendProgress(0, 1, '正在开始索引…', { phase: 'starting' })
+      sendProgress(0, 1, i18n.t('settings.rag_batch_embed_starting', '正在开始索引…'), {
+        phase: 'starting'
+      })
       const counts = await getOrganizePendingSnapshot()
       let phases = phaseCountsFromPending(counts)
       const overallTotal = overallFromPhaseCounts(phases).total
-      sendProgress(0, overallTotal, '正在开始索引…', {
+      sendProgress(0, overallTotal, i18n.t('settings.rag_batch_embed_starting', '正在开始索引…'), {
         phase: firstActivePhase(counts),
         phases
       })
@@ -360,10 +363,15 @@ export function registerRagBuildIPC() {
             total
           })
           const overall = overallFromPhaseCounts(phases)
-          sendProgress(overall.completed, overall.total, statusText || '正在嵌入日记…', {
-            phase: 'diary',
-            phases
-          })
+          sendProgress(
+            overall.completed,
+            overall.total,
+            statusText || i18n.t('settings.rag_indexing_diary', '正在嵌入日记…'),
+            {
+              phase: 'diary',
+              phases
+            }
+          )
         }
       })
       phases = patchPhaseCounts(phases, 'diary', {
@@ -374,7 +382,11 @@ export function registerRagBuildIPC() {
       if (diaryResult.failed > 0 && diaryResult.embedded === 0 && diaryResult.total > 0) {
         const ragConfig = (await settingsManager.get<RagConfig>('rag_config')) || ({} as RagConfig)
         const message =
-          diaryResult.lastError || '嵌入接口不可用，没有写入任何日记向量。请检查嵌入模型的接口地址。'
+          diaryResult.lastError ||
+          i18n.t(
+            'settings.rag_diary_embed_api_unavailable',
+            '嵌入接口不可用，没有写入任何日记向量。请检查嵌入模型的接口地址。'
+          )
         await settingsManager.set('rag_config', markRagDiaryEmbedFailure(ragConfig, message))
         throw new Error(message)
       }
@@ -389,11 +401,13 @@ export function registerRagBuildIPC() {
         }
       })
 
-      if (
-        fillResult.skippedReason === 'adapter-unavailable' &&
-        counts.total > counts.diaries
-      ) {
-        throw new Error('嵌入模型未就绪，无法补齐记忆、图谱节点和知识库')
+      if (fillResult.skippedReason === 'adapter-unavailable' && counts.total > counts.diaries) {
+        throw new Error(
+          i18n.t(
+            'settings.rag_embed_adapter_unavailable',
+            '嵌入模型未就绪，无法补齐记忆、图谱节点和知识库'
+          )
+        )
       }
 
       invalidatePendingEmbedCountsCache()
@@ -430,16 +444,11 @@ export function registerRagBuildIPC() {
         notifyPendingChanged(true)
         endBatchEmbedControl()
         const cancelledProgress = lastBatchProgress.current
-        sendProgress(
-          cancelledProgress?.progress ?? 0,
-          cancelledProgress?.total ?? 0,
-          '',
-          {
-            running: false,
-            phase: cancelledProgress?.extras?.phase,
-            phases: cancelledProgress?.extras?.phases
-          }
-        )
+        sendProgress(cancelledProgress?.progress ?? 0, cancelledProgress?.total ?? 0, '', {
+          running: false,
+          phase: cancelledProgress?.extras?.phase,
+          phases: cancelledProgress?.extras?.phases
+        })
         return { ok: true, cancelled: true }
       }
       console.error('Batch Embed failed:', e)

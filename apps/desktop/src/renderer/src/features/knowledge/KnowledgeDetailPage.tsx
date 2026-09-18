@@ -766,60 +766,66 @@ export const KnowledgeDetailPage: React.FC = () => {
     if (!reprocessWatching && !hasActiveIngest) setVectorKnownTotal(0)
   }, [hasActiveIngest, reprocessWatching, vectorPending])
 
-  const onOcrMissing = async (sourceId: string) => {
-    setError('')
-    try {
-      let nextEngine: 'simple' | 'ocr' | 'vision' = engine === 'simple' ? 'ocr' : engine
-      if (engine !== 'vision') {
-        try {
-          const hint = await window.api.knowledge.probeExtractHint({ sourceId })
-          if (hint.recommendVision) {
-            const choice = await askExtractHint({
-              fileNames: [hint.fileName],
-              reason: hint.reason,
-              currentEngine: engine,
-              visionConfigured: hint.visionConfigured,
-              visionModelId: hint.visionModelId
-            })
-            if (choice === 'cancel') return
-            if (choice === 'vision') nextEngine = 'vision'
-            else if (choice === 'ocr' || choice === 'keep') nextEngine = 'ocr'
+  const onOcrMissing = useCallback(
+    async (sourceId: string) => {
+      setError('')
+      try {
+        let nextEngine: 'simple' | 'ocr' | 'vision' = engine === 'simple' ? 'ocr' : engine
+        if (engine !== 'vision') {
+          try {
+            const hint = await window.api.knowledge.probeExtractHint({ sourceId })
+            if (hint.recommendVision) {
+              const choice = await askExtractHint({
+                fileNames: [hint.fileName],
+                reason: hint.reason,
+                currentEngine: engine,
+                visionConfigured: hint.visionConfigured,
+                visionModelId: hint.visionModelId
+              })
+              if (choice === 'cancel') return
+              if (choice === 'vision') nextEngine = 'vision'
+              else if (choice === 'ocr' || choice === 'keep') nextEngine = 'ocr'
+            }
+          } catch {
+            /* 探测失败时仍按当前引擎补抽 */
           }
-        } catch {
-          /* 探测失败时仍按当前引擎补抽 */
         }
+        await window.api.knowledge.ocrMissingPages({
+          sourceId,
+          engine: nextEngine
+        })
+        setOcrProgressBySource((prev) => ({
+          ...prev,
+          [sourceId]: prev[sourceId] ?? { page: 0, total: 0 }
+        }))
+        setStatus(t('knowledge.ocr_queued', '已加入 OCR 队列'))
+        await refresh()
+      } catch (e: any) {
+        setError(String(e?.message || e))
       }
-      await window.api.knowledge.ocrMissingPages({
-        sourceId,
-        engine: nextEngine
-      })
-      setOcrProgressBySource((prev) => ({
-        ...prev,
-        [sourceId]: prev[sourceId] ?? { page: 0, total: 0 }
-      }))
-      setStatus(t('knowledge.ocr_queued', '已加入 OCR 队列'))
-      await refresh()
-    } catch (e: any) {
-      setError(String(e?.message || e))
-    }
-  }
+    },
+    [askExtractHint, engine, refresh, t]
+  )
 
-  const onCancelExtract = async (sourceId: string) => {
-    setError('')
-    try {
-      await callKnowledgeApi('cancelExtract', 'knowledge:cancel-extract', sourceId)
-      setOcrProgressBySource((prev) => {
-        if (!prev[sourceId]) return prev
-        const next = { ...prev }
-        delete next[sourceId]
-        return next
-      })
-      setStatus(t('knowledge.extract_cancelled', '已取消提取'))
-      await refresh()
-    } catch (e: any) {
-      setError(String(e?.message || e))
-    }
-  }
+  const onCancelExtract = useCallback(
+    async (sourceId: string) => {
+      setError('')
+      try {
+        await callKnowledgeApi('cancelExtract', 'knowledge:cancel-extract', sourceId)
+        setOcrProgressBySource((prev) => {
+          if (!prev[sourceId]) return prev
+          const next = { ...prev }
+          delete next[sourceId]
+          return next
+        })
+        setStatus(t('knowledge.extract_cancelled', '已取消提取'))
+        await refresh()
+      } catch (e: any) {
+        setError(String(e?.message || e))
+      }
+    },
+    [refresh, t]
+  )
 
   const onSaveSettings = async () => {
     setBusy(true)
@@ -1044,17 +1050,20 @@ export const KnowledgeDetailPage: React.FC = () => {
     }
   }
 
-  const onRetry = async (sourceId: string) => {
-    setBusy(true)
-    try {
-      await window.api.knowledge.retrySource(sourceId)
-      await refresh()
-    } catch (e: any) {
-      setError(String(e?.message || e))
-    } finally {
-      setBusy(false)
-    }
-  }
+  const onRetry = useCallback(
+    async (sourceId: string) => {
+      setBusy(true)
+      try {
+        await window.api.knowledge.retrySource(sourceId)
+        await refresh()
+      } catch (e: any) {
+        setError(String(e?.message || e))
+      } finally {
+        setBusy(false)
+      }
+    },
+    [refresh]
+  )
 
   const onEmbed = async (sourceId: string) => {
     setBusy(true)
@@ -1407,7 +1416,7 @@ export const KnowledgeDetailPage: React.FC = () => {
             }
       return action === 'delete' ? [{ label: '', divider: true }, item] : [item]
     })
-  }, [ocrProgressBySource, sourceMenu, sources, t])
+  }, [ocrProgressBySource, onCancelExtract, onOcrMissing, onRetry, sourceMenu, sources, t])
 
   const renderSourceItem = (source: SourceRow) => {
     const missingPages = sourceMissingPageCount(source)
@@ -1552,7 +1561,7 @@ export const KnowledgeDetailPage: React.FC = () => {
           </button>
         </li>
         {uploadingSources.map(renderUploadingItem)}
-        {sources.map(renderSourceItem)}
+        {(sourcesLoaded ? sources : []).map(renderSourceItem)}
       </ul>
     </section>
   )
@@ -1669,8 +1678,9 @@ export const KnowledgeDetailPage: React.FC = () => {
             extracting={graphBusy || graphJobs.pending > 0 || graphJobs.running > 0}
             reloadKey={`${graphJobs.pending}:${graphJobs.running}:${graphJobs.failed}:${graphJobs.currentSourceTitle ?? ''}:${sources.length}:${graphWindowProgress?.done ?? 0}:${graphWindowProgress?.total ?? 0}`}
             onStartExtract={() => {
-              void (window as { api?: { rag?: { triggerBatchEmbed?: () => Promise<unknown> } } })
-                .api?.rag?.triggerBatchEmbed?.()
+              void (
+                window as { api?: { rag?: { triggerBatchEmbed?: () => Promise<unknown> } } }
+              ).api?.rag?.triggerBatchEmbed?.()
             }}
             onRebuildGraph={() => {
               setHeavyConfirmSource(null)

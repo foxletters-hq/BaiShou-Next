@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { ipcMain } from 'electron'
 import * as nodePath from 'node:path'
 import {
@@ -104,9 +105,8 @@ async function resolveGraphQueryEmbedder(): Promise<{
   try {
     const { resolveEmbeddingSystemModels } = await import('./agent-helpers')
     const { EmbeddingAdapter } = await import('@baishou/ai')
-    const { createSqlExecutorFromDrizzleDb, SqliteHybridSearchRepository } = await import(
-      '@baishou/database-desktop'
-    )
+    const { createSqlExecutorFromDrizzleDb, SqliteHybridSearchRepository } =
+      await import('@baishou/database-desktop')
     const { embeddingProvider, embeddingModelId } = await resolveEmbeddingSystemModels()
     if (!embeddingProvider || !embeddingModelId || !connectionManager.isConnected()) return null
     const hsRepo = new SqliteHybridSearchRepository(
@@ -217,7 +217,9 @@ async function listSplitEdgesForNode(nodeId: string): Promise<
   if (!node) return []
   const vaultId = writeVaultId(node.vaultId)
   const edges = await repo.listEdgesTouching(vaultId, nodeId)
-  const partnerIds = [...new Set(edges.map((edge) => (edge.fromId === nodeId ? edge.toId : edge.fromId)))]
+  const partnerIds = [
+    ...new Set(edges.map((edge) => (edge.fromId === nodeId ? edge.toId : edge.fromId)))
+  ]
   const partners = await repo.getNodesByIds(vaultId, partnerIds)
   const nameById = new Map(partners.map((partner) => [partner.id, partner.name]))
   return edges.map((edge) => {
@@ -498,37 +500,40 @@ export function registerGraphIPC(): void {
     return { ok: true }
   })
 
+  ipcMain.handle('graph:set-extract-concurrency', async (_e, opts?: { concurrency?: number }) => {
+    const concurrency = resolveGraphExtractConcurrency(opts?.concurrency)
+    extractQueue.setConcurrency(concurrency)
+    return { concurrency }
+  })
+
   ipcMain.handle(
-    'graph:set-extract-concurrency',
-    async (_e, opts?: { concurrency?: number }) => {
-      const concurrency = resolveGraphExtractConcurrency(opts?.concurrency)
-      extractQueue.setConcurrency(concurrency)
-      return { concurrency }
+    'graph:queue-extract',
+    async (_e, opts?: { filePaths?: string[]; concurrency?: number }) => {
+      return enqueueGraphExtract(extractQueue, opts)
     }
   )
-
-  ipcMain.handle('graph:queue-extract', async (_e, opts?: { filePaths?: string[]; concurrency?: number }) => {
-    return enqueueGraphExtract(extractQueue, opts)
-  })
 
   /**
    * Backward-compatible: enqueue and return immediately (no longer blocks until batch done).
    * Prefer graph:queue-extract + graph:queue-progress.
    */
-  ipcMain.handle('graph:extract', async (_e, opts?: { filePaths?: string[]; concurrency?: number }) => {
-    const result = await enqueueGraphExtract(extractQueue, opts)
-    return {
-      done: 0,
-      failed: result.skippedNotEmbedded.length,
-      queued: result.queued,
-      skippedNotEmbedded: result.skippedNotEmbedded,
-      blockedPendingEmbed: result.blockedPendingEmbed,
-      errors: result.skippedNotEmbedded.map((filePath) => ({
-        filePath,
+  ipcMain.handle(
+    'graph:extract',
+    async (_e, opts?: { filePaths?: string[]; concurrency?: number }) => {
+      const result = await enqueueGraphExtract(extractQueue, opts)
+      return {
+        done: 0,
+        failed: result.skippedNotEmbedded.length,
+        queued: result.queued,
+        skippedNotEmbedded: result.skippedNotEmbedded,
+        blockedPendingEmbed: result.blockedPendingEmbed,
+        errors: result.skippedNotEmbedded.map((filePath) => ({
+          filePath,
           message: GRAPH_EXTRACT_DIARY_NOT_EMBEDDED_ERROR
-      }))
+        }))
+      }
     }
-  })
+  )
 
   ipcMain.handle(
     'graph:get-global-graph',
@@ -575,10 +580,7 @@ export function registerGraphIPC(): void {
 
   ipcMain.handle(
     'graph:search',
-    async (
-      _e,
-      opts: { query: string; nodeTypes?: string[]; limit?: number; mode?: string }
-    ) => {
+    async (_e, opts: { query: string; nodeTypes?: string[]; limit?: number; mode?: string }) => {
       const repo = requireGraphRepo()
       const vaultId = requireVaultId()
       const limit = opts.limit ?? 20
@@ -608,27 +610,20 @@ export function registerGraphIPC(): void {
     }
   )
 
-  ipcMain.handle(
-    'graph:find-by-name',
-    async (_e, opts: { query: string; nodeType?: string }) => {
-      const repo = requireGraphRepo()
-      const hits = await repo.findNodesByNameOrAlias(
-        requireVaultId(),
-        opts.query,
-        opts.nodeType
-      )
-      const hit = hits[0]
-      if (!hit) return null
-      return {
-        id: hit.id,
-        name: hit.name,
-        nodeType: hit.nodeType,
-        summary: hit.summary ?? '',
-        aliases: hit.aliases ?? [],
-        discriminator: hit.discriminator ?? ''
-      }
+  ipcMain.handle('graph:find-by-name', async (_e, opts: { query: string; nodeType?: string }) => {
+    const repo = requireGraphRepo()
+    const hits = await repo.findNodesByNameOrAlias(requireVaultId(), opts.query, opts.nodeType)
+    const hit = hits[0]
+    if (!hit) return null
+    return {
+      id: hit.id,
+      name: hit.name,
+      nodeType: hit.nodeType,
+      summary: hit.summary ?? '',
+      aliases: hit.aliases ?? [],
+      discriminator: hit.discriminator ?? ''
     }
-  )
+  })
 
   ipcMain.handle('graph:list-pending-edges', async () => {
     const repo = requireGraphRepo()
@@ -681,10 +676,14 @@ export function registerGraphIPC(): void {
       const name = input.name.trim()
       const aliases = Array.isArray(input.aliases) ? input.aliases : (existing?.aliases ?? [])
       const vaultId = writeVaultId(existing?.vaultId)
-      const shardMonth =
-        existing?.shardMonth || graphDiaryInstant(null, now).shardMonth
+      const shardMonth = existing?.shardMonth || graphDiaryInstant(null, now).shardMonth
       if (nodeType === 'entry' && !existing?.id && !input.id) {
-        throw new Error('entry 节点必须基于日记路径，不能手建随机 id')
+        throw new Error(
+          i18n.t(
+            'graph.entry_node_requires_diary_path',
+            'entry 节点必须基于日记路径，不能手建随机 id'
+          )
+        )
       }
       const sameNameHits = await repo.findNodesByNameOrAlias(
         vaultId,
@@ -696,8 +695,7 @@ export function registerGraphIPC(): void {
       const currentDiscriminator = existing?.discriminator ?? ''
       const sameName = graphSameNameExistingFromRow(
         sameNameHits.find(
-          (row) =>
-            row.id !== currentId && (row.discriminator ?? '') === currentDiscriminator
+          (row) => row.id !== currentId && (row.discriminator ?? '') === currentDiscriminator
         ) ?? null,
         currentId
       )
@@ -762,9 +760,7 @@ export function registerGraphIPC(): void {
         : 'relates_to'
       const sourceRef = input.sourceRef ?? null
       const record: GraphEdgeRawRecord = {
-        id:
-          input.id ||
-          graphEdgeId(vaultId, input.fromId, input.toId, edgeType, sourceRef),
+        id: input.id || graphEdgeId(vaultId, input.fromId, input.toId, edgeType, sourceRef),
         schemaVersion: 1,
         vaultId,
         vaultName,
@@ -946,9 +942,8 @@ export function registerGraphIPC(): void {
       freshness,
       stopExtract: () => extractQueue.stop()
     })
-    const { invalidatePendingEmbedCountsCache } = await import(
-      '../services/pending-embed-counts.service'
-    )
+    const { invalidatePendingEmbedCountsCache } =
+      await import('../services/pending-embed-counts.service')
     invalidatePendingEmbedCountsCache()
     return { ok: true, ...result }
   })
