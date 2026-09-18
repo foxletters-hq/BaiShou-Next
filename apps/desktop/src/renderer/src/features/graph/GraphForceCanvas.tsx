@@ -175,6 +175,9 @@ export const GraphForceCanvas: React.FC<{
   /** Pointer is down; async select must not start camera follow until the gesture ends. */
   const interactingRef = useRef(false)
   const kickFollowRef = useRef<() => void>(() => {})
+  const easeCameraTowardSelectedRef = useRef<(opts?: { k?: number; alpha?: number }) => boolean>(
+    () => false
+  )
   const [followKick, setFollowKick] = useState(0)
   const graphFpRef = useRef('')
   const degreeByIdRef = useRef(new Map<string, number>())
@@ -254,6 +257,7 @@ export const GraphForceCanvas: React.FC<{
     transformRef.current.k += (target.k - transformRef.current.k) * alpha
     return true
   }
+  easeCameraTowardSelectedRef.current = easeCameraTowardSelected
 
   useEffect(() => {
     forceRef.current = forceSettings
@@ -370,7 +374,7 @@ export const GraphForceCanvas: React.FC<{
         followUntilRef.current > performance.now() &&
         (locateIdsRef.current?.length || selectedRef.current)
       ) {
-        easeCameraTowardSelected({
+        easeCameraTowardSelectedRef.current({
           k: pendingZoomRef.current ? Math.max(transformRef.current.k, LOCATE_TARGET_K) : undefined,
           alpha: CAMERA_FOLLOW_LERP
         })

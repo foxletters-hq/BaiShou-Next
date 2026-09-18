@@ -1,14 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import {
-  View,
-  StyleSheet,
-  StatusBar,
-  Alert,
-  Modal,
-  Text,
-  TouchableOpacity,
-  Keyboard
-} from 'react-native'
+import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, Keyboard } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
@@ -23,7 +14,7 @@ import {
   shouldShowPendingEmbedReminder,
   type PendingEmbedCounts
 } from '@baishou/shared'
-import { useNativeTheme, useNativeToast } from '@baishou/ui/native'
+import { useNativeTheme } from '@baishou/ui/native'
 import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
@@ -51,7 +42,6 @@ import {
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
   const { colors, isDark } = useNativeTheme()
-  const toast = useNativeToast()
   const {
     services,
     dbReady,
@@ -353,7 +343,7 @@ export const DiaryScreen: React.FC = () => {
       setGraphConfigured(false)
       setRagConfigured(false)
     }
-  }, [dbReady, router, services, t])
+  }, [dbReady, services])
 
   useFocusEffect(
     useCallback(() => {

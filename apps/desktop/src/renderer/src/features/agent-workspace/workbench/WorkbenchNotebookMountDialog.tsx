@@ -19,10 +19,11 @@ export const WorkbenchNotebookMountDialog: React.FC<WorkbenchNotebookMountDialog
 }) => {
   const { t } = useTranslation()
   const mount = useNotebookMount(open ? sessionId : undefined)
+  const { refresh } = mount
 
   useEffect(() => {
-    if (open) void mount.refresh()
-  }, [open, mount.refresh])
+    if (open) void refresh()
+  }, [open, refresh])
 
   return (
     <Modal

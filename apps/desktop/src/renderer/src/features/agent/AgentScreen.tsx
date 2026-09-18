@@ -110,10 +110,11 @@ export const AgentScreen: React.FC = () => {
   }, [flow.model.currentProviderId, flow.providers])
 
   const reasoningCatalogEpoch = useReasoningCatalogEpoch()
-  const reasoningControl = useMemo(
-    () => getReasoningControlForModel(flow.model.currentModelId || '', reasoningProviderType),
-    [flow.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch]
-  )
+  const reasoningControl = useMemo(() => {
+    // 目录热更新只改模块表、不改 modelId；引用 epoch 才能按新表重算
+    void reasoningCatalogEpoch
+    return getReasoningControlForModel(flow.model.currentModelId || '', reasoningProviderType)
+  }, [flow.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch])
 
   // 切换模型时：按模型记忆优先，否则用对话用途分档
   useEffect(() => {

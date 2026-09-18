@@ -114,10 +114,11 @@ export const AgentWorkspaceScreen: React.FC = () => {
   }, [chrome.model.currentProviderId, chrome.providers])
 
   const reasoningCatalogEpoch = useReasoningCatalogEpoch()
-  const reasoningControl = useMemo(
-    () => getReasoningControlForModel(chrome.model.currentModelId || '', reasoningProviderType),
-    [chrome.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch]
-  )
+  const reasoningControl = useMemo(() => {
+    // 目录热更新只改模块表、不改 modelId；引用 epoch 才能按新表重算
+    void reasoningCatalogEpoch
+    return getReasoningControlForModel(chrome.model.currentModelId || '', reasoningProviderType)
+  }, [chrome.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch])
 
   useEffect(() => {
     const next = resolveDialogueEffortPreference(
