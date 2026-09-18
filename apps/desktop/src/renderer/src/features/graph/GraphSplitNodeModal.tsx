@@ -30,16 +30,7 @@ export const GraphSplitNodeModal: React.FC<{
   busy?: boolean
   onClose: () => void
   onSplit: (splitNodeId: string) => void
-}> = ({
-  isOpen,
-  nodeId,
-  nodeName,
-  initialDiscriminator,
-  initialLabel,
-  busy,
-  onClose,
-  onSplit
-}) => {
+}> = ({ isOpen, nodeId, nodeName, initialDiscriminator, initialLabel, busy, onClose, onSplit }) => {
   const { t } = useTranslation()
   const tr = asGraphTranslateFn(t)
   const [discriminator, setDiscriminator] = useState('')
@@ -72,7 +63,12 @@ export const GraphSplitNodeModal: React.FC<{
         const bare =
           candidates.find((item) => !item.discriminator) ??
           candidates[0] ??
-          ({ nodeId, name: nodeName ?? '', discriminator: '', label: nodeName ?? '' } satisfies NameCandidate)
+          ({
+            nodeId,
+            name: nodeName ?? '',
+            discriminator: '',
+            label: nodeName ?? ''
+          } satisfies NameCandidate)
         setBareNodeId(bare.nodeId)
         const rows = (await window.api.graph.listSplitEdges({
           nodeId: bare.nodeId
@@ -188,7 +184,9 @@ export const GraphSplitNodeModal: React.FC<{
         </div>
       </div>
       {edges.length === 0 && !loading ? (
-        <div className={styles.empty}>{t('graph.split_edges_empty', '这个节点目前没有可分配的关系')}</div>
+        <div className={styles.empty}>
+          {t('graph.split_edges_empty', '这个节点目前没有可分配的关系')}
+        </div>
       ) : (
         <div className={styles.splitEdgeList}>
           {edges.map((edge) => {

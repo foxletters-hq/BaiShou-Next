@@ -260,13 +260,15 @@ interface AgentWorkspaceAPI {
   deleteSession(sessionId: string): Promise<{ success: boolean }>
   watchFolder(folderRoot: string): Promise<boolean>
   unwatchFolder(folderRoot: string): Promise<boolean>
-  onFsChanged(callback: (payload: {
-    folderRoot?: string
-    sessionId?: string
-    path: string
-    kind: 'create' | 'modify' | 'delete' | 'rename'
-    previousPath?: string
-  }) => void): () => void
+  onFsChanged(
+    callback: (payload: {
+      folderRoot?: string
+      sessionId?: string
+      path: string
+      kind: 'create' | 'modify' | 'delete' | 'rename'
+      previousPath?: string
+    }) => void
+  ): () => void
   chat(params: {
     sessionId: string
     text: string
@@ -292,9 +294,7 @@ interface AgentWorkspaceAPI {
     queued: boolean
   }>
   listPendingInputs(sessionId: string): Promise<import('@baishou/shared').SessionInputRecord[]>
-  cancelPendingInput(
-    inputId: string
-  ): Promise<import('@baishou/shared').SessionInputRecord | null>
+  cancelPendingInput(inputId: string): Promise<import('@baishou/shared').SessionInputRecord | null>
   previewRollback(params: {
     sessionId: string
     userMessageId: string
@@ -584,17 +584,17 @@ interface GraphAPI {
     nodeTypes?: string[]
     monthRange?: { startMonth: string; endMonth: string }
   }): Promise<{ nodes: any[]; edges: any[] }>
-  getView(opts: { centerNodeId: string; depth?: 1 | 2 | 3 }): Promise<{ nodes: any[]; edges: any[] }>
+  getView(opts: {
+    centerNodeId: string
+    depth?: 1 | 2 | 3
+  }): Promise<{ nodes: any[]; edges: any[] }>
   findPaths(opts: {
     fromId: string
     toId: string
     maxHops?: 2 | 3
   }): Promise<{ nodeIds: string[]; edges: any[] } | null>
   search(opts: { query: string; nodeTypes?: string[]; limit?: number }): Promise<any[]>
-  findByName(opts: {
-    query: string
-    nodeType?: string
-  }): Promise<{
+  findByName(opts: { query: string; nodeType?: string }): Promise<{
     id: string
     name: string
     nodeType: string
@@ -676,9 +676,9 @@ interface GraphAPI {
     discriminator: string
     reason?: string
   }): Promise<{ ok: boolean; removedNodeId: string | null }>
-  listNameCandidates(opts: { nodeId: string }): Promise<
-    Array<{ nodeId: string; name: string; discriminator: string; label: string }>
-  >
+  listNameCandidates(opts: {
+    nodeId: string
+  }): Promise<Array<{ nodeId: string; name: string; discriminator: string; label: string }>>
   listSplitEdges(opts: { nodeId: string }): Promise<
     Array<{
       edgeId: string

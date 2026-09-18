@@ -178,7 +178,13 @@ describe('memory center chrome', () => {
     const toolbar = readRagSrc('RagMemoryToolbar.tsx')
     const zh = JSON.parse(
       readFileSync(join(repoRoot, 'packages/shared/src/i18n/zh.i18n.json'), 'utf8')
-    ) as { memory: { readiness_vector_pending: string; readiness_vector_done: string; start_organize: string } }
+    ) as {
+      memory: {
+        readiness_vector_pending: string
+        readiness_vector_done: string
+        start_organize: string
+      }
+    }
     expect(page).not.toContain('MemoryOnboardingCard')
     expect(page).not.toContain('showOnboarding')
     expect(page).toContain('<MemoryReadinessBar')
@@ -210,8 +216,8 @@ describe('memory center chrome', () => {
     expect(page).not.toContain('graphQueueExtract')
     expect(page).not.toContain("selectTab('graph')")
     expect(page).not.toContain("selectTab('vectors')")
-    expect(bar).toContain("memory.readiness_need_embedding")
-    expect(bar).toContain("memory.go_configure")
+    expect(bar).toContain('memory.readiness_need_embedding')
+    expect(bar).toContain('memory.go_configure')
     expect(css).toMatch(/\.titleRow \{[^}]*flex-wrap: wrap/)
     expect(css).toMatch(/\.readinessSlot \{[^}]*flex: 1 1 14rem/)
     expect(toolbar).not.toContain('data-rag-action="batch-embed"')

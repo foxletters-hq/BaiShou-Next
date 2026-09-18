@@ -1,26 +1,14 @@
-import {
-  normalizeReasoningEffortSetting,
-  type ReasoningEffortSetting
-} from './reasoning-effort'
+import { normalizeReasoningEffortSetting, type ReasoningEffortSetting } from './reasoning-effort'
 
 /** 需要思考强度的模型用途；嵌入 / TTS 不在此列 */
-export const MODEL_REASONING_SLOTS = [
-  'dialogue',
-  'graph',
-  'naming',
-  'summary',
-  'vision'
-] as const
+export const MODEL_REASONING_SLOTS = ['dialogue', 'graph', 'naming', 'summary', 'vision'] as const
 
 export type ModelReasoningSlot = (typeof MODEL_REASONING_SLOTS)[number]
 
 export type ReasoningEffortBySlot = Partial<Record<ModelReasoningSlot, ReasoningEffortSetting>>
 
 export function isModelReasoningSlot(value: unknown): value is ModelReasoningSlot {
-  return (
-    typeof value === 'string' &&
-    (MODEL_REASONING_SLOTS as readonly string[]).includes(value)
-  )
+  return typeof value === 'string' && (MODEL_REASONING_SLOTS as readonly string[]).includes(value)
 }
 
 /** 只保留已知用途；非法值与 auto 都视为未写（读取时回落 Default） */

@@ -55,7 +55,10 @@ function buildHtml(
 ): string {
   const theme = GRAPH_CANVAS_THEME[scheme]
   // Escape `<` so a node name cannot break out of the surrounding <script> tag.
-  const payload = JSON.stringify({ nodes, edges, force, appearance, theme }).replace(/</g, '\\u003c')
+  const payload = JSON.stringify({ nodes, edges, force, appearance, theme }).replace(
+    /</g,
+    '\\u003c'
+  )
   return `<!DOCTYPE html>
 <html>
 <head>

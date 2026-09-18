@@ -76,12 +76,8 @@ export const knowledgeApi = {
     hasModelMismatch: (notebookIds?: string[]) =>
       ipcRenderer.invoke('knowledge:has-model-mismatch', notebookIds),
     listSources: (notebookId: string) => ipcRenderer.invoke('knowledge:list-sources', notebookId),
-    listChunks: (input: {
-      notebookId: string
-      limit?: number
-      offset?: number
-      query?: string
-    }) => ipcRenderer.invoke('knowledge:list-chunks', input),
+    listChunks: (input: { notebookId: string; limit?: number; offset?: number; query?: string }) =>
+      ipcRenderer.invoke('knowledge:list-chunks', input),
     search: (input: { notebookId: string; query: string; topK?: number }) =>
       ipcRenderer.invoke('knowledge:search', input),
     listGraphJobs: (notebookId: string) =>
@@ -170,13 +166,15 @@ export const knowledgeApi = {
       allPending?: boolean
     }) => ipcRenderer.invoke('knowledge:set-graph-reviews-batch', input),
     rebuildGraph: (notebookId: string) => ipcRenderer.invoke('knowledge:rebuild-graph', notebookId),
-    onGraphProgress: (callback: (progress: {
-      at: number
-      notebookId?: string
-      sourceId?: string
-      windowsDone?: number
-      windowsTotal?: number
-    }) => void) => {
+    onGraphProgress: (
+      callback: (progress: {
+        at: number
+        notebookId?: string
+        sourceId?: string
+        windowsDone?: number
+        windowsTotal?: number
+      }) => void
+    ) => {
       const handler = (
         _event: Electron.IpcRendererEvent,
         progress: {

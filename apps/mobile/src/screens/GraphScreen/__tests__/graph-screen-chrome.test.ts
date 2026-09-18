@@ -48,7 +48,10 @@ describe('GraphScreen chrome', () => {
   })
 
   it('mounts extract, create, merge, and identity in the organize settings section', () => {
-    const organize = sliceBetween("t('graph.side_organize', '整理')", "t('graph.side_canvas', '画布')")
+    const organize = sliceBetween(
+      "t('graph.side_organize', '整理')",
+      "t('graph.side_canvas', '画布')"
+    )
     expect(organize).toContain("t('graph.process_pending_reextract'")
     expect(organize).toContain("t('graph.extract_concurrency'")
     expect(organize).toContain("t('graph.create_node'")
@@ -74,7 +77,10 @@ describe('GraphScreen chrome', () => {
 
   it('keeps clear-life-graph out of account settings', () => {
     const accountSrc = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), '../../SettingsScreen/components/SettingsAccountPanel.tsx'),
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '../../SettingsScreen/components/SettingsAccountPanel.tsx'
+      ),
       'utf8'
     )
     expect(accountSrc).not.toContain('ClearLifeGraphDangerBlock')

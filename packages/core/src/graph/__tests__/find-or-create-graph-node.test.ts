@@ -126,9 +126,9 @@ describe('findOrCreateGraphNode', () => {
   it('keeps origin=user when extract reuses the node with origin=ai', async () => {
     const existingId = graphNodeIdForEntity(VAULT, 'person', '小明')
     const repo = {
-      findNodesByNameOrAlias: vi.fn().mockResolvedValue([
-        personRow(existingId, '小明', { origin: 'user' })
-      ]),
+      findNodesByNameOrAlias: vi
+        .fn()
+        .mockResolvedValue([personRow(existingId, '小明', { origin: 'user' })]),
       getNodeById: vi.fn()
     }
     const result = await findOrCreateGraphNode(repo as never, {
@@ -199,10 +199,12 @@ describe('findOrCreateGraphNode', () => {
     const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
     const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
     const repo = {
-      findNodesByNameOrAlias: vi.fn().mockResolvedValue([
-        personRow(bareId, '张三', { discriminator: '' }),
-        personRow(splitId, '张三', { discriminator: '同事', aliases: ['张三'] })
-      ]),
+      findNodesByNameOrAlias: vi
+        .fn()
+        .mockResolvedValue([
+          personRow(bareId, '张三', { discriminator: '' }),
+          personRow(splitId, '张三', { discriminator: '同事', aliases: ['张三'] })
+        ]),
       getNodeById: vi.fn()
     }
     const result = await findOrCreateGraphNode(repo as never, {
@@ -223,9 +225,9 @@ describe('findOrCreateGraphNode', () => {
     const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
     const repo = {
       findNodesByNameOrAlias: vi.fn(),
-      getNodeById: vi.fn().mockResolvedValue(
-        personRow(splitId, '张三', { discriminator: '同事', aliases: ['张三'] })
-      )
+      getNodeById: vi
+        .fn()
+        .mockResolvedValue(personRow(splitId, '张三', { discriminator: '同事', aliases: ['张三'] }))
     }
     const result = await findOrCreateGraphNode(repo as never, {
       vaultId: VAULT,
@@ -294,10 +296,12 @@ describe('resolveGraphEndpointId', () => {
     const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
     const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
     const repo = {
-      findNodesByNameOrAlias: vi.fn().mockResolvedValue([
-        personRow(bareId, '张三'),
-        personRow(splitId, '张三', { discriminator: '同事' })
-      ]),
+      findNodesByNameOrAlias: vi
+        .fn()
+        .mockResolvedValue([
+          personRow(bareId, '张三'),
+          personRow(splitId, '张三', { discriminator: '同事' })
+        ]),
       getNodeById: vi.fn()
     }
     const resolved = await resolveGraphEndpointId(

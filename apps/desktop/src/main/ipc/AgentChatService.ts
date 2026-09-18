@@ -6,7 +6,7 @@ import {
   BAISHOU_AGENT_GATE_CONFIG_KEY,
   type BaishouAgentGateConfig,
   type SessionInputDelivery,
-  type SessionInputRecord,
+  type SessionInputRecord
 } from '@baishou/shared'
 import {
   AgentChatCoreService,
@@ -246,9 +246,8 @@ export class AgentChatService {
       : { graphNodeLookup: undefined, graphEdgeLookup: undefined }
 
     const knowledgeReader = createDesktopKnowledgeReader(embedQuery)
-    const { createDesktopKnowledgeGraphReader } = await import(
-      '../services/desktop-knowledge-graph-reader'
-    )
+    const { createDesktopKnowledgeGraphReader } =
+      await import('../services/desktop-knowledge-graph-reader')
     const knowledgeGraphReader = createDesktopKnowledgeGraphReader()
 
     const { DesktopStoragePathService } = await import('../services/path.service')

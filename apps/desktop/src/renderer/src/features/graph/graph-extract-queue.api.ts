@@ -26,7 +26,9 @@ type GraphExtractQueueStateFromApi = {
   alignPoolCount?: number
 }
 
-export function normalizeQueueSnapshot(state: GraphExtractQueueStateFromApi): GraphExtractQueueSnapshot {
+export function normalizeQueueSnapshot(
+  state: GraphExtractQueueStateFromApi
+): GraphExtractQueueSnapshot {
   const defaults = emptyGraphExtractQueueSnapshot()
   return {
     items: state.items,
@@ -71,7 +73,9 @@ export function graphSetExtractConcurrency(concurrency: number) {
   if (typeof invoke !== 'function') {
     return Promise.resolve({ concurrency })
   }
-  return invoke('graph:set-extract-concurrency', { concurrency }) as Promise<{ concurrency: number }>
+  return invoke('graph:set-extract-concurrency', { concurrency }) as Promise<{
+    concurrency: number
+  }>
 }
 
 export function graphGetQueueState(): Promise<GraphExtractQueueSnapshot> {

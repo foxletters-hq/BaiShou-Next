@@ -323,7 +323,10 @@ export const NotebookGraphPane: React.FC<{
     allPending?: boolean
   }) => {
     const selected = opts.allPending
-      ? { nodeIds: pending.pendingNodes.map((node) => node.id), edgeIds: pending.pendingEdges.map((edge) => edge.id) }
+      ? {
+          nodeIds: pending.pendingNodes.map((node) => node.id),
+          edgeIds: pending.pendingEdges.map((edge) => edge.id)
+        }
       : splitGraphReviewSelection(pendingItemKeys.filter((key) => pendingSelected.has(key)))
     const count = opts.allPending ? pendingCount : pendingSelectedCount
     if (count === 0) return
@@ -382,7 +385,10 @@ export const NotebookGraphPane: React.FC<{
   )
 
   return (
-    <div className={styles.notebookGraphHost} aria-label={t('knowledge.graph_panel', '笔记本内关系')}>
+    <div
+      className={styles.notebookGraphHost}
+      aria-label={t('knowledge.graph_panel', '笔记本内关系')}
+    >
       <div className={graphStyles.root}>
         <div
           className={`${graphStyles.mainPhase} ${showEmptyGuide ? graphStyles.mainPhaseEmpty : ''}`}
@@ -525,9 +531,7 @@ export const NotebookGraphPane: React.FC<{
                 sideCollapsed ? graphStyles.sideColumnCollapsed : ''
               }`}
               style={
-                sideCollapsed
-                  ? undefined
-                  : { ['--graph-side-width' as string]: `${sideWidth}px` }
+                sideCollapsed ? undefined : { ['--graph-side-width' as string]: `${sideWidth}px` }
               }
             >
               {!sideCollapsed ? (
@@ -586,7 +590,9 @@ export const NotebookGraphPane: React.FC<{
                   {sideMode === 'ops' ? (
                     <>
                       <div className={graphStyles.settingsHeader}>
-                        <div className={graphStyles.settingsTitle}>{t('graph.side_organize', '整理')}</div>
+                        <div className={graphStyles.settingsTitle}>
+                          {t('graph.side_organize', '整理')}
+                        </div>
                       </div>
                       <div className={graphStyles.panel}>
                         <div className={graphStyles.opsBlock}>
@@ -671,7 +677,9 @@ export const NotebookGraphPane: React.FC<{
                                   <label className={graphStyles.pendingSelectAll}>
                                     <Checkbox
                                       checked={allPendingSelected}
-                                      indeterminate={pendingSelectedCount > 0 && !allPendingSelected}
+                                      indeterminate={
+                                        pendingSelectedCount > 0 && !allPendingSelected
+                                      }
                                       onChange={toggleSelectAllPending}
                                     />
                                     {allPendingSelected
@@ -889,7 +897,9 @@ export const NotebookGraphPane: React.FC<{
                                   <div className={graphStyles.detailLabel}>
                                     {t('graph.label_summary', '摘要')}
                                   </div>
-                                  <div className={graphStyles.detailValue}>{selectedNode.summary}</div>
+                                  <div className={graphStyles.detailValue}>
+                                    {selectedNode.summary}
+                                  </div>
                                 </div>
                               ) : null}
                               <div className={graphStyles.detailBlock}>

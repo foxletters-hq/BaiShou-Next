@@ -14,9 +14,9 @@ describe('isHelpDocsMainFrameFailure', () => {
   })
 
   it('ignores aborted navigations that still let the page open', () => {
-    expect(
-      isHelpDocsMainFrameFailure({ isMainFrame: true, errorCode: CHROMIUM_ERR_ABORTED })
-    ).toBe(false)
+    expect(isHelpDocsMainFrameFailure({ isMainFrame: true, errorCode: CHROMIUM_ERR_ABORTED })).toBe(
+      false
+    )
     expect(isHelpDocsMainFrameFailure({ isMainFrame: true, errorCode: '-3' })).toBe(false)
   })
 

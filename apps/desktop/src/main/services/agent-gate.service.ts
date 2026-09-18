@@ -244,10 +244,8 @@ export async function patchScopedAgentGateConfig(
   if (scope.kind === 'companion') {
     await persistCompanionConfig(next)
   } else {
-    const {
-      applyWorkspaceSecurityModeToConfig,
-      resolveWorkspaceSecurityMode
-    } = await import('@baishou/shared')
+    const { applyWorkspaceSecurityModeToConfig, resolveWorkspaceSecurityMode } =
+      await import('@baishou/shared')
     // 以 patch 显式传入的 securityMode 为准，避免旧 approvalPreset 干扰
     const explicitMode = patch.securityMode
     const mode =
@@ -270,9 +268,7 @@ export async function patchScopedAgentGateConfig(
     next.hideDeniedTools = expanded.hideDeniedTools
     next.repeatAssertAskThreshold = expanded.repeatAssertAskThreshold
     next.securityMode = mode
-    next.commandBlacklist = expanded.commandBlacklist
-      ? [...expanded.commandBlacklist]
-      : undefined
+    next.commandBlacklist = expanded.commandBlacklist ? [...expanded.commandBlacklist] : undefined
     // 清除旧二维预设，防止回读时误判成白名单
     delete next.approvalPreset
     delete next.scopePreset

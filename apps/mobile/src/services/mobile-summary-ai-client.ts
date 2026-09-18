@@ -1,5 +1,8 @@
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-mobile'
-import { SUMMARY_AI_GENERATION_TIMEOUT_MS, generateSummaryTextFromModel } from '@baishou/core-mobile'
+import {
+  SUMMARY_AI_GENERATION_TIMEOUT_MS,
+  generateSummaryTextFromModel
+} from '@baishou/core-mobile'
 import { AIProviderRegistry, buildReasoningProviderOptions } from '@baishou/ai'
 import {
   logger,

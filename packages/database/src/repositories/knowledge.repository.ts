@@ -127,42 +127,26 @@ export class KnowledgeRepository {
         .select()
         .from(notebooksTable)
         .where(eq(notebooksTable.vaultId, vaultId))
-        .orderBy(
-          asc(notebooksTable.sortOrder),
-          desc(notebooksTable.createdAt),
-          notebooksTable.id
-        )
+        .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
     }
     if (vaultId) {
       return this.db
         .select()
         .from(notebooksTable)
         .where(and(eq(notebooksTable.vaultId, vaultId), eq(notebooksTable.archived, 0)))
-        .orderBy(
-          asc(notebooksTable.sortOrder),
-          desc(notebooksTable.createdAt),
-          notebooksTable.id
-        )
+        .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
     }
     if (archivedOk) {
       return this.db
         .select()
         .from(notebooksTable)
-        .orderBy(
-          asc(notebooksTable.sortOrder),
-          desc(notebooksTable.createdAt),
-          notebooksTable.id
-        )
+        .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
     }
     return this.db
       .select()
       .from(notebooksTable)
       .where(eq(notebooksTable.archived, 0))
-      .orderBy(
-        asc(notebooksTable.sortOrder),
-        desc(notebooksTable.createdAt),
-        notebooksTable.id
-      )
+      .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
   }
 
   async updateNotebook(
@@ -428,10 +412,7 @@ export class KnowledgeRepository {
         sourceTitle: knowledgeSourcesTable.title
       })
       .from(knowledgeChunksTable)
-      .leftJoin(
-        knowledgeSourcesTable,
-        eq(knowledgeChunksTable.sourceId, knowledgeSourcesTable.id)
-      )
+      .leftJoin(knowledgeSourcesTable, eq(knowledgeChunksTable.sourceId, knowledgeSourcesTable.id))
       .where(where)
       .orderBy(asc(knowledgeChunksTable.chunkIndex), desc(knowledgeChunksTable.createdAt))
       .limit(limit)
@@ -531,10 +512,7 @@ export class KnowledgeRepository {
   }
 
   /** 按本聚合维度 / 模型，不读 embedding BLOB。 */
-  async listNotebookEmbeddingProfiles(opts: {
-    vaultId?: string
-    notebookIds: string[]
-  }): Promise<
+  async listNotebookEmbeddingProfiles(opts: { vaultId?: string; notebookIds: string[] }): Promise<
     Array<{
       notebookId: string
       notebookName: string
@@ -787,7 +765,10 @@ export class KnowledgeRepository {
     const stages = options?.stages?.filter(Boolean)
     const filters = [
       inArray(knowledgeIngestJobsTable.status, ['pending', 'failed']),
-      or(isNull(knowledgeIngestJobsTable.nextRetryAt), lte(knowledgeIngestJobsTable.nextRetryAt, now))
+      or(
+        isNull(knowledgeIngestJobsTable.nextRetryAt),
+        lte(knowledgeIngestJobsTable.nextRetryAt, now)
+      )
     ]
     if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
     if (stages?.length) filters.push(inArray(knowledgeIngestJobsTable.stage, stages))
@@ -923,10 +904,7 @@ export class KnowledgeRepository {
       .where(and(...filters))
   }
 
-  async deleteIngestJobsForSource(
-    sourceId: string,
-    stage?: KnowledgeIngestStage
-  ): Promise<number> {
+  async deleteIngestJobsForSource(sourceId: string, stage?: KnowledgeIngestStage): Promise<number> {
     const before = await this.db
       .select({ id: knowledgeIngestJobsTable.id })
       .from(knowledgeIngestJobsTable)
@@ -1363,8 +1341,15 @@ export class KnowledgeRepository {
       .from(knowledgeEmbedLedgerTable)
       .where(
         ledgerFilters.length
-          ? and(...ledgerFilters, eq(knowledgeEmbedLedgerTable.status, 'embedded'), eq(knowledgeEmbedLedgerTable.chunkCount, 0))
-          : and(eq(knowledgeEmbedLedgerTable.status, 'embedded'), eq(knowledgeEmbedLedgerTable.chunkCount, 0))
+          ? and(
+              ...ledgerFilters,
+              eq(knowledgeEmbedLedgerTable.status, 'embedded'),
+              eq(knowledgeEmbedLedgerTable.chunkCount, 0)
+            )
+          : and(
+              eq(knowledgeEmbedLedgerTable.status, 'embedded'),
+              eq(knowledgeEmbedLedgerTable.chunkCount, 0)
+            )
       )
     for (const row of zeroRows) {
       const key = `${row.vaultId}\0${row.sourceId}`
@@ -1454,7 +1439,9 @@ export class KnowledgeRepository {
       .select()
       .from(knowledgeEmbedLedgerTable)
       .where(eq(knowledgeEmbedLedgerTable.vaultId, vid))
-    const ledgerBySource = new Map(ledgerRows.map((row) => [row.sourceId, this.toEmbedLedgerView(row)]))
+    const ledgerBySource = new Map(
+      ledgerRows.map((row) => [row.sourceId, this.toEmbedLedgerView(row)])
+    )
     const modelId = options?.modelId?.trim() ?? ''
     const dimension = options?.dimension ?? 0
     const pending: Array<{ id: string; notebookId: string; vaultId: string }> = []
@@ -1526,12 +1513,12 @@ export class KnowledgeRepository {
       await run()
       await db.run(sql.raw(`RELEASE SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`))
     } catch (error) {
-      await db.run(sql.raw(`ROLLBACK TO SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`)).catch(
-        () => undefined
-      )
-      await db.run(sql.raw(`RELEASE SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`)).catch(
-        () => undefined
-      )
+      await db
+        .run(sql.raw(`ROLLBACK TO SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`))
+        .catch(() => undefined)
+      await db
+        .run(sql.raw(`RELEASE SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`))
+        .catch(() => undefined)
       throw error
     }
   }

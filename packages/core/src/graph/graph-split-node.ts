@@ -223,7 +223,9 @@ export async function splitGraphNode(input: {
 
   const touching = await input.repo.listEdgesTouching(input.vaultId, bareNodeId)
   const assignedIds = new Set(input.edgeAssignments.map((item) => item.edgeId))
-  const unassignedEdgeIds = touching.filter((edge) => !assignedIds.has(edge.id)).map((edge) => edge.id)
+  const unassignedEdgeIds = touching
+    .filter((edge) => !assignedIds.has(edge.id))
+    .map((edge) => edge.id)
   const touchingById = new Map(touching.map((edge) => [edge.id, edge]))
   const movedEdgeIds: string[] = []
 
@@ -325,9 +327,7 @@ export async function revertGraphNodeSplit(input: {
   }
 
   // 合并会重写 survivor 的 props，必须重新读；跳过合并时用进函数时读到的裸名节点
-  const afterMerge = splitExists
-    ? await input.repo.getNodeById(bareNodeId, input.vaultId)
-    : bare
+  const afterMerge = splitExists ? await input.repo.getNodeById(bareNodeId, input.vaultId) : bare
   if (!afterMerge || !afterMerge.shardMonth) {
     throw new Error('撤回拆分后裸名节点不可用')
   }

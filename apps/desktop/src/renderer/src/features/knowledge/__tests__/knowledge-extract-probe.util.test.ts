@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { formatExtractProbePagesList, listExtractProbeSources } from '../knowledge-extract-probe.util'
+import {
+  formatExtractProbePagesList,
+  listExtractProbeSources
+} from '../knowledge-extract-probe.util'
 
 describe('listExtractProbeSources', () => {
   it('should keep only imported pdf files', () => {

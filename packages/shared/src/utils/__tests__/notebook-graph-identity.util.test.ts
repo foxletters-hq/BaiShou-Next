@@ -88,7 +88,13 @@ describe('notebookGraphNodeIdForEntity discriminator', () => {
 
   it('should produce the same id when discriminator only differs by case or whitespace', () => {
     const a = notebookGraphNodeIdForEntity('vault-1', 'nb-1', 'person', '张三', 'Work Colleague')
-    const b = notebookGraphNodeIdForEntity('vault-1', 'nb-1', 'person', '张三', ' work   colleague ')
+    const b = notebookGraphNodeIdForEntity(
+      'vault-1',
+      'nb-1',
+      'person',
+      '张三',
+      ' work   colleague '
+    )
     const c = notebookGraphNodeIdForEntity('vault-1', 'nb-1', 'person', '张三', 'WORK COLLEAGUE')
     expect(a).toBe(b)
     expect(a).toBe(c)

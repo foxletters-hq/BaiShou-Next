@@ -270,7 +270,7 @@ export const AIModelsSection: React.FC = () => {
                 styles.selectorBtn,
                 {
                   backgroundColor: colors.bgSurface,
-                  borderColor: colors.borderControl,
+                  borderColor: colors.borderControl
                 }
               ]}
               activeOpacity={0.7}

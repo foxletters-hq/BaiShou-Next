@@ -185,15 +185,18 @@ describe('alignEntityPool', () => {
     const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
     const embedQuery = vi.fn()
     const judgeMerges = vi.fn()
-    const out = await alignEntityPool([{ name: '张三', nodeType: 'person', summary: '日记里的张三' }], {
-      findCandidatesByNameOrAlias: async () => [
-        { id: bareId, name: '张三', aliases: ['张三'] },
-        { id: splitId, name: '张三乙', aliases: ['张三'] }
-      ],
-      embedQuery,
-      judgeMerges,
-      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
-    })
+    const out = await alignEntityPool(
+      [{ name: '张三', nodeType: 'person', summary: '日记里的张三' }],
+      {
+        findCandidatesByNameOrAlias: async () => [
+          { id: bareId, name: '张三', aliases: ['张三'] },
+          { id: splitId, name: '张三乙', aliases: ['张三'] }
+        ],
+        embedQuery,
+        judgeMerges,
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+      }
+    )
     expect(out.get('person\0张三')).toEqual(
       expect.objectContaining({
         id: bareId,

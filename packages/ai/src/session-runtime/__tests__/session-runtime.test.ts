@@ -1,9 +1,4 @@
-import {
-  describe,
-  it,
-  expect,
-  beforeEach
-} from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   ContextEpoch,
   MemoryContextEpochStore,
@@ -15,10 +10,7 @@ import {
   resolveSessionRuntimeProfile,
   prepareSystemPromptWithEpoch
 } from '../index'
-import {
-  resetContextEpochStoreForTests,
-  setContextEpochStore
-} from '../context-epoch/store'
+import { resetContextEpochStoreForTests, setContextEpochStore } from '../context-epoch/store'
 import { resetSharedContextEpochForTests } from '../context-epoch/context-epoch'
 import { resetSharedSessionInboxForTests, setSessionInboxStore } from '../inbox/inbox'
 
@@ -65,10 +57,7 @@ describe('session-runtime context epoch', () => {
       }
     })
     expect(second.isNewEpoch).toBe(false)
-    expect(second.updates.map((u) => u.sourceId).sort()).toEqual([
-      'runtime/time',
-      'workspace/env'
-    ])
+    expect(second.updates.map((u) => u.sourceId).sort()).toEqual(['runtime/time', 'workspace/env'])
     expect(second.baseline).toBe(first.baseline)
   })
 
@@ -226,12 +215,8 @@ describe('session-runtime context epoch', () => {
 
 describe('resolveSessionRuntimeProfile', () => {
   it('defaults workspace to v2 on and companion to v2 off', () => {
-    expect(
-      resolveSessionRuntimeProfile({ sessionKind: 'workspace' }).sessionRuntimeV2
-    ).toBe(true)
-    expect(
-      resolveSessionRuntimeProfile({ sessionKind: 'companion' }).sessionRuntimeV2
-    ).toBe(false)
+    expect(resolveSessionRuntimeProfile({ sessionKind: 'workspace' }).sessionRuntimeV2).toBe(true)
+    expect(resolveSessionRuntimeProfile({ sessionKind: 'companion' }).sessionRuntimeV2).toBe(false)
     expect(resolveSessionRuntimeProfile({}).sessionRuntimeV2).toBe(false)
   })
 
@@ -291,9 +276,9 @@ describe('resolveSessionRuntimeProfile', () => {
         userConfig: { interruptOnGateReject: true }
       }).interruptOnGateReject
     ).toBe(true)
-    expect(
-      resolveSessionRuntimeProfile({ sessionKind: 'companion' }).interruptOnGateReject
-    ).toBe(false)
+    expect(resolveSessionRuntimeProfile({ sessionKind: 'companion' }).interruptOnGateReject).toBe(
+      false
+    )
   })
 
   it('resolves maxSteps and doomLoopThreshold with clamps', () => {

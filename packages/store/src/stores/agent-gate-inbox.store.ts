@@ -202,7 +202,9 @@ export const useAgentGateInboxStore = createStore<AgentGateInboxStore>(
       if (!sessionId) return
       set((state: AgentGateInboxState) => {
         const pending = state.pending.filter((item) => item.sessionId !== sessionId)
-        const resolvedLive = state.resolvedLive.filter((item) => item.request.sessionId !== sessionId)
+        const resolvedLive = state.resolvedLive.filter(
+          (item) => item.request.sessionId !== sessionId
+        )
         const focusedRequestIdBySession = { ...state.focusedRequestIdBySession }
         delete focusedRequestIdBySession[sessionId]
         return { pending, resolvedLive, focusedRequestIdBySession }

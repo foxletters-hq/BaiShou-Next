@@ -14,10 +14,7 @@ type Props = {
   skillRefs?: SkillCiteRef[] | null
   fileRefs?: FileCiteRef[] | null
   className?: string
-  onOpenFile?: (
-    relativePath: string,
-    options?: { line?: number; isDirectory?: boolean }
-  ) => void
+  onOpenFile?: (relativePath: string, options?: { line?: number; isDirectory?: boolean }) => void
 }
 
 export function UserMessageSkillContent({

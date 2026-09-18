@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  normalizeMemoryCenterRagConfig,
-  readActiveVaultSafely
-} from '../memory-center-data.util'
+import { normalizeMemoryCenterRagConfig, readActiveVaultSafely } from '../memory-center-data.util'
 
 describe('readActiveVaultSafely', () => {
   it('should return the vault when getActiveVault returns an object', () => {

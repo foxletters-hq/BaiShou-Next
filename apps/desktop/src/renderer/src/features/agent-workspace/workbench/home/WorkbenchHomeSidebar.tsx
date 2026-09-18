@@ -128,9 +128,7 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
   const sessionsByWorkspaceId = useMemo(() => {
     const map = new Map<string, AgentWorkspaceSessionListItem[]>()
     for (const ws of recent) {
-      const list = sessions.filter((session) =>
-        workspaceEntryMatchesFolder(ws, session.folderRoot)
-      )
+      const list = sessions.filter((session) => workspaceEntryMatchesFolder(ws, session.folderRoot))
       map.set(ws.id, list)
     }
     return map
@@ -439,69 +437,78 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
                               previewSessions.map((session) => {
                                 const sessionPinned = Boolean(session.isPinned)
                                 return (
-                                <li key={session.sessionId}>
-                                  <div
-                                    className={`${styles.sessionItem} ${sessionPinned ? styles.sessionItemPinned : ''}`}
-                                  >
-                                    <button
-                                      type="button"
-                                      className={styles.sessionOpen}
-                                      onClick={() => onOpenSession?.(session.sessionId, ws.id)}
-                                      title={session.title || t('workbench.untitled_session', '未命名会话')}
+                                  <li key={session.sessionId}>
+                                    <div
+                                      className={`${styles.sessionItem} ${sessionPinned ? styles.sessionItemPinned : ''}`}
                                     >
-                                      {sessionPinned ? (
-                                        <Pin
-                                          size={11}
-                                          className={styles.sessionPinBadge}
-                                          fill="currentColor"
-                                          aria-hidden
-                                        />
-                                      ) : null}
-                                      <span className={styles.sessionTitle}>
-                                        {session.title?.trim() ||
-                                          t('workbench.untitled_session', '未命名会话')}
-                                      </span>
-                                      <span className={styles.sessionTime}>
-                                        {formatCompactRelativeTime(session.updatedAt, {
-                                          t,
-                                          locale: i18n.language
-                                        })}
-                                      </span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={`${styles.sessionActionBtn} ${sessionPinned ? styles.sessionActionBtnActive : ''}`}
-                                      onClick={(e) =>
-                                        handlePinSessionClick(e, session.sessionId, sessionPinned)
-                                      }
-                                      title={
-                                        sessionPinned
-                                          ? t('workbench.home_unpin_session', '取消置顶')
-                                          : t('workbench.home_pin_session', '置顶对话')
-                                      }
-                                      aria-label={
-                                        sessionPinned
-                                          ? t('workbench.home_unpin_session', '取消置顶')
-                                          : t('workbench.home_pin_session', '置顶对话')
-                                      }
-                                    >
-                                      <Pin size={12} fill={sessionPinned ? 'currentColor' : 'none'} />
-                                    </button>
-                                    {onDeleteSession ? (
                                       <button
                                         type="button"
-                                        className={styles.sessionActionBtn}
-                                        onClick={(e) =>
-                                          handleDeleteSessionClick(e, session.sessionId)
+                                        className={styles.sessionOpen}
+                                        onClick={() => onOpenSession?.(session.sessionId, ws.id)}
+                                        title={
+                                          session.title ||
+                                          t('workbench.untitled_session', '未命名会话')
                                         }
-                                        title={t('agent_workspace.delete_session', '删除会话')}
-                                        aria-label={t('agent_workspace.delete_session', '删除会话')}
                                       >
-                                        <Trash2 size={12} />
+                                        {sessionPinned ? (
+                                          <Pin
+                                            size={11}
+                                            className={styles.sessionPinBadge}
+                                            fill="currentColor"
+                                            aria-hidden
+                                          />
+                                        ) : null}
+                                        <span className={styles.sessionTitle}>
+                                          {session.title?.trim() ||
+                                            t('workbench.untitled_session', '未命名会话')}
+                                        </span>
+                                        <span className={styles.sessionTime}>
+                                          {formatCompactRelativeTime(session.updatedAt, {
+                                            t,
+                                            locale: i18n.language
+                                          })}
+                                        </span>
                                       </button>
-                                    ) : null}
-                                  </div>
-                                </li>
+                                      <button
+                                        type="button"
+                                        className={`${styles.sessionActionBtn} ${sessionPinned ? styles.sessionActionBtnActive : ''}`}
+                                        onClick={(e) =>
+                                          handlePinSessionClick(e, session.sessionId, sessionPinned)
+                                        }
+                                        title={
+                                          sessionPinned
+                                            ? t('workbench.home_unpin_session', '取消置顶')
+                                            : t('workbench.home_pin_session', '置顶对话')
+                                        }
+                                        aria-label={
+                                          sessionPinned
+                                            ? t('workbench.home_unpin_session', '取消置顶')
+                                            : t('workbench.home_pin_session', '置顶对话')
+                                        }
+                                      >
+                                        <Pin
+                                          size={12}
+                                          fill={sessionPinned ? 'currentColor' : 'none'}
+                                        />
+                                      </button>
+                                      {onDeleteSession ? (
+                                        <button
+                                          type="button"
+                                          className={styles.sessionActionBtn}
+                                          onClick={(e) =>
+                                            handleDeleteSessionClick(e, session.sessionId)
+                                          }
+                                          title={t('agent_workspace.delete_session', '删除会话')}
+                                          aria-label={t(
+                                            'agent_workspace.delete_session',
+                                            '删除会话'
+                                          )}
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </li>
                                 )
                               })
                             )}

@@ -124,7 +124,8 @@ function rawEdgeToLookup(record: Record<string, unknown>): LookupEdge {
     sourceKind: String(record.sourceKind ?? ''),
     sourceRef: typeof record.sourceRef === 'string' ? record.sourceRef : null,
     sourceExcerpt: String(record.sourceExcerpt ?? ''),
-    sourceContentHash: typeof record.sourceContentHash === 'string' ? record.sourceContentHash : null,
+    sourceContentHash:
+      typeof record.sourceContentHash === 'string' ? record.sourceContentHash : null,
     confidence: Number(record.confidence ?? 0),
     origin: String(record.origin ?? 'ai'),
     reviewStatus: String(record.reviewStatus ?? 'approved'),
@@ -215,12 +216,18 @@ describe('splitGraphNode', () => {
       unassignedEdgeIds: []
     })
 
-    const bareWrite = writes.find((item) => item.collection === 'nodes' && item.record.id === 'bare-1')
+    const bareWrite = writes.find(
+      (item) => item.collection === 'nodes' && item.record.id === 'bare-1'
+    )
     const splitWrite = writes.find(
       (item) => item.collection === 'nodes' && item.record.id === expectedSplitId
     )
-    const movedEdge = writes.find((item) => item.collection === 'edges' && item.record.id === 'e-split')
-    const keptEdge = writes.find((item) => item.collection === 'edges' && item.record.id === 'e-keep')
+    const movedEdge = writes.find(
+      (item) => item.collection === 'edges' && item.record.id === 'e-split'
+    )
+    const keptEdge = writes.find(
+      (item) => item.collection === 'edges' && item.record.id === 'e-keep'
+    )
 
     expect(bareWrite?.record.name).toBe('张三')
     expect(bareWrite?.record.aliases).toEqual(['张三'])
@@ -361,9 +368,9 @@ describe('splitGraphNode', () => {
 
     expect(result.splitNodeId).toBe('already-split')
     expect(result.splitNodeId).not.toBe(expectedSplitId)
-    expect(writes.some((item) => item.collection === 'nodes' && item.record.id === expectedSplitId)).toBe(
-      false
-    )
+    expect(
+      writes.some((item) => item.collection === 'nodes' && item.record.id === expectedSplitId)
+    ).toBe(false)
   })
 
   it('should create the missing split node when the registry already points at it', async () => {
@@ -398,7 +405,9 @@ describe('splitGraphNode', () => {
       repo: repo as never
     })
 
-    const rebuilt = writes.find((item) => item.collection === 'nodes' && item.record.id === 'already-split')
+    const rebuilt = writes.find(
+      (item) => item.collection === 'nodes' && item.record.id === 'already-split'
+    )
     expect(rebuilt?.record.name).toBe('张三')
     expect(rebuilt?.record.discriminator).toBe('同事')
     expect(rebuilt?.record.summary).toBe('公司里的张三')
@@ -454,9 +463,9 @@ describe('splitGraphNode', () => {
       repo: repo as never
     })
 
-    expect(writes.some((item) => item.collection === 'nodes' && item.record.id === 'already-split')).toBe(
-      false
-    )
+    expect(
+      writes.some((item) => item.collection === 'nodes' && item.record.id === 'already-split')
+    ).toBe(false)
     expect(nodes.get('already-split')?.summary).toBe('已有摘要')
     expect(nodes.get('already-split')?.mentionCount).toBe(3)
     expect(nodes.get('already-split')?.firstSeenAt).toBe(40)
@@ -560,7 +569,9 @@ describe('splitGraphNode', () => {
       repo: repo as never
     })
 
-    const bareWrite = writes.find((item) => item.collection === 'nodes' && item.record.id === 'bare-1')
+    const bareWrite = writes.find(
+      (item) => item.collection === 'nodes' && item.record.id === 'bare-1'
+    )
     const registry = (bareWrite?.record.props as { nameRegistry?: Array<{ registeredAt: number }> })
       ?.nameRegistry
     expect(registry?.[0]?.registeredAt).toBe(40)

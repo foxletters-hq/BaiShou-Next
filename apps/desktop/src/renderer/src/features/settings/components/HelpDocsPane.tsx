@@ -23,10 +23,7 @@ export const HelpDocsPane: React.FC = () => {
     const webview = document.createElement('webview')
     webview.setAttribute('src', HELP_DOCS_QUICK_START_URL)
     webview.setAttribute('allowpopups', 'true')
-    webview.setAttribute(
-      'webpreferences',
-      'contextIsolation=yes, nodeIntegration=no, sandbox=yes'
-    )
+    webview.setAttribute('webpreferences', 'contextIsolation=yes, nodeIntegration=no, sandbox=yes')
     webview.className = styles.webview
     const onFail = (event: Event) => {
       if (isHelpDocsMainFrameFailure(event as HelpDocsWebviewFailLoad)) {

@@ -656,9 +656,7 @@ export const WorkbenchFileExplorer: React.FC<WorkbenchFileExplorerProps> = ({
                 onCancelInline={cancelInlineEdit}
                 draggingPaths={dnd.draggingPaths}
                 dropTargetDir={dnd.dropTargetDir}
-                onDragStart={(event, node) =>
-                  dnd.handleDragStart(event, node, selectedDragEntries)
-                }
+                onDragStart={(event, node) => dnd.handleDragStart(event, node, selectedDragEntries)}
                 onDragEnd={dnd.handleDragEnd}
                 onDragOver={dnd.handleDragOverNode}
                 onDrop={dnd.handleDropOnNode}

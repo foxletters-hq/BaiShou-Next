@@ -65,9 +65,9 @@ describe('workspace-skill-launch.util', () => {
   it('keeps create-skill in the official list even when the file is missing', () => {
     const fallback: SkillFixture = { name: 'create-skill', source: 'software' }
     expect(ensureOfficialCreateSkill([], fallback)).toEqual([fallback])
-    expect(
-      ensureOfficialCreateSkill([{ name: 'create-skill', source: 'user' }], fallback)
-    ).toEqual([{ name: 'create-skill', source: 'user', description: 'create-skill' }])
+    expect(ensureOfficialCreateSkill([{ name: 'create-skill', source: 'user' }], fallback)).toEqual(
+      [{ name: 'create-skill', source: 'user', description: 'create-skill' }]
+    )
     expect(
       ensureOfficialCreateSkill([{ name: 'translate', source: 'software' }], fallback).map(
         (item) => item.name
@@ -141,9 +141,8 @@ describe('workspace-skill-launch.util', () => {
         'b'
       ).map((item) => item.id)
     ).toEqual(['b', 'a', 'c'])
-    expect(orderSkillLaunchWorkspaces([{ id: 'a' }, { id: 'b' }], 'missing').map((item) => item.id)).toEqual([
-      'a',
-      'b'
-    ])
+    expect(
+      orderSkillLaunchWorkspaces([{ id: 'a' }, { id: 'b' }], 'missing').map((item) => item.id)
+    ).toEqual(['a', 'b'])
   })
 })

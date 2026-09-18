@@ -101,10 +101,7 @@ export function useWorkbenchFileExplorerDnd({
   }, [resetDragUi])
 
   const updateDropTarget = useCallback(
-    (
-      event: DragEvent,
-      target: { relativePath: string | null; isDirectory: boolean } | 'root'
-    ) => {
+    (event: DragEvent, target: { relativePath: string | null; isDirectory: boolean } | 'root') => {
       const isCopy = isCopyDragModifier(event)
       setDropIsCopy(isCopy)
 
@@ -118,9 +115,7 @@ export function useWorkbenchFileExplorerDnd({
 
       const internal = parseExplorerDndPayload(event.dataTransfer)
       // dragover 时自定义 mime 在部分浏览器读不到；用 draggingPaths 兜底
-      const sourcePaths = internal?.relativePaths?.length
-        ? internal.relativePaths
-        : draggingPaths
+      const sourcePaths = internal?.relativePaths?.length ? internal.relativePaths : draggingPaths
 
       if (sourcePaths.length > 0) {
         const ok = canDropExplorerEntries({ sourcePaths, targetDir, isCopy })
@@ -224,9 +219,7 @@ export function useWorkbenchFileExplorerDnd({
         if (targetDir) ensureExpanded(targetDir)
         if (lastPath) selectPath(lastPath)
         toast.showSuccess(
-          isCopy
-            ? t('workbench.dnd_copy_done', '已复制')
-            : t('workbench.dnd_move_done', '已移动')
+          isCopy ? t('workbench.dnd_copy_done', '已复制') : t('workbench.dnd_move_done', '已移动')
         )
       } catch (error) {
         toast.showError(error instanceof Error ? error.message : t('common.error', '操作失败'))
@@ -286,9 +279,7 @@ export function useWorkbenchFileExplorerDnd({
             })
 
       const internal = parseExplorerDndPayload(event.dataTransfer)
-      const sourcePaths = internal?.relativePaths?.length
-        ? internal.relativePaths
-        : draggingPaths
+      const sourcePaths = internal?.relativePaths?.length ? internal.relativePaths : draggingPaths
 
       resetDragUi()
 

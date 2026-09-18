@@ -78,9 +78,7 @@ export const KnowledgeExtractProbeSection: React.FC<KnowledgeExtractProbeSection
   return (
     <div className={styles.settingsGroup}>
       <div className={styles.sectionLabelRow}>
-        <h3 className={styles.sectionLabel}>
-          {t('knowledge.extract_probe', '抽取测试')}
-        </h3>
+        <h3 className={styles.sectionLabel}>{t('knowledge.extract_probe', '抽取测试')}</h3>
         <HelpTooltip
           size={14}
           content={t(
@@ -93,10 +91,7 @@ export const KnowledgeExtractProbeSection: React.FC<KnowledgeExtractProbeSection
         <div className={styles.settingsProbeBody}>
           {pdfSources.length === 0 ? (
             <p className={`${styles.settingsRowHint} ${styles.settingsRowHintWrap}`}>
-              {t(
-                'knowledge.extract_probe_empty',
-                '这个笔记本还没有可试抽的 PDF，先导入一份。'
-              )}
+              {t('knowledge.extract_probe_empty', '这个笔记本还没有可试抽的 PDF，先导入一份。')}
             </p>
           ) : (
             <>
@@ -123,11 +118,7 @@ export const KnowledgeExtractProbeSection: React.FC<KnowledgeExtractProbeSection
                   disabled={disabled || probing}
                   aria-label={t('knowledge.extract_probe_file', '试抽文件')}
                 />
-                <Button
-                  type="button"
-                  disabled={!canRun}
-                  onClick={() => void onRun()}
-                >
+                <Button type="button" disabled={!canRun} onClick={() => void onRun()}>
                   {probing
                     ? t('knowledge.extract_probe_running', '正在试抽…')
                     : t('knowledge.extract_probe_run', '开始试抽')}
@@ -139,10 +130,7 @@ export const KnowledgeExtractProbeSection: React.FC<KnowledgeExtractProbeSection
                     ? t('knowledge.extract_probe_pages', '将抽取第 {{pages}} 页', {
                         pages: pageList
                       })
-                    : t(
-                        'knowledge.extract_probe_pages_unknown',
-                        '将抽取首页、中间页和末页'
-                      )}
+                    : t('knowledge.extract_probe_pages_unknown', '将抽取首页、中间页和末页')}
                 </p>
               ) : null}
               {!engineAvailable ? (
@@ -168,10 +156,7 @@ export const KnowledgeExtractProbeSection: React.FC<KnowledgeExtractProbeSection
                   <div className={styles.settingsProbeText}>
                     {item.text.trim()
                       ? item.text
-                      : t(
-                          'knowledge.extract_probe_page_empty',
-                          '这一页几乎没有识别出文字'
-                        )}
+                      : t('knowledge.extract_probe_page_empty', '这一页几乎没有识别出文字')}
                   </div>
                 </article>
               ))}
