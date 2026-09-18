@@ -34,7 +34,7 @@ import {
   writeMemoryOnboardingDismissed
 } from './memory-center-onboarding.storage'
 import { normalizeMemoryCenterRagConfig, readActiveVaultSafely } from './memory-center-data.util'
-import { snapshotMemoryEmbedPhases } from './memory-center-organize.util'
+import { loadMemoryOrganizePending, snapshotMemoryEmbedPhases } from './memory-center-organize.util'
 
 function rowLabel(
   id: MemoryReadinessRow['id'],
@@ -77,9 +77,9 @@ export function MemoryCenterScreen() {
     ? (params.tab as MemoryCenterTab)
     : 'vectors'
   const [tab, setTab] = useState<MemoryCenterTab>(initialTab)
-  const [pendingEmbedParts, setPendingEmbedParts] = useState<PendingEmbedCounts>(
-    EMPTY_PENDING_EMBED_COUNTS
-  )
+  const [pendingEmbedParts, setPendingEmbedParts] = useState<
+    PendingEmbedCounts & { graphExtract?: number; graphDisambiguate?: number }
+  >(EMPTY_PENDING_EMBED_COUNTS)
   const [pendingGraphCount, setPendingGraphCount] = useState(0)
   const [globalModels, setGlobalModels] = useState<Record<string, unknown> | null>(null)
   const [ragConfig, setRagConfig] = useState<Pick<RagConfig, 'ragEnabled'> | null>(null)
@@ -98,14 +98,19 @@ export function MemoryCenterScreen() {
       services.settingsManager.get<Record<string, unknown>>('global_models'),
       services.settingsManager.get<{ ragEnabled?: boolean }>('rag_config'),
       readMemoryOnboardingDismissed(),
-      (services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> })
-        .getPendingEmbedCounts?.()
-        .catch(() => EMPTY_PENDING_EMBED_COUNTS) ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)
+      loadMemoryOrganizePending(services.ragService)
     ])
     setGlobalModels(models ?? null)
     setRagConfig(normalizeMemoryCenterRagConfig(rag))
     setOnboardingDismissed(dismissed)
     setPendingEmbedParts(embedCounts ?? EMPTY_PENDING_EMBED_COUNTS)
+
+    const snapshotExtract =
+      embedCounts && 'graphExtract' in embedCounts ? embedCounts.graphExtract : undefined
+    if (typeof snapshotExtract === 'number') {
+      setPendingGraphCount(snapshotExtract)
+      return
+    }
 
     const activeVault = readActiveVaultSafely(services.vaultService)
     const vaultName = activeVault?.name || 'Personal'
@@ -133,8 +138,8 @@ export function MemoryCenterScreen() {
   const pendingEmbedCount = pendingEmbedParts.total
   const embeddingConfigured = isEmbeddingConfiguredForMemory(globalModels)
   const embedSnapshot = useMemo(
-    () => snapshotMemoryEmbedPhases(pendingEmbedParts),
-    [pendingEmbedParts]
+    () => snapshotMemoryEmbedPhases(pendingEmbedParts, pendingGraphCount),
+    [pendingEmbedParts, pendingGraphCount]
   )
   const rows = useMemo(
     () =>
@@ -177,6 +182,7 @@ export function MemoryCenterScreen() {
       router.push('/settings/ai-models')
       return
     }
+    // graph 与 embed-then-graph 都走 batchEmbed；日记为 0 时 fill 仍会抽图与补向量
     const runtime = getAgentDbRuntime()
     if (runtime?.drizzleDb) {
       const activeVault = readActiveVaultSafely(services.vaultService)
