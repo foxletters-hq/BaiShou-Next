@@ -1,5 +1,6 @@
 import React from 'react'
 import { SessionModelMenu } from '@baishou/ui'
+import type { ReasoningEffortSetting } from '@baishou/shared'
 import {
   filterKnowledgeMenuProviders,
   type KnowledgeMenuProvider,
@@ -15,6 +16,8 @@ export type KnowledgeModelMenuProps = {
   onSelect: (providerId: string, modelId: string) => void
   onClose: () => void
   onManageProviders: () => void
+  reasoningEffort?: ReasoningEffortSetting
+  onReasoningEffortChange?: (value: ReasoningEffortSetting) => void
 }
 
 export const KnowledgeModelMenu: React.FC<KnowledgeModelMenuProps> = ({
@@ -25,7 +28,9 @@ export const KnowledgeModelMenu: React.FC<KnowledgeModelMenuProps> = ({
   anchorRect,
   onSelect,
   onClose,
-  onManageProviders
+  onManageProviders,
+  reasoningEffort,
+  onReasoningEffortChange
 }) => {
   return (
     <SessionModelMenu
@@ -35,7 +40,9 @@ export const KnowledgeModelMenu: React.FC<KnowledgeModelMenuProps> = ({
       currentModelId={currentModelId}
       onSelect={onSelect}
       onManageProviders={onManageProviders}
-      showReasoningPanel={false}
+      showReasoningPanel={kind !== 'embedding'}
+      reasoningEffort={reasoningEffort}
+      onReasoningEffortChange={onReasoningEffortChange}
       anchorRect={anchorRect}
     />
   )

@@ -37,6 +37,8 @@ export type VisionPageRecognizer = (opts: {
   pngBase64: string
   page: number
   mediaType?: string
+  providerId?: string | null
+  modelId?: string | null
 }) => Promise<string>
 
 export interface ExtractEngineContext {
@@ -52,6 +54,10 @@ export interface ExtractEngineContext {
   onProgress?: (info: { page: number; total: number }) => void
   /** 取消提取时中断 */
   signal?: AbortSignal
+  /** 默认写入进程内页缓存；试抽传 false，避免污染正式提取 */
+  persistCache?: boolean
+  visionProviderId?: string | null
+  visionModelId?: string | null
 }
 
 export interface ExtractEngine {

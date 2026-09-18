@@ -95,7 +95,9 @@ export const ocrExtractEngine: ExtractEngine = {
       ctx.existingPageTexts ??
       getRegisteredSimplePageTexts(ctx.absolutePath) ??
       (await extractPdfPageTexts(ctx.absolutePath))
-    rememberSimplePageTexts(ctx.absolutePath, existing)
+    if (ctx.persistCache !== false) {
+      rememberSimplePageTexts(ctx.absolutePath, existing)
+    }
 
     // 页数未知：用 renderer/probe 的 numPages；仍未知禁止伪造 1 页后标 ready
     const pageCount = await resolvePdfNumPages(ctx.absolutePath, existing.length)
@@ -176,7 +178,9 @@ export const ocrExtractEngine: ExtractEngine = {
     }
 
     processed.sort((a, b) => a - b)
-    rememberSimplePageTexts(ctx.absolutePath, merged)
+    if (ctx.persistCache !== false) {
+      rememberSimplePageTexts(ctx.absolutePath, merged)
+    }
     return {
       ...analyzePageTexts(merged),
       extractEngine: 'ocr',

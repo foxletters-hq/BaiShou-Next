@@ -777,6 +777,7 @@ export const KnowledgeDetailPage: React.FC = () => {
             const choice = await askExtractHint({
               fileNames: [hint.fileName],
               reason: hint.reason,
+              currentEngine: engine,
               visionConfigured: hint.visionConfigured,
               visionModelId: hint.visionModelId
             })
@@ -1668,6 +1669,10 @@ export const KnowledgeDetailPage: React.FC = () => {
             extracting={graphBusy || graphJobs.pending > 0 || graphJobs.running > 0}
             reloadKey={`${graphJobs.pending}:${graphJobs.running}:${graphJobs.failed}:${graphJobs.currentSourceTitle ?? ''}:${sources.length}:${graphWindowProgress?.done ?? 0}:${graphWindowProgress?.total ?? 0}`}
             onStartExtract={() => {
+              void (window as { api?: { rag?: { triggerBatchEmbed?: () => Promise<unknown> } } })
+                .api?.rag?.triggerBatchEmbed?.()
+            }}
+            onRebuildGraph={() => {
               setHeavyConfirmSource(null)
               setHeavyConfirmKind('rebuild-graph')
             }}

@@ -1,10 +1,15 @@
 import { generateText } from 'ai'
 import i18n from 'i18next'
-import { AIProviderRegistry } from '@baishou/ai'
+import {
+  AIProviderRegistry,
+  buildDefaultReasoningOptions,
+  runWithOpenAiThinkingInjectAsync
+} from '@baishou/ai'
 import {
   isVisionModel,
   logger,
   prepareProviderConfigForRuntime,
+  resolveReasoningEffortForSlot,
   type AIProviderConfig,
   type GlobalModelsConfig,
   type KnowledgeConfig
@@ -19,17 +24,19 @@ const OCR_PROMPT = `请识别这张 PDF 页面图片中的全部文字，按原�
  * 注册视觉 OCR：优先知识库专用多模态模型，否则回退全局对话/总结模型。
  */
 export function registerDesktopVisionPageRecognizer(): void {
-  registerVisionPageRecognizer(async ({ pngBase64, page }) => {
+  registerVisionPageRecognizer(async ({ pngBase64, page, providerId: overrideProviderId, modelId: overrideModelId }) => {
     const knowledgeConfig =
       (await settingsManager.get<KnowledgeConfig>('knowledge_config')) || {}
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
     const providers = (await settingsManager.get<AIProviderConfig[]>('ai_providers')) || []
 
     const modelId =
+      overrideModelId ||
       knowledgeConfig.visionModelId ||
       globalModels?.globalDialogueModelId ||
       globalModels?.globalSummaryModelId
     const providerId =
+      overrideProviderId ||
       knowledgeConfig.visionProviderId ||
       globalModels?.globalDialogueProviderId ||
       globalModels?.globalSummaryProviderId
@@ -54,18 +61,31 @@ export function registerDesktopVisionPageRecognizer(): void {
     const model = provider.getLanguageModel(modelId)
 
     try {
-      const result = await generateText({
-        model,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` },
-              { type: 'image', image: `data:image/png;base64,${pngBase64}` }
-            ]
-          }
-        ]
+      const builtReasoning = buildDefaultReasoningOptions({
+        modelId,
+        providerType: providerConfig.type || providerConfig.id,
+        baseUrl: providerConfig.baseUrl,
+        effort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'vision')
       })
+      const result = await runWithOpenAiThinkingInjectAsync(
+        builtReasoning.openAiThinkingInject,
+        async () =>
+          generateText({
+            model,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: `${OCR_PROMPT}\n（第 ${page} 页）` },
+                  { type: 'image', image: `data:image/png;base64,${pngBase64}` }
+                ]
+              }
+            ],
+            ...(builtReasoning.providerOptions
+              ? { providerOptions: builtReasoning.providerOptions as never }
+              : {})
+          })
+      )
       return result.text || ''
     } catch (e) {
       logger.warn('[VisionOCR] failed', e as Error)

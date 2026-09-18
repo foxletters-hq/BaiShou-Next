@@ -9,6 +9,7 @@ import {
   listLiveGraphSourceIds,
   loadExtractedKnowledgeWindows,
   probeExtractEngineCapabilities,
+  probeKnowledgeExtractSample,
   probePdfPageTexts,
   recommendVisionExtract,
   type ExtractEngineId,
@@ -23,6 +24,8 @@ import {
   notebookCoverImageCandidates,
   normalizeKnowledgeDefaultExtractEngine,
   normalizeKnowledgeImportProcessMode,
+  shouldDeferKnowledgeImportOrganize,
+  shouldKickKnowledgeIngestAfterRecover,
   normalizeNotebookCoverImage,
   type GlobalModelsConfig,
   type KnowledgeConfig,
@@ -361,7 +364,7 @@ export function registerKnowledgeIPC(): void {
         fileName?: string
         originUrl?: string
         extractEngine?: ExtractEngineId
-        importProcessMode?: KnowledgeImportProcessMode
+        importProcessMode?: KnowledgeImportProcessMode | string
       }
     ) => {
       const svc = getKnowledgeIngestService()
@@ -385,10 +388,16 @@ export function registerKnowledgeIPC(): void {
         }
       }
 
+      const rawImportProcessMode = String(input.importProcessMode ?? '').trim()
       const importProcessMode = normalizeKnowledgeImportProcessMode(input.importProcessMode)
+      const deferOrganize =
+        shouldDeferKnowledgeImportOrganize(importProcessMode) ||
+        rawImportProcessMode === 'later' ||
+        rawImportProcessMode === 'none' ||
+        rawImportProcessMode === 'save-only'
       const result = await svc.importSource({
         ...payload,
-        importProcessMode,
+        importProcessMode: deferOrganize ? 'later' : importProcessMode,
         extractEngine:
           input.extractEngine ||
           cfg.defaultExtractEngine ||
@@ -397,7 +406,9 @@ export function registerKnowledgeIPC(): void {
           payload.fileName ||
           (payload.absolutePath ? path.basename(payload.absolutePath) : payload.title)
       })
-      scheduleConsumeKnowledgeIngestJobs('after-import')
+      if (!deferOrganize) {
+        scheduleConsumeKnowledgeIngestJobs('after-import')
+      }
       return result
     }
   )
@@ -569,9 +580,7 @@ export function registerKnowledgeIPC(): void {
     const id = String(notebookId || '').trim()
     if (!id) throw new Error('notebookId required')
     const repo = requireKnowledgeRepo()
-    const jobs = (await repo.listIngestJobs()).filter(
-      (job) => job.notebookId === id && job.stage === 'graph'
-    )
+    const jobs = await repo.listIngestJobs({ notebookId: id, stage: 'graph' })
     const live = new Set(listLiveGraphSourceIds())
     const sources = await repo.listSources(id)
     const titleById = new Map(sources.map((row) => [row.id, row.title]))
@@ -634,7 +643,9 @@ export function registerKnowledgeIPC(): void {
   handleKnowledgeIpc('knowledge:recover-stale', async () => {
     const svc = getKnowledgeIngestService()
     const result = await svc.recoverStaleIngestState()
-    scheduleConsumeKnowledgeIngestJobs('recover')
+    if (shouldKickKnowledgeIngestAfterRecover(result)) {
+      scheduleConsumeKnowledgeIngestJobs('recover')
+    }
     return result
   })
 
@@ -701,6 +712,46 @@ export function registerKnowledgeIPC(): void {
         textContent: null as string | null,
         originUrl: source.originUrl ?? null
       }
+    }
+  )
+
+  handleKnowledgeIpc(
+    'knowledge:probe-extract-sample',
+    async (
+      _e,
+      input: {
+        notebookId?: string
+        sourceId: string
+        engine: ExtractEngineId
+        ocrLanguage?: string
+        ocrConcurrency?: number
+        visionProviderId?: string | null
+        visionModelId?: string | null
+      }
+    ) => {
+      const sourceId = String(input?.sourceId || '').trim()
+      if (!sourceId) throw new Error('sourceId required')
+      const repo = requireKnowledgeRepo()
+      const source = await repo.getSource(sourceId)
+      if (!source) throw new Error(`source not found: ${sourceId}`)
+      const notebookId = String(input?.notebookId || '').trim()
+      if (notebookId && source.notebookId !== notebookId) {
+        throw new Error('source not in notebook')
+      }
+      if (!source.relativePath) throw new Error('source file not found')
+      const abs = await getNotebookRawManager().absolutePath(source.relativePath)
+      const cfg = await loadKnowledgeConfig()
+      const engine = normalizeKnowledgeDefaultExtractEngine(input.engine)
+      return probeKnowledgeExtractSample({
+        source,
+        absolutePath: abs,
+        engine,
+        language: input.ocrLanguage ?? cfg.ocrLanguage,
+        dpi: cfg.ocrDpi,
+        concurrency: clampOcrConcurrency(input.ocrConcurrency ?? cfg.ocrConcurrency),
+        visionProviderId: input.visionProviderId,
+        visionModelId: input.visionModelId
+      })
     }
   )
 
