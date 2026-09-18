@@ -31,7 +31,14 @@ describe('mergeDiaryGraphNodes', () => {
             name: '张三',
             aliases: ['张三'],
             summary: '',
-            propsJson: '{}',
+            propsJson: JSON.stringify({
+              similarPending: {
+                peerId: 'lose',
+                similarity: 0.72,
+                reason: '吃不准',
+                createdAt: '2026-09-19T00:00:00.000Z'
+              }
+            }),
             mentionCount: 2,
             firstSeenAt: 10,
             lastSeenAt: 20,
@@ -100,6 +107,9 @@ describe('mergeDiaryGraphNodes', () => {
     const loser = writes.find((w) => w.collection === 'nodes' && w.record.id === 'lose')
     const edge = writes.find((w) => w.collection === 'edges' && w.record.id === 'e1')
     expect(survivor?.record.aliases).toEqual(expect.arrayContaining(['张三', '小张']))
+    expect(
+      (survivor?.record.props as { similarPending?: unknown } | undefined)?.similarPending
+    ).toBeUndefined()
     expect(survivor?.record.mentionCount).toBe(3)
     expect(survivor?.record.firstSeenAt).toBe(5)
     expect(edge?.record.fromId).toBe('surv')
