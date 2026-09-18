@@ -42,6 +42,41 @@ export function resolveNotebookCoverPreviewUrl(
   return `${trimmed}${trimmed.includes('?') ? '&' : '?'}t=${updatedAt}`
 }
 
+export type KnowledgeNotebookRow = {
+  id: string
+  name: string
+  description?: string
+  updatedAt?: number
+  createdAt?: number
+  sortOrder?: number
+  coverTone?: string
+  coverIcon?: string
+  coverImage?: string
+  coverImageUrl?: string | null
+}
+
+export function asNotebookRows(list: unknown): KnowledgeNotebookRow[] {
+  if (!Array.isArray(list)) return []
+  return list.filter((row): row is KnowledgeNotebookRow => {
+    return Boolean(
+      row && typeof row === 'object' && typeof (row as KnowledgeNotebookRow).id === 'string'
+    )
+  })
+}
+
+export function formatNotebookDate(ts: number | undefined, locale: string): string {
+  if (!ts || !Number.isFinite(ts)) return ''
+  try {
+    return new Date(ts).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  } catch {
+    return new Date(ts).toLocaleDateString()
+  }
+}
+
 export function moveNotebookIndex<T>(list: T[], from: number, to: number): T[] {
   if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) {
     return list
