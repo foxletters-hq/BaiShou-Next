@@ -17,6 +17,7 @@ describe('buildWorkspaceEnvLines', () => {
     expect(lines.join('\n')).toContain('Git changes count: 3')
     expect(lines.join('\n')).toContain('Mounted knowledge notebooks (1/3): nb')
     expect(lines.join('\n')).toContain('companion_ask')
+    expect(lines.join('\n')).toContain('user cancelled this operation')
   })
 
   it('lists every mounted notebook and forbids inventing sources when none are mounted', () => {

@@ -1,11 +1,12 @@
 import { z } from 'zod'
 import { tool } from 'ai'
-import type {
-  AgentGateProfileId,
-  AgentGateToolMetadata,
-  AgentSessionKind,
-  FileChangePartData,
-  ToolRawDataSourceManager
+import {
+  isAgentGateRejectedError,
+  type AgentGateProfileId,
+  type AgentGateToolMetadata,
+  type AgentSessionKind,
+  type FileChangePartData,
+  type ToolRawDataSourceManager
 } from '@baishou/shared'
 import type { AgentRoundCheckpointService } from '../agent-workspace/agent-round-checkpoint.service'
 import type { WorkspaceFsAdapter } from '../agent-workspace/workspace-fs'
@@ -340,6 +341,7 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
         console.log(`[AgentTool] Tool "${this.name}" completed successfully`)
         return result
       } catch (e: any) {
+        if (isAgentGateRejectedError(e)) throw e
         console.error(`[AgentTool] Tool "${this.name}" threw an unhandled error:`, e)
         return `工具执行失败 (${this.name}): ${e?.message || String(e)}`
       }

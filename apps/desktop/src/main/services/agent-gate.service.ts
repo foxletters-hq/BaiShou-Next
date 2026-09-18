@@ -421,6 +421,22 @@ export function registerAgentGateEventBridge(): void {
         return
       }
 
+      if (event.type === 'agent_gate.cancelled') {
+        for (const requestId of event.requestIds) {
+          closeAgentGateNotification(requestId)
+        }
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('agent-gate:cancelled', {
+              sessionId: event.sessionId,
+              requestIds: event.requestIds,
+              reason: event.reason
+            })
+          }
+        }
+        return
+      }
+
       if (event.type === 'agent_gate.allowlist_changed') {
         const payload: {
           allowlist: AgentGateAllowlistEntry[]

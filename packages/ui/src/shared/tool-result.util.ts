@@ -1,9 +1,11 @@
 /* eslint-disable max-lines -- 工具结果文案与解析聚合 */
 import i18n from 'i18next'
 import {
+  isCompanionAskCancelledMessage,
   parseKnowledgeSearchToolResult,
   resolveAgentToolActionLabel,
-  resolveMcpToolLookupName
+  resolveMcpToolLookupName,
+  type FallbackTranslateFn
 } from '@baishou/shared'
 
 /** 工具调用结果解析 — web / native 共用 */
@@ -101,6 +103,10 @@ function readCompanionAskOptions(args: Record<string, unknown> | null): Companio
     .filter((option) => option.label.length > 0)
 }
 
+function readCompanionAskDeclined(obj: Record<string, unknown>): boolean {
+  return obj.declined === true || obj.approved === false
+}
+
 function readCompanionAskResultObject(obj: Record<string, unknown>): {
   question?: string
   answer: string | null
@@ -117,6 +123,22 @@ function readCompanionAskResultObject(obj: Record<string, unknown>): {
   }
 }
 
+function isCompanionAskDeclineRaw(raw: string): boolean {
+  const trimmed = raw.trim()
+  if (COMPANION_ASK_DECLINED.test(trimmed)) return true
+  if (isCompanionAskCancelledMessage(trimmed)) return true
+  if (trimmed.includes('用户拒绝了本次操作')) return true
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return readCompanionAskDeclined(parsed as Record<string, unknown>)
+    }
+  } catch {
+    return false
+  }
+  return false
+}
+
 function parseCompanionAskResultPayload(result: unknown): {
   question?: string
   answer: string | null
@@ -130,7 +152,7 @@ function parseCompanionAskResultPayload(result: unknown): {
   if (typeof result === 'string') {
     const trimmed = result.trim()
     if (!trimmed) return { answer: null, selectedOptionIds: [], declined: false }
-    if (COMPANION_ASK_DECLINED.test(trimmed)) {
+    if (isCompanionAskDeclineRaw(trimmed)) {
       return { answer: null, selectedOptionIds: [], declined: true }
     }
     try {
@@ -138,7 +160,7 @@ function parseCompanionAskResultPayload(result: unknown): {
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         return {
           ...readCompanionAskResultObject(parsed as Record<string, unknown>),
-          declined: false
+          declined: readCompanionAskDeclined(parsed as Record<string, unknown>)
         }
       }
     } catch {
@@ -150,7 +172,7 @@ function parseCompanionAskResultPayload(result: unknown): {
   if (typeof result === 'object' && !Array.isArray(result)) {
     return {
       ...readCompanionAskResultObject(result as Record<string, unknown>),
-      declined: false
+      declined: readCompanionAskDeclined(result as Record<string, unknown>)
     }
   }
 
@@ -356,7 +378,7 @@ const WEB_SEARCH_ENGINE_LABEL_KEYS: Record<string, string> = {
 /** 流式进行中的工具展示名（与桌面 AgentMessageList 对齐） */
 export function resolveActiveToolDisplayName(
   activeTool: { name: string } | null | undefined,
-  t: (key: string, fallback?: string) => string,
+  t: FallbackTranslateFn,
   webSearchEngine = 'exa-mcp'
 ): string | null {
   if (!activeTool?.name) return null
@@ -370,7 +392,7 @@ export function resolveActiveToolDisplayName(
 
 export function getToolDisplayName(
   invocation: ToolInvocationLike,
-  t: (key: string, fallback?: string) => string
+  t: FallbackTranslateFn
 ): string {
   const rawName = readRawInvocationToolName(invocation)
   if (rawName) return resolveAgentToolActionLabel(rawName, t)
@@ -405,10 +427,14 @@ export function isToolResultError(invocation: ToolInvocationLike): boolean {
         : null
 
   if (raw == null) return false
+  if (readInvocationToolName(invocation) === 'companion_ask' && isCompanionAskDeclineRaw(raw)) {
+    return false
+  }
 
   return (
     raw.startsWith('Error') ||
     raw.startsWith('Tool execution failed') ||
+    raw.startsWith('工具执行失败') ||
     raw.startsWith('Failed to fetch URL:') ||
     raw.startsWith('Web search failed:')
   )
@@ -444,11 +470,14 @@ function localizeToolResultLine(
   const trimmed = line.trimEnd()
   if (!trimmed) return line
 
-  if (COMPANION_ASK_DECLINED.test(trimmed)) {
+  if (isCompanionAskCancelledMessage(trimmed) || COMPANION_ASK_DECLINED.test(trimmed)) {
+    const cancelled = isCompanionAskCancelledMessage(trimmed)
     return formatToolCopy(
       t,
-      'agent.tools.companion_ask_declined',
-      i18n.t('auto.packages.ui.src.shared.tool.result.util.L446', '没有作答')
+      cancelled ? 'agent.tools.companion_ask_cancelled' : 'agent.tools.companion_ask_declined',
+      cancelled
+        ? i18n.t('auto.packages.ui.src.shared.tool.result.util.L446', '用户取消了这一次操作')
+        : i18n.t('auto.packages.ui.src.shared.tool.result.util.L446', '没有作答')
     )
   }
 
@@ -606,10 +635,15 @@ export function getToolRowSubtitle(
   if (invocation) {
     const parsed = resolveCompanionAskPresentation(invocation)
     if (parsed?.declined) {
+      const raw =
+        typeof invocation.result === 'string' ? invocation.result : getToolResultRawContent(invocation)
+      const cancelled = isCompanionAskCancelledMessage(raw)
       return formatToolCopy(
         t,
-        'agent.tools.companion_ask_declined',
-        i18n.t('auto.packages.ui.src.shared.tool.result.util.L546', '没有作答')
+        cancelled ? 'agent.tools.companion_ask_cancelled' : 'agent.tools.companion_ask_declined',
+        cancelled
+          ? i18n.t('auto.packages.ui.src.shared.tool.result.util.L546', '用户取消了这一次操作')
+          : i18n.t('auto.packages.ui.src.shared.tool.result.util.L546', '没有作答')
       )
     }
   }

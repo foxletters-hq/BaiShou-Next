@@ -23,6 +23,7 @@ function setupWindowMock() {
     agentGate: {
       onAsked: vi.fn(() => () => {}),
       onReplied: vi.fn(() => () => {}),
+      onCancelled: vi.fn(() => () => {}),
       reply: vi.fn().mockResolvedValue({ allowed: true })
     }
   }

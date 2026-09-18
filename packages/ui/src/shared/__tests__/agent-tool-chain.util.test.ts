@@ -55,6 +55,21 @@ describe('buildAgentToolChainItems', () => {
     expect(items[1]?.invocation?.args).toEqual({ query: 'docs' })
   })
 
+  it('should keep a waiting companion_ask as loading instead of success or error', () => {
+    const items = buildAgentToolChainItems({
+      invocations: [
+        {
+          toolCallId: 'ask-1',
+          toolName: 'companion_ask',
+          args: { question: '继续吗？', options: ['是', '否'] }
+        }
+      ],
+      isToolError: isToolResultError
+    })
+    expect(items[0]?.status).toBe('loading')
+    expect(items[0]?.hasContent).toBe(false)
+  })
+
   it('marks completed tools with error as error status', () => {
     const items = buildAgentToolChainItems({
       completedTools: [
@@ -98,5 +113,23 @@ describe('isToolResultError', () => {
         result: 'Tool execution failed'
       })
     ).toBe(true)
+  })
+
+  it('detects Chinese tool execution failed prefix', () => {
+    expect(
+      isToolResultError({
+        toolName: 'companion_ask',
+        result: '工具执行失败 (companion_ask): stream aborted'
+      })
+    ).toBe(true)
+  })
+
+  it('does not treat a rejected companion_ask as a tool execution error', () => {
+    expect(
+      isToolResultError({
+        toolName: 'companion_ask',
+        result: '工具执行失败 (companion_ask): 用户拒绝了本次操作。'
+      })
+    ).toBe(false)
   })
 })

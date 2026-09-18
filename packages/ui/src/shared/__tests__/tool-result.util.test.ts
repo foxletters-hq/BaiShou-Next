@@ -155,6 +155,57 @@ describe('resolveCompanionAskPresentation', () => {
     expect(presentation.selectedOptionIds).toEqual(['0'])
   })
 
+  it('treats the cancelled notice as declined', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '文件夹叫什么名字？' },
+      result: '用户取消了这一次操作'
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.declined).toBe(true)
+    expect(presentation.answer).toBeNull()
+  })
+
+  it('localizes the cancelled notice', () => {
+    expect(localizeToolResultText('用户取消了这一次操作', passthroughT)).toBe(
+      '用户取消了这一次操作'
+    )
+    expect(localizeToolResultText('The user cancelled this operation.', passthroughT)).toBe(
+      '用户取消了这一次操作'
+    )
+  })
+
+  it('treats declined JSON as declined, not a success answer', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '文件夹叫什么名字？', options: ['写作-2'] },
+      result: JSON.stringify({
+        approved: false,
+        declined: true,
+        question: '文件夹叫什么名字？'
+      })
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.declined).toBe(true)
+    expect(presentation.answer).toBeNull()
+  })
+
+  it('treats a rejected companion_ask failure string as declined', () => {
+    const presentation = resolveToolResultPresentation({
+      toolName: 'companion_ask',
+      args: { question: '文件夹叫什么名字？' },
+      result: '工具执行失败 (companion_ask): 用户拒绝了本次操作。'
+    })
+
+    expect(presentation.mode).toBe('companion_ask')
+    if (presentation.mode !== 'companion_ask') return
+    expect(presentation.declined).toBe(true)
+  })
+
   it('treats User declined to answer as declined, not raw English', () => {
     const presentation = resolveToolResultPresentation({
       toolName: 'companion_ask',
@@ -260,6 +311,20 @@ describe('getToolRowSubtitle', () => {
         passthroughT
       )
     ).toBe('按模板初始化')
+  })
+
+  it('shows the cancelled notice when the user rejected the ask', () => {
+    expect(
+      getToolRowSubtitle(
+        {
+          toolName: 'companion_ask',
+          args: { question: '文件夹叫什么名字？' },
+          result: 'The user cancelled this operation.'
+        },
+        'success',
+        passthroughT
+      )
+    ).toBe('用户取消了这一次操作')
   })
 
   it('shows localized error text when the tool failed', () => {

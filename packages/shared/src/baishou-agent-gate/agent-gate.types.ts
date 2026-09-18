@@ -288,10 +288,18 @@ export interface AgentGateAllowlistChangedEvent {
   scope?: AgentGateConfigScope
 }
 
+export interface AgentGateCancelledEvent {
+  type: 'agent_gate.cancelled'
+  sessionId: string
+  requestIds: string[]
+  reason?: string
+}
+
 export type AgentGateEvent =
   | AgentGateAskedEvent
   | AgentGateRepliedEvent
   | AgentGateAllowlistChangedEvent
+  | AgentGateCancelledEvent
 
 export interface AgentGateLifecycleContext {
   sessionId: string

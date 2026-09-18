@@ -114,13 +114,6 @@ function buildTurnAllowRule(input: {
   return { action: input.action, effect: AgentGateEffect.Allow }
 }
 
-function alwaysPatternsFromMetadata(metadata?: Record<string, unknown>): string[] | undefined {
-  if (!Array.isArray(metadata?.alwaysPatterns)) return undefined
-  return (metadata.alwaysPatterns as unknown[]).filter(
-    (item): item is string => typeof item === 'string' && item.trim().length > 0
-  )
-}
-
 function isSafeGateRisk(metadata?: Record<string, unknown>): boolean {
   return metadata?.riskLevel === AgentGateRiskLevel.Safe
 }
@@ -478,6 +471,7 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
   cancelSession(sessionId: string, reason?: string): void {
     this.repeatTracker.clearSession(sessionId)
     this.turnAllow.clearSession(sessionId)
+    const requestIds: string[] = []
     for (const [id, entry] of this.pending.entries()) {
       if (entry.request.sessionId !== sessionId) continue
       entry.request.status = AgentGateRequestStatus.Cancelled
@@ -485,7 +479,15 @@ export class BaishouAgentGateService implements IBaishouAgentGate {
         waiter.reject(new AgentGateCancelledError(reason))
       }
       this.pending.delete(id)
+      requestIds.push(id)
     }
+    if (requestIds.length === 0) return
+    this.eventBus.publish({
+      type: 'agent_gate.cancelled',
+      sessionId,
+      requestIds,
+      reason
+    })
   }
 
   private createRequest(

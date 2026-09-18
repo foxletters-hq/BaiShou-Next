@@ -178,6 +178,12 @@ export async function ensureMobileAgentGateNotifications(): Promise<() => void> 
       }
       if (event.type === 'agent_gate.replied') {
         void dismissReplied(event.requestId)
+        return
+      }
+      if (event.type === 'agent_gate.cancelled') {
+        for (const requestId of event.requestIds) {
+          void dismissReplied(requestId)
+        }
       }
     })
   )

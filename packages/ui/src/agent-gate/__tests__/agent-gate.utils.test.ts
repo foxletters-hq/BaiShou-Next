@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { AgentGateKind, AgentGateRequestStatus, type AgentGateRequest } from '@baishou/shared'
-import { resolveAlwaysDisabledReason, shouldShowAlwaysAllow } from '../agent-gate.utils'
+import {
+  resolveAlwaysDisabledReason,
+  shouldCollectRejectFeedback,
+  shouldShowAlwaysAllow
+} from '../agent-gate.utils'
 
 function baseRequest(partial: Partial<AgentGateRequest> = {}): AgentGateRequest {
   return {
@@ -85,5 +89,24 @@ describe('agent-gate.utils always disable', () => {
       }
     })
     expect(shouldShowAlwaysAllow(request)).toBe(false)
+  })
+})
+
+describe('shouldCollectRejectFeedback', () => {
+  it('should collect feedback only for tool gates', () => {
+    expect(shouldCollectRejectFeedback(baseRequest({ allowCustomInput: true }))).toBe(true)
+  })
+
+  it('should reject companion questions immediately', () => {
+    expect(
+      shouldCollectRejectFeedback(
+        baseRequest({
+          kind: AgentGateKind.Proactive,
+          action: 'companion_ask',
+          title: '文件夹叫什么名字？',
+          allowCustomInput: true
+        })
+      )
+    ).toBe(false)
   })
 })

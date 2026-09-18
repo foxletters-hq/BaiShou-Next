@@ -1,6 +1,7 @@
 import { sanitizeAssistantGeneratedText } from '@baishou/shared'
 import type { StreamAccumulator, StreamTimelineItem } from './stream-accumulator'
 import { sanitizeToolPayloadForStorage } from './session-tool-payload-sanitizer'
+import { resolvePersistedToolStatus } from './persist-tool-status.util'
 
 function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -62,7 +63,11 @@ export function buildAssistantPartsFromTimeline(params: {
         name: tc.name,
         arguments: tc.arguments,
         result: resultObj?.result,
-        status: resultObj ? 'completed' : 'failed'
+        status: resolvePersistedToolStatus({
+          toolName: tc.name,
+          status: resultObj ? 'completed' : 'running',
+          hasResult: Boolean(resultObj)
+        })
       })
       parts.push({
         id: generateUUID(),
@@ -93,7 +98,11 @@ export function buildAssistantPartsFromTimeline(params: {
         name: item.name,
         arguments: item.arguments,
         result: item.result,
-        status: item.status === 'running' ? 'failed' : item.status
+        status: resolvePersistedToolStatus({
+          toolName: item.name,
+          status: item.status,
+          hasResult: item.result != null && item.result !== ''
+        })
       })
       parts.push({
         id: generateUUID(),

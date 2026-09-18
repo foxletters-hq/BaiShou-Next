@@ -117,10 +117,14 @@ export function buildAgentToolChainItems(options: {
   for (const [index, inv] of (options.invocations ?? []).entries()) {
     const invToolName = inv.toolName || (inv as { name?: string }).name || inv.toolCallId || 'tool'
     const key = inv.toolCallId || invToolName || `inv-${index}`
+    const awaitingAsk =
+      invToolName === 'companion_ask' &&
+      !isToolError(inv) &&
+      (inv.result === undefined || inv.result === null)
     upsertItem({
       key,
       toolName: invToolName,
-      status: isToolError(inv) ? 'error' : 'success',
+      status: isToolError(inv) ? 'error' : awaitingAsk ? 'loading' : 'success',
       invocation: inv,
       hasContent: hasInvocationContent(inv)
     })
