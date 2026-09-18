@@ -7,6 +7,7 @@ import {
   getSlashTokenBeforeCaret,
   insertFileRefChipAtSelection,
   makeSkillChipId,
+  sanitizeComposerFormatting,
   serializeSkillComposer,
   tryDeleteSkillChipByBackspace
 } from '../skill-composer.util'
@@ -217,6 +218,14 @@ describe('skill-composer.util', () => {
     placeCaret(zwsp, 1)
     expect(tryDeleteSkillChipByBackspace(root)).toBe(true)
     expect(root.querySelector('[data-file-ref]')).toBeNull()
+    root.remove()
+  })
+
+  it('should unwrap leftover formatting tags without reading firstChild of a detached node', () => {
+    const root = mountEditor('<span style="color:red">hello <b>world</b></span>')
+    expect(() => sanitizeComposerFormatting(root)).not.toThrow()
+    expect(root.textContent).toContain('hello')
+    expect(root.textContent).toContain('world')
     root.remove()
   })
 })

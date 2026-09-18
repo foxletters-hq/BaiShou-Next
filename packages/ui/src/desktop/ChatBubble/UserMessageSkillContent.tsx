@@ -14,7 +14,10 @@ type Props = {
   skillRefs?: SkillCiteRef[] | null
   fileRefs?: FileCiteRef[] | null
   className?: string
-  onOpenFile?: (relativePath: string, options?: { line?: number }) => void
+  onOpenFile?: (
+    relativePath: string,
+    options?: { line?: number; isDirectory?: boolean }
+  ) => void
 }
 
 export function UserMessageSkillContent({
@@ -65,7 +68,7 @@ export function UserMessageSkillContent({
           const title = seg.comment?.trim()
             ? `${seg.relativePath}\n${seg.comment.trim()}`
             : seg.relativePath
-          if (!onOpenFile || seg.isDirectory) {
+          if (!onOpenFile) {
             return (
               <span
                 key={`f-${index}-${seg.relativePath}`}
@@ -85,7 +88,10 @@ export function UserMessageSkillContent({
               onClick={(event) => {
                 event.preventDefault()
                 event.stopPropagation()
-                onOpenFile(seg.relativePath, { line: seg.selection?.startLine })
+                onOpenFile(seg.relativePath, {
+                  line: seg.selection?.startLine,
+                  ...(seg.isDirectory ? { isDirectory: true } : {})
+                })
               }}
             >
               {label}

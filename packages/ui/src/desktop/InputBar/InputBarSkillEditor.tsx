@@ -38,7 +38,10 @@ type Props = {
   onSnapshot: (snap: SkillComposerSnapshot) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
   onPaste: (e: React.ClipboardEvent<HTMLDivElement>) => void
-  onOpenFileRef?: (relativePath: string, options?: { line?: number }) => void
+  onOpenFileRef?: (
+    relativePath: string,
+    options?: { line?: number; isDirectory?: boolean }
+  ) => void
 }
 
 function readSnapshot(root: HTMLElement): SkillComposerSnapshot {
@@ -154,7 +157,8 @@ export function InputBarSkillEditor({
           const ref = readFileRefChip(chip as HTMLElement)
           if (!ref.relativePath) return
           onOpenFileRef(ref.relativePath, {
-            line: ref.selection?.startLine
+            line: ref.selection?.startLine,
+            ...(ref.isDirectory ? { isDirectory: true } : {})
           })
         }}
       />

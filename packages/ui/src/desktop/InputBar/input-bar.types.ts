@@ -59,7 +59,10 @@ export interface InputBarProps {
     enabled: boolean
     recentPaths?: string[]
     searchFiles?: (query: string) => Promise<string[]>
-    onOpenFile?: (relativePath: string, options?: { line?: number }) => void
+    onOpenFile?: (
+      relativePath: string,
+      options?: { line?: number; isDirectory?: boolean }
+    ) => void
   }
 }
 
