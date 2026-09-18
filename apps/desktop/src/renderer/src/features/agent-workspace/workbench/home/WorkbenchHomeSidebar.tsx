@@ -1,17 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  BookMarked,
-  ChevronDown,
-  Folder,
-  Home,
-  Pin,
-  Plus,
-  Settings,
-  Sparkles,
-  Trash2
-} from 'lucide-react'
+import { BookMarked, ChevronDown, Home, Plus, Settings, Sparkles } from 'lucide-react'
 import type { AgentWorkspaceEntry, AgentWorkspaceSessionListItem } from '@baishou/shared'
 import { useDialog } from '@baishou/ui'
 import workbenchSidebarIcon from '../assets/workbench-sidebar-icon.jpg'
@@ -20,42 +10,21 @@ import {
   rememberSettingsReturnPath
 } from '../../../settings/settings-navigation.util'
 import { prefetchSettingsEntry } from '../../../../lib/prefetch-settings-entry'
-import {
-  formatCompactRelativeTime,
-  isWorkspacePinned,
-  sortAgentWorkspaces,
-  workspaceEntryMatchesFolder
-} from '../../utils/workspace-display.util'
+import { isWorkspacePinned, sortAgentWorkspaces } from '../../utils/workspace-display.util'
 import {
   readSkipRemoveRecentConfirm,
   writeSkipRemoveRecentConfirm
 } from '../../utils/workspace-dont-ask-again.util'
-import { previewWorkspaceSessions } from '../workbenchSessionGroups'
+import {
+  readExpandedPreference,
+  writeExpandedPreference
+} from './workbench-home-sidebar-expand.util'
+import { WorkbenchHomeRecentTree } from './WorkbenchHomeRecentTree'
 import styles from './WorkbenchHomeSidebar.module.css'
 
 export type WorkbenchHomeNavId = 'home' | 'knowledge' | 'skills' | 'projects' | null
 
 const RECENT_LIMIT = 10
-const SESSION_PREVIEW_LIMIT = 8
-const EXPANDED_STORAGE_KEY = 'baishou:workbench-home-recent-expanded'
-
-function readExpandedPreference(): boolean {
-  try {
-    const raw = localStorage.getItem(EXPANDED_STORAGE_KEY)
-    if (raw === null) return true
-    return raw === '1'
-  } catch {
-    return true
-  }
-}
-
-function writeExpandedPreference(expanded: boolean): void {
-  try {
-    localStorage.setItem(EXPANDED_STORAGE_KEY, expanded ? '1' : '0')
-  } catch {
-    /* ignore */
-  }
-}
 
 export interface WorkbenchHomeSidebarProps {
   activeNav?: WorkbenchHomeNavId
@@ -98,7 +67,7 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
   onTogglePinWorkspace,
   onTogglePinSession
 }) => {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const dialog = useDialog()
@@ -124,15 +93,6 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
     () => sortAgentWorkspaces(recentWorkspaces, lastActiveWorkspaceId).slice(0, RECENT_LIMIT),
     [lastActiveWorkspaceId, recentWorkspaces]
   )
-
-  const sessionsByWorkspaceId = useMemo(() => {
-    const map = new Map<string, AgentWorkspaceSessionListItem[]>()
-    for (const ws of recent) {
-      const list = sessions.filter((session) => workspaceEntryMatchesFolder(ws, session.folderRoot))
-      map.set(ws.id, list)
-    }
-    return map
-  }, [recent, sessions])
 
   const toggleRecent = useCallback(() => {
     setRecentExpanded((prev) => {
@@ -348,188 +308,20 @@ export const WorkbenchHomeSidebar: React.FC<WorkbenchHomeSidebarProps> = ({
             </button>
 
             {recentExpanded ? (
-              recent.length === 0 ? (
-                <p className={styles.recentEmpty}>
-                  {t('workbench.home_empty_dirs_title', '还没有工作目录')}
-                </p>
-              ) : (
-                <ul
-                  className={styles.recentList}
-                  aria-label={t('workbench.home_recent_projects', '最近项目')}
-                >
-                  {recent.map((ws) => {
-                    const pinned = isWorkspacePinned(ws)
-                    const isExpanded = expandedWorkspaceIds.has(ws.id)
-                    const workspaceSessions = sessionsByWorkspaceId.get(ws.id) ?? []
-                    const { preview: previewSessions, hasMore } = previewWorkspaceSessions(
-                      workspaceSessions,
-                      SESSION_PREVIEW_LIMIT
-                    )
-                    return (
-                      <li key={ws.id} className={styles.recentTreeItem}>
-                        <div
-                          className={`${styles.recentItem} ${pinned ? styles.recentItemPinned : ''} ${isExpanded ? styles.recentItemExpanded : ''}`}
-                          title={ws.folderRoot}
-                        >
-                          <button
-                            type="button"
-                            className={styles.recentOpen}
-                            onClick={() => toggleWorkspaceExpand(ws.id)}
-                            aria-expanded={isExpanded}
-                          >
-                            <ChevronDown
-                              size={14}
-                              className={`${styles.projectChevron} ${isExpanded ? styles.projectChevronOpen : ''}`}
-                              aria-hidden
-                            />
-                            <Folder size={14} className={styles.projectFolderIcon} aria-hidden />
-                            {pinned ? (
-                              <Pin
-                                size={12}
-                                className={styles.recentPinBadge}
-                                fill="currentColor"
-                                aria-hidden
-                              />
-                            ) : null}
-                            <span className={styles.recentName}>{projectLabel(ws)}</span>
-                          </button>
-                          <div className={styles.recentActions}>
-                            <button
-                              type="button"
-                              className={`${styles.recentActionBtn} ${pinned ? styles.recentActionBtnActive : ''}`}
-                              onClick={(e) => handlePinClick(e, ws)}
-                              title={
-                                pinned
-                                  ? t('workbench.home_unpin_project', '取消置顶')
-                                  : t('workbench.home_pin_project', '置顶')
-                              }
-                              aria-label={
-                                pinned
-                                  ? t('workbench.home_unpin_project', '取消置顶')
-                                  : t('workbench.home_pin_project', '置顶')
-                              }
-                            >
-                              <Pin size={13} fill={pinned ? 'currentColor' : 'none'} />
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.recentActionBtn}
-                              onClick={(e) => handleRemoveClick(e, ws)}
-                              disabled={removing}
-                              title={t('workbench.home_remove_recent', '从列表中移除')}
-                              aria-label={t('workbench.home_remove_recent', '从列表中移除')}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {isExpanded ? (
-                          <ul
-                            className={styles.sessionList}
-                            aria-label={t('workbench.home_recent_sessions', '最近对话')}
-                          >
-                            {previewSessions.length === 0 ? (
-                              <li className={styles.sessionEmpty}>
-                                {t('workbench.home_no_sessions', '暂无对话')}
-                              </li>
-                            ) : (
-                              previewSessions.map((session) => {
-                                const sessionPinned = Boolean(session.isPinned)
-                                return (
-                                  <li key={session.sessionId}>
-                                    <div
-                                      className={`${styles.sessionItem} ${sessionPinned ? styles.sessionItemPinned : ''}`}
-                                    >
-                                      <button
-                                        type="button"
-                                        className={styles.sessionOpen}
-                                        onClick={() => onOpenSession?.(session.sessionId, ws.id)}
-                                        title={
-                                          session.title ||
-                                          t('workbench.untitled_session', '未命名会话')
-                                        }
-                                      >
-                                        {sessionPinned ? (
-                                          <Pin
-                                            size={11}
-                                            className={styles.sessionPinBadge}
-                                            fill="currentColor"
-                                            aria-hidden
-                                          />
-                                        ) : null}
-                                        <span className={styles.sessionTitle}>
-                                          {session.title?.trim() ||
-                                            t('workbench.untitled_session', '未命名会话')}
-                                        </span>
-                                        <span className={styles.sessionTime}>
-                                          {formatCompactRelativeTime(session.updatedAt, {
-                                            t,
-                                            locale: i18n.language
-                                          })}
-                                        </span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className={`${styles.sessionActionBtn} ${sessionPinned ? styles.sessionActionBtnActive : ''}`}
-                                        onClick={(e) =>
-                                          handlePinSessionClick(e, session.sessionId, sessionPinned)
-                                        }
-                                        title={
-                                          sessionPinned
-                                            ? t('workbench.home_unpin_session', '取消置顶')
-                                            : t('workbench.home_pin_session', '置顶对话')
-                                        }
-                                        aria-label={
-                                          sessionPinned
-                                            ? t('workbench.home_unpin_session', '取消置顶')
-                                            : t('workbench.home_pin_session', '置顶对话')
-                                        }
-                                      >
-                                        <Pin
-                                          size={12}
-                                          fill={sessionPinned ? 'currentColor' : 'none'}
-                                        />
-                                      </button>
-                                      {onDeleteSession ? (
-                                        <button
-                                          type="button"
-                                          className={styles.sessionActionBtn}
-                                          onClick={(e) =>
-                                            handleDeleteSessionClick(e, session.sessionId)
-                                          }
-                                          title={t('agent_workspace.delete_session', '删除会话')}
-                                          aria-label={t(
-                                            'agent_workspace.delete_session',
-                                            '删除会话'
-                                          )}
-                                        >
-                                          <Trash2 size={12} />
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  </li>
-                                )
-                              })
-                            )}
-                            {hasMore ? (
-                              <li>
-                                <button
-                                  type="button"
-                                  className={styles.sessionMore}
-                                  onClick={() => onOpenWorkspace?.(ws.id)}
-                                >
-                                  {t('workbench.home_more_sessions', '更多')}
-                                </button>
-                              </li>
-                            ) : null}
-                          </ul>
-                        ) : null}
-                      </li>
-                    )
-                  })}
-                </ul>
-              )
+              <WorkbenchHomeRecentTree
+                recent={recent}
+                sessions={sessions}
+                expandedWorkspaceIds={expandedWorkspaceIds}
+                removing={removing}
+                projectLabel={projectLabel}
+                onToggleWorkspaceExpand={toggleWorkspaceExpand}
+                onOpenWorkspace={onOpenWorkspace}
+                onOpenSession={onOpenSession}
+                onPinWorkspace={handlePinClick}
+                onRemoveWorkspace={handleRemoveClick}
+                onPinSession={handlePinSessionClick}
+                onDeleteSession={onDeleteSession ? handleDeleteSessionClick : undefined}
+              />
             ) : null}
           </div>
         </nav>
