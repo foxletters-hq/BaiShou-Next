@@ -69,6 +69,10 @@ export const graphApi = {
       ipcRenderer.invoke('graph:find-by-name', opts),
     listPendingEdges: () => ipcRenderer.invoke('graph:list-pending-edges'),
     listPending: () => ipcRenderer.invoke('graph:list-pending'),
+    listSuspectNodes: () => ipcRenderer.invoke('graph:list-suspect-nodes'),
+    listSimilarPairs: () => ipcRenderer.invoke('graph:list-similar-pairs'),
+    dismissSimilarPair: (opts: { nodeId: string; peerId: string }) =>
+      ipcRenderer.invoke('graph:dismiss-similar-pair', opts),
     setEdgeReview: (opts: { edgeId: string; reviewStatus: 'approved' | 'rejected' }) =>
       ipcRenderer.invoke('graph:set-edge-review', opts),
     setNodeReview: (opts: { nodeId: string; reviewStatus: 'approved' | 'rejected' }) =>
