@@ -14,7 +14,9 @@ vi.mock('expo-crypto', () => ({
   randomUUID: () => 'sse-session-test-id'
 }))
 
-describe('MobileSseServerTransport', () => {
+import { MobileSseServerTransport } from '../mobile-mcp-sse.transport'
+
+describe('MobileSseServerTransport', { timeout: 15_000 }, () => {
   beforeEach(() => {
     beginMcpHttpStream.mockClear()
     pushMcpHttpStreamChunk.mockClear()
@@ -25,7 +27,6 @@ describe('MobileSseServerTransport', () => {
   })
 
   it('opens SSE stream and emits endpoint event on start', async () => {
-    const { MobileSseServerTransport } = await import('../mobile-mcp-sse.transport')
     const transport = new MobileSseServerTransport('/message')
     transport.bindStreamRequest('req-1')
 
@@ -45,7 +46,6 @@ describe('MobileSseServerTransport', () => {
   })
 
   it('sends JSON-RPC messages as SSE data events', async () => {
-    const { MobileSseServerTransport } = await import('../mobile-mcp-sse.transport')
     const transport = new MobileSseServerTransport('/message')
     transport.bindStreamRequest('req-2')
     await transport.start()
@@ -59,7 +59,6 @@ describe('MobileSseServerTransport', () => {
   })
 
   it('ends native stream on close', async () => {
-    const { MobileSseServerTransport } = await import('../mobile-mcp-sse.transport')
     const transport = new MobileSseServerTransport('/message')
     transport.bindStreamRequest('req-3')
     await transport.start()

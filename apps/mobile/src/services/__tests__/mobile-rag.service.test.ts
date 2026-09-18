@@ -11,6 +11,15 @@ import { mobileRagOperationControl } from '../mobile-rag-operation-control'
 import { runMobileIncrementalAfterSync } from '../mobile-incremental-sync-after.util'
 import * as mobilePostSyncDiaryEmbed from '../mobile-post-sync-diary-embed.service'
 
+vi.mock('../mobile-pending-embed-fill', () => ({
+  runMobileManualPendingEmbedFill: vi.fn().mockResolvedValue({
+    graphUpdated: 0,
+    graphFailed: 0,
+    graphTotal: 0,
+    skippedReason: 'nothing-to-embed'
+  })
+}))
+
 function createDeps(overrides: Partial<MobileRagServiceDeps> = {}): MobileRagServiceDeps {
   const settingsStore: Record<string, unknown> = {
     rag_config: { ragEnabled: true, ragTopK: 20, ragSimilarityThreshold: 0.4 },
