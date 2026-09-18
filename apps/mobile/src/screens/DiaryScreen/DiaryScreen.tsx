@@ -1,21 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { View, StyleSheet, StatusBar, Modal, Text, TouchableOpacity, Keyboard } from 'react-native'
+import { View, StatusBar, Keyboard } from 'react-native'
 import { FlatList } from 'react-native-gesture-handler'
 import { ScreenSafeArea } from '../../components/ScreenSafeArea'
 import { useRouter, useFocusEffect, useNavigation } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import {
-  deriveLegacyVaultId,
-  EMPTY_PENDING_EMBED_COUNTS,
-  logger,
-  isStartupEmbedReminderEnabled,
-  shouldShowPendingEmbedReminder,
-  type PendingEmbedCounts
-} from '@baishou/shared'
+import { logger, type RagConfig } from '@baishou/shared'
 import { useNativeTheme } from '@baishou/ui/native'
-import { ShadowIndexRepository, shadowConnectionManager } from '@baishou/database'
 import { useStoragePermission } from '../../hooks/useStoragePermission'
 import { useBaishou } from '../../providers/BaishouProvider'
 import { DiaryAppBar } from './components/DiaryAppBar'
@@ -30,14 +22,11 @@ import { DIARY_FILTER_STORAGE_KEYS } from './diary-filter-state.util'
 import { isDiaryEditorRouteActive } from './diary-editor-route.util'
 import { preloadDiaryEditorWebViewSource } from '../../hooks/useDiaryEditorWebViewSource'
 import { readDiaryListScrollY, saveDiaryListScrollY } from './diary-list-scroll.util'
-import { mobileListPendingReextract } from '../../services/mobile-graph.service'
-import {
-  isRagEmbedFeatureConfigured,
-  shouldShowPendingEmbed,
-  shouldShowPendingExtract,
-  type GlobalModelsConfig,
-  type RagConfig
-} from '@baishou/shared'
+import { formatDiaryDateStr, mapDiaryListEntries } from './diary-list-display.util'
+import { useDiaryPendingStatus } from './useDiaryPendingStatus'
+import { DiaryPendingStatusBar } from './DiaryPendingStatusBar'
+import { DiaryDeleteConfirmModal } from './DiaryDeleteConfirmModal'
+import { diaryScreenStyles as styles } from './diary-screen.styles'
 
 export const DiaryScreen: React.FC = () => {
   const { t } = useTranslation()
@@ -93,16 +82,15 @@ export const DiaryScreen: React.FC = () => {
   const lastListScrollLogAtRef = useRef(0)
   const isListFocusedRef = useRef(isListFocused)
   isListFocusedRef.current = isListFocused
-  const [pendingGraphCount, setPendingGraphCount] = useState(0)
-  const [pendingEmbedCount, setPendingEmbedCount] = useState(0)
-  const [pendingEmbedParts, setPendingEmbedParts] = useState<PendingEmbedCounts>(
-    EMPTY_PENDING_EMBED_COUNTS
-  )
-  const [graphConfigured, setGraphConfigured] = useState(false)
-  const [ragConfigured, setRagConfigured] = useState(false)
-  const [pendingNotice, setPendingNotice] = useState<{ count: number; needModel: boolean } | null>(
-    null
-  )
+  const {
+    pendingGraphCount,
+    pendingEmbedCount,
+    pendingEmbedParts,
+    graphConfigured,
+    ragConfigured,
+    pendingNotice,
+    setPendingNotice
+  } = useDiaryPendingStatus()
   const {
     isSyncing,
     isPlanning,
@@ -286,101 +274,14 @@ export const DiaryScreen: React.FC = () => {
 
   useEffect(() => {
     if (!dbReady || !services || !storageReady) return
-    const today = new Date()
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const dateStr = formatDiaryDateStr()
     services.diaryService
       .findByDate(new Date(dateStr))
       .then((entry) => setTodayEntry(entry?.id != null ? { id: entry.id } : null))
       .catch(() => setTodayEntry(null))
   }, [dbReady, services, storageReady, vaultRevision])
 
-  const refreshStatusBar = useCallback(async () => {
-    if (!services || !dbReady) return
-    try {
-      const activeVault = services.vaultService.getActiveVault()
-      const vaultName = activeVault?.name || 'Personal'
-      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
-      const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
-      const [pending, embedCount, globalModels, ragConfig] = await Promise.all([
-        mobileListPendingReextract({
-          vaultName,
-          vaultId,
-          shadowRepo,
-          pathService: services.pathService,
-          fileSystem: services.fileSystem
-        }),
-        (services.ragService as { getPendingEmbedCounts?: () => Promise<PendingEmbedCounts> })
-          .getPendingEmbedCounts?.()
-          .catch(() => EMPTY_PENDING_EMBED_COUNTS) ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS),
-        services.settingsManager.get<GlobalModelsConfig>('global_models'),
-        services.settingsManager.get<RagConfig>('rag_config')
-      ])
-      const counts =
-        embedCount && typeof embedCount === 'object' && 'total' in embedCount
-          ? embedCount
-          : EMPTY_PENDING_EMBED_COUNTS
-      setPendingGraphCount(pending.length)
-      setPendingEmbedCount(counts.total)
-      setPendingEmbedParts(counts)
-      // 有待办就显示：自称/模型缺失时由图谱页引导，避免底栏长期空白
-      setGraphConfigured(true)
-      const embeddingReady = isRagEmbedFeatureConfigured({
-        ragConfig,
-        globalModels
-      })
-      setRagConfigured(embeddingReady)
-      if (
-        shouldShowPendingEmbedReminder(counts.total, {
-          enabled: isStartupEmbedReminderEnabled(ragConfig)
-        })
-      ) {
-        setPendingNotice({ count: counts.total, needModel: !embeddingReady })
-      }
-    } catch {
-      setPendingGraphCount(0)
-      setPendingEmbedCount(0)
-      setPendingEmbedParts(EMPTY_PENDING_EMBED_COUNTS)
-      setGraphConfigured(false)
-      setRagConfigured(false)
-    }
-  }, [dbReady, services])
-
-  useFocusEffect(
-    useCallback(() => {
-      void refreshStatusBar()
-    }, [refreshStatusBar])
-  )
-
-  const displayEntries = useMemo((): DiaryListEntry[] => {
-    if (!entries?.length) return []
-    return entries.map((e) => {
-      let parsedDate = new Date()
-      if (e.date) {
-        const pd = new Date(e.date)
-        if (!isNaN(pd.getTime())) parsedDate = pd
-      } else if (e.createdAt) {
-        const cd = new Date(e.createdAt)
-        if (!isNaN(cd.getTime())) parsedDate = cd
-      }
-      return {
-        id: e.id,
-        date: parsedDate,
-        content: e.content || '',
-        tags: e.tags || [],
-        preview: e.preview || e.content?.substring(0, 500) || '',
-        weather: e.weather,
-        mood: e.mood,
-        location: e.location,
-        isFavorite: e.isFavorite,
-        tagColors: e.tagColors
-      }
-    })
-  }, [entries])
-
-  const formatTodayDateStr = () => {
-    const today = new Date()
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  }
+  const displayEntries = useMemo(() => mapDiaryListEntries(entries), [entries])
 
   const ensureStorageThen = useCallback(
     async (action: () => void) => {
@@ -399,15 +300,14 @@ export const DiaryScreen: React.FC = () => {
       if (todayEntry) {
         openDiaryEditor({ id: String(todayEntry.id), append: '1' })
       } else {
-        openDiaryEditor({ date: formatTodayDateStr() })
+        openDiaryEditor({ date: formatDiaryDateStr() })
       }
     })
   }
 
   const handleAddNew = () => {
     void ensureStorageThen(() => {
-      // 新建日记：仅作默认日期展示，不加载已有正文（与「编辑今天」不同）
-      openDiaryEditor({ new: '1', date: formatTodayDateStr() })
+      openDiaryEditor({ new: '1', date: formatDiaryDateStr() })
     })
   }
 
@@ -505,152 +405,23 @@ export const DiaryScreen: React.FC = () => {
             />
           ) : null}
 
-          <View
-            style={[
-              styles.statusBar,
-              { borderTopColor: colors.borderMuted, backgroundColor: colors.bgApp }
-            ]}
-          >
-            {shouldShowPendingExtract({
-              graphConfigured,
-              count: pendingGraphCount
-            }) ? (
-              <Text style={[styles.statusItem, { color: colors.textSecondary }]}>
-                {t('diary.status_pending_extract', '待抽取：{{count}}个', {
-                  count: pendingGraphCount
-                })}
-              </Text>
-            ) : null}
-            {shouldShowPendingEmbed({ ragConfigured, count: pendingEmbedCount }) ? (
-              <Text style={[styles.statusItem, { color: colors.textSecondary }]}>
-                {t('diary.status_pending_embed', '待嵌入：{{count}}个', {
-                  count: pendingEmbedCount
-                })}
-                {`（${t('memory.pending_embed_part_diaries', '日记 {{count}} 篇', {
-                  count: pendingEmbedParts.diaries
-                })} · ${t('memory.pending_embed_part_memories', '伙伴记忆 {{count}} 条', {
-                  count: pendingEmbedParts.memories
-                })} · ${t('memory.pending_embed_part_graph_nodes', '图谱节点 {{count}} 个', {
-                  count: pendingEmbedParts.graphNodes
-                })} · ${t(
-                  'memory.pending_embed_part_notebook_graph_nodes',
-                  '笔记本图节点 {{count}} 个',
-                  {
-                    count: pendingEmbedParts.notebookGraphNodes
-                  }
-                )} · ${t('memory.pending_embed_part_knowledge', '知识库 {{count}} 份', {
-                  count: pendingEmbedParts.knowledgeSources
-                })}）`}
-              </Text>
-            ) : null}
-          </View>
+          <DiaryPendingStatusBar
+            graphConfigured={graphConfigured}
+            ragConfigured={ragConfigured}
+            pendingGraphCount={pendingGraphCount}
+            pendingEmbedCount={pendingEmbedCount}
+            pendingEmbedParts={pendingEmbedParts}
+          />
 
           <DiaryFab todayEntry={todayEntry} onEditToday={handleEditToday} onAddNew={handleAddNew} />
         </View>
       </ScreenSafeArea>
 
-      <Modal
+      <DiaryDeleteConfirmModal
         visible={deletingId !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDeletingId(null)}
-      >
-        <TouchableOpacity
-          style={[styles.deleteOverlay, { backgroundColor: colors.bgOverlay }]}
-          activeOpacity={1}
-          onPress={() => setDeletingId(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[styles.deleteModal, { backgroundColor: colors.bgSurface }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={[styles.deleteTitle, { color: colors.textPrimary }]}>
-              {t('diary.delete_confirm_title')}
-            </Text>
-            <Text style={[styles.deleteContent, { color: colors.textSecondary }]}>
-              {t('diary.delete_confirm_content')}
-            </Text>
-            <View style={styles.deleteActions}>
-              <TouchableOpacity
-                style={[styles.deleteCancel, { backgroundColor: colors.bgSurfaceHighest }]}
-                onPress={() => setDeletingId(null)}
-              >
-                <Text style={{ color: colors.textSecondary }}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.deleteConfirm, { backgroundColor: colors.error }]}
-                onPress={performDelete}
-              >
-                <Text style={{ color: colors.textOnPrimary }}>{t('common.delete')}</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onCancel={() => setDeletingId(null)}
+        onConfirm={() => void performDelete()}
+      />
     </>
   )
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1
-  },
-  container: {
-    flex: 1,
-    position: 'relative'
-  },
-  statusBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 14,
-    minHeight: 32,
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    borderTopWidth: StyleSheet.hairlineWidth
-  },
-  statusItem: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500'
-  },
-  deleteOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24
-  },
-  deleteModal: {
-    width: '100%',
-    maxWidth: 320,
-    borderRadius: 16,
-    padding: 24
-  },
-  deleteTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12
-  },
-  deleteContent: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 24
-  },
-  deleteActions: {
-    flexDirection: 'row',
-    gap: 12
-  },
-  deleteCancel: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center'
-  },
-  deleteConfirm: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center'
-  }
-})
