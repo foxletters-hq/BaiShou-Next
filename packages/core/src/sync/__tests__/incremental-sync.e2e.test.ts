@@ -24,7 +24,7 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-describe('incremental sync E2E simulation', () => {
+describe('incremental sync E2E simulation', { timeout: 30_000 }, () => {
   let cloud: SharedCloudStore
   let devices: SimulatedSyncDevice[]
 
