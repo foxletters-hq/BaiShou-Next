@@ -1,5 +1,3 @@
-/* eslint-disable max-lines -- Git 管理页：状态、提交、分支与远程操作同 hook */
-import i18n from 'i18next'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -13,6 +11,8 @@ import type {
 import type { GitBranchInfo, GitManagementPageProps } from './git-management.types'
 import { useGitManagementCommit } from './useGitManagementCommit'
 import { useGitManagementWorkspace } from './useGitManagementWorkspace'
+import { useGitManagementRemote } from './useGitManagementRemote'
+import { useGitManagementBranch } from './useGitManagementBranch'
 
 export function useGitManagementPage(props: GitManagementPageProps) {
   const {
@@ -68,14 +68,12 @@ export function useGitManagementPage(props: GitManagementPageProps) {
   const [userEmail, setUserEmail] = useState(config.userEmail || '')
   const [showPassword, setShowPassword] = useState(false)
 
-  // 工作区状态
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null)
   const [remoteStatus, setRemoteStatus] = useState<GitRemoteStatus | null>(null)
   const [isSyncingRemote, setIsSyncingRemote] = useState(false)
   const [branchInfo, setBranchInfo] = useState<GitBranchInfo | null>(null)
   const [stashList, setStashList] = useState<GitStashEntry[]>([])
 
-  // 可折叠区域
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     staged: true,
     changes: true,
@@ -83,7 +81,6 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     pulls: true
   })
 
-  // 历史记录
   const [history, setHistory] = useState<VersionHistoryEntry[]>([])
   const [recentPulls, setRecentPulls] = useState<VersionHistoryEntry[]>([])
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null)
@@ -196,124 +193,35 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     }
   }, [onInit, onToast, t, handleRefreshStatus, handleLoadHistory])
 
-  const handleSaveAuthorConfig = useCallback(async () => {
-    try {
-      onSaveConfig({
-        userName: userName || undefined,
-        userEmail: userEmail || undefined
-      })
-      onToast(t('common.save_success', '保存成功'), 'success')
-    } catch (e: any) {
-      onToast(e?.message || t('common.error', '保存失败'), 'error')
-    }
-  }, [userName, userEmail, onSaveConfig, onToast, t])
-
-  const handleSaveRemoteConfig = useCallback(async () => {
-    try {
-      onSaveConfig({
-        remote: remoteUrl
-          ? {
-              url: remoteUrl,
-              branch: remoteBranch,
-              username: remoteUsername || undefined,
-              token: remoteToken || undefined
-            }
-          : undefined
-      })
-      onToast(t('common.save_success', '保存成功'), 'success')
-      await handleRefreshStatus({ fetch: true })
-    } catch (e: any) {
-      onToast(e?.message || t('common.error', '保存失败'), 'error')
-    }
-  }, [
+  const {
+    handleSaveAuthorConfig,
+    handleSaveRemoteConfig,
+    handleTestRemote,
+    isRemoteConfigured,
+    notifyRemoteRequired,
+    handlePush,
+    handlePull,
+    handleSyncRemote
+  } = useGitManagementRemote({
+    t,
     remoteUrl,
     remoteBranch,
     remoteUsername,
     remoteToken,
+    userName,
+    userEmail,
+    remoteStatus,
     onSaveConfig,
-    onToast,
-    t,
-    handleRefreshStatus
-  ])
-
-  const handleTestRemote = useCallback(async () => {
-    const ok = await onTestRemote()
-    onToast(
-      ok
-        ? t('version_control.connection_success', '连接成功')
-        : t('version_control.connection_failed', '连接失败'),
-      ok ? 'success' : 'error'
-    )
-  }, [onTestRemote, onToast, t])
-
-  const isRemoteConfigured = useCallback(
-    () => Boolean(remoteStatus?.configured || remoteUrl.trim()),
-    [remoteStatus, remoteUrl]
-  )
-
-  const notifyRemoteRequired = useCallback(() => {
-    onToast(t('version_control.sync_requires_remote', '尚未配置远程仓库'), 'warning')
-  }, [onToast, t])
-
-  const handlePush = useCallback(async () => {
-    if (!isRemoteConfigured()) {
-      notifyRemoteRequired()
-      return
-    }
-    const result = await onPush()
-    onToast(
-      result.success
-        ? t('version_control.push_success', '推送成功')
-        : result.message || t('version_control.git_push_failed', '推送失败'),
-      result.success ? 'success' : 'error'
-    )
-    if (result.success) {
-      await handleRefreshStatus({ fetch: true })
-      await handleLoadHistory()
-    }
-  }, [
-    isRemoteConfigured,
-    notifyRemoteRequired,
+    onTestRemote,
     onPush,
-    onToast,
-    t,
-    handleRefreshStatus,
-    handleLoadHistory
-  ])
-
-  const handleSyncRemote = useCallback(async () => {
-    if (!isRemoteConfigured()) {
-      notifyRemoteRequired()
-      return
-    }
-    if (!onSyncRemote) return
-    setIsSyncingRemote(true)
-    try {
-      const result = await onSyncRemote()
-      if (result.success) {
-        onToast(t('version_control.sync_remote_success', '远程同步完成'), 'success')
-        setConflicts([])
-        await handleRefreshStatus({ fetch: true })
-        await handleLoadHistory()
-      } else {
-        onToast(result.message || t('version_control.sync_remote_failed', '远程同步失败'), 'error')
-        if (result.conflicts) {
-          setConflicts(result.conflicts)
-        }
-        await handleRefreshStatus({ fetch: true })
-      }
-    } finally {
-      setIsSyncingRemote(false)
-    }
-  }, [
-    isRemoteConfigured,
-    notifyRemoteRequired,
+    onPull,
     onSyncRemote,
     onToast,
-    t,
+    setConflicts,
+    setIsSyncingRemote,
     handleRefreshStatus,
     handleLoadHistory
-  ])
+  })
 
   const stagedCount = gitStatus?.staged.length ?? 0
   const unstagedCount = (gitStatus?.unstaged.length ?? 0) + (gitStatus?.untracked.length ?? 0)
@@ -345,234 +253,31 @@ export function useGitManagementPage(props: GitManagementPageProps) {
     setSelectedFileDiff
   })
 
-  const notifyGitResult = useCallback(
-    (
-      result: { success: boolean; message?: string },
-      successKey: string,
-      successFallback: string
-    ) => {
-      onToast(
-        result.success
-          ? t(successKey, successFallback)
-          : result.message || t('common.error', '操作失败'),
-        result.success ? 'success' : 'error'
-      )
-      return result.success
-    },
-    [onToast, t]
-  )
-
-  const handleCheckoutBranch = useCallback(
-    async (branch: string) => {
-      if (!onCheckoutBranch) return
-      const result = await onCheckoutBranch(branch)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_checkout_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L367',
-            '已切换分支'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-        await handleLoadHistory()
-      }
-    },
-    [onCheckoutBranch, notifyGitResult, handleRefreshStatus, handleLoadHistory]
-  )
-
-  const handleCreateBranch = useCallback(
-    async (branch: string) => {
-      if (!onCreateBranch) return
-      const name = branch.trim()
-      if (!name) return
-      const result = await onCreateBranch(name)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_create_branch_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L381',
-            '已创建分支'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-      }
-    },
-    [onCreateBranch, notifyGitResult, handleRefreshStatus]
-  )
-
-  const handleMergeBranch = useCallback(
-    async (branch: string) => {
-      if (!onMergeBranch) return
-      const name = branch.trim()
-      if (!name) return
-      const result = await onMergeBranch(name)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_merge_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L394',
-            '合并完成'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-        await handleLoadHistory()
-      }
-    },
-    [onMergeBranch, notifyGitResult, handleRefreshStatus, handleLoadHistory]
-  )
-
-  const handleDeleteBranch = useCallback(
-    async (branch: string) => {
-      if (!onDeleteBranch) return
-      const result = await onDeleteBranch(branch)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_delete_branch_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L406',
-            '已删除分支'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-      }
-    },
-    [onDeleteBranch, notifyGitResult, handleRefreshStatus]
-  )
-
-  const handlePublishBranch = useCallback(
-    async (branch?: string) => {
-      if (!onPublishBranch) return
-      const result = await onPublishBranch(branch)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_publish_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L417',
-            '已发布分支'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-      }
-    },
-    [onPublishBranch, notifyGitResult, handleRefreshStatus]
-  )
-
-  const handleStashPush = useCallback(
-    async (message?: string) => {
-      if (!onStashPush) return
-      const result = await onStashPush(message)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_stash_push_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L428',
-            '已贮藏变更'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-      }
-    },
-    [onStashPush, notifyGitResult, handleRefreshStatus]
-  )
-
-  const handleStashApply = useCallback(
-    async (index: number) => {
-      if (!onStashApply) return
-      const result = await onStashApply(index)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_stash_apply_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L439',
-            '已应用贮藏'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-      }
-    },
-    [onStashApply, notifyGitResult, handleRefreshStatus]
-  )
-
-  const handleStashPop = useCallback(
-    async (index: number) => {
-      if (!onStashPop) return
-      const result = await onStashPop(index)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_stash_pop_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L450',
-            '已弹出贮藏'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-      }
-    },
-    [onStashPop, notifyGitResult, handleRefreshStatus]
-  )
-
-  const handleStashDrop = useCallback(
-    async (index: number) => {
-      if (!onStashDrop) return
-      const result = await onStashDrop(index)
-      if (
-        notifyGitResult(
-          result,
-          'workbench.git_stash_drop_success',
-          i18n.t(
-            'auto.packages.ui.src.desktop.GitManagementPage.useGitManagementPage.L461',
-            '已删除贮藏'
-          )
-        )
-      ) {
-        await handleRefreshStatus()
-      }
-    },
-    [onStashDrop, notifyGitResult, handleRefreshStatus]
-  )
-
-  const handlePull = useCallback(async () => {
-    if (!isRemoteConfigured()) {
-      notifyRemoteRequired()
-      return
-    }
-    const result = await onPull()
-    if (result.success) {
-      onToast(t('version_control.pull_success', '拉取成功'), 'success')
-      await handleRefreshStatus({ fetch: true })
-      await handleLoadHistory()
-    } else {
-      onToast(result.message || t('version_control.git_pull_failed', '拉取失败'), 'error')
-      if (result.conflicts) {
-        setConflicts(result.conflicts)
-      }
-    }
-  }, [
-    isRemoteConfigured,
-    notifyRemoteRequired,
-    onPull,
-    onToast,
+  const {
+    handleCheckoutBranch,
+    handleCreateBranch,
+    handleMergeBranch,
+    handleDeleteBranch,
+    handlePublishBranch,
+    handleStashPush,
+    handleStashApply,
+    handleStashPop,
+    handleStashDrop
+  } = useGitManagementBranch({
     t,
+    onToast,
+    onCheckoutBranch,
+    onCreateBranch,
+    onMergeBranch,
+    onDeleteBranch,
+    onPublishBranch,
+    onStashPush,
+    onStashApply,
+    onStashPop,
+    onStashDrop,
     handleRefreshStatus,
     handleLoadHistory
-  ])
+  })
 
   const {
     handleSelectCommit,
