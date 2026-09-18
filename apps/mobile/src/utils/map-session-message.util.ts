@@ -1,13 +1,15 @@
 import {
   mapAttachmentsFromParts,
-  normalizeFileCiteRefs,
   normalizePartData,
-  normalizeSkillCiteRefs,
   resolveAttachmentAbsolutePath,
   unwrapMessageMetadataForDisplay
 } from '@baishou/shared'
 import type { AgentMessagePart } from '@baishou/store'
 import { parseCompactionMarkerData, type CompactionMarkerData } from '@baishou/ai'
+import {
+  normalizeUnknownFileCiteRefs,
+  normalizeUnknownSkillCiteRefs
+} from './map-session-cite.util'
 import { resolveMobileAttachmentFilePath } from './mobile-attachment-ui.util'
 
 function textFromPartData(data: unknown): string {
@@ -30,10 +32,8 @@ function citesFromParts(parts: Array<{ type: string; data?: unknown }>) {
   for (const part of parts) {
     if (part.type !== 'text') continue
     const data = normalizePartData(part.data)
-    const skillRefs = normalizeSkillCiteRefs(
-      data.skillRefs as Array<{ command?: string; content?: string }> | undefined
-    )
-    const fileRefs = normalizeFileCiteRefs(data.fileRefs)
+    const skillRefs = normalizeUnknownSkillCiteRefs(data.skillRefs)
+    const fileRefs = normalizeUnknownFileCiteRefs(data.fileRefs)
     if (skillRefs.length || fileRefs.length) {
       return {
         skillRefs: skillRefs.length ? skillRefs : undefined,
