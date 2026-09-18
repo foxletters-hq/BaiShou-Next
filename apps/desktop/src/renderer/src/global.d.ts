@@ -156,6 +156,9 @@ interface AgentGateAPI {
       reply: import('@baishou/shared').AgentGateReply
     }) => void
   ): () => void
+  onCancelled(
+    callback: (payload: { sessionId: string; requestIds: string[]; reason?: string }) => void
+  ): () => void
   onAllowlistChanged(
     callback: (
       allowlist: import('@baishou/shared').AgentGateAllowlistEntry[],
@@ -597,6 +600,7 @@ interface GraphAPI {
     nodeType: string
     summary: string
     aliases: string[]
+    discriminator?: string
   } | null>
   listPendingEdges(): Promise<any[]>
   listPending(): Promise<{ nodes: any[]; edges: any[]; endpointNodes?: any[] }>
@@ -625,6 +629,13 @@ interface GraphAPI {
     | {
         conflict: 'same-name'
         existing: { id: string; name: string; nodeType: string; summary: string }
+        candidates?: Array<{
+          nodeId: string
+          name: string
+          discriminator: string
+          label: string
+        }>
+        canRegisterAnother?: boolean
       }
   >
   upsertEdge(input: {
@@ -646,6 +657,37 @@ interface GraphAPI {
     loserIds: string[]
     reason?: string
   }): Promise<{ ok: boolean; survivorId: string; loserIds: string[] }>
+  splitNode(opts: {
+    bareNodeId: string
+    discriminator: string
+    label: string
+    summary?: string
+    edgeAssignments: Array<{ edgeId: string; target: 'bare' | 'split' }>
+    reason?: string
+  }): Promise<{
+    ok: boolean
+    bareNodeId: string
+    splitNodeId: string
+    movedEdgeIds: string[]
+    unassignedEdgeIds: string[]
+  }>
+  revertNodeSplit(opts: {
+    bareNodeId: string
+    discriminator: string
+    reason?: string
+  }): Promise<{ ok: boolean; removedNodeId: string | null }>
+  listNameCandidates(opts: { nodeId: string }): Promise<
+    Array<{ nodeId: string; name: string; discriminator: string; label: string }>
+  >
+  listSplitEdges(opts: { nodeId: string }): Promise<
+    Array<{
+      edgeId: string
+      edgeType: string
+      partnerName: string
+      sourceRef: string | null
+      sourceExcerpt: string
+    }>
+  >
   getNode(id: string): Promise<any>
   meta(): Promise<{ nodeTypes: string[]; edgeTypes: string[] }>
   resolveJournal(opts: { date: string }): Promise<{ filePath: string; date: string } | null>
@@ -797,6 +839,22 @@ interface KnowledgeAPI {
     resetSources: number
     reclaimedEmbedJobs: number
     droppedExtractJobs: number
+  }>
+  probeExtractSample(input: {
+    notebookId?: string
+    sourceId: string
+    engine: 'simple' | 'ocr' | 'vision'
+    ocrLanguage?: string
+    ocrConcurrency?: number
+    visionProviderId?: string | null
+    visionModelId?: string | null
+  }): Promise<{
+    sourceId: string
+    title: string
+    engine: 'simple' | 'ocr' | 'vision'
+    pageCount: number
+    sampledPages: number[]
+    pages: Array<{ page: number; text: string }>
   }>
   getCapabilities(): Promise<{
     simple: { available: boolean; reason?: string; detail?: string }
