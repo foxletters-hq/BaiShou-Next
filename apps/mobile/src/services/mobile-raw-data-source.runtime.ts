@@ -23,6 +23,23 @@ import { AIProviderRegistry, EmbeddingAdapter, type IAIProvider } from '@baishou
 import { logger, MEMORY_EMBED_GROUP_ID, deriveLegacyVaultId } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 
+async function createMobileNotebookGraphIndexEmbedder(
+  settingsManager?: SettingsManagerService | null
+): Promise<{
+  embedQuery: (text: string) => Promise<number[] | null>
+  modelId: string
+} | null> {
+  if (!settingsManager) return null
+  const emb = await resolveMobileEmbeddingForHydration(settingsManager)
+  if (!emb.embeddingProvider || !emb.embeddingModelId) return null
+  const adapter = new EmbeddingAdapter(emb.embeddingProvider, emb.embeddingModelId)
+  if (!adapter.isConfigured) return null
+  return {
+    embedQuery: (text) => adapter.embedQuery(text),
+    modelId: adapter.embeddingModelId
+  }
+}
+
 export async function resolveMobileEmbeddingForHydration(
   settingsManager: SettingsManagerService
 ): Promise<{ embeddingProvider: IAIProvider | null; embeddingModelId: string | null }> {
@@ -350,7 +367,8 @@ export async function runMobileKnowledgeHydration(options: {
     const graphRaw = new NotebookGraphRawManager(options.pathService, options.fileSystem)
     const graphIndex = new NotebookGraphIndexService(
       graphRaw,
-      new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+      new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb()),
+      await createMobileNotebookGraphIndexEmbedder(options.settingsManager)
     )
     const hydration = new KnowledgeHydrationService({
       repo,
@@ -388,9 +406,14 @@ export async function runMobileNotebookGraphIndex(options: {
         (await options.pathService.getActiveVaultNameForContext?.().catch(() => 'Personal')) ||
           'Personal'
       )
+    const { agentDbRuntimeRef } = await import('./mobile-agent-db-runtime-ref')
     const raw = new NotebookGraphRawManager(options.pathService, options.fileSystem)
     const repo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
-    const index = new NotebookGraphIndexService(raw, repo)
+    const index = new NotebookGraphIndexService(
+      raw,
+      repo,
+      await createMobileNotebookGraphIndexEmbedder(agentDbRuntimeRef.current?.settingsManager)
+    )
     for (const notebookId of ids) {
       await index.syncPendingIndex({
         vaultId,

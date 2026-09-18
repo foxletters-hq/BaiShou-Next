@@ -65,7 +65,19 @@ async function syncNotebookGraphIndex(notebookId: string): Promise<void> {
   const vaultId = requireVaultId()
   const raw = createRaw()
   const repo = requireRepo()
-  const index = new NotebookGraphIndexService(raw, repo)
+  const { getEmbeddingService, getEmbeddingConfig } = await import('../ipc/rag.ipc')
+  const embeddingService = getEmbeddingService()
+  const modelId = getEmbeddingConfig().getGlobalEmbeddingModelId().trim()
+  const index = new NotebookGraphIndexService(
+    raw,
+    repo,
+    embeddingService.isConfigured && modelId
+      ? {
+          embedQuery: (text) => embeddingService.embedQuery(text),
+          modelId
+        }
+      : null
+  )
   await index.syncPendingIndex({ vaultId, notebookId, absentSweep: 'off' })
 }
 
