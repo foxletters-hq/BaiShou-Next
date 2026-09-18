@@ -6,12 +6,17 @@
 import type { GraphEdgeRawRecord, GraphNodeRawRecord } from '@baishou/shared'
 import {
   graphNodeIdForEntity,
-  logger,
   normalizeGraphDiscriminator,
   readGraphNameRegistry,
   removeGraphNameRegistryEntry,
   upsertGraphNameRegistryEntry
 } from '@baishou/shared'
+import {
+  asGraphOrigin,
+  asGraphReview,
+  parseGraphPropsJson,
+  remapTouchingEdges
+} from './graph-remap-touching-edges'
 import { mergeDiaryGraphNodes } from './graph-merge-nodes'
 
 type SplitNode = {
@@ -72,27 +77,6 @@ export type GraphSplitLookup = {
 
 export type GraphSplitEdgeAssignment = { edgeId: string; target: 'bare' | 'split' }
 
-function parseProps(raw?: string | null): Record<string, unknown> {
-  if (!raw?.trim()) return {}
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {}
-  } catch {
-    return {}
-  }
-}
-
-function asOrigin(value: string | undefined): 'ai' | 'user' {
-  return value === 'user' ? 'user' : 'ai'
-}
-
-function asReview(value: string | undefined): 'approved' | 'pending' | 'rejected' {
-  if (value === 'pending' || value === 'rejected') return value
-  return 'approved'
-}
-
 function seenOrNow(value: number | null | undefined, now: number): number {
   return value == null || !Number.isFinite(value) ? now : value
 }
@@ -118,12 +102,12 @@ function toBareNodeRecord(input: {
     mentionCount: input.node.mentionCount ?? 0,
     firstSeenAt: seenOrNow(input.node.firstSeenAt, input.now),
     lastSeenAt: seenOrNow(input.node.lastSeenAt, input.now),
-    origin: asOrigin(input.node.origin),
+    origin: asGraphOrigin(input.node.origin),
     shardMonth: input.node.shardMonth,
     createdAt: input.node.createdAt,
     updatedAt: input.now,
     deletedAt: null,
-    reviewStatus: asReview(input.node.reviewStatus)
+    reviewStatus: asGraphReview(input.node.reviewStatus)
   }
 }
 
@@ -166,7 +150,7 @@ export async function splitGraphNode(input: {
   }
 
   const now = input.now ?? Date.now()
-  const bareProps = parseProps(bare.propsJson)
+  const bareProps = parseGraphPropsJson(bare.propsJson)
   const existingEntry = readGraphNameRegistry(bareProps).find(
     (entry) => normalizeGraphDiscriminator(entry.discriminator) === discriminator
   )
@@ -226,57 +210,20 @@ export async function splitGraphNode(input: {
   const unassignedEdgeIds = touching
     .filter((edge) => !assignedIds.has(edge.id))
     .map((edge) => edge.id)
-  const touchingById = new Map(touching.map((edge) => [edge.id, edge]))
-  const movedEdgeIds: string[] = []
-
-  for (const assignment of input.edgeAssignments) {
-    if (assignment.target !== 'split') continue
-    const edge = touchingById.get(assignment.edgeId)
-    if (!edge) continue
-    // 已经不再碰裸名节点，说明上一次已经改挂过，重入时不能再写一遍
-    if (edge.fromId !== bareNodeId && edge.toId !== bareNodeId) continue
-
-    const fromId = edge.fromId === bareNodeId ? splitNodeId : edge.fromId
-    const toId = edge.toId === bareNodeId ? splitNodeId : edge.toId
-    const shardMonth = edge.shardMonth || bare.shardMonth
-    if (!shardMonth) {
-      logger.warn('[graph] split skip edge without shardMonth', { edgeId: edge.id })
-      continue
-    }
-    if (fromId === toId) {
-      await input.manager.removeRecordsFromShard('edges', shardMonth, [edge.id])
-      movedEdgeIds.push(edge.id)
-      continue
-    }
-    // 边 ID 按公式会随端点变化，但合并已经选择保留原 ID。
-    // 这里跟合并一致：换 ID 会在同步后留下两条重复边。
-    const remapped: GraphEdgeRawRecord = {
-      id: edge.id,
-      schemaVersion: 1,
-      vaultId: input.vaultId,
-      vaultName: input.vaultName,
-      fromId,
-      toId,
-      edgeType: edge.edgeType,
-      props: parseProps(edge.propsJson),
-      validFrom: edge.validFrom,
-      validTo: edge.validTo,
-      isCurrent: edge.isCurrent,
-      sourceKind: edge.sourceKind,
-      sourceRef: edge.sourceRef,
-      sourceExcerpt: edge.sourceExcerpt,
-      sourceContentHash: edge.sourceContentHash,
-      confidence: edge.confidence,
-      origin: asOrigin(edge.origin),
-      reviewStatus: asReview(edge.reviewStatus),
-      shardMonth,
-      createdAt: edge.createdAt,
-      updatedAt: now,
-      deletedAt: null
-    }
-    await input.manager.writeRecord(remapped, { collection: 'edges' })
-    movedEdgeIds.push(edge.id)
-  }
+  const splitAssigned = new Set(
+    input.edgeAssignments.filter((item) => item.target === 'split').map((item) => item.edgeId)
+  )
+  const { movedEdgeIds } = await remapTouchingEdges({
+    vaultId: input.vaultId,
+    vaultName: input.vaultName,
+    fromNodeId: bareNodeId,
+    toNodeId: splitNodeId,
+    edges: touching,
+    now,
+    fallbackShardMonth: bare.shardMonth,
+    manager: input.manager,
+    shouldRemap: (edge) => splitAssigned.has(edge.id)
+  })
 
   return {
     bareNodeId,
@@ -303,7 +250,7 @@ export async function revertGraphNodeSplit(input: {
     return { removedNodeId: null }
   }
 
-  const existingEntry = readGraphNameRegistry(parseProps(bare.propsJson)).find(
+  const existingEntry = readGraphNameRegistry(parseGraphPropsJson(bare.propsJson)).find(
     (entry) => normalizeGraphDiscriminator(entry.discriminator) === discriminator
   )
   if (!existingEntry) {
@@ -331,7 +278,10 @@ export async function revertGraphNodeSplit(input: {
   if (!afterMerge || !afterMerge.shardMonth) {
     throw new Error('撤回拆分后裸名节点不可用')
   }
-  const clearedProps = removeGraphNameRegistryEntry(parseProps(afterMerge.propsJson), discriminator)
+  const clearedProps = removeGraphNameRegistryEntry(
+    parseGraphPropsJson(afterMerge.propsJson),
+    discriminator
+  )
   await input.manager.writeRecord(
     toBareNodeRecord({
       vaultId: input.vaultId,

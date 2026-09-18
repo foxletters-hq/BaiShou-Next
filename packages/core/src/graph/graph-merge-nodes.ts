@@ -3,8 +3,17 @@
  * Does not change the default content-addressable id algorithm.
  */
 
-import type { GraphEdgeRawRecord, GraphNodeRawRecord } from '@baishou/shared'
-import { logger } from '@baishou/shared'
+import {
+  removeSimilarPendingPeerFromProps,
+  type GraphEdgeRawRecord,
+  type GraphNodeRawRecord
+} from '@baishou/shared'
+import {
+  asGraphOrigin,
+  asGraphReview,
+  parseGraphPropsJson,
+  remapTouchingEdges
+} from './graph-remap-touching-edges'
 
 type MergeNode = {
   id: string
@@ -75,27 +84,6 @@ function mergeAliases(existing: string[], incoming: string[]): string[] {
   return out
 }
 
-function parseProps(raw?: string | null): Record<string, unknown> {
-  if (!raw?.trim()) return {}
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {}
-  } catch {
-    return {}
-  }
-}
-
-function asOrigin(value: string | undefined): 'ai' | 'user' {
-  return value === 'user' ? 'user' : 'ai'
-}
-
-function asReview(value: string | undefined): 'approved' | 'pending' | 'rejected' {
-  if (value === 'pending' || value === 'rejected') return value
-  return 'approved'
-}
-
 function minSeen(a: number | null | undefined, b: number): number {
   if (a == null || !Number.isFinite(a)) return b
   return Math.min(a, b)
@@ -139,7 +127,7 @@ export async function mergeDiaryGraphNodes(input: {
 
   const now = input.now ?? Date.now()
   const reason = input.reason?.trim() || 'explicit-merge'
-  const survivorProps = parseProps(survivor.propsJson)
+  const survivorProps = parseGraphPropsJson(survivor.propsJson)
   const history = Array.isArray(survivorProps.mergeHistory) ? [...survivorProps.mergeHistory] : []
   history.push({ loserId, name: loser.name, reason, at: now })
 
@@ -152,16 +140,16 @@ export async function mergeDiaryGraphNodes(input: {
     name: survivor.name,
     aliases: mergeAliases(survivor.aliases ?? [], [loser.name, ...(loser.aliases ?? [])]),
     summary: survivor.summary || loser.summary || '',
-    props: { ...survivorProps, mergeHistory: history },
+    props: removeSimilarPendingPeerFromProps({ ...survivorProps, mergeHistory: history }, loserId),
     mentionCount: (survivor.mentionCount ?? 0) + (loser.mentionCount ?? 0),
     firstSeenAt: minSeen(survivor.firstSeenAt, loser.firstSeenAt ?? now),
     lastSeenAt: maxSeen(survivor.lastSeenAt, loser.lastSeenAt ?? now),
-    origin: asOrigin(survivor.origin),
+    origin: asGraphOrigin(survivor.origin),
     shardMonth: survivor.shardMonth,
     createdAt: survivor.createdAt,
     updatedAt: now,
     deletedAt: null,
-    reviewStatus: asReview(survivor.reviewStatus)
+    reviewStatus: asGraphReview(survivor.reviewStatus)
   }
   if (!survivorRecord.shardMonth) {
     throw new Error('mergeDiaryGraphNodes: survivor missing shardMonth')
@@ -169,44 +157,16 @@ export async function mergeDiaryGraphNodes(input: {
   await input.manager.writeRecord(survivorRecord, { collection: 'nodes' })
 
   const edges = await input.repo.listEdgesTouching(input.vaultId, loserId)
-  for (const edge of edges) {
-    const shardMonth = edge.shardMonth || survivor.shardMonth
-    if (!shardMonth) {
-      logger.warn('[graph] merge skip edge without shardMonth', { edgeId: edge.id })
-      continue
-    }
-    const fromId = edge.fromId === loserId ? survivorId : edge.fromId
-    const toId = edge.toId === loserId ? survivorId : edge.toId
-    if (fromId === toId) {
-      await input.manager.removeRecordsFromShard('edges', shardMonth, [edge.id])
-      continue
-    }
-    const base: GraphEdgeRawRecord = {
-      id: edge.id,
-      schemaVersion: 1,
-      vaultId: input.vaultId,
-      vaultName: input.vaultName,
-      fromId,
-      toId,
-      edgeType: edge.edgeType,
-      props: parseProps(edge.propsJson),
-      validFrom: edge.validFrom,
-      validTo: edge.validTo,
-      isCurrent: edge.isCurrent,
-      sourceKind: edge.sourceKind,
-      sourceRef: edge.sourceRef,
-      sourceExcerpt: edge.sourceExcerpt,
-      sourceContentHash: edge.sourceContentHash,
-      confidence: edge.confidence,
-      origin: asOrigin(edge.origin),
-      reviewStatus: asReview(edge.reviewStatus),
-      shardMonth,
-      createdAt: edge.createdAt,
-      updatedAt: now,
-      deletedAt: null
-    }
-    await input.manager.writeRecord(base, { collection: 'edges' })
-  }
+  await remapTouchingEdges({
+    vaultId: input.vaultId,
+    vaultName: input.vaultName,
+    fromNodeId: loserId,
+    toNodeId: survivorId,
+    edges,
+    now,
+    fallbackShardMonth: survivor.shardMonth,
+    manager: input.manager
+  })
 
   if (!loser.shardMonth) {
     throw new Error('mergeDiaryGraphNodes: loser missing shardMonth')
