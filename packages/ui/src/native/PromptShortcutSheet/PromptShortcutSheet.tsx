@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- 快捷指令：列表、编辑与分页同文件 */
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
@@ -9,7 +8,6 @@ import {
   SafeAreaView,
   StyleSheet,
   Dimensions,
-  ScrollView,
   TextInput,
   type LayoutChangeEvent
 } from 'react-native'
@@ -17,31 +15,23 @@ import {
   SHORTCUT_TRACE_CHAIN,
   traceCall,
   findShortcutCommandConflict,
-  getDefaultShortcutLabelsFromT,
-  localizePromptShortcut
+  getDefaultShortcutLabelsFromT
 } from '@baishou/shared'
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Pencil,
-  Search,
-  Trash2,
-  X
-} from 'lucide-react-native'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react-native'
 import type { PromptShortcut } from '@baishou/shared'
 import { useTranslation } from 'react-i18next'
 import { useNativeTheme } from '../theme'
 import { DEFAULT_STROKE_WIDTH } from '../../shared/icons/icon-sizes'
 import { useNativeToast } from '../Toast'
-import { Input } from '../Input/Input'
 import { useDialog } from '../Dialog/Dialog'
 import {
   mergePageReorder,
   SHORTCUT_PAGE_SIZE,
   usePromptShortcutSheet
 } from './usePromptShortcutSheet'
+import { PromptShortcutRow } from './PromptShortcutRow'
+import { PromptShortcutEditor } from './PromptShortcutEditor'
+import { promptShortcutSheetStyles as styles } from './prompt-shortcut-sheet.styles'
 
 export interface PromptShortcutSheetProps {
   visible: boolean
@@ -53,8 +43,6 @@ export interface PromptShortcutSheetProps {
   onDelete?: (id: string) => Promise<void>
   onReorder?: (shortcuts: PromptShortcut[]) => Promise<void>
 }
-
-const ROW_MIN_HEIGHT = 60
 
 export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
   visible,
@@ -87,7 +75,6 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     canDrag
   } = usePromptShortcutSheet(shortcuts)
 
-  // FlatList 在 Android + flex:1 父级下经常测到 0 高度，列表区域空白（见 ProviderSortableList）
   const [listAreaHeight, setListAreaHeight] = useState<number | null>(null)
   const listAreaHeightRef = useRef<number | null>(null)
   const handleListAreaLayout = useCallback((event: LayoutChangeEvent) => {
@@ -245,124 +232,6 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     [isSearchActive, onReorder, pageSize, pageStartIndex, paginatedShortcuts, shortcuts, t, toast]
   )
 
-  const renderShortcutRow = useCallback(
-    (item: PromptShortcut, index: number) => {
-      const localized = localizePromptShortcut(item, defaultShortcutLabels)
-      return (
-        <View
-          style={[
-            styles.item,
-            {
-              backgroundColor: colors.bgSurfaceHigh,
-              borderColor: colors.borderSubtle,
-              minHeight: ROW_MIN_HEIGHT
-            }
-          ]}
-        >
-          {canManage ? (
-            canDrag && onReorder ? (
-              <View style={styles.reorderBtns}>
-                <Pressable
-                  style={[styles.reorderBtn, { opacity: index <= 0 ? 0.3 : 1 }]}
-                  disabled={index <= 0}
-                  onPress={() => handleMoveItem(index, -1)}
-                  hitSlop={6}
-                  accessibilityLabel={t('shortcut.move_up', '上移')}
-                >
-                  <ChevronUp
-                    size={22}
-                    color={colors.textTertiary}
-                    strokeWidth={DEFAULT_STROKE_WIDTH}
-                  />
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.reorderBtn,
-                    { opacity: index >= paginatedShortcuts.length - 1 ? 0.3 : 1 }
-                  ]}
-                  disabled={index >= paginatedShortcuts.length - 1}
-                  onPress={() => handleMoveItem(index, 1)}
-                  hitSlop={6}
-                  accessibilityLabel={t('shortcut.move_down', '下移')}
-                >
-                  <ChevronDown
-                    size={22}
-                    color={colors.textTertiary}
-                    strokeWidth={DEFAULT_STROKE_WIDTH}
-                  />
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.reorderSpacer} />
-            )
-          ) : null}
-
-          <View style={styles.itemBody}>
-            <Text style={[styles.itemName, { color: colors.textPrimary }]} numberOfLines={1}>
-              {localized.name || t('shortcut.default_tag', '指令')}
-            </Text>
-            <Text style={[styles.itemContent, { color: colors.textSecondary }]} numberOfLines={2}>
-              {localized.content}
-            </Text>
-          </View>
-
-          <View style={styles.itemActions}>
-            <Pressable
-              style={[styles.useBtn, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                onSelect(localized)
-                handleClose()
-              }}
-              accessibilityLabel={t('common.use', '使用')}
-            >
-              <Text style={{ color: colors.textOnPrimary, fontWeight: '600', fontSize: 12 }}>
-                {t('common.use', '使用')}
-              </Text>
-            </Pressable>
-            {canManage ? (
-              <>
-                <Pressable
-                  style={styles.actionBtn}
-                  hitSlop={8}
-                  onPress={() => handleEdit(item)}
-                  accessibilityLabel={t('shortcut.edit', '编辑')}
-                >
-                  <Pencil
-                    size={20}
-                    color={colors.textTertiary}
-                    strokeWidth={DEFAULT_STROKE_WIDTH}
-                  />
-                </Pressable>
-                <Pressable
-                  style={styles.actionBtn}
-                  hitSlop={8}
-                  onPress={() => void handleDeletePress(item.id)}
-                  accessibilityLabel={t('common.delete', '删除')}
-                >
-                  <Trash2 size={22} color={colors.error} strokeWidth={DEFAULT_STROKE_WIDTH} />
-                </Pressable>
-              </>
-            ) : null}
-          </View>
-        </View>
-      )
-    },
-    [
-      canDrag,
-      canManage,
-      colors,
-      defaultShortcutLabels,
-      handleClose,
-      handleDeletePress,
-      handleEdit,
-      handleMoveItem,
-      onReorder,
-      onSelect,
-      paginatedShortcuts.length,
-      t
-    ]
-  )
-
   if (!visible) return null
 
   return (
@@ -391,70 +260,17 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
               ]}
             >
               {editingItem ? (
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  <View style={styles.header}>
-                    <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-                      {editingItem.id === 'new'
-                        ? t('shortcut.add_custom_command', '新增自定义指令')
-                        : t('shortcut.edit', '编辑')}
-                    </Text>
-                    <Pressable onPress={resetEditing} hitSlop={12}>
-                      <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>×</Text>
-                    </Pressable>
-                  </View>
-
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-                    {t('shortcut.label_name', '指令名称')}
-                  </Text>
-                  <Input
-                    value={draftName}
-                    onChangeText={setDraftName}
-                    placeholder={t('shortcut.label_hint', '例如：翻译')}
-                    style={styles.fieldInput}
-                  />
-
-                  <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 12 }]}>
-                    {t('shortcut.content_prompt', '对应内容')}
-                  </Text>
-                  <Input
-                    value={draftContent}
-                    onChangeText={setDraftContent}
-                    placeholder={t('shortcut.content_hint', '请帮我翻译下面这段文本。')}
-                    multiline
-                    textarea
-                    style={[styles.fieldInput, styles.fieldTextArea]}
-                  />
-
-                  <View style={styles.formActions}>
-                    <Pressable
-                      style={[styles.formBtn, { borderColor: colors.borderControl }]}
-                      onPress={resetEditing}
-                    >
-                      <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                        {t('common.cancel', '取消')}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      style={[
-                        styles.formBtn,
-                        styles.formBtnPrimary,
-                        {
-                          backgroundColor: colors.primary,
-                          opacity: !draftContent.trim() || saving ? 0.5 : 1
-                        }
-                      ]}
-                      disabled={!draftContent.trim() || saving}
-                      onPress={() => void handleSave()}
-                    >
-                      <Text style={{ color: colors.textOnPrimary, fontWeight: '600' }}>
-                        {t('common.save', '保存')}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </ScrollView>
+                <PromptShortcutEditor
+                  editingItem={editingItem}
+                  draftName={draftName}
+                  draftContent={draftContent}
+                  saving={saving}
+                  colors={colors}
+                  onChangeName={setDraftName}
+                  onChangeContent={setDraftContent}
+                  onCancel={resetEditing}
+                  onSave={() => void handleSave()}
+                />
               ) : (
                 <View style={styles.listPane}>
                   <View style={styles.header}>
@@ -561,7 +377,25 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
                         contentContainerStyle={styles.listContent}
                         data={paginatedShortcuts}
                         keyExtractor={(item) => item.id}
-                        renderItem={({ item, index }) => renderShortcutRow(item, index)}
+                        renderItem={({ item, index }) => (
+                          <PromptShortcutRow
+                            item={item}
+                            index={index}
+                            pageLength={paginatedShortcuts.length}
+                            canManage={canManage}
+                            canDrag={canDrag}
+                            colors={colors}
+                            defaultShortcutLabels={defaultShortcutLabels}
+                            onSelect={(shortcut) => {
+                              onSelect(shortcut)
+                              handleClose()
+                            }}
+                            onEdit={handleEdit}
+                            onDelete={(id) => void handleDeletePress(id)}
+                            onMove={handleMoveItem}
+                            onReorder={onReorder}
+                          />
+                        )}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
                       />
@@ -623,215 +457,3 @@ export const PromptShortcutSheet: React.FC<PromptShortcutSheetProps> = ({
     </Modal>
   )
 }
-
-const styles = StyleSheet.create({
-  gestureRoot: {
-    flex: 1
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  safeArea: {
-    width: '100%',
-    alignItems: 'center',
-    zIndex: 2
-  },
-  modalContent: {
-    overflow: 'hidden'
-  },
-  listPane: {
-    flex: 1
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: '600',
-    flex: 1
-  },
-  closeIcon: {
-    fontSize: 24,
-    lineHeight: 24
-  },
-  addBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 1
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: 0,
-    height: 40
-  },
-  slashHint: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth
-  },
-  dragHint: {
-    fontSize: 11,
-    marginBottom: 8
-  },
-  listArea: {
-    flex: 1,
-    minHeight: 160
-  },
-  list: {
-    flex: 1
-  },
-  listContent: {
-    paddingBottom: 8
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden'
-  },
-  reorderBtns: {
-    width: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'stretch',
-    gap: 2
-  },
-  reorderSpacer: {
-    width: 36,
-    alignSelf: 'stretch'
-  },
-  reorderBtn: {
-    width: 32,
-    height: 26,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  itemBody: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingRight: 4
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: '600'
-  },
-  itemContent: {
-    fontSize: 13,
-    marginTop: 4,
-    lineHeight: 18
-  },
-  itemActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 6,
-    gap: 4
-  },
-  useBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginRight: 2
-  },
-  actionBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16
-  },
-  emptyText: {
-    fontSize: 15,
-    textAlign: 'center'
-  },
-  emptyAddBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10
-  },
-  paginationBar: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 12,
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  pageMeta: {
-    fontSize: 13
-  },
-  pageNavBtns: {
-    flexDirection: 'row',
-    gap: 8
-  },
-  pageNavBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 6
-  },
-  fieldInput: {
-    fontSize: 15,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-    paddingVertical: 10
-  },
-  fieldTextArea: {
-    minHeight: 120,
-    maxHeight: 180
-  },
-  formActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 20
-  },
-  formBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth
-  },
-  formBtnPrimary: {
-    borderWidth: 0
-  }
-})
