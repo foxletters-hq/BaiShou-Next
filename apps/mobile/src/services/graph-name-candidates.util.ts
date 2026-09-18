@@ -19,6 +19,32 @@ export function parseGraphNodePropsJson(raw?: string | null): Record<string, unk
   }
 }
 
+export function readGraphNodeSuspectReason(node: { propsJson?: string | null } | null): string {
+  const raw = parseGraphNodePropsJson(node?.propsJson).suspectReason
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+export function graphBareNodeIdForRevert(
+  selectedNode: { id: string; discriminator?: string | null } | null,
+  sameNameEntities: readonly { nodeId: string; discriminator?: string | null }[]
+): string {
+  if (!selectedNode) return ''
+  return (
+    sameNameEntities.find((item) => !item.discriminator)?.nodeId ||
+    (!selectedNode.discriminator ? selectedNode.id : '')
+  )
+}
+
+export function graphRevertSplitStayId(opts: {
+  selectedNodeId: string
+  removedNodeId?: string | null
+  bareNodeId: string
+}): string {
+  return opts.removedNodeId && opts.selectedNodeId === opts.removedNodeId
+    ? opts.bareNodeId
+    : opts.selectedNodeId
+}
+
 export type GraphRegisteredSameNameEntity = {
   nodeId: string
   name: string
