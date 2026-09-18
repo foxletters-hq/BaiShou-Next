@@ -23,6 +23,28 @@ export function graphSameNameExistingFromRow(
   }
 }
 
+/** 同名可并存时，只把「区分信息相同且不是自己」当成写入冲突。 */
+export function pickSameNameConflictFromHits<
+  T extends {
+    id: string
+    name: string
+    nodeType: string
+    summary?: string | null
+    discriminator?: string | null
+  }
+>(
+  hits: readonly T[],
+  currentId: string | undefined,
+  currentDiscriminator: string
+): GraphSameNameExisting | null {
+  return graphSameNameExistingFromRow(
+    hits.find(
+      (row) => row.id !== currentId && (row.discriminator ?? '') === currentDiscriminator
+    ) ?? null,
+    currentId
+  )
+}
+
 export function isGraphNodeSameNameConflict(
   result: GraphNodeWriteResult
 ): result is { conflict: 'same-name'; existing: GraphSameNameExisting } {
