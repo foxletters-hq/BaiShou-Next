@@ -21,3 +21,5 @@ coverage/**
 .lint-count-*.json
 # 图标元数据：438 KB 纯数据，重排会产生上万行无意义 diff
 packages/ui/src/desktop/DeveloperOptionsView/lucide-icon-meta.json
+# 思考强度快照：pnpm sync 生成，避免和 Prettier 互相覆盖
+packages/shared/src/data/reasoning-models.snapshot.generated.ts

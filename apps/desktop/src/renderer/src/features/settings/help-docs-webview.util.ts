@@ -18,6 +18,17 @@ export function isHelpDocsSuccessfulDocumentUrl(url: string | undefined | null):
   return url.startsWith('https://') || url.startsWith('http://')
 }
 
-export function readHelpDocsWebviewUrl(webview: { getURL?: () => string }): string {
+/** Electron webview 才有 getURL；DOM 里 createElement('webview') 只是 HTMLElement */
+export interface HelpDocsWebviewHost {
+  getURL?: () => string
+}
+
+export function isHelpDocsWebviewHost(value: unknown): value is HelpDocsWebviewHost {
+  if (typeof value !== 'object' || value === null) return false
+  if (!('getURL' in value)) return false
+  return typeof value.getURL === 'function'
+}
+
+export function readHelpDocsWebviewUrl(webview: HelpDocsWebviewHost): string {
   return typeof webview.getURL === 'function' ? webview.getURL() : ''
 }

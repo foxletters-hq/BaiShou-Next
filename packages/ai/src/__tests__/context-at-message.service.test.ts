@@ -129,7 +129,11 @@ describe('ContextAtMessageService.getContextAtMessage', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue(null)

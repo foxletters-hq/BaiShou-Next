@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_TOOL_UI_DEFS,
@@ -46,5 +47,11 @@ describe('resolveAgentToolActionLabel', () => {
     expect(
       resolveAgentToolActionLabel('mcp_401e4719_6331_42be_a21c__baishou_summary_read', t)
     ).toBe('baishou_summary_read')
+  })
+
+  it('should accept TFunction at the type level when resolving a label', () => {
+    const resolveWithTFunction: (t: TFunction) => string = (t) =>
+      resolveAgentToolActionLabel('web_search', t)
+    expect(typeof resolveWithTFunction).toBe('function')
   })
 })

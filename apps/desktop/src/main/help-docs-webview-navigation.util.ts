@@ -49,10 +49,27 @@ export function decideHelpDocsNavigation(url: string): HelpDocsNavigationDecisio
   return 'block'
 }
 
-type HelpDocsGuestContents = {
-  getType: () => string
-  setWindowOpenHandler: (handler: (details: { url: string }) => { action: 'allow' | 'deny' }) => void
-  on: (event: string, listener: (...args: unknown[]) => void) => void
+/** webview 导航拦截只读 preventDefault；不绑宿主 Event 的其余字段。 */
+type HelpDocsNavigationEvent = {
+  preventDefault: () => void
+}
+
+/** 与 will-navigate / will-redirect 实际回调一致：后两个位置参数已弃用但仍会传入。 */
+type HelpDocsNavigationListener = (
+  event: HelpDocsNavigationEvent,
+  url: string,
+  _isInPlace?: unknown,
+  isMainFrame?: boolean
+) => void
+
+/**
+ * 只声明本函数用到的方法与两个事件名。
+ * on 必须写成方法：写成属性函数时事件联合会扩成 string，监听器参数变成 unknown，因逆变无法赋值。
+ */
+interface HelpDocsGuestContents {
+  getType(): string
+  setWindowOpenHandler(handler: (details: { url: string }) => { action: 'allow' | 'deny' }): void
+  on(event: 'will-navigate' | 'will-redirect', listener: HelpDocsNavigationListener): void
 }
 
 export function installHelpDocsWebviewNavigation(

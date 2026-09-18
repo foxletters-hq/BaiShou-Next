@@ -85,7 +85,11 @@ export function livePreviewFreezePlugin(pointerGate: LivePreviewPointerGate): Ex
 
         const release = (): void => {
           pointerGate.frozen = false
-          const effects = [livePreviewRefreshEffect.of(null)]
+          // 三个 effect 的负载本来就不一样（刷新信号是 null，冻结/焦点是 boolean）；
+          // StateEffect 对负载参数不变，数组不能从第一项推断成 StateEffect<null>[]
+          const effects: Array<StateEffect<boolean> | StateEffect<null>> = [
+            livePreviewRefreshEffect.of(null)
+          ]
           if (this.view.state.field(previewFrozenField)) {
             effects.push(setPreviewFrozen.of(false))
           }

@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
 import {
   CREATE_SKILL_GUIDE_PROMPT,
@@ -24,5 +25,10 @@ describe('getCreateSkillGuidePrompt', () => {
     expect(prompt).toContain('properties')
     expect(prompt).toContain('不要用 --- 包裹')
     expect(prompt).not.toContain('frontmatter')
+  })
+
+  it('should accept TFunction at the type level when building the guide prompt', () => {
+    const buildWithTFunction: (t: TFunction) => string = (t) => getCreateSkillGuidePrompt(t)
+    expect(typeof buildWithTFunction).toBe('function')
   })
 })

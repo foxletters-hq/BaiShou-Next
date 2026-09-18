@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ProviderType } from '@baishou/shared'
+import { ProviderType, type AIProviderConfig } from '@baishou/shared'
 // 注意：以下类型还在实现过程中，我们遵循 TDD 先测试再跑码
 import { AIProviderRegistry } from '../provider.registry'
 
@@ -29,10 +29,10 @@ describe('AIProviderRegistry', () => {
   })
 
   it('should reuse the same instance when provider config is unchanged', () => {
-    const config = {
+    const config: AIProviderConfig = {
       id: 'siliconflow',
       name: 'siliconflow',
-      type: 'siliconflow',
+      type: ProviderType.SiliconFlow,
       apiKey: 'sk-test',
       baseUrl: 'https://example.test',
       models: [],
@@ -49,10 +49,10 @@ describe('AIProviderRegistry', () => {
   })
 
   it('should rebuild when api key or base url changes', () => {
-    const config = {
+    const config: AIProviderConfig = {
       id: 'siliconflow',
       name: 'siliconflow',
-      type: 'siliconflow',
+      type: ProviderType.SiliconFlow,
       apiKey: 'sk-old',
       baseUrl: 'https://example.test',
       models: [],

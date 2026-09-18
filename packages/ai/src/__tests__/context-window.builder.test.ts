@@ -25,7 +25,11 @@ describe('ContextWindowBuilder', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue(null)
@@ -51,7 +55,11 @@ describe('ContextWindowBuilder', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue(null)
@@ -76,7 +84,11 @@ describe('ContextWindowBuilder', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue(null)
@@ -104,7 +116,11 @@ describe('ContextWindowBuilder', () => {
     messages[4]!.id = 'user-msg-2'
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue(null)
@@ -137,7 +153,11 @@ describe('ContextWindowBuilder', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue({
@@ -171,7 +191,11 @@ describe('ContextWindowBuilder', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue({
@@ -204,7 +228,11 @@ describe('ContextWindowBuilder', () => {
     }))
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue({
@@ -240,7 +268,11 @@ describe('ContextWindowBuilder', () => {
     ]
 
     const sessionRepo = {
-      getMessagesBySession: vi.fn().mockResolvedValue(messages)
+      getMessagesBySession: vi.fn().mockResolvedValue(messages),
+      getSessionAggregate: vi.fn().mockResolvedValue({
+        session: { id: 'session_1' },
+        messages
+      })
     }
     const snapshotRepo = {
       getLatestSnapshot: vi.fn().mockResolvedValue({

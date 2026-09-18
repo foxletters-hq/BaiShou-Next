@@ -27,3 +27,11 @@ export type Paths<T, D extends number = 10> = [D] extends [never]
     : ''
 
 export type I18nKey = Paths<typeof zh>
+
+/**
+ * 只要求「给 key 和回退文案，返回字符串」。
+ * 第二参必须是必填 string：写成 `fallback?: string` 时，strictFunctionTypes
+ * 会把这个可选 string 和 i18next `TFunction` 的 options 对象重载做逆变比较，
+ * 更强的 `TFunction` 反而赋不进来。调用方本来就会传入回退文案。
+ */
+export type FallbackTranslateFn = (key: string, defaultValue: string) => string

@@ -12,7 +12,8 @@ const settingsLocation: Location = {
   search: '',
   hash: '',
   key: 's1',
-  state: null
+  state: null,
+  unstable_mask: undefined
 }
 
 function renderHost(visible: boolean) {
