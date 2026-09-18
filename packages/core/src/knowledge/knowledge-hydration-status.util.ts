@@ -1,3 +1,5 @@
+import { needsNotebookGraphExtractJob } from './notebook-graph-extract-checkpoint.util'
+
 const LIVE_STATUSES = new Set(['extracting', 'embedding'])
 const COMPLETE_STATUSES = new Set(['ready', 'partial'])
 
@@ -92,18 +94,16 @@ export function resolveHydrationSourceDecision(input: {
   }
 }
 
-/** extracted 在而 extract-state 缺失 / hash 变了 / 窗口未完成 → 排 graph job */
+/** extracted 在而 extract-state 缺失 / hash 变了 / 窗口未完成 / 对齐未写入 → 排 graph job */
 export function resolveHydrationGraphDecision(input: {
   extractedHash: string | null
   extractState: {
     extractedTextHash: string
     windowsDone: number
     windowsTotal: number
+    extractedWindows?: unknown
+    alignWritten?: boolean
   } | null
 }): boolean {
-  if (!input.extractedHash) return false
-  const state = input.extractState
-  if (!state) return true
-  if (state.extractedTextHash !== input.extractedHash) return true
-  return state.windowsTotal <= 0 || state.windowsDone < state.windowsTotal
+  return needsNotebookGraphExtractJob(input)
 }

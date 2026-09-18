@@ -204,4 +204,19 @@ describe('resolveHydrationGraphDecision', () => {
       })
     ).toBe(false)
   })
+
+  it('窗口已抽完但带着 extractedWindows 且对齐未写入时仍要排', () => {
+    expect(
+      resolveHydrationGraphDecision({
+        extractedHash: 'abc',
+        extractState: {
+          extractedTextHash: 'abc',
+          windowsDone: 2,
+          windowsTotal: 2,
+          extractedWindows: [{ index: 0 }],
+          alignWritten: false
+        }
+      })
+    ).toBe(true)
+  })
 })

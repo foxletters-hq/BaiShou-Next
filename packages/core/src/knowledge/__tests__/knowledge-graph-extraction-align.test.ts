@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { listAmbiguousSourceRefs, notebookGraphNodeIdForEntity } from '@baishou/shared'
+import {
+  graphNodeCardText,
+  listAmbiguousSourceRefs,
+  notebookGraphNodeIdForEntity
+} from '@baishou/shared'
 import { KnowledgeGraphExtractionService } from '../knowledge-graph-extraction.service'
 
 const VAULT = 'vlt_aaaaaaaaaaaaaaaa'
@@ -234,6 +238,51 @@ describe('KnowledgeGraphExtractionService entity align', () => {
 
     expect(nodes[0]?.id).toBe(personId(NB_THIS, '小张'))
     expect(nodes[0]?.id).not.toBe(existingId)
+    expect((nodes[0]?.props as Record<string, unknown> | undefined)?.similarPending).toBeUndefined()
+  })
+
+  it('should write similarPending when the align model is uncertain', async () => {
+    const existingId = personId(NB_THIS, '张三')
+    const llm = vi.fn(async (input: { system: string; user: string }) => {
+      if (input.system.includes('实体对齐')) {
+        expect(input.user).toContain('小张出现了')
+        expect(input.user).toContain('sourceContext')
+        return JSON.stringify({
+          merges: [],
+          uncertain: [
+            { incoming: 'i1', existing: 'e1', reason: '像同一个人但不敢并', similarity: 0.72 }
+          ]
+        })
+      }
+      return extractJson('小张', '同事')
+    })
+    const { service, nodes } = createService({
+      llm,
+      embedQuery: async () => [1, 0],
+      searchNodesByVector: vi.fn(async () => [
+        {
+          id: existingId,
+          name: '张三',
+          aliases: '[]',
+          summary: '另一个人',
+          nodeType: 'person',
+          distance: 0.35
+        }
+      ])
+    })
+
+    await extractIn(service, NB_THIS)
+
+    expect(nodes[0]?.id).toBe(personId(NB_THIS, '小张'))
+    expect(nodes[0]?.id).not.toBe(existingId)
+    expect(nodes[0]?.reviewStatus).not.toBe('pending')
+    expect((nodes[0]?.props as Record<string, unknown>).similarPending).toEqual(
+      expect.objectContaining({
+        peerId: existingId,
+        similarity: 0.72,
+        reason: '像同一个人但不敢并'
+      })
+    )
   })
 
   it('should fall back to name-only merge when embedding is not configured', async () => {
@@ -256,6 +305,41 @@ describe('KnowledgeGraphExtractionService entity align', () => {
     expect(updateNodeEmbedding).not.toHaveBeenCalled()
   })
 
+  it('should write a new embedding when extract overwrites the existing summary', async () => {
+    const existingId = personId(NB_THIS, '张三')
+    const embedQuery = vi.fn(async (text: string) => {
+      if (text === graphNodeCardText('张三', '大学同学')) return [0, 1]
+      return [1, 0]
+    })
+    const { service, nodes, updateNodeEmbedding } = createService({
+      llm: async () => extractJson('张三', '大学同学'),
+      embedQuery,
+      modelId: 'embed-v1',
+      findNodeByName: vi.fn(async (_vault: string, notebookId: string, name: string) => {
+        if (notebookId === NB_THIS && name === '张三') {
+          return {
+            id: existingId,
+            name: '张三',
+            aliases: '[]',
+            summary: '同事',
+            mentionCount: 2,
+            firstSeenAt: 1,
+            createdAt: 1
+          }
+        }
+        return null
+      })
+    })
+
+    await extractIn(service, NB_THIS)
+
+    expect(nodes[0]?.id).toBe(existingId)
+    expect(nodes[0]?.summary).toBe('大学同学')
+    expect(nodes[0]).not.toHaveProperty('embedding')
+    expect(embedQuery).toHaveBeenCalledWith(graphNodeCardText('张三', '大学同学'))
+    expect(updateNodeEmbedding).toHaveBeenCalledWith(existingId, VAULT, NB_THIS, [0, 1], 'embed-v1')
+  })
+
   it('should not write the incoming vector when the merged node card changed', async () => {
     const existingId = personId(NB_THIS, '张三')
     const llm = vi.fn(async (input: { system: string; user: string }) => {
@@ -264,9 +348,13 @@ describe('KnowledgeGraphExtractionService entity align', () => {
       }
       return extractJson('小张', '同事')
     })
+    const embedQuery = vi.fn(async (text: string) => {
+      if (text === graphNodeCardText('张三', '同事')) return [0, 1]
+      return [1, 0]
+    })
     const { service, updateNodeEmbedding } = createService({
       llm,
-      embedQuery: async () => [1, 0],
+      embedQuery,
       modelId: 'embed-v1',
       findNodeByName: vi.fn(async (_vault: string, notebookId: string, name: string) => {
         if (notebookId === NB_THIS && name === '张三') {
@@ -293,7 +381,14 @@ describe('KnowledgeGraphExtractionService entity align', () => {
 
     await extractIn(service, NB_THIS)
 
-    expect(updateNodeEmbedding).not.toHaveBeenCalled()
+    expect(updateNodeEmbedding).toHaveBeenCalledWith(existingId, VAULT, NB_THIS, [0, 1], 'embed-v1')
+    expect(updateNodeEmbedding).not.toHaveBeenCalledWith(
+      existingId,
+      VAULT,
+      NB_THIS,
+      [1, 0],
+      'embed-v1'
+    )
   })
 
   it('should persist the alignment vector for a newly created node', async () => {
