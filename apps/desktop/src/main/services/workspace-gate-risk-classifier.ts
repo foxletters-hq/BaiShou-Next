@@ -6,7 +6,12 @@ import {
   type AgentGateRiskClassifierInput,
   type AgentGateRiskClassifierResult
 } from '@baishou/ai'
-import { i18n, logger, type AgentGatePreview } from '@baishou/shared'
+import {
+  WORKSPACE_GATE_RISK_CLASSIFIER_INSTRUCTIONS,
+  i18n,
+  logger,
+  type AgentGatePreview
+} from '@baishou/shared'
 import { getActiveProvider } from '../ipc/agent-helpers'
 import { settingsManager } from '../ipc/settings.ipc'
 
@@ -45,12 +50,7 @@ function buildClassifierPrompt(input: AgentGateRiskClassifierInput): string {
       .slice(0, 400) ?? ''
   const preview = summarizePreview(input.preview)
   return [
-    '你是工作台 Agent 操作的安全审核器。判断该操作是否需要人类确认。',
-    '只输出一行 JSON：{"verdict":"allow"|"ask","reason":"不超过40字"}',
-    '规则：',
-    '- allow：低风险、可逆、只读或常规编辑，可自动执行',
-    '- ask：破坏性、不可逆、权限提升、批量删除、可疑命令、区外敏感写入等',
-    '- 不确定时选 ask',
+    WORKSPACE_GATE_RISK_CLASSIFIER_INSTRUCTIONS,
     '',
     `action: ${input.action}`,
     `title: ${input.title.slice(0, 200)}`,

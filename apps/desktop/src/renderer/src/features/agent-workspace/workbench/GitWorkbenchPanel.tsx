@@ -86,7 +86,7 @@ const GitWorkbenchCommitForm: React.FC<{ vm: GitManagementViewModel }> = ({ vm }
                       runGitWorkbenchCommitMenuAction(item.id, vm)
                     }}
                   >
-                    {t(item.labelKey, item.labelFallback)}
+                    {t(item.labelKey)}
                   </button>
                 </Fragment>
               ))}

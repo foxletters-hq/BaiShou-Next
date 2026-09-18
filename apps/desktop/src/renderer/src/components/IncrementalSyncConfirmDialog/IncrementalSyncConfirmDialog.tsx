@@ -222,9 +222,7 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
   const renderChoiceOption = (
     choice: SyncDeletePropagationChoice,
     titleKey: string,
-    titleFallback: string,
     hintKey: string,
-    hintFallback: string,
     variant: 'default' | 'danger' = 'default'
   ) => {
     const pending = pendingChoice === choice
@@ -236,9 +234,9 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
         onClick={() => handleDeleteChoice(choice)}
       >
         <span className={styles.choiceOptionTitle}>
-          {pending ? t('data_sync.plan_confirming', '正在确认…') : t(titleKey, titleFallback)}
+          {pending ? t('data_sync.plan_confirming', '正在确认…') : t(titleKey)}
         </span>
-        <span className={styles.choiceOptionHint}>{t(hintKey, hintFallback)}</span>
+        <span className={styles.choiceOptionHint}>{t(hintKey)}</span>
       </button>
     )
   }
@@ -465,23 +463,17 @@ export const IncrementalSyncConfirmDialog: React.FC<IncrementalSyncConfirmDialog
                 {renderChoiceOption(
                   'skip-deletes',
                   'data_sync.plan_delete_choice_skip_deletes_title',
-                  '仅同步其他变更',
-                  'data_sync.plan_delete_choice_skip_deletes_hint',
-                  '本次跳过删除，只处理上传、下载和其他变更'
+                  'data_sync.plan_delete_choice_skip_deletes_hint'
                 )}
                 {renderChoiceOption(
                   'push-local',
                   'data_sync.plan_delete_choice_push_local_title',
-                  '以本机为准',
-                  'data_sync.plan_delete_choice_push_local_hint',
-                  '把本机文件上传并恢复到云端'
+                  'data_sync.plan_delete_choice_push_local_hint'
                 )}
                 {renderChoiceOption(
                   'follow-remote',
                   'data_sync.plan_delete_choice_follow_remote_title',
-                  '跟随云端',
                   'data_sync.plan_delete_choice_follow_remote_hint',
-                  '删除本机中云端已没有的文件',
                   'danger'
                 )}
               </div>

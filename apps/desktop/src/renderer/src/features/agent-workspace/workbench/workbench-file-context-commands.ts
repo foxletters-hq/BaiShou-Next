@@ -1,3 +1,4 @@
+import { i18n } from '@baishou/shared'
 import {
   appendMenuItem,
   getCommand,
@@ -49,7 +50,7 @@ export function registerWorkbenchFileContextCommands(): void {
     registerCommand<EditorMenuContext>({
       id: WorkbenchFileContextCommandId.AddSelection,
       labelKey: 'workbench.add_selection_to_chat',
-      defaultLabel: '将选区加入对话',
+      defaultLabel: i18n.t('workbench.add_selection_to_chat', '将选区加入对话'),
       isEnabled: (ctx) => ctx.hasSelection,
       run: (ctx) => emitRange(WORKBENCH_ADD_FILE_CONTEXT_EVENT, ctx)
     })
@@ -58,7 +59,7 @@ export function registerWorkbenchFileContextCommands(): void {
     registerCommand<EditorMenuContext>({
       id: WorkbenchFileContextCommandId.CommentSelection,
       labelKey: 'workbench.comment_selection',
-      defaultLabel: '评论此选区',
+      defaultLabel: i18n.t('workbench.comment_selection', '评论此选区'),
       isEnabled: (ctx) => ctx.hasSelection,
       run: (ctx) => emitRange(WORKBENCH_COMMENT_FILE_CONTEXT_EVENT, ctx)
     })

@@ -5,6 +5,8 @@ import {
   type ToolContext
 } from '@baishou/ai'
 import {
+  MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE,
+  MCP_CLIENT_NOT_CONNECTED_MESSAGE,
   logger,
   mcpClientProbeReasonFromError,
   normalizeMcpStreamableUrl,
@@ -131,7 +133,7 @@ class DesktopMcpClientRuntime {
           return listMcpHttpTools(connected.client)
         })(),
         MCP_HTTP_PROBE_TIMEOUT_MS,
-        '获取工具超时'
+        MCP_CLIENT_LIST_TOOLS_TIMEOUT_MESSAGE
       )
       return { ok: true, tools: toMcpClientListedTools(tools) }
     } catch (error) {
@@ -169,7 +171,7 @@ class DesktopMcpClientRuntime {
       callTool: async (serverId, toolName, args) => {
         const session = this.sessions.get(serverId)
         if (!session) {
-          throw new Error('外部 MCP 未连接')
+          throw new Error(MCP_CLIENT_NOT_CONNECTED_MESSAGE)
         }
         return callMcpHttpTool(session.client, toolName, args)
       }

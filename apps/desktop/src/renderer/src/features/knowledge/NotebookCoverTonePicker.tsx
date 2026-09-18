@@ -25,17 +25,6 @@ const TONE_LABEL_KEY: Record<NotebookCardTone, string> = {
   sand: 'knowledge.cover_tone_sand'
 }
 
-const TONE_LABEL_FALLBACK: Record<NotebookCardTone, string> = {
-  lavender: '淡紫',
-  cream: '奶油',
-  peach: '蜜桃',
-  mint: '薄荷',
-  sky: '天空',
-  rose: '玫瑰',
-  lilac: '丁香',
-  sand: '沙色'
-}
-
 export interface NotebookCoverTonePickerProps {
   value: NotebookCardTone | ''
   onChange: (tone: NotebookCardTone) => void
@@ -57,7 +46,7 @@ export const NotebookCoverTonePicker: React.FC<NotebookCoverTonePickerProps> = (
     >
       {NOTEBOOK_CARD_TONES.map((tone) => {
         const selected = value === tone
-        const label = t(TONE_LABEL_KEY[tone], TONE_LABEL_FALLBACK[tone])
+        const label = t(TONE_LABEL_KEY[tone])
         return (
           <button
             key={tone}

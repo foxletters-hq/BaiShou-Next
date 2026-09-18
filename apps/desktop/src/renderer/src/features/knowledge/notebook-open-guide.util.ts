@@ -1,3 +1,5 @@
+import { i18n } from '@baishou/shared'
+
 export type NotebookOpenGuideRow = {
   key: string
   label: string
@@ -56,38 +58,40 @@ export function buildNotebookOpenGuideRows(input: {
     input.extractEngine === 'ocr'
       ? 'OCR'
       : input.extractEngine === 'vision'
-        ? '视觉模型'
-        : '文本提取'
+        ? i18n.t('knowledge.engine_vision_short', '视觉模型')
+        : i18n.t('knowledge.engine_text_extract', '文本提取')
   return [
     {
       key: 'embedding',
-      label: '嵌入模型',
-      value: embedding || '未配置',
+      label: i18n.t('knowledge.embedding_model', '嵌入模型'),
+      value: embedding || i18n.t('common.not_configured', '未配置'),
       warn: !embedding,
       iconSrc: input.icons?.embedding
     },
     {
       key: 'graphExtract',
-      label: '图抽取模型',
-      value: graphExtract || '未配置',
+      label: i18n.t('knowledge.graph_extract_model', '图抽取模型'),
+      value: graphExtract || i18n.t('common.not_configured', '未配置'),
       warn: !graphExtract,
       iconSrc: input.icons?.graphExtract
     },
     {
       key: 'vision',
-      label: '视觉模型',
-      value: vision || '跟随对话模型',
+      label: i18n.t('knowledge.vision_model', '视觉模型'),
+      value: vision || i18n.t('knowledge.follow_chat_model', '跟随对话模型'),
       iconSrc: input.icons?.vision
     },
     {
       key: 'engine',
-      label: '默认提取方式',
+      label: i18n.t('knowledge.default_engine', '默认提取方式'),
       value: engine
     },
     {
       key: 'sources',
-      label: '来源',
-      value: `${Math.max(0, input.sourceCount)} 个`
+      label: i18n.t('knowledge.sources_panel', '来源'),
+      value: i18n.t('knowledge.source_count_short', '{{count}} 个', {
+        count: Math.max(0, input.sourceCount)
+      })
     }
   ]
 }

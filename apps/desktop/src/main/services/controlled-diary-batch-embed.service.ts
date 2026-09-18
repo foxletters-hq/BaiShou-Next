@@ -10,6 +10,7 @@ import {
   hasRagDiaryEmbedFailure,
   isRagMemoryEnabled,
   limitExecute,
+  i18n,
   logger,
   markRagDiaryEmbedFailure,
   resolveBatchEmbedConcurrency,
@@ -232,7 +233,7 @@ export async function runControlledDiaryBatchEmbed(
     {
       completed: 0,
       total: globalTotal,
-      statusText: '正在嵌入日记…'
+      statusText: i18n.t('settings.rag_indexing_diary', '正在嵌入日记…')
     },
     globalTotal
   )
@@ -295,7 +296,11 @@ export async function runControlledDiaryBatchEmbed(
   if (failed > 0 && embedded === 0) {
     await settingsManager.set(
       'rag_config',
-      markRagDiaryEmbedFailure(latestRagConfig, lastError || '嵌入接口不可用，没有写入任何日记向量')
+      markRagDiaryEmbedFailure(
+        latestRagConfig,
+        lastError ||
+          i18n.t('settings.rag_diary_embed_no_vectors', '嵌入接口不可用，没有写入任何日记向量')
+      )
     )
   } else if (failed === 0 && hasRagDiaryEmbedFailure(latestRagConfig)) {
     await settingsManager.set('rag_config', clearRagDiaryEmbedFailure(latestRagConfig))

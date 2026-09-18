@@ -309,8 +309,8 @@ export const WorkbenchSkillsPage: React.FC = () => {
       WORKBENCH_SKILL_CARDS.filter((card) =>
         matchesWorkbenchSkillSearch(query, {
           name: card.name,
-          title: t(card.titleKey, card.titleFallback),
-          description: t(card.descriptionKey, card.descriptionFallback)
+          title: t(card.titleKey),
+          description: t(card.descriptionKey)
         })
       ),
     [query, t]
@@ -508,10 +508,10 @@ export const WorkbenchSkillsPage: React.FC = () => {
     (card: (typeof WORKBENCH_SKILL_CARDS)[number]) => {
       if (launching) return
       setLaunchIntent('template')
-      setLaunchDisplayName(t(card.titleKey, card.titleFallback))
+      setLaunchDisplayName(t(card.titleKey))
       setLaunchSkillTarget({
         name: card.name,
-        description: t(card.descriptionKey, card.descriptionFallback),
+        description: t(card.descriptionKey),
         content: card.name === WRITER_SKILL_NAME ? WRITER_SKILL_CONTENT : '',
         location: '',
         source: 'software'
@@ -660,12 +660,8 @@ export const WorkbenchSkillsPage: React.FC = () => {
                           <img src={card.image} alt="" />
                         </span>
                         <span className={styles.cardBody}>
-                          <span className={styles.cardTitle}>
-                            {t(card.titleKey, card.titleFallback)}
-                          </span>
-                          <span className={styles.cardDesc}>
-                            {t(card.descriptionKey, card.descriptionFallback)}
-                          </span>
+                          <span className={styles.cardTitle}>{t(card.titleKey)}</span>
+                          <span className={styles.cardDesc}>{t(card.descriptionKey)}</span>
                         </span>
                       </button>
                     </div>

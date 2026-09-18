@@ -33,19 +33,6 @@ const COMPOSER_GREETING_KEYS = [
   'workbench.home_composer_greeting_10'
 ] as const
 
-const COMPOSER_GREETING_FALLBACKS = [
-  'Hi，{{name}}，今天先从哪一个小灵感开始？',
-  '嗨，{{name}}，咖啡泡好了，我们把上次的想法继续推进吧。',
-  '{{name}}，不管是整理思路还是动笔写写，随时告诉我。',
-  '欢迎回来，{{name}}。准备好了，今天想一起攻克哪一个难题？',
-  '{{name}}，把脑海里的草稿交给我，我们一步步把它变成现实。',
-  '嘿 {{name}}，桌面整整齐齐，就等你的新想法了。',
-  '{{name}}，把手头的事列出来，我来帮你逐项拆解。',
-  '{{name}}，今天想写点什么、改点什么？我都陪着你。',
-  'Hi {{name}}，灵感不分大小，写下一句就算开工。',
-  '{{name}}，欢迎回来，随时在下方输入你想做的事。'
-] as const
-
 type MetaMenuState = {
   kind: 'workspace' | 'security'
   x: number
@@ -170,8 +157,7 @@ export const WorkbenchHomeComposer: React.FC<WorkbenchHomeComposerProps> = ({
       (typeof nickname === 'string' && nickname.trim()) ||
       t('workbench.home_composer_greeting_guest', '朋友')
     const key = COMPOSER_GREETING_KEYS[greetingIndex]!
-    const fallback = COMPOSER_GREETING_FALLBACKS[greetingIndex]!
-    return t(key, fallback, { name })
+    return t(key, { name })
   }, [greetingIndex, nickname, t])
 
   const workspaceLabel = useMemo(() => {

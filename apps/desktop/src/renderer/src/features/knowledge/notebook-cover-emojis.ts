@@ -1,38 +1,40 @@
-export const NOTEBOOK_COVER_EMOJI_GROUPS: Array<{ keys: string; items: string[] }> = [
+import { i18n } from '@baishou/shared'
+
+export const NOTEBOOK_COVER_EMOJI_GROUPS: Array<{ keysKey: string; items: string[] }> = [
   {
-    keys: '表情 face smile 笑',
+    keysKey: 'knowledge.cover_emoji_keys_face',
     items: ['😀', '😃', '😄', '😁', '😊', '😉', '😍', '🤩', '😎', '🤓', '🧐', '🤔', '🫡', '😴']
   },
   {
-    keys: '爱心 heart 星 star',
+    keysKey: 'knowledge.cover_emoji_keys_heart',
     items: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💕', '💞', '⭐', '🌟', '✨', '⚡']
   },
   {
-    keys: '手势 hand 赞',
+    keysKey: 'knowledge.cover_emoji_keys_hand',
     items: ['👍', '👎', '👏', '🙌', '🤝', '✌️', '🤞', '👊', '💪', '🙏']
   },
   {
-    keys: '办公 office 笔记 book 学习',
+    keysKey: 'knowledge.cover_emoji_keys_office',
     items: ['📚', '📖', '📝', '📒', '📎', '📌', '📁', '📂', '💼', '🖥️', '💻', '⌨️', '🖱️', '🧮']
   },
   {
-    keys: '研究 science 实验',
+    keysKey: 'knowledge.cover_emoji_keys_science',
     items: ['🧪', '🔬', '🔭', '🧬', '💊', '🧠', '💡', '🔮']
   },
   {
-    keys: '自然 nature 植物',
+    keysKey: 'knowledge.cover_emoji_keys_nature',
     items: ['🌿', '🍃', '🍀', '🌸', '🌼', '🌻', '🌈', '🌊', '🔥', '❄️', '🌙', '☀️']
   },
   {
-    keys: '动物 animal',
+    keysKey: 'knowledge.cover_emoji_keys_animal',
     items: ['🐶', '🐱', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🦄', '🐝']
   },
   {
-    keys: '食物 food',
+    keysKey: 'knowledge.cover_emoji_keys_food',
     items: ['🍎', '🍋', '🍇', '🍓', '🍑', '🥑', '🌽', '🍞', '🧀', '☕', '🍵', '🍩']
   },
   {
-    keys: '活动 activity 旅行 travel',
+    keysKey: 'knowledge.cover_emoji_keys_activity',
     items: ['🎯', '🧩', '🎲', '🎮', '🎨', '🎬', '🎵', '🏆', '🚀', '✈️', '🏡', '🗺️', '🧭', '🪐']
   }
 ]
@@ -42,7 +44,8 @@ export function listNotebookCoverEmojis(query = ''): string[] {
   const seen = new Set<string>()
   const out: string[] = []
   for (const group of NOTEBOOK_COVER_EMOJI_GROUPS) {
-    const groupHit = !q || group.keys.toLowerCase().includes(q)
+    const keys = i18n.t(group.keysKey)
+    const groupHit = !q || keys.toLowerCase().includes(q)
     for (const emoji of group.items) {
       if (seen.has(emoji)) continue
       if (!groupHit && !emoji.includes(q)) continue
