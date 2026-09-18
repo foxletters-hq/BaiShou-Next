@@ -85,7 +85,10 @@ export interface AgentWorkspaceMessageListProps {
     }
   ) => boolean | Promise<boolean>
   bubbleActions?: WorkspaceBubbleActions
-  onOpenFile?: (relativePath: string, options?: { line?: number }) => void
+  onOpenFile?: (
+    relativePath: string,
+    options?: { line?: number; isDirectory?: boolean }
+  ) => void
   onSelectChange?: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
   hasMore?: boolean
@@ -124,7 +127,10 @@ function WorkspaceUserTurn(props: {
     }
   ) => boolean | Promise<boolean>
   bubbleActions?: WorkspaceBubbleActions
-  onOpenFile?: (relativePath: string, options?: { line?: number }) => void
+  onOpenFile?: (
+    relativePath: string,
+    options?: { line?: number; isDirectory?: boolean }
+  ) => void
 }) {
   const { t } = useTranslation()
   const {
@@ -311,6 +317,7 @@ function renderStreamFileOps(
       changes={changes}
       running={items.some((item) => item.status === 'running')}
       onSelectChange={options.onSelectChange ?? (() => undefined)}
+      onReviewAll={options.onReviewAll}
     />
   )
 }
@@ -653,7 +660,9 @@ export const AgentWorkspaceMessageList = forwardRef<
               editingActive={editingMessageId === msg.id}
               onEditingChange={setEditingMessageId}
               onSelectChange={onSelectChange}
+              onReviewAll={onReviewAll}
               bubbleActions={bubbleActions}
+              suppressIncompleteBanner={Boolean(pendingAsk)}
             />
           )
         })}

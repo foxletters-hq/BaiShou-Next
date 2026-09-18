@@ -2,13 +2,14 @@ import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import type { FileChangeKind, WorkspaceChangeEntry } from '@baishou/shared'
-import { DiffChanges, basenameFromPath } from '@baishou/ui'
+import { DiffChanges, formatFileChangeListPath } from '@baishou/ui'
 import styles from './WorkspaceFileChangeList.module.css'
 
 export interface WorkspaceFileChangeListProps {
   changes: WorkspaceChangeEntry[]
   running?: boolean
   onSelectChange: (change: WorkspaceChangeEntry) => void
+  onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
 }
 
 function fileOpActionLabel(
@@ -24,10 +25,11 @@ function fileOpActionLabel(
 export const WorkspaceFileChangeList: React.FC<WorkspaceFileChangeListProps> = ({
   changes,
   running = false,
-  onSelectChange
+  onSelectChange,
+  onReviewAll
 }) => {
   const { t } = useTranslation()
-  const [listOpen, setListOpen] = useState(false)
+  const [listOpen, setListOpen] = useState(true)
 
   const totals = useMemo(
     () =>
@@ -47,22 +49,34 @@ export const WorkspaceFileChangeList: React.FC<WorkspaceFileChangeListProps> = (
     ? t('workbench.writing_files', '正在写入 {{count}} 个文件', { count: changes.length })
     : t('workbench.edited_files', '编辑了 {{count}} 个文件', { count: changes.length })
 
+  const handleHeaderMain = () => {
+    if (onReviewAll) {
+      onReviewAll(changes)
+      return
+    }
+    setListOpen((open) => !open)
+  }
+
   return (
     <div className={styles.root}>
-      <button
-        type="button"
-        className={styles.header}
-        aria-expanded={listOpen}
-        onClick={() => setListOpen((open) => !open)}
-      >
-        <span className={styles.headerTitle}>{title}</span>
-        <DiffChanges additions={totals.additions} deletions={totals.deletions} />
-        <ChevronRight
-          className={`${styles.chevron} ${listOpen ? styles.chevronOpen : ''}`}
-          size={14}
-          aria-hidden
-        />
-      </button>
+      <div className={styles.header}>
+        <button type="button" className={styles.headerMain} onClick={handleHeaderMain}>
+          <span className={styles.headerTitle}>{title}</span>
+          <DiffChanges additions={totals.additions} deletions={totals.deletions} />
+        </button>
+        <button
+          type="button"
+          className={styles.headerToggle}
+          aria-expanded={listOpen}
+          onClick={() => setListOpen((open) => !open)}
+        >
+          <ChevronRight
+            className={`${styles.chevron} ${listOpen ? styles.chevronOpen : ''}`}
+            size={14}
+            aria-hidden
+          />
+        </button>
+      </div>
       {listOpen ? (
         <ul className={styles.list}>
           {changes.map((change) => (
@@ -76,7 +90,7 @@ export const WorkspaceFileChangeList: React.FC<WorkspaceFileChangeListProps> = (
                 })}
               >
                 <span className={styles.action}>{fileOpActionLabel(t, change.kind)}</span>
-                <span className={styles.path}>{basenameFromPath(change.path)}</span>
+                <span className={styles.path}>{formatFileChangeListPath(change.path)}</span>
                 <DiffChanges additions={change.additions} deletions={change.deletions} />
                 <ChevronRight className={styles.itemChevron} size={12} aria-hidden />
               </button>

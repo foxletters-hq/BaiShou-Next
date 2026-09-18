@@ -10,7 +10,8 @@ import {
   isWorkspaceFileMutateTool,
   normalizePartData,
   resolveAgentToolActionLabel,
-  sortAgentMessageParts
+  sortAgentMessageParts,
+  type FallbackTranslateFn
 } from '@baishou/shared'
 import type { WorkspaceChatMessage } from '../hooks/useWorkspaceChatMessages'
 import { readWorkspacePartText } from './workspace-message-display.util'
@@ -202,7 +203,7 @@ export function toWorkspaceChangeEntry(
   data: FileChangePartData
 ): WorkspaceChangeEntry {
   return {
-    id: `${messageId}:${data.path}`,
+    id: `${messageId}:${data.toolCallId ?? data.path}:${data.path}`,
     path: data.path,
     kind: data.kind,
     additions: data.additions,
@@ -246,15 +247,16 @@ export function buildWorkspaceAssistantTimeline(
             : ''
       if (!toolName || toolName === 'emoji_send') continue
       const failed = data.status === 'failed'
+      const awaitingAsk = toolName === 'companion_ask' && data.status === 'running' && !data.result
       items.push({
         kind: 'tool',
         key: part.id,
         invocation: {
           toolCallId: data.callId ?? part.id,
           toolName,
-          state: failed ? 'call' : 'result',
+          state: failed ? 'call' : awaitingAsk ? 'partial-call' : 'result',
           args: (data.arguments as Record<string, unknown>) ?? {},
-          result: data.result ?? data.error ?? (failed ? 'Tool execution failed' : undefined)
+          result: data.result ?? data.error ?? (failed && !awaitingAsk ? 'Tool execution failed' : undefined)
         }
       })
       continue
@@ -288,10 +290,7 @@ export function isFileChangeData(data: unknown): data is FileChangePartData {
   return parseFileChangePartData(data) != null
 }
 
-export function formatWorkspaceToolDisplayName(
-  name: string,
-  t?: (key: string, fallback?: string) => string
-): string {
+export function formatWorkspaceToolDisplayName(name: string, t?: FallbackTranslateFn): string {
   return resolveAgentToolActionLabel(name, t ?? ((_key, fallback) => fallback ?? _key))
 }
 
@@ -314,7 +313,7 @@ export function collectWorkspaceFileChanges(
       const parsed = parseFileChangePartData(part.data)
       if (!parsed || isFileChangePartFailed(parsed)) continue
       changes.push({
-        id: `${msg.id}:${parsed.path}`,
+        id: `${msg.id}:${parsed.toolCallId ?? parsed.path}:${parsed.path}`,
         path: parsed.path,
         kind: parsed.kind,
         additions: parsed.additions,
@@ -326,6 +325,8 @@ export function collectWorkspaceFileChanges(
   return changes
 }
 
-export function isFileChangePartFailed(data: { status?: string }): boolean {
+/** 失败态是运行时附加字段，共享的 FileChangePartData 声明里没有 status */
+export function isFileChangePartFailed(data: FileChangePartData): boolean {
+  if (!('status' in data)) return false
   return data.status === 'failed'
 }

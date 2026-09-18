@@ -32,10 +32,22 @@ export function WorkspaceAssistantTurn(props: {
   editingActive: boolean
   onEditingChange: (messageId: string | null) => void
   onSelectChange?: (change: WorkspaceChangeEntry) => void
+  onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
   bubbleActions?: WorkspaceBubbleActions
+  /** 仍在等确认卡时，不要把中途落盘显示成「回复中断」 */
+  suppressIncompleteBanner?: boolean
 }) {
   const { t } = useTranslation()
-  const { msg, dimmed, editingActive, onEditingChange, onSelectChange, bubbleActions } = props
+  const {
+    msg,
+    dimmed,
+    editingActive,
+    onEditingChange,
+    onSelectChange,
+    onReviewAll,
+    bubbleActions,
+    suppressIncompleteBanner = false
+  } = props
   const timeline = buildWorkspaceAssistantTimeline(msg.parts)
   const timelineGroups = groupWorkspaceAssistantTimeline(timeline)
   const assistantText =
@@ -120,6 +132,7 @@ export function WorkspaceAssistantTurn(props: {
                   item.items.map((entry) => entry.data)
                 )}
                 onSelectChange={(change) => onSelectChange?.(change)}
+                onReviewAll={onReviewAll}
               />
             )
           })
@@ -159,8 +172,9 @@ export function WorkspaceAssistantTurn(props: {
       {knowledgeCitations.length > 0 ? (
         <KnowledgeCitationBlock citations={knowledgeCitations} />
       ) : null}
-      {msg.streamStatus === 'in_progress' ||
-      readAssistantStreamStatus(msg.parts) === 'in_progress' ? (
+      {!suppressIncompleteBanner &&
+      (msg.streamStatus === 'in_progress' ||
+        readAssistantStreamStatus(msg.parts) === 'in_progress') ? (
         <p className={styles.streamIncomplete}>
           {t('workbench.reply_interrupted', '回复尚未完成，已保存到中断处')}
         </p>
