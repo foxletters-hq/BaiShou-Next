@@ -1,33 +1,25 @@
-import {
-  aggregateEmbedLedgerFromVectorRows,
-  embeddingVectorToBytes,
-  EMBED_LEDGER_REBUILD_SAVEPOINT,
-  finishEmbedLedgerRebuild,
-  logger,
-  mapMigrationBackupRow,
-  MEMORY_EMBED_GROUP_ID,
-  type AggregatedEmbedLedgerRow,
-  type EmbedLedgerVectorRow
-} from '@baishou/shared'
+import { embeddingVectorToBytes, logger, MEMORY_EMBED_GROUP_ID } from '@baishou/shared'
 import type {
   ISqlExecutor,
-  EmbeddingSnapshotMeta,
   EmbedLedgerFailureParams,
   EmbedLedgerReconcileParams,
-  EmbedLedgerReconcileResult,
   EmbedLedgerRecordParams
 } from '@baishou/shared'
 import {
-  buildEmbedLedgerScopeClause,
   EMBED_LEDGER_TABLE,
-  HYBRID_SEARCH_BACKUP_TABLE,
   HYBRID_SEARCH_INDEX_NAME,
-  HYBRID_SEARCH_TABLE,
-  HYBRID_SEARCH_ROLLBACK_TABLE
+  HYBRID_SEARCH_TABLE
 } from './hybrid-search.repository.constants'
+import { HybridSearchLedgerStore } from './hybrid-search.repository.ledger'
+
+export { HybridSearchMigrationStore } from './hybrid-search.repository.migration'
 
 export class HybridSearchEmbeddingStore {
-  constructor(private readonly db: ISqlExecutor) {}
+  private readonly ledger: HybridSearchLedgerStore
+
+  constructor(private readonly db: ISqlExecutor) {
+    this.ledger = new HybridSearchLedgerStore(db)
+  }
 
   async initVectorIndex(dimension: number): Promise<void> {
     await this.initVectorTables(dimension, false)
@@ -36,7 +28,6 @@ export class HybridSearchEmbeddingStore {
   async initVectorTables(dimension: number, _forceRebuild = false): Promise<void> {
     if (dimension <= 0) return
 
-    // sqlite-vec（桌面 better-sqlite3 / 移动端 expo-sqlite）走 vec_distance_cosine，无需 libsql ANN 索引
     try {
       await this.db.execute('SELECT vec_version()')
       logger.info(`[VectorSearch] sqlite-vec 已就绪（dim=${dimension}, metric=cosine）`)
@@ -125,268 +116,24 @@ export class HybridSearchEmbeddingStore {
     }
   }
 
-  async listLedgerBySource(
-    sourceType: string,
-    options?: { vaultId?: string }
-  ): Promise<Array<{ sourceId: string; contentHash: string; status: string }>> {
-    const conditions = ['source_type = ?']
-    const args: Array<string | number> = [sourceType]
-    const vaultId = options?.vaultId?.trim()
-    if (vaultId) {
-      conditions.push('vault_id = ?')
-      args.push(vaultId)
-    }
-    const result = await this.db.execute({
-      sql: `
-        SELECT source_id AS sourceId, content_hash AS contentHash, status
-        FROM ${EMBED_LEDGER_TABLE}
-        WHERE ${conditions.join(' AND ')}
-      `,
-      args
-    })
-    return result.rows.map((raw) => {
-      const row = raw as Record<string, unknown>
-      return {
-        sourceId: String(row.sourceId ?? row.source_id ?? ''),
-        contentHash: String(row.contentHash ?? row.content_hash ?? ''),
-        status: String(row.status ?? '')
-      }
-    })
+  listLedgerBySource(...args: Parameters<HybridSearchLedgerStore['listLedgerBySource']>) {
+    return this.ledger.listLedgerBySource(...args)
   }
 
-  async recordEmbedded(params: EmbedLedgerRecordParams): Promise<void> {
-    const vaultId = params.vaultId.trim()
-    if (!vaultId) {
-      throw new Error('recordEmbedded: vaultId is required')
-    }
-    const now = Date.now()
-    await this.db.execute({
-      sql: `
-        INSERT INTO ${EMBED_LEDGER_TABLE}
-        (vault_id, source_type, source_id, content_hash, chunk_count,
-         model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'embedded', 0, NULL, ?, ?)
-        ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
-          content_hash = excluded.content_hash,
-          chunk_count = excluded.chunk_count,
-          model_id = excluded.model_id,
-          dimension = excluded.dimension,
-          status = 'embedded',
-          attempts = 0,
-          last_error = NULL,
-          embedded_at = excluded.embedded_at,
-          updated_at = excluded.updated_at
-      `,
-      args: [
-        vaultId,
-        params.sourceType,
-        params.sourceId,
-        params.contentHash,
-        params.chunkCount,
-        params.modelId,
-        params.dimension,
-        now,
-        now
-      ]
-    })
+  recordEmbedded(params: EmbedLedgerRecordParams) {
+    return this.ledger.recordEmbedded(params)
   }
 
-  async reconcileEmbedLedger(
-    params?: EmbedLedgerReconcileParams
-  ): Promise<EmbedLedgerReconcileResult> {
-    const { ledgerChunkSum, vectorCount, mismatch } = await this.readEmbedLedgerCountGap(params)
-    if (!mismatch) {
-      return { rebuilt: false, ledgerChunkSum, vectorCount }
-    }
-    await this.rebuildEmbedLedger(params)
-    return { rebuilt: true, ledgerChunkSum, vectorCount }
+  reconcileEmbedLedger(params?: EmbedLedgerReconcileParams) {
+    return this.ledger.reconcileEmbedLedger(params)
   }
 
-  async rebuildEmbedLedger(params?: EmbedLedgerReconcileParams): Promise<void> {
-    await this.rebuildEmbedLedgerRows(params)
-    await finishEmbedLedgerRebuild(params?.onRebuilt)
+  rebuildEmbedLedger(params?: EmbedLedgerReconcileParams) {
+    return this.ledger.rebuildEmbedLedger(params)
   }
 
-  private async rebuildEmbedLedgerRows(params?: EmbedLedgerReconcileParams): Promise<void> {
-    const { clause, args } = buildEmbedLedgerScopeClause(params)
-    const vectorResult = await this.db.execute({
-      sql: `
-        SELECT vault_id AS vaultId, source_type AS sourceType, source_id AS sourceId,
-               model_id AS modelId, dimension, metadata_json AS metadataJson
-        FROM ${HYBRID_SEARCH_TABLE}
-        WHERE ${clause}
-      `,
-      args
-    })
-    const vectorRows: EmbedLedgerVectorRow[] = vectorResult.rows.map((raw) => {
-      const row = raw as Record<string, unknown>
-      return {
-        vaultId: String(row.vaultId ?? row.vault_id ?? ''),
-        sourceType: String(row.sourceType ?? row.source_type ?? ''),
-        sourceId: String(row.sourceId ?? row.source_id ?? ''),
-        modelId: String(row.modelId ?? row.model_id ?? ''),
-        dimension: Number(row.dimension ?? 0),
-        metadataJson: String(row.metadataJson ?? row.metadata_json ?? '{}')
-      }
-    })
-
-    const zeroResult = await this.db.execute({
-      sql: `
-        SELECT vault_id AS vaultId, source_type AS sourceType, source_id AS sourceId,
-               content_hash AS contentHash, model_id AS modelId, dimension, updated_at AS updatedAt
-        FROM ${EMBED_LEDGER_TABLE}
-        WHERE ${clause} AND status = 'embedded' AND chunk_count = 0
-      `,
-      args
-    })
-    const zeroRows: AggregatedEmbedLedgerRow[] = zeroResult.rows.map((raw) => {
-      const row = raw as Record<string, unknown>
-      return {
-        vaultId: String(row.vaultId ?? row.vault_id ?? ''),
-        sourceType: String(row.sourceType ?? row.source_type ?? ''),
-        sourceId: String(row.sourceId ?? row.source_id ?? ''),
-        contentHash: String(row.contentHash ?? row.content_hash ?? ''),
-        chunkCount: 0,
-        modelId: String(row.modelId ?? row.model_id ?? ''),
-        dimension: Number(row.dimension ?? 0),
-        updatedAt: Number(row.updatedAt ?? row.updated_at ?? 0)
-      }
-    })
-
-    const aggregated = aggregateEmbedLedgerFromVectorRows(vectorRows)
-    const seen = new Set(
-      aggregated.map((row) => `${row.vaultId}\0${row.sourceType}\0${row.sourceId}`)
-    )
-    const pending = aggregated.concat(
-      zeroRows.filter((row) => !seen.has(`${row.vaultId}\0${row.sourceType}\0${row.sourceId}`))
-    )
-
-    // 整本账要么全换成新的，要么原样不动：中途崩溃留下「删完了但只插了一半」的账本，
-    // 虽然下一次自检还会再纠正，但那一轮的待嵌入计数会偏小、提醒会漏报。
-    await this.db.execute(`SAVEPOINT ${EMBED_LEDGER_REBUILD_SAVEPOINT}`)
-    try {
-      await this.db.execute({
-        sql: `DELETE FROM ${EMBED_LEDGER_TABLE} WHERE ${clause}`,
-        args
-      })
-      for (const row of pending) {
-        await this.insertRebuiltLedgerRow(row)
-      }
-      await this.db.execute(`RELEASE ${EMBED_LEDGER_REBUILD_SAVEPOINT}`)
-    } catch (e) {
-      await this.db.execute(`ROLLBACK TO ${EMBED_LEDGER_REBUILD_SAVEPOINT}`).catch(() => undefined)
-      await this.db.execute(`RELEASE ${EMBED_LEDGER_REBUILD_SAVEPOINT}`).catch(() => undefined)
-      throw e
-    }
-  }
-
-  private async readEmbedLedgerCountGap(params?: EmbedLedgerReconcileParams): Promise<{
-    ledgerChunkSum: number
-    vectorCount: number
-    mismatch: boolean
-  }> {
-    const { clause, args } = buildEmbedLedgerScopeClause(params)
-    const ledgerResult = await this.db.execute({
-      sql: `
-        SELECT vault_id AS vaultId, source_type AS sourceType,
-               COALESCE(SUM(chunk_count), 0) AS chunkSum
-        FROM ${EMBED_LEDGER_TABLE}
-        WHERE ${clause}
-        GROUP BY vault_id, source_type
-      `,
-      args
-    })
-    const vectorResult = await this.db.execute({
-      sql: `
-        SELECT vault_id AS vaultId, source_type AS sourceType, COUNT(*) AS vectorCount
-        FROM ${HYBRID_SEARCH_TABLE}
-        WHERE ${clause}
-        GROUP BY vault_id, source_type
-      `,
-      args
-    })
-
-    const ledgerMap = new Map<string, number>()
-    for (const raw of ledgerResult.rows) {
-      const row = raw as Record<string, unknown>
-      const key = `${String(row.vaultId ?? row.vault_id ?? '')}\0${String(row.sourceType ?? row.source_type ?? '')}`
-      ledgerMap.set(key, Number(row.chunkSum ?? row.chunk_sum ?? 0))
-    }
-    const vectorMap = new Map<string, number>()
-    for (const raw of vectorResult.rows) {
-      const row = raw as Record<string, unknown>
-      const key = `${String(row.vaultId ?? row.vault_id ?? '')}\0${String(row.sourceType ?? row.source_type ?? '')}`
-      vectorMap.set(key, Number(row.vectorCount ?? row.vector_count ?? row.c ?? 0))
-    }
-
-    const keys = new Set([...ledgerMap.keys(), ...vectorMap.keys()])
-    let ledgerChunkSum = 0
-    let vectorCount = 0
-    let mismatch = false
-    for (const key of keys) {
-      const sum = ledgerMap.get(key) ?? 0
-      const count = vectorMap.get(key) ?? 0
-      ledgerChunkSum += sum
-      vectorCount += count
-      if (sum !== count) mismatch = true
-    }
-    return { ledgerChunkSum, vectorCount, mismatch }
-  }
-
-  private async insertRebuiltLedgerRow(row: AggregatedEmbedLedgerRow): Promise<void> {
-    const now = Date.now()
-    const stamp = row.updatedAt > 0 ? row.updatedAt : now
-    await this.db.execute({
-      sql: `
-        INSERT INTO ${EMBED_LEDGER_TABLE}
-        (vault_id, source_type, source_id, content_hash, chunk_count,
-         model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'embedded', 0, NULL, ?, ?)
-        ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
-          content_hash = excluded.content_hash,
-          chunk_count = excluded.chunk_count,
-          model_id = excluded.model_id,
-          dimension = excluded.dimension,
-          status = 'embedded',
-          attempts = 0,
-          last_error = NULL,
-          embedded_at = excluded.embedded_at,
-          updated_at = excluded.updated_at
-      `,
-      args: [
-        row.vaultId,
-        row.sourceType,
-        row.sourceId,
-        row.contentHash,
-        row.chunkCount,
-        row.modelId,
-        row.dimension,
-        stamp,
-        stamp
-      ]
-    })
-  }
-
-  async recordEmbedFailure(params: EmbedLedgerFailureParams): Promise<void> {
-    const vaultId = params.vaultId.trim()
-    if (!vaultId) {
-      throw new Error('recordEmbedFailure: vaultId is required')
-    }
-    const now = Date.now()
-    await this.db.execute({
-      sql: `
-        INSERT INTO ${EMBED_LEDGER_TABLE}
-        (vault_id, source_type, source_id, content_hash, chunk_count,
-         model_id, dimension, status, attempts, last_error, embedded_at, updated_at)
-        VALUES (?, ?, ?, '', 0, '', 0, 'failed', 1, ?, NULL, ?)
-        ON CONFLICT(vault_id, source_type, source_id) DO UPDATE SET
-          status = 'failed',
-          attempts = attempts + 1,
-          last_error = excluded.last_error,
-          updated_at = excluded.updated_at
-      `,
-      args: [vaultId, params.sourceType, params.sourceId, params.lastError, now]
-    })
+  recordEmbedFailure(params: EmbedLedgerFailureParams) {
+    return this.ledger.recordEmbedFailure(params)
   }
 
   /** 按来源类型 + 唯一键读取一条嵌入。未传 vaultId 时 fail-closed。 */
@@ -591,167 +338,5 @@ export class HybridSearchEmbeddingStore {
   async clearAndReinitEmbeddings(dimension: number): Promise<void> {
     await this.clearEmbeddings()
     await this.initVectorTables(dimension, false)
-  }
-}
-
-export class HybridSearchMigrationStore {
-  constructor(private readonly db: ISqlExecutor) {}
-
-  async hasPendingMigration(): Promise<boolean> {
-    if (!(await this.hasMigrationBackupTable())) return false
-
-    const countRow = await this.db.execute(
-      `SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE} WHERE is_migrated = 0`
-    )
-    return Number(countRow.rows[0]?.c ?? 0) > 0
-  }
-
-  async hasMigrationBackupTable(): Promise<boolean> {
-    const checkTable = await this.db.execute({
-      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-      args: [HYBRID_SEARCH_BACKUP_TABLE]
-    })
-    return checkTable.rows.length > 0
-  }
-
-  async hasMigrationRollbackTable(): Promise<boolean> {
-    const checkTable = await this.db.execute({
-      sql: `SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
-      args: [HYBRID_SEARCH_ROLLBACK_TABLE]
-    })
-    return checkTable.rows.length > 0
-  }
-
-  async countHeterogeneousEmbeddings(currentModelId: string): Promise<number> {
-    const checkTable = await this.db.execute(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_TABLE}'`
-    )
-    if (checkTable.rows.length === 0) return 0
-
-    const countRow = await this.db.execute({
-      sql: `SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE} WHERE model_id != ?`,
-      args: [currentModelId]
-    })
-    return Number(countRow.rows[0]?.c ?? 0)
-  }
-
-  async createMigrationBackup(): Promise<number> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_BACKUP_TABLE}`)
-    await this.db.execute(`
-      CREATE TABLE ${HYBRID_SEARCH_BACKUP_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
-             metadata_json, source_created_at, 0 as is_migrated
-      FROM ${HYBRID_SEARCH_TABLE}
-    `)
-    await this.db.execute(
-      `CREATE INDEX IF NOT EXISTS idx_mig_backup_migrated ON ${HYBRID_SEARCH_BACKUP_TABLE}(is_migrated)`
-    )
-    const count = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE}`)
-    return Number(count.rows[0]?.c ?? 0)
-  }
-
-  async dropMigrationBackup(): Promise<void> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_BACKUP_TABLE}`)
-  }
-
-  async getUnmigratedCount(): Promise<number> {
-    try {
-      const countRow = await this.db.execute(
-        `SELECT count(*) as c FROM ${HYBRID_SEARCH_BACKUP_TABLE} WHERE is_migrated = 0`
-      )
-      return Number(countRow.rows[0]?.c ?? 0)
-    } catch {
-      return 0
-    }
-  }
-
-  async getUnmigratedBackupChunks(): Promise<any[]> {
-    try {
-      const res = await this.db.execute(`
-        SELECT embedding_id, source_type as sourceType, source_id as sourceId, group_id as groupId,
-               vault_id as vaultId, chunk_index as chunkIndex, chunk_text as chunkText,
-               metadata_json as metadataJson, source_created_at as sourceCreatedAt
-        FROM ${HYBRID_SEARCH_BACKUP_TABLE}
-        WHERE is_migrated = 0
-        LIMIT 50
-      `)
-      return Array.from(res.rows).map((row) =>
-        mapMigrationBackupRow(row as Record<string, unknown>)
-      )
-    } catch {
-      return []
-    }
-  }
-
-  async markBackupChunkMigrated(embeddingId: string): Promise<void> {
-    await this.db.execute({
-      sql: `UPDATE ${HYBRID_SEARCH_BACKUP_TABLE} SET is_migrated = 1 WHERE embedding_id = ?`,
-      args: [embeddingId]
-    })
-  }
-
-  async verifyMigrationComplete(modelId: string): Promise<[boolean, boolean]> {
-    const pending = await this.hasPendingMigration()
-    const mismatchedCount = await this.countHeterogeneousEmbeddings(modelId)
-    return [!pending, mismatchedCount === 0]
-  }
-
-  async getCurrentEmbeddingMeta(): Promise<EmbeddingSnapshotMeta | null> {
-    const countRow = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
-    const count = Number(countRow.rows[0]?.c ?? 0)
-    if (count === 0) return null
-    const metaRow = await this.db.execute(`
-      SELECT model_id as modelId, dimension, count(*) as c FROM ${HYBRID_SEARCH_TABLE}
-      GROUP BY model_id, dimension ORDER BY c DESC LIMIT 1
-    `)
-    const row = metaRow.rows[0]
-    if (!row?.modelId) return null
-    return { modelId: String(row.modelId), dimension: Number(row.dimension ?? 0), count }
-  }
-
-  async createRollbackSnapshot(): Promise<number> {
-    const countRow = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
-    const count = Number(countRow.rows[0]?.c ?? 0)
-    if (count === 0) return 0
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_ROLLBACK_TABLE}`)
-    await this.db.execute(`
-      CREATE TABLE ${HYBRID_SEARCH_ROLLBACK_TABLE} AS
-      SELECT embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
-             metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_TABLE}
-    `)
-    logger.info(`[RAG] Migration rollback snapshot created: ${count} rows`)
-    return count
-  }
-
-  async restoreRollbackSnapshot(): Promise<number> {
-    const checkTable = await this.db.execute(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_ROLLBACK_TABLE}'`
-    )
-    if (checkTable.rows.length === 0)
-      throw new Error(`Rollback snapshot table ${HYBRID_SEARCH_ROLLBACK_TABLE} does not exist`)
-    await this.db.execute(`DELETE FROM ${HYBRID_SEARCH_TABLE}`)
-    await this.db.execute(`
-      INSERT INTO ${HYBRID_SEARCH_TABLE} (embedding_id, source_type, source_id, group_id, vault_id, chunk_index,
-                                          chunk_text, metadata_json, embedding, dimension, model_id, created_at, source_created_at)
-      SELECT embedding_id, source_type, source_id, group_id, vault_id, chunk_index, chunk_text,
-             metadata_json, embedding, dimension, model_id, created_at, source_created_at FROM ${HYBRID_SEARCH_ROLLBACK_TABLE}
-    `)
-    const restored = await this.db.execute(`SELECT count(*) as c FROM ${HYBRID_SEARCH_TABLE}`)
-    return Number(restored.rows[0]?.c ?? 0)
-  }
-
-  async dropRollbackSnapshot(): Promise<void> {
-    await this.db.execute(`DROP TABLE IF EXISTS ${HYBRID_SEARCH_ROLLBACK_TABLE}`)
-  }
-
-  async hasRollbackSnapshot(): Promise<boolean> {
-    const checkTable = await this.db.execute(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='${HYBRID_SEARCH_ROLLBACK_TABLE}'`
-    )
-    if (checkTable.rows.length === 0) return false
-    const countRow = await this.db.execute(
-      `SELECT count(*) as c FROM ${HYBRID_SEARCH_ROLLBACK_TABLE}`
-    )
-    return Number(countRow.rows[0]?.c ?? 0) > 0
   }
 }

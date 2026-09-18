@@ -1,72 +1,45 @@
-import { and, asc, desc, eq, inArray, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
 import type { AppDatabase } from '../types'
 import type { NotebookGraphWrite } from './notebook-graph.ports'
-import {
-  knowledgeChunksTable,
-  knowledgeEmbedLedgerTable,
-  knowledgeIngestJobsTable,
-  knowledgeSourcesTable,
-  notebooksTable,
-  type KnowledgeChunkRow,
-  type KnowledgeEmbedLedgerRow,
-  type KnowledgeIngestJobRow,
-  type KnowledgeSourceRow,
-  type NotebookRow
-} from '../schema/knowledge'
+import { KnowledgeChunkOps } from './knowledge.repository.chunk'
+import { KnowledgeEmbedOps } from './knowledge.repository.embed'
+import { KnowledgeIngestOps } from './knowledge.repository.ingest'
+import { KnowledgeLifecycleOps } from './knowledge.repository.mutate'
+import { KnowledgeNotebookOps } from './knowledge.repository.notebook'
+import { KnowledgeSourceOps } from './knowledge.repository.source'
+import { KnowledgeStatsOps } from './knowledge.repository.stats'
 
-export type KnowledgeEmbedLedgerRecord = {
-  vaultId: string
-  sourceId: string
-  contentHash: string
-  chunkCount: number
-  modelId: string
-  dimension: number
-}
-
-export type KnowledgeEmbedLedgerView = {
-  vaultId: string
-  sourceId: string
-  contentHash: string
-  chunkCount: number
-  modelId: string
-  dimension: number
-  status: string
-}
-
-const KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT = 'knowledge_embed_ledger_rebuild'
-
-export type KnowledgeSourceStatus =
-  | 'pending'
-  | 'extracting'
-  | 'needs_ocr'
-  | 'partial'
-  | 'embedding'
-  | 'ready'
-  | 'failed'
-  | 'stored'
-
-export type KnowledgeIngestStage = 'extract' | 'embed' | 'graph'
-export type KnowledgeIngestJobStatus = 'pending' | 'running' | 'failed'
-
-/** 向量页列表项：不返回 embedding BLOB */
-export type KnowledgeChunkListItem = {
-  chunkId: string
-  sourceId: string
-  notebookId: string
-  chunkIndex: number
-  chunkText: string
-  metadataJson: string
-  dimension: number
-  modelId: string
-  createdAt: number
-  sourceTitle: string | null
-}
+export type {
+  KnowledgeChunkListItem,
+  KnowledgeEmbedLedgerRecord,
+  KnowledgeEmbedLedgerView,
+  KnowledgeIngestJobStatus,
+  KnowledgeIngestStage,
+  KnowledgeSourceStatus
+} from './knowledge.repository.types'
 
 export class KnowledgeRepository {
+  private readonly notebooks: KnowledgeNotebookOps
+  private readonly sources: KnowledgeSourceOps
+  private readonly chunks: KnowledgeChunkOps
+  private readonly ingest: KnowledgeIngestOps
+  private readonly stats: KnowledgeStatsOps
+  private readonly embed: KnowledgeEmbedOps
+  private readonly lifecycle: KnowledgeLifecycleOps
+
   constructor(
     private readonly db: AppDatabase,
     private readonly notebookGraphWrite?: NotebookGraphWrite
-  ) {}
+  ) {
+    this.notebooks = new KnowledgeNotebookOps(db)
+    this.sources = new KnowledgeSourceOps(db)
+    this.chunks = new KnowledgeChunkOps(db)
+    this.ingest = new KnowledgeIngestOps(db)
+    this.stats = new KnowledgeStatsOps(db, this.chunks, this.ingest)
+    this.embed = new KnowledgeEmbedOps(db)
+    this.lifecycle = new KnowledgeLifecycleOps(db, this.chunks, this.embed, this.sources, () =>
+      this.notebookGraph()
+    )
+  }
 
   private async notebookGraph(): Promise<NotebookGraphWrite> {
     if (this.notebookGraphWrite) return this.notebookGraphWrite
@@ -74,1452 +47,200 @@ export class KnowledgeRepository {
     return new NotebookGraphRepository(this.db)
   }
 
-  // ── notebooks ──────────────────────────────────────────
-
-  async createNotebook(input: {
-    id: string
-    name: string
-    description?: string
-    vaultId: string
-    sortOrder?: number
-    coverTone?: string
-    coverIcon?: string
-    coverImage?: string
-  }): Promise<NotebookRow> {
-    const now = Date.now()
-    const vaultId = input.vaultId.trim()
-    if (!vaultId) throw new Error('createNotebook: vaultId is required')
-    await this.db.insert(notebooksTable).values({
-      id: input.id,
-      vaultId,
-      name: input.name,
-      description: input.description ?? '',
-      archived: 0,
-      sortOrder: input.sortOrder ?? 0,
-      coverTone: input.coverTone ?? '',
-      coverIcon: input.coverIcon ?? '',
-      coverImage: input.coverImage ?? '',
-      createdAt: now,
-      updatedAt: now
-    })
-    const row = await this.getNotebook(input.id)
-    if (!row) throw new Error(`createNotebook: missing row ${input.id}`)
-    return row
+  createNotebook(...args: Parameters<KnowledgeNotebookOps['createNotebook']>) {
+    return this.notebooks.createNotebook(...args)
   }
 
-  async getNotebook(id: string): Promise<NotebookRow | null> {
-    const rows = await this.db
-      .select()
-      .from(notebooksTable)
-      .where(eq(notebooksTable.id, id))
-      .limit(1)
-    return rows[0] ?? null
+  getNotebook(...args: Parameters<KnowledgeNotebookOps['getNotebook']>) {
+    return this.notebooks.getNotebook(...args)
   }
 
-  async listNotebooks(options?: {
-    includeArchived?: boolean
-    vaultId?: string
-  }): Promise<NotebookRow[]> {
-    const vaultId = options?.vaultId?.trim()
-    const archivedOk = options?.includeArchived
-    if (vaultId && archivedOk) {
-      return this.db
-        .select()
-        .from(notebooksTable)
-        .where(eq(notebooksTable.vaultId, vaultId))
-        .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
-    }
-    if (vaultId) {
-      return this.db
-        .select()
-        .from(notebooksTable)
-        .where(and(eq(notebooksTable.vaultId, vaultId), eq(notebooksTable.archived, 0)))
-        .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
-    }
-    if (archivedOk) {
-      return this.db
-        .select()
-        .from(notebooksTable)
-        .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
-    }
-    return this.db
-      .select()
-      .from(notebooksTable)
-      .where(eq(notebooksTable.archived, 0))
-      .orderBy(asc(notebooksTable.sortOrder), desc(notebooksTable.createdAt), notebooksTable.id)
+  listNotebooks(...args: Parameters<KnowledgeNotebookOps['listNotebooks']>) {
+    return this.notebooks.listNotebooks(...args)
   }
 
-  async updateNotebook(
-    id: string,
-    patch: {
-      name?: string
-      description?: string
-      archived?: boolean
-      vaultId?: string
-      sortOrder?: number
-      coverTone?: string
-      coverIcon?: string
-      coverImage?: string
-    }
-  ): Promise<void> {
-    const set: Partial<NotebookRow> = { updatedAt: Date.now() }
-    if (patch.name !== undefined) set.name = patch.name
-    if (patch.description !== undefined) set.description = patch.description
-    if (patch.archived !== undefined) set.archived = patch.archived ? 1 : 0
-    if (patch.vaultId !== undefined) set.vaultId = patch.vaultId.trim()
-    if (patch.sortOrder !== undefined) set.sortOrder = patch.sortOrder
-    if (patch.coverTone !== undefined) set.coverTone = patch.coverTone
-    if (patch.coverIcon !== undefined) set.coverIcon = patch.coverIcon
-    if (patch.coverImage !== undefined) set.coverImage = patch.coverImage
-    await this.db.update(notebooksTable).set(set).where(eq(notebooksTable.id, id))
+  updateNotebook(...args: Parameters<KnowledgeNotebookOps['updateNotebook']>) {
+    return this.notebooks.updateNotebook(...args)
   }
 
-  // ── sources ────────────────────────────────────────────
-
-  async upsertSource(row: {
-    id: string
-    notebookId: string
-    title: string
-    sourceKind: string
-    vaultId: string
-    relativePath?: string | null
-    originUrl?: string | null
-    contentHash: string
-    extractedTextHash?: string | null
-    extractEngine?: string
-    pageCount?: number | null
-    textPageCount?: number | null
-    status: KnowledgeSourceStatus | string
-    errorMessage?: string | null
-    byteSize?: number
-  }): Promise<KnowledgeSourceRow> {
-    const now = Date.now()
-    const vaultId = row.vaultId.trim()
-    if (!vaultId) throw new Error('upsertSource: vaultId is required')
-    const existing = await this.getSource(row.id)
-    if (existing) {
-      await this.db
-        .update(knowledgeSourcesTable)
-        .set({
-          vaultId,
-          notebookId: row.notebookId,
-          title: row.title,
-          sourceKind: row.sourceKind,
-          relativePath: row.relativePath ?? existing.relativePath,
-          originUrl: row.originUrl ?? existing.originUrl,
-          contentHash: row.contentHash,
-          extractedTextHash:
-            row.extractedTextHash !== undefined
-              ? row.extractedTextHash
-              : existing.extractedTextHash,
-          extractEngine: row.extractEngine ?? existing.extractEngine,
-          pageCount: row.pageCount !== undefined ? row.pageCount : existing.pageCount,
-          textPageCount:
-            row.textPageCount !== undefined ? row.textPageCount : existing.textPageCount,
-          status: row.status,
-          errorMessage: row.errorMessage !== undefined ? row.errorMessage : existing.errorMessage,
-          byteSize: row.byteSize ?? existing.byteSize,
-          updatedAt: now
-        })
-        .where(eq(knowledgeSourcesTable.id, row.id))
-    } else {
-      await this.db.insert(knowledgeSourcesTable).values({
-        id: row.id,
-        vaultId,
-        notebookId: row.notebookId,
-        title: row.title,
-        sourceKind: row.sourceKind,
-        relativePath: row.relativePath ?? null,
-        originUrl: row.originUrl ?? null,
-        contentHash: row.contentHash,
-        extractedTextHash: row.extractedTextHash ?? null,
-        extractEngine: row.extractEngine ?? 'simple',
-        pageCount: row.pageCount ?? null,
-        textPageCount: row.textPageCount ?? null,
-        status: row.status,
-        errorMessage: row.errorMessage ?? null,
-        byteSize: row.byteSize ?? 0,
-        createdAt: now,
-        updatedAt: now
-      })
-    }
-    const out = await this.getSource(row.id)
-    if (!out) throw new Error(`upsertSource: missing ${row.id}`)
-    return out
+  upsertSource(...args: Parameters<KnowledgeSourceOps['upsertSource']>) {
+    return this.sources.upsertSource(...args)
   }
 
-  async getSource(id: string): Promise<KnowledgeSourceRow | null> {
-    const rows = await this.db
-      .select()
-      .from(knowledgeSourcesTable)
-      .where(eq(knowledgeSourcesTable.id, id))
-      .limit(1)
-    return rows[0] ?? null
+  getSource(...args: Parameters<KnowledgeSourceOps['getSource']>) {
+    return this.sources.getSource(...args)
   }
 
-  async listSources(notebookId: string): Promise<KnowledgeSourceRow[]> {
-    return this.db
-      .select()
-      .from(knowledgeSourcesTable)
-      .where(eq(knowledgeSourcesTable.notebookId, notebookId))
-      .orderBy(knowledgeSourcesTable.createdAt, knowledgeSourcesTable.id)
+  listSources(...args: Parameters<KnowledgeSourceOps['listSources']>) {
+    return this.sources.listSources(...args)
   }
 
-  async updateSourceStatus(
-    id: string,
-    status: KnowledgeSourceStatus | string,
-    patch?: {
-      errorMessage?: string | null
-      extractedTextHash?: string | null
-      pageCount?: number | null
-      textPageCount?: number | null
-      extractEngine?: string
-    }
-  ): Promise<void> {
-    const set: Record<string, unknown> = {
-      status,
-      updatedAt: Date.now()
-    }
-    if (patch && 'errorMessage' in patch) set.errorMessage = patch.errorMessage
-    if (patch && 'extractedTextHash' in patch) set.extractedTextHash = patch.extractedTextHash
-    if (patch && 'pageCount' in patch) set.pageCount = patch.pageCount
-    if (patch && 'textPageCount' in patch) set.textPageCount = patch.textPageCount
-    if (patch && 'extractEngine' in patch) set.extractEngine = patch.extractEngine
-    await this.db.update(knowledgeSourcesTable).set(set).where(eq(knowledgeSourcesTable.id, id))
+  updateSourceStatus(...args: Parameters<KnowledgeSourceOps['updateSourceStatus']>) {
+    return this.sources.updateSourceStatus(...args)
   }
 
-  // ── chunks ─────────────────────────────────────────────
+  listSourcesByStatus(...args: Parameters<KnowledgeSourceOps['listSourcesByStatus']>) {
+    return this.sources.listSourcesByStatus(...args)
+  }
 
-  async insertChunk(params: {
-    chunkId: string
-    notebookId: string
-    sourceId: string
-    chunkIndex: number
-    chunkText: string
-    metadataJson?: string
-    embedding: Buffer
-    dimension: number
-    modelId: string
-    vaultId: string
-  }): Promise<void> {
-    const now = Date.now()
-    const vaultId = params.vaultId.trim()
-    if (!vaultId) throw new Error('insertChunk: vaultId is required')
-    await this.db
-      .insert(knowledgeChunksTable)
-      .values({
-        chunkId: params.chunkId,
-        vaultId,
-        notebookId: params.notebookId,
-        sourceId: params.sourceId,
-        chunkIndex: params.chunkIndex,
-        chunkText: params.chunkText,
-        metadataJson: params.metadataJson ?? '{}',
-        embedding: params.embedding,
-        dimension: params.dimension,
-        modelId: params.modelId,
-        createdAt: now
-      })
-      .onConflictDoUpdate({
-        target: [knowledgeChunksTable.chunkId],
-        set: {
-          vaultId,
-          chunkText: params.chunkText,
-          metadataJson: params.metadataJson ?? '{}',
-          embedding: params.embedding,
-          dimension: params.dimension,
-          modelId: params.modelId,
-          chunkIndex: params.chunkIndex,
-          notebookId: params.notebookId,
-          sourceId: params.sourceId
-        }
-      })
+  insertChunk(...args: Parameters<KnowledgeChunkOps['insertChunk']>) {
+    return this.chunks.insertChunk(...args)
   }
 
   async deleteChunksBySource(sourceId: string): Promise<void> {
-    await this.db.delete(knowledgeChunksTable).where(eq(knowledgeChunksTable.sourceId, sourceId))
-    await this.deleteEmbedLedgerBySource(sourceId)
+    await this.chunks.deleteChunksBySource(sourceId)
+    await this.embed.deleteEmbedLedgerBySource(sourceId)
   }
 
   async deleteChunksByNotebook(notebookId: string): Promise<void> {
-    const sources = await this.listSources(notebookId)
-    await this.db
-      .delete(knowledgeChunksTable)
-      .where(eq(knowledgeChunksTable.notebookId, notebookId))
+    const sources = await this.sources.listSources(notebookId)
+    await this.chunks.deleteChunksByNotebook(notebookId)
     for (const source of sources) {
-      await this.deleteEmbedLedgerBySource(source.id)
+      await this.embed.deleteEmbedLedgerBySource(source.id)
     }
   }
 
-  async countChunks(notebookId?: string): Promise<number> {
-    if (notebookId) {
-      const rows = await this.db
-        .select({ c: sql<number>`count(*)` })
-        .from(knowledgeChunksTable)
-        .where(eq(knowledgeChunksTable.notebookId, notebookId))
-      return Number(rows[0]?.c ?? 0)
-    }
-    const rows = await this.db.select({ c: sql<number>`count(*)` }).from(knowledgeChunksTable)
-    return Number(rows[0]?.c ?? 0)
+  countChunks(...args: Parameters<KnowledgeChunkOps['countChunks']>) {
+    return this.chunks.countChunks(...args)
   }
 
-  async listChunksBySource(sourceId: string): Promise<KnowledgeChunkRow[]> {
-    return this.db
-      .select()
-      .from(knowledgeChunksTable)
-      .where(eq(knowledgeChunksTable.sourceId, sourceId))
-      .orderBy(knowledgeChunksTable.chunkIndex)
+  listChunksBySource(...args: Parameters<KnowledgeChunkOps['listChunksBySource']>) {
+    return this.chunks.listChunksBySource(...args)
   }
 
-  /**
-   * 按笔记本分页列出向量片段。禁止 SELECT *，避免把 embedding BLOB 拉进 UI。
-   */
-  async listChunksByNotebook(input: {
-    notebookId: string
-    limit?: number
-    offset?: number
-    query?: string
-  }): Promise<{ items: KnowledgeChunkListItem[]; total: number }> {
-    const notebookId = input.notebookId.trim()
-    if (!notebookId) throw new Error('listChunksByNotebook: notebookId is required')
-    const limit = Math.min(100, Math.max(1, input.limit ?? 20))
-    const offset = Math.max(0, input.offset ?? 0)
-    const query = input.query?.trim() ?? ''
-    const filters = [eq(knowledgeChunksTable.notebookId, notebookId)]
-    if (query) {
-      const q = `%${query.replace(/[%_]/g, '')}%`
-      filters.push(sql`${knowledgeChunksTable.chunkText} LIKE ${q}`)
-    }
-    const where = and(...filters)
-
-    const countRows = await this.db
-      .select({ c: sql<number>`count(*)` })
-      .from(knowledgeChunksTable)
-      .where(where)
-    const total = Number(countRows[0]?.c ?? 0)
-
-    const items = await this.db
-      .select({
-        chunkId: knowledgeChunksTable.chunkId,
-        sourceId: knowledgeChunksTable.sourceId,
-        notebookId: knowledgeChunksTable.notebookId,
-        chunkIndex: knowledgeChunksTable.chunkIndex,
-        chunkText: knowledgeChunksTable.chunkText,
-        metadataJson: knowledgeChunksTable.metadataJson,
-        dimension: knowledgeChunksTable.dimension,
-        modelId: knowledgeChunksTable.modelId,
-        createdAt: knowledgeChunksTable.createdAt,
-        sourceTitle: knowledgeSourcesTable.title
-      })
-      .from(knowledgeChunksTable)
-      .leftJoin(knowledgeSourcesTable, eq(knowledgeChunksTable.sourceId, knowledgeSourcesTable.id))
-      .where(where)
-      .orderBy(asc(knowledgeChunksTable.chunkIndex), desc(knowledgeChunksTable.createdAt))
-      .limit(limit)
-      .offset(offset)
-
-    return { items, total }
+  listChunksByNotebook(...args: Parameters<KnowledgeChunkOps['listChunksByNotebook']>) {
+    return this.chunks.listChunksByNotebook(...args)
   }
 
-  /** 只计行数，禁止为存在性判断拉 embedding BLOB */
-  async countChunksBySource(sourceId: string): Promise<number> {
-    const rows = await this.db
-      .select({ c: sql<number>`count(*)` })
-      .from(knowledgeChunksTable)
-      .where(eq(knowledgeChunksTable.sourceId, sourceId))
-    return Number(rows[0]?.c ?? 0)
+  countChunksBySource(...args: Parameters<KnowledgeChunkOps['countChunksBySource']>) {
+    return this.chunks.countChunksBySource(...args)
   }
 
-  async deleteChunksBySourceFromIndex(sourceId: string, fromIndex: number): Promise<void> {
-    await this.db
-      .delete(knowledgeChunksTable)
-      .where(
-        and(
-          eq(knowledgeChunksTable.sourceId, sourceId),
-          sql`${knowledgeChunksTable.chunkIndex} >= ${fromIndex}`
-        )
-      )
+  deleteChunksBySourceFromIndex(
+    ...args: Parameters<KnowledgeChunkOps['deleteChunksBySourceFromIndex']>
+  ) {
+    return this.chunks.deleteChunksBySourceFromIndex(...args)
   }
 
-  /**
-   * 库内 source_id（orphan 差集用）。
-   * 传入 vaultId 时只看该仓；禁止在多仓全局库上无过滤全扫。
-   */
-  async listDistinctSourceIds(options?: {
-    notebookId?: string
-    vaultId?: string
-  }): Promise<string[]> {
-    const notebookId = options?.notebookId
-    const vaultId = options?.vaultId?.trim()
-
-    if (notebookId) {
-      const rows = await this.db
-        .selectDistinct({ sourceId: knowledgeChunksTable.sourceId })
-        .from(knowledgeChunksTable)
-        .where(eq(knowledgeChunksTable.notebookId, notebookId))
-      const fromChunks = rows.map((r) => r.sourceId)
-      const sources = await this.listSources(notebookId)
-      return [...new Set([...fromChunks, ...sources.map((s) => s.id)])]
-    }
-
-    if (vaultId) {
-      const chunkRows = await this.db
-        .selectDistinct({ sourceId: knowledgeChunksTable.sourceId })
-        .from(knowledgeChunksTable)
-        .where(eq(knowledgeChunksTable.vaultId, vaultId))
-      const sourceRows = await this.db
-        .select({ id: knowledgeSourcesTable.id })
-        .from(knowledgeSourcesTable)
-        .where(eq(knowledgeSourcesTable.vaultId, vaultId))
-      return [...new Set([...chunkRows.map((r) => r.sourceId), ...sourceRows.map((r) => r.id)])]
-    }
-
-    const chunkRows = await this.db
-      .selectDistinct({ sourceId: knowledgeChunksTable.sourceId })
-      .from(knowledgeChunksTable)
-    const sourceRows = await this.db
-      .select({ id: knowledgeSourcesTable.id })
-      .from(knowledgeSourcesTable)
-    return [...new Set([...chunkRows.map((r) => r.sourceId), ...sourceRows.map((r) => r.id)])]
+  listDistinctSourceIds(...args: Parameters<KnowledgeChunkOps['listDistinctSourceIds']>) {
+    return this.chunks.listDistinctSourceIds(...args)
   }
 
-  /**
-   * 与当前嵌入模型不一致的 chunk 数（Ask 硬拦截）。
-   * 传入 vaultId 时只统计该仓，避免他仓向量误拦当前仓。
-   */
-  async countHeterogeneousEmbeddings(
-    currentModelId: string,
-    options?: { vaultId?: string; notebookIds?: string[] }
-  ): Promise<number> {
-    const modelId = (currentModelId || '').trim()
-    if (!modelId) return 0
-    const vaultId = options?.vaultId?.trim()
-    const notebookIds = (options?.notebookIds ?? []).map((id) => id.trim()).filter(Boolean)
-    if (options?.notebookIds && notebookIds.length === 0) return 0
-    const filters = [
-      sql`${knowledgeChunksTable.modelId} != ''`,
-      sql`${knowledgeChunksTable.modelId} != ${modelId}`
-    ]
-    if (vaultId) filters.push(eq(knowledgeChunksTable.vaultId, vaultId))
-    if (notebookIds.length > 0) {
-      filters.push(inArray(knowledgeChunksTable.notebookId, notebookIds))
-    }
-    const rows = await this.db
-      .select({ c: sql<number>`count(*)` })
-      .from(knowledgeChunksTable)
-      .where(and(...filters))
-    return Number(rows[0]?.c ?? 0)
+  countHeterogeneousEmbeddings(
+    ...args: Parameters<KnowledgeChunkOps['countHeterogeneousEmbeddings']>
+  ) {
+    return this.chunks.countHeterogeneousEmbeddings(...args)
   }
 
-  /** 按本聚合维度 / 模型，不读 embedding BLOB。 */
-  async listNotebookEmbeddingProfiles(opts: { vaultId?: string; notebookIds: string[] }): Promise<
-    Array<{
-      notebookId: string
-      notebookName: string
-      dimension: number
-      modelId: string
-      chunkCount: number
-    }>
-  > {
-    const notebookIds = [...new Set(opts.notebookIds.map((id) => id.trim()).filter(Boolean))]
-    if (notebookIds.length === 0) return []
-    const vaultId = opts.vaultId?.trim()
-    const filters = [inArray(knowledgeChunksTable.notebookId, notebookIds)]
-    if (vaultId) filters.push(eq(knowledgeChunksTable.vaultId, vaultId))
-
-    const rows = await this.db
-      .select({
-        notebookId: knowledgeChunksTable.notebookId,
-        notebookName: notebooksTable.name,
-        dimension: knowledgeChunksTable.dimension,
-        modelId: knowledgeChunksTable.modelId,
-        chunkCount: sql<number>`count(*)`
-      })
-      .from(knowledgeChunksTable)
-      .leftJoin(notebooksTable, eq(notebooksTable.id, knowledgeChunksTable.notebookId))
-      .where(and(...filters))
-      .groupBy(
-        knowledgeChunksTable.notebookId,
-        notebooksTable.name,
-        knowledgeChunksTable.dimension,
-        knowledgeChunksTable.modelId
-      )
-
-    return rows.map((row) => ({
-      notebookId: String(row.notebookId),
-      notebookName: String(row.notebookName ?? '').trim() || String(row.notebookId),
-      dimension: Number(row.dimension ?? 0),
-      modelId: String(row.modelId ?? ''),
-      chunkCount: Number(row.chunkCount ?? 0)
-    }))
+  listNotebookEmbeddingProfiles(
+    ...args: Parameters<KnowledgeChunkOps['listNotebookEmbeddingProfiles']>
+  ) {
+    return this.chunks.listNotebookEmbeddingProfiles(...args)
   }
 
-  async deleteSource(sourceId: string): Promise<void> {
-    await this.deleteChunksBySource(sourceId)
-    await this.db
-      .delete(knowledgeIngestJobsTable)
-      .where(eq(knowledgeIngestJobsTable.sourceId, sourceId))
-    const source = await this.getSource(sourceId)
-    await this.db.delete(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.id, sourceId))
-    if (source?.notebookId) {
-      const { notebookGraphSourceNodeId } = await import('@baishou/shared')
-      const graph = await this.notebookGraph()
-      await graph.deleteEdgesBySourcePrefix(source.notebookId, sourceId)
-      if (source.vaultId?.trim()) {
-        await graph.softDeleteNode(
-          notebookGraphSourceNodeId(source.vaultId, source.notebookId, sourceId),
-          source.notebookId
-        )
-      }
-    }
+  searchChunksLike(...args: Parameters<KnowledgeChunkOps['searchChunksLike']>) {
+    return this.chunks.searchChunksLike(...args)
   }
 
-  async clearNotebookGraph(notebookId: string): Promise<void> {
-    await (await this.notebookGraph()).deleteAllForNotebook(notebookId)
+  deleteSource(...args: Parameters<KnowledgeLifecycleOps['deleteSource']>) {
+    return this.lifecycle.deleteSource(...args)
   }
 
-  async deleteNotebook(notebookId: string): Promise<void> {
-    await this.deleteChunksByNotebook(notebookId)
-    await this.db
-      .delete(knowledgeIngestJobsTable)
-      .where(eq(knowledgeIngestJobsTable.notebookId, notebookId))
-    await this.db
-      .delete(knowledgeSourcesTable)
-      .where(eq(knowledgeSourcesTable.notebookId, notebookId))
-    await (await this.notebookGraph()).deleteAllForNotebook(notebookId)
-    await this.db.delete(notebooksTable).where(eq(notebooksTable.id, notebookId))
+  clearNotebookGraph(...args: Parameters<KnowledgeLifecycleOps['clearNotebookGraph']>) {
+    return this.lifecycle.clearNotebookGraph(...args)
   }
 
-  /** 按 vault 清知识库派生数据（删仓时调用） */
-  async deleteAllForVault(vaultId: string): Promise<{
-    notebooks: number
-    sources: number
-    chunks: number
-    jobs: number
-  }> {
-    const id = vaultId.trim()
-    if (!id) throw new Error('deleteAllForVault: vaultId is required')
-
-    const countWhere = async (run: () => Promise<Array<{ c: number }>>): Promise<number> => {
-      const rows = await run()
-      return Number(rows[0]?.c ?? 0)
-    }
-
-    const notebooks = await countWhere(() =>
-      this.db
-        .select({ c: sql<number>`count(*)` })
-        .from(notebooksTable)
-        .where(eq(notebooksTable.vaultId, id))
-    )
-    const sources = await countWhere(() =>
-      this.db
-        .select({ c: sql<number>`count(*)` })
-        .from(knowledgeSourcesTable)
-        .where(eq(knowledgeSourcesTable.vaultId, id))
-    )
-    const chunks = await countWhere(() =>
-      this.db
-        .select({ c: sql<number>`count(*)` })
-        .from(knowledgeChunksTable)
-        .where(eq(knowledgeChunksTable.vaultId, id))
-    )
-    const jobs = await countWhere(() =>
-      this.db
-        .select({ c: sql<number>`count(*)` })
-        .from(knowledgeIngestJobsTable)
-        .where(eq(knowledgeIngestJobsTable.vaultId, id))
-    )
-
-    await (await this.notebookGraph()).deleteAllForVault(id)
-    await this.db.delete(knowledgeIngestJobsTable).where(eq(knowledgeIngestJobsTable.vaultId, id))
-    await this.db.delete(knowledgeChunksTable).where(eq(knowledgeChunksTable.vaultId, id))
-    await this.db.delete(knowledgeEmbedLedgerTable).where(eq(knowledgeEmbedLedgerTable.vaultId, id))
-    await this.db.delete(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.vaultId, id))
-    await this.db.delete(notebooksTable).where(eq(notebooksTable.vaultId, id))
-
-    return { notebooks, sources, chunks, jobs }
+  deleteNotebook(...args: Parameters<KnowledgeLifecycleOps['deleteNotebook']>) {
+    return this.lifecycle.deleteNotebook(...args)
   }
 
-  /** 简易 LIKE 检索（K1.1 验收用；真 FTS+向量 Ask 在 K1.2） */
-  async searchChunksLike(
-    notebookId: string,
-    query: string,
-    limit = 10
-  ): Promise<KnowledgeChunkRow[]> {
-    const q = `%${query.replace(/%/g, '')}%`
-    return this.db
-      .select()
-      .from(knowledgeChunksTable)
-      .where(
-        and(
-          eq(knowledgeChunksTable.notebookId, notebookId),
-          sql`${knowledgeChunksTable.chunkText} LIKE ${q}`
-        )
-      )
-      .limit(limit)
+  deleteAllForVault(...args: Parameters<KnowledgeLifecycleOps['deleteAllForVault']>) {
+    return this.lifecycle.deleteAllForVault(...args)
   }
 
-  // ── ingest jobs ────────────────────────────────────────
-
-  async enqueueIngestJob(job: {
-    notebookId: string
-    sourceId: string
-    stage: KnowledgeIngestStage
-    vaultId: string
-    error?: string
-  }): Promise<void> {
-    const now = Date.now()
-    const vaultId = job.vaultId.trim()
-    if (!vaultId) throw new Error('enqueueIngestJob: vaultId is required')
-    const existing = await this.db
-      .select({
-        id: knowledgeIngestJobsTable.id,
-        status: knowledgeIngestJobsTable.status
-      })
-      .from(knowledgeIngestJobsTable)
-      .where(
-        and(
-          eq(knowledgeIngestJobsTable.sourceId, job.sourceId),
-          eq(knowledgeIngestJobsTable.stage, job.stage)
-        )
-      )
-      .limit(1)
-
-    if (existing[0]) {
-      if (existing[0].status === 'running' && !job.error) {
-        return
-      }
-      await this.db
-        .update(knowledgeIngestJobsTable)
-        .set({
-          vaultId,
-          notebookId: job.notebookId,
-          status: job.error ? 'failed' : 'pending',
-          lastError: job.error ?? null,
-          nextRetryAt: null,
-          updatedAt: now
-        })
-        .where(eq(knowledgeIngestJobsTable.id, existing[0].id))
-      return
-    }
-
-    await this.db.insert(knowledgeIngestJobsTable).values({
-      vaultId,
-      notebookId: job.notebookId,
-      sourceId: job.sourceId,
-      stage: job.stage,
-      status: job.error ? 'failed' : 'pending',
-      attempts: 0,
-      lastError: job.error ?? null,
-      nextRetryAt: null,
-      createdAt: now,
-      updatedAt: now
-    })
+  enqueueIngestJob(...args: Parameters<KnowledgeIngestOps['enqueueIngestJob']>) {
+    return this.ingest.enqueueIngestJob(...args)
   }
 
-  async countIngestJobs(options?: {
-    notebookId?: string
-    vaultId?: string
-    stages?: KnowledgeIngestStage[]
-    /** 只计可领取（pending/failed 且已到重试时间），不含 running */
-    claimableOnly?: boolean
-  }): Promise<number> {
-    const notebookId = options?.notebookId?.trim()
-    const vaultId = options?.vaultId?.trim()
-    const stages = options?.stages?.filter(Boolean)
-    const now = Date.now()
-    const filters = options?.claimableOnly
-      ? [
-          inArray(knowledgeIngestJobsTable.status, ['pending', 'failed']),
-          or(
-            isNull(knowledgeIngestJobsTable.nextRetryAt),
-            lte(knowledgeIngestJobsTable.nextRetryAt, now)
-          )
-        ]
-      : [inArray(knowledgeIngestJobsTable.status, ['pending', 'failed', 'running'])]
-    if (notebookId) filters.push(eq(knowledgeIngestJobsTable.notebookId, notebookId))
-    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
-    if (stages?.length) filters.push(inArray(knowledgeIngestJobsTable.stage, stages))
-    const rows = await this.db
-      .select({ c: sql<number>`count(*)` })
-      .from(knowledgeIngestJobsTable)
-      .where(and(...filters))
-    return Number(rows[0]?.c ?? 0)
+  countIngestJobs(...args: Parameters<KnowledgeIngestOps['countIngestJobs']>) {
+    return this.ingest.countIngestJobs(...args)
   }
 
-  async claimIngestJobs(
-    limit: number,
-    options?: { vaultId?: string; stages?: KnowledgeIngestStage[] }
-  ): Promise<
-    Array<{
-      id: number
-      notebookId: string
-      sourceId: string
-      stage: KnowledgeIngestStage
-      attempts: number
-      vaultId: string
-    }>
-  > {
-    const now = Date.now()
-    const vaultId = options?.vaultId?.trim()
-    const stages = options?.stages?.filter(Boolean)
-    const filters = [
-      inArray(knowledgeIngestJobsTable.status, ['pending', 'failed']),
-      or(
-        isNull(knowledgeIngestJobsTable.nextRetryAt),
-        lte(knowledgeIngestJobsTable.nextRetryAt, now)
-      )
-    ]
-    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
-    if (stages?.length) filters.push(inArray(knowledgeIngestJobsTable.stage, stages))
-
-    const candidates = await this.db
-      .select()
-      .from(knowledgeIngestJobsTable)
-      .where(and(...filters))
-      .orderBy(knowledgeIngestJobsTable.createdAt, knowledgeIngestJobsTable.id)
-      .limit(Math.max(1, limit))
-
-    const claimed: Array<{
-      id: number
-      notebookId: string
-      sourceId: string
-      stage: KnowledgeIngestStage
-      attempts: number
-      vaultId: string
-    }> = []
-
-    for (const row of candidates) {
-      const updated = await this.db
-        .update(knowledgeIngestJobsTable)
-        .set({
-          status: 'running',
-          attempts: row.attempts + 1,
-          updatedAt: now
-        })
-        .where(
-          and(
-            eq(knowledgeIngestJobsTable.id, row.id),
-            inArray(knowledgeIngestJobsTable.status, ['pending', 'failed'])
-          )
-        )
-        .returning({ id: knowledgeIngestJobsTable.id })
-      if (!updated[0]) continue
-      claimed.push({
-        id: row.id,
-        notebookId: row.notebookId,
-        sourceId: row.sourceId,
-        stage: row.stage as KnowledgeIngestStage,
-        attempts: row.attempts + 1,
-        vaultId: row.vaultId
-      })
-    }
-    return claimed
+  claimIngestJobs(...args: Parameters<KnowledgeIngestOps['claimIngestJobs']>) {
+    return this.ingest.claimIngestJobs(...args)
   }
 
-  async completeIngestJob(id: number): Promise<void> {
-    await this.db.delete(knowledgeIngestJobsTable).where(eq(knowledgeIngestJobsTable.id, id))
+  completeIngestJob(...args: Parameters<KnowledgeIngestOps['completeIngestJob']>) {
+    return this.ingest.completeIngestJob(...args)
   }
 
-  /** 仅回收超时的 running（lease）；进行中的 job 靠 live guard / updatedAt 续约 */
-  async reclaimStaleRunningIngestJobs(options?: {
-    olderThanMs?: number
-    vaultId?: string
-    excludeSourceIds?: string[]
-  }): Promise<number> {
-    const now = Date.now()
-    const olderThanMs = options?.olderThanMs ?? 15 * 60_000
-    const cutoff = now - olderThanMs
-    const vaultId = options?.vaultId?.trim()
-    const filters = [
-      eq(knowledgeIngestJobsTable.status, 'running'),
-      lte(knowledgeIngestJobsTable.updatedAt, cutoff)
-    ]
-    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
-    const exclude = new Set((options?.excludeSourceIds ?? []).filter(Boolean))
-    const rows = await this.db
-      .select({
-        id: knowledgeIngestJobsTable.id,
-        sourceId: knowledgeIngestJobsTable.sourceId
-      })
-      .from(knowledgeIngestJobsTable)
-      .where(and(...filters))
-    let reclaimed = 0
-    for (const row of rows) {
-      if (exclude.has(row.sourceId)) continue
-      const updated = await this.db
-        .update(knowledgeIngestJobsTable)
-        .set({
-          status: 'pending',
-          nextRetryAt: null,
-          updatedAt: now
-        })
-        .where(
-          and(
-            eq(knowledgeIngestJobsTable.id, row.id),
-            eq(knowledgeIngestJobsTable.status, 'running')
-          )
-        )
-        .returning({ id: knowledgeIngestJobsTable.id })
-      if (updated[0]) reclaimed += 1
-    }
-    return reclaimed
+  reclaimStaleRunningIngestJobs(
+    ...args: Parameters<KnowledgeIngestOps['reclaimStaleRunningIngestJobs']>
+  ) {
+    return this.ingest.reclaimStaleRunningIngestJobs(...args)
   }
 
-  /** @deprecated 使用 reclaimStaleRunningIngestJobs；全量回收会踩正在跑的 worker */
-  async reclaimRunningIngestJobs(): Promise<number> {
-    return this.reclaimStaleRunningIngestJobs({ olderThanMs: 0 })
+  reclaimRunningIngestJobs(...args: Parameters<KnowledgeIngestOps['reclaimRunningIngestJobs']>) {
+    return this.ingest.reclaimRunningIngestJobs(...args)
   }
 
-  async listIngestJobsByStatus(
-    status: KnowledgeIngestJobStatus,
-    options?: { vaultId?: string }
-  ): Promise<KnowledgeIngestJobRow[]> {
-    const vaultId = options?.vaultId?.trim()
-    const filters = [eq(knowledgeIngestJobsTable.status, status)]
-    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
-    return this.db
-      .select()
-      .from(knowledgeIngestJobsTable)
-      .where(and(...filters))
+  listIngestJobsByStatus(...args: Parameters<KnowledgeIngestOps['listIngestJobsByStatus']>) {
+    return this.ingest.listIngestJobsByStatus(...args)
   }
 
-  async listIngestJobsBySource(sourceId: string): Promise<KnowledgeIngestJobRow[]> {
-    return this.db
-      .select()
-      .from(knowledgeIngestJobsTable)
-      .where(eq(knowledgeIngestJobsTable.sourceId, sourceId))
+  listIngestJobsBySource(...args: Parameters<KnowledgeIngestOps['listIngestJobsBySource']>) {
+    return this.ingest.listIngestJobsBySource(...args)
   }
 
-  async listSourcesByStatus(
-    status: KnowledgeSourceStatus | string,
-    options?: { vaultId?: string }
-  ): Promise<KnowledgeSourceRow[]> {
-    const vaultId = options?.vaultId?.trim()
-    const filters = [eq(knowledgeSourcesTable.status, status)]
-    if (vaultId) filters.push(eq(knowledgeSourcesTable.vaultId, vaultId))
-    return this.db
-      .select()
-      .from(knowledgeSourcesTable)
-      .where(and(...filters))
+  deleteIngestJobsForSource(...args: Parameters<KnowledgeIngestOps['deleteIngestJobsForSource']>) {
+    return this.ingest.deleteIngestJobsForSource(...args)
   }
 
-  async deleteIngestJobsForSource(sourceId: string, stage?: KnowledgeIngestStage): Promise<number> {
-    const before = await this.db
-      .select({ id: knowledgeIngestJobsTable.id })
-      .from(knowledgeIngestJobsTable)
-      .where(
-        stage
-          ? and(
-              eq(knowledgeIngestJobsTable.sourceId, sourceId),
-              eq(knowledgeIngestJobsTable.stage, stage)
-            )
-          : eq(knowledgeIngestJobsTable.sourceId, sourceId)
-      )
-    if (before.length === 0) return 0
-    await this.db
-      .delete(knowledgeIngestJobsTable)
-      .where(
-        stage
-          ? and(
-              eq(knowledgeIngestJobsTable.sourceId, sourceId),
-              eq(knowledgeIngestJobsTable.stage, stage)
-            )
-          : eq(knowledgeIngestJobsTable.sourceId, sourceId)
-      )
-    return before.length
+  failIngestJob(...args: Parameters<KnowledgeIngestOps['failIngestJob']>) {
+    return this.ingest.failIngestJob(...args)
   }
 
-  async failIngestJob(id: number, error: string, options?: { backoffMs?: number }): Promise<void> {
-    const backoffMs = options?.backoffMs ?? 60_000
-    const now = Date.now()
-    await this.db
-      .update(knowledgeIngestJobsTable)
-      .set({
-        status: 'failed',
-        lastError: error.slice(0, 500),
-        nextRetryAt: now + backoffMs,
-        updatedAt: now
-      })
-      .where(eq(knowledgeIngestJobsTable.id, id))
+  listIngestJobs(...args: Parameters<KnowledgeIngestOps['listIngestJobs']>) {
+    return this.ingest.listIngestJobs(...args)
   }
 
-  async getStats(
-    notebookId?: string,
-    vaultId?: string
-  ): Promise<{
-    notebooks: number
-    sources: number
-    chunks: number
-    pendingJobs: number
-    /** 原文合计（knowledge_sources.byte_size） */
-    originalBytes: number
-    /** 本笔记本/库估算占用：原文 + 提取正文长度 + 向量 blob */
-    totalBytes: number
-  }> {
-    const vid = vaultId?.trim()
-    const notebooks = notebookId
-      ? 1
-      : Number(
-          (
-            await (vid
-              ? this.db
-                  .select({ c: sql<number>`count(*)` })
-                  .from(notebooksTable)
-                  .where(eq(notebooksTable.vaultId, vid))
-              : this.db.select({ c: sql<number>`count(*)` }).from(notebooksTable))
-          )[0]?.c ?? 0
-        )
-    const sources = notebookId
-      ? Number(
-          (
-            await this.db
-              .select({ c: sql<number>`count(*)` })
-              .from(knowledgeSourcesTable)
-              .where(eq(knowledgeSourcesTable.notebookId, notebookId))
-          )[0]?.c ?? 0
-        )
-      : Number(
-          (
-            await (vid
-              ? this.db
-                  .select({ c: sql<number>`count(*)` })
-                  .from(knowledgeSourcesTable)
-                  .where(eq(knowledgeSourcesTable.vaultId, vid))
-              : this.db.select({ c: sql<number>`count(*)` }).from(knowledgeSourcesTable))
-          )[0]?.c ?? 0
-        )
-    const chunks = notebookId
-      ? await this.countChunks(notebookId)
-      : Number(
-          (
-            await (vid
-              ? this.db
-                  .select({ c: sql<number>`count(*)` })
-                  .from(knowledgeChunksTable)
-                  .where(eq(knowledgeChunksTable.vaultId, vid))
-              : this.db.select({ c: sql<number>`count(*)` }).from(knowledgeChunksTable))
-          )[0]?.c ?? 0
-        )
-    const pendingJobs = await this.countIngestJobs({
-      notebookId,
-      vaultId: vid
-    })
-
-    const originalRows = notebookId
-      ? await this.db
-          .select({
-            c: sql<number>`coalesce(sum(${knowledgeSourcesTable.byteSize}), 0)`
-          })
-          .from(knowledgeSourcesTable)
-          .where(eq(knowledgeSourcesTable.notebookId, notebookId))
-      : vid
-        ? await this.db
-            .select({
-              c: sql<number>`coalesce(sum(${knowledgeSourcesTable.byteSize}), 0)`
-            })
-            .from(knowledgeSourcesTable)
-            .where(eq(knowledgeSourcesTable.vaultId, vid))
-        : await this.db
-            .select({
-              c: sql<number>`coalesce(sum(${knowledgeSourcesTable.byteSize}), 0)`
-            })
-            .from(knowledgeSourcesTable)
-    const originalBytes = Number(originalRows[0]?.c ?? 0)
-
-    const derivedRows = notebookId
-      ? await this.db
-          .select({
-            c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText})), 0)`
-          })
-          .from(knowledgeChunksTable)
-          .where(eq(knowledgeChunksTable.notebookId, notebookId))
-      : vid
-        ? await this.db
-            .select({
-              c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText})), 0)`
-            })
-            .from(knowledgeChunksTable)
-            .where(eq(knowledgeChunksTable.vaultId, vid))
-        : await this.db
-            .select({
-              c: sql<number>`coalesce(sum(length(${knowledgeChunksTable.chunkText})), 0)`
-            })
-            .from(knowledgeChunksTable)
-    const derivedBytes = Number(derivedRows[0]?.c ?? 0)
-    const totalBytes = originalBytes + derivedBytes
-
-    return { notebooks, sources, chunks, pendingJobs, originalBytes, totalBytes }
+  getStats(...args: Parameters<KnowledgeStatsOps['getStats']>) {
+    return this.stats.getStats(...args)
   }
 
-  /** 列表用：一次按 notebook 聚合，不扫 embedding BLOB */
-  async listNotebookStats(vaultId: string): Promise<
-    Array<{
-      notebookId: string
-      sources: number
-      chunks: number
-      pendingJobs: number
-      originalBytes: number
-      totalBytes: number
-    }>
-  > {
-    const vid = vaultId.trim()
-    if (!vid) throw new Error('listNotebookStats: vaultId is required')
-
-    const sourceRows = await this.db
-      .select({
-        notebookId: knowledgeSourcesTable.notebookId,
-        sources: sql<number>`count(*)`,
-        originalBytes: sql<number>`coalesce(sum(${knowledgeSourcesTable.byteSize}), 0)`
-      })
-      .from(knowledgeSourcesTable)
-      .where(eq(knowledgeSourcesTable.vaultId, vid))
-      .groupBy(knowledgeSourcesTable.notebookId)
-
-    const chunkRows = await this.db
-      .select({
-        notebookId: knowledgeChunksTable.notebookId,
-        chunks: sql<number>`count(*)`
-      })
-      .from(knowledgeChunksTable)
-      .where(eq(knowledgeChunksTable.vaultId, vid))
-      .groupBy(knowledgeChunksTable.notebookId)
-
-    const jobRows = await this.db
-      .select({
-        notebookId: knowledgeIngestJobsTable.notebookId,
-        pendingJobs: sql<number>`count(*)`
-      })
-      .from(knowledgeIngestJobsTable)
-      .where(
-        and(
-          eq(knowledgeIngestJobsTable.vaultId, vid),
-          inArray(knowledgeIngestJobsTable.status, ['pending', 'failed', 'running'])
-        )
-      )
-      .groupBy(knowledgeIngestJobsTable.notebookId)
-
-    const byId = new Map<
-      string,
-      {
-        notebookId: string
-        sources: number
-        chunks: number
-        pendingJobs: number
-        originalBytes: number
-        totalBytes: number
-      }
-    >()
-    const ensure = (notebookId: string) => {
-      let row = byId.get(notebookId)
-      if (!row) {
-        row = {
-          notebookId,
-          sources: 0,
-          chunks: 0,
-          pendingJobs: 0,
-          originalBytes: 0,
-          totalBytes: 0
-        }
-        byId.set(notebookId, row)
-      }
-      return row
-    }
-    for (const r of sourceRows) {
-      const row = ensure(r.notebookId)
-      row.sources = Number(r.sources ?? 0)
-      row.originalBytes = Number(r.originalBytes ?? 0)
-      row.totalBytes = row.originalBytes
-    }
-    for (const r of chunkRows) {
-      ensure(r.notebookId).chunks = Number(r.chunks ?? 0)
-    }
-    for (const r of jobRows) {
-      ensure(r.notebookId).pendingJobs = Number(r.pendingJobs ?? 0)
-    }
-    return [...byId.values()]
+  listNotebookStats(...args: Parameters<KnowledgeStatsOps['listNotebookStats']>) {
+    return this.stats.listNotebookStats(...args)
   }
 
-  /** 列出摄入任务；打开笔记本时必须带 notebookId / stage，禁止全表扫。 */
-  async listIngestJobs(options?: {
-    notebookId?: string
-    vaultId?: string
-    stage?: KnowledgeIngestStage
-  }): Promise<KnowledgeIngestJobRow[]> {
-    const notebookId = options?.notebookId?.trim()
-    const vaultId = options?.vaultId?.trim()
-    const stage = options?.stage
-    const filters: SQL[] = []
-    if (notebookId) filters.push(eq(knowledgeIngestJobsTable.notebookId, notebookId))
-    if (vaultId) filters.push(eq(knowledgeIngestJobsTable.vaultId, vaultId))
-    if (stage) filters.push(eq(knowledgeIngestJobsTable.stage, stage))
-    if (filters.length === 0) {
-      return this.db.select().from(knowledgeIngestJobsTable)
-    }
-    return this.db
-      .select()
-      .from(knowledgeIngestJobsTable)
-      .where(and(...filters))
+  getEmbedLedger(...args: Parameters<KnowledgeEmbedOps['getEmbedLedger']>) {
+    return this.embed.getEmbedLedger(...args)
   }
 
-  // ── embed ledger ───────────────────────────────────────
-
-  async getEmbedLedger(
-    vaultId: string,
-    sourceId: string
-  ): Promise<KnowledgeEmbedLedgerView | null> {
-    const vid = vaultId.trim()
-    const sid = sourceId.trim()
-    if (!vid || !sid) return null
-    const rows = await this.db
-      .select()
-      .from(knowledgeEmbedLedgerTable)
-      .where(
-        and(eq(knowledgeEmbedLedgerTable.vaultId, vid), eq(knowledgeEmbedLedgerTable.sourceId, sid))
-      )
-      .limit(1)
-    const row = rows[0]
-    return row ? this.toEmbedLedgerView(row) : null
+  recordEmbedded(...args: Parameters<KnowledgeEmbedOps['recordEmbedded']>) {
+    return this.embed.recordEmbedded(...args)
   }
 
-  async recordEmbedded(params: KnowledgeEmbedLedgerRecord): Promise<void> {
-    const vaultId = params.vaultId.trim()
-    const sourceId = params.sourceId.trim()
-    if (!vaultId) throw new Error('recordEmbedded: vaultId is required')
-    if (!sourceId) throw new Error('recordEmbedded: sourceId is required')
-    const now = Date.now()
-    await this.db
-      .insert(knowledgeEmbedLedgerTable)
-      .values({
-        vaultId,
-        sourceId,
-        contentHash: params.contentHash,
-        chunkCount: params.chunkCount,
-        modelId: params.modelId,
-        dimension: params.dimension,
-        status: 'embedded',
-        attempts: 0,
-        lastError: null,
-        embeddedAt: now,
-        updatedAt: now
-      })
-      .onConflictDoUpdate({
-        target: [knowledgeEmbedLedgerTable.vaultId, knowledgeEmbedLedgerTable.sourceId],
-        set: {
-          contentHash: params.contentHash,
-          chunkCount: params.chunkCount,
-          modelId: params.modelId,
-          dimension: params.dimension,
-          status: 'embedded',
-          attempts: 0,
-          lastError: null,
-          embeddedAt: now,
-          updatedAt: now
-        }
-      })
+  recordEmbedFailure(...args: Parameters<KnowledgeEmbedOps['recordEmbedFailure']>) {
+    return this.embed.recordEmbedFailure(...args)
   }
 
-  async recordEmbedFailure(params: {
-    vaultId: string
-    sourceId: string
-    lastError?: string | null
-    chunkCount?: number
-  }): Promise<void> {
-    const vaultId = params.vaultId.trim()
-    const sourceId = params.sourceId.trim()
-    if (!vaultId) throw new Error('recordEmbedFailure: vaultId is required')
-    if (!sourceId) throw new Error('recordEmbedFailure: sourceId is required')
-    const now = Date.now()
-    const existing = await this.getEmbedLedger(vaultId, sourceId)
-    if (existing) {
-      await this.db
-        .update(knowledgeEmbedLedgerTable)
-        .set({
-          status: 'failed',
-          attempts: sql`${knowledgeEmbedLedgerTable.attempts} + 1`,
-          lastError: params.lastError ?? null,
-          ...(params.chunkCount != null ? { chunkCount: params.chunkCount } : {}),
-          updatedAt: now
-        })
-        .where(
-          and(
-            eq(knowledgeEmbedLedgerTable.vaultId, vaultId),
-            eq(knowledgeEmbedLedgerTable.sourceId, sourceId)
-          )
-        )
-      return
-    }
-    await this.db.insert(knowledgeEmbedLedgerTable).values({
-      vaultId,
-      sourceId,
-      contentHash: '',
-      chunkCount: 0,
-      modelId: '',
-      dimension: 0,
-      status: 'failed',
-      attempts: 1,
-      lastError: params.lastError ?? null,
-      embeddedAt: null,
-      updatedAt: now
-    })
+  deleteEmbedLedgerBySource(...args: Parameters<KnowledgeEmbedOps['deleteEmbedLedgerBySource']>) {
+    return this.embed.deleteEmbedLedgerBySource(...args)
   }
 
-  async deleteEmbedLedgerBySource(sourceId: string): Promise<void> {
-    const sid = sourceId.trim()
-    if (!sid) return
-    await this.db
-      .delete(knowledgeEmbedLedgerTable)
-      .where(eq(knowledgeEmbedLedgerTable.sourceId, sid))
+  reconcileEmbedLedger(...args: Parameters<KnowledgeEmbedOps['reconcileEmbedLedger']>) {
+    return this.embed.reconcileEmbedLedger(...args)
   }
 
-  async reconcileEmbedLedger(params?: { vaultId?: string }): Promise<{
-    rebuilt: boolean
-    ledgerChunkSum: number
-    vectorCount: number
-  }> {
-    const { ledgerChunkSum, vectorCount, mismatch } = await this.readEmbedLedgerCountGap(params)
-    if (!mismatch) {
-      return { rebuilt: false, ledgerChunkSum, vectorCount }
-    }
-    await this.rebuildEmbedLedger(params)
-    return { rebuilt: true, ledgerChunkSum, vectorCount }
+  rebuildEmbedLedger(...args: Parameters<KnowledgeEmbedOps['rebuildEmbedLedger']>) {
+    return this.embed.rebuildEmbedLedger(...args)
   }
 
-  async rebuildEmbedLedger(params?: { vaultId?: string }): Promise<void> {
-    const vaultId = params?.vaultId?.trim()
-    const chunkFilters = vaultId ? [eq(knowledgeChunksTable.vaultId, vaultId)] : []
-    const ledgerFilters = vaultId ? [eq(knowledgeEmbedLedgerTable.vaultId, vaultId)] : []
-
-    const chunkRows = await this.db
-      .select({
-        vaultId: knowledgeChunksTable.vaultId,
-        sourceId: knowledgeChunksTable.sourceId,
-        modelId: knowledgeChunksTable.modelId,
-        dimension: knowledgeChunksTable.dimension,
-        chunkCount: sql<number>`count(*)`
-      })
-      .from(knowledgeChunksTable)
-      .where(chunkFilters.length ? and(...chunkFilters) : undefined)
-      .groupBy(
-        knowledgeChunksTable.vaultId,
-        knowledgeChunksTable.sourceId,
-        knowledgeChunksTable.modelId,
-        knowledgeChunksTable.dimension
-      )
-
-    const aggregated = new Map<
-      string,
-      {
-        vaultId: string
-        sourceId: string
-        chunkCount: number
-        modelId: string
-        dimension: number
-        contentHash: string
-      }
-    >()
-    for (const row of chunkRows) {
-      const key = `${row.vaultId}\0${row.sourceId}`
-      const prev = aggregated.get(key)
-      const chunkCount = Number(row.chunkCount ?? 0)
-      if (!prev) {
-        aggregated.set(key, {
-          vaultId: String(row.vaultId ?? ''),
-          sourceId: String(row.sourceId ?? ''),
-          chunkCount,
-          modelId: String(row.modelId ?? ''),
-          dimension: Number(row.dimension ?? 0),
-          contentHash: ''
-        })
-        continue
-      }
-      prev.chunkCount += chunkCount
-    }
-
-    const zeroRows = await this.db
-      .select()
-      .from(knowledgeEmbedLedgerTable)
-      .where(
-        ledgerFilters.length
-          ? and(
-              ...ledgerFilters,
-              eq(knowledgeEmbedLedgerTable.status, 'embedded'),
-              eq(knowledgeEmbedLedgerTable.chunkCount, 0)
-            )
-          : and(
-              eq(knowledgeEmbedLedgerTable.status, 'embedded'),
-              eq(knowledgeEmbedLedgerTable.chunkCount, 0)
-            )
-      )
-    for (const row of zeroRows) {
-      const key = `${row.vaultId}\0${row.sourceId}`
-      if (aggregated.has(key)) continue
-      aggregated.set(key, {
-        vaultId: row.vaultId,
-        sourceId: row.sourceId,
-        chunkCount: 0,
-        modelId: row.modelId,
-        dimension: row.dimension,
-        contentHash: row.contentHash
-      })
-    }
-
-    const existingHashes = await this.db
-      .select({
-        vaultId: knowledgeEmbedLedgerTable.vaultId,
-        sourceId: knowledgeEmbedLedgerTable.sourceId,
-        contentHash: knowledgeEmbedLedgerTable.contentHash
-      })
-      .from(knowledgeEmbedLedgerTable)
-      .where(ledgerFilters.length ? and(...ledgerFilters) : undefined)
-    const hashByKey = new Map(
-      existingHashes.map((row) => [`${row.vaultId}\0${row.sourceId}`, row.contentHash])
-    )
-    for (const row of aggregated.values()) {
-      if (!row.contentHash) {
-        row.contentHash = hashByKey.get(`${row.vaultId}\0${row.sourceId}`) ?? ''
-      }
-    }
-
-    const now = Date.now()
-    await this.withEmbedLedgerSavepoint(async () => {
-      if (vaultId) {
-        await this.db
-          .delete(knowledgeEmbedLedgerTable)
-          .where(eq(knowledgeEmbedLedgerTable.vaultId, vaultId))
-      } else {
-        await this.db.delete(knowledgeEmbedLedgerTable)
-      }
-      for (const row of aggregated.values()) {
-        if (!row.vaultId || !row.sourceId) continue
-        await this.db.insert(knowledgeEmbedLedgerTable).values({
-          vaultId: row.vaultId,
-          sourceId: row.sourceId,
-          contentHash: row.contentHash,
-          chunkCount: row.chunkCount,
-          modelId: row.modelId,
-          dimension: row.dimension,
-          status: 'embedded',
-          attempts: 0,
-          lastError: null,
-          embeddedAt: now,
-          updatedAt: now
-        })
-      }
-    })
+  countPendingEmbedSources(...args: Parameters<KnowledgeEmbedOps['countPendingEmbedSources']>) {
+    return this.embed.countPendingEmbedSources(...args)
   }
 
-  async countPendingEmbedSources(
-    vaultId: string,
-    options?: { modelId?: string; dimension?: number }
-  ): Promise<number> {
-    const vid = vaultId.trim()
-    if (!vid) return 0
-    await this.reconcileEmbedLedger({ vaultId: vid })
-    const pending = await this.listPendingEmbedSources(vid, options)
-    return pending.length
-  }
-
-  async listPendingEmbedSources(
-    vaultId: string,
-    options?: { modelId?: string; dimension?: number }
-  ): Promise<Array<{ id: string; notebookId: string; vaultId: string }>> {
-    const vid = vaultId.trim()
-    if (!vid) return []
-    const sources = await this.db
-      .select({
-        id: knowledgeSourcesTable.id,
-        notebookId: knowledgeSourcesTable.notebookId,
-        vaultId: knowledgeSourcesTable.vaultId,
-        extractedTextHash: knowledgeSourcesTable.extractedTextHash
-      })
-      .from(knowledgeSourcesTable)
-      .where(eq(knowledgeSourcesTable.vaultId, vid))
-    const ledgerRows = await this.db
-      .select()
-      .from(knowledgeEmbedLedgerTable)
-      .where(eq(knowledgeEmbedLedgerTable.vaultId, vid))
-    const ledgerBySource = new Map(
-      ledgerRows.map((row) => [row.sourceId, this.toEmbedLedgerView(row)])
-    )
-    const modelId = options?.modelId?.trim() ?? ''
-    const dimension = options?.dimension ?? 0
-    const pending: Array<{ id: string; notebookId: string; vaultId: string }> = []
-    for (const source of sources) {
-      if (!source.extractedTextHash?.trim()) continue
-      const ledger = ledgerBySource.get(source.id)
-      if (!ledger || ledger.status !== 'embedded') {
-        pending.push({ id: source.id, notebookId: source.notebookId, vaultId: source.vaultId })
-        continue
-      }
-      if (modelId && ledger.modelId !== modelId) {
-        pending.push({ id: source.id, notebookId: source.notebookId, vaultId: source.vaultId })
-        continue
-      }
-      if (dimension > 0 && ledger.dimension !== dimension) {
-        pending.push({ id: source.id, notebookId: source.notebookId, vaultId: source.vaultId })
-      }
-    }
-    return pending
-  }
-
-  private toEmbedLedgerView(row: KnowledgeEmbedLedgerRow): KnowledgeEmbedLedgerView {
-    return {
-      vaultId: row.vaultId,
-      sourceId: row.sourceId,
-      contentHash: row.contentHash,
-      chunkCount: row.chunkCount,
-      modelId: row.modelId,
-      dimension: row.dimension,
-      status: row.status
-    }
-  }
-
-  private async readEmbedLedgerCountGap(params?: { vaultId?: string }): Promise<{
-    ledgerChunkSum: number
-    vectorCount: number
-    mismatch: boolean
-  }> {
-    const vaultId = params?.vaultId?.trim()
-    const ledgerFilters = vaultId ? [eq(knowledgeEmbedLedgerTable.vaultId, vaultId)] : []
-    const chunkFilters = vaultId ? [eq(knowledgeChunksTable.vaultId, vaultId)] : []
-    const sumRows = await this.db
-      .select({ c: sql<number>`coalesce(sum(${knowledgeEmbedLedgerTable.chunkCount}), 0)` })
-      .from(knowledgeEmbedLedgerTable)
-      .where(ledgerFilters.length ? and(...ledgerFilters) : undefined)
-    const countRows = await this.db
-      .select({ c: sql<number>`count(*)` })
-      .from(knowledgeChunksTable)
-      .where(chunkFilters.length ? and(...chunkFilters) : undefined)
-    const ledgerChunkSum = Number(sumRows[0]?.c ?? 0)
-    const vectorCount = Number(countRows[0]?.c ?? 0)
-    return {
-      ledgerChunkSum,
-      vectorCount,
-      mismatch: ledgerChunkSum !== vectorCount
-    }
-  }
-
-  private async withEmbedLedgerSavepoint(run: () => Promise<void>): Promise<void> {
-    const db = this.db as { run?: (query: unknown) => Promise<unknown> }
-    if (typeof db.run !== 'function') {
-      await this.db.transaction(async () => {
-        await run()
-      })
-      return
-    }
-    await db.run(sql.raw(`SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`))
-    try {
-      await run()
-      await db.run(sql.raw(`RELEASE SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`))
-    } catch (error) {
-      await db
-        .run(sql.raw(`ROLLBACK TO SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`))
-        .catch(() => undefined)
-      await db
-        .run(sql.raw(`RELEASE SAVEPOINT ${KNOWLEDGE_EMBED_LEDGER_REBUILD_SAVEPOINT}`))
-        .catch(() => undefined)
-      throw error
-    }
+  listPendingEmbedSources(...args: Parameters<KnowledgeEmbedOps['listPendingEmbedSources']>) {
+    return this.embed.listPendingEmbedSources(...args)
   }
 }
