@@ -100,9 +100,7 @@ export function wireMobilePendingReextractHook(options: {
   })
 }
 
-async function resolveChatLlm(
-  settingsManager: SettingsManagerService
-): Promise<{
+async function resolveChatLlm(settingsManager: SettingsManagerService): Promise<{
   provider: IAIProvider
   modelId: string
   reasoningEffort?: ReasoningEffortSetting
@@ -265,7 +263,9 @@ export async function mobileCommitGraphDrafts(
   return service.commitDrafts(drafts, signal, onPhase)
 }
 
-async function resolveMobileExtractSelfName(settingsManager: SettingsManagerService): Promise<string> {
+async function resolveMobileExtractSelfName(
+  settingsManager: SettingsManagerService
+): Promise<string> {
   const flag = await settingsManager.get<boolean>(GRAPH_SELF_NAME_CONFIGURED_SETTINGS_KEY)
   const profile = await getUserProfileFromSettings(settingsManager)
   const selfName = resolveGraphExtractSelfName(flag === true, profile?.nickname)
@@ -296,8 +296,10 @@ async function buildMobileExtractionService(options: {
     )
   }
   const repo = new GraphRepository(options.drizzleDb)
-  let embedder: { embedQuery?: (text: string) => Promise<number[] | null>; modelId?: string } | null =
-    null
+  let embedder: {
+    embedQuery?: (text: string) => Promise<number[] | null>
+    modelId?: string
+  } | null = null
   try {
     const { EmbeddingAdapter } = await import('@baishou/ai')
     const { resolveMobileEmbeddingForHydration } = await import('./mobile-raw-data-source.runtime')
@@ -387,11 +389,7 @@ export async function mobileFindNodeByName(
   query: string,
   nodeType?: string
 ) {
-  const hits = await new GraphRepository(drizzleDb).findNodesByNameOrAlias(
-    vaultId,
-    query,
-    nodeType
-  )
+  const hits = await new GraphRepository(drizzleDb).findNodesByNameOrAlias(vaultId, query, nodeType)
   const picked = pickBareGraphNameHit(hits)
   if (!picked.hit) return null
   return {
@@ -787,11 +785,11 @@ export async function mobileCreateNode(options: {
 }): Promise<GraphNodeWriteResult> {
   const repo = new GraphRepository(options.drizzleDb)
   const name = options.name.trim()
-  const nodeType = GRAPH_NODE_TYPES.includes(options.nodeType as never)
-    ? options.nodeType
-    : 'topic'
+  const nodeType = GRAPH_NODE_TYPES.includes(options.nodeType as never) ? options.nodeType : 'topic'
   if (nodeType === 'entry') {
-    throw new Error('entry 节点必须基于日记路径，不能手建随机 id')
+    throw new Error(
+      i18n.t('graph.entry_node_requires_diary_path', 'entry 节点必须基于日记路径，不能手建随机 id')
+    )
   }
   const sameName = graphSameNameExistingFromRow(
     await repo.findNodeByNameOrAlias(options.vaultId, name, nodeType)

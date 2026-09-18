@@ -31,7 +31,7 @@ describe('GraphPage chrome', () => {
     expect(toolbar).toContain('trailing=')
     expect(toolbar).toContain("t('graph.global_view'")
     expect(pickerSrc).toContain('trailing?: React.ReactNode')
-    expect(pickerSrc).toContain('import { Button, withAppContentOverlay } from \'@baishou/ui\'')
+    expect(pickerSrc).toContain("import { Button, withAppContentOverlay } from '@baishou/ui'")
     expect(pickerSrc).not.toContain('footerGhost')
     expect(pickerSrc).not.toContain('footerPrimary')
     expect(pickerCss).toContain('.cluster {')
@@ -53,7 +53,11 @@ describe('GraphPage chrome', () => {
   })
 
   it('mounts extract, create, merge, and identity in the organize rail', () => {
-    const organize = sliceBetween(src, "{sideMode === 'organize' ? (", ") : sideMode === 'canvas' ? (")
+    const organize = sliceBetween(
+      src,
+      "{sideMode === 'organize' ? (",
+      ") : sideMode === 'canvas' ? ("
+    )
     expect(organize).toContain("t('graph.process_pending_reextract'")
     expect(organize).toContain("t('graph.extract_concurrency'")
     expect(organize).toContain("t('graph.create_node'")
@@ -179,13 +183,13 @@ describe('GraphPage chrome', () => {
     expect(src).toContain('selectedNode.discriminator')
     expect(src).not.toContain('${selectedNode.name}${selectedNode.discriminator}')
     expect(src).not.toContain('${selectedNode.name}（${selectedNode.discriminator}')
-    expect(src).not.toContain("${selectedNode.name} (${selectedNode.discriminator}")
+    expect(src).not.toContain('${selectedNode.name} (${selectedNode.discriminator}')
     expect(src).toContain('{selectedNode.name}')
   })
 
   it('should warn about ambiguous sources with listAmbiguousSourceRefs when the bare node has leftovers', () => {
     expect(src).toContain('listAmbiguousSourceRefs')
-    expect(src).toContain("t('graph.ambiguous_sources_hint'")
+    expect(src).toContain("'graph.ambiguous_sources_hint'")
   })
 
   it('should import GraphSplitNodeModal controls from @baishou/ui and avoid raw button or input', () => {

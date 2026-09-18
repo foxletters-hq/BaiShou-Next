@@ -60,7 +60,8 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
 }) => {
   const { t } = useTranslation()
   const { colors, tokens, maxModalWidth } = useNativeTheme()
-  const catalogEpoch = useSyncExternalStore(
+  // 只订阅以便目录更新后重渲染，档位选项直接按当前目录算，不再缓存
+  useSyncExternalStore(
     subscribeReasoningCatalog,
     getReasoningCatalogEpoch,
     getReasoningCatalogEpoch
@@ -91,13 +92,9 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
   }, [providers, searchQuery])
 
   const currentProvider = providers.find((provider) => provider.id === currentProviderId)
-  const effortOptions = useMemo(
-    () =>
-      listSessionReasoningEffortSettings(
-        currentModelId || '',
-        currentProvider?.type || currentProviderId || undefined
-      ),
-    [catalogEpoch, currentModelId, currentProvider?.type, currentProviderId]
+  const effortOptions = listSessionReasoningEffortSettings(
+    currentModelId || '',
+    currentProvider?.type || currentProviderId || undefined
   )
   const selectedEffort = effortOptions.includes(reasoningEffort ?? 'auto')
     ? (reasoningEffort ?? 'auto')
@@ -312,12 +309,7 @@ export const ModelSwitcher: React.FC<NativeModelSwitcherProps> = ({
           </ScrollView>
 
           {showReasoningPanel ? (
-            <View
-              style={[
-                styles.effortWrap,
-                { borderTopColor: colors.borderSubtle }
-              ]}
-            >
+            <View style={[styles.effortWrap, { borderTopColor: colors.borderSubtle }]}>
               <Text style={[styles.effortLabel, { color: colors.textSecondary }]}>
                 {t('agent.reasoning.effort_label', '思考强度')}
               </Text>

@@ -624,8 +624,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
       sessionId,
       setFolderRoot,
       stream,
-      t,
-      toast
+      t
     ]
   )
 

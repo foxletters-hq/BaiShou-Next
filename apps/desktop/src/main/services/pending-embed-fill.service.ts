@@ -1,3 +1,4 @@
+import i18n from 'i18next'
 import { EmbeddingAdapter } from '@baishou/ai'
 import {
   backfillUnembeddedGraphNodes,
@@ -103,14 +104,14 @@ export async function runManualPendingEmbedFill(options?: {
     const overall = overallFromPhaseCounts(phases)
     const statusText =
       phase === 'memory'
-        ? '正在嵌入伙伴记忆…'
+        ? i18n.t('settings.rag_indexing_memory', '正在嵌入伙伴记忆…')
         : phase === 'graph_node'
-          ? '正在嵌入图谱节点…'
+          ? i18n.t('settings.rag_indexing_graph_node', '正在嵌入图谱节点…')
           : phase === 'knowledge'
-            ? '正在嵌入知识库…'
+            ? i18n.t('settings.rag_indexing_knowledge', '正在嵌入知识库…')
             : phase === 'graph_extract'
-              ? '正在整理关系图谱…'
-              : '正在完成索引…'
+              ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
+              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
     options?.onProgress?.({
       completed: overall.completed,
       total: overall.total,

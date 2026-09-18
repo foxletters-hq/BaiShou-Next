@@ -1,10 +1,12 @@
 /* eslint-disable max-lines -- 工具结果文案与解析聚合 */
 import i18n from 'i18next'
 import {
+  isAgentGateRejectedError,
   isCompanionAskCancelledMessage,
   parseKnowledgeSearchToolResult,
   resolveAgentToolActionLabel,
   resolveMcpToolLookupName,
+  TOOL_EXECUTION_FAILED_PREFIX,
   type FallbackTranslateFn
 } from '@baishou/shared'
 
@@ -127,7 +129,7 @@ function isCompanionAskDeclineRaw(raw: string): boolean {
   const trimmed = raw.trim()
   if (COMPANION_ASK_DECLINED.test(trimmed)) return true
   if (isCompanionAskCancelledMessage(trimmed)) return true
-  if (trimmed.includes('用户拒绝了本次操作')) return true
+  if (isAgentGateRejectedError(trimmed)) return true
   try {
     const parsed = JSON.parse(trimmed) as unknown
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -390,10 +392,7 @@ export function resolveActiveToolDisplayName(
   return resolveAgentToolActionLabel(activeTool.name, t)
 }
 
-export function getToolDisplayName(
-  invocation: ToolInvocationLike,
-  t: FallbackTranslateFn
-): string {
+export function getToolDisplayName(invocation: ToolInvocationLike, t: FallbackTranslateFn): string {
   const rawName = readRawInvocationToolName(invocation)
   if (rawName) return resolveAgentToolActionLabel(rawName, t)
   const callId = invocation.toolCallId
@@ -434,7 +433,7 @@ export function isToolResultError(invocation: ToolInvocationLike): boolean {
   return (
     raw.startsWith('Error') ||
     raw.startsWith('Tool execution failed') ||
-    raw.startsWith('工具执行失败') ||
+    raw.startsWith(TOOL_EXECUTION_FAILED_PREFIX) ||
     raw.startsWith('Failed to fetch URL:') ||
     raw.startsWith('Web search failed:')
   )
@@ -636,7 +635,9 @@ export function getToolRowSubtitle(
     const parsed = resolveCompanionAskPresentation(invocation)
     if (parsed?.declined) {
       const raw =
-        typeof invocation.result === 'string' ? invocation.result : getToolResultRawContent(invocation)
+        typeof invocation.result === 'string'
+          ? invocation.result
+          : getToolResultRawContent(invocation)
       const cancelled = isCompanionAskCancelledMessage(raw)
       return formatToolCopy(
         t,

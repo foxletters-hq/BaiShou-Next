@@ -85,10 +85,7 @@ export interface AgentWorkspaceMessageListProps {
     }
   ) => boolean | Promise<boolean>
   bubbleActions?: WorkspaceBubbleActions
-  onOpenFile?: (
-    relativePath: string,
-    options?: { line?: number; isDirectory?: boolean }
-  ) => void
+  onOpenFile?: (relativePath: string, options?: { line?: number; isDirectory?: boolean }) => void
   onSelectChange?: (change: WorkspaceChangeEntry) => void
   onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
   hasMore?: boolean
@@ -127,21 +124,11 @@ function WorkspaceUserTurn(props: {
     }
   ) => boolean | Promise<boolean>
   bubbleActions?: WorkspaceBubbleActions
-  onOpenFile?: (
-    relativePath: string,
-    options?: { line?: number; isDirectory?: boolean }
-  ) => void
+  onOpenFile?: (relativePath: string, options?: { line?: number; isDirectory?: boolean }) => void
 }) {
   const { t } = useTranslation()
-  const {
-    msg,
-    dimmed,
-    editingActive,
-    onEditingChange,
-    onEditResend,
-    bubbleActions,
-    onOpenFile
-  } = props
+  const { msg, dimmed, editingActive, onEditingChange, onEditResend, bubbleActions, onOpenFile } =
+    props
   const userText = getWorkspaceUserText(msg)
   const skillRefs = getWorkspaceUserSkillRefs(msg) ?? msg.skillRefs
   const fileRefs = getWorkspaceUserFileRefs(msg)
@@ -251,12 +238,12 @@ function WorkspaceUserTurn(props: {
         <>
           <div
             className={`${styles.userAnchor}${onEditResend ? ` ${styles.userAnchorEditable}` : ''}`}
-            title={onEditResend ? t('workbench.click_to_edit_message', '点击编辑这条消息') : undefined}
+            title={
+              onEditResend ? t('workbench.click_to_edit_message', '点击编辑这条消息') : undefined
+            }
             onClick={handleBubbleClick}
           >
-            {attachments.length > 0 ? (
-              <ChatBubbleAttachments attachments={attachments} />
-            ) : null}
+            {attachments.length > 0 ? <ChatBubbleAttachments attachments={attachments} /> : null}
             {userText || skillRefs?.length || fileRefs.length ? (
               <UserMessageSkillContent
                 text={userText}
@@ -271,16 +258,12 @@ function WorkspaceUserTurn(props: {
               isAI={false}
               onCopy={() => copyWorkspaceBubbleText(userText)}
               onEdit={onEditResend ? startEdit : undefined}
-              onRetry={
-                bubbleActions?.onResend ? () => bubbleActions.onResend?.(msg.id) : undefined
-              }
+              onRetry={bubbleActions?.onResend ? () => bubbleActions.onResend?.(msg.id) : undefined}
               onDelete={
                 bubbleActions?.onDelete ? () => bubbleActions.onDelete?.(msg.id) : undefined
               }
               onShowContext={
-                bubbleActions?.onShowContext
-                  ? () => bubbleActions.onShowContext?.(msg)
-                  : undefined
+                bubbleActions?.onShowContext ? () => bubbleActions.onShowContext?.(msg) : undefined
               }
             />
           </div>
@@ -523,11 +506,10 @@ export const AgentWorkspaceMessageList = forwardRef<
     lastMessage?.role === 'assistant' &&
     Boolean(
       lastMessage.content?.trim() ||
-        lastMessage.reasoning?.trim() ||
-        (lastMessage.parts?.length ?? 0) > 0
+      lastMessage.reasoning?.trim() ||
+      (lastMessage.parts?.length ?? 0) > 0
     )
-  const showStreamingBubble =
-    (isStreaming || isBridgeActive) && !assistantPersistedDuringBridge
+  const showStreamingBubble = (isStreaming || isBridgeActive) && !assistantPersistedDuringBridge
   const showPendingAssistant =
     !isStreaming &&
     !isBridgeActive &&
@@ -536,8 +518,8 @@ export const AgentWorkspaceMessageList = forwardRef<
       lastMessage?.role === 'assistant' &&
       Boolean(
         lastMessage.content?.trim() ||
-          lastMessage.reasoning?.trim() ||
-          (lastMessage.parts?.length ?? 0) > 0
+        lastMessage.reasoning?.trim() ||
+        (lastMessage.parts?.length ?? 0) > 0
       )
     )
 
@@ -561,6 +543,13 @@ export const AgentWorkspaceMessageList = forwardRef<
       }))
     ],
     [completedTools, failedTools]
+  )
+
+  const handleAskReply = useCallback(
+    (payload: AgentGateReplyPayload) => {
+      void onAskReply?.(payload)
+    },
+    [onAskReply]
   )
 
   if (!sessionId || sessionId === 'new-session') {
@@ -610,12 +599,6 @@ export const AgentWorkspaceMessageList = forwardRef<
       : streamHasText || streamHasTools || streamHasReasoning)
 
   const isEditingTurn = Boolean(editingMessageId)
-  const handleAskReply = useCallback(
-    (payload: AgentGateReplyPayload) => {
-      void onAskReply?.(payload)
-    },
-    [onAskReply]
-  )
 
   return (
     <CompanionAskInteractionProvider
@@ -623,72 +606,72 @@ export const AgentWorkspaceMessageList = forwardRef<
       isReplying={isAskReplying}
       onReply={handleAskReply}
     >
-    <div className={styles.scrollWrap}>
-      <div className={styles.scroll} ref={scroll.scrollRef} data-workspace-chat-scroll="">
-        <div className={styles.list}>
-          {showLoadMoreButton ? (
-            <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
-              {t('agent.chat.load_earlier_messages', '加载更早对话')}
-            </button>
-          ) : null}
-          {messages.length === 0 && !showStreamingBubble && !showPendingAssistant ? (
-            <p className={styles.empty}>
-              {t('workbench.chat_empty', '在下方输入，开始这一轮协作')}
-            </p>
-          ) : null}
-          {messages.map((msg, index) => {
-          if (msg.role === 'user') {
-            return (
-              <WorkspaceUserTurn
-                key={msg.id}
-                msg={msg}
-                dimmed={editingIndex >= 0 && index > editingIndex}
-                editingActive={editingMessageId === msg.id}
-                onEditingChange={setEditingMessageId}
-                onEditResend={onEditResend}
-                bubbleActions={bubbleActions}
-                onOpenFile={onOpenFile}
-              />
-            )
-          }
-
-          return (
-            <WorkspaceAssistantTurn
-              key={msg.id}
-              msg={msg}
-              dimmed={editingIndex >= 0 && index > editingIndex}
-              editingActive={editingMessageId === msg.id}
-              onEditingChange={setEditingMessageId}
-              onSelectChange={onSelectChange}
-              onReviewAll={onReviewAll}
-              bubbleActions={bubbleActions}
-              suppressIncompleteBanner={Boolean(pendingAsk)}
-            />
-          )
-        })}
-
-        {showStreamingBubble ? (
-          <div
-            className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
-              isEditingTurn ? ` ${styles.turnDimmed}` : ''
-            }`}
-          >
-            {streamError ? (
-              <div className={styles.streamError} role="alert">
-                {streamError}
-              </div>
+      <div className={styles.scrollWrap}>
+        <div className={styles.scroll} ref={scroll.scrollRef} data-workspace-chat-scroll="">
+          <div className={styles.list}>
+            {showLoadMoreButton ? (
+              <button type="button" className={styles.loadMoreBanner} onClick={triggerLoadMore}>
+                {t('agent.chat.load_earlier_messages', '加载更早对话')}
+              </button>
             ) : null}
-            {useLiveTimeline
-              ? groupStreamTimelineItems(streamingTimeline).map((item, index, groups) =>
-                  renderStreamTimelineItem(item, index, {
-                    isStreaming: isStreaming && !isBridgeActive,
-                    isLast: index === groups.length - 1,
-                    failedByName,
-                    onSelectChange,
-                    onReviewAll
-                  })
+            {messages.length === 0 && !showStreamingBubble && !showPendingAssistant ? (
+              <p className={styles.empty}>
+                {t('workbench.chat_empty', '在下方输入，开始这一轮协作')}
+              </p>
+            ) : null}
+            {messages.map((msg, index) => {
+              if (msg.role === 'user') {
+                return (
+                  <WorkspaceUserTurn
+                    key={msg.id}
+                    msg={msg}
+                    dimmed={editingIndex >= 0 && index > editingIndex}
+                    editingActive={editingMessageId === msg.id}
+                    onEditingChange={setEditingMessageId}
+                    onEditResend={onEditResend}
+                    bubbleActions={bubbleActions}
+                    onOpenFile={onOpenFile}
+                  />
                 )
-              : (
+              }
+
+              return (
+                <WorkspaceAssistantTurn
+                  key={msg.id}
+                  msg={msg}
+                  dimmed={editingIndex >= 0 && index > editingIndex}
+                  editingActive={editingMessageId === msg.id}
+                  onEditingChange={setEditingMessageId}
+                  onSelectChange={onSelectChange}
+                  onReviewAll={onReviewAll}
+                  bubbleActions={bubbleActions}
+                  suppressIncompleteBanner={Boolean(pendingAsk)}
+                />
+              )
+            })}
+
+            {showStreamingBubble ? (
+              <div
+                className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
+                  isEditingTurn ? ` ${styles.turnDimmed}` : ''
+                }`}
+              >
+                {streamError ? (
+                  <div className={styles.streamError} role="alert">
+                    {streamError}
+                  </div>
+                ) : null}
+                {useLiveTimeline ? (
+                  groupStreamTimelineItems(streamingTimeline).map((item, index, groups) =>
+                    renderStreamTimelineItem(item, index, {
+                      isStreaming: isStreaming && !isBridgeActive,
+                      isLast: index === groups.length - 1,
+                      failedByName,
+                      onSelectChange,
+                      onReviewAll
+                    })
+                  )
+                ) : (
                   <>
                     {streamHasReasoning ? (
                       <AgentThinkSection
@@ -711,66 +694,66 @@ export const AgentWorkspaceMessageList = forwardRef<
                     ) : null}
                   </>
                 )}
-            {streamShowPlaceholder || streamShowWaiting ? <BouncingDots /> : null}
-            {failedTools.length > 0 || streamingCompletedTools.some((tool) => tool.error) ? (
-              <ul className={styles.streamToolErrors}>
+                {streamShowPlaceholder || streamShowWaiting ? <BouncingDots /> : null}
+                {failedTools.length > 0 || streamingCompletedTools.some((tool) => tool.error) ? (
+                  <ul className={styles.streamToolErrors}>
                     {[
-                  ...failedTools.map((tool) => ({
-                    name: formatWorkspaceToolDisplayName(tool.name, t),
-                    error: tool.error
-                  })),
-                  ...streamingCompletedTools
-                    .filter((tool) => tool.error)
-                    .map((tool) => ({
-                      name: formatWorkspaceToolDisplayName(tool.name, t),
-                      error: tool.error!
-                    }))
-                ].map((tool, index) => (
-                  <li key={`${tool.name}-stream-err-${index}`}>
-                    {tool.name}: {tool.error}
-                  </li>
-                ))}
-              </ul>
+                      ...failedTools.map((tool) => ({
+                        name: formatWorkspaceToolDisplayName(tool.name, t),
+                        error: tool.error
+                      })),
+                      ...streamingCompletedTools
+                        .filter((tool) => tool.error)
+                        .map((tool) => ({
+                          name: formatWorkspaceToolDisplayName(tool.name, t),
+                          error: tool.error!
+                        }))
+                    ].map((tool, index) => (
+                      <li key={`${tool.name}-stream-err-${index}`}>
+                        {tool.name}: {tool.error}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             ) : null}
-          </div>
-        ) : null}
 
-        {showPendingAssistant && pendingAssistantMsg ? (
-          <div
-            className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
-              isEditingTurn ? ` ${styles.turnDimmed}` : ''
-            }`}
-          >
-            {pendingAssistantMsg.reasoning ? (
-              <AgentThinkSection content={pendingAssistantMsg.reasoning} />
-            ) : null}
-            {pendingAssistantMsg.content ? (
-              <AgentMarkdownRenderer content={pendingAssistantMsg.content} />
-            ) : null}
-            {pendingAssistantMsg.content ? (
-              <div className={styles.turnActions}>
-                <MessageActionBar
-                  isAI
-                  onCopy={() => copyWorkspaceBubbleText(pendingAssistantMsg.content)}
-                />
+            {showPendingAssistant && pendingAssistantMsg ? (
+              <div
+                className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
+                  isEditingTurn ? ` ${styles.turnDimmed}` : ''
+                }`}
+              >
+                {pendingAssistantMsg.reasoning ? (
+                  <AgentThinkSection content={pendingAssistantMsg.reasoning} />
+                ) : null}
+                {pendingAssistantMsg.content ? (
+                  <AgentMarkdownRenderer content={pendingAssistantMsg.content} />
+                ) : null}
+                {pendingAssistantMsg.content ? (
+                  <div className={styles.turnActions}>
+                    <MessageActionBar
+                      isAI
+                      onCopy={() => copyWorkspaceBubbleText(pendingAssistantMsg.content)}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
-        ) : null}
         </div>
+        {scroll.showScrollButton ? (
+          <button
+            type="button"
+            className={styles.scrollBottomBtn}
+            onClick={scroll.scrollToBottom}
+            title={t('workbench.scroll_to_bottom', '回到底部')}
+            aria-label={t('workbench.scroll_to_bottom', '回到底部')}
+          >
+            <ChevronDown size={18} strokeWidth={2} aria-hidden />
+          </button>
+        ) : null}
       </div>
-      {scroll.showScrollButton ? (
-        <button
-          type="button"
-          className={styles.scrollBottomBtn}
-          onClick={scroll.scrollToBottom}
-          title={t('workbench.scroll_to_bottom', '回到底部')}
-          aria-label={t('workbench.scroll_to_bottom', '回到底部')}
-        >
-          <ChevronDown size={18} strokeWidth={2} aria-hidden />
-        </button>
-      ) : null}
-    </div>
     </CompanionAskInteractionProvider>
   )
 })

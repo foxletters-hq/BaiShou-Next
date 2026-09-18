@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import React, { useEffect, useState, useSyncExternalStore } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
@@ -30,17 +30,16 @@ export function SessionReasoningSelect({
 }) {
   const { t } = useTranslation()
   const { services, dbReady } = useBaishou()
-  const catalogEpoch = useSyncExternalStore(
+  useSyncExternalStore(
     subscribeReasoningCatalog,
     getReasoningCatalogEpoch,
     getReasoningCatalogEpoch
   )
   const [value, setValue] = useState<ReasoningEffortSetting>('auto')
 
-  const effortOptions = useMemo(
-    () =>
-      listSessionReasoningEffortSettings(modelId || '', providerType || providerId || undefined),
-    [catalogEpoch, modelId, providerId, providerType]
+  const effortOptions = listSessionReasoningEffortSettings(
+    modelId || '',
+    providerType || providerId || undefined
   )
 
   useEffect(() => {
@@ -50,12 +49,7 @@ export function SessionReasoningSelect({
         const models = await services.settingsManager.get<GlobalModelsConfig>('global_models')
         fallback = resolveReasoningEffortForSlot(models?.reasoningEffortBySlot, 'dialogue')
       }
-      const next = await loadMobileSessionReasoningEffort(
-        sessionId,
-        providerId,
-        modelId,
-        fallback
-      )
+      const next = await loadMobileSessionReasoningEffort(sessionId, providerId, modelId, fallback)
       setValue(effortOptions.includes(next) ? next : 'auto')
     })()
   }, [dbReady, effortOptions, modelId, providerId, services, sessionId])

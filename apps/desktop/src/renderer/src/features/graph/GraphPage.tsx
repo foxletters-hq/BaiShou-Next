@@ -96,10 +96,7 @@ import { GraphCreateNodeModal } from './GraphCreateNodeModal'
 import { GraphSplitNodeModal } from './GraphSplitNodeModal'
 import { GraphCanvasSettingsPanel } from './GraphCanvasSettingsPanel'
 import { GraphForceCanvas } from './GraphForceCanvas'
-import {
-  GraphIrreversibleConfirm,
-  type GraphMergeConfirmTarget
-} from './GraphIrreversibleConfirm'
+import { GraphIrreversibleConfirm, type GraphMergeConfirmTarget } from './GraphIrreversibleConfirm'
 import { GraphMergeSearchModal } from './GraphMergeSearchModal'
 import { GraphMonthRangePicker } from './GraphMonthRangePicker'
 import { findGraphSameNameNode } from './graph-same-name.lookup'
@@ -255,7 +252,9 @@ export const GraphPage: React.FC<GraphPageProps> = ({
   const [enabledNodeTypes, setEnabledNodeTypes] = useState<Set<string>>(
     () => new Set(GRAPH_FILTER_NODE_TYPES)
   )
-  const [forceSettings, setForceSettings] = useState<GraphForceSettings>(() => loadGraphForceSettings())
+  const [forceSettings, setForceSettings] = useState<GraphForceSettings>(() =>
+    loadGraphForceSettings()
+  )
   const [appearanceSettings, setAppearanceSettings] = useState<GraphAppearanceSettings>(() =>
     loadGraphAppearanceSettings()
   )
@@ -352,7 +351,9 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     setPendingNodes(visible.pendingNodes)
     setPendingEdges(visible.pendingEdges)
     setPendingEndpointNodes(
-      (pending.endpointNodes || []).filter((node) => !inFlightDeletedNodeIdsRef.current.has(node.id))
+      (pending.endpointNodes || []).filter(
+        (node) => !inFlightDeletedNodeIdsRef.current.has(node.id)
+      )
     )
     try {
       setEstimate(await window.api.graph.estimateExtraction())
@@ -382,7 +383,9 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       setLocalView(view)
       return
     }
-    const ids = (localView.nodes || []).map((n: { id?: string }) => n.id).filter(Boolean) as string[]
+    const ids = (localView.nodes || [])
+      .map((n: { id?: string }) => n.id)
+      .filter(Boolean) as string[]
     const freshNodes = (
       await Promise.all(ids.map((id) => window.api.graph.getNode(id).catch(() => null)))
     ).filter((n): n is NonNullable<typeof n> => Boolean(n) && n.reviewStatus !== 'rejected')
@@ -658,10 +661,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       return aliases.includes(prev)
     })
     if (!match) return false
-    const aliases = new Set<string>([
-      ...(Array.isArray(match.aliases) ? match.aliases : []),
-      prev
-    ])
+    const aliases = new Set<string>([...(Array.isArray(match.aliases) ? match.aliases : []), prev])
     aliases.delete(next)
     await window.api.graph.upsertNode({
       id: match.id,
@@ -747,19 +747,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       return true
     }
 
-    // Pending「查看」：整图换成无月份过滤的邻域子图。
-    const viewEdges = pinNeighborhood
-      ? localView?.edges || []
-      : selectedId && !nodes.some((n) => n.id === selectedId)
-        ? [...edges, ...(localView?.edges || [])]
-        : edges
-    const visibleEdges = viewEdges.filter((e) => {
-      if (e.reviewStatus === 'rejected') return false
-      // 邻域定位时保留待审边，否则「查看」看不到待确认关系
-      if (!pinNeighborhood && approvedOnly && e.reviewStatus === 'pending') return false
-      return true
-    })
-
+    // Pending「查看」：整图换成无月份过滤的邻域子图。边过滤在 displayEdges 里做。
     let next: any[]
     if (pinNeighborhood && localView?.nodes?.length) {
       next = localView.nodes.filter((n) => filterNode(n, true))
@@ -785,7 +773,6 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     return next
   }, [
     nodes,
-    edges,
     hideEntry,
     approvedOnly,
     enabledNodeTypes,
@@ -794,8 +781,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     selectedNode,
     pinNeighborhood,
     highlightIds,
-    highlightedEdgeIds,
-    locateIds
+    highlightedEdgeIds
   ])
 
   const displayEdges = useMemo(() => {
@@ -908,9 +894,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
   }, [searchAttempted, searching])
 
   const applySearchHits = (hits: any[]) => {
-    const list = (hits || []).filter(
-      (item) => item?.id && item.reviewStatus !== 'rejected'
-    )
+    const list = (hits || []).filter((item) => item?.id && item.reviewStatus !== 'rejected')
     setSearchHits(list)
     const ids = list.map((item) => item.id as string)
     setHighlightIds(new Set(ids))
@@ -961,10 +945,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     }
   }
 
-  const onSelectNode = async (
-    id: string,
-    opts?: { locate?: boolean; bypassMonth?: boolean }
-  ) => {
+  const onSelectNode = async (id: string, opts?: { locate?: boolean; bypassMonth?: boolean }) => {
     setHighlightedEdgeIds(new Set())
     setLocateIds(null)
     // 待确认「查看」至少 2 跳；否则跟当前展开等级一致（含 3 级）
@@ -1032,23 +1013,22 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     (state: GraphExtractQueueSnapshot) => {
       setExtractQueue(state)
       const running =
-        state.pendingCount > 0 ||
-        state.runningCount > 0 ||
-        (state.aligningCount ?? 0) > 0
+        state.pendingCount > 0 || state.runningCount > 0 || (state.aligningCount ?? 0) > 0
       setExtractRunning(running)
       if (running) {
         const done = state.completedCount
         const total = state.items.length
-        const current = Math.min(
-          done + state.runningCount + (state.aligningCount ?? 0),
-          total
-        )
+        const current = Math.min(done + state.runningCount + (state.aligningCount ?? 0), total)
         setStatus(
-          t('graph.extract_queue_progress', '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）', {
-            current,
-            total,
-            percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
-          })
+          t(
+            'graph.extract_queue_progress',
+            '后台整理中 {{current}}/{{total}} · {{percent}}%（可继续添加）',
+            {
+              current,
+              total,
+              percent: state.overallProgress ?? graphExtractOverallProgress(state.items)
+            }
+          )
         )
       } else if (state.completedCount > 0 || state.errorCount > 0) {
         setStatus(
@@ -1092,7 +1072,6 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       applyQueueSnapshot(state)
     })
     queueUnsubRef.current = unsub
-    void graphSetExtractConcurrency(extractConcurrency).catch(() => undefined)
     return () => {
       cancelled = true
       queueUnsubRef.current?.()
@@ -1100,11 +1079,15 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     }
   }, [applyQueueSnapshot])
 
+  useEffect(() => {
+    void graphSetExtractConcurrency(extractConcurrency).catch(() => undefined)
+  }, [extractConcurrency])
+
   const confirmBatchExtract = async (): Promise<boolean> => {
     const count = pendingReextract.length
     if (count <= 0) return false
     return dialog.confirm(
-        t(
+      t(
         'graph.confirm_batch_extract',
         '将把 {{count}} 篇待重抽日记加入整理队列。最多同时 {{concurrency}} 篇调用模型，攒满 10 篇或本批抽完后，召回相似度大于 50% 的候选并由模型判断是否合并再写入。',
         {
@@ -1133,9 +1116,13 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       const result = await graphQueueExtract({ filePaths, concurrency: extractConcurrency })
       if (result.blockedPendingEmbed && result.blockedPendingEmbed > 0) {
         const go = await dialog.confirm(
-          t('graph.extract_blocked_pending_embed', '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系', {
-            count: result.blockedPendingEmbed
-          }),
+          t(
+            'graph.extract_blocked_pending_embed',
+            '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系',
+            {
+              count: result.blockedPendingEmbed
+            }
+          ),
           t('graph.extract_blocked_pending_embed_action', '去补齐')
         )
         if (go) navigate('/memory/vectors')
@@ -1160,9 +1147,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           setStatus(t('graph.extract_already_queued', '已在整理队列中'))
           toast.showInfo(t('graph.extract_already_queued', '已在整理队列中'))
         } else if (result.skippedNotEmbedded?.length) {
-          setStatus(
-            t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取')
-          )
+          setStatus(t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取'))
           toast.showInfo(
             t('graph.extract_diary_not_embedded', '这篇日记还没有向量，请先嵌入后再抽取')
           )
@@ -1224,7 +1209,9 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     try {
       const resolved = await window.api.graph.resolveJournal({ date })
       if (!resolved?.filePath) {
-        toast.showError(t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。'))
+        toast.showError(
+          t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。')
+        )
         return
       }
       const ok = await dialog.confirm(
@@ -1489,9 +1476,13 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       if (isGraphNodeSameNameConflict(result)) {
         setEditNameConflict(result.existing)
         toast.showError(
-          t('graph.same_name_save_blocked', '已有同名节点「{{name}}」。请先换名，或把它合并过去。', {
-            name: result.existing.name
-          })
+          t(
+            'graph.same_name_save_blocked',
+            '已有同名节点「{{name}}」。请先换名，或把它合并过去。',
+            {
+              name: result.existing.name
+            }
+          )
         )
         return
       }
@@ -1514,9 +1505,13 @@ export const GraphPage: React.FC<GraphPageProps> = ({
       (!selectedNode.discriminator ? selectedNode.id : '')
     if (!bareNodeId) return
     const ok = await dialog.confirm(
-      t('graph.revert_split_confirm', '确定把「{{label}}」撤回原实体？它的关系会回到原节点，这条登记会删除。', {
-        label: discriminator
-      }),
+      t(
+        'graph.revert_split_confirm',
+        '确定把「{{label}}」撤回原实体？它的关系会回到原节点，这条登记会删除。',
+        {
+          label: discriminator
+        }
+      ),
       t('graph.revert_split', '撤回拆分')
     )
     if (!ok) return
@@ -1748,7 +1743,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({
         window.api.diary.findByDate(date),
         window.api.diary.getAttachmentDir?.(date).catch(() => '') ?? Promise.resolve('')
       ])
-      const content = String((entry as { content?: string } | null)?.content || '').trim() || excerpt
+      const content =
+        String((entry as { content?: string } | null)?.content || '').trim() || excerpt
       setSourcePreview({
         date,
         content: content || t('graph.source_not_found', '未找到该日日记原文'),
@@ -1816,1340 +1812,1440 @@ export const GraphPage: React.FC<GraphPageProps> = ({
             exit={{ opacity: 0 }}
             transition={phaseTransition}
           >
-      <div className={styles.chrome}>
-      <div className={`${styles.toolbar}${embedded ? ` ${styles.toolbarEmbedded}` : ''}`}>
-        <div className={styles.toolbarLeft}>
-          {embedded ? null : (
-          <div className={styles.titleRow}>
-            <div className={styles.title}>{t('graph.title', '人生关系图')}</div>
-            <HelpTooltip
-              content={t(
-                'graph.title_help',
-                '这是从日记里整理出的人物、地点和事件关系。笔记本里的关系图是另一套库，不会混在这里。'
-              )}
-            />
-          </div>
-          )}
-          {!showEmptyGuide ? (
-            <div className={styles.searchGroup} ref={searchGroupRef}>
-              <div className={styles.searchField}>
-                <Input
-                  fieldSize="small"
-                  placeholder={
-                    searchMode === 'semantic'
-                      ? t('graph.search_placeholder_semantic', '按意思搜索节点…')
-                      : t('graph.search_placeholder_text', '按名称 / 别名搜索')
-                  }
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value)
-                    setSearchAttempted(false)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void onSearch()
-                    if (e.key === 'Escape') dismissSearchPanel()
-                  }}
-                  trailing={
-                    <button
-                      type="button"
-                      className={styles.searchBtn}
-                      aria-label={t('graph.search', '搜索')}
-                      title={t('graph.search', '搜索')}
-                      onClick={() => void onSearch()}
-                    >
-                      <Search size={15} strokeWidth={2.25} />
-                    </button>
-                  }
-                />
-              </div>
-              <SegmentedControl
-                inline
-                value={searchMode}
-                aria-label={t('graph.search_mode', '搜索模式')}
-                onChange={(mode) => {
-                  const next = resolveGraphSearchMode(mode)
-                  setSearchMode(next)
-                  if (query.trim()) void onSearch(next)
-                }}
-                options={[
-                  { value: 'semantic', label: t('graph.search_semantic', '语义搜索') },
-                  { value: 'text', label: t('graph.search_text', '文本搜索') }
-                ]}
-              />
-              {searching || searchAttempted ? (
-                <div className={styles.searchHits} role="listbox" aria-label={t('graph.search_results', '搜索结果')}>
-                  <div className={styles.searchHitsHeader}>
-                    {searching
-                      ? t('graph.searching', '正在搜索…')
-                      : searchHits.length > 0
-                        ? t('graph.search_results_count', '{{count}} 个节点', {
-                            count: searchHits.length
-                          })
-                        : searchMode === 'semantic'
-                          ? t(
-                              'graph.search_semantic_empty',
-                              '没有语义相近的节点。没做向量的节点不会出现在语义搜索里。'
-                            )
-                          : t('graph.search_no_hits', '没有找到匹配的节点')}
-                  </div>
-                  {searchHits.map((hit) => (
-                    <button
-                      key={hit.id}
-                      type="button"
-                      className={styles.searchHit}
-                      onClick={() => {
-                        dismissSearchPanel()
-                        void onSelectNode(hit.id, { locate: true, bypassMonth: true })
-                      }}
-                    >
-                      <span className={styles.searchHitName}>{hit.name}</span>
-                      <span className={styles.searchHitMeta}>
-                        {translateGraphNodeType(tr, hit.nodeType)}
-                        {hit.summary ? ` · ${hit.summary}` : ''}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        {!showEmptyGuide || extractRunning ? (
-          <div className={styles.toolbarRight}>
-            {!showEmptyGuide ? (
-              <>
-                <GraphMonthRangePicker
-                  value={monthRange}
-                  onChange={(next) => updateMonthRange(next)}
-                  trailing={
-                    <button
-                      type="button"
-                      title={t(
-                        'graph.global_view_hint',
-                        '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
-                      )}
-                      aria-label={t(
-                        'graph.global_view_hint',
-                        '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
-                      )}
-                      onClick={clearToGlobal}
-                    >
-                      {t('graph.global_view', '全局')}
-                    </button>
-                  }
-                />
-              </>
-            ) : null}
-            {sideCollapsed && !showEmptyGuide ? (
-              <Button
-                type="button"
-                className={`${styles.btnBatchExtract} ${
-                  highlightStartOrganize ? styles.highlightStartOrganize : ''
-                }`}
-                disabled={pendingReextract.length === 0}
-                title={t('graph.process_pending_reextract_hint', '把当前待重抽日记加入整理队列')}
-                onClick={() => void runExtract()}
-              >
-                {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
-                  count: pendingReextract.length
-                })}
-              </Button>
-            ) : null}
-            {extractRunning ? (
-              <Button type="button" onClick={() => setQueueModalOpen(true)}>
-                {t('graph.queue_view_progress', '查看进度')}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      {status ? (
-        <button
-          type="button"
-          className={`${styles.statusBar} ${extractRunning || busy ? styles.statusBarBusy : ''} ${
-            extractRunning || queueItemCount > 0 ? styles.statusBarAction : ''
-          }`}
-          onClick={() => {
-            if (extractRunning || queueItemCount > 0) setQueueModalOpen(true)
-          }}
-        >
-          {status}
-        </button>
-      ) : null}
-      {embedded ? null : (
-      <div className={styles.chipRow}>
-        <MemoryReadinessBar
-          wrap
-          rows={readiness.rows}
-          onConfigureEmbedding={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-models`)}
-          onStartIndex={() => navigate('/memory/vectors')}
-          onStartOrganize={() =>
-            onUnifiedOrganize ? onUnifiedOrganize() : void runExtract()
-          }
-          pendingEmbedParts={readiness.pendingEmbedParts}
-          indexing={readiness.indexing}
-          extracting={readiness.graphExtracting}
-          organizePipeline={readiness.organizePipeline}
-        />
-      </div>
-      )}
-      </div>
-
-      <div className={styles.canvasWrap}>
-        {showEmptyGuide ? (
-          <div className={styles.emptyGuide}>
-            <div className={styles.emptyGuideTitle}>
-              {t('graph.empty_guide_title', '还没有开始整理你的人生关系图')}
-            </div>
-            <div className={styles.emptyGuideBody}>
-              {t(
-                'graph.empty_guide_body',
-                '发现 {{count}} 篇日记可以分析，预计消耗 {{tokens}} tokens，用时约 {{minLow}}–{{minHigh}} 分钟。',
-                {
-                  count: estimate?.entryCount ?? pendingReextract.length,
-                  tokens: formatTokens(estimate?.estimatedTokens ?? 0),
-                  minLow: estimate?.estimatedMinutesLow ?? 1,
-                  minHigh: estimate?.estimatedMinutesHigh ?? 1
-                }
-              )}
-            </div>
-            <div className={styles.emptyGuideHint}>
-              {t('graph.legend_pending', '虚线的关系伙伴还看不到，需要你确认。')}
-            </div>
-            <div className={styles.rowActions}>
-              <Button
-                type="button"
-                className={highlightStartOrganize ? styles.highlightStartOrganize : ''}
-                onClick={() =>
-                  onUnifiedOrganize ? onUnifiedOrganize() : void runExtract()
-                }
-              >
-                {t('graph.start_organize', '开始整理')}
-              </Button>
-              <Button type="button" onClick={() => setDismissGuide(true)}>
-                {t('graph.later', '以后再说')}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <GraphForceCanvas
-              nodes={displayNodes}
-              edges={displayEdges}
-              highlightIds={highlightIds}
-              highlightEdgeIds={highlightedEdgeIds}
-              locateIds={locateIds ?? undefined}
-              focusIds={focusIds}
-              selectedId={selectedId}
-              locateSeq={locateSeq}
-              forceSettings={forceSettings}
-              appearanceSettings={appearanceSettings}
-              animationTick={animationTick}
-              onSelectNode={(id) => {
-                void onSelectNode(id)
-              }}
-              onClearSelection={() => {
-                // 邻域「查看」模式下：空白单击仅取消选中，不退回月份主图
-                setHighlightIds(new Set())
-                setHighlightedEdgeIds(new Set())
-                setLocateIds(null)
-                setSelectedId(null)
-                setSelectedNode(null)
-              }}
-            />
-            {showMonthEmpty ? (
-              <div className={styles.monthEmpty}>
-                <div className={styles.monthEmptyTitle}>
-                  {t('graph.month_empty_title', '这个月份范围内还没有关系')}
-                </div>
-                <div className={styles.monthEmptyBody}>
-                  {t(
-                    'graph.month_empty_body',
-                    '当前显示 {{start}} — {{end}}。可扩大月份范围，或先梳理日记。',
-                    {
-                      start: monthRange.startMonth,
-                      end: monthRange.endMonth
-                    }
-                  )}
-                </div>
-                <div className={styles.rowActions}>
-                  <Button type="button" onClick={resetMonthRange}>
-                    {t('graph.month_range_recent3', '近3月')}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      const start = parseGraphMonthToDate(monthRange.startMonth)
-                      start.setMonth(start.getMonth() - 12)
-                      updateMonthRange({ startMonth: formatGraphMonth(start) })
-                    }}
-                  >
-                    {t('graph.month_range_earlier', '再往前一年')}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-            <div className={styles.legend}>
-              {highlightedEdgeIds.size > 0
-                ? t(
-                    'graph.legend_pending_edge',
-                    '已定位这条关系：两端节点和中间连线已高亮；单击空白取消。'
-                  )
-                : selectedId
-                ? t(
-                    'graph.legend_focus_depth',
-                    '已选中：高亮 {{depth}} 级关系（共 {{count}} 个节点）；单击空白取消。',
-                    {
-                      depth: focusDepth,
-                      count: focusIds?.size ?? 1
-                    }
-                  )
-                : t(
-                    'graph.legend_month',
-                    '默认显示近 3 个月的关系；可在顶部栏调整月份范围。'
-                  )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {!showEmptyGuide ? (
-      <div
-        className={`${styles.sideColumn}${sideCollapsed ? ` ${styles.sideColumnCollapsed}` : ''}`}
-        style={
-          sideCollapsed
-            ? undefined
-            : { ['--graph-side-width' as string]: `${sideWidth}px` }
-        }
-      >
-        {!sideCollapsed ? (
-          <div
-            className={styles.sideResizeSash}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label={t('graph.resize_sidebar', '调整侧栏宽度')}
-            onMouseDown={onSideResizeDown}
-          />
-        ) : null}
-        <div className={styles.sideRail} role="tablist" aria-label={t('graph.side_rail', '侧栏')}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={!sideCollapsed && sideMode === 'organize'}
-            className={`${styles.railBtn} ${
-              !sideCollapsed && sideMode === 'organize' ? styles.railBtnActive : ''
-            }`}
-            title={t('graph.side_organize', '整理')}
-            onClick={() => openSide('organize')}
-          >
-            <MdTune size={18} />
-            {pendingReextract.length > 0 || extractRunning ? (
-              <span className={styles.railDot} aria-hidden />
-            ) : null}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={!sideCollapsed && sideMode === 'canvas'}
-            className={`${styles.railBtn} ${
-              !sideCollapsed && sideMode === 'canvas' ? styles.railBtnActive : ''
-            }`}
-            title={t('graph.side_canvas', '画布')}
-            onClick={() => openSide('canvas')}
-          >
-            <MdSettings size={18} />
-            {filterActive ? <span className={styles.railDot} aria-hidden /> : null}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={!sideCollapsed && sideMode === 'content'}
-            className={`${styles.railBtn} ${
-              !sideCollapsed && sideMode === 'content' ? styles.railBtnActive : ''
-            }`}
-            title={t('graph.side_content', '内容')}
-            onClick={() => openSide('content')}
-          >
-            <MdArticle size={18} />
-          </button>
-          <button
-            type="button"
-            className={`${styles.railBtn} ${styles.railCollapseBtn}`}
-            title={
-              sideCollapsed
-                ? t('graph.expand_sidebar', '展开侧栏')
-                : t('graph.collapse_sidebar', '收起侧栏')
-            }
-            aria-expanded={!sideCollapsed}
-            onClick={() => setSideCollapsedPersist(!sideCollapsed)}
-          >
-            {sideCollapsed ? <MdChevronLeft size={18} /> : <MdChevronRight size={18} />}
-          </button>
-        </div>
-        {!sideCollapsed ? (
-      <aside className={styles.side}>
-        {sideMode === 'organize' ? (
-          <>
-            <div className={styles.settingsHeader}>
-              <div className={styles.settingsTitle}>{t('graph.side_organize', '整理')}</div>
-            </div>
-            <div className={styles.panel}>
-              <div className={styles.settingsSection}>
-                <button
-                  type="button"
-                  className={styles.settingsSectionHead}
-                  onClick={() => setProfileSectionOpen((open) => !open)}
-                >
-                  <span className={styles.settingsChevron}>
-                    {profileSectionOpen ? '▾' : '▸'}
-                  </span>
-                  {t('graph.profile_section', '身份资料')}
-                </button>
-                {profileSectionOpen ? (
-                  <div className={styles.settingsSectionBody}>
-                    <p className={styles.profileHint}>
-                      {t(
-                        'graph.profile_hint',
-                        '用于识别日记中的「我」。修改昵称会同步更新图谱中的自称节点，旧昵称保留为别名，无需重建整图。'
-                      )}
-                    </p>
-                    <div className={styles.profileFields}>
-                      <label className={styles.profileField}>
-                        <span>{t('graph.awaken_nickname_label', '昵称')}</span>
-                        <Input
-                          fieldSize="small"
-                          value={profileForm.nickname}
-                          onChange={(e) =>
-                            setProfileForm((p) => ({ ...p, nickname: e.target.value }))
-                          }
-                          placeholder={t('graph.awaken_nickname_placeholder', '怎么称呼你？')}
-                          disabled={profileBusy}
-                        />
-                        {profileErrors.nickname ? (
-                          <span className={styles.profileError}>
-                            {t('graph.awaken_nickname_required', '请填写昵称')}
-                          </span>
-                        ) : null}
-                      </label>
-                      <div className={styles.profileField}>
-                        <span>{t('graph.awaken_birthday_label', '生日')}</span>
-                        <GraphAwakenBirthdayField
-                          value={profileForm.birthday}
-                          onChange={(birthday) =>
-                            setProfileForm((p) => ({ ...p, birthday }))
-                          }
-                          disabled={profileBusy}
-                          hasError={!!profileErrors.birthday}
-                        />
-                        {profileErrors.birthday ? (
-                          <span className={styles.profileError}>
-                            {t('graph.awaken_birthday_required', '请选择生日')}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className={styles.profileField}>
-                        <span>{t('graph.awaken_gender_label', '性别')}</span>
-                        <div className={styles.genderRow} role="radiogroup">
-                          {USER_GENDER_OPTIONS.map((g) => {
-                            const label =
-                              g === 'male'
-                                ? t('graph.awaken_gender_male', '男')
-                                : g === 'female'
-                                  ? t('graph.awaken_gender_female', '女')
-                                  : g === 'other'
-                                    ? t('graph.awaken_gender_other', '其他')
-                                    : t('graph.awaken_gender_unspecified', '不愿透露')
-                            return (
-                              <button
-                                key={g}
-                                type="button"
-                                role="radio"
-                                aria-checked={profileForm.gender === g}
-                                className={
-                                  profileForm.gender === g
-                                    ? styles.genderChipActive
-                                    : styles.genderChip
-                                }
-                                disabled={profileBusy}
-                                onClick={() => setProfileForm((p) => ({ ...p, gender: g }))}
-                              >
-                                {label}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {profileErrors.gender ? (
-                          <span className={styles.profileError}>
-                            {t('graph.awaken_gender_required', '请选择性别')}
-                          </span>
-                        ) : null}
-                      </div>
-                      <Button
-                        type="button"
-                        disabled={profileBusy}
-                        onClick={() => void saveProfileFromSettings()}
-                      >
-                        {t('graph.profile_save', '保存身份资料')}
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className={styles.opsBlock}>
-                <Button
-                  type="button"
-                  disabled={pendingReextract.length === 0}
-                  title={t('graph.process_pending_reextract_hint', '把当前待重抽日记加入整理队列')}
-                  onClick={() => void runExtract()}
-                >
-                  {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
-                    count: pendingReextract.length
-                  })}
-                </Button>
-                {extractRunning ? (
-                  <Button type="button" onClick={() => setQueueModalOpen(true)}>
-                    {t('graph.queue_view_progress', '查看进度')}
-                  </Button>
-                ) : null}
-                <div className={styles.opsConcurrency}>
-                  <div className={styles.opsLabelRow}>
-                    <span className={styles.viewFieldLabel}>
-                      {t('graph.extract_concurrency', '同时抽取')}
-                    </span>
-                    <GraphExtractHelpButton size={14} />
-                  </div>
-                  <Select
-                    size="small"
-                    value={String(extractConcurrency)}
-                    onChange={(e) => {
-                      const n = saveGraphExtractConcurrency(e.target.value)
-                      setExtractConcurrency(n)
-                      void graphSetExtractConcurrency(n)
-                    }}
-                    options={Array.from(
-                      { length: GRAPH_EXTRACT_CONCURRENCY_MAX - GRAPH_EXTRACT_CONCURRENCY_MIN + 1 },
-                      (_, i) => {
-                        const n = GRAPH_EXTRACT_CONCURRENCY_MIN + i
-                        return { value: String(n), label: String(n) }
-                      }
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.opsBlock}>
-                <div className={styles.opsLabelRow}>
-                  <span className={styles.viewFieldLabel}>
-                    {t('graph.extract_one_date', '日记日期')}
-                  </span>
-                  <HelpTooltip
-                    content={t(
-                      'graph.extract_one_hint',
-                      '选一篇已有日记，强制加入整理队列。系统写出的关系会被这次结果替换；你手改过的边会留下。'
-                    )}
-                  />
-                </div>
-                <input
-                  type="date"
-                  className={styles.opsDateInput}
-                  value={extractDate}
-                  onChange={(event) => setExtractDate(event.target.value)}
-                />
-                <Button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void runExtractOne()}
-                >
-                  {t('graph.extract_one_action', '重新梳理这篇')}
-                </Button>
-              </div>
-
-              <div className={styles.opsBlock}>
-                <div className={styles.viewFieldLabel}>{t('graph.ops_nodes', '节点')}</div>
-                <div className={styles.opsBtnRow}>
-                  <Button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setMergeSearchOpen(false)
-                      setCreateOpen(true)
-                    }}
-                  >
-                    {t('graph.create_node', '新建节点')}
-                  </Button>
-                  <Button
-                    type="button"
-                    className={mergeSearchOpen ? styles.btnActive : ''}
-                    disabled={busy}
-                    onClick={() => {
-                      setCreateOpen(false)
-                      setMergeSearchOpen((open) => !open)
-                    }}
-                  >
-                    {t('graph.merge_nodes', '合并节点')}
-                  </Button>
-                </div>
-              </div>
-
-              <div className={styles.settingsSection}>
-                <button
-                  type="button"
-                  className={styles.settingsSectionHead}
-                  onClick={() => setDataSectionOpen((open) => !open)}
-                >
-                  <span className={styles.settingsChevron}>
-                    {dataSectionOpen ? '▾' : '▸'}
-                  </span>
-                  {t('graph.data_ops', '数据操作')}
-                </button>
-                {dataSectionOpen ? (
-                  <div className={styles.settingsSectionBody}>
-                    <div className={styles.opsLabelRow}>
-                      <span className={styles.viewFieldLabel}>
-                        {t('graph.clear_life_title', '清空人生关系图')}
-                      </span>
+            <div className={styles.chrome}>
+              <div className={`${styles.toolbar}${embedded ? ` ${styles.toolbarEmbedded}` : ''}`}>
+                <div className={styles.toolbarLeft}>
+                  {embedded ? null : (
+                    <div className={styles.titleRow}>
+                      <div className={styles.title}>{t('graph.title', '人生关系图')}</div>
                       <HelpTooltip
                         content={t(
-                          'graph.clear_life_hint',
-                          '删除本工作区人生关系图的全部节点、连线和抽取记录。笔记本关系图不会被改动。'
+                          'graph.title_help',
+                          '这是从日记里整理出的人物、地点和事件关系。笔记本里的关系图是另一套库，不会混在这里。'
                         )}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void clearLifeGraph()}
-                    >
-                      {t('graph.clear_life_action', '清空人生关系图')}
-                    </Button>
+                  )}
+                  {!showEmptyGuide ? (
+                    <div className={styles.searchGroup} ref={searchGroupRef}>
+                      <div className={styles.searchField}>
+                        <Input
+                          fieldSize="small"
+                          placeholder={
+                            searchMode === 'semantic'
+                              ? t('graph.search_placeholder_semantic', '按意思搜索节点…')
+                              : t('graph.search_placeholder_text', '按名称 / 别名搜索')
+                          }
+                          value={query}
+                          onChange={(e) => {
+                            setQuery(e.target.value)
+                            setSearchAttempted(false)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void onSearch()
+                            if (e.key === 'Escape') dismissSearchPanel()
+                          }}
+                          trailing={
+                            <button
+                              type="button"
+                              className={styles.searchBtn}
+                              aria-label={t('graph.search', '搜索')}
+                              title={t('graph.search', '搜索')}
+                              onClick={() => void onSearch()}
+                            >
+                              <Search size={15} strokeWidth={2.25} />
+                            </button>
+                          }
+                        />
+                      </div>
+                      <SegmentedControl
+                        inline
+                        value={searchMode}
+                        aria-label={t('graph.search_mode', '搜索模式')}
+                        onChange={(mode) => {
+                          const next = resolveGraphSearchMode(mode)
+                          setSearchMode(next)
+                          if (query.trim()) void onSearch(next)
+                        }}
+                        options={[
+                          { value: 'semantic', label: t('graph.search_semantic', '语义搜索') },
+                          { value: 'text', label: t('graph.search_text', '文本搜索') }
+                        ]}
+                      />
+                      {searching || searchAttempted ? (
+                        <div
+                          className={styles.searchHits}
+                          role="listbox"
+                          aria-label={t('graph.search_results', '搜索结果')}
+                        >
+                          <div className={styles.searchHitsHeader}>
+                            {searching
+                              ? t('graph.searching', '正在搜索…')
+                              : searchHits.length > 0
+                                ? t('graph.search_results_count', '{{count}} 个节点', {
+                                    count: searchHits.length
+                                  })
+                                : searchMode === 'semantic'
+                                  ? t(
+                                      'graph.search_semantic_empty',
+                                      '没有语义相近的节点。没做向量的节点不会出现在语义搜索里。'
+                                    )
+                                  : t('graph.search_no_hits', '没有找到匹配的节点')}
+                          </div>
+                          {searchHits.map((hit) => (
+                            <button
+                              key={hit.id}
+                              type="button"
+                              className={styles.searchHit}
+                              onClick={() => {
+                                dismissSearchPanel()
+                                void onSelectNode(hit.id, { locate: true, bypassMonth: true })
+                              }}
+                            >
+                              <span className={styles.searchHitName}>{hit.name}</span>
+                              <span className={styles.searchHitMeta}>
+                                {translateGraphNodeType(tr, hit.nodeType)}
+                                {hit.summary ? ` · ${hit.summary}` : ''}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                {!showEmptyGuide || extractRunning ? (
+                  <div className={styles.toolbarRight}>
+                    {!showEmptyGuide ? (
+                      <>
+                        <GraphMonthRangePicker
+                          value={monthRange}
+                          onChange={(next) => updateMonthRange(next)}
+                          trailing={
+                            <button
+                              type="button"
+                              title={t(
+                                'graph.global_view_hint',
+                                '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
+                              )}
+                              aria-label={t(
+                                'graph.global_view_hint',
+                                '退出当前查看的局部关系，显示这个月份范围内的全部节点。不会改月份范围。'
+                              )}
+                              onClick={clearToGlobal}
+                            >
+                              {t('graph.global_view', '全局')}
+                            </button>
+                          }
+                        />
+                      </>
+                    ) : null}
+                    {sideCollapsed && !showEmptyGuide ? (
+                      <Button
+                        type="button"
+                        className={`${styles.btnBatchExtract} ${
+                          highlightStartOrganize ? styles.highlightStartOrganize : ''
+                        }`}
+                        disabled={pendingReextract.length === 0}
+                        title={t(
+                          'graph.process_pending_reextract_hint',
+                          '把当前待重抽日记加入整理队列'
+                        )}
+                        onClick={() => void runExtract()}
+                      >
+                        {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
+                          count: pendingReextract.length
+                        })}
+                      </Button>
+                    ) : null}
+                    {extractRunning ? (
+                      <Button type="button" onClick={() => setQueueModalOpen(true)}>
+                        {t('graph.queue_view_progress', '查看进度')}
+                      </Button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
-            </div>
-          </>
-        ) : sideMode === 'canvas' ? (
-          <>
-            <div className={styles.settingsHeader}>
-              <div className={styles.settingsTitle}>{t('graph.side_canvas', '画布')}</div>
-              <button
-                type="button"
-                className={styles.settingsReset}
-                title={t('graph.force_reset', '恢复默认')}
-                onClick={resetGraphSettings}
-              >
-                {t('graph.force_reset', '恢复默认')}
-              </button>
-            </div>
-            <div className={styles.panel}>
-              <div className={styles.opsBlock}>
-                <div className={styles.filterSectionHead}>
-                  <span className={styles.viewFieldLabel}>{t('graph.filter', '筛选')}</span>
-                  {filterActive ? (
-                    <button
-                      type="button"
-                      className={styles.filterSectionAction}
-                      onClick={() => {
-                        setHideEntry(true)
-                        setApprovedOnly(false)
-                        setEnabledNodeTypes(new Set(GRAPH_FILTER_NODE_TYPES))
-                      }}
-                    >
-                      {t('graph.filter_reset', '恢复默认')}
-                    </button>
-                  ) : null}
+
+              {status ? (
+                <button
+                  type="button"
+                  className={`${styles.statusBar} ${extractRunning || busy ? styles.statusBarBusy : ''} ${
+                    extractRunning || queueItemCount > 0 ? styles.statusBarAction : ''
+                  }`}
+                  onClick={() => {
+                    if (extractRunning || queueItemCount > 0) setQueueModalOpen(true)
+                  }}
+                >
+                  {status}
+                </button>
+              ) : null}
+              {embedded ? null : (
+                <div className={styles.chipRow}>
+                  <MemoryReadinessBar
+                    wrap
+                    rows={readiness.rows}
+                    onConfigureEmbedding={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-models`)}
+                    onStartIndex={() => navigate('/memory/vectors')}
+                    onStartOrganize={() =>
+                      onUnifiedOrganize ? onUnifiedOrganize() : void runExtract()
+                    }
+                    pendingEmbedParts={readiness.pendingEmbedParts}
+                    indexing={readiness.indexing}
+                    extracting={readiness.graphExtracting}
+                    organizePipeline={readiness.organizePipeline}
+                  />
                 </div>
-                <label className={styles.checkLabel}>
-                  <Checkbox
-                    checked={hideEntry}
-                    onChange={(e) => setHideEntry(e.target.checked)}
-                  />
-                  {t('graph.hide_entry_anchors', '隐藏日记锚点')}
-                </label>
-                <label className={styles.checkLabel}>
-                  <Checkbox
-                    checked={approvedOnly}
-                    onChange={(e) => setApprovedOnly(e.target.checked)}
-                  />
-                  {t('graph.approved_only', '只看已确认')}
-                </label>
-                <div className={styles.filterSection}>
-                  <div className={styles.filterSectionHead}>
-                    <span className={styles.filterSectionTitle}>
-                      {t('graph.filter_by_type', '按分类')}
-                    </span>
-                    <button
-                      type="button"
-                      className={styles.filterSectionAction}
-                      onClick={() =>
-                        setEnabledNodeTypes(
-                          typeFilterActive
-                            ? new Set(GRAPH_FILTER_NODE_TYPES)
-                            : new Set()
-                        )
+              )}
+            </div>
+
+            <div className={styles.canvasWrap}>
+              {showEmptyGuide ? (
+                <div className={styles.emptyGuide}>
+                  <div className={styles.emptyGuideTitle}>
+                    {t('graph.empty_guide_title', '还没有开始整理你的人生关系图')}
+                  </div>
+                  <div className={styles.emptyGuideBody}>
+                    {t(
+                      'graph.empty_guide_body',
+                      '发现 {{count}} 篇日记可以分析，预计消耗 {{tokens}} tokens，用时约 {{minLow}}–{{minHigh}} 分钟。',
+                      {
+                        count: estimate?.entryCount ?? pendingReextract.length,
+                        tokens: formatTokens(estimate?.estimatedTokens ?? 0),
+                        minLow: estimate?.estimatedMinutesLow ?? 1,
+                        minHigh: estimate?.estimatedMinutesHigh ?? 1
                       }
-                    >
-                      {typeFilterActive
-                        ? t('graph.filter_select_all_types', '全选')
-                        : t('graph.filter_clear_types', '清空')}
-                    </button>
+                    )}
                   </div>
-                  <div className={styles.typeChipRow}>
-                    {GRAPH_FILTER_NODE_TYPES.map((nodeType) => {
-                      const active = enabledNodeTypes.has(nodeType)
-                      const typeColor = graphNodeTypeColor(nodeType)
-                      return (
-                        <button
-                          key={nodeType}
-                          type="button"
-                          className={active ? styles.typeChipActive : styles.typeChip}
-                          style={
-                            active
-                              ? ({ '--type-chip-color': typeColor } as React.CSSProperties)
-                              : undefined
-                          }
-                          onClick={() => toggleNodeTypeFilter(nodeType)}
-                        >
-                          {t(
-                            `graph.node_type.${nodeType}`,
-                            GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
-                          )}
-                        </button>
-                      )
-                    })}
+                  <div className={styles.emptyGuideHint}>
+                    {t('graph.legend_pending', '虚线的关系伙伴还看不到，需要你确认。')}
                   </div>
-                </div>
-              </div>
-
-              <GraphCanvasSettingsPanel
-                focusDepth={focusDepth}
-                appearanceSettings={appearanceSettings}
-                forceSettings={forceSettings}
-                onFocusDepthChange={updateFocusDepth}
-                onAppearanceChange={updateAppearance}
-                onForceChange={updateForce}
-                onReplayLayout={() => setAnimationTick((n) => n + 1)}
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className={styles.tabs}>
-              <button
-                type="button"
-                className={`${styles.tab} ${tab === 'reextract' ? styles.tabActive : ''}`}
-                onClick={() => setTab('reextract')}
-              >
-                {t('graph.tab_reextract', '待重抽')}
-              </button>
-              <button
-                type="button"
-                className={`${styles.tab} ${tab === 'pending' ? styles.tabActive : ''}`}
-                onClick={() => setTab('pending')}
-              >
-                {t('graph.tab_pending_count', '待确认 ({{count}})', { count: pendingCount })}
-              </button>
-              <button
-                type="button"
-                className={`${styles.tab} ${tab === 'detail' ? styles.tabActive : ''}`}
-                onClick={() => setTab('detail')}
-              >
-                {t('graph.tab_detail', '详情')}
-              </button>
-            </div>
-            <div className={styles.panel}>
-          {tab === 'reextract' && (
-            <>
-              {pendingReextract.length === 0 ? (
-                <div className={styles.empty}>
-                  {t('graph.no_pending_reextract', '暂无待重抽日记')}
-                </div>
-              ) : (
-                pendingReextract.map((item) => (
-                  <div
-                    key={item.filePath}
-                    className={styles.itemCompact}
-                    title={item.filePath}
-                  >
-                    <div className={styles.itemRow}>
-                      <div className={styles.itemTitle}>{item.date || item.filePath}</div>
-                      <div className={styles.rowActionsInline}>
-                        {(() => {
-                          const q = queueByPath.get(normalizeGraphFilePath(item.filePath))
-                          if (q?.status === 'running') {
-                            return (
-                              <span className={styles.queueBadge}>
-                                {t('graph.queue_running', '抽取中')}
-                              </span>
-                            )
-                          }
-                          if (q?.status === 'aligning') {
-                            return (
-                              <span className={styles.queueBadge}>
-                                {t('graph.extract_aligning', '对齐中')}
-                              </span>
-                            )
-                          }
-                          if (q?.status === 'pending') {
-                            return (
-                              <>
-                                <span className={styles.queueBadge}>
-                                  {t('graph.queue_pending', '排队中')}
-                                </span>
-                                <button
-                                  type="button"
-                                  className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                                  onClick={() => void cancelQueueItem(item.filePath)}
-                                >
-                                  {t('graph.queue_remove', '取消')}
-                                </button>
-                              </>
-                            )
-                          }
-                          if (q?.status === 'completed') {
-                            return (
-                              <span className={styles.queueBadgeDone}>
-                                {t('graph.queue_done', '已完成')}
-                              </span>
-                            )
-                          }
-                          return (
-                            <button
-                              type="button"
-                              className={styles.linkBtn}
-                              onClick={() => void runExtract([item.filePath])}
-                            >
-                              {t('graph.extract_short', '抽取')}
-                            </button>
-                          )
-                        })()}
-                        {item.date ? (
-                          <button
-                            type="button"
-                            className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                            onClick={() => void openSource(item.date)}
-                          >
-                            {t('graph.open_source_short', '原文')}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </>
-          )}
-
-          {tab === 'pending' && (
-            <>
-              {pendingCount === 0 ? (
-                <div className={styles.empty}>{t('graph.no_pending', '没有待确认的节点或边')}</div>
-              ) : (
-                <>
-                  <div className={styles.pendingSticky}>
-                    <p className={styles.pendingHint}>
-                      {t(
-                        'graph.pending_hint',
-                        '确认关系会同时通过两端节点；确认节点也会通过与它相连的待审关系。可勾选后批量处理。'
-                      )}
-                    </p>
-                    <div className={styles.pendingToolbar}>
-                      <label className={styles.pendingSelectAll}>
-                        <Checkbox
-                          checked={allPendingSelected}
-                          indeterminate={pendingSelectedCount > 0 && !allPendingSelected}
-                          onChange={toggleSelectAllPending}
-                        />
-                        {allPendingSelected
-                          ? t('graph.pending_deselect_all', '取消全选')
-                          : t('graph.pending_select_all', '全选')}
-                      </label>
-                      <span className={styles.pendingSelectedCount}>
-                        {t('graph.pending_selected_count', '已选 {{count}} 项', {
-                          count: pendingSelectedCount
-                        })}
-                      </span>
-                      <div className={styles.pendingToolbarBtns}>
-                        <button
-                          type="button"
-                          className={styles.linkBtn}
-                          disabled={busy || pendingSelectedCount === 0}
-                          onClick={() => void applyPendingReviews({ reviewStatus: 'approved' })}
-                        >
-                          {t('graph.approve_selected', '通过所选')}
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                          disabled={busy || pendingSelectedCount === 0}
-                          onClick={() => void applyPendingReviews({ reviewStatus: 'rejected' })}
-                        >
-                          {t('graph.reject_selected', '拒绝所选')}
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.linkBtn}
-                          disabled={busy}
-                          onClick={() =>
-                            void applyPendingReviews({ reviewStatus: 'approved', allPending: true })
-                          }
-                        >
-                          {t('graph.approve_all', '全部通过')}
-                        </button>
-                        <button
-                          type="button"
-                          className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                          disabled={busy}
-                          onClick={() =>
-                            void applyPendingReviews({ reviewStatus: 'rejected', allPending: true })
-                          }
-                        >
-                          {t('graph.reject_all', '全部拒绝')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  {pendingNodes.map((node) => {
-                    const key = graphPendingItemKey('node', node.id)
-                    return (
-                      <div key={`n-${node.id}`} className={styles.itemCompact}>
-                        <div className={styles.itemRow}>
-                          <label className={styles.pendingCheckLabel}>
-                            <Checkbox
-                              checked={pendingSelected.has(key)}
-                              onChange={() => togglePendingItem(key)}
-                            />
-                            <span className={styles.itemTitle}>
-                              {t('graph.pending_node', '节点')} · {node.name}
-                            </span>
-                          </label>
-                          <div className={styles.rowActionsInline}>
-                            <button
-                              type="button"
-                              className={styles.linkBtn}
-                              onClick={() => void reviewNode(node.id, 'approved')}
-                            >
-                              {t('graph.approve', '通过')}
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                              onClick={() => void reviewNode(node.id, 'rejected')}
-                            >
-                              {t('graph.reject', '拒绝')}
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                              onClick={() => locatePendingNode(node.id)}
-                            >
-                              {t('graph.view', '查看')}
-                            </button>
-                          </div>
-                        </div>
-                        {node.nodeType || node.summary ? (
-                          <div className={styles.itemMetaCompact}>
-                            {translateGraphNodeType(tr, node.nodeType)}
-                            {node.summary ? ` · ${node.summary}` : ''}
-                          </div>
-                        ) : null}
-                      </div>
-                    )
-                  })}
-                  {pendingEdges.map((edge) => {
-                    const key = graphPendingItemKey('edge', edge.id)
-                    const unknownNode = t('graph.unknown_node', '未知节点')
-                    const fromName = resolveGraphNodeDisplayName(
-                      graphNodeNameById,
-                      edge.fromId,
-                      unknownNode
-                    )
-                    const toName = resolveGraphNodeDisplayName(
-                      graphNodeNameById,
-                      edge.toId,
-                      unknownNode
-                    )
-                    return (
-                      <div key={`e-${edge.id}`} className={styles.itemCompact}>
-                        <div className={styles.itemRow}>
-                          <label className={styles.pendingCheckLabel}>
-                            <Checkbox
-                              checked={pendingSelected.has(key)}
-                              onChange={() => togglePendingItem(key)}
-                            />
-                            <span className={styles.itemTitle}>
-                              {t('graph.pending_edge', '关系')} ·{' '}
-                              {translateGraphEdgeType(tr, edge.edgeType)}
-                            </span>
-                          </label>
-                          <div className={styles.rowActionsInline}>
-                            <button
-                              type="button"
-                              className={styles.linkBtn}
-                              onClick={() =>
-                                void reviewEdge(edge.id, 'approved', {
-                                  fromId: edge.fromId,
-                                  toId: edge.toId
-                                })
-                              }
-                            >
-                              {t('graph.approve', '通过')}
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                              onClick={() => void reviewEdge(edge.id, 'rejected')}
-                            >
-                              {t('graph.reject', '拒绝')}
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                              onClick={() => void locatePendingEdge(edge)}
-                            >
-                              {t('graph.view', '查看')}
-                            </button>
-                            <button
-                              type="button"
-                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
-                              onClick={() => void openSource(edge.sourceRef, edge.sourceExcerpt)}
-                            >
-                              {t('graph.source', '原文')}
-                            </button>
-                          </div>
-                        </div>
-                        <div className={styles.itemMetaCompact}>
-                          {fromName} → {toName}
-                          {typeof edge.confidence === 'number' ? ` · ${edge.confidence}` : ''}
-                          {edge.sourceExcerpt ? ` · ${edge.sourceExcerpt}` : ''}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </>
-              )}
-            </>
-          )}
-
-          {tab === 'detail' && (
-            <>
-              {!selectedNode ? (
-                <div className={styles.empty}>
-                  {t('graph.click_node_for_detail', '点击画布节点查看详情')}
-                </div>
-              ) : (
-                <>
-                  <div className={styles.detailDepthRow}>
-                    <div className={styles.detailDepthMeta}>
-                      <span className={styles.detailLabel}>{t('graph.focus_depth', '展开等级')}</span>
-                      <span className={styles.detailDepthHint}>
-                        {t('graph.focus_depth_hint_short', '高亮周围几级关系')}
-                      </span>
-                    </div>
-                    <div
-                      className={styles.depthSeg}
-                      role="radiogroup"
-                      aria-label={t('graph.focus_depth', '展开')}
-                    >
-                      {GRAPH_FOCUS_DEPTH_OPTIONS.map((d) => {
-                        const active = focusDepth === d
-                        return (
-                          <button
-                            key={d}
-                            type="button"
-                            role="radio"
-                            aria-checked={active}
-                            className={`${styles.depthBtn} ${active ? styles.depthBtnActive : ''}`}
-                            onClick={() => updateFocusDepth(d)}
-                          >
-                            {d}
-                            {t('graph.focus_depth_unit', '级')}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  <div className={styles.detailBlock}>
-                    <div className={styles.nodeIdentity}>
-                      <div className={styles.detailValue}>{selectedNode.name}</div>
-                      {selectedNode.discriminator ? (
-                        <span className={styles.discriminatorTag}>{selectedNode.discriminator}</span>
-                      ) : null}
-                    </div>
-                    <div className={styles.detailLabel}>{t('graph.label_name', '名称')}</div>
-                    <Input
-                      fieldSize="small"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
-                    {editNameConflict ? (
-                      <div className={styles.sameNameBanner}>
-                        {t(
-                          'graph.same_name_exists_edit',
-                          '已有同类型同名节点「{{name}}」。保存前请换名，或合并到该节点。',
-                          { name: editNameConflict.name }
-                        )}
-                        <div className={styles.rowActions}>
-                          <button
-                            type="button"
-                            className={styles.linkBtn}
-                            onClick={() => void onSelectNode(editNameConflict.id)}
-                          >
-                            {t('graph.open_existing_node', '打开已有节点')}
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.linkBtn}
-                            onClick={() =>
-                              mergeNodes(editNameConflict.id, selectedNode.id)
-                            }
-                          >
-                            {t('graph.merge_into_existing', '合并到该节点')}
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>{t('graph.label_type', '类型')}</div>
-                    <div className={styles.detailValue}>
-                      {translateGraphNodeType(tr, selectedNode.nodeType)}
-                    </div>
-                  </div>
-                  <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>{t('graph.label_summary', '摘要')}</div>
-                    <textarea
-                      className={styles.editArea}
-                      value={editSummary}
-                      onChange={(e) => setEditSummary(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>{t('graph.label_aliases', '别名')}</div>
-                    <Input
-                      fieldSize="small"
-                      value={editAliases}
-                      onChange={(e) => setEditAliases(e.target.value)}
-                      placeholder={t('graph.aliases_placeholder', '逗号分隔')}
-                    />
-                  </div>
-                  <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>{t('graph.label_review', '审核')}</div>
-                    <div className={styles.detailValue}>
-                      {selectedNode.reviewStatus || 'approved'}
-                      {selectedNode.origin === 'user'
-                        ? ` · ${t('graph.origin_user', '手工修正')}`
-                        : ''}
-                    </div>
-                  </div>
-                  {(() => {
-                    const ambiguousRefs = listAmbiguousSourceRefs(parseGraphNodeProps(selectedNode))
-                    if (selectedNode.discriminator || ambiguousRefs.length === 0) return null
-                    return (
-                      <div className={styles.sameNameBanner}>
-                        {t('graph.ambiguous_sources_hint', '有 {{count}} 条出处待确认归谁', {
-                          count: ambiguousRefs.length
-                        })}
-                      </div>
-                    )
-                  })()}
-                  {nameCandidates.some((item) => item.nodeId !== selectedNode.id) ? (
-                    <div className={styles.detailBlock}>
-                      <div className={styles.detailLabel}>
-                        {t('graph.same_name_siblings', '同名的其他实体')}
-                      </div>
-                      {nameCandidates
-                        .filter((item) => item.nodeId !== selectedNode.id)
-                        .map((item) => (
-                          <div key={item.nodeId} className={styles.siblingRow}>
-                            <div className={styles.siblingMain}>
-                              <span className={styles.detailValue}>{item.name}</span>
-                              {item.discriminator ? (
-                                <span className={styles.discriminatorTag}>
-                                  {item.label || item.discriminator}
-                                </span>
-                              ) : (
-                                <span className={styles.discriminatorTag}>
-                                  {t('graph.bare_entity', '原实体')}
-                                </span>
-                              )}
-                            </div>
-                            <div className={styles.rowActions}>
-                              <Button
-                                type="button"
-                                onClick={() => void onSelectNode(item.nodeId)}
-                              >
-                                {t('graph.open_sibling', '打开')}
-                              </Button>
-                              {item.discriminator ? (
-                                <Button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void revertSplit(item.discriminator)}
-                                >
-                                  {t('graph.revert_split', '撤回拆分')}
-                                </Button>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  ) : null}
                   <div className={styles.rowActions}>
                     <Button
                       type="button"
-                      disabled={busy || !!editNameConflict}
-                      onClick={() => void saveNodeEdit()}
+                      className={highlightStartOrganize ? styles.highlightStartOrganize : ''}
+                      onClick={() => (onUnifiedOrganize ? onUnifiedOrganize() : void runExtract())}
                     >
-                      {t('graph.save_edit', '保存修改')}
+                      {t('graph.start_organize', '开始整理')}
                     </Button>
-                    <Button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void deleteSelectedNode()}
-                    >
-                      {t('graph.delete_node', '删除节点')}
+                    <Button type="button" onClick={() => setDismissGuide(true)}>
+                      {t('graph.later', '以后再说')}
                     </Button>
-                    {selectedNode.nodeType !== 'entry' ? (
-                      <Button type="button" disabled={busy} onClick={() => setSplitOpen(true)}>
-                        {t('graph.split_node', '拆分')}
-                      </Button>
-                    ) : null}
-                    {selectedNode.discriminator ? (
-                      <Button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void revertSplit(String(selectedNode.discriminator))}
-                      >
-                        {t('graph.revert_split', '撤回拆分')}
-                      </Button>
-                    ) : null}
                   </div>
-                  {selectedNode.reviewStatus === 'pending' ? (
-                    <div className={styles.rowActions}>
-                      <Button
-                        type="button"
-                        onClick={() => void reviewNode(selectedNode.id, 'approved')}
-                      >
-                        {t('graph.approve', '通过')}
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => void reviewNode(selectedNode.id, 'rejected')}
-                      >
-                        {t('graph.reject', '拒绝')}
-                      </Button>
+                </div>
+              ) : (
+                <>
+                  <GraphForceCanvas
+                    nodes={displayNodes}
+                    edges={displayEdges}
+                    highlightIds={highlightIds}
+                    highlightEdgeIds={highlightedEdgeIds}
+                    locateIds={locateIds ?? undefined}
+                    focusIds={focusIds}
+                    selectedId={selectedId}
+                    locateSeq={locateSeq}
+                    forceSettings={forceSettings}
+                    appearanceSettings={appearanceSettings}
+                    animationTick={animationTick}
+                    onSelectNode={(id) => {
+                      void onSelectNode(id)
+                    }}
+                    onClearSelection={() => {
+                      // 邻域「查看」模式下：空白单击仅取消选中，不退回月份主图
+                      setHighlightIds(new Set())
+                      setHighlightedEdgeIds(new Set())
+                      setLocateIds(null)
+                      setSelectedId(null)
+                      setSelectedNode(null)
+                    }}
+                  />
+                  {showMonthEmpty ? (
+                    <div className={styles.monthEmpty}>
+                      <div className={styles.monthEmptyTitle}>
+                        {t('graph.month_empty_title', '这个月份范围内还没有关系')}
+                      </div>
+                      <div className={styles.monthEmptyBody}>
+                        {t(
+                          'graph.month_empty_body',
+                          '当前显示 {{start}} — {{end}}。可扩大月份范围，或先梳理日记。',
+                          {
+                            start: monthRange.startMonth,
+                            end: monthRange.endMonth
+                          }
+                        )}
+                      </div>
+                      <div className={styles.rowActions}>
+                        <Button type="button" onClick={resetMonthRange}>
+                          {t('graph.month_range_recent3', '近3月')}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const start = parseGraphMonthToDate(monthRange.startMonth)
+                            start.setMonth(start.getMonth() - 12)
+                            updateMonthRange({ startMonth: formatGraphMonth(start) })
+                          }}
+                        >
+                          {t('graph.month_range_earlier', '再往前一年')}
+                        </Button>
+                      </div>
                     </div>
                   ) : null}
-
-                  <div className={styles.detailBlock} style={{ marginTop: 16 }}>
-                    <div className={styles.detailLabel}>{t('graph.add_edge', '添加关系')}</div>
-                    <Input
-                      fieldSize="small"
-                      value={addEdgeQuery}
-                      onChange={(e) => setAddEdgeQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void searchAddEdgeTarget()
-                      }}
-                      placeholder={t('graph.add_edge_search', '搜索目标节点')}
-                    />
-                    <div className={styles.rowActions}>
-                      <Button
-                        type="button"
-                        onClick={() => void searchAddEdgeTarget()}
-                      >
-                        {t('graph.search', '搜索')}
-                      </Button>
-                      <div className={styles.editSelect}>
-                        <Select
-                          size="small"
-                          value={addEdgeType}
-                          aria-label={t('graph.add_edge', '添加关系')}
-                          onChange={(e) => setAddEdgeType(e.target.value)}
-                          options={(edgeTypes.length ? edgeTypes : ['relates_to']).map((et) => ({
-                            value: et,
-                            label: translateGraphEdgeType(tr, et)
-                          }))}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        disabled={busy || !addEdgeToId}
-                        onClick={() => void addEdge()}
-                      >
-                        {t('graph.add_edge_submit', '添加')}
-                      </Button>
-                    </div>
-                    {addEdgeHits.map((h) => (
-                      <button
-                        key={h.id}
-                        type="button"
-                        className={`${styles.hitBtn} ${addEdgeToId === h.id ? styles.hitBtnActive : ''}`}
-                        onClick={() => setAddEdgeToId(h.id)}
-                      >
-                        {h.name} · {translateGraphNodeType(tr, h.nodeType)}
-                      </button>
-                    ))}
+                  <div className={styles.legend}>
+                    {highlightedEdgeIds.size > 0
+                      ? t(
+                          'graph.legend_pending_edge',
+                          '已定位这条关系：两端节点和中间连线已高亮；单击空白取消。'
+                        )
+                      : selectedId
+                        ? t(
+                            'graph.legend_focus_depth',
+                            '已选中：高亮 {{depth}} 级关系（共 {{count}} 个节点）；单击空白取消。',
+                            {
+                              depth: focusDepth,
+                              count: focusIds?.size ?? 1
+                            }
+                          )
+                        : t(
+                            'graph.legend_month',
+                            '默认显示近 3 个月的关系；可在顶部栏调整月份范围。'
+                          )}
                   </div>
-
-                  <div className={styles.detailBlock}>
-                    <div className={styles.detailLabel}>
-                      {t('graph.local_relations', '直接关系')}
-                    </div>
-                    <div className={styles.detailValue}>
-                      {t('graph.direct_edge_stats', '{{edgeCount}} 条与该节点相连的边', {
-                        edgeCount: detailEdges.length
-                      })}
-                    </div>
-                  </div>
-                  {detailEdges.length === 0 ? (
-                    <div className={styles.empty}>
-                      {t('graph.no_direct_edges', '暂无与该节点直接相连的关系')}
-                    </div>
-                  ) : (
-                    detailEdges.map(({ edge: e, partnerName }) => (
-                      <div key={e.id} className={styles.item}>
-                        <div className={styles.relationPartner}>{partnerName}</div>
-                        <div className={styles.itemMeta}>
-                          {translateGraphEdgeType(tr, e.edgeType)}
-                          {e.reviewStatus === 'pending'
-                            ? ` · ${t('graph.pending_badge', '待确认')}`
-                            : ''}
-                          {e.sourceExcerpt ? ` · ${e.sourceExcerpt}` : ''}
-                        </div>
-                        <div className={styles.rowActions}>
-                          {e.sourceRef || e.sourceExcerpt ? (
-                            <Button
-                              type="button"
-                              onClick={() => void openSource(e.sourceRef, e.sourceExcerpt)}
-                            >
-                              {t('graph.open_source', '打开原文')}
-                            </Button>
-                          ) : null}
-                          <Button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => void deleteEdge(e.id)}
-                          >
-                            {t('graph.delete_edge', '删除')}
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
                 </>
               )}
-            </>
-          )}
             </div>
-          </>
-        )}
-      </aside>
-        ) : null}
-      </div>
-      ) : null}
+
+            {!showEmptyGuide ? (
+              <div
+                className={`${styles.sideColumn}${sideCollapsed ? ` ${styles.sideColumnCollapsed}` : ''}`}
+                style={
+                  sideCollapsed ? undefined : { ['--graph-side-width' as string]: `${sideWidth}px` }
+                }
+              >
+                {!sideCollapsed ? (
+                  <div
+                    className={styles.sideResizeSash}
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label={t('graph.resize_sidebar', '调整侧栏宽度')}
+                    onMouseDown={onSideResizeDown}
+                  />
+                ) : null}
+                <div
+                  className={styles.sideRail}
+                  role="tablist"
+                  aria-label={t('graph.side_rail', '侧栏')}
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!sideCollapsed && sideMode === 'organize'}
+                    className={`${styles.railBtn} ${
+                      !sideCollapsed && sideMode === 'organize' ? styles.railBtnActive : ''
+                    }`}
+                    title={t('graph.side_organize', '整理')}
+                    onClick={() => openSide('organize')}
+                  >
+                    <MdTune size={18} />
+                    {pendingReextract.length > 0 || extractRunning ? (
+                      <span className={styles.railDot} aria-hidden />
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!sideCollapsed && sideMode === 'canvas'}
+                    className={`${styles.railBtn} ${
+                      !sideCollapsed && sideMode === 'canvas' ? styles.railBtnActive : ''
+                    }`}
+                    title={t('graph.side_canvas', '画布')}
+                    onClick={() => openSide('canvas')}
+                  >
+                    <MdSettings size={18} />
+                    {filterActive ? <span className={styles.railDot} aria-hidden /> : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={!sideCollapsed && sideMode === 'content'}
+                    className={`${styles.railBtn} ${
+                      !sideCollapsed && sideMode === 'content' ? styles.railBtnActive : ''
+                    }`}
+                    title={t('graph.side_content', '内容')}
+                    onClick={() => openSide('content')}
+                  >
+                    <MdArticle size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.railBtn} ${styles.railCollapseBtn}`}
+                    title={
+                      sideCollapsed
+                        ? t('graph.expand_sidebar', '展开侧栏')
+                        : t('graph.collapse_sidebar', '收起侧栏')
+                    }
+                    aria-expanded={!sideCollapsed}
+                    onClick={() => setSideCollapsedPersist(!sideCollapsed)}
+                  >
+                    {sideCollapsed ? <MdChevronLeft size={18} /> : <MdChevronRight size={18} />}
+                  </button>
+                </div>
+                {!sideCollapsed ? (
+                  <aside className={styles.side}>
+                    {sideMode === 'organize' ? (
+                      <>
+                        <div className={styles.settingsHeader}>
+                          <div className={styles.settingsTitle}>
+                            {t('graph.side_organize', '整理')}
+                          </div>
+                        </div>
+                        <div className={styles.panel}>
+                          <div className={styles.settingsSection}>
+                            <button
+                              type="button"
+                              className={styles.settingsSectionHead}
+                              onClick={() => setProfileSectionOpen((open) => !open)}
+                            >
+                              <span className={styles.settingsChevron}>
+                                {profileSectionOpen ? '▾' : '▸'}
+                              </span>
+                              {t('graph.profile_section', '身份资料')}
+                            </button>
+                            {profileSectionOpen ? (
+                              <div className={styles.settingsSectionBody}>
+                                <p className={styles.profileHint}>
+                                  {t(
+                                    'graph.profile_hint',
+                                    '用于识别日记中的「我」。修改昵称会同步更新图谱中的自称节点，旧昵称保留为别名，无需重建整图。'
+                                  )}
+                                </p>
+                                <div className={styles.profileFields}>
+                                  <label className={styles.profileField}>
+                                    <span>{t('graph.awaken_nickname_label', '昵称')}</span>
+                                    <Input
+                                      fieldSize="small"
+                                      value={profileForm.nickname}
+                                      onChange={(e) =>
+                                        setProfileForm((p) => ({ ...p, nickname: e.target.value }))
+                                      }
+                                      placeholder={t(
+                                        'graph.awaken_nickname_placeholder',
+                                        '怎么称呼你？'
+                                      )}
+                                      disabled={profileBusy}
+                                    />
+                                    {profileErrors.nickname ? (
+                                      <span className={styles.profileError}>
+                                        {t('graph.awaken_nickname_required', '请填写昵称')}
+                                      </span>
+                                    ) : null}
+                                  </label>
+                                  <div className={styles.profileField}>
+                                    <span>{t('graph.awaken_birthday_label', '生日')}</span>
+                                    <GraphAwakenBirthdayField
+                                      value={profileForm.birthday}
+                                      onChange={(birthday) =>
+                                        setProfileForm((p) => ({ ...p, birthday }))
+                                      }
+                                      disabled={profileBusy}
+                                      hasError={!!profileErrors.birthday}
+                                    />
+                                    {profileErrors.birthday ? (
+                                      <span className={styles.profileError}>
+                                        {t('graph.awaken_birthday_required', '请选择生日')}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <div className={styles.profileField}>
+                                    <span>{t('graph.awaken_gender_label', '性别')}</span>
+                                    <div className={styles.genderRow} role="radiogroup">
+                                      {USER_GENDER_OPTIONS.map((g) => {
+                                        const label =
+                                          g === 'male'
+                                            ? t('graph.awaken_gender_male', '男')
+                                            : g === 'female'
+                                              ? t('graph.awaken_gender_female', '女')
+                                              : g === 'other'
+                                                ? t('graph.awaken_gender_other', '其他')
+                                                : t('graph.awaken_gender_unspecified', '不愿透露')
+                                        return (
+                                          <button
+                                            key={g}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={profileForm.gender === g}
+                                            className={
+                                              profileForm.gender === g
+                                                ? styles.genderChipActive
+                                                : styles.genderChip
+                                            }
+                                            disabled={profileBusy}
+                                            onClick={() =>
+                                              setProfileForm((p) => ({ ...p, gender: g }))
+                                            }
+                                          >
+                                            {label}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                    {profileErrors.gender ? (
+                                      <span className={styles.profileError}>
+                                        {t('graph.awaken_gender_required', '请选择性别')}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    disabled={profileBusy}
+                                    onClick={() => void saveProfileFromSettings()}
+                                  >
+                                    {t('graph.profile_save', '保存身份资料')}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className={styles.opsBlock}>
+                            <Button
+                              type="button"
+                              disabled={pendingReextract.length === 0}
+                              title={t(
+                                'graph.process_pending_reextract_hint',
+                                '把当前待重抽日记加入整理队列'
+                              )}
+                              onClick={() => void runExtract()}
+                            >
+                              {t('graph.process_pending_reextract', '梳理待重抽 ({{count}})', {
+                                count: pendingReextract.length
+                              })}
+                            </Button>
+                            {extractRunning ? (
+                              <Button type="button" onClick={() => setQueueModalOpen(true)}>
+                                {t('graph.queue_view_progress', '查看进度')}
+                              </Button>
+                            ) : null}
+                            <div className={styles.opsConcurrency}>
+                              <div className={styles.opsLabelRow}>
+                                <span className={styles.viewFieldLabel}>
+                                  {t('graph.extract_concurrency', '同时抽取')}
+                                </span>
+                                <GraphExtractHelpButton size={14} />
+                              </div>
+                              <Select
+                                size="small"
+                                value={String(extractConcurrency)}
+                                onChange={(e) => {
+                                  const n = saveGraphExtractConcurrency(e.target.value)
+                                  setExtractConcurrency(n)
+                                  void graphSetExtractConcurrency(n)
+                                }}
+                                options={Array.from(
+                                  {
+                                    length:
+                                      GRAPH_EXTRACT_CONCURRENCY_MAX -
+                                      GRAPH_EXTRACT_CONCURRENCY_MIN +
+                                      1
+                                  },
+                                  (_, i) => {
+                                    const n = GRAPH_EXTRACT_CONCURRENCY_MIN + i
+                                    return { value: String(n), label: String(n) }
+                                  }
+                                )}
+                              />
+                            </div>
+                          </div>
+
+                          <div className={styles.opsBlock}>
+                            <div className={styles.opsLabelRow}>
+                              <span className={styles.viewFieldLabel}>
+                                {t('graph.extract_one_date', '日记日期')}
+                              </span>
+                              <HelpTooltip
+                                content={t(
+                                  'graph.extract_one_hint',
+                                  '选一篇已有日记，强制加入整理队列。系统写出的关系会被这次结果替换；你手改过的边会留下。'
+                                )}
+                              />
+                            </div>
+                            <input
+                              type="date"
+                              className={styles.opsDateInput}
+                              value={extractDate}
+                              onChange={(event) => setExtractDate(event.target.value)}
+                            />
+                            <Button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void runExtractOne()}
+                            >
+                              {t('graph.extract_one_action', '重新梳理这篇')}
+                            </Button>
+                          </div>
+
+                          <div className={styles.opsBlock}>
+                            <div className={styles.viewFieldLabel}>
+                              {t('graph.ops_nodes', '节点')}
+                            </div>
+                            <div className={styles.opsBtnRow}>
+                              <Button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => {
+                                  setMergeSearchOpen(false)
+                                  setCreateOpen(true)
+                                }}
+                              >
+                                {t('graph.create_node', '新建节点')}
+                              </Button>
+                              <Button
+                                type="button"
+                                className={mergeSearchOpen ? styles.btnActive : ''}
+                                disabled={busy}
+                                onClick={() => {
+                                  setCreateOpen(false)
+                                  setMergeSearchOpen((open) => !open)
+                                }}
+                              >
+                                {t('graph.merge_nodes', '合并节点')}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className={styles.settingsSection}>
+                            <button
+                              type="button"
+                              className={styles.settingsSectionHead}
+                              onClick={() => setDataSectionOpen((open) => !open)}
+                            >
+                              <span className={styles.settingsChevron}>
+                                {dataSectionOpen ? '▾' : '▸'}
+                              </span>
+                              {t('graph.data_ops', '数据操作')}
+                            </button>
+                            {dataSectionOpen ? (
+                              <div className={styles.settingsSectionBody}>
+                                <div className={styles.opsLabelRow}>
+                                  <span className={styles.viewFieldLabel}>
+                                    {t('graph.clear_life_title', '清空人生关系图')}
+                                  </span>
+                                  <HelpTooltip
+                                    content={t(
+                                      'graph.clear_life_hint',
+                                      '删除本工作区人生关系图的全部节点、连线和抽取记录。笔记本关系图不会被改动。'
+                                    )}
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => void clearLifeGraph()}
+                                >
+                                  {t('graph.clear_life_action', '清空人生关系图')}
+                                </Button>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      </>
+                    ) : sideMode === 'canvas' ? (
+                      <>
+                        <div className={styles.settingsHeader}>
+                          <div className={styles.settingsTitle}>
+                            {t('graph.side_canvas', '画布')}
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.settingsReset}
+                            title={t('graph.force_reset', '恢复默认')}
+                            onClick={resetGraphSettings}
+                          >
+                            {t('graph.force_reset', '恢复默认')}
+                          </button>
+                        </div>
+                        <div className={styles.panel}>
+                          <div className={styles.opsBlock}>
+                            <div className={styles.filterSectionHead}>
+                              <span className={styles.viewFieldLabel}>
+                                {t('graph.filter', '筛选')}
+                              </span>
+                              {filterActive ? (
+                                <button
+                                  type="button"
+                                  className={styles.filterSectionAction}
+                                  onClick={() => {
+                                    setHideEntry(true)
+                                    setApprovedOnly(false)
+                                    setEnabledNodeTypes(new Set(GRAPH_FILTER_NODE_TYPES))
+                                  }}
+                                >
+                                  {t('graph.filter_reset', '恢复默认')}
+                                </button>
+                              ) : null}
+                            </div>
+                            <label className={styles.checkLabel}>
+                              <Checkbox
+                                checked={hideEntry}
+                                onChange={(e) => setHideEntry(e.target.checked)}
+                              />
+                              {t('graph.hide_entry_anchors', '隐藏日记锚点')}
+                            </label>
+                            <label className={styles.checkLabel}>
+                              <Checkbox
+                                checked={approvedOnly}
+                                onChange={(e) => setApprovedOnly(e.target.checked)}
+                              />
+                              {t('graph.approved_only', '只看已确认')}
+                            </label>
+                            <div className={styles.filterSection}>
+                              <div className={styles.filterSectionHead}>
+                                <span className={styles.filterSectionTitle}>
+                                  {t('graph.filter_by_type', '按分类')}
+                                </span>
+                                <button
+                                  type="button"
+                                  className={styles.filterSectionAction}
+                                  onClick={() =>
+                                    setEnabledNodeTypes(
+                                      typeFilterActive
+                                        ? new Set(GRAPH_FILTER_NODE_TYPES)
+                                        : new Set()
+                                    )
+                                  }
+                                >
+                                  {typeFilterActive
+                                    ? t('graph.filter_select_all_types', '全选')
+                                    : t('graph.filter_clear_types', '清空')}
+                                </button>
+                              </div>
+                              <div className={styles.typeChipRow}>
+                                {GRAPH_FILTER_NODE_TYPES.map((nodeType) => {
+                                  const active = enabledNodeTypes.has(nodeType)
+                                  const typeColor = graphNodeTypeColor(nodeType)
+                                  return (
+                                    <button
+                                      key={nodeType}
+                                      type="button"
+                                      className={active ? styles.typeChipActive : styles.typeChip}
+                                      style={
+                                        active
+                                          ? ({
+                                              '--type-chip-color': typeColor
+                                            } as React.CSSProperties)
+                                          : undefined
+                                      }
+                                      onClick={() => toggleNodeTypeFilter(nodeType)}
+                                    >
+                                      {t(
+                                        `graph.node_type.${nodeType}`,
+                                        GRAPH_NODE_TYPE_LABEL_FALLBACKS[nodeType] ?? nodeType
+                                      )}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <GraphCanvasSettingsPanel
+                            focusDepth={focusDepth}
+                            appearanceSettings={appearanceSettings}
+                            forceSettings={forceSettings}
+                            onFocusDepthChange={updateFocusDepth}
+                            onAppearanceChange={updateAppearance}
+                            onForceChange={updateForce}
+                            onReplayLayout={() => setAnimationTick((n) => n + 1)}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className={styles.tabs}>
+                          <button
+                            type="button"
+                            className={`${styles.tab} ${tab === 'reextract' ? styles.tabActive : ''}`}
+                            onClick={() => setTab('reextract')}
+                          >
+                            {t('graph.tab_reextract', '待重抽')}
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.tab} ${tab === 'pending' ? styles.tabActive : ''}`}
+                            onClick={() => setTab('pending')}
+                          >
+                            {t('graph.tab_pending_count', '待确认 ({{count}})', {
+                              count: pendingCount
+                            })}
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.tab} ${tab === 'detail' ? styles.tabActive : ''}`}
+                            onClick={() => setTab('detail')}
+                          >
+                            {t('graph.tab_detail', '详情')}
+                          </button>
+                        </div>
+                        <div className={styles.panel}>
+                          {tab === 'reextract' && (
+                            <>
+                              {pendingReextract.length === 0 ? (
+                                <div className={styles.empty}>
+                                  {t('graph.no_pending_reextract', '暂无待重抽日记')}
+                                </div>
+                              ) : (
+                                pendingReextract.map((item) => (
+                                  <div
+                                    key={item.filePath}
+                                    className={styles.itemCompact}
+                                    title={item.filePath}
+                                  >
+                                    <div className={styles.itemRow}>
+                                      <div className={styles.itemTitle}>
+                                        {item.date || item.filePath}
+                                      </div>
+                                      <div className={styles.rowActionsInline}>
+                                        {(() => {
+                                          const q = queueByPath.get(
+                                            normalizeGraphFilePath(item.filePath)
+                                          )
+                                          if (q?.status === 'running') {
+                                            return (
+                                              <span className={styles.queueBadge}>
+                                                {t('graph.queue_running', '抽取中')}
+                                              </span>
+                                            )
+                                          }
+                                          if (q?.status === 'aligning') {
+                                            return (
+                                              <span className={styles.queueBadge}>
+                                                {t('graph.extract_aligning', '对齐中')}
+                                              </span>
+                                            )
+                                          }
+                                          if (q?.status === 'pending') {
+                                            return (
+                                              <>
+                                                <span className={styles.queueBadge}>
+                                                  {t('graph.queue_pending', '排队中')}
+                                                </span>
+                                                <button
+                                                  type="button"
+                                                  className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                                  onClick={() =>
+                                                    void cancelQueueItem(item.filePath)
+                                                  }
+                                                >
+                                                  {t('graph.queue_remove', '取消')}
+                                                </button>
+                                              </>
+                                            )
+                                          }
+                                          if (q?.status === 'completed') {
+                                            return (
+                                              <span className={styles.queueBadgeDone}>
+                                                {t('graph.queue_done', '已完成')}
+                                              </span>
+                                            )
+                                          }
+                                          return (
+                                            <button
+                                              type="button"
+                                              className={styles.linkBtn}
+                                              onClick={() => void runExtract([item.filePath])}
+                                            >
+                                              {t('graph.extract_short', '抽取')}
+                                            </button>
+                                          )
+                                        })()}
+                                        {item.date ? (
+                                          <button
+                                            type="button"
+                                            className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                            onClick={() => void openSource(item.date)}
+                                          >
+                                            {t('graph.open_source_short', '原文')}
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </>
+                          )}
+
+                          {tab === 'pending' && (
+                            <>
+                              {pendingCount === 0 ? (
+                                <div className={styles.empty}>
+                                  {t('graph.no_pending', '没有待确认的节点或边')}
+                                </div>
+                              ) : (
+                                <>
+                                  <div className={styles.pendingSticky}>
+                                    <p className={styles.pendingHint}>
+                                      {t(
+                                        'graph.pending_hint',
+                                        '确认关系会同时通过两端节点；确认节点也会通过与它相连的待审关系。可勾选后批量处理。'
+                                      )}
+                                    </p>
+                                    <div className={styles.pendingToolbar}>
+                                      <label className={styles.pendingSelectAll}>
+                                        <Checkbox
+                                          checked={allPendingSelected}
+                                          indeterminate={
+                                            pendingSelectedCount > 0 && !allPendingSelected
+                                          }
+                                          onChange={toggleSelectAllPending}
+                                        />
+                                        {allPendingSelected
+                                          ? t('graph.pending_deselect_all', '取消全选')
+                                          : t('graph.pending_select_all', '全选')}
+                                      </label>
+                                      <span className={styles.pendingSelectedCount}>
+                                        {t('graph.pending_selected_count', '已选 {{count}} 项', {
+                                          count: pendingSelectedCount
+                                        })}
+                                      </span>
+                                      <div className={styles.pendingToolbarBtns}>
+                                        <button
+                                          type="button"
+                                          className={styles.linkBtn}
+                                          disabled={busy || pendingSelectedCount === 0}
+                                          onClick={() =>
+                                            void applyPendingReviews({ reviewStatus: 'approved' })
+                                          }
+                                        >
+                                          {t('graph.approve_selected', '通过所选')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                          disabled={busy || pendingSelectedCount === 0}
+                                          onClick={() =>
+                                            void applyPendingReviews({ reviewStatus: 'rejected' })
+                                          }
+                                        >
+                                          {t('graph.reject_selected', '拒绝所选')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={styles.linkBtn}
+                                          disabled={busy}
+                                          onClick={() =>
+                                            void applyPendingReviews({
+                                              reviewStatus: 'approved',
+                                              allPending: true
+                                            })
+                                          }
+                                        >
+                                          {t('graph.approve_all', '全部通过')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                          disabled={busy}
+                                          onClick={() =>
+                                            void applyPendingReviews({
+                                              reviewStatus: 'rejected',
+                                              allPending: true
+                                            })
+                                          }
+                                        >
+                                          {t('graph.reject_all', '全部拒绝')}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {pendingNodes.map((node) => {
+                                    const key = graphPendingItemKey('node', node.id)
+                                    return (
+                                      <div key={`n-${node.id}`} className={styles.itemCompact}>
+                                        <div className={styles.itemRow}>
+                                          <label className={styles.pendingCheckLabel}>
+                                            <Checkbox
+                                              checked={pendingSelected.has(key)}
+                                              onChange={() => togglePendingItem(key)}
+                                            />
+                                            <span className={styles.itemTitle}>
+                                              {t('graph.pending_node', '节点')} · {node.name}
+                                            </span>
+                                          </label>
+                                          <div className={styles.rowActionsInline}>
+                                            <button
+                                              type="button"
+                                              className={styles.linkBtn}
+                                              onClick={() => void reviewNode(node.id, 'approved')}
+                                            >
+                                              {t('graph.approve', '通过')}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                              onClick={() => void reviewNode(node.id, 'rejected')}
+                                            >
+                                              {t('graph.reject', '拒绝')}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                              onClick={() => locatePendingNode(node.id)}
+                                            >
+                                              {t('graph.view', '查看')}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        {node.nodeType || node.summary ? (
+                                          <div className={styles.itemMetaCompact}>
+                                            {translateGraphNodeType(tr, node.nodeType)}
+                                            {node.summary ? ` · ${node.summary}` : ''}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    )
+                                  })}
+                                  {pendingEdges.map((edge) => {
+                                    const key = graphPendingItemKey('edge', edge.id)
+                                    const unknownNode = t('graph.unknown_node', '未知节点')
+                                    const fromName = resolveGraphNodeDisplayName(
+                                      graphNodeNameById,
+                                      edge.fromId,
+                                      unknownNode
+                                    )
+                                    const toName = resolveGraphNodeDisplayName(
+                                      graphNodeNameById,
+                                      edge.toId,
+                                      unknownNode
+                                    )
+                                    return (
+                                      <div key={`e-${edge.id}`} className={styles.itemCompact}>
+                                        <div className={styles.itemRow}>
+                                          <label className={styles.pendingCheckLabel}>
+                                            <Checkbox
+                                              checked={pendingSelected.has(key)}
+                                              onChange={() => togglePendingItem(key)}
+                                            />
+                                            <span className={styles.itemTitle}>
+                                              {t('graph.pending_edge', '关系')} ·{' '}
+                                              {translateGraphEdgeType(tr, edge.edgeType)}
+                                            </span>
+                                          </label>
+                                          <div className={styles.rowActionsInline}>
+                                            <button
+                                              type="button"
+                                              className={styles.linkBtn}
+                                              onClick={() =>
+                                                void reviewEdge(edge.id, 'approved', {
+                                                  fromId: edge.fromId,
+                                                  toId: edge.toId
+                                                })
+                                              }
+                                            >
+                                              {t('graph.approve', '通过')}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                              onClick={() => void reviewEdge(edge.id, 'rejected')}
+                                            >
+                                              {t('graph.reject', '拒绝')}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                              onClick={() => void locatePendingEdge(edge)}
+                                            >
+                                              {t('graph.view', '查看')}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`${styles.linkBtn} ${styles.linkBtnMuted}`}
+                                              onClick={() =>
+                                                void openSource(edge.sourceRef, edge.sourceExcerpt)
+                                              }
+                                            >
+                                              {t('graph.source', '原文')}
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <div className={styles.itemMetaCompact}>
+                                          {fromName} → {toName}
+                                          {typeof edge.confidence === 'number'
+                                            ? ` · ${edge.confidence}`
+                                            : ''}
+                                          {edge.sourceExcerpt ? ` · ${edge.sourceExcerpt}` : ''}
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          {tab === 'detail' && (
+                            <>
+                              {!selectedNode ? (
+                                <div className={styles.empty}>
+                                  {t('graph.click_node_for_detail', '点击画布节点查看详情')}
+                                </div>
+                              ) : (
+                                <>
+                                  <div className={styles.detailDepthRow}>
+                                    <div className={styles.detailDepthMeta}>
+                                      <span className={styles.detailLabel}>
+                                        {t('graph.focus_depth', '展开等级')}
+                                      </span>
+                                      <span className={styles.detailDepthHint}>
+                                        {t('graph.focus_depth_hint_short', '高亮周围几级关系')}
+                                      </span>
+                                    </div>
+                                    <div
+                                      className={styles.depthSeg}
+                                      role="radiogroup"
+                                      aria-label={t('graph.focus_depth', '展开')}
+                                    >
+                                      {GRAPH_FOCUS_DEPTH_OPTIONS.map((d) => {
+                                        const active = focusDepth === d
+                                        return (
+                                          <button
+                                            key={d}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={active}
+                                            className={`${styles.depthBtn} ${active ? styles.depthBtnActive : ''}`}
+                                            onClick={() => updateFocusDepth(d)}
+                                          >
+                                            {d}
+                                            {t('graph.focus_depth_unit', '级')}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                  <div className={styles.detailBlock}>
+                                    <div className={styles.nodeIdentity}>
+                                      <div className={styles.detailValue}>{selectedNode.name}</div>
+                                      {selectedNode.discriminator ? (
+                                        <span className={styles.discriminatorTag}>
+                                          {selectedNode.discriminator}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <div className={styles.detailLabel}>
+                                      {t('graph.label_name', '名称')}
+                                    </div>
+                                    <Input
+                                      fieldSize="small"
+                                      value={editName}
+                                      onChange={(e) => setEditName(e.target.value)}
+                                    />
+                                    {editNameConflict ? (
+                                      <div className={styles.sameNameBanner}>
+                                        {t(
+                                          'graph.same_name_exists_edit',
+                                          '已有同类型同名节点「{{name}}」。保存前请换名，或合并到该节点。',
+                                          { name: editNameConflict.name }
+                                        )}
+                                        <div className={styles.rowActions}>
+                                          <button
+                                            type="button"
+                                            className={styles.linkBtn}
+                                            onClick={() => void onSelectNode(editNameConflict.id)}
+                                          >
+                                            {t('graph.open_existing_node', '打开已有节点')}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className={styles.linkBtn}
+                                            onClick={() =>
+                                              mergeNodes(editNameConflict.id, selectedNode.id)
+                                            }
+                                          >
+                                            {t('graph.merge_into_existing', '合并到该节点')}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <div className={styles.detailBlock}>
+                                    <div className={styles.detailLabel}>
+                                      {t('graph.label_type', '类型')}
+                                    </div>
+                                    <div className={styles.detailValue}>
+                                      {translateGraphNodeType(tr, selectedNode.nodeType)}
+                                    </div>
+                                  </div>
+                                  <div className={styles.detailBlock}>
+                                    <div className={styles.detailLabel}>
+                                      {t('graph.label_summary', '摘要')}
+                                    </div>
+                                    <textarea
+                                      className={styles.editArea}
+                                      value={editSummary}
+                                      onChange={(e) => setEditSummary(e.target.value)}
+                                      rows={3}
+                                    />
+                                  </div>
+                                  <div className={styles.detailBlock}>
+                                    <div className={styles.detailLabel}>
+                                      {t('graph.label_aliases', '别名')}
+                                    </div>
+                                    <Input
+                                      fieldSize="small"
+                                      value={editAliases}
+                                      onChange={(e) => setEditAliases(e.target.value)}
+                                      placeholder={t('graph.aliases_placeholder', '逗号分隔')}
+                                    />
+                                  </div>
+                                  <div className={styles.detailBlock}>
+                                    <div className={styles.detailLabel}>
+                                      {t('graph.label_review', '审核')}
+                                    </div>
+                                    <div className={styles.detailValue}>
+                                      {selectedNode.reviewStatus || 'approved'}
+                                      {selectedNode.origin === 'user'
+                                        ? ` · ${t('graph.origin_user', '手工修正')}`
+                                        : ''}
+                                    </div>
+                                  </div>
+                                  {(() => {
+                                    const ambiguousRefs = listAmbiguousSourceRefs(
+                                      parseGraphNodeProps(selectedNode)
+                                    )
+                                    if (selectedNode.discriminator || ambiguousRefs.length === 0)
+                                      return null
+                                    return (
+                                      <div className={styles.sameNameBanner}>
+                                        {t(
+                                          'graph.ambiguous_sources_hint',
+                                          '有 {{count}} 条出处待确认归谁',
+                                          {
+                                            count: ambiguousRefs.length
+                                          }
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
+                                  {nameCandidates.some(
+                                    (item) => item.nodeId !== selectedNode.id
+                                  ) ? (
+                                    <div className={styles.detailBlock}>
+                                      <div className={styles.detailLabel}>
+                                        {t('graph.same_name_siblings', '同名的其他实体')}
+                                      </div>
+                                      {nameCandidates
+                                        .filter((item) => item.nodeId !== selectedNode.id)
+                                        .map((item) => (
+                                          <div key={item.nodeId} className={styles.siblingRow}>
+                                            <div className={styles.siblingMain}>
+                                              <span className={styles.detailValue}>
+                                                {item.name}
+                                              </span>
+                                              {item.discriminator ? (
+                                                <span className={styles.discriminatorTag}>
+                                                  {item.label || item.discriminator}
+                                                </span>
+                                              ) : (
+                                                <span className={styles.discriminatorTag}>
+                                                  {t('graph.bare_entity', '原实体')}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className={styles.rowActions}>
+                                              <Button
+                                                type="button"
+                                                onClick={() => void onSelectNode(item.nodeId)}
+                                              >
+                                                {t('graph.open_sibling', '打开')}
+                                              </Button>
+                                              {item.discriminator ? (
+                                                <Button
+                                                  type="button"
+                                                  disabled={busy}
+                                                  onClick={() =>
+                                                    void revertSplit(item.discriminator)
+                                                  }
+                                                >
+                                                  {t('graph.revert_split', '撤回拆分')}
+                                                </Button>
+                                              ) : null}
+                                            </div>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  ) : null}
+                                  <div className={styles.rowActions}>
+                                    <Button
+                                      type="button"
+                                      disabled={busy || !!editNameConflict}
+                                      onClick={() => void saveNodeEdit()}
+                                    >
+                                      {t('graph.save_edit', '保存修改')}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      disabled={busy}
+                                      onClick={() => void deleteSelectedNode()}
+                                    >
+                                      {t('graph.delete_node', '删除节点')}
+                                    </Button>
+                                    {selectedNode.nodeType !== 'entry' ? (
+                                      <Button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => setSplitOpen(true)}
+                                      >
+                                        {t('graph.split_node', '拆分')}
+                                      </Button>
+                                    ) : null}
+                                    {selectedNode.discriminator ? (
+                                      <Button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() =>
+                                          void revertSplit(String(selectedNode.discriminator))
+                                        }
+                                      >
+                                        {t('graph.revert_split', '撤回拆分')}
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                  {selectedNode.reviewStatus === 'pending' ? (
+                                    <div className={styles.rowActions}>
+                                      <Button
+                                        type="button"
+                                        onClick={() => void reviewNode(selectedNode.id, 'approved')}
+                                      >
+                                        {t('graph.approve', '通过')}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        onClick={() => void reviewNode(selectedNode.id, 'rejected')}
+                                      >
+                                        {t('graph.reject', '拒绝')}
+                                      </Button>
+                                    </div>
+                                  ) : null}
+
+                                  <div className={styles.detailBlock} style={{ marginTop: 16 }}>
+                                    <div className={styles.detailLabel}>
+                                      {t('graph.add_edge', '添加关系')}
+                                    </div>
+                                    <Input
+                                      fieldSize="small"
+                                      value={addEdgeQuery}
+                                      onChange={(e) => setAddEdgeQuery(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') void searchAddEdgeTarget()
+                                      }}
+                                      placeholder={t('graph.add_edge_search', '搜索目标节点')}
+                                    />
+                                    <div className={styles.rowActions}>
+                                      <Button
+                                        type="button"
+                                        onClick={() => void searchAddEdgeTarget()}
+                                      >
+                                        {t('graph.search', '搜索')}
+                                      </Button>
+                                      <div className={styles.editSelect}>
+                                        <Select
+                                          size="small"
+                                          value={addEdgeType}
+                                          aria-label={t('graph.add_edge', '添加关系')}
+                                          onChange={(e) => setAddEdgeType(e.target.value)}
+                                          options={(edgeTypes.length
+                                            ? edgeTypes
+                                            : ['relates_to']
+                                          ).map((et) => ({
+                                            value: et,
+                                            label: translateGraphEdgeType(tr, et)
+                                          }))}
+                                        />
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        disabled={busy || !addEdgeToId}
+                                        onClick={() => void addEdge()}
+                                      >
+                                        {t('graph.add_edge_submit', '添加')}
+                                      </Button>
+                                    </div>
+                                    {addEdgeHits.map((h) => (
+                                      <button
+                                        key={h.id}
+                                        type="button"
+                                        className={`${styles.hitBtn} ${addEdgeToId === h.id ? styles.hitBtnActive : ''}`}
+                                        onClick={() => setAddEdgeToId(h.id)}
+                                      >
+                                        {h.name} · {translateGraphNodeType(tr, h.nodeType)}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  <div className={styles.detailBlock}>
+                                    <div className={styles.detailLabel}>
+                                      {t('graph.local_relations', '直接关系')}
+                                    </div>
+                                    <div className={styles.detailValue}>
+                                      {t(
+                                        'graph.direct_edge_stats',
+                                        '{{edgeCount}} 条与该节点相连的边',
+                                        {
+                                          edgeCount: detailEdges.length
+                                        }
+                                      )}
+                                    </div>
+                                  </div>
+                                  {detailEdges.length === 0 ? (
+                                    <div className={styles.empty}>
+                                      {t('graph.no_direct_edges', '暂无与该节点直接相连的关系')}
+                                    </div>
+                                  ) : (
+                                    detailEdges.map(({ edge: e, partnerName }) => (
+                                      <div key={e.id} className={styles.item}>
+                                        <div className={styles.relationPartner}>{partnerName}</div>
+                                        <div className={styles.itemMeta}>
+                                          {translateGraphEdgeType(tr, e.edgeType)}
+                                          {e.reviewStatus === 'pending'
+                                            ? ` · ${t('graph.pending_badge', '待确认')}`
+                                            : ''}
+                                          {e.sourceExcerpt ? ` · ${e.sourceExcerpt}` : ''}
+                                        </div>
+                                        <div className={styles.rowActions}>
+                                          {e.sourceRef || e.sourceExcerpt ? (
+                                            <Button
+                                              type="button"
+                                              onClick={() =>
+                                                void openSource(e.sourceRef, e.sourceExcerpt)
+                                              }
+                                            >
+                                              {t('graph.open_source', '打开原文')}
+                                            </Button>
+                                          ) : null}
+                                          <Button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => void deleteEdge(e.id)}
+                                          >
+                                            {t('graph.delete_edge', '删除')}
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </aside>
+                ) : null}
+              </div>
+            ) : null}
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -3214,9 +3310,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                 })}
               </li>
               {mergeConfirm.losers.map((n) => (
-                <li key={n.id}>
-                  {t('graph.merge_absorb', '并入 · {{name}}', { name: n.name })}
-                </li>
+                <li key={n.id}>{t('graph.merge_absorb', '并入 · {{name}}', { name: n.name })}</li>
               ))}
             </ul>
           ) : null

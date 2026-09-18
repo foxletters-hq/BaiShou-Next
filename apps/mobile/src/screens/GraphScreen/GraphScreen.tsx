@@ -672,17 +672,7 @@ export function GraphScreen() {
       return true
     }
 
-    const viewEdges = pinNeighborhood
-      ? localView?.edges || []
-      : selectedId && !graphNodes.some((n) => n.id === selectedId)
-        ? [...graphEdges, ...(localView?.edges || [])]
-        : graphEdges
-    const visibleEdges = viewEdges.filter((e) => {
-      if (e.reviewStatus === 'rejected') return false
-      if (!pinNeighborhood && approvedOnly && e.reviewStatus === 'pending') return false
-      return true
-    })
-
+    // 边过滤在 displayEdges 里做，这里只算可见节点。
     let next: any[]
     if (pinNeighborhood && localView?.nodes?.length) {
       next = localView.nodes.filter((n) => filterNode(n, true))
@@ -708,7 +698,6 @@ export function GraphScreen() {
     return next
   }, [
     graphNodes,
-    graphEdges,
     hideEntry,
     approvedOnly,
     enabledNodeTypes,
@@ -717,8 +706,7 @@ export function GraphScreen() {
     selectedNode,
     pinNeighborhood,
     highlightIds,
-    highlightedEdgeIds,
-    locateIds
+    highlightedEdgeIds
   ])
 
   const displayEdges = useMemo(() => {
@@ -1191,14 +1179,22 @@ export function GraphScreen() {
       ).getPendingEmbedCounts?.()
       if ((pendingCounts?.diaries ?? 0) > 0) {
         toast.showInfo(
-          t('graph.extract_blocked_pending_embed', '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系', {
-            count: pendingCounts!.diaries
-          })
+          t(
+            'graph.extract_blocked_pending_embed',
+            '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系',
+            {
+              count: pendingCounts!.diaries
+            }
+          )
         )
         setStatus(
-          t('graph.extract_blocked_pending_embed', '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系', {
-            count: pendingCounts!.diaries
-          })
+          t(
+            'graph.extract_blocked_pending_embed',
+            '有 {{count}} 篇日记还没有嵌入，先补齐嵌入再整理关系',
+            {
+              count: pendingCounts!.diaries
+            }
+          )
         )
         return
       }
@@ -1282,7 +1278,9 @@ export function GraphScreen() {
       const shadowRepo = new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId)
       const resolved = await mobileResolveJournalForExtract(date, shadowRepo)
       if (!resolved?.filePath) {
-        toast.showError(t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。'))
+        toast.showError(
+          t('graph.extract_one_not_found', '这一天没有日记，或影子索引里还没有路径。')
+        )
         return
       }
       const ok = await dialog.confirm(
@@ -1584,16 +1582,15 @@ export function GraphScreen() {
     const name = editName.trim()
     if (!name) return
     const nameUnchanged = name === String(selectedNode.name || '').trim()
-    const hit =
-      nameUnchanged
-        ? null
-        : editNameConflict ||
-          (await mobileFindNodeByName(runtime.drizzleDb, vaultId, name, selectedNode.nodeType).then(
-        (row) =>
-          row && row.id !== selectedNode.id
-            ? { id: row.id, name: row.name, nodeType: row.nodeType, summary: row.summary }
-            : null
-      ))
+    const hit = nameUnchanged
+      ? null
+      : editNameConflict ||
+        (await mobileFindNodeByName(runtime.drizzleDb, vaultId, name, selectedNode.nodeType).then(
+          (row) =>
+            row && row.id !== selectedNode.id
+              ? { id: row.id, name: row.name, nodeType: row.nodeType, summary: row.summary }
+              : null
+        ))
     if (hit) {
       setEditNameConflict(hit)
       toast.showError(
@@ -1970,19 +1967,17 @@ export function GraphScreen() {
     <>
       {(
         [
-          ['centerStrength', 'graph.force_center', '向心力'],
-          ['linkStrength', 'graph.force_link', '引力'],
-          ['chargeStrength', 'graph.force_charge', '斥力'],
-          ['linkDistance', 'graph.force_link_distance', '连线长度']
+          ['centerStrength', 'graph.force_center'],
+          ['linkStrength', 'graph.force_link'],
+          ['chargeStrength', 'graph.force_charge'],
+          ['linkDistance', 'graph.force_link_distance']
         ] as const
-      ).map(([key, i18nKey, fallback]) => {
+      ).map(([key, i18nKey]) => {
         const range = GRAPH_FORCE_RANGES[key]
         const value = forceSettings[key]
         return (
           <View key={key} style={styles.forceRow}>
-            <Text style={[styles.forceLabel, { color: colors.textSecondary }]}>
-              {t(i18nKey, fallback)}
-            </Text>
+            <Text style={[styles.forceLabel, { color: colors.textSecondary }]}>{t(i18nKey)}</Text>
             <View style={{ flex: 1 }}>
               <NativeSlider
                 value={value}
@@ -3597,83 +3592,83 @@ export function GraphScreen() {
                 })}
               </View>
               {renderDepthChips()}
-          <Pressable
-            onPress={() => setSettingsSection((s) => ({ ...s, appearance: !s.appearance }))}
-            style={styles.settingsHead}
-          >
-            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-              {settingsSection.appearance ? '▾ ' : '▸ '}
-              {t('graph.appearance', '外观')}
-            </Text>
-          </Pressable>
-          {settingsSection.appearance ? (
-            <View style={styles.settingsBody}>
-              <View style={styles.switchRow}>
-                <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
-                  {t('graph.show_arrows', '箭头')}
+              <Pressable
+                onPress={() => setSettingsSection((s) => ({ ...s, appearance: !s.appearance }))}
+                style={styles.settingsHead}
+              >
+                <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                  {settingsSection.appearance ? '▾ ' : '▸ '}
+                  {t('graph.appearance', '外观')}
                 </Text>
-                <Switch
-                  value={appearanceSettings.showArrows}
-                  onValueChange={(v) => updateAppearance({ showArrows: v })}
-                />
-              </View>
-              <View style={styles.switchRow}>
-                <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
-                  {t('graph.show_isolated_nodes', '独立节点')}
-                </Text>
-                <Switch
-                  value={appearanceSettings.showIsolatedNodes}
-                  onValueChange={(v) => updateAppearance({ showIsolatedNodes: v })}
-                />
-              </View>
-              {(
-                [
-                  ['textOpacity', 'graph.text_opacity', '文本透明度'],
-                  ['nodeSize', 'graph.node_size', '节点大小'],
-                  ['lineThickness', 'graph.line_thickness', '连线粗细'],
-                  ['hubLabelMinDegree', 'graph.hub_label_min_degree', '枢纽度数'],
-                  ['hubLabelMinMentions', 'graph.hub_label_min_mentions', '枢纽提及']
-                ] as const
-              ).map(([key, i18nKey, fallback]) => {
-                const range = GRAPH_APPEARANCE_RANGES[key]
-                const value = appearanceSettings[key]
-                return (
-                  <View key={key} style={styles.forceRow}>
-                    <Text style={[styles.forceLabelWide, { color: colors.textSecondary }]}>
-                      {t(i18nKey, fallback)}
+              </Pressable>
+              {settingsSection.appearance ? (
+                <View style={styles.settingsBody}>
+                  <View style={styles.switchRow}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+                      {t('graph.show_arrows', '箭头')}
                     </Text>
-                    <View style={{ flex: 1 }}>
-                      <NativeSlider
-                        value={value}
-                        minValue={range.min}
-                        maxValue={range.max}
-                        step={range.step}
-                        onChange={(v) => updateAppearance({ [key]: v })}
-                      />
-                    </View>
-                    <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
-                      {typeof value === 'number' && !Number.isInteger(range.step)
-                        ? value.toFixed(2)
-                        : value}
-                    </Text>
+                    <Switch
+                      value={appearanceSettings.showArrows}
+                      onValueChange={(v) => updateAppearance({ showArrows: v })}
+                    />
                   </View>
-                )
-              })}
-            </View>
-          ) : null}
+                  <View style={styles.switchRow}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+                      {t('graph.show_isolated_nodes', '独立节点')}
+                    </Text>
+                    <Switch
+                      value={appearanceSettings.showIsolatedNodes}
+                      onValueChange={(v) => updateAppearance({ showIsolatedNodes: v })}
+                    />
+                  </View>
+                  {(
+                    [
+                      ['textOpacity', 'graph.text_opacity'],
+                      ['nodeSize', 'graph.node_size'],
+                      ['lineThickness', 'graph.line_thickness'],
+                      ['hubLabelMinDegree', 'graph.hub_label_degree'],
+                      ['hubLabelMinMentions', 'graph.hub_label_mentions']
+                    ] as const
+                  ).map(([key, i18nKey]) => {
+                    const range = GRAPH_APPEARANCE_RANGES[key]
+                    const value = appearanceSettings[key]
+                    return (
+                      <View key={key} style={styles.forceRow}>
+                        <Text style={[styles.forceLabelWide, { color: colors.textSecondary }]}>
+                          {t(i18nKey)}
+                        </Text>
+                        <View style={{ flex: 1 }}>
+                          <NativeSlider
+                            value={value}
+                            minValue={range.min}
+                            maxValue={range.max}
+                            step={range.step}
+                            onChange={(v) => updateAppearance({ [key]: v })}
+                          />
+                        </View>
+                        <Text style={[styles.forceValue, { color: colors.textSecondary }]}>
+                          {typeof value === 'number' && !Number.isInteger(range.step)
+                            ? value.toFixed(2)
+                            : value}
+                        </Text>
+                      </View>
+                    )
+                  })}
+                </View>
+              ) : null}
 
-          <Pressable
-            onPress={() => setSettingsSection((s) => ({ ...s, forces: !s.forces }))}
-            style={styles.settingsHead}
-          >
-            <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
-              {settingsSection.forces ? '▾ ' : '▸ '}
-              {t('graph.force_layout', '布局力')}
-            </Text>
-          </Pressable>
-          {settingsSection.forces ? (
-            <View style={styles.settingsBody}>{renderForceSliders()}</View>
-          ) : null}
+              <Pressable
+                onPress={() => setSettingsSection((s) => ({ ...s, forces: !s.forces }))}
+                style={styles.settingsHead}
+              >
+                <Text style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                  {settingsSection.forces ? '▾ ' : '▸ '}
+                  {t('graph.force_layout', '布局力')}
+                </Text>
+              </Pressable>
+              {settingsSection.forces ? (
+                <View style={styles.settingsBody}>{renderForceSliders()}</View>
+              ) : null}
             </View>
           ) : null}
 

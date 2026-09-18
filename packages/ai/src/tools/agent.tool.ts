@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { tool } from 'ai'
 import {
   isAgentGateRejectedError,
+  TOOL_EXECUTION_FAILED_PREFIX,
   type AgentGateProfileId,
   type AgentGateToolMetadata,
   type AgentSessionKind,
@@ -343,7 +344,7 @@ export abstract class AgentTool<TArgs extends z.ZodType = any> {
       } catch (e: any) {
         if (isAgentGateRejectedError(e)) throw e
         console.error(`[AgentTool] Tool "${this.name}" threw an unhandled error:`, e)
-        return `工具执行失败 (${this.name}): ${e?.message || String(e)}`
+        return `${TOOL_EXECUTION_FAILED_PREFIX} (${this.name}): ${e?.message || String(e)}`
       }
     }
 
