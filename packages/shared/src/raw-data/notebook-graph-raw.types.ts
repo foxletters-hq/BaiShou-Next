@@ -50,6 +50,27 @@ export interface NotebookGraphEdgeRawRecord {
   deletedAt: number | null
 }
 
+/** 已抽完、尚未整批对齐写入的窗口载荷。缺省表示对齐尚未完成。 */
+export interface NotebookGraphExtractedWindowPayload {
+  index: number
+  sourceRef: string
+  sourceContext?: string
+  entities: Array<{
+    name?: string
+    type?: string
+    aliases?: string[]
+    summary?: string
+    confidence?: number
+  }>
+  edges: Array<{
+    from?: string
+    to?: string
+    type?: string
+    excerpt?: string
+    confidence?: number
+  }>
+}
+
 export interface NotebookGraphExtractStateRawRecord {
   id: string
   schemaVersion: 1
@@ -64,6 +85,10 @@ export interface NotebookGraphExtractStateRawRecord {
   extractedAt: number
   updatedAt: number
   deletedAt: number | null
+  /** 已抽完窗口的实体/边。缺省表示这是对齐尚未完成的老记录或中断记录。 */
+  extractedWindows?: NotebookGraphExtractedWindowPayload[]
+  /** 整批对齐并写入节点/边之后为 true。缺省视为未写入。 */
+  alignWritten?: boolean
 }
 
 export type NotebookGraphCollection = 'nodes' | 'edges' | 'extract-state'
