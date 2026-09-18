@@ -22,6 +22,8 @@ export function needsProviderTurnContinuation(params: {
   maxSteps: number
   aborted?: boolean
   doomLoopTripped?: boolean
+  /** v2 每 turn 只跑一步：工具跑完后 SDK 常报 stop，仍要续跑把结果交回模型 */
+  singleStepTurn?: boolean
 }): boolean {
   if (params.aborted || params.doomLoopTripped) return false
   if (params.turnIndex + 1 >= params.maxSteps) return false
@@ -29,6 +31,13 @@ export function needsProviderTurnContinuation(params: {
   if (reason === 'tool-calls' || reason === 'tool_calls') return true
   // 部分供应商 finishReason 为空/unknown 且本 turn 有 tool calls → 续跑；普通 stop 不续跑
   if (params.hadToolCalls && (reason === 'unknown' || reason === '')) {
+    return true
+  }
+  if (
+    params.singleStepTurn &&
+    params.hadToolCalls &&
+    (reason === 'stop' || reason === 'end-turn' || reason === 'end_turn')
+  ) {
     return true
   }
   return false
