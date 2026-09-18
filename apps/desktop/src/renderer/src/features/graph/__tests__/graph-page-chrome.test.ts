@@ -4,10 +4,47 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const dir = dirname(fileURLToPath(import.meta.url))
-const src = readFileSync(join(dir, '../GraphPage.tsx'), 'utf8')
-const settingsSrc = readFileSync(join(dir, '../GraphCanvasSettingsPanel.tsx'), 'utf8')
-const pickerSrc = readFileSync(join(dir, '../GraphMonthRangePicker.tsx'), 'utf8')
+
+function readSrc(name: string): string {
+  return readFileSync(join(dir, '..', name), 'utf8')
+}
+
+const src = readSrc('GraphPage.tsx')
+const toolbarSrc = readSrc('GraphPageToolbar.tsx')
+const organizeSrc = readSrc('GraphPageOrganizePane.tsx')
+const canvasPaneSrc = readSrc('GraphPageCanvasPane.tsx')
+const pendingSrc = readSrc('GraphPagePendingPane.tsx')
+const similarSrc = readSrc('GraphPageSimilarPane.tsx')
+const detailSrc = readSrc('GraphPageDetailPane.tsx')
+const contentSrc = readSrc('GraphPageContentPane.tsx')
+const sideSrc = readSrc('GraphPageSideColumn.tsx')
+const canvasStageSrc = readSrc('GraphPageCanvasStage.tsx')
+const overlaysSrc = readSrc('GraphPageOverlays.tsx')
+const extractSrc = readSrc('useGraphPageExtract.ts')
+const searchSrc = readSrc('useGraphPageSearch.ts')
+const selectionSrc = readSrc('useGraphPageSelection.ts')
+const modelSrc = readSrc('useGraphPageModel.ts')
+const settingsSrc = readSrc('GraphCanvasSettingsPanel.tsx')
+const pickerSrc = readSrc('GraphMonthRangePicker.tsx')
 const pickerCss = readFileSync(join(dir, '../GraphMonthRangePicker.module.css'), 'utf8')
+
+const pageChrome = [
+  src,
+  toolbarSrc,
+  organizeSrc,
+  canvasPaneSrc,
+  contentSrc,
+  pendingSrc,
+  similarSrc,
+  detailSrc,
+  sideSrc,
+  canvasStageSrc,
+  overlaysSrc,
+  extractSrc,
+  searchSrc,
+  selectionSrc,
+  modelSrc
+].join('\n')
 
 function sliceBetween(source: string, start: string, end: string): string {
   const from = source.indexOf(start)
@@ -17,16 +54,21 @@ function sliceBetween(source: string, start: string, end: string): string {
   return source.slice(from, to)
 }
 
+function embedPane(host: string, tag: string, pane: string): string {
+  expect(host).toContain(tag)
+  return host.replace(tag, `${pane}\n${tag}`)
+}
+
 describe('GraphPage chrome', () => {
   it('keeps title and search in the toolbar and leaves create/merge/concurrency out', () => {
-    const toolbar = sliceBetween(src, 'styles.toolbar', 'styles.sideColumn')
+    const toolbar = sliceBetween(`${toolbarSrc}\n${sideSrc}`, 'styles.toolbar', 'styles.sideColumn')
     expect(toolbar).toContain("t('graph.title'")
     expect(toolbar).toContain("t('graph.search'")
     expect(toolbar).toContain("t('graph.search_semantic'")
     expect(toolbar).toContain("t('graph.search_text'")
     expect(toolbar).toContain('searchHits')
-    expect(src).toContain('applySearchHits')
-    expect(src).not.toContain('setSelectedId(hits[0].id)')
+    expect(searchSrc).toContain('applySearchHits')
+    expect(searchSrc).not.toContain('setSelectedId(hits[0].id)')
     expect(toolbar).toContain('GraphMonthRangePicker')
     expect(toolbar).toContain('trailing=')
     expect(toolbar).toContain("t('graph.global_view'")
@@ -42,19 +84,23 @@ describe('GraphPage chrome', () => {
   })
 
   it('keeps month range and global view out of the canvas panel', () => {
-    const canvas = sliceBetween(src, ") : sideMode === 'canvas' ? (", ') : (')
+    const canvas = sliceBetween(
+      embedPane(sideSrc, '<GraphPageCanvasPane', canvasPaneSrc),
+      ") : sideMode === 'canvas' ? (",
+      ') : ('
+    )
     expect(settingsSrc).toContain("t('graph.focus_depth'")
     expect(settingsSrc).not.toContain("t('graph.view_section'")
     expect(canvas).toContain('GraphCanvasSettingsPanel')
     expect(canvas).not.toContain('GraphMonthRangePicker')
     expect(canvas).not.toContain('clearToGlobal')
-    expect(src).toContain('GraphMonthRangePicker')
-    expect(src).toContain('clearToGlobal')
+    expect(pageChrome).toContain('GraphMonthRangePicker')
+    expect(pageChrome).toContain('clearToGlobal')
   })
 
   it('mounts extract, create, merge, and identity in the organize rail', () => {
     const organize = sliceBetween(
-      src,
+      embedPane(sideSrc, '<GraphPageOrganizePane', organizeSrc),
       "{sideMode === 'organize' ? (",
       ") : sideMode === 'canvas' ? ("
     )
@@ -64,11 +110,13 @@ describe('GraphPage chrome', () => {
     expect(organize).toContain("t('graph.merge_nodes'")
     expect(organize).toContain('GraphExtractHelpButton')
     expect(organize).toContain("t('graph.extract_one_action'")
-    expect(organize).toContain('runExtractOne')
+    expect(organize).toContain('onRunExtractOne')
+    expect(pageChrome).toContain('runExtractOne')
     expect(organize).toContain("t('graph.profile_section'")
     expect(organize).toContain("t('graph.data_ops'")
     expect(organize).toContain("t('graph.clear_life_action'")
-    expect(organize).toContain('clearLifeGraph')
+    expect(organize).toContain('onClearLifeGraph')
+    expect(pageChrome).toContain('clearLifeGraph')
     expect(organize).not.toContain("t('common.dangerous_action'")
     expect(organize).not.toContain('btnDanger')
     expect(organize).not.toContain("t('graph.filter'")
@@ -78,7 +126,7 @@ describe('GraphPage chrome', () => {
     expect(organize.indexOf("t('graph.merge_nodes'")).toBeLessThan(
       organize.indexOf("t('graph.data_ops'")
     )
-    expect(src).toContain('const [dataSectionOpen, setDataSectionOpen] = useState(false)')
+    expect(organizeSrc).toContain('const [dataSectionOpen, setDataSectionOpen] = useState(false)')
   })
 
   it('keeps clear-life-graph out of general settings', () => {
@@ -91,22 +139,47 @@ describe('GraphPage chrome', () => {
   })
 
   it('closes the search candidate panel after picking a hit', () => {
-    const hits = sliceBetween(src, 'styles.searchHits', 'styles.toolbarRight')
+    const hits = sliceBetween(toolbarSrc, 'styles.searchHits', 'styles.toolbarRight')
     expect(hits).toContain('dismissSearchPanel()')
-    expect(src).toContain("if (e.key === 'Escape') dismissSearchPanel()")
-    expect(src).toContain('setSearchAttempted(false)')
+    expect(searchSrc).toContain("if (event.key === 'Escape') dismissSearchPanel()")
+    expect(toolbarSrc).toContain("if (e.key === 'Escape') props.dismissSearchPanel()")
+    expect(searchSrc).toContain('setSearchAttempted(false)')
   })
 
   it('uses existing node-type colors for selected category chips in the canvas rail', () => {
-    const canvas = sliceBetween(src, ") : sideMode === 'canvas' ? (", ') : (')
+    const canvas = sliceBetween(
+      embedPane(sideSrc, '<GraphPageCanvasPane', canvasPaneSrc),
+      ") : sideMode === 'canvas' ? (",
+      ') : ('
+    )
     expect(canvas).toContain('graphNodeTypeColor')
     expect(canvas).toContain('typeChipActive')
     expect(canvas).toContain("t('graph.filter'")
     expect(canvas).not.toContain('genderChipActive')
   })
 
+  it('mounts similar-pending pairs with merge and keep-apart actions', () => {
+    const similar = sliceBetween(
+      embedPane(contentSrc, '<GraphPageSimilarPane', similarSrc),
+      "{tab === 'similar' &&",
+      "{tab === 'detail' &&"
+    )
+    expect(contentSrc).toContain("t('graph.tab_similar_count'")
+    expect(similar).toContain("t('graph.similar_empty'")
+    expect(similar).toContain("t('graph.similar_merge'")
+    expect(similar).toContain("t('graph.similar_keep_apart'")
+    expect(similar).toContain('variant="outlined"')
+    expect(similar).not.toContain('variant="ghost"')
+    expect(src).toContain('mergeNodes(pair.peerId, pair.nodeId)')
+    expect(src).toContain('dismissSimilarPair(pair.nodeId, pair.peerId)')
+  })
+
   it('mounts pending batch review actions', () => {
-    const pending = sliceBetween(src, "{tab === 'pending' && (", "{tab === 'detail' && (")
+    const pending = sliceBetween(
+      embedPane(contentSrc, '<GraphPagePendingPane', pendingSrc),
+      "{tab === 'pending' &&",
+      "{tab === 'detail' &&"
+    )
     expect(pending).toContain("t('graph.approve_selected'")
     expect(pending).toContain("t('graph.reject_selected'")
     expect(pending).toContain("t('graph.approve_all'")
@@ -119,30 +192,34 @@ describe('GraphPage chrome', () => {
   })
 
   it('locates pending nodes by selection and pending edges by both endpoints', () => {
-    const loc = sliceBetween(src, 'const locatePendingEdge', 'const applyQueueSnapshot')
-    expect(src).toContain('locatePendingNode')
+    const loc = sliceBetween(
+      selectionSrc,
+      'const locatePendingEdge',
+      'const refreshVisibleAfterReview'
+    )
+    expect(selectionSrc).toContain('locatePendingNode')
     expect(loc).toContain('setHighlightedEdgeIds(new Set([edge.id]))')
     expect(loc).toContain('setLocateIds([from.id, to.id])')
     expect(loc).toContain('setLocalView({ nodes: [from, to], edges: [edge] })')
-    expect(src).toContain("'graph.legend_pending_edge'")
+    expect(canvasStageSrc).toContain("'graph.legend_pending_edge'")
   })
 
   it('keeps isolated nodes on the canvas and uses the switch only for names', () => {
-    expect(src).not.toContain('filterGraphIsolatedDisplayNodes')
+    expect(pageChrome).not.toContain('filterGraphIsolatedDisplayNodes')
     expect(settingsSrc).toContain("t('graph.show_isolated_nodes'")
     expect(settingsSrc).toContain('showIsolatedNodes')
-    const canvasSrc = readFileSync(join(dir, '../GraphForceCanvas.tsx'), 'utf8')
-    expect(canvasSrc).toContain('showIsolatedLabels: appearance.showIsolatedNodes')
+    const canvasDrawSrc = readSrc('graph-force-canvas-draw.ts')
+    expect(canvasDrawSrc).toContain('showIsolatedLabels: appearance.showIsolatedNodes')
   })
 
   it('auto-starts graph organize without the batch confirm dialog', () => {
-    expect(src).toContain('skipConfirm?: boolean')
-    expect(src).toContain('void runExtractRef.current(undefined, { skipConfirm: true })')
+    expect(extractSrc).toContain('skipConfirm?: boolean')
+    expect(extractSrc).toContain('void runExtractRef.current(undefined, { skipConfirm: true })')
   })
 
   it('refreshes shared memory readiness after extract queue settles', () => {
-    expect(src).toContain('refreshMemoryReadiness')
-    expect(src).toContain('void refreshRef.current().finally')
+    expect(extractSrc).toContain('refreshMemoryReadiness')
+    expect(extractSrc).toContain('void d.refreshRef.current().finally')
     expect(src).toContain('extracting={readiness.graphExtracting}')
     expect(src).toContain('organizePipeline={readiness.organizePipeline}')
     const css = readFileSync(join(dir, '../GraphPage.module.css'), 'utf8')
@@ -152,9 +229,9 @@ describe('GraphPage chrome', () => {
   })
 
   it('uses the themed Select for adding relations instead of a native html select', () => {
-    expect(src).not.toContain('<select')
-    expect(src).toContain('styles.editSelect')
-    expect(src).toContain('<Select')
+    expect(pageChrome).not.toContain('<select')
+    expect(detailSrc).toContain('styles.editSelect')
+    expect(detailSrc).toContain('<Select')
     expect(src).toContain('setAddEdgeType')
   })
 
@@ -168,32 +245,42 @@ describe('GraphPage chrome', () => {
   })
 
   it('should import and render GraphSplitNodeModal when the page mounts', () => {
-    expect(src).toContain("import { GraphSplitNodeModal } from './GraphSplitNodeModal'")
-    expect(src).toContain('<GraphSplitNodeModal')
+    expect(overlaysSrc).toContain("import { GraphSplitNodeModal } from './GraphSplitNodeModal'")
+    expect(overlaysSrc).toContain('<GraphSplitNodeModal')
+    expect(src).toContain('<GraphPageOverlays')
   })
 
   it('should hide the split entry when the selected node is an entry', () => {
-    const detail = sliceBetween(src, "{tab === 'detail' && (", 'GraphCreateNodeModal')
+    const detail = sliceBetween(
+      `${embedPane(contentSrc, '<GraphPageDetailPane', detailSrc)}\n${overlaysSrc}`,
+      "{tab === 'detail' &&",
+      'GraphCreateNodeModal'
+    )
     expect(detail).toContain("t('graph.split_node'")
     expect(detail).toContain("selectedNode.nodeType !== 'entry'")
   })
 
   it('should render discriminator as its own tag instead of concatenating it into the name', () => {
-    expect(src).toContain('styles.discriminatorTag')
-    expect(src).toContain('selectedNode.discriminator')
-    expect(src).not.toContain('${selectedNode.name}${selectedNode.discriminator}')
-    expect(src).not.toContain('${selectedNode.name}（${selectedNode.discriminator}')
-    expect(src).not.toContain('${selectedNode.name} (${selectedNode.discriminator}')
-    expect(src).toContain('{selectedNode.name}')
+    expect(detailSrc).toContain('styles.discriminatorTag')
+    expect(detailSrc).toContain('selectedNode.discriminator')
+    expect(detailSrc).not.toContain('${selectedNode.name}${selectedNode.discriminator}')
+    expect(detailSrc).not.toContain('${selectedNode.name}（${selectedNode.discriminator}')
+    expect(detailSrc).not.toContain('${selectedNode.name} (${selectedNode.discriminator}')
+    expect(detailSrc).toContain('{selectedNode.name}')
   })
 
   it('should warn about ambiguous sources with listAmbiguousSourceRefs when the bare node has leftovers', () => {
-    expect(src).toContain('listAmbiguousSourceRefs')
-    expect(src).toContain("'graph.ambiguous_sources_hint'")
+    expect(detailSrc).toContain('listAmbiguousSourceRefs')
+    expect(detailSrc).toContain("'graph.ambiguous_sources_hint'")
+  })
+
+  it('should show the persisted suspect reason on the selected node', () => {
+    expect(detailSrc).toContain('readGraphNodeSuspectReason')
+    expect(detailSrc).toContain("'graph.suspect_reason'")
   })
 
   it('should import GraphSplitNodeModal controls from @baishou/ui and avoid raw button or input', () => {
-    const modalSrc = readFileSync(join(dir, '../GraphSplitNodeModal.tsx'), 'utf8')
+    const modalSrc = readSrc('GraphSplitNodeModal.tsx')
     expect(modalSrc).toContain("from '@baishou/ui'")
     expect(modalSrc).toContain('Button')
     expect(modalSrc).toContain('Input')
@@ -217,7 +304,15 @@ describe('GraphPage chrome', () => {
       'register_another_entity',
       'same_name_siblings',
       'revert_split',
-      'ambiguous_sources_hint'
+      'ambiguous_sources_hint',
+      'suspect_reason',
+      'tab_similar',
+      'tab_similar_count',
+      'similar_empty',
+      'similar_hint',
+      'similar_merge',
+      'similar_keep_apart',
+      'similar_dismissed'
     ]
     for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
       const json = readFileSync(join(i18nDir, locale), 'utf8')
