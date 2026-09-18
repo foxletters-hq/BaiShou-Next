@@ -5,6 +5,8 @@ import {
   graphNodeIdForEntity,
   legacyEntryNodeIdForFilePath,
   graphNodeCardText,
+  shouldRefreshExistingGraphNodeEmbed,
+  shouldReuseGraphNodeEmbed,
   normalizeGraphName,
   pickExactGraphNameHit,
   preferGraphOrigin,
@@ -28,6 +30,58 @@ describe('graphNodeCardText', () => {
   it('should drop the trailing newline when summary is empty', () => {
     expect(graphNodeCardText('小张', '')).toBe('小张')
     expect(graphNodeCardText('小张')).toBe('小张')
+  })
+})
+
+describe('shouldReuseGraphNodeEmbed', () => {
+  const existing = { name: '张三', summary: '同事', modelId: 'embed-v1', dimension: 2 }
+
+  it('should reuse when the live card and model still match', () => {
+    expect(
+      shouldReuseGraphNodeEmbed({
+        existing,
+        incomingName: '张三',
+        incomingSummary: '同事',
+        embedderModelId: 'embed-v1'
+      })
+    ).toBe(true)
+  })
+
+  it('should not reuse when the summary changed the card', () => {
+    expect(
+      shouldReuseGraphNodeEmbed({
+        existing,
+        incomingName: '张三',
+        incomingSummary: '大学同学',
+        embedderModelId: 'embed-v1'
+      })
+    ).toBe(false)
+  })
+})
+
+describe('shouldRefreshExistingGraphNodeEmbed', () => {
+  const existing = { name: '张三', summary: '同事', modelId: 'embed-v1', dimension: 2 }
+
+  it('should refresh when a live vector exists and the card changed', () => {
+    expect(
+      shouldRefreshExistingGraphNodeEmbed({
+        existing,
+        incomingName: '张三',
+        incomingSummary: '大学同学',
+        embedderModelId: 'embed-v1'
+      })
+    ).toBe(true)
+  })
+
+  it('should not refresh a node that still has no vector', () => {
+    expect(
+      shouldRefreshExistingGraphNodeEmbed({
+        existing: { name: '张三', summary: '同事', modelId: '', dimension: 0 },
+        incomingName: '张三',
+        incomingSummary: '大学同学',
+        embedderModelId: 'embed-v1'
+      })
+    ).toBe(false)
   })
 })
 

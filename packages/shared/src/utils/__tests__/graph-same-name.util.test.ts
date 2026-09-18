@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { graphSameNameExistingFromRow, isGraphNodeSameNameConflict } from '../graph-same-name.util'
+import {
+  graphSameNameExistingFromRow,
+  isGraphNodeSameNameConflict,
+  pickSameNameConflictFromHits
+} from '../graph-same-name.util'
 
 describe('graph-same-name.util', () => {
   it('ignores the node being edited', () => {
@@ -22,6 +26,34 @@ describe('graph-same-name.util', () => {
       name: '张三',
       nodeType: 'person',
       summary: '同事'
+    })
+  })
+
+  it('should ignore a split sibling when the discriminator still matches the current node', () => {
+    expect(
+      pickSameNameConflictFromHits(
+        [
+          { id: 'bare', name: '张三', nodeType: 'person', discriminator: '', summary: '' },
+          { id: 'split', name: '张三', nodeType: 'person', discriminator: '同事', summary: '' }
+        ],
+        'split',
+        '同事'
+      )
+    ).toBeNull()
+  })
+
+  it('should treat another bare-name row as a conflict when creating a new bare node', () => {
+    expect(
+      pickSameNameConflictFromHits(
+        [{ id: 'bare', name: '张三', nodeType: 'person', discriminator: '', summary: '父亲' }],
+        undefined,
+        ''
+      )
+    ).toEqual({
+      id: 'bare',
+      name: '张三',
+      nodeType: 'person',
+      summary: '父亲'
     })
   })
 

@@ -169,8 +169,54 @@ export function normalizeGraphName(name: string): string {
  * 节点向量用的名片文本。对齐召回、同步入库、集中补齐必须用同一份；
  * 各写一份的话预计算向量会因空格或空摘要处理不同而静默失效。
  */
-export function graphNodeCardText(name: string, summary?: string): string {
+export function graphNodeCardText(name: string, summary?: string | null): string {
   return `${name}\n${summary || ''}`.trim()
+}
+
+export type GraphNodeEmbedCard = {
+  name?: string | null
+  summary?: string | null
+  modelId?: string | null
+  dimension?: number | null
+}
+
+/** 人生图 pending-index：已有同模型向量且名片没变才跳过，避免改名/改摘要后沿用旧向量。 */
+export function shouldReuseGraphNodeEmbed(input: {
+  existing?: GraphNodeEmbedCard | null
+  incomingName: string
+  incomingSummary?: string | null
+  embedderModelId?: string | null
+}): boolean {
+  const existing = input.existing
+  const modelId = input.embedderModelId?.trim()
+  if (!existing || !modelId) return false
+  if (existing.modelId !== modelId) return false
+  if ((existing.dimension ?? 0) <= 0) return false
+  return (
+    graphNodeCardText(existing.name ?? '', existing.summary) ===
+    graphNodeCardText(input.incomingName, input.incomingSummary)
+  )
+}
+
+/**
+ * 笔记本图 pending-index：向量不进 JSONL，新节点留给抽图落库或集中补齐。
+ * 只有库里已有同模型向量、且名片变了，才立刻重算。
+ */
+export function shouldRefreshExistingGraphNodeEmbed(input: {
+  existing?: GraphNodeEmbedCard | null
+  incomingName: string
+  incomingSummary?: string | null
+  embedderModelId?: string | null
+}): boolean {
+  const existing = input.existing
+  const modelId = input.embedderModelId?.trim()
+  if (!existing || !modelId) return false
+  if (existing.modelId !== modelId) return false
+  if ((existing.dimension ?? 0) <= 0) return false
+  return (
+    graphNodeCardText(existing.name ?? '', existing.summary) !==
+    graphNodeCardText(input.incomingName, input.incomingSummary)
+  )
 }
 
 export type GraphExactNameHit = {
