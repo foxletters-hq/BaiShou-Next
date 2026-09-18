@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FolderOpen, Globe, Pencil, Search, Sparkles } from 'lucide-react'
 import {
-  CREATE_SKILL_SLASH_COMMAND,
   WRITER_SKILL_CONTENT,
   WRITER_SKILL_NAME,
-  getCreateSkillGuidePrompt,
   type AgentSkill,
   type AgentSkillWriteInput,
   type AgentWorkspaceEntry
 } from '@baishou/shared'
-import { Input, SegmentedControl, Select, useDialog, useToast } from '@baishou/ui'
+import { SegmentedControl, useDialog, useToast } from '@baishou/ui'
 import { useSettingsPaneApi, useSettingsStore } from '@baishou/store'
 import { McpSettingsPane } from '../../../settings/components/McpSettingsPane'
 import { SETTINGS_HUB_PREFIX } from '../../../settings/settings-route.util'
@@ -22,11 +19,7 @@ import { sortAgentWorkspaces } from '../../utils/workspace-display.util'
 import { stashWorkspaceInitMeta } from '../../utils/workspace-init-meta.util'
 import {
   buildSkillSendMeta,
-  ensureOfficialCreateSkill,
   matchesWorkbenchSkillSearch,
-  omitHiddenBundledTemplateSkills,
-  partitionWorkbenchSkills,
-  resolveScopedWorkbenchSkills,
   resolveSkillEditScope,
   resolveWorkbenchSkillsPageTab
 } from '../../utils/workspace-skill-launch.util'
@@ -36,86 +29,13 @@ import { WorkbenchSkillLaunchDialog } from './WorkbenchSkillLaunchDialog'
 import { WorkbenchHomeSidebar } from '../home/WorkbenchHomeSidebar'
 import pageStyles from '../home/WorkbenchHomePage.module.css'
 import { WORKBENCH_SKILL_CARDS } from './workbench-skill-catalog'
+import { getSkillsApi, useWorkbenchSkillsCatalog } from './useWorkbenchSkillsCatalog'
+import { WorkbenchSkillsSkillTab, GLOBAL_SKILL_SCOPE } from './WorkbenchSkillsSkillTab'
+import { WorkbenchSkillsTemplateTab } from './WorkbenchSkillsTemplateTab'
 import styles from './WorkbenchSkillsPage.module.css'
-
-const GLOBAL_SKILL_SCOPE = 'global'
 
 interface WorkspaceOutletContext {
   setFolderRoot: (path: string | null) => void
-}
-
-type SkillsListApi = {
-  list?: () => Promise<AgentSkill[]>
-  listWorkspace?: (folderRoot: string) => Promise<AgentSkill[]>
-  update?: (input: AgentSkillWriteInput) => Promise<AgentSkill>
-  updateWorkspace?: (folderRoot: string, input: AgentSkillWriteInput) => Promise<AgentSkill>
-}
-
-function getSkillsApi(): SkillsListApi | undefined {
-  return (window.api as { skills?: SkillsListApi }).skills
-}
-
-function SkillIconGrid({
-  skills,
-  icon,
-  iconForSkill,
-  badgeForSkill,
-  launching,
-  onLaunch,
-  onEdit,
-  editLabel
-}: {
-  skills: AgentSkill[]
-  icon?: React.ReactNode
-  iconForSkill?: (skill: AgentSkill) => React.ReactNode
-  badgeForSkill?: (skill: AgentSkill) => string | undefined
-  launching: boolean
-  onLaunch: (skill: AgentSkill) => void
-  onEdit: (skill: AgentSkill) => void
-  editLabel: string
-}) {
-  if (skills.length === 0) return null
-  return (
-    <div className={styles.iconGrid}>
-      {skills.map((skill) => {
-        const badge = badgeForSkill?.(skill)
-        return (
-          <div key={`${skill.source ?? 'software'}:${skill.name}`} className={styles.iconCard}>
-            <button
-              type="button"
-              className={styles.iconCardMain}
-              disabled={launching}
-              onClick={() => onLaunch(skill)}
-            >
-              <span className={styles.iconBadge} aria-hidden>
-                {iconForSkill?.(skill) ?? icon}
-              </span>
-              <span className={styles.cardBody}>
-                <span className={styles.cardTitleRow}>
-                  <span className={styles.cardTitle}>/{skill.name}</span>
-                  {badge ? <span className={styles.skillTag}>{badge}</span> : null}
-                </span>
-                <span className={styles.cardDesc}>{skill.description || skill.name}</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={styles.editBtn}
-              disabled={launching}
-              title={editLabel}
-              aria-label={editLabel}
-              onClick={(event) => {
-                event.stopPropagation()
-                onEdit(skill)
-              }}
-            >
-              <Pencil size={13} strokeWidth={2} aria-hidden />
-            </button>
-          </div>
-        )
-      })}
-    </div>
-  )
 }
 
 export const WorkbenchSkillsPage: React.FC = () => {
@@ -135,10 +55,6 @@ export const WorkbenchSkillsPage: React.FC = () => {
   const [launchSkillTarget, setLaunchSkillTarget] = useState<AgentSkill | null>(null)
   const [editingSkill, setEditingSkill] = useState<AgentSkill | null>(null)
   const [savingSkill, setSavingSkill] = useState(false)
-  const [listedSkills, setListedSkills] = useState<AgentSkill[]>([])
-  const [projectSkills, setProjectSkills] = useState<AgentSkill[]>([])
-  const [loadingSkills, setLoadingSkills] = useState(false)
-  const [loadingProjectSkills, setLoadingProjectSkills] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsWorkspace, setSettingsWorkspace] = useState<{
     id: string
@@ -170,6 +86,13 @@ export const WorkbenchSkillsPage: React.FC = () => {
   )
   const scopeId = selectedWorkspace?.id ?? GLOBAL_SKILL_SCOPE
   const waitingForProject = Boolean(projectParam) && loadingWorkspaces && !selectedWorkspace
+  const catalog = useWorkbenchSkillsCatalog({
+    tab,
+    query,
+    scopeId,
+    folderRoot: selectedWorkspace?.folderRoot ?? '',
+    waitingForProject
+  })
 
   const setTab = useCallback(
     (next: 'skill' | 'template' | 'mcp') => {
@@ -201,91 +124,6 @@ export const WorkbenchSkillsPage: React.FC = () => {
   }, [ensureConfigForSegment, tab])
 
   useEffect(() => {
-    if (tab !== 'skill') return
-    let cancelled = false
-    setLoadingSkills(true)
-    const load = async (): Promise<AgentSkill[]> => {
-      return (await getSkillsApi()?.list?.()) ?? []
-    }
-    void load()
-      .then((skills) => {
-        if (cancelled) return
-        setListedSkills(skills)
-      })
-      .catch(() => {
-        if (!cancelled) setListedSkills([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingSkills(false)
-      })
-    const unsubSkills = (
-      window.api as { skills?: { onChanged?: (cb: () => void) => () => void } }
-    ).skills?.onChanged?.(() => {
-      if (cancelled) return
-      void load()
-        .then((skills) => {
-          if (!cancelled) setListedSkills(skills)
-        })
-        .catch(() => {
-          if (!cancelled) setListedSkills([])
-        })
-    })
-    return () => {
-      cancelled = true
-      unsubSkills?.()
-    }
-  }, [tab])
-
-  useEffect(() => {
-    if (tab !== 'skill') return
-    if (waitingForProject) {
-      setLoadingProjectSkills(true)
-      setProjectSkills([])
-      return
-    }
-    if (scopeId === GLOBAL_SKILL_SCOPE) {
-      setProjectSkills([])
-      setLoadingProjectSkills(false)
-      return
-    }
-    let cancelled = false
-    setLoadingProjectSkills(true)
-    setProjectSkills([])
-    const folderRoot = selectedWorkspace?.folderRoot ?? ''
-    const load = async (): Promise<AgentSkill[]> => {
-      if (!folderRoot) return []
-      return (await getSkillsApi()?.listWorkspace?.(folderRoot)) ?? []
-    }
-    void load()
-      .then((skills) => {
-        if (cancelled) return
-        setProjectSkills(skills)
-      })
-      .catch(() => {
-        if (!cancelled) setProjectSkills([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingProjectSkills(false)
-      })
-    const unsubSkills = (
-      window.api as { skills?: { onChanged?: (cb: () => void) => () => void } }
-    ).skills?.onChanged?.(() => {
-      if (cancelled) return
-      void load()
-        .then((skills) => {
-          if (!cancelled) setProjectSkills(skills)
-        })
-        .catch(() => {
-          if (!cancelled) setProjectSkills([])
-        })
-    })
-    return () => {
-      cancelled = true
-      unsubSkills?.()
-    }
-  }, [scopeId, selectedWorkspace?.folderRoot, tab, waitingForProject])
-
-  useEffect(() => {
     if (!projectParam || loadingWorkspaces || selectedWorkspace) return
     setScope(GLOBAL_SKILL_SCOPE)
   }, [loadingWorkspaces, projectParam, selectedWorkspace, setScope])
@@ -314,51 +152,6 @@ export const WorkbenchSkillsPage: React.FC = () => {
         })
       ),
     [query, t]
-  )
-
-  const skillMatchesQuery = useCallback(
-    (skill: AgentSkill): boolean => {
-      return matchesWorkbenchSkillSearch(query, {
-        name: skill.name,
-        title: skill.description || skill.name,
-        description: skill.description || skill.name
-      })
-    },
-    [query]
-  )
-
-  const visibleOfficialAndUser = useMemo(
-    () => omitHiddenBundledTemplateSkills(listedSkills).filter(skillMatchesQuery),
-    [listedSkills, skillMatchesQuery]
-  )
-  const { official: officialSkills, user: userSkills } = useMemo(
-    () => partitionWorkbenchSkills(visibleOfficialAndUser),
-    [visibleOfficialAndUser]
-  )
-  const visibleProjectSkills = useMemo(
-    () => projectSkills.filter(skillMatchesQuery),
-    [projectSkills, skillMatchesQuery]
-  )
-  const scopedSkills = useMemo(
-    () =>
-      resolveScopedWorkbenchSkills({
-        scope: scopeId === GLOBAL_SKILL_SCOPE ? 'global' : 'project',
-        userSkills,
-        projectSkills: visibleProjectSkills
-      }),
-    [scopeId, userSkills, visibleProjectSkills]
-  )
-
-  const officialIconSkills = useMemo(
-    () =>
-      ensureOfficialCreateSkill(officialSkills, {
-        name: CREATE_SKILL_SLASH_COMMAND,
-        description: CREATE_SKILL_SLASH_COMMAND,
-        content: getCreateSkillGuidePrompt(t),
-        location: '',
-        source: 'software'
-      }).filter(skillMatchesQuery),
-    [officialSkills, skillMatchesQuery, t]
   )
 
   const handleOpenFolder = useCallback(async () => {
@@ -623,153 +416,31 @@ export const WorkbenchSkillsPage: React.FC = () => {
           </div>
 
           {tab === 'template' ? (
-            <>
-              <header className={styles.hero}>
-                <h1 className={styles.title}>{t('workbench.templates_title', '模板')}</h1>
-                <p className={styles.subtitle}>
-                  {t('workbench.templates_subtitle', '用模板快速创建一个项目空间')}
-                </p>
-              </header>
-
-              <label className={styles.search}>
-                <Search className={styles.searchIcon} size={16} strokeWidth={2} aria-hidden />
-                <Input
-                  fieldSize="small"
-                  type="search"
-                  inputClassName={styles.searchInput}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={t('workbench.templates_search', '搜索模板')}
-                  aria-label={t('workbench.templates_search', '搜索模板')}
-                />
-              </label>
-
-              {visibleTemplates.length === 0 ? (
-                <p className={styles.empty}>{t('workbench.templates_empty', '没有匹配的模板')}</p>
-              ) : (
-                <div className={styles.grid}>
-                  {visibleTemplates.map((card) => (
-                    <div key={card.name} className={styles.card}>
-                      <button
-                        type="button"
-                        className={styles.cardMain}
-                        disabled={launching}
-                        onClick={() => beginUseTemplate(card)}
-                      >
-                        <span className={styles.cover}>
-                          <img src={card.image} alt="" />
-                        </span>
-                        <span className={styles.cardBody}>
-                          <span className={styles.cardTitle}>{t(card.titleKey)}</span>
-                          <span className={styles.cardDesc}>{t(card.descriptionKey)}</span>
-                        </span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+            <WorkbenchSkillsTemplateTab
+              query={query}
+              onQueryChange={setQuery}
+              launching={launching}
+              visibleTemplates={visibleTemplates}
+              onUseTemplate={beginUseTemplate}
+            />
           ) : tab === 'skill' ? (
-            <>
-              <header className={styles.hero}>
-                <h1 className={styles.title}>{t('workbench.skills_title', '技能')}</h1>
-                <p className={styles.subtitle}>
-                  {t('workbench.skills_subtitle', '通过任务专用技能扩展工作台的能力')}
-                </p>
-              </header>
-
-              <label className={styles.search}>
-                <Search className={styles.searchIcon} size={16} strokeWidth={2} aria-hidden />
-                <Input
-                  fieldSize="small"
-                  type="search"
-                  inputClassName={styles.searchInput}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={t('workbench.skills_search', '搜索技能')}
-                  aria-label={t('workbench.skills_search', '搜索技能')}
-                />
-              </label>
-
-              <section className={styles.section}>
-                <h2 className={styles.sectionLabel}>
-                  {t('workbench.skills_official', '官方技能')}
-                </h2>
-                {loadingSkills ? (
-                  <p className={styles.empty}>{t('workbench.skills_loading', '正在加载技能')}</p>
-                ) : officialIconSkills.length === 0 ? (
-                  <p className={styles.empty}>
-                    {t('workbench.skills_empty_official', '没有匹配的官方技能')}
-                  </p>
-                ) : (
-                  <SkillIconGrid
-                    skills={officialIconSkills}
-                    icon={<Sparkles size={14} strokeWidth={2} />}
-                    launching={launching}
-                    editLabel={editLabel}
-                    onLaunch={beginUseSkill}
-                    onEdit={setEditingSkill}
-                  />
-                )}
-              </section>
-
-              <section className={styles.section}>
-                <div className={styles.sectionHead}>
-                  <h2 className={styles.sectionLabel}>
-                    {t('workbench.skills_project_section', '项目技能')}
-                  </h2>
-                  <div className={styles.sectionFilter}>
-                    <Select
-                      value={waitingForProject ? (projectParam ?? GLOBAL_SKILL_SCOPE) : scopeId}
-                      options={scopeOptions}
-                      size="small"
-                      leading={
-                        waitingForProject || scopeId !== GLOBAL_SKILL_SCOPE ? (
-                          <FolderOpen size={14} strokeWidth={2} aria-hidden />
-                        ) : (
-                          <Globe size={14} strokeWidth={2} aria-hidden />
-                        )
-                      }
-                      aria-label={t('workbench.skills_scope', '范围')}
-                      onChange={(event) => setScope(event.target.value)}
-                    />
-                  </div>
-                </div>
-                {waitingForProject ||
-                loadingSkills ||
-                (scopeId !== GLOBAL_SKILL_SCOPE && loadingProjectSkills) ? (
-                  <p className={styles.empty}>{t('workbench.skills_loading', '正在加载技能')}</p>
-                ) : scopedSkills.length === 0 ? (
-                  <p className={styles.empty}>
-                    {scopeId === GLOBAL_SKILL_SCOPE
-                      ? query.trim()
-                        ? t('workbench.skills_empty_custom_search', '没有匹配的自定义技能')
-                        : t('workbench.skills_empty_custom', '还没有自定义技能')
-                      : query.trim()
-                        ? t('workbench.skills_empty_project_search', '没有匹配的项目技能')
-                        : t(
-                            'workbench.skills_empty_project',
-                            '这个项目的 skill 或 skills 目录里还没有技能'
-                          )}
-                  </p>
-                ) : (
-                  <SkillIconGrid
-                    skills={scopedSkills}
-                    icon={
-                      scopeId === GLOBAL_SKILL_SCOPE ? (
-                        <Globe size={14} strokeWidth={2} />
-                      ) : (
-                        <FolderOpen size={14} strokeWidth={2} />
-                      )
-                    }
-                    launching={launching}
-                    editLabel={editLabel}
-                    onLaunch={beginUseSkill}
-                    onEdit={setEditingSkill}
-                  />
-                )}
-              </section>
-            </>
+            <WorkbenchSkillsSkillTab
+              query={query}
+              onQueryChange={setQuery}
+              launching={launching}
+              editLabel={editLabel}
+              loadingSkills={catalog.loadingSkills}
+              officialIconSkills={catalog.officialIconSkills}
+              waitingForProject={waitingForProject}
+              projectParam={projectParam}
+              scopeId={scopeId}
+              scopeOptions={scopeOptions}
+              loadingProjectSkills={catalog.loadingProjectSkills}
+              scopedSkills={catalog.scopedSkills}
+              onLaunch={beginUseSkill}
+              onEdit={setEditingSkill}
+              onScopeChange={setScope}
+            />
           ) : (
             <>
               <header className={styles.hero}>
