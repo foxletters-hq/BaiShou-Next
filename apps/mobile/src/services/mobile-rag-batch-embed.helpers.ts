@@ -84,6 +84,28 @@ export function resolveControlledDiaryBatchEmbedCount(
   return result.embedded
 }
 
+async function runPendingFillAfterDiaryBatch(
+  deps: MobileRagServiceDeps,
+  onProgress?: RagProgressCallback
+): Promise<{
+  graphUpdated: number
+  graphFailed: number
+  graphTotal: number
+  skippedReason?: 'no-vault' | 'adapter-unavailable' | 'nothing-to-embed'
+}> {
+  try {
+    const { runMobileManualPendingEmbedFill } = await import('./mobile-pending-embed-fill')
+    return await runMobileManualPendingEmbedFill(deps, {
+      onProgress: ({ completed, total, statusText }) => {
+        onProgress?.({ current: completed, total, status: statusText })
+      }
+    })
+  } catch (error) {
+    logger.warn('[MobileRag] pending embed fill after diary batch failed', error as Error)
+    return { graphUpdated: 0, graphFailed: 0, graphTotal: 0 }
+  }
+}
+
 export async function runControlledDiaryBatchEmbedCore(
   deps: MobileRagServiceDeps,
   options?: {
@@ -196,10 +218,15 @@ export async function runControlledDiaryBatchEmbedCore(
 
     if (globalTotal === 0) {
       await finalizeBatchEmbedRagConfig(deps, false)
+      const fillResult = await runPendingFillAfterDiaryBatch(deps, onProgress)
       const { invalidateMobilePendingEmbedCountsCache } =
         await import('./mobile-pending-embed-counts')
       invalidateMobilePendingEmbedCountsCache()
-      return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
+      // 日记为 0 仍走 fill；只有 fill 也确认无待办才标 nothing-to-embed
+      if (fillResult.skippedReason === 'nothing-to-embed') {
+        return { embedded: 0, failed: 0, total: 0, skipped: true, skipReason: 'nothing-to-embed' }
+      }
+      return { embedded: 0, failed: 0, total: 0, skipped: false }
     }
 
     onProgress?.({
@@ -339,12 +366,7 @@ export async function runControlledDiaryBatchEmbedCore(
       total: globalTotal,
       vaultCount: vaultPlans.length
     })
-    try {
-      const { runMobileManualPendingEmbedFill } = await import('./mobile-pending-embed-fill')
-      await runMobileManualPendingEmbedFill(deps)
-    } catch (error) {
-      logger.warn('[MobileRag] pending embed fill after diary batch failed', error as Error)
-    }
+    await runPendingFillAfterDiaryBatch(deps, onProgress)
     return {
       embedded: progress.embedded,
       failed: progress.failed,
