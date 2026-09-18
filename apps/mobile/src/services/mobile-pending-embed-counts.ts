@@ -7,10 +7,11 @@ import {
 } from '@baishou/shared'
 import { MemorySyncService } from '@baishou/core-mobile'
 import { GraphRepository } from '@baishou/database'
-import { countUnindexedDiariesForActiveVault } from './mobile-unindexed-diary-count'
+import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import { hasPendingCountSource } from './mobile-pending-embed-ready.util'
 import { resolveVaultScope, type MobileRagServiceDeps } from './mobile-rag-core.helpers'
 import { getMobileMemoryRawManager } from './mobile-raw-data-source.runtime'
-import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
+import { countUnindexedDiariesForActiveVault } from './mobile-unindexed-diary-count'
 
 const cache = createPendingEmbedCountCache()
 
@@ -48,6 +49,10 @@ export async function getPendingEmbedCounts(
 async function countPendingMemories(deps: MobileRagServiceDeps, vaultId: string): Promise<number> {
   try {
     const memoryManager = getMobileMemoryRawManager()
+    if (!hasPendingCountSource(memoryManager)) {
+      // 本函数与 PendingEmbedCounts 都只能表达数字，无法单独标「数不出来」
+      return 0
+    }
     const sync = new MemorySyncService(memoryManager, {
       embedText: async () => {
         throw new Error('countPendingMemories: embedText should not run')

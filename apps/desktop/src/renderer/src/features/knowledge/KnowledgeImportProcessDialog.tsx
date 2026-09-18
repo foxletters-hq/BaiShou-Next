@@ -48,10 +48,15 @@ export function KnowledgeImportProcessDialog({
       className={styles.dialogSettings}
     >
       <p className={styles.guideHint}>
-        {t(
-          'knowledge.import_process_hint',
-          '会先提取正文，再按选择写入向量、图关系或两者。'
-        )}
+        {mode === 'later'
+          ? t(
+              'knowledge.import_process_hint_later',
+              '只保存文件，显示为待整理。整理之前 AI 无法使用。之后可在资料上选择嵌入。'
+            )
+          : t(
+              'knowledge.import_process_hint',
+              '会先提取正文，再按选择写入向量、图关系或两者。'
+            )}
       </p>
       {prompt && prompt.fileNames.length > 0 ? (
         <ul className={styles.extractHintFiles}>
@@ -75,32 +80,34 @@ export function KnowledgeImportProcessDialog({
           aria-label={t('knowledge.import_process_mode', '本次处理')}
         />
       </div>
-      <div className={styles.importProcessMeta}>
-        <div className={styles.importProcessMetaRow}>
-          <span className={styles.importProcessMetaLabel}>
-            {t('knowledge.import_process_extract', '提取方式')}
-          </span>
-          <span className={styles.importProcessMetaValue}>
-            {prompt?.extractEngineLabel || '—'}
-          </span>
+      {mode !== 'later' ? (
+        <div className={styles.importProcessMeta}>
+          <div className={styles.importProcessMetaRow}>
+            <span className={styles.importProcessMetaLabel}>
+              {t('knowledge.import_process_extract', '提取方式')}
+            </span>
+            <span className={styles.importProcessMetaValue}>
+              {prompt?.extractEngineLabel || '—'}
+            </span>
+          </div>
+          <div className={styles.importProcessMetaRow}>
+            <span className={styles.importProcessMetaLabel}>
+              {t('knowledge.import_process_embedding', '嵌入模型')}
+            </span>
+            <span className={styles.importProcessMetaValue}>
+              {prompt?.embeddingModelLabel || '—'}
+            </span>
+          </div>
+          <div className={styles.importProcessMetaRow}>
+            <span className={styles.importProcessMetaLabel}>
+              {t('knowledge.import_process_graph', '关系抽取模型')}
+            </span>
+            <span className={styles.importProcessMetaValue}>
+              {prompt?.graphModelLabel || '—'}
+            </span>
+          </div>
         </div>
-        <div className={styles.importProcessMetaRow}>
-          <span className={styles.importProcessMetaLabel}>
-            {t('knowledge.import_process_embedding', '嵌入模型')}
-          </span>
-          <span className={styles.importProcessMetaValue}>
-            {prompt?.embeddingModelLabel || '—'}
-          </span>
-        </div>
-        <div className={styles.importProcessMetaRow}>
-          <span className={styles.importProcessMetaLabel}>
-            {t('knowledge.import_process_graph', '关系抽取模型')}
-          </span>
-          <span className={styles.importProcessMetaValue}>
-            {prompt?.graphModelLabel || '—'}
-          </span>
-        </div>
-      </div>
+      ) : null}
       <div className={styles.extractHintActions}>
         <Button type="button" onClick={onCancel}>
           {t('common.cancel', '取消')}

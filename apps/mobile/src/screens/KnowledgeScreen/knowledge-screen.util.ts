@@ -31,7 +31,7 @@ export function knowledgeSourceStatusLabel(
     case 'failed':
       return t('knowledge.status_failed', '失败')
     case 'stored':
-      return t('knowledge.status_stored', '仅原文')
+      return t('knowledge.status_stored', '待整理')
     default:
       return status
   }

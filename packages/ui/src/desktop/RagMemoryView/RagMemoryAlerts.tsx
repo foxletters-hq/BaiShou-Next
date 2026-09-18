@@ -235,7 +235,9 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
                   </li>
                 )
               })}
-              {showGraphInEmbedPhases ? graphPhaseRow : null}
+              {showGraphInEmbedPhases && (ragState.phases?.graphExtract?.total ?? 0) <= 0
+                ? graphPhaseRow
+                : null}
             </ul>
           ) : (
             <>

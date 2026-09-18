@@ -10,4 +10,8 @@ describe('knowledge-screen.util', () => {
   it('should localize ready status', () => {
     expect(knowledgeSourceStatusLabel('ready', (_key, fallback) => fallback)).toBe('就绪')
   })
+
+  it('should localize stored status as pending organize', () => {
+    expect(knowledgeSourceStatusLabel('stored', (_key, fallback) => fallback)).toBe('待整理')
+  })
 })

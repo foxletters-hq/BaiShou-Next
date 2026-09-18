@@ -4,7 +4,11 @@ import { GraphRepository } from '@baishou/database'
 import { logger, probeEmbeddingApi } from '@baishou/shared'
 import { assertMobileRagCanContinue } from './mobile-rag-operation-control'
 import { agentDbRuntimeRef } from './mobile-agent-db-runtime-ref'
-import { consumeMobileKnowledgeIngestJobs } from './mobile-knowledge-ingest-jobs.consumer'
+import {
+  consumeMobileKnowledgeGraphJobs,
+  consumeMobileKnowledgeIngestJobs
+} from './mobile-knowledge-ingest-jobs.consumer'
+import { mobileGraphExtractQueue } from './mobile-graph-extract-queue.service'
 import { invalidateMobilePendingEmbedCountsCache } from './mobile-pending-embed-counts'
 import type { MobileRagServiceDeps } from './mobile-rag-core.helpers'
 import { resolveVaultScope } from './mobile-rag-core.helpers'
@@ -63,6 +67,33 @@ export async function runMobileManualPendingEmbedFill(deps: MobileRagServiceDeps
   await assertMobileRagCanContinue()
 
   try {
+    const { expoKnowledgeConnectionManager, NotebookGraphRepository } =
+      await import('@baishou/database/expo')
+    if (expoKnowledgeConnectionManager.isConnected()) {
+      const notebookRepo = new NotebookGraphRepository(expoKnowledgeConnectionManager.getDb())
+      const notebookUnembedded = await notebookRepo.listUnembeddedLiveNodes(vaultId)
+      const notebookById = new Map(notebookUnembedded.map((row) => [row.id, row]))
+      if (notebookUnembedded.length > 0) {
+        await backfillUnembeddedGraphNodes({
+          vaultId,
+          listUnembeddedLiveNodes: async () => notebookUnembedded,
+          updateNodeEmbedding: (id, vid, embedding, modelId) => {
+            const row = notebookById.get(id)
+            if (!row) return Promise.resolve()
+            return notebookRepo.updateNodeEmbedding(id, vid, row.notebookId, embedding, modelId)
+          },
+          embedQuery: (text) => adapter.embedQuery(text),
+          modelId: adapter.embeddingModelId ?? ''
+        })
+      }
+    }
+  } catch (error) {
+    logger.warn('[PendingEmbedFill] mobile notebook graph node fill failed', error as Error)
+  }
+
+  await assertMobileRagCanContinue()
+
+  try {
     const { expoKnowledgeConnectionManager, KnowledgeRepository } =
       await import('@baishou/database/expo')
     if (expoKnowledgeConnectionManager.isConnected()) {
@@ -90,6 +121,32 @@ export async function runMobileManualPendingEmbedFill(deps: MobileRagServiceDeps
     }
   } catch (error) {
     logger.warn('[PendingEmbedFill] mobile knowledge fill failed', error as Error)
+  }
+
+  await assertMobileRagCanContinue()
+
+  try {
+    for (let i = 0; i < 20; i += 1) {
+      await assertMobileRagCanContinue()
+      const result = await consumeMobileKnowledgeGraphJobs({
+        reason: 'manual-pending-fill',
+        limit: 10
+      })
+      if (!result.processed) break
+    }
+    await mobileGraphExtractQueue.enqueue({})
+    await mobileGraphExtractQueue.waitUntilIdle({
+      shouldContinue: async () => {
+        try {
+          await assertMobileRagCanContinue()
+          return true
+        } catch {
+          return false
+        }
+      }
+    })
+  } catch (error) {
+    logger.warn('[PendingEmbedFill] mobile graph extract phase failed', error as Error)
   }
 
   invalidateMobilePendingEmbedCountsCache()

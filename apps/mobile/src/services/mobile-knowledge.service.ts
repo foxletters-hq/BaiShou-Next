@@ -99,6 +99,13 @@ export async function mobileListSources(notebookId: string) {
   return requireRepo().listSources(notebookId)
 }
 
+export async function mobileDeleteSource(sourceId: string): Promise<void> {
+  const id = sourceId.trim()
+  if (!id) throw new Error('sourceId required')
+  const svc = await buildMobileIngestService()
+  await svc.deleteSource(id)
+}
+
 export async function mobileGetKnowledgeStats(notebookId?: string) {
   return requireRepo().getStats(notebookId, await resolveMobileActiveVaultId())
 }

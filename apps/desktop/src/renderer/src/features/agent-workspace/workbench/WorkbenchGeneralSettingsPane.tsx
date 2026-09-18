@@ -133,7 +133,7 @@ export const WorkbenchGeneralSettingsPane: React.FC<WorkbenchGeneralSettingsPane
               <span className="settings-list-tile-subtitle">
                 {t(
                   'workbench.knowledge_import_process_desc',
-                  '导入文件、粘贴文本或网址后，默认写入向量、图关系或两者。每次导入仍可改本次选择。'
+                  '导入文件、粘贴文本或网址后，默认写入向量、图关系、两者，或稍后整理。每次导入仍可改本次选择。'
                 )}
               </span>
             </div>

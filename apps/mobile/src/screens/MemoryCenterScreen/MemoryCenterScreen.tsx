@@ -17,7 +17,8 @@ import {
   type MemoryCenterTab,
   type MemoryReadinessRow,
   type PendingEmbedCounts,
-  type RagBatchEmbedPhaseId
+  type RagBatchEmbedPhaseId,
+  type RagConfig
 } from '@baishou/shared'
 import {
   Button,
@@ -38,6 +39,10 @@ import {
   readMemoryOnboardingDismissed,
   writeMemoryOnboardingDismissed
 } from './memory-center-onboarding.storage'
+import {
+  normalizeMemoryCenterRagConfig,
+  readActiveVaultSafely
+} from './memory-center-data.util'
 import { snapshotMemoryEmbedPhases } from './memory-center-organize.util'
 
 function rowLabel(
@@ -84,7 +89,7 @@ export function MemoryCenterScreen() {
   )
   const [pendingGraphCount, setPendingGraphCount] = useState(0)
   const [globalModels, setGlobalModels] = useState<Record<string, unknown> | null>(null)
-  const [ragConfig, setRagConfig] = useState<{ ragEnabled?: boolean } | null>(null)
+  const [ragConfig, setRagConfig] = useState<Pick<RagConfig, 'ragEnabled'> | null>(null)
   const [onboardingDismissed, setOnboardingDismissed] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -107,11 +112,11 @@ export function MemoryCenterScreen() {
         .catch(() => EMPTY_PENDING_EMBED_COUNTS) ?? Promise.resolve(EMPTY_PENDING_EMBED_COUNTS)
     ])
     setGlobalModels(models ?? null)
-    setRagConfig(rag ?? null)
+    setRagConfig(normalizeMemoryCenterRagConfig(rag))
     setOnboardingDismissed(dismissed)
     setPendingEmbedParts(embedCounts ?? EMPTY_PENDING_EMBED_COUNTS)
 
-    const activeVault = await services.vaultService.getActiveVault().catch(() => null)
+    const activeVault = readActiveVaultSafely(services.vaultService)
     const vaultName = activeVault?.name || 'Personal'
     const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
     try {
@@ -178,57 +183,39 @@ export function MemoryCenterScreen() {
       router.push('/settings/ai-models')
       return
     }
-    if (action === 'embed-then-graph') {
-      selectTab('vectors')
-      setBusy(true)
-      try {
-        const snapshot = snapshotMemoryEmbedPhases(pendingEmbedParts)
-        const phaseKey =
-          snapshot.phase === 'starting' || snapshot.phase === 'finishing'
-            ? 'memory.readiness_organizing'
-            : ragBatchEmbedPhaseLabelKey(snapshot.phase as RagBatchEmbedPhaseId)
-        toast.showInfo(
-          t(phaseKey, t('memory.readiness_organizing', '正在整理记忆…'), {
-            count: snapshot.total
-          })
-        )
-        await (
-          services.ragService as {
-            batchEmbed?: () => Promise<number>
-          }
-        ).batchEmbed?.()
-        await refresh()
-      } catch (error) {
-        toast.showError(error instanceof Error ? error.message : String(error))
-        setBusy(false)
-        return
-      }
-      setBusy(false)
-    }
     const runtime = getAgentDbRuntime()
-    if (!runtime?.drizzleDb) {
-      router.push('/graph')
-      return
+    if (runtime?.drizzleDb) {
+      const activeVault = readActiveVaultSafely(services.vaultService)
+      const vaultName = activeVault?.name || 'Personal'
+      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
+      mobileGraphExtractQueue.setContext({
+        vaultId,
+        vaultName,
+        drizzleDb: runtime.drizzleDb,
+        shadowRepo: new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId),
+        pathService: services.pathService,
+        fileSystem: services.fileSystem,
+        settingsManager: services.settingsManager
+      })
     }
     setBusy(true)
     try {
-      const activeVault = await services.vaultService.getActiveVault().catch(() => null)
-      const vaultName = activeVault?.name || 'Personal'
-      const vaultId = activeVault?.id ?? deriveLegacyVaultId(vaultName)
-      await mobileGraphExtractQueue.enqueue(
-        {},
-        {
-          vaultId,
-          vaultName,
-          drizzleDb: runtime.drizzleDb,
-          shadowRepo: new ShadowIndexRepository(shadowConnectionManager.getDb(), vaultId),
-          pathService: services.pathService,
-          fileSystem: services.fileSystem,
-          settingsManager: services.settingsManager
-        }
+      const snapshot = snapshotMemoryEmbedPhases(pendingEmbedParts, pendingGraphCount)
+      const phaseKey =
+        snapshot.phase === 'starting' || snapshot.phase === 'finishing'
+          ? 'memory.readiness_organizing'
+          : ragBatchEmbedPhaseLabelKey(snapshot.phase as RagBatchEmbedPhaseId)
+      toast.showInfo(
+        t(phaseKey, t('memory.readiness_organizing', '正在整理记忆…'), {
+          count: snapshot.total
+        })
       )
-      toast.showSuccess(t('graph.extract_queued_one', '已加入后台整理队列，可继续写日记'))
-      router.push('/graph')
+      await (
+        services.ragService as {
+          batchEmbed?: () => Promise<number>
+        }
+      ).batchEmbed?.()
+      await refresh()
     } catch (error) {
       toast.showError(error instanceof Error ? error.message : String(error))
     } finally {

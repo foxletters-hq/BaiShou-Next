@@ -14,5 +14,7 @@ describe('mobile pending embed counts notebook nodes', () => {
     expect(src).toContain('missingNotebookGraphNodeCount')
     expect(src).toContain('countPendingNotebookGraphNodes')
     expect(src).toContain('countPendingKnowledgeSources')
+    expect(src).toContain('hasPendingCountSource')
+    expect(src).toContain('if (!hasPendingCountSource(memoryManager))')
   })
 })

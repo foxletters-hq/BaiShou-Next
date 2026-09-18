@@ -7,14 +7,18 @@ import {
   type RagBatchEmbedPhaseKind
 } from '@baishou/shared'
 
-export function snapshotMemoryEmbedPhases(counts: PendingEmbedCounts): {
+export function snapshotMemoryEmbedPhases(
+  counts: PendingEmbedCounts,
+  graphExtract = 0
+): {
   phase: RagBatchEmbedPhaseKind
   phases: RagBatchEmbedPhaseCounts
   total: number
 } {
-  const phases = phaseCountsFromPending(counts)
+  const input = { ...counts, graphExtract }
+  const phases = phaseCountsFromPending(input)
   return {
-    phase: firstActivePhase(counts),
+    phase: firstActivePhase(input),
     phases,
     total: overallFromPhaseCounts(phases).total
   }

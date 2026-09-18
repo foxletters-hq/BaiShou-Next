@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   firstActivePhase,
-  loadGraphExtractConcurrency,
   phaseCountsFromPending,
   type MemoryReadinessRowId
 } from '@baishou/shared'
@@ -11,16 +10,10 @@ import { SegmentedControl } from '@baishou/ui'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { ensureDesktopGraphSelfName } from '../diary/utils/ensure-graph-self-name'
 import { GraphPage } from '../graph/GraphPage'
-import { graphQueueExtract } from '../graph/graph-extract-queue.api'
 import { MemoryHelpButton } from './MemoryHelpButton'
 import { MemoryReadinessBar } from './MemoryReadinessBar'
 import { MemoryVectorTab } from './MemoryVectorTab'
-import {
-  armGraphExtracting,
-  refreshMemoryReadiness,
-  setMemoryOrganizePipeline,
-  useMemoryReadiness
-} from './useMemoryReadiness'
+import { setMemoryOrganizePipeline, useMemoryReadiness } from './useMemoryReadiness'
 import { patchCachedRagActiveState } from '../settings/rag-runtime-cache'
 import {
   memoryCenterPathForTab,
@@ -38,8 +31,6 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
   const [localTab, setLocalTab] = useState<MemoryCenterTab>(embedded ? 'vectors' : routeTab)
   const tab = embedded ? localTab : routeTab
   const readiness = useMemoryReadiness()
-  const [highlight, setHighlight] = useState<'start-organize' | null>(null)
-  const [autoStartOrganize, setAutoStartOrganize] = useState(false)
 
   const goConfigure = useCallback(() => {
     if (location.pathname.startsWith('/settings')) {
@@ -60,56 +51,19 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
     [embedded, navigate]
   )
 
-  const continueGraphAfterEmbedRef = useRef(false)
-  const wasIndexingRef = useRef(false)
-  const tabRef = useRef(tab)
-  tabRef.current = tab
-
-  const beginGraphOrganize = useCallback(async () => {
-    setMemoryOrganizePipeline('graph')
-    armGraphExtracting(readiness.pendingGraphCount)
-    if (tabRef.current === 'graph') {
-      setHighlight('start-organize')
-      setAutoStartOrganize(true)
-      return
-    }
-    const selfName = await ensureDesktopGraphSelfName()
-    if (!selfName) {
-      setMemoryOrganizePipeline('idle')
-      armGraphExtracting(0)
-      return
-    }
-    try {
-      const result = await graphQueueExtract({ concurrency: loadGraphExtractConcurrency() })
-      if (!result?.queued) {
-        setMemoryOrganizePipeline('idle')
-        armGraphExtracting(0)
-      }
-      void refreshMemoryReadiness()
-    } catch {
-      setMemoryOrganizePipeline('idle')
-      armGraphExtracting(0)
-    }
-  }, [readiness.pendingGraphCount])
-
-  const finishEmbedThenGraph = useCallback(async () => {
-    if (!continueGraphAfterEmbedRef.current) return
-    continueGraphAfterEmbedRef.current = false
-    await beginGraphOrganize()
-  }, [beginGraphOrganize])
-
   const startBatchEmbed = useCallback(async (): Promise<
     'ok' | 'cancelled' | 'already-running' | 'failed'
   > => {
     const parts = readiness.pendingEmbedParts
+    const graphExtract = readiness.pendingGraphCount
     patchCachedRagActiveState({
       isRunning: true,
       type: 'batchEmbed',
       progress: 0,
-      total: Math.max(parts.total, 1),
+      total: Math.max(parts.total + graphExtract, 1),
       statusText: t('memory.readiness_organizing', '正在整理记忆…'),
-      phase: firstActivePhase(parts),
-      phases: phaseCountsFromPending(parts),
+      phase: firstActivePhase({ ...parts, graphExtract }),
+      phases: phaseCountsFromPending({ ...parts, graphExtract }),
       error: undefined,
       paused: false,
       cancelling: false
@@ -128,7 +82,7 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
       })
       return 'failed'
     }
-  }, [readiness.pendingEmbedParts, t])
+  }, [readiness.pendingEmbedParts, readiness.pendingGraphCount, t])
 
   const startOrganizeMemory = useCallback(async () => {
     const action = resolveMemoryOrganizeAction({
@@ -141,37 +95,25 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
       goConfigure()
       return
     }
-    if (action === 'graph') {
-      await beginGraphOrganize()
-      return
+    if (readiness.pendingGraphCount > 0) {
+      const selfName = await ensureDesktopGraphSelfName()
+      if (!selfName && action === 'graph') return
     }
     setMemoryOrganizePipeline('embed')
-    continueGraphAfterEmbedRef.current = true
     const outcome = await startBatchEmbed()
     if (outcome === 'already-running') return
     if (outcome !== 'ok') {
-      continueGraphAfterEmbedRef.current = false
       setMemoryOrganizePipeline('idle')
-      return
     }
-    await finishEmbedThenGraph()
   }, [
-    beginGraphOrganize,
-    finishEmbedThenGraph,
     goConfigure,
     readiness.embeddingConfigured,
     readiness.indexing,
     readiness.pendingEmbedCount,
+    readiness.pendingGraphCount,
     readiness.unindexedDiaryCount,
     startBatchEmbed
   ])
-
-  useEffect(() => {
-    const indexingNow = Boolean(readiness.indexing)
-    const wasIndexing = wasIndexingRef.current
-    wasIndexingRef.current = indexingNow
-    if (wasIndexing && !indexingNow) finishEmbedThenGraph()
-  }, [finishEmbedThenGraph, readiness.indexing])
 
   const topBarOmit = useMemo(() => {
     const omit: MemoryReadinessRowId[] = ['extract', 'graph']
@@ -237,12 +179,7 @@ export const MemoryCenterPage: React.FC<{ embedded?: boolean }> = ({ embedded = 
           <MemoryVectorTab />
         ) : (
           <div className={styles.graphHost}>
-            <GraphPage
-              embedded
-              highlightStartOrganize={highlight === 'start-organize'}
-              autoStartOrganize={autoStartOrganize}
-              onAutoStartOrganizeConsumed={() => setAutoStartOrganize(false)}
-            />
+            <GraphPage embedded onUnifiedOrganize={startOrganizeMemory} />
           </div>
         )}
       </div>

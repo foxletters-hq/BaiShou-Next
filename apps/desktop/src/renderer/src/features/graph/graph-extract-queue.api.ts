@@ -4,9 +4,44 @@
  * is stale after renderer HMR (Electron preload only reloads on full app restart).
  */
 
-import type { GraphExtractQueueSnapshot } from '@baishou/shared'
+import {
+  emptyGraphExtractQueueSnapshot,
+  graphExtractOverallProgress,
+  type GraphExtractQueueSnapshot
+} from '@baishou/shared'
 
 export type { GraphExtractQueueSnapshot, GraphExtractQueueItem } from '@baishou/shared'
+
+/** Window.api 把 aligningCount 等字段标成可选，共享快照类型则必填；计数缺省为 0，总进度缺省按条目重算 */
+type GraphExtractQueueStateFromApi = {
+  items: GraphExtractQueueSnapshot['items']
+  activeCount: number
+  pendingCount: number
+  runningCount: number
+  aligningCount?: number
+  completedCount: number
+  errorCount: number
+  overallProgress?: number
+  alignPoolSize?: number
+  alignPoolCount?: number
+}
+
+export function normalizeQueueSnapshot(state: GraphExtractQueueStateFromApi): GraphExtractQueueSnapshot {
+  const defaults = emptyGraphExtractQueueSnapshot()
+  return {
+    items: state.items,
+    activeCount: state.activeCount,
+    pendingCount: state.pendingCount,
+    runningCount: state.runningCount,
+    aligningCount: state.aligningCount ?? defaults.aligningCount,
+    completedCount: state.completedCount,
+    errorCount: state.errorCount,
+    // 与 GraphPage 原来的 `overallProgress ?? graphExtractOverallProgress(items)` 一致，避免缺字段时把进度写成 0
+    overallProgress: state.overallProgress ?? graphExtractOverallProgress(state.items),
+    alignPoolSize: state.alignPoolSize ?? defaults.alignPoolSize,
+    alignPoolCount: state.alignPoolCount ?? defaults.alignPoolCount
+  }
+}
 
 function electronInvoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const invoke = window.electron?.ipcRenderer?.invoke
@@ -39,9 +74,9 @@ export function graphSetExtractConcurrency(concurrency: number) {
   return invoke('graph:set-extract-concurrency', { concurrency }) as Promise<{ concurrency: number }>
 }
 
-export function graphGetQueueState() {
+export function graphGetQueueState(): Promise<GraphExtractQueueSnapshot> {
   if (typeof window.api?.graph?.getQueueState === 'function') {
-    return window.api.graph.getQueueState()
+    return window.api.graph.getQueueState().then(normalizeQueueSnapshot)
   }
   return electronInvoke<GraphExtractQueueSnapshot>('graph:get-queue-state')
 }
@@ -67,7 +102,7 @@ export function graphOnQueueProgress(
   callback: (state: GraphExtractQueueSnapshot) => void
 ): () => void {
   if (typeof window.api?.graph?.onQueueProgress === 'function') {
-    return window.api.graph.onQueueProgress(callback)
+    return window.api.graph.onQueueProgress((state) => callback(normalizeQueueSnapshot(state)))
   }
   const ipc = window.electron?.ipcRenderer
   if (!ipc?.on) {

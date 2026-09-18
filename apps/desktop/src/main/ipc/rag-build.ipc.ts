@@ -340,13 +340,13 @@ export function registerRagBuildIPC() {
     })()
 
     try {
-      const { getPendingEmbedCountsForActiveVault, invalidatePendingEmbedCountsCache } =
+      const { getOrganizePendingSnapshot, invalidatePendingEmbedCountsCache } =
         await import('../services/pending-embed-counts.service')
       invalidatePendingEmbedCountsCache()
       sendProgress(0, 1, '正在开始索引…', { phase: 'starting' })
-      const counts = await getPendingEmbedCountsForActiveVault()
+      const counts = await getOrganizePendingSnapshot()
       let phases = phaseCountsFromPending(counts)
-      const overallTotal = Math.max(counts.total, 1)
+      const overallTotal = overallFromPhaseCounts(phases).total
       sendProgress(0, overallTotal, '正在开始索引…', {
         phase: firstActivePhase(counts),
         phases
@@ -406,7 +406,12 @@ export function registerRagBuildIPC() {
         }
       }
 
-      sendProgress(overallTotal, overallTotal, '', { running: false, phase: 'finishing', phases })
+      const finished = overallFromPhaseCounts(phases)
+      sendProgress(finished.completed, finished.total, '', {
+        running: false,
+        phase: 'finishing',
+        phases
+      })
       return {
         ok: true,
         graphUpdated: fillResult.graphUpdated,

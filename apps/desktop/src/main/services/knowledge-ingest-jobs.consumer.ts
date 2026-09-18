@@ -162,6 +162,13 @@ export async function consumeKnowledgeIngestJobs(options?: {
   return consumeKnowledgeLane('index', options)
 }
 
+export async function consumeKnowledgeGraphJobs(options?: {
+  limit?: number
+  reason?: string
+}): Promise<ConsumeResult> {
+  return consumeKnowledgeLane('graph', options)
+}
+
 async function consumeKnowledgeLane(
   lane: IngestLane,
   options?: {

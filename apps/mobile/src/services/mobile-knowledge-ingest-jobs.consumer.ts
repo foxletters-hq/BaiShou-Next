@@ -98,6 +98,13 @@ export async function consumeMobileKnowledgeIngestJobs(options?: {
   return consumeMobileKnowledgeLane('index', options)
 }
 
+export async function consumeMobileKnowledgeGraphJobs(options?: {
+  limit?: number
+  reason?: string
+}): Promise<ConsumeResult> {
+  return consumeMobileKnowledgeLane('graph', options)
+}
+
 async function consumeMobileKnowledgeLane(
   lane: 'index' | 'graph',
   options?: {
