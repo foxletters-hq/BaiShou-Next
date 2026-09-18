@@ -4,7 +4,13 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const dir = dirname(fileURLToPath(import.meta.url))
-const src = readFileSync(join(dir, '../graph.ipc.ts'), 'utf8')
+const src = [
+  readFileSync(join(dir, '../graph.ipc.ts'), 'utf8'),
+  readFileSync(join(dir, '../graph-mutate.ipc.ts'), 'utf8'),
+  readFileSync(join(dir, '../graph-review.write.ts'), 'utf8'),
+  readFileSync(join(dir, '../graph-name-candidates.ts'), 'utf8'),
+  readFileSync(join(dir, '../graph-query.ipc.ts'), 'utf8')
+].join('\n')
 const agentSrc = readFileSync(join(dir, '../AgentChatService.ts'), 'utf8')
 const notebookReviewSrc = readFileSync(join(dir, '../../services/notebook-graph-review.ts'), 'utf8')
 
