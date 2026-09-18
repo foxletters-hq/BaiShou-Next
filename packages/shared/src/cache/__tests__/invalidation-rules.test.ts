@@ -1,4 +1,10 @@
 import { describe, it, expect } from 'vitest'
+import {
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  BAISHOU_WORKSPACE_AGENT_GATE_CONFIG_KEY,
+  WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY,
+  WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY
+} from '../../baishou-agent-gate/agent-gate.defaults'
 import { resolveInvalidatedCacheKeys } from '../invalidation-rules'
 import type { DomainMutationEvent } from '../domain-mutation.types'
 
@@ -54,5 +60,43 @@ describe('resolveInvalidatedCacheKeys', () => {
       event({ domain: 'settings', action: 'update', meta: { key: 'tool_management_config' } })
     )
     expect(toolKeys).toContain('mcp.toolContext')
+  })
+
+  it('invalidates mcp tool context when agent gate or workspace policy settings change', () => {
+    const companionGateKeys = resolveInvalidatedCacheKeys(
+      event({
+        domain: 'settings',
+        action: 'update',
+        meta: { key: BAISHOU_AGENT_GATE_CONFIG_KEY }
+      })
+    )
+    expect(companionGateKeys).toContain('mcp.toolContext')
+
+    const workspaceGateKeys = resolveInvalidatedCacheKeys(
+      event({
+        domain: 'settings',
+        action: 'update',
+        meta: { key: BAISHOU_WORKSPACE_AGENT_GATE_CONFIG_KEY }
+      })
+    )
+    expect(workspaceGateKeys).toContain('mcp.toolContext')
+
+    const workspaceToolKeys = resolveInvalidatedCacheKeys(
+      event({
+        domain: 'settings',
+        action: 'update',
+        meta: { key: WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY }
+      })
+    )
+    expect(workspaceToolKeys).toContain('mcp.toolContext')
+
+    const personalMemoryKeys = resolveInvalidatedCacheKeys(
+      event({
+        domain: 'settings',
+        action: 'update',
+        meta: { key: WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY }
+      })
+    )
+    expect(personalMemoryKeys).toContain('mcp.toolContext')
   })
 })

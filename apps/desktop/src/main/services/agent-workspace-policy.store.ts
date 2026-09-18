@@ -1,10 +1,13 @@
 import { app } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { emitDomainMutation } from '@baishou/core-desktop'
 import {
   AGENT_WORKSPACE_POLICY_STORE_FILE,
   DEFAULT_WORKSPACE_AGENT_GATE_CONFIG,
   DEFAULT_WORKSPACE_TOOL_MANAGEMENT_CONFIG,
+  WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY,
+  WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY,
   cloneBaishouAgentGateConfig,
   applyWorkspacePolicyPatch,
   resolveWorkspacePolicyFields,
@@ -145,6 +148,20 @@ export async function setWorkspacePolicy(
   }
   store.byWorkspaceId[workspaceId] = next
   await saveStore()
+  if (patch.toolManagement) {
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY }
+    })
+  }
+  if (typeof patch.personalMemoryReadEnabled === 'boolean') {
+    emitDomainMutation({
+      domain: 'settings',
+      action: 'update',
+      meta: { key: WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY }
+    })
+  }
   // 对外仍返回当前全局 gate，避免调用方读到空占位
   if (patch.gateConfig) {
     next.gateConfig = await getGlobalWorkspaceGateConfig()

@@ -1,4 +1,10 @@
 import {
+  BAISHOU_AGENT_GATE_CONFIG_KEY,
+  BAISHOU_WORKSPACE_AGENT_GATE_CONFIG_KEY,
+  WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY,
+  WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY
+} from '../baishou-agent-gate/agent-gate.defaults'
+import {
   USER_PROFILE_LEGACY_SETTINGS_KEY,
   USER_PROFILE_SETTINGS_KEY
 } from '../constants/user-profile.constants'
@@ -68,7 +74,11 @@ export function resolveInvalidatedCacheKeys(event: DomainMutationEvent): CacheKe
       settingsKey === 'ai_providers' ||
       settingsKey === 'global_models' ||
       settingsKey === 'rag_config' ||
-      settingsKey === 'tool_management_config'
+      settingsKey === 'tool_management_config' ||
+      settingsKey === BAISHOU_AGENT_GATE_CONFIG_KEY ||
+      settingsKey === BAISHOU_WORKSPACE_AGENT_GATE_CONFIG_KEY ||
+      settingsKey === WORKSPACE_TOOL_MANAGEMENT_POLICY_KEY ||
+      settingsKey === WORKSPACE_PERSONAL_MEMORY_READ_POLICY_KEY
     ) {
       return ['settings.aiProviders', 'mcp.toolContext']
     }
