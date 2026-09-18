@@ -172,24 +172,49 @@ export async function mobileHasKnowledgeModelMismatch(notebookIds?: string[]): P
   return count > 0
 }
 
-export async function mobileRebuildKnowledgeIndex(notebookId: string): Promise<void> {
-  const repo = requireRepo()
-  const vaultId = await resolveMobileActiveVaultId()
-  const sources = await repo.listSources(notebookId)
-  await repo.deleteChunksByNotebook(notebookId)
-  for (const source of sources) {
-    if (!source.extractedTextHash && source.status === 'needs_ocr') continue
-    await repo.updateSourceStatus(source.id, 'pending', { errorMessage: null })
-    await repo.enqueueIngestJob({
-      notebookId,
-      sourceId: source.id,
-      stage: 'embed',
-      vaultId: source.vaultId?.trim() || vaultId
-    })
-  }
+async function kickMobileKnowledgeIngest(reason: string): Promise<void> {
   const { scheduleConsumeMobileKnowledgeIngestJobs } =
     await import('./mobile-knowledge-ingest-jobs.consumer')
-  scheduleConsumeMobileKnowledgeIngestJobs('mobile-rebuild')
+  scheduleConsumeMobileKnowledgeIngestJobs(reason)
+}
+
+export async function mobileRebuildKnowledgeIndex(notebookId: string): Promise<void> {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  const svc = await buildMobileIngestService()
+  // 走 core rebuildIndex：重建 ledger、跳过 stored、embed 后跟抽图
+  await svc.rebuildIndex(id)
+  await kickMobileKnowledgeIngest('mobile-rebuild')
+}
+
+export async function mobileRetrySource(sourceId: string): Promise<void> {
+  const id = sourceId.trim()
+  if (!id) throw new Error('sourceId required')
+  const svc = await buildMobileIngestService()
+  await svc.retrySource(id)
+  await kickMobileKnowledgeIngest('mobile-retry-source')
+}
+
+export async function mobileReprocessSource(
+  sourceId: string,
+  target: 'embed' | 'graph'
+): Promise<void> {
+  const id = sourceId.trim()
+  if (!id) throw new Error('sourceId required')
+  const svc = await buildMobileIngestService()
+  await svc.reprocessSource(id, target)
+  await kickMobileKnowledgeIngest(
+    target === 'graph' ? 'mobile-reprocess-graph' : 'mobile-reprocess-embed'
+  )
+}
+
+export async function mobileRebuildNotebookGraph(notebookId: string): Promise<number> {
+  const id = notebookId.trim()
+  if (!id) throw new Error('notebookId required')
+  const svc = await buildMobileIngestService()
+  const queued = await svc.rebuildNotebookGraph(id)
+  await kickMobileKnowledgeIngest('mobile-rebuild-graph')
+  return queued
 }
 
 async function buildMobileIngestService() {
@@ -280,11 +305,10 @@ export async function mobileManageNotebookData(
   input: { action: 'clear' | 'reprocess'; vector?: boolean; graph?: boolean }
 ) {
   const svc = await buildMobileIngestService()
+  // 勾选向量+图谱时，core 以 followGraph: true 在 embed 成功后再抽图
   const result = await svc.manageNotebookData(notebookId, input)
   if (input.action === 'reprocess') {
-    const { scheduleConsumeMobileKnowledgeIngestJobs } =
-      await import('./mobile-knowledge-ingest-jobs.consumer')
-    scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-manage-data')
+    await kickMobileKnowledgeIngest('after-mobile-manage-data')
   }
   return result
 }
@@ -341,9 +365,7 @@ export async function mobileImportSource(input: {
     originUrl: payload.originUrl
   })
 
-  const { scheduleConsumeMobileKnowledgeIngestJobs } =
-    await import('./mobile-knowledge-ingest-jobs.consumer')
-  scheduleConsumeMobileKnowledgeIngestJobs('after-mobile-import')
+  await kickMobileKnowledgeIngest('after-mobile-import')
   return result
 }
 
