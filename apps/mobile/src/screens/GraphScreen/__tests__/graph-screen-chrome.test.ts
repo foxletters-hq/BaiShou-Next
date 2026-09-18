@@ -4,26 +4,104 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const dir = dirname(fileURLToPath(import.meta.url))
-const src = readFileSync(join(dir, '../GraphScreen.tsx'), 'utf8')
-const webviewSrc = readFileSync(join(dir, '../GraphForceWebView.tsx'), 'utf8')
-const sameNameListSrc = readFileSync(join(dir, '../GraphNodeSameNameList.tsx'), 'utf8')
-const createSheetSrc = readFileSync(join(dir, '../GraphCreateNodeSheet.tsx'), 'utf8')
+
+function readSrc(name: string): string {
+  return readFileSync(join(dir, '..', name), 'utf8')
+}
+
+const src = readSrc('GraphScreen.tsx')
+const canvasTabSrc = readSrc('GraphScreenCanvasTab.tsx')
+const detailSrc = readSrc('GraphScreenDetailPane.tsx')
+const searchTabSrc = readSrc('GraphScreenSearchTab.tsx')
+const reextractTabSrc = readSrc('GraphScreenReextractTab.tsx')
+const pendingTabSrc = readSrc('GraphScreenPendingTab.tsx')
+const similarTabSrc = readSrc('GraphScreenSimilarTab.tsx')
+const settingsSrc = readSrc('GraphScreenSettingsSheet.tsx')
+const organizeSrc = readSrc('GraphScreenSettingsOrganize.tsx')
+const canvasSettingsSrc = readSrc('GraphScreenSettingsCanvas.tsx')
+const overlaysSrc = readSrc('GraphScreenOverlays.tsx')
+const extractSrc = readSrc('useGraphScreenExtract.ts')
+const searchSrc = readSrc('useGraphScreenSearch.ts')
+const modelSrc = readSrc('useGraphScreenModel.ts')
+const detailHookSrc = [
+  readSrc('useGraphScreenDetail.ts'),
+  readSrc('useGraphScreenDetailDelete.ts')
+].join('\n')
+const settingsHookSrc = readSrc('useGraphScreenSettings.ts')
+const webviewSrc = [
+  readSrc('GraphForceWebView.tsx'),
+  readSrc('graph-force-webview-html.ts'),
+  readSrc('graph-force-webview-runtime-setup.ts'),
+  readSrc('graph-force-webview-runtime-draw.ts'),
+  readSrc('graph-force-webview-runtime-camera.ts'),
+  readSrc('graph-force-webview-runtime-input.ts')
+].join('\n')
+const sameNameListSrc = readSrc('GraphNodeSameNameList.tsx')
+const createSheetSrc = readSrc('GraphCreateNodeSheet.tsx')
+const splitSheetSrc = readSrc('GraphSplitNodeSheet.tsx')
 const candidatesUtilSrc = readFileSync(
   join(dir, '../../../services/graph-name-candidates.util.ts'),
   'utf8'
 )
+const splitServiceSrc = readFileSync(join(dir, '../../../services/mobile-graph-split.ts'), 'utf8')
 
-function sliceBetween(start: string, end: string): string {
-  const from = src.indexOf(start)
-  const to = src.indexOf(end, from + start.length)
+const pageChrome = [
+  src,
+  canvasTabSrc,
+  detailSrc,
+  searchTabSrc,
+  reextractTabSrc,
+  pendingTabSrc,
+  similarTabSrc,
+  settingsSrc,
+  organizeSrc,
+  canvasSettingsSrc,
+  overlaysSrc,
+  extractSrc,
+  searchSrc,
+  modelSrc,
+  detailHookSrc,
+  settingsHookSrc
+].join('\n')
+
+function sliceBetween(source: string, start: string, end: string): string {
+  const from = source.indexOf(start)
+  const to = source.indexOf(end, from + start.length)
   expect(from).toBeGreaterThanOrEqual(0)
   expect(to).toBeGreaterThan(from)
-  return src.slice(from, to)
+  return source.slice(from, to)
+}
+
+function embedPane(host: string, tag: string, pane: string): string {
+  expect(host).toContain(tag)
+  return host.replace(tag, `${pane}\n${tag}`)
 }
 
 describe('GraphScreen chrome', () => {
+  it('should run unified organize from empty graph start button and keep toolbar extract', () => {
+    const emptyGuide = sliceBetween(
+      canvasTabSrc,
+      'props.showEmptyGuide ? (',
+      'props.showMonthEmpty ? ('
+    )
+    expect(emptyGuide).toContain('onStartOrganize')
+    expect(emptyGuide).toContain("t('graph.start_organize'")
+    expect(emptyGuide).not.toContain('onRunExtract')
+    expect(emptyGuide).not.toContain('runExtract')
+
+    const header = sliceBetween(src, 'headerRight={', 'contentStyle={styles.layoutContent}')
+    expect(header).toContain("t('graph.extract', '梳理')")
+    expect(header).toContain('extract.runExtract()')
+
+    expect(modelSrc).toContain('startOrganize')
+    expect(modelSrc).toContain('batchEmbed')
+    expect(src).toContain('onStartOrganize={() => void m.startOrganize()}')
+    expect(src).toContain('onRunExtract: () => void extract.runExtract()')
+    expect(organizeSrc).toContain("t('graph.process_pending_reextract'")
+  })
+
   it('keeps month, global, and settings on the toolbar and leaves create/merge out', () => {
-    const toolbar = sliceBetween('styles.toolbarRow', 'renderDepthChips()')
+    const toolbar = sliceBetween(canvasTabSrc, 'styles.toolbarRow', 'renderDepthChips()')
     expect(toolbar).toContain('GraphMonthRangeSheet')
     expect(toolbar).toContain("t('graph.global_view'")
     expect(toolbar).toContain("t('graph.settings'")
@@ -33,22 +111,27 @@ describe('GraphScreen chrome', () => {
   })
 
   it('keeps isolated nodes on the canvas and uses the switch only for names', () => {
-    expect(src).not.toContain('filterGraphIsolatedDisplayNodes')
-    expect(src).toContain("t('graph.show_isolated_nodes'")
-    expect(src).toContain('showIsolatedNodes')
+    expect(pageChrome).not.toContain('filterGraphIsolatedDisplayNodes')
+    expect(pageChrome).toContain("t('graph.show_isolated_nodes'")
+    expect(pageChrome).toContain('showIsolatedNodes')
     expect(webviewSrc).toContain('appearance.showIsolatedNodes !== false')
   })
 
   it('keeps month range out of the canvas settings section', () => {
-    const canvas = sliceBetween("t('graph.side_canvas', '画布')", "t('graph.appearance', '外观')")
+    const canvas = sliceBetween(
+      embedPane(settingsSrc, '<GraphScreenSettingsCanvas', canvasSettingsSrc),
+      "t('graph.side_canvas', '画布')",
+      "t('graph.appearance', '外观')"
+    )
     expect(canvas).toContain('renderDepthChips()')
     expect(canvas).toContain("t('graph.filter'")
     expect(canvas).not.toContain('GraphMonthRangeSheet')
-    expect(src).not.toContain("t('graph.view_section'")
+    expect(pageChrome).not.toContain("t('graph.view_section'")
   })
 
   it('mounts extract, create, merge, and identity in the organize settings section', () => {
     const organize = sliceBetween(
+      embedPane(settingsSrc, '<GraphScreenSettingsOrganize', organizeSrc),
       "t('graph.side_organize', '整理')",
       "t('graph.side_canvas', '画布')"
     )
@@ -69,10 +152,10 @@ describe('GraphScreen chrome', () => {
     expect(organize.indexOf("t('graph.merge_nodes'")).toBeLessThan(
       organize.indexOf("t('graph.data_ops'")
     )
-    expect(src).toContain('data: false')
-    expect(src).toContain('runExtractOne')
-    expect(src).toContain('clearLifeGraph')
-    expect(src).toContain('mobileClearLifeGraph')
+    expect(pageChrome).toContain('data: false')
+    expect(pageChrome).toContain('runExtractOne')
+    expect(pageChrome).toContain('clearLifeGraph')
+    expect(pageChrome).toContain('mobileClearLifeGraph')
   })
 
   it('keeps clear-life-graph out of account settings', () => {
@@ -87,8 +170,32 @@ describe('GraphScreen chrome', () => {
     expect(accountSrc).not.toContain('clearLifeGraph')
   })
 
+  it('mounts similar-pending pairs with merge and keep-apart actions', () => {
+    const similar = sliceBetween(
+      embedPane(src, '<GraphScreenSimilarTab', similarTabSrc),
+      "{tab === 'similar' && (",
+      "{tab === 'pending' && ("
+    )
+    expect(modelSrc).toContain("t('graph.tab_similar'")
+    expect(similar).toContain("t('graph.similar_empty'")
+    expect(similar).toContain("t('graph.similar_merge'")
+    expect(similar).toContain("t('graph.similar_keep_apart'")
+    expect(similar).toContain('variant="outlined"')
+    expect(similar).not.toContain('variant="ghost"')
+    expect(src).toContain('mergeSimilarPair(pair.peerId, pair.nodeId')
+    expect(src).toContain('dismissSimilarPair(pair.nodeId, pair.peerId)')
+  })
+
   it('mounts pending batch review actions', () => {
-    const pending = sliceBetween("{tab === 'pending' && (", '<FloatingModal')
+    const pending = sliceBetween(
+      embedPane(
+        embedPane(src, '<GraphScreenPendingTab', pendingTabSrc),
+        '<GraphScreenOverlays',
+        overlaysSrc
+      ),
+      "{tab === 'pending' && (",
+      '<FloatingModal'
+    )
     expect(pending).toContain("t('graph.approve_selected'")
     expect(pending).toContain("t('graph.reject_selected'")
     expect(pending).toContain("t('graph.approve_all'")
@@ -101,17 +208,25 @@ describe('GraphScreen chrome', () => {
   })
 
   it('keeps semantic and text search on the search tab and lists all hits', () => {
-    const search = sliceBetween("{tab === 'search' && (", "{tab === 'reextract' && (")
+    const search = sliceBetween(
+      embedPane(
+        embedPane(src, '<GraphScreenSearchTab', searchTabSrc),
+        '<GraphScreenReextractTab',
+        reextractTabSrc
+      ),
+      "{tab === 'search' && (",
+      "{tab === 'reextract' && ("
+    )
     expect(search).toContain("t('graph.search_semantic'")
     expect(search).toContain("t('graph.search_text'")
-    expect(src).toContain('applySearchHits')
-    expect(src).toContain('mode: nextMode')
-    expect(src).not.toContain("setTab('graph')\n      setSelectedId(hit.id)")
+    expect(pageChrome).toContain('applySearchHits')
+    expect(pageChrome).toContain('mode: nextMode')
+    expect(pageChrome).not.toContain("setTab('graph')\n      setSelectedId(hit.id)")
   })
 
   it('locates pending nodes by selection and pending edges by both endpoints', () => {
-    const loc = sliceBetween('const locatePendingEdge', 'const onSearch')
-    expect(src).toContain('locatePendingNode')
+    const loc = sliceBetween(searchSrc, 'const locatePendingEdge', 'const onSearch')
+    expect(pageChrome).toContain('locatePendingNode')
     expect(loc).toContain('setHighlightedEdgeIds(new Set([edge.id]))')
     expect(loc).toContain('setLocateIds([from.id, to.id])')
     expect(loc).toContain('setLocalView({ nodes: [from, to], edges: [edge] })')
@@ -126,11 +241,11 @@ describe('GraphScreen chrome', () => {
   })
 
   it('should render discriminator as its own label when a node has been split', () => {
-    expect(src).toContain('GraphDiscriminatorLabel')
-    expect(src).toContain('discriminator: n.discriminator')
-    expect(src).not.toContain('`${selectedNode.name}')
-    expect(src).not.toContain("selectedNode.name + ' ('")
-    expect(src).not.toContain('n.name + n.discriminator')
+    expect(pageChrome).toContain('GraphDiscriminatorLabel')
+    expect(pageChrome).toContain('discriminator: n.discriminator')
+    expect(pageChrome).not.toContain('`${selectedNode.name}')
+    expect(pageChrome).not.toContain("selectedNode.name + ' ('")
+    expect(pageChrome).not.toContain('n.name + n.discriminator')
     expect(webviewSrc).toContain('n.discriminator')
     expect(webviewSrc).toContain('fillText(n.name.slice')
     expect(webviewSrc).not.toContain('n.name + n.discriminator')
@@ -138,8 +253,8 @@ describe('GraphScreen chrome', () => {
   })
 
   it('should list registered same-name entities in node detail when the name has been split', () => {
-    expect(src).toContain('GraphNodeSameNameList')
-    expect(src).toContain('listRegisteredSameNameEntities')
+    expect(pageChrome).toContain('GraphNodeSameNameList')
+    expect(pageChrome).toContain('listRegisteredSameNameEntities')
     expect(candidatesUtilSrc).toContain('readGraphNameRegistry')
     expect(sameNameListSrc).toContain("t('graph.same_name_entities'")
     expect(sameNameListSrc).toContain("t('graph.discriminator_label'")
@@ -148,17 +263,81 @@ describe('GraphScreen chrome', () => {
     expect(sameNameListSrc).not.toContain("entity.name + ' ('")
   })
 
-  it('should omit split and revert-split actions when the graph screen is shown on mobile', () => {
-    for (const file of [src, sameNameListSrc, createSheetSrc]) {
-      expect(file).not.toContain('splitGraphNode')
-      expect(file).not.toContain('revertGraphSplit')
-      expect(file).not.toContain('unsplitGraphNode')
-      expect(file).not.toContain("t('graph.split_node'")
-      expect(file).not.toContain("t('graph.revert_split'")
-      expect(file).not.toContain("t('graph.unsplit")
-      expect(file).not.toContain("t('graph.withdraw_split'")
-      expect(file).not.toContain('mobileSplitGraph')
-      expect(file).not.toContain('mobileRevertSplit')
+  it('should import and render GraphSplitNodeSheet when the screen mounts', () => {
+    expect(pageChrome).toContain("import { GraphSplitNodeSheet } from './GraphSplitNodeSheet'")
+    expect(pageChrome).toContain('<GraphSplitNodeSheet')
+    expect(pageChrome).toContain('mobileRevertGraphNodeSplit')
+  })
+
+  it('should hide the split entry when the selected node is an entry', () => {
+    expect(pageChrome).toContain("t('graph.split_node'")
+    expect(pageChrome).toContain("selectedNode.nodeType !== 'entry'")
+    expect(pageChrome).toContain("t('graph.revert_split'")
+  })
+
+  it('should show the persisted suspect reason and leftover ambiguous sources', () => {
+    expect(pageChrome).toContain('readGraphNodeSuspectReason')
+    expect(pageChrome).toContain("t('graph.suspect_reason'")
+    expect(pageChrome).toContain('listAmbiguousSourceRefs')
+    expect(pageChrome).toContain("t('graph.ambiguous_sources_hint'")
+    expect(candidatesUtilSrc).toContain('readGraphNodeSuspectReason')
+  })
+
+  it('should import GraphSplitNodeSheet controls from @baishou/ui/native and avoid raw text inputs', () => {
+    expect(splitSheetSrc).toContain("from '@baishou/ui/native'")
+    expect(splitSheetSrc).toContain('Button')
+    expect(splitSheetSrc).toContain('Input')
+    expect(splitSheetSrc).toContain('SegmentedControl')
+    expect(splitSheetSrc).not.toMatch(/<TextInput[\s>]/)
+  })
+
+  it('should let create-node register another entity via mobileSplitGraphNode', () => {
+    expect(createSheetSrc).toContain("t('graph.register_another_entity'")
+    expect(createSheetSrc).toContain('mobileSplitGraphNode')
+    expect(createSheetSrc).toContain("from '@baishou/ui/native'")
+    expect(createSheetSrc).toContain('Input')
+    expect(createSheetSrc).toContain('Button')
+  })
+
+  it('should keep new graph split i18n keys in all four locale files', () => {
+    const i18nDir = join(dir, '../../../../../../packages/shared/src/i18n')
+    const keys = [
+      'discriminator_label',
+      'split_node',
+      'split_node_title',
+      'split_label',
+      'split_keep_bare',
+      'split_move_to_new',
+      'split_unassigned',
+      'split_unassigned_count',
+      'split_confirm',
+      'register_another_entity',
+      'same_name_siblings',
+      'revert_split',
+      'ambiguous_sources_hint',
+      'suspect_reason',
+      'tab_similar',
+      'tab_similar_count',
+      'similar_empty',
+      'similar_hint',
+      'similar_merge',
+      'similar_keep_apart',
+      'similar_dismissed'
+    ]
+    for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
+      const json = readFileSync(join(i18nDir, locale), 'utf8')
+      for (const key of keys) {
+        expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
+      }
     }
+  })
+
+  it('should wrap split and revert through mobile-graph-split instead of calling core directly from the screen', () => {
+    expect(splitServiceSrc).toContain('export async function mobileSplitGraphNode')
+    expect(splitServiceSrc).toContain('export async function mobileRevertGraphNodeSplit')
+    expect(splitServiceSrc).toContain('export function toMobileNameCandidate')
+    expect(src).not.toContain("from '@baishou/core-mobile'")
+    expect(pageChrome).not.toContain("from '@baishou/core-mobile'")
+    expect(pageChrome).toContain("from '@/src/services/mobile-graph-split'")
   })
 })
