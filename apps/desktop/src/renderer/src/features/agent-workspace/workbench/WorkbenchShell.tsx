@@ -14,6 +14,7 @@ import {
   type WorkbenchAgentPanelProps
 } from './WorkbenchAgentPanel'
 import { joinWorkspaceAbsolutePath } from '../utils/workspace-composer-drop.util'
+import { dispatchWorkbenchRevealPath } from './workbench-explorer-selection.util'
 import { shouldQueueWorkbenchFileContext } from './workbench-file-context-queue.util'
 import { WorkbenchResizeSash } from './WorkbenchResizeSash'
 import { useWorkbenchLayoutState } from './useWorkbenchLayoutState'
@@ -164,9 +165,30 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
   sideWidthRef.current = liveSideWidth
   agentWidthRef.current = liveAgentWidth
 
-  const handleOpenFile = (relativePath: string, options?: { line?: number; column?: number }) => {
+  const handleOpenFile = (
+    relativePath: string,
+    options?: { line?: number; column?: number; isDirectory?: boolean }
+  ) => {
+    if (options?.isDirectory) {
+      setActiveSideView('files')
+      dispatchWorkbenchRevealPath(relativePath, { isDirectory: true })
+      return
+    }
     mainPaneRef.current?.openFile(relativePath, options)
   }
+
+  const handleAddExplorerToChat = useCallback(
+    (entries: Array<{ relativePath: string; isDirectory: boolean }>) => {
+      for (const entry of entries) {
+        handleAddFileContext({
+          relativePath: entry.relativePath,
+          origin: 'explorer-drop',
+          ...(entry.isDirectory ? { isDirectory: true } : {})
+        })
+      }
+    },
+    [handleAddFileContext]
+  )
 
   const handleSelectChange = (change: WorkspaceChangeEntry) => {
     mainPaneRef.current?.openDiff(change)
@@ -252,6 +274,7 @@ export const WorkbenchShell: React.FC<WorkbenchShellProps> = ({
               activeView={layout.activeSideView}
               onViewChange={setActiveSideView}
               onOpenFile={handleOpenFile}
+              onAddToChat={handleAddExplorerToChat}
               onOpenGitDiff={handleOpenGitDiff}
               onGitMetaChange={statusGit.applyViewMeta}
               syncBranch={statusGit.meta.branch}

@@ -7,6 +7,7 @@ import {
   FilePlus,
   FolderOpen,
   FolderPlus,
+  MessageSquarePlus,
   Pencil,
   RefreshCw,
   Trash2
@@ -128,6 +129,7 @@ export interface BuildFileExplorerMenuItemsParams {
   target: FileExplorerMenuTarget
   t: (key: string, fallback: string) => string
   onOpenFile: (relativePath: string) => void
+  onAddToChat: (node: FileTreeNode) => void
   onExpandFolder: (relativePath: string) => void
   onNewFile: (parentDir: string) => void
   onNewFolder: (parentDir: string) => void
@@ -142,6 +144,7 @@ export function buildFileExplorerMenuItems({
   target,
   t,
   onOpenFile,
+  onAddToChat,
   onExpandFolder,
   onNewFile,
   onNewFolder,
@@ -196,6 +199,12 @@ export function buildFileExplorerMenuItems({
       onClick: () => onOpenFile(node.relativePath)
     })
   }
+
+  items.push({
+    label: t('workbench.add_to_chat', '加入对话'),
+    icon: icon(<MessageSquarePlus size={ICON_SIZE} strokeWidth={ICON_STROKE} />),
+    onClick: () => onAddToChat(node)
+  })
 
   items.push({ label: '', onClick: () => {}, divider: true })
   items.push(

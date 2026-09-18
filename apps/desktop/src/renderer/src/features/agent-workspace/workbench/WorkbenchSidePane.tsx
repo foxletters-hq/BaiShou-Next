@@ -23,6 +23,7 @@ export interface WorkbenchSidePaneProps {
   activeView: WorkbenchSideView
   onViewChange: (view: WorkbenchSideView) => void
   onOpenFile: (relativePath: string, options?: { line?: number; column?: number }) => void
+  onAddToChat?: (entries: Array<{ relativePath: string; isDirectory: boolean }>) => void
   onOpenGitDiff?: (filePath: string, options?: { staged?: boolean; commitHash?: string }) => void
   onGitMetaChange?: (meta: { branch?: string; ahead: number; behind: number }) => void
   syncBranch?: string
@@ -39,6 +40,7 @@ export const WorkbenchSidePane: React.FC<WorkbenchSidePaneProps> = ({
   activeView,
   onViewChange,
   onOpenFile,
+  onAddToChat,
   onOpenGitDiff,
   onGitMetaChange,
   syncBranch,
@@ -116,7 +118,11 @@ export const WorkbenchSidePane: React.FC<WorkbenchSidePaneProps> = ({
 
       <div className={styles.viewBody}>
         {activeView === 'files' ? (
-          <WorkbenchFileExplorer folderRoot={folderRoot} onOpenFile={onOpenFile} />
+          <WorkbenchFileExplorer
+            folderRoot={folderRoot}
+            onOpenFile={onOpenFile}
+            onAddToChat={onAddToChat}
+          />
         ) : null}
         {activeView === 'search' ? (
           <WorkbenchSearchView folderRoot={folderRoot} onOpenFile={onOpenFile} />

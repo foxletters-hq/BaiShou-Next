@@ -56,7 +56,10 @@ export interface WorkbenchAgentPanelProps {
   onDeleteSession: (sessionId: string) => void
   onRenameSession?: (sessionId: string, title: string) => void
   recentFilePaths?: string[]
-  onOpenFile?: (relativePath: string, options?: { line?: number }) => void
+  onOpenFile?: (
+    relativePath: string,
+    options?: { line?: number; isDirectory?: boolean }
+  ) => void
   chrome: {
     currentAssistant?: { id: string; name: string; avatarPath?: string | null }
     currentProviderId: string
