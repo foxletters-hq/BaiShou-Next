@@ -1,5 +1,5 @@
 import type { NotebookGraphEdgeRow, NotebookGraphNodeRow } from '../schema/knowledge'
-import type { ApplyRawNodeResult } from './graph.repository'
+import type { ApplyRawNodeResult } from './graph.repository.types'
 
 export interface NotebookGraphPath {
   nodeIds: string[]
@@ -73,6 +73,8 @@ export interface NotebookGraphSyncApply {
     createdAt: number
     updatedAt: number
     deletedAt?: number | null
+    embedding?: number[] | null
+    modelId?: string
   }): Promise<ApplyRawNodeResult | void>
   applyRawEdge(row: {
     id: string
