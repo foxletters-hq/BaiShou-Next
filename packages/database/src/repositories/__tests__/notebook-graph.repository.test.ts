@@ -168,6 +168,178 @@ describe('NotebookGraphRepository applyRawNode (libsql)', () => {
     expect(pendingEdges.map((row) => row.id)).toEqual(['e-pending'])
     expect(edge?.edgeType).toBe('mentions')
   })
+
+  it('should allow two same-type same-name notebook nodes when discriminators differ', async () => {
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-bare',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      createdAt: now,
+      updatedAt: now
+    })
+    await repo.applyRawNode({
+      id: 'n-split',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      discriminator: '同事',
+      createdAt: now,
+      updatedAt: now
+    })
+    expect((await repo.getNodeById('n-bare', 'v1', 'nb1'))?.discriminator).toBe('')
+    expect((await repo.getNodeById('n-split', 'v1', 'nb1'))?.discriminator).toBe('同事')
+  })
+
+  it('should reject two same-type same-name notebook nodes when discriminators also match', async () => {
+    const now = Date.now()
+    await client.execute({
+      sql: `INSERT INTO notebook_graph_nodes (
+        id, vault_id, notebook_id, node_type, name, name_normalized, discriminator,
+        aliases, summary, props_json, mention_count, origin, shard_month, review_status,
+        created_at, updated_at
+      ) VALUES ('n-a', 'v1', 'nb1', 'person', '张三', '张三', '同事', '[]', '', '{}', 1, 'ai', '', 'approved', ?, ?)`,
+      args: [now, now]
+    })
+    await expect(
+      client.execute({
+        sql: `INSERT INTO notebook_graph_nodes (
+          id, vault_id, notebook_id, node_type, name, name_normalized, discriminator,
+          aliases, summary, props_json, mention_count, origin, shard_month, review_status,
+          created_at, updated_at
+        ) VALUES ('n-b', 'v1', 'nb1', 'person', '张三', '张三', '同事', '[]', '', '{}', 1, 'ai', '', 'approved', ?, ?)`,
+        args: [now, now]
+      })
+    ).rejects.toThrow()
+  })
+
+  it('should return both same-name notebook nodes with the bare name first when finding by name', async () => {
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-split',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      discriminator: '同事',
+      createdAt: now,
+      updatedAt: now
+    })
+    await repo.applyRawNode({
+      id: 'n-bare',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      createdAt: now,
+      updatedAt: now
+    })
+    const rows = await repo.findNodesByNameOrAlias('v1', 'nb1', '张三', 'person')
+    expect(rows.map((row) => row.id)).toEqual(['n-bare', 'n-split'])
+  })
+
+  it('should return the bare-name notebook node when findNodeByName sees two same-name people', async () => {
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-split',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      discriminator: '同事',
+      createdAt: now,
+      updatedAt: now
+    })
+    await repo.applyRawNode({
+      id: 'n-bare',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      createdAt: now,
+      updatedAt: now
+    })
+    const hit = await repo.findNodeByName('v1', 'nb1', '张三', 'person')
+    expect(hit?.id).toBe('n-bare')
+  })
+
+  it('should return multiple notebook nodes when the same alias hits more than one person', async () => {
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-bare',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三甲',
+      aliases: ['张三'],
+      createdAt: now,
+      updatedAt: now
+    })
+    await repo.applyRawNode({
+      id: 'n-split',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三乙',
+      aliases: ['张三'],
+      discriminator: '同事',
+      createdAt: now,
+      updatedAt: now
+    })
+    const rows = await repo.findNodesByNameOrAlias('v1', 'nb1', '张三', 'person')
+    expect(rows.map((row) => row.id)).toEqual(['n-bare', 'n-split'])
+  })
+
+  it('should keep a discriminated applyRawNode beside the bare-name notebook row without remapping', async () => {
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-bare',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      createdAt: now,
+      updatedAt: now
+    })
+    const result = await repo.applyRawNode({
+      id: 'n-split',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '张三',
+      discriminator: '同事',
+      createdAt: now + 1,
+      updatedAt: now + 1
+    })
+    expect(result.remappedFrom).toBeUndefined()
+    expect(result.id).toBe('n-split')
+    expect(await repo.getNodeById('n-bare', 'v1', 'nb1')).not.toBeNull()
+    expect((await repo.getNodeById('n-split', 'v1', 'nb1'))?.discriminator).toBe('同事')
+  })
+
+  it('should persist an empty-string discriminator when notebook applyRawNode omits it', async () => {
+    const now = Date.now()
+    await repo.applyRawNode({
+      id: 'n-empty',
+      vaultId: 'v1',
+      notebookId: 'nb1',
+      nodeType: 'person',
+      name: '李四',
+      createdAt: now,
+      updatedAt: now
+    })
+    const mapped = await repo.getNodeById('n-empty', 'v1', 'nb1')
+    expect(mapped?.discriminator).toBe('')
+    const raw = await client.execute({
+      sql: 'SELECT discriminator FROM notebook_graph_nodes WHERE id = ?',
+      args: ['n-empty']
+    })
+    expect(raw.rows[0]?.discriminator).toBe('')
+    expect(raw.rows[0]?.discriminator).not.toBeNull()
+  })
 })
 
 function canOpenBetterSqlite3(): boolean {

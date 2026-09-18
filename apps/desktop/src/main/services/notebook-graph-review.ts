@@ -123,6 +123,8 @@ async function writeNodeReview(
     notebookId,
     nodeType: node.nodeType,
     name: node.name,
+    // 笔记本节点表同样用区分信息参与身份；复核重写缺字段会被归一成空串并覆盖该列。
+    discriminator: node.discriminator ?? '',
     aliases: parseAliases(node.aliases),
     summary: node.summary || '',
     props,

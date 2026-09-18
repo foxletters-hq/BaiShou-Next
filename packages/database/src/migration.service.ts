@@ -371,7 +371,7 @@ export class MigrationService {
     }
   }
 
-  /** 确保 graph_nodes / graph_edges / aliases 存在；缺 name_normalized 时 ADD COLUMN 回填。 */
+  /** 确保 graph_nodes / graph_edges / aliases 存在；缺 name_normalized / discriminator 时先补列再重建索引。 */
   private async _ensureGraphTables(): Promise<void> {
     try {
       const nodes = await this._executeSql(
@@ -389,6 +389,13 @@ export class MigrationService {
           )
           await this._executeSql(
             `UPDATE graph_nodes SET name_normalized = lower(trim(name)) WHERE name_normalized = ''`
+          )
+        }
+        if (!names.has('discriminator')) {
+          // 唯一索引要带上区分信息；必须先补列再 DROP/CREATE，否则建索引会因缺列失败
+          logger.info('[MigrationService] graph_nodes 缺 discriminator，ADD COLUMN...')
+          await this._executeSql(
+            `ALTER TABLE graph_nodes ADD COLUMN discriminator TEXT NOT NULL DEFAULT ''`
           )
         }
       }

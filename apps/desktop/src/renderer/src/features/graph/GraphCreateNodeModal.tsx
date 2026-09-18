@@ -24,6 +24,8 @@ export const GraphCreateNodeModal: React.FC<{
   const [summary, setSummary] = useState('')
   const [aliases, setAliases] = useState('')
   const [conflict, setConflict] = useState<GraphSameNameExisting | null>(null)
+  const [registerDiscriminator, setRegisterDiscriminator] = useState('')
+  const [registerLabel, setRegisterLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,6 +36,8 @@ export const GraphCreateNodeModal: React.FC<{
     setSummary('')
     setAliases('')
     setConflict(null)
+    setRegisterDiscriminator('')
+    setRegisterLabel('')
     setError('')
   }, [isOpen])
 
@@ -95,6 +99,36 @@ export const GraphCreateNodeModal: React.FC<{
     }
   }
 
+  const registerAnother = async () => {
+    if (!conflict) return
+    const disc = registerDiscriminator.trim()
+    const nextLabel = registerLabel.trim() || name.trim()
+    if (!disc) {
+      setError(t('graph.split_discriminator_required', '请填写区分信息'))
+      return
+    }
+    if (!nextLabel) {
+      setError(t('graph.split_label_required', '请填写展示标签'))
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const result = await window.api.graph.splitNode({
+        bareNodeId: conflict.id,
+        discriminator: disc,
+        label: nextLabel,
+        summary,
+        edgeAssignments: []
+      })
+      onCreated(result.splitNodeId)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <Modal
       isOpen={isOpen}
@@ -144,10 +178,33 @@ export const GraphCreateNodeModal: React.FC<{
       </div>
       {conflict ? (
         <div className={styles.sameNameBanner}>
-          {t('graph.same_name_exists', '已有同类型同名节点「{{name}}」。请打开该节点，或换一个名称。', {
-            name: conflict.name
-          })}
+          {t(
+            'graph.same_name_exists',
+            '已有同类型同名节点「{{name}}」。请打开该节点，登记为另一个实体，或换一个名称。',
+            { name: conflict.name }
+          )}
         </div>
+      ) : null}
+      {conflict ? (
+        <>
+          <div className={styles.detailBlock}>
+            <div className={styles.detailLabel}>{t('graph.discriminator_label', '区分信息')}</div>
+            <Input
+              fieldSize="small"
+              value={registerDiscriminator}
+              onChange={(e) => setRegisterDiscriminator(e.target.value)}
+            />
+          </div>
+          <div className={styles.detailBlock}>
+            <div className={styles.detailLabel}>{t('graph.split_label', '展示标签')}</div>
+            <Input
+              fieldSize="small"
+              value={registerLabel}
+              onChange={(e) => setRegisterLabel(e.target.value)}
+              placeholder={name.trim()}
+            />
+          </div>
+        </>
       ) : null}
       {error ? <div className={styles.sameNameBanner}>{error}</div> : null}
       <div className={styles.mergeDialogFooter}>
@@ -155,13 +212,22 @@ export const GraphCreateNodeModal: React.FC<{
           {t('common.cancel', '取消')}
         </Button>
         {conflict ? (
-          <Button
-            type="button"
-            disabled={saving || busy}
-            onClick={() => onOpenExisting(conflict.id)}
-          >
-            {t('graph.open_existing_node', '打开已有节点')}
-          </Button>
+          <>
+            <Button
+              type="button"
+              disabled={saving || busy}
+              onClick={() => onOpenExisting(conflict.id)}
+            >
+              {t('graph.open_existing_node', '打开已有节点')}
+            </Button>
+            <Button
+              type="button"
+              disabled={saving || busy || !registerDiscriminator.trim()}
+              onClick={() => void registerAnother()}
+            >
+              {t('graph.register_another_entity', '登记为另一个实体')}
+            </Button>
+          </>
         ) : (
           <Button
             type="button"

@@ -4,6 +4,7 @@ import {
   GRAPH_SQL_IN_CHUNK,
   GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT,
   logger,
+  normalizeGraphDiscriminator,
   normalizeGraphEdgeReviewFields,
   normalizeGraphName,
   shouldKeepIncomingNotebookGraphNodeId
@@ -54,6 +55,14 @@ function omitNodeEmbedding(row: NotebookGraphNodeRow): Omit<NotebookGraphNodeRow
   return rest
 }
 
+/** 裸名（区分信息为空）必须排在最前，其余按区分信息字典序，查询结果才稳定。 */
+function compareDiscriminatorAsc(a: string, b: string): number {
+  if (a === b) return 0
+  if (a === '') return -1
+  if (b === '') return 1
+  return a < b ? -1 : 1
+}
+
 function mergeNotebookAliases(
   existingRaw: string | string[] | undefined,
   extra: string[]
@@ -85,6 +94,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
     notebookId: string
     nodeType: string
     name: string
+    discriminator?: string
     aliases?: string[]
     summary?: string
     props?: Record<string, unknown>
@@ -108,6 +118,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
     const now = Date.now()
     const existingById = await this.getNodeById(row.id, vaultId, notebookId)
     const aliases = mergeNotebookAliases(existingById?.aliases, [row.name, ...(row.aliases ?? [])])
+    const discriminator = normalizeGraphDiscriminator(row.discriminator)
     try {
       await this.db
         .insert(notebookGraphNodesTable)
@@ -118,6 +129,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
           nodeType: row.nodeType,
           name: row.name,
           nameNormalized: normalizeGraphName(row.name),
+          discriminator,
           aliases: JSON.stringify(aliases),
           summary: row.summary || existingById?.summary || '',
           propsJson: JSON.stringify(row.props ?? {}),
@@ -139,6 +151,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
             nodeType: row.nodeType,
             name: row.name,
             nameNormalized: normalizeGraphName(row.name),
+            discriminator,
             aliases: JSON.stringify(aliases),
             summary: row.summary || existingById?.summary || '',
             propsJson: JSON.stringify(row.props ?? {}),
@@ -155,7 +168,9 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
       return { id: row.id }
     } catch (error) {
       if (row.nodeType === 'source' || !isSqliteUniqueConstraintError(error)) throw error
-      const existing = await this.findNodeByName(vaultId, notebookId, row.name, row.nodeType)
+      const existing = (
+        await this.findNodesByNameOrAlias(vaultId, notebookId, row.name, row.nodeType)
+      ).find((candidate) => candidate.discriminator === discriminator)
       if (!existing || existing.id === row.id) throw error
       const keepIncoming = shouldKeepIncomingNotebookGraphNodeId({
         vaultId,
@@ -163,7 +178,8 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
         nodeType: row.nodeType,
         name: row.name,
         incomingId: row.id,
-        existingId: existing.id
+        existingId: existing.id,
+        discriminator
       })
       const mergedAliases = mergeNotebookAliases(existing.aliases, [
         existing.name,
@@ -207,6 +223,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
           nodeType: row.nodeType,
           name: row.name,
           nameNormalized: normalizeGraphName(row.name),
+          discriminator,
           aliases: JSON.stringify(mergedAliases),
           summary: row.summary || existing.summary || '',
           propsJson: JSON.stringify(row.props ?? {}),
@@ -225,6 +242,7 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
           set: {
             name: row.name,
             nameNormalized: normalizeGraphName(row.name),
+            discriminator,
             aliases: JSON.stringify(mergedAliases),
             summary: row.summary || existing.summary || '',
             updatedAt: row.updatedAt,
@@ -577,15 +595,15 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
     return rows[0] ?? null
   }
 
-  async findNodeByName(
+  async findNodesByNameOrAlias(
     vaultId: string,
     notebookId: string,
     name: string,
     nodeType?: string
-  ): Promise<NotebookGraphNodeRow | null> {
+  ): Promise<NotebookGraphNodeRow[]> {
     const nb = requireNotebookId(notebookId)
     const norm = normalizeGraphName(name)
-    if (!norm) return null
+    if (!norm) return []
     const type = nodeType?.trim().toLowerCase() || ''
     const filters = [
       eq(notebookGraphNodesTable.vaultId, vaultId.trim()),
@@ -594,13 +612,10 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
       isNull(notebookGraphNodesTable.deletedAt)
     ]
     if (type) filters.push(eq(notebookGraphNodesTable.nodeType, type))
-    const rows = await this.db
-      .select()
-      .from(notebookGraphNodesTable)
-      .where(and(...filters))
-      .limit(2)
-    if (rows.length > 1) return null
-    if (rows[0]) return rows[0]
+    const byName = await this.db.select().from(notebookGraphNodesTable).where(and(...filters))
+    const seen = new Map<string, NotebookGraphNodeRow>()
+    for (const row of byName) seen.set(row.id, row)
+
     const aliases = await this.db
       .select({ nodeId: notebookGraphAliasesTable.nodeId })
       .from(notebookGraphAliasesTable)
@@ -611,20 +626,40 @@ export class NotebookGraphRepository implements NotebookGraphRepositoryPort {
           eq(notebookGraphAliasesTable.aliasNormalized, norm)
         )
       )
-      .limit(2)
-    if (aliases.length !== 1) return null
-    const byIdFilters = [
-      eq(notebookGraphNodesTable.id, aliases[0]!.nodeId),
-      eq(notebookGraphNodesTable.notebookId, nb),
-      isNull(notebookGraphNodesTable.deletedAt)
-    ]
-    if (type) byIdFilters.push(eq(notebookGraphNodesTable.nodeType, type))
-    const byId = await this.db
-      .select()
-      .from(notebookGraphNodesTable)
-      .where(and(...byIdFilters))
-      .limit(1)
-    return byId[0] ?? null
+    for (const hit of aliases) {
+      if (seen.has(hit.nodeId)) continue
+      const byIdFilters = [
+        eq(notebookGraphNodesTable.id, hit.nodeId),
+        eq(notebookGraphNodesTable.notebookId, nb),
+        isNull(notebookGraphNodesTable.deletedAt)
+      ]
+      if (type) byIdFilters.push(eq(notebookGraphNodesTable.nodeType, type))
+      const byId = await this.db
+        .select()
+        .from(notebookGraphNodesTable)
+        .where(and(...byIdFilters))
+        .limit(1)
+      if (byId[0]) seen.set(byId[0].id, byId[0])
+    }
+
+    return [...seen.values()].sort((a, b) =>
+      compareDiscriminatorAsc(a.discriminator ?? '', b.discriminator ?? '')
+    )
+  }
+
+  async findNodeByName(
+    vaultId: string,
+    notebookId: string,
+    name: string,
+    nodeType?: string
+  ): Promise<NotebookGraphNodeRow | null> {
+    const nodes = await this.findNodesByNameOrAlias(vaultId, notebookId, name, nodeType)
+    const type = nodeType?.trim()
+    if (type) return nodes[0] ?? null
+    // 未指定类型时跨类型多命中仍闭口，避免把「苹果人」和「苹果主题」合成一条
+    const types = new Set(nodes.map((row) => row.nodeType))
+    if (types.size !== 1) return null
+    return nodes[0] ?? null
   }
 
   async getNeighborhood(opts: {

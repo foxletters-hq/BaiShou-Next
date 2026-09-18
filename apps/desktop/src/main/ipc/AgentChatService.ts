@@ -237,8 +237,8 @@ export class AgentChatService {
           const repo = new GraphRepository(connectionManager.getDb())
           const vaultId = resolveActiveVaultId()
           return {
-            findByNameOrAlias: (name, nodeType) =>
-              repo.findNodeByNameOrAlias(vaultId, name, nodeType),
+            findByNameOrAlias: async (name, nodeType) =>
+              (await repo.findNodesByNameOrAlias(vaultId, name, nodeType))[0] ?? null,
             getNodeById: (id) => repo.getNodeById(id, vaultId),
             getEdgeById: (id) => repo.getEdgeById(id, vaultId)
           }

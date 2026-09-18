@@ -14,6 +14,7 @@ export interface GraphForceNode {
   id: string
   name: string
   nodeType: string
+  discriminator?: string
   mentionCount?: number
   reviewStatus?: string
 }
@@ -410,6 +411,10 @@ function draw(){
       ctx.fillStyle=theme.label;
       ctx.font=(12/k)+'px system-ui';
       ctx.fillText(n.name.slice(0,16), n.x+r+3, n.y+4);
+      if(n.discriminator){
+        ctx.font=(10/k)+'px system-ui';
+        ctx.fillText(String(n.discriminator).slice(0,16), n.x+r+3, n.y+4+12/k);
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -649,6 +654,7 @@ window.__patchGraphMeta = function(payload){
     const fresh = byId.get(n.id);
     if(!fresh) continue;
     n.name = fresh.name;
+    n.discriminator = fresh.discriminator;
     n.nodeType = fresh.nodeType;
     n.mentionCount = fresh.mentionCount;
     n.reviewStatus = fresh.reviewStatus;

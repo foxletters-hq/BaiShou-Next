@@ -37,6 +37,7 @@ import {
   isDiaryEmbeddingPresent,
   normalizeGraphFilePath,
   resolveGlobalGraphModelIds,
+  resolveReasoningEffortForSlot,
   resolveGraphExtractSelfName,
   graphDiaryInstant,
   graphEdgeId,
@@ -48,6 +49,7 @@ import {
   uniqueNonEmptyIds,
   type GraphNodeWriteResult,
   type GlobalModelsConfig,
+  type ReasoningEffortSetting,
   type GraphExtractQueueProgressUpdate,
   type GraphExtractQueuePhase,
   type GraphSetReviewsBatchInput
@@ -59,6 +61,7 @@ import {
   ensureMobileRawDataRuntime,
   syncMobileGraphPendingIndex
 } from './mobile-raw-data-source.runtime'
+import { pickBareGraphNameHit } from './graph-name-candidates.util'
 
 let boundVault: string | null = null
 
@@ -99,7 +102,11 @@ export function wireMobilePendingReextractHook(options: {
 
 async function resolveChatLlm(
   settingsManager: SettingsManagerService
-): Promise<{ provider: IAIProvider; modelId: string } | null> {
+): Promise<{
+  provider: IAIProvider
+  modelId: string
+  reasoningEffort?: ReasoningEffortSetting
+} | null> {
   try {
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
     const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
@@ -108,7 +115,11 @@ async function resolveChatLlm(
     const cfg = providers.find((p) => p.id === providerId)
     if (!cfg) return null
     const provider = AIProviderRegistry.getInstance().getOrUpdateProvider(cfg as never)
-    return { provider, modelId }
+    return {
+      provider,
+      modelId,
+      reasoningEffort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'graph')
+    }
   } catch {
     return null
   }
@@ -361,24 +372,36 @@ export async function mobileSearchGraphNodes(
     .map(({ distance: _distance, ...row }) => row)
 }
 
+export async function mobileFindNodesByName(
+  drizzleDb: AppDatabase,
+  vaultId: string,
+  query: string,
+  nodeType?: string
+) {
+  return new GraphRepository(drizzleDb).findNodesByNameOrAlias(vaultId, query, nodeType)
+}
+
 export async function mobileFindNodeByName(
   drizzleDb: AppDatabase,
   vaultId: string,
   query: string,
   nodeType?: string
 ) {
-  const hit = await new GraphRepository(drizzleDb).findNodeByNameOrAlias(
+  const hits = await new GraphRepository(drizzleDb).findNodesByNameOrAlias(
     vaultId,
     query,
     nodeType
   )
-  if (!hit) return null
+  const picked = pickBareGraphNameHit(hits)
+  if (!picked.hit) return null
   return {
-    id: hit.id,
-    name: hit.name,
-    nodeType: hit.nodeType,
-    summary: hit.summary ?? '',
-    aliases: hit.aliases ?? []
+    id: picked.hit.id,
+    name: picked.hit.name,
+    nodeType: picked.hit.nodeType,
+    summary: picked.hit.summary ?? '',
+    aliases: picked.hit.aliases ?? [],
+    discriminator: picked.hit.discriminator ?? '',
+    ambiguous: picked.ambiguous
   }
 }
 
@@ -485,6 +508,7 @@ async function writeMobileNodeReview(options: {
       vaultName: options.vaultDisplayName ?? node.vaultId,
       nodeType: node.nodeType,
       name: node.name,
+      discriminator: node.discriminator ?? '',
       aliases: node.aliases,
       summary: node.summary,
       props,
@@ -694,10 +718,17 @@ export async function mobileUpsertNode(options: {
     throw new Error(i18n.t('graph.node_not_found', '节点不存在'))
   }
   const name = options.name.trim()
-  const sameName = graphSameNameExistingFromRow(
-    await repo.findNodeByNameOrAlias(options.vaultId, name, existing.nodeType || options.nodeType),
-    existing.id
-  )
+  const sameName =
+    name === existing.name
+      ? null
+      : graphSameNameExistingFromRow(
+          await repo.findNodeByNameOrAlias(
+            options.vaultId,
+            name,
+            existing.nodeType || options.nodeType
+          ),
+          existing.id
+        )
   if (sameName) {
     return { conflict: 'same-name' as const, existing: sameName }
   }
@@ -717,6 +748,7 @@ export async function mobileUpsertNode(options: {
       vaultName: options.vaultDisplayName,
       nodeType: existing.nodeType || options.nodeType,
       name,
+      discriminator: existing.discriminator ?? '',
       aliases: options.aliases ?? existing.aliases,
       summary: options.summary ?? existing.summary,
       props,
@@ -778,6 +810,7 @@ export async function mobileCreateNode(options: {
       vaultName: options.vaultDisplayName,
       nodeType,
       name,
+      discriminator: '',
       aliases: options.aliases ?? [],
       summary: options.summary ?? '',
       props: {},

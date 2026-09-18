@@ -1,4 +1,5 @@
 import {
+  appendAmbiguousSourceRef,
   entityAlignKey,
   notebookGraphEdgeId,
   notebookGraphExtractStateId,
@@ -15,7 +16,8 @@ import {
   GRAPH_EDGE_TYPES,
   GRAPH_NODE_TYPES,
   type NotebookGraphEmbedding,
-  type NotebookGraphExtractStore
+  type NotebookGraphExtractStore,
+  type NotebookGraphQuery
 } from '@baishou/database/shared'
 import { logger } from '@baishou/shared'
 import {
@@ -62,7 +64,9 @@ export class KnowledgeGraphExtractionService {
   constructor(
     private readonly deps: {
       raw: NotebookGraphExtractRaw
-      repo: NotebookGraphExtractStore & Partial<NotebookGraphEmbedding>
+      repo: NotebookGraphExtractStore &
+        Partial<NotebookGraphEmbedding> &
+        Pick<NotebookGraphQuery, 'findNodesByNameOrAlias'>
       index: Pick<NotebookGraphIndexService, 'syncPendingIndex'>
       llm: KnowledgeGraphExtractLlm
       getVaultName: () => string
@@ -118,6 +122,7 @@ export class KnowledgeGraphExtractionService {
     const writtenNodes = new Map<string, NotebookGraphNodeRawRecord>()
     const writtenEdges = new Map<string, NotebookGraphEdgeRawRecord>()
     const pendingEmbeddings = new Map<string, number[]>()
+    const ambiguousNodeIds = new Set<string>()
 
     const sourceNode = this.buildSourceNode({
       vaultId,
@@ -183,6 +188,9 @@ export class KnowledgeGraphExtractionService {
         const id =
           existingId ?? notebookGraphNodeIdForEntity(vaultId, notebookId, ent.nodeType, ent.name)
         const firstSeenAt = Math.min(prior?.firstSeenAt ?? priorRow?.firstSeenAt ?? now, now)
+        const baseProps = prior?.props ?? parseRowProps(priorRow)
+        const ambiguous = hit?.ambiguous === true
+        if (ambiguous) ambiguousNodeIds.add(id)
         const record: NotebookGraphNodeRawRecord = {
           id,
           schemaVersion: 1,
@@ -191,6 +199,7 @@ export class KnowledgeGraphExtractionService {
           notebookId,
           nodeType: ent.nodeType,
           name: prior?.name ?? priorRow?.name ?? hit?.canonicalName ?? ent.name,
+          discriminator: prior?.discriminator ?? priorRow?.discriminator,
           aliases: mergeAliasList(prior?.aliases ?? parseRowAliases(priorRow?.aliases), [
             ent.name,
             ...ent.incomingAliases,
@@ -199,7 +208,7 @@ export class KnowledgeGraphExtractionService {
           summary: ent.summary.trim()
             ? ent.summary
             : (prior?.summary ?? priorRow?.summary ?? hit?.summary ?? ''),
-          props: prior?.props ?? {},
+          props: ambiguous ? appendAmbiguousSourceRef(baseProps, win.sourceRef) : baseProps,
           mentionCount: (prior?.mentionCount ?? priorRow?.mentionCount ?? 0) + 1,
           firstSeenAt,
           lastSeenAt: now,
@@ -227,22 +236,41 @@ export class KnowledgeGraphExtractionService {
         const fromName = String(edge.from || '').trim()
         const toName = String(edge.to || '').trim()
         if (!fromName || !toName) continue
-        const fromId =
-          resolveTypedName(nameToIds, fromName) ||
-          (await this.lookupId(vaultId, notebookId, fromName))
-        const toId =
-          resolveTypedName(nameToIds, toName) || (await this.lookupId(vaultId, notebookId, toName))
-        if (!fromId || !toId) continue
+        const from = await this.lookupEndpoint({
+          vaultId,
+          notebookId,
+          vaultName,
+          name: fromName,
+          nameToIds,
+          writtenNodes,
+          ambiguousNodeIds,
+          sourceRef: win.sourceRef,
+          shardMonth: shardKey,
+          now
+        })
+        const to = await this.lookupEndpoint({
+          vaultId,
+          notebookId,
+          vaultName,
+          name: toName,
+          nameToIds,
+          writtenNodes,
+          ambiguousNodeIds,
+          sourceRef: win.sourceRef,
+          shardMonth: shardKey,
+          now
+        })
+        if (!from || !to) continue
         const edgeType = clampEdgeType(String(edge.type || 'relates_to'))
         const confidence = normalizeGraphExtractConfidence(edge.confidence, 75)
         const record: NotebookGraphEdgeRawRecord = {
-          id: notebookGraphEdgeId(vaultId, notebookId, fromId, toId, edgeType, win.sourceRef),
+          id: notebookGraphEdgeId(vaultId, notebookId, from.id, to.id, edgeType, win.sourceRef),
           schemaVersion: 1,
           vaultId,
           vaultName,
           notebookId,
-          fromId,
-          toId,
+          fromId: from.id,
+          toId: to.id,
           edgeType,
           props: {},
           validFrom: now,
@@ -254,7 +282,10 @@ export class KnowledgeGraphExtractionService {
           sourceContentHash: input.textHash,
           confidence,
           origin: 'ai',
-          reviewStatus: graphReviewStatusFromConfidence(confidence),
+          reviewStatus: reviewStatusForAmbiguousEndpoint(
+            graphReviewStatusFromConfidence(confidence),
+            from.ambiguous || to.ambiguous
+          ),
           shardMonth: shardKey,
           createdAt: now,
           updatedAt: now,
@@ -339,17 +370,18 @@ export class KnowledgeGraphExtractionService {
       return { id: rec.id, name: rec.name, aliases: rec.aliases, summary: rec.summary }
     }
     return {
-      findByNameOrAlias: async (name, type) => {
-        const fromSession = sessionHit(name, type)
-        if (fromSession) return fromSession
-        const row = await this.deps.repo.findNodeByName(vaultId, notebookId, name, type)
-        if (!row) return null
-        return {
-          id: row.id,
-          name: row.name,
-          aliases: parseRowAliases(row.aliases),
-          summary: row.summary ?? ''
+      findCandidatesByNameOrAlias: async (name, type) => {
+        const rows = await this.deps.repo.findNodesByNameOrAlias(vaultId, notebookId, name, type)
+        if (rows.length > 0) {
+          return rows.map((row) => ({
+            id: row.id,
+            name: row.name,
+            aliases: parseRowAliases(row.aliases),
+            summary: row.summary ?? ''
+          }))
         }
+        const fromSession = sessionHit(name, type)
+        return fromSession ? [fromSession] : []
       },
       searchByVector:
         this.deps.align?.embedQuery && this.deps.repo.searchNodesByVector
@@ -389,17 +421,106 @@ export class KnowledgeGraphExtractionService {
     name: string,
     nodeType: string
   ) {
-    return this.deps.repo.findNodeByName(vaultId, notebookId, hit?.canonicalName || name, nodeType)
+    const rows = await this.deps.repo.findNodesByNameOrAlias(
+      vaultId,
+      notebookId,
+      hit?.canonicalName || name,
+      nodeType
+    )
+    if (hit?.id) {
+      return rows.find((row) => row.id === hit.id) ?? rows[0] ?? null
+    }
+    return rows[0] ?? null
   }
 
-  private async lookupId(
-    vaultId: string,
-    notebookId: string,
-    name: string,
-    nodeType?: string
-  ): Promise<string | null> {
-    const row = await this.deps.repo.findNodeByName(vaultId, notebookId, name, nodeType)
-    return row?.id ?? null
+  private async lookupEndpoint(input: {
+    vaultId: string
+    notebookId: string
+    vaultName: string
+    name: string
+    nameToIds: Map<string, Map<string, string>>
+    writtenNodes: Map<string, NotebookGraphNodeRawRecord>
+    ambiguousNodeIds: Set<string>
+    sourceRef: string
+    shardMonth: string
+    now: number
+  }): Promise<{ id: string; ambiguous: boolean } | null> {
+    const sessionId = resolveTypedName(input.nameToIds, input.name)
+    if (sessionId) {
+      return { id: sessionId, ambiguous: input.ambiguousNodeIds.has(sessionId) }
+    }
+    const rows = await this.deps.repo.findNodesByNameOrAlias(
+      input.vaultId,
+      input.notebookId,
+      input.name
+    )
+    if (rows.length === 0) return null
+    const first = rows[0]!
+    const ambiguous = rows.length > 1
+    if (ambiguous) {
+      input.ambiguousNodeIds.add(first.id)
+      this.rememberAmbiguousBareNode(input, first)
+    }
+    return { id: first.id, ambiguous }
+  }
+
+  /**
+   * 边端点按名字撞上多条时，本篇出处必须记到裸名节点。
+   * 这个节点可能不在本窗实体列表里，所以要单独收进 writtenNodes 再整条重写。
+   */
+  private rememberAmbiguousBareNode(
+    input: {
+      vaultId: string
+      notebookId: string
+      vaultName: string
+      writtenNodes: Map<string, NotebookGraphNodeRawRecord>
+      sourceRef: string
+      shardMonth: string
+      now: number
+    },
+    row: {
+      id: string
+      nodeType: string
+      name: string
+      discriminator?: string | null
+      aliases: string | string[] | null
+      summary: string | null
+      propsJson?: string | null
+      mentionCount: number | null
+      firstSeenAt: number | null
+      lastSeenAt: number | null
+      createdAt: number
+      reviewStatus?: string | null
+    }
+  ): void {
+    const prior = input.writtenNodes.get(row.id)
+    if (prior) {
+      prior.props = appendAmbiguousSourceRef(prior.props, input.sourceRef)
+      prior.updatedAt = input.now
+      return
+    }
+    input.writtenNodes.set(row.id, {
+      id: row.id,
+      schemaVersion: 1,
+      vaultId: input.vaultId,
+      vaultName: input.vaultName,
+      notebookId: input.notebookId,
+      nodeType: row.nodeType,
+      name: row.name,
+      discriminator: row.discriminator ?? undefined,
+      aliases: parseRowAliases(row.aliases),
+      summary: row.summary ?? '',
+      props: appendAmbiguousSourceRef(parseRowProps(row), input.sourceRef),
+      mentionCount: row.mentionCount ?? 0,
+      firstSeenAt: row.firstSeenAt ?? input.now,
+      lastSeenAt: row.lastSeenAt ?? input.now,
+      origin: 'ai',
+      shardMonth: input.shardMonth,
+      createdAt: row.createdAt,
+      updatedAt: input.now,
+      deletedAt: null,
+      reviewStatus: preferNotebookReviewStatus(row.reviewStatus, 'approved')
+    })
   }
 
   /** 向量只写本机 SQLite；名片对不上的不会进 pendingEmbeddings。 */
@@ -519,6 +640,15 @@ function preferNotebookReviewStatus(
   return incoming
 }
 
+function reviewStatusForAmbiguousEndpoint(
+  status: 'approved' | 'pending' | 'rejected',
+  ambiguous: boolean
+): 'approved' | 'pending' | 'rejected' {
+  if (!ambiguous) return status
+  if (status === 'rejected') return 'rejected'
+  return 'pending'
+}
+
 function registerTypedName(
   map: Map<string, Map<string, string>>,
   nodeType: string,
@@ -569,6 +699,25 @@ function mergeAliasList(existing: string[], incoming: string[]): string[] {
     out.push(t)
   }
   return out
+}
+
+function parseRowProps(
+  row?: { props?: Record<string, unknown>; propsJson?: string | null } | null
+): Record<string, unknown> {
+  if (!row) return {}
+  if (row.props && typeof row.props === 'object' && !Array.isArray(row.props)) {
+    return { ...row.props }
+  }
+  const raw = row.propsJson
+  if (!raw?.trim()) return {}
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {}
+  } catch {
+    return {}
+  }
 }
 
 function parseRowAliases(raw: string | string[] | null | undefined): string[] {

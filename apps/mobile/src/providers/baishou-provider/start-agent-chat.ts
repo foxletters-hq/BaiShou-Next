@@ -5,6 +5,7 @@ import {
   isConfiguredProviderId,
   logger,
   parseMountedNotebookIds,
+  resolveReasoningEffortForSlot,
   resolveVaultIdentity
 } from '@baishou/shared'
 import {
@@ -25,6 +26,7 @@ import {
   resolveAssistantContextWindow,
   resolveAssistantEmojiPrefs
 } from '../../services/mobile-context-at-message.service'
+import { pickBareGraphNameHit } from '../../services/graph-name-candidates.util'
 import { webFetchContent, fetchSearchPageHtml } from './web-fetch'
 import type { ToolRegistry, ToolDiarySearcher, AIProviderRegistry, IAIProvider } from '@baishou/ai'
 import { agentDbRuntimeRef } from '../../services/mobile-agent-db-runtime-ref'
@@ -131,6 +133,10 @@ export function createStartAgentChat(deps: {
 
       const systemModels = {
         namingModelConfigured,
+        namingReasoningEffort: resolveReasoningEffortForSlot(
+          globalModels?.reasoningEffortBySlot,
+          'naming'
+        ),
         ...(namingProvider && namingModelId ? { namingProvider, namingModelId } : {}),
         ...(embeddingProvider && embeddingModelId ? { embeddingProvider, embeddingModelId } : {})
       }
@@ -275,8 +281,10 @@ export function createStartAgentChat(deps: {
             }).id
             const repo = new GraphRepository(runtime.drizzleDb)
             return {
-              findByNameOrAlias: (name, nodeType) =>
-                repo.findNodeByNameOrAlias(vaultId, name, nodeType),
+              findByNameOrAlias: async (name, nodeType) => {
+                const hits = await repo.findNodesByNameOrAlias(vaultId, name, nodeType)
+                return pickBareGraphNameHit(hits).hit
+              },
               getNodeById: (id) => repo.getNodeById(id, vaultId),
               getEdgeById: (id) => repo.getEdgeById(id, vaultId)
             }

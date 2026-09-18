@@ -1,18 +1,25 @@
 import { graphIdFromKey, normalizeGraphName } from './graph-identity.util'
 
-/** 知识本实体：盐含 notebookId，跨本同名不合并 */
+/**
+ * 知识本实体：盐含 notebookId，跨本同名不合并。
+ * 区分信息归一化后为空时哈希输入必须保持 `${v}\0${nb}\0${t}\0${n}`，
+ * 连分隔符都不能加，否则全部老节点 ID 会一起变掉。
+ */
 export function notebookGraphNodeIdForEntity(
   vaultId: string,
   notebookId: string,
   nodeType: string,
-  name: string
+  name: string,
+  discriminator?: string
 ): string {
   const v = vaultId.trim()
   const nb = notebookId.trim()
   const t = nodeType.trim().toLowerCase() || 'topic'
   const n = normalizeGraphName(name)
+  const d = normalizeGraphName(discriminator ?? '')
   if (!v || !nb) throw new Error('notebookGraphNodeIdForEntity: vaultId and notebookId required')
-  return graphIdFromKey(`${v}\0${nb}\0${t}\0${n}`)
+  const key = d ? `${v}\0${nb}\0${t}\0${n}\0${d}` : `${v}\0${nb}\0${t}\0${n}`
+  return graphIdFromKey(key)
 }
 
 export function notebookGraphSourceNodeId(
@@ -20,6 +27,7 @@ export function notebookGraphSourceNodeId(
   notebookId: string,
   sourceId: string
 ): string {
+  // 资料锚点不是手工拆分出来的第二实体，不能带区分信息，否则已有出处节点 ID 会全部改掉
   return notebookGraphNodeIdForEntity(vaultId, notebookId, 'source', sourceId)
 }
 
@@ -51,8 +59,15 @@ export function shouldKeepIncomingNotebookGraphNodeId(opts: {
   name: string
   incomingId: string
   existingId: string
+  discriminator?: string
 }): boolean {
-  const stable = notebookGraphNodeIdForEntity(opts.vaultId, opts.notebookId, opts.nodeType, opts.name)
+  const stable = notebookGraphNodeIdForEntity(
+    opts.vaultId,
+    opts.notebookId,
+    opts.nodeType,
+    opts.name,
+    opts.discriminator
+  )
   if (opts.incomingId === stable) return true
   if (opts.existingId === stable) return false
   return false

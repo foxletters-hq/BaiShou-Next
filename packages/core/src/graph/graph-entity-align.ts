@@ -34,6 +34,11 @@ export type AlignedEntity = {
   embedding?: number[]
   /** 算上述向量时用的名片文本。与节点最终名片逐字相同才允许落库。 */
   embedText?: string
+  /**
+   * 按名字命中多条时为真。这时 id 取裸名那一条，不再调二次模型判定，
+   * 否则同名不同人会被静默折成一个人。
+   */
+  ambiguous?: boolean
 }
 
 export type EntityAlignJudgeIncoming = {
@@ -65,7 +70,7 @@ export type EntityAlignJudgeDecision = {
 }
 
 export type EntityAlignLookup = {
-  findByNameOrAlias: (name: string, type: string) => Promise<AlignedEntityHit | null>
+  findCandidatesByNameOrAlias: (name: string, type: string) => Promise<AlignedEntityHit[]>
   searchByVector?: (
     vector: number[],
     type: string,
@@ -268,23 +273,26 @@ export async function alignEntityPool(
     [...unique].map(async ([key, entity]) => ({
       key,
       entity,
-      hit: await lookup.findByNameOrAlias(entity.name, entity.nodeType)
+      hits: await lookup.findCandidatesByNameOrAlias(entity.name, entity.nodeType)
     }))
   )
-  for (const { key, entity, hit } of nameHits) {
-    if (hit) {
-      out.set(key, {
-        key,
-        id: hit.id,
-        canonicalName: hit.name,
-        aliases: mergeAliasList(hit.aliases, [entity.name, ...(entity.aliases ?? [])]),
-        summary: entity.summary || hit.summary || '',
-        reused: true,
-        mergedBy: 'name'
-      })
+  for (const { key, entity, hits } of nameHits) {
+    if (hits.length === 0) {
+      unresolved.push({ key, entity })
       continue
     }
-    unresolved.push({ key, entity })
+    const hit = hits[0]!
+    out.set(key, {
+      key,
+      id: hit.id,
+      canonicalName: hit.name,
+      aliases: mergeAliasList(hit.aliases, [entity.name, ...(entity.aliases ?? [])]),
+      summary: entity.summary || hit.summary || '',
+      reused: true,
+      mergedBy: 'name',
+      // 两条以上只挂裸名并标歧义；进 unresolved 会触发二次判定，那是给「名字不同」用的
+      ambiguous: hits.length > 1
+    })
   }
 
   if (unresolved.length === 0) return out

@@ -340,6 +340,53 @@ describe('MigrationService', () => {
       expect(indexes).toHaveLength(1)
     })
 
+    it('should accept two same-name people after upgrading an old live-name unique index', async () => {
+      const db = dbManager.getDb()
+      await db.run(sql`
+        CREATE TABLE graph_nodes (
+          id TEXT PRIMARY KEY NOT NULL,
+          vault_id TEXT NOT NULL,
+          node_type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          name_normalized TEXT DEFAULT '' NOT NULL,
+          aliases TEXT DEFAULT '[]' NOT NULL,
+          summary TEXT DEFAULT '' NOT NULL,
+          props_json TEXT DEFAULT '{}' NOT NULL,
+          embedding BLOB,
+          dimension INTEGER,
+          model_id TEXT DEFAULT '' NOT NULL,
+          mention_count INTEGER DEFAULT 0 NOT NULL,
+          first_seen_at INTEGER,
+          last_seen_at INTEGER,
+          origin TEXT DEFAULT 'ai' NOT NULL,
+          shard_month TEXT DEFAULT '' NOT NULL,
+          review_status TEXT DEFAULT 'approved' NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          deleted_at INTEGER
+        )
+      `)
+      await db.run(sql`
+        CREATE UNIQUE INDEX graph_nodes_vault_type_name_live
+        ON graph_nodes(vault_id, node_type, name_normalized)
+        WHERE deleted_at IS NULL AND node_type != 'entry'
+      `)
+
+      await (service as any)._ensureGraphTables()
+      await (service as any)._ensureAgentSchemaColumns()
+
+      await db.run(sql`
+        INSERT INTO graph_nodes (
+          id, vault_id, node_type, name, name_normalized, discriminator, aliases, summary, props_json,
+          mention_count, origin, shard_month, review_status, created_at, updated_at
+        ) VALUES
+          ('n-bare', 'vault-a', 'person', '张三', '张三', '', '[]', '', '{}', 1, 'ai', '2026-09', 'approved', 1, 1),
+          ('n-split', 'vault-a', 'person', '张三', '张三', '同事', '[]', '', '{}', 1, 'ai', '2026-09', 'approved', 1, 1)
+      `)
+      const rows = await db.all(sql`SELECT id FROM graph_nodes ORDER BY id`)
+      expect(rows.map((row) => (row as { id: string }).id)).toEqual(['n-bare', 'n-split'])
+    })
+
     it('_ensureEmbedLedgerTable should upgrade a legacy db that only has memory_embeddings', async () => {
       const db = dbManager.getDb()
       await db.run(sql`

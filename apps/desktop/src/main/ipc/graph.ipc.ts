@@ -9,8 +9,11 @@ import {
   mergeDiaryGraphNodeGroup,
   mergeDiaryGraphNodes,
   applyDiaryGraphSurgicalDelete,
+  revertGraphNodeSplit,
+  splitGraphNode,
   syncDiaryGraphMergeGroupIntoIndex,
   syncDiaryGraphMergeIntoIndex,
+  type GraphSplitEdgeAssignment,
   type GraphEdgeRawRecord,
   type GraphExtractDraft,
   type GraphNodeRawRecord
@@ -31,12 +34,14 @@ import {
   buildGraphExtractEnqueueItems,
   logger,
   resolveGlobalGraphModelIds,
+  resolveReasoningEffortForSlot,
   resolveGraphExtractConcurrency,
   resolveGraphExtractSelfName,
   graphDiaryInstant,
   graphEdgeId,
   graphNodeIdForEntity,
   graphSameNameExistingFromRow,
+  readGraphNameRegistry,
   GRAPH_GLOBAL_MAX_NODES,
   GRAPH_SEARCH_EMBEDDING_REQUIRED_ERROR,
   resolveGraphSearchMode,
@@ -85,7 +90,11 @@ async function resolveExtractLlm() {
   const { providerId, modelId } = resolveGlobalGraphModelIds(globalModels)
   if (!modelId) throw new Error('graph-extract-not-configured')
   const provider = await getActiveProvider(providerId)
-  return createDefaultGraphExtractLlm({ provider, modelId })
+  return createDefaultGraphExtractLlm({
+    provider,
+    modelId,
+    reasoningEffort: resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'graph')
+  })
 }
 
 async function resolveGraphQueryEmbedder(): Promise<{
@@ -146,6 +155,83 @@ function parseProps(propsJson: string | null | undefined): Record<string, unknow
   }
 }
 
+type GraphNameCandidate = {
+  nodeId: string
+  name: string
+  discriminator: string
+  label: string
+}
+
+function toNameCandidate(
+  row: { id: string; name: string; discriminator?: string },
+  label?: string
+): GraphNameCandidate {
+  const discriminator = row.discriminator ?? ''
+  return {
+    nodeId: row.id,
+    name: row.name,
+    discriminator,
+    label: label?.trim() || (discriminator ? discriminator : row.name)
+  }
+}
+
+async function listNameCandidatesForNode(nodeId: string): Promise<GraphNameCandidate[]> {
+  const repo = requireGraphRepo()
+  const node = await repo.getNodeById(nodeId)
+  if (!node) return []
+  const vaultId = writeVaultId(node.vaultId)
+  const rows = await repo.findNodesByNameOrAlias(vaultId, node.name, node.nodeType)
+  const bare = rows.find((row) => !(row.discriminator ?? '')) ?? rows[0] ?? node
+  const registry = readGraphNameRegistry(parseProps(bare.propsJson))
+  const labelById = new Map(registry.map((entry) => [entry.nodeId, entry.label]))
+  const seen = new Set<string>()
+  const candidates: GraphNameCandidate[] = []
+  for (const row of rows) {
+    seen.add(row.id)
+    candidates.push(toNameCandidate(row, labelById.get(row.id)))
+  }
+  for (const entry of registry) {
+    if (seen.has(entry.nodeId)) continue
+    seen.add(entry.nodeId)
+    candidates.push({
+      nodeId: entry.nodeId,
+      name: node.name,
+      discriminator: entry.discriminator,
+      label: entry.label
+    })
+  }
+  return candidates
+}
+
+async function listSplitEdgesForNode(nodeId: string): Promise<
+  Array<{
+    edgeId: string
+    edgeType: string
+    partnerName: string
+    sourceRef: string | null
+    sourceExcerpt: string
+  }>
+> {
+  const repo = requireGraphRepo()
+  const node = await repo.getNodeById(nodeId)
+  if (!node) return []
+  const vaultId = writeVaultId(node.vaultId)
+  const edges = await repo.listEdgesTouching(vaultId, nodeId)
+  const partnerIds = [...new Set(edges.map((edge) => (edge.fromId === nodeId ? edge.toId : edge.fromId)))]
+  const partners = await repo.getNodesByIds(vaultId, partnerIds)
+  const nameById = new Map(partners.map((partner) => [partner.id, partner.name]))
+  return edges.map((edge) => {
+    const partnerId = edge.fromId === nodeId ? edge.toId : edge.fromId
+    return {
+      edgeId: edge.id,
+      edgeType: edge.edgeType,
+      partnerName: nameById.get(partnerId) || partnerId,
+      sourceRef: edge.sourceRef,
+      sourceExcerpt: edge.sourceExcerpt ?? ''
+    }
+  })
+}
+
 /** Prefer record vaultId; never fall back to name-derived id (random-id vaults). */
 function writeVaultId(recordVaultId: string | null | undefined): string {
   return recordVaultId?.trim() || requireVaultId()
@@ -180,6 +266,8 @@ async function writeNodeReview(
     vaultName: resolveVaultNameById(vaultId),
     nodeType: node.nodeType,
     name: node.name,
+    // 复核只改状态；缺这个字段时 applyRawNode 会归一成空串，拆出节点的身份就被冲掉。
+    discriminator: node.discriminator ?? '',
     aliases: node.aliases,
     summary: node.summary,
     props: parseProps(node.propsJson),
@@ -298,7 +386,7 @@ async function resolveExtractSelfName(): Promise<string> {
   return selfName
 }
 
-async function enqueueGraphExtract(
+export async function enqueueGraphExtract(
   extractQueue: GraphExtractQueueService,
   opts?: { filePaths?: string[]; concurrency?: number }
 ): Promise<{
@@ -524,18 +612,20 @@ export function registerGraphIPC(): void {
     'graph:find-by-name',
     async (_e, opts: { query: string; nodeType?: string }) => {
       const repo = requireGraphRepo()
-      const hit = await repo.findNodeByNameOrAlias(
+      const hits = await repo.findNodesByNameOrAlias(
         requireVaultId(),
         opts.query,
         opts.nodeType
       )
+      const hit = hits[0]
       if (!hit) return null
       return {
         id: hit.id,
         name: hit.name,
         nodeType: hit.nodeType,
         summary: hit.summary ?? '',
-        aliases: hit.aliases ?? []
+        aliases: hit.aliases ?? [],
+        discriminator: hit.discriminator ?? ''
       }
     }
   )
@@ -596,12 +686,29 @@ export function registerGraphIPC(): void {
       if (nodeType === 'entry' && !existing?.id && !input.id) {
         throw new Error('entry 节点必须基于日记路径，不能手建随机 id')
       }
+      const sameNameHits = await repo.findNodesByNameOrAlias(
+        vaultId,
+        name,
+        existing?.nodeType || nodeType
+      )
+      const currentId = existing?.id || input.id
+      // 唯一索引已含区分信息；只比 id 会把裸名行当成冲突，拆出的节点就再也存不进去。
+      const currentDiscriminator = existing?.discriminator ?? ''
       const sameName = graphSameNameExistingFromRow(
-        await repo.findNodeByNameOrAlias(vaultId, name, existing?.nodeType || nodeType),
-        existing?.id || input.id
+        sameNameHits.find(
+          (row) =>
+            row.id !== currentId && (row.discriminator ?? '') === currentDiscriminator
+        ) ?? null,
+        currentId
       )
       if (sameName) {
-        return { conflict: 'same-name' as const, existing: sameName }
+        const candidates = sameNameHits.map((row) => toNameCandidate(row))
+        return {
+          conflict: 'same-name' as const,
+          existing: sameName,
+          candidates,
+          canRegisterAnother: (existing?.nodeType || nodeType) !== 'entry'
+        }
       }
       const record: GraphNodeRawRecord = {
         id: existing?.id || input.id || graphNodeIdForEntity(vaultId, nodeType, name),
@@ -610,6 +717,8 @@ export function registerGraphIPC(): void {
         vaultName: resolveVaultNameById(vaultId) || vaultName,
         nodeType: existing?.nodeType || nodeType,
         name,
+        // 手工建点永远是裸名；编辑已有节点必须带回原区分信息，否则 JSONL 缺字段会被归一成空串。
+        discriminator: existing?.discriminator ?? '',
         aliases,
         summary: input.summary ?? existing?.summary ?? '',
         props: existing ? parseProps(existing.propsJson) : {},
@@ -742,6 +851,73 @@ export function registerGraphIPC(): void {
       return { ok: true, ...result }
     }
   )
+
+  ipcMain.handle(
+    'graph:split-node',
+    async (
+      _e,
+      opts: {
+        bareNodeId: string
+        discriminator: string
+        label: string
+        summary?: string
+        edgeAssignments?: GraphSplitEdgeAssignment[]
+        reason?: string
+      }
+    ) => {
+      const manager = getGraphRawManager()
+      const repo = requireGraphRepo()
+      const result = await splitGraphNode({
+        vaultId: requireVaultId(),
+        vaultName: requireVaultName(),
+        bareNodeId: opts.bareNodeId,
+        discriminator: opts.discriminator,
+        label: opts.label,
+        summary: opts.summary,
+        edgeAssignments: opts.edgeAssignments ?? [],
+        reason: opts.reason,
+        manager,
+        repo
+      })
+      await syncGraphPendingIndex()
+      return { ok: true, ...result }
+    }
+  )
+
+  ipcMain.handle(
+    'graph:revert-node-split',
+    async (_e, opts: { bareNodeId: string; discriminator: string; reason?: string }) => {
+      const manager = getGraphRawManager()
+      const repo = requireGraphRepo()
+      const result = await revertGraphNodeSplit({
+        vaultId: requireVaultId(),
+        vaultName: requireVaultName(),
+        bareNodeId: opts.bareNodeId,
+        discriminator: opts.discriminator,
+        reason: opts.reason,
+        manager,
+        repo
+      })
+      if (result.removedNodeId) {
+        await syncDiaryGraphMergeIntoIndex({
+          loserId: result.removedNodeId,
+          syncPendingIndex: syncGraphPendingIndex,
+          softDeleteNode: (id) => repo.softDeleteNode(id)
+        })
+      } else {
+        await syncGraphPendingIndex()
+      }
+      return { ok: true, ...result }
+    }
+  )
+
+  ipcMain.handle('graph:list-name-candidates', async (_e, opts: { nodeId: string }) => {
+    return listNameCandidatesForNode(opts.nodeId)
+  })
+
+  ipcMain.handle('graph:list-split-edges', async (_e, opts: { nodeId: string }) => {
+    return listSplitEdgesForNode(opts.nodeId)
+  })
 
   ipcMain.handle('graph:get-node', async (_e, id: string) => {
     return requireGraphRepo().getNodeById(id)

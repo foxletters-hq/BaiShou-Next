@@ -52,6 +52,7 @@ import {
   graphExtractOverallProgress,
   isGraphExtractBusyStatus,
   isGraphNodeSameNameConflict,
+  listAmbiguousSourceRefs,
   graphPendingItemKey,
   buildGraphNodeNameMap,
   resolveGraphNodeDisplayName,
@@ -92,6 +93,7 @@ import { GraphAwakenWelcome } from './GraphAwakenWelcome'
 import { GraphExtractHelpButton } from './GraphExtractHelpButton'
 import { GraphAwakenBirthdayField } from './GraphAwakenBirthdayField'
 import { GraphCreateNodeModal } from './GraphCreateNodeModal'
+import { GraphSplitNodeModal } from './GraphSplitNodeModal'
 import { GraphCanvasSettingsPanel } from './GraphCanvasSettingsPanel'
 import { GraphForceCanvas } from './GraphForceCanvas'
 import {
@@ -124,6 +126,21 @@ const SIDE_COLLAPSED_KEY = 'baishou.graph.sideCollapsed.v1'
 const SIDE_WIDTH_MIN = 260
 const SIDE_WIDTH_MAX = 560
 const SIDE_WIDTH_DEFAULT = 320
+
+type GraphNameCandidate = {
+  nodeId: string
+  name: string
+  discriminator: string
+  label: string
+}
+
+function parseGraphNodeProps(node: { propsJson?: string | null } | null): Record<string, unknown> {
+  try {
+    return JSON.parse(node?.propsJson || '{}') as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
 
 /** Entity types available in the filter panel (exclude structural diary anchors). */
 const GRAPH_FILTER_NODE_TYPES = Object.keys(GRAPH_NODE_TYPE_LABEL_FALLBACKS).filter(
@@ -178,13 +195,16 @@ export type GraphPageProps = {
   highlightStartOrganize?: boolean
   autoStartOrganize?: boolean
   onAutoStartOrganizeConsumed?: () => void
+  /** 与记忆中心共用的整理入口；未传时空态仍走本页抽图。 */
+  onUnifiedOrganize?: () => void
 }
 
 export const GraphPage: React.FC<GraphPageProps> = ({
   embedded = false,
   highlightStartOrganize = false,
   autoStartOrganize = false,
-  onAutoStartOrganizeConsumed
+  onAutoStartOrganizeConsumed,
+  onUnifiedOrganize
 }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -217,6 +237,8 @@ export const GraphPage: React.FC<GraphPageProps> = ({
   const [mergeSearchOpen, setMergeSearchOpen] = useState(false)
   const [mergeConfirm, setMergeConfirm] = useState<GraphMergeConfirmTarget | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [splitOpen, setSplitOpen] = useState(false)
+  const [nameCandidates, setNameCandidates] = useState<GraphNameCandidate[]>([])
   const [editNameConflict, setEditNameConflict] = useState<GraphSameNameExisting | null>(null)
   const [tab, setTab] = useState<SideTab>('reextract')
   const [sideMode, setSideMode] = useState<SideMode>('organize')
@@ -498,11 +520,34 @@ export const GraphPage: React.FC<GraphPageProps> = ({
   }, [editName, selectedNode])
 
   useEffect(() => {
-    if (!mergeSearchOpen && !createOpen && !mergeConfirm) return
+    if (!selectedNode?.id) {
+      setNameCandidates([])
+      return
+    }
+    let cancelled = false
+    void window.api.graph
+      .listNameCandidates({ nodeId: selectedNode.id })
+      .then((rows) => {
+        if (!cancelled) setNameCandidates(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setNameCandidates([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedNode?.id])
+
+  useEffect(() => {
+    if (!mergeSearchOpen && !createOpen && !mergeConfirm && !splitOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (mergeConfirm) {
         setMergeConfirm(null)
+        return
+      }
+      if (splitOpen) {
+        setSplitOpen(false)
         return
       }
       if (mergeSearchOpen) {
@@ -513,7 +558,7 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mergeSearchOpen, createOpen, mergeConfirm])
+  }, [mergeSearchOpen, createOpen, mergeConfirm, splitOpen])
 
   const showAwakenGate = selfNameReady === false
   const awakenPending = selfNameReady === null
@@ -894,11 +939,13 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     setSearchAttempted(true)
     setSearching(true)
     try {
-      const hits = await window.api.graph.search({
+      // 主进程 graph:search 与 preload 已接收 mode；Window.api 声明尚未补该字段，命名对象可绕过字面量多余属性检查
+      const searchOpts = {
         query: q,
         limit: 20,
         mode: nextMode
-      })
+      }
+      const hits = await window.api.graph.search(searchOpts)
       applySearchHits(hits || [])
     } catch (error) {
       applySearchHits([])
@@ -1460,6 +1507,39 @@ export const GraphPage: React.FC<GraphPageProps> = ({
     }
   }
 
+  const revertSplit = async (discriminator: string) => {
+    if (!selectedNode) return
+    const bareNodeId =
+      nameCandidates.find((item) => !item.discriminator)?.nodeId ||
+      (!selectedNode.discriminator ? selectedNode.id : '')
+    if (!bareNodeId) return
+    const ok = await dialog.confirm(
+      t('graph.revert_split_confirm', '确定把「{{label}}」撤回原实体？它的关系会回到原节点，这条登记会删除。', {
+        label: discriminator
+      }),
+      t('graph.revert_split', '撤回拆分')
+    )
+    if (!ok) return
+    setBusy(true)
+    try {
+      const result = await window.api.graph.revertNodeSplit({
+        bareNodeId,
+        discriminator
+      })
+      toast.showSuccess(t('graph.revert_split_done', '已撤回拆分'))
+      await refresh()
+      const stayId =
+        result.removedNodeId && selectedNode.id === result.removedNodeId
+          ? bareNodeId
+          : selectedNode.id
+      await onSelectNode(stayId)
+    } catch (e: any) {
+      toast.showError(e?.message || String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const deleteSelectedNode = async () => {
     if (!selectedNode) return
     const ok = await dialog.confirm(
@@ -1904,7 +1984,9 @@ export const GraphPage: React.FC<GraphPageProps> = ({
           rows={readiness.rows}
           onConfigureEmbedding={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-models`)}
           onStartIndex={() => navigate('/memory/vectors')}
-          onStartOrganize={() => void runExtract()}
+          onStartOrganize={() =>
+            onUnifiedOrganize ? onUnifiedOrganize() : void runExtract()
+          }
           pendingEmbedParts={readiness.pendingEmbedParts}
           indexing={readiness.indexing}
           extracting={readiness.graphExtracting}
@@ -1939,7 +2021,9 @@ export const GraphPage: React.FC<GraphPageProps> = ({
               <Button
                 type="button"
                 className={highlightStartOrganize ? styles.highlightStartOrganize : ''}
-                onClick={() => void runExtract()}
+                onClick={() =>
+                  onUnifiedOrganize ? onUnifiedOrganize() : void runExtract()
+                }
               >
                 {t('graph.start_organize', '开始整理')}
               </Button>
@@ -2787,6 +2871,12 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                     </div>
                   </div>
                   <div className={styles.detailBlock}>
+                    <div className={styles.nodeIdentity}>
+                      <div className={styles.detailValue}>{selectedNode.name}</div>
+                      {selectedNode.discriminator ? (
+                        <span className={styles.discriminatorTag}>{selectedNode.discriminator}</span>
+                      ) : null}
+                    </div>
                     <div className={styles.detailLabel}>{t('graph.label_name', '名称')}</div>
                     <Input
                       fieldSize="small"
@@ -2854,6 +2944,59 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                         : ''}
                     </div>
                   </div>
+                  {(() => {
+                    const ambiguousRefs = listAmbiguousSourceRefs(parseGraphNodeProps(selectedNode))
+                    if (selectedNode.discriminator || ambiguousRefs.length === 0) return null
+                    return (
+                      <div className={styles.sameNameBanner}>
+                        {t('graph.ambiguous_sources_hint', '有 {{count}} 条出处待确认归谁', {
+                          count: ambiguousRefs.length
+                        })}
+                      </div>
+                    )
+                  })()}
+                  {nameCandidates.some((item) => item.nodeId !== selectedNode.id) ? (
+                    <div className={styles.detailBlock}>
+                      <div className={styles.detailLabel}>
+                        {t('graph.same_name_siblings', '同名的其他实体')}
+                      </div>
+                      {nameCandidates
+                        .filter((item) => item.nodeId !== selectedNode.id)
+                        .map((item) => (
+                          <div key={item.nodeId} className={styles.siblingRow}>
+                            <div className={styles.siblingMain}>
+                              <span className={styles.detailValue}>{item.name}</span>
+                              {item.discriminator ? (
+                                <span className={styles.discriminatorTag}>
+                                  {item.label || item.discriminator}
+                                </span>
+                              ) : (
+                                <span className={styles.discriminatorTag}>
+                                  {t('graph.bare_entity', '原实体')}
+                                </span>
+                              )}
+                            </div>
+                            <div className={styles.rowActions}>
+                              <Button
+                                type="button"
+                                onClick={() => void onSelectNode(item.nodeId)}
+                              >
+                                {t('graph.open_sibling', '打开')}
+                              </Button>
+                              {item.discriminator ? (
+                                <Button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => void revertSplit(item.discriminator)}
+                                >
+                                  {t('graph.revert_split', '撤回拆分')}
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : null}
                   <div className={styles.rowActions}>
                     <Button
                       type="button"
@@ -2869,6 +3012,20 @@ export const GraphPage: React.FC<GraphPageProps> = ({
                     >
                       {t('graph.delete_node', '删除节点')}
                     </Button>
+                    {selectedNode.nodeType !== 'entry' ? (
+                      <Button type="button" disabled={busy} onClick={() => setSplitOpen(true)}>
+                        {t('graph.split_node', '拆分')}
+                      </Button>
+                    ) : null}
+                    {selectedNode.discriminator ? (
+                      <Button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void revertSplit(String(selectedNode.discriminator))}
+                      >
+                        {t('graph.revert_split', '撤回拆分')}
+                      </Button>
+                    ) : null}
                   </div>
                   {selectedNode.reviewStatus === 'pending' ? (
                     <div className={styles.rowActions}>
@@ -3008,6 +3165,25 @@ export const GraphPage: React.FC<GraphPageProps> = ({
         onOpenExisting={(id) => {
           setCreateOpen(false)
           void onSelectNode(id)
+        }}
+      />
+      <GraphSplitNodeModal
+        isOpen={splitOpen}
+        nodeId={selectedNode?.id ?? null}
+        nodeName={selectedNode?.name}
+        initialDiscriminator={selectedNode?.discriminator || ''}
+        initialLabel={
+          selectedNode?.discriminator
+            ? nameCandidates.find((item) => item.nodeId === selectedNode.id)?.label ||
+              selectedNode.discriminator
+            : ''
+        }
+        busy={busy}
+        onClose={() => setSplitOpen(false)}
+        onSplit={(id) => {
+          setSplitOpen(false)
+          toast.showSuccess(t('graph.split_done', '已拆出新实体'))
+          void refresh().then(() => onSelectNode(id))
         }}
       />
       <GraphMergeSearchModal

@@ -53,6 +53,8 @@ export const graphNodesTable = sqliteTable(
     name: text('name').notNull(),
     /** Normalized display name for equality lookup (trim/collapse/lower). */
     nameNormalized: text('name_normalized').notNull().default(''),
+    /** 拆分出的第二个同名实体才写区分信息；空串表示裸名，节点 ID 才能与老数据对齐。 */
+    discriminator: text('discriminator').notNull().default(''),
     aliases: text('aliases').notNull().default('[]'),
     summary: text('summary').notNull().default(''),
     propsJson: text('props_json').notNull().default('{}'),
@@ -75,7 +77,7 @@ export const graphNodesTable = sqliteTable(
     index('graph_nodes_vault_mention').on(t.vaultId, t.mentionCount),
     // Partial unique for non-entry live entities (SQLite via raw DDL in compat/migration).
     uniqueIndex('graph_nodes_vault_type_name_live')
-      .on(t.vaultId, t.nodeType, t.nameNormalized)
+      .on(t.vaultId, t.nodeType, t.nameNormalized, t.discriminator)
       .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'entry'`),
     index('graph_nodes_vault_embed_state')
       .on(t.vaultId, t.modelId, t.dimension)

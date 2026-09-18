@@ -13,6 +13,7 @@ import {
   GRAPH_VECTOR_JS_FALLBACK_SCAN_LIMIT,
   collectGraphEdgeEndpointIds,
   graphNodeIdForEntity,
+  normalizeGraphDiscriminator,
   normalizeGraphEdgeReviewFields,
   normalizeGraphName,
   preferGraphOrigin,
@@ -61,6 +62,7 @@ export interface GraphNodeRow {
   nodeType: string
   name: string
   nameNormalized: string
+  discriminator: string
   aliases: string[]
   summary: string
   propsJson: string
@@ -112,6 +114,7 @@ export interface UpsertNodeInput {
   vaultId: string
   nodeType: GraphNodeType | string
   name: string
+  discriminator?: string
   aliases?: string[]
   summary?: string
   propsJson?: string
@@ -170,6 +173,7 @@ const GRAPH_NODE_ROW_COLUMNS = {
   nodeType: graphNodesTable.nodeType,
   name: graphNodesTable.name,
   nameNormalized: graphNodesTable.nameNormalized,
+  discriminator: graphNodesTable.discriminator,
   aliases: graphNodesTable.aliases,
   summary: graphNodesTable.summary,
   propsJson: graphNodesTable.propsJson,
@@ -195,6 +199,7 @@ function mapNode(row: GraphNodeMappedRow): GraphNodeRow {
     nodeType: row.nodeType,
     name: row.name,
     nameNormalized: row.nameNormalized || normalizeGraphName(row.name),
+    discriminator: row.discriminator ?? '',
     aliases: parseAliases(row.aliases),
     summary: row.summary,
     propsJson: row.propsJson,
@@ -235,6 +240,14 @@ function mapEdge(row: typeof graphEdgesTable.$inferSelect): GraphEdgeRow {
     updatedAt: row.updatedAt.getTime(),
     deletedAt: ms(row.deletedAt)
   }
+}
+
+/** 裸名（区分信息为空）必须排在最前，其余按区分信息字典序，查询结果才稳定。 */
+function compareDiscriminatorAsc(a: string, b: string): number {
+  if (a === b) return 0
+  if (a === '') return -1
+  if (b === '') return 1
+  return a < b ? -1 : 1
 }
 
 function mergeAliases(existing: string[], extra: string[]): string[] {
@@ -290,13 +303,13 @@ export class GraphRepository implements GraphRepositoryPort {
     }
   }
 
-  async findNodeByNameOrAlias(
+  async findNodesByNameOrAlias(
     vaultId: string,
     name: string,
     type?: GraphNodeType | string
-  ): Promise<GraphNodeRow | null> {
+  ): Promise<GraphNodeRow[]> {
     const normalized = normalizeGraphName(name)
-    if (!normalized) return null
+    if (!normalized) return []
     const typed = type?.trim()
 
     const nameConditions = [
@@ -310,28 +323,10 @@ export class GraphRepository implements GraphRepositoryPort {
       .select()
       .from(graphNodesTable)
       .where(and(...nameConditions))
-      .limit(typed ? 1 : 8)
 
-    if (typed) {
-      if (byName[0]) return mapNode(byName[0])
-      const aliasHits = await this.database
-        .select({ nodeId: graphNodeAliasesTable.nodeId })
-        .from(graphNodeAliasesTable)
-        .where(
-          and(
-            eq(graphNodeAliasesTable.vaultId, vaultId),
-            eq(graphNodeAliasesTable.aliasNormalized, normalized)
-          )
-        )
-        .limit(8)
-      for (const hit of aliasHits) {
-        const node = await this.getNodeById(hit.nodeId, vaultId)
-        if (node && node.nodeType === typed) return node
-      }
-      return null
-    }
+    const seen = new Map<string, GraphNodeRow>()
+    for (const row of byName) seen.set(row.id, mapNode(row))
 
-    const ids = new Set(byName.map((row) => row.id))
     const aliasHits = await this.database
       .select({ nodeId: graphNodeAliasesTable.nodeId })
       .from(graphNodeAliasesTable)
@@ -341,15 +336,29 @@ export class GraphRepository implements GraphRepositoryPort {
           eq(graphNodeAliasesTable.aliasNormalized, normalized)
         )
       )
-      .limit(16)
     for (const hit of aliasHits) {
+      if (seen.has(hit.nodeId)) continue
       const node = await this.getNodeById(hit.nodeId, vaultId)
-      if (node) ids.add(node.id)
+      if (!node) continue
+      if (typed && node.nodeType !== typed) continue
+      seen.set(node.id, node)
     }
-    if (ids.size !== 1) return null
-    const id = [...ids][0]!
-    const named = byName.find((row) => row.id === id)
-    return named ? mapNode(named) : this.getNodeById(id, vaultId)
+
+    return [...seen.values()].sort((a, b) => compareDiscriminatorAsc(a.discriminator, b.discriminator))
+  }
+
+  async findNodeByNameOrAlias(
+    vaultId: string,
+    name: string,
+    type?: GraphNodeType | string
+  ): Promise<GraphNodeRow | null> {
+    const nodes = await this.findNodesByNameOrAlias(vaultId, name, type)
+    const typed = type?.trim()
+    if (typed) return nodes[0] ?? null
+    // 未指定类型时跨类型多命中仍闭口，避免把「苹果人」和「苹果主题」合成一条
+    const types = new Set(nodes.map((row) => row.nodeType))
+    if (types.size !== 1) return null
+    return nodes[0] ?? null
   }
 
   async searchNodesByVector(
@@ -480,11 +489,14 @@ export class GraphRepository implements GraphRepositoryPort {
     const now = Date.now()
     const name = input.name.trim().replace(/\s+/g, ' ')
     const nameNormalized = normalizeGraphName(name)
+    const discriminator = normalizeGraphDiscriminator(input.discriminator)
     const updatedAt = input.updatedAt ?? now
     const createdAt = input.createdAt ?? now
 
     if (!input.forceId) {
-      const existing = await this.findNodeByNameOrAlias(input.vaultId, name, input.nodeType)
+      const existing = (await this.findNodesByNameOrAlias(input.vaultId, name, input.nodeType)).find(
+        (row) => row.discriminator === discriminator
+      )
       if (existing) {
         await this.touchNode(existing.id, {
           aliases: mergeAliases(existing.aliases, input.aliases ?? [name]),
@@ -504,7 +516,7 @@ export class GraphRepository implements GraphRepositoryPort {
     if (!input.id && input.nodeType === 'entry') {
       throw new Error('GraphRepository.upsertNode: entry requires a path-based id')
     }
-    const id = input.id ?? graphNodeIdForEntity(input.vaultId, input.nodeType, name)
+    const id = input.id ?? graphNodeIdForEntity(input.vaultId, input.nodeType, name, discriminator)
 
     const aliases = mergeAliases([], input.aliases ?? [name])
     const embeddingBuf = input.embedding?.length ? serializeVector(input.embedding) : null
@@ -516,6 +528,7 @@ export class GraphRepository implements GraphRepositoryPort {
       nodeType: input.nodeType,
       name,
       nameNormalized,
+      discriminator,
       aliases: JSON.stringify(aliases),
       summary: input.summary ?? '',
       propsJson: input.propsJson ?? '{}',
@@ -536,6 +549,7 @@ export class GraphRepository implements GraphRepositoryPort {
     const conflictSet = {
       name: values.name,
       nameNormalized: values.nameNormalized,
+      discriminator: values.discriminator,
       aliases: values.aliases,
       summary: values.summary,
       propsJson: values.propsJson,
@@ -1734,6 +1748,7 @@ export class GraphRepository implements GraphRepositoryPort {
     vaultId: string
     nodeType: string
     name: string
+    discriminator?: string
     aliases: string[]
     summary: string
     props: Record<string, unknown>
@@ -1760,6 +1775,7 @@ export class GraphRepository implements GraphRepositoryPort {
       vaultId: row.vaultId,
       nodeType: row.nodeType,
       name: row.name,
+      discriminator: row.discriminator,
       aliases: mergeAliases(existingById?.aliases ?? [], [row.name, ...(row.aliases ?? [])]),
       summary: row.summary || existingById?.summary || '',
       propsJson: JSON.stringify(row.props ?? {}),
@@ -1780,14 +1796,18 @@ export class GraphRepository implements GraphRepositoryPort {
       return { id: row.id }
     } catch (error) {
       if (row.nodeType === 'entry' || !isSqliteUniqueConstraintError(error)) throw error
-      const existing = await this.findNodeByNameOrAlias(row.vaultId, row.name, row.nodeType)
+      const incomingDisc = normalizeGraphDiscriminator(row.discriminator)
+      const existing = (await this.findNodesByNameOrAlias(row.vaultId, row.name, row.nodeType)).find(
+        (candidate) => candidate.discriminator === incomingDisc
+      )
       if (!existing || existing.id === row.id) throw error
       const keepIncoming = shouldKeepIncomingGraphNodeId({
         vaultId: row.vaultId,
         nodeType: row.nodeType,
         name: row.name,
         incomingId: row.id,
-        existingId: existing.id
+        existingId: existing.id,
+        discriminator: incomingDisc
       })
       const mergedAliases = mergeAliases(existing.aliases, [
         existing.name,

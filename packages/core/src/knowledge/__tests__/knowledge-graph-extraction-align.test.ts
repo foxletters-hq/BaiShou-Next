@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { notebookGraphNodeIdForEntity } from '@baishou/shared'
+import { listAmbiguousSourceRefs, notebookGraphNodeIdForEntity } from '@baishou/shared'
 import { KnowledgeGraphExtractionService } from '../knowledge-graph-extraction.service'
 
 const VAULT = 'vlt_aaaaaaaaaaaaaaaa'
@@ -19,28 +19,57 @@ function extractJson(name = '小张', summary = '同事') {
 
 function createService(overrides?: {
   llm?: (input: { system: string; user: string }) => Promise<string | null>
-  findNodeByName?: ReturnType<typeof vi.fn>
+  findNodeByName?: (
+    vaultId: string,
+    notebookId: string,
+    name: string,
+    nodeType?: string
+  ) => Promise<unknown>
+  findNodesByNameOrAlias?: (
+    vaultId: string,
+    notebookId: string,
+    name: string,
+    nodeType?: string
+  ) => Promise<unknown[]>
   searchNodesByVector?: ReturnType<typeof vi.fn>
   updateNodeEmbedding?: ReturnType<typeof vi.fn>
   embedQuery?: (text: string) => Promise<number[] | null>
   modelId?: string
+  captureEdges?: boolean
 }) {
   const nodes: Array<Record<string, unknown>> = []
-  const findNodeByName = overrides?.findNodeByName ?? vi.fn(async () => null)
+  const edges: Array<Record<string, unknown>> = []
+  const findNodeByName = vi.fn(
+    overrides?.findNodeByName ?? (async () => null)
+  )
+  const findNodesByNameOrAlias = vi.fn(
+    overrides?.findNodesByNameOrAlias ??
+      (async (vaultId: string, notebookId: string, name: string, nodeType?: string) => {
+        const one = await findNodeByName(vaultId, notebookId, name, nodeType)
+        return one ? [one] : []
+      })
+  )
   const searchNodesByVector = overrides?.searchNodesByVector ?? vi.fn(async () => [])
   const updateNodeEmbedding = overrides?.updateNodeEmbedding ?? vi.fn(async () => undefined)
   const service = new KnowledgeGraphExtractionService({
     raw: {
       getExtractState: vi.fn(async () => null),
-      replaceSourceGraph: vi.fn(async (input: { nodes: Array<Record<string, unknown>> }) => {
-        nodes.length = 0
-        for (const record of input.nodes) {
-          if (record.nodeType === 'person') nodes.push(record)
+      replaceSourceGraph: vi.fn(
+        async (input: { nodes: Array<Record<string, unknown>>; edges?: Array<Record<string, unknown>> }) => {
+          nodes.length = 0
+          edges.length = 0
+          for (const record of input.nodes) {
+            if (record.nodeType === 'person') nodes.push(record)
+          }
+          if (overrides?.captureEdges && input.edges) {
+            edges.push(...input.edges)
+          }
         }
-      })
+      )
     } as never,
     repo: {
       findNodeByName,
+      findNodesByNameOrAlias,
       searchNodesByVector,
       updateNodeEmbedding,
       supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
@@ -53,7 +82,15 @@ function createService(overrides?: {
         ? { embedQuery: overrides.embedQuery, modelId: overrides.modelId ?? 'embed-v1' }
         : undefined
   })
-  return { service, nodes, findNodeByName, searchNodesByVector, updateNodeEmbedding }
+  return {
+    service,
+    nodes,
+    edges,
+    findNodeByName,
+    findNodesByNameOrAlias,
+    searchNodesByVector,
+    updateNodeEmbedding
+  }
 }
 
 async function extractIn(service: KnowledgeGraphExtractionService, notebookId: string) {
@@ -270,5 +307,119 @@ describe('KnowledgeGraphExtractionService entity align', () => {
     expect(nodes[0]?.id).toBe(createdId)
     expect(nodes[0]).not.toHaveProperty('embedding')
     expect(updateNodeEmbedding).toHaveBeenCalledWith(createdId, VAULT, NB_THIS, [1, 0], 'embed-v1')
+  })
+
+  it('should keep ambiguous false when notebook name lookup returns one row', async () => {
+    const existingId = personId(NB_THIS, '张三')
+    const { service, nodes } = createService({
+      llm: async () => extractJson('张三', '同事'),
+      findNodeByName: vi.fn(async (_vault: string, notebookId: string, name: string) => {
+        if (notebookId === NB_THIS && name === '张三') {
+          return { id: existingId, name: '张三', aliases: '[]', summary: '同事', discriminator: '' }
+        }
+        return null
+      })
+    })
+
+    await extractIn(service, NB_THIS)
+
+    expect(nodes[0]?.id).toBe(existingId)
+    expect(nodes[0]?.discriminator).toBe('')
+    expect(listAmbiguousSourceRefs((nodes[0]?.props as Record<string, unknown>) ?? {})).toEqual([])
+  })
+
+  it('should hang the edge on the bare-name node and mark it pending when name lookup returns two rows', async () => {
+    const bareId = personId(NB_THIS, '张三')
+    const splitId = notebookGraphNodeIdForEntity(VAULT, NB_THIS, 'person', '张三', '同事')
+    const judgeMerges = vi.fn()
+    const llm = vi.fn(async (input: { system: string; user: string }) => {
+      if (input.system.includes('实体对齐')) {
+        judgeMerges()
+        throw new Error('多候选时不应再调二次判定')
+      }
+      return JSON.stringify({
+        entities: [{ name: '张三', type: 'person', aliases: [], summary: '资料里的张三', confidence: 90 }],
+        edges: [{ from: '张三', to: '资料', type: 'mentions', excerpt: '出现了', confidence: 90 }]
+      })
+    })
+    const { service, nodes, edges } = createService({
+      llm,
+      captureEdges: true,
+      findNodesByNameOrAlias: vi.fn(async (_vault: string, notebookId: string, name: string) => {
+        if (notebookId !== NB_THIS || name !== '张三') return []
+        return [
+          {
+            id: bareId,
+            name: '张三',
+            aliases: '["张三"]',
+            summary: '第一个',
+            discriminator: '',
+            propsJson: JSON.stringify({
+              nameRegistry: [
+                { discriminator: '同事', label: '同事', nodeId: splitId, registeredAt: 1 }
+              ]
+            }),
+            mentionCount: 1,
+            firstSeenAt: 1,
+            createdAt: 1
+          },
+          {
+            id: splitId,
+            name: '张三',
+            aliases: '["张三"]',
+            summary: '同事',
+            discriminator: '同事',
+            propsJson: '{}',
+            mentionCount: 1,
+            firstSeenAt: 1,
+            createdAt: 1
+          }
+        ]
+      })
+    })
+
+    await extractIn(service, NB_THIS)
+
+    expect(judgeMerges).not.toHaveBeenCalled()
+    expect(nodes[0]?.id).toBe(bareId)
+    expect(nodes[0]?.id).not.toBe(splitId)
+    expect(nodes[0]?.discriminator).toBe('')
+    expect(listAmbiguousSourceRefs((nodes[0]?.props as Record<string, unknown>) ?? {})).toEqual([
+      'src1#0'
+    ])
+    expect(edges[0]).toEqual(
+      expect.objectContaining({
+        fromId: bareId,
+        reviewStatus: 'pending'
+      })
+    )
+  })
+
+  it('should keep the existing discriminator when rewriting a notebook split node', async () => {
+    const splitId = notebookGraphNodeIdForEntity(VAULT, NB_THIS, 'person', '张三', '同事')
+    const { service, nodes } = createService({
+      llm: async () => extractJson('张三', '同事'),
+      findNodeByName: vi.fn(async (_vault: string, notebookId: string, name: string) => {
+        if (notebookId === NB_THIS && name === '张三') {
+          return {
+            id: splitId,
+            name: '张三',
+            aliases: '[]',
+            summary: '同事',
+            discriminator: '同事',
+            propsJson: '{"keep":true}',
+            mentionCount: 2,
+            firstSeenAt: 1,
+            createdAt: 1
+          }
+        }
+        return null
+      })
+    })
+
+    await extractIn(service, NB_THIS)
+
+    expect(nodes[0]?.id).toBe(splitId)
+    expect(nodes[0]?.discriminator).toBe('同事')
   })
 })

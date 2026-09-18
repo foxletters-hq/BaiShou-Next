@@ -34,7 +34,8 @@ function createService(overrides?: {
   syncPendingIndex?: ReturnType<typeof vi.fn>
   searchNodesByVector?: ReturnType<typeof vi.fn>
   getNodeById?: ReturnType<typeof vi.fn>
-  findNodeByNameOrAlias?: ReturnType<typeof vi.fn>
+  findNodeByNameOrAlias?: (vaultId: string, name: string, type?: string) => Promise<unknown>
+  findNodesByNameOrAlias?: (vaultId: string, name: string, type?: string) => Promise<unknown[]>
   recountMentions?: ReturnType<typeof vi.fn>
 }) {
   const writeRecord = overrides?.writeRecord ?? vi.fn(async () => undefined)
@@ -44,7 +45,16 @@ function createService(overrides?: {
   const commitReextract = vi.fn(async () => undefined)
   const recountMentions = overrides?.recountMentions ?? vi.fn(async () => undefined)
   const getNodeById = overrides?.getNodeById ?? vi.fn(async () => null)
-  const findNodeByNameOrAlias = overrides?.findNodeByNameOrAlias ?? vi.fn(async () => null)
+  const findNodeByNameOrAlias = vi.fn(
+    overrides?.findNodeByNameOrAlias ?? (async () => null)
+  )
+  const findNodesByNameOrAlias = vi.fn(
+    overrides?.findNodesByNameOrAlias ??
+      (async (vaultId: string, name: string, type?: string) => {
+        const one = await findNodeByNameOrAlias(vaultId, name, type)
+        return one ? [one] : []
+      })
+  )
   const service = new GraphLlmExtractionService(
     {
       writeRecord,
@@ -58,6 +68,7 @@ function createService(overrides?: {
     } as never,
     {
       findNodeByNameOrAlias,
+      findNodesByNameOrAlias,
       getNodeById,
       listEdgesTouching,
       searchNodesByName: vi.fn(async () => []),
@@ -518,6 +529,151 @@ describe('GraphLlmExtractionService draft/commit', () => {
     expect(embedQuery).not.toHaveBeenCalled()
     expect(precomputedFromSync(syncPendingIndex).has(personId)).toBe(false)
   })
+
+  it('should write pending edges and record sourceRef when name lookup returns two people', async () => {
+    const vaultId = 'vlt_aaaaaaaaaaaaaaaa'
+    const bareId = graphNodeIdForEntity(vaultId, 'person', '张三')
+    const splitId = graphNodeIdForEntity(vaultId, 'person', '张三', '同事')
+    const bareRow = {
+      id: bareId,
+      vaultId,
+      nodeType: 'person',
+      name: '张三',
+      aliases: ['张三'],
+      summary: '第一个张三',
+      propsJson: JSON.stringify({
+        nameRegistry: [
+          {
+            discriminator: '同事',
+            label: '同事',
+            nodeId: splitId,
+            registeredAt: 1
+          }
+        ]
+      }),
+      mentionCount: 1,
+      firstSeenAt: 1,
+      lastSeenAt: 1,
+      origin: 'ai',
+      shardMonth: '2026-03',
+      reviewStatus: 'approved',
+      createdAt: 1,
+      updatedAt: 1,
+      deletedAt: null,
+      discriminator: ''
+    }
+    const splitRow = {
+      ...bareRow,
+      id: splitId,
+      name: '张三',
+      aliases: ['张三'],
+      propsJson: '{}',
+      discriminator: '同事'
+    }
+    const llm = vi.fn(async (input: { system: string; user: string }) => {
+      if (input.system.includes('实体对齐')) {
+        throw new Error('多候选时不应再调二次判定')
+      }
+      return JSON.stringify({
+        entities: [{ name: '张三', type: 'person', aliases: [], summary: '日记里的张三', confidence: 90 }],
+        edges: [
+          { from: '张三', to: '2026-03-15', type: 'mentions', excerpt: '见面', confidence: 90 }
+        ]
+      })
+    })
+    const findNodesByNameOrAlias = vi.fn(async () => [bareRow, splitRow])
+    const { service, writeRecord } = createService({
+      llm,
+      findNodesByNameOrAlias,
+      getNodeById: vi.fn(async (id: string) => {
+        if (id === bareId) return bareRow
+        if (id === splitId) return splitRow
+        return null
+      })
+    })
+    const draft = await service.extractDraft({
+      vaultId,
+      vaultName: 'Personal',
+      filePath: FILE,
+      contentHash: 'hash-1',
+      selfName: '小明'
+    })
+    const results = await service.commitDrafts([draft])
+    expect(results[0]?.error).toBeUndefined()
+    expect(llm.mock.calls.every((call) => !call[0].system.includes('实体对齐'))).toBe(true)
+
+    const records = writeRecord.mock.calls.map((call) => call[0] as Record<string, unknown>)
+    const personWrites = records.filter((record) => record.id === bareId)
+    expect(personWrites.length).toBeGreaterThan(0)
+    expect(personWrites[0]?.discriminator).toBe('')
+    expect(
+      (personWrites[0]?.props as { ambiguousSourceRefs?: string[] } | undefined)?.ambiguousSourceRefs
+    ).toEqual(['2026-03-15'])
+
+    const splitWrites = records.filter((record) => record.id === splitId)
+    for (const record of splitWrites) {
+      expect(record.discriminator).toBe('同事')
+    }
+
+    const edges = records.filter((record) => record.fromId === bareId || record.toId === bareId)
+    expect(edges.length).toBeGreaterThan(0)
+    expect(edges.every((edge) => edge.reviewStatus === 'pending')).toBe(true)
+  })
+
+  it('should keep mention writeback discriminator when the existing row already has one', async () => {
+    const vaultId = 'vlt_aaaaaaaaaaaaaaaa'
+    const personId = graphNodeIdForEntity(vaultId, 'person', '张三', '同事')
+    const existing = {
+      id: personId,
+      vaultId,
+      nodeType: 'person',
+      name: '张三',
+      aliases: ['张三'],
+      summary: '',
+      propsJson: '{}',
+      mentionCount: 5,
+      firstSeenAt: 1,
+      lastSeenAt: 1,
+      origin: 'ai',
+      shardMonth: '2026-03',
+      reviewStatus: 'approved',
+      createdAt: 1,
+      updatedAt: 10,
+      deletedAt: null,
+      discriminator: '同事'
+    }
+    let recounted = false
+    const { service, writeRecord, recountMentions } = createService({
+      findNodeByNameOrAlias: vi.fn(async () => existing),
+      getNodeById: vi.fn(async (id: string) => {
+        if (id !== personId) return null
+        return recounted ? { ...existing, mentionCount: 3, updatedAt: 10 } : existing
+      }),
+      recountMentions: vi.fn(async () => {
+        recounted = true
+      }),
+      llm: async () =>
+        JSON.stringify({
+          entities: [{ name: '张三', type: 'person', aliases: [], summary: '', confidence: 90 }],
+          edges: []
+        })
+    })
+    const draft = await service.extractDraft({
+      vaultId,
+      vaultName: 'Personal',
+      filePath: FILE,
+      contentHash: 'hash-1',
+      selfName: '小明'
+    })
+    const results = await service.commitDrafts([draft])
+    expect(results[0]?.error).toBeUndefined()
+    expect(recountMentions).toHaveBeenCalled()
+    const personWrites = writeRecord.mock.calls
+      .map((call) => call[0] as { id?: string; discriminator?: string; mentionCount?: number })
+      .filter((record) => record.id === personId)
+    expect(personWrites.length).toBeGreaterThan(0)
+    expect(personWrites.every((record) => record.discriminator === '同事')).toBe(true)
+  })
 })
 
 describe('GraphLlmExtractionService commitDrafts embed count', () => {
@@ -550,6 +706,7 @@ describe('GraphLlmExtractionService commitDrafts embed count', () => {
     const applyRawNode = vi.fn(async (row: { id: string }) => ({ id: row.id }))
     const repo = {
       findNodeByNameOrAlias: vi.fn(async () => null),
+      findNodesByNameOrAlias: vi.fn(async () => []),
       getNodeById: vi.fn(async () => null),
       searchNodesByVector: vi.fn(async () => []),
       recountMentions: vi.fn(async () => undefined),

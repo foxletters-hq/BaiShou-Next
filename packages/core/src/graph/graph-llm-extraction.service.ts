@@ -23,6 +23,7 @@ import {
   graphDiaryInstant,
   graphEdgeId,
   graphNodeIdForEntity,
+  appendAmbiguousSourceRef,
   legacyEntryNodeIdForFilePath,
   graphReviewStatusFromConfidence,
   normalizeGraphExtractConfidence,
@@ -43,7 +44,11 @@ import type { DerivedFreshnessService } from '../raw-data/derived-freshness.serv
 import type { GraphEdgeRawRecord, GraphNodeRawRecord } from '../raw-data/raw-data-source.types'
 import type { GraphPendingIndexSync } from '../raw-data/graph-sync.service'
 import type { GraphExtractRawWriter } from '../raw-data/graph-extract-raw'
-import { findOrCreateGraphNode, resolveGraphEndpointId } from './find-or-create-graph-node'
+import {
+  findOrCreateGraphNode,
+  resolveGraphEndpointId,
+  type ResolveGraphEndpointResult
+} from './find-or-create-graph-node'
 import {
   alignEntityPool,
   alignedEmbeddingForNodeCard,
@@ -825,10 +830,14 @@ export class GraphLlmExtractionService {
         }))
       ),
       {
-        findByNameOrAlias: async (name, type) => {
-          const hit = await this.repo.findNodeByNameOrAlias(vaultId, name, type)
-          if (!hit) return null
-          return { id: hit.id, name: hit.name, aliases: hit.aliases, summary: hit.summary }
+        findCandidatesByNameOrAlias: async (name, type) => {
+          const hits = await this.repo.findNodesByNameOrAlias(vaultId, name, type)
+          return hits.map((hit) => ({
+            id: hit.id,
+            name: hit.name,
+            aliases: hit.aliases,
+            summary: hit.summary
+          }))
         },
         searchByVector: this.alignDeps?.embedQuery
           ? async (vector, type, topK) => {
@@ -925,11 +934,12 @@ export class GraphLlmExtractionService {
   }> {
     const { vaultId, vaultName, filePath, hash, dateStr, shardMonth, validFrom } = draft
     const sourceRef = dateStr || filePath
-    const nameToId = new Map<string, string>()
+    const nameToId = new Map<string, ResolveGraphEndpointResult>()
     const nodeRecords: GraphNodeRawRecord[] = []
     const edgeRecords: GraphEdgeRawRecord[] = []
     const touchedNodeIds: string[] = []
     const alignedEmbeddings: Array<{ id: string; embedding: number[]; text: string }> = []
+    const ambiguousNodeIds = new Set<string>()
 
     const entryName = dateStr || '日记'
     const legacyEntryId = legacyEntryNodeIdForFilePath(filePath)
@@ -948,9 +958,9 @@ export class GraphLlmExtractionService {
     })
     nodeRecords.push(entryCreated.record)
     touchedNodeIds.push(entryCreated.id)
-    nameToId.set(normalizeGraphName(entryName), entryCreated.id)
-    if (dateStr) nameToId.set(normalizeGraphName(dateStr), entryCreated.id)
-    nameToId.set('entry', entryCreated.id)
+    bindEndpointName(nameToId, entryName, entryCreated.id, false)
+    if (dateStr) bindEndpointName(nameToId, dateStr, entryCreated.id, false)
+    bindEndpointName(nameToId, 'entry', entryCreated.id, false)
 
     for (const ent of draft.entities) {
       const hit = aligned.get(entityAlignKey(ent.type, ent.name))
@@ -968,10 +978,16 @@ export class GraphLlmExtractionService {
         seenAt: validFrom,
         forceId: hit?.id
       })
+      const ambiguous = hit?.ambiguous === true || created.ambiguous
+      if (ambiguous) {
+        // 边先挂裸名，出处进复核清单，避免同名不同人被静默写死
+        created.record.props = appendAmbiguousSourceRef(created.record.props, sourceRef)
+        ambiguousNodeIds.add(created.id)
+      }
       nodeRecords.push(created.record)
       touchedNodeIds.push(created.id)
-      nameToId.set(normalizeGraphName(ent.name), created.id)
-      if (hit?.canonicalName) nameToId.set(normalizeGraphName(hit.canonicalName), created.id)
+      bindEndpointName(nameToId, ent.name, created.id, ambiguous)
+      if (hit?.canonicalName) bindEndpointName(nameToId, hit.canonicalName, created.id, ambiguous)
       const reusable = alignedEmbeddingForNodeCard(hit, created.record.name, created.record.summary)
       if (reusable) alignedEmbeddings.push({ id: created.id, ...reusable })
     }
@@ -982,25 +998,30 @@ export class GraphLlmExtractionService {
       if (key) typeByName.set(key, ent.type)
     }
     for (const edge of draft.edges) {
-      const fromId = await resolveGraphEndpointId(this.repo, vaultId, edge.from, nameToId, {
+      const from = await resolveGraphEndpointId(this.repo, vaultId, edge.from, nameToId, {
         nodeType: typeByName.get(normalizeGraphName(edge.from)),
         role: 'from',
         sourceRef
       })
-      const toId = await resolveGraphEndpointId(this.repo, vaultId, edge.to, nameToId, {
+      const to = await resolveGraphEndpointId(this.repo, vaultId, edge.to, nameToId, {
         nodeType: typeByName.get(normalizeGraphName(edge.to)),
         role: 'to',
         sourceRef
       })
-      if (!fromId || !toId) continue
-      const reviewStatus = graphReviewStatusFromConfidence(edge.confidence)
+      if (!from || !to) continue
+      if (from.ambiguous) ambiguousNodeIds.add(from.id)
+      if (to.ambiguous) ambiguousNodeIds.add(to.id)
+      const reviewStatus = reviewStatusForAmbiguousEndpoint(
+        graphReviewStatusFromConfidence(edge.confidence),
+        from.ambiguous || to.ambiguous
+      )
       edgeRecords.push({
-        id: graphEdgeId(vaultId, fromId, toId, edge.type, sourceRef),
+        id: graphEdgeId(vaultId, from.id, to.id, edge.type, sourceRef),
         schemaVersion: 1,
         vaultId,
         vaultName,
-        fromId,
-        toId,
+        fromId: from.id,
+        toId: to.id,
         edgeType: edge.type,
         props: {},
         validFrom,
@@ -1018,8 +1039,17 @@ export class GraphLlmExtractionService {
         updatedAt: now,
         deletedAt: null
       })
-      touchedNodeIds.push(fromId, toId)
+      touchedNodeIds.push(from.id, to.id)
     }
+
+    await this.appendAmbiguousSourceRefsToBareNodes({
+      vaultId,
+      vaultName,
+      sourceRef,
+      now,
+      ambiguousNodeIds,
+      nodeRecords
+    })
 
     for (const record of nodeRecords) {
       await this.graphManager.writeRecord(record, { collection: 'nodes' })
@@ -1134,6 +1164,35 @@ export class GraphLlmExtractionService {
     return abs
   }
 
+  /**
+   * 边端点也可能按名字撞上已拆分的同名实体，这时本篇出处要记到裸名节点上，
+   * 否则复核列表看不到这条需要改挂的边。
+   */
+  private async appendAmbiguousSourceRefsToBareNodes(input: {
+    vaultId: string
+    vaultName: string
+    sourceRef: string
+    now: number
+    ambiguousNodeIds: Set<string>
+    nodeRecords: GraphNodeRawRecord[]
+  }): Promise<void> {
+    const written = new Map(input.nodeRecords.map((record) => [record.id, record]))
+    for (const id of input.ambiguousNodeIds) {
+      const existing = written.get(id)
+      if (existing) {
+        existing.props = appendAmbiguousSourceRef(existing.props, input.sourceRef)
+        existing.updatedAt = input.now
+        continue
+      }
+      const row = await this.repo.getNodeById(id, input.vaultId)
+      if (!row) continue
+      const record = graphNodeRowToRawRecord(row, input.vaultId, input.vaultName, input.now)
+      record.props = appendAmbiguousSourceRef(record.props, input.sourceRef)
+      input.nodeRecords.push(record)
+      written.set(id, record)
+    }
+  }
+
   private async writeMentionCountsToJsonl(
     vaultId: string,
     vaultName: string,
@@ -1143,37 +1202,84 @@ export class GraphLlmExtractionService {
       const row = await this.repo.getNodeById(id, vaultId)
       if (!row) continue
       const writtenAt = Math.max(Date.now(), row.updatedAt ?? 0) + 1
-      let props: Record<string, unknown> = {}
-      try {
-        props = JSON.parse(row.propsJson || '{}') as Record<string, unknown>
-      } catch {
-        props = {}
-      }
-      const record: GraphNodeRawRecord = {
-        id: row.id,
-        schemaVersion: 1,
-        vaultId,
-        vaultName,
-        nodeType: row.nodeType,
-        name: row.name,
-        aliases: row.aliases,
-        summary: row.summary,
-        props,
-        mentionCount: row.mentionCount,
-        firstSeenAt: row.firstSeenAt ?? writtenAt,
-        lastSeenAt: row.lastSeenAt ?? writtenAt,
-        origin: preferGraphOrigin(row.origin),
-        shardMonth: row.shardMonth,
-        createdAt: row.createdAt,
-        updatedAt: writtenAt,
-        deletedAt: row.deletedAt,
-        reviewStatus:
-          row.reviewStatus === 'pending' || row.reviewStatus === 'rejected'
-            ? row.reviewStatus
-            : 'approved'
-      }
+      const record = graphNodeRowToRawRecord(row, vaultId, vaultName, writtenAt)
       await this.graphManager.writeRecord(record, { collection: 'nodes' })
     }
+  }
+}
+
+function bindEndpointName(
+  nameToId: Map<string, ResolveGraphEndpointResult>,
+  name: string,
+  id: string,
+  ambiguous: boolean
+): void {
+  const key = normalizeGraphName(name)
+  if (!key) return
+  nameToId.set(key, { id, ambiguous })
+}
+
+function reviewStatusForAmbiguousEndpoint(
+  status: 'approved' | 'pending' | 'rejected',
+  ambiguous: boolean
+): 'approved' | 'pending' | 'rejected' {
+  if (!ambiguous) return status
+  // 已驳回比待确认更严，多候选不能把它放宽
+  if (status === 'rejected') return 'rejected'
+  return 'pending'
+}
+
+function graphNodeRowToRawRecord(
+  row: {
+    id: string
+    nodeType: string
+    name: string
+    discriminator?: string | null
+    aliases: string[]
+    summary: string
+    propsJson: string
+    mentionCount: number
+    firstSeenAt: number | null
+    lastSeenAt: number | null
+    origin: string
+    shardMonth: string
+    createdAt: number
+    deletedAt: number | null
+    reviewStatus: string
+  },
+  vaultId: string,
+  vaultName: string,
+  updatedAt: number
+): GraphNodeRawRecord {
+  let props: Record<string, unknown> = {}
+  try {
+    props = JSON.parse(row.propsJson || '{}') as Record<string, unknown>
+  } catch {
+    props = {}
+  }
+  return {
+    id: row.id,
+    schemaVersion: 1,
+    vaultId,
+    vaultName,
+    nodeType: row.nodeType,
+    name: row.name,
+    discriminator: row.discriminator ?? undefined,
+    aliases: row.aliases,
+    summary: row.summary,
+    props,
+    mentionCount: row.mentionCount,
+    firstSeenAt: row.firstSeenAt ?? updatedAt,
+    lastSeenAt: row.lastSeenAt ?? updatedAt,
+    origin: preferGraphOrigin(row.origin),
+    shardMonth: row.shardMonth,
+    createdAt: row.createdAt,
+    updatedAt,
+    deletedAt: row.deletedAt,
+    reviewStatus:
+      row.reviewStatus === 'pending' || row.reviewStatus === 'rejected'
+        ? row.reviewStatus
+        : 'approved'
   }
 }
 

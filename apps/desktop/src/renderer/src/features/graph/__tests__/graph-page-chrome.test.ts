@@ -162,4 +162,64 @@ describe('GraphPage chrome', () => {
     expect(css).not.toMatch(/\.detailLabel \{[^}]*text-transform: uppercase/)
     expect(css).not.toMatch(/\.detailLabel \{[^}]*font-size: 11px/)
   })
+
+  it('should import and render GraphSplitNodeModal when the page mounts', () => {
+    expect(src).toContain("import { GraphSplitNodeModal } from './GraphSplitNodeModal'")
+    expect(src).toContain('<GraphSplitNodeModal')
+  })
+
+  it('should hide the split entry when the selected node is an entry', () => {
+    const detail = sliceBetween(src, "{tab === 'detail' && (", 'GraphCreateNodeModal')
+    expect(detail).toContain("t('graph.split_node'")
+    expect(detail).toContain("selectedNode.nodeType !== 'entry'")
+  })
+
+  it('should render discriminator as its own tag instead of concatenating it into the name', () => {
+    expect(src).toContain('styles.discriminatorTag')
+    expect(src).toContain('selectedNode.discriminator')
+    expect(src).not.toContain('${selectedNode.name}${selectedNode.discriminator}')
+    expect(src).not.toContain('${selectedNode.name}（${selectedNode.discriminator}')
+    expect(src).not.toContain("${selectedNode.name} (${selectedNode.discriminator}")
+    expect(src).toContain('{selectedNode.name}')
+  })
+
+  it('should warn about ambiguous sources with listAmbiguousSourceRefs when the bare node has leftovers', () => {
+    expect(src).toContain('listAmbiguousSourceRefs')
+    expect(src).toContain("t('graph.ambiguous_sources_hint'")
+  })
+
+  it('should import GraphSplitNodeModal controls from @baishou/ui and avoid raw button or input', () => {
+    const modalSrc = readFileSync(join(dir, '../GraphSplitNodeModal.tsx'), 'utf8')
+    expect(modalSrc).toContain("from '@baishou/ui'")
+    expect(modalSrc).toContain('Button')
+    expect(modalSrc).toContain('Input')
+    expect(modalSrc).toContain('SegmentedControl')
+    expect(modalSrc).not.toMatch(/<button[\s>]/)
+    expect(modalSrc).not.toMatch(/<input[\s>]/)
+  })
+
+  it('should keep new graph split i18n keys in all four locale files', () => {
+    const i18nDir = join(dir, '../../../../../../../../packages/shared/src/i18n')
+    const keys = [
+      'discriminator_label',
+      'split_node',
+      'split_node_title',
+      'split_label',
+      'split_keep_bare',
+      'split_move_to_new',
+      'split_unassigned',
+      'split_unassigned_count',
+      'split_confirm',
+      'register_another_entity',
+      'same_name_siblings',
+      'revert_split',
+      'ambiguous_sources_hint'
+    ]
+    for (const locale of ['zh.i18n.json', 'zh_TW.i18n.json', 'en.i18n.json', 'ja.i18n.json']) {
+      const json = readFileSync(join(i18nDir, locale), 'utf8')
+      for (const key of keys) {
+        expect(json, `${locale} missing ${key}`).toContain(`"${key}"`)
+      }
+    }
+  })
 })

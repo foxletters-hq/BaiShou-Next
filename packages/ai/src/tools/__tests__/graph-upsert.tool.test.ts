@@ -497,4 +497,74 @@ describe('GraphUpsertTool write semantics', () => {
     expect(syncGraphPendingIndex).toHaveBeenCalledTimes(1)
     expect(text).toContain('删边 1')
   })
+
+  it('should keep the existing discriminator when findNodeByName returns a split node', async () => {
+    const writes: Array<{ collection?: string; record: { id: string; discriminator?: string } }> = []
+    const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+          writes.push({ collection: opts?.collection, record: record as never })
+        })
+      },
+      graphNodeLookup: {
+        findNodeByName: vi.fn(async () => ({
+          id: splitId,
+          name: '张三',
+          nodeType: 'person',
+          discriminator: '同事'
+        }))
+      }
+    } as unknown as ToolContext
+
+    await tool.execute(
+      {
+        summary: '补同事摘要',
+        entities: JSON.stringify([{ name: '张三', type: 'person', summary: '同事' }])
+      },
+      context
+    )
+
+    const nodes = writes.filter((w) => w.collection === 'nodes')
+    expect(nodes).toHaveLength(1)
+    expect(nodes[0]!.record.id).toBe(splitId)
+    expect(nodes[0]!.record.discriminator).toBe('同事')
+  })
+
+  it('should reuse the bare-name id when findNodeByName already returns that node', async () => {
+    const writes: Array<{ collection?: string; record: { id: string } }> = []
+    const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const tool = new GraphUpsertTool()
+    const context = {
+      vaultId: VAULT,
+      vaultName: 'Personal',
+      rawDataSourceManager: {
+        writeRecord: vi.fn(async (_kind: string, record: { id: string }, opts?: { collection?: string }) => {
+          writes.push({ collection: opts?.collection, record: record as never })
+        })
+      },
+      graphNodeLookup: {
+        findNodeByName: vi.fn(async () => ({
+          id: bareId,
+          name: '张三',
+          nodeType: 'person',
+          discriminator: ''
+        }))
+      }
+    } as unknown as ToolContext
+
+    await tool.execute(
+      {
+        summary: '记下张三',
+        entities: JSON.stringify([{ name: '张三', type: 'person' }])
+      },
+      context
+    )
+
+    const nodes = writes.filter((w) => w.collection === 'nodes')
+    expect(nodes[0]!.record.id).toBe(bareId)
+  })
 })

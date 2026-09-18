@@ -1731,3 +1731,80 @@
   line-height: 1.4;
   color: var(--text-secondary);
 }
+
+.nodeIdentity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.discriminatorTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--spacing-sm);
+  min-height: calc(var(--spacing-md) + var(--spacing-xs));
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface-normal);
+  color: var(--text-secondary);
+  font-size: var(--ui-fs-sm);
+  font-weight: 500;
+}
+
+.siblingRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+}
+
+.siblingMain {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.splitFormModal {
+  width: min(560px, 92vw);
+}
+
+.splitEdgeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: min(360px, 42vh);
+  overflow-y: auto;
+}
+
+.splitEdgeRow,
+.splitEdgeRowUnassigned {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-muted);
+  background: var(--bg-surface);
+}
+
+.splitEdgeRowUnassigned {
+  border-color: var(--color-warning);
+}
+
+.splitEdgeMain {
+  min-width: 0;
+}
+
+.splitEdgeMeta {
+  margin-top: var(--spacing-xs);
+  font-size: var(--ui-fs-sm);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}

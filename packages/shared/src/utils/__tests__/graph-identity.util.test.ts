@@ -170,6 +170,67 @@ describe('resolveExactGraphNodeHit', () => {
   })
 })
 
+describe('graphNodeIdForEntity discriminator', () => {
+  // 改动前对 vault-1 / person / 张三 算出的字面量；禁止改成「两次调用互比」
+  const LEGACY_ZHANG_SAN_ID = '03f5e7d3-ee3e-5f55-a73f-a61aa79a5393'
+
+  it('should keep the hardcoded legacy id when the fourth argument is omitted', () => {
+    expect(graphNodeIdForEntity('vault-1', 'person', '张三')).toBe(LEGACY_ZHANG_SAN_ID)
+  })
+
+  it('should keep the hardcoded legacy id when discriminator is undefined', () => {
+    expect(graphNodeIdForEntity('vault-1', 'person', '张三', undefined)).toBe(LEGACY_ZHANG_SAN_ID)
+  })
+
+  it('should keep the hardcoded legacy id when discriminator is an empty string', () => {
+    expect(graphNodeIdForEntity('vault-1', 'person', '张三', '')).toBe(LEGACY_ZHANG_SAN_ID)
+  })
+
+  it('should keep the hardcoded legacy id when discriminator is only whitespace', () => {
+    expect(graphNodeIdForEntity('vault-1', 'person', '张三', '   ')).toBe(LEGACY_ZHANG_SAN_ID)
+  })
+
+  it('should differ from the bare-name id when discriminator is non-empty', () => {
+    expect(graphNodeIdForEntity('vault-1', 'person', '张三', '同事')).not.toBe(LEGACY_ZHANG_SAN_ID)
+  })
+
+  it('should produce the same id when discriminator only differs by case or whitespace', () => {
+    const a = graphNodeIdForEntity('vault-1', 'person', '张三', 'Work Colleague')
+    const b = graphNodeIdForEntity('vault-1', 'person', '张三', ' work   colleague ')
+    const c = graphNodeIdForEntity('vault-1', 'person', '张三', 'WORK COLLEAGUE')
+    expect(a).toBe(b)
+    expect(a).toBe(c)
+    expect(a).not.toBe(LEGACY_ZHANG_SAN_ID)
+  })
+})
+
+describe('shouldKeepIncomingGraphNodeId discriminator', () => {
+  it('should prefer the content-derived id when a discriminator is provided', () => {
+    const vaultId = 'vault-1'
+    const stable = graphNodeIdForEntity(vaultId, 'person', '张三', '同事')
+    expect(
+      shouldKeepIncomingGraphNodeId({
+        vaultId,
+        nodeType: 'person',
+        name: '张三',
+        discriminator: '同事',
+        incomingId: stable,
+        existingId: 'legacy-random'
+      })
+    ).toBe(true)
+    expect(
+      shouldKeepIncomingGraphNodeId({
+        vaultId,
+        nodeType: 'person',
+        name: '张三',
+        discriminator: '同事',
+        incomingId: 'legacy-random',
+        existingId: stable
+      })
+    ).toBe(false)
+  })
+})
+
 describe('preferGraphOrigin', () => {
   it('keeps existing user against incoming ai', () => {
     expect(preferGraphOrigin('user', 'ai')).toBe('user')

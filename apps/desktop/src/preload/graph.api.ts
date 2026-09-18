@@ -105,6 +105,19 @@ export const graphApi = {
       ipcRenderer.invoke('graph:merge-nodes', opts),
     mergeNodesBatch: (opts: { survivorId: string; loserIds: string[]; reason?: string }) =>
       ipcRenderer.invoke('graph:merge-nodes-batch', opts),
+    splitNode: (opts: {
+      bareNodeId: string
+      discriminator: string
+      label: string
+      summary?: string
+      edgeAssignments: Array<{ edgeId: string; target: 'bare' | 'split' }>
+      reason?: string
+    }) => ipcRenderer.invoke('graph:split-node', opts),
+    revertNodeSplit: (opts: { bareNodeId: string; discriminator: string; reason?: string }) =>
+      ipcRenderer.invoke('graph:revert-node-split', opts),
+    listNameCandidates: (opts: { nodeId: string }) =>
+      ipcRenderer.invoke('graph:list-name-candidates', opts),
+    listSplitEdges: (opts: { nodeId: string }) => ipcRenderer.invoke('graph:list-split-edges', opts),
     getNode: (id: string) => ipcRenderer.invoke('graph:get-node', id),
     meta: () => ipcRenderer.invoke('graph:meta'),
     resolveJournal: (opts: { date: string }) =>

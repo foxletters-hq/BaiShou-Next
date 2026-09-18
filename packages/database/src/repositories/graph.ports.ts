@@ -9,6 +9,7 @@ import type {
 /** Name / id lookup only — extract, chat, find-or-create. */
 export interface GraphNodeLookup {
   findNodeByNameOrAlias(vaultId: string, name: string, type?: string): Promise<GraphNodeRow | null>
+  findNodesByNameOrAlias(vaultId: string, name: string, type?: string): Promise<GraphNodeRow[]>
   getNodeById(id: string, vaultId?: string): Promise<GraphNodeRow | null>
 }
 
@@ -109,6 +110,7 @@ export interface GraphSyncApply {
     vaultId: string
     nodeType: string
     name: string
+    discriminator?: string
     aliases: string[]
     summary: string
     props: Record<string, unknown>

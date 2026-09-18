@@ -26,6 +26,7 @@ describe('GraphRepository keyed queries', () => {
       mentionCount?: number
       shardMonth?: string
       reviewStatus?: 'approved' | 'pending' | 'rejected'
+      discriminator?: string
     }
   ) {
     await repo.upsertNode({
@@ -37,7 +38,8 @@ describe('GraphRepository keyed queries', () => {
       aliases: opts.aliases ?? [],
       mentionCount: opts.mentionCount ?? 1,
       shardMonth: opts.shardMonth ?? '2026-03',
-      reviewStatus: opts.reviewStatus ?? 'approved'
+      reviewStatus: opts.reviewStatus ?? 'approved',
+      discriminator: opts.discriminator
     })
   }
 
@@ -452,5 +454,99 @@ describe('GraphRepository keyed queries', () => {
     })
     const leftover = await client.execute("SELECT id FROM graph_nodes WHERE id = 'n-gone'")
     expect(leftover.rows).toHaveLength(0)
+  })
+
+  it('should allow two same-type same-name nodes when discriminators differ', async () => {
+    await seedNode('n-bare', { name: '张三' })
+    await seedNode('n-split', { name: '张三', discriminator: '同事' })
+    expect((await repo.getNodeById('n-bare', VAULT))?.discriminator).toBe('')
+    expect((await repo.getNodeById('n-split', VAULT))?.discriminator).toBe('同事')
+  })
+
+  it('should reject two same-type same-name nodes when discriminators also match', async () => {
+    await seedNode('n-a', { name: '张三', discriminator: '同事' })
+    await expect(seedNode('n-b', { name: '张三', discriminator: '同事' })).rejects.toThrow()
+  })
+
+  it('should return both same-name nodes with the bare name first when finding by name', async () => {
+    await seedNode('n-split', { name: '张三', discriminator: '同事' })
+    await seedNode('n-bare', { name: '张三' })
+    const rows = await repo.findNodesByNameOrAlias(VAULT, '张三', 'person')
+    expect(rows.map((row) => row.id)).toEqual(['n-bare', 'n-split'])
+  })
+
+  it('should return the bare-name node when findNodeByNameOrAlias sees two same-name people', async () => {
+    await seedNode('n-split', { name: '张三', discriminator: '同事' })
+    await seedNode('n-bare', { name: '张三' })
+    const hit = await repo.findNodeByNameOrAlias(VAULT, '张三', 'person')
+    expect(hit?.id).toBe('n-bare')
+  })
+
+  it('should return multiple nodes when the same alias hits more than one person', async () => {
+    await seedNode('n-bare', { name: '张三甲', aliases: ['张三'] })
+    await seedNode('n-split', { name: '张三乙', aliases: ['张三'], discriminator: '同事' })
+    const rows = await repo.findNodesByNameOrAlias(VAULT, '张三', 'person')
+    expect(rows.map((row) => row.id)).toEqual(['n-bare', 'n-split'])
+  })
+
+  it('should keep a discriminated applyRawNode beside the bare-name row without remapping', async () => {
+    await repo.applyRawNode({
+      id: 'n-bare',
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '张三',
+      aliases: [],
+      summary: '',
+      props: {},
+      mentionCount: 1,
+      firstSeenAt: Date.now(),
+      lastSeenAt: Date.now(),
+      origin: 'ai',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      deletedAt: null,
+      shardMonth: '2026-03'
+    })
+    const result = await repo.applyRawNode({
+      id: 'n-split',
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '张三',
+      aliases: [],
+      summary: '',
+      props: {},
+      mentionCount: 1,
+      firstSeenAt: Date.now(),
+      lastSeenAt: Date.now(),
+      origin: 'ai',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      deletedAt: null,
+      shardMonth: '2026-03',
+      discriminator: '同事'
+    })
+    expect(result.remappedFrom).toBeUndefined()
+    expect(result.id).toBe('n-split')
+    expect(await repo.getNodeById('n-bare', VAULT)).not.toBeNull()
+    expect((await repo.getNodeById('n-split', VAULT))?.discriminator).toBe('同事')
+  })
+
+  it('should persist an empty-string discriminator when upsert omits it', async () => {
+    await repo.upsertNode({
+      id: 'n-empty',
+      forceId: true,
+      vaultId: VAULT,
+      nodeType: 'person',
+      name: '李四',
+      shardMonth: '2026-03'
+    })
+    const mapped = await repo.getNodeById('n-empty', VAULT)
+    expect(mapped?.discriminator).toBe('')
+    const raw = await client.execute({
+      sql: 'SELECT discriminator FROM graph_nodes WHERE id = ?',
+      args: ['n-empty']
+    })
+    expect(raw.rows[0]?.discriminator).toBe('')
+    expect(raw.rows[0]?.discriminator).not.toBeNull()
   })
 })

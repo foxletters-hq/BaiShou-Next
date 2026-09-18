@@ -97,6 +97,12 @@ import { useBaishou } from '@/src/providers/BaishouProvider'
 import { getAgentDbRuntime } from '@/src/services/mobile-agent-db-runtime-ref'
 import { invalidateMobilePendingEmbedCountsCache } from '@/src/services/mobile-pending-embed-counts'
 import {
+  listRegisteredSameNameEntities,
+  parseGraphNodePropsJson,
+  pickBareGraphNameHit,
+  type GraphRegisteredSameNameEntity
+} from '@/src/services/graph-name-candidates.util'
+import {
   mobileClearLifeGraph,
   mobileEstimateExtraction,
   mobileGetNode,
@@ -110,6 +116,7 @@ import {
   mobileSetNodeReview,
   mobileSetReviewsBatch,
   mobileFindNodeByName,
+  mobileFindNodesByName,
   mobileMergeGraphNodeGroup,
   mobileMergeGraphNodes,
   mobileSoftDeleteGraph,
@@ -134,6 +141,7 @@ import { GraphCreateNodeSheet } from './GraphCreateNodeSheet'
 import { GraphForceWebView } from './GraphForceWebView'
 import { GraphMergeSearchSheet } from './GraphMergeSearchSheet'
 import { GraphIrreversibleConfirm, type GraphMergeConfirmTarget } from './GraphIrreversibleConfirm'
+import { GraphDiscriminatorLabel, GraphNodeSameNameList } from './GraphNodeSameNameList'
 
 type Tab = 'graph' | 'search' | 'reextract' | 'pending'
 
@@ -213,6 +221,7 @@ export function GraphScreen() {
   const [mergeConfirm, setMergeConfirm] = useState<GraphMergeConfirmTarget | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [editNameConflict, setEditNameConflict] = useState<GraphSameNameExisting | null>(null)
+  const [sameNameEntities, setSameNameEntities] = useState<GraphRegisteredSameNameEntity[]>([])
   const [hideEntry, setHideEntry] = useState(true)
   const [enabledNodeTypes, setEnabledNodeTypes] = useState<Set<string>>(
     () => new Set(GRAPH_FILTER_NODE_TYPES)
@@ -570,6 +579,46 @@ export function GraphScreen() {
       clearTimeout(timer)
     }
   }, [editName, selectedNode, vaultId])
+
+  useEffect(() => {
+    const runtime = getAgentDbRuntime()
+    if (!selectedNode || !runtime?.drizzleDb) {
+      setSameNameEntities([])
+      return
+    }
+    const currentProps = parseGraphNodePropsJson(selectedNode.propsJson)
+    const currentDiscriminator =
+      typeof selectedNode.discriminator === 'string' ? selectedNode.discriminator : ''
+    let cancelled = false
+    const apply = (bareNode?: { id: string; props: Record<string, unknown> } | null) => {
+      if (cancelled) return
+      setSameNameEntities(
+        listRegisteredSameNameEntities({
+          currentId: selectedNode.id,
+          currentName: String(selectedNode.name || ''),
+          currentDiscriminator,
+          currentProps,
+          bareNode
+        })
+      )
+    }
+    if (!currentDiscriminator.trim()) {
+      apply(null)
+      return
+    }
+    void mobileFindNodesByName(
+      runtime.drizzleDb,
+      vaultId,
+      String(selectedNode.name || ''),
+      selectedNode.nodeType
+    ).then((hits) => {
+      const bare = pickBareGraphNameHit(hits).hit
+      apply(bare ? { id: bare.id, props: parseGraphNodePropsJson(bare.propsJson) } : null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedNode, vaultId])
 
   useEffect(() => {
     if (!awakenProfile) return
@@ -1534,9 +1583,12 @@ export function GraphScreen() {
     if (!runtime?.drizzleDb) return
     const name = editName.trim()
     if (!name) return
+    const nameUnchanged = name === String(selectedNode.name || '').trim()
     const hit =
-      editNameConflict ||
-      (await mobileFindNodeByName(runtime.drizzleDb, vaultId, name, selectedNode.nodeType).then(
+      nameUnchanged
+        ? null
+        : editNameConflict ||
+          (await mobileFindNodeByName(runtime.drizzleDb, vaultId, name, selectedNode.nodeType).then(
         (row) =>
           row && row.id !== selectedNode.id
             ? { id: row.id, name: row.name, nodeType: row.nodeType, summary: row.summary }
@@ -2136,6 +2188,17 @@ export function GraphScreen() {
                         { color: colors.textPrimary, borderColor: colors.borderSubtle }
                       ]}
                     />
+                    <GraphDiscriminatorLabel
+                      value={
+                        typeof selectedNode.discriminator === 'string'
+                          ? selectedNode.discriminator
+                          : ''
+                      }
+                    />
+                    <GraphNodeSameNameList
+                      entities={sameNameEntities}
+                      onOpen={(id) => void onSelectNode(id)}
+                    />
                     {editNameConflict ? (
                       <View style={{ gap: 6 }}>
                         <Text style={{ color: colors.textPrimary, fontSize: 12, lineHeight: 18 }}>
@@ -2398,6 +2461,7 @@ export function GraphScreen() {
                           >
                             {h.name}
                           </Text>
+                          <GraphDiscriminatorLabel value={h.discriminator} />
                           <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
                             {translateGraphNodeType(tr, h.nodeType)}
                           </Text>
@@ -2480,6 +2544,7 @@ export function GraphScreen() {
                       nodes={displayNodes.map((n) => ({
                         id: n.id,
                         name: n.name,
+                        discriminator: n.discriminator,
                         nodeType: n.nodeType,
                         mentionCount: n.mentionCount,
                         reviewStatus: n.reviewStatus
@@ -2595,6 +2660,7 @@ export function GraphScreen() {
                       <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                         {item.name}
                       </Text>
+                      <GraphDiscriminatorLabel value={item.discriminator} />
                       <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
                         {translateGraphNodeType(tr, item.nodeType)}
                         {item.summary ? ` · ${item.summary}` : ''}
@@ -2833,6 +2899,7 @@ export function GraphScreen() {
                                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                                   {t('graph.pending_node', '节点')} · {item.data.name}
                                 </Text>
+                                <GraphDiscriminatorLabel value={item.data.discriminator} />
                                 <Text style={[styles.cardMeta, { color: colors.textSecondary }]}>
                                   {translateGraphNodeType(tr, item.data.nodeType)}
                                   {item.data.summary ? ` · ${item.data.summary}` : ''}
