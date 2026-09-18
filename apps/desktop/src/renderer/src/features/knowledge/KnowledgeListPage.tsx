@@ -13,37 +13,25 @@ import {
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import type { NotebookCardTone } from '@baishou/shared'
-import { Button, Input } from '@baishou/ui'
 import { KnowledgeShell } from './KnowledgeShell'
-import { KnowledgeDialog } from './KnowledgeDialog'
-import { NotebookCoverEditor } from './NotebookCoverEditor'
+import { KnowledgeCreateNotebookDialog } from './KnowledgeCreateNotebookDialog'
 import { NotebookCoverEmojiPicker } from './NotebookCoverEmojiPicker'
 import { SortableNotebookCard } from './SortableNotebookCard'
 import { type NotebookCoverMode } from './notebook-cover-mode'
 import { getNotebookCardAppearance } from './notebook-card-appearance'
 import {
   applyNotebookDragReorder,
+  asNotebookRows,
+  formatNotebookDate,
   resolveNotebookCoverPreviewUrl,
   resolveNotebookRename,
-  sortNotebooksForList
+  sortNotebooksForList,
+  type KnowledgeNotebookRow
 } from './notebook-list.util'
 import styles from './KnowledgePage.module.css'
 
 interface WorkspaceOutletContext {
   setFolderRoot: (path: string | null) => void
-}
-
-type NotebookRow = {
-  id: string
-  name: string
-  description?: string
-  updatedAt?: number
-  createdAt?: number
-  sortOrder?: number
-  coverTone?: string
-  coverIcon?: string
-  coverImage?: string
-  coverImageUrl?: string | null
 }
 
 type NotebookStats = {
@@ -54,31 +42,11 @@ type NotebookStats = {
   totalBytes: number
 }
 
-function formatNotebookDate(ts: number | undefined, locale: string): string {
-  if (!ts || !Number.isFinite(ts)) return ''
-  try {
-    return new Date(ts).toLocaleDateString(locale, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch {
-    return new Date(ts).toLocaleDateString()
-  }
-}
-
-function asNotebookRows(list: unknown): NotebookRow[] {
-  if (!Array.isArray(list)) return []
-  return list.filter((row): row is NotebookRow => {
-    return Boolean(row && typeof row === 'object' && typeof (row as NotebookRow).id === 'string')
-  })
-}
-
 export const KnowledgeListPage: React.FC = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { setFolderRoot } = useOutletContext<WorkspaceOutletContext>()
-  const [notebooks, setNotebooks] = useState<NotebookRow[]>([])
+  const [notebooks, setNotebooks] = useState<KnowledgeNotebookRow[]>([])
   const [statsById, setStatsById] = useState<Record<string, NotebookStats>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -95,7 +63,7 @@ export const KnowledgeListPage: React.FC = () => {
   const [renameDraft, setRenameDraft] = useState('')
   const skipCardClickRef = useRef(false)
   const renameDraftRef = useRef('')
-  const notebooksRef = useRef<NotebookRow[]>([])
+  const notebooksRef = useRef<KnowledgeNotebookRow[]>([])
   const commitRenameRef = useRef<(notebookId: string, draft: string) => Promise<boolean>>(
     async () => false
   )
@@ -140,6 +108,13 @@ export const KnowledgeListPage: React.FC = () => {
     void refresh().catch((e) => setError(String(e?.message || e)))
   }, [refresh])
 
+  const resetCreateDraft = () => {
+    setShowCreate(false)
+    setCreateCoverPath('')
+    setCreateCoverName('')
+    setCreateCoverMode('emoji')
+  }
+
   const onCreate = async () => {
     const trimmed = name.trim()
     if (!trimmed) return
@@ -158,14 +133,11 @@ export const KnowledgeListPage: React.FC = () => {
           absolutePath: createCoverPath
         })
       }
-      setShowCreate(false)
       setName('')
       setDescription('')
       setCreateTone('')
       setCreateIcon('')
-      setCreateCoverPath('')
-      setCreateCoverName('')
-      setCreateCoverMode('emoji')
+      resetCreateDraft()
       await refresh()
       navigate(`/agent-workspace/knowledge/${created.id}`)
     } catch (e: any) {
@@ -336,7 +308,7 @@ export const KnowledgeListPage: React.FC = () => {
     setCreateCoverMode('image')
   }
 
-  const openCardMenu = (nb: NotebookRow) => {
+  const openCardMenu = (nb: KnowledgeNotebookRow) => {
     setCardMenuId((current) => {
       if (current === nb.id) {
         void commitRenameRef.current(nb.id, renameDraftRef.current)
@@ -452,87 +424,38 @@ export const KnowledgeListPage: React.FC = () => {
         </DndContext>
       </motion.div>
 
-      <KnowledgeDialog
+      <KnowledgeCreateNotebookDialog
         open={showCreate}
+        busy={busy}
+        name={name}
+        description={description}
+        createTone={createTone}
+        createIcon={createIcon}
+        createCoverPath={createCoverPath}
+        createCoverName={createCoverName}
+        createCoverMode={createCoverMode}
         onClose={() => {
           if (busy) return
-          setShowCreate(false)
-          setCreateCoverPath('')
-          setCreateCoverName('')
-          setCreateCoverMode('emoji')
+          resetCreateDraft()
         }}
-        closeDisabled={busy}
-        title={t('knowledge.new_notebook', '新建笔记本')}
-        aria-label={t('knowledge.new_notebook', '新建笔记本')}
-      >
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>{t('knowledge.notebook_name', '名称')}</span>
-          <Input
-            fieldSize="small"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t('knowledge.notebook_name_placeholder', '笔记本名称')}
-            autoFocus
-          />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>{t('knowledge.notebook_desc', '描述（可选）')}</span>
-          <textarea
-            className={styles.fieldTextarea}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </label>
-        <NotebookCoverEditor
-          className={styles.field}
-          labelClassName={styles.fieldLabel}
-          mode={createCoverMode}
-          onModeChange={(mode) => {
-            setCreateCoverMode(mode)
-            if (mode === 'emoji') {
-              setCreateCoverPath('')
-              setCreateCoverName('')
-            }
-          }}
-          tone={createTone}
-          onToneChange={setCreateTone}
-          icon={createIcon}
-          onPickIcon={() => setIconPickerTarget('create')}
-          onUploadImage={() => void pickCreateCoverImage()}
-          onClearImage={() => {
+        onNameChange={setName}
+        onDescriptionChange={setDescription}
+        onToneChange={setCreateTone}
+        onModeChange={(mode) => {
+          setCreateCoverMode(mode)
+          if (mode === 'emoji') {
             setCreateCoverPath('')
             setCreateCoverName('')
-          }}
-          hasImage={Boolean(createCoverPath)}
-          imageName={createCoverName}
-          disabled={busy}
-          labels={{
-            cover: t('knowledge.notebook_cover', '笔记本封面'),
-            emoji: t('knowledge.cover_mode_emoji', 'emoji'),
-            pickIcon: t('knowledge.pick_cover_icon', '选择图标'),
-            uploadImage: t('knowledge.upload_cover_image', '上传图片'),
-            clearImage: t('knowledge.clear_cover_image', '清除图片')
-          }}
-        />
-        <div className={styles.dialogActions}>
-          <Button
-            type="button"
-            onClick={() => {
-              if (busy) return
-              setShowCreate(false)
-              setCreateCoverPath('')
-              setCreateCoverName('')
-              setCreateCoverMode('emoji')
-            }}
-            disabled={busy}
-          >
-            {t('common.cancel', '取消')}
-          </Button>
-          <Button type="button" onClick={() => void onCreate()} disabled={busy || !name.trim()}>
-            {t('knowledge.create_action', '创建')}
-          </Button>
-        </div>
-      </KnowledgeDialog>
+          }
+        }}
+        onPickIcon={() => setIconPickerTarget('create')}
+        onUploadImage={() => void pickCreateCoverImage()}
+        onClearImage={() => {
+          setCreateCoverPath('')
+          setCreateCoverName('')
+        }}
+        onCreate={() => void onCreate()}
+      />
       <NotebookCoverEmojiPicker
         open={iconPickerTarget != null}
         onClose={() => setIconPickerTarget(null)}
