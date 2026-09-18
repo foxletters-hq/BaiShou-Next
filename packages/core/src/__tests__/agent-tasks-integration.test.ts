@@ -201,7 +201,7 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
     const schema = readFile('packages/database/src/schema/agent-assistants.ts')
     expect(schema).toContain('context_window')
 
-    const helpers = readFile('apps/desktop/src/main/ipc/agent-helpers.ts')
+    const helpers = readFile('apps/desktop/src/main/ipc/agent-stream-config.ts')
     expect(helpers).toContain('assistantContextWindow')
 
     const builder = readFile('packages/ai/src/agent/context-window.builder.ts')
@@ -227,7 +227,7 @@ describe('Agent 6: 伙伴聊天上下文验证', () => {
 
 describe('Agent 7: 回忆生成页面验证', () => {
   it('任务17: 卡片 section 合并，无中间圆角', () => {
-    const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
+    const tsx = readUiModule('packages/ui/src/desktop/SummarySettingsView')
     // 确认只有卡外 stack + cardSection 结构
     const cardSections = tsx.match(/cardSection/g)
     expect(cardSections).toBeTruthy()
@@ -235,7 +235,7 @@ describe('Agent 7: 回忆生成页面验证', () => {
   })
 
   it('任务17: 共享记忆回溯月数滑块仍在设置页', () => {
-    const tsx = readFile('packages/ui/src/desktop/SummarySettingsView/index.tsx')
+    const tsx = readUiModule('packages/ui/src/desktop/SummarySettingsView')
     expect(tsx).toContain('summary-inject-lookback')
     expect(tsx).toContain('SHARED_MEMORY_LOOKBACK_MIN')
     expect(tsx).toContain('lookbackDraft')
