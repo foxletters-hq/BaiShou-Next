@@ -11,6 +11,30 @@ export function formatKnowledgeBytesMb(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 1 : 2)
 }
 
+export function knowledgeSourceCanRetry(status: string): boolean {
+  return status === 'failed' || status === 'needs_ocr'
+}
+
+export function knowledgeSourceCanReembedGraph(status: string): boolean {
+  return status === 'ready' || status === 'partial'
+}
+
+const SOURCE_NOT_EMBEDDED = 'source-not-embedded'
+
+export function knowledgeIngestUserMessage(
+  raw: unknown,
+  t: (key: string, fallback: string) => string
+): string {
+  const message = raw instanceof Error ? raw.message : String(raw ?? '')
+  if (message.trim() === SOURCE_NOT_EMBEDDED) {
+    return t(
+      'knowledge.source_not_embedded',
+      '这份资料还没有完成向量。请先完成向量，再抽取图关系。'
+    )
+  }
+  return message
+}
+
 export function knowledgeSourceStatusLabel(
   status: string,
   t: (key: string, fallback: string) => string
