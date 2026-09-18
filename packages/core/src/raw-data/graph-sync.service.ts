@@ -1,5 +1,5 @@
 import type { GraphSyncApply } from '@baishou/database/shared'
-import { graphNodeCardText, isVaultId } from '@baishou/shared'
+import { graphNodeCardText, isVaultId, shouldReuseGraphNodeEmbed } from '@baishou/shared'
 import type { GraphEdgeRawRecord, GraphNodeRawRecord } from './raw-data-source.types'
 import { collapseJsonlById } from './stores/monthly-jsonl.store'
 import type { GraphIndexSource } from './graph-index-source'
@@ -116,11 +116,13 @@ export class GraphSyncService implements GraphPendingIndexSync {
               typeof this.repo.getNodeById === 'function'
                 ? await this.repo.getNodeById(raw.id, vaultId)
                 : null
-            const reuseEmbed =
-              !!existing &&
-              !!this.embedder?.modelId &&
-              existing.modelId === this.embedder.modelId &&
-              (existing.dimension ?? 0) > 0
+            // 已有向量且同模型时，还要名片文本一致才跳过；改名/改摘要必须按新名片重算。
+            const reuseEmbed = shouldReuseGraphNodeEmbed({
+              existing,
+              incomingName: raw.name,
+              incomingSummary: raw.summary,
+              embedderModelId: this.embedder?.modelId
+            })
             if (this.embedder?.embedQuery && !reuseEmbed) {
               try {
                 embedding = await this.embedder.embedQuery(cardText)

@@ -7,6 +7,7 @@ import {
   DerivedFreshnessService,
   MemorySyncService,
   GraphSyncService,
+  type GraphSyncEmbedder,
   FsVersionManager,
   bindPendingReextractCollaborators,
   type IVersionManager,
@@ -424,6 +425,21 @@ export async function runDerivedIndexHydration(
   }
 }
 
+function createDesktopNotebookGraphIndexEmbedder(
+  embeddingService: {
+    isConfigured: boolean
+    embedQuery: (text: string) => Promise<number[] | null>
+  },
+  modelId: string
+): GraphSyncEmbedder | null {
+  const id = modelId.trim()
+  if (!embeddingService.isConfigured || !id) return null
+  return {
+    embedQuery: (text) => embeddingService.embedQuery(text),
+    modelId: id
+  }
+}
+
 /** K1.4：同步后 Notebooks/ 差集 → knowledge.db embed jobs */
 export async function runKnowledgeHydrationAfterSync(reason: string): Promise<void> {
   try {
@@ -435,9 +451,13 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
     }
 
     const { KnowledgeHydrationService } = await import('@baishou/core-desktop')
-    const { getEmbeddingService } = await import('../ipc/rag.ipc')
+    const { getEmbeddingService, getEmbeddingConfig } = await import('../ipc/rag.ipc')
     const { resolveActiveVaultId } = await import('../ipc/vault.ipc')
     const embeddingService = getEmbeddingService()
+    const notebookGraphEmbedder = createDesktopNotebookGraphIndexEmbedder(
+      embeddingService,
+      getEmbeddingConfig().getGlobalEmbeddingModelId()
+    )
     const repo = new KnowledgeRepository(knowledgeConnectionManager.getDb())
     const notebookManager = getNotebookRawManager()
     const vaultId = resolveActiveVaultId()
@@ -448,7 +468,8 @@ export async function runKnowledgeHydrationAfterSync(reason: string): Promise<vo
     const graphRaw = new NotebookGraphRawManager(pathService, fileSystem)
     const graphIndex = new NotebookGraphIndexService(
       graphRaw,
-      new NotebookGraphRepository(knowledgeConnectionManager.getDb())
+      new NotebookGraphRepository(knowledgeConnectionManager.getDb()),
+      notebookGraphEmbedder
     )
     const hydration = new KnowledgeHydrationService({
       repo,
@@ -481,9 +502,17 @@ export async function runNotebookGraphIndexAfterSync(
       await import('@baishou/core-desktop')
     const vaultId = resolveActiveVaultId()?.trim() || ''
     if (!vaultId) return
+    const { getEmbeddingService, getEmbeddingConfig } = await import('../ipc/rag.ipc')
     const raw = new NotebookGraphRawManager(pathService, fileSystem)
     const repo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
-    const index = new NotebookGraphIndexService(raw, repo)
+    const index = new NotebookGraphIndexService(
+      raw,
+      repo,
+      createDesktopNotebookGraphIndexEmbedder(
+        getEmbeddingService(),
+        getEmbeddingConfig().getGlobalEmbeddingModelId()
+      )
+    )
     for (const notebookId of ids) {
       await index.syncPendingIndex({
         vaultId,

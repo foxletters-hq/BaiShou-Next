@@ -1,6 +1,12 @@
-import { logger } from '@baishou/shared'
 import type { NotebookGraphSyncApply } from '@baishou/database/shared'
-import type { NotebookGraphEdgeRawRecord, NotebookGraphNodeRawRecord } from '@baishou/shared'
+import {
+  graphNodeCardText,
+  logger,
+  shouldRefreshExistingGraphNodeEmbed,
+  type NotebookGraphEdgeRawRecord,
+  type NotebookGraphNodeRawRecord
+} from '@baishou/shared'
+import type { GraphSyncEmbedder } from '../raw-data/graph-sync.service'
 import { collapseJsonlById } from '../raw-data/stores/monthly-jsonl.store'
 import {
   collectAbsentDeleteIds,
@@ -12,7 +18,8 @@ import type { NotebookGraphIndexSource } from './notebook-graph-index-source'
 export class NotebookGraphIndexService {
   constructor(
     private readonly raw: NotebookGraphIndexSource,
-    private readonly repo: NotebookGraphSyncApply
+    private readonly repo: NotebookGraphSyncApply,
+    private readonly embedder?: GraphSyncEmbedder | null
   ) {}
 
   async syncPendingIndex(opts: {
@@ -61,7 +68,8 @@ export class NotebookGraphIndexService {
       if (shard.collection === 'nodes') {
         for (const row of rows as NotebookGraphNodeRawRecord[]) {
           if (!row?.id || row.vaultId !== vaultId || row.notebookId !== notebookId) continue
-          const applied = await this.repo.applyRawNode(row)
+          const embeddingFields = await this.resolveChangedCardEmbedding(row, vaultId, notebookId)
+          const applied = await this.repo.applyRawNode({ ...row, ...embeddingFields })
           if (applied && applied.remappedFrom) {
             await this.writeBackUniqueMerge(row, applied, vaultId, notebookId)
           }
@@ -92,6 +100,37 @@ export class NotebookGraphIndexService {
       edges
     })
     return { shards: pending.length, nodes, edges }
+  }
+
+  /** 已有同模型向量且名片变了才重算；新节点留给抽图落库或集中补齐。 */
+  private async resolveChangedCardEmbedding(
+    row: NotebookGraphNodeRawRecord,
+    vaultId: string,
+    notebookId: string
+  ): Promise<{ embedding?: number[]; modelId?: string }> {
+    if (row.nodeType === 'source' || row.nodeType === 'entry') return {}
+    if (!this.embedder?.embedQuery || !this.embedder.modelId) return {}
+    const existing =
+      typeof this.repo.getNodeById === 'function'
+        ? await this.repo.getNodeById(row.id, vaultId, notebookId)
+        : null
+    if (
+      !shouldRefreshExistingGraphNodeEmbed({
+        existing,
+        incomingName: row.name,
+        incomingSummary: row.summary,
+        embedderModelId: this.embedder.modelId
+      })
+    ) {
+      return {}
+    }
+    try {
+      const embedding = await this.embedder.embedQuery(graphNodeCardText(row.name, row.summary))
+      if (!embedding?.length) return {}
+      return { embedding, modelId: this.embedder.modelId }
+    } catch {
+      return {}
+    }
   }
 
   private async writeBackUniqueMerge(
