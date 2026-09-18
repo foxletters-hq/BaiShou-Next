@@ -3,7 +3,9 @@ import { graphNodeIdForEntity } from '@baishou/shared'
 import {
   alignEntityPool,
   alignedEmbeddingForNodeCard,
-  parseEntityAlignDecisions
+  buildEntityAlignPrompt,
+  parseEntityAlignDecisions,
+  parseNameCandidateDecision
 } from '../graph-entity-align'
 
 const VAULT = 'vlt_aaaaaaaaaaaaaaaa'
@@ -54,6 +56,89 @@ describe('alignEntityPool', () => {
     expect(out.get('person\0张三')?.id).toBe(graphNodeIdForEntity(VAULT, 'person', '张三'))
     expect(out.get('person\0小张')?.embedding).toEqual([1, 0])
     expect(out.get('person\0小张')?.embedText).toBe('小张\n同事')
+  })
+
+  it('should pass clipped sourceContext to judgeMerges when the diary excerpt is present', async () => {
+    const dbId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const longContext = `今天见到小张。${'甲'.repeat(900)}`
+    const judgeMerges = vi.fn().mockResolvedValue({ merges: [], uncertain: [] })
+    await alignEntityPool(
+      [
+        {
+          name: '小张',
+          nodeType: 'person',
+          summary: '同事',
+          sourceContext: longContext
+        }
+      ],
+      {
+        findCandidatesByNameOrAlias: async () => [],
+        embedQuery: async () => [1, 0],
+        searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
+        judgeMerges
+      }
+    )
+    expect(judgeMerges).toHaveBeenCalledWith(
+      expect.objectContaining({
+        incoming: [
+          expect.objectContaining({
+            ref: 'i1',
+            name: '小张',
+            sourceContext: longContext.slice(0, 800)
+          })
+        ]
+      })
+    )
+    expect(String(judgeMerges.mock.calls[0]?.[0]?.incoming?.[0]?.sourceContext ?? '').length).toBe(
+      800
+    )
+  })
+
+  it('should create a new node and attach similarPending when the judge returns uncertain', async () => {
+    const dbId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const judgeMerges = vi.fn().mockResolvedValue({
+      merges: [],
+      uncertain: [
+        {
+          incomingRef: 'i1',
+          existingRef: 'e1',
+          reason: '像同一个人但又不敢并',
+          similarity: 0.72
+        }
+      ]
+    })
+    const out = await alignEntityPool(
+      [
+        {
+          name: '小张',
+          nodeType: 'person',
+          summary: '同事',
+          sourceContext: '今天见到小张，有点像张三'
+        }
+      ],
+      {
+        findCandidatesByNameOrAlias: async () => [],
+        embedQuery: async () => [1, 0],
+        searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
+        judgeMerges
+      }
+    )
+    const created = out.get('person\0小张')
+    expect(created?.mergedBy).toBe('create')
+    expect(created?.reused).toBe(false)
+    expect(created?.id).toBe(graphNodeIdForEntity(VAULT, 'person', '小张'))
+    expect(created?.id).not.toBe(dbId)
+    expect(created?.similarPending).toEqual(
+      expect.objectContaining({
+        peerId: dbId,
+        similarity: 0.72,
+        reason: '像同一个人但又不敢并',
+        sourceExcerpt: '今天见到小张，有点像张三'
+      })
+    )
+    expect(created?.similarPending?.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
   it('lets a second LLM call merge incoming names onto an existing node', async () => {
@@ -128,6 +213,7 @@ describe('alignEntityPool', () => {
     expect(out.get('person\0小张')?.mergedBy).toBe('create')
     expect(out.get('person\0小张')?.id).toBe(graphNodeIdForEntity(VAULT, 'person', '小张'))
     expect(out.get('person\0小张')?.id).not.toBe(dbId)
+    expect(out.get('person\0小张')?.similarPending).toBeUndefined()
   })
 
   it('creates new nodes when the judge returns null instead of hard-merging', async () => {
@@ -210,6 +296,114 @@ describe('alignEntityPool', () => {
     expect(embedQuery).not.toHaveBeenCalled()
     expect(judgeMerges).not.toHaveBeenCalled()
   })
+
+  it('should reuse the judged candidate id and keep ambiguous false when the name judge picks a split entity', async () => {
+    const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
+    const judgeMerges = vi.fn()
+    const judgeNameCandidates = vi.fn().mockResolvedValue(splitId)
+    const out = await alignEntityPool(
+      [{ name: '张三', nodeType: 'person', summary: '日记里的同事张三' }],
+      {
+        findCandidatesByNameOrAlias: async () => [
+          { id: bareId, name: '张三', aliases: ['张三'], discriminator: '' },
+          { id: splitId, name: '张三', aliases: ['张三'], discriminator: '同事' }
+        ],
+        judgeMerges,
+        judgeNameCandidates,
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+      }
+    )
+    expect(out.get('person\0张三')).toEqual(
+      expect.objectContaining({
+        id: splitId,
+        reused: true,
+        mergedBy: 'llm',
+        ambiguous: false
+      })
+    )
+    expect(judgeMerges).not.toHaveBeenCalled()
+    expect(judgeNameCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        incoming: expect.objectContaining({ name: '张三' }),
+        candidates: expect.arrayContaining([
+          expect.objectContaining({ id: bareId }),
+          expect.objectContaining({ id: splitId })
+        ])
+      })
+    )
+  })
+
+  it('should reuse the bare-name id and mark ambiguous when the name judge returns null', async () => {
+    const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
+    const out = await alignEntityPool(
+      [{ name: '张三', nodeType: 'person', summary: '日记里的张三' }],
+      {
+        findCandidatesByNameOrAlias: async () => [
+          { id: bareId, name: '张三', aliases: ['张三'] },
+          { id: splitId, name: '张三乙', aliases: ['张三'] }
+        ],
+        judgeNameCandidates: async () => null,
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+      }
+    )
+    expect(out.get('person\0张三')).toEqual(
+      expect.objectContaining({
+        id: bareId,
+        mergedBy: 'name',
+        ambiguous: true
+      })
+    )
+  })
+
+  it('should reuse the bare-name id and mark ambiguous when the name judge throws', async () => {
+    const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
+    const out = await alignEntityPool(
+      [{ name: '张三', nodeType: 'person', summary: '日记里的张三' }],
+      {
+        findCandidatesByNameOrAlias: async () => [
+          { id: bareId, name: '张三', aliases: ['张三'] },
+          { id: splitId, name: '张三乙', aliases: ['张三'] }
+        ],
+        judgeNameCandidates: async () => {
+          throw new Error('model down')
+        },
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+      }
+    )
+    expect(out.get('person\0张三')).toEqual(
+      expect.objectContaining({
+        id: bareId,
+        mergedBy: 'name',
+        ambiguous: true
+      })
+    )
+  })
+
+  it('should reuse the bare-name id and mark ambiguous when the name judge returns an id not in candidates', async () => {
+    const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
+    const out = await alignEntityPool(
+      [{ name: '张三', nodeType: 'person', summary: '日记里的张三' }],
+      {
+        findCandidatesByNameOrAlias: async () => [
+          { id: bareId, name: '张三', aliases: ['张三'] },
+          { id: splitId, name: '张三乙', aliases: ['张三'] }
+        ],
+        judgeNameCandidates: async () => 'invented-id',
+        nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+      }
+    )
+    expect(out.get('person\0张三')).toEqual(
+      expect.objectContaining({
+        id: bareId,
+        mergedBy: 'name',
+        ambiguous: true
+      })
+    )
+  })
 })
 
 describe('alignedEmbeddingForNodeCard', () => {
@@ -233,15 +427,52 @@ describe('alignedEmbeddingForNodeCard', () => {
   })
 })
 
+describe('buildEntityAlignPrompt', () => {
+  it('should include sourceContext and uncertain in the judge prompt', () => {
+    const prompt = buildEntityAlignPrompt({
+      incoming: [
+        {
+          ref: 'i1',
+          name: '小张',
+          nodeType: 'person',
+          aliases: [],
+          summary: '同事',
+          sourceContext: '日记正文片段'
+        }
+      ],
+      existing: [
+        { ref: 'e1', id: 'n1', name: '张三', nodeType: 'person', aliases: [], summary: '' }
+      ]
+    })
+    expect(prompt.user).toContain('日记正文片段')
+    expect(prompt.user).toContain('sourceContext')
+    expect(prompt.user).toContain('uncertain')
+    expect(prompt.user).toContain('吃不准')
+  })
+})
+
 describe('parseEntityAlignDecisions', () => {
   it('reads incoming/existing/same_as from the second-pass JSON', () => {
     const parsed = parseEntityAlignDecisions(
       '```json\n{"merges":[{"incoming":"i1","existing":"e1"},{"incoming":"i2","same_as":"i1"}]}\n```'
     )
-    expect(parsed).toEqual([
-      { incomingRef: 'i1', existingRef: 'e1', sameAsIncomingRef: undefined },
-      { incomingRef: 'i2', existingRef: undefined, sameAsIncomingRef: 'i1' }
-    ])
+    expect(parsed).toEqual({
+      merges: [
+        { incomingRef: 'i1', existingRef: 'e1', sameAsIncomingRef: undefined },
+        { incomingRef: 'i2', existingRef: undefined, sameAsIncomingRef: 'i1' }
+      ],
+      uncertain: []
+    })
+  })
+
+  it('should read uncertain rows from the second-pass JSON', () => {
+    const parsed = parseEntityAlignDecisions(
+      '{"merges":[],"uncertain":[{"incoming":"i1","existing":"e1","reason":"吃不准","similarity":0.72}]}'
+    )
+    expect(parsed).toEqual({
+      merges: [],
+      uncertain: [{ incomingRef: 'i1', existingRef: 'e1', reason: '吃不准', similarity: 0.72 }]
+    })
   })
 
   it('returns null for extract-shaped JSON so commit creates new nodes', () => {
@@ -253,5 +484,20 @@ describe('parseEntityAlignDecisions', () => {
         })
       )
     ).toBeNull()
+  })
+})
+
+describe('parseNameCandidateDecision', () => {
+  it('should read the candidate id from the judge JSON', () => {
+    expect(parseNameCandidateDecision('{"id":"node-split"}')).toBe('node-split')
+    expect(parseNameCandidateDecision('```json\n{"candidateId":"node-split"}\n```')).toBe(
+      'node-split'
+    )
+  })
+
+  it('should return null when the model leaves the id empty', () => {
+    expect(parseNameCandidateDecision('{"id":null}')).toBeNull()
+    expect(parseNameCandidateDecision('{"id":""}')).toBeNull()
+    expect(parseNameCandidateDecision('not-json')).toBeNull()
   })
 })

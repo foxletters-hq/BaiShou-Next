@@ -1,15 +1,4 @@
-import { streamText } from 'ai'
-import {
-  GRAPH_EDGE_TYPES,
-  GRAPH_NODE_TYPES,
-  type GraphExtractStore
-} from '@baishou/database/shared'
-import type { IAIProvider } from '@baishou/ai'
-import {
-  buildDefaultReasoningOptions,
-  runWithOpenAiThinkingInjectAsync,
-  wrapLanguageModelWithMiddlewares
-} from '@baishou/ai'
+import type { GraphExtractStore } from '@baishou/database/shared'
 import {
   logger,
   GRAPH_SELF_NAME_REQUIRED_ERROR,
@@ -19,506 +8,65 @@ import {
   GRAPH_EXTRACT_EMPTY_RESPONSE_ERROR,
   GRAPH_EXTRACT_PARSE_JSON_ERROR,
   entryNodeIdForFilePath,
-  entityAlignKey,
   graphDiaryInstant,
-  graphEdgeId,
   graphNodeIdForEntity,
-  appendAmbiguousSourceRef,
   legacyEntryNodeIdForFilePath,
-  graphReviewStatusFromConfidence,
   normalizeGraphExtractConfidence,
-  normalizeGraphName,
   normalizeGraphFilePath,
-  preferGraphOrigin,
   graphExtractPhaseProgress,
   type GraphExtractQueuePhase,
-  type GraphExtractQueueProgressUpdate,
-  normalizeReasoningEffortSetting,
-  type ReasoningEffortSetting
+  type GraphExtractQueueProgressUpdate
 } from '@baishou/shared'
 import type { IFileSystem } from '../fs/file-system.types'
 import * as path from '../fs/path.util'
 import { md5Hex } from '../fs/md5'
 import type { IStoragePathService } from '../vault/storage-path.types'
 import type { DerivedFreshnessService } from '../raw-data/derived-freshness.service'
-import type { GraphEdgeRawRecord, GraphNodeRawRecord } from '../raw-data/raw-data-source.types'
 import type { GraphPendingIndexSync } from '../raw-data/graph-sync.service'
 import type { GraphExtractRawWriter } from '../raw-data/graph-extract-raw'
 import {
-  findOrCreateGraphNode,
-  resolveGraphEndpointId,
-  type ResolveGraphEndpointResult
-} from './find-or-create-graph-node'
-import {
   alignEntityPool,
-  alignedEmbeddingForNodeCard,
   buildEntityAlignPrompt,
-  parseEntityAlignDecisions
+  buildNameCandidateJudgePrompt,
+  clipNameCandidateSourceContext,
+  parseEntityAlignJudgeOutput,
+  parseNameCandidateDecision
 } from './graph-entity-align'
+import type {
+  ExtractDiariesOptions,
+  ExtractDiariesResult,
+  GraphExtractAlignDeps,
+  GraphExtractDraft,
+  GraphExtractDraftEdge,
+  GraphExtractDraftEntity,
+  GraphExtractLlmFn
+} from './graph-llm-extraction.types'
+import { throwIfGraphExtractAborted } from './graph-llm-extraction.stream'
+import {
+  buildExtractPrompt,
+  clampEdgeType,
+  clampNodeType,
+  parseExtractJson
+} from './graph-llm-extraction.prompt'
+import { persistGraphExtractDraft, writeMentionCountsToJsonl } from './graph-llm-extraction.persist'
 
-const NODE_TYPE_SET = new Set<string>(GRAPH_NODE_TYPES)
-const EDGE_TYPE_SET = new Set<string>(GRAPH_EDGE_TYPES)
-
-function graphExtractAbortError(): DOMException {
-  return new DOMException('The operation was aborted', 'AbortError')
-}
-
-function throwIfGraphExtractAborted(signal?: AbortSignal): void {
-  if (signal?.aborted) throw graphExtractAbortError()
-}
-
-async function awaitAbortableText(
-  textPromise: Promise<string>,
-  signal?: AbortSignal
-): Promise<string> {
-  throwIfGraphExtractAborted(signal)
-  if (!signal) return textPromise
-  return new Promise<string>((resolve, reject) => {
-    const onAbort = () => reject(graphExtractAbortError())
-    signal.addEventListener('abort', onAbort, { once: true })
-    textPromise.then(
-      (text) => {
-        signal.removeEventListener('abort', onAbort)
-        if (signal.aborted) {
-          reject(graphExtractAbortError())
-          return
-        }
-        resolve(text)
-      },
-      (err) => {
-        signal.removeEventListener('abort', onAbort)
-        reject(err)
-      }
-    )
-  })
-}
-
-type GraphExtractStreamPart = {
-  type?: string
-  text?: unknown
-  textDelta?: unknown
-  delta?: unknown
-}
-
-type GraphExtractStreamReaderSource = {
-  getReader: () => {
-    read: () => Promise<{ done: boolean; value?: unknown }>
-    releaseLock: () => void
-  }
-}
-
-function asGraphExtractTextChunk(value: unknown): string {
-  if (typeof value === 'string') return value
-  if (
-    value &&
-    typeof value === 'object' &&
-    typeof (value as { text?: unknown }).text === 'string'
-  ) {
-    return (value as { text: string }).text
-  }
-  return ''
-}
-
-function readGraphExtractPartText(part: GraphExtractStreamPart): string {
-  return (
-    asGraphExtractTextChunk(part.textDelta) ||
-    asGraphExtractTextChunk(part.text) ||
-    asGraphExtractTextChunk(part.delta) ||
-    ''
-  )
-}
-
-function isGraphExtractTextPart(part: GraphExtractStreamPart): boolean {
-  return part.type === 'text-delta' || part.type === 'text'
-}
-
-function isGraphExtractReasoningPart(part: GraphExtractStreamPart): boolean {
-  return part.type === 'reasoning-delta' || part.type === 'reasoning'
-}
-
-function isNoOutputGeneratedError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false
-  if (
-    (error as { [key: symbol]: unknown })[
-      Symbol.for('vercel.ai.error.AI_NoOutputGeneratedError')
-    ] === true
-  ) {
-    return true
-  }
-  const name = 'name' in error ? String(error.name) : ''
-  const message = 'message' in error ? String(error.message) : ''
-  return name === 'AI_NoOutputGeneratedError' || message.includes('NoOutputGenerated')
-}
-
-function isAsyncIterableStream(value: unknown): value is AsyncIterable<unknown> {
-  return Boolean(value && typeof value === 'object' && Symbol.asyncIterator in value)
-}
-
-function isStreamReaderSource(value: unknown): value is GraphExtractStreamReaderSource {
-  return Boolean(
-    value &&
-    typeof value === 'object' &&
-    typeof (value as GraphExtractStreamReaderSource).getReader === 'function'
-  )
-}
-
-function canIterateGraphExtractStream(stream: unknown): boolean {
-  return isAsyncIterableStream(stream) || isStreamReaderSource(stream)
-}
-
-async function* iterateGraphExtractStream(stream: unknown): AsyncGenerator<unknown> {
-  if (isAsyncIterableStream(stream)) {
-    yield* stream
-    return
-  }
-  if (!isStreamReaderSource(stream)) return
-  const reader = stream.getReader()
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) return
-      yield value
-    }
-  } finally {
-    reader.releaseLock()
-  }
-}
-
-export async function collectGraphExtractStreamText(opts: {
-  fullStream?: unknown
-  textStream?: AsyncIterable<string>
-  textPromise?: Promise<string>
-  signal?: AbortSignal
-  onDelta?: (chars: number) => void
-  onReasoning?: (chars: number) => void
-}): Promise<string> {
-  throwIfGraphExtractAborted(opts.signal)
-  if (opts.fullStream && canIterateGraphExtractStream(opts.fullStream)) {
-    const consume = (async () => {
-      let text = ''
-      let reasoning = ''
-      for await (const value of iterateGraphExtractStream(opts.fullStream)) {
-        throwIfGraphExtractAborted(opts.signal)
-        const part = (value ?? {}) as GraphExtractStreamPart
-        if (part.type === 'error') {
-          const err = (value as { error?: unknown } | null)?.error
-          throw err instanceof Error ? err : new Error(String(err ?? 'Graph extract stream error'))
-        }
-        if (part.type === 'abort') {
-          throw graphExtractAbortError()
-        }
-        const piece = readGraphExtractPartText(part)
-        if (!piece) continue
-        if (isGraphExtractReasoningPart(part)) {
-          reasoning += piece
-          opts.onReasoning?.(reasoning.length)
-          continue
-        }
-        if (!isGraphExtractTextPart(part) && part.type) continue
-        text += piece
-        opts.onDelta?.(text.length)
-      }
-      return text
-    })()
-    void consume.catch(() => undefined)
-    return awaitAbortableText(consume, opts.signal)
-  }
-  if (opts.textStream) {
-    const consume = (async () => {
-      let text = ''
-      for await (const chunk of opts.textStream!) {
-        throwIfGraphExtractAborted(opts.signal)
-        const piece =
-          typeof chunk === 'string'
-            ? chunk
-            : readGraphExtractPartText((chunk ?? {}) as GraphExtractStreamPart)
-        if (!piece) continue
-        text += piece
-        opts.onDelta?.(text.length)
-      }
-      return text
-    })()
-    void consume.catch(() => undefined)
-    return awaitAbortableText(consume, opts.signal)
-  }
-  if (!opts.textPromise) return ''
-  const text = await awaitAbortableText(opts.textPromise, opts.signal)
-  if (text) opts.onDelta?.(text.length)
-  return text
-}
-
-export async function resolveGraphExtractLlmText(opts: {
-  fullStream?: unknown
-  textStream?: AsyncIterable<string>
-  textPromise?: Promise<string>
-  signal?: AbortSignal
-  onDelta?: (chars: number) => void
-  onReasoning?: (chars: number) => void
-}): Promise<string> {
-  throwIfGraphExtractAborted(opts.signal)
-  let streamed = ''
-  let streamError: unknown
-  try {
-    streamed = await collectGraphExtractStreamText({
-      fullStream: opts.fullStream,
-      textStream: canIterateGraphExtractStream(opts.fullStream) ? undefined : opts.textStream,
-      signal: opts.signal,
-      onDelta: opts.onDelta,
-      onReasoning: opts.onReasoning
-    })
-  } catch (error) {
-    if (opts.signal?.aborted || (error as { name?: string }).name === 'AbortError') throw error
-    streamError = error
-    logger.warn('[GraphExtract] LLM stream failed:', error as Error)
-  }
-
-  const trimmed = streamed.trim()
-  if (trimmed) return trimmed
-
-  if (opts.textPromise) {
-    try {
-      const fallback = await awaitAbortableText(opts.textPromise, opts.signal)
-      const fallbackTrimmed = fallback?.trim() || ''
-      if (fallbackTrimmed) {
-        opts.onDelta?.(fallbackTrimmed.length)
-        return fallbackTrimmed
-      }
-    } catch (error) {
-      if (opts.signal?.aborted || (error as { name?: string }).name === 'AbortError') throw error
-      if (isNoOutputGeneratedError(error)) return ''
-      logger.warn('[GraphExtract] LLM call failed:', error as Error)
-      throw error
-    }
-  }
-
-  if (streamError) throw streamError
-  return ''
-}
-
-export interface GraphExtractLlmDeps {
-  provider: IAIProvider
-  modelId: string
-  reasoningEffort?: ReasoningEffortSetting
-}
-
-export type GraphExtractLlmFn = (prompt: {
-  system: string
-  user: string
-  signal?: AbortSignal
-  onDelta?: (chars: number) => void
-  onReasoning?: (chars: number) => void
-}) => Promise<string | null>
-
-export interface ExtractDiariesOptions {
-  /** 稳定仓库身份（GraphRepository 键） */
-  vaultId: string
-  /** 写入 JSONL 的显示名快照 */
-  vaultName: string
-  /**
-   * 日记第一人称/作者自称（须已由用户确认；空则拒绝抽取）。
-   * 禁止使用「日记的主人」等占位称呼。
-   */
-  selfName: string
-  /** Empty = all pending-reextract */
-  filePaths?: string[]
-  onProgress?: (p: { current: number; total: number; filePath: string }) => void
-  /** Cancel mid-batch: abort in-flight model streams; already-written diaries stay committed. */
-  signal?: AbortSignal
-}
-
-export interface ExtractDiariesResult {
-  done: number
-  failed: number
-  cancelled?: boolean
-  errors: Array<{ filePath: string; message: string }>
-}
-
-export type GraphExtractAlignDeps = {
-  embedQuery?: (text: string) => Promise<number[] | null>
-  modelId?: string
-  isEmbeddingConfigured?: () => boolean | Promise<boolean>
-  isDiaryEmbedded?: (filePath: string) => boolean | Promise<boolean>
-}
-
-export type GraphExtractDraftEntity = {
-  name: string
-  type: string
-  aliases: string[]
-  summary: string
-  confidence: number
-}
-
-export type GraphExtractDraftEdge = {
-  from: string
-  to: string
-  type: string
-  excerpt: string
-  confidence: number
-}
-
-export type GraphExtractDraft = {
-  vaultId: string
-  vaultName: string
-  filePath: string
-  contentHash: string
-  hash: string
-  dateStr: string | null
-  shardMonth: string
-  validFrom: number
-  entities: GraphExtractDraftEntity[]
-  edges: GraphExtractDraftEdge[]
-}
-
-/** Conservative (overestimate) time for first-run graph extraction guide. */
-export interface ExtractionCostEstimate {
-  entryCount: number
-  estimatedTokens: number
-  estimatedMinutesLow: number
-  estimatedMinutesHigh: number
-}
-
-/** Floor tokens/entry when char length unknown. */
-const ESTIMATE_TOKENS_FLOOR = 600
-/** Upper-bound multiplier so UI prefers overestimate. */
-const ESTIMATE_OVERESTIMATE = 1.25
-const ESTIMATE_SECONDS_PER_ENTRY_LOW = 2
-const ESTIMATE_SECONDS_PER_ENTRY_HIGH = 4
-
-/** Per-diary token estimate from character count (prefer overestimate). */
-export function estimateTokensForDiaryChars(chars: number): number {
-  const n = Math.max(0, Math.floor(chars))
-  return Math.max(ESTIMATE_TOKENS_FLOOR, Math.ceil(n / 2))
-}
-
-/**
- * Estimate LLM time for extracting diaries.
- * Prefer passing `charCounts` (per pending file); without them falls back to floor × entryCount.
- */
-export function estimateExtractionCost(
-  entryCount: number,
-  opts?: { charCounts?: number[] }
-): ExtractionCostEstimate {
-  const n = Math.max(0, Math.floor(entryCount))
-  const counts = opts?.charCounts
-  let rawTokens = 0
-  if (counts && counts.length > 0) {
-    const limited = counts.slice(0, n || counts.length)
-    for (const c of limited) rawTokens += estimateTokensForDiaryChars(c)
-    // If entryCount > provided counts, pad with floor
-    if (n > limited.length) {
-      rawTokens += (n - limited.length) * ESTIMATE_TOKENS_FLOOR
-    }
-  } else {
-    rawTokens = n * ESTIMATE_TOKENS_FLOOR
-  }
-  const estimatedTokens = Math.ceil(rawTokens * ESTIMATE_OVERESTIMATE)
-  return {
-    entryCount: n,
-    estimatedTokens,
-    estimatedMinutesLow:
-      n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_LOW) / 60)),
-    estimatedMinutesHigh:
-      n === 0 ? 0 : Math.max(1, Math.ceil((n * ESTIMATE_SECONDS_PER_ENTRY_HIGH) / 60))
-  }
-}
-
-interface LlmEntity {
-  name: string
-  type: string
-  aliases?: string[]
-  summary?: string
-  confidence?: number
-}
-
-interface LlmEdge {
-  from: string
-  to: string
-  type: string
-  excerpt?: string
-  confidence?: number
-}
-
-interface LlmExtractPayload {
-  entities: LlmEntity[]
-  edges: LlmEdge[]
-}
+export { entryNodeIdForFilePath, legacyEntryNodeIdForFilePath }
+export * from './graph-llm-extraction.types'
+export {
+  collectGraphExtractStreamText,
+  resolveGraphExtractLlmText
+} from './graph-llm-extraction.stream'
+export {
+  buildExtractPrompt,
+  clampGraphExtractEnumsForTest,
+  createDefaultGraphExtractLlm,
+  estimateExtractionCost,
+  estimateTokensForDiaryChars,
+  extractFirstJsonObject
+} from './graph-llm-extraction.prompt'
 
 function normalizeFilePath(filePath: string): string {
   return normalizeGraphFilePath(filePath)
-}
-
-export { entryNodeIdForFilePath, legacyEntryNodeIdForFilePath }
-
-function clampNodeType(raw: string): string {
-  const t = raw.trim().toLowerCase()
-  return NODE_TYPE_SET.has(t) ? t : 'topic'
-}
-
-function clampEdgeType(raw: string): string {
-  const t = raw.trim().toLowerCase()
-  return EDGE_TYPE_SET.has(t) ? t : 'relates_to'
-}
-
-/** Extract the first balanced JSON object from LLM text (handles markdown fences). */
-export function extractFirstJsonObject(text: string): string | null {
-  const stripped = text
-    .replace(/```(?:json)?\s*/gi, '')
-    .replace(/```/g, '')
-    .trim()
-  const start = stripped.indexOf('{')
-  if (start < 0) return null
-  let depth = 0
-  let inString = false
-  let escape = false
-  for (let i = start; i < stripped.length; i++) {
-    const ch = stripped[i]!
-    if (inString) {
-      if (escape) {
-        escape = false
-      } else if (ch === '\\') {
-        escape = true
-      } else if (ch === '"') {
-        inString = false
-      }
-      continue
-    }
-    if (ch === '"') {
-      inString = true
-      continue
-    }
-    if (ch === '{') depth += 1
-    else if (ch === '}') {
-      depth -= 1
-      if (depth === 0) return stripped.slice(start, i + 1)
-    }
-  }
-  return null
-}
-
-function parseJsonObject(raw?: string | null): Record<string, unknown> {
-  if (!raw?.trim()) return {}
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {}
-  } catch {
-    return {}
-  }
-}
-
-function parseExtractJson(text: string): LlmExtractPayload | null {
-  const json = extractFirstJsonObject(text)
-  if (!json) return null
-  try {
-    const parsed = JSON.parse(json) as Partial<LlmExtractPayload>
-    return {
-      entities: Array.isArray(parsed.entities) ? (parsed.entities as LlmEntity[]) : [],
-      edges: Array.isArray(parsed.edges) ? (parsed.edges as LlmEdge[]) : []
-    }
-  } catch {
-    return null
-  }
 }
 
 function isPathInsideVault(vaultRoot: string, absolutePath: string): boolean {
@@ -527,84 +75,6 @@ function isPathInsideVault(vaultRoot: string, absolutePath: string): boolean {
   const rootLower = root.toLowerCase()
   const absLower = abs.toLowerCase()
   return absLower === rootLower || absLower.startsWith(`${rootLower}/`)
-}
-
-export function buildExtractPrompt(
-  diaryText: string,
-  dateStr: string | null,
-  selfName: string
-): {
-  system: string
-  user: string
-} {
-  const nodeTypes = GRAPH_NODE_TYPES.join(', ')
-  const edgeTypes = GRAPH_EDGE_TYPES.join(', ')
-  const author = selfName.trim()
-  return {
-    system: '你是日记关系图谱抽取器。只输出严格 JSON，不要 markdown 代码块，不要额外解释。',
-    user: `从以下日记中抽取实体与关系。
-
-## 约束
-1. node type 只能是: ${nodeTypes}
-2. edge type 只能是: ${edgeTypes}
-3. 不要编造日记未出现的事实；不确定的实体/边给较低 confidence（0-100）
-4. 实体 name 用日记中的称呼；可填 aliases
-5. edges.from / edges.to 使用实体 name（或 entry 锚点名）
-6. 每篇日记都有一个结构性锚点 entry（name 用日期或「日记」），实体应尽量连到 entry（mentions / participates_in / evokes 等）
-7. 日记中的第一人称「我」以及作者本人，统一使用自称「${author}」作为 person 实体名；禁止使用「日记的主人」「作者」「用户」等占位称呼
-
-## 日记日期
-${dateStr || '未知'}
-
-## 日记正文
-${diaryText.slice(0, 12000)}
-
-## 输出格式（严格 JSON）
-{"entities":[{"name":"","type":"person","aliases":[],"summary":"","confidence":80}],"edges":[{"from":"","to":"","type":"mentions","excerpt":"","confidence":80}]}`
-  }
-}
-
-export function createDefaultGraphExtractLlm(deps: GraphExtractLlmDeps): GraphExtractLlmFn {
-  return async ({ system, user, signal, onDelta, onReasoning }) => {
-    throwIfGraphExtractAborted(signal)
-    const baseModel = deps.provider.getLanguageModel(deps.modelId)
-    const model = wrapLanguageModelWithMiddlewares(baseModel, {
-      providerType: deps.provider.config?.type || 'openai',
-      providerId: deps.provider.config?.id,
-      modelId: deps.modelId
-    })
-    const builtReasoning = buildDefaultReasoningOptions({
-      modelId: deps.modelId,
-      providerType: deps.provider.config?.type || 'openai',
-      baseUrl: deps.provider.config?.baseUrl,
-      effort: normalizeReasoningEffortSetting(deps.reasoningEffort)
-    })
-    return runWithOpenAiThinkingInjectAsync(builtReasoning.openAiThinkingInject, async () => {
-      const streamResult = streamText({
-        model,
-        system,
-        messages: [{ role: 'user', content: user }],
-        temperature: 0.1,
-        abortSignal: signal,
-        ...(builtReasoning.providerOptions
-          ? { providerOptions: builtReasoning.providerOptions as never }
-          : {})
-      })
-      const textPromise = Promise.resolve(streamResult.text)
-      void textPromise.catch(() => undefined)
-      void Promise.resolve(streamResult.usage).catch(() => undefined)
-      void Promise.resolve(streamResult.response).catch(() => undefined)
-      const text = await resolveGraphExtractLlmText({
-        fullStream: streamResult.fullStream,
-        textStream: streamResult.textStream,
-        textPromise,
-        signal,
-        onDelta,
-        onReasoning
-      })
-      return text?.trim() || null
-    })
-  }
 }
 
 /**
@@ -806,7 +276,8 @@ export class GraphLlmExtractionService {
       shardMonth: diaryInstant.shardMonth,
       validFrom: diaryInstant.validFrom ?? now,
       entities,
-      edges
+      edges,
+      sourceContext: clipNameCandidateSourceContext(raw)
     }
   }
 
@@ -826,7 +297,8 @@ export class GraphLlmExtractionService {
           name: ent.name,
           nodeType: ent.type,
           aliases: ent.aliases,
-          summary: ent.summary
+          summary: ent.summary,
+          sourceContext: draft.sourceContext
         }))
       ),
       {
@@ -836,7 +308,8 @@ export class GraphLlmExtractionService {
             id: hit.id,
             name: hit.name,
             aliases: hit.aliases,
-            summary: hit.summary
+            summary: hit.summary,
+            discriminator: hit.discriminator
           }))
         },
         searchByVector: this.alignDeps?.embedQuery
@@ -867,7 +340,19 @@ export class GraphLlmExtractionService {
             signal
           })
           throwIfGraphExtractAborted(signal)
-          return parseEntityAlignDecisions(text)
+          return parseEntityAlignJudgeOutput(text)
+        },
+        judgeNameCandidates: async (input) => {
+          throwIfGraphExtractAborted(signal)
+          onPhase?.('waiting_align')
+          const prompt = buildNameCandidateJudgePrompt(input)
+          onPhase?.('aligning')
+          const text = await this.llm({
+            ...prompt,
+            signal
+          })
+          throwIfGraphExtractAborted(signal)
+          return parseNameCandidateDecision(text)
         }
       }
     )
@@ -879,11 +364,12 @@ export class GraphLlmExtractionService {
     const touchedNodeIds: string[] = []
     const alignedEmbeddings: Array<{ id: string; embedding: number[]; text: string }> = []
     const shardMonths = new Set<string>()
+    const persistCtx = { repo: this.repo, graphManager: this.graphManager }
 
     for (const draft of drafts) {
       throwIfGraphExtractAborted(signal)
       try {
-        const persisted = await this.persistDraft(draft, aligned, now)
+        const persisted = await persistGraphExtractDraft(persistCtx, draft, aligned, now)
         touchedNodeIds.push(...persisted.nodeIds)
         alignedEmbeddings.push(...persisted.embeddings)
         shardMonths.add(draft.shardMonth)
@@ -912,7 +398,7 @@ export class GraphLlmExtractionService {
     if (touchedNodeIds.length > 0) {
       const uniqueIds = [...new Set(touchedNodeIds)]
       await this.repo.recountMentions(vaultId, uniqueIds)
-      await this.writeMentionCountsToJsonl(vaultId, drafts[0]!.vaultName, uniqueIds)
+      await writeMentionCountsToJsonl(persistCtx, vaultId, drafts[0]!.vaultName, uniqueIds)
     }
     const draftByPath = new Map(drafts.map((draft) => [draft.filePath, draft]))
     for (const result of results) {
@@ -922,208 +408,6 @@ export class GraphLlmExtractionService {
       await this.freshness.commitReextract(normalizeFilePath(draft.filePath), draft.hash)
     }
     return results
-  }
-
-  private async persistDraft(
-    draft: GraphExtractDraft,
-    aligned: Awaited<ReturnType<typeof alignEntityPool>>,
-    now: number
-  ): Promise<{
-    nodeIds: string[]
-    embeddings: Array<{ id: string; embedding: number[]; text: string }>
-  }> {
-    const { vaultId, vaultName, filePath, hash, dateStr, shardMonth, validFrom } = draft
-    const sourceRef = dateStr || filePath
-    const nameToId = new Map<string, ResolveGraphEndpointResult>()
-    const nodeRecords: GraphNodeRawRecord[] = []
-    const edgeRecords: GraphEdgeRawRecord[] = []
-    const touchedNodeIds: string[] = []
-    const alignedEmbeddings: Array<{ id: string; embedding: number[]; text: string }> = []
-    const ambiguousNodeIds = new Set<string>()
-
-    const entryName = dateStr || '日记'
-    const legacyEntryId = legacyEntryNodeIdForFilePath(filePath)
-    const entryCreated = await findOrCreateGraphNode(this.repo, {
-      vaultId,
-      vaultName,
-      nodeType: 'entry',
-      name: entryName,
-      aliases: dateStr ? [dateStr] : [],
-      shardMonth,
-      entryFilePath: filePath,
-      origin: 'ai',
-      reviewStatus: 'approved',
-      now,
-      seenAt: validFrom
-    })
-    nodeRecords.push(entryCreated.record)
-    touchedNodeIds.push(entryCreated.id)
-    bindEndpointName(nameToId, entryName, entryCreated.id, false)
-    if (dateStr) bindEndpointName(nameToId, dateStr, entryCreated.id, false)
-    bindEndpointName(nameToId, 'entry', entryCreated.id, false)
-
-    for (const ent of draft.entities) {
-      const hit = aligned.get(entityAlignKey(ent.type, ent.name))
-      const created = await findOrCreateGraphNode(this.repo, {
-        vaultId,
-        vaultName,
-        nodeType: ent.type,
-        name: hit?.canonicalName || ent.name,
-        aliases: hit?.aliases ?? ent.aliases,
-        summary: hit?.summary || ent.summary,
-        shardMonth,
-        origin: 'ai',
-        reviewStatus: graphReviewStatusFromConfidence(ent.confidence),
-        now,
-        seenAt: validFrom,
-        forceId: hit?.id
-      })
-      const ambiguous = hit?.ambiguous === true || created.ambiguous
-      if (ambiguous) {
-        // 边先挂裸名，出处进复核清单，避免同名不同人被静默写死
-        created.record.props = appendAmbiguousSourceRef(created.record.props, sourceRef)
-        ambiguousNodeIds.add(created.id)
-      }
-      nodeRecords.push(created.record)
-      touchedNodeIds.push(created.id)
-      bindEndpointName(nameToId, ent.name, created.id, ambiguous)
-      if (hit?.canonicalName) bindEndpointName(nameToId, hit.canonicalName, created.id, ambiguous)
-      const reusable = alignedEmbeddingForNodeCard(hit, created.record.name, created.record.summary)
-      if (reusable) alignedEmbeddings.push({ id: created.id, ...reusable })
-    }
-
-    const typeByName = new Map<string, string>()
-    for (const ent of draft.entities) {
-      const key = normalizeGraphName(ent.name)
-      if (key) typeByName.set(key, ent.type)
-    }
-    for (const edge of draft.edges) {
-      const from = await resolveGraphEndpointId(this.repo, vaultId, edge.from, nameToId, {
-        nodeType: typeByName.get(normalizeGraphName(edge.from)),
-        role: 'from',
-        sourceRef
-      })
-      const to = await resolveGraphEndpointId(this.repo, vaultId, edge.to, nameToId, {
-        nodeType: typeByName.get(normalizeGraphName(edge.to)),
-        role: 'to',
-        sourceRef
-      })
-      if (!from || !to) continue
-      if (from.ambiguous) ambiguousNodeIds.add(from.id)
-      if (to.ambiguous) ambiguousNodeIds.add(to.id)
-      const reviewStatus = reviewStatusForAmbiguousEndpoint(
-        graphReviewStatusFromConfidence(edge.confidence),
-        from.ambiguous || to.ambiguous
-      )
-      edgeRecords.push({
-        id: graphEdgeId(vaultId, from.id, to.id, edge.type, sourceRef),
-        schemaVersion: 1,
-        vaultId,
-        vaultName,
-        fromId: from.id,
-        toId: to.id,
-        edgeType: edge.type,
-        props: {},
-        validFrom,
-        validTo: null,
-        isCurrent: true,
-        sourceKind: 'diary',
-        sourceRef,
-        sourceExcerpt: edge.excerpt,
-        sourceContentHash: hash,
-        confidence: edge.confidence,
-        origin: 'ai',
-        reviewStatus,
-        shardMonth,
-        createdAt: validFrom,
-        updatedAt: now,
-        deletedAt: null
-      })
-      touchedNodeIds.push(from.id, to.id)
-    }
-
-    await this.appendAmbiguousSourceRefsToBareNodes({
-      vaultId,
-      vaultName,
-      sourceRef,
-      now,
-      ambiguousNodeIds,
-      nodeRecords
-    })
-
-    for (const record of nodeRecords) {
-      await this.graphManager.writeRecord(record, { collection: 'nodes' })
-    }
-    const existingLegacy = await this.repo.getNodeById(legacyEntryId, vaultId)
-    if (existingLegacy && legacyEntryId !== entryCreated.id) {
-      const listEdges = this.repo.listEdgesTouching
-      if (typeof listEdges === 'function') {
-        const touching = await listEdges.call(this.repo, vaultId, legacyEntryId)
-        for (const edge of touching) {
-          const month = edge.shardMonth || shardMonth
-          if (!month) continue
-          const fromId = edge.fromId === legacyEntryId ? entryCreated.id : edge.fromId
-          const toId = edge.toId === legacyEntryId ? entryCreated.id : edge.toId
-          if (fromId === toId) {
-            try {
-              await this.graphManager.removeRecordsFromShard('edges', month, [edge.id])
-            } catch {
-              // Self-loop may already be absent on disk
-            }
-            continue
-          }
-          await this.graphManager.writeRecord(
-            {
-              id: edge.id,
-              schemaVersion: 1,
-              vaultId,
-              vaultName,
-              fromId,
-              toId,
-              edgeType: edge.edgeType,
-              props: parseJsonObject(edge.propsJson),
-              validFrom: edge.validFrom,
-              validTo: edge.validTo,
-              isCurrent: edge.isCurrent,
-              sourceKind: edge.sourceKind,
-              sourceRef: edge.sourceRef,
-              sourceExcerpt: edge.sourceExcerpt,
-              sourceContentHash: edge.sourceContentHash,
-              confidence: edge.confidence,
-              origin: preferGraphOrigin(edge.origin),
-              reviewStatus:
-                edge.reviewStatus === 'pending' || edge.reviewStatus === 'rejected'
-                  ? edge.reviewStatus
-                  : 'approved',
-              shardMonth: month,
-              createdAt: edge.createdAt,
-              updatedAt: now,
-              deletedAt: null
-            },
-            { collection: 'edges' }
-          )
-        }
-      }
-      try {
-        await this.graphManager.removeRecordsFromShard(
-          'nodes',
-          existingLegacy.shardMonth || shardMonth,
-          [legacyEntryId]
-        )
-      } catch {
-        // Legacy may already be absent on disk
-      }
-    }
-    const newEdgeIds = new Set<string>()
-    for (const record of edgeRecords) {
-      newEdgeIds.add(record.id)
-      await this.graphManager.writeRecord(record, { collection: 'edges' })
-    }
-    await this.graphManager.supersedeAiEdgesBySourceRef(sourceRef, {
-      exceptIds: newEdgeIds,
-      shardMonth
-    })
-    return { nodeIds: touchedNodeIds, embeddings: alignedEmbeddings }
   }
 
   private async assertEmbeddingConfigured(): Promise<void> {
@@ -1162,134 +446,5 @@ export class GraphLlmExtractionService {
       throw new Error(`Diary file not found: ${rel}`)
     }
     return abs
-  }
-
-  /**
-   * 边端点也可能按名字撞上已拆分的同名实体，这时本篇出处要记到裸名节点上，
-   * 否则复核列表看不到这条需要改挂的边。
-   */
-  private async appendAmbiguousSourceRefsToBareNodes(input: {
-    vaultId: string
-    vaultName: string
-    sourceRef: string
-    now: number
-    ambiguousNodeIds: Set<string>
-    nodeRecords: GraphNodeRawRecord[]
-  }): Promise<void> {
-    const written = new Map(input.nodeRecords.map((record) => [record.id, record]))
-    for (const id of input.ambiguousNodeIds) {
-      const existing = written.get(id)
-      if (existing) {
-        existing.props = appendAmbiguousSourceRef(existing.props, input.sourceRef)
-        existing.updatedAt = input.now
-        continue
-      }
-      const row = await this.repo.getNodeById(id, input.vaultId)
-      if (!row) continue
-      const record = graphNodeRowToRawRecord(row, input.vaultId, input.vaultName, input.now)
-      record.props = appendAmbiguousSourceRef(record.props, input.sourceRef)
-      input.nodeRecords.push(record)
-      written.set(id, record)
-    }
-  }
-
-  private async writeMentionCountsToJsonl(
-    vaultId: string,
-    vaultName: string,
-    nodeIds: string[]
-  ): Promise<void> {
-    for (const id of nodeIds) {
-      const row = await this.repo.getNodeById(id, vaultId)
-      if (!row) continue
-      const writtenAt = Math.max(Date.now(), row.updatedAt ?? 0) + 1
-      const record = graphNodeRowToRawRecord(row, vaultId, vaultName, writtenAt)
-      await this.graphManager.writeRecord(record, { collection: 'nodes' })
-    }
-  }
-}
-
-function bindEndpointName(
-  nameToId: Map<string, ResolveGraphEndpointResult>,
-  name: string,
-  id: string,
-  ambiguous: boolean
-): void {
-  const key = normalizeGraphName(name)
-  if (!key) return
-  nameToId.set(key, { id, ambiguous })
-}
-
-function reviewStatusForAmbiguousEndpoint(
-  status: 'approved' | 'pending' | 'rejected',
-  ambiguous: boolean
-): 'approved' | 'pending' | 'rejected' {
-  if (!ambiguous) return status
-  // 已驳回比待确认更严，多候选不能把它放宽
-  if (status === 'rejected') return 'rejected'
-  return 'pending'
-}
-
-function graphNodeRowToRawRecord(
-  row: {
-    id: string
-    nodeType: string
-    name: string
-    discriminator?: string | null
-    aliases: string[]
-    summary: string
-    propsJson: string
-    mentionCount: number
-    firstSeenAt: number | null
-    lastSeenAt: number | null
-    origin: string
-    shardMonth: string
-    createdAt: number
-    deletedAt: number | null
-    reviewStatus: string
-  },
-  vaultId: string,
-  vaultName: string,
-  updatedAt: number
-): GraphNodeRawRecord {
-  let props: Record<string, unknown> = {}
-  try {
-    props = JSON.parse(row.propsJson || '{}') as Record<string, unknown>
-  } catch {
-    props = {}
-  }
-  return {
-    id: row.id,
-    schemaVersion: 1,
-    vaultId,
-    vaultName,
-    nodeType: row.nodeType,
-    name: row.name,
-    discriminator: row.discriminator ?? undefined,
-    aliases: row.aliases,
-    summary: row.summary,
-    props,
-    mentionCount: row.mentionCount,
-    firstSeenAt: row.firstSeenAt ?? updatedAt,
-    lastSeenAt: row.lastSeenAt ?? updatedAt,
-    origin: preferGraphOrigin(row.origin),
-    shardMonth: row.shardMonth,
-    createdAt: row.createdAt,
-    updatedAt,
-    deletedAt: row.deletedAt,
-    reviewStatus:
-      row.reviewStatus === 'pending' || row.reviewStatus === 'rejected'
-        ? row.reviewStatus
-        : 'approved'
-  }
-}
-
-/** Test helper: clamp enums without LLM */
-export function clampGraphExtractEnumsForTest(input: { nodeType: string; edgeType: string }): {
-  nodeType: string
-  edgeType: string
-} {
-  return {
-    nodeType: clampNodeType(input.nodeType),
-    edgeType: clampEdgeType(input.edgeType)
   }
 }
