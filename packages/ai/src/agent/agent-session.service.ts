@@ -8,6 +8,10 @@ import {
 import { MessageAdapter } from './message.adapter'
 import { StreamAccumulator } from './stream-accumulator'
 import { StreamChunkAdapter } from './stream-chunk.adapter'
+import {
+  applyRejectedCompanionAskResults,
+  shouldReportAgentStreamAsError
+} from './companion-ask-reject.util'
 import { ChunkType } from './stream-chunk.types'
 import type { StreamChunk } from './stream-chunk.types'
 import { SystemPromptBuilder } from './system-prompt.builder'
@@ -19,6 +23,7 @@ import {
   buildEffectiveAssistantSystemPrompt,
   isAutoInjectCurrentTimeEnabled,
   isAgentStreamAbortError,
+  isAgentGateRejectedError,
   normalizeReasoningEffortSetting,
   type AssistantKind,
   type ReasoningEffortSetting,
@@ -81,6 +86,8 @@ import {
   emitTurnStarted,
   needsProviderTurnContinuation
 } from '../session-runtime/turn'
+import { readProviderTurnMessages } from '../session-runtime/read-provider-turn-messages'
+import { isNoOutputGeneratedError } from './no-output-generated-error.util'
 
 export type { StreamChatOptions, StreamChatCallbacks } from './agent-session.types'
 
@@ -722,14 +729,17 @@ export class AgentSessionService {
           const turnStream = await runOneStream(turnMessages, 1, turned.systemPrompt)
           streamResult = turnStream
           const consumed = await adapter.consumeStream(turnStream)
-          if (consumed.error) streamError = consumed.error
+          if (consumed.error && !isNoOutputGeneratedError(consumed.error)) {
+            streamError = consumed.error
+          }
           const continueNeeded = needsProviderTurnContinuation({
             finishReason: lastFinishReason,
             hadToolCalls: turnToolCalls > 0,
             turnIndex,
             maxSteps: effectiveMaxSteps,
             aborted: Boolean(abortSignal?.aborted) || isAgentStreamAbortError(streamError),
-            doomLoopTripped: doomTripped
+            doomLoopTripped: doomTripped,
+            singleStepTurn: true
           })
           emitTurnFinished(sessionId, turnIndex, {
             finishReason: lastFinishReason,
@@ -737,9 +747,8 @@ export class AgentSessionService {
           })
           if (!continueNeeded || doomTripped || abortSignal?.aborted || streamError) break
           try {
-            const response = await turnStream.response
-            const nextMessages = (response as { messages?: unknown[] } | undefined)?.messages
-            if (Array.isArray(nextMessages) && nextMessages.length > 0) {
+            const nextMessages = await readProviderTurnMessages(turnStream)
+            if (nextMessages) {
               // 续跑可就地追加，避免每 turn 全量拷贝
               turnMessages.push(...(nextMessages as any[]))
             } else {
@@ -775,6 +784,10 @@ export class AgentSessionService {
         `[AgentSessionService] 性能指标: TTFT=${metrics.timeToFirstToken}ms, 总耗时=${metrics.totalDuration}ms, 速度=${metrics.tokensPerSecond} tok/s`
       )
 
+      if (isNoOutputGeneratedError(streamError)) {
+        streamError = null
+      }
+
       const hasModelOutput =
         Boolean(accumulator.sanitizedText.trim()) ||
         Boolean(accumulator.reasoning.trim()) ||
@@ -793,7 +806,11 @@ export class AgentSessionService {
         streamError = new Error('模型未返回任何内容，请检查附件格式或稍后重试')
       }
 
-      if (streamError && !userAborted && !doomTripped) {
+      if (isAgentGateRejectedError(streamError)) {
+        applyRejectedCompanionAskResults(accumulator.timeline)
+      }
+
+      if (streamError && !userAborted && !doomTripped && shouldReportAgentStreamAsError(streamError)) {
         logger.warn(
           '[AgentSessionService] Stream encountered a fatal error:',
           streamError instanceof Error ? streamError.message : String(streamError)
@@ -875,6 +892,7 @@ export class AgentSessionService {
         namingModelConfigured: systemModels?.namingModelConfigured,
         namingProvider: systemModels?.namingProvider,
         namingModelId: systemModels?.namingModelId,
+        namingReasoningEffort: systemModels?.namingReasoningEffort,
         flushSessionToDisk,
         userConfig: mergedUserConfig,
         agentGateParts: gateSessionBuffer.buildPartDataList(),
@@ -889,7 +907,11 @@ export class AgentSessionService {
       }
 
       // 7. 向外抛出完成/错误回调（仅一次，避免覆盖真实 API 错误）
-      if (streamError && !isAgentStreamAbortError(streamError) && !abortSignal?.aborted) {
+      if (
+        streamError &&
+        shouldReportAgentStreamAsError(streamError) &&
+        !abortSignal?.aborted
+      ) {
         const errObj =
           streamError instanceof Error ? streamError : new Error(String(streamError))
         runtimeRecorder.record({
@@ -900,7 +922,7 @@ export class AgentSessionService {
           timestamp: Date.now()
         })
         callbacks?.onError?.(errObj)
-      } else if (!streamError || userAborted) {
+      } else if (!streamError || userAborted || !shouldReportAgentStreamAsError(streamError)) {
         runtimeRecorder.record({
           type: 'session.stream_finished',
           sessionId,

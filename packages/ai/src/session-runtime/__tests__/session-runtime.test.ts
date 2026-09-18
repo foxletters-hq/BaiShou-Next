@@ -418,6 +418,36 @@ describe('session-runtime guards', () => {
     ).toBe(false)
   })
 
+  it('should continue a single-step turn after stop when tools already ran', () => {
+    expect(
+      needsProviderTurnContinuation({
+        finishReason: 'stop',
+        hadToolCalls: true,
+        turnIndex: 0,
+        maxSteps: 10,
+        singleStepTurn: true
+      })
+    ).toBe(true)
+    expect(
+      needsProviderTurnContinuation({
+        finishReason: 'end-turn',
+        hadToolCalls: true,
+        turnIndex: 0,
+        maxSteps: 10,
+        singleStepTurn: true
+      })
+    ).toBe(true)
+    expect(
+      needsProviderTurnContinuation({
+        finishReason: 'stop',
+        hadToolCalls: false,
+        turnIndex: 0,
+        maxSteps: 10,
+        singleStepTurn: true
+      })
+    ).toBe(false)
+  })
+
   it('stops continuation when aborted, doom-loop, or maxSteps reached', () => {
     expect(
       needsProviderTurnContinuation({

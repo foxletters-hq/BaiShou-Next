@@ -54,7 +54,8 @@ export async function runSessionTurnLoop(params: {
       turnIndex,
       maxSteps,
       aborted: turn.aborted || params.abortSignal?.aborted,
-      doomLoopTripped: false
+      doomLoopTripped: false,
+      singleStepTurn: true
     })
 
     emitTurnFinished(params.sessionId, turnIndex, {
