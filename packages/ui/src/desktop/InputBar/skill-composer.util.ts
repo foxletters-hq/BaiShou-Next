@@ -540,10 +540,15 @@ export function sanitizeComposerFormatting(root: HTMLElement): boolean {
     }
   }
   for (const el of victims) {
-    if (!el.isConnected) continue
+    if (!el?.isConnected) continue
     const parent = el.parentNode
     if (!parent) continue
-    while (el.firstChild) parent.insertBefore(el.firstChild, el)
+    let child = el.firstChild
+    while (child) {
+      const next = child.nextSibling
+      parent.insertBefore(child, el)
+      child = next
+    }
     parent.removeChild(el)
     changed = true
   }
