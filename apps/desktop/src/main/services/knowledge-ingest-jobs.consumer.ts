@@ -27,9 +27,9 @@ import { fileSystem } from './node-file-system'
 type IngestLane = 'index' | 'graph'
 type ConsumeResult = { processed: number; failed: number; skipped?: string }
 
-/** 提取与分块向量。同一资料的 graph 等 embed 完成后再入队，不在这条车道并行。 */
+/** 提取与分块向量。同一资料的 graph 等 embed 完成后再入队，不在这条消费队列并行。 */
 const INDEX_STAGES = ['extract', 'embed'] as const
-/** 抽图单独车道：避免图谱模型堵住其他资料的提取/嵌入，不再与同一资料的 embed 并行。 */
+/** 抽图单独消费队列：避免图谱模型堵住其他资料的提取/嵌入，不再与同一资料的 embed 并行。 */
 const GRAPH_STAGES = ['graph'] as const
 
 const laneInFlight: Record<IngestLane, Promise<ConsumeResult> | null> = {
@@ -153,7 +153,7 @@ async function buildServiceWithEmbedding(): Promise<KnowledgeIngestService | nul
 
 /**
  * 消费知识库摄入欠账。
- * 同一资料顺序是 extract → embed → graph；图谱仍单独车道，以免堵住其他资料的提取/嵌入。
+ * 同一资料顺序是 extract → embed → graph；图谱仍单独消费队列，以免堵住其他资料的提取/嵌入。
  */
 export async function consumeKnowledgeIngestJobs(options?: {
   limit?: number
