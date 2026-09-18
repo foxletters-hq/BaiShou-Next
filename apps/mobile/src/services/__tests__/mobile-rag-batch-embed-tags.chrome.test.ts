@@ -13,4 +13,14 @@ describe('mobile rag batch embed diary tags', () => {
     expect(src).toContain('resolveDiaryEmbedTagsFromLoadedRow(diary)')
     expect(src).not.toContain('meta.tags')
   })
+
+  it('should still run pending fill when diary backlog is zero', () => {
+    expect(src).toContain('runPendingFillAfterDiaryBatch')
+    expect(src.indexOf('if (globalTotal === 0)')).toBeLessThan(
+      src.indexOf("skipReason: 'nothing-to-embed'")
+    )
+    expect(src.indexOf('runPendingFillAfterDiaryBatch(deps, onProgress)')).toBeLessThan(
+      src.indexOf("skipReason: 'nothing-to-embed'")
+    )
+  })
 })
