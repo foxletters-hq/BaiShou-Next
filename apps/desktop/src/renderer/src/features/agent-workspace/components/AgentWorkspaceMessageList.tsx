@@ -11,20 +11,13 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 import {
-  AgentMarkdownRenderer,
-  AgentThinkSection,
-  AgentToolChainSection,
-  ChatBubbleAttachments,
   CompanionAskInteractionProvider,
-  MessageActionBar,
-  UserMessageSkillContent,
   parseRedactedThinking,
   type AgentGateReplyPayload
 } from '@baishou/ui'
 import {
   type AgentGateRequest,
   type AgentStreamTimelineItem,
-  type MockToolInvocation,
   type PromptFileRef,
   type WorkspaceChangeEntry
 } from '@baishou/shared'
@@ -34,27 +27,14 @@ import type {
 } from '../hooks/useWorkspaceChatMessages'
 import type { WorkspaceToolError } from '../hooks/useWorkspaceAgentStream'
 import {
-  getWorkspaceBubbleAttachments,
-  getWorkspaceUserFileRefs,
-  getWorkspaceUserSkillRefs,
-  getWorkspaceUserText
-} from '../utils/workspace-message-display.util'
-import { copyWorkspaceBubbleText } from '../utils/workspace-copy-text.util'
-import {
-  buildFileOpEntries,
-  formatWorkspaceToolDisplayName,
-  groupStreamTimelineItems,
-  type WorkspaceStreamTimelineGroup
-} from '../utils/workspace-message-parts.util'
-import { WorkspaceAssistantTurn } from './WorkspaceAssistantTurn'
-import type { WorkspaceBubbleActions } from './workspace-bubble-actions.types'
-import { shouldStartWorkspaceBubbleEdit } from '../utils/workspace-rollback-hover.util'
-import {
   shouldShowStreamWaitingDots,
   streamTimelineHasRunningTool
 } from '../utils/workspace-stream-waiting.util'
 import { useChatScroll } from '../../agent/hooks/useChatScroll'
-import { WorkspaceFileChangeList } from './WorkspaceFileChangeList'
+import { WorkspaceAssistantTurn } from './WorkspaceAssistantTurn'
+import { WorkspaceUserTurn } from './WorkspaceUserTurn'
+import { WorkspacePendingAssistantTurn, WorkspaceStreamingTurn } from './WorkspaceStreamingTurn'
+import type { WorkspaceBubbleActions } from './workspace-bubble-actions.types'
 import styles from './AgentWorkspaceMessageList.module.css'
 
 export interface AgentWorkspaceMessageListProps {
@@ -98,278 +78,6 @@ export interface AgentWorkspaceMessageListProps {
 export interface AgentWorkspaceMessageListHandle {
   beginFollowIfAtBottom: () => void
   scrollToBottom: () => void
-}
-
-function BouncingDots() {
-  return (
-    <div className={styles.bouncingDots} aria-hidden>
-      <span className={styles.dot} />
-      <span className={styles.dot} />
-      <span className={styles.dot} />
-    </div>
-  )
-}
-
-function WorkspaceUserTurn(props: {
-  msg: WorkspaceChatMessage
-  dimmed?: boolean
-  editingActive: boolean
-  onEditingChange: (messageId: string | null) => void
-  onEditResend?: (
-    userMessageId: string,
-    newText: string,
-    meta?: {
-      skillRefs?: Array<{ command: string; content: string }>
-      fileRefs?: PromptFileRef[]
-    }
-  ) => boolean | Promise<boolean>
-  bubbleActions?: WorkspaceBubbleActions
-  onOpenFile?: (relativePath: string, options?: { line?: number; isDirectory?: boolean }) => void
-}) {
-  const { t } = useTranslation()
-  const { msg, dimmed, editingActive, onEditingChange, onEditResend, bubbleActions, onOpenFile } =
-    props
-  const userText = getWorkspaceUserText(msg)
-  const skillRefs = getWorkspaceUserSkillRefs(msg) ?? msg.skillRefs
-  const fileRefs = getWorkspaceUserFileRefs(msg)
-  const attachments = getWorkspaceBubbleAttachments(msg)
-  const [editedContent, setEditedContent] = useState(userText)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (editingActive) {
-      setEditedContent(userText)
-    }
-  }, [editingActive, userText])
-
-  useLayoutEffect(() => {
-    const textarea = textareaRef.current
-    if (!editingActive || !textarea) return
-    textarea.style.height = 'auto'
-    textarea.style.height = `${Math.max(textarea.scrollHeight, 40)}px`
-  }, [editingActive, editedContent])
-
-  useEffect(() => {
-    if (!editingActive || !textareaRef.current) return
-    const textarea = textareaRef.current
-    textarea.focus({ preventScroll: true })
-    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-  }, [editingActive])
-
-  const startEdit = () => {
-    if (!onEditResend) return
-    onEditingChange(msg.id)
-  }
-
-  const cancelEdit = () => {
-    setEditedContent(userText)
-    onEditingChange(null)
-  }
-
-  const handleResend = useCallback(async () => {
-    const trimmed = editedContent.trim()
-    if (!trimmed || !onEditResend) return
-    const applied = await onEditResend(msg.id, trimmed, { skillRefs, fileRefs })
-    if (applied) {
-      onEditingChange(null)
-    }
-  }, [editedContent, fileRefs, msg.id, onEditResend, onEditingChange, skillRefs])
-
-  const handleBubbleClick = (event: React.MouseEvent) => {
-    if (!onEditResend || editingActive) return
-    const selection = window.getSelection()
-    if (
-      !shouldStartWorkspaceBubbleEdit({
-        defaultPrevented: event.defaultPrevented,
-        target: event.target,
-        hasNonCollapsedSelection: Boolean(
-          selection && !selection.isCollapsed && selection.toString().trim()
-        )
-      })
-    ) {
-      return
-    }
-    startEdit()
-  }
-
-  return (
-    <div
-      className={`chat-bubble-container ${styles.turn} ${styles.userTurn}${
-        dimmed ? ` ${styles.turnDimmed}` : ''
-      }${editingActive ? ` ${styles.turnEditing}` : ''}`}
-    >
-      {editingActive ? (
-        <div className={styles.userEditWrap}>
-          <textarea
-            ref={textareaRef}
-            className={styles.userEditArea}
-            value={editedContent}
-            onChange={(event) => setEditedContent(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                cancelEdit()
-                return
-              }
-              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-                event.preventDefault()
-                void handleResend()
-              }
-            }}
-            rows={1}
-            aria-label={t('workbench.click_to_edit_message', '点击编辑这条消息')}
-          />
-          <div className={styles.userEditActions}>
-            <button type="button" className={styles.userEditCancel} onClick={cancelEdit}>
-              {t('common.cancel', '取消')}
-            </button>
-            <button
-              type="button"
-              className={styles.userEditSend}
-              onClick={() => {
-                void handleResend()
-              }}
-            >
-              {t('workbench.send_edited_message', '发送')}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div
-            className={`${styles.userAnchor}${onEditResend ? ` ${styles.userAnchorEditable}` : ''}`}
-            title={
-              onEditResend ? t('workbench.click_to_edit_message', '点击编辑这条消息') : undefined
-            }
-            onClick={handleBubbleClick}
-          >
-            {attachments.length > 0 ? <ChatBubbleAttachments attachments={attachments} /> : null}
-            {userText || skillRefs?.length || fileRefs.length ? (
-              <UserMessageSkillContent
-                text={userText}
-                skillRefs={skillRefs}
-                fileRefs={fileRefs}
-                onOpenFile={onOpenFile}
-              />
-            ) : null}
-          </div>
-          <div className={styles.turnActions}>
-            <MessageActionBar
-              isAI={false}
-              onCopy={() => copyWorkspaceBubbleText(userText)}
-              onEdit={onEditResend ? startEdit : undefined}
-              onRetry={bubbleActions?.onResend ? () => bubbleActions.onResend?.(msg.id) : undefined}
-              onDelete={
-                bubbleActions?.onDelete ? () => bubbleActions.onDelete?.(msg.id) : undefined
-              }
-              onShowContext={
-                bubbleActions?.onShowContext ? () => bubbleActions.onShowContext?.(msg) : undefined
-              }
-            />
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-function streamToolToInvocation(
-  item: Extract<AgentStreamTimelineItem, { kind: 'tool' }>
-): MockToolInvocation {
-  return {
-    toolCallId: item.callId,
-    toolName: item.name,
-    state: item.status === 'completed' ? 'result' : 'call',
-    args: item.arguments ?? {},
-    result: item.result
-  }
-}
-
-function renderStreamFileOps(
-  items: Array<Extract<AgentStreamTimelineItem, { kind: 'tool' }>>,
-  options: {
-    onSelectChange?: (change: WorkspaceChangeEntry) => void
-    onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
-  }
-) {
-  const changes = buildFileOpEntries('stream', items.map(streamToolToInvocation), [])
-  if (changes.length === 0) return null
-  return (
-    <WorkspaceFileChangeList
-      key={`stream-files-${items[0]?.callId ?? items[0]?.name}`}
-      changes={changes}
-      running={items.some((item) => item.status === 'running')}
-      onSelectChange={options.onSelectChange ?? (() => undefined)}
-      onReviewAll={options.onReviewAll}
-    />
-  )
-}
-
-function renderStreamToolGroup(
-  items: Array<Extract<AgentStreamTimelineItem, { kind: 'tool' }>>,
-  failedByName: Map<string, string>
-) {
-  const completed = items.filter((item) => item.status !== 'running')
-  const running = items.find((item) => item.status === 'running')
-  return (
-    <AgentToolChainSection
-      key={`stream-tools-${items[0]?.callId ?? items[0]?.name}`}
-      completedTools={completed.map((item) => ({
-        name: item.name,
-        durationMs: item.durationMs ?? 0,
-        toolCallId: item.callId,
-        result: item.result,
-        args: item.arguments,
-        error: item.status === 'failed' ? failedByName.get(item.name) : undefined
-      }))}
-      activeToolName={running?.name ?? null}
-      activeToolArgs={running?.arguments}
-      isStreaming={Boolean(running)}
-    />
-  )
-}
-
-function renderStreamTimelineItem(
-  item: WorkspaceStreamTimelineGroup,
-  index: number,
-  options: {
-    isStreaming: boolean
-    isLast: boolean
-    failedByName: Map<string, string>
-    onSelectChange?: (change: WorkspaceChangeEntry) => void
-    onReviewAll?: (changes: WorkspaceChangeEntry[]) => void
-  }
-) {
-  if (item.kind === 'reasoning') {
-    const parsed = parseRedactedThinking('', item.text)
-    const content = parsed.cleanReasoning || item.text
-    if (!content.trim()) return null
-    return (
-      <AgentThinkSection
-        key={`stream-reasoning-${index}`}
-        content={content}
-        isStreaming={options.isStreaming && options.isLast}
-      />
-    )
-  }
-  if (item.kind === 'text') {
-    const parsed = parseRedactedThinking(item.text, '')
-    const content = parsed.cleanContent || item.text
-    if (!content.trim()) return null
-    return (
-      <AgentMarkdownRenderer
-        key={`stream-text-${index}`}
-        content={content}
-        isStreaming={options.isStreaming && options.isLast}
-      />
-    )
-  }
-
-  if (item.kind === 'file_ops') {
-    return renderStreamFileOps(item.items, options)
-  }
-
-  return renderStreamToolGroup(item.items, options.failedByName)
 }
 
 export const AgentWorkspaceMessageList = forwardRef<
@@ -651,94 +359,34 @@ export const AgentWorkspaceMessageList = forwardRef<
             })}
 
             {showStreamingBubble ? (
-              <div
-                className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
-                  isEditingTurn ? ` ${styles.turnDimmed}` : ''
-                }`}
-              >
-                {streamError ? (
-                  <div className={styles.streamError} role="alert">
-                    {streamError}
-                  </div>
-                ) : null}
-                {useLiveTimeline ? (
-                  groupStreamTimelineItems(streamingTimeline).map((item, index, groups) =>
-                    renderStreamTimelineItem(item, index, {
-                      isStreaming: isStreaming && !isBridgeActive,
-                      isLast: index === groups.length - 1,
-                      failedByName,
-                      onSelectChange,
-                      onReviewAll
-                    })
-                  )
-                ) : (
-                  <>
-                    {streamHasReasoning ? (
-                      <AgentThinkSection
-                        content={streamingParsed.cleanReasoning}
-                        isStreaming={Boolean(streamingReasoning && !streamingParsed.cleanContent)}
-                      />
-                    ) : null}
-                    {streamHasTools ? (
-                      <AgentToolChainSection
-                        completedTools={streamingCompletedTools.filter((tool) => !tool.error)}
-                        activeToolName={activeToolName}
-                        isStreaming
-                      />
-                    ) : null}
-                    {streamHasText ? (
-                      <AgentMarkdownRenderer
-                        content={streamingParsed.cleanContent}
-                        isStreaming={isStreaming && !isBridgeActive}
-                      />
-                    ) : null}
-                  </>
-                )}
-                {streamShowPlaceholder || streamShowWaiting ? <BouncingDots /> : null}
-                {failedTools.length > 0 || streamingCompletedTools.some((tool) => tool.error) ? (
-                  <ul className={styles.streamToolErrors}>
-                    {[
-                      ...failedTools.map((tool) => ({
-                        name: formatWorkspaceToolDisplayName(tool.name, t),
-                        error: tool.error
-                      })),
-                      ...streamingCompletedTools
-                        .filter((tool) => tool.error)
-                        .map((tool) => ({
-                          name: formatWorkspaceToolDisplayName(tool.name, t),
-                          error: tool.error!
-                        }))
-                    ].map((tool, index) => (
-                      <li key={`${tool.name}-stream-err-${index}`}>
-                        {tool.name}: {tool.error}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
+              <WorkspaceStreamingTurn
+                dimmed={isEditingTurn}
+                streamError={streamError}
+                useLiveTimeline={useLiveTimeline}
+                streamingTimeline={streamingTimeline}
+                isStreaming={isStreaming}
+                isBridgeActive={isBridgeActive}
+                streamHasReasoning={streamHasReasoning}
+                streamHasTools={streamHasTools}
+                streamHasText={streamHasText}
+                streamingParsed={streamingParsed}
+                streamingReasoning={streamingReasoning}
+                streamingCompletedTools={streamingCompletedTools}
+                activeToolName={activeToolName}
+                failedByName={failedByName}
+                failedTools={failedTools}
+                streamShowPlaceholder={streamShowPlaceholder}
+                streamShowWaiting={streamShowWaiting}
+                onSelectChange={onSelectChange}
+                onReviewAll={onReviewAll}
+              />
             ) : null}
 
             {showPendingAssistant && pendingAssistantMsg ? (
-              <div
-                className={`chat-bubble-container ${styles.turn} ${styles.assistantTurn}${
-                  isEditingTurn ? ` ${styles.turnDimmed}` : ''
-                }`}
-              >
-                {pendingAssistantMsg.reasoning ? (
-                  <AgentThinkSection content={pendingAssistantMsg.reasoning} />
-                ) : null}
-                {pendingAssistantMsg.content ? (
-                  <AgentMarkdownRenderer content={pendingAssistantMsg.content} />
-                ) : null}
-                {pendingAssistantMsg.content ? (
-                  <div className={styles.turnActions}>
-                    <MessageActionBar
-                      isAI
-                      onCopy={() => copyWorkspaceBubbleText(pendingAssistantMsg.content)}
-                    />
-                  </div>
-                ) : null}
-              </div>
+              <WorkspacePendingAssistantTurn
+                dimmed={isEditingTurn}
+                pendingAssistantMsg={pendingAssistantMsg}
+              />
             ) : null}
           </div>
         </div>
