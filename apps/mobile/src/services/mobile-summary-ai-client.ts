@@ -1,12 +1,15 @@
 import type { SummaryAiClient, SummaryAiGenerateOptions } from '@baishou/core-mobile'
 import { SUMMARY_AI_GENERATION_TIMEOUT_MS, generateSummaryTextFromModel } from '@baishou/core-mobile'
-import { AIProviderRegistry } from '@baishou/ai'
+import { AIProviderRegistry, buildReasoningProviderOptions } from '@baishou/ai'
 import {
   logger,
+  normalizeReasoningEffortSetting,
   prepareProviderConfigForRuntime,
   canUseProviderModel,
   readProviderApiKey,
-  type AIProviderConfig
+  resolveReasoningEffortForSlot,
+  type AIProviderConfig,
+  type GlobalModelsConfig
 } from '@baishou/shared'
 import type { SettingsManagerService } from '@baishou/core-mobile'
 import { resolveSummaryConfig } from './mobile-summary-config.util'
@@ -71,12 +74,22 @@ export function buildMobileSummaryAiClient(
         userSignal.addEventListener('abort', onUserAbort, { once: true })
       }
       try {
+        const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
+        const providerOptions = buildReasoningProviderOptions({
+          modelId: finalModelId,
+          providerType: providerConfig.type || providerConfig.id,
+          effort: normalizeReasoningEffortSetting(
+            options?.reasoningEffort ??
+              resolveReasoningEffortForSlot(globalModels?.reasoningEffortBySlot, 'summary')
+          )
+        })
         return await generateSummaryTextFromModel({
           model,
           prompt,
           system: options?.system,
           abortController,
-          firstOutputTimeoutMs: SUMMARY_AI_GENERATION_TIMEOUT_MS
+          firstOutputTimeoutMs: SUMMARY_AI_GENERATION_TIMEOUT_MS,
+          providerOptions
         })
       } catch (e) {
         if (userSignal?.aborted) {

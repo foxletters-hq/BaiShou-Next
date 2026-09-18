@@ -11,7 +11,7 @@ import {
 import { Check, Cloud, Settings } from 'lucide-react'
 import { withAppContentOverlay } from '../overlay'
 import { getProviderIcon } from '../../utils/provider-icons'
-import { useTheme } from '../../hooks'
+import { useTheme, useReasoningCatalogEpoch } from '../../hooks'
 import { ModelVisionBadge } from '../../shared/ModelVisionBadge'
 import styles from './SessionModelMenu.module.css'
 
@@ -99,6 +99,7 @@ export const SessionModelMenu: React.FC<SessionModelMenuProps> = ({
 }) => {
   const { t } = useTranslation()
   const { isDark } = useTheme()
+  useReasoningCatalogEpoch()
   const shellRef = useRef<HTMLDivElement>(null)
   const closingRef = useRef(false)
   const closedRef = useRef(false)

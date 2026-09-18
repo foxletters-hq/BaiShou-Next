@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { resetReasoningCatalogForTests } from '@baishou/shared'
 import {
   resolveReasoningApiShape,
   shouldUseOpenAiResponsesLanguageModel
@@ -11,10 +12,13 @@ import {
 } from '../reasoning-provider-options'
 
 describe('reasoning adapters', () => {
+  beforeEach(() => {
+    resetReasoningCatalogForTests()
+  })
   it('routes openai reasoning models to responses', () => {
-    expect(
-      resolveReasoningApiShape({ modelId: 'gpt-5.6-sol', providerType: 'openai' })
-    ).toBe('responses')
+    expect(resolveReasoningApiShape({ modelId: 'gpt-5.6-sol', providerType: 'openai' })).toBe(
+      'responses'
+    )
     expect(
       shouldUseOpenAiResponsesLanguageModel({
         modelId: 'gpt-5.6-sol',
@@ -24,9 +28,7 @@ describe('reasoning adapters', () => {
   })
 
   it('keeps siliconflow / deepseek on chat', () => {
-    expect(
-      resolveReasoningApiShape({ modelId: 'gpt-5', providerType: 'siliconflow' })
-    ).toBe('chat')
+    expect(resolveReasoningApiShape({ modelId: 'gpt-5', providerType: 'siliconflow' })).toBe('chat')
     expect(
       resolveReasoningApiShape({
         modelId: 'deepseek-reasoner',
@@ -81,9 +83,9 @@ describe('reasoning adapters', () => {
   })
 
   it('builds openrouter reasoning dialect via body inject', () => {
-    expect(
-      resolveReasoningApiShape({ modelId: 'gpt-5', providerType: 'openrouter' })
-    ).toBe('openrouter')
+    expect(resolveReasoningApiShape({ modelId: 'gpt-5', providerType: 'openrouter' })).toBe(
+      'openrouter'
+    )
     const built = buildReasoningProviderOptionsResult({
       modelId: 'gpt-5',
       providerType: 'openrouter',
@@ -256,6 +258,25 @@ describe('reasoning adapters', () => {
     })
   })
 
+  it('passes deepseek-flash high via openaiCompatible providerOptions', () => {
+    expect(
+      resolveReasoningApiShape({
+        modelId: 'deepseek-flash',
+        providerType: 'deepseek',
+        baseUrl: 'https://api.deepseek.com'
+      })
+    ).toBe('chat')
+
+    const built = buildReasoningProviderOptionsResult({
+      modelId: 'deepseek-flash',
+      providerType: 'deepseek',
+      effort: 'high'
+    })
+    expect(built.providerOptions).toEqual({
+      openaiCompatible: { reasoningEffort: 'high' }
+    })
+  })
+
   it('passes deepseek-v4 high via openaiCompatible providerOptions', () => {
     const built = buildReasoningProviderOptionsResult({
       modelId: 'deepseek-v4-flash',
@@ -281,9 +302,7 @@ describe('reasoning adapters', () => {
   })
 
   it('routes grok-3-mini to openaiCompatible providerOptions', () => {
-    expect(
-      resolveReasoningApiShape({ modelId: 'grok-3-mini', providerType: 'grok' })
-    ).toBe('chat')
+    expect(resolveReasoningApiShape({ modelId: 'grok-3-mini', providerType: 'grok' })).toBe('chat')
     const built = buildReasoningProviderOptionsResult({
       modelId: 'grok-3-mini',
       providerType: 'grok',

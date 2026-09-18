@@ -6,7 +6,8 @@ import {
   AssistantPickerSheet,
   SessionModelMenu,
   useTheme,
-  getProviderIcon
+  getProviderIcon,
+  useReasoningCatalogEpoch
 } from '@baishou/ui'
 import {
   applyWorkspaceSecurityModeToConfig,
@@ -18,6 +19,7 @@ import {
   isEmbeddingModel,
   isTtsModel,
   normalizeReasoningEffortSetting,
+  resolveDialogueEffortPreference,
   type AgentWorkspaceSecurityMode,
   type BaishouAgentGateConfig,
   type ReasoningEffortSetting
@@ -38,6 +40,7 @@ import {
   buildModelReasoningPreviewMap,
   formatReasoningControlPreview
 } from '../../../agent/format-reasoning-control-preview'
+import { useDialogueSlotEffort } from '../../../agent/use-dialogue-slot-effort'
 import chromeStyles from '../../../agent/components/AgentChatChrome.module.css'
 import { AssistantCreateModal } from '../../../agent/components/AssistantCreateModal'
 import { WorkbenchWorkspaceGateSheet } from '../WorkbenchWorkspaceGateSheet'
@@ -98,6 +101,7 @@ export const WorkbenchHomePage: React.FC = () => {
   const modelTriggerRef = useRef<HTMLButtonElement>(null)
   const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
   const [reasoningPreviewTick, setReasoningPreviewTick] = useState(0)
+  const dialogueSlotEffort = useDialogueSlotEffort()
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortSetting>('auto')
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
@@ -501,19 +505,20 @@ export const WorkbenchHomePage: React.FC = () => {
     return provider?.type || chrome.model.currentProviderId
   }, [chrome.model.currentProviderId, chrome.providers])
 
+  const reasoningCatalogEpoch = useReasoningCatalogEpoch()
   const reasoningControl = useMemo(
     () => getReasoningControlForModel(chrome.model.currentModelId, reasoningProviderType),
-    [chrome.model.currentModelId, reasoningProviderType]
+    [chrome.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch]
   )
 
   useEffect(() => {
-    const next = getReasoningEffortForModel(
-      chrome.model.currentProviderId,
-      chrome.model.currentModelId
+    const next = resolveDialogueEffortPreference(
+      getReasoningEffortForModel(chrome.model.currentProviderId, chrome.model.currentModelId),
+      dialogueSlotEffort
     )
     setReasoningEffort(next)
     setSessionReasoningEffortOverride(next)
-  }, [chrome.model.currentProviderId, chrome.model.currentModelId])
+  }, [chrome.model.currentModelId, chrome.model.currentProviderId, dialogueSlotEffort])
 
   const handleReasoningEffortChange = useCallback(
     (value: ReasoningEffortSetting) => {

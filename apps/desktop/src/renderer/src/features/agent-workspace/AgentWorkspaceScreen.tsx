@@ -8,7 +8,8 @@ import {
   useDialog,
   AssistantPickerSheet,
   SessionModelMenu,
-  toast
+  toast,
+  useReasoningCatalogEpoch
 } from '@baishou/ui'
 import {
   isEmbeddingModel,
@@ -17,9 +18,14 @@ import {
   isConfiguredProviderId,
   getReasoningControlForModel,
   normalizeReasoningEffortSetting,
+  resolveDialogueEffortPreference,
   type ReasoningEffortSetting
 } from '@baishou/shared'
-import { selectSameActionCountInSession, useAgentGateInboxStore, useAgentStore } from '@baishou/store'
+import {
+  selectSameActionCountInSession,
+  useAgentGateInboxStore,
+  useAgentStore
+} from '@baishou/store'
 import { useWorkspaceAgentStream } from './hooks/useWorkspaceAgentStream'
 import { useWorkspaceChatMessages } from './hooks/useWorkspaceChatMessages'
 import { useWorkspaceMessageActions } from './hooks/useWorkspaceMessageActions'
@@ -43,6 +49,7 @@ import {
   buildModelReasoningPreviewMap,
   formatReasoningControlPreview
 } from '../agent/format-reasoning-control-preview'
+import { useDialogueSlotEffort } from '../agent/use-dialogue-slot-effort'
 import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
 import { workspaceEntryMatchesFolder } from './utils/workspace-display.util'
 import {
@@ -81,8 +88,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
     loading: loadingWorkspaces
   } = useAgentWorkspaces()
   const [boundStreamSessionId, setBoundStreamSessionId] = useState<string | undefined>()
-  const streamBindId =
-    sessionId && sessionId !== 'new-session' ? sessionId : boundStreamSessionId
+  const streamBindId = sessionId && sessionId !== 'new-session' ? sessionId : boundStreamSessionId
   const chrome = useAgentWorkspaceChrome(streamBindId ?? sessionId)
   const { sessions, loading: loadingSessions } = useWorkspaceSessions()
   const [composerRefill, setComposerRefill] = useState<{
@@ -92,8 +98,12 @@ export const AgentWorkspaceScreen: React.FC = () => {
   } | null>(null)
   const syncedFolderKeysRef = useRef(new Set<string>())
   const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
+  const dialogueSlotEffort = useDialogueSlotEffort()
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortSetting>(() =>
-    getReasoningEffortForModel(chrome.model.currentProviderId, chrome.model.currentModelId)
+    resolveDialogueEffortPreference(
+      getReasoningEffortForModel(chrome.model.currentProviderId, chrome.model.currentModelId),
+      dialogueSlotEffort
+    )
   )
   const [reasoningPreviewTick, setReasoningPreviewTick] = useState(0)
 
@@ -103,20 +113,20 @@ export const AgentWorkspaceScreen: React.FC = () => {
     return provider?.type || providerId || undefined
   }, [chrome.model.currentProviderId, chrome.providers])
 
+  const reasoningCatalogEpoch = useReasoningCatalogEpoch()
   const reasoningControl = useMemo(
-    () =>
-      getReasoningControlForModel(chrome.model.currentModelId || '', reasoningProviderType),
-    [chrome.model.currentModelId, reasoningProviderType]
+    () => getReasoningControlForModel(chrome.model.currentModelId || '', reasoningProviderType),
+    [chrome.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch]
   )
 
   useEffect(() => {
-    const next = getReasoningEffortForModel(
-      chrome.model.currentProviderId,
-      chrome.model.currentModelId
+    const next = resolveDialogueEffortPreference(
+      getReasoningEffortForModel(chrome.model.currentProviderId, chrome.model.currentModelId),
+      dialogueSlotEffort
     )
     setReasoningEffort(next)
     setSessionReasoningEffortOverride(next)
-  }, [chrome.model.currentProviderId, chrome.model.currentModelId])
+  }, [chrome.model.currentProviderId, chrome.model.currentModelId, dialogueSlotEffort])
 
   const handleReasoningEffortChange = useCallback(
     (value: ReasoningEffortSetting) => {
@@ -191,8 +201,12 @@ export const AgentWorkspaceScreen: React.FC = () => {
 
   const pendingGate = stream.pendingAgentGate
   const gateSessionId = streamBindId ?? sessionId
-  const { queueIndex: gateQueueIndex, queueTotal: gateQueueTotal, onQueuePrev, onQueueNext } =
-    useAgentGateQueuePager(gateSessionId, pendingGate?.id)
+  const {
+    queueIndex: gateQueueIndex,
+    queueTotal: gateQueueTotal,
+    onQueuePrev,
+    onQueueNext
+  } = useAgentGateQueuePager(gateSessionId, pendingGate?.id)
   const sameActionCount = useAgentGateInboxStore((state) =>
     selectSameActionCountInSession(state, gateSessionId, pendingGate?.action)
   )
@@ -466,9 +480,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
         })
       )
       if (admitted.queued) {
-        toast.showInfo(
-          t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续')
-        )
+        toast.showInfo(t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续'))
         return
       }
 
@@ -585,9 +597,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
         )
 
         if (admitted.queued) {
-          toast.showInfo(
-            t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续')
-          )
+          toast.showInfo(t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续'))
           return true
         }
 
@@ -635,8 +645,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
     onSend: handleSend
   })
 
-  const layoutScopeKey =
-    routeWorkspaceId ?? resolvedActiveWorkspace?.id ?? activeFolderRoot
+  const layoutScopeKey = routeWorkspaceId ?? resolvedActiveWorkspace?.id ?? activeFolderRoot
 
   return (
     <div className={styles.screen}>

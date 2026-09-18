@@ -46,6 +46,7 @@ import {
   DEFAULT_BAISHOU_AGENT_GATE_CONFIG,
   type BaishouAgentGateConfig,
   requireResolvedDialogueModel,
+  resolveReasoningEffortForSlot,
   type ResolvedDialogueModel,
   deriveLegacyVaultId
 } from '@baishou/shared'
@@ -319,6 +320,13 @@ export async function buildAgentUserConfigFromSettings(options?: {
     allowlist: [...(agentGateStored.allowlist ?? [])]
   }
 
+  const globalModelsForEffort =
+    options?.globalModels ?? (await settingsManager.get<GlobalModelsConfig>('global_models'))
+  const dialogueEffort = resolveReasoningEffortForSlot(
+    globalModelsForEffort?.reasoningEffortBySlot,
+    'dialogue'
+  )
+
   return {
     ragEnabled: ragConfig?.ragEnabled ?? true,
     hasEmbeddingModel,
@@ -345,14 +353,8 @@ export async function buildAgentUserConfigFromSettings(options?: {
     ),
     locale,
     baishou_agent_gate_config,
-    reasoningEffort:
-      typeof behaviorConfig?.reasoningEffortDefault === 'string'
-        ? behaviorConfig.reasoningEffortDefault
-        : 'auto',
-    reasoningEffortDefault:
-      typeof behaviorConfig?.reasoningEffortDefault === 'string'
-        ? behaviorConfig.reasoningEffortDefault
-        : 'auto'
+    reasoningEffort: dialogueEffort,
+    reasoningEffortDefault: dialogueEffort
   }
 }
 
@@ -467,6 +469,10 @@ export async function buildStreamConfig(
       namingProvider,
       namingModelId,
       namingModelConfigured,
+      namingReasoningEffort: resolveReasoningEffortForSlot(
+        globalModels?.reasoningEffortBySlot,
+        'naming'
+      ),
       summaryProvider,
       summaryModelId,
       embeddingProvider,

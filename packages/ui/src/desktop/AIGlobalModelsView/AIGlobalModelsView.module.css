@@ -186,6 +186,12 @@
   color: var(--text-primary);
 }
 
+.selectedEffort {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
 .dropdownIcon {
   font-size: 10px;
   color: var(--text-tertiary);

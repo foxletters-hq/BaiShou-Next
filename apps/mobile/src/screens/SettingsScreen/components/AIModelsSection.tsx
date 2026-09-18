@@ -16,7 +16,12 @@ import {
   AIProviderConfig,
   GlobalModelsConfig,
   filterProvidersForModelSwitcher,
-  type ModelSwitcherProvider
+  formatReasoningEffortLabel,
+  resolveReasoningEffortForSlot,
+  setReasoningEffortForSlot,
+  type ModelReasoningSlot,
+  type ModelSwitcherProvider,
+  type ReasoningEffortSetting
 } from '@baishou/shared'
 import { getDefaultGlobalModels } from '@baishou/store'
 import { useBaishou } from '../../../providers/BaishouProvider'
@@ -78,6 +83,21 @@ function buildFilteredProviders(
   forEmbedding: boolean
 ): ModelSwitcherProvider[] {
   return filterProvidersForModelSwitcher(providers, forEmbedding ? 'embedding' : 'dialogue')
+}
+
+function selectorReasoningSlot(key: ModelSelectorKey): ModelReasoningSlot | null {
+  switch (key) {
+    case 'globalDialogue':
+      return 'dialogue'
+    case 'globalGraph':
+      return 'graph'
+    case 'globalNaming':
+      return 'naming'
+    case 'globalSummary':
+      return 'summary'
+    default:
+      return null
+  }
 }
 
 export const AIModelsSection: React.FC = () => {
@@ -172,6 +192,20 @@ export const AIModelsSection: React.FC = () => {
     setActiveSelector(null)
   }
 
+  const handleEffortChange = async (value: ReasoningEffortSetting) => {
+    if (!activeSelector) return
+    const slot = selectorReasoningSlot(activeSelector)
+    if (!slot) return
+    await handleSaveGlobalModels({
+      ...globalModels,
+      reasoningEffortBySlot: setReasoningEffortForSlot(
+        globalModels.reasoningEffortBySlot,
+        slot,
+        value
+      )
+    })
+  }
+
   const getModelDisplay = (modelKey: keyof GlobalModelsConfig) => {
     const mid = globalModels[modelKey] as string | undefined
     return mid || t('settings.not_set')
@@ -197,6 +231,12 @@ export const AIModelsSection: React.FC = () => {
         const selectedProvider = isSet
           ? providers.find((p) => p.id === globalModels[displayProviderKey])
           : undefined
+        const slot = selectorReasoningSlot(field.key)
+        const effortLabel = slot
+          ? formatReasoningEffortLabel(
+              resolveReasoningEffortForSlot(globalModels.reasoningEffortBySlot, slot)
+            )
+          : null
 
         return (
           <View key={field.key} style={[styles.routingCard, cardStyle]}>
@@ -254,7 +294,9 @@ export const AIModelsSection: React.FC = () => {
                   numberOfLines={2}
                 >
                   {isSet
-                    ? getModelDisplay(displayModelKey)
+                    ? effortLabel
+                      ? `${getModelDisplay(displayModelKey)} · ${effortLabel}`
+                      : getModelDisplay(displayModelKey)
                     : t('models.click_to_assign', '点击分配默认处理模型')}
                 </Text>
               </View>
@@ -288,6 +330,18 @@ export const AIModelsSection: React.FC = () => {
         }
         onSelect={handleSelectModel}
         onManageProviders={() => router.push('/settings/ai-services')}
+        showReasoningPanel={Boolean(activeSelector && selectorReasoningSlot(activeSelector))}
+        reasoningEffort={
+          activeSelector && selectorReasoningSlot(activeSelector)
+            ? resolveReasoningEffortForSlot(
+                globalModels.reasoningEffortBySlot,
+                selectorReasoningSlot(activeSelector) ?? 'dialogue'
+              )
+            : 'auto'
+        }
+        onReasoningEffortChange={(value) => {
+          void handleEffortChange(value)
+        }}
       />
     </View>
   )

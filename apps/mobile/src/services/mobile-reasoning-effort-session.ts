@@ -24,7 +24,8 @@ export function peekMobileSessionReasoningEffort(): ReasoningEffortSetting {
 export async function loadMobileSessionReasoningEffort(
   sessionId: string | null,
   providerId?: string | null,
-  modelId?: string | null
+  modelId?: string | null,
+  fallback: ReasoningEffortSetting = 'auto'
 ): Promise<ReasoningEffortSetting> {
   if (sessionId) {
     const map = parseReasoningEffortMap(await AsyncStorage.getItem(SESSION_MAP_KEY))
@@ -35,7 +36,8 @@ export async function loadMobileSessionReasoningEffort(
     }
   }
   const byModel = parseReasoningEffortMap(await AsyncStorage.getItem(REASONING_EFFORT_BY_MODEL_KEY))
-  memoryOverride = resolveReasoningEffortFromMap(byModel, providerId, modelId)
+  const remembered = resolveReasoningEffortFromMap(byModel, providerId, modelId)
+  memoryOverride = remembered !== 'auto' ? remembered : fallback
   return memoryOverride
 }
 

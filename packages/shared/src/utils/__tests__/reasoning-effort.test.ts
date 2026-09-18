@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   isReasoningCapableModel,
   listOpenAiStyleReasoningEfforts,
@@ -15,11 +15,16 @@ import {
   formatReasoningEffortLabel,
   pickWeakestReasoningEffort,
   isReasoningEffortBlacklistedModel,
-  isKimiThinkingControlModel
+  isKimiThinkingControlModel,
+  isDeepSeekV4Model
 } from '../reasoning-effort'
 import { isOpenAiStyleReasoningModel } from '../model-capabilities'
+import { resetReasoningCatalogForTests } from '../reasoning-catalog-store'
 
 describe('reasoning-effort', () => {
+  beforeEach(() => {
+    resetReasoningCatalogForTests()
+  })
   it('normalizes settings', () => {
     expect(normalizeReasoningEffortSetting('auto')).toBe('auto')
     expect(normalizeReasoningEffortSetting('high')).toBe('high')
@@ -33,18 +38,8 @@ describe('reasoning-effort', () => {
   })
 
   it('lists openai efforts per model family', () => {
-    expect(listOpenAiStyleReasoningEfforts('gpt-5')).toEqual([
-      'minimal',
-      'low',
-      'medium',
-      'high'
-    ])
-    expect(listOpenAiStyleReasoningEfforts('gpt-5.1')).toEqual([
-      'none',
-      'low',
-      'medium',
-      'high'
-    ])
+    expect(listOpenAiStyleReasoningEfforts('gpt-5')).toEqual(['minimal', 'low', 'medium', 'high'])
+    expect(listOpenAiStyleReasoningEfforts('gpt-5.1')).toEqual(['none', 'low', 'medium', 'high'])
     expect(listOpenAiStyleReasoningEfforts('gpt-5.4')).toEqual([
       'none',
       'low',
@@ -66,16 +61,8 @@ describe('reasoning-effort', () => {
       'high',
       'xhigh'
     ])
-    expect(listOpenAiStyleReasoningEfforts('gpt-5.1-codex')).toEqual([
-      'low',
-      'medium',
-      'high'
-    ])
-    expect(listOpenAiStyleReasoningEfforts('gpt-5.4-pro')).toEqual([
-      'medium',
-      'high',
-      'xhigh'
-    ])
+    expect(listOpenAiStyleReasoningEfforts('gpt-5.1-codex')).toEqual(['low', 'medium', 'high'])
+    expect(listOpenAiStyleReasoningEfforts('gpt-5.4-pro')).toEqual(['medium', 'high', 'xhigh'])
     expect(listOpenAiStyleReasoningEfforts('gpt-5-pro')).toEqual(['high'])
     expect(listOpenAiStyleReasoningEfforts('o3-mini')).toEqual(['low', 'medium', 'high'])
     expect(listOpenAiStyleReasoningEfforts('gpt-4o')).toEqual([])
@@ -95,6 +82,16 @@ describe('reasoning-effort', () => {
       'high',
       'max'
     ])
+    expect(isDeepSeekV4Model('deepseek-flash')).toBe(true)
+    expect(isReasoningEffortBlacklistedModel('deepseek-flash')).toBe(false)
+    expect(isReasoningCapableModel('deepseek-flash', 'deepseek')).toBe(true)
+    expect(getReasoningControlForModel('deepseek-flash', 'deepseek').efforts).toEqual([
+      'low',
+      'medium',
+      'high',
+      'max'
+    ])
+    expect(listDeepSeekReasoningEfforts('deepseek-flash')).toEqual(['low', 'medium', 'high', 'max'])
   })
 
   it('exposes kimi budget-only high/max control', () => {
@@ -141,10 +138,7 @@ describe('reasoning-effort', () => {
 
   it('lists glm / minimax / grok efforts via control', () => {
     expect(getReasoningControlForModel('glm-5.2', 'zhipu').efforts).toEqual(['high', 'max'])
-    expect(getReasoningControlForModel('minimax-m3', 'minimax').efforts).toEqual([
-      'none',
-      'high'
-    ])
+    expect(getReasoningControlForModel('minimax-m3', 'minimax').efforts).toEqual(['none', 'high'])
     expect(getReasoningControlForModel('grok-3-mini', 'grok').efforts).toEqual(['low', 'high'])
   })
 
@@ -155,13 +149,16 @@ describe('reasoning-effort', () => {
   it('lists budget-only efforts instead of integer presets', () => {
     expect(listReasoningBudgetPresets(10000)).toEqual(['high', 'max'])
     expect(listReasoningBudgetPresets(81920)).toEqual(['high', 'max'])
-    expect(listReasoningBudgetPresets()).not.toEqual(expect.arrayContaining([4000, 8000, 16000, 32000]))
+    expect(listReasoningBudgetPresets()).not.toEqual(
+      expect.arrayContaining([4000, 8000, 16000, 32000])
+    )
   })
 
   it('resolves budget tokens from effort and bounds', () => {
-    expect(
-      resolveReasoningBudgetTiers({ catalogMin: 1024, catalogMax: 64000 })
-    ).toEqual({ high: 16000, max: 31999 })
+    expect(resolveReasoningBudgetTiers({ catalogMin: 1024, catalogMax: 64000 })).toEqual({
+      high: 16000,
+      max: 31999
+    })
     expect(resolveReasoningBudgetTiers({ outputLimit: 5000 })).toEqual({ high: 2500, max: 4999 })
     expect(resolveReasoningBudgetTiers({ catalogMax: 24576 })).toEqual({ high: 12288, max: 24576 })
     expect(resolveReasoningBudgetTokens('high', { catalogMax: 24576 })).toBe(12288)
@@ -190,9 +187,11 @@ describe('reasoning-effort', () => {
     expect(flash.catalogMax).toBe(24576)
     const pro = getReasoningControlForModel('gemini-2.5-pro', 'gemini')
     expect(pro.catalogMax).toBe(32768)
-    expect(resolveReasoningBudgetTiers(getReasoningBudgetBoundsForModel('gemini-2.5-pro'))).toEqual({
-      high: 16000,
-      max: 31999
-    })
+    expect(resolveReasoningBudgetTiers(getReasoningBudgetBoundsForModel('gemini-2.5-pro'))).toEqual(
+      {
+        high: 16000,
+        max: 31999
+      }
+    )
   })
 })

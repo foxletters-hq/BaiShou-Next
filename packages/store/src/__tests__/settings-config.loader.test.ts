@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { resolveReasoningEffortForSlot } from '@baishou/shared'
 import {
   getConfigKeysForSegment,
   getDefaultGlobalModels,
@@ -39,5 +40,26 @@ describe('settings-config.loader', () => {
       globalGraphProviderId: 'deepseek',
       globalGraphModelId: 'deepseek-chat'
     })
+  })
+
+  it('should keep per-use-case reasoning effort and default missing slots to auto', () => {
+    const patch = normalizeSettingsConfigKey('globalModels', {
+      ...getDefaultGlobalModels(),
+      reasoningEffortBySlot: { dialogue: 'high', graph: 'nope' }
+    })
+    expect(patch.globalModels?.reasoningEffortBySlot).toEqual({ dialogue: 'high' })
+    expect(resolveReasoningEffortForSlot(patch.globalModels?.reasoningEffortBySlot, 'graph')).toBe(
+      'auto'
+    )
+  })
+
+  it('should not copy a leftover global default into model-use slots', () => {
+    const patch = normalizeSettingsConfigKey('globalModels', {
+      ...getDefaultGlobalModels(),
+      reasoningEffortDefault: 'max'
+    } as ReturnType<typeof getDefaultGlobalModels> & { reasoningEffortDefault: string })
+    expect(
+      resolveReasoningEffortForSlot(patch.globalModels?.reasoningEffortBySlot, 'dialogue')
+    ).toBe('auto')
   })
 })

@@ -64,6 +64,7 @@ import { TitleBar } from './components/TitleBar'
 import { NetworkProvider, NetworkOfflineBanner } from './providers/NetworkProvider'
 import { IncrementalSyncConfirmHost } from './components/IncrementalSyncConfirmDialog/IncrementalSyncConfirmHost'
 import { useZoom } from './hooks/useZoom'
+import { useDesktopReasoningCatalogSync } from './hooks/useDesktopReasoningCatalogSync'
 import { useLegacyUpgradeRagToast } from './hooks/useLegacyUpgradeRagToast'
 import { DesktopLegacyMigrationPrompt } from './components/DesktopLegacyMigrationPrompt'
 import shellStyles from './AppShell.module.css'
@@ -287,6 +288,7 @@ const AppShell: React.FC = () => {
 
 export function App() {
   useZoom()
+  useDesktopReasoningCatalogSync()
   useRagRuntimeBridge(true)
   const locale = useSettingsStore((s) => s.locale)
   const [archiveImporting, setArchiveImporting] = useState(false)
