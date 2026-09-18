@@ -15,24 +15,37 @@ import type {
 } from '@baishou/shared'
 import {
   applyGitProcessEnv,
-  buildNewFileDiffHunks,
   getAuthenticatedUrl,
   getBundledGitBinary,
-  isTextDiffablePath,
-  mapStatusToType,
   mapWorkingStatus,
-  parseDiffHunks,
-  parseGitHistoryLog,
-  parseRevListCount,
-  pathsEqual,
-  unquoteGitPath
+  pathsEqual
 } from '@baishou/core/desktop'
 import {
   parseGitNulSeparatedPaths,
-  toGitShowSpec,
-  resolveWorkspaceFolderGitRoot,
-  toWorkspaceHistoryEntries
+  resolveWorkspaceFolderGitRoot
 } from './workspace-folder-git.util'
+import {
+  getWorkspaceCommitChanges,
+  getWorkspaceFileContentAtRevision,
+  getWorkspaceFileDiff,
+  getWorkspaceHistory,
+  getWorkspaceHistoryCount,
+  getWorkspaceRecentPulls,
+  getWorkspaceWorkingDiff,
+  rollbackWorkspaceFile
+} from './workspace-folder-git-history'
+import {
+  getWorkspaceBranchInfo,
+  getWorkspaceRollbackAllContext,
+  listWorkspaceStash,
+  stashWorkspaceApply,
+  stashWorkspaceDrop,
+  stashWorkspacePop,
+  stashWorkspacePush
+} from './workspace-folder-git-sync'
+import { pathInScope, type WorkspaceGitContext } from './workspace-folder-git.types'
+
+export type { WorkspaceGitBranchInfo, WorkspaceGitContext } from './workspace-folder-git.types'
 
 const DEFAULT_IGNORE = [
   'node_modules/',
@@ -43,31 +56,6 @@ const DEFAULT_IGNORE = [
 ]
 const WORKSPACE_GIT_CONFIG_FILE = '.baishou/workspace-git.json'
 const DEFAULT_WORKSPACE_GIT_CONFIG: GitSyncConfig = { enabled: true }
-
-export interface WorkspaceGitContext {
-  folderRoot: string
-  gitRoot: string
-  scopePrefix: string
-}
-
-export interface WorkspaceGitBranchInfo {
-  current: string
-  branches: string[]
-  hasRemote: boolean
-  ahead: number
-  behind: number
-  remoteUrl?: string
-}
-
-function normalizePosix(relativePath: string): string {
-  return relativePath.replace(/\\/g, '/')
-}
-
-function pathInScope(filePath: string, scopePrefix: string): boolean {
-  const normalized = normalizePosix(filePath)
-  if (!scopePrefix) return true
-  return normalized === scopePrefix || normalized.startsWith(`${scopePrefix}/`)
-}
 
 function filterStatus(status: GitStatus, scopePrefix: string): GitStatus {
   const filterFiles = (files: GitStatusFile[]) =>
@@ -226,10 +214,6 @@ export class WorkspaceFolderGitService {
     return path.join(this.folderRoot, WORKSPACE_GIT_CONFIG_FILE)
   }
 
-  private stripCredentialsFromUrl(url: string): string {
-    return url.replace(/^(https?:\/\/)(?:[^@/]+@)/i, '$1')
-  }
-
   async getConfig(): Promise<GitSyncConfig> {
     const configPath = this.configFilePath()
     if (!fs.existsSync(configPath)) {
@@ -317,150 +301,41 @@ export class WorkspaceFolderGitService {
 
   async getHistoryCount(filePath?: string): Promise<number> {
     const { git } = await this.ensureGit()
-    try {
-      const args = ['rev-list', '--count', 'HEAD']
-      if (filePath) args.push('--', filePath)
-      return parseRevListCount(await git.raw(args))
-    } catch {
-      return 0
-    }
+    return getWorkspaceHistoryCount(git, filePath)
   }
 
   async getHistory(filePath?: string, limit = 50, offset = 0): Promise<VersionHistoryEntry[]> {
     const { git } = await this.ensureGit()
-    try {
-      const headRef = (await git.revparse(['HEAD'])).trim()
-      const args = [
-        'log',
-        `--max-count=${Math.max(0, limit)}`,
-        `--skip=${Math.max(0, offset)}`,
-        '--format=%H%x1f%s%x1f%aI'
-      ]
-      if (filePath) args.push('--', filePath)
-      const output = await git.raw(args)
-      return toWorkspaceHistoryEntries(parseGitHistoryLog(output), headRef)
-    } catch {
-      return []
-    }
+    return getWorkspaceHistory(git, filePath, limit, offset)
   }
 
   async getRecentPulls(limit = 10): Promise<VersionHistoryEntry[]> {
     const { git } = await this.ensureGit()
-    try {
-      const log = await git.log(['origin/HEAD', '--max-count', String(limit)])
-      return log.all.map((commit) => ({
-        commit: {
-          hash: commit.hash.substring(0, 7),
-          message: commit.message,
-          date: new Date(commit.date),
-          files: []
-        },
-        changes: [],
-        isCurrent: false
-      }))
-    } catch {
-      return []
-    }
+    return getWorkspaceRecentPulls(git, limit)
   }
 
   async getCommitChanges(commitHash: string): Promise<FileChange[]> {
     const { git } = await this.ensureGit()
-    const toChange = (
-      file: { file: string; status?: string; insertions?: number; deletions?: number },
-      fallbackStatus: FileChange['status']
-    ): FileChange => ({
-      path: unquoteGitPath(file.file),
-      status: file.status ? mapStatusToType(file.status) : fallbackStatus,
-      additions: file.insertions ?? 0,
-      deletions: file.deletions ?? 0
-    })
-    try {
-      const diff = await git.diffSummary([`${commitHash}~1`, commitHash])
-      return diff.files.map((file) => toChange(file, mapStatusToType('M')))
-    } catch {
-      try {
-        const diff = await git.diffSummary([commitHash])
-        return diff.files.map((file) => toChange(file, 'added'))
-      } catch {
-        return []
-      }
-    }
+    return getWorkspaceCommitChanges(git, commitHash)
   }
 
   async getFileDiff(filePath: string, commitHash?: string): Promise<FileDiff> {
-    if (!isTextDiffablePath(filePath)) return { path: filePath, hunks: [] }
     const { git } = await this.ensureGit()
-    const toFileDiff = (diff: string): FileDiff => ({ path: filePath, hunks: parseDiffHunks(diff) })
-
-    if (commitHash) {
-      try {
-        const diff = await git.diff([`${commitHash}~1`, commitHash, '--', filePath])
-        if (diff.trim()) return toFileDiff(diff)
-      } catch {
-        /* first commit */
-      }
-      try {
-        const diff = await git.diff(['--root', commitHash, '--', filePath])
-        if (diff.trim()) return toFileDiff(diff)
-      } catch {
-        return { path: filePath, hunks: [] }
-      }
-      return { path: filePath, hunks: [] }
-    }
-
-    try {
-      const diff = await git.diff(['HEAD~1', 'HEAD', '--', filePath])
-      return toFileDiff(diff)
-    } catch {
-      return { path: filePath, hunks: [] }
-    }
+    return getWorkspaceFileDiff(git, filePath, commitHash)
   }
 
-  /** 读取某次提交中的文件内容；该版本不存在此文件时返回 null */
   async getFileContentAtRevision(filePath: string, revision: string): Promise<string | null> {
-    if (!isTextDiffablePath(filePath)) return null
-    const spec = toGitShowSpec(revision, filePath)
     const { git } = await this.ensureGit()
-    try {
-      const content = await git.show([spec])
-      return typeof content === 'string' ? content : null
-    } catch {
-      return null
-    }
+    return getWorkspaceFileContentAtRevision(git, filePath, revision)
   }
 
-  /** 读取 HEAD 中的文件内容；未跟踪或新文件返回 null */
   async getHeadFileContent(filePath: string): Promise<string | null> {
     return this.getFileContentAtRevision(filePath, 'HEAD')
   }
 
   async getWorkingDiff(filePath: string, staged: boolean): Promise<FileDiff> {
-    if (!isTextDiffablePath(filePath)) return { path: filePath, hunks: [] }
     const { git, context } = await this.ensureGit()
-
-    if (!staged) {
-      const status = await git.status()
-      const isUntracked = status.not_added.some((entry) => pathsEqual(entry, filePath))
-      if (isUntracked) {
-        try {
-          const fullPath = path.join(context.gitRoot, filePath)
-          const content = await fs.promises.readFile(fullPath, 'utf8')
-          return { path: filePath, hunks: buildNewFileDiffHunks(content) }
-        } catch {
-          return { path: filePath, hunks: [] }
-        }
-      }
-    }
-
-    const args = staged
-      ? ['--cached', '--submodule=short', '--', filePath]
-      : ['--submodule=short', '--', filePath]
-    try {
-      const diff = await git.diff(args)
-      return { path: filePath, hunks: parseDiffHunks(diff) }
-    } catch {
-      return { path: filePath, hunks: [] }
-    }
+    return getWorkspaceWorkingDiff(git, context, filePath, staged)
   }
 
   async hasConflicts(): Promise<boolean> {
@@ -493,20 +368,7 @@ export class WorkspaceFolderGitService {
 
   async rollbackFile(filePath: string, commitHash: string): Promise<{ success: boolean }> {
     const { git, context } = await this.ensureGit()
-    try {
-      await git.raw(['restore', '--source', `${commitHash}~1`, '--worktree', '--', filePath])
-      return { success: true }
-    } catch {
-      try {
-        const fullPath = path.join(context.gitRoot, filePath)
-        if (fs.existsSync(fullPath)) {
-          await fs.promises.unlink(fullPath)
-        }
-        return { success: true }
-      } catch {
-        return { success: false }
-      }
-    }
+    return rollbackWorkspaceFile(git, context, filePath, commitHash)
   }
 
   async rollbackAll(commitHash: string): Promise<{ success: boolean }> {
@@ -522,19 +384,7 @@ export class WorkspaceFolderGitService {
   async getRollbackAllContext(commitHash: string): Promise<GitRollbackAllContext> {
     const { git } = await this.ensureGit()
     const status = await this.getStatus()
-    let commitsAfterTarget = 0
-    try {
-      const log = await git.log({ from: commitHash, to: 'HEAD' })
-      commitsAfterTarget = Math.max(0, log.total - 1)
-    } catch {
-      commitsAfterTarget = 0
-    }
-    const remotes = await git.getRemotes(true)
-    return {
-      hasRemote: remotes.some((remote) => remote.name === 'origin'),
-      hasUncommittedChanges: status.hasChanges,
-      commitsAfterTarget
-    }
+    return getWorkspaceRollbackAllContext(git, status, commitHash)
   }
 
   async push(): Promise<{ success: boolean; message?: string }> {
@@ -569,55 +419,14 @@ export class WorkspaceFolderGitService {
     }
   }
 
-  /** 仅取当前分支名（rev-parse），不做 branch 列表 / upstream 查询 */
   async getCurrentBranchName(): Promise<string> {
     const { git } = await this.ensureGit()
     return (await git.revparse(['--abbrev-ref', 'HEAD'])).trim()
   }
 
-  async getBranchInfo(): Promise<WorkspaceGitBranchInfo> {
+  async getBranchInfo() {
     const { git } = await this.ensureGit()
-    const current = await this.getCurrentBranchName()
-    const localBranches = (await git.branchLocal()).all.filter((branch) => branch !== 'HEAD')
-    const remotes = await git.getRemotes(true)
-    const hasRemote = remotes.some((remote) => remote.name === 'origin')
-    let ahead = 0
-    let behind = 0
-    let remoteUrl: string | undefined
-
-    if (hasRemote) {
-      try {
-        const url = await git.getConfig('remote.origin.url')
-        remoteUrl = url.value ? this.stripCredentialsFromUrl(url.value) : undefined
-      } catch {
-        const raw = remotes.find((remote) => remote.name === 'origin')?.refs?.fetch
-        remoteUrl = raw ? this.stripCredentialsFromUrl(raw) : undefined
-      }
-
-      try {
-        const upstream = (
-          await git.revparse(['--abbrev-ref', '--symbolic-full-name', '@{u}'])
-        ).trim()
-        const counts = (
-          await git.raw(['rev-list', '--left-right', '--count', `${upstream}...HEAD`])
-        ).trim()
-        const [behindCount, aheadCount] = counts.split(/\s+/)
-        behind = Number.parseInt(behindCount ?? '0', 10) || 0
-        ahead = Number.parseInt(aheadCount ?? '0', 10) || 0
-      } catch {
-        ahead = 0
-        behind = 0
-      }
-    }
-
-    return {
-      current,
-      branches: localBranches,
-      hasRemote,
-      ahead,
-      behind,
-      remoteUrl
-    }
+    return getWorkspaceBranchInfo(git)
   }
 
   async checkoutBranch(branch: string): Promise<void> {
@@ -683,60 +492,26 @@ export class WorkspaceFolderGitService {
 
   async listStash(): Promise<GitStashEntry[]> {
     const { git } = await this.ensureGit()
-    try {
-      const list = await git.stashList()
-      return list.all.map((entry, index) => ({
-        index,
-        message: entry.message,
-        date: new Date(entry.date),
-        branch: entry.message.match(/^WIP on ([^:]+):/)?.[1]?.trim() ?? ''
-      }))
-    } catch {
-      return []
-    }
+    return listWorkspaceStash(git)
   }
 
   async stashPush(message?: string): Promise<{ success: boolean; message?: string }> {
     const { git } = await this.ensureGit()
-    try {
-      const args = ['push']
-      if (message?.trim()) {
-        args.push('-m', message.trim())
-      }
-      await git.stash(args)
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
-    }
+    return stashWorkspacePush(git, message)
   }
 
   async stashApply(index: number): Promise<{ success: boolean; message?: string }> {
     const { git } = await this.ensureGit()
-    try {
-      await git.stash(['apply', `stash@{${index}}`])
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
-    }
+    return stashWorkspaceApply(git, index)
   }
 
   async stashPop(index: number): Promise<{ success: boolean; message?: string }> {
     const { git } = await this.ensureGit()
-    try {
-      await git.stash(['pop', `stash@{${index}}`])
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
-    }
+    return stashWorkspacePop(git, index)
   }
 
   async stashDrop(index: number): Promise<{ success: boolean; message?: string }> {
     const { git } = await this.ensureGit()
-    try {
-      await git.stash(['drop', `stash@{${index}}`])
-      return { success: true }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
-    }
+    return stashWorkspaceDrop(git, index)
   }
 }
