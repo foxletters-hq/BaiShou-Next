@@ -286,7 +286,7 @@ export function useDiaryEditorPage() {
         throw e
       }
     },
-    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths, isAppendMode]
+    [selectedDate, weather, mood, isFavorite, diaryId, mediaPaths]
   )
 
   const handleContentChange = (newContent: string) => {

@@ -457,7 +457,7 @@ export function createMobileRagService(deps: MobileRagServiceDeps) {
         args: [...scopeFilter.args, ...kindSql.args]
       })
       const countRow = countRes.rows?.[0] as Record<string, number> | undefined
-      let total = Number(countRow?.count ?? 0)
+      const total = Number(countRow?.count ?? 0)
 
       const listRes = await client.execute({
         sql: `SELECT embedding_id as embeddingId, chunk_text as text, source_type as sourceType,

@@ -36,6 +36,7 @@ export const KnowledgeExtractHintDialog: React.FC<KnowledgeExtractHintDialogProp
   const { t } = useTranslation()
   const [startedAt, setStartedAt] = useState(0)
   const [now, setNow] = useState(0)
+  const fileNamesKey = fileNames.join('\n')
 
   useEffect(() => {
     if (!open) return
@@ -44,7 +45,7 @@ export const KnowledgeExtractHintDialog: React.FC<KnowledgeExtractHintDialogProp
     setNow(start)
     const timer = window.setInterval(() => setNow(Date.now()), 200)
     return () => window.clearInterval(timer)
-  }, [open, fileNames.join('\n')])
+  }, [open, fileNamesKey])
 
   const ready = startedAt > 0 && isNotebookHeavyConfirmReady(startedAt, now)
   const secondsLeft = startedAt > 0 ? notebookHeavyConfirmSecondsLeft(startedAt, now) : 3

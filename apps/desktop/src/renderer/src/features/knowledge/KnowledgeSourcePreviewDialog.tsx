@@ -106,6 +106,8 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
   const [error, setError] = useState('')
   const [useSpread, setUseSpread] = useState(false)
   const renderTasksRef = useRef<Array<{ cancel?: () => void }>>([])
+  const sourceRef = useRef(source)
+  sourceRef.current = source
   const sourceKey = source.type === 'url' ? source.url : source.data
   const visiblePages = useSpread ? pdfBookSpreadPages(page, pageCount) : [page]
   const pageLabel = formatPdfPreviewPageLabel(visiblePages, pageCount)
@@ -122,7 +124,7 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
     void (async () => {
       try {
         const pdfjs = await loadPdfJs()
-        const next = await pdfjs.getDocument(buildPdfJsDocumentParams(source)).promise
+        const next = await pdfjs.getDocument(buildPdfJsDocumentParams(sourceRef.current)).promise
         if (cancelled) {
           await next.destroy?.()
           return

@@ -371,7 +371,6 @@ export function useWorkspaceMessageActions(options: UseWorkspaceMessageActionsOp
       confirmRollbackScope,
       currentModelId,
       currentProviderId,
-      dialog,
       folderRoot,
       getReasoningEffort,
       isModelReady,

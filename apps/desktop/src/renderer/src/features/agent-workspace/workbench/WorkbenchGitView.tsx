@@ -61,12 +61,15 @@ const WorkbenchGitPanelBody: React.FC<WorkbenchGitPanelBodyProps> = ({
     })
   }, [vm.branchInfo, onGitMetaChange])
 
+  const currentBranch = vm.branchInfo?.current
+  const { handleRefreshStatus, handleLoadHistory } = vm
+
   useEffect(() => {
-    const current = vm.branchInfo?.current?.trim()
+    const current = currentBranch?.trim()
     if (!syncBranch || !current || syncBranch === current) return
-    void vm.handleRefreshStatus()
-    void vm.handleLoadHistory()
-  }, [syncBranch, vm.branchInfo?.current, vm.handleRefreshStatus, vm.handleLoadHistory])
+    void handleRefreshStatus()
+    void handleLoadHistory()
+  }, [syncBranch, currentBranch, handleRefreshStatus, handleLoadHistory])
 
   return <GitWorkbenchPanel vm={vm} />
 }

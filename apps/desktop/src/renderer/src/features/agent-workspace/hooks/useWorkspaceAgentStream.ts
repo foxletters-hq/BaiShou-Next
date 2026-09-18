@@ -75,6 +75,7 @@ export interface UseWorkspaceAgentStreamResult extends UseAgentStreamResult {
 export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentStreamResult {
   const { t } = useTranslation()
   const stream = useAgentStream(sessionId)
+  const { beginStreaming } = stream
   const [failedTools, setFailedTools] = useState<WorkspaceToolError[]>([])
 
   useEffect(() => {
@@ -108,7 +109,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
 
     const onRuntimeEvent = (_: unknown, event: { type?: string; sessionId?: string }) => {
       if (event?.type !== 'session.promoted' || event.sessionId !== sessionId) return
-      stream.beginStreaming(sessionId)
+      beginStreaming(sessionId)
       window.dispatchEvent(
         new CustomEvent('baishou:workspace-pending-inputs-changed', {
           detail: { sessionId }
@@ -123,7 +124,7 @@ export function useWorkspaceAgentStream(sessionId?: string): UseWorkspaceAgentSt
     return () => {
       unsubscribe?.()
     }
-  }, [sessionId, stream.beginStreaming])
+  }, [sessionId, beginStreaming])
 
   // admit+drain 路径不再走 runWorkspaceChatStream finally；流结束后补刷新
   const wasStreamingRef = useRef(stream.isStreaming)

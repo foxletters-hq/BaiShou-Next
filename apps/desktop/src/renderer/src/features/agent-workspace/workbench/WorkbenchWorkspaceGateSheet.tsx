@@ -23,7 +23,6 @@ type WorkbenchSettingsTab = 'permissions' | 'tools' | 'general'
 export const WorkbenchWorkspaceGateSheet: React.FC<WorkbenchWorkspaceGateSheetProps> = ({
   open,
   workspaceId,
-  workspaceName,
   onClose
 }) => {
   const { t } = useTranslation()
