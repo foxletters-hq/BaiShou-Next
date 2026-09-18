@@ -57,7 +57,7 @@ export async function runManualPendingEmbedFill(options?: {
   counts?: Pick<
     PendingEmbedCounts,
     'diaries' | 'memories' | 'graphNodes' | 'knowledgeSources' | 'notebookGraphNodes' | 'total'
-  > & { graphExtract?: number }
+  > & { graphExtract?: number; graphDisambiguate?: number }
 }): Promise<PendingEmbedFillResult> {
   const empty: PendingEmbedFillResult = { graphUpdated: 0, graphFailed: 0, graphTotal: 0 }
   const vaultId = resolveActiveVaultId()?.trim()
@@ -94,7 +94,8 @@ export async function runManualPendingEmbedFill(options?: {
       graphNodes: options?.counts?.graphNodes ?? 0,
       knowledgeSources: options?.counts?.knowledgeSources ?? 0,
       notebookGraphNodes: options?.counts?.notebookGraphNodes ?? 0,
-      graphExtract: options?.counts?.graphExtract ?? 0
+      graphExtract: options?.counts?.graphExtract ?? 0,
+      graphDisambiguate: options?.counts?.graphDisambiguate ?? 0
     }),
     'diary'
   )
@@ -111,7 +112,9 @@ export async function runManualPendingEmbedFill(options?: {
             ? i18n.t('settings.rag_indexing_knowledge', '正在嵌入知识库…')
             : phase === 'graph_extract'
               ? i18n.t('settings.rag_indexing_graph_extract', '正在整理关系图谱…')
-              : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
+              : phase === 'graph_disambiguate'
+                ? i18n.t('settings.rag_indexing_graph_disambiguate', '正在复核可疑图谱节点…')
+                : i18n.t('settings.rag_batch_embed_finishing', '正在完成索引…')
     options?.onProgress?.({
       completed: overall.completed,
       total: overall.total,
@@ -137,87 +140,6 @@ export async function runManualPendingEmbedFill(options?: {
     logger.warn('[PendingEmbedFill] memory fill failed', error as Error)
   }
   phases = markPhaseDone(phases, 'memory')
-
-  let graphResult = { updated: 0, failed: 0, total: 0 }
-  try {
-    await assertBatchEmbedCanContinue()
-    const graphRepo = new GraphRepository(drizzleDb)
-    const liveUnembedded = await graphRepo.listUnembeddedLiveNodes(vaultId)
-    const notebookUnembedded = knowledgeConnectionManager.isConnected()
-      ? await new NotebookGraphRepository(
-          knowledgeConnectionManager.getDb()
-        ).listUnembeddedLiveNodes(vaultId)
-      : []
-    const notebookById = new Map(notebookUnembedded.map((row) => [row.id, row]))
-    const combinedTotal = liveUnembedded.length + notebookUnembedded.length
-    if (combinedTotal > 0) {
-      phases = patchPhaseCounts(phases, 'graph_node', {
-        completed: 0,
-        total: combinedTotal
-      })
-      report('graph_node', phases)
-    }
-    graphResult = await backfillUnembeddedGraphNodes({
-      vaultId,
-      listUnembeddedLiveNodes: async () => liveUnembedded,
-      updateNodeEmbedding: (id, vid, embedding, modelId) =>
-        graphRepo.updateNodeEmbedding(id, vid, embedding, modelId),
-      embedQuery: (text) => adapter.embedQuery(text),
-      modelId: adapter.embeddingModelId ?? '',
-      onBeforeItem: () => assertBatchEmbedCanContinue(),
-      onProgress: ({ completed, total }) => {
-        report(
-          'graph_node',
-          patchPhaseCounts(phases, 'graph_node', {
-            completed,
-            total: combinedTotal || total
-          })
-        )
-        if (completed % 8 === 0) {
-          invalidatePendingEmbedCountsCache()
-        }
-      }
-    })
-    if (notebookUnembedded.length > 0) {
-      const notebookRepo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
-      const notebookResult = await backfillUnembeddedGraphNodes({
-        vaultId,
-        listUnembeddedLiveNodes: async () => notebookUnembedded,
-        updateNodeEmbedding: (id, vid, embedding, modelId) => {
-          const row = notebookById.get(id)
-          if (!row) return Promise.resolve()
-          return notebookRepo.updateNodeEmbedding(id, vid, row.notebookId, embedding, modelId)
-        },
-        embedQuery: (text) => adapter.embedQuery(text),
-        modelId: adapter.embeddingModelId ?? '',
-        onBeforeItem: () => assertBatchEmbedCanContinue(),
-        onProgress: ({ completed }) => {
-          report(
-            'graph_node',
-            patchPhaseCounts(phases, 'graph_node', {
-              completed: graphResult.updated + graphResult.failed + completed,
-              total: combinedTotal
-            })
-          )
-        }
-      })
-      graphResult = {
-        updated: graphResult.updated + notebookResult.updated,
-        failed: graphResult.failed + notebookResult.failed,
-        total: combinedTotal
-      }
-    }
-  } catch (error) {
-    if (isBatchEmbedAbortedError(error) || isEmbedApiUnavailableError(error)) throw error
-    logger.warn('[PendingEmbedFill] graph node fill failed', error as Error)
-  }
-  phases = markPhaseDone(
-    patchPhaseCounts(phases, 'graph_node', {
-      completed: graphResult.updated + graphResult.failed,
-      total: Math.max(graphResult.total, phases.graphNodes.total)
-    }),
-    'graph_node'
-  )
 
   if (phases.knowledgeSources.total > 0) {
     report('knowledge', phases)
@@ -343,6 +265,122 @@ export async function runManualPendingEmbedFill(options?: {
     logger.warn('[PendingEmbedFill] graph extract phase failed', error as Error)
   }
   phases = markPhaseDone(phases, 'graph_extract')
+
+  // 抽图会新建节点；结束后再补 embedding 仍为空的空位，避免抽图前写入旧空位。
+  let graphResult = { updated: 0, failed: 0, total: 0 }
+  try {
+    await assertBatchEmbedCanContinue()
+    const graphRepo = new GraphRepository(drizzleDb)
+    const liveUnembedded = await graphRepo.listUnembeddedLiveNodes(vaultId)
+    const notebookUnembedded = knowledgeConnectionManager.isConnected()
+      ? await new NotebookGraphRepository(
+          knowledgeConnectionManager.getDb()
+        ).listUnembeddedLiveNodes(vaultId)
+      : []
+    const notebookById = new Map(notebookUnembedded.map((row) => [row.id, row]))
+    const combinedTotal = liveUnembedded.length + notebookUnembedded.length
+    if (combinedTotal > 0) {
+      phases = patchPhaseCounts(phases, 'graph_node', {
+        completed: 0,
+        total: combinedTotal
+      })
+      report('graph_node', phases)
+    }
+    graphResult = await backfillUnembeddedGraphNodes({
+      vaultId,
+      listUnembeddedLiveNodes: async () => liveUnembedded,
+      updateNodeEmbedding: (id, vid, embedding, modelId) =>
+        graphRepo.updateNodeEmbedding(id, vid, embedding, modelId),
+      embedQuery: (text) => adapter.embedQuery(text),
+      modelId: adapter.embeddingModelId ?? '',
+      onBeforeItem: () => assertBatchEmbedCanContinue(),
+      onProgress: ({ completed, total }) => {
+        report(
+          'graph_node',
+          patchPhaseCounts(phases, 'graph_node', {
+            completed,
+            total: combinedTotal || total
+          })
+        )
+        if (completed % 8 === 0) {
+          invalidatePendingEmbedCountsCache()
+        }
+      }
+    })
+    if (notebookUnembedded.length > 0) {
+      const notebookRepo = new NotebookGraphRepository(knowledgeConnectionManager.getDb())
+      const notebookResult = await backfillUnembeddedGraphNodes({
+        vaultId,
+        listUnembeddedLiveNodes: async () => notebookUnembedded,
+        updateNodeEmbedding: (id, vid, embedding, modelId) => {
+          const row = notebookById.get(id)
+          if (!row) return Promise.resolve()
+          return notebookRepo.updateNodeEmbedding(id, vid, row.notebookId, embedding, modelId)
+        },
+        embedQuery: (text) => adapter.embedQuery(text),
+        modelId: adapter.embeddingModelId ?? '',
+        onBeforeItem: () => assertBatchEmbedCanContinue(),
+        onProgress: ({ completed }) => {
+          report(
+            'graph_node',
+            patchPhaseCounts(phases, 'graph_node', {
+              completed: graphResult.updated + graphResult.failed + completed,
+              total: combinedTotal
+            })
+          )
+        }
+      })
+      graphResult = {
+        updated: graphResult.updated + notebookResult.updated,
+        failed: graphResult.failed + notebookResult.failed,
+        total: combinedTotal
+      }
+    }
+  } catch (error) {
+    if (isBatchEmbedAbortedError(error) || isEmbedApiUnavailableError(error)) throw error
+    logger.warn('[PendingEmbedFill] graph node fill failed', error as Error)
+  }
+  phases = markPhaseDone(
+    patchPhaseCounts(phases, 'graph_node', {
+      completed: graphResult.updated + graphResult.failed,
+      total: Math.max(graphResult.total, phases.graphNodes.total)
+    }),
+    'graph_node'
+  )
+
+  try {
+    await assertBatchEmbedCanContinue()
+    const { runDesktopGraphSuspectScan } = await import('./graph-suspect-scan.service')
+    const graphRepo = new GraphRepository(drizzleDb)
+    report(
+      'graph_disambiguate',
+      patchPhaseCounts(phases, 'graph_disambiguate', { completed: 0, total: 1 })
+    )
+    const scanResult = await runDesktopGraphSuspectScan({
+      vaultId,
+      repo: graphRepo,
+      onProgress: ({ completed, total }) => {
+        report(
+          'graph_disambiguate',
+          patchPhaseCounts(phases, 'graph_disambiguate', {
+            completed,
+            total: Math.max(total, 1)
+          })
+        )
+      }
+    })
+    phases = markPhaseDone(
+      patchPhaseCounts(phases, 'graph_disambiguate', {
+        completed: scanResult.persisted,
+        total: Math.max(scanResult.collected, scanResult.persisted, 1)
+      }),
+      'graph_disambiguate'
+    )
+  } catch (error) {
+    if (isBatchEmbedAbortedError(error)) throw error
+    logger.warn('[PendingEmbedFill] graph disambiguate phase failed', error as Error)
+    phases = markPhaseDone(phases, 'graph_disambiguate')
+  }
 
   invalidatePendingEmbedCountsCache()
   report('finishing', phases)

@@ -17,4 +17,14 @@ describe('mobile pending embed counts notebook nodes', () => {
     expect(src).toContain('hasPendingCountSource')
     expect(src).toContain('if (!hasPendingCountSource(memoryManager))')
   })
+
+  it('should expose graph extract and disambiguate counts for organize snapshot', () => {
+    expect(src).toContain('export async function getOrganizePendingSnapshot')
+    expect(src).toContain('graphExtract')
+    expect(src).toContain('graphDisambiguate')
+    expect(src).toContain('countPendingGraphExtract')
+    expect(src).toContain('countPendingGraphDisambiguate')
+    expect(src).toContain("stages: ['graph']")
+    expect(src).toContain('collectSuspectSignals')
+  })
 })
