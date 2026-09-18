@@ -141,6 +141,7 @@ export const GRAPH_NODES_CREATE_SQL = `
     node_type TEXT NOT NULL,
     name TEXT NOT NULL,
     name_normalized TEXT DEFAULT '' NOT NULL,
+    discriminator TEXT DEFAULT '' NOT NULL,
     aliases TEXT DEFAULT '[]' NOT NULL,
     summary TEXT DEFAULT '' NOT NULL,
     props_json TEXT DEFAULT '{}' NOT NULL,
@@ -206,7 +207,9 @@ export const GRAPH_INDEXES_SQL = [
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_id_type ON graph_nodes(vault_id, node_type)`,
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_name_norm ON graph_nodes(vault_id, name_normalized)`,
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_mention ON graph_nodes(vault_id, mention_count)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS graph_nodes_vault_type_name_live ON graph_nodes(vault_id, node_type, name_normalized) WHERE deleted_at IS NULL AND node_type != 'entry'`,
+  // CREATE IF NOT EXISTS 不会改已有索引，必须先删再建成带区分信息的唯一约束
+  `DROP INDEX IF EXISTS graph_nodes_vault_type_name_live`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS graph_nodes_vault_type_name_live ON graph_nodes(vault_id, node_type, name_normalized, discriminator) WHERE deleted_at IS NULL AND node_type != 'entry'`,
   `CREATE INDEX IF NOT EXISTS graph_nodes_vault_embed_state ON graph_nodes (vault_id, model_id, dimension) WHERE deleted_at IS NULL`,
   `CREATE INDEX IF NOT EXISTS graph_node_aliases_vault_alias ON graph_node_aliases(vault_id, alias_normalized)`,
   `CREATE INDEX IF NOT EXISTS graph_node_aliases_node ON graph_node_aliases(node_id)`,
@@ -343,6 +346,12 @@ export const AGENT_DB_COLUMN_PATCHES: AgentSchemaColumnPatch[] = [
     table: 'memory_embeddings',
     column: 'vault_id',
     ddl: `ALTER TABLE memory_embeddings ADD COLUMN vault_id TEXT`
+  },
+  // ── graph_nodes：同名不同人靠独立列区分，不能塞进 name_normalized ──
+  {
+    table: 'graph_nodes',
+    column: 'discriminator',
+    ddl: `ALTER TABLE graph_nodes ADD COLUMN discriminator TEXT NOT NULL DEFAULT ''`
   }
 ]
 

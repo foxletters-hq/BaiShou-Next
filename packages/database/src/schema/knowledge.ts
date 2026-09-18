@@ -150,6 +150,8 @@ export const notebookGraphNodesTable = sqliteTable(
     nodeType: text('node_type').notNull(),
     name: text('name').notNull(),
     nameNormalized: text('name_normalized').notNull().default(''),
+    /** 拆分出的第二个同名实体才写区分信息；空串表示裸名，节点 ID 才能与老数据对齐。 */
+    discriminator: text('discriminator').notNull().default(''),
     aliases: text('aliases').notNull().default('[]'),
     summary: text('summary').notNull().default(''),
     propsJson: text('props_json').notNull().default('{}'),
@@ -170,7 +172,7 @@ export const notebookGraphNodesTable = sqliteTable(
     notebookIdx: index('idx_nb_graph_nodes_notebook').on(t.notebookId),
     vaultNotebookIdx: index('idx_nb_graph_nodes_vault_nb').on(t.vaultId, t.notebookId),
     liveName: uniqueIndex('idx_nb_graph_nodes_live_name')
-      .on(t.vaultId, t.notebookId, t.nodeType, t.nameNormalized)
+      .on(t.vaultId, t.notebookId, t.nodeType, t.nameNormalized, t.discriminator)
       .where(sql`${t.deletedAt} is null and ${t.nodeType} != 'source'`),
     embedState: index('idx_nb_graph_nodes_embed_state')
       .on(t.vaultId, t.notebookId, t.modelId, t.dimension)

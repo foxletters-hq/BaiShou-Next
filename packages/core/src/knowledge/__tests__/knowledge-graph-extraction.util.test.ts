@@ -30,6 +30,7 @@ describe('KnowledgeGraphExtractionService force re-extract', () => {
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
       } as never,
       index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
@@ -71,6 +72,7 @@ describe('KnowledgeGraphExtractionService force re-extract', () => {
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
       } as never,
       index: { syncPendingIndex } as never,
@@ -114,6 +116,7 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => {
           order.push('supersede')
           return 1
@@ -163,6 +166,18 @@ describe('KnowledgeGraphExtractionService source shards', () => {
           firstSeenAt: 1,
           createdAt: 1
         })),
+        findNodesByNameOrAlias: vi.fn(async () => [
+          {
+            id: 'old',
+            shardMonth: 'src_other',
+            mentionCount: 3,
+            aliases: '[]',
+            name: '小明',
+            summary: '',
+            firstSeenAt: 1,
+            createdAt: 1
+          }
+        ]),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
       } as never,
       index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
@@ -203,6 +218,7 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
       } as never,
       index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
@@ -239,6 +255,7 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
       } as never,
       index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
@@ -276,6 +293,7 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
       } as never,
       index: { syncPendingIndex: vi.fn(async () => undefined) } as never,
@@ -314,6 +332,7 @@ describe('KnowledgeGraphExtractionService source shards', () => {
       } as never,
       repo: {
         findNodeByName: vi.fn(async () => null),
+        findNodesByNameOrAlias: vi.fn(async () => []),
         supersedeAiEdgesBySourcePrefix: vi.fn(async () => 0)
       } as never,
       index: { syncPendingIndex: vi.fn(async () => undefined) } as never,

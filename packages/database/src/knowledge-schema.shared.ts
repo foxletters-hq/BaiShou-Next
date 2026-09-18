@@ -13,8 +13,9 @@ export const KNOWLEDGE_DB_FILENAME = 'knowledge.db'
  * 5 = notebooks 加 cover_icon / cover_image（封面 emoji 与上传封面）
  * 6 = knowledge_embed_ledger（本机嵌入账本，不参与同步）
  * 7 = notebook_graph_nodes 加 embedding / dimension / model_id（节点向量，不参与同步）
+ * 8 = notebook_graph_nodes 加 discriminator（同名不同人；空串与老 ID 对齐）
  */
-export const KNOWLEDGE_SCHEMA_VERSION = 7
+export const KNOWLEDGE_SCHEMA_VERSION = 8
 
 export const KNOWLEDGE_NOTEBOOKS_SQL = `
   CREATE TABLE IF NOT EXISTS notebooks (
@@ -141,6 +142,7 @@ export const NOTEBOOK_GRAPH_NODES_SQL = `
     node_type       TEXT NOT NULL,
     name            TEXT NOT NULL,
     name_normalized TEXT NOT NULL DEFAULT '',
+    discriminator   TEXT NOT NULL DEFAULT '',
     aliases         TEXT NOT NULL DEFAULT '[]',
     summary         TEXT NOT NULL DEFAULT '',
     props_json      TEXT NOT NULL DEFAULT '{}',
@@ -206,8 +208,10 @@ export const NOTEBOOK_GRAPH_PURGE_SOFT_DELETED_SQL = [
 export const NOTEBOOK_GRAPH_INDEXES_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_nodes_notebook ON notebook_graph_nodes(notebook_id)`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_nodes_vault_nb ON notebook_graph_nodes(vault_id, notebook_id)`,
+  // CREATE IF NOT EXISTS 不会改已有索引，必须先删再建成带区分信息的唯一约束
+  `DROP INDEX IF EXISTS idx_nb_graph_nodes_live_name`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_nb_graph_nodes_live_name
-    ON notebook_graph_nodes(vault_id, notebook_id, node_type, name_normalized)
+    ON notebook_graph_nodes(vault_id, notebook_id, node_type, name_normalized, discriminator)
     WHERE deleted_at IS NULL AND node_type != 'source'`,
   `CREATE INDEX IF NOT EXISTS idx_nb_graph_nodes_embed_state
     ON notebook_graph_nodes(vault_id, notebook_id, model_id, dimension)
@@ -290,6 +294,19 @@ async function ensureVaultIdColumn(
   logger.info(`${logPrefix} ${table}.vault_id 已补齐`)
 }
 
+/** 存量库补区分信息列。必须在重建 live_name 唯一索引之前执行。 */
+async function ensureNotebookGraphNodeDiscriminatorColumn(
+  client: unknown,
+  logPrefix: string
+): Promise<void> {
+  if (await tableHasColumn(client, 'notebook_graph_nodes', 'discriminator')) return
+  await executeRawSql(
+    client,
+    `ALTER TABLE notebook_graph_nodes ADD COLUMN discriminator TEXT NOT NULL DEFAULT ''`
+  )
+  logger.info(`${logPrefix} notebook_graph_nodes.discriminator 已补齐`)
+}
+
 /** 存量库补节点向量列。必须在 embed_state 索引之前执行。 */
 async function ensureNotebookGraphNodeEmbeddingColumns(
   client: unknown,
@@ -358,6 +375,8 @@ export async function ensureKnowledgeSchema(
   await executeRawSql(client, NOTEBOOK_GRAPH_EDGES_SQL)
   // v7：存量库补节点向量列（须在 embed_state 索引之前）
   await ensureNotebookGraphNodeEmbeddingColumns(client, logPrefix)
+  // v8：存量库补区分信息列（须在 live_name 唯一索引重建之前）
+  await ensureNotebookGraphNodeDiscriminatorColumn(client, logPrefix)
   for (const stmt of NOTEBOOK_GRAPH_INDEXES_SQL) {
     await executeRawSql(client, stmt)
   }

@@ -14,17 +14,20 @@ describe('alignEntityPool', () => {
     const judgeMerges = vi.fn()
     const existingId = graphNodeIdForEntity(VAULT, 'person', '小明')
     const out = await alignEntityPool([{ name: '小明', nodeType: 'person', summary: '同学' }], {
-      findByNameOrAlias: async () => ({
-        id: existingId,
-        name: '小明',
-        aliases: ['小明同学']
-      }),
+      findCandidatesByNameOrAlias: async () => [
+        {
+          id: existingId,
+          name: '小明',
+          aliases: ['小明同学']
+        }
+      ],
       embedQuery,
       judgeMerges,
       nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
     })
     expect(out.get('person\0小明')?.id).toBe(existingId)
     expect(out.get('person\0小明')?.mergedBy).toBe('name')
+    expect(out.get('person\0小明')?.ambiguous).toBeFalsy()
     expect(out.get('person\0小明')?.embedding).toBeUndefined()
     expect(out.get('person\0小明')?.embedText).toBeUndefined()
     expect(embedQuery).not.toHaveBeenCalled()
@@ -39,7 +42,7 @@ describe('alignEntityPool', () => {
         { name: '张三', nodeType: 'person', summary: '同事张三' }
       ],
       {
-        findByNameOrAlias: async () => null,
+        findCandidatesByNameOrAlias: async () => [],
         embedQuery: async () => [1, 0],
         searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
         nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
@@ -65,7 +68,7 @@ describe('alignEntityPool', () => {
         { name: '张三丰', nodeType: 'person', summary: '同事小张' }
       ],
       {
-        findByNameOrAlias: async () => null,
+        findCandidatesByNameOrAlias: async () => [],
         embedQuery: async () => [1, 0],
         searchByVector: async () => [
           { id: dbId, name: '张三', aliases: ['三哥'], nodeType: 'person', distance: 0.35 }
@@ -101,7 +104,7 @@ describe('alignEntityPool', () => {
         { name: '西湖', nodeType: 'place', summary: '景点' }
       ],
       {
-        findByNameOrAlias: async () => null,
+        findCandidatesByNameOrAlias: async () => [],
         embedQuery: async () => [1, 0],
         searchByVector: async () => [
           { id: 'other', name: '上海', aliases: [], nodeType: 'place', distance: 0.5 }
@@ -116,7 +119,7 @@ describe('alignEntityPool', () => {
   it('creates a new node when the judge leaves a close vector hit out of merges', async () => {
     const dbId = graphNodeIdForEntity(VAULT, 'person', '张三')
     const out = await alignEntityPool([{ name: '小张', nodeType: 'person', summary: '同事' }], {
-      findByNameOrAlias: async () => null,
+      findCandidatesByNameOrAlias: async () => [],
       embedQuery: async () => [1, 0],
       searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
       nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
@@ -135,7 +138,7 @@ describe('alignEntityPool', () => {
         { name: '张三', nodeType: 'person', summary: '同事张三' }
       ],
       {
-        findByNameOrAlias: async () => null,
+        findCandidatesByNameOrAlias: async () => [],
         embedQuery: async () => [1, 0],
         searchByVector: async () => [{ id: dbId, name: '张三', aliases: [], distance: 0.12 }],
         nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name),
@@ -145,6 +148,64 @@ describe('alignEntityPool', () => {
     expect(out.get('person\0小张')?.mergedBy).toBe('create')
     expect(out.get('person\0张三')?.mergedBy).toBe('create')
     expect(out.get('person\0小张')?.id).not.toBe(dbId)
+  })
+
+  it('should leave the entity unresolved then create when name lookup returns no candidates', async () => {
+    const out = await alignEntityPool([{ name: '小红', nodeType: 'person', summary: '同学' }], {
+      findCandidatesByNameOrAlias: async () => [],
+      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+    })
+    expect(out.get('person\0小红')?.reused).toBe(false)
+    expect(out.get('person\0小红')?.mergedBy).toBe('create')
+    expect(out.get('person\0小红')?.ambiguous).toBeFalsy()
+    expect(out.get('person\0小红')?.id).toBe(graphNodeIdForEntity(VAULT, 'person', '小红'))
+  })
+
+  it('should reuse the single candidate and keep ambiguous false when name lookup returns one row', async () => {
+    const existingId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const out = await alignEntityPool([{ name: '张三', nodeType: 'person', summary: '同事' }], {
+      findCandidatesByNameOrAlias: async () => [
+        { id: existingId, name: '张三', aliases: ['三哥'], summary: '老友' }
+      ],
+      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+    })
+    expect(out.get('person\0张三')).toEqual(
+      expect.objectContaining({
+        id: existingId,
+        canonicalName: '张三',
+        reused: true,
+        mergedBy: 'name',
+        ambiguous: false
+      })
+    )
+  })
+
+  it('should reuse the bare-name id and mark ambiguous when name lookup returns two rows', async () => {
+    const bareId = graphNodeIdForEntity(VAULT, 'person', '张三')
+    const splitId = graphNodeIdForEntity(VAULT, 'person', '张三', '同事')
+    const embedQuery = vi.fn()
+    const judgeMerges = vi.fn()
+    const out = await alignEntityPool([{ name: '张三', nodeType: 'person', summary: '日记里的张三' }], {
+      findCandidatesByNameOrAlias: async () => [
+        { id: bareId, name: '张三', aliases: ['张三'] },
+        { id: splitId, name: '张三乙', aliases: ['张三'] }
+      ],
+      embedQuery,
+      judgeMerges,
+      nodeIdForEntity: (type, name) => graphNodeIdForEntity(VAULT, type, name)
+    })
+    expect(out.get('person\0张三')).toEqual(
+      expect.objectContaining({
+        id: bareId,
+        canonicalName: '张三',
+        reused: true,
+        mergedBy: 'name',
+        ambiguous: true
+      })
+    )
+    expect(out.get('person\0张三')?.id).not.toBe(splitId)
+    expect(embedQuery).not.toHaveBeenCalled()
+    expect(judgeMerges).not.toHaveBeenCalled()
   })
 })
 

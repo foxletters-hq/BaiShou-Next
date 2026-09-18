@@ -237,14 +237,24 @@ export function legacyEntryNodeIdForFilePath(filePath: string): string {
 }
 
 /**
- * Stable id for non-entry entities: (vaultId, nodeType, normalizedName).
+ * Stable id for non-entry entities: (vaultId, nodeType, normalizedName[, discriminator]).
  * Do not use for `entry` — use entryNodeIdForFilePath.
+ *
+ * 区分信息归一化后为空时哈希输入必须保持 `${v}\0${t}\0${n}`，
+ * 连分隔符都不能加，否则全部老节点 ID 会一起变掉。
  */
-export function graphNodeIdForEntity(vaultId: string, nodeType: string, name: string): string {
+export function graphNodeIdForEntity(
+  vaultId: string,
+  nodeType: string,
+  name: string,
+  discriminator?: string
+): string {
   const v = vaultId.trim()
   const t = nodeType.trim().toLowerCase() || 'topic'
   const n = normalizeGraphName(name)
-  return graphIdFromDigest(md5Hex(`${v}\0${t}\0${n}`))
+  const d = normalizeGraphName(discriminator ?? '')
+  const key = d ? `${v}\0${t}\0${n}\0${d}` : `${v}\0${t}\0${n}`
+  return graphIdFromDigest(md5Hex(key))
 }
 
 /** Prefer the content-addressable id so unique-index merges do not flip-flop across devices. */
@@ -254,8 +264,9 @@ export function shouldKeepIncomingGraphNodeId(opts: {
   name: string
   incomingId: string
   existingId: string
+  discriminator?: string
 }): boolean {
-  const stable = graphNodeIdForEntity(opts.vaultId, opts.nodeType, opts.name)
+  const stable = graphNodeIdForEntity(opts.vaultId, opts.nodeType, opts.name, opts.discriminator)
   if (opts.incomingId === stable) return true
   if (opts.existingId === stable) return false
   return false

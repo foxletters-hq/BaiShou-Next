@@ -30,6 +30,12 @@ export interface NotebookGraphQuery {
     name: string,
     nodeType?: string
   ): Promise<NotebookGraphNodeRow | null>
+  findNodesByNameOrAlias(
+    vaultId: string,
+    notebookId: string,
+    name: string,
+    nodeType?: string
+  ): Promise<NotebookGraphNodeRow[]>
   findShortestPath(opts: {
     vaultId: string
     notebookId: string
@@ -54,6 +60,7 @@ export interface NotebookGraphSyncApply {
     notebookId: string
     nodeType: string
     name: string
+    discriminator?: string
     aliases?: string[]
     summary?: string
     props?: Record<string, unknown>

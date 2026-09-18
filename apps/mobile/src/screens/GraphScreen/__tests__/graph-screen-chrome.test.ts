@@ -3,9 +3,13 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../GraphScreen.tsx'), 'utf8')
-const webviewSrc = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '../GraphForceWebView.tsx'),
+const dir = dirname(fileURLToPath(import.meta.url))
+const src = readFileSync(join(dir, '../GraphScreen.tsx'), 'utf8')
+const webviewSrc = readFileSync(join(dir, '../GraphForceWebView.tsx'), 'utf8')
+const sameNameListSrc = readFileSync(join(dir, '../GraphNodeSameNameList.tsx'), 'utf8')
+const createSheetSrc = readFileSync(join(dir, '../GraphCreateNodeSheet.tsx'), 'utf8')
+const candidatesUtilSrc = readFileSync(
+  join(dir, '../../../services/graph-name-candidates.util.ts'),
   'utf8'
 )
 
@@ -113,5 +117,42 @@ describe('GraphScreen chrome', () => {
     expect(webviewSrc).toContain('highlightEdgeIds')
     expect(webviewSrc).toContain('(locateIdsRef.current?.length ?? 0) > 0')
     expect(webviewSrc).not.toContain('cameraTargetForSelected')
+  })
+
+  it('should render discriminator as its own label when a node has been split', () => {
+    expect(src).toContain('GraphDiscriminatorLabel')
+    expect(src).toContain('discriminator: n.discriminator')
+    expect(src).not.toContain('`${selectedNode.name}')
+    expect(src).not.toContain("selectedNode.name + ' ('")
+    expect(src).not.toContain('n.name + n.discriminator')
+    expect(webviewSrc).toContain('n.discriminator')
+    expect(webviewSrc).toContain('fillText(n.name.slice')
+    expect(webviewSrc).not.toContain('n.name + n.discriminator')
+    expect(webviewSrc).not.toContain("n.name + '('")
+  })
+
+  it('should list registered same-name entities in node detail when the name has been split', () => {
+    expect(src).toContain('GraphNodeSameNameList')
+    expect(src).toContain('listRegisteredSameNameEntities')
+    expect(candidatesUtilSrc).toContain('readGraphNameRegistry')
+    expect(sameNameListSrc).toContain("t('graph.same_name_entities'")
+    expect(sameNameListSrc).toContain("t('graph.discriminator_label'")
+    expect(sameNameListSrc).toContain('onOpen')
+    expect(sameNameListSrc).not.toContain('${entity.name}')
+    expect(sameNameListSrc).not.toContain("entity.name + ' ('")
+  })
+
+  it('should omit split and revert-split actions when the graph screen is shown on mobile', () => {
+    for (const file of [src, sameNameListSrc, createSheetSrc]) {
+      expect(file).not.toContain('splitGraphNode')
+      expect(file).not.toContain('revertGraphSplit')
+      expect(file).not.toContain('unsplitGraphNode')
+      expect(file).not.toContain("t('graph.split_node'")
+      expect(file).not.toContain("t('graph.revert_split'")
+      expect(file).not.toContain("t('graph.unsplit")
+      expect(file).not.toContain("t('graph.withdraw_split'")
+      expect(file).not.toContain('mobileSplitGraph')
+      expect(file).not.toContain('mobileRevertSplit')
+    }
   })
 })

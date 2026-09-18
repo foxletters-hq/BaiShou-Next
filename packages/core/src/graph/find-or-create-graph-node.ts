@@ -36,6 +36,13 @@ export type FindOrCreateGraphNodeResult = {
   id: string
   record: GraphNodeRawRecord
   reused: boolean
+  /** 按名字命中多条时为真；forceId / entry 路径不会查名字，恒为假。 */
+  ambiguous: boolean
+}
+
+export type ResolveGraphEndpointResult = {
+  id: string
+  ambiguous: boolean
 }
 
 function mergeAliases(existing: string[], incoming: string[]): string[] {
@@ -82,6 +89,7 @@ export async function findOrCreateGraphNode(
       vaultName: input.vaultName,
       nodeType: 'entry',
       name,
+      discriminator: carryDiscriminator(existing),
       aliases: mergeAliases(existing?.aliases ?? [], input.aliases ?? []),
       summary: input.summary ?? existing?.summary ?? '',
       props: existing ? safeProps(existing.propsJson) : { filePath },
@@ -95,7 +103,7 @@ export async function findOrCreateGraphNode(
       deletedAt: null,
       reviewStatus: preferReviewStatus(existing?.reviewStatus, input.reviewStatus)
     }
-    return { id, record, reused: !!existing }
+    return { id, record, reused: !!existing, ambiguous: false }
   }
 
   if (input.forceId) {
@@ -108,6 +116,7 @@ export async function findOrCreateGraphNode(
       vaultName: input.vaultName,
       nodeType,
       name: existing?.name ?? name,
+      discriminator: carryDiscriminator(existing),
       aliases: mergeAliases(existing?.aliases ?? [], [name, ...incomingAliases]),
       summary: input.summary ?? existing?.summary ?? '',
       props: existing ? safeProps(existing.propsJson) : {},
@@ -121,10 +130,11 @@ export async function findOrCreateGraphNode(
       deletedAt: null,
       reviewStatus: preferReviewStatus(existing?.reviewStatus, input.reviewStatus)
     }
-    return { id: input.forceId, record, reused: !!existing }
+    return { id: input.forceId, record, reused: !!existing, ambiguous: false }
   }
 
-  const existing = await repo.findNodeByNameOrAlias(input.vaultId, name, nodeType)
+  const hits = await repo.findNodesByNameOrAlias(input.vaultId, name, nodeType)
+  const existing = hits[0]
   const id = existing?.id ?? graphNodeIdForEntity(input.vaultId, nodeType, name)
   const incomingAliases = input.aliases ?? []
   const record: GraphNodeRawRecord = {
@@ -134,6 +144,7 @@ export async function findOrCreateGraphNode(
     vaultName: input.vaultName,
     nodeType,
     name: existing?.name ?? name,
+    discriminator: carryDiscriminator(existing),
     aliases: mergeAliases(existing?.aliases ?? [], [name, ...incomingAliases]),
     summary: input.summary ?? existing?.summary ?? '',
     props: existing ? safeProps(existing.propsJson) : {},
@@ -147,7 +158,7 @@ export async function findOrCreateGraphNode(
     deletedAt: null,
     reviewStatus: preferReviewStatus(existing?.reviewStatus, input.reviewStatus)
   }
-  return { id, record, reused: !!existing }
+  return { id, record, reused: !!existing, ambiguous: hits.length > 1 }
 }
 
 /** Resolve endpoint name to node id within a batch map, then SQLite. */
@@ -155,18 +166,22 @@ export async function resolveGraphEndpointId(
   repo: GraphNodeLookup,
   vaultId: string,
   rawName: string,
-  nameToId: Map<string, string>,
+  nameToId: Map<string, ResolveGraphEndpointResult>,
   opts?: { nodeType?: string; role?: string; sourceRef?: string }
-): Promise<string | null> {
+): Promise<ResolveGraphEndpointResult | null> {
   const trimmed = rawName.trim()
   const key = normalizeGraphName(trimmed)
   if (!key) return null
   const mapped = nameToId.get(key)
   if (mapped) return mapped
-  const exact = await repo.findNodeByNameOrAlias(vaultId, trimmed, opts?.nodeType)
-  if (exact) {
-    nameToId.set(key, exact.id)
-    return exact.id
+  const hits = await repo.findNodesByNameOrAlias(vaultId, trimmed, opts?.nodeType)
+  if (hits.length > 0) {
+    const resolved: ResolveGraphEndpointResult = {
+      id: hits[0]!.id,
+      ambiguous: hits.length > 1
+    }
+    nameToId.set(key, resolved)
+    return resolved
   }
   logger.warn('[graph] unresolved endpoint', {
     role: opts?.role ?? 'endpoint',
@@ -203,4 +218,15 @@ function safeProps(propsJson: string): Record<string, unknown> {
   } catch {
     return {}
   }
+}
+
+/**
+ * 已有行的区分信息必须原样带回。空串也要写上，省略会被同步当成没这个字段，
+ * 带区分信息的节点 ID 就会和记录内容对不上。
+ */
+function carryDiscriminator(
+  existing?: { discriminator?: string | null } | null
+): string | undefined {
+  if (existing == null || existing.discriminator == null) return undefined
+  return existing.discriminator
 }

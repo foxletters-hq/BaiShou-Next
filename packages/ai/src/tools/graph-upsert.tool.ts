@@ -121,6 +121,49 @@ async function deleteGraphEdgeTogether(
   })
 }
 
+function graphUpsertReusedFromHit(
+  hit:
+    | {
+        name?: string
+        nodeType?: string
+        aliases?: string[]
+        summary?: string
+        mentionCount?: number
+        firstSeenAt?: number | null
+        createdAt?: number
+        shardMonth?: string
+        origin?: 'ai' | 'user'
+        discriminator?: string
+      }
+    | null
+    | undefined
+): {
+  name?: string
+  nodeType?: string
+  aliases?: string[]
+  summary?: string
+  mentionCount?: number
+  firstSeenAt?: number | null
+  createdAt?: number
+  shardMonth?: string
+  origin?: 'ai' | 'user'
+  discriminator?: string
+} | null {
+  if (!hit) return null
+  return {
+    name: hit.name,
+    nodeType: hit.nodeType,
+    aliases: hit.aliases,
+    summary: hit.summary,
+    mentionCount: hit.mentionCount,
+    firstSeenAt: hit.firstSeenAt,
+    createdAt: hit.createdAt,
+    shardMonth: hit.shardMonth,
+    origin: hit.origin,
+    discriminator: hit.discriminator
+  }
+}
+
 function resolveEdgeAction(obj: Record<string, unknown>): 'write' | 'update' | 'delete' {
   const raw = String(obj.action ?? '').trim().toLowerCase()
   if (raw === 'delete' || raw === 'remove') return 'delete'
@@ -216,18 +259,19 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           createdAt?: number
           shardMonth?: string
           origin?: 'ai' | 'user'
+          discriminator?: string
         } | null = null
         if (explicitId) {
           const byId = context.graphNodeLookup?.findNodeById
             ? await context.graphNodeLookup.findNodeById(explicitId)
             : null
           id = byId?.id ?? explicitId
-          reused = byId
+          reused = graphUpsertReusedFromHit(byId)
         } else if (context.graphNodeLookup) {
           const hit = await context.graphNodeLookup.findNodeByName({ name, nodeType })
           if (hit) {
             id = hit.id
-            reused = hit
+            reused = graphUpsertReusedFromHit(hit)
           }
         }
         if (!id) {
@@ -245,6 +289,7 @@ export class GraphUpsertTool extends AgentTool<typeof graphUpsertParams> {
           vaultName,
           nodeType: reused?.nodeType || nodeType,
           name: reused?.name ?? name,
+          discriminator: reused?.discriminator,
           aliases,
           summary:
             typeof obj.summary === 'string' && obj.summary.trim()

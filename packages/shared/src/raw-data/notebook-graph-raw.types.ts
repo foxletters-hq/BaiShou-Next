@@ -8,6 +8,8 @@ export interface NotebookGraphNodeRawRecord {
   notebookId: string
   nodeType: string
   name: string
+  /** 参与节点身份的区分信息，必须跨设备一致；JSONL 是真源。可选是为了兼容老记录行。 */
+  discriminator?: string
   aliases: string[]
   summary: string
   props: Record<string, unknown>

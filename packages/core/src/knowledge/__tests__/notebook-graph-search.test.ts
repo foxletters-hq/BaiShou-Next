@@ -7,7 +7,9 @@ describe('searchNotebookGraphForTool', () => {
       searchNodes: vi.fn(async () => []),
       getNeighborhood: vi.fn(),
       getView: vi.fn(),
-      findShortestPath: vi.fn()
+      findShortestPath: vi.fn(),
+      findNodeByName: vi.fn(),
+      findNodesByNameOrAlias: vi.fn()
     }
     const result = await searchNotebookGraphForTool(repo as never, {
       vaultId: 'v1',
@@ -36,7 +38,8 @@ describe('searchNotebookGraphForTool', () => {
         nodeIds: ['a', 'b'],
         edges: [{ sourceExcerpt: '认识', sourceRef: 'src1#0' }]
       })),
-      findNodeByName: vi.fn()
+      findNodeByName: vi.fn(),
+      findNodesByNameOrAlias: vi.fn()
     }
     const result = await searchNotebookGraphForTool(repo as never, {
       vaultId: 'v1',

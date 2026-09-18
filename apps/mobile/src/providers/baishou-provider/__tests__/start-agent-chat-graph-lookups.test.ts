@@ -16,4 +16,10 @@ describe('start-agent-chat companion graph lookups', () => {
     expect(src).not.toContain('new GraphNodeLookupAdapter')
     expect(src).not.toContain('new GraphEdgeLookupAdapter')
   })
+
+  it('should pick the bare-name node when companion lookup finds several same-name rows', () => {
+    expect(src).toContain('findNodesByNameOrAlias')
+    expect(src).toContain('pickBareGraphNameHit')
+    expect(src).not.toContain('repo.findNodeByNameOrAlias(vaultId, name, nodeType)')
+  })
 })
