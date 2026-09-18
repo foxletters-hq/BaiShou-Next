@@ -10,10 +10,7 @@ import {
   type RagConfig
 } from '@baishou/shared'
 import { graphGetQueueState, graphOnQueueProgress } from '../graph/graph-extract-queue.api'
-import {
-  getCachedRagActiveState,
-  subscribeRagRuntime
-} from '../settings/rag-runtime-cache'
+import { getCachedRagActiveState, subscribeRagRuntime } from '../settings/rag-runtime-cache'
 import { ragIndexingSnapshotFromState } from '../settings/rag-indexing-snapshot'
 
 export type MemoryGraphExtractingSnapshot = {
@@ -150,9 +147,11 @@ function applyGraphQueueToReadiness(state: GraphExtractQueueSnapshot) {
 function startGraphQueueReadinessListen() {
   graphQueueListenCount += 1
   if (stopGraphQueueListen) return
-  void graphGetQueueState().then(applyGraphQueueToReadiness).catch(() => {
-    // Preload/main 尚未就绪时忽略
-  })
+  void graphGetQueueState()
+    .then(applyGraphQueueToReadiness)
+    .catch(() => {
+      // Preload/main 尚未就绪时忽略
+    })
   stopGraphQueueListen = graphOnQueueProgress(applyGraphQueueToReadiness)
 }
 
@@ -231,8 +230,16 @@ export async function refreshMemoryReadiness(): Promise<void> {
 }
 
 export function useMemoryReadiness() {
-  const snapshot = useSyncExternalStore(subscribeReadiness, () => cachedSnapshot, () => EMPTY)
-  const loading = useSyncExternalStore(subscribeReadiness, () => cachedLoading, () => true)
+  const snapshot = useSyncExternalStore(
+    subscribeReadiness,
+    () => cachedSnapshot,
+    () => EMPTY
+  )
+  const loading = useSyncExternalStore(
+    subscribeReadiness,
+    () => cachedLoading,
+    () => true
+  )
   const ragState = useSyncExternalStore(
     subscribeRagRuntime,
     getCachedRagActiveState,

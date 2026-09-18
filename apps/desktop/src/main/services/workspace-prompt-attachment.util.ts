@@ -82,7 +82,13 @@ export function decorateWorkspacePromptAttachment(params: {
     isImage: params.isDirectory ? false : flags.isImage,
     isPdf: params.isDirectory ? false : flags.isPdf,
     isText: params.isDirectory ? false : flags.isText,
-    type: params.isDirectory ? 'directory' : flags.isImage ? 'image' : flags.isText ? 'text' : 'file',
+    type: params.isDirectory
+      ? 'directory'
+      : flags.isImage
+        ? 'image'
+        : flags.isText
+          ? 'text'
+          : 'file',
     mimeType: mimeTypeForFlags(params.fileName, flags, params.mimeType)
   })
 }

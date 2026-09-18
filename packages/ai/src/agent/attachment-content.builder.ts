@@ -47,20 +47,16 @@ export function inferAttachmentFlags(att: AttachmentLike): {
   const fileName = String(att.name || att.fileName || att.relativePath || '')
   const classified = classifyPromptAttachmentKind(fileName, att.mimeType)
   return {
-    isImage:
-      att.isImage === true ||
-      att.type === 'image' ||
-      classified.isImage,
+    isImage: att.isImage === true || att.type === 'image' || classified.isImage,
     isPdf: att.isPdf === true || classified.isPdf,
-    isText:
-      classified.isText ||
-      att.isText === true ||
-      att.type === 'text'
+    isText: classified.isText || att.isText === true || att.type === 'text'
   }
 }
 
 function resolveAttachmentDisplayPath(att: AttachmentLike): string {
-  const relative = String(att.relativePath || '').trim().replace(/\\/g, '/')
+  const relative = String(att.relativePath || '')
+    .trim()
+    .replace(/\\/g, '/')
   if (relative) return relative
   return String(att.name || att.fileName || 'Attachment')
 }

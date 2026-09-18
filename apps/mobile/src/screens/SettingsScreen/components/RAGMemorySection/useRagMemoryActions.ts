@@ -1,7 +1,11 @@
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDialog, useNativeToast, type RagConfig, type RagEntry } from '@baishou/ui/native'
-import { GlobalModelsConfig, parseGraphNodeEmbeddingId, type RagVectorKindFilter } from '@baishou/shared'
+import {
+  GlobalModelsConfig,
+  parseGraphNodeEmbeddingId,
+  type RagVectorKindFilter
+} from '@baishou/shared'
 import { MobileRagAbortError } from '../../../../services/mobile-rag.service'
 import { clampMobileRagConfig } from './rag-memory-section.constants'
 import type { RagMemorySectionCtx } from './useRagMemorySection.ctx'
@@ -29,8 +33,13 @@ export function useRagMemoryActions(
   const { t } = useTranslation()
   const dialog = useDialog()
   const toast = useNativeToast()
-  const { loadRagData, refreshEntriesOnly, invalidateInFlightQuery, openModelSwitcher, semanticAvailable } =
-    data
+  const {
+    loadRagData,
+    refreshEntriesOnly,
+    invalidateInFlightQuery,
+    openModelSwitcher,
+    semanticAvailable
+  } = data
   const {
     services,
     dbReady,

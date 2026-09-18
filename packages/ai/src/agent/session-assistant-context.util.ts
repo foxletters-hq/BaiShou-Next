@@ -36,10 +36,7 @@ export async function resolveSessionAssistantContext(params: {
   if (sessionObj?.assistantId && params.assistantRepo) {
     const ast = await params.assistantRepo.findById(sessionObj.assistantId)
     assistantKind = normalizeAssistantKind(ast?.assistantKind)
-    const combined = buildEffectiveAssistantSystemPrompt(
-      ast?.systemPrompt,
-      ast?.customSystemPrompt
-    )
+    const combined = buildEffectiveAssistantSystemPrompt(ast?.systemPrompt, ast?.customSystemPrompt)
     if (combined) {
       effectiveSystemPrompt = combined
     }

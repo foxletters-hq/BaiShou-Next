@@ -36,8 +36,7 @@ export const NotebookStatusPanel: React.FC<NotebookStatusPanelProps> = ({
   onPickRow
 }) => {
   const { t } = useTranslation()
-  const displayRows =
-    rows.length > 0 ? rows : buildNotebookOpenGuideRows({ sourceCount: 0 })
+  const displayRows = rows.length > 0 ? rows : buildNotebookOpenGuideRows({ sourceCount: 0 })
 
   return (
     <section
@@ -67,7 +66,10 @@ export const NotebookStatusPanel: React.FC<NotebookStatusPanelProps> = ({
                 className={`${itemClass} ${styles.itemAction}`}
                 aria-label={`${row.label} ${row.value}`}
                 onClick={(event) => {
-                  onPickRow?.(row.key as NotebookStatusPickKey, event.currentTarget.getBoundingClientRect())
+                  onPickRow?.(
+                    row.key as NotebookStatusPickKey,
+                    event.currentTarget.getBoundingClientRect()
+                  )
                 }}
               >
                 {body}

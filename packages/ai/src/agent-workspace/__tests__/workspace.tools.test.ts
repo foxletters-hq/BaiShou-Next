@@ -232,10 +232,7 @@ describe('workspace gate metadata', () => {
     )
     expect(resolveAgentGateToolMetadata('workspace_delete')?.forceExclusion).toBeUndefined()
     expect(
-      resolveAgentGateToolMetadata('workspace_delete')?.buildAlwaysPatterns?.(
-        { path: 'a.md' },
-        {}
-      )
+      resolveAgentGateToolMetadata('workspace_delete')?.buildAlwaysPatterns?.({ path: 'a.md' }, {})
     ).toEqual(['*'])
     expect(resolveAgentGateToolMetadata('workspace_rename')?.riskLevel).toBe(
       AgentGateRiskLevel.Mutating

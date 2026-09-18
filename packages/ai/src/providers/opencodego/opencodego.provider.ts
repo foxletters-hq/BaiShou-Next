@@ -4,10 +4,7 @@ import { IAIProvider } from '../provider.interface'
 import { assertAsciiApiKey } from '../fetch-header.util'
 import { getRotatedApiKey } from '../provider.utils'
 import { extractApiErrorMessage, formatModelNotAvailableMessage } from '../provider-api-error.util'
-import {
-  probeProviderConnection,
-  wrapConnectionTestError
-} from '../provider-connection-test.util'
+import { probeProviderConnection, wrapConnectionTestError } from '../provider-connection-test.util'
 import { OPENCODE_GO_DEFAULT_DIALOGUE_MODEL } from './opencodego.constants'
 import { createOpenCodeGoLanguageModel } from './opencodego.language-model.factory'
 import { fetchOpenCodeGoModelIds } from './opencodego.models-client'

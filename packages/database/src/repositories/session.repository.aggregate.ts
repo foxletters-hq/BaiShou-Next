@@ -181,9 +181,7 @@ export class SessionAggregateSync {
         session.assistantId ?? null,
         session.isPinned ? 1 : 0,
         session.systemPrompt ?? null,
-        serializeMountedNotebookIds(
-          session.mountedNotebookIds ?? session.mounted_notebook_ids
-        ),
+        serializeMountedNotebookIds(session.mountedNotebookIds ?? session.mounted_notebook_ids),
         session.providerId ?? null,
         session.modelId ?? null,
         session.totalInputTokens ?? null,

@@ -142,7 +142,9 @@ describe('NotebookGraphRawManager source shards', () => {
     expect(edges.map((e) => e.id)).toEqual(['e-src5'])
     const state = await raw.getExtractState('nb1', 'src5')
     expect(state?.extractedTextHash).toBe('h5')
-    await expect(fs.stat(path.join(notebooksDir, 'nb1', 'graph', 'edges', 'src5.jsonl'))).resolves.toBeTruthy()
+    await expect(
+      fs.stat(path.join(notebooksDir, 'nb1', 'graph', 'edges', 'src5.jsonl'))
+    ).resolves.toBeTruthy()
   })
 
   it('重抽资料 5 不改资料 1 的边文件', async () => {
@@ -181,7 +183,9 @@ describe('NotebookGraphRawManager source shards', () => {
     await raw.writeEdge(makeEdge('e5', { sourceRef: 'src5#0', now }))
     await raw.deleteSourceShards('nb1', 'src5')
     expect(await raw.readShardRecords('nb1', 'edges', 'src5')).toEqual([])
-    await expect(fs.stat(path.join(notebooksDir, 'nb1', 'graph', 'edges', 'src5.jsonl'))).rejects.toThrow()
+    await expect(
+      fs.stat(path.join(notebooksDir, 'nb1', 'graph', 'edges', 'src5.jsonl'))
+    ).rejects.toThrow()
   })
 
   it('把 YYYY-MM.jsonl 按 sourceRef 重写为资料分片', async () => {
@@ -217,14 +221,20 @@ describe('NotebookGraphRawManager source shards', () => {
       shardMonth: string
     }>
     expect(src1Edges).toEqual([expect.objectContaining({ id: 'e-old', shardMonth: 'src1' })])
-    const leftover = (await raw.readShardRecords('nb1', 'nodes', '_legacy')) as Array<{ id: string }>
+    const leftover = (await raw.readShardRecords('nb1', 'nodes', '_legacy')) as Array<{
+      id: string
+    }>
     expect(leftover.map((n) => n.id)).toEqual(['orphan'])
   })
 })
 
 describeIndex('NotebookGraph source index', () => {
   let tempDir: string
-  let dbManager: { connect: (d: string) => Promise<void>; disconnect: () => void; getDb: () => unknown }
+  let dbManager: {
+    connect: (d: string) => Promise<void>
+    disconnect: () => void
+    getDb: () => unknown
+  }
 
   beforeEach(async () => {
     const { KnowledgeConnectionManager } = await import('@baishou/database')

@@ -14,10 +14,7 @@ import {
   PROVIDER_NAME_I18N_MAP,
   PROVIDER_TYPES
 } from './ai-model-services.constants'
-import {
-  buildSortedProvidersList,
-  nextLocalProvidersList
-} from './sorted-providers-list.util'
+import { buildSortedProvidersList, nextLocalProvidersList } from './sorted-providers-list.util'
 
 export function useAIModelServicesView(props: AIModelServicesViewProps) {
   const {

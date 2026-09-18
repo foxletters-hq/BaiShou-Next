@@ -101,7 +101,12 @@ export const RagEmbeddedFilesTable: React.FC<RagEmbeddedFilesTableProps> = ({
                   <RagMemoryHighlightedText text={preview} keyword={keyword || undefined} />
                 </span>
               </button>
-              <Button type="button" variant="outlined" size="small" onClick={() => setPreviewEntry(e)}>
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                onClick={() => setPreviewEntry(e)}
+              >
                 {t('settings.rag_view_entry', '查看完整片段')}
               </Button>
               <div className={styles.memoryEntryFooter}>

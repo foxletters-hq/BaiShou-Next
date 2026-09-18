@@ -1,11 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import {
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync
-} from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,10 +8,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(here, '../../../../../')
 const lucideVersion = '1.7.0'
 const workDir = join(tmpdir(), `baishou-lucide-meta-${lucideVersion}`)
-const scanRoots = [
-  join(repoRoot, 'apps/desktop/src'),
-  join(repoRoot, 'packages/ui/src')
-]
+const scanRoots = [join(repoRoot, 'apps/desktop/src'), join(repoRoot, 'packages/ui/src')]
 const skipName = new Set([
   'icon-gallery-catalog.ts',
   'DeveloperIconGallery.tsx',
@@ -140,7 +131,9 @@ function readIconMeta(iconsDir) {
     const categories = Array.isArray(json.categories)
       ? json.categories.filter((item) => typeof item === 'string')
       : []
-    const tags = Array.isArray(json.tags) ? json.tags.filter((item) => typeof item === 'string') : []
+    const tags = Array.isArray(json.tags)
+      ? json.tags.filter((item) => typeof item === 'string')
+      : []
     meta[kebabToPascal(kebab)] = { categories, tags }
   }
   return meta

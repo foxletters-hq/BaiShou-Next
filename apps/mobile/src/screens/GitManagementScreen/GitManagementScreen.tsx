@@ -82,9 +82,7 @@ export function GitManagementScreen() {
           autoCapitalize="none"
           onChangeText={(url) =>
             setConfig((prev) =>
-              prev
-                ? { ...prev, remote: { url, branch: prev.remote?.branch || 'main' } }
-                : prev
+              prev ? { ...prev, remote: { url, branch: prev.remote?.branch || 'main' } } : prev
             )
           }
           onBlur={() =>
@@ -120,7 +118,9 @@ export function GitManagementScreen() {
               setBusy(true)
               void mobileGitInit()
                 .then(() => refresh())
-                .then(() => toast.showSuccess(t('version_control.git_init_success', 'Git 仓库初始化成功')))
+                .then(() =>
+                  toast.showSuccess(t('version_control.git_init_success', 'Git 仓库初始化成功'))
+                )
                 .catch((error) => toast.showError(String((error as Error)?.message || error)))
                 .finally(() => setBusy(false))
             }}

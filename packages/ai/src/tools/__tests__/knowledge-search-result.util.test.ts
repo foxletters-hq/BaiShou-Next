@@ -29,18 +29,20 @@ describe('knowledge-search-result.util', () => {
     ])
     expect(formatted).toContain('[1] nb1 · 视听语言')
     expect(formatted).not.toContain('SN=A')
-    expect(citationsFromKnowledgeHits([
-      {
-        chunkId: 'c-ok',
-        sourceId: 'src1',
-        notebookId: 'nb1',
-        notebookName: '手册',
-        chunkIndex: 1,
-        chunkText: '视听语言是电影艺术的基础，蒙太奇通过镜头组接创造新的意义。',
-        score: 0.8,
-        title: '视听语言'
-      }
-    ])[0]).toMatchObject({ title: '视听语言', notebookName: '手册', notebookId: 'nb1' })
+    expect(
+      citationsFromKnowledgeHits([
+        {
+          chunkId: 'c-ok',
+          sourceId: 'src1',
+          notebookId: 'nb1',
+          notebookName: '手册',
+          chunkIndex: 1,
+          chunkText: '视听语言是电影艺术的基础，蒙太奇通过镜头组接创造新的意义。',
+          score: 0.8,
+          title: '视听语言'
+        }
+      ])[0]
+    ).toMatchObject({ title: '视听语言', notebookName: '手册', notebookId: 'nb1' })
   })
 
   it('groups by notebook and respects per-notebook / total quotas', () => {

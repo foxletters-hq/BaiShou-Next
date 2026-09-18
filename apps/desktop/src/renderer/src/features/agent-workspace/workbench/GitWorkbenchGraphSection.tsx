@@ -39,11 +39,7 @@ export const GitWorkbenchGraphSection: React.FC<{
 
   return (
     <section className={`${styles.panelSection} ${styles.historySection}`}>
-      <button
-        type="button"
-        className={styles.sectionHeader}
-        onClick={() => onOpenChange(!open)}
-      >
+      <button type="button" className={styles.sectionHeader} onClick={() => onOpenChange(!open)}>
         <ChevronRight
           size={14}
           className={`${styles.sectionChevron} ${open ? styles.sectionChevronOpen : ''}`}
@@ -97,7 +93,9 @@ export const GitWorkbenchGraphSection: React.FC<{
                             <span className={styles.graphTime}>
                               {formatGraphTime(entry.commit.date)}
                             </span>
-                            <span className={styles.graphHash}>{entry.commit.hash.slice(0, 7)}</span>
+                            <span className={styles.graphHash}>
+                              {entry.commit.hash.slice(0, 7)}
+                            </span>
                           </span>
                         </button>
                         {!isHead ? (

@@ -44,9 +44,8 @@ export function registerMessageIPC() {
       }
       if (!sessionBelongsToActiveVaultId(session.vaultId, activeVaultId)) {
         // 工作区会话曾写入错误 vault_id（缺省 derive('default')）；有绑定时自愈后放行
-        const { getWorkspaceSessionBinding } = await import(
-          '../services/agent-workspace-session.store'
-        )
+        const { getWorkspaceSessionBinding } =
+          await import('../services/agent-workspace-session.store')
         const binding = await getWorkspaceSessionBinding(sessionId)
         if (binding && activeVaultId) {
           await realSessionRepo.updateSessionVaultId(sessionId, activeVaultId)

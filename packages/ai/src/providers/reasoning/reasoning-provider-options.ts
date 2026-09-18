@@ -16,10 +16,7 @@ import {
   isKimiThinkingControlModel,
   REASONING_EFFORTS
 } from '@baishou/shared'
-import {
-  resolveReasoningApiShape,
-  type ReasoningApiShapeContext
-} from './reasoning-api-shape'
+import { resolveReasoningApiShape, type ReasoningApiShapeContext } from './reasoning-api-shape'
 import { listReasoningVariants } from './reasoning-variants'
 import type { OpenAiThinkingBodyInject } from './openai-thinking-inject'
 
@@ -104,9 +101,7 @@ function resolveEnabledThinkingBudget(
   transport: 'anthropic' | 'native' = 'native'
 ): number {
   const bounds = budgetBoundsForRequest(modelId, transport, outputLimit)
-  return (
-    resolveReasoningBudgetTokens(effort, bounds) ?? resolveReasoningBudgetTiers(bounds).high
-  )
+  return resolveReasoningBudgetTokens(effort, bounds) ?? resolveReasoningBudgetTiers(bounds).high
 }
 
 function anthropicOptions(
@@ -364,8 +359,6 @@ export function shouldForceChatCompletionsReasoningNone(params: {
   apiShape: ReturnType<typeof resolveReasoningApiShape>
 }): boolean {
   return (
-    params.hasTools &&
-    params.apiShape === 'chat' &&
-    isOpenAiStyleReasoningModel(params.modelId)
+    params.hasTools && params.apiShape === 'chat' && isOpenAiStyleReasoningModel(params.modelId)
   )
 }

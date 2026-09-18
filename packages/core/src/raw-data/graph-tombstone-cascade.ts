@@ -10,12 +10,18 @@ export type GraphShardRecordRemover = {
 }
 
 export type GraphTombstoneLookup = {
-  getNodeById(id: string, vaultId?: string): Promise<{
+  getNodeById(
+    id: string,
+    vaultId?: string
+  ): Promise<{
     id: string
     vaultId: string
     shardMonth: string
   } | null>
-  getEdgeById(id: string, vaultId?: string): Promise<{
+  getEdgeById(
+    id: string,
+    vaultId?: string
+  ): Promise<{
     id: string
     shardMonth: string
   } | null>

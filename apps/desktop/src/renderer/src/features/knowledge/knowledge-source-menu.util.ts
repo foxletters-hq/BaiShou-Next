@@ -9,9 +9,7 @@ export type KnowledgeSourceMenuAction =
   | 'retry'
   | 'ocr'
 
-export function knowledgeSourceNeedsOcr(source: {
-  status: string
-}): boolean {
+export function knowledgeSourceNeedsOcr(source: { status: string }): boolean {
   return source.status === 'needs_ocr' || source.status === 'partial'
 }
 
@@ -20,9 +18,7 @@ export function knowledgeSourceCanCancelExtract(source: {
   extractEngine?: string | null
 }): boolean {
   const isOcrEngine = source.extractEngine === 'ocr' || source.extractEngine === 'vision'
-  return (
-    source.status === 'extracting' || (source.status === 'pending' && isOcrEngine)
-  )
+  return source.status === 'extracting' || (source.status === 'pending' && isOcrEngine)
 }
 
 export function knowledgeSourceCanEmbed(source: { status: string }): boolean {
@@ -44,10 +40,7 @@ export function buildKnowledgeSourceMenuActions(input: {
   if (knowledgeSourceCanReembed(source) && !input.ocrRunning) actions.push('reembed')
   if (knowledgeSourceCanCancelExtract(source) || input.ocrRunning) actions.push('cancel')
   if (knowledgeSourceNeedsOcr(source) && !input.ocrRunning) actions.push('ocr')
-  if (
-    (source.status === 'failed' || source.status === 'needs_ocr') &&
-    !input.ocrRunning
-  ) {
+  if ((source.status === 'failed' || source.status === 'needs_ocr') && !input.ocrRunning) {
     actions.push('retry')
   }
   actions.push('delete')

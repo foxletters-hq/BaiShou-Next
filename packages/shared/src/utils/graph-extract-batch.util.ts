@@ -104,10 +104,7 @@ export type GraphExtractPhaseCopy = {
   params?: Record<string, string | number>
 }
 
-export function graphExtractItemProgress(item: {
-  status?: string
-  progress?: number
-}): number {
+export function graphExtractItemProgress(item: { status?: string; progress?: number }): number {
   if (item.status === 'completed' || item.status === 'error') return 100
   if (item.status === 'pending') return 0
   const n = Math.round(Number(item.progress) || 0)
@@ -252,7 +249,9 @@ export function isDiaryFileEmbedded(opts: {
 export function loadGraphExtractConcurrency(): number {
   try {
     if (typeof localStorage === 'undefined') return GRAPH_EXTRACT_CONCURRENCY_DEFAULT
-    return resolveGraphExtractConcurrency(localStorage.getItem(GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY))
+    return resolveGraphExtractConcurrency(
+      localStorage.getItem(GRAPH_EXTRACT_CONCURRENCY_STORAGE_KEY)
+    )
   } catch {
     return GRAPH_EXTRACT_CONCURRENCY_DEFAULT
   }

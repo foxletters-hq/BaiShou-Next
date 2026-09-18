@@ -107,7 +107,9 @@ export function useMobilePromptShortcuts() {
 
       const prevUser = userShortcutsRef.current
       const prevAll = shortcutsRef.current
-      const nextUser = dedupePromptShortcuts(updater(prevUser).filter((item) => !isSkillShortcut(item)))
+      const nextUser = dedupePromptShortcuts(
+        updater(prevUser).filter((item) => !isSkillShortcut(item))
+      )
 
       loadGenRef.current += 1
       publish(skillShortcutsRef.current, nextUser)

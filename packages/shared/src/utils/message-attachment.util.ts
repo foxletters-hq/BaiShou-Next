@@ -99,10 +99,8 @@ export function mapAttachmentsFromParts(
     const isImage =
       String(p.type ?? '').toLowerCase() === 'image' || att.type === 'image' || att.isImage === true
     const classified = classifyPromptAttachmentKind(fileName, String(att.mimeType || ''))
-    const isPdf =
-      att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
-    const isText =
-      classified.isText || att.isText === true || att.type === 'text'
+    const isPdf = att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
+    const isText = classified.isText || att.isText === true || att.type === 'text'
     const rawPath = String(att.url || att.filePath || '')
     return {
       id: String(p.id ?? fileName),
@@ -182,10 +180,8 @@ export function mapSavedAttachmentsForUi(
     const fileName = String(att.name || att.fileName || 'Attachment')
     const isImage = att.type === 'image' || att.isImage === true
     const classified = classifyPromptAttachmentKind(fileName, String(att.mimeType || ''))
-    const isPdf =
-      att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
-    const isText =
-      classified.isText || att.isText === true || att.type === 'text'
+    const isPdf = att.mimeType === 'application/pdf' || att.isPdf === true || classified.isPdf
+    const isText = classified.isText || att.isText === true || att.type === 'text'
     const rawPath = String(att.url || att.filePath || '')
 
     return {

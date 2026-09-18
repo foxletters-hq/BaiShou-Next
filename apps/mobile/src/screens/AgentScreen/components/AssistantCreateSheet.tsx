@@ -12,7 +12,12 @@ export function AssistantCreateSheet({
 }: {
   visible: boolean
   onClose: () => void
-  onCreated: (assistant: { id: string; name: string; providerId?: string; modelId?: string }) => void
+  onCreated: (assistant: {
+    id: string
+    name: string
+    providerId?: string
+    modelId?: string
+  }) => void
 }) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
@@ -54,7 +59,9 @@ export function AssistantCreateSheet({
     if (!services || !name.trim()) return
     setSaving(true)
     try {
-      const [providerId, modelId] = modelKey.includes('::') ? modelKey.split('::') : [undefined, undefined]
+      const [providerId, modelId] = modelKey.includes('::')
+        ? modelKey.split('::')
+        : [undefined, undefined]
       const id = `ast-${Date.now()}`
       await services.assistantManager.create({
         id,
@@ -71,13 +78,19 @@ export function AssistantCreateSheet({
       onCreated({ id, name: name.trim(), providerId, modelId })
       resetAndClose()
     } catch (error) {
-      toast.showError(error instanceof Error ? error.message : t('common.errors.save_failed', '保存失败'))
+      toast.showError(
+        error instanceof Error ? error.message : t('common.errors.save_failed', '保存失败')
+      )
       setSaving(false)
     }
   }
 
   return (
-    <Modal visible={visible} onClose={resetAndClose} title={t('agent.assistant.create', '新建助手')}>
+    <Modal
+      visible={visible}
+      onClose={resetAndClose}
+      title={t('agent.assistant.create', '新建助手')}
+    >
       <View style={styles.body}>
         <Input
           value={name}

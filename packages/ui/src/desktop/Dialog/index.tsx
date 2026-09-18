@@ -400,7 +400,12 @@ export const DialogProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
             <div className={styles.actions}>
               {isChooseType(state.type) ? (
-                <Button type="button" variant="outlined" size="small" onClick={() => closeDialog(null)}>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => closeDialog(null)}
+                >
                   {t('common.cancel', '取消')}
                 </Button>
               ) : (

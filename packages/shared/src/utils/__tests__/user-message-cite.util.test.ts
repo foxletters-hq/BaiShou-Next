@@ -18,9 +18,11 @@ describe('resolveUserComposerCites', () => {
   })
 
   it('should keep a folder cite as a directory segment', () => {
-    const resolved = resolveUserComposerCites('@设定/ 看一下这里', [], [
-      { relativePath: '设定', isDirectory: true }
-    ])
+    const resolved = resolveUserComposerCites(
+      '@设定/ 看一下这里',
+      [],
+      [{ relativePath: '设定', isDirectory: true }]
+    )
     expect(resolved.segments[0]).toMatchObject({
       type: 'file',
       relativePath: '设定',
@@ -29,9 +31,11 @@ describe('resolveUserComposerCites', () => {
   })
 
   it('prepends file chips when only attachments existed', () => {
-    const resolved = resolveUserComposerCites('你能看到这个吗', [], [
-      { relativePath: 'docs/月光邮局-Latte.md' }
-    ])
+    const resolved = resolveUserComposerCites(
+      '你能看到这个吗',
+      [],
+      [{ relativePath: 'docs/月光邮局-Latte.md' }]
+    )
     expect(resolved.segments[0]).toMatchObject({
       type: 'file',
       relativePath: 'docs/月光邮局-Latte.md'

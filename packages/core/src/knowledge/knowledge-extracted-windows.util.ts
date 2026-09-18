@@ -51,7 +51,11 @@ export async function loadExtractedKnowledgeWindows(input: {
 
   const bySource = new Map<
     string,
-    { title: string; text: string; pages: Array<{ page: number; start: number; end: number }> | null }
+    {
+      title: string
+      text: string
+      pages: Array<{ page: number; start: number; end: number }> | null
+    }
   >()
 
   const items: ExtractedKnowledgeWindowItem[] = []

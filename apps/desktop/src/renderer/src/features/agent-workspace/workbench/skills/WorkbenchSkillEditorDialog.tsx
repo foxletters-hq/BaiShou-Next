@@ -52,10 +52,7 @@ export const WorkbenchSkillEditorDialog: React.FC<{
       >
         {officialHint ? (
           <p className={styles.hint}>
-            {t(
-              'workbench.skills_edit_official_hint',
-              '保存后会写入你的全局技能，不会修改官方文件'
-            )}
+            {t('workbench.skills_edit_official_hint', '保存后会写入你的全局技能，不会修改官方文件')}
           </p>
         ) : null}
         <label className={styles.field}>

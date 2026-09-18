@@ -64,10 +64,7 @@ export const RagMemoryAlerts: React.FC<RagMemoryAlertsProps> = ({
               <View style={styles.batchEmbedActions}>
                 {ragState.paused && !isAborting
                   ? onResumeBatchEmbed && (
-                      <Button
-                        variant="outlined"
-                        onPress={() => void onResumeBatchEmbed()}
-                      >
+                      <Button variant="outlined" onPress={() => void onResumeBatchEmbed()}>
                         {t('settings.rag_batch_embed_resume', '继续')}
                       </Button>
                     )

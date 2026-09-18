@@ -26,24 +26,25 @@ function resolveApiKey(config: AiProviderModel): string {
   return sanitizeApiKeyForHttp(getRotatedApiKey(config) || config.apiKey)
 }
 
-function createOpenCodeGoOpenAiFetch(
-  fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)
-) {
+function createOpenCodeGoOpenAiFetch(fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)) {
   return async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const safeInit = sanitizeRequestInit(init)
     const urlStr = typeof url === 'string' ? url : url.toString()
-    if (urlStr.includes('/chat/completions') && safeInit?.body && typeof safeInit.body === 'string') {
+    if (
+      urlStr.includes('/chat/completions') &&
+      safeInit?.body &&
+      typeof safeInit.body === 'string'
+    ) {
       try {
         const body = JSON.parse(safeInit.body) as Record<string, unknown>
         let mutated = applyOpenAiThinkingBodyInject(body)
         const modelId = typeof body.model === 'string' ? body.model : ''
-        if (
-          modelId.toLowerCase().includes('deepseek') &&
-          Array.isArray(body.messages)
-        ) {
+        if (modelId.toLowerCase().includes('deepseek') && Array.isArray(body.messages)) {
           for (const msg of body.messages) {
             if (msg && typeof msg === 'object') {
-              applyDeepSeekReasoningFields(msg as Parameters<typeof applyDeepSeekReasoningFields>[0])
+              applyDeepSeekReasoningFields(
+                msg as Parameters<typeof applyDeepSeekReasoningFields>[0]
+              )
               mutated = true
             }
           }

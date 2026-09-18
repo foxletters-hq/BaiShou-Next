@@ -38,7 +38,9 @@ function shardMonthForEdge(row: GraphEdgeRawRecord): string {
  * Each collection has its own shards.manifest.json under the subdir.
  * Node shardMonth lives on the record (nodes.idmap.json is no longer written).
  */
-export class GraphRawManager implements RecordCollectionKindManager, GraphIndexSource, GraphExtractRawWriter {
+export class GraphRawManager
+  implements RecordCollectionKindManager, GraphIndexSource, GraphExtractRawWriter
+{
   readonly kind = 'graph' as const
   readonly shape = 'record-collection' as const
 
@@ -177,7 +179,8 @@ export class GraphRawManager implements RecordCollectionKindManager, GraphIndexS
     const kept = rows.filter((row) => !idSet.has(row.id) && !row.deletedAt)
     const hadTarget = rows.some((row) => idSet.has(row.id))
     if (!hadTarget && kept.length === rows.filter((row) => !row.deletedAt).length) return 0
-    const content = kept.length === 0 ? '' : `${kept.map((row) => JSON.stringify(row)).join('\n')}\n`
+    const content =
+      kept.length === 0 ? '' : `${kept.map((row) => JSON.stringify(row)).join('\n')}\n`
     await store.replaceShardContent(shardMonth, content)
     return rows.length - kept.length
   }

@@ -73,10 +73,7 @@ export function SegmentedControl<T extends string>({
             }}
           >
             <Text
-              style={[
-                styles.label,
-                { color: active ? colors.primary : colors.textSecondary }
-              ]}
+              style={[styles.label, { color: active ? colors.primary : colors.textSecondary }]}
               numberOfLines={1}
             >
               {option.label}

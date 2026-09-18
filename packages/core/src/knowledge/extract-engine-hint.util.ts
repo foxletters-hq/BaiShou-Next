@@ -10,9 +10,7 @@ export interface VisionExtractHint {
   emptyPages: number
 }
 
-export function classifyExtractPageText(
-  text: string
-): 'usable' | 'garbled' | 'empty' {
+export function classifyExtractPageText(text: string): 'usable' | 'garbled' | 'empty' {
   const trimmed = text.trim()
   if (trimmed.length < MIN_TEXT_LAYER_CHARS) return 'empty'
   if (isGarbledExtractText(trimmed)) return 'garbled'

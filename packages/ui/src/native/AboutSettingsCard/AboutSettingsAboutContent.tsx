@@ -104,10 +104,7 @@ export const AboutSettingsAboutContent: React.FC<AboutSettingsAboutContentProps>
         )}
       </Text>
 
-      <Button
-        variant="outlined"
-        onPress={() => void Linking.openURL(GITHUB_CONTRIBUTORS_URL)}
-      >
+      <Button variant="outlined" onPress={() => void Linking.openURL(GITHUB_CONTRIBUTORS_URL)}>
         {t('about.view_contributors', '查看项目贡献者')}
       </Button>
 

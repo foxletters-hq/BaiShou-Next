@@ -51,9 +51,9 @@ describe('local-protocol.util', () => {
     expect(parseByteRangeHeader('bytes=-200', 1000)).toEqual({ start: 800, end: 999 })
     expect(parseByteRangeHeader('bytes=0-50', 20)).toEqual({ start: 0, end: 19 })
     expect(parseByteRangeHeader('bytes=2000-2010', 1000)).toBe('unsatisfiable')
-    expect(localProtocolFileResponseHeaders({ contentType: 'application/pdf', size: 80 }).status).toBe(
-      200
-    )
+    expect(
+      localProtocolFileResponseHeaders({ contentType: 'application/pdf', size: 80 }).status
+    ).toBe(200)
     expect(
       localProtocolFileResponseHeaders({
         contentType: 'application/pdf',

@@ -12,7 +12,9 @@ export function useAgentIdleGreeting(enabled: boolean): string {
   const { t } = useTranslation()
   const { services, dbReady } = useBaishou()
   const [nickname, setNickname] = useState('')
-  const [index, setIndex] = useState(() => pickAgentIdleGreetingIndex(AGENT_IDLE_GREETING_KEYS.length))
+  const [index, setIndex] = useState(() =>
+    pickAgentIdleGreetingIndex(AGENT_IDLE_GREETING_KEYS.length)
+  )
   const prevEnabled = useRef(enabled)
 
   useEffect(() => {

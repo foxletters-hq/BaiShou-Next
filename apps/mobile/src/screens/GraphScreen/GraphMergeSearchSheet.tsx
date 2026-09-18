@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View
-} from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { asGraphTranslateFn, translateGraphNodeType } from '@baishou/shared'
 import { FloatingModal, useNativeTheme } from '@baishou/ui/native'
@@ -153,7 +146,10 @@ export function GraphMergeSearchSheet(props: {
           {t('graph.merge_nodes', '合并节点')}
         </Text>
         <Text style={[sheet.lead, { color: colors.textSecondary }]}>
-          {t('graph.merge_search_hint', '当前选中的节点会保留。搜索并加入要合并进来的节点，不需要的可以移出。')}
+          {t(
+            'graph.merge_search_hint',
+            '当前选中的节点会保留。搜索并加入要合并进来的节点，不需要的可以移出。'
+          )}
         </Text>
       </View>
 

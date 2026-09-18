@@ -152,9 +152,7 @@ export const KnowledgeShell: React.FC<KnowledgeShellProps> = ({
         onTogglePinWorkspace={(id, pinned) => setWorkspacePinned(id, pinned)}
         onTogglePinSession={pinSession}
       />
-      <main className={[pageStyles.main, mainClassName].filter(Boolean).join(' ')}>
-        {children}
-      </main>
+      <main className={[pageStyles.main, mainClassName].filter(Boolean).join(' ')}>{children}</main>
       {settingsWorkspace ? (
         <WorkbenchWorkspaceGateSheet
           open={settingsOpen}

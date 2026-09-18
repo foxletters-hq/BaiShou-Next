@@ -1,8 +1,4 @@
-import type {
-  McpClientConfig,
-  McpClientServerEntry,
-  McpClientServerStatus
-} from '@baishou/shared'
+import type { McpClientConfig, McpClientServerEntry, McpClientServerStatus } from '@baishou/shared'
 import {
   buildExternalMcpVercelTools,
   type ExternalMcpToolDescriptor,
@@ -98,7 +94,10 @@ class DesktopMcpClientRuntime {
     )
   }
 
-  async testConnection(url: string, authToken?: string): Promise<{
+  async testConnection(
+    url: string,
+    authToken?: string
+  ): Promise<{
     ok: boolean
     tools?: McpClientListedTool[]
     error?: string

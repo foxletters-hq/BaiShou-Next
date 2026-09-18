@@ -1,13 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Animated
-} from 'react-native'
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, Animated } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import {
   formatLocalDate,
@@ -48,9 +40,7 @@ function FadeSlideIn({ children, animKey }: { children: React.ReactNode; animKey
     ]).start()
   }, [animKey, opacity, translateY])
 
-  return (
-    <Animated.View style={{ opacity, transform: [{ translateY }] }}>{children}</Animated.View>
-  )
+  return <Animated.View style={{ opacity, transform: [{ translateY }] }}>{children}</Animated.View>
 }
 
 export function GraphAwakenWelcome(props: {
@@ -71,9 +61,11 @@ export function GraphAwakenWelcome(props: {
   const [gender, setGender] = useState<UserGender | ''>(
     (initialProfile?.gender as UserGender | undefined) || ''
   )
-  const [errors, setErrors] = useState<{ nickname?: boolean; birthday?: boolean; gender?: boolean }>(
-    {}
-  )
+  const [errors, setErrors] = useState<{
+    nickname?: boolean
+    birthday?: boolean
+    gender?: boolean
+  }>({})
   const [birthdayPickerOpen, setBirthdayPickerOpen] = useState(false)
 
   const birthdayDate = useMemo(() => {
@@ -190,7 +182,9 @@ export function GraphAwakenWelcome(props: {
                 ]}
               />
               {errors.nickname ? (
-                <Text style={styles.error}>{t('graph.awaken_nickname_required', '请填写昵称')}</Text>
+                <Text style={styles.error}>
+                  {t('graph.awaken_nickname_required', '请填写昵称')}
+                </Text>
               ) : null}
 
               <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -232,7 +226,9 @@ export function GraphAwakenWelcome(props: {
                 }}
               />
               {errors.birthday ? (
-                <Text style={styles.error}>{t('graph.awaken_birthday_required', '请选择生日')}</Text>
+                <Text style={styles.error}>
+                  {t('graph.awaken_birthday_required', '请选择生日')}
+                </Text>
               ) : null}
 
               <Text style={[styles.label, { color: colors.textPrimary }]}>
@@ -272,7 +268,11 @@ export function GraphAwakenWelcome(props: {
               ) : null}
 
               <View style={styles.actions}>
-                <Pressable disabled={busy} onPress={() => setStep('welcome')} style={styles.backBtn}>
+                <Pressable
+                  disabled={busy}
+                  onPress={() => setStep('welcome')}
+                  style={styles.backBtn}
+                >
                   <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
                     {t('graph.awaken_back', '返回')}
                   </Text>

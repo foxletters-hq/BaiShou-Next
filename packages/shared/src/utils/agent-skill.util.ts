@@ -1,10 +1,7 @@
 import { isWorkbenchTemplateSkillName, WRITER_SKILL_NAME } from '../constants/writer-skill'
 import type { AgentSkill } from '../types/agent-skill.types'
 import type { PromptShortcut } from '../types/prompt-shortcut.types'
-import {
-  CREATE_SKILL_GUIDE_PROMPT,
-  CREATE_SKILL_SLASH_COMMAND
-} from './create-skill-guide.util'
+import { CREATE_SKILL_GUIDE_PROMPT, CREATE_SKILL_SLASH_COMMAND } from './create-skill-guide.util'
 
 const SKILL_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const SKILL_PROPERTY_LINE_RE = /^([A-Za-z][\w-]*)\s*:\s*(.*)$/
@@ -216,10 +213,7 @@ export function isRetiredOfficialSkillName(name: string): boolean {
 }
 
 /** 安装目录里不再作为日常官方技能列出：写作模板 + 已退役的总结/翻译 */
-export function isHiddenBundledSoftwareSkill(skill: {
-  name: string
-  source?: string
-}): boolean {
+export function isHiddenBundledSoftwareSkill(skill: { name: string; source?: string }): boolean {
   if (skill.source === 'workspace' || skill.source === 'user') return false
   return isWorkbenchTemplateSkillName(skill.name) || isRetiredOfficialSkillName(skill.name)
 }

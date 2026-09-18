@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  estimateContextOccupancySegments,
-  lastRoundPromptTokens
-} from '../context-occupancy.util'
+import { estimateContextOccupancySegments, lastRoundPromptTokens } from '../context-occupancy.util'
 
 describe('lastRoundPromptTokens', () => {
   it('should sum uncached input and cache tokens', () => {

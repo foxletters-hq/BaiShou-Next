@@ -291,8 +291,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
   }
 
   const capabilityState = capabilityStateFromConfig(config, scene)
-  const securityMode =
-    scene === 'workspace' ? resolveWorkspaceSecurityMode(config) : 'auto_review'
+  const securityMode = scene === 'workspace' ? resolveWorkspaceSecurityMode(config) : 'auto_review'
   const customMatrixExpanded = showCustomMatrix
   const commandBlacklist =
     config.commandBlacklist && config.commandBlacklist.length > 0
@@ -522,9 +521,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     </span>
                   </div>
                   <span
-                    className={`settings-expansion-toggle ${
-                      customMatrixExpanded ? 'is-open' : ''
-                    }`}
+                    className={`settings-expansion-toggle ${customMatrixExpanded ? 'is-open' : ''}`}
                     aria-hidden
                   >
                     <ChevronDown className="settings-expansion-arrow" size={16} />
@@ -618,11 +615,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                               )}
                               disabled={saving}
                             />
-                            <Button
-                              type="button"
-                              disabled={saving}
-                              onClick={addTrustedDir}
-                            >
+                            <Button type="button" disabled={saving} onClick={addTrustedDir}>
                               {t('common.add', '添加')}
                             </Button>
                           </div>
@@ -893,11 +886,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     placeholder="e.g. workspace_run"
                     disabled={saving}
                   />
-                  <Button
-                    type="button"
-                    disabled={saving}
-                    onClick={addExclusion}
-                  >
+                  <Button type="button" disabled={saving} onClick={addExclusion}>
                     {t('common.add', '添加')}
                   </Button>
                 </div>
@@ -997,11 +986,7 @@ export const BaishouAgentGateSettingsSection: React.FC<BaishouAgentGateSettingsS
                     ]}
                     onChange={(e) => setRuleEffect(e.target.value as AgentGateEffect)}
                   />
-                  <Button
-                    type="button"
-                    disabled={saving}
-                    onClick={addPermissionRule}
-                  >
+                  <Button type="button" disabled={saving} onClick={addPermissionRule}>
                     {t('common.add', '添加')}
                   </Button>
                 </div>

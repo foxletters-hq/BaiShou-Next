@@ -105,7 +105,6 @@ export const DiaryEditorPage: React.FC = () => {
         onReadAloud={handleReadAloud}
         isTtsPlaying={tts.ttsPlayingMsgId === DIARY_TTS_PLAYBACK_ID}
       />
-
     </motion.div>
   )
 }

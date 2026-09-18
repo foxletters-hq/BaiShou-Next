@@ -165,9 +165,7 @@ export function fromWorkspaceGatePolicyV2(policy: WorkspaceGatePolicyV2): Baisho
     scopePreset: policy.scopePreset,
     approvalPreset: policy.approvalPreset,
     securityMode: policy.securityMode,
-    commandBlacklist: [
-      ...(policy.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)
-    ]
+    commandBlacklist: [...(policy.commandBlacklist ?? DEFAULT_WORKSPACE_COMMAND_BLACKLIST)]
   }
 }
 

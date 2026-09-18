@@ -47,10 +47,7 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
       <div className={styles.viewField}>
         <div className={styles.viewFieldLabel}>{t('graph.focus_depth', '展开等级')}</div>
         <p className={styles.viewFieldHint}>
-          {t(
-            'graph.focus_depth_hint',
-            '选中节点后，高亮其周围几级关系（1=直接相连，2=再扩一层）'
-          )}
+          {t('graph.focus_depth_hint', '选中节点后，高亮其周围几级关系（1=直接相连，2=再扩一层）')}
         </p>
         <div
           className={styles.depthSeg}
@@ -228,9 +225,7 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
                 max={GRAPH_FORCE_RANGES.centerStrength.max}
                 step={GRAPH_FORCE_RANGES.centerStrength.step}
                 value={forceSettings.centerStrength}
-                onChange={(event) =>
-                  onForceChange({ centerStrength: Number(event.target.value) })
-                }
+                onChange={(event) => onForceChange({ centerStrength: Number(event.target.value) })}
               />
             </label>
             <label className={styles.settingsSliderRow}>
@@ -244,9 +239,7 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
                 max={GRAPH_FORCE_RANGES.chargeStrength.max}
                 step={GRAPH_FORCE_RANGES.chargeStrength.step}
                 value={forceSettings.chargeStrength}
-                onChange={(event) =>
-                  onForceChange({ chargeStrength: Number(event.target.value) })
-                }
+                onChange={(event) => onForceChange({ chargeStrength: Number(event.target.value) })}
               />
             </label>
             <label className={styles.settingsSliderRow}>
@@ -274,9 +267,7 @@ export const GraphCanvasSettingsPanel: React.FC<GraphCanvasSettingsPanelProps> =
                 max={GRAPH_FORCE_RANGES.linkDistance.max}
                 step={GRAPH_FORCE_RANGES.linkDistance.step}
                 value={forceSettings.linkDistance}
-                onChange={(event) =>
-                  onForceChange({ linkDistance: Number(event.target.value) })
-                }
+                onChange={(event) => onForceChange({ linkDistance: Number(event.target.value) })}
               />
             </label>
           </div>

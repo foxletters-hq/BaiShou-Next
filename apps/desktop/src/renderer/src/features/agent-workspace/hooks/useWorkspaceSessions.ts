@@ -67,9 +67,7 @@ export function useWorkspaceSessions() {
     } catch (error) {
       pendingPinsRef.current.delete(sessionId)
       setSessions((prev) =>
-        prev.map((item) =>
-          item.sessionId === sessionId ? { ...item, isPinned: !pinned } : item
-        )
+        prev.map((item) => (item.sessionId === sessionId ? { ...item, isPinned: !pinned } : item))
       )
       throw error
     }

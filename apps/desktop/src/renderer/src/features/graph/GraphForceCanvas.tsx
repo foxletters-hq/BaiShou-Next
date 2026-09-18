@@ -327,8 +327,7 @@ export const GraphForceCanvas: React.FC<{
     }
 
     resize()
-    const ro =
-      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => resize()) : null
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => resize()) : null
     if (ro && canvas.parentElement) ro.observe(canvas.parentElement)
     window.addEventListener('resize', resize)
     return () => {
@@ -372,9 +371,7 @@ export const GraphForceCanvas: React.FC<{
         (locateIdsRef.current?.length || selectedRef.current)
       ) {
         easeCameraTowardSelected({
-          k: pendingZoomRef.current
-            ? Math.max(transformRef.current.k, LOCATE_TARGET_K)
-            : undefined,
+          k: pendingZoomRef.current ? Math.max(transformRef.current.k, LOCATE_TARGET_K) : undefined,
           alpha: CAMERA_FOLLOW_LERP
         })
       } else if (pendingZoomRef.current && followUntilRef.current <= performance.now()) {
@@ -497,7 +494,9 @@ export const GraphForceCanvas: React.FC<{
     const nextNodes = nodes.filter((n) => !isRejected(n.reviewStatus))
     const nextIdSet = new Set(nextNodes.map((n) => n.id))
     const nextLinks = edges
-      .filter((e) => !isRejected(e.reviewStatus) && nextIdSet.has(e.fromId) && nextIdSet.has(e.toId))
+      .filter(
+        (e) => !isRejected(e.reviewStatus) && nextIdSet.has(e.fromId) && nextIdSet.has(e.toId)
+      )
       .map((e) => ({
         id: e.id,
         edgeType: e.edgeType,
@@ -937,7 +936,13 @@ export const GraphForceCanvas: React.FC<{
   return (
     <canvas
       ref={canvasRef}
-      style={{ width: '100%', height: '100%', display: 'block', cursor: 'move', touchAction: 'none' }}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'block',
+        cursor: 'move',
+        touchAction: 'none'
+      }}
     />
   )
 }

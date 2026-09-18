@@ -34,8 +34,7 @@ export function buildModelReasoningPreviewMap(
 ): ModelReasoningPreviewMap {
   const out: ModelReasoningPreviewMap = {}
   for (const p of providers) {
-    const models =
-      p.enabledModels && p.enabledModels.length > 0 ? p.enabledModels : p.models || []
+    const models = p.enabledModels && p.enabledModels.length > 0 ? p.enabledModels : p.models || []
     for (const modelId of models) {
       const key = reasoningEffortModelKey(p.id, modelId)
       out[key] = { effort: getReasoningEffortForModel(p.id, modelId) }

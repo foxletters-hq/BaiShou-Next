@@ -12,12 +12,18 @@ export interface WorkbenchExplorerDndPayload {
   entries?: WorkbenchExplorerDndEntry[]
 }
 
-export function isCopyDragModifier(event: { ctrlKey: boolean; altKey: boolean; metaKey: boolean }): boolean {
+export function isCopyDragModifier(event: {
+  ctrlKey: boolean
+  altKey: boolean
+  metaKey: boolean
+}): boolean {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
   return isMac ? event.altKey : event.ctrlKey
 }
 
-export function parseExplorerDndPayload(dataTransfer: DataTransfer | null): WorkbenchExplorerDndPayload | null {
+export function parseExplorerDndPayload(
+  dataTransfer: DataTransfer | null
+): WorkbenchExplorerDndPayload | null {
   if (!dataTransfer) return null
   const raw = dataTransfer.getData(WORKBENCH_EXPLORER_DND_MIME)
   if (!raw) return null
@@ -30,7 +36,10 @@ export function parseExplorerDndPayload(dataTransfer: DataTransfer | null): Work
       .filter(Boolean)
     const entries = Array.isArray(parsed.entries)
       ? parsed.entries
-          .filter((entry): entry is WorkbenchExplorerDndEntry => Boolean(entry) && typeof entry.relativePath === 'string')
+          .filter(
+            (entry): entry is WorkbenchExplorerDndEntry =>
+              Boolean(entry) && typeof entry.relativePath === 'string'
+          )
           .map((entry) => ({
             relativePath: normalizeRelativePath(entry.relativePath),
             isDirectory: entry.isDirectory === true

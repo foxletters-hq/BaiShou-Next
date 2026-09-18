@@ -2,11 +2,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Checkbox } from '@baishou/ui'
 import { Modal } from '@baishou/ui/desktop/Modal/Modal'
-import {
-  SIDEBAR_NAV_GROUPS,
-  buildSidebarNavItems,
-  type SidebarNavId
-} from './sidebar-nav-catalog'
+import { SIDEBAR_NAV_GROUPS, buildSidebarNavItems, type SidebarNavId } from './sidebar-nav-catalog'
 import styles from './SidebarManageModal.module.css'
 
 interface SidebarManageModalProps {

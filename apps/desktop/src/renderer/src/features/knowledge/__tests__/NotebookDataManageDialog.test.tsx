@@ -46,7 +46,13 @@ vi.mock('@baishou/ui', () => ({
     isOpen: boolean
     title?: string
     children?: ReactNode
-  }) => (isOpen ? <div>{title}{children}</div> : null),
+  }) =>
+    isOpen ? (
+      <div>
+        {title}
+        {children}
+      </div>
+    ) : null,
   SegmentedControl: ({
     value,
     options,
@@ -76,9 +82,7 @@ describe('NotebookDataManageDialog', () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
 
-    render(
-      <NotebookDataManageDialog open busy={false} onClose={vi.fn()} onConfirm={onConfirm} />
-    )
+    render(<NotebookDataManageDialog open busy={false} onClose={vi.fn()} onConfirm={onConfirm} />)
 
     await user.click(screen.getAllByRole('checkbox')[1])
     const submit = screen.getAllByRole('button', { name: '重整理数据' }).at(-1)
@@ -95,9 +99,7 @@ describe('NotebookDataManageDialog', () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
 
-    render(
-      <NotebookDataManageDialog open busy={false} onClose={vi.fn()} onConfirm={onConfirm} />
-    )
+    render(<NotebookDataManageDialog open busy={false} onClose={vi.fn()} onConfirm={onConfirm} />)
 
     await user.click(screen.getByRole('button', { name: '清除数据' }))
     const clearSubmit = () => screen.getAllByRole('button', { name: '清除数据' }).at(-1)!

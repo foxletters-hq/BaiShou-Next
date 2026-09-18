@@ -42,7 +42,9 @@ function createFakeGit(handlers: Record<string, () => Promise<WorkspaceGitComman
   return { runGit, calls }
 }
 
-function createFakeShadowFs(options: { initialized?: boolean; sizes?: Record<string, number> } = {}) {
+function createFakeShadowFs(
+  options: { initialized?: boolean; sizes?: Record<string, number> } = {}
+) {
   const present = new Set<string>()
   const written = new Map<string, string>()
   const removed: string[] = []

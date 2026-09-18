@@ -34,8 +34,5 @@ export function notebookGraphDeletedShardPaths(notebookId: string, sourceId: str
   const nb = notebookId.trim()
   const src = sourceId.trim()
   if (!nb || !src) return []
-  return [
-    `Notebooks/${nb}/graph/nodes/${src}.jsonl`,
-    `Notebooks/${nb}/graph/edges/${src}.jsonl`
-  ]
+  return [`Notebooks/${nb}/graph/nodes/${src}.jsonl`, `Notebooks/${nb}/graph/edges/${src}.jsonl`]
 }

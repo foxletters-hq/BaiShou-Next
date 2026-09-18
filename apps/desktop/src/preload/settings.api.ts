@@ -54,8 +54,7 @@ export const settingsApi = {
     setSearchModeEnabled: (enabled: boolean) =>
       ipcRenderer.invoke('settings:set-search-mode-enabled', enabled),
 
-    getGraphSelfNameConfigured: () =>
-      ipcRenderer.invoke('settings:get-graph-self-name-configured'),
+    getGraphSelfNameConfigured: () => ipcRenderer.invoke('settings:get-graph-self-name-configured'),
     setGraphSelfNameConfigured: (configured: boolean) =>
       ipcRenderer.invoke('settings:set-graph-self-name-configured', configured),
 

@@ -2,13 +2,13 @@
 
 ## 和现有审查的差别
 
-| | 待办审查 | `/code-review` / Bugbot | 安全审查 |
-|---|---|---|---|
-| 问题 | 断言现在是否成立 | 这次改动引入了什么问题 | 这次改动有没有安全问题 |
-| 输入 | 待办 / 计划 / 断言清单 / 过期复查 | 相关代码或相对基线的 diff | 相对基线的 diff |
-| 证据 | `path:line` + 本轮跑绿的测试 | 缺陷位置 | 缺陷位置 |
-| 「明确不做」 | 必须单列，禁止报成 bug | 无 | 无 |
-| 输出 | Canvas 断言表 | Findings（按严重程度） | 同左 |
+|              | 待办审查                          | `/code-review` / Bugbot   | 安全审查               |
+| ------------ | --------------------------------- | ------------------------- | ---------------------- |
+| 问题         | 断言现在是否成立                  | 这次改动引入了什么问题    | 这次改动有没有安全问题 |
+| 输入         | 待办 / 计划 / 断言清单 / 过期复查 | 相关代码或相对基线的 diff | 相对基线的 diff        |
+| 证据         | `path:line` + 本轮跑绿的测试      | 缺陷位置                  | 缺陷位置               |
+| 「明确不做」 | 必须单列，禁止报成 bug            | 无                        | 无                     |
+| 输出         | Canvas 断言表                     | Findings（按严重程度）    | 同左                   |
 
 `/code-review` 或 Bugbot 绿了只说明「这次改动没扫出新问题」，不说明「待办里的断言已经落地」。
 
@@ -44,17 +44,7 @@
 写画布前先读 Cursor canvas skill。只导入 `cursor/canvas`。颜色只用 `useHostTheme()`。
 
 ```tsx
-import {
-  BarChart,
-  Callout,
-  H1,
-  Pill,
-  Stack,
-  Stat,
-  Table,
-  Text,
-  useHostTheme
-} from 'cursor/canvas'
+import { BarChart, Callout, H1, Pill, Stack, Stat, Table, Text, useHostTheme } from 'cursor/canvas'
 ```
 
 状态靠 `Table` 的 `rowTone` 上色：通过 `success`，未核实 `warning`，明确不做 `info`，缺口 `danger`。不要用 `Pill` 的 tone（会被忽略）。  

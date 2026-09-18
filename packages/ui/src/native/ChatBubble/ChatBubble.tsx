@@ -256,10 +256,13 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                     onImagePress={(_src, resolvedUri) => setPreviewImageUri(resolvedUri)}
                   />
                 </View>
-              ) : !isAssistant && (message.content || message.skillRefs?.length || message.fileRefs?.length) ? (
+              ) : !isAssistant &&
+                (message.content || message.skillRefs?.length || message.fileRefs?.length) ? (
                 <View>
                   {message.skillRefs?.length ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                    <View
+                      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
+                    >
                       {message.skillRefs.map((ref) => (
                         <Text key={ref.command} style={{ color: colors.primary }}>
                           /{ref.command}
@@ -268,7 +271,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
                     </View>
                   ) : null}
                   {message.fileRefs?.length ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                    <View
+                      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
+                    >
                       {message.fileRefs.map((ref) => (
                         <Text key={ref.relativePath} style={{ color: colors.textSecondary }}>
                           @{ref.relativePath}

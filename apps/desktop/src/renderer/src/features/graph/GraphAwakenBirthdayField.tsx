@@ -107,10 +107,7 @@ export const GraphAwakenBirthdayField: React.FC<GraphAwakenBirthdayFieldProps> =
   }, [open, pickerYear, pickerMonth, pickerDay])
 
   const daysInMonth = new Date(pickerYear, pickerMonth, 0).getDate()
-  const days = useMemo(
-    () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
-    [daysInMonth]
-  )
+  const days = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth])
 
   useEffect(() => {
     if (pickerDay > daysInMonth) setPickerDay(daysInMonth)
@@ -158,9 +155,7 @@ export const GraphAwakenBirthdayField: React.FC<GraphAwakenBirthdayFieldProps> =
             <button type="button" className={styles.cancelBtn} onClick={close}>
               {t('common.cancel', '取消')}
             </button>
-            <span className={styles.headerTitle}>
-              {t('graph.awaken_birthday_label', '生日')}
-            </span>
+            <span className={styles.headerTitle}>{t('graph.awaken_birthday_label', '生日')}</span>
             <button type="button" className={styles.confirmBtn} onClick={confirm}>
               {t('common.confirm', '确认')}
             </button>

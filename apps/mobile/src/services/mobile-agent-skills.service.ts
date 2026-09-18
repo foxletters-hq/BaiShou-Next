@@ -56,7 +56,9 @@ export async function mobileListSkillShortcuts(): Promise<PromptShortcut[]> {
 
   const listed: PromptShortcut[] = []
   for (const root of roots) {
-    listed.push(...(await readSkillsFromRoot(root.path, root.source === 'user' ? 'user' : 'software')))
+    listed.push(
+      ...(await readSkillsFromRoot(root.path, root.source === 'user' ? 'user' : 'software'))
+    )
   }
   if (listed.length > 0) return listed
   return DEFAULT_AGENT_SKILLS.map((skill) =>

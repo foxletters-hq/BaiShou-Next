@@ -25,9 +25,7 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size = 14 
       >
         <div className={styles.helpContent}>
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              {t('graph.extract_help_extract_title', '抽取')}
-            </h3>
+            <h3 className={styles.sectionTitle}>{t('graph.extract_help_extract_title', '抽取')}</h3>
             <p className={styles.sectionBody}>
               {t(
                 'graph.extract_help_extract',
@@ -36,9 +34,7 @@ export const GraphExtractHelpButton: React.FC<{ size?: number }> = ({ size = 14 
             </p>
           </section>
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              {t('graph.extract_help_pool_title', '抽取池')}
-            </h3>
+            <h3 className={styles.sectionTitle}>{t('graph.extract_help_pool_title', '抽取池')}</h3>
             <p className={styles.sectionBody}>
               {t(
                 'graph.extract_help_pool',

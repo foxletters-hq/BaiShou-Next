@@ -1,10 +1,6 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import {
-  isValidSkillName,
-  parseSkillMarkdown,
-  type AgentSkill
-} from '@baishou/shared'
+import { isValidSkillName, parseSkillMarkdown, type AgentSkill } from '@baishou/shared'
 import { SKILL_FILE_NAME, WORKSPACE_SKILL_RELATIVE_DIRS } from './agent-skills.util'
 
 export function resolveWorkspaceSkillRoots(folderRoot: string): string[] {

@@ -100,10 +100,7 @@ export const StorageSettingsCard: React.FC<NativeStorageSettingsCardProps> = ({
       {onChangeDirectory || onMigrateDirectory || onMigrateFromFlutterLegacy ? (
         <View style={styles.actions}>
           {onMigrateFromFlutterLegacy ? (
-            <Button
-              variant="outlined"
-              onPress={() => void onMigrateFromFlutterLegacy()}
-            >
+            <Button variant="outlined" onPress={() => void onMigrateFromFlutterLegacy()}>
               {migrateFromFlutterLegacyLabel ??
                 t('storage.flutter_legacy_migration_settings_action', '从旧版白守迁移数据')}
             </Button>

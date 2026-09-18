@@ -165,8 +165,7 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
       timer = setTimeout(flush, 80)
     }
     const onTreeRefresh = (event: Event) => {
-      const detail = (event as CustomEvent<{ relativePath?: string; previousPath?: string }>)
-        .detail
+      const detail = (event as CustomEvent<{ relativePath?: string; previousPath?: string }>).detail
       queueRefresh(detail?.relativePath, detail?.previousPath)
     }
     const unsubscribeFs = window.api.agentWorkspace.onFsChanged?.((payload) => {
@@ -246,8 +245,7 @@ export function useWorkbenchFileTree(folderRoot: string | null) {
   }, [collapseAllFolders, expandCollapsedFolders, expandedPaths])
 
   const canCollapseAllFolders = explorerHasCollapsibleFolders(expandedPaths)
-  const canToggleAllFolders =
-    canCollapseAllFolders || rootChildren.some((node) => node.isDirectory)
+  const canToggleAllFolders = canCollapseAllFolders || rootChildren.some((node) => node.isDirectory)
 
   const isExpanded = useCallback(
     (relativePath: string) => expandedPaths.has(relativePath),

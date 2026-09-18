@@ -21,9 +21,7 @@ vi.mock('@baishou/ui', () => ({
   }: {
     'aria-label': string
     onActivate: () => void
-  }) => (
-    <button type="button" aria-label={ariaLabel} onClick={onActivate} />
-  ),
+  }) => <button type="button" aria-label={ariaLabel} onClick={onActivate} />,
   Modal: ({
     isOpen,
     title,

@@ -7,7 +7,9 @@ export const DEFAULT_OCR_CONCURRENCY = RECOMMENDED_OCR_CONCURRENCY
 /** 将用户配置的 OCR / 视觉识图并发限制在 1–10。 */
 export function clampOcrConcurrency(value: number | undefined | null): number {
   const n =
-    typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : DEFAULT_OCR_CONCURRENCY
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.floor(value)
+      : DEFAULT_OCR_CONCURRENCY
   return Math.max(OCR_CONCURRENCY_MIN, Math.min(OCR_CONCURRENCY_MAX, n))
 }
 

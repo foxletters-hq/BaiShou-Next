@@ -28,10 +28,7 @@ import {
   runControlledDiaryBatchEmbed,
   runControlledDiaryBatchEmbedCore
 } from './mobile-rag-batch-embed.helpers'
-import {
-  isMobileRagBatchBusy,
-  setReembedInFlight
-} from './mobile-rag-state.helpers'
+import { isMobileRagBatchBusy, setReembedInFlight } from './mobile-rag-state.helpers'
 import {
   getMobileMemoryRawManager,
   getMobileRawDataSourceManager

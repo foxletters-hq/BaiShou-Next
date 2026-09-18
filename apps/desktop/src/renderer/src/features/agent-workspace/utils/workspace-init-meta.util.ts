@@ -19,7 +19,9 @@ function storageKey(sessionId: string): string {
 }
 
 function isValidInitMeta(value: unknown): value is WorkspaceInitSendMeta {
-  return Boolean(value && typeof value === 'object' && typeof (value as WorkspaceInitSendMeta).text === 'string')
+  return Boolean(
+    value && typeof value === 'object' && typeof (value as WorkspaceInitSendMeta).text === 'string'
+  )
 }
 
 function toPersistableAttachments(attachments?: unknown[]): unknown[] | undefined {

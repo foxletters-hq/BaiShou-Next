@@ -6,9 +6,9 @@ describe('decideHelpDocsNavigation', () => {
     expect(isHelpDocsInAppUrl('https://foxletters.com/docs/getting-started/quick-start/')).toBe(
       true
     )
-    expect(decideHelpDocsNavigation('https://foxletters.com/docs/getting-started/quick-start/')).toBe(
-      'allow'
-    )
+    expect(
+      decideHelpDocsNavigation('https://foxletters.com/docs/getting-started/quick-start/')
+    ).toBe('allow')
   })
 
   it('should open other http urls outside the webview', () => {

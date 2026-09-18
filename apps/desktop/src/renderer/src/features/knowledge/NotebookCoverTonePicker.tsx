@@ -50,7 +50,11 @@ export const NotebookCoverTonePicker: React.FC<NotebookCoverTonePickerProps> = (
   const { t } = useTranslation()
 
   return (
-    <div className={styles.tonePicker} role="radiogroup" aria-label={t('knowledge.cover_tone', '封面颜色')}>
+    <div
+      className={styles.tonePicker}
+      role="radiogroup"
+      aria-label={t('knowledge.cover_tone', '封面颜色')}
+    >
       {NOTEBOOK_CARD_TONES.map((tone) => {
         const selected = value === tone
         const label = t(TONE_LABEL_KEY[tone], TONE_LABEL_FALLBACK[tone])

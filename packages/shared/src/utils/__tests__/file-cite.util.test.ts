@@ -41,8 +41,6 @@ describe('file-cite.util', () => {
   })
 
   it('drops unsafe relative paths', () => {
-    expect(
-      resolveUserFileDisplay('x', [{ relativePath: '../secret.ts' }]).fileRefs
-    ).toEqual([])
+    expect(resolveUserFileDisplay('x', [{ relativePath: '../secret.ts' }]).fileRefs).toEqual([])
   })
 })

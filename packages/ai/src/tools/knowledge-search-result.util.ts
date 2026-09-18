@@ -37,10 +37,7 @@ export function takeGroupedKnowledgeHits(
   return taken
 }
 
-export function formatKnowledgeSearchHits(
-  query: string,
-  hits: ToolKnowledgeSearchHit[]
-): string {
+export function formatKnowledgeSearchHits(query: string, hits: ToolKnowledgeSearchHit[]): string {
   const usable = takeGroupedKnowledgeHits(hits)
   if (usable.length === 0) {
     if (hits.length > 0) {
@@ -60,11 +57,7 @@ export function formatKnowledgeSearchHits(
     groups.set(key, list)
   }
 
-  const blocks: string[] = [
-    `## 知识库检索`,
-    `查询：${query}`,
-    `可用片段 ${usable.length} 条`
-  ]
+  const blocks: string[] = [`## 知识库检索`, `查询：${query}`, `可用片段 ${usable.length} 条`]
   let index = 1
   for (const [name, group] of groups) {
     blocks.push(`### ${name}`)

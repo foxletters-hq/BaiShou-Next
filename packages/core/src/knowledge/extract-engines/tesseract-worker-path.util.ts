@@ -20,7 +20,9 @@ export function isUsableTesseractNodeWorkerPath(
  * Vite 把 tesseract.js 打进 out/main 后，包内默认 `__dirname/../../worker-script`
  * 会落到 `apps/desktop/worker-script`，工作线程加载失败并变成主进程未捕获异常。
  */
-export function resolveTesseractNodeWorkerPath(requireFrom: string = import.meta.url): string | null {
+export function resolveTesseractNodeWorkerPath(
+  requireFrom: string = import.meta.url
+): string | null {
   try {
     const req = createRequire(requireFrom)
     const packageRoot = path.dirname(req.resolve('tesseract.js/package.json'))

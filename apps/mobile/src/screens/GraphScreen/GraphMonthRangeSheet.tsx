@@ -42,12 +42,7 @@ function rangeFromMonthsBack(months: number): GraphMonthRange {
 /**
  * Mobile month-range picker: presets + start/end year-month selection via FloatingModal.
  */
-export function GraphMonthRangeSheet({
-  value,
-  onChange,
-  block,
-  style
-}: GraphMonthRangeSheetProps) {
+export function GraphMonthRangeSheet({ value, onChange, block, style }: GraphMonthRangeSheetProps) {
   const { t } = useTranslation()
   const { colors } = useNativeTheme()
   const [open, setOpen] = useState(false)

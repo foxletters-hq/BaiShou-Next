@@ -42,9 +42,7 @@ describe('skill-cite.util', () => {
   })
 
   it('shows cite chips from skillRefs alone without requiring /command in text', () => {
-    const resolved = resolveUserSkillDisplay('', [
-      { command: 'translate', content: '翻译指南' }
-    ])
+    const resolved = resolveUserSkillDisplay('', [{ command: 'translate', content: '翻译指南' }])
     expect(resolved.segments).toEqual([
       { type: 'skill', command: 'translate', content: '翻译指南' }
     ])

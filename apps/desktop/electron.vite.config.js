@@ -64,7 +64,13 @@ export default defineConfig({
       alias: workspaceAliases
     },
     ssr: {
-      external: ['better-sqlite3', 'sqlite-vec', 'tesseract.js', 'tesseract.js-core', '@libsql/client']
+      external: [
+        'better-sqlite3',
+        'sqlite-vec',
+        'tesseract.js',
+        'tesseract.js-core',
+        '@libsql/client'
+      ]
     },
     build: {
       rollupOptions: {

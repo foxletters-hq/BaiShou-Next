@@ -24,14 +24,7 @@ describe('graph pending selection keys', () => {
 
   it('splits selected keys and drops duplicates', () => {
     expect(
-      splitGraphReviewSelection([
-        'node:a',
-        'edge:e1',
-        'node:a',
-        'edge:e1',
-        'bad',
-        'node:b'
-      ])
+      splitGraphReviewSelection(['node:a', 'edge:e1', 'node:a', 'edge:e1', 'bad', 'node:b'])
     ).toEqual({ nodeIds: ['a', 'b'], edgeIds: ['e1'] })
   })
 })

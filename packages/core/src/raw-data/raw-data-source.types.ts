@@ -36,10 +36,7 @@ export interface ShardsManifest {
 }
 
 export type { MemoryRawRecord } from '@baishou/shared'
-export type {
-  GraphNodeRawRecord,
-  GraphEdgeRawRecord
-} from '@baishou/shared'
+export type { GraphNodeRawRecord, GraphEdgeRawRecord } from '@baishou/shared'
 
 /** Appendix B.4 — extract-state cursor (P2 uses; P1 stores only) */
 export interface GraphExtractStateRawRecord {

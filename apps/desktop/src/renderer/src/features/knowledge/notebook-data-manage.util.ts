@@ -19,10 +19,7 @@ export type NotebookDataManageResult = {
   graphQueued: number
 }
 
-export function notebookDataManageHasTarget(input: {
-  vector: boolean
-  graph: boolean
-}): boolean {
+export function notebookDataManageHasTarget(input: { vector: boolean; graph: boolean }): boolean {
   return input.vector || input.graph
 }
 
@@ -89,9 +86,7 @@ export function notebookDataManageStatusKind(
   return result.sourceCount <= 0 ? 'reprocess-empty' : 'reprocess-none'
 }
 
-export function notebookDataManageFeedback(
-  kind: NotebookDataManageStatusKind
-): 'toast' | 'banner' {
+export function notebookDataManageFeedback(kind: NotebookDataManageStatusKind): 'toast' | 'banner' {
   return kind === 'reprocess-empty' || kind === 'reprocess-none' ? 'toast' : 'banner'
 }
 

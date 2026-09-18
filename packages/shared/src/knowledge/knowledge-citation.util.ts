@@ -58,7 +58,9 @@ export function parseKnowledgeSearchToolResult(result: unknown): {
   if (typeof obj.text !== 'string' || !Array.isArray(obj.citations)) return null
   return {
     text: obj.text,
-    citations: obj.citations.map(normalizeCitation).filter((row): row is KnowledgeCitationView => row != null)
+    citations: obj.citations
+      .map(normalizeCitation)
+      .filter((row): row is KnowledgeCitationView => row != null)
   }
 }
 

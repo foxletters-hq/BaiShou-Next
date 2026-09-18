@@ -9,7 +9,11 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, fallbackOrOptions?: string | Record<string, unknown>, options?: Record<string, unknown>) => {
+      t: (
+        key: string,
+        fallbackOrOptions?: string | Record<string, unknown>,
+        options?: Record<string, unknown>
+      ) => {
         const fallback = typeof fallbackOrOptions === 'string' ? fallbackOrOptions : key
         const vars = typeof fallbackOrOptions === 'object' ? fallbackOrOptions : options
         const count = vars && typeof vars.count === 'number' ? vars.count : undefined

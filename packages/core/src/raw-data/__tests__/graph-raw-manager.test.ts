@@ -218,7 +218,10 @@ describe('GraphRawManager', () => {
       reviewStatus: 'approved' as const
     }
     await manager.writeRecord(base, { collection: 'nodes' })
-    await manager.writeRecord({ ...base, updatedAt: now + 1, summary: 'v2' }, { collection: 'nodes' })
+    await manager.writeRecord(
+      { ...base, updatedAt: now + 1, summary: 'v2' },
+      { collection: 'nodes' }
+    )
     const compacted = await manager.compactShard('nodes', '2026-08')
     expect(compacted.rows).toBe(1)
     const rows = await manager.readCollapsedNodes('2026-08')

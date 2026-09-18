@@ -24,10 +24,7 @@ async function probePdfNumPages(filePath: string): Promise<number | null> {
   }
 }
 
-async function extractPdfPageTextsLimited(
-  filePath: string,
-  maxPages?: number
-): Promise<string[]> {
+async function extractPdfPageTextsLimited(filePath: string, maxPages?: number): Promise<string[]> {
   const pdfParse = nodeRequire('pdf-parse') as (
     buffer: Buffer,
     options?: { pagerender?: (pageData: unknown) => Promise<string> }
@@ -75,7 +72,10 @@ async function extractPdfPageTextsLimited(
       const text = (data.text || '').trim()
       const n = Number(data.numpages ?? numPages ?? 0)
       if (n > 0) {
-        const pages = Array.from({ length: Math.min(n, Number.isFinite(limit) ? limit : n) }, () => '')
+        const pages = Array.from(
+          { length: Math.min(n, Number.isFinite(limit) ? limit : n) },
+          () => ''
+        )
         if (text) pages[0] = text
         return pages
       }

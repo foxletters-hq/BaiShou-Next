@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AgentWorkspaceEntry } from '@baishou/shared'
 import { formatCompactRelativeTime, sortAgentWorkspaces } from '../workspace-display.util'
 
-function workspace(
-  id: string,
-  updatedAt: string,
-  pinnedAt?: string | null
-): AgentWorkspaceEntry {
+function workspace(id: string, updatedAt: string, pinnedAt?: string | null): AgentWorkspaceEntry {
   return {
     id,
     folderRoot: `D:/${id}`,
@@ -17,20 +13,12 @@ function workspace(
   }
 }
 
-function translateFallback(
-  _key: string,
-  fallback: string,
-  options?: { count?: number }
-): string {
+function translateFallback(_key: string, fallback: string, options?: { count?: number }): string {
   if (options?.count == null) return fallback
   return fallback.replaceAll('{{count}}', String(options.count))
 }
 
-function translateEnglish(
-  key: string,
-  fallback: string,
-  options?: { count?: number }
-): string {
+function translateEnglish(key: string, fallback: string, options?: { count?: number }): string {
   const en: Record<string, string> = {
     'common.compact_just_now': 'now',
     'common.compact_minutes': '{{count}}m',
@@ -40,11 +28,7 @@ function translateEnglish(
   return translateFallback(key, en[key] ?? fallback, options)
 }
 
-function translateJapanese(
-  key: string,
-  fallback: string,
-  options?: { count?: number }
-): string {
+function translateJapanese(key: string, fallback: string, options?: { count?: number }): string {
   const ja: Record<string, string> = {
     'common.compact_just_now': '今',
     'common.compact_minutes': '{{count}}分',

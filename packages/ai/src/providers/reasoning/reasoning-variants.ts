@@ -68,7 +68,11 @@ export function listReasoningVariants(ctx: ListReasoningVariantsContext): Reason
       if (efforts.length === 0 && isMiniMaxM3Model(modelId)) {
         efforts = ['none', 'high']
       }
-      if (efforts.length === 0 && type === 'grok' && /grok-3-mini/.test(normalizeModelBaseId(modelId))) {
+      if (
+        efforts.length === 0 &&
+        type === 'grok' &&
+        /grok-3-mini/.test(normalizeModelBaseId(modelId))
+      ) {
         efforts = ['low', 'high']
       }
       break

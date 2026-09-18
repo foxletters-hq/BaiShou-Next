@@ -95,9 +95,9 @@ describe('session-runtime-event bridge', () => {
     )
     const started = events.find((event) => event.type === 'session.tool_started')
     expect(started && started.type === 'session.tool_started' && started.input.truncated).toBe(true)
-    expect(
-      started && started.type === 'session.tool_started' && started.input.preview.length
-    ).toBe(SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS)
+    expect(started && started.type === 'session.tool_started' && started.input.preview.length).toBe(
+      SESSION_RUNTIME_TOOL_PREVIEW_MAX_CHARS
+    )
   })
 
   it('emits tool_failed when tool output carries error', () => {

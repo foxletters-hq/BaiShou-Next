@@ -14,8 +14,16 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 18%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 70%),
-    radial-gradient(ellipse 50% 40% at 80% 80%, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent 65%);
+    radial-gradient(
+      ellipse 70% 55% at 50% 18%,
+      color-mix(in srgb, var(--color-primary) 18%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 80% 80%,
+      color-mix(in srgb, var(--color-primary) 8%, transparent),
+      transparent 65%
+    );
 }
 
 .panel {

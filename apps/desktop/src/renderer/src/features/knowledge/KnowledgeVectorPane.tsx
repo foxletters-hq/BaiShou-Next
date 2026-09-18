@@ -1,11 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Database, Library, Search, X } from 'lucide-react'
-import {
-  Pagination,
-  PageSizeSelector,
-  SegmentedControl
-} from '@baishou/ui'
+import { Pagination, PageSizeSelector, SegmentedControl } from '@baishou/ui'
 import { formatRecallTimestamp } from '@baishou/shared'
 import { useSettingsStore } from '@baishou/store'
 import { callKnowledgeApi } from './call-knowledge-api'

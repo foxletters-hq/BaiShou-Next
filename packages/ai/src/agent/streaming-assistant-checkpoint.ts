@@ -115,11 +115,7 @@ export class StreamingAssistantCheckpoint {
       )
       this.assistantMessageId = assistantMsgId
     } else {
-      await this.deps.sessionRepo.replaceMessageParts(
-        assistantMsgId,
-        this.deps.sessionId,
-        parts
-      )
+      await this.deps.sessionRepo.replaceMessageParts(assistantMsgId, this.deps.sessionId, parts)
     }
 
     this.lastFlushAt = now

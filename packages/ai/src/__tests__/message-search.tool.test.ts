@@ -70,15 +70,12 @@ describe('MessageSearchTool', () => {
 
   it('forwards local calendar date range to the searcher', async () => {
     const searcher = { searchMessages: vi.fn().mockResolvedValue([]) }
-    await tool.execute(
-      { query: '原文', start_date: '2026-09-01', end_date: '2026-09-07' },
-      {
-        sessionId: 's1',
-        vaultId: deriveLegacyVaultId('/tmp'),
-        vaultName: '/tmp',
-        messageSearcher: searcher
-      } as ToolContext
-    )
+    await tool.execute({ query: '原文', start_date: '2026-09-01', end_date: '2026-09-07' }, {
+      sessionId: 's1',
+      vaultId: deriveLegacyVaultId('/tmp'),
+      vaultName: '/tmp',
+      messageSearcher: searcher
+    } as ToolContext)
     expect(searcher.searchMessages).toHaveBeenCalledWith('原文', 10, deriveLegacyVaultId('/tmp'), {
       startDate: '2026-09-01',
       endDate: '2026-09-07'

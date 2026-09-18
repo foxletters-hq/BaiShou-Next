@@ -184,7 +184,9 @@ describe('agent-skill.util', () => {
     expect(isBundledReservedSkillName('story-init')).toBe(true)
     expect(isOfficialAgentSkillName('idea-research')).toBe(false)
     expect(isOfficialAgentSkillName('daily-digest')).toBe(false)
-    const createSkill = DEFAULT_AGENT_SKILLS.find((skill) => skill.name === CREATE_SKILL_SLASH_COMMAND)
+    const createSkill = DEFAULT_AGENT_SKILLS.find(
+      (skill) => skill.name === CREATE_SKILL_SLASH_COMMAND
+    )
     expect(createSkill?.description).toBe(CREATE_SKILL_SLASH_COMMAND)
     expect(createSkill?.content).toBe(CREATE_SKILL_GUIDE_PROMPT)
   })
@@ -220,9 +222,6 @@ describe('agent-skill.util', () => {
         [{ name: 'writer', description: '软件作家' }, { name: 'translate' }],
         [{ name: 'writer', description: '项目作家' }]
       )
-    ).toEqual([
-      { name: 'writer', description: '项目作家' },
-      { name: 'translate' }
-    ])
+    ).toEqual([{ name: 'writer', description: '项目作家' }, { name: 'translate' }])
   })
 })

@@ -4,10 +4,7 @@ import { AiProviderModel } from '@baishou/shared'
 import { IAIProvider } from './provider.interface'
 import { getRotatedApiKey } from './provider.utils'
 import { assertAsciiApiKey, createSanitizedFetch, sanitizeApiKeyForHttp } from './fetch-header.util'
-import {
-  probeProviderConnection,
-  wrapConnectionTestError
-} from './provider-connection-test.util'
+import { probeProviderConnection, wrapConnectionTestError } from './provider-connection-test.util'
 
 export class GeminiAdaptedProvider implements IAIProvider {
   public config: AiProviderModel

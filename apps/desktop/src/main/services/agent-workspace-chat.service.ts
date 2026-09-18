@@ -732,9 +732,7 @@ export async function admitWorkspaceInput(params: {
   return { input, started: true, queued: false }
 }
 
-export async function listWorkspacePendingInputs(
-  sessionId: string
-): Promise<SessionInputRecord[]> {
+export async function listWorkspacePendingInputs(sessionId: string): Promise<SessionInputRecord[]> {
   await initDesktopSessionInboxStore()
   return getSharedSessionInbox().listPending(sessionId)
 }

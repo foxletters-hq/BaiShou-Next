@@ -84,10 +84,7 @@ function parseClassifierText(text: string): AgentGateRiskClassifierResult {
   }
   return {
     verdict: 'ask',
-    reason: i18n.t(
-      'settings.agent_gate_auto_review_parse_failed',
-      '自动审核未能解析模型输出'
-    )
+    reason: i18n.t('settings.agent_gate_auto_review_parse_failed', '自动审核未能解析模型输出')
   }
 }
 
@@ -99,18 +96,13 @@ export const classifyWorkspaceGateRisk: AgentGateRiskClassifier = async (input) 
   try {
     const globalModels = await settingsManager.get<GlobalModelsConfig>('global_models')
     const providerId =
-      globalModels?.globalNamingProviderId ||
-      globalModels?.globalDialogueProviderId ||
-      undefined
+      globalModels?.globalNamingProviderId || globalModels?.globalDialogueProviderId || undefined
     const modelId =
       globalModels?.globalNamingModelId || globalModels?.globalDialogueModelId || undefined
     if (!providerId || !modelId || modelId === 'default') {
       return {
         verdict: 'ask',
-        reason: i18n.t(
-          'settings.agent_gate_auto_review_no_model',
-          '未配置可用模型，已改为需要确认'
-        )
+        reason: i18n.t('settings.agent_gate_auto_review_no_model', '未配置可用模型，已改为需要确认')
       }
     }
 
@@ -125,7 +117,10 @@ export const classifyWorkspaceGateRisk: AgentGateRiskClassifier = async (input) 
     })
 
     const abortController = new AbortController()
-    const timeoutId = setTimeout(() => abortController.abort('auto_review timeout'), CLASSIFIER_TIMEOUT_MS)
+    const timeoutId = setTimeout(
+      () => abortController.abort('auto_review timeout'),
+      CLASSIFIER_TIMEOUT_MS
+    )
     try {
       const reasoningOptions = buildSmallTaskReasoningProviderOptions({
         modelId,

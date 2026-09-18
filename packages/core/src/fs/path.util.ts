@@ -124,11 +124,7 @@ export function resolve(...parts: string[]): string {
 
 /** 判断 `target` 是否等于 `base`，或位于 `base` 目录树内（解析 `..` 后比较）。 */
 export function isPathInside(base: string, target: string): boolean {
-  const normalize = (p: string) =>
-    resolve(p)
-      .replace(/\\/g, SEP)
-      .replace(/\/+$/, '')
-      .toLowerCase()
+  const normalize = (p: string) => resolve(p).replace(/\\/g, SEP).replace(/\/+$/, '').toLowerCase()
   const b = normalize(base)
   const t = normalize(target)
   return t === b || t.startsWith(b + SEP)

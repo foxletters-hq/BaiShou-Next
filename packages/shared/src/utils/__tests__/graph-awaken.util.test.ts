@@ -45,9 +45,11 @@ describe('graph-awaken.util', () => {
   it('validates form and applies to profile', () => {
     expect(normalizeGraphAwakenNickname(DEFAULT_USER_PROFILE.nickname)).toBe(null)
     expect(normalizeGraphAwakenNickname('  小明  ')).toBe('小明')
-    expect(
-      validateGraphAwakenForm({ nickname: '', birthday: '', gender: '' })
-    ).toEqual({ nickname: 'nickname', birthday: 'birthday', gender: 'gender' })
+    expect(validateGraphAwakenForm({ nickname: '', birthday: '', gender: '' })).toEqual({
+      nickname: 'nickname',
+      birthday: 'birthday',
+      gender: 'gender'
+    })
     const next = applyGraphAwakenToProfile(DEFAULT_USER_PROFILE, {
       nickname: '小明',
       birthday: '2000-05-01',

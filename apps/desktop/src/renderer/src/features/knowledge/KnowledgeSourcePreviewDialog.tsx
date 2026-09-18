@@ -2,10 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button, MarkdownRenderer } from '@baishou/ui'
-import {
-  assessFetchedWebPage,
-  fetchedWebPageIssueMessage
-} from '@baishou/shared'
+import { assessFetchedWebPage, fetchedWebPageIssueMessage } from '@baishou/shared'
 import { KnowledgeDialog } from './KnowledgeDialog'
 import {
   buildPdfJsDocumentParams,
@@ -226,7 +223,9 @@ const PdfPageViewer: React.FC<{ source: PdfPreviewSource }> = ({ source }) => {
   }, [doc, page, pageCount, status, useSpread])
 
   if (status === 'loading') {
-    return <div className={styles.previewStatus}>{t('knowledge.preview_loading', '正在加载预览…')}</div>
+    return (
+      <div className={styles.previewStatus}>{t('knowledge.preview_loading', '正在加载预览…')}</div>
+    )
   }
   if (status === 'error') {
     return (
@@ -342,7 +341,9 @@ export const KnowledgeSourcePreviewDialog: React.FC<Props> = ({
       className={styles.previewDialog}
     >
       {loading ? (
-        <div className={styles.previewStatus}>{t('knowledge.preview_loading', '正在加载预览…')}</div>
+        <div className={styles.previewStatus}>
+          {t('knowledge.preview_loading', '正在加载预览…')}
+        </div>
       ) : null}
       {!loading && error ? <div className={styles.previewStatus}>{error}</div> : null}
       {!loading && !error && payload?.kind === 'pdf' && pdfSource ? (

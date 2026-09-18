@@ -50,9 +50,11 @@ export function serializeMountedNotebookIds(raw: unknown): string {
   return ids.length === 0 ? '' : JSON.stringify(ids)
 }
 
-export function resolveWorkspaceNotebookIds(workspace?: {
-  notebookIds?: unknown
-} | null): string[] {
+export function resolveWorkspaceNotebookIds(
+  workspace?: {
+    notebookIds?: unknown
+  } | null
+): string[] {
   return parseMountedNotebookIds(workspace?.notebookIds)
 }
 
@@ -112,9 +114,7 @@ export function assertCompatibleNotebookDimensions(
     }
   }
 
-  const dims = new Set(
-    [...byNotebook.values()].flatMap((rows) => rows.map((row) => row.dimension))
-  )
+  const dims = new Set([...byNotebook.values()].flatMap((rows) => rows.map((row) => row.dimension)))
   if (dims.size > 1) {
     throw new Error(buildKnowledgeDimensionMismatchMessage(profiles))
   }

@@ -157,11 +157,7 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
     }
   }
 
-  const syncDisabledTool = (
-    toolId: string,
-    effect: AgentGateEffect,
-    tools = companionTools
-  ) => {
+  const syncDisabledTool = (toolId: string, effect: AgentGateEffect, tools = companionTools) => {
     settings.setToolManagementConfig({
       ...tools,
       disabledToolIds: nextDisabledToolIdsForEffect(tools.disabledToolIds, toolId, effect)
@@ -203,9 +199,18 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
   return (
     <div
       className="settings-pane settings-pane-full"
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
     >
-      <SettingsPageChrome title={t('settings.companion_chat_tools_title', '伙伴对话')} layout="stack">
+      <SettingsPageChrome
+        title={t('settings.companion_chat_tools_title', '伙伴对话')}
+        layout="stack"
+      >
         <div className={styles.page}>
           <div className={styles.tabBody}>
             <div className={styles.scrollPane}>
@@ -232,7 +237,10 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                       <Switch
                         checked={restoreLastSessionOnReturn}
                         disabled={!behaviorReady}
-                        aria-label={t('settings.restore_last_session_on_return', '返回后继续上次会话')}
+                        aria-label={t(
+                          'settings.restore_last_session_on_return',
+                          '返回后继续上次会话'
+                        )}
                         onChange={(e) =>
                           patchBehavior({ restoreLastSessionOnReturn: e.target.checked })
                         }
@@ -255,7 +263,9 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                         checked={notificationPrefs.enabled}
                         disabled={saving}
                         aria-label={t('settings.agent_gate_notify_enabled', '系统通知')}
-                        onChange={(e) => void updateNotificationPrefs({ enabled: e.target.checked })}
+                        onChange={(e) =>
+                          void updateNotificationPrefs({ enabled: e.target.checked })
+                        }
                       />
                     </div>
                     <div className={pane.divider} />
@@ -350,7 +360,9 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                                       Number(
                                         companionTools.customConfigs?.[tool.id]?.[param.key] ??
                                           param.defaultValue
-                                      ) || Number(param.defaultValue) || 10
+                                      ) ||
+                                      Number(param.defaultValue) ||
+                                      10
                                     }
                                     onChange={(e) => {
                                       const n = Number(e.target.value)
@@ -401,9 +413,13 @@ export const CompanionChatToolsPane: React.FC<CompanionChatToolsPaneProps> = ({ 
                               </span>
                               <span className="settings-list-tile-subtitle">
                                 {entry.pattern
-                                  ? t('settings.agent_gate_allowlist_pattern', '模式：{{pattern}}', {
-                                      pattern: entry.pattern
-                                    })
+                                  ? t(
+                                      'settings.agent_gate_allowlist_pattern',
+                                      '模式：{{pattern}}',
+                                      {
+                                        pattern: entry.pattern
+                                      }
+                                    )
                                   : t('settings.agent_gate_allowlist_whole_action', '整工具放行')}
                               </span>
                             </div>

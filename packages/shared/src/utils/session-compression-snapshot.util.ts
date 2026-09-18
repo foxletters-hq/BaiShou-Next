@@ -52,14 +52,17 @@ export function normalizePortableCompressionSnapshot(
   raw: unknown
 ): PortableCompressionSnapshot | null {
   const record = asRecord(raw)
-  const coveredUpToMessageId = readString(record, 'coveredUpToMessageId', 'covered_up_to_message_id')
+  const coveredUpToMessageId = readString(
+    record,
+    'coveredUpToMessageId',
+    'covered_up_to_message_id'
+  )
   const summaryText = readString(record, 'summaryText', 'summary_text')
   if (!coveredUpToMessageId || !summaryText.trim()) return null
   const createdAt = readNumber(record, 'createdAt', 'created_at') ?? Date.now()
   return {
     coveredUpToMessageId,
-    tailStartMessageId:
-      readString(record, 'tailStartMessageId', 'tail_start_message_id') || null,
+    tailStartMessageId: readString(record, 'tailStartMessageId', 'tail_start_message_id') || null,
     summaryText,
     messageCount: Math.max(0, Math.floor(readNumber(record, 'messageCount', 'message_count') ?? 0)),
     tokenCount: readNumber(record, 'tokenCount', 'token_count'),

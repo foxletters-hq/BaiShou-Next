@@ -58,8 +58,7 @@ export function useAgentIdleGreeting(): string {
 
   return useMemo(() => {
     const name =
-      (typeof nickname === 'string' && nickname.trim()) ||
-      t('agent.idle_greeting_guest', '朋友')
+      (typeof nickname === 'string' && nickname.trim()) || t('agent.idle_greeting_guest', '朋友')
     const key = AGENT_IDLE_GREETING_KEYS[index]!
     const fallback = AGENT_IDLE_GREETING_FALLBACKS[index]!
     return t(key, fallback, { name })

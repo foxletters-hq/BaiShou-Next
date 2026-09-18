@@ -58,7 +58,10 @@ describe('applyGraphLocalEdgeDelete', () => {
         { id: 'e2', fromId: 'n2', toId: 'n3' }
       ],
       pendingEdges: [{ id: 'e1', fromId: 'n1', toId: 'n2' }],
-      pendingSelected: new Set([graphPendingItemKey('edge', 'e1'), graphPendingItemKey('node', 'n1')]),
+      pendingSelected: new Set([
+        graphPendingItemKey('edge', 'e1'),
+        graphPendingItemKey('node', 'n1')
+      ]),
       highlightedEdgeIds: new Set(['e1', 'e2']),
       localView: {
         nodes: [{ id: 'n1' }],

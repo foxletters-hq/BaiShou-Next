@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  graphSameNameExistingFromRow,
-  isGraphNodeSameNameConflict
-} from '../graph-same-name.util'
+import { graphSameNameExistingFromRow, isGraphNodeSameNameConflict } from '../graph-same-name.util'
 
 describe('graph-same-name.util', () => {
   it('ignores the node being edited', () => {

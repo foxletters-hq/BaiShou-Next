@@ -113,18 +113,16 @@ describe('mcp client status helpers', () => {
         { name: '' },
         12
       ])
-    ).toEqual([
-      { name: 'search' },
-      { name: 'read', description: '读取文件' }
-    ])
+    ).toEqual([{ name: 'search' }, { name: 'read', description: '读取文件' }])
   })
 
   it('replaces an existing server status by id', () => {
     expect(
-      upsertMcpClientServerStatus(
-        [{ id: 'a', connected: false, tools: [] }],
-        { id: 'a', connected: true, tools: [{ name: 'search' }] }
-      )
+      upsertMcpClientServerStatus([{ id: 'a', connected: false, tools: [] }], {
+        id: 'a',
+        connected: true,
+        tools: [{ name: 'search' }]
+      })
     ).toEqual([{ id: 'a', connected: true, tools: [{ name: 'search' }] }])
   })
 

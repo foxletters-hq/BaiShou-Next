@@ -12,7 +12,7 @@ export type GraphAwakenProfileFields = {
 }
 
 async function getDesktopProfile(): Promise<UserProfile> {
-  return (((await (window.api as any).profile?.getProfile?.()) || {}) as UserProfile)
+  return ((await (window.api as any).profile?.getProfile?.()) || {}) as UserProfile
 }
 
 async function saveDesktopProfile(profile: UserProfile): Promise<void> {

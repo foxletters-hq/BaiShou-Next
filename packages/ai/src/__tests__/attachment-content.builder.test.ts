@@ -148,7 +148,11 @@ describe('appendFileAttachmentToContentParts', () => {
     const parts: unknown[] = []
     await appendFileAttachmentToContentParts(
       parts,
-      { fileName: 'pack.zip', relativePath: 'pack.zip', filePath: 'D:\\Projects\\invoice\\pack.zip' },
+      {
+        fileName: 'pack.zip',
+        relativePath: 'pack.zip',
+        filePath: 'D:\\Projects\\invoice\\pack.zip'
+      },
       { modelId: 'deepseek-v4-flash' }
     )
     expect((parts[0] as { text: string }).text).toContain('pack.zip')

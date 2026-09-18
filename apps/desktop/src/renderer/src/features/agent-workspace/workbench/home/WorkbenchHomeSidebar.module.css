@@ -227,7 +227,9 @@
   font-family: inherit;
   text-align: left;
   box-sizing: border-box;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .recentHeader:hover {

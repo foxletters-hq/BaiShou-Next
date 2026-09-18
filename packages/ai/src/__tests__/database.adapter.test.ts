@@ -76,7 +76,12 @@ describe('DatabaseAdapter.searchMessages', () => {
     const adapter = new DatabaseAdapter({} as any, messageRepo as any, {} as any, () => 'vlt_test')
     const results = await adapter.searchMessages('噩梦', 10)
 
-    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith('噩梦', 10, 'vlt_test', undefined)
+    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith(
+      '噩梦',
+      10,
+      'vlt_test',
+      undefined
+    )
     expect(results).toHaveLength(1)
     // 与模型上下文 formatMessageTimestamp 一致：按本地日历日，避免凌晨消息被 UTC 标为前一天
     expect(results[0]!.date).toBe(formatRecallTimestamp(createdAt))
@@ -107,7 +112,12 @@ describe('DatabaseAdapter.searchMessages', () => {
       () => 'vlt_resolver'
     )
     await adapter.searchMessages('q', 5, 'vlt_explicit')
-    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith('q', 5, 'vlt_explicit', undefined)
+    expect(messageRepo.searchMessagesByKeyword).toHaveBeenCalledWith(
+      'q',
+      5,
+      'vlt_explicit',
+      undefined
+    )
   })
 })
 

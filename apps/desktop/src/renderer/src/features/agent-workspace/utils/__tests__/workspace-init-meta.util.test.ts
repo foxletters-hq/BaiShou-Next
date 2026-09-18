@@ -25,7 +25,9 @@ describe('workspace-init-meta', () => {
   it('writes attachment paths to sessionStorage without inline binary', () => {
     stashWorkspaceInitMeta('s3', {
       text: '请阅读',
-      attachments: [{ fileName: 'brief.pdf', filePath: 'D:/docs/brief.pdf', isPdf: true, data: 'AAA' }]
+      attachments: [
+        { fileName: 'brief.pdf', filePath: 'D:/docs/brief.pdf', isPdf: true, data: 'AAA' }
+      ]
     })
     const raw = sessionStorage.getItem('baishou:ws-init-meta:s3')
     expect(raw).toBeTruthy()
@@ -62,9 +64,7 @@ describe('workspace-init-meta', () => {
   })
 
   it('keeps file refs in the in-memory stash', () => {
-    const fileRefs = [
-      { relativePath: 'docs/note.md', selection: { startLine: 3, endLine: 8 } }
-    ]
+    const fileRefs = [{ relativePath: 'docs/note.md', selection: { startLine: 3, endLine: 8 } }]
     stashWorkspaceInitMeta('s2', {
       text: '看这段',
       fileRefs

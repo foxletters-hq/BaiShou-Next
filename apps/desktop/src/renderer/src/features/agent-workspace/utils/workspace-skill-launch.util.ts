@@ -89,9 +89,7 @@ export function orderSkillLaunchWorkspaces<T extends { id: string }>(
   workspaces: T[],
   preferredId?: string | null
 ): T[] {
-  const preferred = preferredId
-    ? workspaces.find((item) => item.id === preferredId)
-    : undefined
+  const preferred = preferredId ? workspaces.find((item) => item.id === preferredId) : undefined
   if (!preferred) return workspaces
   return [preferred, ...workspaces.filter((item) => item.id !== preferred.id)]
 }
@@ -119,8 +117,8 @@ export function isHiddenBundledTemplateSkill(skill: {
   return isHiddenBundledSoftwareSkill(skill)
 }
 
-export function omitHiddenBundledTemplateSkills<T extends { name: string; source?: AgentSkillSource }>(
-  skills: T[]
-): T[] {
+export function omitHiddenBundledTemplateSkills<
+  T extends { name: string; source?: AgentSkillSource }
+>(skills: T[]): T[] {
   return skills.filter((skill) => !isHiddenBundledTemplateSkill(skill))
 }

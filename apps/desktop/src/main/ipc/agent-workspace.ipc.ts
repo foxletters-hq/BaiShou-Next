@@ -433,10 +433,7 @@ export function registerAgentWorkspaceIPC(): void {
           }
           const row = session as { isPinned?: unknown; is_pinned?: unknown } | null
           isPinned =
-            isPinned ||
-            Boolean(row?.isPinned) ||
-            row?.is_pinned === 1 ||
-            row?.is_pinned === true
+            isPinned || Boolean(row?.isPinned) || row?.is_pinned === 1 || row?.is_pinned === true
         } catch {
           /* ignore missing session metadata */
         }
@@ -456,28 +453,25 @@ export function registerAgentWorkspaceIPC(): void {
     }
   )
 
-  ipcMain.handle(
-    'agent-workspace:pin-session',
-    async (_, sessionId: string, isPinned: boolean) => {
-      if (!sessionId?.trim()) {
-        return { success: false }
-      }
-      const ok = await setWorkspaceSessionPinned(sessionId, Boolean(isPinned))
-      if (!ok) {
-        return { success: false }
-      }
-      try {
-        const { sessionManager } = getAgentManagers()
-        await sessionManager.togglePin(sessionId, Boolean(isPinned))
-      } catch (error) {
-        logger.warn(
-          '[AgentWorkspaceIPC] pin-session session table failed:',
-          error instanceof Error ? error.message : String(error)
-        )
-      }
-      return { success: true }
+  ipcMain.handle('agent-workspace:pin-session', async (_, sessionId: string, isPinned: boolean) => {
+    if (!sessionId?.trim()) {
+      return { success: false }
     }
-  )
+    const ok = await setWorkspaceSessionPinned(sessionId, Boolean(isPinned))
+    if (!ok) {
+      return { success: false }
+    }
+    try {
+      const { sessionManager } = getAgentManagers()
+      await sessionManager.togglePin(sessionId, Boolean(isPinned))
+    } catch (error) {
+      logger.warn(
+        '[AgentWorkspaceIPC] pin-session session table failed:',
+        error instanceof Error ? error.message : String(error)
+      )
+    }
+    return { success: true }
+  })
 
   ipcMain.handle('agent-workspace:delete-session', async (_, sessionId: string) => {
     if (!sessionId?.trim()) {
@@ -678,16 +672,8 @@ export function registerAgentWorkspaceIPC(): void {
 
   ipcMain.handle(
     'agent-workspace:git-get-history',
-    async (
-      _,
-      folderRoot: string,
-      filePath?: string | null,
-      limit?: number,
-      offset?: number
-    ) =>
-      withGit(folderRoot, (svc) =>
-        svc.getHistory(filePath || undefined, limit, offset)
-      )
+    async (_, folderRoot: string, filePath?: string | null, limit?: number, offset?: number) =>
+      withGit(folderRoot, (svc) => svc.getHistory(filePath || undefined, limit, offset))
   )
 
   ipcMain.handle(

@@ -3,7 +3,10 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../AgentChatService.ts'), 'utf8')
+const src = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../AgentChatService.ts'),
+  'utf8'
+)
 
 describe('AgentChatService companion graph lookups', () => {
   it('builds graphNodeLookup and graphEdgeLookup via createCompanionGraphLookups', () => {

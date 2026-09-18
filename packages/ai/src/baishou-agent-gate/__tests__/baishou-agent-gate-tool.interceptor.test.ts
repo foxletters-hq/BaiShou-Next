@@ -117,7 +117,9 @@ describe('wrapVercelToolExecuteWithAgentGate', () => {
   })
 
   it('gates recall_relations as a Safe tool (default Allow, user can Ask/Deny)', async () => {
-    expect(resolveAgentGateToolMetadata('recall_relations')?.riskLevel).toBe(AgentGateRiskLevel.Safe)
+    expect(resolveAgentGateToolMetadata('recall_relations')?.riskLevel).toBe(
+      AgentGateRiskLevel.Safe
+    )
     const assert = vi.fn().mockResolvedValue(undefined)
     const gate = { assert } as unknown as IBaishouAgentGate
     const execute = vi.fn().mockResolvedValue('graph-ok')

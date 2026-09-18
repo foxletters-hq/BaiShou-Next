@@ -30,9 +30,9 @@ describe('toWorkspaceRelativePath', () => {
 
 describe('shouldIgnoreWorkspaceWatchPath', () => {
   it('should ignore version-control and node_modules segments inside the workspace', () => {
-    expect(shouldIgnoreWorkspaceWatchPath(fixtureRoot, path.join(fixtureRoot, '.git', 'HEAD'))).toBe(
-      true
-    )
+    expect(
+      shouldIgnoreWorkspaceWatchPath(fixtureRoot, path.join(fixtureRoot, '.git', 'HEAD'))
+    ).toBe(true)
     expect(
       shouldIgnoreWorkspaceWatchPath(
         fixtureRoot,
@@ -60,7 +60,10 @@ describe('shouldIgnoreWorkspaceWatchPath', () => {
       false
     )
     expect(
-      shouldIgnoreWorkspaceWatchPath(nestedRoot, path.join(nestedRoot, 'node_modules', 'dep', 'x.js'))
+      shouldIgnoreWorkspaceWatchPath(
+        nestedRoot,
+        path.join(nestedRoot, 'node_modules', 'dep', 'x.js')
+      )
     ).toBe(true)
   })
 })
@@ -82,7 +85,9 @@ describe('evaluateWorkspaceWatchTarget', () => {
     expect(evaluateWorkspaceWatchTarget(fixtureRoot, { exists: true, isDirectory: false })).toBe(
       'not-directory'
     )
-    expect(evaluateWorkspaceWatchTarget(fixtureRoot, { exists: true, isDirectory: true })).toBe('ok')
+    expect(evaluateWorkspaceWatchTarget(fixtureRoot, { exists: true, isDirectory: true })).toBe(
+      'ok'
+    )
   })
 })
 
@@ -111,9 +116,7 @@ describe('canStartWorkspaceFolderWatch', () => {
 
   it('should match registered folders with different slash casing', () => {
     expect(
-      isRegisteredWorkspaceFolder(fixtureRoot.replace(/\\/g, '/'), [
-        { folderRoot: fixtureRoot }
-      ])
+      isRegisteredWorkspaceFolder(fixtureRoot.replace(/\\/g, '/'), [{ folderRoot: fixtureRoot }])
     ).toBe(true)
   })
 })

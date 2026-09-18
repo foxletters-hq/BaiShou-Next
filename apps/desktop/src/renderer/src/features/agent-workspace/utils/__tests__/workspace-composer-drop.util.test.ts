@@ -25,14 +25,18 @@ describe('workspace-composer-drop.util', () => {
   })
 
   it('classifies workspace file attachments from path', () => {
-    expect(attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.png', fileName: 'a.png' }).isImage).toBe(
-      true
-    )
-    expect(attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.pdf', fileName: 'a.pdf' }).isPdf).toBe(
-      true
-    )
-    expect(attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.md', fileName: 'a.md' }).isText).toBe(true)
-    expect(attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.ts', fileName: 'a.ts' }).isText).toBe(true)
+    expect(
+      attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.png', fileName: 'a.png' }).isImage
+    ).toBe(true)
+    expect(
+      attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.pdf', fileName: 'a.pdf' }).isPdf
+    ).toBe(true)
+    expect(
+      attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.md', fileName: 'a.md' }).isText
+    ).toBe(true)
+    expect(
+      attachmentFromWorkspaceFilePath({ absolutePath: '/tmp/a.ts', fileName: 'a.ts' }).isText
+    ).toBe(true)
   })
 
   it('returns null for ordinary OS file drops', async () => {

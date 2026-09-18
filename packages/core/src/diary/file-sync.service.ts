@@ -85,7 +85,10 @@ export class FileSyncServiceImpl implements FileSyncService {
       lines.push(`updated_at: ${diary.updatedAt.toISOString()}`)
     }
 
-    const body = persistDiaryTagsInBody(diary.content ?? '', 'tags' in diary ? diary.tags : undefined)
+    const body = persistDiaryTagsInBody(
+      diary.content ?? '',
+      'tags' in diary ? diary.tags : undefined
+    )
 
     lines.push('---', '', body)
 

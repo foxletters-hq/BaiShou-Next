@@ -1,9 +1,5 @@
 import { useCallback } from 'react'
-import {
-  selectQueueNeighborId,
-  selectQueuePosition,
-  useAgentGateInboxStore
-} from '@baishou/store'
+import { selectQueueNeighborId, selectQueuePosition, useAgentGateInboxStore } from '@baishou/store'
 
 export function useAgentGateQueuePager(
   sessionId: string | undefined,

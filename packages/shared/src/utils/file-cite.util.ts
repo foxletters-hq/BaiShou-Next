@@ -22,13 +22,17 @@ export type FileCiteSegment =
 
 export function normalizeFileCiteRefs(
   refs:
-    | Array<{
-        relativePath?: string
-        selection?: { startLine?: number; endLine?: number } | null
-        comment?: string
-        origin?: PromptFileRefOrigin | string
-        isDirectory?: boolean
-      } | null | undefined>
+    | Array<
+        | {
+            relativePath?: string
+            selection?: { startLine?: number; endLine?: number } | null
+            comment?: string
+            origin?: PromptFileRefOrigin | string
+            isDirectory?: boolean
+          }
+        | null
+        | undefined
+      >
     | null
     | undefined
 ): FileCiteRef[] {
@@ -68,11 +72,7 @@ function findFileCiteToken(
   for (const token of fileMentionDisplayLabels(ref)) {
     const idx = text.indexOf(token, cursor)
     if (idx < 0) continue
-    if (
-      !best ||
-      idx < best.idx ||
-      (idx === best.idx && token.length > best.token.length)
-    ) {
+    if (!best || idx < best.idx || (idx === best.idx && token.length > best.token.length)) {
       best = { idx, token }
     }
   }

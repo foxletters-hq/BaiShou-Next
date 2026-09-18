@@ -36,7 +36,9 @@ async function withStatusFetchTimeout<T>(promise: Promise<T>, ms: number): Promi
 }
 
 function newServerId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `mcp-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return (
+    globalThis.crypto?.randomUUID?.() ?? `mcp-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  )
 }
 
 function defaultNameFromUrl(url: string): string {
@@ -244,7 +246,9 @@ export const McpClientServersPanel: React.FC = () => {
             })
           )
         }
-        toast.showError(urlErrorText(reason, error instanceof Error ? error.message : String(error)))
+        toast.showError(
+          urlErrorText(reason, error instanceof Error ? error.message : String(error))
+        )
         return false
       }
       if (result?.ok) {
@@ -334,255 +338,253 @@ export const McpClientServersPanel: React.FC = () => {
 
       <section className={styles.sheet}>
         {config.servers.length === 0 ? (
-        <p className={styles.empty}>{t('settings.mcp_custom_empty', '尚未添加外部 MCP')}</p>
-      ) : (
-        <ul className={styles.list}>
-          {config.servers.map((server) => {
-            const status = lookup.get(server.id)
-            const tools = status?.tools ?? []
-            const connected = Boolean(status?.connected)
-            const expanded = expandedId === server.id
-            const timedOut =
-              status?.reason === 'timeout' || isMcpClientTimeoutMessage(status?.error)
-            const cardStatus = resolveMcpClientCardStatusKind({
-              enabled: server.enabled,
-              connected,
-              loading: loadingStatuses && !connected,
-              timedOut
-            })
-            const subtitle =
-              cardStatus === 'disabled'
-                ? t('settings.mcp_custom_disabled', '未启用')
-                : cardStatus === 'connected'
-                  ? t('settings.mcp_custom_tools_enabled', {
-                      count: tools.length,
-                      defaultValue: '{{count}} 个工具已启用'
-                    })
+          <p className={styles.empty}>{t('settings.mcp_custom_empty', '尚未添加外部 MCP')}</p>
+        ) : (
+          <ul className={styles.list}>
+            {config.servers.map((server) => {
+              const status = lookup.get(server.id)
+              const tools = status?.tools ?? []
+              const connected = Boolean(status?.connected)
+              const expanded = expandedId === server.id
+              const timedOut =
+                status?.reason === 'timeout' || isMcpClientTimeoutMessage(status?.error)
+              const cardStatus = resolveMcpClientCardStatusKind({
+                enabled: server.enabled,
+                connected,
+                loading: loadingStatuses && !connected,
+                timedOut
+              })
+              const subtitle =
+                cardStatus === 'disabled'
+                  ? t('settings.mcp_custom_disabled', '未启用')
+                  : cardStatus === 'connected'
+                    ? t('settings.mcp_custom_tools_enabled', {
+                        count: tools.length,
+                        defaultValue: '{{count}} 个工具已启用'
+                      })
+                    : cardStatus === 'loading'
+                      ? t('settings.mcp_custom_tools_loading', '正在获取工具')
+                      : cardStatus === 'timeout'
+                        ? t('settings.mcp_custom_tools_timeout', '获取工具超时')
+                        : t('settings.mcp_custom_disconnected', '未连接')
+              const statusDotClass =
+                cardStatus === 'connected'
+                  ? styles.statusOn
                   : cardStatus === 'loading'
-                    ? t('settings.mcp_custom_tools_loading', '正在获取工具')
+                    ? styles.statusLoading
                     : cardStatus === 'timeout'
-                      ? t('settings.mcp_custom_tools_timeout', '获取工具超时')
-                      : t('settings.mcp_custom_disconnected', '未连接')
-            const statusDotClass =
-              cardStatus === 'connected'
-                ? styles.statusOn
-                : cardStatus === 'loading'
-                  ? styles.statusLoading
-                  : cardStatus === 'timeout'
-                    ? styles.statusTimeout
-                    : styles.statusOff
-            return (
-              <li key={server.id} className={styles.row}>
-                <div className={styles.cardMain}>
-                  <button
-                    type="button"
-                    className={styles.cardHit}
-                    aria-expanded={expanded}
-                    onClick={() => setExpandedId(expanded ? null : server.id)}
-                  >
-                    <span className={styles.iconWrap} aria-hidden>
-                      <span className={styles.iconMark}>M</span>
-                      <span
-                        className={`${styles.statusDot} ${statusDotClass}`}
-                      />
-                    </span>
-                    <span className={styles.cardCopy}>
-                      <span className={styles.cardTitleRow}>
-                        <span className={styles.cardTitle}>{server.name}</span>
-                        <span className={styles.badge}>
-                          {t('settings.mcp_custom_badge_user', '用户')}
-                        </span>
+                      ? styles.statusTimeout
+                      : styles.statusOff
+              return (
+                <li key={server.id} className={styles.row}>
+                  <div className={styles.cardMain}>
+                    <button
+                      type="button"
+                      className={styles.cardHit}
+                      aria-expanded={expanded}
+                      onClick={() => setExpandedId(expanded ? null : server.id)}
+                    >
+                      <span className={styles.iconWrap} aria-hidden>
+                        <span className={styles.iconMark}>M</span>
+                        <span className={`${styles.statusDot} ${statusDotClass}`} />
                       </span>
-                      <span className={styles.cardDesc}>{subtitle}</span>
-                    </span>
-                  </button>
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    size="small"
-                    disabled={!connected || tools.length === 0}
-                    onClick={() => setToolsDialog({ name: server.name, tools })}
-                  >
-                    {t('settings.mcp_custom_view_tools', '查看工具')}
-                  </Button>
-                </div>
+                      <span className={styles.cardCopy}>
+                        <span className={styles.cardTitleRow}>
+                          <span className={styles.cardTitle}>{server.name}</span>
+                          <span className={styles.badge}>
+                            {t('settings.mcp_custom_badge_user', '用户')}
+                          </span>
+                        </span>
+                        <span className={styles.cardDesc}>{subtitle}</span>
+                      </span>
+                    </button>
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      size="small"
+                      disabled={!connected || tools.length === 0}
+                      onClick={() => setToolsDialog({ name: server.name, tools })}
+                    >
+                      {t('settings.mcp_custom_view_tools', '查看工具')}
+                    </Button>
+                  </div>
 
-                {expanded ? (
-                  <div className={styles.cardDetail}>
-                    <label className={styles.field}>
-                      <span>{t('settings.mcp_custom_url', '/mcp 地址')}</span>
-                      <Input
-                        fieldSize="small"
-                        value={server.url}
-                        onChange={(event) => {
-                          const url = event.target.value
-                          setConfig((prev) => ({
-                            servers: prev.servers.map((item) =>
-                              item.id === server.id ? { ...item, url } : item
-                            )
-                          }))
-                        }}
-                        onBlur={(event) => {
-                          const parsed = parseMcpClientUrl(event.target.value)
-                          if ('error' in parsed) {
-                            toast.showError(urlErrorText(parsed.error))
-                            return
-                          }
-                          void patchServer(server.id, { url: parsed.url })
-                        }}
-                      />
-                    </label>
-                    <label className={styles.field}>
-                      <span>{t('settings.mcp_custom_token', '访问令牌（可选）')}</span>
-                      <Input
-                        fieldSize="small"
-                        type="password"
-                        autoComplete="off"
-                        value={server.authToken ?? ''}
-                        onChange={(event) => {
-                          const authToken = event.target.value
-                          setConfig((prev) => ({
-                            servers: prev.servers.map((item) =>
-                              item.id === server.id ? { ...item, authToken } : item
-                            )
-                          }))
-                        }}
-                        onBlur={(event) => {
-                          void patchServer(server.id, {
-                            authToken: event.target.value.trim() || undefined
-                          })
-                        }}
-                      />
-                    </label>
-                    <div className={styles.cardActions}>
-                      <label className={styles.enableRow}>
-                        <span>{t('settings.mcp_custom_enable', '启用')}</span>
-                        <Switch
-                          size="sm"
-                          checked={server.enabled}
+                  {expanded ? (
+                    <div className={styles.cardDetail}>
+                      <label className={styles.field}>
+                        <span>{t('settings.mcp_custom_url', '/mcp 地址')}</span>
+                        <Input
+                          fieldSize="small"
+                          value={server.url}
                           onChange={(event) => {
-                            void patchServer(server.id, { enabled: event.target.checked })
+                            const url = event.target.value
+                            setConfig((prev) => ({
+                              servers: prev.servers.map((item) =>
+                                item.id === server.id ? { ...item, url } : item
+                              )
+                            }))
                           }}
-                          aria-label={t('settings.mcp_custom_enable', '启用')}
+                          onBlur={(event) => {
+                            const parsed = parseMcpClientUrl(event.target.value)
+                            if ('error' in parsed) {
+                              toast.showError(urlErrorText(parsed.error))
+                              return
+                            }
+                            void patchServer(server.id, { url: parsed.url })
+                          }}
                         />
                       </label>
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        size="small"
-                        disabled={testingId === server.id}
-                        isLoading={testingId === server.id}
-                        onClick={async () => {
-                          setTestingId(server.id)
-                          try {
-                            await testUrl(server.url, server.authToken, server.id)
-                          } finally {
-                            setTestingId(null)
-                          }
-                        }}
-                      >
-                        {t('settings.mcp_custom_retry', '重新连接')}
-                      </Button>
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        onClick={() => void handleDelete(server.id)}
-                        aria-label={t('common.delete', '删除')}
-                        title={t('common.delete', '删除')}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <label className={styles.field}>
+                        <span>{t('settings.mcp_custom_token', '访问令牌（可选）')}</span>
+                        <Input
+                          fieldSize="small"
+                          type="password"
+                          autoComplete="off"
+                          value={server.authToken ?? ''}
+                          onChange={(event) => {
+                            const authToken = event.target.value
+                            setConfig((prev) => ({
+                              servers: prev.servers.map((item) =>
+                                item.id === server.id ? { ...item, authToken } : item
+                              )
+                            }))
+                          }}
+                          onBlur={(event) => {
+                            void patchServer(server.id, {
+                              authToken: event.target.value.trim() || undefined
+                            })
+                          }}
+                        />
+                      </label>
+                      <div className={styles.cardActions}>
+                        <label className={styles.enableRow}>
+                          <span>{t('settings.mcp_custom_enable', '启用')}</span>
+                          <Switch
+                            size="sm"
+                            checked={server.enabled}
+                            onChange={(event) => {
+                              void patchServer(server.id, { enabled: event.target.checked })
+                            }}
+                            aria-label={t('settings.mcp_custom_enable', '启用')}
+                          />
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outlined"
+                          size="small"
+                          disabled={testingId === server.id}
+                          isLoading={testingId === server.id}
+                          onClick={async () => {
+                            setTestingId(server.id)
+                            try {
+                              await testUrl(server.url, server.authToken, server.id)
+                            } finally {
+                              setTestingId(null)
+                            }
+                          }}
+                        >
+                          {t('settings.mcp_custom_retry', '重新连接')}
+                        </Button>
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          onClick={() => void handleDelete(server.id)}
+                          aria-label={t('common.delete', '删除')}
+                          title={t('common.delete', '删除')}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
-      )}
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        )}
 
-      <div className={styles.row}>
-        <div className={styles.cardMain}>
-          <button
-            type="button"
-            className={styles.cardHit}
-            aria-expanded={adding}
-            onClick={() => setAdding((prev) => !prev)}
-          >
-            <span className={styles.iconWrap} aria-hidden>
-              <Plus size={18} strokeWidth={2} />
-            </span>
-            <span className={styles.cardCopy}>
-              <span className={styles.cardTitle}>
-                {t('settings.mcp_custom_new_title', '新建 MCP 服务')}
+        <div className={styles.row}>
+          <div className={styles.cardMain}>
+            <button
+              type="button"
+              className={styles.cardHit}
+              aria-expanded={adding}
+              onClick={() => setAdding((prev) => !prev)}
+            >
+              <span className={styles.iconWrap} aria-hidden>
+                <Plus size={18} strokeWidth={2} />
               </span>
-              <span className={styles.cardDesc}>
-                {t('settings.mcp_custom_new_desc', '添加自定义 MCP 服务')}
+              <span className={styles.cardCopy}>
+                <span className={styles.cardTitle}>
+                  {t('settings.mcp_custom_new_title', '新建 MCP 服务')}
+                </span>
+                <span className={styles.cardDesc}>
+                  {t('settings.mcp_custom_new_desc', '添加自定义 MCP 服务')}
+                </span>
               </span>
-            </span>
-          </button>
-        </div>
-
-        {adding ? (
-          <div className={styles.cardDetail}>
-            <label className={styles.field}>
-              <span>{t('settings.mcp_custom_name', '名称')}</span>
-              <Input
-                fieldSize="small"
-                value={draftName}
-                placeholder={t('settings.mcp_custom_name_placeholder', '例如检索服务')}
-                onChange={(event) => setDraftName(event.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>{t('settings.mcp_custom_url', '/mcp 地址')}</span>
-              <Input
-                fieldSize="small"
-                value={draftUrl}
-                placeholder="http://127.0.0.1:31004/mcp"
-                onChange={(event) => setDraftUrl(event.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>{t('settings.mcp_custom_token', '访问令牌（可选）')}</span>
-              <Input
-                fieldSize="small"
-                type="password"
-                autoComplete="off"
-                value={draftToken}
-                onChange={(event) => setDraftToken(event.target.value)}
-              />
-            </label>
-            <div className={styles.cardActions}>
-              <Button
-                type="button"
-                variant="outlined"
-                size="small"
-                disabled={testingId === 'draft'}
-                isLoading={testingId === 'draft'}
-                onClick={async () => {
-                  setTestingId('draft')
-                  try {
-                    await testUrl(draftUrl, draftToken)
-                  } finally {
-                    setTestingId(null)
-                  }
-                }}
-              >
-                {t('settings.mcp_custom_test', '测试连接')}
-              </Button>
-              <Button
-                type="button"
-                variant="outlined"
-                size="small"
-                onClick={() => void handleAdd()}
-              >
-                {t('settings.mcp_custom_add', '添加')}
-              </Button>
-            </div>
+            </button>
           </div>
-        ) : null}
-      </div>
+
+          {adding ? (
+            <div className={styles.cardDetail}>
+              <label className={styles.field}>
+                <span>{t('settings.mcp_custom_name', '名称')}</span>
+                <Input
+                  fieldSize="small"
+                  value={draftName}
+                  placeholder={t('settings.mcp_custom_name_placeholder', '例如检索服务')}
+                  onChange={(event) => setDraftName(event.target.value)}
+                />
+              </label>
+              <label className={styles.field}>
+                <span>{t('settings.mcp_custom_url', '/mcp 地址')}</span>
+                <Input
+                  fieldSize="small"
+                  value={draftUrl}
+                  placeholder="http://127.0.0.1:31004/mcp"
+                  onChange={(event) => setDraftUrl(event.target.value)}
+                />
+              </label>
+              <label className={styles.field}>
+                <span>{t('settings.mcp_custom_token', '访问令牌（可选）')}</span>
+                <Input
+                  fieldSize="small"
+                  type="password"
+                  autoComplete="off"
+                  value={draftToken}
+                  onChange={(event) => setDraftToken(event.target.value)}
+                />
+              </label>
+              <div className={styles.cardActions}>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  disabled={testingId === 'draft'}
+                  isLoading={testingId === 'draft'}
+                  onClick={async () => {
+                    setTestingId('draft')
+                    try {
+                      await testUrl(draftUrl, draftToken)
+                    } finally {
+                      setTestingId(null)
+                    }
+                  }}
+                >
+                  {t('settings.mcp_custom_test', '测试连接')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => void handleAdd()}
+                >
+                  {t('settings.mcp_custom_add', '添加')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </section>
 
       <Modal
@@ -604,7 +606,9 @@ export const McpClientServersPanel: React.FC = () => {
             {toolsDialog.tools.map((tool) => (
               <li key={tool.name} className={styles.toolItem}>
                 <span className={styles.toolName}>{tool.name}</span>
-                {tool.description ? <span className={styles.toolDesc}>{tool.description}</span> : null}
+                {tool.description ? (
+                  <span className={styles.toolDesc}>{tool.description}</span>
+                ) : null}
               </li>
             ))}
           </ul>

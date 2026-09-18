@@ -3,7 +3,11 @@ import * as fs from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { NodeFileSystem } from '../../fs/node-file-system'
-import { MonthlyJsonlStore, collapseJsonlById, DIRTY_SHARD_HASH } from '../stores/monthly-jsonl.store'
+import {
+  MonthlyJsonlStore,
+  collapseJsonlById,
+  DIRTY_SHARD_HASH
+} from '../stores/monthly-jsonl.store'
 import { isValidNotebookGraphShardKey } from '../notebook-graph-shard-key.util'
 
 describe('MonthlyJsonlStore', () => {

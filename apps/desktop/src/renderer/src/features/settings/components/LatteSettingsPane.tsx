@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  SYSTEM_LATTE_ASSISTANT_ID,
-  getDefaultLatteAssistantSystemPrompt
-} from '@baishou/shared'
+import { SYSTEM_LATTE_ASSISTANT_ID, getDefaultLatteAssistantSystemPrompt } from '@baishou/shared'
 import { Button, HelpTooltip, SettingsPageChrome, useDialog, useToast } from '@baishou/ui'
 import { useAssistantStore } from '@baishou/store'
 import styles from './DiarySettingsPane.module.css'
@@ -110,7 +107,12 @@ export const LatteSettingsPane: React.FC = () => {
               {t('settings.latte_ensure_failed', '无法创建或读取系统伙伴 Latte')}
             </div>
             <div className={styles.actions}>
-              <Button type="button" variant="outlined" size="small" onClick={() => void loadLatte()}>
+              <Button
+                type="button"
+                variant="outlined"
+                size="small"
+                onClick={() => void loadLatte()}
+              >
                 {t('common.retry', '重试')}
               </Button>
             </div>

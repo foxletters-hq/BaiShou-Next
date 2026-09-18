@@ -457,8 +457,7 @@ export const WorkbenchSkillsPage: React.FC = () => {
 
         setFolderRoot(entryFolder)
         const content =
-          skill.content.trim() ||
-          (skill.name === WRITER_SKILL_NAME ? WRITER_SKILL_CONTENT : '')
+          skill.content.trim() || (skill.name === WRITER_SKILL_NAME ? WRITER_SKILL_CONTENT : '')
         const payload = buildSkillSendMeta({ name: skill.name, content })
         const sessionId = await window.api.agentWorkspace.createSession({
           folderRoot: entryFolder,
@@ -495,12 +494,15 @@ export const WorkbenchSkillsPage: React.FC = () => {
     ]
   )
 
-  const beginUseSkill = useCallback((skill: AgentSkill) => {
-    if (launching) return
-    setLaunchIntent('skill')
-    setLaunchDisplayName(skill.name)
-    setLaunchSkillTarget(skill)
-  }, [launching])
+  const beginUseSkill = useCallback(
+    (skill: AgentSkill) => {
+      if (launching) return
+      setLaunchIntent('skill')
+      setLaunchDisplayName(skill.name)
+      setLaunchSkillTarget(skill)
+    },
+    [launching]
+  )
 
   const beginUseTemplate = useCallback(
     (card: (typeof WORKBENCH_SKILL_CARDS)[number]) => {
@@ -557,7 +559,8 @@ export const WorkbenchSkillsPage: React.FC = () => {
         }
         const skillsApi = getSkillsApi()
         if (scope === 'workspace' && workspaceFolder) {
-          if (!skillsApi?.updateWorkspace) throw new Error(t('workbench.skills_edit_failed', '保存技能失败'))
+          if (!skillsApi?.updateWorkspace)
+            throw new Error(t('workbench.skills_edit_failed', '保存技能失败'))
           await skillsApi.updateWorkspace(workspaceFolder, payload)
         } else {
           if (!skillsApi?.update) throw new Error(t('workbench.skills_edit_failed', '保存技能失败'))
@@ -721,7 +724,7 @@ export const WorkbenchSkillsPage: React.FC = () => {
                   </h2>
                   <div className={styles.sectionFilter}>
                     <Select
-                      value={waitingForProject ? projectParam ?? GLOBAL_SKILL_SCOPE : scopeId}
+                      value={waitingForProject ? (projectParam ?? GLOBAL_SKILL_SCOPE) : scopeId}
                       options={scopeOptions}
                       size="small"
                       leading={
@@ -787,7 +790,9 @@ export const WorkbenchSkillsPage: React.FC = () => {
 
       <WorkbenchSkillLaunchDialog
         open={launchSkillTarget !== null}
-        skillName={launchIntent === 'template' ? launchDisplayName : launchSkillTarget?.name ?? ''}
+        skillName={
+          launchIntent === 'template' ? launchDisplayName : (launchSkillTarget?.name ?? '')
+        }
         intent={launchIntent}
         workspaces={sortedWorkspaces}
         preferredWorkspaceId={selectedWorkspace?.id}

@@ -274,10 +274,12 @@ describe('countPendingMemoriesAgainstLedger', () => {
       { id: 'b', content: 'world' },
       { id: 'c', content: 'same' }
     ]
-    const ledger = new Map([
-      { sourceId: 'b', contentHash: hashEmbedSourceContent('old'), status: 'embedded' },
-      { sourceId: 'c', contentHash: hashEmbedSourceContent('same'), status: 'failed' }
-    ].map((row) => [row.sourceId, { contentHash: row.contentHash, status: row.status }]))
+    const ledger = new Map(
+      [
+        { sourceId: 'b', contentHash: hashEmbedSourceContent('old'), status: 'embedded' },
+        { sourceId: 'c', contentHash: hashEmbedSourceContent('same'), status: 'failed' }
+      ].map((row) => [row.sourceId, { contentHash: row.contentHash, status: row.status }])
+    )
 
     expect(countPendingMemoriesAgainstLedger(live, ledger)).toBe(3)
   })

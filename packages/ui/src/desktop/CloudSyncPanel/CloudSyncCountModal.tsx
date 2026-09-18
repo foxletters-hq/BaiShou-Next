@@ -165,7 +165,12 @@ export const CloudSyncCountModal: React.FC<CloudSyncCountModalProps> = ({ vm }) 
           className={styles.countModalFooter}
           style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}
         >
-          <Button type="button" variant="outlined" size="small" onClick={() => setShowCountModal(false)}>
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            onClick={() => setShowCountModal(false)}
+          >
             {t('common.cancel', '取消')}
           </Button>
           <Button type="button" variant="outlined" size="small" onClick={confirmCountModal}>

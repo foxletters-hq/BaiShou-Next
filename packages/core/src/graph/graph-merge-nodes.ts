@@ -119,7 +119,8 @@ export async function mergeDiaryGraphNodes(input: {
   const survivorId = input.survivorId.trim()
   const loserId = input.loserId.trim()
   if (!survivorId || !loserId) throw new Error('mergeDiaryGraphNodes: ids required')
-  if (survivorId === loserId) throw new Error('mergeDiaryGraphNodes: cannot merge a node into itself')
+  if (survivorId === loserId)
+    throw new Error('mergeDiaryGraphNodes: cannot merge a node into itself')
 
   const survivor = await input.repo.getNodeById(survivorId, input.vaultId)
   const loser = await input.repo.getNodeById(loserId, input.vaultId)
