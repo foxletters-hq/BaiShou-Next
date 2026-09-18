@@ -1,26 +1,8 @@
-/* eslint-disable max-lines -- workbench screen orchestrates chrome/stream/gate/session */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  AgentGateDock,
-  ContextChainPanel,
-  useDialog,
-  AssistantPickerSheet,
-  SessionModelMenu,
-  toast,
-  useReasoningCatalogEpoch
-} from '@baishou/ui'
-import {
-  isEmbeddingModel,
-  isTtsModel,
-  isConfiguredDialogueModelId,
-  isConfiguredProviderId,
-  getReasoningControlForModel,
-  normalizeReasoningEffortSetting,
-  resolveDialogueEffortPreference,
-  type ReasoningEffortSetting
-} from '@baishou/shared'
+import { AgentGateDock, useDialog, toast } from '@baishou/ui'
+import { isConfiguredDialogueModelId, isConfiguredProviderId } from '@baishou/shared'
 import {
   selectSameActionCountInSession,
   useAgentGateInboxStore,
@@ -31,42 +13,33 @@ import { useWorkspaceChatMessages } from './hooks/useWorkspaceChatMessages'
 import { useWorkspaceMessageActions } from './hooks/useWorkspaceMessageActions'
 import { useWorkspaceContextChain } from './hooks/useWorkspaceContextChain'
 import { useWorkspaceRuntimeRefresh } from './hooks/useWorkspaceRuntimeRefresh'
-import { AssistantCreateModal } from '../agent/components/AssistantCreateModal'
 import { useWorkspaceSessions } from './hooks/useWorkspaceSessions'
 import { useAgentWorkspaces } from './hooks/useAgentWorkspaces'
 import { useAgentWorkspaceChrome } from './hooks/useAgentWorkspaceChrome'
 import { useWorkspaceInitMessage } from './hooks/useWorkspaceInitMessage'
+import { useAgentWorkspaceComposerSend } from './hooks/useAgentWorkspaceComposerSend'
+import { useAgentWorkspaceFolderBinding } from './hooks/useAgentWorkspaceFolderBinding'
+import { useAgentWorkspaceReasoningChrome } from './hooks/useAgentWorkspaceReasoningChrome'
+import { useAgentWorkspaceSessionActions } from './hooks/useAgentWorkspaceSessionActions'
 import { useStreamError } from '../agent/hooks/useStreamError'
 import { useAgentGateQueuePager } from '../agent/hooks/useAgentGateQueuePager'
 import { clearStreamBridgeForSession } from '../agent/hooks/agent-stream-session-store'
+import { getSessionReasoningEffortOverride } from '../agent/reasoning-effort-session'
+import { hasPersistedAssistantTail } from './utils/workspace-persisted-assistant.util'
 import {
-  getReasoningEffortForModel,
-  getSessionReasoningEffortOverride,
-  setReasoningEffortForModel,
-  setSessionReasoningEffortOverride
-} from '../agent/reasoning-effort-session'
-import {
-  buildModelReasoningPreviewMap,
-  formatReasoningControlPreview
-} from '../agent/format-reasoning-control-preview'
-import { useDialogueSlotEffort } from '../agent/use-dialogue-slot-effort'
-import { SETTINGS_HUB_PREFIX } from '../settings/settings-route.util'
-import { workspaceEntryMatchesFolder } from './utils/workspace-display.util'
-import {
-  hasWorkspaceComposerPayload,
-  normalizeWorkspaceSendAttachments
-} from './utils/workspace-message-display.util'
-import { mergeWorkspaceFileRefsIntoAttachments } from './utils/workspace-file-ref-send.util'
+  isPersistedWorkspaceSessionId,
+  nextBoundStreamSessionId,
+  notifyWorkspaceSessionsChanged,
+  resolveActiveWorkspace,
+  resolveLayoutScopeKey
+} from './utils/agent-workspace-screen.util'
+import { AgentWorkspaceScreenOverlays } from './AgentWorkspaceScreenOverlays'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
 import styles from './AgentWorkspaceScreen.module.css'
 
 interface WorkspaceOutletContext {
   folderRoot: string | null
   setFolderRoot: (path: string | null) => void
-}
-
-function notifyWorkspaceSessionsChanged(): void {
-  window.dispatchEvent(new CustomEvent('baishou:workspace-sessions-changed'))
 }
 
 export const AgentWorkspaceScreen: React.FC = () => {
@@ -88,7 +61,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
     loading: loadingWorkspaces
   } = useAgentWorkspaces()
   const [boundStreamSessionId, setBoundStreamSessionId] = useState<string | undefined>()
-  const streamBindId = sessionId && sessionId !== 'new-session' ? sessionId : boundStreamSessionId
+  const streamBindId = isPersistedWorkspaceSessionId(sessionId) ? sessionId : boundStreamSessionId
   const chrome = useAgentWorkspaceChrome(streamBindId ?? sessionId)
   const { sessions, loading: loadingSessions } = useWorkspaceSessions()
   const [composerRefill, setComposerRefill] = useState<{
@@ -96,76 +69,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
     skillRefs?: Array<{ command: string; content: string }>
     nonce: number
   } | null>(null)
-  const syncedFolderKeysRef = useRef(new Set<string>())
-  const [modelMenuAnchor, setModelMenuAnchor] = useState<DOMRect | null>(null)
-  const dialogueSlotEffort = useDialogueSlotEffort()
-  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffortSetting>(() =>
-    resolveDialogueEffortPreference(
-      getReasoningEffortForModel(chrome.model.currentProviderId, chrome.model.currentModelId),
-      dialogueSlotEffort
-    )
-  )
-  const [reasoningPreviewTick, setReasoningPreviewTick] = useState(0)
-
-  const reasoningProviderType = useMemo(() => {
-    const providerId = chrome.model.currentProviderId
-    const provider = chrome.providers.find((p) => p.id === providerId)
-    return provider?.type || providerId || undefined
-  }, [chrome.model.currentProviderId, chrome.providers])
-
-  const reasoningCatalogEpoch = useReasoningCatalogEpoch()
-  const reasoningControl = useMemo(() => {
-    // 目录热更新只改模块表、不改 modelId；引用 epoch 才能按新表重算
-    void reasoningCatalogEpoch
-    return getReasoningControlForModel(chrome.model.currentModelId || '', reasoningProviderType)
-  }, [chrome.model.currentModelId, reasoningProviderType, reasoningCatalogEpoch])
-
-  useEffect(() => {
-    const next = resolveDialogueEffortPreference(
-      getReasoningEffortForModel(chrome.model.currentProviderId, chrome.model.currentModelId),
-      dialogueSlotEffort
-    )
-    setReasoningEffort(next)
-    setSessionReasoningEffortOverride(next)
-  }, [chrome.model.currentProviderId, chrome.model.currentModelId, dialogueSlotEffort])
-
-  const handleReasoningEffortChange = useCallback(
-    (value: ReasoningEffortSetting) => {
-      const normalized = normalizeReasoningEffortSetting(value)
-      setReasoningEffort(normalized)
-      setSessionReasoningEffortOverride(normalized)
-      if (chrome.model.currentProviderId && chrome.model.currentModelId) {
-        setReasoningEffortForModel(
-          chrome.model.currentProviderId,
-          chrome.model.currentModelId,
-          normalized
-        )
-        setReasoningPreviewTick((n) => n + 1)
-      }
-    },
-    [chrome.model.currentProviderId, chrome.model.currentModelId]
-  )
-
-  const modelReasoningPreviews = useMemo(
-    () => buildModelReasoningPreviewMap(chrome.providers),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick refreshes after persist
-    [chrome.providers, reasoningPreviewTick, chrome.showModelSwitcher]
-  )
-
-  const effortSuffix = formatReasoningControlPreview({
-    modelId: chrome.model.currentModelId,
-    providerTypeOrId: reasoningProviderType,
-    effort: reasoningEffort
-  })
-
-  const openModelSwitcher = useCallback(
-    (anchorRect?: DOMRect | null) => {
-      setModelMenuAnchor(anchorRect ?? null)
-      chrome.setShowModelSwitcher(true)
-    },
-    [chrome]
-  )
-
+  const reasoning = useAgentWorkspaceReasoningChrome(chrome)
   const stream = useWorkspaceAgentStream(streamBindId)
   const chat = useWorkspaceChatMessages({
     sessionId: streamBindId ?? sessionId,
@@ -175,27 +79,16 @@ export const AgentWorkspaceScreen: React.FC = () => {
   })
 
   useEffect(() => {
-    if (sessionId && sessionId !== 'new-session') {
-      setBoundStreamSessionId(sessionId)
-      return
-    }
-    // /open/:workspaceId 为空白新对话：必须解绑上一会话，否则会继续展示旧消息
-    if (routeWorkspaceId) {
-      setBoundStreamSessionId(undefined)
-    }
+    const next = nextBoundStreamSessionId({ sessionId, routeWorkspaceId })
+    if (!next.replace) return
+    setBoundStreamSessionId(next.next)
   }, [routeWorkspaceId, sessionId])
 
   // 助手消息已落库后清掉流式桥接，避免与落库气泡短暂并存
   useEffect(() => {
     const sid = streamBindId ?? sessionId
-    if (!sid || sid === 'new-session' || !stream.isBridgeActive) return
-    const last = chat.messages[chat.messages.length - 1]
-    if (
-      last?.role === 'assistant' &&
-      (Boolean(last.content?.trim()) ||
-        Boolean(last.reasoning?.trim()) ||
-        (last.parts?.length ?? 0) > 0)
-    ) {
+    if (!isPersistedWorkspaceSessionId(sid) || !stream.isBridgeActive) return
+    if (hasPersistedAssistantTail(chat.messages)) {
       clearStreamBridgeForSession(sid)
     }
   }, [chat.messages, sessionId, stream.isBridgeActive, streamBindId])
@@ -212,89 +105,32 @@ export const AgentWorkspaceScreen: React.FC = () => {
     selectSameActionCountInSession(state, gateSessionId, pendingGate?.action)
   )
   useStreamError(stream.error, stream.isStreaming)
-  const resolvedActiveWorkspace =
-    activeWorkspace ??
-    (routeWorkspaceId ? workspaces.find((entry) => entry.id === routeWorkspaceId) : undefined) ??
-    (folderRoot
-      ? workspaces.find((entry) => workspaceEntryMatchesFolder(entry, folderRoot))
-      : undefined) ??
-    null
+  const resolvedActiveWorkspace = resolveActiveWorkspace({
+    activeWorkspace,
+    routeWorkspaceId,
+    workspaces,
+    folderRoot
+  })
   const activeFolderRoot = resolvedActiveWorkspace?.folderRoot ?? folderRoot
   const hasWorkspace = Boolean(activeFolderRoot)
+  const navigateHome = useCallback(() => {
+    navigate('/agent-workspace', { replace: true })
+  }, [navigate])
 
-  const openWorkspacePath = useCallback((workspaceId: string) => {
-    return `/agent-workspace/open/${workspaceId}`
-  }, [])
-
-  // 从 /open/:workspaceId 进入：校验并选中目录
-  useEffect(() => {
-    if (!routeWorkspaceId || loadingWorkspaces) return
-    const target = workspaces.find((entry) => entry.id === routeWorkspaceId)
-    if (!target) {
-      navigate('/agent-workspace', { replace: true })
-      return
-    }
-    if (activeWorkspace?.id !== target.id) {
-      void selectWorkspace(target.id)
-    }
-    if (folderRoot !== target.folderRoot) {
-      setFolderRoot(target.folderRoot)
-    }
-  }, [
-    activeWorkspace?.id,
-    folderRoot,
-    loadingWorkspaces,
-    navigate,
+  useAgentWorkspaceFolderBinding({
     routeWorkspaceId,
-    selectWorkspace,
+    sessionId,
+    folderRoot,
     setFolderRoot,
-    workspaces
-  ])
-
-  // 从会话深链进入：按 binding 恢复目录
-  useEffect(() => {
-    if (!sessionId || sessionId === 'new-session' || routeWorkspaceId) return
-    let cancelled = false
-    void window.api?.agentWorkspace
-      ?.getBinding?.(sessionId)
-      .then((binding) => {
-        if (cancelled || !binding?.folderRoot) return
-        setFolderRoot(binding.folderRoot)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [routeWorkspaceId, sessionId, setFolderRoot])
-
-  useEffect(() => {
-    if (resolvedActiveWorkspace?.folderRoot) {
-      setFolderRoot(resolvedActiveWorkspace.folderRoot)
-    }
-  }, [resolvedActiveWorkspace?.folderRoot, setFolderRoot])
-
-  useEffect(() => {
-    if (loadingWorkspaces || !folderRoot) return
-    const key = folderRoot.replace(/\\/g, '/').toLowerCase()
-    if (workspaces.some((entry) => workspaceEntryMatchesFolder(entry, folderRoot))) {
-      syncedFolderKeysRef.current.add(key)
-      return
-    }
-    if (syncedFolderKeysRef.current.has(key)) return
-    syncedFolderKeysRef.current.add(key)
-    void registerWorkspaceFolder(folderRoot).catch((error) => {
-      syncedFolderKeysRef.current.delete(key)
-      console.error('[AgentWorkspaceScreen] sync folder to registry failed:', error)
-    })
-  }, [folderRoot, loadingWorkspaces, registerWorkspaceFolder, workspaces])
-
-  useEffect(() => {
-    if (!sessionId || !folderRoot || !workspaces.length) return
-    const match = workspaces.find((entry) => workspaceEntryMatchesFolder(entry, folderRoot))
-    if (match && match.id !== resolvedActiveWorkspace?.id) {
-      void selectWorkspace(match.id)
-    }
-  }, [sessionId, folderRoot, workspaces, resolvedActiveWorkspace?.id, selectWorkspace])
+    workspaces,
+    loadingWorkspaces,
+    activeWorkspaceId: activeWorkspace?.id,
+    resolvedWorkspaceId: resolvedActiveWorkspace?.id,
+    resolvedFolderRoot: resolvedActiveWorkspace?.folderRoot,
+    selectWorkspace,
+    registerWorkspaceFolder,
+    navigateHome
+  })
 
   const handleRuntimeRefresh = useCallback(() => {
     void chat.refresh()
@@ -309,123 +145,23 @@ export const AgentWorkspaceScreen: React.FC = () => {
     [chrome.model.currentModelId, chrome.model.currentProviderId]
   )
 
-  const handleBackToHome = useCallback(() => {
-    setFolderRoot(null)
-    navigate('/agent-workspace')
-  }, [navigate, setFolderRoot])
-
-  const handleAddWorkspace = useCallback(async () => {
-    try {
-      const entry = await addWorkspaceFromPicker()
-      if (entry) {
-        setFolderRoot(entry.folderRoot)
-        navigate(openWorkspacePath(entry.id))
-      }
-    } catch (error) {
-      console.error('[AgentWorkspaceScreen] add workspace failed:', error)
-      await dialog.alert(
-        error instanceof Error
-          ? error.message
-          : t('agent_workspace.add_workspace_failed', '添加工作区失败，请重启应用后重试'),
-        t('agent_workspace.add_workspace', '添加工作区')
-      )
-    }
-  }, [addWorkspaceFromPicker, dialog, navigate, openWorkspacePath, setFolderRoot, t])
-
-  const handleNewSession = useCallback(() => {
-    const id = resolvedActiveWorkspace?.id ?? routeWorkspaceId
-    if (!id) return
-    if (stream.isStreaming) {
-      stream.stopChat()
-    }
-    const previousBind =
-      (sessionId && sessionId !== 'new-session' ? sessionId : boundStreamSessionId) || undefined
-    if (previousBind) {
-      clearStreamBridgeForSession(previousBind)
-    }
-    setBoundStreamSessionId(undefined)
-    setComposerRefill(null)
-    navigate(openWorkspacePath(id))
-  }, [
-    boundStreamSessionId,
+  const sessionActions = useAgentWorkspaceSessionActions({
+    t,
+    dialog,
     navigate,
-    openWorkspacePath,
-    resolvedActiveWorkspace?.id,
-    routeWorkspaceId,
     sessionId,
-    stream
-  ])
-
-  const handleSelectSession = useCallback(
-    async (targetSessionId: string) => {
-      if (targetSessionId === sessionId) return
-      try {
-        const binding = await window.api.agentWorkspace.getBinding(targetSessionId)
-        if (binding?.folderRoot) {
-          setFolderRoot(binding.folderRoot)
-          const workspace = workspaces.find((entry) =>
-            workspaceEntryMatchesFolder(entry, binding.folderRoot)
-          )
-          if (workspace) {
-            await selectWorkspace(workspace.id)
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      navigate(`/agent-workspace/${targetSessionId}`)
-    },
-    [navigate, sessionId, selectWorkspace, setFolderRoot, workspaces]
-  )
-
-  const handleDeleteSession = useCallback(
-    async (targetSessionId: string) => {
-      const confirmed = await dialog.confirm(
-        t(
-          'agent_workspace.delete_session_confirm',
-          '确定删除此工作区会话？相关对话记录也会被移除。'
-        ),
-        t('agent_workspace.delete_session', '删除会话')
-      )
-      if (!confirmed) return
-
-      try {
-        await window.api.agentWorkspace.deleteSession(targetSessionId)
-        notifyWorkspaceSessionsChanged()
-        if (targetSessionId === sessionId) {
-          const id = resolvedActiveWorkspace?.id
-          navigate(id ? openWorkspacePath(id) : '/agent-workspace')
-        }
-      } catch (error) {
-        console.error('[AgentWorkspaceScreen] delete session failed:', error)
-        await dialog.alert(
-          t('common.error', '操作失败'),
-          t('agent_workspace.delete_session', '删除会话')
-        )
-      }
-    },
-    [dialog, navigate, openWorkspacePath, resolvedActiveWorkspace?.id, sessionId, t]
-  )
-
-  const handleRenameSession = useCallback(
-    async (targetSessionId: string, title: string) => {
-      const trimmed = title.trim()
-      if (!trimmed) return
-
-      try {
-        await window.electron.ipcRenderer.invoke(
-          'agent:update-session-title',
-          targetSessionId,
-          trimmed
-        )
-        notifyWorkspaceSessionsChanged()
-      } catch (error) {
-        console.error('[AgentWorkspaceScreen] rename session failed:', error)
-        await dialog.alert(t('common.error', '操作失败'), t('workbench.rename_session', '重命名'))
-      }
-    },
-    [dialog, t]
-  )
+    routeWorkspaceId,
+    boundStreamSessionId,
+    setBoundStreamSessionId,
+    setComposerRefill,
+    setFolderRoot,
+    resolvedWorkspaceId: resolvedActiveWorkspace?.id,
+    workspaces,
+    selectWorkspace,
+    addWorkspaceFromPicker,
+    isStreaming: stream.isStreaming,
+    stopChat: stream.stopChat
+  })
 
   const {
     model: { currentProviderId, currentModelId },
@@ -433,6 +169,23 @@ export const AgentWorkspaceScreen: React.FC = () => {
   } = chrome
 
   const searchModeEnabled = useAgentStore((s) => s.searchMode)
+
+  const handleSend = useAgentWorkspaceComposerSend({
+    t,
+    sessionId,
+    activeFolderRoot,
+    currentProviderId,
+    currentModelId,
+    selectedAssistantId,
+    searchModeEnabled,
+    addWorkspaceFromPicker,
+    setFolderRoot,
+    setBoundStreamSessionId,
+    navigate,
+    openModelSwitcher: reasoning.openModelSwitcher,
+    stream,
+    chat
+  })
 
   const messageActions = useWorkspaceMessageActions({
     t,
@@ -447,7 +200,7 @@ export const AgentWorkspaceScreen: React.FC = () => {
     getReasoningEffort: () => getSessionReasoningEffortOverride(),
     isModelReady: () =>
       isConfiguredProviderId(currentProviderId) && isConfiguredDialogueModelId(currentModelId),
-    onModelNotReady: () => openModelSwitcher(null),
+    onModelNotReady: () => reasoning.openModelSwitcher(null),
     stopChat: stream.stopChat,
     rollbackRound: stream.rollbackRound,
     previewRollback: stream.previewRollback,
@@ -503,132 +256,6 @@ export const AgentWorkspaceScreen: React.FC = () => {
     searchModeEnabled
   })
 
-  const handleSend = useCallback(
-    async (
-      text: string,
-      incomingAttachments?: unknown[],
-      searchMode?: boolean,
-      meta?: {
-        displayText?: string
-        skillRefs?: Array<{ command: string; content: string }>
-        fileRefs?: Array<{
-          relativePath: string
-          selection?: { startLine: number; endLine: number }
-          comment?: string
-          origin?: 'explorer-drop' | 'mention' | 'selection' | 'comment'
-        }>
-        delivery?: 'steer' | 'queue'
-      }
-    ) => {
-      const trimmed = text.trim()
-      const incoming = normalizeWorkspaceSendAttachments(incomingAttachments)
-      if (
-        !hasWorkspaceComposerPayload({
-          text: trimmed,
-          attachments: incoming,
-          skillRefs: meta?.skillRefs,
-          fileRefs: meta?.fileRefs
-        })
-      ) {
-        return false
-      }
-
-      if (
-        !isConfiguredProviderId(currentProviderId) ||
-        !isConfiguredDialogueModelId(currentModelId)
-      ) {
-        openModelSwitcher(null)
-        toast.showInfo(t('agent.error.no_model', '请先在顶部选择一个模型'))
-        return false
-      }
-
-      let folder = activeFolderRoot
-      if (!folder) {
-        const entry = await addWorkspaceFromPicker()
-        if (!entry) return false
-        folder = entry.folderRoot
-        setFolderRoot(folder)
-      }
-
-      const displayText = meta?.displayText?.trim() || trimmed
-      const skillRefs = meta?.skillRefs?.length ? meta.skillRefs : undefined
-      const effectiveSearchMode = searchMode ?? searchModeEnabled
-      const delivery = meta?.delivery ?? 'queue'
-      const attachments = normalizeWorkspaceSendAttachments(
-        mergeWorkspaceFileRefsIntoAttachments({
-          attachments: incoming,
-          fileRefs: meta?.fileRefs,
-          folderRoot: folder
-        })
-      )
-
-      try {
-        const prepared = await stream.prepareWorkspaceTurn(sessionId, trimmed, folder, {
-          assistantId: selectedAssistantId,
-          displayText,
-          skillRefs,
-          fileRefs: meta?.fileRefs,
-          attachments
-        })
-
-        setBoundStreamSessionId(prepared.sessionId)
-        chat.setStreamSessionId(prepared.sessionId)
-        void chat.refresh(prepared.sessionId)
-
-        if (prepared.createdNew && prepared.sessionId !== sessionId) {
-          navigate(`/agent-workspace/${prepared.sessionId}`)
-        }
-
-        // 空闲与忙时统一：prepare → admit →（idle 时主进程 drain 开流）
-        const admitted = await window.api.agentWorkspace.admit({
-          sessionId: prepared.sessionId,
-          text: trimmed,
-          delivery,
-          userMessageId: prepared.userMessageId,
-          providerId: currentProviderId,
-          modelId: currentModelId,
-          reasoningEffort: getSessionReasoningEffortOverride(),
-          searchMode: effectiveSearchMode,
-          forceStart: !stream.isStreaming
-        })
-        window.dispatchEvent(
-          new CustomEvent('baishou:workspace-pending-inputs-changed', {
-            detail: { sessionId: prepared.sessionId }
-          })
-        )
-
-        if (admitted.queued) {
-          toast.showInfo(t('agent_workspace.input_accepted_busy', '已收到，当前轮次结束后继续'))
-          return true
-        }
-
-        if (admitted.started) {
-          stream.beginStreaming(prepared.sessionId)
-          notifyWorkspaceSessionsChanged()
-        }
-        return true
-      } catch (error) {
-        console.error('[AgentWorkspaceScreen] send failed:', error)
-        return false
-      }
-    },
-    [
-      activeFolderRoot,
-      addWorkspaceFromPicker,
-      chat,
-      currentModelId,
-      currentProviderId,
-      navigate,
-      openModelSwitcher,
-      searchModeEnabled,
-      selectedAssistantId,
-      sessionId,
-      setFolderRoot,
-      stream,
-      t
-    ]
-  )
-
   useWorkspaceInitMessage({
     searchParams,
     setSearchParams,
@@ -639,13 +266,17 @@ export const AgentWorkspaceScreen: React.FC = () => {
     currentProviderId,
     currentModelId,
     setShowModelSwitcher: (open) => {
-      if (open) openModelSwitcher(null)
+      if (open) reasoning.openModelSwitcher(null)
       else chrome.setShowModelSwitcher(false)
     },
     onSend: handleSend
   })
 
-  const layoutScopeKey = routeWorkspaceId ?? resolvedActiveWorkspace?.id ?? activeFolderRoot
+  const layoutScopeKey = resolveLayoutScopeKey({
+    routeWorkspaceId,
+    workspaceId: resolvedActiveWorkspace?.id,
+    folderRoot: activeFolderRoot
+  })
 
   return (
     <div className={styles.screen}>
@@ -656,12 +287,12 @@ export const AgentWorkspaceScreen: React.FC = () => {
         sessions={sessions}
         loadingSessions={loadingSessions}
         activeSessionId={sessionId}
-        onOpenFolder={() => void handleAddWorkspace()}
-        onBackToHome={handleBackToHome}
-        onNewSession={handleNewSession}
-        onSelectSession={(id) => void handleSelectSession(id)}
-        onDeleteSession={(id) => void handleDeleteSession(id)}
-        onRenameSession={(id, title) => void handleRenameSession(id, title)}
+        onOpenFolder={() => void sessionActions.handleAddWorkspace()}
+        onBackToHome={sessionActions.handleBackToHome}
+        onNewSession={sessionActions.handleNewSession}
+        onSelectSession={(id) => void sessionActions.handleSelectSession(id)}
+        onDeleteSession={(id) => void sessionActions.handleDeleteSession(id)}
+        onRenameSession={(id, title) => void sessionActions.handleRenameSession(id, title)}
         agentPanel={{
           hasWorkspace,
           hasConfiguredModel,
@@ -683,8 +314,8 @@ export const AgentWorkspaceScreen: React.FC = () => {
             totalCacheWriteInputTokens: chrome.tokens.totalCacheWriteInputTokens,
             estimatedCost: chrome.tokens.estimatedCost,
             onAssistantClick: () => chrome.setShowAssistantPicker(true),
-            onModelClick: (anchorRect) => openModelSwitcher(anchorRect),
-            effortSuffix,
+            onModelClick: (anchorRect) => reasoning.openModelSwitcher(anchorRect),
+            effortSuffix: reasoning.effortSuffix,
             pricingLastUpdated: chrome.pricingLastUpdated,
             onRefreshPricing: chrome.handleRefreshPricing
           },
@@ -754,91 +385,18 @@ export const AgentWorkspaceScreen: React.FC = () => {
         }}
       />
 
-      {chrome.showModelSwitcher ? (
-        <SessionModelMenu
-          onClose={() => chrome.setShowModelSwitcher(false)}
-          providers={chrome.providers
-            .map((p) => {
-              const modelList =
-                p.enabledModels && p.enabledModels.length > 0 ? p.enabledModels : p.models || []
-              const filteredModels = modelList.filter((m) => !isEmbeddingModel(m) && !isTtsModel(m))
-              return {
-                id: p.id,
-                name: p.name || p.id,
-                type: p.type || 'custom',
-                models: p.models || [],
-                enabledModels: filteredModels
-              }
-            })
-            .filter((p) => p.enabledModels.length > 0)}
-          currentProviderId={chrome.model.currentProviderId}
-          currentModelId={chrome.model.currentModelId}
-          onSelect={(providerId, modelId) => {
-            chrome.model.userManuallySetModelRef.current = true
-            chrome.model.setCurrentProviderId(providerId)
-            chrome.model.setCurrentModelId(modelId)
-          }}
-          onManageProviders={() => navigate(`${SETTINGS_HUB_PREFIX}/ai-services`)}
-          reasoningEffort={reasoningEffort}
-          onReasoningEffortChange={handleReasoningEffortChange}
-          reasoningControl={reasoningControl}
-          modelReasoningPreviews={modelReasoningPreviews}
-          anchorRect={modelMenuAnchor}
-        />
-      ) : null}
-
-      <AssistantPickerSheet
-        isOpen={chrome.showAssistantPicker}
-        assistants={chrome.assistants.map((a) => ({
-          ...a,
-          id: String(a.id),
-          emoji: a.emoji || '✨',
-          systemPrompt: a.systemPrompt || '',
-          compressSystemPrompt: a.compressSystemPrompt ?? null
-        }))}
-        currentAssistantId={chrome.selectedAssistantId}
-        onSelect={(assistant) => chrome.handleAssistantSelected(assistant)}
-        onClose={() => chrome.setShowAssistantPicker(false)}
-        onRefreshAssistants={() => chrome.fetchAssistants()}
-        pinnedIds={new Set(chrome.pinnedIds)}
-        onTogglePin={async (id, isPinned) => {
-          if (window.electron) {
-            await window.electron.ipcRenderer.invoke('agent:pin-assistant', id, isPinned)
-            await chrome.fetchAssistants()
-          }
-        }}
-        onCreateNew={chrome.openCreateAssistant}
+      <AgentWorkspaceScreenOverlays
+        chrome={chrome}
+        contextChain={contextChain}
+        streamBindId={streamBindId}
+        sessionId={sessionId}
+        navigate={navigate}
+        reasoningEffort={reasoning.reasoningEffort}
+        onReasoningEffortChange={reasoning.handleReasoningEffortChange}
+        reasoningControl={reasoning.reasoningControl}
+        modelReasoningPreviews={reasoning.modelReasoningPreviews}
+        modelMenuAnchor={reasoning.modelMenuAnchor}
       />
-
-      <AssistantCreateModal
-        isOpen={chrome.isCreateAssistantOpen}
-        assistantCount={chrome.assistants.length}
-        onClose={() => chrome.setIsCreateAssistantOpen(false)}
-        onBackToPicker={() => chrome.setShowAssistantPicker(true)}
-        onCreated={chrome.fetchAssistants}
-      />
-
-      {contextChain.state.flatEntries ? (
-        <ContextChainPanel
-          key={contextChain.state.message?.id ?? 'workspace-context-chain'}
-          isOpen={contextChain.state.isOpen}
-          onClose={contextChain.close}
-          message={
-            contextChain.state.message ?? {
-              id: '',
-              sessionId: streamBindId ?? sessionId ?? '',
-              role: 'assistant',
-              content: '',
-              timestamp: new Date()
-            }
-          }
-          flatEntries={contextChain.state.flatEntries}
-          meta={contextChain.state.meta}
-          compressedContent={contextChain.state.compressedContent}
-          systemPrompt={contextChain.state.systemPrompt}
-          sessionId={contextChain.state.sessionId ?? streamBindId ?? sessionId}
-        />
-      ) : null}
     </div>
   )
 }
