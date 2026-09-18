@@ -1,6 +1,6 @@
 # 统一整理实施计划
 
-> **状态**：第一批已落地；第二批整理外壳已落地（抽图进流水、入口与进度收拢、笔记本图节点由「开始整理」消费）；第三批身份层进行中；第四批未开工
+> **状态**：第一批至第五批已落地
 > **范围**：`packages/core`（`graph`、`knowledge`、`raw-data`）、`packages/database`、`packages/shared`、`apps/desktop`、`apps/mobile`
 > **数据影响**：第一批与第二批只加列、不迁移数据、不改 JSONL 记录类型、不改同步协议；第三批改节点 ID 公式、唯一索引与 JSONL 记录类型，需要迁移
 > **本计划定义「整理」这一个动作的顺序与实体身份规则**，不合并全局关系图与笔记本关系图
@@ -166,6 +166,26 @@
 **移动端拆分入口。** 与桌面端对齐。
 
 测试：可疑节点扫描的命中与误报、抽取多候选时的选择与失败路径、笔记本图整批对齐后中断续跑、两端拆分行为一致。
+
+**本批落地说明（不改锁定决策）。** 同名多候选时可选 `judgeNameCandidates`：只允许返回已有候选 id，失败则维持第三批的裸名 + `ambiguous`。笔记本图改为先抽完全部窗口并写入 `extractedWindows`，再整批 `alignEntityPool` 一次；`alignWritten` 为真才算抽图完成。整理流水在 `graph_extract` 之后增加 `graph_disambiguate`：纯函数收集信号，最多 40 次模型调用写 `props.suspectReason` 与 `reviewStatus=pending`，不自动拆分。`graph:list-suspect-nodes` 列出待审且带怀疑理由的节点。移动端拆分入口与桌面端对齐：节点详情可拆分/撤回，新建撞同名时可登记为另一个实体。
+
+### 第五批：整理顺序对齐与相似待合并
+
+本批不改第 3 节锁定决策。补齐两端整理顺序、吃不准时的人工入口，以及笔记本图同步改名片后的向量。
+
+**整理顺序。** 共享阶段固定为日记 → 伙伴记忆 → 知识库 → 抽图 → 节点向量 → 可疑扫描。原文向量完成后再入抽图队列；知识库 INDEX 车道只消费 extract/embed，GRAPH 车道只消费 graph，同一份资料先嵌入再抽图。手机日记待办为 0 仍跑后续 fill；空图「开始整理」走统一 `batchEmbed`。
+
+**改名片重算向量。** 人生图 `GraphSyncService` 用 `shouldReuseGraphNodeEmbed`：同模型且 `${name}\n${summary}` 没变才跳过。笔记本图抽图覆盖走 `refreshNotebookEmbeddingsAfterAlign`。笔记本图 pending-index 用 `shouldRefreshExistingGraphNodeEmbed`：库里已有同模型向量且名片变了才重算；新节点仍留给抽图落库或集中补齐，避免同步灌库时把整本再嵌一遍。抽图路径不把嵌入器传给 `NotebookGraphIndexService`，避免和 `writeAlignedEmbeddings` 算两次。
+
+**高准确合并。** 相似度 > 50% 仍交给二次判定，并带上裁剪后的日记片段。模型吃不准时新建第二个节点，在 JSONL `props` 写 `similarPending`，不改 `reviewStatus`。同 peer 后写覆盖先写。不建详细出处登记。
+
+**相似待合并页。** 两端关系图各加一页，只列相似待合并对；合并保留已有节点，不是同一人则去掉这对标记。可疑扫描理由仍写在节点详情。
+
+**查找与改挂。** `findNodesByNameOrAlias` 为规范查询；手机 mutate 用它加 `pickSameNameConflictFromHits`。合并与拆分的改挂边抽到 `remapTouchingEdges`。
+
+**知识维护。** 手机补重试、只重抽图、重建整本图；重建索引仍先 embed，正文已抽出的资料标记 embed 后再入 graph。不做 workbench。
+
+测试：阶段顺序、日记为 0 仍 fill、reuseEmbed / 笔记本改名片重算、judgeMerges 带出处与 uncertain、list/dismiss 对、两端 similar 页签、改挂边、同名多查、last-batch-wins。
 
 ---
 
