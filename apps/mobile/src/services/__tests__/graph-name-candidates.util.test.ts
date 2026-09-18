@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  graphBareNodeIdForRevert,
+  graphRevertSplitStayId,
   listRegisteredSameNameEntities,
   parseGraphNodePropsJson,
-  pickBareGraphNameHit
+  pickBareGraphNameHit,
+  readGraphNodeSuspectReason
 } from '../graph-name-candidates.util'
 
 describe('pickBareGraphNameHit', () => {
@@ -68,5 +71,57 @@ describe('parseGraphNodePropsJson', () => {
   it('should return an empty object when props json is missing or invalid', () => {
     expect(parseGraphNodePropsJson(null)).toEqual({})
     expect(parseGraphNodePropsJson('{')).toEqual({})
+  })
+})
+
+describe('readGraphNodeSuspectReason', () => {
+  it('should return a trimmed reason and ignore missing or invalid props', () => {
+    expect(readGraphNodeSuspectReason({ propsJson: '{"suspectReason":"  同人异职  "}' })).toBe(
+      '同人异职'
+    )
+    expect(readGraphNodeSuspectReason({ propsJson: '{"suspectReason":123}' })).toBe('')
+    expect(readGraphNodeSuspectReason(null)).toBe('')
+  })
+})
+
+describe('graphBareNodeIdForRevert', () => {
+  it('should prefer the candidate without a discriminator', () => {
+    expect(
+      graphBareNodeIdForRevert({ id: 'split-1', discriminator: '甲' }, [
+        { nodeId: 'bare', discriminator: '' },
+        { nodeId: 'split-1', discriminator: '甲' }
+      ])
+    ).toBe('bare')
+  })
+
+  it('should fall back to the selected node when it is already the bare entity', () => {
+    expect(graphBareNodeIdForRevert({ id: 'bare', discriminator: '' }, [])).toBe('bare')
+  })
+
+  it('should return empty when a split node has no bare sibling', () => {
+    expect(graphBareNodeIdForRevert({ id: 'split-1', discriminator: '甲' }, [])).toBe('')
+    expect(graphBareNodeIdForRevert(null, [])).toBe('')
+  })
+})
+
+describe('graphRevertSplitStayId', () => {
+  it('should jump to the bare node when the current node was removed', () => {
+    expect(
+      graphRevertSplitStayId({
+        selectedNodeId: 'gone',
+        removedNodeId: 'gone',
+        bareNodeId: 'bare'
+      })
+    ).toBe('bare')
+  })
+
+  it('should stay on the current node when a sibling was removed', () => {
+    expect(
+      graphRevertSplitStayId({
+        selectedNodeId: 'keep',
+        removedNodeId: 'gone',
+        bareNodeId: 'bare'
+      })
+    ).toBe('keep')
   })
 })
